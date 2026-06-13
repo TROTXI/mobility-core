@@ -24,7 +24,7 @@ test(e2e): cover declined mobile-money charge
 ## Code expectations
 
 - **TypeScript**: strict mode, no `any` without a comment explaining why.
-  `make check` (format + typecheck + lint + unit tests) must pass locally before pushing.
+  `pnpm check` (format + typecheck + lint + unit tests) must pass locally before pushing.
 - **Package manager**: this is a **pnpm workspace** — `corepack enable` once,
   then `pnpm install` at the root installs every package. Don't use `npm`.
 - **Pre-commit hook (Husky)**: activate it once with `pnpm install` at the repo
@@ -36,7 +36,7 @@ test(e2e): cover declined mobile-money charge
   It's fast feedback, not the gate — bypass with `git commit --no-verify` if you
   must. **CI is the real enforcement**: it runs `format:check`, lint, typecheck,
   tests and build on a clean install, so nothing unformatted or broken can merge.
-  `make check` runs the same gates locally.
+  `pnpm check` runs the same gates locally.
 
 - **Tests are part of the feature**: services get unit tests (vitest); every
   user-visible flow gets an e2e journey (`e2e/tests/`). The unit-coverage gate
@@ -58,8 +58,8 @@ changes an architectural decision, it includes an ADR. See
 ```bash
 nvm use            # Node 22 (.nvmrc)
 corepack enable    # activates pnpm at the pinned version
-make up            # local infra (Docker)
-make install       # all workspace deps (pnpm)
-make dev           # API on :3000
-make install-e2e   # once, then: make e2e
+pnpm install       # all workspace deps (also activates the Husky hook)
+pnpm infra:up      # local infra (Docker)
+pnpm api           # API on :3000
+pnpm test:e2e      # run the e2e suite
 ```
