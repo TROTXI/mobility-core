@@ -36,4 +36,13 @@ describe('app', () => {
     expect(res.statusCode).toBe(503);
     expect(res.json()).toEqual({ status: 'not_ready' });
   });
+
+  it('serves an OpenAPI spec that lists the routes', async () => {
+    const app = await buildApp();
+    const res = await app.inject({ method: 'GET', url: '/docs/json' });
+    expect(res.statusCode).toBe(200);
+    const spec = res.json();
+    expect(spec.openapi).toBeTruthy();
+    expect(Object.keys(spec.paths)).toContain('/healthz');
+  });
 });
