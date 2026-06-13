@@ -15,9 +15,15 @@
     "typecheck": "pnpm -r --if-present run typecheck",
     "test": "pnpm --filter @trotxi/api test",
     "test:e2e": "pnpm --filter @trotxi/e2e test",
+    "test:e2e:ui": "pnpm --filter @trotxi/e2e run test:ui",
+    "coverage": "pnpm --filter @trotxi/api run test:coverage",
     "check": "pnpm run format:check && pnpm run typecheck && pnpm run lint && pnpm test",
     "api": "pnpm --filter @trotxi/api dev",
-    "start": "pnpm -r --parallel --if-present run dev"
+    "start": "pnpm -r --parallel --if-present run dev",
+    "infra:up": "docker compose -f infra/docker/docker-compose.yml up -d",
+    "infra:down": "docker compose -f infra/docker/docker-compose.yml down",
+    "infra:logs": "docker compose -f infra/docker/docker-compose.yml logs -f",
+    "infra:ps": "docker compose -f infra/docker/docker-compose.yml ps"
   },
   "devDependencies": {
     "husky": "^9.1.7",

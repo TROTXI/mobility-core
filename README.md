@@ -22,17 +22,27 @@ Requires **Node 22** (see `.nvmrc`) and **pnpm** (the package manager — enable
 it with `corepack enable`; the version is pinned in `package.json`).
 
 ```bash
-corepack enable   # one-time: activates pnpm at the pinned version
-make up           # Postgres + Redis + EMQX via Docker
-make install      # install all workspace deps (pnpm)
-make dev          # API in watch mode → http://localhost:3000/healthz
-make check        # format + typecheck + lint + unit tests
-make e2e          # Playwright end-to-end suite (real HTTP)
+corepack enable     # one-time: activates pnpm at the pinned version
+pnpm install        # install all workspace deps
+pnpm infra:up       # Postgres + Redis + EMQX via Docker
+pnpm api            # API in watch mode → http://localhost:3000/healthz (docs at /docs)
+pnpm check          # format + typecheck + lint + unit tests
+pnpm test:e2e       # Playwright end-to-end suite (real HTTP)
 ```
 
 This is a **pnpm workspace**: one lockfile (`pnpm-lock.yaml`) and one install
-at the root cover every package (`services/api`, `e2e`, tooling). Run scripts
-across packages with `pnpm --filter <name> <script>`.
+at the root cover every package (`services/api`, `e2e`, tooling). All tasks are
+pnpm scripts — run `pnpm run` to list them, or target a package directly with
+`pnpm --filter <name> <script>`. Common ones:
+
+| Command                                                    | Does                                   |
+| ---------------------------------------------------------- | -------------------------------------- |
+| `pnpm infra:up` / `infra:down` / `infra:logs` / `infra:ps` | Local Docker infra                     |
+| `pnpm api`                                                 | Run the API in watch mode              |
+| `pnpm start`                                               | Run every service's dev server         |
+| `pnpm check`                                               | format + typecheck + lint + unit tests |
+| `pnpm test` / `pnpm test:e2e`                              | Unit tests / e2e suite                 |
+| `pnpm format`                                              | Auto-format the repo (Prettier)        |
 
 ## Repo layout
 
