@@ -16,7 +16,7 @@ Postgres) and the telemetry path (GPS → MQTT/EMQX → Go processor → Redis �
 WebSocket) share no services and meet only at Redis, where the API reads live
 positions.
 
-For the MVP/pilot, the telemetry path's *implementation* is deferred: the API
+For the MVP/pilot, the telemetry path's _implementation_ is deferred: the API
 serves positions over HTTP polling behind the same client-facing contract.
 
 ## Consequences
