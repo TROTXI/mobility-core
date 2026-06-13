@@ -15,6 +15,7 @@ async function main(): Promise<void> {
 
   await app.listen({ port: env.PORT, host: env.HOST });
   app.log.info(`Trotxi API listening on http://${env.HOST}:${env.PORT}`);
+  app.log.info(`API docs (Swagger UI) at http://${env.HOST}:${env.PORT}/docs`);
 }
 
 main().catch((err) => {

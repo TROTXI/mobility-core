@@ -10,7 +10,14 @@
   "scripts": {
     "prepare": "husky",
     "format": "prettier --write .",
-    "format:check": "prettier --check ."
+    "format:check": "prettier --check .",
+    "lint": "pnpm -r --if-present run lint",
+    "typecheck": "pnpm -r --if-present run typecheck",
+    "test": "pnpm --filter @trotxi/api test",
+    "test:e2e": "pnpm --filter @trotxi/e2e test",
+    "check": "pnpm run format:check && pnpm run typecheck && pnpm run lint && pnpm test",
+    "api": "pnpm --filter @trotxi/api dev",
+    "start": "pnpm -r --parallel --if-present run dev"
   },
   "devDependencies": {
     "husky": "^9.1.7",

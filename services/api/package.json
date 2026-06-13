@@ -18,6 +18,8 @@
     "lint": "eslint ."
   },
   "dependencies": {
+    "@fastify/swagger": "^9.7.0",
+    "@fastify/swagger-ui": "^6.0.0",
     "fastify": "^5.2.0",
     "zod": "^3.24.1"
   },
