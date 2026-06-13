@@ -36,7 +36,6 @@ describe('app', () => {
     expect(res.statusCode).toBe(503);
     expect(res.json()).toEqual({ status: 'not_ready' });
   });
-
   it('serves an OpenAPI spec that lists the routes', async () => {
     const app = await buildApp();
     const res = await app.inject({ method: 'GET', url: '/docs/json' });
@@ -44,5 +43,16 @@ describe('app', () => {
     const spec = res.json();
     expect(spec.openapi).toBeTruthy();
     expect(Object.keys(spec.paths)).toContain('/healthz');
+  });
+
+  it('returns version info with name, version and commit', async () => {
+    const app = await buildApp();
+    const res = await app.inject({ method: 'GET', url: '/version' });
+    expect(res.statusCode).toBe(200);
+    expect(res.json()).toMatchObject({
+      name: 'trotxi-api',
+      version: '0.1.0',
+      commit: 'dev',
+    });
   });
 });
