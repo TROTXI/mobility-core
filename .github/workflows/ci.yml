@@ -22,37 +22,32 @@ jobs:
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
-
+      - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: npm
-          cache-dependency-path: package-lock.json
+          cache: pnpm
 
-      - run: npm ci
-      - run: npm run format:check
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm run format:check
 
   api:
     name: API (services/api)
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    defaults:
-      run:
-        working-directory: services/api
     steps:
       - uses: actions/checkout@v4
-
+      - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: npm
-          cache-dependency-path: services/api/package-lock.json
+          cache: pnpm
 
-      - run: npm ci
-      - run: npm run typecheck
-      - run: npm run lint
-      - run: npm run test:coverage
-      - run: npm run build
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @trotxi/api run typecheck
+      - run: pnpm --filter @trotxi/api run lint
+      - run: pnpm --filter @trotxi/api run test:coverage
+      - run: pnpm --filter @trotxi/api run build
 
   e2e:
     name: E2E (Playwright)
@@ -62,21 +57,14 @@ jobs:
     # here (see docs/architecture.md) and the e2e globalSetup will migrate+seed.
     steps:
       - uses: actions/checkout@v4
-
+      - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: npm
-          cache-dependency-path: |
-            services/api/package-lock.json
-            e2e/package-lock.json
+          cache: pnpm
 
-      - run: npm ci
-        working-directory: services/api
-      - run: npm ci
-        working-directory: e2e
-      - run: npm test
-        working-directory: e2e
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @trotxi/e2e test
 
       - uses: actions/upload-artifact@v4
         if: failure()

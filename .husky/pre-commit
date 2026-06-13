@@ -1,26 +1,19 @@
-# Ensure dependencies are present where we need them, then run fast checks.
+# Ensure dependencies are present, then run fast checks.
 # Bypass in a pinch with `git commit --no-verify` (CI still enforces everything).
 
-ensure_deps() {
-  dir="$1"
-  label="${dir:-repo root}"
-  if [ ! -d "$dir/node_modules" ] || [ "$dir/package-lock.json" -nt "$dir/node_modules/.package-lock.json" ]; then
-    echo "→ installing dependencies in $label ..."
-    (cd "$dir" && npm install) || { echo "✗ dependency install failed in $label"; exit 1; }
-  fi
-}
-
-# Root deps power Prettier + lint-staged.
-ensure_deps .
+# A single workspace install covers every package.
+if [ ! -d node_modules ] || [ pnpm-lock.yaml -nt node_modules/.modules.yaml ]; then
+  echo "→ installing workspace dependencies ..."
+  pnpm install || { echo "✗ pnpm install failed"; exit 1; }
+fi
 
 # Auto-format staged files (fast, per-file).
-npx lint-staged || exit 1
+pnpm exec lint-staged || exit 1
 
 # Only lint + typecheck the API when its source is actually staged.
 if git diff --cached --name-only | grep -q '^services/api/.*\.\(ts\|js\)$'; then
-  ensure_deps services/api
   echo "→ linting + typechecking services/api ..."
-  (cd services/api && npm run lint && npm run typecheck) || {
+  pnpm --filter @trotxi/api run lint && pnpm --filter @trotxi/api run typecheck || {
     echo "✗ pre-commit checks failed — fix the above, or 'git commit --no-verify' to bypass."
     exit 1
   }

@@ -18,13 +18,21 @@ Two decoupled paths (see [docs/architecture.md](docs/architecture.md) and the
 
 ## Quick start
 
+Requires **Node 22** (see `.nvmrc`) and **pnpm** (the package manager — enable
+it with `corepack enable`; the version is pinned in `package.json`).
+
 ```bash
-make up        # Postgres + Redis + EMQX via Docker
-make install   # API dependencies (Node 22 — see .nvmrc)
-make dev       # API in watch mode → http://localhost:3000/healthz
-make check     # typecheck + lint + unit tests
-make e2e       # Playwright end-to-end suite (real HTTP)
+corepack enable   # one-time: activates pnpm at the pinned version
+make up           # Postgres + Redis + EMQX via Docker
+make install      # install all workspace deps (pnpm)
+make dev          # API in watch mode → http://localhost:3000/healthz
+make check        # format + typecheck + lint + unit tests
+make e2e          # Playwright end-to-end suite (real HTTP)
 ```
+
+This is a **pnpm workspace**: one lockfile (`pnpm-lock.yaml`) and one install
+at the root cover every package (`services/api`, `e2e`, tooling). Run scripts
+across packages with `pnpm --filter <name> <script>`.
 
 ## Repo layout
 

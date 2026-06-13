@@ -3,6 +3,10 @@
   "version": "0.1.0",
   "private": true,
   "description": "Trotxi platform monorepo — repo-wide tooling (formatting, git hooks).",
+  "packageManager": "pnpm@11.5.2",
+  "engines": {
+    "node": ">=22"
+  },
   "scripts": {
     "prepare": "husky",
     "format": "prettier --write .",

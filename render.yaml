@@ -17,8 +17,8 @@ services:
     runtime: docker
     repo: https://github.com/TROTXI/mobility-core
     branch: main
-    rootDir: services/api
-    dockerfilePath: ./Dockerfile
+    # Build from the repo root: the pnpm workspace lockfile lives there.
+    dockerfilePath: services/api/Dockerfile
     dockerContext: .
     plan: free
     region: frankfurt
@@ -42,8 +42,7 @@ services:
   #   runtime: docker
   #   repo: https://github.com/TROTXI/mobility-core
   #   branch: main
-  #   rootDir: services/api
-  #   dockerfilePath: ./Dockerfile
+  #   dockerfilePath: services/api/Dockerfile
   #   dockerContext: .
   #   plan: starter
   #   region: frankfurt

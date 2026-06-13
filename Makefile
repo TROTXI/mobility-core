@@ -1,7 +1,7 @@
 .DEFAULT_GOAL := help
 COMPOSE := docker compose -f infra/docker/docker-compose.yml
-API := services/api
-E2E := e2e
+API := @trotxi/api
+E2E := @trotxi/e2e
 
 .PHONY: help
 help: ## List available tasks
@@ -25,51 +25,48 @@ logs: ## Tail infra logs
 ps: ## Show infra container status
 	$(COMPOSE) ps
 
-## ---- API (services/api) ----
+## ---- Dependencies ----
 .PHONY: install
-install: ## Install API dependencies
-	cd $(API) && npm install
+install: ## Install all workspace dependencies (API + e2e + tooling)
+	pnpm install
 
+## ---- API (services/api) ----
 .PHONY: dev
 dev: ## Run API in watch mode
-	cd $(API) && npm run dev
+	pnpm --filter $(API) run dev
 
 .PHONY: test
 test: ## Run API unit tests
-	cd $(API) && npm test
+	pnpm --filter $(API) test
 
 .PHONY: coverage
 coverage: ## Run API tests with coverage
-	cd $(API) && npm run test:coverage
+	pnpm --filter $(API) run test:coverage
 
 .PHONY: typecheck
 typecheck: ## Typecheck the API
-	cd $(API) && npm run typecheck
+	pnpm --filter $(API) run typecheck
 
 .PHONY: lint
 lint: ## Lint the API
-	cd $(API) && npm run lint
+	pnpm --filter $(API) run lint
 
 .PHONY: format
 format: ## Auto-format the whole repo (Prettier)
-	npm run format
+	pnpm run format
 
 .PHONY: format-check
 format-check: ## Check formatting without writing (Prettier)
-	npm run format:check
+	pnpm run format:check
 
 .PHONY: check
 check: format-check typecheck lint test ## Run all quality gates
 
 ## ---- End-to-end (e2e) ----
-.PHONY: install-e2e
-install-e2e: ## Install e2e test dependencies
-	cd $(E2E) && npm install
-
 .PHONY: e2e
 e2e: ## Run Playwright e2e suite
-	cd $(E2E) && npm test
+	pnpm --filter $(E2E) test
 
 .PHONY: e2e-ui
 e2e-ui: ## Run the e2e suite in Playwright's interactive UI
-	cd $(E2E) && npm run test:ui
+	pnpm --filter $(E2E) run test:ui
