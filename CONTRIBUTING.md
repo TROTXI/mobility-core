@@ -25,11 +25,17 @@ test(e2e): cover declined mobile-money charge
 
 - **TypeScript**: strict mode, no `any` without a comment explaining why.
   `make check` (format + typecheck + lint + unit tests) must pass locally before pushing.
-- **Formatting**: Prettier owns formatting — don't hand-format. A Husky
-  pre-commit hook auto-formats your staged files (`run npm install` once at the
-  repo root to activate it). CI also runs `format:check` and will fail a PR that
-  isn't formatted, so a bypassed hook (`--no-verify`) won't sneak past — run
-  `make format` to fix everything.
+- **Pre-commit hook (Husky)**: activate it once with `npm install` at the repo
+  root. On every commit it:
+  1. installs dependencies if they're missing or stale (root + `services/api`),
+  2. auto-formats staged files with Prettier (lint-staged),
+  3. lints + typechecks `services/api` _when API source is staged_.
+
+  It's fast feedback, not the gate — bypass with `git commit --no-verify` if you
+  must. **CI is the real enforcement**: it runs `format:check`, lint, typecheck,
+  tests and build on a clean install, so nothing unformatted or broken can merge.
+  `make check` runs the same gates locally.
+
 - **Tests are part of the feature**: services get unit tests (vitest); every
   user-visible flow gets an e2e journey (`e2e/tests/`). The unit-coverage gate
   applies to the logic layer.
