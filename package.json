@@ -1,0 +1,16 @@
+{
+  "name": "mobility-core",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Trotxi platform monorepo — repo-wide tooling (formatting, git hooks).",
+  "scripts": {
+    "prepare": "husky",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
+  },
+  "devDependencies": {
+    "husky": "^9.1.7",
+    "lint-staged": "^15.2.11",
+    "prettier": "^3.4.2"
+  }
+}

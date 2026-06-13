@@ -24,7 +24,12 @@ test(e2e): cover declined mobile-money charge
 ## Code expectations
 
 - **TypeScript**: strict mode, no `any` without a comment explaining why.
-  `make check` (typecheck + lint + unit tests) must pass locally before pushing.
+  `make check` (format + typecheck + lint + unit tests) must pass locally before pushing.
+- **Formatting**: Prettier owns formatting — don't hand-format. A Husky
+  pre-commit hook auto-formats your staged files (`run npm install` once at the
+  repo root to activate it). CI also runs `format:check` and will fail a PR that
+  isn't formatted, so a bypassed hook (`--no-verify`) won't sneak past — run
+  `make format` to fix everything.
 - **Tests are part of the feature**: services get unit tests (vitest); every
   user-visible flow gets an e2e journey (`e2e/tests/`). The unit-coverage gate
   applies to the logic layer.

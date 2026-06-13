@@ -50,8 +50,16 @@ typecheck: ## Typecheck the API
 lint: ## Lint the API
 	cd $(API) && npm run lint
 
+.PHONY: format
+format: ## Auto-format the whole repo (Prettier)
+	npm run format
+
+.PHONY: format-check
+format-check: ## Check formatting without writing (Prettier)
+	npm run format:check
+
 .PHONY: check
-check: typecheck lint test ## Run all API quality gates
+check: format-check typecheck lint test ## Run all quality gates
 
 ## ---- End-to-end (e2e) ----
 .PHONY: install-e2e
