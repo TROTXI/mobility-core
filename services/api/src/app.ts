@@ -36,6 +36,11 @@ export async function buildApp(deps: AppDeps = {}): Promise<FastifyInstance> {
     docs: '/docs',
     health: '/healthz',
   }));
+  app.get('/version', async () => ({
+    name: 'trotxi-api',
+    version: '0.1.0',
+    commit: process.env['GIT_SHA'] ?? 'dev',
+  }));
 
   app.get('/healthz', async () => ({ status: 'ok' }));
 

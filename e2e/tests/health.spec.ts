@@ -19,4 +19,14 @@ test.describe('service health', () => {
     expect(res.status()).toBe(200);
     expect(await res.json()).toEqual({ status: 'ready' });
   });
+  test('version endpoint returns build identity', async ({ request }) => {
+    const res = await request.get('/version');
+    expect(res.status()).toBe(200);
+    const body = await res.json();
+    expect(body).toMatchObject({
+      name: 'trotxi-api',
+      version: '0.1.0',
+      commit: expect.any(String),
+    });
+  });
 });
