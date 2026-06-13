@@ -16,7 +16,7 @@ export default defineConfig({
   // dedicated e2e database (drop/recreate + migrate + seed) and inject its
   // DATABASE_URL below, so runs are hermetic and never touch dev data.
   webServer: {
-    command: 'npx tsx src/server.ts',
+    command: 'pnpm exec tsx src/server.ts',
     cwd: '../services/api',
     url: `${BASE_URL}/healthz`,
     reuseExistingServer: false,

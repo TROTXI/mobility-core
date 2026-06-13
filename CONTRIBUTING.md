@@ -25,9 +25,11 @@ test(e2e): cover declined mobile-money charge
 
 - **TypeScript**: strict mode, no `any` without a comment explaining why.
   `make check` (format + typecheck + lint + unit tests) must pass locally before pushing.
-- **Pre-commit hook (Husky)**: activate it once with `npm install` at the repo
+- **Package manager**: this is a **pnpm workspace** — `corepack enable` once,
+  then `pnpm install` at the root installs every package. Don't use `npm`.
+- **Pre-commit hook (Husky)**: activate it once with `pnpm install` at the repo
   root. On every commit it:
-  1. installs dependencies if they're missing or stale (root + `services/api`),
+  1. installs workspace dependencies if they're missing or stale,
   2. auto-formats staged files with Prettier (lint-staged),
   3. lints + typechecks `services/api` _when API source is staged_.
 
@@ -55,8 +57,9 @@ changes an architectural decision, it includes an ADR. See
 
 ```bash
 nvm use            # Node 22 (.nvmrc)
+corepack enable    # activates pnpm at the pinned version
 make up            # local infra (Docker)
-make install       # API deps
+make install       # all workspace deps (pnpm)
 make dev           # API on :3000
 make install-e2e   # once, then: make e2e
 ```
