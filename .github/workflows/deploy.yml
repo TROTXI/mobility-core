@@ -30,7 +30,7 @@ jobs:
       name: staging
       url: ${{ vars.STAGING_URL }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Deploy and wait until live
         run: .github/scripts/render-deploy.sh
@@ -56,7 +56,7 @@ jobs:
       name: production
       url: ${{ vars.PRODUCTION_URL }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Deploy and wait until live
         run: .github/scripts/render-deploy.sh
