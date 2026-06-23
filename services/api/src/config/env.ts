@@ -4,6 +4,8 @@ const envSchema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
   PORT: z.coerce.number().int().positive().default(3000),
   HOST: z.string().default('0.0.0.0'),
+  // Unset -> in-memory repositories (zero-infra dev/tests). Set -> Postgres.
+  DATABASE_URL: z.string().optional(),
 });
 
 export type Env = z.infer<typeof envSchema>;

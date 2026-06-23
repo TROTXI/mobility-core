@@ -49,6 +49,39 @@ jobs:
       - run: pnpm --filter @trotxi/api run test:coverage
       - run: pnpm --filter @trotxi/api run build
 
+  migrations:
+    name: Migrations (Postgres)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgis/postgis:16-3.4
+        env:
+          POSTGRES_USER: trotxi
+          POSTGRES_PASSWORD: trotxi
+          POSTGRES_DB: trotxi
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U trotxi"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    env:
+      DATABASE_URL: postgres://trotxi:trotxi@localhost:5432/trotxi
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @trotxi/api run migrate
+      # Idempotency: a second run must be a clean no-op.
+      - run: pnpm --filter @trotxi/api run migrate
+
   e2e:
     name: E2E (Playwright)
     runs-on: ubuntu-latest
