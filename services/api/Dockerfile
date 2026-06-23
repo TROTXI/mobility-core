@@ -1,6 +1,6 @@
 # Built from the repo ROOT context (the pnpm workspace lockfile lives there).
 # render.yaml sets dockerContext to the repo root and points here.
-FROM node:22-alpine AS build
+FROM node:24-alpine AS build
 RUN corepack enable
 WORKDIR /repo
 
@@ -16,7 +16,7 @@ RUN pnpm --filter @trotxi/api run build \
   && pnpm --filter @trotxi/api deploy --prod --legacy /app
 
 # ---- Runtime ----
-FROM node:22-alpine
+FROM node:24-alpine
 WORKDIR /app
 ENV NODE_ENV=production
 COPY --from=build /app/node_modules ./node_modules
