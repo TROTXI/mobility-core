@@ -1,7 +1,9 @@
 import { buildApp } from './app';
+import { loadDotenv } from './config/dotenv';
 import { loadEnv } from './config/env';
 
 async function main(): Promise<void> {
+  loadDotenv();
   const env = loadEnv();
   const app = await buildApp({ logger: true });
 
