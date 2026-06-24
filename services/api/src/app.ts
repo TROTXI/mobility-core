@@ -1,6 +1,7 @@
 import fastifySwagger from '@fastify/swagger';
 import fastifySwaggerUi from '@fastify/swagger-ui';
 import Fastify, { type FastifyInstance } from 'fastify';
+import type { SubscriptionRepository } from './modules/subscriptions/subscription.repository';
 import type { UserRepository } from './modules/users/user.repository';
 
 /**
@@ -13,6 +14,7 @@ export interface AppDeps {
   isReady?: () => Promise<boolean>;
   /** Selected by DATABASE_URL (in-memory vs Postgres). Consumed by routes/services. */
   users?: UserRepository;
+  subscriptions?: SubscriptionRepository;
   logger?: boolean;
 }
 

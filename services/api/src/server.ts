@@ -3,6 +3,8 @@ import { buildApp, type AppDeps } from './app';
 import { loadDotenv } from './config/dotenv';
 import { loadEnv } from './config/env';
 import { createPool } from './db/pool';
+import { InMemorySubscriptionRepository } from './modules/subscriptions/subscription.repository';
+import { PgSubscriptionRepository } from './modules/subscriptions/subscription.repository.pg';
 import { InMemoryUserRepository } from './modules/users/user.repository';
 import { PgUserRepository } from './modules/users/user.repository.pg';
 
@@ -13,11 +15,12 @@ async function main(): Promise<void> {
   // Pick repositories by environment: Postgres when DATABASE_URL is set, else
   // in-memory (zero infra). New modules follow this same pattern.
   let pool: Pool | undefined;
-  let deps: Pick<AppDeps, 'users' | 'isReady'>;
+  let deps: Pick<AppDeps, 'users' | 'subscriptions' | 'isReady'>;
   if (env.DATABASE_URL) {
     pool = createPool(env.DATABASE_URL);
     deps = {
       users: new PgUserRepository(pool),
+      subscriptions: new PgSubscriptionRepository(pool),
       isReady: async () => {
         try {
           await pool!.query('SELECT 1');
@@ -29,7 +32,11 @@ async function main(): Promise<void> {
     };
     console.log('Using Postgres repositories');
   } else {
-    deps = { users: new InMemoryUserRepository(), isReady: async () => true };
+    deps = {
+      users: new InMemoryUserRepository(),
+      subscriptions: new InMemorySubscriptionRepository(),
+      isReady: async () => true,
+    };
     console.log('Using in-memory repositories (no DATABASE_URL set)');
   }
 
