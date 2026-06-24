@@ -19,6 +19,7 @@
     "coverage": "pnpm --filter @trotxi/api run test:coverage",
     "check": "pnpm run format:check && pnpm run typecheck && pnpm run lint && pnpm test",
     "api": "pnpm --filter @trotxi/api dev",
+    "migrate": "pnpm --filter @trotxi/api run migrate",
     "start": "pnpm -r --parallel --if-present run dev",
     "infra:up": "docker compose -f infra/docker/docker-compose.yml up -d",
     "infra:down": "docker compose -f infra/docker/docker-compose.yml down",

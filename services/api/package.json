@@ -15,16 +15,19 @@
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "typecheck": "tsc --noEmit",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "migrate": "tsx src/db/migrate.ts"
   },
   "dependencies": {
     "@fastify/swagger": "^9.7.0",
     "@fastify/swagger-ui": "^6.0.0",
     "fastify": "^5.2.0",
+    "pg": "^8.13.1",
     "zod": "^3.24.1"
   },
   "devDependencies": {
     "@types/node": "^22.10.2",
+    "@types/pg": "^8.11.10",
     "@vitest/coverage-v8": "^2.1.8",
     "eslint": "^9.17.0",
     "globals": "^15.14.0",

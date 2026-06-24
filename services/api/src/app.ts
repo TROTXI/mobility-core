@@ -1,6 +1,7 @@
 import fastifySwagger from '@fastify/swagger';
 import fastifySwaggerUi from '@fastify/swagger-ui';
 import Fastify, { type FastifyInstance } from 'fastify';
+import type { UserRepository } from './modules/users/user.repository';
 
 /**
  * Dependencies are injected here — services and repositories register as the
@@ -8,8 +9,10 @@ import Fastify, { type FastifyInstance } from 'fastify';
  * Tests pass in-memory implementations; production wires the real ones.
  */
 export interface AppDeps {
-  /** Readiness probe — wire the database ping here once a datastore exists. */
+  /** Readiness probe — wired to a DB ping when DATABASE_URL is set. */
   isReady?: () => Promise<boolean>;
+  /** Selected by DATABASE_URL (in-memory vs Postgres). Consumed by routes/services. */
+  users?: UserRepository;
   logger?: boolean;
 }
 
