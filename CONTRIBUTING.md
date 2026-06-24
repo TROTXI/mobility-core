@@ -53,7 +53,6 @@ immutable once accepted (supersede instead of editing). If your PR makes or
 changes an architectural decision, it includes an ADR. See
 [docs/adr/0001-record-architecture-decisions.md](docs/adr/0001-record-architecture-decisions.md).
 
-
 ## Codespaces / dev container
 
 A `.devcontainer/devcontainer.json` is provided for contributors who prefer
@@ -71,7 +70,6 @@ The container builds automatically on first open and on any change to
 **To use it in VS Code locally:**
 Install the [Dev Containers extension](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-containers),
 then **Reopen in Container** from the command palette.
-
 
 ## Local setup
 

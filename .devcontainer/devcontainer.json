@@ -5,10 +5,7 @@
   "postCreateCommand": "flutter doctor",
   "customizations": {
     "vscode": {
-      "extensions": [
-        "Dart-Code.flutter",
-        "Dart-Code.dart-code"
-      ]
+      "extensions": ["Dart-Code.flutter", "Dart-Code.dart-code"]
     }
   }
 }
