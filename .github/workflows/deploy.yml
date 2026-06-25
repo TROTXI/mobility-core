@@ -44,9 +44,10 @@ jobs:
       - name: Run DB migrations
         env:
           DATABASE_URL: ${{ secrets.STAGING_DATABASE_URL }}
+          DATABASE_SSL: 'true' # external connection from CI requires TLS
         run: |
           if [ -z "$DATABASE_URL" ]; then
-            echo "::error::STAGING_DATABASE_URL is not set. Add it as a repo secret: the staging DB's EXTERNAL connection string with ?sslmode=no-verify appended (see docs/DEPLOY.md)."
+            echo "::error::STAGING_DATABASE_URL is not set. Add it as a repo secret: the staging DB's EXTERNAL connection string (see docs/DEPLOY.md)."
             exit 1
           fi
           pnpm --filter @trotxi/api run migrate
@@ -88,9 +89,10 @@ jobs:
       - name: Run DB migrations
         env:
           DATABASE_URL: ${{ secrets.PRODUCTION_DATABASE_URL }}
+          DATABASE_SSL: 'true' # external connection from CI requires TLS
         run: |
           if [ -z "$DATABASE_URL" ]; then
-            echo "::error::PRODUCTION_DATABASE_URL is not set. Add it as a repo secret: the production DB's EXTERNAL connection string with ?sslmode=no-verify appended (see docs/DEPLOY.md)."
+            echo "::error::PRODUCTION_DATABASE_URL is not set. Add it as a repo secret: the production DB's EXTERNAL connection string (see docs/DEPLOY.md)."
             exit 1
           fi
           pnpm --filter @trotxi/api run migrate
