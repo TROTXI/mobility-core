@@ -15,6 +15,9 @@ const envSchema = z
     JWT_ACCESS_TTL: z.string().default('15m'),
     JWT_ISSUER: z.string().default('trotxi'),
     JWT_AUDIENCE: z.string().default('trotxi-api'),
+    // Rate limiting (fixed window). Tunable without a code change.
+    RATE_LIMIT_MAX: z.coerce.number().int().positive().default(100),
+    RATE_LIMIT_WINDOW_SECONDS: z.coerce.number().int().positive().default(60),
   })
   .superRefine((env, ctx) => {
     if (env.NODE_ENV === 'production' && !env.JWT_SECRET) {
