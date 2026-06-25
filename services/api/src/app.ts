@@ -3,6 +3,7 @@ import fastifySwaggerUi from '@fastify/swagger-ui';
 import Fastify, { type FastifyInstance } from 'fastify';
 import { authPlugin } from './modules/auth/auth.plugin';
 import { authRoutes } from './modules/auth/auth.routes';
+import type { KvStore } from './kv/kv.store';
 import { DEV_AUTH_CONFIG, type AuthConfig } from './modules/auth/jwt';
 import type { UserRepository } from './modules/users/user.repository';
 
@@ -16,6 +17,8 @@ export interface AppDeps {
   isReady?: () => Promise<boolean>;
   /** Selected by DATABASE_URL (in-memory vs Postgres). Consumed by routes/services. */
   users?: UserRepository;
+  /** Selected by REDIS_URL (in-memory vs Redis). For rate limits, idempotency, cache. */
+  kv?: KvStore;
   /** JWT/auth settings. Defaults to a dev-only config when unset (tests, local). */
   auth?: AuthConfig;
   logger?: boolean;
