@@ -1,0 +1,34 @@
+# CODEOWNERS — who must review changes to each path.
+#
+# How it works: the LAST matching pattern wins, and a PR needs an approving
+# review from a code owner of every changed path once "Require review from Code
+# Owners" is enabled in branch protection. GitHub never counts the author's own
+# review, so every area lists a second owner — otherwise a lead could never get
+# their own PRs approved. The CTO co-owns all high-risk paths (money, auth,
+# schema, CI/CD, security) so those changes always get senior eyes.
+#
+# Roles: @godfredAwuku = CTO · @Foyade = Lead Backend · @adomfosugit = Lead Frontend
+
+# Default — repo-wide tooling, config, and anything not matched below.
+*                                       @godfredAwuku @Foyade
+
+# Mobile apps — Lead Frontend owns; CTO is the backup reviewer.
+/apps/                                  @adomfosugit @godfredAwuku
+
+# Backend service domains — Lead Backend owns; CTO is the backup reviewer.
+/services/api/                          @Foyade @godfredAwuku
+
+# High-risk: money, auth, and DB schema. CTO owns; Backend co-reviews so money
+# and auth changes always get two sets of eyes (and nothing self-blocks).
+/services/api/src/modules/auth/         @godfredAwuku @Foyade
+/services/api/src/modules/payments/     @godfredAwuku @Foyade
+/services/api/src/modules/tokens/       @godfredAwuku @Foyade
+/services/api/src/db/migrations/        @godfredAwuku @Foyade
+
+# CI/CD, deploy, and security config — CTO owns; Backend co-reviews.
+/.github/                               @godfredAwuku @Foyade
+/render.yaml                            @godfredAwuku @Foyade
+/.gitleaks.toml                         @godfredAwuku @Foyade
+
+# Architecture decision records — CTO owns the technical direction.
+/docs/adr/                              @godfredAwuku @Foyade
