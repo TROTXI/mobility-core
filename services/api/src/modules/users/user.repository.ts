@@ -2,7 +2,8 @@
 // InMemory (tests + zero-infra dev) and Postgres (real runs, see *.pg.ts).
 // The server picks one by DATABASE_URL. Copy this shape for new domain modules.
 
-export type UserRole = 'commuter' | 'driver' | 'admin';
+export const USER_ROLES = ['commuter', 'driver', 'admin'] as const;
+export type UserRole = (typeof USER_ROLES)[number];
 
 export interface User {
   id: string;
