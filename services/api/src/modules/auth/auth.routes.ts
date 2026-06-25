@@ -3,19 +3,25 @@
 // in Slice 2. Registered after authPlugin so `app.authenticate` is available.
 
 import type { FastifyInstance } from 'fastify';
+import type { RateLimitConfig } from '../ratelimit/ratelimit.plugin';
 import type { UserRepository } from '../users/user.repository';
 
 export async function authRoutes(
   app: FastifyInstance,
-  opts: { users?: UserRepository },
+  opts: { users?: UserRepository; rateLimit: RateLimitConfig },
 ): Promise<void> {
-  app.get('/me', { preHandler: app.authenticate }, async (request, reply) => {
-    // `authenticate` guarantees request.user is set before we reach here.
-    const principal = request.user!;
-    const user = opts.users ? await opts.users.findById(principal.id) : null;
-    if (!user) {
-      return reply.code(404).send({ error: 'not_found', message: 'User not found' });
-    }
-    return user;
-  });
+  // Authenticate first (sets request.user), then rate-limit per user.
+  app.get(
+    '/me',
+    { preHandler: [app.authenticate, app.rateLimit({ ...opts.rateLimit, by: 'user' })] },
+    async (request, reply) => {
+      // `authenticate` guarantees request.user is set before we reach here.
+      const principal = request.user!;
+      const user = opts.users ? await opts.users.findById(principal.id) : null;
+      if (!user) {
+        return reply.code(404).send({ error: 'not_found', message: 'User not found' });
+      }
+      return user;
+    },
+  );
 }

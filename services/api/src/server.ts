@@ -6,6 +6,7 @@ import { createPool } from './db/pool';
 import { InMemoryKvStore, type KvStore } from './kv/kv.store';
 import { RedisKvStore } from './kv/kv.store.redis';
 import { DEV_AUTH_CONFIG, type AuthConfig } from './modules/auth/jwt';
+import type { RateLimitConfig } from './modules/ratelimit/ratelimit.plugin';
 import { InMemoryUserRepository, type UserRepository } from './modules/users/user.repository';
 import { PgUserRepository } from './modules/users/user.repository.pg';
 
@@ -55,7 +56,12 @@ async function main(): Promise<void> {
     return kv.ping();
   };
 
-  const app = await buildApp({ users, kv, isReady, auth, logger: true });
+  const rateLimit: RateLimitConfig = {
+    max: env.RATE_LIMIT_MAX,
+    windowSeconds: env.RATE_LIMIT_WINDOW_SECONDS,
+  };
+
+  const app = await buildApp({ users, kv, isReady, auth, rateLimit, logger: true });
 
   const shutdown = async (signal: string): Promise<void> => {
     app.log.info(`Received ${signal}, shutting down`);
