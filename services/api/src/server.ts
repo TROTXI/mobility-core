@@ -1,10 +1,12 @@
 import type { Pool } from 'pg';
-import { buildApp, type AppDeps } from './app';
+import { buildApp } from './app';
 import { loadDotenv } from './config/dotenv';
 import { loadEnv } from './config/env';
 import { createPool } from './db/pool';
+import { InMemoryKvStore, type KvStore } from './kv/kv.store';
+import { RedisKvStore } from './kv/kv.store.redis';
 import { DEV_AUTH_CONFIG, type AuthConfig } from './modules/auth/jwt';
-import { InMemoryUserRepository } from './modules/users/user.repository';
+import { InMemoryUserRepository, type UserRepository } from './modules/users/user.repository';
 import { PgUserRepository } from './modules/users/user.repository.pg';
 
 async function main(): Promise<void> {
@@ -23,35 +25,43 @@ async function main(): Promise<void> {
     audience: env.JWT_AUDIENCE,
   };
 
-  // Pick repositories by environment: Postgres when DATABASE_URL is set, else
-  // in-memory (zero infra). New modules follow this same pattern.
+  // KV store: Redis when REDIS_URL is set, else in-memory (zero infra).
+  const kv: KvStore = env.REDIS_URL ? new RedisKvStore(env.REDIS_URL) : new InMemoryKvStore();
+  console.log(
+    env.REDIS_URL ? 'Using Redis KV store' : 'Using in-memory KV store (no REDIS_URL set)',
+  );
+
+  // Repositories: Postgres when DATABASE_URL is set, else in-memory (zero infra).
   let pool: Pool | undefined;
-  let deps: Pick<AppDeps, 'users' | 'isReady'>;
+  let users: UserRepository;
   if (env.DATABASE_URL) {
     pool = createPool(env.DATABASE_URL);
-    deps = {
-      users: new PgUserRepository(pool),
-      isReady: async () => {
-        try {
-          await pool!.query('SELECT 1');
-          return true;
-        } catch {
-          return false;
-        }
-      },
-    };
+    users = new PgUserRepository(pool);
     console.log('Using Postgres repositories');
   } else {
-    deps = { users: new InMemoryUserRepository(), isReady: async () => true };
+    users = new InMemoryUserRepository();
     console.log('Using in-memory repositories (no DATABASE_URL set)');
   }
 
-  const app = await buildApp({ ...deps, auth, logger: true });
+  // Readiness pings every configured backing service (DB + KV).
+  const isReady = async (): Promise<boolean> => {
+    if (pool) {
+      try {
+        await pool.query('SELECT 1');
+      } catch {
+        return false;
+      }
+    }
+    return kv.ping();
+  };
+
+  const app = await buildApp({ users, kv, isReady, auth, logger: true });
 
   const shutdown = async (signal: string): Promise<void> => {
     app.log.info(`Received ${signal}, shutting down`);
     await app.close();
     await pool?.end();
+    await kv.close();
     process.exit(0);
   };
   process.on('SIGINT', () => void shutdown('SIGINT'));

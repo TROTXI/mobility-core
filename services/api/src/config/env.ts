@@ -7,6 +7,8 @@ const envSchema = z
     HOST: z.string().default('0.0.0.0'),
     // Unset -> in-memory repositories (zero-infra dev/tests). Set -> Postgres.
     DATABASE_URL: z.string().optional(),
+    // Unset -> in-memory KV (zero-infra dev/tests). Set -> Redis.
+    REDIS_URL: z.string().optional(),
     // Auth (JWT). Unset -> a dev-only secret is used (local/tests). Required in
     // production (enforced below). Access tokens are short-lived; see auth/jwt.ts.
     JWT_SECRET: z.string().min(32).optional(),
