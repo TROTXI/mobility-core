@@ -47,14 +47,16 @@ new code ships.
    `JWT_SECRET` = `openssl rand -base64 48`. (Declared `sync: false` in
    `render.yaml`; the value is entered here, never committed.)
 5. **`STAGING_DATABASE_URL`** (required for migrate-on-deploy). Render → DB →
-   **Connections** → copy the **External** connection string, append
-   `?sslmode=no-verify`, then:
+   **Connections** → copy the **External Database URL** (hostname ends in
+   `…frankfurt-postgres.render.com` — _not_ the Internal one, which only resolves
+   inside Render). Paste it interactively so the shell doesn't mangle the
+   password:
    ```bash
-   gh secret set STAGING_DATABASE_URL -R TROTXI/mobility-core \
-     --body "postgres://USER:PASS@HOST.frankfurt-postgres.render.com/DB?sslmode=no-verify"
+   gh secret set STAGING_DATABASE_URL -R TROTXI/mobility-core   # then paste at the prompt
    ```
-   (External + SSL because migrations run from CI, outside Render's network.
-   `no-verify` keeps the connection encrypted without needing Render's CA cert.)
+   It must be the **External** URL because migrations run from CI, outside
+   Render's network. TLS is handled by the workflow (`DATABASE_SSL=true`), so no
+   `sslmode` suffix is needed.
 6. Done — the next merge to main migrates + deploys staging automatically. The
    GitHub environments `staging` and `production` already exist; production
    requires approval before its job runs (and its own `PRODUCTION_DATABASE_URL`
