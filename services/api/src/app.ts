@@ -1,6 +1,13 @@
 import fastifySwagger from '@fastify/swagger';
 import fastifySwaggerUi from '@fastify/swagger-ui';
 import Fastify, { type FastifyInstance } from 'fastify';
+import {
+  jsonSchemaTransform,
+  serializerCompiler,
+  validatorCompiler,
+  type ZodTypeProvider,
+} from 'fastify-type-provider-zod';
+import { z } from 'zod';
 import { InMemoryKvStore, type KvStore } from './kv/kv.store';
 import { authPlugin } from './modules/auth/auth.plugin';
 import { authRoutes } from './modules/auth/auth.routes';
@@ -33,6 +40,14 @@ export interface AppDeps {
 
 export async function buildApp(deps: AppDeps = {}): Promise<FastifyInstance> {
   const app = Fastify({ logger: deps.logger ?? false });
+
+  // zod is the single source for validation AND the OpenAPI spec (ADR-0008):
+  // route schemas are zod, compiled here and rendered into the docs by
+  // jsonSchemaTransform below. `r` is the zod-typed view used to define routes.
+  app.setValidatorCompiler(validatorCompiler);
+  app.setSerializerCompiler(serializerCompiler);
+  const r = app.withTypeProvider<ZodTypeProvider>();
+
   const isReady = deps.isReady ?? (async () => true);
 
   // OpenAPI docs. Registered before the routes so every route is captured and
@@ -44,7 +59,19 @@ export async function buildApp(deps: AppDeps = {}): Promise<FastifyInstance> {
         description: 'Transactional API — auth, subscriptions, tokens, mobility.',
         version: '0.1.0',
       },
+      tags: [
+        { name: 'system', description: 'Health, readiness, and service metadata' },
+        { name: 'auth', description: 'Authentication and the current user' },
+      ],
+      components: {
+        // Protected routes set `security: [{ bearerAuth: [] }]`; clients send
+        // `Authorization: Bearer <access token>` (see ADR-0007).
+        securitySchemes: {
+          bearerAuth: { type: 'http', scheme: 'bearer', bearerFormat: 'JWT' },
+        },
+      },
     },
+    transform: jsonSchemaTransform,
   });
   await app.register(fastifySwaggerUi, { routePrefix: '/docs' });
 
@@ -57,26 +84,74 @@ export async function buildApp(deps: AppDeps = {}): Promise<FastifyInstance> {
     rateLimit: deps.rateLimit ?? DEFAULT_RATE_LIMIT,
   });
 
-  app.get('/', async () => ({
-    service: 'trotxi-api',
-    version: '0.1.0',
-    docs: '/docs',
-    health: '/healthz',
-  }));
-  app.get('/version', async () => ({
-    name: 'trotxi-api',
-    version: '0.1.0',
-    commit: process.env['GIT_SHA'] ?? 'dev',
-  }));
+  r.get(
+    '/',
+    {
+      schema: {
+        tags: ['system'],
+        summary: 'Service metadata and useful links',
+        response: {
+          200: z.object({
+            service: z.string(),
+            version: z.string(),
+            docs: z.string(),
+            health: z.string(),
+          }),
+        },
+      },
+    },
+    async () => ({ service: 'trotxi-api', version: '0.1.0', docs: '/docs', health: '/healthz' }),
+  );
 
-  app.get('/healthz', async () => ({ status: 'ok' }));
+  r.get(
+    '/version',
+    {
+      schema: {
+        tags: ['system'],
+        summary: 'Build version and commit',
+        response: {
+          200: z.object({ name: z.string(), version: z.string(), commit: z.string() }),
+        },
+      },
+    },
+    async () => ({
+      name: 'trotxi-api',
+      version: '0.1.0',
+      commit: process.env['GIT_SHA'] ?? 'dev',
+    }),
+  );
 
-  app.get('/readyz', async (_request, reply) => {
-    if (await isReady()) {
-      return { status: 'ready' };
-    }
-    return reply.code(503).send({ status: 'not_ready' });
-  });
+  r.get(
+    '/healthz',
+    {
+      schema: {
+        tags: ['system'],
+        summary: 'Liveness probe',
+        response: { 200: z.object({ status: z.literal('ok') }) },
+      },
+    },
+    async () => ({ status: 'ok' as const }),
+  );
+
+  r.get(
+    '/readyz',
+    {
+      schema: {
+        tags: ['system'],
+        summary: 'Readiness probe (pings backing services)',
+        response: {
+          200: z.object({ status: z.literal('ready') }),
+          503: z.object({ status: z.literal('not_ready') }),
+        },
+      },
+    },
+    async (_request, reply) => {
+      if (await isReady()) {
+        return { status: 'ready' as const };
+      }
+      return reply.code(503).send({ status: 'not_ready' as const });
+    },
+  );
 
   return app;
 }
