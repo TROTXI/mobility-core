@@ -1,6 +1,15 @@
 import fastifySwagger from '@fastify/swagger';
 import fastifySwaggerUi from '@fastify/swagger-ui';
 import Fastify, { type FastifyInstance } from 'fastify';
+import { InMemoryKvStore, type KvStore } from './kv/kv.store';
+import { authPlugin } from './modules/auth/auth.plugin';
+import { authRoutes } from './modules/auth/auth.routes';
+import { DEV_AUTH_CONFIG, type AuthConfig } from './modules/auth/jwt';
+import {
+  DEFAULT_RATE_LIMIT,
+  rateLimitPlugin,
+  type RateLimitConfig,
+} from './modules/ratelimit/ratelimit.plugin';
 import type { SubscriptionRepository } from './modules/subscriptions/subscription.repository';
 import type { UserRepository } from './modules/users/user.repository';
 
@@ -14,7 +23,14 @@ export interface AppDeps {
   isReady?: () => Promise<boolean>;
   /** Selected by DATABASE_URL (in-memory vs Postgres). Consumed by routes/services. */
   users?: UserRepository;
+  /** Selected by DATABASE_URL (in-memory vs Postgres). Consumed by routes/services. */
   subscriptions?: SubscriptionRepository;
+  /** Selected by REDIS_URL (in-memory vs Redis). For rate limits, idempotency, cache. */
+  kv?: KvStore;
+  /** JWT/auth settings. Defaults to a dev-only config when unset (tests, local). */
+  auth?: AuthConfig;
+  /** Rate-limit thresholds (from env). Defaults applied when unset. */
+  rateLimit?: RateLimitConfig;
   logger?: boolean;
 }
 
@@ -34,6 +50,15 @@ export async function buildApp(deps: AppDeps = {}): Promise<FastifyInstance> {
     },
   });
   await app.register(fastifySwaggerUi, { routePrefix: '/docs' });
+
+  // Guards first (decorators on the root instance), then routes that use them.
+  const kv = deps.kv ?? new InMemoryKvStore();
+  await app.register(authPlugin, { config: deps.auth ?? DEV_AUTH_CONFIG });
+  await app.register(rateLimitPlugin, { kv });
+  await app.register(authRoutes, {
+    users: deps.users,
+    rateLimit: deps.rateLimit ?? DEFAULT_RATE_LIMIT,
+  });
 
   app.get('/', async () => ({
     service: 'trotxi-api',

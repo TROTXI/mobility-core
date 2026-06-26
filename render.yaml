@@ -31,6 +31,10 @@ services:
         fromDatabase:
           name: trotxi-db-staging
           property: connectionString
+      # Required because NODE_ENV=production (see ADR-0007). Set the value in the
+      # Render dashboard; never commit it. Generate: openssl rand -base64 48
+      - key: JWT_SECRET
+        sync: false
 
   # ---- Production (uncomment when going live) ----
   # Needs a paid Postgres plan so data doesn't expire. After applying, set the
@@ -55,6 +59,8 @@ services:
   #       fromDatabase:
   #         name: trotxi-db-production
   #         property: connectionString
+  #     - key: JWT_SECRET
+  #       sync: false   # required; set in dashboard (ADR-0007)
   #
   # …and add under `databases:`
   # - name: trotxi-db-production

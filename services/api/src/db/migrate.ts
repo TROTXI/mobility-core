@@ -19,7 +19,12 @@ async function migrate(): Promise<void> {
     throw new Error('DATABASE_URL is required to run migrations');
   }
 
-  const pool = new Pool({ connectionString });
+  // Deploy-time migrations connect to the managed DB over the public network,
+  // which requires TLS. Render's server cert isn't in Node's default CA bundle,
+  // so we encrypt without verifying the chain. Local/CI runs against an internal
+  // or container DB leave DATABASE_SSL unset and connect without TLS.
+  const ssl = process.env['DATABASE_SSL'] === 'true' ? { rejectUnauthorized: false } : undefined;
+  const pool = new Pool({ connectionString, ssl });
   try {
     await pool.query(
       `CREATE TABLE IF NOT EXISTS _migrations (

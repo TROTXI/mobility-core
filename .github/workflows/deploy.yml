@@ -31,6 +31,26 @@ jobs:
       url: ${{ vars.STAGING_URL }}
     steps:
       - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+
+      # Migrate BEFORE shipping new code: our migrations are additive
+      # (expand/contract), so the schema must lead the deploy. A failure here
+      # aborts the deploy before any new code goes live.
+      - name: Run DB migrations
+        env:
+          DATABASE_URL: ${{ secrets.STAGING_DATABASE_URL }}
+          DATABASE_SSL: 'true' # external connection from CI requires TLS
+        run: |
+          if [ -z "$DATABASE_URL" ]; then
+            echo "::error::STAGING_DATABASE_URL is not set. Add it as a repo secret: the staging DB's EXTERNAL connection string (see docs/DEPLOY.md)."
+            exit 1
+          fi
+          pnpm --filter @trotxi/api run migrate
 
       - name: Deploy and wait until live
         run: .github/scripts/render-deploy.sh
@@ -57,6 +77,25 @@ jobs:
       url: ${{ vars.PRODUCTION_URL }}
     steps:
       - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+
+      # Migrate before shipping new code (expand/contract). Aborts the prod
+      # deploy if migrations fail.
+      - name: Run DB migrations
+        env:
+          DATABASE_URL: ${{ secrets.PRODUCTION_DATABASE_URL }}
+          DATABASE_SSL: 'true' # external connection from CI requires TLS
+        run: |
+          if [ -z "$DATABASE_URL" ]; then
+            echo "::error::PRODUCTION_DATABASE_URL is not set. Add it as a repo secret: the production DB's EXTERNAL connection string (see docs/DEPLOY.md)."
+            exit 1
+          fi
+          pnpm --filter @trotxi/api run migrate
 
       - name: Deploy and wait until live
         run: .github/scripts/render-deploy.sh

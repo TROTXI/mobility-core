@@ -9,11 +9,16 @@ blueprint (`render.yaml`), and a CD pipeline (`.github/workflows/deploy.yml`).
 push / merge to main
   → CI: all checks must pass (branch protection)
   → Deploy workflow fires on CI success:
-      staging  — deploys automatically via the Render API, waits until live,
-                 smoke-tests /healthz + /readyz
+      staging  — runs DB migrations, then deploys via the Render API, waits
+                 until live, smoke-tests /healthz + /readyz
       production — waits for a manual approval in GitHub (environment
-                 "production"), then deploys + smoke-tests the same way
+                 "production"), then migrates + deploys + smoke-tests the same way
 ```
+
+**Migrations run before the deploy** (expand/contract: our migrations are
+additive, so the schema must lead the code). They run from CI against the DB's
+**external** connection string; a migration failure aborts the deploy before any
+new code ships.
 
 - Deploys **queue in order** (no cancellation), so every green commit ships.
 - The pipeline is **dormant** until the `DEPLOY_ENABLED` repo variable is
@@ -37,9 +42,25 @@ push / merge to main
    gh variable set STAGING_URL -R TROTXI/mobility-core --body "https://trotxi-api-staging.onrender.com"
    gh variable set DEPLOY_ENABLED -R TROTXI/mobility-core --body "true"
    ```
-4. Done — the next merge to main deploys staging automatically. The GitHub
-   environments `staging` and `production` already exist; production requires
-   approval before its job runs.
+4. **`JWT_SECRET`** (required — the API refuses to boot in production without
+   it). Render dashboard → `trotxi-api-staging` → **Environment** → add
+   `JWT_SECRET` = `openssl rand -base64 48`. (Declared `sync: false` in
+   `render.yaml`; the value is entered here, never committed.)
+5. **`STAGING_DATABASE_URL`** (required for migrate-on-deploy). Render → DB →
+   **Connections** → copy the **External Database URL** (hostname ends in
+   `…frankfurt-postgres.render.com` — _not_ the Internal one, which only resolves
+   inside Render). Paste it interactively so the shell doesn't mangle the
+   password:
+   ```bash
+   gh secret set STAGING_DATABASE_URL -R TROTXI/mobility-core   # then paste at the prompt
+   ```
+   It must be the **External** URL because migrations run from CI, outside
+   Render's network. TLS is handled by the workflow (`DATABASE_SSL=true`), so no
+   `sslmode` suffix is needed.
+6. Done — the next merge to main migrates + deploys staging automatically. The
+   GitHub environments `staging` and `production` already exist; production
+   requires approval before its job runs (and its own `PRODUCTION_DATABASE_URL`
+   secret + `JWT_SECRET` on the prod service).
 
 ## Notes
 
