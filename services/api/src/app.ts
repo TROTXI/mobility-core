@@ -18,6 +18,7 @@ import {
   type RateLimitConfig,
 } from './modules/ratelimit/ratelimit.plugin';
 import type { SubscriptionRepository } from './modules/subscriptions/subscription.repository';
+import { subscriptionRoutes } from './modules/subscriptions/subscription.routes';
 import type { UserRepository } from './modules/users/user.repository';
 
 /**
@@ -65,6 +66,7 @@ export async function buildApp(deps: AppDeps = {}): Promise<FastifyInstance> {
       tags: [
         { name: 'system', description: 'Health, readiness, and service metadata' },
         { name: 'auth', description: 'Authentication and the current user' },
+        { name: 'subscriptions', description: 'Subscription management' },
       ],
       components: {
         // Protected routes set `security: [{ bearerAuth: [] }]`; clients send
@@ -86,6 +88,7 @@ export async function buildApp(deps: AppDeps = {}): Promise<FastifyInstance> {
     users: deps.users,
     rateLimit: deps.rateLimit ?? DEFAULT_RATE_LIMIT,
   });
+  await app.register(subscriptionRoutes, { subscriptions: deps.subscriptions });
 
   r.get(
     '/',
