@@ -17,6 +17,10 @@ import {
   rateLimitPlugin,
   type RateLimitConfig,
 } from './modules/ratelimit/ratelimit.plugin';
+import type { RouteStopRepository } from './modules/mobility/route-stop.repository';
+import { mobilityRoutes } from './modules/mobility/mobility.routes';
+import type { RouteRepository } from './modules/mobility/route.repository';
+import type { StopRepository } from './modules/mobility/stop.repository';
 import type { SubscriptionRepository } from './modules/subscriptions/subscription.repository';
 import type { UserRepository } from './modules/users/user.repository';
 
@@ -32,6 +36,10 @@ export interface AppDeps {
   users?: UserRepository;
   /** Selected by DATABASE_URL (in-memory vs Postgres). Consumed by routes/services. */
   subscriptions?: SubscriptionRepository;
+  /** Selected by DATABASE_URL (in-memory vs Postgres). Mobility domain. */
+  routes?: RouteRepository;
+  stops?: StopRepository;
+  routeStops?: RouteStopRepository;
   /** Selected by REDIS_URL (in-memory vs Redis). For rate limits, idempotency, cache. */
   kv?: KvStore;
   /** JWT/auth settings. Defaults to a dev-only config when unset (tests, local). */
@@ -65,6 +73,7 @@ export async function buildApp(deps: AppDeps = {}): Promise<FastifyInstance> {
       tags: [
         { name: 'system', description: 'Health, readiness, and service metadata' },
         { name: 'auth', description: 'Authentication and the current user' },
+        { name: 'mobility', description: 'Routes and stops' },
       ],
       components: {
         // Protected routes set `security: [{ bearerAuth: [] }]`; clients send
@@ -85,6 +94,11 @@ export async function buildApp(deps: AppDeps = {}): Promise<FastifyInstance> {
   await app.register(authRoutes, {
     users: deps.users,
     rateLimit: deps.rateLimit ?? DEFAULT_RATE_LIMIT,
+  });
+  await app.register(mobilityRoutes, {
+    routes: deps.routes,
+    stops: deps.stops,
+    routeStops: deps.routeStops,
   });
 
   r.get(
