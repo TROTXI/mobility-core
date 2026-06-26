@@ -1,0 +1,5 @@
+[allowlist]
+description = "Ignore hardcoded test fixtures in unit test files"
+paths = [
+  '''services/api/tests/.*\.test\.ts''',
+]
