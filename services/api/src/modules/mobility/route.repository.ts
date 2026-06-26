@@ -1,3 +1,8 @@
+// Route repository — a route is a named journey path (e.g. "Circle to Legon").
+// It holds only the metadata; the ordered list of stops it passes through lives
+// in route_stops. Two implementations: InMemory for unit tests and zero-infra
+// dev, Postgres (route.repository.pg.ts) for real runs.
+
 export interface Route {
   id: string;
   name: string;
@@ -13,6 +18,7 @@ export interface NewRoute {
 export interface RouteRepository {
   create(input: NewRoute): Promise<Route>;
   findById(id: string): Promise<Route | null>;
+  /** Returns all routes. Used by GET /routes (public browse). */
   findAll(): Promise<Route[]>;
 }
 

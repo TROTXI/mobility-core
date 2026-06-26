@@ -1,3 +1,8 @@
+// Stop repository — a stop is a physical location where passengers board or
+// alight. Coordinates are stored as latitude/longitude in the domain model.
+// In Postgres the location column is a PostGIS geography(Point, 4326) — the
+// Pg adapter handles the conversion (see stop.repository.pg.ts).
+
 export interface Stop {
   id: string;
   name: string;

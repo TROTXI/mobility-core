@@ -1,3 +1,9 @@
+// Postgres stop adapter. Stops use PostGIS geography(Point, 4326) for the
+// location column so spatial queries (nearest stop, route corridor) can run
+// efficiently via the GiST index. The domain model exposes plain lat/lng
+// numbers — ST_MakePoint and ST_X/ST_Y handle the conversion at the boundary.
+// Note: ST_MakePoint takes (longitude, latitude) — X is longitude, Y is latitude.
+
 import type { Pool } from 'pg';
 import type { NewStop, Stop, StopRepository } from './stop.repository';
 

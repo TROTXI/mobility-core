@@ -1,3 +1,9 @@
+// Mobility route handlers. Browse endpoints are intentionally public (no auth)
+// so the mobile app can display routes before a user signs in — this mirrors
+// how transit apps work (you browse routes, then authenticate to board/pay).
+// GET /routes/:id resolves stops in a single async fan-out rather than a JOIN
+// so the domain model stays decoupled from the DB schema.
+
 import type { FastifyInstance } from 'fastify';
 import type { ZodTypeProvider } from 'fastify-type-provider-zod';
 import { z } from 'zod';
@@ -56,6 +62,8 @@ export async function mobilityRoutes(
         return reply.code(404).send({ error: 'not_found', message: 'Route not found' });
       }
 
+      // Resolve stops in parallel — route_stops gives the ordered IDs, then we
+      // fetch each stop. Order is guaranteed by findByRoute (sorted by seq).
       const routeStops = await opts.routeStops.findByRoute(route.id);
       const stops = await Promise.all(
         routeStops.map(async (rs) => {

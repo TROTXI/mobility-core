@@ -1,3 +1,8 @@
+// RouteStop repository — the join table between routes and stops. Each row
+// places a stop on a route at a specific sequence position (seq). The unique
+// constraint on (route_id, seq) in the DB prevents duplicate positions.
+// findByRoute always returns stops ordered by seq so callers never need to sort.
+
 export interface RouteStop {
   id: string;
   routeId: string;
@@ -14,6 +19,7 @@ export interface NewRouteStop {
 
 export interface RouteStopRepository {
   create(input: NewRouteStop): Promise<RouteStop>;
+  /** Returns all stops for a route ordered by seq ascending. */
   findByRoute(routeId: string): Promise<RouteStop[]>;
 }
 
