@@ -1,14 +1,17 @@
+export type SubscriptionPlan = 'monthly' | 'annual';
+export type SubscriptionStatus = 'active' | 'cancelled' | 'expired';
+
 export interface Subscription {
   id: string;
   userId: string;
-  plan: string;
-  status: string;
+  plan: SubscriptionPlan;
+  status: SubscriptionStatus;
   createdAt: Date;
 }
 
 export interface NewSubscription {
   userId: string;
-  plan: string;
+  plan: SubscriptionPlan;
 }
 
 export interface SubscriptionRepository {
