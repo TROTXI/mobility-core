@@ -15,10 +15,10 @@ areas land; it is not authoritative once the code moves.
 | KV           | `kv/kv.store.ts` (interface + in-memory), `kv.store.redis.ts` (ADR-0010)                                                                  |
 | Auth         | `auth/jwt.ts`, `auth/auth.plugin.ts` (`authenticate`/`requireRole`), `auth/auth.routes.ts` (`/me`) (ADR-0007)                             |
 | Rate limit   | `ratelimit/ratelimit.plugin.ts` (#23)                                                                                                     |
-| Domain repos | `users/*`, `subscriptions/*` — **repos only, no routes**                                                                                  |
-| Contract     | `lib/schemas.ts`, `user.schema.ts`, OpenAPI via zod type-provider (ADR-0008)                                                              |
+| Domain repos | `users/*` — repo only; `subscriptions/*` — repos + HTTP routes (PR #59)                                                                   |
+| Contract     | `lib/schemas.ts`, `user.schema.ts`, `subscription.schema.ts`, OpenAPI via zod type-provider (ADR-0008)                                    |
 
-**Live HTTP surface:** `/`, `/version`, `/healthz`, `/readyz`, `/me`, `/docs`.
+**Live HTTP surface:** `/`, `/version`, `/healthz`, `/readyz`, `/me`, `/docs`, `/subscriptions`, `/subscriptions/me`.
 
 **Cross-cutting (in place):** repository pattern (ADR-0009), KV fallback
 (ADR-0010), readiness pings DB+KV, rate limiting, typed OpenAPI, ~100% unit
@@ -34,11 +34,32 @@ staging auto / prod gated), CODEOWNERS + code-owner reviews.
 - **`sessions` and `auth_identity` tables exist but are unused** — no refresh
   tokens, rotation, revoke, or logout. The refresh half of ADR-0007 is unbuilt.
 
-### 🟡 Subscriptions
+### 🟢 Subscriptions — HTTP layer complete (closes #58, PR #59)
 
-- Data layer only — **no endpoint** (e.g. `GET /me/subscription`); not usable
-  over HTTP. `plan` is free-text (no enum/CHECK). In-memory repo does not enforce
-  one-active-per-user (the DB does — see ADR-0009).
+**What landed:**
+
+- `subscription.schema.ts` — `plan` is now a typed enum (`'monthly' | 'annual'`),
+  fixing the free-text gap noted previously. `status` is also enumerated
+  (`'active' | 'cancelled' | 'expired'`). Schemas drive both runtime validation
+  and the OpenAPI spec (ADR-0008).
+- `POST /subscriptions` — creates an active subscription for the authenticated user.
+  Returns 409 if one already exists (enforces one-active-per-user at the API layer,
+  complementing the DB `UNIQUE` constraint).
+- `GET /subscriptions/me` — returns the caller's active subscription or 404 if none.
+
+**Design choices:**
+
+- **Both endpoints require auth.** Subscription management is identity-bound —
+  anonymous access is rejected by `app.authenticate` before the handler runs.
+  This is the opposite of the mobility browse endpoints, which are intentionally public.
+- **409 on duplicate, not upsert.** A second `POST /subscriptions` from the same user
+  returns a conflict rather than silently overwriting. The caller must cancel first;
+  this makes state transitions explicit and auditable.
+- **No per-endpoint rate limiting.** The auth guard is the primary traffic barrier
+  here. A malicious caller would need a valid token first, which already limits
+  abuse. The global per-user rate limit on `/me` covers the authenticated surface.
+- **Follows ADR-0009** — `InMemorySubscriptionRepository` for tests/dev; `PgSubscriptionRepository`
+  for real runs; `server.ts` selects by `DATABASE_URL`.
 
 ### ❌ Not started (mapped to issues)
 
@@ -72,5 +93,4 @@ staging auto / prod gated), CODEOWNERS + code-owner reviews.
 
 1. **Auth slice 2** (sign-in + refresh) — the biggest unblock; needs Google OAuth
    setup.
-2. `GET /me/subscription` — make subscriptions a real, secured, documented API.
-3. Observability (#28) — `/metrics` + structured fields, before traffic grows.
+2. Observability (#28) — `/metrics` + structured fields, before traffic grows.
