@@ -8,11 +8,11 @@ const _apiBaseUrl = String.fromEnvironment(
 );
 
 void main() {
-  runApp(const TrotxiDriverApp());
+  runApp(const TrotxiCommuterApp());
 }
 
-class TrotxiDriverApp extends StatelessWidget {
-  const TrotxiDriverApp({super.key});
+class TrotxiCommuterApp extends StatelessWidget {
+  const TrotxiCommuterApp({super.key});
 
   @override
   Widget build(BuildContext context) {
