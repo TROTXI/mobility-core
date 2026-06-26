@@ -5,11 +5,13 @@ import type {
   SubscriptionRepository,
 } from './subscription.repository';
 
+import type { SubscriptionPlan, SubscriptionStatus } from './subscription.repository';
+
 interface SubscriptionRow {
   id: string;
   user_id: string;
-  plan: string;
-  status: string;
+  plan: SubscriptionPlan;
+  status: SubscriptionStatus;
   created_at: Date;
 }
 
