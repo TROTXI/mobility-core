@@ -1,7 +1,12 @@
 import { defineConfig } from '@playwright/test';
+import { E2E_JWT_SECRET } from './fixtures';
 
 const PORT = Number(process.env.E2E_PORT ?? 3100);
 const BASE_URL = `http://127.0.0.1:${PORT}`;
+
+// Set (CI, or local `pnpm infra:up`) -> the API under test uses Postgres and the
+// DB-backed specs run. Unset -> in-memory, those specs skip.
+const DATABASE_URL = process.env.DATABASE_URL;
 
 export default defineConfig({
   testDir: './tests',
@@ -9,12 +14,11 @@ export default defineConfig({
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 1 : 0,
   reporter: process.env.CI ? [['list'], ['html', { open: 'never' }]] : 'list',
+  // Migrates + seeds the e2e database when DATABASE_URL is set (no-op otherwise).
+  globalSetup: './global-setup.ts',
   use: {
     baseURL: BASE_URL,
   },
-  // When the API gains a datastore: add a globalSetup that provisions a
-  // dedicated e2e database (drop/recreate + migrate + seed) and inject its
-  // DATABASE_URL below, so runs are hermetic and never touch dev data.
   webServer: {
     command: 'pnpm exec tsx src/server.ts',
     cwd: '../services/api',
@@ -25,6 +29,10 @@ export default defineConfig({
       PORT: String(PORT),
       HOST: '127.0.0.1',
       NODE_ENV: 'test',
+      // Deterministic secret so specs can mint tokens the server accepts.
+      JWT_SECRET: E2E_JWT_SECRET,
+      // Pass through when present so the server uses Postgres (see global-setup).
+      ...(DATABASE_URL ? { DATABASE_URL } : {}),
     },
   },
 });
