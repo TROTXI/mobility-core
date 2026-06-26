@@ -1,3 +1,8 @@
+// Zod schemas for the subscriptions domain. Enums are exported as const arrays
+// so they can be reused in the repository types and future CHECK constraints
+// without duplicating the literal values. Drives both runtime validation and
+// the OpenAPI spec via the zod type provider (ADR-0008).
+
 import { z } from 'zod';
 
 export const SUBSCRIPTION_PLANS = ['monthly', 'annual'] as const;

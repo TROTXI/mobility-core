@@ -1,3 +1,9 @@
+// Subscription route handlers. Both endpoints require a valid bearer token —
+// anonymous access is rejected by app.authenticate before reaching the handler.
+// POST /subscriptions enforces one-active-per-user at the API layer (409 on
+// duplicate) in addition to the DB-level constraint, so callers get a clear
+// error rather than a constraint violation from Postgres.
+
 import type { FastifyInstance } from 'fastify';
 import type { ZodTypeProvider } from 'fastify-type-provider-zod';
 import { errorResponseSchema } from '../../lib/schemas';

@@ -1,3 +1,8 @@
+// Subscription repository. One active subscription per user is the intended
+// invariant — enforced by the DB UNIQUE constraint and checked in the route
+// handler before create(). findActiveByUser returns only 'active' rows so
+// cancelled/expired subscriptions are invisible to the caller.
+
 export type SubscriptionPlan = 'monthly' | 'annual';
 export type SubscriptionStatus = 'active' | 'cancelled' | 'expired';
 
