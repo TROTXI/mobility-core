@@ -8,6 +8,15 @@ import { RedisKvStore } from './kv/kv.store.redis';
 import { DEV_AUTH_CONFIG, type AuthConfig } from './modules/auth/jwt';
 import type { RateLimitConfig } from './modules/ratelimit/ratelimit.plugin';
 import {
+  InMemoryRouteStopRepository,
+  type RouteStopRepository,
+} from './modules/mobility/route-stop.repository';
+import { PgRouteStopRepository } from './modules/mobility/route-stop.repository.pg';
+import { InMemoryRouteRepository, type RouteRepository } from './modules/mobility/route.repository';
+import { PgRouteRepository } from './modules/mobility/route.repository.pg';
+import { InMemoryStopRepository, type StopRepository } from './modules/mobility/stop.repository';
+import { PgStopRepository } from './modules/mobility/stop.repository.pg';
+import {
   InMemorySubscriptionRepository,
   type SubscriptionRepository,
 } from './modules/subscriptions/subscription.repository';
@@ -41,14 +50,23 @@ async function main(): Promise<void> {
   let pool: Pool | undefined;
   let users: UserRepository;
   let subscriptions: SubscriptionRepository;
+  let routes: RouteRepository;
+  let stops: StopRepository;
+  let routeStops: RouteStopRepository;
   if (env.DATABASE_URL) {
     pool = createPool(env.DATABASE_URL);
     users = new PgUserRepository(pool);
     subscriptions = new PgSubscriptionRepository(pool);
+    routes = new PgRouteRepository(pool);
+    stops = new PgStopRepository(pool);
+    routeStops = new PgRouteStopRepository(pool);
     console.log('Using Postgres repositories');
   } else {
     users = new InMemoryUserRepository();
     subscriptions = new InMemorySubscriptionRepository();
+    routes = new InMemoryRouteRepository();
+    stops = new InMemoryStopRepository();
+    routeStops = new InMemoryRouteStopRepository();
     console.log('Using in-memory repositories (no DATABASE_URL set)');
   }
 
@@ -69,7 +87,18 @@ async function main(): Promise<void> {
     windowSeconds: env.RATE_LIMIT_WINDOW_SECONDS,
   };
 
-  const app = await buildApp({ users, subscriptions, kv, isReady, auth, rateLimit, logger: true });
+  const app = await buildApp({
+    users,
+    subscriptions,
+    routes,
+    stops,
+    routeStops,
+    kv,
+    isReady,
+    auth,
+    rateLimit,
+    logger: true,
+  });
 
   const shutdown = async (signal: string): Promise<void> => {
     app.log.info(`Received ${signal}, shutting down`);
