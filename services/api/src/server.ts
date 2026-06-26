@@ -7,6 +7,11 @@ import { InMemoryKvStore, type KvStore } from './kv/kv.store';
 import { RedisKvStore } from './kv/kv.store.redis';
 import { DEV_AUTH_CONFIG, type AuthConfig } from './modules/auth/jwt';
 import type { RateLimitConfig } from './modules/ratelimit/ratelimit.plugin';
+import {
+  InMemorySubscriptionRepository,
+  type SubscriptionRepository,
+} from './modules/subscriptions/subscription.repository';
+import { PgSubscriptionRepository } from './modules/subscriptions/subscription.repository.pg';
 import { InMemoryUserRepository, type UserRepository } from './modules/users/user.repository';
 import { PgUserRepository } from './modules/users/user.repository.pg';
 
@@ -35,12 +40,15 @@ async function main(): Promise<void> {
   // Repositories: Postgres when DATABASE_URL is set, else in-memory (zero infra).
   let pool: Pool | undefined;
   let users: UserRepository;
+  let subscriptions: SubscriptionRepository;
   if (env.DATABASE_URL) {
     pool = createPool(env.DATABASE_URL);
     users = new PgUserRepository(pool);
+    subscriptions = new PgSubscriptionRepository(pool);
     console.log('Using Postgres repositories');
   } else {
     users = new InMemoryUserRepository();
+    subscriptions = new InMemorySubscriptionRepository();
     console.log('Using in-memory repositories (no DATABASE_URL set)');
   }
 
@@ -61,7 +69,7 @@ async function main(): Promise<void> {
     windowSeconds: env.RATE_LIMIT_WINDOW_SECONDS,
   };
 
-  const app = await buildApp({ users, kv, isReady, auth, rateLimit, logger: true });
+  const app = await buildApp({ users, subscriptions, kv, isReady, auth, rateLimit, logger: true });
 
   const shutdown = async (signal: string): Promise<void> => {
     app.log.info(`Received ${signal}, shutting down`);

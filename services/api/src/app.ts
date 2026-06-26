@@ -17,6 +17,7 @@ import {
   rateLimitPlugin,
   type RateLimitConfig,
 } from './modules/ratelimit/ratelimit.plugin';
+import type { SubscriptionRepository } from './modules/subscriptions/subscription.repository';
 import type { UserRepository } from './modules/users/user.repository';
 
 /**
@@ -29,6 +30,8 @@ export interface AppDeps {
   isReady?: () => Promise<boolean>;
   /** Selected by DATABASE_URL (in-memory vs Postgres). Consumed by routes/services. */
   users?: UserRepository;
+  /** Selected by DATABASE_URL (in-memory vs Postgres). Consumed by routes/services. */
+  subscriptions?: SubscriptionRepository;
   /** Selected by REDIS_URL (in-memory vs Redis). For rate limits, idempotency, cache. */
   kv?: KvStore;
   /** JWT/auth settings. Defaults to a dev-only config when unset (tests, local). */
