@@ -15,6 +15,10 @@ const envSchema = z
     JWT_ACCESS_TTL: z.string().default('15m'),
     JWT_ISSUER: z.string().default('trotxi'),
     JWT_AUDIENCE: z.string().default('trotxi-api'),
+    JWT_REFRESH_TTL_DAYS: z.coerce.number().int().positive().default(30),
+    // Google "Web" client ID — the audience verified on sign-in. Set to enable
+    // real Google sign-in; unset -> dev fake verifier (non-prod) / 503 (prod).
+    GOOGLE_CLIENT_ID: z.string().optional(),
     // Rate limiting (fixed window). Tunable without a code change.
     RATE_LIMIT_MAX: z.coerce.number().int().positive().default(100),
     RATE_LIMIT_WINDOW_SECONDS: z.coerce.number().int().positive().default(60),
