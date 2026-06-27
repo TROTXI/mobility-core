@@ -73,7 +73,7 @@ API types for the Flutter apps are generated from the live OpenAPI contract
 published by the staging API at `/docs/json`.
 
 ```bash
-pnpm codegen    # generates Dart models + Dio client into trotxi_commuter/packages/api_client
+pnpm codegen    # generates Dart models + Dio client into apps/api_client
 ```
 
 **To use it in VS Code locally:**
