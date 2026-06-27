@@ -86,8 +86,25 @@ jobs:
     name: E2E (Playwright)
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    # When the API gains a datastore, add a postgis/postgis service container
-    # here (see docs/architecture.md) and the e2e globalSetup will migrate+seed.
+    # Real Postgres so the suite exercises the Pg adapters end-to-end; the e2e
+    # globalSetup migrates + seeds it. Specs self-skip the DB-backed cases when
+    # DATABASE_URL is unset (local zero-infra runs).
+    services:
+      postgres:
+        image: postgis/postgis:16-3.4
+        env:
+          POSTGRES_USER: trotxi
+          POSTGRES_PASSWORD: trotxi
+          POSTGRES_DB: trotxi
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U trotxi"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    env:
+      DATABASE_URL: postgres://trotxi:trotxi@localhost:5432/trotxi
     steps:
       - uses: actions/checkout@v7
       - uses: pnpm/action-setup@v6

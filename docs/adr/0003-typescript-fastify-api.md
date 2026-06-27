@@ -31,3 +31,10 @@ Technical grounds:
 - Strict mode + ESLint are non-negotiable gates in CI.
 - CPU-bound features do not get added to this service; they go to the Go side
   (ADR-0002) or a worker.
+
+## Update — 2026-06-26
+
+The runtime is now **Node.js 24** (current Active LTS), not 22 as written above —
+reflected in `package.json` `engines`, `.nvmrc`, the Dockerfile, and CI. The
+TypeScript + Fastify + zod decision is unchanged; only the Node version moved.
+(Amendment note rather than a superseding ADR, since the decision itself stands.)
