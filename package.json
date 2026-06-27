@@ -24,9 +24,11 @@
     "infra:up": "docker compose -f infra/docker/docker-compose.yml up -d",
     "infra:down": "docker compose -f infra/docker/docker-compose.yml down",
     "infra:logs": "docker compose -f infra/docker/docker-compose.yml logs -f",
-    "infra:ps": "docker compose -f infra/docker/docker-compose.yml ps"
+    "infra:ps": "docker compose -f infra/docker/docker-compose.yml ps",
+    "codegen": "openapi-generator-cli generate -i https://trotxi-api-staging.onrender.com/docs/json -g dart-dio -o trotxi_commuter/packages/api_client --additional-properties=pubName=trotxi_api_client,pubAuthor=LFE"
   },
   "devDependencies": {
+    "@openapitools/openapi-generator-cli": "^2.39.0",
     "husky": "^9.1.7",
     "lint-staged": "^15.2.11",
     "prettier": "^3.4.2"
