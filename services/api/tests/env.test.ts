@@ -5,6 +5,7 @@ const DEFAULTS = {
   JWT_ACCESS_TTL: '15m',
   JWT_ISSUER: 'trotxi',
   JWT_AUDIENCE: 'trotxi-api',
+  JWT_REFRESH_TTL_DAYS: 30,
   RATE_LIMIT_MAX: 100,
   RATE_LIMIT_WINDOW_SECONDS: 60,
 };

@@ -11,6 +11,7 @@ import { z } from 'zod';
 import { InMemoryKvStore, type KvStore } from './kv/kv.store';
 import { authPlugin } from './modules/auth/auth.plugin';
 import { authRoutes } from './modules/auth/auth.routes';
+import type { AuthService } from './modules/auth/auth.service';
 import { DEV_AUTH_CONFIG, type AuthConfig } from './modules/auth/jwt';
 import {
   DEFAULT_RATE_LIMIT,
@@ -36,6 +37,8 @@ export interface AppDeps {
   kv?: KvStore;
   /** JWT/auth settings. Defaults to a dev-only config when unset (tests, local). */
   auth?: AuthConfig;
+  /** Sign-in/refresh/logout orchestrator. Routes return 503 when absent. */
+  authService?: AuthService;
   /** Rate-limit thresholds (from env). Defaults applied when unset. */
   rateLimit?: RateLimitConfig;
   logger?: boolean;
@@ -84,6 +87,7 @@ export async function buildApp(deps: AppDeps = {}): Promise<FastifyInstance> {
   await app.register(rateLimitPlugin, { kv });
   await app.register(authRoutes, {
     users: deps.users,
+    authService: deps.authService,
     rateLimit: deps.rateLimit ?? DEFAULT_RATE_LIMIT,
   });
 
