@@ -1,0 +1,15 @@
+# gitleaks config — extends the default ruleset with an allowlist for
+# INTENTIONAL non-secret placeholders: the dev-only JWT fallback (config/env.ts,
+# auth/jwt.ts) and test fixtures. See ADR-0007. Real secrets are injected via
+# environment variables and are never committed.
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Intentional non-secret placeholders (dev JWT fallback + test fixtures)"
+regexes = [
+  '''dev-only-insecure-secret-change-me-[0-9a-f]+''',
+  '''test-secret-at-least-32-characters-long-[0-9]+''',
+  '''a-totally-different-secret-32-chars-min''',
+]
