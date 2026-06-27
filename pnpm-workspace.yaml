@@ -5,4 +5,5 @@ packages:
 # pnpm blocks dependency build scripts by default (supply-chain safety).
 # esbuild (used by tsup + vitest) needs its postinstall to fetch its binary.
 allowBuilds:
+  '@openapitools/openapi-generator-cli': true
   esbuild: true
