@@ -1,0 +1,57 @@
+import 'package:flutter/material.dart';
+import 'package:trotxi_commuter/core/config/theme/app_theme.dart';
+
+
+
+const _apiBaseUrl = String.fromEnvironment(
+  'API_BASE_URL',
+);
+
+void main() {
+  runApp(const TrotxiCommuterApp());
+}
+
+class TrotxiCommuterApp extends StatelessWidget {
+  const TrotxiCommuterApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: 'Trotxi Commuter',
+      theme: AppTheme.lightTheme,
+      home: const _PlaceholderHome(),
+    );
+  }
+}
+
+class _PlaceholderHome extends StatelessWidget {
+  const _PlaceholderHome();
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
+        title: const Text('Trotxi Commuter'),
+      ),
+      body: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.directions_bus_outlined, size: 64),
+            const SizedBox(height: 16),
+            Text(
+              'Commuter App',
+              style: Theme.of(context).textTheme.headlineMedium,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              _apiBaseUrl,
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
