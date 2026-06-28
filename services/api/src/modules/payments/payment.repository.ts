@@ -14,7 +14,7 @@ export interface Payment {
   purpose: PaymentPurpose;
   /** Set for subscription payments; null for top-ups. */
   plan: SubscriptionPlan | null;
-  amount: number; // GHS
+  amount: number; // pesewas (1 GHS = 100 pesewas)
   currency: string;
   status: PaymentStatus;
   createdAt: Date;

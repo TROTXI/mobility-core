@@ -69,7 +69,7 @@ export async function paymentRoutes(
     {
       schema: {
         tags: ['payments'],
-        summary: 'Start a Paystack checkout to load ride tokens (GHS) into the wallet',
+        summary: 'Start a Paystack checkout to load ride tokens (pesewas) into the wallet',
         security: [{ bearerAuth: [] }],
         body: topupBodySchema,
         response: {
@@ -84,7 +84,10 @@ export async function paymentRoutes(
     async (request, reply) => {
       if (!opts.paymentsService) return reply.code(503).send(UNAVAILABLE);
       try {
-        return await opts.paymentsService.initializeTopup(request.user!.id, request.body.amountGhs);
+        return await opts.paymentsService.initializeTopup(
+          request.user!.id,
+          request.body.amountPesewas,
+        );
       } catch (err) {
         if (err instanceof PaymentsNotConfiguredError) return reply.code(503).send(UNAVAILABLE);
         throw err;

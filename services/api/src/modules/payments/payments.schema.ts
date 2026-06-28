@@ -10,8 +10,8 @@ export const subscribeBodySchema = z.object({
 });
 
 export const topupBodySchema = z.object({
-  /** GHS to load into the wallet (1 token = 1 GHS). */
-  amountGhs: z.number().int().min(1),
+  /** Pesewas to load into the wallet (1 GHS = 100 pesewas); min 100 = GHS 1. */
+  amountPesewas: z.number().int().min(100),
 });
 
 export const checkoutResponseSchema = z.object({

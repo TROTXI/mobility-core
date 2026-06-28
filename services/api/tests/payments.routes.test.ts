@@ -56,8 +56,13 @@ describe('POST /payments/subscribe + /payments/topup', () => {
       ).statusCode,
     ).toBe(401);
     expect(
-      (await app.inject({ method: 'POST', url: '/payments/topup', payload: { amountGhs: 50 } }))
-        .statusCode,
+      (
+        await app.inject({
+          method: 'POST',
+          url: '/payments/topup',
+          payload: { amountPesewas: 5000 },
+        })
+      ).statusCode,
     ).toBe(401);
   });
 
@@ -76,7 +81,7 @@ describe('POST /payments/subscribe + /payments/topup', () => {
       method: 'POST',
       url: '/payments/topup',
       headers: bearer(token),
-      payload: { amountGhs: 50 },
+      payload: { amountPesewas: 5000 },
     });
     expect(top.statusCode).toBe(200);
   });
@@ -90,7 +95,7 @@ describe('POST /payments/subscribe + /payments/topup', () => {
           method: 'POST',
           url: '/payments/topup',
           headers: bearer(token),
-          payload: { amountGhs: 50 },
+          payload: { amountPesewas: 5000 },
         })
       ).statusCode,
     ).toBe(503);
@@ -107,14 +112,14 @@ describe('POST /webhooks/paystack', () => {
         method: 'POST',
         url: '/payments/topup',
         headers: bearer(token),
-        payload: { amountGhs: 50 },
+        payload: { amountPesewas: 5000 },
       })
     ).json();
 
     expect((await webhookFor(app, reference)).statusCode).toBe(200);
 
     const balance = await app.inject({ method: 'GET', url: '/me/balance', headers: bearer(token) });
-    expect(balance.json()).toEqual({ balanceGhs: 50 });
+    expect(balance.json()).toEqual({ balancePesewas: 5000 });
   });
 
   it('subscription: a signed charge.success activates membership without granting tokens', async () => {
