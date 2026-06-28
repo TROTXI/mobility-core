@@ -1,11 +1,23 @@
 {
   "name": "Flutter",
   "image": "ghcr.io/cirruslabs/flutter:stable",
+  "features": {
+    "ghcr.io/devcontainers/features/node:1": {
+      "version": "lts"
+    },
+    "ghcr.io/devcontainers/features/common-utils:2": {
+      "installZsh": true,
+      "configureZshAsDefault": true,
+      "installOhMyZsh": true,
+      "installOhMyZshConfig": true
+    },
+    "ghcr.io/devcontainers/features/git:1": {}
+  },
   "forwardPorts": [],
-  "postCreateCommand": "flutter doctor",
+  "postCreateCommand": "bash .devcontainer/post-create.sh && corepack enable && flutter doctor",
   "customizations": {
     "vscode": {
-      "extensions": ["Dart-Code.flutter", "Dart-Code.dart-code"]
+      "extensions": ["Dart-Code.flutter", "Dart-Code.dart-code", "esbenp.prettier-vscode"]
     }
   }
 }
