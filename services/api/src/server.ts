@@ -30,6 +30,14 @@ import {
   type LedgerRepository,
 } from './modules/ledger/ledger.repository';
 import { PgLedgerRepository } from './modules/ledger/ledger.repository.pg';
+import {
+  InMemoryPaymentRepository,
+  type PaymentRepository,
+} from './modules/payments/payment.repository';
+import { PgPaymentRepository } from './modules/payments/payment.repository.pg';
+import { FakePaystackClient, type PaystackClient } from './modules/payments/paystack.client';
+import { PaystackHttpClient } from './modules/payments/paystack.client.live';
+import { PaymentsService, PLAN_PRICES_GHS } from './modules/payments/payments.service';
 import { InMemoryUserRepository, type UserRepository } from './modules/users/user.repository';
 import { PgUserRepository } from './modules/users/user.repository.pg';
 
@@ -62,6 +70,7 @@ async function main(): Promise<void> {
   let sessions: SessionRepository;
   let authIdentities: AuthIdentityRepository;
   let ledger: LedgerRepository;
+  let payments: PaymentRepository;
   if (env.DATABASE_URL) {
     pool = createPool(env.DATABASE_URL);
     users = new PgUserRepository(pool);
@@ -69,6 +78,7 @@ async function main(): Promise<void> {
     sessions = new PgSessionRepository(pool);
     authIdentities = new PgAuthIdentityRepository(pool);
     ledger = new PgLedgerRepository(pool);
+    payments = new PgPaymentRepository(pool);
     console.log('Using Postgres repositories');
   } else {
     users = new InMemoryUserRepository();
@@ -76,6 +86,7 @@ async function main(): Promise<void> {
     sessions = new InMemorySessionRepository();
     authIdentities = new InMemoryAuthIdentityRepository();
     ledger = new InMemoryLedgerRepository();
+    payments = new InMemoryPaymentRepository();
     console.log('Using in-memory repositories (no DATABASE_URL set)');
   }
 
@@ -101,6 +112,27 @@ async function main(): Promise<void> {
     refreshTtlDays: env.JWT_REFRESH_TTL_DAYS,
   });
 
+  // Paystack client: real when the secret key is set; a dev fake outside
+  // production; otherwise undefined (payment routes return 503 — keeps staging up).
+  let paystack: PaystackClient | undefined;
+  if (env.PAYSTACK_SECRET_KEY) {
+    paystack = new PaystackHttpClient(env.PAYSTACK_SECRET_KEY);
+    console.log('Using Paystack HTTP client');
+  } else if (env.NODE_ENV !== 'production') {
+    paystack = new FakePaystackClient();
+    console.warn('PAYSTACK_SECRET_KEY not set — using FAKE payments client (non-production only).');
+  } else {
+    console.warn('PAYSTACK_SECRET_KEY not set — payments disabled (POST /payments/* returns 503).');
+  }
+
+  const paymentsService = new PaymentsService({
+    payments,
+    ledger,
+    subscriptions,
+    paystack,
+    planPrices: PLAN_PRICES_GHS,
+  });
+
   // Readiness pings every configured backing service (DB + KV).
   const isReady = async (): Promise<boolean> => {
     if (pool) {
@@ -123,6 +155,7 @@ async function main(): Promise<void> {
     subscriptions,
     ledger,
     authService,
+    paymentsService,
     kv,
     isReady,
     auth,

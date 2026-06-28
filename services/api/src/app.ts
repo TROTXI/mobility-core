@@ -11,6 +11,8 @@ import { z } from 'zod';
 import { InMemoryKvStore, type KvStore } from './kv/kv.store';
 import { ledgerRoutes } from './modules/ledger/ledger.routes';
 import type { LedgerRepository } from './modules/ledger/ledger.repository';
+import { paymentRoutes } from './modules/payments/payments.routes';
+import type { PaymentsService } from './modules/payments/payments.service';
 import { authPlugin } from './modules/auth/auth.plugin';
 import { authRoutes } from './modules/auth/auth.routes';
 import type { AuthService } from './modules/auth/auth.service';
@@ -43,6 +45,8 @@ export interface AppDeps {
   auth?: AuthConfig;
   /** Sign-in/refresh/logout orchestrator. Routes return 503 when absent. */
   authService?: AuthService;
+  /** Paystack payments orchestrator. Routes return 503 when absent. */
+  paymentsService?: PaymentsService;
   /** Rate-limit thresholds (from env). Defaults applied when unset. */
   rateLimit?: RateLimitConfig;
   logger?: boolean;
@@ -73,6 +77,7 @@ export async function buildApp(deps: AppDeps = {}): Promise<FastifyInstance> {
         { name: 'system', description: 'Health, readiness, and service metadata' },
         { name: 'auth', description: 'Authentication and the current user' },
         { name: 'wallet', description: 'Token wallet / GHS balance' },
+        { name: 'payments', description: 'Subscriptions checkout (Paystack) + webhook' },
       ],
       components: {
         // Protected routes set `security: [{ bearerAuth: [] }]`; clients send
@@ -97,6 +102,10 @@ export async function buildApp(deps: AppDeps = {}): Promise<FastifyInstance> {
   });
   await app.register(ledgerRoutes, {
     ledger: deps.ledger,
+    rateLimit: deps.rateLimit ?? DEFAULT_RATE_LIMIT,
+  });
+  await app.register(paymentRoutes, {
+    paymentsService: deps.paymentsService,
     rateLimit: deps.rateLimit ?? DEFAULT_RATE_LIMIT,
   });
 

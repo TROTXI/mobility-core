@@ -16,6 +16,7 @@ export default defineConfig({
         'src/**/*.pg.ts',
         'src/**/*.redis.ts',
         'src/**/*.google.ts',
+        'src/**/*.live.ts',
       ],
       thresholds: {
         lines: 80,
