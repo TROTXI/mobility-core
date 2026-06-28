@@ -19,6 +19,9 @@ const envSchema = z
     // Google "Web" client ID — the audience verified on sign-in. Set to enable
     // real Google sign-in; unset -> dev fake verifier (non-prod) / 503 (prod).
     GOOGLE_CLIENT_ID: z.string().optional(),
+    // Paystack SECRET key (sk_...). Used for the API + webhook signature check.
+    // Set -> real payments; unset -> dev fake client (non-prod) / 503 (prod).
+    PAYSTACK_SECRET_KEY: z.string().optional(),
     // Rate limiting (fixed window). Tunable without a code change.
     RATE_LIMIT_MAX: z.coerce.number().int().positive().default(100),
     RATE_LIMIT_WINDOW_SECONDS: z.coerce.number().int().positive().default(60),
