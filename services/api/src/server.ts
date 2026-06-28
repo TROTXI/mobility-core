@@ -25,6 +25,11 @@ import {
   type SubscriptionRepository,
 } from './modules/subscriptions/subscription.repository';
 import { PgSubscriptionRepository } from './modules/subscriptions/subscription.repository.pg';
+import {
+  InMemoryLedgerRepository,
+  type LedgerRepository,
+} from './modules/ledger/ledger.repository';
+import { PgLedgerRepository } from './modules/ledger/ledger.repository.pg';
 import { InMemoryUserRepository, type UserRepository } from './modules/users/user.repository';
 import { PgUserRepository } from './modules/users/user.repository.pg';
 
@@ -56,18 +61,21 @@ async function main(): Promise<void> {
   let subscriptions: SubscriptionRepository;
   let sessions: SessionRepository;
   let authIdentities: AuthIdentityRepository;
+  let ledger: LedgerRepository;
   if (env.DATABASE_URL) {
     pool = createPool(env.DATABASE_URL);
     users = new PgUserRepository(pool);
     subscriptions = new PgSubscriptionRepository(pool);
     sessions = new PgSessionRepository(pool);
     authIdentities = new PgAuthIdentityRepository(pool);
+    ledger = new PgLedgerRepository(pool);
     console.log('Using Postgres repositories');
   } else {
     users = new InMemoryUserRepository();
     subscriptions = new InMemorySubscriptionRepository();
     sessions = new InMemorySessionRepository();
     authIdentities = new InMemoryAuthIdentityRepository();
+    ledger = new InMemoryLedgerRepository();
     console.log('Using in-memory repositories (no DATABASE_URL set)');
   }
 
@@ -113,6 +121,7 @@ async function main(): Promise<void> {
   const app = await buildApp({
     users,
     subscriptions,
+    ledger,
     authService,
     kv,
     isReady,

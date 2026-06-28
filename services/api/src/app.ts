@@ -9,6 +9,8 @@ import {
 } from 'fastify-type-provider-zod';
 import { z } from 'zod';
 import { InMemoryKvStore, type KvStore } from './kv/kv.store';
+import { ledgerRoutes } from './modules/ledger/ledger.routes';
+import type { LedgerRepository } from './modules/ledger/ledger.repository';
 import { authPlugin } from './modules/auth/auth.plugin';
 import { authRoutes } from './modules/auth/auth.routes';
 import type { AuthService } from './modules/auth/auth.service';
@@ -33,6 +35,8 @@ export interface AppDeps {
   users?: UserRepository;
   /** Selected by DATABASE_URL (in-memory vs Postgres). Consumed by routes/services. */
   subscriptions?: SubscriptionRepository;
+  /** Token wallet ledger (in-memory vs Postgres). Derived balance + grants/debits. */
+  ledger?: LedgerRepository;
   /** Selected by REDIS_URL (in-memory vs Redis). For rate limits, idempotency, cache. */
   kv?: KvStore;
   /** JWT/auth settings. Defaults to a dev-only config when unset (tests, local). */
@@ -68,6 +72,7 @@ export async function buildApp(deps: AppDeps = {}): Promise<FastifyInstance> {
       tags: [
         { name: 'system', description: 'Health, readiness, and service metadata' },
         { name: 'auth', description: 'Authentication and the current user' },
+        { name: 'wallet', description: 'Token wallet / GHS balance' },
       ],
       components: {
         // Protected routes set `security: [{ bearerAuth: [] }]`; clients send
@@ -88,6 +93,10 @@ export async function buildApp(deps: AppDeps = {}): Promise<FastifyInstance> {
   await app.register(authRoutes, {
     users: deps.users,
     authService: deps.authService,
+    rateLimit: deps.rateLimit ?? DEFAULT_RATE_LIMIT,
+  });
+  await app.register(ledgerRoutes, {
+    ledger: deps.ledger,
     rateLimit: deps.rateLimit ?? DEFAULT_RATE_LIMIT,
   });
 
