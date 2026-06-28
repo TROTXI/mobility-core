@@ -1,5 +1,7 @@
 # Feature documentation
 
+**Owner:** Godfred Awuku · **Last updated:** 2026-06-28
+
 Living, per-feature documentation for `mobility-core` — what each feature does,
 its API contract, how it works, how to configure it, and its security/edge-case
 notes. Aimed at backend engineers building on a feature and frontend engineers
@@ -14,13 +16,13 @@ repo (`system-design.md`, `security.md`). Each doc links to both.
 
 ## Index
 
-| Feature                                                                       | Doc                                                                      | Status  |
-| ----------------------------------------------------------------------------- | ------------------------------------------------------------------------ | ------- |
-| Authentication — access tokens, route guard, sign-in/refresh/logout           | [authentication.md](authentication.md)                                   | ✅ live |
-| Wallet & payments — token ledger, balance, subscriptions & top-ups (Paystack) | [payments-and-wallet.md](payments-and-wallet.md)                         | ✅ live |
-| Mobility — routes, stops, browse                                              | _(in review — #57)_                                                      | 🚧      |
-| Rate limiting (#23)                                                           | see [authentication.md → Rate limiting](authentication.md#rate-limiting) | ✅      |
-| Observability (RED metrics)                                                   | _(not started — #28)_                                                    | ❌      |
+| Feature                                                                       | Doc                                              | Status  |
+| ----------------------------------------------------------------------------- | ------------------------------------------------ | ------- |
+| Authentication — access tokens, route guard, sign-in/refresh/logout           | [authentication.md](authentication.md)           | ✅ live |
+| Wallet & payments — token ledger, balance, subscriptions & top-ups (Paystack) | [payments-and-wallet.md](payments-and-wallet.md) | ✅ live |
+| Mobility — routes, stops, browse                                              | _(in review — #57)_                              | 🚧      |
+| Rate limiting (#23)                                                           | [rate-limiting.md](rate-limiting.md)             | ✅ live |
+| Observability (RED metrics)                                                   | _(not started — #28)_                            | ❌      |
 
 ## Conventions for a feature doc
 

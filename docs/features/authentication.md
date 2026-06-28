@@ -1,5 +1,7 @@
 # Authentication
 
+**Owner:** Godfred Awuku · **Last updated:** 2026-06-28
+
 **Status:** ✅ live (slices 1 + 2). Apple sign-in and OTP fallback are deferred.
 
 How Trotxi proves _who_ is calling and decides _what_ they may do. It has two

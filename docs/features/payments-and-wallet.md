@@ -1,5 +1,7 @@
 # Wallet & Payments (the money system)
 
+**Owner:** Godfred Awuku · **Last updated:** 2026-06-28
+
 **Status:** ✅ live. Reflects the model as of **#66** (subscription vs. top-up
 separated). The token-debit-on-boarding side is [#20](https://github.com/TROTXI/mobility-core/issues/20)
 (deferred).
