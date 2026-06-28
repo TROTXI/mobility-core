@@ -14,13 +14,13 @@ repo (`system-design.md`, `security.md`). Each doc links to both.
 
 ## Index
 
-| Feature                                                                       | Doc                                                         | Status  |
-| ----------------------------------------------------------------------------- | ----------------------------------------------------------- | ------- |
-| Authentication — access tokens, route guard, sign-in/refresh/logout           | [authentication.md](authentication.md)                      | ✅ live |
-| Wallet & payments — token ledger, balance, subscriptions & top-ups (Paystack) | [payments-and-wallet.md](payments-and-wallet.md)            | ✅ live |
-| Mobility — routes, stops, browse                                              | _(in review — #57)_                                         | 🚧      |
-| Rate limiting                                                                 | see [ADR-0023 / ratelimit](authentication.md#rate-limiting) | ✅      |
-| Observability (RED metrics)                                                   | _(not started — #28)_                                       | ❌      |
+| Feature                                                                       | Doc                                                                      | Status  |
+| ----------------------------------------------------------------------------- | ------------------------------------------------------------------------ | ------- |
+| Authentication — access tokens, route guard, sign-in/refresh/logout           | [authentication.md](authentication.md)                                   | ✅ live |
+| Wallet & payments — token ledger, balance, subscriptions & top-ups (Paystack) | [payments-and-wallet.md](payments-and-wallet.md)                         | ✅ live |
+| Mobility — routes, stops, browse                                              | _(in review — #57)_                                                      | 🚧      |
+| Rate limiting (#23)                                                           | see [authentication.md → Rate limiting](authentication.md#rate-limiting) | ✅      |
+| Observability (RED metrics)                                                   | _(not started — #28)_                                                    | ❌      |
 
 ## Conventions for a feature doc
 
