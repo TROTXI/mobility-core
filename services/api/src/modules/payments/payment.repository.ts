@@ -1,15 +1,19 @@
 // Payments — a state machine (pending → paid|failed), never mutated once paid.
-// `reference` is unique and dedupes retried webhooks (system-design §4.2).
+// `reference` is unique and dedupes retried webhooks (system-design §4.2). A
+// payment has a `purpose`: a subscription membership fee, or a wallet top-up.
 
 import type { SubscriptionPlan } from '../subscriptions/subscription.repository';
 
 export type PaymentStatus = 'pending' | 'paid' | 'failed';
+export type PaymentPurpose = 'subscription' | 'topup';
 
 export interface Payment {
   id: string;
   userId: string;
   reference: string;
-  plan: SubscriptionPlan;
+  purpose: PaymentPurpose;
+  /** Set for subscription payments; null for top-ups. */
+  plan: SubscriptionPlan | null;
   amount: number; // GHS
   currency: string;
   status: PaymentStatus;
@@ -20,7 +24,8 @@ export interface Payment {
 export interface NewPayment {
   userId: string;
   reference: string;
-  plan: SubscriptionPlan;
+  purpose: PaymentPurpose;
+  plan: SubscriptionPlan | null;
   amount: number;
   currency: string;
 }
@@ -41,6 +46,7 @@ export class InMemoryPaymentRepository implements PaymentRepository {
       id: crypto.randomUUID(),
       userId: input.userId,
       reference: input.reference,
+      purpose: input.purpose,
       plan: input.plan,
       amount: input.amount,
       currency: input.currency,

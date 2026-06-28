@@ -1,4 +1,5 @@
-// Payment routes. /payments/initialize starts a checkout (auth, per-user limit).
+// Payment routes. /payments/subscribe (membership fee) and /payments/topup (load
+// ride tokens) start a Paystack checkout — both auth + per-user rate limit.
 // /webhooks/paystack is public but signature-verified inside the service; it uses
 // the RAW body (fastify-raw-body) because the HMAC must be over the exact bytes
 // Paystack sent — a re-serialized JSON would not match.
@@ -9,8 +10,9 @@ import type { ZodTypeProvider } from 'fastify-type-provider-zod';
 import { errorResponseSchema } from '../../lib/schemas';
 import type { RateLimitConfig } from '../ratelimit/ratelimit.plugin';
 import {
-  initializePaymentBodySchema,
-  initializePaymentResponseSchema,
+  checkoutResponseSchema,
+  subscribeBodySchema,
+  topupBodySchema,
   webhookResponseSchema,
 } from './payments.schema';
 import {
@@ -29,17 +31,18 @@ export async function paymentRoutes(
   // rawBody only for routes that opt in via config.rawBody (the webhook).
   await app.register(fastifyRawBody, { global: false });
   const r = app.withTypeProvider<ZodTypeProvider>();
+  const UNAVAILABLE = { error: 'unavailable', message: 'Payments are not configured' };
 
   r.post(
-    '/payments/initialize',
+    '/payments/subscribe',
     {
       schema: {
         tags: ['payments'],
-        summary: 'Start a Paystack checkout for a subscription plan',
+        summary: 'Start a Paystack checkout for the platform membership fee',
         security: [{ bearerAuth: [] }],
-        body: initializePaymentBodySchema,
+        body: subscribeBodySchema,
         response: {
-          200: initializePaymentResponseSchema,
+          200: checkoutResponseSchema,
           401: errorResponseSchema,
           429: errorResponseSchema,
           503: errorResponseSchema,
@@ -48,19 +51,42 @@ export async function paymentRoutes(
       preHandler: [app.authenticate, app.rateLimit({ ...opts.rateLimit, by: 'user' })],
     },
     async (request, reply) => {
-      if (!opts.paymentsService) {
-        return reply
-          .code(503)
-          .send({ error: 'unavailable', message: 'Payments are not configured' });
-      }
+      if (!opts.paymentsService) return reply.code(503).send(UNAVAILABLE);
       try {
-        return await opts.paymentsService.initialize(request.user!.id, request.body.plan);
+        return await opts.paymentsService.initializeSubscription(
+          request.user!.id,
+          request.body.plan,
+        );
       } catch (err) {
-        if (err instanceof PaymentsNotConfiguredError) {
-          return reply
-            .code(503)
-            .send({ error: 'unavailable', message: 'Payments are not configured' });
-        }
+        if (err instanceof PaymentsNotConfiguredError) return reply.code(503).send(UNAVAILABLE);
+        throw err;
+      }
+    },
+  );
+
+  r.post(
+    '/payments/topup',
+    {
+      schema: {
+        tags: ['payments'],
+        summary: 'Start a Paystack checkout to load ride tokens (GHS) into the wallet',
+        security: [{ bearerAuth: [] }],
+        body: topupBodySchema,
+        response: {
+          200: checkoutResponseSchema,
+          401: errorResponseSchema,
+          429: errorResponseSchema,
+          503: errorResponseSchema,
+        },
+      },
+      preHandler: [app.authenticate, app.rateLimit({ ...opts.rateLimit, by: 'user' })],
+    },
+    async (request, reply) => {
+      if (!opts.paymentsService) return reply.code(503).send(UNAVAILABLE);
+      try {
+        return await opts.paymentsService.initializeTopup(request.user!.id, request.body.amountGhs);
+      } catch (err) {
+        if (err instanceof PaymentsNotConfiguredError) return reply.code(503).send(UNAVAILABLE);
         throw err;
       }
     },
@@ -69,7 +95,6 @@ export async function paymentRoutes(
   r.post(
     '/webhooks/paystack',
     {
-      // rawBody (fastify-raw-body) so we can verify the HMAC over exact bytes.
       config: { rawBody: true },
       schema: {
         tags: ['payments'],
@@ -83,11 +108,7 @@ export async function paymentRoutes(
       preHandler: [app.rateLimit({ ...WEBHOOK_RATE_LIMIT, by: 'ip' })],
     },
     async (request, reply) => {
-      if (!opts.paymentsService) {
-        return reply
-          .code(503)
-          .send({ error: 'unavailable', message: 'Payments are not configured' });
-      }
+      if (!opts.paymentsService) return reply.code(503).send(UNAVAILABLE);
       const rawBody = typeof request.rawBody === 'string' ? request.rawBody : '';
       const signature = request.headers['x-paystack-signature'];
       try {
@@ -102,11 +123,7 @@ export async function paymentRoutes(
             .code(401)
             .send({ error: 'unauthorized', message: 'Invalid webhook signature' });
         }
-        if (err instanceof PaymentsNotConfiguredError) {
-          return reply
-            .code(503)
-            .send({ error: 'unavailable', message: 'Payments are not configured' });
-        }
+        if (err instanceof PaymentsNotConfiguredError) return reply.code(503).send(UNAVAILABLE);
         throw err;
       }
     },

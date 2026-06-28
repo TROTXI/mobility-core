@@ -42,3 +42,17 @@ once, at commit (system-design §4.3).
 - The in-memory repo mirrors the shape for tests/dev but the **database enforces**
   the uniqueness + checks (ADR-0009); money paths are validated against real
   Postgres (e2e), not the in-memory stand-in.
+
+## Update — 2026-06-28
+
+Correction to the model: **a subscription is a platform membership fee, not a
+token grant** (the original `subscription_grant` reason, copied from
+system-design §4.1, conflated the two). There are two separate money flows:
+
+- **subscription** payment → activates platform membership; grants **no** tokens.
+- **topup** payment → grants ride tokens (GHS) to the wallet.
+
+Boarding requires **both** an active subscription and sufficient balance
+(system-design §4.3) — two gates, not one. The ledger grant reason is now
+`topup` (migration `008`); `subscription_grant` is removed. The strategy
+`system-design §4.1/§4.2` should be updated to match.

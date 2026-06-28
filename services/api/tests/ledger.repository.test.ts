@@ -7,14 +7,14 @@ describe('InMemoryLedgerRepository', () => {
     const entry = await ledger.append({
       userId: 'u1',
       delta: 250,
-      reason: 'subscription_grant',
+      reason: 'topup',
       refType: 'payment',
       refId: 'pay-1',
       idempotencyKey: 'grant:pay-1',
     });
     expect(entry.id).toBeTruthy();
     expect(entry.delta).toBe(250);
-    expect(entry.reason).toBe('subscription_grant');
+    expect(entry.reason).toBe('topup');
     expect(entry.createdAt).toBeInstanceOf(Date);
   });
 
@@ -23,14 +23,14 @@ describe('InMemoryLedgerRepository', () => {
     const first = await ledger.append({
       userId: 'u1',
       delta: 250,
-      reason: 'subscription_grant',
+      reason: 'topup',
       refType: 'payment',
       idempotencyKey: 'grant:pay-1',
     });
     const again = await ledger.append({
       userId: 'u1',
       delta: 250,
-      reason: 'subscription_grant',
+      reason: 'topup',
       refType: 'payment',
       idempotencyKey: 'grant:pay-1',
     });
@@ -43,7 +43,7 @@ describe('InMemoryLedgerRepository', () => {
     await ledger.append({
       userId: 'u1',
       delta: 250,
-      reason: 'subscription_grant',
+      reason: 'topup',
       refType: 'payment',
       idempotencyKey: 'k1',
     });

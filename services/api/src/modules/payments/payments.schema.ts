@@ -5,11 +5,16 @@ import type { SubscriptionPlan } from '../subscriptions/subscription.repository'
 // from the SubscriptionPlan union.
 const PLANS = ['monthly', 'annual'] as const satisfies readonly SubscriptionPlan[];
 
-export const initializePaymentBodySchema = z.object({
+export const subscribeBodySchema = z.object({
   plan: z.enum(PLANS),
 });
 
-export const initializePaymentResponseSchema = z.object({
+export const topupBodySchema = z.object({
+  /** GHS to load into the wallet (1 token = 1 GHS). */
+  amountGhs: z.number().int().min(1),
+});
+
+export const checkoutResponseSchema = z.object({
   authorizationUrl: z.string(),
   reference: z.string(),
 });
