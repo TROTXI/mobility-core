@@ -37,7 +37,7 @@ import {
 import { PgPaymentRepository } from './modules/payments/payment.repository.pg';
 import { FakePaystackClient, type PaystackClient } from './modules/payments/paystack.client';
 import { PaystackHttpClient } from './modules/payments/paystack.client.live';
-import { PaymentsService, PLAN_PRICES_GHS } from './modules/payments/payments.service';
+import { PaymentsService, SUBSCRIPTION_FEES_GHS } from './modules/payments/payments.service';
 import { InMemoryUserRepository, type UserRepository } from './modules/users/user.repository';
 import { PgUserRepository } from './modules/users/user.repository.pg';
 
@@ -130,7 +130,7 @@ async function main(): Promise<void> {
     ledger,
     subscriptions,
     paystack,
-    planPrices: PLAN_PRICES_GHS,
+    subscriptionFees: SUBSCRIPTION_FEES_GHS,
   });
 
   // Readiness pings every configured backing service (DB + KV).

@@ -24,7 +24,7 @@ describe('GET /me/balance', () => {
     await ledger.append({
       userId: 'rider-1',
       delta: 250,
-      reason: 'subscription_grant',
+      reason: 'topup',
       refType: 'payment',
       idempotencyKey: 'k1',
     });

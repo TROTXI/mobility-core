@@ -1,32 +1,34 @@
-// PaymentsService — initialize a Paystack checkout, and handle the webhook that
-// confirms it. The webhook is the money-in event: on charge.success it GRANTS
-// tokens to the ledger and ACTIVATES the subscription.
+// PaymentsService — two distinct money flows, both via Paystack:
+//   subscription = a membership fee to be on the platform → ACTIVATES the
+//                  subscription on success (grants NO tokens).
+//   topup        = loading GHS into the wallet → GRANTS tokens on success.
+// The webhook (charge.success) branches on the payment's purpose.
 //
 // Not wrapped in one DB transaction by design (system-design §4.2: "idempotent
-// webhooks"): each step is individually idempotent, so a retried/partial webhook
-// converges — the ledger grant is keyed (no double grant), the subscription is
-// guarded by the one-active-per-user index (no double activate), and markPaid
-// only transitions pending → paid. Paystack retries; a nightly reconciliation
-// (future) backstops anything it gives up on.
+// webhooks") — each step is individually idempotent (ledger grant keyed; the
+// one-active-per-user index guards activation; markPaid only does pending→paid),
+// so a retried/partial webhook converges. Paystack retries; reconciliation
+// (future) backstops the rest.
 
 import type { LedgerRepository } from '../ledger/ledger.repository';
 import type {
   SubscriptionPlan,
   SubscriptionRepository,
 } from '../subscriptions/subscription.repository';
-import type { PaymentRepository } from './payment.repository';
+import type { NewPayment, PaymentRepository } from './payment.repository';
 import type { PaystackClient } from './paystack.client';
 
 export class PaymentsNotConfiguredError extends Error {}
 export class InvalidWebhookError extends Error {}
 
 /**
- * Plan prices in GHS (1 token = 1 GHS, so the price is also the token grant).
- * Server-authoritative (security.md §7) — PLACEHOLDERS; set the real numbers here.
+ * Membership fee in GHS to be on the platform — this is NOT ride money (top-ups
+ * fund rides). Server-authoritative (security.md §7). PLACEHOLDERS — set real
+ * values here.
  */
-export const PLAN_PRICES_GHS: Record<SubscriptionPlan, number> = {
-  monthly: 250,
-  annual: 2500,
+export const SUBSCRIPTION_FEES_GHS: Record<SubscriptionPlan, number> = {
+  monthly: 20,
+  annual: 200,
 };
 
 export interface PaymentsServiceDeps {
@@ -35,8 +37,8 @@ export interface PaymentsServiceDeps {
   subscriptions: SubscriptionRepository;
   /** Undefined when payments aren't configured (e.g. prod without a Paystack key). */
   paystack?: PaystackClient;
-  /** Plan → price in GHS (server-authoritative; 1 token = 1 GHS). */
-  planPrices: Record<SubscriptionPlan, number>;
+  /** Plan → membership fee in GHS (server-authoritative). */
+  subscriptionFees: Record<SubscriptionPlan, number>;
 }
 
 function isUniqueViolation(err: unknown): boolean {
@@ -48,25 +50,47 @@ interface PaystackWebhookEvent {
   data?: { reference?: string };
 }
 
+export interface CheckoutResult {
+  authorizationUrl: string;
+  reference: string;
+}
+
 export class PaymentsService {
   constructor(private readonly deps: PaymentsServiceDeps) {}
 
-  /** Create a pending payment and start a Paystack checkout for the plan. */
-  async initialize(
-    userId: string,
-    plan: SubscriptionPlan,
-  ): Promise<{ authorizationUrl: string; reference: string }> {
+  /** Start a checkout for the platform membership fee (activates on success). */
+  async initializeSubscription(userId: string, plan: SubscriptionPlan): Promise<CheckoutResult> {
+    return this.startCheckout({
+      userId,
+      purpose: 'subscription',
+      plan,
+      amount: this.deps.subscriptionFees[plan],
+      currency: 'GHS',
+    });
+  }
+
+  /** Start a checkout to load `amountGhs` of ride tokens into the wallet. */
+  async initializeTopup(userId: string, amountGhs: number): Promise<CheckoutResult> {
+    return this.startCheckout({
+      userId,
+      purpose: 'topup',
+      plan: null,
+      amount: amountGhs,
+      currency: 'GHS',
+    });
+  }
+
+  private async startCheckout(input: Omit<NewPayment, 'reference'>): Promise<CheckoutResult> {
     if (!this.deps.paystack) {
       throw new PaymentsNotConfiguredError('Payments are not configured');
     }
-    const amount = this.deps.planPrices[plan]; // GHS, server-side
     const reference = `trotxi_${crypto.randomUUID()}`;
-    await this.deps.payments.create({ userId, reference, plan, amount, currency: 'GHS' });
+    await this.deps.payments.create({ ...input, reference });
     const result = await this.deps.paystack.initializeTransaction({
       // We don't store email yet; a stable per-user address is fine as Paystack's
       // customer key (follow-up: capture the real email at sign-in).
-      email: `${userId}@users.trotxi.app`,
-      amountPesewas: amount * 100,
+      email: `${input.userId}@users.trotxi.app`,
+      amountPesewas: input.amount * 100,
       reference,
     });
     return { authorizationUrl: result.authorizationUrl, reference };
@@ -89,16 +113,21 @@ export class PaymentsService {
     const payment = await this.deps.payments.findByReference(reference);
     if (!payment) return; // unknown reference — not ours
 
-    // Idempotent steps (order doesn't matter for correctness; each is safe to retry):
-    await this.deps.ledger.append({
-      userId: payment.userId,
-      delta: payment.amount,
-      reason: 'subscription_grant',
-      refType: 'payment',
-      refId: payment.id,
-      idempotencyKey: `grant:${reference}`,
-    });
-    await this.activateSubscription(payment.userId, payment.plan);
+    if (payment.purpose === 'topup') {
+      // Load ride money into the wallet (keyed → no double grant).
+      await this.deps.ledger.append({
+        userId: payment.userId,
+        delta: payment.amount,
+        reason: 'topup',
+        refType: 'payment',
+        refId: payment.id,
+        idempotencyKey: `topup:${reference}`,
+      });
+    } else if (payment.plan) {
+      // Membership fee paid — activate the subscription (no tokens).
+      await this.activateSubscription(payment.userId, payment.plan);
+    }
+
     await this.deps.payments.markPaid(reference);
   }
 

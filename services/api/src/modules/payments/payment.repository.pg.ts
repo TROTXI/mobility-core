@@ -1,12 +1,19 @@
 import type { Pool } from 'pg';
 import type { SubscriptionPlan } from '../subscriptions/subscription.repository';
-import type { NewPayment, Payment, PaymentRepository, PaymentStatus } from './payment.repository';
+import type {
+  NewPayment,
+  Payment,
+  PaymentPurpose,
+  PaymentRepository,
+  PaymentStatus,
+} from './payment.repository';
 
 interface PaymentRow {
   id: string;
   user_id: string;
   reference: string;
-  plan: SubscriptionPlan;
+  purpose: PaymentPurpose;
+  plan: SubscriptionPlan | null;
   amount: number;
   currency: string;
   status: PaymentStatus;
@@ -19,6 +26,7 @@ function toPayment(row: PaymentRow): Payment {
     id: row.id,
     userId: row.user_id,
     reference: row.reference,
+    purpose: row.purpose,
     plan: row.plan,
     amount: row.amount,
     currency: row.currency,
@@ -33,10 +41,10 @@ export class PgPaymentRepository implements PaymentRepository {
 
   async create(input: NewPayment): Promise<Payment> {
     const { rows } = await this.pool.query<PaymentRow>(
-      `INSERT INTO payments (user_id, reference, plan, amount, currency)
-       VALUES ($1, $2, $3, $4, $5)
+      `INSERT INTO payments (user_id, reference, purpose, plan, amount, currency)
+       VALUES ($1, $2, $3, $4, $5, $6)
        RETURNING *`,
-      [input.userId, input.reference, input.plan, input.amount, input.currency],
+      [input.userId, input.reference, input.purpose, input.plan, input.amount, input.currency],
     );
     return toPayment(rows[0]!);
   }

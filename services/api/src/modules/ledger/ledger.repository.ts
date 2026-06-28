@@ -3,7 +3,7 @@
 // a stored column. Writes are exactly-once via idempotency_key, so a retried
 // grant or debit is a no-op rather than a double-spend.
 
-export type LedgerReason = 'subscription_grant' | 'boarding' | 'refund';
+export type LedgerReason = 'topup' | 'boarding' | 'refund';
 export type LedgerRefType = 'payment' | 'boarding';
 
 export interface LedgerEntry {
