@@ -2,9 +2,15 @@
 
 **Owner:** Godfred Awuku · **Last updated:** 2026-06-28
 
-**Status:** ✅ live. Reflects the model as of **#66** (subscription vs. top-up
-separated). The token-debit-on-boarding side is [#20](https://github.com/TROTXI/mobility-core/issues/20)
-(deferred).
+**Status:** ⏸️ **ON HOLD** (as of 2026-06-28). The rider-side money system below
+is built and working; **further money work is paused** until the product team
+defines the **commission model** (how Trotxi charges its cut). See
+[Status & roadmap](#status--roadmap-on-hold).
+
+> ⏸️ **Paused.** Do not start new money features (boarding debit, driver payouts,
+> fee splits) until the commission model is decided — it changes the ledger and
+> payout design. The current build is a safe stopping point: rider-side only,
+> with no real funds processed.
 
 The money system has two **separate** flows — keep them straight:
 
@@ -19,6 +25,59 @@ The money system has two **separate** flows — keep them straight:
 1 token = 1 GHS; amounts are stored and exposed in **pesewas** (1 GHS = 100
 pesewas). Rationale: [ADR-0011](../adr/0011-token-ledger.md); deep design in
 `strategy/system-design.md §4` + `security.md §7`.
+
+---
+
+## Status & roadmap (ON HOLD)
+
+**Paused 2026-06-28**, pending the product team's commission-charging model.
+
+### ✅ Built & working (rider-side)
+
+- **Subscription** = platform membership fee → `POST /payments/subscribe`;
+  Paystack `charge.success` activates the subscription (grants no tokens).
+- **Token wallet** = prepaid balance → `POST /payments/topup` grants tokens;
+  `GET /me/balance` returns it. Append-only `token_ledger`, balance = `SUM(delta)`.
+- **Paystack integration** — checkout init + **signature-verified webhook**
+  (HMAC-SHA512 over the raw body), branching on payment `purpose`.
+- **Money safety** — exactly-once via `idempotency_key`, never mutate a `paid`
+  payment, server-authoritative amounts, fail-safe (idempotent) webhook steps.
+- **Pesewas units** end-to-end (minor units; #68).
+
+### ⏸️ Blocked on the commission decision
+
+The system today handles **rider-side money only**. It does **not** model the
+platform's revenue or the driver's side — both depend on how commissions work:
+
+- **Commissions** — how / where Trotxi takes its cut (undefined).
+- **Driver payouts** — paying drivers their fares, net of commission (unmodeled).
+- **Fare model & revenue split** — and whether the ledger needs driver
+  sub-accounts / commission + payout entries.
+
+**Open questions for product (to unblock):**
+
+1. **Basis** — % of fare, flat per ride, a cut of top-ups, or subscription-only?
+2. **Who bears it** — rider surcharge, driver deduction, or a split?
+3. **Timing** — charged at boarding, at payout, or at top-up?
+4. **Payouts** — how / when do drivers get paid, and how does commission net out?
+5. **Model fit** — does commission ride on the existing wallet/ledger, or need a
+   separate driver ledger + payout flow?
+
+### ⏳ Deferred (later, not all commission-blocked)
+
+- **Boarding debit** (#20) — spending tokens to board (QR/scan). Overlaps the
+  commission decision, so it should wait for it.
+- **Refunds** (`reason: refund` exists in the ledger; no flow yet).
+- **Nightly reconciliation** against Paystack settlement.
+- **SMS receipts** (mNotify; planning-phase, skipped).
+
+### Production posture while paused
+
+- Payments **fail safe**: with no `PAYSTACK_SECRET_KEY`, `/payments/*` return
+  **503** and staging stays up. No real funds are processed.
+- **Go-live is intentionally NOT done** — the live webhook URL and real
+  `SUBSCRIPTION_FEES_PESEWAS` are unset. Resume at [Going live](#going-live-production)
+  once the commission model lands.
 
 ---
 
