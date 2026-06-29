@@ -42,3 +42,15 @@ product under Act 843). Full design: [`docs/design/observability.md`](../design/
   would cost more (ops + Render spend) than the free managed tiers. Revisit only
   if scale makes a paid tier costlier than running our own. (Grafana itself is the
   OSS tool we author our own dashboards in.)
+
+## Update — 2026-06-28 (implemented & live)
+
+Built and live on staging (Phases 0–2): **traces, metrics, and logs all push to
+Grafana Cloud over a single OTLP endpoint** — no Grafana Alloy/scraper. So the
+"scrape config" line above is moot: metrics go over OTLP push too (the only env
+vars needed are `OTEL_EXPORTER_OTLP_ENDPOINT` + `OTEL_EXPORTER_OTLP_HEADERS`).
+The protobuf exporter is used (Grafana's default); `protobufjs`'s build script is
+skipped (works from prebuilt dist). The `/metrics` endpoint + `METRICS_TOKEN`
+remain as a local/debug **pull** path, not the production shipping mechanism.
+Pending: Phase 4 (SLO dashboards + alerts) and Phase 3 (mobile RUM, FE lane). See
+`docs/design/observability.md` §13 for the operating guide.
