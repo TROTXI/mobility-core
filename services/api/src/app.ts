@@ -55,6 +55,14 @@ export interface AppDeps {
   logger?: boolean;
 }
 
+/**
+ * Build the Fastify app — registers OpenAPI docs, metrics, guards, and all
+ * routes. Dependencies are injected so tests pass in-memory implementations and
+ * production wires the real ones.
+ *
+ * @param deps - repositories, services, and config; sensible defaults applied.
+ * @returns the configured Fastify instance (not yet listening).
+ */
 export async function buildApp(deps: AppDeps = {}): Promise<FastifyInstance> {
   const app = Fastify({ logger: deps.logger ?? false });
 

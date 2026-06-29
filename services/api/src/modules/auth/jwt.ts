@@ -30,9 +30,22 @@ const accessPayloadSchema = z.object({
   role: z.enum(USER_ROLES),
 });
 
+/** Signs and verifies short-lived access tokens (HS256). */
 export interface JwtService {
+  /**
+   * Sign an access token.
+   *
+   * @param claims - the user id and role to embed.
+   * @returns the signed JWT string.
+   */
   signAccessToken(claims: AccessTokenClaims): Promise<string>;
-  /** Resolves with the claims, or rejects if the token is invalid/expired. */
+  /**
+   * Verify and decode an access token.
+   *
+   * @param token - the bearer token to verify.
+   * @returns the decoded claims.
+   * @throws if the token is invalid, expired, or carries unexpected claims.
+   */
   verifyAccessToken(token: string): Promise<AccessTokenClaims>;
 }
 
@@ -47,6 +60,12 @@ export const DEV_AUTH_CONFIG: AuthConfig = {
   audience: 'trotxi-api',
 };
 
+/**
+ * Create a {@link JwtService} bound to the given signing config.
+ *
+ * @param config - secret, access-token TTL, issuer and audience.
+ * @returns a service that signs and verifies access tokens.
+ */
 export function createJwtService(config: AuthConfig): JwtService {
   const key = new TextEncoder().encode(config.secret);
   const verifyOptions = { issuer: config.issuer, audience: config.audience };

@@ -57,7 +57,12 @@ export interface PaymentsServiceDeps {
   subscriptionFees: Record<SubscriptionPlan, number>;
 }
 
-/** True when a pg error is a unique-constraint violation (SQLSTATE 23505). */
+/**
+ * True when a pg error is a unique-constraint violation (SQLSTATE 23505).
+ *
+ * @param err - the caught error (unknown shape).
+ * @returns whether it is a Postgres unique-violation.
+ */
 function isUniqueViolation(err: unknown): boolean {
   return (err as { code?: string }).code === '23505';
 }

@@ -24,6 +24,16 @@ import {
 // Strict per-IP limit for the credential endpoints (brute-force / abuse guard).
 const AUTH_RATE_LIMIT = { max: 10, windowSeconds: 60 } as const;
 
+/**
+ * Register the auth routes: `GET /me`, `POST /auth/google`, `POST /auth/refresh`,
+ * `POST /auth/logout`.
+ *
+ * @param app - the Fastify instance to register on.
+ * @param opts - route dependencies.
+ * @param opts.users - the user repository (for `GET /me`).
+ * @param opts.authService - the AuthService (routes 503 when absent).
+ * @param opts.rateLimit - rate-limit config for the credential endpoints.
+ */
 export async function authRoutes(
   app: FastifyInstance,
   opts: { users?: UserRepository; authService?: AuthService; rateLimit: RateLimitConfig },

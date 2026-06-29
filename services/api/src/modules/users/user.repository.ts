@@ -5,6 +5,7 @@
 export const USER_ROLES = ['commuter', 'driver', 'admin'] as const;
 export type UserRole = (typeof USER_ROLES)[number];
 
+/** A platform user (commuter, driver, or admin). */
 export interface User {
   id: string;
   displayName: string;
@@ -14,17 +15,33 @@ export interface User {
   createdAt: Date;
 }
 
+/** Fields needed to create a user; the rest default or are server-set. */
 export interface NewUser {
   displayName: string;
   phone?: string | null;
+  /** Defaults to `commuter` when omitted. */
   role?: UserRole;
 }
 
+/** Persistence for users. Backed by Postgres in prod, in-memory in dev/tests. */
 export interface UserRepository {
+  /**
+   * Create a user.
+   *
+   * @param input - the user to create.
+   * @returns the persisted user, with generated id and defaults applied.
+   */
   create(input: NewUser): Promise<User>;
+  /**
+   * Look up a user by id.
+   *
+   * @param id - the user id.
+   * @returns the user, or null if not found.
+   */
   findById(id: string): Promise<User | null>;
 }
 
+/** In-memory {@link UserRepository} for dev and unit tests. */
 export class InMemoryUserRepository implements UserRepository {
   private readonly users = new Map<string, User>();
 

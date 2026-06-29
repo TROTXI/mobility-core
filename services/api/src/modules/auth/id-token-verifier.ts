@@ -16,8 +16,15 @@ export interface VerifiedIdentity {
   displayName: string | null;
 }
 
+/** Verifies a provider ID token and extracts the trusted identity. */
 export interface IdTokenVerifier {
-  /** Resolve the identity, or reject if the token is invalid/untrusted. */
+  /**
+   * Verify a provider ID token.
+   *
+   * @param idToken - the provider-issued ID token to verify.
+   * @returns the trusted identity extracted from it.
+   * @throws if the token is invalid or untrusted.
+   */
   verify(idToken: string): Promise<VerifiedIdentity>;
 }
 

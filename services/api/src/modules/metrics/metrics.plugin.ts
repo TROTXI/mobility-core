@@ -11,6 +11,7 @@ import type { FastifyReply, FastifyRequest } from 'fastify';
 import fp from 'fastify-plugin';
 import { collectDefaultMetrics, Histogram, Registry } from 'prom-client';
 
+/** Controls how the `/metrics` endpoint is exposed and protected. */
 export interface MetricsOptions {
   /** When set, GET /metrics requires `Authorization: Bearer <token>`. */
   token?: string;

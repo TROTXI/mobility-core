@@ -14,36 +14,63 @@ import type { SessionRepository } from './session.repository';
 import { generateRefreshToken, hashToken } from './tokens';
 import type { User, UserRepository } from '../users/user.repository';
 
+/** Thrown when sign-in is attempted but no verifier is configured (prod without GOOGLE_CLIENT_ID). Routes map it to 503. */
 export class SignInNotConfiguredError extends Error {}
+
+/** Thrown when a refresh/logout token is missing, expired, or revoked. Routes map it to 401. */
 export class InvalidRefreshTokenError extends Error {}
 
+/** An access token (short-lived) paired with a refresh token (long-lived). */
 export interface AuthTokens {
   accessToken: string;
   refreshToken: string;
 }
 
+/** A successful sign-in: the user plus their fresh token pair. */
 export interface AuthResult extends AuthTokens {
   user: User;
 }
 
+/** Collaborators for {@link AuthService}, injected at app wiring (app.ts). */
 export interface AuthServiceDeps {
+  /** User records. */
   users: UserRepository;
+  /** Links a provider identity (e.g. Google) to a user. */
   authIdentities: AuthIdentityRepository;
+  /** Refresh-token sessions (hashed, rotated, revocable). */
   sessions: SessionRepository;
+  /** Signs/verifies access tokens. */
   jwt: JwtService;
   /** Undefined when sign-in isn't configured (e.g. prod without GOOGLE_CLIENT_ID). */
   verifier?: IdTokenVerifier;
+  /** Refresh-token lifetime in days. */
   refreshTtlDays: number;
 }
 
+/**
+ * True when a pg error is a unique-constraint violation (SQLSTATE 23505).
+ *
+ * @param err - the caught error (unknown shape).
+ * @returns whether it is a Postgres unique-violation.
+ */
 function isUniqueViolation(err: unknown): boolean {
   return (err as { code?: string }).code === '23505';
 }
 
+/** Sign-in, refresh, and logout orchestration (see the file header). */
 export class AuthService {
+  /** @param deps - repositories, the JWT service, and the ID-token verifier. */
   constructor(private readonly deps: AuthServiceDeps) {}
 
-  /** Verify a provider ID token, find-or-create the user, and issue tokens. */
+  /**
+   * Verify a provider ID token, find-or-create the matching user, and issue a
+   * fresh access + refresh token pair.
+   *
+   * @param idToken - the provider ID token from the client.
+   * @returns the user and their new tokens.
+   * @throws SignInNotConfiguredError when no verifier is wired.
+   * @throws when the ID token is invalid/untrusted (from the verifier).
+   */
   async signIn(idToken: string): Promise<AuthResult> {
     if (!this.deps.verifier) {
       throw new SignInNotConfiguredError('Sign-in is not configured');
@@ -54,7 +81,14 @@ export class AuthService {
     return { user, ...tokens };
   }
 
-  /** Rotate a valid refresh token: revoke the old session, issue a new pair. */
+  /**
+   * Rotate a valid refresh token: revoke the presented session and issue a new
+   * token pair (single-use refresh tokens).
+   *
+   * @param refreshToken - the raw refresh token presented by the client.
+   * @returns a new access + refresh token pair.
+   * @throws InvalidRefreshTokenError if the token is unknown, revoked, or expired.
+   */
   async refresh(refreshToken: string): Promise<AuthTokens> {
     const session = await this.deps.sessions.findByHash(hashToken(refreshToken));
     if (!session || session.revokedAt !== null || session.expiresAt <= new Date()) {
@@ -68,7 +102,12 @@ export class AuthService {
     return this.issueTokens(user, session.id);
   }
 
-  /** Revoke the session for a refresh token. Idempotent — unknown tokens no-op. */
+  /**
+   * Revoke the session behind a refresh token. Idempotent — an unknown or
+   * already-revoked token is a no-op.
+   *
+   * @param refreshToken - the raw refresh token to invalidate.
+   */
   async logout(refreshToken: string): Promise<void> {
     const session = await this.deps.sessions.findByHash(hashToken(refreshToken));
     if (session && session.revokedAt === null) {
@@ -76,6 +115,13 @@ export class AuthService {
     }
   }
 
+  /**
+   * Create a session and mint the access + refresh token pair for a user.
+   *
+   * @param user - the authenticated user.
+   * @param rotatedFrom - the prior session id when this is a refresh rotation.
+   * @returns the new token pair.
+   */
   private async issueTokens(user: User, rotatedFrom?: string): Promise<AuthTokens> {
     const refresh = generateRefreshToken(this.deps.refreshTtlDays);
     await this.deps.sessions.create({
@@ -88,6 +134,14 @@ export class AuthService {
     return { accessToken, refreshToken: refresh.token };
   }
 
+  /**
+   * Resolve the user for a verified identity, creating the user + auth_identity
+   * on first sign-in. Handles the concurrent-first-sign-in race by reusing the
+   * winner's identity.
+   *
+   * @param identity - the verified provider identity.
+   * @returns the existing or newly created user.
+   */
   private async findOrCreateUser(identity: VerifiedIdentity): Promise<User> {
     const existing = await this.deps.authIdentities.findByProvider(
       identity.provider,
