@@ -35,3 +35,10 @@ product under Act 843). Full design: [`docs/design/observability.md`](../design/
   (Grafana Agent) authenticate with `Authorization: Bearer <METRICS_TOKEN>`.
 - Remaining for Phase 1: a Grafana Cloud account + scrape config + dashboards and
   the first alerts (external account setup, like Google/Paystack).
+- **In-house dashboards / a self-hosted stack stay a deferred, open option** — we
+  own the data via OTel/Prometheus, so no lock-in. Managed free tiers are chosen
+  now because a dashboard is the easy part; the storage/query/alerting (and, for
+  mobile, the crash SDK + symbolication) is the costly 90%, and self-hosting it
+  would cost more (ops + Render spend) than the free managed tiers. Revisit only
+  if scale makes a paid tier costlier than running our own. (Grafana itself is the
+  OSS tool we author our own dashboards in.)

@@ -216,6 +216,26 @@ only for DB, Paystack, and cloud hosting — no paid observability tooling.
   A paid APM (Datadog/New Relic) stays a deliberate, later choice only if scale
   demands it.
 
+### Why managed free tiers, not an in-house stack (yet)
+
+A dashboard is the easy ~10%; the costly ~90% is what sits under it — a
+**time-series DB** (ingest/retain/query), a **query engine** (compute p95s over
+millions of points), a **24/7 alerting engine**, and, for mobile, a **crash SDK +
+symbolication**. "Build our own dashboards" still needs all of that first.
+
+- **Grafana is the in-house dashboard tool** — open-source; we author our _own_
+  custom dashboards in it. Grafana Cloud is just **free managed hosting** of it +
+  the storage. So this _is_ "our dashboards", minus running the database.
+- **Firebase** is the genuinely hard-to-replace piece (on-device crash SDK +
+  symbolication + frame/RUM collection) — not a dashboard.
+- **Self-hosting now would cost _more_:** eng-weeks + ongoing ops + actual Render
+  hosting spend — which breaks the free-tier + small-team constraints.
+- **No lock-in (the key):** because we standardise on **OpenTelemetry + the
+  Prometheus format**, the data is ours. A self-hosted stack — or a custom
+  **admin/status dashboard in the Trotxi app** — can later point at the _same_
+  data with no re-instrumentation. **Deferred option, kept open**, to revisit only
+  if scale makes a paid tier costlier than running our own.
+
 ---
 
 ## 10. Privacy & security
