@@ -25,6 +25,9 @@ const envSchema = z
     // Rate limiting (fixed window). Tunable without a code change.
     RATE_LIMIT_MAX: z.coerce.number().int().positive().default(100),
     RATE_LIMIT_WINDOW_SECONDS: z.coerce.number().int().positive().default(60),
+    // Protects GET /metrics — the scraper sends `Authorization: Bearer <token>`.
+    // Unset -> /metrics is open in non-prod, disabled (404) in production.
+    METRICS_TOKEN: z.string().optional(),
   })
   .superRefine((env, ctx) => {
     if (env.NODE_ENV === 'production' && !env.JWT_SECRET) {

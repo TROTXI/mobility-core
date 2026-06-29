@@ -237,13 +237,13 @@ A money app — telemetry must not become a leak:
 
 ## 11. Rollout (phased, cheapest value first)
 
-| Phase                              | Scope                                                                                                                                     | Outcome                                                          |
-| ---------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------- |
-| **0 — Foundation** _(mostly done)_ | structured logs, `/health` + `/ready`, `request_id` correlation                                                                           | clean, correlatable logs today                                   |
-| **1 — Backend metrics**            | `prom-client` `/metrics` (RED + runtime: memory, event-loop lag) → Grafana Cloud; first dashboards + 2–3 alerts (error rate, p95, memory) | latency + memory + reliability visible (satisfies #28's RED ask) |
-| **2 — Tracing**                    | OTel auto-instrumentation (Fastify/pg/ioredis/Paystack); trace↔log correlation; sampling                                                  | debug slow requests end-to-end                                   |
-| **3 — Mobile RUM**                 | Firebase Crashlytics + Performance in both apps; custom traces (sign-in, top-up, board); crash-free SLO                                   | responsiveness + reliability from real devices                   |
-| **4 — SLOs & alerting**            | formalise SLO dashboards + burn-rate alerts + runbooks                                                                                    | budget-driven, low-noise alerting                                |
+| Phase                                    | Scope                                                                                                                                                                                             | Outcome                                                          |
+| ---------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------- |
+| **0 — Foundation** _(mostly done)_       | structured logs, `/health` + `/ready`, `request_id` correlation                                                                                                                                   | clean, correlatable logs today                                   |
+| **1 — Backend metrics** 🟡 _in progress_ | `/metrics` endpoint **done** (`prom-client`: RED histogram + runtime memory/event-loop lag, token-gated); **remaining:** Grafana Cloud scrape + dashboards + 2–3 alerts (error rate, p95, memory) | latency + memory + reliability visible (satisfies #28's RED ask) |
+| **2 — Tracing**                          | OTel auto-instrumentation (Fastify/pg/ioredis/Paystack); trace↔log correlation; sampling                                                                                                          | debug slow requests end-to-end                                   |
+| **3 — Mobile RUM**                       | Firebase Crashlytics + Performance in both apps; custom traces (sign-in, top-up, board); crash-free SLO                                                                                           | responsiveness + reliability from real devices                   |
+| **4 — SLOs & alerting**                  | formalise SLO dashboards + burn-rate alerts + runbooks                                                                                                                                            | budget-driven, low-noise alerting                                |
 
 Phase 1 is the immediate next step and the smallest useful slice.
 
