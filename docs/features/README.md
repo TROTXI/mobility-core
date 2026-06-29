@@ -16,13 +16,13 @@ repo (`system-design.md`, `security.md`). Each doc links to both.
 
 ## Index
 
-| Feature                                                                       | Doc                                              | Status  |
-| ----------------------------------------------------------------------------- | ------------------------------------------------ | ------- |
-| Authentication — access tokens, route guard, sign-in/refresh/logout           | [authentication.md](authentication.md)           | ✅ live |
-| Wallet & payments — token ledger, balance, subscriptions & top-ups (Paystack) | [payments-and-wallet.md](payments-and-wallet.md) | ✅ live |
-| Mobility — routes, stops, browse                                              | _(in review — #57)_                              | 🚧      |
-| Rate limiting (#23)                                                           | [rate-limiting.md](rate-limiting.md)             | ✅ live |
-| Observability (RED metrics)                                                   | _(not started — #28)_                            | ❌      |
+| Feature                                                                       | Doc                                              | Status      |
+| ----------------------------------------------------------------------------- | ------------------------------------------------ | ----------- |
+| Authentication — access tokens, route guard, sign-in/refresh/logout           | [authentication.md](authentication.md)           | ✅ live     |
+| Wallet & payments — token ledger, balance, subscriptions & top-ups (Paystack) | [payments-and-wallet.md](payments-and-wallet.md) | ✅ live     |
+| Mobility — routes, stops, browse                                              | _(in review — #57)_                              | 🚧          |
+| Rate limiting (#23)                                                           | [rate-limiting.md](rate-limiting.md)             | ✅ live     |
+| Observability & performance (#28)                                             | [design](../design/observability.md)             | 🟡 proposed |
 
 ## Conventions for a feature doc
 
