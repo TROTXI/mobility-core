@@ -11,6 +11,7 @@ import { z } from 'zod';
 import { InMemoryKvStore, type KvStore } from './kv/kv.store';
 import { ledgerRoutes } from './modules/ledger/ledger.routes';
 import type { LedgerRepository } from './modules/ledger/ledger.repository';
+import { metricsPlugin, type MetricsOptions } from './modules/metrics/metrics.plugin';
 import { paymentRoutes } from './modules/payments/payments.routes';
 import type { PaymentsService } from './modules/payments/payments.service';
 import { authPlugin } from './modules/auth/auth.plugin';
@@ -49,6 +50,8 @@ export interface AppDeps {
   paymentsService?: PaymentsService;
   /** Rate-limit thresholds (from env). Defaults applied when unset. */
   rateLimit?: RateLimitConfig;
+  /** Prometheus /metrics exposure. Defaults to unprotected (dev/tests). */
+  metrics?: Partial<MetricsOptions>;
   logger?: boolean;
 }
 
@@ -90,6 +93,12 @@ export async function buildApp(deps: AppDeps = {}): Promise<FastifyInstance> {
     transform: jsonSchemaTransform,
   });
   await app.register(fastifySwaggerUi, { routePrefix: '/docs' });
+
+  // Metrics early so its onResponse hook observes every route (RED + runtime).
+  await app.register(metricsPlugin, {
+    token: deps.metrics?.token,
+    allowUnprotected: deps.metrics?.allowUnprotected ?? true,
+  });
 
   // Guards first (decorators on the root instance), then routes that use them.
   const kv = deps.kv ?? new InMemoryKvStore();

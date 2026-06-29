@@ -95,8 +95,8 @@ a dashboard we can jump to the exact trace and its logs.
 
 ## 4. Backend (Fastify API)
 
-Build on what already exists: **pino structured logging** and the `/health` +
-`/ready` endpoints (the latter already pings DB + KV).
+Build on what already exists: **pino structured logging** and the `/healthz` +
+`/readyz` endpoints (the latter already pings DB + KV).
 
 - **Metrics** — expose `GET /metrics` (Prometheus format via `prom-client`):
   - RED histograms per route+method+status (`http_request_duration_seconds`).
@@ -110,7 +110,7 @@ Build on what already exists: **pino structured logging** and the `/health` +
 - **Logs** — pino → JSON to stdout (Render captures) and/or shipped to Loki.
   Inject `trace_id`/`request_id` into every line. **No request bodies on
   `/auth/*` or `/payments/*`.**
-- **Health** — keep `/health` (liveness) and `/ready` (readiness); Render and an
+- **Health** — keep `/healthz` (liveness) and `/readyz` (readiness); Render and an
   external uptime check both probe them.
 
 `/metrics` must not be public — bind it to an internal path/token (it leaks
@@ -140,7 +140,7 @@ The device view is essential: server p95 can be 200ms while a user on a weak
 ## 6. Infrastructure & dependencies
 
 - **Render:** built-in CPU/memory/instance metrics + deploy events; an external
-  uptime monitor (e.g. Better Stack / UptimeRobot free) hits `/health` so we
+  uptime monitor (e.g. Better Stack / UptimeRobot free) hits `/healthz` so we
   catch a fully-down instance Render might not alert on.
 - **Postgres:** connection-pool saturation, slow queries (`pg_stat_statements`),
   error rate — surfaced via the API's DB spans + Render's DB metrics.
@@ -216,6 +216,26 @@ only for DB, Paystack, and cloud hosting — no paid observability tooling.
   A paid APM (Datadog/New Relic) stays a deliberate, later choice only if scale
   demands it.
 
+### Why managed free tiers, not an in-house stack (yet)
+
+A dashboard is the easy ~10%; the costly ~90% is what sits under it — a
+**time-series DB** (ingest/retain/query), a **query engine** (compute p95s over
+millions of points), a **24/7 alerting engine**, and, for mobile, a **crash SDK +
+symbolication**. "Build our own dashboards" still needs all of that first.
+
+- **Grafana is the in-house dashboard tool** — open-source; we author our _own_
+  custom dashboards in it. Grafana Cloud is just **free managed hosting** of it +
+  the storage. So this _is_ "our dashboards", minus running the database.
+- **Firebase** is the genuinely hard-to-replace piece (on-device crash SDK +
+  symbolication + frame/RUM collection) — not a dashboard.
+- **Self-hosting now would cost _more_:** eng-weeks + ongoing ops + actual Render
+  hosting spend — which breaks the free-tier + small-team constraints.
+- **No lock-in (the key):** because we standardise on **OpenTelemetry + the
+  Prometheus format**, the data is ours. A self-hosted stack — or a custom
+  **admin/status dashboard in the Trotxi app** — can later point at the _same_
+  data with no re-instrumentation. **Deferred option, kept open**, to revisit only
+  if scale makes a paid tier costlier than running our own.
+
 ---
 
 ## 10. Privacy & security
@@ -237,13 +257,13 @@ A money app — telemetry must not become a leak:
 
 ## 11. Rollout (phased, cheapest value first)
 
-| Phase                              | Scope                                                                                                                                     | Outcome                                                          |
-| ---------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------- |
-| **0 — Foundation** _(mostly done)_ | structured logs, `/health` + `/ready`, `request_id` correlation                                                                           | clean, correlatable logs today                                   |
-| **1 — Backend metrics**            | `prom-client` `/metrics` (RED + runtime: memory, event-loop lag) → Grafana Cloud; first dashboards + 2–3 alerts (error rate, p95, memory) | latency + memory + reliability visible (satisfies #28's RED ask) |
-| **2 — Tracing**                    | OTel auto-instrumentation (Fastify/pg/ioredis/Paystack); trace↔log correlation; sampling                                                  | debug slow requests end-to-end                                   |
-| **3 — Mobile RUM**                 | Firebase Crashlytics + Performance in both apps; custom traces (sign-in, top-up, board); crash-free SLO                                   | responsiveness + reliability from real devices                   |
-| **4 — SLOs & alerting**            | formalise SLO dashboards + burn-rate alerts + runbooks                                                                                    | budget-driven, low-noise alerting                                |
+| Phase                                    | Scope                                                                                                                                                                                             | Outcome                                                          |
+| ---------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------- |
+| **0 — Foundation** _(mostly done)_       | structured logs, `/health` + `/ready`, `request_id` correlation                                                                                                                                   | clean, correlatable logs today                                   |
+| **1 — Backend metrics** 🟡 _in progress_ | `/metrics` endpoint **done** (`prom-client`: RED histogram + runtime memory/event-loop lag, token-gated); **remaining:** Grafana Cloud scrape + dashboards + 2–3 alerts (error rate, p95, memory) | latency + memory + reliability visible (satisfies #28's RED ask) |
+| **2 — Tracing**                          | OTel auto-instrumentation (Fastify/pg/ioredis/Paystack); trace↔log correlation; sampling                                                                                                          | debug slow requests end-to-end                                   |
+| **3 — Mobile RUM**                       | Firebase Crashlytics + Performance in both apps; custom traces (sign-in, top-up, board); crash-free SLO                                                                                           | responsiveness + reliability from real devices                   |
+| **4 — SLOs & alerting**                  | formalise SLO dashboards + burn-rate alerts + runbooks                                                                                                                                            | budget-driven, low-noise alerting                                |
 
 Phase 1 is the immediate next step and the smallest useful slice.
 

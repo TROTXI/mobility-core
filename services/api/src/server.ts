@@ -160,6 +160,8 @@ async function main(): Promise<void> {
     isReady,
     auth,
     rateLimit,
+    // /metrics: protected by a token when set; disabled in prod when unset.
+    metrics: { token: env.METRICS_TOKEN, allowUnprotected: env.NODE_ENV !== 'production' },
     logger: true,
   });
 
