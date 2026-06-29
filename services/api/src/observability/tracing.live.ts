@@ -1,20 +1,26 @@
-// OpenTelemetry tracing bootstrap (Phase 2, docs/design/observability.md, #28).
+// OpenTelemetry telemetry bootstrap (Phases 1+2, docs/design/observability.md, #28).
 // Auto-instruments HTTP, Fastify, Postgres (pg) and Redis (ioredis) and pushes
-// spans to an OTLP endpoint (Grafana Cloud Tempo) over OTLP/HTTP (protobuf —
-// Grafana Cloud's default, so its generated OTEL_* config works as a copy-paste).
+// both TRACES (→ Tempo) and METRICS (→ Prometheus/Mimir) to an OTLP endpoint
+// (Grafana Cloud) over OTLP/HTTP protobuf — Grafana's default, so its generated
+// OTEL_* config works as a copy-paste. Metrics = HTTP RED (from the http/fastify
+// instrumentation) + Node runtime (event loop, GC, heap) via runtime-node. The
+// prom-client `/metrics` endpoint stays for local pull; Grafana gets the push.
 //
 // GATED: a no-op unless OTEL_EXPORTER_OTLP_ENDPOINT is set, so dev/tests stay
 // zero-infra. It must load BEFORE the libraries it instruments, so production
-// runs it via `node --import ./dist/tracing.live.js` (see package.json `start`);
-// importing it from server.ts also triggers it as a fallback. `*.live.ts` is
-// excluded from unit coverage (it needs a real collector to verify).
+// runs it via `node --import ./dist/observability/tracing.live.js` (package.json
+// `start`); importing it from server.ts also triggers it as a fallback.
+// `*.live.ts` is excluded from unit coverage (it needs a real collector to verify).
 
+import { OTLPMetricExporter } from '@opentelemetry/exporter-metrics-otlp-proto';
 import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-proto';
 import { FastifyInstrumentation } from '@opentelemetry/instrumentation-fastify';
 import { HttpInstrumentation } from '@opentelemetry/instrumentation-http';
 import { IORedisInstrumentation } from '@opentelemetry/instrumentation-ioredis';
 import { PgInstrumentation } from '@opentelemetry/instrumentation-pg';
+import { RuntimeNodeInstrumentation } from '@opentelemetry/instrumentation-runtime-node';
 import { resourceFromAttributes } from '@opentelemetry/resources';
+import { PeriodicExportingMetricReader } from '@opentelemetry/sdk-metrics';
 import { NodeSDK } from '@opentelemetry/sdk-node';
 import { ATTR_SERVICE_NAME, ATTR_SERVICE_VERSION } from '@opentelemetry/semantic-conventions';
 
@@ -34,15 +40,17 @@ export function startTracing(): void {
       [ATTR_SERVICE_VERSION]: process.env['GIT_SHA'] ?? 'dev',
     }),
     traceExporter: new OTLPTraceExporter(),
+    metricReader: new PeriodicExportingMetricReader({ exporter: new OTLPMetricExporter() }),
     instrumentations: [
       new HttpInstrumentation(),
       new FastifyInstrumentation(),
       new PgInstrumentation(),
       new IORedisInstrumentation(),
+      new RuntimeNodeInstrumentation(), // Node runtime metrics: event loop, GC, heap
     ],
   });
   sdk.start();
-  console.log('OpenTelemetry tracing started (OTLP).');
+  console.log('OpenTelemetry traces + metrics started (OTLP).');
 }
 
 export async function stopTracing(): Promise<void> {
