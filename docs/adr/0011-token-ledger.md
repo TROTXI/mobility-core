@@ -56,3 +56,16 @@ Boarding requires **both** an active subscription and sufficient balance
 (system-design §4.3) — two gates, not one. The ledger grant reason is now
 `topup` (migration `008`); `subscription_grant` is removed. The strategy
 `system-design §4.1/§4.2` should be updated to match.
+
+## Update — 2026-06-28 (units + on hold)
+
+- **Units:** amounts are stored and handled in **pesewas** (minor units;
+  1 GHS = 100 pesewas), matching Paystack — integers only, no sub-cedi precision
+  loss (#68). "1 token = 1 GHS" still holds at the GHS level; the client formats
+  GHS for display.
+- **On hold:** further money work is **paused** pending the product team's
+  **commission model** (how Trotxi charges its cut). The current build is
+  rider-side only (subscription + token wallet); commissions, driver payouts, and
+  the boarding debit (#20) are blocked on that decision because it shapes the
+  ledger and payout design. Full status:
+  `docs/features/payments-and-wallet.md` → "Status & roadmap (ON HOLD)".

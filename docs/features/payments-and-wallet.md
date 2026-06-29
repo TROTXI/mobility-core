@@ -2,9 +2,15 @@
 
 **Owner:** Godfred Awuku · **Last updated:** 2026-06-28
 
-**Status:** ✅ live. Reflects the model as of **#66** (subscription vs. top-up
-separated). The token-debit-on-boarding side is [#20](https://github.com/TROTXI/mobility-core/issues/20)
-(deferred).
+**Status:** ⏸️ **ON HOLD** (as of 2026-06-28). The rider-side money system below
+is built and working; **further money work is paused** until the product team
+defines the **commission model** (how Trotxi charges its cut). See
+[Status & roadmap](#status--roadmap-on-hold).
+
+> ⏸️ **Paused.** Do not start new money features (boarding debit, driver payouts,
+> fee splits) until the commission model is decided — it changes the ledger and
+> payout design. The current build is a safe stopping point: rider-side only,
+> with no real funds processed.
 
 The money system has two **separate** flows — keep them straight:
 
@@ -16,8 +22,62 @@ The money system has two **separate** flows — keep them straight:
 | Spent by   | (gates boarding)                                     | Boarding debits the fare (#20)             |
 
 **Boarding requires _both_** — an active subscription **and** enough balance.
-1 token = 1 GHS. Rationale: [ADR-0011](../adr/0011-token-ledger.md); deep design
-in `strategy/system-design.md §4` + `security.md §7`.
+1 token = 1 GHS; amounts are stored and exposed in **pesewas** (1 GHS = 100
+pesewas). Rationale: [ADR-0011](../adr/0011-token-ledger.md); deep design in
+`strategy/system-design.md §4` + `security.md §7`.
+
+---
+
+## Status & roadmap (ON HOLD)
+
+**Paused 2026-06-28**, pending the product team's commission-charging model.
+
+### ✅ Built & working (rider-side)
+
+- **Subscription** = platform membership fee → `POST /payments/subscribe`;
+  Paystack `charge.success` activates the subscription (grants no tokens).
+- **Token wallet** = prepaid balance → `POST /payments/topup` grants tokens;
+  `GET /me/balance` returns it. Append-only `token_ledger`, balance = `SUM(delta)`.
+- **Paystack integration** — checkout init + **signature-verified webhook**
+  (HMAC-SHA512 over the raw body), branching on payment `purpose`.
+- **Money safety** — exactly-once via `idempotency_key`, never mutate a `paid`
+  payment, server-authoritative amounts, fail-safe (idempotent) webhook steps.
+- **Pesewas units** end-to-end (minor units; #68).
+
+### ⏸️ Blocked on the commission decision
+
+The system today handles **rider-side money only**. It does **not** model the
+platform's revenue or the driver's side — both depend on how commissions work:
+
+- **Commissions** — how / where Trotxi takes its cut (undefined).
+- **Driver payouts** — paying drivers their fares, net of commission (unmodeled).
+- **Fare model & revenue split** — and whether the ledger needs driver
+  sub-accounts / commission + payout entries.
+
+**Open questions for product (to unblock):**
+
+1. **Basis** — % of fare, flat per ride, a cut of top-ups, or subscription-only?
+2. **Who bears it** — rider surcharge, driver deduction, or a split?
+3. **Timing** — charged at boarding, at payout, or at top-up?
+4. **Payouts** — how / when do drivers get paid, and how does commission net out?
+5. **Model fit** — does commission ride on the existing wallet/ledger, or need a
+   separate driver ledger + payout flow?
+
+### ⏳ Deferred (later, not all commission-blocked)
+
+- **Boarding debit** (#20) — spending tokens to board (QR/scan). Overlaps the
+  commission decision, so it should wait for it.
+- **Refunds** (`reason: refund` exists in the ledger; no flow yet).
+- **Nightly reconciliation** against Paystack settlement.
+- **SMS receipts** (mNotify; planning-phase, skipped).
+
+### Production posture while paused
+
+- Payments **fail safe**: with no `PAYSTACK_SECRET_KEY`, `/payments/*` return
+  **503** and staging stays up. No real funds are processed.
+- **Go-live is intentionally NOT done** — the live webhook URL and real
+  `SUBSCRIPTION_FEES_PESEWAS` are unset. Resume at [Going live](#going-live-production)
+  once the commission model lands.
 
 ---
 
@@ -33,6 +93,9 @@ in `strategy/system-design.md §4` + `security.md §7`.
   `paid`**. `reference` is unique (ours and Paystack's) and dedupes webhooks.
 - **Server-authoritative amounts** — the fare and the membership fee come from
   the server, never from the client.
+- **Money unit: pesewas (minor units).** Every amount (`delta`, `amount`,
+  balances, API fields) is an integer in pesewas — `1 GHS = 100 pesewas`, matching
+  Paystack. Never floats. The app converts to/from GHS at the display edge.
 
 ---
 
@@ -41,16 +104,17 @@ in `strategy/system-design.md §4` + `security.md §7`.
 `token_ledger(id, user_id, delta, reason, ref_type, ref_id, idempotency_key
 unique, created_at)`.
 
-- `delta` is GHS-denominated (`+50` top-up, `-3` fare).
+- `delta` is in **pesewas** (`+5000` = GHS 50 top-up, `-300` = GHS 3 fare).
 - `reason` ∈ `topup` | `boarding` | `refund`. `ref_type` ∈ `payment` | `boarding`.
 - **Balance** = `SUM(delta)` for the user (0 when empty).
 
 ### `GET /me/balance`
 
-The authenticated rider's GHS balance (the home screen, app #35).
+The authenticated rider's wallet balance in pesewas (the home screen, app #35;
+the app formats GHS).
 
 - **Auth:** `Bearer`. **Rate limit:** per user.
-- **200:** `{ "balanceGhs": 240 }` · **401** no/invalid token.
+- **200:** `{ "balancePesewas": 24000 }` (= GHS 240) · **401** no/invalid token.
 
 ---
 
@@ -90,10 +154,10 @@ Start a checkout for the platform **membership fee**.
 
 #### `POST /payments/topup`
 
-Start a checkout to **load ride tokens** (GHS) into the wallet.
+Start a checkout to **load ride tokens** (pesewas) into the wallet.
 
 - **Auth:** `Bearer`. **Rate limit:** per user.
-- **Body:** `{ "amountGhs": 50 }` (integer ≥ 1)
+- **Body:** `{ "amountPesewas": 5000 }` (integer ≥ 100, i.e. GHS 1; = GHS 50 here)
 - **200:** `{ "authorizationUrl": "...", "reference": "..." }` · **401** · **429** · **503**
 
 #### `POST /webhooks/paystack`
@@ -130,8 +194,8 @@ payment.
 
 Other server-side config (in `payments.service.ts`):
 
-- `SUBSCRIPTION_FEES_GHS` — the membership fee per plan (**placeholders** —
-  set real values).
+- `SUBSCRIPTION_FEES_PESEWAS` — the membership fee per plan, in pesewas
+  (**placeholders** — set real values).
 
 > The `sk_...` secret key is the **backend's**. The mobile app uses the
 > **`pk_...` public** key in the Paystack SDK.
@@ -162,9 +226,9 @@ webhooks with a known dev secret (`fake-paystack-secret`):
 B=http://localhost:3000
 AT=...   # an access token (see authentication.md)
 
-# top up 40 GHS
+# top up GHS 40 (4000 pesewas)
 REF=$(curl -s $B/payments/topup -H "authorization: Bearer $AT" \
-  -H 'content-type: application/json' -d '{"amountGhs":40}' | jq -r .reference)
+  -H 'content-type: application/json' -d '{"amountPesewas":4000}' | jq -r .reference)
 
 # simulate the webhook (sign the exact body with the dev secret)
 BODY="{\"event\":\"charge.success\",\"data\":{\"reference\":\"$REF\"}}"
@@ -172,7 +236,7 @@ SIG=$(node -e "const c=require('crypto');process.stdout.write(c.createHmac('sha5
 curl -s $B/webhooks/paystack -H 'content-type: application/json' \
   -H "x-paystack-signature: $SIG" -d "$BODY"
 
-curl -s $B/me/balance -H "authorization: Bearer $AT"   # → { "balanceGhs": 40 }
+curl -s $B/me/balance -H "authorization: Bearer $AT"   # → { "balancePesewas": 4000 }
 ```
 
 A `subscribe` payment, by contrast, leaves the balance unchanged and activates
@@ -182,7 +246,7 @@ the subscription.
 
 1. Set `PAYSTACK_SECRET_KEY` (the `sk_live_...`) in the Render dashboard.
 2. Register the webhook URL in the Paystack dashboard → `https://…/webhooks/paystack`.
-3. Set the real `SUBSCRIPTION_FEES_GHS`.
+3. Set the real `SUBSCRIPTION_FEES_PESEWAS`.
 
 ## Where the code lives
 

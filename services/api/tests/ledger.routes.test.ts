@@ -40,7 +40,7 @@ describe('GET /me/balance', () => {
 
     const res = await app.inject({ method: 'GET', url: '/me/balance', headers: bearer(token) });
     expect(res.statusCode).toBe(200);
-    expect(res.json()).toEqual({ balanceGhs: 240 });
+    expect(res.json()).toEqual({ balancePesewas: 240 });
   });
 
   it('returns 0 when no ledger is wired', async () => {
@@ -48,6 +48,6 @@ describe('GET /me/balance', () => {
     const token = await jwt.signAccessToken({ userId: 'rider-x', role: 'commuter' });
     const res = await app.inject({ method: 'GET', url: '/me/balance', headers: bearer(token) });
     expect(res.statusCode).toBe(200);
-    expect(res.json()).toEqual({ balanceGhs: 0 });
+    expect(res.json()).toEqual({ balancePesewas: 0 });
   });
 });

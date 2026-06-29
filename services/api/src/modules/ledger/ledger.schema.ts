@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
 export const balanceResponseSchema = z.object({
-  /** Remaining GHS value of the rider's tokens (1 token = 1 GHS). */
-  balanceGhs: z.number().int(),
+  /** Remaining wallet balance in pesewas (1 GHS = 100 pesewas). */
+  balancePesewas: z.number().int(),
 });

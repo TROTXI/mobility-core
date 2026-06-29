@@ -13,7 +13,7 @@ import {
 } from '../src/modules/subscriptions/subscription.repository';
 
 const FAKE_SECRET = 'fake-paystack-secret';
-const subscriptionFees = { monthly: 20, annual: 200 };
+const subscriptionFees = { monthly: 2000, annual: 20000 }; // pesewas (GHS 20 / 200)
 
 function make(subscriptions: SubscriptionRepository = new InMemorySubscriptionRepository()) {
   const payments = new InMemoryPaymentRepository();
@@ -41,18 +41,18 @@ describe('PaymentsService.initialize*', () => {
     expect(await payments.findByReference(reference)).toMatchObject({
       purpose: 'subscription',
       plan: 'monthly',
-      amount: 20,
+      amount: 2000,
       status: 'pending',
     });
   });
 
   it('topup: pending payment with no plan and the chosen amount', async () => {
     const { service, payments } = make();
-    const { reference } = await service.initializeTopup('u1', 50);
+    const { reference } = await service.initializeTopup('u1', 5000);
     expect(await payments.findByReference(reference)).toMatchObject({
       purpose: 'topup',
       plan: null,
-      amount: 50,
+      amount: 5000,
       status: 'pending',
     });
   });
@@ -64,7 +64,7 @@ describe('PaymentsService.initialize*', () => {
       subscriptions: new InMemorySubscriptionRepository(),
       subscriptionFees,
     });
-    await expect(service.initializeTopup('u1', 50)).rejects.toBeInstanceOf(
+    await expect(service.initializeTopup('u1', 5000)).rejects.toBeInstanceOf(
       PaymentsNotConfiguredError,
     );
   });
@@ -90,30 +90,30 @@ describe('PaymentsService.handleWebhook', () => {
 
   it('topup paid: grants tokens and does NOT activate a subscription', async () => {
     const { service, ledger, subscriptions, payments } = make();
-    const { reference } = await service.initializeTopup('u1', 50);
+    const { reference } = await service.initializeTopup('u1', 5000);
     const { body, signature } = chargeSuccess(reference);
 
     await service.handleWebhook(body, signature);
 
-    expect(await ledger.balanceOf('u1')).toBe(50);
+    expect(await ledger.balanceOf('u1')).toBe(5000);
     expect(await subscriptions.findActiveByUser('u1')).toBeNull();
     expect((await payments.findByReference(reference))?.status).toBe('paid');
   });
 
   it('topup is idempotent — replay does not double-grant', async () => {
     const { service, ledger } = make();
-    const { reference } = await service.initializeTopup('u1', 50);
+    const { reference } = await service.initializeTopup('u1', 5000);
     const { body, signature } = chargeSuccess(reference);
 
     await service.handleWebhook(body, signature);
     await service.handleWebhook(body, signature);
 
-    expect(await ledger.balanceOf('u1')).toBe(50);
+    expect(await ledger.balanceOf('u1')).toBe(5000);
   });
 
   it('ignores non charge.success events and unknown references', async () => {
     const { service, ledger } = make();
-    const { reference } = await service.initializeTopup('u1', 50);
+    const { reference } = await service.initializeTopup('u1', 5000);
 
     const failed = JSON.stringify({ event: 'charge.failed', data: { reference } });
     await service.handleWebhook(failed, paystackSignature(failed, FAKE_SECRET));

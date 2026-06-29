@@ -1,6 +1,6 @@
-// Wallet routes. GET /me/balance exposes the rider's derived GHS balance (the
-// home screen, app #35). Read-only here; grants come from payments (#21b),
-// debits from boarding (#20).
+// Wallet routes. GET /me/balance exposes the rider's derived balance in pesewas
+// (the home screen, app #35; the client formats GHS). Read-only here; grants come
+// from payments (#21b), debits from boarding (#20).
 
 import type { FastifyInstance } from 'fastify';
 import type { ZodTypeProvider } from 'fastify-type-provider-zod';
@@ -18,7 +18,7 @@ export async function ledgerRoutes(
     {
       schema: {
         tags: ['wallet'],
-        summary: 'Get the authenticated rider GHS token balance',
+        summary: 'Get the authenticated rider token balance (pesewas)',
         security: [{ bearerAuth: [] }],
         response: {
           200: balanceResponseSchema,
@@ -28,8 +28,8 @@ export async function ledgerRoutes(
       preHandler: [app.authenticate, app.rateLimit({ ...opts.rateLimit, by: 'user' })],
     },
     async (request) => {
-      const balanceGhs = opts.ledger ? await opts.ledger.balanceOf(request.user!.id) : 0;
-      return { balanceGhs };
+      const balancePesewas = opts.ledger ? await opts.ledger.balanceOf(request.user!.id) : 0;
+      return { balancePesewas };
     },
   );
 }
