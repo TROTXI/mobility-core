@@ -9,6 +9,14 @@ import type { RateLimitConfig } from '../ratelimit/ratelimit.plugin';
 import type { LedgerRepository } from './ledger.repository';
 import { balanceResponseSchema } from './ledger.schema';
 
+/**
+ * Register the wallet routes (`GET /me/balance`).
+ *
+ * @param app - the Fastify instance to register on.
+ * @param opts - route dependencies.
+ * @param opts.ledger - the token-ledger repository (derived balance reads).
+ * @param opts.rateLimit - per-user rate-limit config.
+ */
 export async function ledgerRoutes(
   app: FastifyInstance,
   opts: { ledger?: LedgerRepository; rateLimit: RateLimitConfig },

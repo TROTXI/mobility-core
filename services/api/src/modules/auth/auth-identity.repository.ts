@@ -4,25 +4,44 @@
 
 import type { AuthProvider } from './id-token-verifier';
 
+/** Links a provider account (provider + subject id) to a Trotxi user. */
 export interface AuthIdentity {
   id: string;
   userId: string;
   provider: AuthProvider;
+  /** The provider's stable subject id. */
   providerId: string;
   createdAt: Date;
 }
 
+/** Fields needed to link a new provider identity to a user. */
 export interface NewAuthIdentity {
   userId: string;
   provider: AuthProvider;
   providerId: string;
 }
 
+/** Persistence for provider-identity links; `(provider, providerId)` is unique. */
 export interface AuthIdentityRepository {
+  /**
+   * Find the identity for a provider account.
+   *
+   * @param provider - the auth provider (e.g. `google`).
+   * @param providerId - the provider's subject id.
+   * @returns the linked identity, or null if this account is new.
+   */
   findByProvider(provider: AuthProvider, providerId: string): Promise<AuthIdentity | null>;
+  /**
+   * Link a provider identity to a user.
+   *
+   * @param input - the user id, provider, and provider subject id.
+   * @returns the persisted identity.
+   * @throws on a unique-violation if the identity already exists (race).
+   */
   create(input: NewAuthIdentity): Promise<AuthIdentity>;
 }
 
+/** In-memory {@link AuthIdentityRepository} for dev and unit tests. */
 export class InMemoryAuthIdentityRepository implements AuthIdentityRepository {
   private readonly identities = new Map<string, AuthIdentity>();
 

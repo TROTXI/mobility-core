@@ -46,6 +46,13 @@ const envSchema = z
 
 export type Env = z.infer<typeof envSchema>;
 
+/**
+ * Parse and validate environment variables, applying defaults.
+ *
+ * @param source - the raw env map to read (defaults to `process.env`).
+ * @returns the validated, typed config.
+ * @throws Error if the environment fails validation (e.g. missing prod secrets).
+ */
 export function loadEnv(source: Record<string, string | undefined> = process.env): Env {
   const parsed = envSchema.safeParse(source);
   if (!parsed.success) {

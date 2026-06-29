@@ -21,7 +21,16 @@ import type {
 import type { NewPayment, PaymentRepository } from './payment.repository';
 import type { PaystackClient } from './paystack.client';
 
+/**
+ * Thrown when a payments operation is attempted but no Paystack client is wired
+ * (e.g. production without `PAYSTACK_SECRET_KEY`). Routes map it to HTTP 503.
+ */
 export class PaymentsNotConfiguredError extends Error {}
+
+/**
+ * Thrown when an incoming Paystack webhook fails signature verification. Routes
+ * map it to HTTP 401.
+ */
 export class InvalidWebhookError extends Error {}
 
 /**
@@ -34,9 +43,13 @@ export const SUBSCRIPTION_FEES_PESEWAS: Record<SubscriptionPlan, number> = {
   annual: 20000, // GHS 200
 };
 
+/** Collaborators for {@link PaymentsService}, injected at app wiring (app.ts). */
 export interface PaymentsServiceDeps {
+  /** Persists payment records (the pending → paid|failed state machine). */
   payments: PaymentRepository;
+  /** The token wallet — credited on a successful top-up. */
   ledger: LedgerRepository;
+  /** Platform memberships — activated on a successful subscription payment. */
   subscriptions: SubscriptionRepository;
   /** Undefined when payments aren't configured (e.g. prod without a Paystack key). */
   paystack?: PaystackClient;
@@ -44,24 +57,50 @@ export interface PaymentsServiceDeps {
   subscriptionFees: Record<SubscriptionPlan, number>;
 }
 
+/**
+ * True when a pg error is a unique-constraint violation (SQLSTATE 23505).
+ *
+ * @param err - the caught error (unknown shape).
+ * @returns whether it is a Postgres unique-violation.
+ */
 function isUniqueViolation(err: unknown): boolean {
   return (err as { code?: string }).code === '23505';
 }
 
+/** The subset of Paystack's webhook payload we read. */
 interface PaystackWebhookEvent {
   event?: string;
   data?: { reference?: string };
 }
 
+/** What initiating a checkout returns to the caller (and the route). */
 export interface CheckoutResult {
+  /** Paystack hosted-checkout URL to redirect the user to. */
   authorizationUrl: string;
+  /** Our unique payment reference, echoed back by the webhook for reconciliation. */
   reference: string;
 }
 
+/**
+ * Orchestrates the two money-in flows — subscription membership fees and wallet
+ * top-ups — on top of Paystack: it initiates checkouts and processes the
+ * `charge.success` webhook that confirms them. See the file header for the
+ * idempotency model.
+ */
 export class PaymentsService {
+  /** @param deps - repositories, the Paystack client, and the fee table. */
   constructor(private readonly deps: PaymentsServiceDeps) {}
 
-  /** Start a checkout for the platform membership fee (activates on success). */
+  /**
+   * Start a Paystack checkout for the platform membership fee. Records a
+   * `pending` payment and returns a hosted checkout URL; the subscription is
+   * activated later, by {@link handleWebhook} on `charge.success` — not here.
+   *
+   * @param userId - the authenticated user subscribing.
+   * @param plan - membership tier (`monthly` | `annual`); selects the fee.
+   * @returns the Paystack `authorizationUrl` and our payment `reference`.
+   * @throws PaymentsNotConfiguredError when no Paystack client is wired.
+   */
   async initializeSubscription(userId: string, plan: SubscriptionPlan): Promise<CheckoutResult> {
     return this.startCheckout({
       userId,
@@ -72,7 +111,15 @@ export class PaymentsService {
     });
   }
 
-  /** Start a checkout to load `amountPesewas` of ride tokens into the wallet. */
+  /**
+   * Start a Paystack checkout to load ride tokens into the wallet. Records a
+   * `pending` top-up; tokens are granted later by {@link handleWebhook}.
+   *
+   * @param userId - the authenticated user topping up.
+   * @param amountPesewas - amount to load, in pesewas (1 GHS = 100 pesewas).
+   * @returns the Paystack `authorizationUrl` and our payment `reference`.
+   * @throws PaymentsNotConfiguredError when no Paystack client is wired.
+   */
   async initializeTopup(userId: string, amountPesewas: number): Promise<CheckoutResult> {
     return this.startCheckout({
       userId,
@@ -83,6 +130,14 @@ export class PaymentsService {
     });
   }
 
+  /**
+   * Shared checkout path: persist a pending payment and open a Paystack
+   * transaction for it.
+   *
+   * @param input - the new payment minus its `reference` (generated here).
+   * @returns the checkout URL and the generated reference.
+   * @throws PaymentsNotConfiguredError when no Paystack client is wired.
+   */
   private async startCheckout(input: Omit<NewPayment, 'reference'>): Promise<CheckoutResult> {
     if (!this.deps.paystack) {
       throw new PaymentsNotConfiguredError('Payments are not configured');
@@ -99,7 +154,17 @@ export class PaymentsService {
     return { authorizationUrl: result.authorizationUrl, reference };
   }
 
-  /** Verify + process a Paystack webhook. Idempotent; safe to replay. */
+  /**
+   * Verify and process a Paystack webhook. On a valid `charge.success`: a
+   * top-up credits the ledger; a subscription activates membership. Idempotent
+   * and safe to replay (keyed ledger grant, guarded activation, pending→paid
+   * markPaid); unknown references and non-`charge.success` events are ignored.
+   *
+   * @param rawBody - the exact raw request body (required for the HMAC check).
+   * @param signature - the `x-paystack-signature` header, if present.
+   * @throws PaymentsNotConfiguredError when no Paystack client is wired.
+   * @throws InvalidWebhookError when the signature doesn't verify.
+   */
   async handleWebhook(rawBody: string, signature: string | undefined): Promise<void> {
     if (!this.deps.paystack) {
       throw new PaymentsNotConfiguredError('Payments are not configured');
@@ -134,6 +199,13 @@ export class PaymentsService {
     await this.deps.payments.markPaid(reference);
   }
 
+  /**
+   * Create the user's active subscription, treating the one-active-per-user
+   * unique-violation as success (so a replayed webhook is a no-op).
+   *
+   * @param userId - the subscriber.
+   * @param plan - the membership tier to activate.
+   */
   private async activateSubscription(userId: string, plan: SubscriptionPlan): Promise<void> {
     try {
       await this.deps.subscriptions.create({ userId, plan });

@@ -24,6 +24,15 @@ import {
 // Webhooks come from Paystack's IPs, not users — a generous per-IP cap is enough.
 const WEBHOOK_RATE_LIMIT = { max: 60, windowSeconds: 60 } as const;
 
+/**
+ * Register the payment routes: `POST /payments/subscribe`, `POST /payments/topup`,
+ * and `POST /webhooks/paystack`.
+ *
+ * @param app - the Fastify instance to register on.
+ * @param opts - route dependencies.
+ * @param opts.paymentsService - the payments orchestrator (routes 503 when absent).
+ * @param opts.rateLimit - rate-limit config (applied per user).
+ */
 export async function paymentRoutes(
   app: FastifyInstance,
   opts: { paymentsService?: PaymentsService; rateLimit: RateLimitConfig },
