@@ -1,6 +1,6 @@
 # Observability & performance design
 
-**Owner:** Godfred Awuku · **Date:** 2026-06-28 · **Status:** 🟡 proposed (#28)
+**Owner:** Godfred Awuku · **Date:** 2026-06-28 · **Status:** 🟡 proposed (#28) — tooling **decided: free-tier only**
 
 How we measure and protect the **latency, memory, responsiveness, and
 reliability** of every part of Trotxi — the Fastify API, its dependencies
@@ -30,6 +30,9 @@ targets_, and _in what order_ — keeping cost near-zero for the pilot.
 - A full SRE on-call rotation (it's the CTO until the team grows).
 - Self-hosting a metrics stack (managed free tiers beat ops toil at our size).
 - Business analytics / funnels (that's product analytics, a separate concern).
+- **Paying for observability tooling.** Free tiers only. We pay for **DB,
+  Paystack, and cloud hosting** — nothing else. If a tool nears a paid threshold,
+  we revisit rather than auto-upgrade.
 
 ---
 
@@ -188,7 +191,7 @@ links to the dashboard and a one-line runbook ("what this means / first check").
 
 ---
 
-## 9. Tooling — recommendation
+## 9. Tooling — decided (free-tier only)
 
 Optimised for **$0 at pilot scale**, standard SDKs, and a clean upgrade path.
 
@@ -200,12 +203,18 @@ Optimised for **$0 at pilot scale**, standard SDKs, and a clean upgrade path.
 | Error tracking (optional)   | **Sentry** (FE + BE)                           | unifies error grouping + release health both ends; good free tier                                    | rely on Crashlytics (mobile) + logs/Grafana (backend) to save a tool                    |
 | Uptime                      | **Better Stack / UptimeRobot** free            | independent external probe of `/health`                                                              | Grafana Synthetic Monitoring                                                            |
 
-**Core recommendation: OTel → Grafana Cloud (backend) + Firebase (mobile).** That
-covers all four signals across both ends for free. Add Sentry only if we want a
-single pane for errors+releases.
+**Decided (2026-06-28): free-tier only — OTel → Grafana Cloud (backend) +
+Firebase (mobile).** Covers all four signals across both ends at **$0**. We pay
+only for DB, Paystack, and cloud hosting — no paid observability tooling.
 
-> **Decision needed (CTO):** confirm the cost posture (free-tier stack vs. paying
-> for a unified APM like Datadog later) and whether we adopt Sentry now or defer.
+- **Grafana Cloud** managed free tier (not self-hosted) — avoids running extra
+  paid services on Render.
+- **Sentry deferred** — Crashlytics (mobile) + Grafana/logs (backend) already
+  cover errors; revisit only if a real gap appears (it, too, has a free tier).
+- **Cost guardrail:** stay inside free limits via **sampling + short retention**;
+  if usage nears a paid threshold, **alert and revisit — never auto-upgrade**.
+  A paid APM (Datadog/New Relic) stays a deliberate, later choice only if scale
+  demands it.
 
 ---
 
