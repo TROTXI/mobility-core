@@ -28,6 +28,11 @@ const envSchema = z
     // Protects GET /metrics — the scraper sends `Authorization: Bearer <token>`.
     // Unset -> /metrics is open in non-prod, disabled (404) in production.
     METRICS_TOKEN: z.string().optional(),
+    // OpenTelemetry tracing (Phase 2). Set the OTLP endpoint to enable; the SDK
+    // reads these directly (tracing.live.ts). Unset -> tracing disabled.
+    OTEL_EXPORTER_OTLP_ENDPOINT: z.string().optional(),
+    OTEL_EXPORTER_OTLP_HEADERS: z.string().optional(), // e.g. "Authorization=Basic <base64>"
+    OTEL_SERVICE_NAME: z.string().optional(),
   })
   .superRefine((env, ctx) => {
     if (env.NODE_ENV === 'production' && !env.JWT_SECRET) {

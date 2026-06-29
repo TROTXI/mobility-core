@@ -40,6 +40,20 @@ services:
       # /auth/google returns 503.
       - key: GOOGLE_CLIENT_ID
         sync: false
+      # Observability (#28). Set in the dashboard when Grafana Cloud is wired up.
+      # METRICS_TOKEN gates GET /metrics (scraper sends it as a bearer token);
+      # unset -> /metrics is disabled (404) in production.
+      - key: METRICS_TOKEN
+        sync: false
+      # OpenTelemetry tracing → Grafana Cloud (Tempo) via OTLP/HTTP. Unset ->
+      # tracing disabled. OTEL_EXPORTER_OTLP_HEADERS carries the Grafana auth,
+      # e.g. "Authorization=Basic <base64 instanceID:token>".
+      - key: OTEL_EXPORTER_OTLP_ENDPOINT
+        sync: false
+      - key: OTEL_EXPORTER_OTLP_HEADERS
+        sync: false
+      - key: OTEL_SERVICE_NAME
+        value: trotxi-api
 
   # ---- Production (uncomment when going live) ----
   # Needs a paid Postgres plan so data doesn't expire. After applying, set the

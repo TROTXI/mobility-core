@@ -7,3 +7,6 @@ packages:
 allowBuilds:
   '@openapitools/openapi-generator-cli': true
   esbuild: true
+  # protobufjs (via the OTLP protobuf exporter) works at runtime from its
+  # prebuilt dist; its postinstall build script is not needed.
+  protobufjs: false
