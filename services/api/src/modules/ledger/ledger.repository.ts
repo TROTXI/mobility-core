@@ -1,4 +1,4 @@
-// Token ledger — the rider's GHS wallet (system-design §4.1, ADR-0011).
+// Token ledger — the rider's wallet, in pesewas (system-design §4.1, ADR-0011).
 // Append-only: every entry is immutable; the balance is the SUM of deltas, never
 // a stored column. Writes are exactly-once via idempotency_key, so a retried
 // grant or debit is a no-op rather than a double-spend.
@@ -9,7 +9,7 @@ export type LedgerRefType = 'payment' | 'boarding';
 export interface LedgerEntry {
   id: string;
   userId: string;
-  /** GHS-denominated: positive for grants, negative for spends. */
+  /** Pesewas-denominated (1 GHS = 100 pesewas): + for grants, − for spends. */
   delta: number;
   reason: LedgerReason;
   refType: LedgerRefType;

@@ -1,8 +1,11 @@
 // PaymentsService — two distinct money flows, both via Paystack:
 //   subscription = a membership fee to be on the platform → ACTIVATES the
 //                  subscription on success (grants NO tokens).
-//   topup        = loading GHS into the wallet → GRANTS tokens on success.
+//   topup        = loading pesewas into the wallet → GRANTS tokens on success.
 // The webhook (charge.success) branches on the payment's purpose.
+//
+// Money unit: PESEWAS everywhere (1 GHS = 100 pesewas), matching Paystack — the
+// client converts to/from GHS for display. Integers only; never floats.
 //
 // Not wrapped in one DB transaction by design (system-design §4.2: "idempotent
 // webhooks") — each step is individually idempotent (ledger grant keyed; the
@@ -22,13 +25,13 @@ export class PaymentsNotConfiguredError extends Error {}
 export class InvalidWebhookError extends Error {}
 
 /**
- * Membership fee in GHS to be on the platform — this is NOT ride money (top-ups
- * fund rides). Server-authoritative (security.md §7). PLACEHOLDERS — set real
- * values here.
+ * Membership fee in PESEWAS to be on the platform — this is NOT ride money
+ * (top-ups fund rides). Server-authoritative (security.md §7). PLACEHOLDERS —
+ * set real values here.
  */
-export const SUBSCRIPTION_FEES_GHS: Record<SubscriptionPlan, number> = {
-  monthly: 20,
-  annual: 200,
+export const SUBSCRIPTION_FEES_PESEWAS: Record<SubscriptionPlan, number> = {
+  monthly: 2000, // GHS 20
+  annual: 20000, // GHS 200
 };
 
 export interface PaymentsServiceDeps {
@@ -37,7 +40,7 @@ export interface PaymentsServiceDeps {
   subscriptions: SubscriptionRepository;
   /** Undefined when payments aren't configured (e.g. prod without a Paystack key). */
   paystack?: PaystackClient;
-  /** Plan → membership fee in GHS (server-authoritative). */
+  /** Plan → membership fee in pesewas (server-authoritative). */
   subscriptionFees: Record<SubscriptionPlan, number>;
 }
 
@@ -69,13 +72,13 @@ export class PaymentsService {
     });
   }
 
-  /** Start a checkout to load `amountGhs` of ride tokens into the wallet. */
-  async initializeTopup(userId: string, amountGhs: number): Promise<CheckoutResult> {
+  /** Start a checkout to load `amountPesewas` of ride tokens into the wallet. */
+  async initializeTopup(userId: string, amountPesewas: number): Promise<CheckoutResult> {
     return this.startCheckout({
       userId,
       purpose: 'topup',
       plan: null,
-      amount: amountGhs,
+      amount: amountPesewas,
       currency: 'GHS',
     });
   }
@@ -90,7 +93,7 @@ export class PaymentsService {
       // We don't store email yet; a stable per-user address is fine as Paystack's
       // customer key (follow-up: capture the real email at sign-in).
       email: `${input.userId}@users.trotxi.app`,
-      amountPesewas: input.amount * 100,
+      amountPesewas: input.amount, // amounts are already stored in pesewas
       reference,
     });
     return { authorizationUrl: result.authorizationUrl, reference };
