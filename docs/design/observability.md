@@ -95,8 +95,8 @@ a dashboard we can jump to the exact trace and its logs.
 
 ## 4. Backend (Fastify API)
 
-Build on what already exists: **pino structured logging** and the `/health` +
-`/ready` endpoints (the latter already pings DB + KV).
+Build on what already exists: **pino structured logging** and the `/healthz` +
+`/readyz` endpoints (the latter already pings DB + KV).
 
 - **Metrics** — expose `GET /metrics` (Prometheus format via `prom-client`):
   - RED histograms per route+method+status (`http_request_duration_seconds`).
@@ -110,7 +110,7 @@ Build on what already exists: **pino structured logging** and the `/health` +
 - **Logs** — pino → JSON to stdout (Render captures) and/or shipped to Loki.
   Inject `trace_id`/`request_id` into every line. **No request bodies on
   `/auth/*` or `/payments/*`.**
-- **Health** — keep `/health` (liveness) and `/ready` (readiness); Render and an
+- **Health** — keep `/healthz` (liveness) and `/readyz` (readiness); Render and an
   external uptime check both probe them.
 
 `/metrics` must not be public — bind it to an internal path/token (it leaks
@@ -140,7 +140,7 @@ The device view is essential: server p95 can be 200ms while a user on a weak
 ## 6. Infrastructure & dependencies
 
 - **Render:** built-in CPU/memory/instance metrics + deploy events; an external
-  uptime monitor (e.g. Better Stack / UptimeRobot free) hits `/health` so we
+  uptime monitor (e.g. Better Stack / UptimeRobot free) hits `/healthz` so we
   catch a fully-down instance Render might not alert on.
 - **Postgres:** connection-pool saturation, slow queries (`pg_stat_statements`),
   error rate — surfaced via the API's DB spans + Render's DB metrics.
