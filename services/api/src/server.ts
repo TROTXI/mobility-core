@@ -1,3 +1,6 @@
+// Tracing first — must load before the libs it instruments (prod also runs it
+// via `node --import ./dist/tracing.live.js`; this import is the dev fallback).
+import { stopTracing } from './observability/tracing.live';
 import type { Pool } from 'pg';
 import { buildApp } from './app';
 import { loadDotenv } from './config/dotenv';
@@ -170,6 +173,7 @@ async function main(): Promise<void> {
     await app.close();
     await pool?.end();
     await kv.close();
+    await stopTracing();
     process.exit(0);
   };
   process.on('SIGINT', () => void shutdown('SIGINT'));

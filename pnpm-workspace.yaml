@@ -7,3 +7,6 @@ packages:
 allowBuilds:
   '@openapitools/openapi-generator-cli': true
   esbuild: true
+  # We use the OTLP/HTTP (JSON) trace exporter, never protobuf — its build
+  # script is not needed.
+  protobufjs: false
