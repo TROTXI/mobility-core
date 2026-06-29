@@ -2,7 +2,6 @@ import 'package:dio/dio.dart';
 import 'package:trotxi_api_client/trotxi_api_client.dart';
 
 // ── Exceptions ────────────────────────────────────────────────────────────────
-
 class TrotxiException implements Exception {
   final String message;
   const TrotxiException(this.message);

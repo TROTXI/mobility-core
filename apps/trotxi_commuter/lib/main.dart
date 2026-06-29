@@ -1,31 +1,33 @@
 import 'package:flutter/material.dart';
 import 'package:trotxi_commuter/core/config/theme/app_theme.dart';
+import 'package:trotxi_client/trotxi_client.dart';
 
-
-
-const _apiBaseUrl = String.fromEnvironment(
-  'API_BASE_URL',
-);
+const _apiBaseUrl = String.fromEnvironment('API_BASE_URL');
 
 void main() {
-  runApp(const TrotxiCommuterApp());
+  final client = TrotxiClientFactory.create(baseUrl: _apiBaseUrl);
+  runApp(TrotxiCommuterApp(client: client));
 }
 
 class TrotxiCommuterApp extends StatelessWidget {
-  const TrotxiCommuterApp({super.key});
+  const TrotxiCommuterApp({super.key, required this.client});
+
+  final TrotxiApiClient client;
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Trotxi Commuter',
       theme: AppTheme.lightTheme,
-      home: const _PlaceholderHome(),
+      home: _PlaceholderHome(client: client),
     );
   }
 }
 
 class _PlaceholderHome extends StatelessWidget {
-  const _PlaceholderHome();
+  const _PlaceholderHome({super.key, required this.client});
+
+  final TrotxiApiClient client;
 
   @override
   Widget build(BuildContext context) {
@@ -41,7 +43,7 @@ class _PlaceholderHome extends StatelessWidget {
             const Icon(Icons.directions_bus_outlined, size: 64),
             const SizedBox(height: 16),
             Text(
-              'Commuter App',
+              'Driver App',
               style: Theme.of(context).textTheme.headlineMedium,
             ),
             const SizedBox(height: 8),

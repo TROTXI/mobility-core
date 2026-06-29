@@ -280,7 +280,7 @@ packages:
     source: path
     version: "1.0.0"
   trotxi_client:
-    dependency: "direct dev"
+    dependency: "direct main"
     description:
       path: "../trotxi_client"
       relative: true
