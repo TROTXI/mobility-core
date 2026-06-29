@@ -14,11 +14,11 @@ export default tseslint.config(
     },
   },
   // Docstrings on the public API surface — TSDoc style (describe meaning; types
-  // are TypeScript's job, so no `@param {type}`). WARN for now while modules are
-  // documented; flip to `error` (+ `--max-warnings 0`) to make a missing or
-  // incomplete docstring fail CI. Impl/integration files (*.pg, *.redis, *.live,
-  // *.google), zod schemas, the entrypoint and db scripts are exempt — they
-  // implement an already-documented interface or are wiring.
+  // are TypeScript's job, so no `@param {type}`). ENFORCED: a missing or
+  // incomplete public-API docstring is an error and fails CI (`pnpm lint`).
+  // Impl/integration files (*.pg, *.redis, *.live, *.google), zod schemas, the
+  // entrypoint and db scripts are exempt — they implement an already-documented
+  // interface or are wiring.
   {
     files: ['src/**/*.ts'],
     ignores: [
@@ -34,7 +34,7 @@ export default tseslint.config(
     settings: { jsdoc: { mode: 'typescript' } },
     rules: {
       'jsdoc/require-jsdoc': [
-        'warn',
+        'error',
         {
           publicOnly: true,
           require: {
@@ -49,12 +49,12 @@ export default tseslint.config(
           exemptEmptyConstructors: true,
         },
       ],
-      'jsdoc/require-param': 'warn',
-      'jsdoc/require-param-description': 'warn',
-      'jsdoc/require-returns': 'warn',
-      'jsdoc/require-returns-description': 'warn',
-      'jsdoc/check-param-names': 'warn',
-      'jsdoc/check-alignment': 'warn',
+      'jsdoc/require-param': 'error',
+      'jsdoc/require-param-description': 'error',
+      'jsdoc/require-returns': 'error',
+      'jsdoc/require-returns-description': 'error',
+      'jsdoc/check-param-names': 'error',
+      'jsdoc/check-alignment': 'error',
     },
   },
 );
