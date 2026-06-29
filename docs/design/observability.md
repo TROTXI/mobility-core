@@ -79,7 +79,7 @@ flowchart LR
 
   CA -->|crashes + RUM| FB["Firebase\nCrashlytics + Performance"]
   DA -->|crashes + RUM| FB
-  API -->|"OTLP push: traces + metrics"| GC["Grafana Cloud\n(Mimir · Tempo · Loki)"]
+  API -->|"OTLP push: traces + metrics + logs"| GC["Grafana Cloud\n(Mimir · Tempo · Loki)"]
 
   FB --> DASH["Dashboards + Alerts"]
   GC --> DASH
@@ -109,9 +109,11 @@ Build on what already exists: **pino structured logging** and the `/healthz` +
 - **Traces** — OTel SDK auto-instruments Fastify/pg/ioredis/http; spans for
   `request → query → Paystack`. Head sampling (e.g. 10–20%), but keep **100% of
   errors**.
-- **Logs** — pino → JSON to stdout (Render captures) and/or shipped to Loki.
-  Inject `trace_id`/`request_id` into every line. **No request bodies on
-  `/auth/*` or `/payments/*`.**
+- **Logs** — pino JSON to stdout (Render captures) **and shipped to Loki via
+  OTLP**; `trace_id`/`span_id` are injected into every line (pino instrumentation)
+  so logs ↔ traces correlate in Grafana. Fastify's default serializers log no
+  request bodies or headers, so nothing sensitive (auth tokens, `/payments/*`
+  bodies) reaches the log pipeline.
 - **Health** — keep `/healthz` (liveness) and `/readyz` (readiness); Render and an
   external uptime check both probe them.
 
@@ -259,13 +261,13 @@ A money app — telemetry must not become a leak:
 
 ## 11. Rollout (phased, cheapest value first)
 
-| Phase                              | Scope                                                                                                                                                                                                                                      | Outcome                                                          |
-| ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------- |
-| **0 — Foundation** _(mostly done)_ | structured logs, `/health` + `/ready`, `request_id` correlation                                                                                                                                                                            | clean, correlatable logs today                                   |
-| **1 — Backend metrics** ✅         | `/metrics` endpoint (`prom-client`, local) **+ metrics pushed via OTLP** (HTTP RED + Node runtime: event loop, GC, heap) — no scraper/agent needed. **Remaining:** dashboards + 2–3 alerts (error rate, p95, memory)                       | latency + memory + reliability visible (satisfies #28's RED ask) |
-| **2 — Tracing** ✅                 | OTel SDK + auto-instrumentation (HTTP/Fastify/pg/ioredis) → traces **and** metrics pushed via OTLP (gated by `OTEL_EXPORTER_OTLP_ENDPOINT`). **Remaining (polish):** trace↔log correlation (inject `trace_id` into pino) + sampling tuning | debug slow requests end-to-end                                   |
-| **3 — Mobile RUM**                 | Firebase Crashlytics + Performance in both apps; custom traces (sign-in, top-up, board); crash-free SLO                                                                                                                                    | responsiveness + reliability from real devices                   |
-| **4 — SLOs & alerting**            | formalise SLO dashboards + burn-rate alerts + runbooks                                                                                                                                                                                     | budget-driven, low-noise alerting                                |
+| Phase                              | Scope                                                                                                                                                                                                                                                                                              | Outcome                                                          |
+| ---------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------- |
+| **0 — Foundation** _(mostly done)_ | structured logs, `/health` + `/ready`, `request_id` correlation                                                                                                                                                                                                                                    | clean, correlatable logs today                                   |
+| **1 — Backend metrics** ✅         | `/metrics` endpoint (`prom-client`, local) **+ metrics pushed via OTLP** (HTTP RED + Node runtime: event loop, GC, heap) — no scraper/agent needed. **Remaining:** dashboards + 2–3 alerts (error rate, p95, memory)                                                                               | latency + memory + reliability visible (satisfies #28's RED ask) |
+| **2 — Tracing + logs** ✅          | OTel SDK + auto-instrumentation (HTTP/Fastify/pg/ioredis/pino) → traces, metrics **and** logs pushed via OTLP (gated by `OTEL_EXPORTER_OTLP_ENDPOINT`); pino logs carry `trace_id`/`span_id` (logs ↔ traces correlate). **Remaining (polish):** sampling tuning (head sample, keep 100% of errors) | debug slow requests end-to-end; pivot trace ↔ logs               |
+| **3 — Mobile RUM**                 | Firebase Crashlytics + Performance in both apps; custom traces (sign-in, top-up, board); crash-free SLO                                                                                                                                                                                            | responsiveness + reliability from real devices                   |
+| **4 — SLOs & alerting**            | formalise SLO dashboards + burn-rate alerts + runbooks                                                                                                                                                                                                                                             | budget-driven, low-noise alerting                                |
 
 Phase 1 is the immediate next step and the smallest useful slice.
 
