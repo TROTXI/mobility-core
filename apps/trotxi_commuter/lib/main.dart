@@ -25,7 +25,7 @@ class TrotxiCommuterApp extends StatelessWidget {
 }
 
 class _PlaceholderHome extends StatelessWidget {
-  const _PlaceholderHome({super.key, required this.client});
+  const _PlaceholderHome({required this.client});
 
   final TrotxiApiClient client;
 
