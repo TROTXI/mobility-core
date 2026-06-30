@@ -1,5 +1,6 @@
 import 'package:dio/dio.dart';
 import 'package:trotxi_api_client/trotxi_api_client.dart';
+export 'package:trotxi_api_client/trotxi_api_client.dart';
 
 // ── Exceptions ────────────────────────────────────────────────────────────────
 class TrotxiException implements Exception {
