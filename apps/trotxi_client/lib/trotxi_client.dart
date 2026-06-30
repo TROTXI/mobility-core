@@ -2,7 +2,7 @@ import 'package:dio/dio.dart';
 import 'package:trotxi_api_client/trotxi_api_client.dart';
 export 'package:trotxi_api_client/trotxi_api_client.dart';
 
-// ── Exceptions ────────────────────────────────────────────────────────────────
+
 class TrotxiException implements Exception {
   final String message;
   const TrotxiException(this.message);
@@ -29,24 +29,23 @@ class ApiException extends TrotxiException {
   const ApiException(this.statusCode, String message) : super(message);
 }
 
-// ── Error Interceptor ─────────────────────────────────────────────────────────
-
 class ErrorInterceptor extends Interceptor {
   @override
   void onError(DioException err, ErrorInterceptorHandler handler) {
     final response = err.response;
 
-    if (err.type == DioExceptionType.connectionError ||
-        err.type == DioExceptionType.unknown) {
-      return handler.reject(
-        DioException(
-          requestOptions: err.requestOptions,
-          error: const OfflineException(),
-        ),
-      );
+    if (response == null) {
+      if (err.type == DioExceptionType.connectionError ||
+          err.type == DioExceptionType.unknown) {
+        return handler.reject(
+          DioException(
+            requestOptions: err.requestOptions,
+            error: const OfflineException(),
+          ),
+        );
+      }
+      return handler.next(err);
     }
-
-    if (response == null) return handler.next(err);
 
     switch (response.statusCode) {
       case 401:
@@ -78,7 +77,6 @@ class ErrorInterceptor extends Interceptor {
   }
 }
 
-// ── Client Factory ────────────────────────────────────────────────────────────
 
 class TrotxiClientFactory {
   static TrotxiApiClient create({required String baseUrl}) {
