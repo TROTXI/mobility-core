@@ -1,30 +1,33 @@
 import 'package:flutter/material.dart';
 import 'package:trotxi_driver/core/config/theme/app_theme.dart';
+import 'package:trotxi_client/trotxi_client.dart';
 
-
-const _apiBaseUrl = String.fromEnvironment(
-  'API_BASE_URL',
-);
+const _apiBaseUrl = String.fromEnvironment('API_BASE_URL');
 
 void main() {
-  runApp(const TrotxiDriverApp());
+  final client = TrotxiClientFactory.create(baseUrl: _apiBaseUrl);
+  runApp(TrotxiDriverApp(client: client));
 }
 
 class TrotxiDriverApp extends StatelessWidget {
-  const TrotxiDriverApp({super.key});
+  const TrotxiDriverApp({super.key, required this.client});
+
+  final TrotxiApiClient client;
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Trotxi Driver',
       theme: AppTheme.lightTheme,
-      home: const _PlaceholderHome(),
+      home: _PlaceholderHome(client: client),
     );
   }
 }
 
 class _PlaceholderHome extends StatelessWidget {
-  const _PlaceholderHome();
+  const _PlaceholderHome({required this.client});
+
+  final TrotxiApiClient client;
 
   @override
   Widget build(BuildContext context) {
