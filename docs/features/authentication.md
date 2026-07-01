@@ -152,8 +152,11 @@ The authenticated user.
   (`sessions.refresh_token_hash`) — a DB leak exposes no usable tokens.
 - **Rotation:** `/auth/refresh` revokes the presented session and issues a new
   one (`rotated_from` links them). Reusing a rotated token → 401.
-- **Revocation:** logout sets `revoked_at`. (Refresh-reuse _detection_ — revoking
-  the whole family on replay — is slice-3 hardening, not yet implemented.)
+- **Reuse detection (#83):** replaying an already-**rotated** (consumed) token is
+  treated as theft — **every session for that user is revoked**, forcing re-auth
+  everywhere. A token revoked by _logout_ (no descendant) is just a 401 and does
+  not trigger this.
+- **Revocation:** logout sets `revoked_at`.
 
 ### The verifier (how Google is wired)
 

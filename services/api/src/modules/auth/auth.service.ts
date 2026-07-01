@@ -5,7 +5,9 @@
 // Not wrapped in a DB transaction yet: on a concurrent *first* sign-in for a new
 // identity the loser may leave an orphan user row (harmless — never linked), and
 // refresh rotation revokes-then-creates (a crash mid-way just forces re-login).
-// Transactional sign-in + refresh-reuse detection are slice-3 hardening.
+// Transactional sign-in is slice-3 hardening. Refresh-token reuse detection is
+// implemented (#83): replaying an already-rotated token revokes every session
+// for the user.
 
 import type { JwtService } from './jwt';
 import type { AuthIdentityRepository } from './auth-identity.repository';
@@ -83,7 +85,9 @@ export class AuthService {
 
   /**
    * Rotate a valid refresh token: revoke the presented session and issue a new
-   * token pair (single-use refresh tokens).
+   * token pair (single-use refresh tokens). Detects **reuse** — if an
+   * already-rotated (consumed) token is replayed, every session for that user is
+   * revoked, since a valid refresh token appearing after rotation signals theft.
    *
    * @param refreshToken - the raw refresh token presented by the client.
    * @returns a new access + refresh token pair.
@@ -91,7 +95,18 @@ export class AuthService {
    */
   async refresh(refreshToken: string): Promise<AuthTokens> {
     const session = await this.deps.sessions.findByHash(hashToken(refreshToken));
-    if (!session || session.revokedAt !== null || session.expiresAt <= new Date()) {
+    if (!session || session.expiresAt <= new Date()) {
+      throw new InvalidRefreshTokenError('Invalid or expired refresh token');
+    }
+    if (session.revokedAt !== null) {
+      // A revoked token was presented. If it was consumed by *rotation* (a newer
+      // session was rotated from it), this is refresh-token reuse — a compromise
+      // signal — so revoke every session for the user (kills both the attacker's
+      // and the victim's tokens; everyone must re-authenticate). A token revoked
+      // by *logout* has no descendant, so it's just an invalid token.
+      if (await this.deps.sessions.wasRotated(session.id)) {
+        await this.deps.sessions.revokeAllForUser(session.userId);
+      }
       throw new InvalidRefreshTokenError('Invalid or expired refresh token');
     }
     const user = await this.deps.users.findById(session.userId);
