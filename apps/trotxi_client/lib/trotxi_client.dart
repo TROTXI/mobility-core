@@ -1,6 +1,8 @@
 import 'package:dio/dio.dart';
 import 'package:trotxi_api_client/trotxi_api_client.dart';
 export 'package:trotxi_api_client/trotxi_api_client.dart';
+import 'authentication_client.dart';
+import 'auth_interceptor.dart';
 
 
 class TrotxiException implements Exception {
@@ -77,11 +79,19 @@ class ErrorInterceptor extends Interceptor {
   }
 }
 
-
 class TrotxiClientFactory {
-  static TrotxiApiClient create({required String baseUrl}) {
+  static ({TrotxiApiClient client, AuthenticationClient authClient}) create({
+    required String baseUrl,
+  }) {
     final client = TrotxiApiClient(basePathOverride: baseUrl);
+    final authClient = AuthenticationClient(client: client);
+ 
+    // Order matters: ErrorInterceptor first, AuthInterceptor second —
+    // see the doc comment on AuthInterceptor for why.
     client.dio.interceptors.add(ErrorInterceptor());
-    return client;
+    client.dio.interceptors.add(AuthInterceptor(authClient, client.dio));
+ 
+    return (client: client, authClient: authClient);
   }
 }
+ 
