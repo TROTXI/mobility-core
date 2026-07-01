@@ -11,6 +11,11 @@ import { z } from 'zod';
 import { InMemoryKvStore, type KvStore } from './kv/kv.store';
 import { ledgerRoutes } from './modules/ledger/ledger.routes';
 import type { LedgerRepository } from './modules/ledger/ledger.repository';
+import {
+  InMemoryDeviceTokenRepository,
+  type DeviceTokenRepository,
+} from './modules/devices/device-token.repository';
+import { deviceRoutes } from './modules/devices/devices.routes';
 import { metricsPlugin, type MetricsOptions } from './modules/metrics/metrics.plugin';
 import { paymentRoutes } from './modules/payments/payments.routes';
 import type { PaymentsService } from './modules/payments/payments.service';
@@ -40,6 +45,8 @@ export interface AppDeps {
   subscriptions?: SubscriptionRepository;
   /** Token wallet ledger (in-memory vs Postgres). Derived balance + grants/debits. */
   ledger?: LedgerRepository;
+  /** Device push-token registry (in-memory vs Postgres). Defaults to in-memory. */
+  deviceTokens?: DeviceTokenRepository;
   /** Selected by REDIS_URL (in-memory vs Redis). For rate limits, idempotency, cache. */
   kv?: KvStore;
   /** JWT/auth settings. Defaults to a dev-only config when unset (tests, local). */
@@ -119,6 +126,10 @@ export async function buildApp(deps: AppDeps = {}): Promise<FastifyInstance> {
   });
   await app.register(ledgerRoutes, {
     ledger: deps.ledger,
+    rateLimit: deps.rateLimit ?? DEFAULT_RATE_LIMIT,
+  });
+  await app.register(deviceRoutes, {
+    deviceTokens: deps.deviceTokens ?? new InMemoryDeviceTokenRepository(),
     rateLimit: deps.rateLimit ?? DEFAULT_RATE_LIMIT,
   });
   await app.register(paymentRoutes, {
