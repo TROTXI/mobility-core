@@ -63,6 +63,20 @@ export interface SessionRepository {
    * @returns true if some session has this one as its `rotatedFrom`.
    */
   wasRotated(sessionId: string): Promise<boolean>;
+  /**
+   * List a user's active (not revoked, not expired) sessions, newest first.
+   *
+   * @param userId - the user whose sessions to list.
+   * @returns the active sessions.
+   */
+  listActiveForUser(userId: string): Promise<Session[]>;
+  /**
+   * Look up a session by id (for ownership checks before revoke).
+   *
+   * @param id - the session id.
+   * @returns the session, or null if none.
+   */
+  findById(id: string): Promise<Session | null>;
 }
 
 /** In-memory {@link SessionRepository} for dev and unit tests. */
@@ -113,5 +127,16 @@ export class InMemorySessionRepository implements SessionRepository {
       if (session.rotatedFrom === sessionId) return true;
     }
     return false;
+  }
+
+  async listActiveForUser(userId: string): Promise<Session[]> {
+    const now = new Date();
+    return [...this.sessions.values()]
+      .filter((s) => s.userId === userId && s.revokedAt === null && s.expiresAt > now)
+      .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+  }
+
+  async findById(id: string): Promise<Session | null> {
+    return this.sessions.get(id) ?? null;
   }
 }

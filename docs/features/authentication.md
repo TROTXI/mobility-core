@@ -146,6 +146,23 @@ The authenticated user.
 - **Auth:** `Bearer` access token. **Rate limit:** per user.
 - **200:** the user · **401** no/invalid token · **404** user not found.
 
+#### `GET /me/sessions` · `DELETE /me/sessions/:id` (#84)
+
+Active-device management. List returns id + created/expires (never the token
+hash); delete revokes one session ("log out that device") and only your own.
+
+- **Auth:** `Bearer`. **Rate limit:** per user.
+- `GET` **200:** `{ "sessions": [{ id, createdAt, expiresAt }] }`
+- `DELETE` **204** (idempotent; a session you don't own is a no-op) · **400** non-uuid id
+
+#### `POST /me/devices` (#84)
+
+Register this device's **FCM push token** (foundation for notifications).
+
+- **Auth:** `Bearer`. **Rate limit:** per user.
+- **Body:** `{ "fcmToken": "...", "platform": "android" | "ios" | "web" }`
+- **200:** `{ "registered": true }`. Re-registering a token re-points it (one token, one owner).
+
 ### Refresh tokens & sessions
 
 - A refresh token is `randomBytes(32)`; only its **SHA-256 hash** is stored
