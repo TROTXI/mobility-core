@@ -1,33 +1,43 @@
 import 'package:flutter/material.dart';
+import 'package:trotxi_client/authentication_client.dart';
 import 'package:trotxi_driver/core/config/theme/app_theme.dart';
 import 'package:trotxi_client/trotxi_client.dart';
 
 const _apiBaseUrl = String.fromEnvironment('API_BASE_URL');
 
 void main() {
-  final client = TrotxiClientFactory.create(baseUrl: _apiBaseUrl);
-  runApp(TrotxiDriverApp(client: client));
+  final (:client, :authClient) = TrotxiClientFactory.create(
+    baseUrl: _apiBaseUrl,
+  );
+
+  runApp(TrotxiDriverApp(client: client, authClient: authClient));
 }
 
 class TrotxiDriverApp extends StatelessWidget {
-  const TrotxiDriverApp({super.key, required this.client});
+  const TrotxiDriverApp({
+    super.key,
+    required this.client,
+    required this.authClient,
+  });
 
   final TrotxiApiClient client;
+  final AuthenticationClient authClient;
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Trotxi Driver',
       theme: AppTheme.lightTheme,
-      home: _PlaceholderHome(client: client),
+      home: _PlaceholderHome(client: client, authClient: authClient),
     );
   }
 }
 
 class _PlaceholderHome extends StatelessWidget {
-  const _PlaceholderHome({required this.client});
+  const _PlaceholderHome({required this.client, required this.authClient});
 
   final TrotxiApiClient client;
+  final AuthenticationClient authClient;
 
   @override
   Widget build(BuildContext context) {
