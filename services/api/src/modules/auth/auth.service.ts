@@ -12,7 +12,7 @@
 import type { JwtService } from './jwt';
 import type { AuthIdentityRepository } from './auth-identity.repository';
 import type { IdTokenVerifier, VerifiedIdentity } from './id-token-verifier';
-import type { SessionRepository } from './session.repository';
+import type { Session, SessionRepository } from './session.repository';
 import { generateRefreshToken, hashToken } from './tokens';
 import type { User, UserRepository } from '../users/user.repository';
 
@@ -126,6 +126,32 @@ export class AuthService {
   async logout(refreshToken: string): Promise<void> {
     const session = await this.deps.sessions.findByHash(hashToken(refreshToken));
     if (session && session.revokedAt === null) {
+      await this.deps.sessions.revoke(session.id);
+    }
+  }
+
+  /**
+   * List a user's active sessions (their logged-in devices) for account-security
+   * display.
+   *
+   * @param userId - the authenticated user.
+   * @returns the user's active sessions.
+   */
+  async listSessions(userId: string): Promise<Session[]> {
+    return this.deps.sessions.listActiveForUser(userId);
+  }
+
+  /**
+   * Revoke one of the user's sessions ("log out this device"). A no-op if the
+   * session is unknown or belongs to someone else, so a user can only revoke
+   * their own.
+   *
+   * @param userId - the authenticated user.
+   * @param sessionId - the session to revoke.
+   */
+  async revokeSession(userId: string, sessionId: string): Promise<void> {
+    const session = await this.deps.sessions.findById(sessionId);
+    if (session && session.userId === userId) {
       await this.deps.sessions.revoke(session.id);
     }
   }

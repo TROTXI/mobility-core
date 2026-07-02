@@ -13,6 +13,8 @@ import {
   googleSignInBodySchema,
   logoutBodySchema,
   refreshBodySchema,
+  sessionIdParamsSchema,
+  sessionListResponseSchema,
   tokensSchema,
 } from './auth.schema';
 import {
@@ -25,7 +27,8 @@ import {
 const AUTH_RATE_LIMIT = { max: 10, windowSeconds: 60 } as const;
 
 /**
- * Register the auth routes: `GET /me`, `POST /auth/google`, `POST /auth/refresh`,
+ * Register the auth routes: `GET /me`, `GET /me/sessions`,
+ * `DELETE /me/sessions/:id`, `POST /auth/google`, `POST /auth/refresh`,
  * `POST /auth/logout`.
  *
  * @param app - the Fastify instance to register on.
@@ -63,6 +66,53 @@ export async function authRoutes(
         return reply.code(404).send({ error: 'not_found', message: 'User not found' });
       }
       return user;
+    },
+  );
+
+  r.get(
+    '/me/sessions',
+    {
+      schema: {
+        tags: ['auth'],
+        summary: "List the authenticated user's active sessions (devices)",
+        security: [{ bearerAuth: [] }],
+        response: {
+          200: sessionListResponseSchema,
+          401: errorResponseSchema,
+        },
+      },
+      preHandler: [app.authenticate, app.rateLimit({ ...opts.rateLimit, by: 'user' })],
+    },
+    async (request) => {
+      const sessions = opts.authService
+        ? await opts.authService.listSessions(request.user!.id)
+        : [];
+      return {
+        sessions: sessions.map((s) => ({
+          id: s.id,
+          createdAt: s.createdAt.toISOString(),
+          expiresAt: s.expiresAt.toISOString(),
+        })),
+      };
+    },
+  );
+
+  r.delete(
+    '/me/sessions/:id',
+    {
+      schema: {
+        tags: ['auth'],
+        summary: 'Revoke one of your sessions (log out that device)',
+        security: [{ bearerAuth: [] }],
+        params: sessionIdParamsSchema,
+      },
+      preHandler: [app.authenticate, app.rateLimit({ ...opts.rateLimit, by: 'user' })],
+    },
+    async (request, reply) => {
+      if (opts.authService) {
+        await opts.authService.revokeSession(request.user!.id, request.params.id);
+      }
+      return reply.code(204).send();
     },
   );
 
