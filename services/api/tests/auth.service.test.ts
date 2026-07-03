@@ -129,7 +129,7 @@ describe('AuthService.signIn', () => {
 });
 
 describe('AuthService.refresh', () => {
-  it('rotates: issues new tokens and invalidates the old refresh token', async () => {
+  it('rotates: issues a new pair and the rotated token continues the chain', async () => {
     const { service } = makeService();
     const { refreshToken } = await service.signIn(googleToken('g-1'));
 
@@ -137,8 +137,35 @@ describe('AuthService.refresh', () => {
     expect(rotated.accessToken).toBeTruthy();
     expect(rotated.refreshToken).not.toBe(refreshToken);
 
-    await expect(service.refresh(refreshToken)).rejects.toBeInstanceOf(InvalidRefreshTokenError);
+    // the rotated token keeps working (chain continues)
     expect((await service.refresh(rotated.refreshToken)).accessToken).toBeTruthy();
+  });
+
+  it('reuse detection: replaying a rotated token revokes the whole session family', async () => {
+    const { service } = makeService();
+    const { refreshToken } = await service.signIn(googleToken('g-1'));
+
+    const rotated = await service.refresh(refreshToken); // refreshToken now consumed
+
+    // replay the already-rotated (consumed) token → reuse detected
+    await expect(service.refresh(refreshToken)).rejects.toBeInstanceOf(InvalidRefreshTokenError);
+
+    // the whole family is revoked — even the currently-valid rotated token is dead
+    await expect(service.refresh(rotated.refreshToken)).rejects.toBeInstanceOf(
+      InvalidRefreshTokenError,
+    );
+  });
+
+  it("logout does not trigger reuse-revocation of the user's other sessions", async () => {
+    const { service } = makeService();
+    const a = await service.signIn(googleToken('g-1')); // device A
+    const b = await service.signIn(googleToken('g-1')); // device B (same user, new session)
+
+    await service.logout(a.refreshToken); // A revoked by logout (no descendant)
+
+    // replaying A's logged-out token is NOT reuse → device B stays valid
+    await expect(service.refresh(a.refreshToken)).rejects.toBeInstanceOf(InvalidRefreshTokenError);
+    expect((await service.refresh(b.refreshToken)).accessToken).toBeTruthy();
   });
 
   it('rejects an unknown refresh token', async () => {

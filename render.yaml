@@ -35,11 +35,12 @@ services:
       # Render dashboard; never commit it. Generate: openssl rand -base64 48
       - key: JWT_SECRET
         sync: false
-      # Google "Web" OAuth client ID — the audience verified on sign-in. Set the
-      # value in the Render dashboard (kept out of the repo). Unset -> POST
-      # /auth/google returns 503.
+      # Google "Web" OAuth client ID — the audience verified on sign-in. This is
+      # PUBLIC (a Web client ID ships in clients; only a client *secret* would be
+      # sensitive, and we don't use one), so it lives in the blueprint, not the
+      # dashboard. Unset -> POST /auth/google returns 503.
       - key: GOOGLE_CLIENT_ID
-        sync: false
+        value: 431341307838-pc4m046v2lj18ssfnfl1g52fl5g1cg4q.apps.googleusercontent.com
       # Observability (#28). Set in the dashboard when Grafana Cloud is wired up.
       # METRICS_TOKEN gates GET /metrics (scraper sends it as a bearer token);
       # unset -> /metrics is disabled (404) in production.

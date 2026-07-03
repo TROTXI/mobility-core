@@ -34,6 +34,11 @@ import {
 } from './modules/ledger/ledger.repository';
 import { PgLedgerRepository } from './modules/ledger/ledger.repository.pg';
 import {
+  InMemoryDeviceTokenRepository,
+  type DeviceTokenRepository,
+} from './modules/devices/device-token.repository';
+import { PgDeviceTokenRepository } from './modules/devices/device-token.repository.pg';
+import {
   InMemoryPaymentRepository,
   type PaymentRepository,
 } from './modules/payments/payment.repository';
@@ -74,6 +79,7 @@ async function main(): Promise<void> {
   let authIdentities: AuthIdentityRepository;
   let ledger: LedgerRepository;
   let payments: PaymentRepository;
+  let deviceTokens: DeviceTokenRepository;
   if (env.DATABASE_URL) {
     pool = createPool(env.DATABASE_URL);
     users = new PgUserRepository(pool);
@@ -82,6 +88,7 @@ async function main(): Promise<void> {
     authIdentities = new PgAuthIdentityRepository(pool);
     ledger = new PgLedgerRepository(pool);
     payments = new PgPaymentRepository(pool);
+    deviceTokens = new PgDeviceTokenRepository(pool);
     console.log('Using Postgres repositories');
   } else {
     users = new InMemoryUserRepository();
@@ -90,6 +97,7 @@ async function main(): Promise<void> {
     authIdentities = new InMemoryAuthIdentityRepository();
     ledger = new InMemoryLedgerRepository();
     payments = new InMemoryPaymentRepository();
+    deviceTokens = new InMemoryDeviceTokenRepository();
     console.log('Using in-memory repositories (no DATABASE_URL set)');
   }
 
@@ -157,6 +165,7 @@ async function main(): Promise<void> {
     users,
     subscriptions,
     ledger,
+    deviceTokens,
     authService,
     paymentsService,
     kv,

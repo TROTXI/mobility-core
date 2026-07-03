@@ -146,14 +146,34 @@ The authenticated user.
 - **Auth:** `Bearer` access token. **Rate limit:** per user.
 - **200:** the user · **401** no/invalid token · **404** user not found.
 
+#### `GET /me/sessions` · `DELETE /me/sessions/:id` (#84)
+
+Active-device management. List returns id + created/expires (never the token
+hash); delete revokes one session ("log out that device") and only your own.
+
+- **Auth:** `Bearer`. **Rate limit:** per user.
+- `GET` **200:** `{ "sessions": [{ id, createdAt, expiresAt }] }`
+- `DELETE` **204** (idempotent; a session you don't own is a no-op) · **400** non-uuid id
+
+#### `POST /me/devices` (#84)
+
+Register this device's **FCM push token** (foundation for notifications).
+
+- **Auth:** `Bearer`. **Rate limit:** per user.
+- **Body:** `{ "fcmToken": "...", "platform": "android" | "ios" | "web" }`
+- **200:** `{ "registered": true }`. Re-registering a token re-points it (one token, one owner).
+
 ### Refresh tokens & sessions
 
 - A refresh token is `randomBytes(32)`; only its **SHA-256 hash** is stored
   (`sessions.refresh_token_hash`) — a DB leak exposes no usable tokens.
 - **Rotation:** `/auth/refresh` revokes the presented session and issues a new
   one (`rotated_from` links them). Reusing a rotated token → 401.
-- **Revocation:** logout sets `revoked_at`. (Refresh-reuse _detection_ — revoking
-  the whole family on replay — is slice-3 hardening, not yet implemented.)
+- **Reuse detection (#83):** replaying an already-**rotated** (consumed) token is
+  treated as theft — **every session for that user is revoked**, forcing re-auth
+  everywhere. A token revoked by _logout_ (no descendant) is just a 401 and does
+  not trigger this.
+- **Revocation:** logout sets `revoked_at`.
 
 ### The verifier (how Google is wired)
 

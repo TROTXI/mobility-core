@@ -47,6 +47,36 @@ export interface SessionRepository {
    * @param id - the session id to revoke.
    */
   revoke(id: string): Promise<void>;
+  /**
+   * Revoke all of a user's active sessions — used on detected refresh-token
+   * reuse to force re-authentication on every device.
+   *
+   * @param userId - the user whose sessions to revoke.
+   */
+  revokeAllForUser(userId: string): Promise<void>;
+  /**
+   * Whether a session was consumed by rotation — i.e. a newer session was
+   * rotated from it. Distinguishes a reused (rotated) token from a plainly
+   * logged-out one.
+   *
+   * @param sessionId - the session to check for descendants.
+   * @returns true if some session has this one as its `rotatedFrom`.
+   */
+  wasRotated(sessionId: string): Promise<boolean>;
+  /**
+   * List a user's active (not revoked, not expired) sessions, newest first.
+   *
+   * @param userId - the user whose sessions to list.
+   * @returns the active sessions.
+   */
+  listActiveForUser(userId: string): Promise<Session[]>;
+  /**
+   * Look up a session by id (for ownership checks before revoke).
+   *
+   * @param id - the session id.
+   * @returns the session, or null if none.
+   */
+  findById(id: string): Promise<Session | null>;
 }
 
 /** In-memory {@link SessionRepository} for dev and unit tests. */
@@ -81,5 +111,32 @@ export class InMemorySessionRepository implements SessionRepository {
     if (session && !session.revokedAt) {
       session.revokedAt = new Date();
     }
+  }
+
+  async revokeAllForUser(userId: string): Promise<void> {
+    const now = new Date();
+    for (const session of this.sessions.values()) {
+      if (session.userId === userId && session.revokedAt === null) {
+        session.revokedAt = now;
+      }
+    }
+  }
+
+  async wasRotated(sessionId: string): Promise<boolean> {
+    for (const session of this.sessions.values()) {
+      if (session.rotatedFrom === sessionId) return true;
+    }
+    return false;
+  }
+
+  async listActiveForUser(userId: string): Promise<Session[]> {
+    const now = new Date();
+    return [...this.sessions.values()]
+      .filter((s) => s.userId === userId && s.revokedAt === null && s.expiresAt > now)
+      .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+  }
+
+  async findById(id: string): Promise<Session | null> {
+    return this.sessions.get(id) ?? null;
   }
 }
