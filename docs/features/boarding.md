@@ -15,8 +15,11 @@ pass**, and logs every scan for audit. Rationale: #20.
 
 - **Pass** — a **short-lived signed token** (JWT, HS256, audience `trotxi-pass`,
   ~60s) the rider's app renders as a **QR**. The short TTL means the QR **rotates**,
-  so a screenshot can't be reused. Signed with the server key but a distinct
-  audience, so a pass can't be used as an access token (or vice-versa).
+  and each pass carries a unique `jti` making it **single-use**: the first valid
+  scan consumes it (KV `increment`), so a shared screenshot dies on the second
+  scan, not just at the TTL. Signed with the server key but a distinct audience,
+  so a pass can't be used as an access token (or vice-versa). Verification allows
+  5s clock tolerance (drift across instances).
 - **Integrity vs eligibility** — verifying a pass proves it's a **real pass for
   rider X**. It does **not** (yet) check membership or debit tokens — those are the
   money-gated part (#19/#21), deliberately deferred.
@@ -41,23 +44,33 @@ Verify a scanned pass (drivers only) and record the scan.
 
 - **Auth:** `Bearer` + **role `driver`** (else **403**). **Rate limit:** per user.
 - **Body:** `{ "pass": "<scanned token>", "tripId?": "<uuid>" }`
-- **200:** `{ "valid": true|false, "riderId": "<uuid>|null", "reason": "ok"|"invalid"|"expired" }`
+- **200:** `{ "valid": true|false, "riderId": "<uuid>|null", "reason": "ok"|"invalid"|"expired"|"reused" }`
+  (`reused` = the pass was already consumed by an earlier scan; `riderId` is still
+  returned so the driver sees who presented it)
 
 ---
 
 ## Data
 
 `scan_events(id, rider_id, scanned_by, trip_id, result, method, created_at)` —
-`result` ∈ `valid|invalid|expired`, `method` ∈ `qr|photo`. `trip_id` has no FK
-yet (trips are #18).
+`result` ∈ `valid|invalid|expired|reused`, `method` ∈ `qr|photo`. `trip_id` has
+no FK yet (trips are #18).
 
 ## Security notes
 
-- **Rotating, signed passes** — forgery needs the server key; the short TTL blocks
-  screenshot reuse.
+- **Rotating, signed, single-use passes** — forgery needs the server key; the
+  short TTL rotates the QR; the `jti` consume-on-scan kills screenshot sharing
+  within the window.
 - **Audience separation** — a `trotxi-api` access token fails pass verification and
   vice-versa (tested).
-- **Full audit** — every scan (including failures) is recorded.
+- **Full audit** — every scan (including failures and reuses) is recorded.
+- **Availability over strictness** — the KV single-use check and the audit write
+  both **fail open** (log loudly, never block boarding). Same posture as the rate
+  limiter; when the money work lands, the token debit becomes the transactional
+  anchor and this decision is revisited.
+- **Input hygiene** — the scanned pass is capped at 512 chars before it reaches
+  `jwtVerify`; the scan route throttles **before** the role check so non-driver
+  tokens can't hammer unthrottled 403s.
 
 ## Deferred (with the money work / product)
 

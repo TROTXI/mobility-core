@@ -110,9 +110,11 @@ async function main(): Promise<void> {
     console.log('Using in-memory repositories (no DATABASE_URL set)');
   }
 
-  // Boarding: short-lived QR passes signed with the server key + a scan audit log.
+  // Boarding: short-lived QR passes signed with the server key + a scan audit
+  // log; the KV store marks passes consumed (single-use).
   const boardingService = new BoardingService({
     scanEvents,
+    kv,
     secret: auth.secret,
     passTtlSeconds: 60,
   });

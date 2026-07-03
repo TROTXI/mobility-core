@@ -7,7 +7,7 @@ CREATE TABLE IF NOT EXISTS scan_events (
   rider_id   uuid REFERENCES users (id) ON DELETE SET NULL,
   scanned_by uuid REFERENCES users (id) ON DELETE SET NULL,
   trip_id    uuid,
-  result     text NOT NULL CHECK (result IN ('valid', 'invalid', 'expired')),
+  result     text NOT NULL CHECK (result IN ('valid', 'invalid', 'expired', 'reused')),
   method     text NOT NULL DEFAULT 'qr' CHECK (method IN ('qr', 'photo')),
   created_at timestamptz NOT NULL DEFAULT now()
 );

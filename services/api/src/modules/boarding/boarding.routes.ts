@@ -52,10 +52,12 @@ export async function boardingRoutes(
           403: errorResponseSchema,
         },
       },
+      // Throttle BEFORE the role check — otherwise non-driver tokens could
+      // hammer 403s without ever being rate limited.
       preHandler: [
         app.authenticate,
-        app.requireRole('driver'),
         app.rateLimit({ ...opts.rateLimit, by: 'user' }),
+        app.requireRole('driver'),
       ],
     },
     async (request) =>

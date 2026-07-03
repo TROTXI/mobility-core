@@ -3,7 +3,7 @@
 // InMemory here, Postgres in *.pg.ts.
 
 /** Outcome of a scan. */
-export type ScanResult = 'valid' | 'invalid' | 'expired';
+export type ScanResult = 'valid' | 'invalid' | 'expired' | 'reused';
 /** How the rider was verified. */
 export type ScanMethod = 'qr' | 'photo';
 

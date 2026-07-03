@@ -148,6 +148,7 @@ export async function buildApp(deps: AppDeps = {}): Promise<FastifyInstance> {
       deps.boardingService ??
       new BoardingService({
         scanEvents: new InMemoryScanEventRepository(),
+        kv,
         secret: authConfig.secret,
         passTtlSeconds: 60,
       }),
