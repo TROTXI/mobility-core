@@ -38,6 +38,12 @@ import {
   type DeviceTokenRepository,
 } from './modules/devices/device-token.repository';
 import { PgDeviceTokenRepository } from './modules/devices/device-token.repository.pg';
+import { BoardingService } from './modules/boarding/boarding.service';
+import {
+  InMemoryScanEventRepository,
+  type ScanEventRepository,
+} from './modules/boarding/scan-event.repository';
+import { PgScanEventRepository } from './modules/boarding/scan-event.repository.pg';
 import {
   InMemoryPaymentRepository,
   type PaymentRepository,
@@ -80,6 +86,7 @@ async function main(): Promise<void> {
   let ledger: LedgerRepository;
   let payments: PaymentRepository;
   let deviceTokens: DeviceTokenRepository;
+  let scanEvents: ScanEventRepository;
   if (env.DATABASE_URL) {
     pool = createPool(env.DATABASE_URL);
     users = new PgUserRepository(pool);
@@ -89,6 +96,7 @@ async function main(): Promise<void> {
     ledger = new PgLedgerRepository(pool);
     payments = new PgPaymentRepository(pool);
     deviceTokens = new PgDeviceTokenRepository(pool);
+    scanEvents = new PgScanEventRepository(pool);
     console.log('Using Postgres repositories');
   } else {
     users = new InMemoryUserRepository();
@@ -98,8 +106,18 @@ async function main(): Promise<void> {
     ledger = new InMemoryLedgerRepository();
     payments = new InMemoryPaymentRepository();
     deviceTokens = new InMemoryDeviceTokenRepository();
+    scanEvents = new InMemoryScanEventRepository();
     console.log('Using in-memory repositories (no DATABASE_URL set)');
   }
+
+  // Boarding: short-lived QR passes signed with the server key + a scan audit
+  // log; the KV store marks passes consumed (single-use).
+  const boardingService = new BoardingService({
+    scanEvents,
+    kv,
+    secret: auth.secret,
+    passTtlSeconds: 60,
+  });
 
   // Sign-in verifier: real Google when configured; a dev fake outside production;
   // otherwise undefined (POST /auth/google returns 503 — keeps staging booting).
@@ -166,6 +184,7 @@ async function main(): Promise<void> {
     subscriptions,
     ledger,
     deviceTokens,
+    boardingService,
     authService,
     paymentsService,
     kv,

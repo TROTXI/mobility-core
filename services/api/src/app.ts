@@ -16,6 +16,9 @@ import {
   type DeviceTokenRepository,
 } from './modules/devices/device-token.repository';
 import { deviceRoutes } from './modules/devices/devices.routes';
+import { BoardingService } from './modules/boarding/boarding.service';
+import { boardingRoutes } from './modules/boarding/boarding.routes';
+import { InMemoryScanEventRepository } from './modules/boarding/scan-event.repository';
 import { metricsPlugin, type MetricsOptions } from './modules/metrics/metrics.plugin';
 import { paymentRoutes } from './modules/payments/payments.routes';
 import type { PaymentsService } from './modules/payments/payments.service';
@@ -47,6 +50,8 @@ export interface AppDeps {
   ledger?: LedgerRepository;
   /** Device push-token registry (in-memory vs Postgres). Defaults to in-memory. */
   deviceTokens?: DeviceTokenRepository;
+  /** Boarding pass issuance + scan verification. Defaults to an in-memory scan store. */
+  boardingService?: BoardingService;
   /** Selected by REDIS_URL (in-memory vs Redis). For rate limits, idempotency, cache. */
   kv?: KvStore;
   /** JWT/auth settings. Defaults to a dev-only config when unset (tests, local). */
@@ -96,6 +101,7 @@ export async function buildApp(deps: AppDeps = {}): Promise<FastifyInstance> {
         { name: 'auth', description: 'Authentication and the current user' },
         { name: 'wallet', description: 'Token wallet / GHS balance' },
         { name: 'payments', description: 'Subscriptions checkout (Paystack) + webhook' },
+        { name: 'boarding', description: 'QR boarding passes + scan verification' },
       ],
       components: {
         // Protected routes set `security: [{ bearerAuth: [] }]`; clients send
@@ -117,7 +123,8 @@ export async function buildApp(deps: AppDeps = {}): Promise<FastifyInstance> {
 
   // Guards first (decorators on the root instance), then routes that use them.
   const kv = deps.kv ?? new InMemoryKvStore();
-  await app.register(authPlugin, { config: deps.auth ?? DEV_AUTH_CONFIG });
+  const authConfig = deps.auth ?? DEV_AUTH_CONFIG;
+  await app.register(authPlugin, { config: authConfig });
   await app.register(rateLimitPlugin, { kv });
   await app.register(authRoutes, {
     users: deps.users,
@@ -134,6 +141,17 @@ export async function buildApp(deps: AppDeps = {}): Promise<FastifyInstance> {
   });
   await app.register(paymentRoutes, {
     paymentsService: deps.paymentsService,
+    rateLimit: deps.rateLimit ?? DEFAULT_RATE_LIMIT,
+  });
+  await app.register(boardingRoutes, {
+    boardingService:
+      deps.boardingService ??
+      new BoardingService({
+        scanEvents: new InMemoryScanEventRepository(),
+        kv,
+        secret: authConfig.secret,
+        passTtlSeconds: 60,
+      }),
     rateLimit: deps.rateLimit ?? DEFAULT_RATE_LIMIT,
   });
 
