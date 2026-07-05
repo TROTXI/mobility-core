@@ -8,12 +8,11 @@ adopted the **Hybrid Subscription Model**
 `strategy/docs/hybrid-subscription-model.md`): subscriptions carry a **ride
 entitlement**, unused rides become **Ride Credits** against the next renewal,
 and there is **no prepaid wallet**. The wallet/top-up flows documented below are
-**REMOVED from the code** (clean-slate sweep, this PR): `POST /payments/topup`,
-`GET /me/balance`, and the ledger module are deleted; `POST /payments/subscribe`
-
-- the webhook remain and are reshaped by epic E1. The `token_ledger` table stays
-  in migration history (dropped by a later migration). Sections below describing
-  wallet flows are **historical**.
+**REMOVED from the code** (clean-slate sweep): `POST /payments/topup`,
+`GET /me/balance`, and the ledger module are deleted. `POST /payments/subscribe`
+and the webhook remain, to be reshaped by epic E1. The `token_ledger` table stays
+in migration history (dropped by a later migration). Sections below describing
+wallet flows are **historical**.
 
 > 🔄 **Build to the new model, not this doc's wallet semantics.** Still valid
 > and carried forward: the Paystack integration (checkout + signed webhook),
@@ -37,56 +36,19 @@ pesewas). Rationale: [ADR-0011](../adr/0011-token-ledger.md); deep design in
 
 ---
 
-## Status & roadmap (ON HOLD)
+## Status & roadmap
 
-**Paused 2026-06-28**, pending the product team's commission-charging model.
+**What's in the code today:** `POST /payments/subscribe` (Paystack checkout,
+signed webhook, activates membership) — the base epic **E1** builds on (plans,
+periods, entitlement allocation, credit-netted renewals). See the strategy
+`hybrid-subscription-model.md` for the full epic plan (E1–E7) and its open
+product questions (operator revenue share, tier pricing, corporate billing).
 
-### ✅ Built & working (rider-side)
+**Still deferred:** nightly Paystack reconciliation, circuit-breaker around the
+aggregator, refund flows — scheduled with the money epics, not before.
 
-- **Subscription** = platform membership fee → `POST /payments/subscribe`;
-  Paystack `charge.success` activates the subscription (grants no tokens).
-- **Token wallet** = prepaid balance → `POST /payments/topup` grants tokens;
-  `GET /me/balance` returns it. Append-only `token_ledger`, balance = `SUM(delta)`.
-- **Paystack integration** — checkout init + **signature-verified webhook**
-  (HMAC-SHA512 over the raw body), branching on payment `purpose`.
-- **Money safety** — exactly-once via `idempotency_key`, never mutate a `paid`
-  payment, server-authoritative amounts, fail-safe (idempotent) webhook steps.
-- **Pesewas units** end-to-end (minor units; #68).
-
-### ⏸️ Blocked on the commission decision
-
-The system today handles **rider-side money only**. It does **not** model the
-platform's revenue or the driver's side — both depend on how commissions work:
-
-- **Commissions** — how / where Trotxi takes its cut (undefined).
-- **Driver payouts** — paying drivers their fares, net of commission (unmodeled).
-- **Fare model & revenue split** — and whether the ledger needs driver
-  sub-accounts / commission + payout entries.
-
-**Open questions for product (to unblock):**
-
-1. **Basis** — % of fare, flat per ride, a cut of top-ups, or subscription-only?
-2. **Who bears it** — rider surcharge, driver deduction, or a split?
-3. **Timing** — charged at boarding, at payout, or at top-up?
-4. **Payouts** — how / when do drivers get paid, and how does commission net out?
-5. **Model fit** — does commission ride on the existing wallet/ledger, or need a
-   separate driver ledger + payout flow?
-
-### ⏳ Deferred (later, not all commission-blocked)
-
-- **Boarding debit** (#20) — spending tokens to board (QR/scan). Overlaps the
-  commission decision, so it should wait for it.
-- **Refunds** (`reason: refund` exists in the ledger; no flow yet).
-- **Nightly reconciliation** against Paystack settlement.
-- **SMS receipts** (mNotify; planning-phase, skipped).
-
-### Production posture while paused
-
-- Payments **fail safe**: with no `PAYSTACK_SECRET_KEY`, `/payments/*` return
-  **503** and staging stays up. No real funds are processed.
-- **Go-live is intentionally NOT done** — the live webhook URL and real
-  `SUBSCRIPTION_FEES_PESEWAS` are unset. Resume at [Going live](#going-live-production)
-  once the commission model lands.
+**Production posture:** unchanged — without `PAYSTACK_SECRET_KEY`, payment
+routes return **503** and staging stays up; go-live steps wait for E1.
 
 ---
 
