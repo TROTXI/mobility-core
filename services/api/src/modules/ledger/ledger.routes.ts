@@ -26,7 +26,9 @@ export async function ledgerRoutes(
     {
       schema: {
         tags: ['wallet'],
-        summary: 'Get the authenticated rider token balance (pesewas)',
+        summary:
+          '[LEGACY — do not build against] Wallet balance. Superseded by GET /me/rides (ADR-0014); retired in E7',
+        deprecated: true,
         security: [{ bearerAuth: [] }],
         response: {
           200: balanceResponseSchema,

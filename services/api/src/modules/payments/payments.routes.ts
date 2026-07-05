@@ -78,7 +78,9 @@ export async function paymentRoutes(
     {
       schema: {
         tags: ['payments'],
-        summary: 'Start a Paystack checkout to load ride tokens (pesewas) into the wallet',
+        summary:
+          '[LEGACY — do not build against] Wallet top-up. Superseded by ride entitlements (ADR-0014); retired in E7',
+        deprecated: true,
         security: [{ bearerAuth: [] }],
         body: topupBodySchema,
         response: {
