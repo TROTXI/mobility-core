@@ -1,16 +1,21 @@
 # Wallet & Payments (the money system)
 
-**Owner:** Godfred Awuku · **Last updated:** 2026-06-28
+**Owner:** Godfred Awuku · **Last updated:** 2026-07-04
 
-**Status:** ⏸️ **ON HOLD** (as of 2026-06-28). The rider-side money system below
-is built and working; **further money work is paused** until the product team
-defines the **commission model** (how Trotxi charges its cut). See
-[Status & roadmap](#status--roadmap-on-hold).
+**Status:** 🔄 **MODEL PIVOTED** (2026-07-04). The hold is lifted — product
+adopted the **Hybrid Subscription Model**
+([ADR-0014](../adr/0014-hybrid-subscription-model.md); engineering plan in
+`strategy/docs/hybrid-subscription-model.md`): subscriptions carry a **ride
+entitlement**, unused rides become **Ride Credits** against the next renewal,
+and there is **no prepaid wallet**. The wallet/top-up flows documented below are
+**live on staging but LEGACY** — kept accurate for what's deployed, retired once
+the entitlement flow lands (epic E7).
 
-> ⏸️ **Paused.** Do not start new money features (boarding debit, driver payouts,
-> fee splits) until the commission model is decided — it changes the ledger and
-> payout design. The current build is a safe stopping point: rider-side only,
-> with no real funds processed.
+> 🔄 **Build to the new model, not this doc's wallet semantics.** Still valid
+> and carried forward: the Paystack integration (checkout + signed webhook),
+> pesewas storage, the append-only-ledger pattern, and all the idempotency/
+> security controls below. Superseded: `POST /payments/topup` and the wallet
+> meaning of `GET /me/balance`.
 
 The money system has two **separate** flows — keep them straight:
 
