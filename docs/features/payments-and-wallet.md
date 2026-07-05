@@ -8,8 +8,12 @@ adopted the **Hybrid Subscription Model**
 `strategy/docs/hybrid-subscription-model.md`): subscriptions carry a **ride
 entitlement**, unused rides become **Ride Credits** against the next renewal,
 and there is **no prepaid wallet**. The wallet/top-up flows documented below are
-**live on staging but LEGACY** — kept accurate for what's deployed, retired once
-the entitlement flow lands (epic E7).
+**REMOVED from the code** (clean-slate sweep, this PR): `POST /payments/topup`,
+`GET /me/balance`, and the ledger module are deleted; `POST /payments/subscribe`
+
+- the webhook remain and are reshaped by epic E1. The `token_ledger` table stays
+  in migration history (dropped by a later migration). Sections below describing
+  wallet flows are **historical**.
 
 > 🔄 **Build to the new model, not this doc's wallet semantics.** Still valid
 > and carried forward: the Paystack integration (checkout + signed webhook),

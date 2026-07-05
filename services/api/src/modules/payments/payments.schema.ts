@@ -9,11 +9,6 @@ export const subscribeBodySchema = z.object({
   plan: z.enum(PLANS),
 });
 
-export const topupBodySchema = z.object({
-  /** Pesewas to load into the wallet (1 GHS = 100 pesewas); min 100 = GHS 1. */
-  amountPesewas: z.number().int().min(100),
-});
-
 export const checkoutResponseSchema = z.object({
   authorizationUrl: z.string(),
   reference: z.string(),

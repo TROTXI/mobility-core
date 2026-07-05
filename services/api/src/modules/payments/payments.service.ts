@@ -1,19 +1,18 @@
-// PaymentsService — two distinct money flows, both via Paystack:
-//   subscription = a membership fee to be on the platform → ACTIVATES the
-//                  subscription on success (grants NO tokens).
-//   topup        = loading pesewas into the wallet → GRANTS tokens on success.
-// The webhook (charge.success) branches on the payment's purpose.
+// PaymentsService — Paystack money-in for the platform membership: initiate a
+// subscription checkout and process the charge.success webhook that activates
+// it. (The former wallet/top-up flow is removed — superseded by ride
+// entitlements, ADR-0014; epic E1 extends this service with plans, periods and
+// entitlement allocation.)
 //
 // Money unit: PESEWAS everywhere (1 GHS = 100 pesewas), matching Paystack — the
 // client converts to/from GHS for display. Integers only; never floats.
 //
 // Not wrapped in one DB transaction by design (system-design §4.2: "idempotent
-// webhooks") — each step is individually idempotent (ledger grant keyed; the
-// one-active-per-user index guards activation; markPaid only does pending→paid),
-// so a retried/partial webhook converges. Paystack retries; reconciliation
-// (future) backstops the rest.
+// webhooks") — each step is individually idempotent (the one-active-per-user
+// index guards activation; markPaid only does pending→paid), so a
+// retried/partial webhook converges. Paystack retries; reconciliation (future)
+// backstops the rest.
 
-import type { LedgerRepository } from '../ledger/ledger.repository';
 import type {
   SubscriptionPlan,
   SubscriptionRepository,
@@ -34,9 +33,8 @@ export class PaymentsNotConfiguredError extends Error {}
 export class InvalidWebhookError extends Error {}
 
 /**
- * Membership fee in PESEWAS to be on the platform — this is NOT ride money
- * (top-ups fund rides). Server-authoritative (security.md §7). PLACEHOLDERS —
- * set real values here.
+ * Membership fee in PESEWAS to be on the platform. Server-authoritative
+ * (security.md §7). PLACEHOLDERS — replaced by the `plans` table in epic E1.
  */
 export const SUBSCRIPTION_FEES_PESEWAS: Record<SubscriptionPlan, number> = {
   monthly: 2000, // GHS 20
@@ -47,8 +45,6 @@ export const SUBSCRIPTION_FEES_PESEWAS: Record<SubscriptionPlan, number> = {
 export interface PaymentsServiceDeps {
   /** Persists payment records (the pending → paid|failed state machine). */
   payments: PaymentRepository;
-  /** The token wallet — credited on a successful top-up. */
-  ledger: LedgerRepository;
   /** Platform memberships — activated on a successful subscription payment. */
   subscriptions: SubscriptionRepository;
   /** Undefined when payments aren't configured (e.g. prod without a Paystack key). */
@@ -82,10 +78,9 @@ export interface CheckoutResult {
 }
 
 /**
- * Orchestrates the two money-in flows — subscription membership fees and wallet
- * top-ups — on top of Paystack: it initiates checkouts and processes the
- * `charge.success` webhook that confirms them. See the file header for the
- * idempotency model.
+ * Orchestrates the membership money-in flow on top of Paystack: initiates the
+ * subscription checkout and processes the `charge.success` webhook that
+ * confirms it. See the file header for the idempotency model.
  */
 export class PaymentsService {
   /** @param deps - repositories, the Paystack client, and the fee table. */
@@ -107,25 +102,6 @@ export class PaymentsService {
       purpose: 'subscription',
       plan,
       amount: this.deps.subscriptionFees[plan],
-      currency: 'GHS',
-    });
-  }
-
-  /**
-   * Start a Paystack checkout to load ride tokens into the wallet. Records a
-   * `pending` top-up; tokens are granted later by {@link handleWebhook}.
-   *
-   * @param userId - the authenticated user topping up.
-   * @param amountPesewas - amount to load, in pesewas (1 GHS = 100 pesewas).
-   * @returns the Paystack `authorizationUrl` and our payment `reference`.
-   * @throws PaymentsNotConfiguredError when no Paystack client is wired.
-   */
-  async initializeTopup(userId: string, amountPesewas: number): Promise<CheckoutResult> {
-    return this.startCheckout({
-      userId,
-      purpose: 'topup',
-      plan: null,
-      amount: amountPesewas,
       currency: 'GHS',
     });
   }
@@ -155,10 +131,10 @@ export class PaymentsService {
   }
 
   /**
-   * Verify and process a Paystack webhook. On a valid `charge.success`: a
-   * top-up credits the ledger; a subscription activates membership. Idempotent
-   * and safe to replay (keyed ledger grant, guarded activation, pending→paid
-   * markPaid); unknown references and non-`charge.success` events are ignored.
+   * Verify and process a Paystack webhook. On a valid `charge.success` for a
+   * subscription payment, activate the membership. Idempotent and safe to
+   * replay (guarded activation, pending→paid markPaid); unknown references,
+   * non-subscription purposes, and non-`charge.success` events are ignored.
    *
    * @param rawBody - the exact raw request body (required for the HMAC check).
    * @param signature - the `x-paystack-signature` header, if present.
@@ -181,20 +157,11 @@ export class PaymentsService {
     const payment = await this.deps.payments.findByReference(reference);
     if (!payment) return; // unknown reference — not ours
 
-    if (payment.purpose === 'topup') {
-      // Load ride money into the wallet (keyed → no double grant).
-      await this.deps.ledger.append({
-        userId: payment.userId,
-        delta: payment.amount,
-        reason: 'topup',
-        refType: 'payment',
-        refId: payment.id,
-        idempotencyKey: `topup:${reference}`,
-      });
-    } else if (payment.plan) {
-      // Membership fee paid — activate the subscription (no tokens).
+    if (payment.purpose === 'subscription' && payment.plan) {
+      // Membership fee paid — activate the subscription.
       await this.activateSubscription(payment.userId, payment.plan);
     }
+    // Legacy 'topup' payments (pre-ADR-0014 staging data) are ignored.
 
     await this.deps.payments.markPaid(reference);
   }

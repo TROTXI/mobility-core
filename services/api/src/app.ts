@@ -9,8 +9,6 @@ import {
 } from 'fastify-type-provider-zod';
 import { z } from 'zod';
 import { InMemoryKvStore, type KvStore } from './kv/kv.store';
-import { ledgerRoutes } from './modules/ledger/ledger.routes';
-import type { LedgerRepository } from './modules/ledger/ledger.repository';
 import {
   InMemoryDeviceTokenRepository,
   type DeviceTokenRepository,
@@ -46,8 +44,6 @@ export interface AppDeps {
   users?: UserRepository;
   /** Selected by DATABASE_URL (in-memory vs Postgres). Consumed by routes/services. */
   subscriptions?: SubscriptionRepository;
-  /** Token wallet ledger (in-memory vs Postgres). Derived balance + grants/debits. */
-  ledger?: LedgerRepository;
   /** Device push-token registry (in-memory vs Postgres). Defaults to in-memory. */
   deviceTokens?: DeviceTokenRepository;
   /** Boarding pass issuance + scan verification. Defaults to an in-memory scan store. */
@@ -99,7 +95,6 @@ export async function buildApp(deps: AppDeps = {}): Promise<FastifyInstance> {
       tags: [
         { name: 'system', description: 'Health, readiness, and service metadata' },
         { name: 'auth', description: 'Authentication and the current user' },
-        { name: 'wallet', description: 'Token wallet / GHS balance' },
         { name: 'payments', description: 'Subscriptions checkout (Paystack) + webhook' },
         { name: 'boarding', description: 'QR boarding passes + scan verification' },
       ],
@@ -129,10 +124,6 @@ export async function buildApp(deps: AppDeps = {}): Promise<FastifyInstance> {
   await app.register(authRoutes, {
     users: deps.users,
     authService: deps.authService,
-    rateLimit: deps.rateLimit ?? DEFAULT_RATE_LIMIT,
-  });
-  await app.register(ledgerRoutes, {
-    ledger: deps.ledger,
     rateLimit: deps.rateLimit ?? DEFAULT_RATE_LIMIT,
   });
   await app.register(deviceRoutes, {

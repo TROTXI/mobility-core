@@ -1,8 +1,8 @@
-// Payment routes. /payments/subscribe (membership fee) and /payments/topup (load
-// ride tokens) start a Paystack checkout — both auth + per-user rate limit.
-// /webhooks/paystack is public but signature-verified inside the service; it uses
-// the RAW body (fastify-raw-body) because the HMAC must be over the exact bytes
-// Paystack sent — a re-serialized JSON would not match.
+// Payment routes. /payments/subscribe (membership fee) starts a Paystack
+// checkout — auth + per-user rate limit. /webhooks/paystack is public but
+// signature-verified inside the service; it uses the RAW body (fastify-raw-body)
+// because the HMAC must be over the exact bytes Paystack sent — a re-serialized
+// JSON would not match. (The wallet top-up route is removed — ADR-0014.)
 
 import type { FastifyInstance } from 'fastify';
 import fastifyRawBody from 'fastify-raw-body';
@@ -12,7 +12,6 @@ import type { RateLimitConfig } from '../ratelimit/ratelimit.plugin';
 import {
   checkoutResponseSchema,
   subscribeBodySchema,
-  topupBodySchema,
   webhookResponseSchema,
 } from './payments.schema';
 import {
@@ -25,8 +24,8 @@ import {
 const WEBHOOK_RATE_LIMIT = { max: 60, windowSeconds: 60 } as const;
 
 /**
- * Register the payment routes: `POST /payments/subscribe`, `POST /payments/topup`,
- * and `POST /webhooks/paystack`.
+ * Register the payment routes: `POST /payments/subscribe` and
+ * `POST /webhooks/paystack`.
  *
  * @param app - the Fastify instance to register on.
  * @param opts - route dependencies.
@@ -65,39 +64,6 @@ export async function paymentRoutes(
         return await opts.paymentsService.initializeSubscription(
           request.user!.id,
           request.body.plan,
-        );
-      } catch (err) {
-        if (err instanceof PaymentsNotConfiguredError) return reply.code(503).send(UNAVAILABLE);
-        throw err;
-      }
-    },
-  );
-
-  r.post(
-    '/payments/topup',
-    {
-      schema: {
-        tags: ['payments'],
-        summary:
-          '[LEGACY — do not build against] Wallet top-up. Superseded by ride entitlements (ADR-0014); retired in E7',
-        deprecated: true,
-        security: [{ bearerAuth: [] }],
-        body: topupBodySchema,
-        response: {
-          200: checkoutResponseSchema,
-          401: errorResponseSchema,
-          429: errorResponseSchema,
-          503: errorResponseSchema,
-        },
-      },
-      preHandler: [app.authenticate, app.rateLimit({ ...opts.rateLimit, by: 'user' })],
-    },
-    async (request, reply) => {
-      if (!opts.paymentsService) return reply.code(503).send(UNAVAILABLE);
-      try {
-        return await opts.paymentsService.initializeTopup(
-          request.user!.id,
-          request.body.amountPesewas,
         );
       } catch (err) {
         if (err instanceof PaymentsNotConfiguredError) return reply.code(503).send(UNAVAILABLE);
