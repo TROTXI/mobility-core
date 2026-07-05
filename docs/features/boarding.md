@@ -72,13 +72,21 @@ no FK yet (trips are #18).
   `jwtVerify`; the scan route throttles **before** the role check so non-driver
   tokens can't hammer unthrottled 403s.
 
-## Deferred (with the money work / product)
+## Next (Hybrid Subscription Model — ADR-0014, boarding v2 / epic E4)
 
-- **Eligibility gates** — a valid scan should also require an **active
-  subscription** and (later) **debit a token** for the fare. Couples to the
-  commission model (on hold), so not built here.
-- **Photo-pass fallback** — driver-confirmed boarding when QR fails; needs image
-  upload (Cloudflare R2, #24) + product UX for how the driver identifies the rider.
+The commercial model is decided
+([ADR-0014](../adr/0014-hybrid-subscription-model.md)): this QR core becomes
+**one of three verification layers**, and boarding consumes **1 ride from the
+subscription entitlement** (not a fare debit from a wallet). Coming in E4:
+
+- **Driver manifest layer** — name + **photo** (server-side, R2 #24) + pickup
+  point for the day's reservations. The photo pass is now required product.
+- **Daily 4-digit PIN layer** — offline-friendly fallback; any layer completes
+  verification.
+- **Ride deduction on verify** (idempotency key = reservation id) + the
+  confirmed-yes **no-show** deduction job; operator cancellation never deducts.
+- Eligibility: active subscription + a **confirmed reservation** for the trip
+  (from the daily-confirmation flow), replacing the old wallet-balance gate.
 
 ## Where the code lives
 

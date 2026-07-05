@@ -69,3 +69,13 @@ Boarding requires **both** an active subscription and sufficient balance
   the boarding debit (#20) are blocked on that decision because it shapes the
   ledger and payout design. Full status:
   `docs/features/payments-and-wallet.md` → "Status & roadmap (ON HOLD)".
+
+## Update — 2026-07-04 (superseded in part by ADR-0014)
+
+The hold is lifted: product adopted the **Hybrid Subscription Model**
+([ADR-0014](0014-hybrid-subscription-model.md)). The **wallet/top-up semantics**
+of this ADR are superseded — subscriptions now carry a **ride entitlement**, and
+unused value becomes **Ride Credits** against the next renewal; there is no
+prepaid wallet. The **append-only ledger pattern this ADR established stands**
+and is reused twice (entitlement ledger in ride counts; credit ledger in
+pesewas). `token_ledger`/top-ups are legacy pending retirement (E7).
