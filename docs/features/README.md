@@ -16,14 +16,14 @@ repo (`system-design.md`, `security.md`). Each doc links to both.
 
 ## Index
 
-| Feature                                                                         | Doc                                              | Status                                 |
-| ------------------------------------------------------------------------------- | ------------------------------------------------ | -------------------------------------- |
-| Authentication — access tokens, route guard, sign-in/refresh/logout             | [authentication.md](authentication.md)           | ✅ live                                |
-| Wallet & payments — Paystack + ledgers; wallet semantics superseded by ADR-0014 | [payments-and-wallet.md](payments-and-wallet.md) | 🔄 model pivoted (Hybrid Subscription) |
-| Mobility — routes, stops, browse                                                | _(in review — #57)_                              | 🚧                                     |
-| Rate limiting (#23)                                                             | [rate-limiting.md](rate-limiting.md)             | ✅ live                                |
-| Boarding — QR passes + scan verification (#20)                                  | [boarding.md](boarding.md)                       | 🟡 integrity slice                     |
-| Observability & performance (#28)                                               | [design](../design/observability.md)             | ✅ backend live (metrics/traces/logs)  |
+| Feature                                                                   | Doc                                              | Status                                 |
+| ------------------------------------------------------------------------- | ------------------------------------------------ | -------------------------------------- |
+| Authentication — access tokens, route guard, sign-in/refresh/logout       | [authentication.md](authentication.md)           | ✅ live                                |
+| Payments — Paystack subscribe + webhook (wallet/ledger removed, ADR-0014) | [payments-and-wallet.md](payments-and-wallet.md) | 🔄 model pivoted (Hybrid Subscription) |
+| Mobility — routes, stops, browse                                          | _(in review — #57)_                              | 🚧                                     |
+| Rate limiting (#23)                                                       | [rate-limiting.md](rate-limiting.md)             | ✅ live                                |
+| Boarding — QR passes + scan verification (#20)                            | [boarding.md](boarding.md)                       | 🟡 integrity slice                     |
+| Observability & performance (#28)                                         | [design](../design/observability.md)             | ✅ backend live (metrics/traces/logs)  |
 
 ## Conventions for a feature doc
 

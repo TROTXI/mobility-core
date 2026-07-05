@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest';
 import { buildApp } from '../src/app';
-import { InMemoryLedgerRepository } from '../src/modules/ledger/ledger.repository';
 import { InMemoryPaymentRepository } from '../src/modules/payments/payment.repository';
 import { FakePaystackClient, paystackSignature } from '../src/modules/payments/paystack.client';
 import { PaymentsService } from '../src/modules/payments/payments.service';
@@ -18,16 +17,14 @@ const FAKE_SECRET = 'fake-paystack-secret';
 const bearer = (t: string) => ({ authorization: `Bearer ${t}` });
 
 function appWithPayments() {
-  const ledger = new InMemoryLedgerRepository();
   const subscriptions = new InMemorySubscriptionRepository();
   const paymentsService = new PaymentsService({
     payments: new InMemoryPaymentRepository(),
-    ledger,
     subscriptions,
     paystack: new FakePaystackClient(FAKE_SECRET),
-    subscriptionFees: { monthly: 20, annual: 200 },
+    subscriptionFees: { monthly: 2000, annual: 20000 },
   });
-  return { ledger, subscriptions, build: buildApp({ auth, ledger, paymentsService }) };
+  return { subscriptions, build: buildApp({ auth, paymentsService }) };
 }
 
 async function webhookFor(app: Awaited<ReturnType<typeof buildApp>>, reference: string) {
@@ -43,7 +40,7 @@ async function webhookFor(app: Awaited<ReturnType<typeof buildApp>>, reference: 
   });
 }
 
-describe('POST /payments/subscribe + /payments/topup', () => {
+describe('POST /payments/subscribe', () => {
   it('rejects unauthenticated requests', async () => {
     const app = await appWithPayments().build;
     expect(
@@ -55,35 +52,20 @@ describe('POST /payments/subscribe + /payments/topup', () => {
         })
       ).statusCode,
     ).toBe(401);
-    expect(
-      (
-        await app.inject({
-          method: 'POST',
-          url: '/payments/topup',
-          payload: { amountPesewas: 5000 },
-        })
-      ).statusCode,
-    ).toBe(401);
   });
 
   it('returns a checkout URL for an authenticated user', async () => {
     const app = await appWithPayments().build;
     const token = await jwt.signAccessToken({ userId: 'rider-1', role: 'commuter' });
-    const sub = await app.inject({
+    const res = await app.inject({
       method: 'POST',
       url: '/payments/subscribe',
       headers: bearer(token),
       payload: { plan: 'monthly' },
     });
-    expect(sub.statusCode).toBe(200);
-    expect(sub.json().authorizationUrl).toBeTruthy();
-    const top = await app.inject({
-      method: 'POST',
-      url: '/payments/topup',
-      headers: bearer(token),
-      payload: { amountPesewas: 5000 },
-    });
-    expect(top.statusCode).toBe(200);
+    expect(res.statusCode).toBe(200);
+    expect(res.json().authorizationUrl).toBeTruthy();
+    expect(res.json().reference).toBeTruthy();
   });
 
   it('returns 503 when payments are not configured', async () => {
@@ -93,37 +75,30 @@ describe('POST /payments/subscribe + /payments/topup', () => {
       (
         await app.inject({
           method: 'POST',
-          url: '/payments/topup',
+          url: '/payments/subscribe',
           headers: bearer(token),
-          payload: { amountPesewas: 5000 },
+          payload: { plan: 'monthly' },
         })
       ).statusCode,
     ).toBe(503);
   });
+
+  it('the legacy top-up route is gone (404)', async () => {
+    const app = await appWithPayments().build;
+    const token = await jwt.signAccessToken({ userId: 'rider-1', role: 'commuter' });
+    const res = await app.inject({
+      method: 'POST',
+      url: '/payments/topup',
+      headers: bearer(token),
+      payload: { amountPesewas: 5000 },
+    });
+    expect(res.statusCode).toBe(404);
+  });
 });
 
 describe('POST /webhooks/paystack', () => {
-  it('topup: a signed charge.success grants tokens (balance via /me/balance)', async () => {
-    const { build } = appWithPayments();
-    const app = await build;
-    const token = await jwt.signAccessToken({ userId: 'rider-1', role: 'commuter' });
-    const { reference } = (
-      await app.inject({
-        method: 'POST',
-        url: '/payments/topup',
-        headers: bearer(token),
-        payload: { amountPesewas: 5000 },
-      })
-    ).json();
-
-    expect((await webhookFor(app, reference)).statusCode).toBe(200);
-
-    const balance = await app.inject({ method: 'GET', url: '/me/balance', headers: bearer(token) });
-    expect(balance.json()).toEqual({ balancePesewas: 5000 });
-  });
-
-  it('subscription: a signed charge.success activates membership without granting tokens', async () => {
-    const { build, ledger, subscriptions } = appWithPayments();
+  it('subscription: a signed charge.success activates the membership', async () => {
+    const { build, subscriptions } = appWithPayments();
     const app = await build;
     const token = await jwt.signAccessToken({ userId: 'rider-2', role: 'commuter' });
     const { reference } = (
@@ -136,9 +111,7 @@ describe('POST /webhooks/paystack', () => {
     ).json();
 
     expect((await webhookFor(app, reference)).statusCode).toBe(200);
-
     expect(await subscriptions.findActiveByUser('rider-2')).not.toBeNull();
-    expect(await ledger.balanceOf('rider-2')).toBe(0);
   });
 
   it('rejects a bad signature with 401', async () => {

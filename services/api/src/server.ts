@@ -29,11 +29,6 @@ import {
 } from './modules/subscriptions/subscription.repository';
 import { PgSubscriptionRepository } from './modules/subscriptions/subscription.repository.pg';
 import {
-  InMemoryLedgerRepository,
-  type LedgerRepository,
-} from './modules/ledger/ledger.repository';
-import { PgLedgerRepository } from './modules/ledger/ledger.repository.pg';
-import {
   InMemoryDeviceTokenRepository,
   type DeviceTokenRepository,
 } from './modules/devices/device-token.repository';
@@ -83,7 +78,6 @@ async function main(): Promise<void> {
   let subscriptions: SubscriptionRepository;
   let sessions: SessionRepository;
   let authIdentities: AuthIdentityRepository;
-  let ledger: LedgerRepository;
   let payments: PaymentRepository;
   let deviceTokens: DeviceTokenRepository;
   let scanEvents: ScanEventRepository;
@@ -93,7 +87,6 @@ async function main(): Promise<void> {
     subscriptions = new PgSubscriptionRepository(pool);
     sessions = new PgSessionRepository(pool);
     authIdentities = new PgAuthIdentityRepository(pool);
-    ledger = new PgLedgerRepository(pool);
     payments = new PgPaymentRepository(pool);
     deviceTokens = new PgDeviceTokenRepository(pool);
     scanEvents = new PgScanEventRepository(pool);
@@ -103,7 +96,6 @@ async function main(): Promise<void> {
     subscriptions = new InMemorySubscriptionRepository();
     sessions = new InMemorySessionRepository();
     authIdentities = new InMemoryAuthIdentityRepository();
-    ledger = new InMemoryLedgerRepository();
     payments = new InMemoryPaymentRepository();
     deviceTokens = new InMemoryDeviceTokenRepository();
     scanEvents = new InMemoryScanEventRepository();
@@ -156,7 +148,6 @@ async function main(): Promise<void> {
 
   const paymentsService = new PaymentsService({
     payments,
-    ledger,
     subscriptions,
     paystack,
     subscriptionFees: SUBSCRIPTION_FEES_PESEWAS,
@@ -182,7 +173,6 @@ async function main(): Promise<void> {
   const app = await buildApp({
     users,
     subscriptions,
-    ledger,
     deviceTokens,
     boardingService,
     authService,
