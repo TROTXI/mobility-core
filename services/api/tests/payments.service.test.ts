@@ -10,19 +10,24 @@ import {
   InMemorySubscriptionRepository,
   type SubscriptionRepository,
 } from '../src/modules/subscriptions/subscription.repository';
+import { InMemoryEntitlementLedgerRepository } from '../src/modules/entitlements/entitlement-ledger.repository';
 
 const FAKE_SECRET = 'fake-paystack-secret';
 const subscriptionFees = { monthly: 2000, annual: 20000 }; // pesewas (GHS 20 / 200)
+const RIDES = 44;
 
 function make(subscriptions: SubscriptionRepository = new InMemorySubscriptionRepository()) {
   const payments = new InMemoryPaymentRepository();
+  const entitlements = new InMemoryEntitlementLedgerRepository();
   const service = new PaymentsService({
     payments,
     subscriptions,
+    entitlements,
     paystack: new FakePaystackClient(FAKE_SECRET),
     subscriptionFees,
+    ridesPerPeriod: RIDES,
   });
-  return { payments, subscriptions, service };
+  return { payments, subscriptions, entitlements, service };
 }
 
 function chargeSuccess(reference: string): { body: string; signature: string } {
@@ -47,7 +52,9 @@ describe('PaymentsService.initializeSubscription', () => {
     const service = new PaymentsService({
       payments: new InMemoryPaymentRepository(),
       subscriptions: new InMemorySubscriptionRepository(),
+      entitlements: new InMemoryEntitlementLedgerRepository(),
       subscriptionFees,
+      ridesPerPeriod: RIDES,
     });
     await expect(service.initializeSubscription('u1', 'monthly')).rejects.toBeInstanceOf(
       PaymentsNotConfiguredError,
@@ -61,25 +68,27 @@ describe('PaymentsService.handleWebhook', () => {
     await expect(service.handleWebhook('{}', 'bad')).rejects.toBeInstanceOf(InvalidWebhookError);
   });
 
-  it('subscription paid: activates the subscription and marks the payment paid', async () => {
-    const { service, subscriptions, payments } = make();
+  it('subscription paid: activates the subscription, allocates rides, marks paid', async () => {
+    const { service, subscriptions, payments, entitlements } = make();
     const { reference } = await service.initializeSubscription('u1', 'monthly');
     const { body, signature } = chargeSuccess(reference);
 
     await service.handleWebhook(body, signature);
 
     expect(await subscriptions.findActiveByUser('u1')).not.toBeNull();
+    expect(await entitlements.remainingRides('u1')).toBe(RIDES);
     expect((await payments.findByReference(reference))?.status).toBe('paid');
   });
 
-  it('is idempotent — a replayed webhook does not double-activate', async () => {
-    const { service, subscriptions } = make();
+  it('is idempotent — a replayed webhook does not double-activate or double-allocate', async () => {
+    const { service, subscriptions, entitlements } = make();
     const { reference } = await service.initializeSubscription('u1', 'monthly');
     const { body, signature } = chargeSuccess(reference);
 
     await service.handleWebhook(body, signature);
     await expect(service.handleWebhook(body, signature)).resolves.toBeUndefined();
     expect(await subscriptions.findActiveByUser('u1')).not.toBeNull();
+    expect(await entitlements.remainingRides('u1')).toBe(RIDES); // not 2×
   });
 
   it('ignores non charge.success events and unknown references', async () => {

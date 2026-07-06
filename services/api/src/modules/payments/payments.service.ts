@@ -13,6 +13,7 @@
 // retried/partial webhook converges. Paystack retries; reconciliation (future)
 // backstops the rest.
 
+import type { EntitlementLedgerRepository } from '../entitlements/entitlement-ledger.repository';
 import type {
   SubscriptionPlan,
   SubscriptionRepository,
@@ -34,12 +35,19 @@ export class InvalidWebhookError extends Error {}
 
 /**
  * Membership fee in PESEWAS to be on the platform. Server-authoritative
- * (security.md §7). PLACEHOLDERS — replaced by the `plans` table in epic E1.
+ * (security.md §7). PLACEHOLDERS — replaced by the `plans` table in epic E1b.
  */
 export const SUBSCRIPTION_FEES_PESEWAS: Record<SubscriptionPlan, number> = {
   monthly: 2000, // GHS 20
   annual: 20000, // GHS 200
 };
+
+/**
+ * Rides granted when a subscription activates. PLACEHOLDER — the real formula
+ * (working-days × 2, per tier) lands with the `plans` table in epic E1b; this
+ * flat value keeps the allocation flow buildable now (ADR-0014).
+ */
+export const PLACEHOLDER_RIDES_PER_PERIOD = 44;
 
 /** Collaborators for {@link PaymentsService}, injected at app wiring (app.ts). */
 export interface PaymentsServiceDeps {
@@ -47,10 +55,14 @@ export interface PaymentsServiceDeps {
   payments: PaymentRepository;
   /** Platform memberships — activated on a successful subscription payment. */
   subscriptions: SubscriptionRepository;
+  /** Ride entitlement ledger — allocated on a successful subscription payment. */
+  entitlements: EntitlementLedgerRepository;
   /** Undefined when payments aren't configured (e.g. prod without a Paystack key). */
   paystack?: PaystackClient;
   /** Plan → membership fee in pesewas (server-authoritative). */
   subscriptionFees: Record<SubscriptionPlan, number>;
+  /** Rides allocated per activated period (placeholder until E1b tiers). */
+  ridesPerPeriod: number;
 }
 
 /**
@@ -158,12 +170,32 @@ export class PaymentsService {
     if (!payment) return; // unknown reference — not ours
 
     if (payment.purpose === 'subscription' && payment.plan) {
-      // Membership fee paid — activate the subscription.
+      // Membership fee paid — activate the subscription and allocate the
+      // period's rides. Both are idempotent, so a replayed webhook is a no-op.
       await this.activateSubscription(payment.userId, payment.plan);
+      await this.allocateEntitlement(payment.userId, reference);
     }
     // Legacy 'topup' payments (pre-ADR-0014 staging data) are ignored.
 
     await this.deps.payments.markPaid(reference);
+  }
+
+  /**
+   * Allocate the period's ride entitlement for a paid subscription. Keyed by the
+   * payment reference, so a re-delivered webhook never double-allocates.
+   *
+   * @param userId - the subscriber.
+   * @param reference - the payment reference (the allocation's idempotency key).
+   */
+  private async allocateEntitlement(userId: string, reference: string): Promise<void> {
+    await this.deps.entitlements.record({
+      userId,
+      deltaRides: this.deps.ridesPerPeriod,
+      reason: 'allocation',
+      refType: 'payment',
+      refId: reference,
+      idempotencyKey: `alloc:${reference}`,
+    });
   }
 
   /**
