@@ -7,7 +7,9 @@ import type { ZodTypeProvider } from 'fastify-type-provider-zod';
 import { errorResponseSchema } from '../../lib/schemas';
 import type { RateLimitConfig } from '../ratelimit/ratelimit.plugin';
 import { userResponseSchema } from '../users/user.schema';
+import { toUserResponse } from '../users/user.presenter';
 import type { UserRepository } from '../users/user.repository';
+import type { ObjectStore } from '../../storage/object-store';
 import {
   authResultSchema,
   googleSignInBodySchema,
@@ -34,12 +36,18 @@ const AUTH_RATE_LIMIT = { max: 10, windowSeconds: 60 } as const;
  * @param app - the Fastify instance to register on.
  * @param opts - route dependencies.
  * @param opts.users - the user repository (for `GET /me`).
+ * @param opts.objectStore - avatar storage, to sign the avatar URL on `GET /me`.
  * @param opts.authService - the AuthService (routes 503 when absent).
  * @param opts.rateLimit - rate-limit config for the credential endpoints.
  */
 export async function authRoutes(
   app: FastifyInstance,
-  opts: { users?: UserRepository; authService?: AuthService; rateLimit: RateLimitConfig },
+  opts: {
+    users?: UserRepository;
+    objectStore: ObjectStore;
+    authService?: AuthService;
+    rateLimit: RateLimitConfig;
+  },
 ): Promise<void> {
   const r = app.withTypeProvider<ZodTypeProvider>();
 
@@ -65,7 +73,7 @@ export async function authRoutes(
       if (!user) {
         return reply.code(404).send({ error: 'not_found', message: 'User not found' });
       }
-      return user;
+      return toUserResponse(user, opts.objectStore);
     },
   );
 

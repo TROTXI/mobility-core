@@ -26,6 +26,7 @@ export default tseslint.config(
       'src/**/*.redis.ts',
       'src/**/*.live.ts',
       'src/**/*.google.ts',
+      'src/**/*.r2.ts',
       'src/**/*.schema.ts',
       'src/server.ts',
       'src/db/**',
