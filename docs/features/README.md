@@ -22,6 +22,7 @@ repo (`system-design.md`, `security.md`). Each doc links to both.
 | Profile & avatars — `PATCH /me`, avatar upload → R2 (photo pass) (#24)      | [profile-avatars.md](profile-avatars.md)         | ✅ live                                |
 | Payments — Paystack subscribe + webhook (wallet/ledger removed, ADR-0014)   | [payments-and-wallet.md](payments-and-wallet.md) | 🔄 model pivoted (Hybrid Subscription) |
 | Ride entitlements & credits — `GET /me/rides`, allocation on payment (#100) | [entitlements.md](entitlements.md)               | ✅ E1 (ledgers + allocation)           |
+| Daily ride confirmation — `POST /me/reservations` (confirm/decline) (#101)  | [reservations.md](reservations.md)               | 🟡 E3 core (ask-dispatch deferred #18) |
 | Mobility — routes, stops, browse                                            | _(in review — #57)_                              | 🚧                                     |
 | Rate limiting (#23)                                                         | [rate-limiting.md](rate-limiting.md)             | ✅ live                                |
 | Boarding — QR passes + scan verification (#20)                              | [boarding.md](boarding.md)                       | 🟡 integrity slice                     |
