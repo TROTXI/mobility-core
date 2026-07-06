@@ -63,6 +63,11 @@ import {
   type CreditLedgerRepository,
 } from './modules/entitlements/credit-ledger.repository';
 import { PgCreditLedgerRepository } from './modules/entitlements/credit-ledger.repository.pg';
+import {
+  InMemoryReservationRepository,
+  type ReservationRepository,
+} from './modules/reservations/reservation.repository';
+import { PgReservationRepository } from './modules/reservations/reservation.repository.pg';
 import { InMemoryUserRepository, type UserRepository } from './modules/users/user.repository';
 import { PgUserRepository } from './modules/users/user.repository.pg';
 
@@ -114,6 +119,7 @@ async function main(): Promise<void> {
   let scanEvents: ScanEventRepository;
   let entitlements: EntitlementLedgerRepository;
   let credits: CreditLedgerRepository;
+  let reservations: ReservationRepository;
   if (env.DATABASE_URL) {
     pool = createPool(env.DATABASE_URL);
     users = new PgUserRepository(pool);
@@ -125,6 +131,7 @@ async function main(): Promise<void> {
     scanEvents = new PgScanEventRepository(pool);
     entitlements = new PgEntitlementLedgerRepository(pool);
     credits = new PgCreditLedgerRepository(pool);
+    reservations = new PgReservationRepository(pool);
     console.log('Using Postgres repositories');
   } else {
     users = new InMemoryUserRepository();
@@ -136,6 +143,7 @@ async function main(): Promise<void> {
     scanEvents = new InMemoryScanEventRepository();
     entitlements = new InMemoryEntitlementLedgerRepository();
     credits = new InMemoryCreditLedgerRepository();
+    reservations = new InMemoryReservationRepository();
     console.log('Using in-memory repositories (no DATABASE_URL set)');
   }
 
@@ -218,6 +226,7 @@ async function main(): Promise<void> {
     paymentsService,
     entitlements,
     credits,
+    reservations,
     kv,
     objectStore,
     isReady,

@@ -29,6 +29,11 @@ import {
   InMemoryCreditLedgerRepository,
   type CreditLedgerRepository,
 } from './modules/entitlements/credit-ledger.repository';
+import { reservationRoutes } from './modules/reservations/reservations.routes';
+import {
+  InMemoryReservationRepository,
+  type ReservationRepository,
+} from './modules/reservations/reservation.repository';
 import { paymentRoutes } from './modules/payments/payments.routes';
 import type { PaymentsService } from './modules/payments/payments.service';
 import { authPlugin } from './modules/auth/auth.plugin';
@@ -63,6 +68,8 @@ export interface AppDeps {
   entitlements?: EntitlementLedgerRepository;
   /** Ride Credit ledger (in-memory vs Postgres). Defaults to in-memory. */
   credits?: CreditLedgerRepository;
+  /** Daily reservation store (in-memory vs Postgres). Defaults to in-memory. */
+  reservations?: ReservationRepository;
   /** Selected by REDIS_URL (in-memory vs Redis). For rate limits, idempotency, cache. */
   kv?: KvStore;
   /** Avatar/media storage (R2 in prod, in-memory Fake in dev/tests). */
@@ -114,6 +121,7 @@ export async function buildApp(deps: AppDeps = {}): Promise<FastifyInstance> {
         { name: 'auth', description: 'Authentication and the current user' },
         { name: 'payments', description: 'Subscriptions checkout (Paystack) + webhook' },
         { name: 'rides', description: 'Ride entitlement + Ride Credit balance' },
+        { name: 'reservations', description: 'Daily ride confirmation (confirm/decline)' },
         { name: 'boarding', description: 'QR boarding passes + scan verification' },
       ],
       components: {
@@ -162,6 +170,10 @@ export async function buildApp(deps: AppDeps = {}): Promise<FastifyInstance> {
   await app.register(entitlementRoutes, {
     entitlements: deps.entitlements ?? new InMemoryEntitlementLedgerRepository(),
     credits: deps.credits ?? new InMemoryCreditLedgerRepository(),
+    rateLimit: deps.rateLimit ?? DEFAULT_RATE_LIMIT,
+  });
+  await app.register(reservationRoutes, {
+    reservations: deps.reservations ?? new InMemoryReservationRepository(),
     rateLimit: deps.rateLimit ?? DEFAULT_RATE_LIMIT,
   });
   await app.register(boardingRoutes, {
