@@ -20,6 +20,15 @@ import { BoardingService } from './modules/boarding/boarding.service';
 import { boardingRoutes } from './modules/boarding/boarding.routes';
 import { InMemoryScanEventRepository } from './modules/boarding/scan-event.repository';
 import { metricsPlugin, type MetricsOptions } from './modules/metrics/metrics.plugin';
+import { entitlementRoutes } from './modules/entitlements/entitlements.routes';
+import {
+  InMemoryEntitlementLedgerRepository,
+  type EntitlementLedgerRepository,
+} from './modules/entitlements/entitlement-ledger.repository';
+import {
+  InMemoryCreditLedgerRepository,
+  type CreditLedgerRepository,
+} from './modules/entitlements/credit-ledger.repository';
 import { paymentRoutes } from './modules/payments/payments.routes';
 import type { PaymentsService } from './modules/payments/payments.service';
 import { authPlugin } from './modules/auth/auth.plugin';
@@ -50,6 +59,10 @@ export interface AppDeps {
   deviceTokens?: DeviceTokenRepository;
   /** Boarding pass issuance + scan verification. Defaults to an in-memory scan store. */
   boardingService?: BoardingService;
+  /** Ride entitlement ledger (in-memory vs Postgres). Defaults to in-memory. */
+  entitlements?: EntitlementLedgerRepository;
+  /** Ride Credit ledger (in-memory vs Postgres). Defaults to in-memory. */
+  credits?: CreditLedgerRepository;
   /** Selected by REDIS_URL (in-memory vs Redis). For rate limits, idempotency, cache. */
   kv?: KvStore;
   /** Avatar/media storage (R2 in prod, in-memory Fake in dev/tests). */
@@ -100,6 +113,7 @@ export async function buildApp(deps: AppDeps = {}): Promise<FastifyInstance> {
         { name: 'system', description: 'Health, readiness, and service metadata' },
         { name: 'auth', description: 'Authentication and the current user' },
         { name: 'payments', description: 'Subscriptions checkout (Paystack) + webhook' },
+        { name: 'rides', description: 'Ride entitlement + Ride Credit balance' },
         { name: 'boarding', description: 'QR boarding passes + scan verification' },
       ],
       components: {
@@ -143,6 +157,11 @@ export async function buildApp(deps: AppDeps = {}): Promise<FastifyInstance> {
   });
   await app.register(paymentRoutes, {
     paymentsService: deps.paymentsService,
+    rateLimit: deps.rateLimit ?? DEFAULT_RATE_LIMIT,
+  });
+  await app.register(entitlementRoutes, {
+    entitlements: deps.entitlements ?? new InMemoryEntitlementLedgerRepository(),
+    credits: deps.credits ?? new InMemoryCreditLedgerRepository(),
     rateLimit: deps.rateLimit ?? DEFAULT_RATE_LIMIT,
   });
   await app.register(boardingRoutes, {

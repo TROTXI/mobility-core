@@ -4,6 +4,7 @@ import { InMemoryPaymentRepository } from '../src/modules/payments/payment.repos
 import { FakePaystackClient, paystackSignature } from '../src/modules/payments/paystack.client';
 import { PaymentsService } from '../src/modules/payments/payments.service';
 import { InMemorySubscriptionRepository } from '../src/modules/subscriptions/subscription.repository';
+import { InMemoryEntitlementLedgerRepository } from '../src/modules/entitlements/entitlement-ledger.repository';
 import { createJwtService, type AuthConfig } from '../src/modules/auth/jwt';
 
 const auth: AuthConfig = {
@@ -18,13 +19,18 @@ const bearer = (t: string) => ({ authorization: `Bearer ${t}` });
 
 function appWithPayments() {
   const subscriptions = new InMemorySubscriptionRepository();
+  const entitlements = new InMemoryEntitlementLedgerRepository();
   const paymentsService = new PaymentsService({
     payments: new InMemoryPaymentRepository(),
     subscriptions,
+    entitlements,
     paystack: new FakePaystackClient(FAKE_SECRET),
     subscriptionFees: { monthly: 2000, annual: 20000 },
+    ridesPerPeriod: 44,
   });
-  return { subscriptions, build: buildApp({ auth, paymentsService }) };
+  // Share the entitlements instance with the app so GET /me/rides sees the
+  // rides the webhook allocates.
+  return { subscriptions, entitlements, build: buildApp({ auth, paymentsService, entitlements }) };
 }
 
 async function webhookFor(app: Awaited<ReturnType<typeof buildApp>>, reference: string) {
@@ -112,6 +118,15 @@ describe('POST /webhooks/paystack', () => {
 
     expect((await webhookFor(app, reference)).statusCode).toBe(200);
     expect(await subscriptions.findActiveByUser('rider-2')).not.toBeNull();
+
+    // …and the rider now has their allocated rides via GET /me/rides.
+    const rides = await app.inject({
+      method: 'GET',
+      url: '/me/rides',
+      headers: bearer(token),
+    });
+    expect(rides.statusCode).toBe(200);
+    expect(rides.json()).toMatchObject({ remainingRides: 44, creditPesewas: 0 });
   });
 
   it('rejects a bad signature with 401', async () => {

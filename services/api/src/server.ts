@@ -48,7 +48,21 @@ import {
 import { PgPaymentRepository } from './modules/payments/payment.repository.pg';
 import { FakePaystackClient, type PaystackClient } from './modules/payments/paystack.client';
 import { PaystackHttpClient } from './modules/payments/paystack.client.live';
-import { PaymentsService, SUBSCRIPTION_FEES_PESEWAS } from './modules/payments/payments.service';
+import {
+  PaymentsService,
+  PLACEHOLDER_RIDES_PER_PERIOD,
+  SUBSCRIPTION_FEES_PESEWAS,
+} from './modules/payments/payments.service';
+import {
+  InMemoryEntitlementLedgerRepository,
+  type EntitlementLedgerRepository,
+} from './modules/entitlements/entitlement-ledger.repository';
+import { PgEntitlementLedgerRepository } from './modules/entitlements/entitlement-ledger.repository.pg';
+import {
+  InMemoryCreditLedgerRepository,
+  type CreditLedgerRepository,
+} from './modules/entitlements/credit-ledger.repository';
+import { PgCreditLedgerRepository } from './modules/entitlements/credit-ledger.repository.pg';
 import { InMemoryUserRepository, type UserRepository } from './modules/users/user.repository';
 import { PgUserRepository } from './modules/users/user.repository.pg';
 
@@ -98,6 +112,8 @@ async function main(): Promise<void> {
   let payments: PaymentRepository;
   let deviceTokens: DeviceTokenRepository;
   let scanEvents: ScanEventRepository;
+  let entitlements: EntitlementLedgerRepository;
+  let credits: CreditLedgerRepository;
   if (env.DATABASE_URL) {
     pool = createPool(env.DATABASE_URL);
     users = new PgUserRepository(pool);
@@ -107,6 +123,8 @@ async function main(): Promise<void> {
     payments = new PgPaymentRepository(pool);
     deviceTokens = new PgDeviceTokenRepository(pool);
     scanEvents = new PgScanEventRepository(pool);
+    entitlements = new PgEntitlementLedgerRepository(pool);
+    credits = new PgCreditLedgerRepository(pool);
     console.log('Using Postgres repositories');
   } else {
     users = new InMemoryUserRepository();
@@ -116,6 +134,8 @@ async function main(): Promise<void> {
     payments = new InMemoryPaymentRepository();
     deviceTokens = new InMemoryDeviceTokenRepository();
     scanEvents = new InMemoryScanEventRepository();
+    entitlements = new InMemoryEntitlementLedgerRepository();
+    credits = new InMemoryCreditLedgerRepository();
     console.log('Using in-memory repositories (no DATABASE_URL set)');
   }
 
@@ -166,8 +186,10 @@ async function main(): Promise<void> {
   const paymentsService = new PaymentsService({
     payments,
     subscriptions,
+    entitlements,
     paystack,
     subscriptionFees: SUBSCRIPTION_FEES_PESEWAS,
+    ridesPerPeriod: PLACEHOLDER_RIDES_PER_PERIOD,
   });
 
   // Readiness pings every configured backing service (DB + KV).
@@ -194,6 +216,8 @@ async function main(): Promise<void> {
     boardingService,
     authService,
     paymentsService,
+    entitlements,
+    credits,
     kv,
     objectStore,
     isReady,

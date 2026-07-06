@@ -16,15 +16,16 @@ repo (`system-design.md`, `security.md`). Each doc links to both.
 
 ## Index
 
-| Feature                                                                   | Doc                                              | Status                                 |
-| ------------------------------------------------------------------------- | ------------------------------------------------ | -------------------------------------- |
-| Authentication — access tokens, route guard, sign-in/refresh/logout       | [authentication.md](authentication.md)           | ✅ live                                |
-| Profile & avatars — `PATCH /me`, avatar upload → R2 (photo pass) (#24)    | [profile-avatars.md](profile-avatars.md)         | ✅ live                                |
-| Payments — Paystack subscribe + webhook (wallet/ledger removed, ADR-0014) | [payments-and-wallet.md](payments-and-wallet.md) | 🔄 model pivoted (Hybrid Subscription) |
-| Mobility — routes, stops, browse                                          | _(in review — #57)_                              | 🚧                                     |
-| Rate limiting (#23)                                                       | [rate-limiting.md](rate-limiting.md)             | ✅ live                                |
-| Boarding — QR passes + scan verification (#20)                            | [boarding.md](boarding.md)                       | 🟡 integrity slice                     |
-| Observability & performance (#28)                                         | [design](../design/observability.md)             | ✅ backend live (metrics/traces/logs)  |
+| Feature                                                                     | Doc                                              | Status                                 |
+| --------------------------------------------------------------------------- | ------------------------------------------------ | -------------------------------------- |
+| Authentication — access tokens, route guard, sign-in/refresh/logout         | [authentication.md](authentication.md)           | ✅ live                                |
+| Profile & avatars — `PATCH /me`, avatar upload → R2 (photo pass) (#24)      | [profile-avatars.md](profile-avatars.md)         | ✅ live                                |
+| Payments — Paystack subscribe + webhook (wallet/ledger removed, ADR-0014)   | [payments-and-wallet.md](payments-and-wallet.md) | 🔄 model pivoted (Hybrid Subscription) |
+| Ride entitlements & credits — `GET /me/rides`, allocation on payment (#100) | [entitlements.md](entitlements.md)               | ✅ E1 (ledgers + allocation)           |
+| Mobility — routes, stops, browse                                            | _(in review — #57)_                              | 🚧                                     |
+| Rate limiting (#23)                                                         | [rate-limiting.md](rate-limiting.md)             | ✅ live                                |
+| Boarding — QR passes + scan verification (#20)                              | [boarding.md](boarding.md)                       | 🟡 integrity slice                     |
+| Observability & performance (#28)                                           | [design](../design/observability.md)             | ✅ backend live (metrics/traces/logs)  |
 
 ## Conventions for a feature doc
 
