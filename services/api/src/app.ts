@@ -9,6 +9,8 @@ import {
 } from 'fastify-type-provider-zod';
 import { z } from 'zod';
 import { InMemoryKvStore, type KvStore } from './kv/kv.store';
+import { FakeObjectStore, type ObjectStore } from './storage/object-store';
+import { userRoutes } from './modules/users/users.routes';
 import {
   InMemoryDeviceTokenRepository,
   type DeviceTokenRepository,
@@ -50,6 +52,8 @@ export interface AppDeps {
   boardingService?: BoardingService;
   /** Selected by REDIS_URL (in-memory vs Redis). For rate limits, idempotency, cache. */
   kv?: KvStore;
+  /** Avatar/media storage (R2 in prod, in-memory Fake in dev/tests). */
+  objectStore?: ObjectStore;
   /** JWT/auth settings. Defaults to a dev-only config when unset (tests, local). */
   auth?: AuthConfig;
   /** Sign-in/refresh/logout orchestrator. Routes return 503 when absent. */
@@ -118,12 +122,19 @@ export async function buildApp(deps: AppDeps = {}): Promise<FastifyInstance> {
 
   // Guards first (decorators on the root instance), then routes that use them.
   const kv = deps.kv ?? new InMemoryKvStore();
+  const objectStore = deps.objectStore ?? new FakeObjectStore();
   const authConfig = deps.auth ?? DEV_AUTH_CONFIG;
   await app.register(authPlugin, { config: authConfig });
   await app.register(rateLimitPlugin, { kv });
   await app.register(authRoutes, {
     users: deps.users,
+    objectStore,
     authService: deps.authService,
+    rateLimit: deps.rateLimit ?? DEFAULT_RATE_LIMIT,
+  });
+  await app.register(userRoutes, {
+    users: deps.users,
+    objectStore,
     rateLimit: deps.rateLimit ?? DEFAULT_RATE_LIMIT,
   });
   await app.register(deviceRoutes, {

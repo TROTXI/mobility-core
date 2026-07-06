@@ -8,6 +8,8 @@ import { loadEnv } from './config/env';
 import { createPool } from './db/pool';
 import { InMemoryKvStore, type KvStore } from './kv/kv.store';
 import { RedisKvStore } from './kv/kv.store.redis';
+import { FakeObjectStore, type ObjectStore } from './storage/object-store';
+import { R2ObjectStore } from './storage/object-store.r2';
 import {
   InMemoryAuthIdentityRepository,
   type AuthIdentityRepository,
@@ -71,6 +73,21 @@ async function main(): Promise<void> {
   console.log(
     env.REDIS_URL ? 'Using Redis KV store' : 'Using in-memory KV store (no REDIS_URL set)',
   );
+
+  // Object store: Cloudflare R2 when all four R2_* vars are set, else in-memory.
+  let objectStore: ObjectStore;
+  if (env.R2_ACCOUNT_ID && env.R2_ACCESS_KEY_ID && env.R2_SECRET_ACCESS_KEY && env.R2_BUCKET) {
+    objectStore = new R2ObjectStore({
+      accountId: env.R2_ACCOUNT_ID,
+      accessKeyId: env.R2_ACCESS_KEY_ID,
+      secretAccessKey: env.R2_SECRET_ACCESS_KEY,
+      bucket: env.R2_BUCKET,
+    });
+    console.log('Using Cloudflare R2 object store');
+  } else {
+    objectStore = new FakeObjectStore();
+    console.log('Using in-memory object store (R2_* not fully set)');
+  }
 
   // Repositories: Postgres when DATABASE_URL is set, else in-memory (zero infra).
   let pool: Pool | undefined;
@@ -178,6 +195,7 @@ async function main(): Promise<void> {
     authService,
     paymentsService,
     kv,
+    objectStore,
     isReady,
     auth,
     rateLimit,

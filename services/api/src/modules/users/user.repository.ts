@@ -39,6 +39,23 @@ export interface UserRepository {
    * @returns the user, or null if not found.
    */
   findById(id: string): Promise<User | null>;
+  /**
+   * Update a user's editable profile fields.
+   *
+   * @param id - the user id.
+   * @param patch - the fields to change.
+   * @param patch.displayName - the new display name.
+   * @returns the updated user, or null if not found.
+   */
+  updateProfile(id: string, patch: { displayName: string }): Promise<User | null>;
+  /**
+   * Set (or clear) a user's stored avatar object key.
+   *
+   * @param id - the user id.
+   * @param key - the object-store key, or null to remove the avatar.
+   * @returns the updated user, or null if not found.
+   */
+  setAvatarKey(id: string, key: string | null): Promise<User | null>;
 }
 
 /** In-memory {@link UserRepository} for dev and unit tests. */
@@ -60,5 +77,21 @@ export class InMemoryUserRepository implements UserRepository {
 
   async findById(id: string): Promise<User | null> {
     return this.users.get(id) ?? null;
+  }
+
+  async updateProfile(id: string, patch: { displayName: string }): Promise<User | null> {
+    const user = this.users.get(id);
+    if (!user) return null;
+    const updated = { ...user, displayName: patch.displayName };
+    this.users.set(id, updated);
+    return updated;
+  }
+
+  async setAvatarKey(id: string, key: string | null): Promise<User | null> {
+    const user = this.users.get(id);
+    if (!user) return null;
+    const updated = { ...user, avatarUrl: key };
+    this.users.set(id, updated);
+    return updated;
   }
 }

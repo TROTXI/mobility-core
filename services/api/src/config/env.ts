@@ -22,6 +22,12 @@ const envSchema = z
     // Paystack SECRET key (sk_...). Used for the API + webhook signature check.
     // Set -> real payments; unset -> dev fake client (non-prod) / 503 (prod).
     PAYSTACK_SECRET_KEY: z.string().optional(),
+    // Cloudflare R2 (avatars, #24). All four set -> real R2; any unset ->
+    // in-memory Fake object store (dev/tests). Secrets -> Render dashboard only.
+    R2_ACCOUNT_ID: z.string().optional(),
+    R2_ACCESS_KEY_ID: z.string().optional(),
+    R2_SECRET_ACCESS_KEY: z.string().optional(),
+    R2_BUCKET: z.string().optional(),
     // Rate limiting (fixed window). Tunable without a code change.
     RATE_LIMIT_MAX: z.coerce.number().int().positive().default(100),
     RATE_LIMIT_WINDOW_SECONDS: z.coerce.number().int().positive().default(60),

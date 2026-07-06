@@ -55,6 +55,17 @@ services:
         sync: false
       - key: OTEL_SERVICE_NAME
         value: trotxi-api
+      # Cloudflare R2 (avatars, #24) — S3-compatible object storage. The access
+      # keys are secrets → set in the dashboard, never commit. All four unset ->
+      # in-memory object store (no avatars persisted).
+      - key: R2_ACCOUNT_ID
+        sync: false
+      - key: R2_ACCESS_KEY_ID
+        sync: false
+      - key: R2_SECRET_ACCESS_KEY
+        sync: false
+      - key: R2_BUCKET
+        sync: false
 
   # ---- Production (uncomment when going live) ----
   # Needs a paid Postgres plan so data doesn't expire. After applying, set the
