@@ -47,8 +47,10 @@ import {
 } from './modules/ratelimit/ratelimit.plugin';
 import type { RouteStopRepository } from './modules/mobility/route-stop.repository';
 import { mobilityRoutes } from './modules/mobility/mobility.routes';
+import { tripRoutes } from './modules/mobility/trips.routes';
 import type { RouteRepository } from './modules/mobility/route.repository';
 import type { StopRepository } from './modules/mobility/stop.repository';
+import type { TripRepository } from './modules/mobility/trip.repository';
 import type { SubscriptionRepository } from './modules/subscriptions/subscription.repository';
 import type { UserRepository } from './modules/users/user.repository';
 
@@ -68,6 +70,8 @@ export interface AppDeps {
   routes?: RouteRepository;
   stops?: StopRepository;
   routeStops?: RouteStopRepository;
+  /** Trips (scheduled route runs). Reads require auth; routes return 503 when absent. */
+  trips?: TripRepository;
   /** Device push-token registry (in-memory vs Postgres). Defaults to in-memory. */
   deviceTokens?: DeviceTokenRepository;
   /** Boarding pass issuance + scan verification. Defaults to an in-memory scan store. */
@@ -200,6 +204,10 @@ export async function buildApp(deps: AppDeps = {}): Promise<FastifyInstance> {
     routes: deps.routes,
     stops: deps.stops,
     routeStops: deps.routeStops,
+  });
+  await app.register(tripRoutes, {
+    trips: deps.trips,
+    rateLimit: deps.rateLimit ?? DEFAULT_RATE_LIMIT,
   });
 
   r.get(

@@ -34,6 +34,8 @@ import { InMemoryRouteRepository, type RouteRepository } from './modules/mobilit
 import { PgRouteRepository } from './modules/mobility/route.repository.pg';
 import { InMemoryStopRepository, type StopRepository } from './modules/mobility/stop.repository';
 import { PgStopRepository } from './modules/mobility/stop.repository.pg';
+import { InMemoryTripRepository, type TripRepository } from './modules/mobility/trip.repository';
+import { PgTripRepository } from './modules/mobility/trip.repository.pg';
 import {
   InMemorySubscriptionRepository,
   type SubscriptionRepository,
@@ -124,6 +126,7 @@ async function main(): Promise<void> {
   let routes: RouteRepository;
   let stops: StopRepository;
   let routeStops: RouteStopRepository;
+  let trips: TripRepository;
   let sessions: SessionRepository;
   let authIdentities: AuthIdentityRepository;
   let payments: PaymentRepository;
@@ -139,6 +142,7 @@ async function main(): Promise<void> {
     routes = new PgRouteRepository(pool);
     stops = new PgStopRepository(pool);
     routeStops = new PgRouteStopRepository(pool);
+    trips = new PgTripRepository(pool);
     sessions = new PgSessionRepository(pool);
     authIdentities = new PgAuthIdentityRepository(pool);
     payments = new PgPaymentRepository(pool);
@@ -154,6 +158,7 @@ async function main(): Promise<void> {
     routes = new InMemoryRouteRepository();
     stops = new InMemoryStopRepository();
     routeStops = new InMemoryRouteStopRepository();
+    trips = new InMemoryTripRepository();
     sessions = new InMemorySessionRepository();
     authIdentities = new InMemoryAuthIdentityRepository();
     payments = new InMemoryPaymentRepository();
@@ -241,6 +246,7 @@ async function main(): Promise<void> {
     routes,
     stops,
     routeStops,
+    trips,
     deviceTokens,
     boardingService,
     authService,
