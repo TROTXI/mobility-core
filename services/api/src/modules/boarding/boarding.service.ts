@@ -13,6 +13,8 @@
 
 import { errors } from 'jose';
 import type { KvStore } from '../../kv/kv.store';
+import type { EntitlementLedgerRepository } from '../entitlements/entitlement-ledger.repository';
+import type { ReservationRepository } from '../reservations/reservation.repository';
 import { signPass, verifyPass, type IssuedPass } from './pass';
 import type { ScanEventRepository } from './scan-event.repository';
 
@@ -32,6 +34,8 @@ export interface VerifyScanResult {
   /** The rider the pass belongs to (null when invalid/forged). */
   riderId: string | null;
   reason: 'ok' | 'invalid' | 'expired' | 'reused';
+  /** True when this scan consumed a ride (a confirmed reservation was boarded). */
+  deducted: boolean;
 }
 
 /** Collaborators for {@link BoardingService}, injected at app wiring. */
@@ -40,10 +44,20 @@ export interface BoardingServiceDeps {
   scanEvents: ScanEventRepository;
   /** Marks passes consumed (single-use); Redis in prod, in-memory in dev/tests. */
   kv: KvStore;
+  /** Reservations — a valid scan boards the rider's confirmed seat. Optional:
+   * when unwired, verification stays integrity-only (no deduction). */
+  reservations?: ReservationRepository;
+  /** Ride entitlement ledger — a boarded seat debits one ride. Optional (see above). */
+  entitlements?: EntitlementLedgerRepository;
   /** Server signing key for passes (the JWT secret). */
   secret: string;
   /** Pass lifetime in seconds (short → the QR rotates). */
   passTtlSeconds: number;
+}
+
+// Today's date as `YYYY-MM-DD` (UTC), the day a scan boards against.
+function todayISO(): string {
+  return new Date().toISOString().slice(0, 10);
 }
 
 /** Boarding-pass issuance + scan verification (see the file header). */
@@ -96,6 +110,32 @@ export class BoardingService {
       }
     }
 
+    // A valid scan consumes the rider's confirmed reservation for today: mark it
+    // boarded and debit one ride (ADR-0014, E4). Idempotent by reservation, and
+    // findBoardable skips already-boarded seats, so re-scanning a rider (with a
+    // freshly rotated QR) can't double-charge. Fails OPEN — a hiccup here must
+    // not stop the bus; reconciliation catches any gap.
+    let deducted = false;
+    if (reason === 'ok' && riderId && this.deps.reservations && this.deps.entitlements) {
+      try {
+        const boardable = await this.deps.reservations.findBoardable(riderId, todayISO());
+        if (boardable) {
+          await this.deps.reservations.markBoarded(boardable.id);
+          await this.deps.entitlements.record({
+            userId: riderId,
+            deltaRides: -1,
+            reason: 'boarding',
+            refType: 'reservation',
+            refId: boardable.id,
+            idempotencyKey: `board:${boardable.id}`,
+          });
+          deducted = true;
+        }
+      } catch (err) {
+        console.error('boarding: ride deduction failed (allowed to board anyway)', err);
+      }
+    }
+
     // Audit is best-effort here: verification already answered the driver, and a
     // DB blip (or a rider deleted mid-window tripping the FK) must not 500 the
     // scan. Failures are logged loudly instead.
@@ -111,6 +151,6 @@ export class BoardingService {
       console.error('boarding: failed to record scan event (audit gap)', err);
     }
 
-    return { valid: reason === 'ok', riderId, reason };
+    return { valid: reason === 'ok', riderId, reason, deducted };
   }
 }

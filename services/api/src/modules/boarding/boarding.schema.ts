@@ -16,4 +16,7 @@ export const scanResponseSchema = z.object({
   valid: z.boolean(),
   riderId: z.string().nullable(),
   reason: z.enum(['ok', 'invalid', 'expired', 'reused']),
+  /** True when the scan consumed a ride (the rider had a confirmed reservation
+   * for today). False for a valid pass with no reservation to board. */
+  deducted: z.boolean(),
 });

@@ -158,6 +158,11 @@ export async function buildApp(deps: AppDeps = {}): Promise<FastifyInstance> {
   // Guards first (decorators on the root instance), then routes that use them.
   const kv = deps.kv ?? new InMemoryKvStore();
   const objectStore = deps.objectStore ?? new FakeObjectStore();
+  // Shared so a boarding scan boards the same reservation the rider confirmed
+  // and debits the same entitlement ledger GET /me/rides reads (E4).
+  const entitlements = deps.entitlements ?? new InMemoryEntitlementLedgerRepository();
+  const credits = deps.credits ?? new InMemoryCreditLedgerRepository();
+  const reservations = deps.reservations ?? new InMemoryReservationRepository();
   const authConfig = deps.auth ?? DEV_AUTH_CONFIG;
   await app.register(authPlugin, { config: authConfig });
   await app.register(rateLimitPlugin, { kv });
@@ -181,12 +186,12 @@ export async function buildApp(deps: AppDeps = {}): Promise<FastifyInstance> {
     rateLimit: deps.rateLimit ?? DEFAULT_RATE_LIMIT,
   });
   await app.register(entitlementRoutes, {
-    entitlements: deps.entitlements ?? new InMemoryEntitlementLedgerRepository(),
-    credits: deps.credits ?? new InMemoryCreditLedgerRepository(),
+    entitlements,
+    credits,
     rateLimit: deps.rateLimit ?? DEFAULT_RATE_LIMIT,
   });
   await app.register(reservationRoutes, {
-    reservations: deps.reservations ?? new InMemoryReservationRepository(),
+    reservations,
     rateLimit: deps.rateLimit ?? DEFAULT_RATE_LIMIT,
   });
   await app.register(boardingRoutes, {
@@ -195,6 +200,8 @@ export async function buildApp(deps: AppDeps = {}): Promise<FastifyInstance> {
       new BoardingService({
         scanEvents: new InMemoryScanEventRepository(),
         kv,
+        reservations,
+        entitlements,
         secret: authConfig.secret,
         passTtlSeconds: 60,
       }),

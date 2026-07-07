@@ -171,10 +171,13 @@ async function main(): Promise<void> {
   }
 
   // Boarding: short-lived QR passes signed with the server key + a scan audit
-  // log; the KV store marks passes consumed (single-use).
+  // log; the KV store marks passes consumed (single-use). A valid scan boards
+  // the rider's confirmed reservation and debits a ride (E4).
   const boardingService = new BoardingService({
     scanEvents,
     kv,
+    reservations,
+    entitlements,
     secret: auth.secret,
     passTtlSeconds: 60,
   });
