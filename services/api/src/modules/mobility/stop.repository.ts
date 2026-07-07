@@ -3,6 +3,7 @@
 // In Postgres the location column is a PostGIS geography(Point, 4326) — the
 // Pg adapter handles the conversion (see stop.repository.pg.ts).
 
+/** A physical location where passengers board or alight. */
 export interface Stop {
   id: string;
   name: string;
@@ -11,17 +12,32 @@ export interface Stop {
   createdAt: Date;
 }
 
+/** Fields needed to create a {@link Stop}. */
 export interface NewStop {
   name: string;
   latitude: number;
   longitude: number;
 }
 
+/** Persistence for stops (Postgres in prod, in-memory in dev/tests). */
 export interface StopRepository {
+  /**
+   * Create a stop.
+   *
+   * @param input - the stop's name and coordinates.
+   * @returns the created stop.
+   */
   create(input: NewStop): Promise<Stop>;
+  /**
+   * Look up a stop by id.
+   *
+   * @param id - the stop id.
+   * @returns the stop, or null if it doesn't exist.
+   */
   findById(id: string): Promise<Stop | null>;
 }
 
+/** In-memory {@link StopRepository} for dev and unit tests. */
 export class InMemoryStopRepository implements StopRepository {
   private readonly stops = new Map<string, Stop>();
 

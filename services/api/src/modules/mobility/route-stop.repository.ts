@@ -3,6 +3,7 @@
 // constraint on (route_id, seq) in the DB prevents duplicate positions.
 // findByRoute always returns stops ordered by seq so callers never need to sort.
 
+/** A stop's position on a route. The (routeId, seq) pair is unique in the DB. */
 export interface RouteStop {
   id: string;
   routeId: string;
@@ -11,18 +12,27 @@ export interface RouteStop {
   createdAt: Date;
 }
 
+/** Fields needed to create a {@link RouteStop}. */
 export interface NewRouteStop {
   routeId: string;
   stopId: string;
   seq: number;
 }
 
+/** Persistence for route/stop placements (Postgres in prod, in-memory in dev/tests). */
 export interface RouteStopRepository {
+  /**
+   * Place a stop on a route at a sequence position.
+   *
+   * @param input - the route, stop, and sequence position.
+   * @returns the created route-stop.
+   */
   create(input: NewRouteStop): Promise<RouteStop>;
   /** Returns all stops for a route ordered by seq ascending. */
   findByRoute(routeId: string): Promise<RouteStop[]>;
 }
 
+/** In-memory {@link RouteStopRepository} for dev and unit tests. */
 export class InMemoryRouteStopRepository implements RouteStopRepository {
   private readonly routeStops = new Map<string, RouteStop>();
 

@@ -13,6 +13,15 @@ import type { RouteRepository } from './route.repository';
 import { routeResponseSchema, routeWithStopsResponseSchema } from './mobility.schema';
 import type { StopRepository } from './stop.repository';
 
+/**
+ * Register the public mobility browse routes: `GET /routes`, `GET /routes/:id`.
+ *
+ * @param app - the Fastify instance to register on.
+ * @param opts - route dependencies.
+ * @param opts.routes - the route repository.
+ * @param opts.stops - the stop repository.
+ * @param opts.routeStops - the route-stop join repository.
+ */
 export async function mobilityRoutes(
   app: FastifyInstance,
   opts: {
