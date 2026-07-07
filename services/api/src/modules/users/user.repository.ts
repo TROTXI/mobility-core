@@ -5,6 +5,7 @@
 export const USER_ROLES = ['commuter', 'driver', 'admin'] as const;
 export type UserRole = (typeof USER_ROLES)[number];
 
+/** A platform user (commuter, driver, or admin). */
 export interface User {
   id: string;
   displayName: string;
@@ -14,17 +15,50 @@ export interface User {
   createdAt: Date;
 }
 
+/** Fields needed to create a user; the rest default or are server-set. */
 export interface NewUser {
   displayName: string;
   phone?: string | null;
+  /** Defaults to `commuter` when omitted. */
   role?: UserRole;
 }
 
+/** Persistence for users. Backed by Postgres in prod, in-memory in dev/tests. */
 export interface UserRepository {
+  /**
+   * Create a user.
+   *
+   * @param input - the user to create.
+   * @returns the persisted user, with generated id and defaults applied.
+   */
   create(input: NewUser): Promise<User>;
+  /**
+   * Look up a user by id.
+   *
+   * @param id - the user id.
+   * @returns the user, or null if not found.
+   */
   findById(id: string): Promise<User | null>;
+  /**
+   * Update a user's editable profile fields.
+   *
+   * @param id - the user id.
+   * @param patch - the fields to change.
+   * @param patch.displayName - the new display name.
+   * @returns the updated user, or null if not found.
+   */
+  updateProfile(id: string, patch: { displayName: string }): Promise<User | null>;
+  /**
+   * Set (or clear) a user's stored avatar object key.
+   *
+   * @param id - the user id.
+   * @param key - the object-store key, or null to remove the avatar.
+   * @returns the updated user, or null if not found.
+   */
+  setAvatarKey(id: string, key: string | null): Promise<User | null>;
 }
 
+/** In-memory {@link UserRepository} for dev and unit tests. */
 export class InMemoryUserRepository implements UserRepository {
   private readonly users = new Map<string, User>();
 
@@ -43,5 +77,21 @@ export class InMemoryUserRepository implements UserRepository {
 
   async findById(id: string): Promise<User | null> {
     return this.users.get(id) ?? null;
+  }
+
+  async updateProfile(id: string, patch: { displayName: string }): Promise<User | null> {
+    const user = this.users.get(id);
+    if (!user) return null;
+    const updated = { ...user, displayName: patch.displayName };
+    this.users.set(id, updated);
+    return updated;
+  }
+
+  async setAvatarKey(id: string, key: string | null): Promise<User | null> {
+    const user = this.users.get(id);
+    if (!user) return null;
+    const updated = { ...user, avatarUrl: key };
+    this.users.set(id, updated);
+    return updated;
   }
 }

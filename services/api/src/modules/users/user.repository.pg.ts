@@ -38,4 +38,20 @@ export class PgUserRepository implements UserRepository {
     const { rows } = await this.pool.query<UserRow>('SELECT * FROM users WHERE id = $1', [id]);
     return rows[0] ? toUser(rows[0]) : null;
   }
+
+  async updateProfile(id: string, patch: { displayName: string }): Promise<User | null> {
+    const { rows } = await this.pool.query<UserRow>(
+      `UPDATE users SET display_name = $2, updated_at = now() WHERE id = $1 RETURNING *`,
+      [id, patch.displayName],
+    );
+    return rows[0] ? toUser(rows[0]) : null;
+  }
+
+  async setAvatarKey(id: string, key: string | null): Promise<User | null> {
+    const { rows } = await this.pool.query<UserRow>(
+      `UPDATE users SET avatar_url = $2, updated_at = now() WHERE id = $1 RETURNING *`,
+      [id, key],
+    );
+    return rows[0] ? toUser(rows[0]) : null;
+  }
 }

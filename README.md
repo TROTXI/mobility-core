@@ -43,6 +43,7 @@ pnpm scripts — run `pnpm run` to list them, or target a package directly with
 | `pnpm check`                                               | format + typecheck + lint + unit tests |
 | `pnpm test` / `pnpm test:e2e`                              | Unit tests / e2e suite                 |
 | `pnpm format`                                              | Auto-format the repo (Prettier)        |
+| `pnpm codegen`                                             | Generate static types for API Client   |
 
 ## Repo layout
 

@@ -9,8 +9,36 @@ import {
 } from 'fastify-type-provider-zod';
 import { z } from 'zod';
 import { InMemoryKvStore, type KvStore } from './kv/kv.store';
+import { FakeObjectStore, type ObjectStore } from './storage/object-store';
+import { userRoutes } from './modules/users/users.routes';
+import {
+  InMemoryDeviceTokenRepository,
+  type DeviceTokenRepository,
+} from './modules/devices/device-token.repository';
+import { deviceRoutes } from './modules/devices/devices.routes';
+import { BoardingService } from './modules/boarding/boarding.service';
+import { boardingRoutes } from './modules/boarding/boarding.routes';
+import { InMemoryScanEventRepository } from './modules/boarding/scan-event.repository';
+import { metricsPlugin, type MetricsOptions } from './modules/metrics/metrics.plugin';
+import { entitlementRoutes } from './modules/entitlements/entitlements.routes';
+import {
+  InMemoryEntitlementLedgerRepository,
+  type EntitlementLedgerRepository,
+} from './modules/entitlements/entitlement-ledger.repository';
+import {
+  InMemoryCreditLedgerRepository,
+  type CreditLedgerRepository,
+} from './modules/entitlements/credit-ledger.repository';
+import { reservationRoutes } from './modules/reservations/reservations.routes';
+import {
+  InMemoryReservationRepository,
+  type ReservationRepository,
+} from './modules/reservations/reservation.repository';
+import { paymentRoutes } from './modules/payments/payments.routes';
+import type { PaymentsService } from './modules/payments/payments.service';
 import { authPlugin } from './modules/auth/auth.plugin';
 import { authRoutes } from './modules/auth/auth.routes';
+import type { AuthService } from './modules/auth/auth.service';
 import { DEV_AUTH_CONFIG, type AuthConfig } from './modules/auth/jwt';
 import {
   DEFAULT_RATE_LIMIT,
@@ -40,15 +68,41 @@ export interface AppDeps {
   routes?: RouteRepository;
   stops?: StopRepository;
   routeStops?: RouteStopRepository;
+  /** Device push-token registry (in-memory vs Postgres). Defaults to in-memory. */
+  deviceTokens?: DeviceTokenRepository;
+  /** Boarding pass issuance + scan verification. Defaults to an in-memory scan store. */
+  boardingService?: BoardingService;
+  /** Ride entitlement ledger (in-memory vs Postgres). Defaults to in-memory. */
+  entitlements?: EntitlementLedgerRepository;
+  /** Ride Credit ledger (in-memory vs Postgres). Defaults to in-memory. */
+  credits?: CreditLedgerRepository;
+  /** Daily reservation store (in-memory vs Postgres). Defaults to in-memory. */
+  reservations?: ReservationRepository;
   /** Selected by REDIS_URL (in-memory vs Redis). For rate limits, idempotency, cache. */
   kv?: KvStore;
+  /** Avatar/media storage (R2 in prod, in-memory Fake in dev/tests). */
+  objectStore?: ObjectStore;
   /** JWT/auth settings. Defaults to a dev-only config when unset (tests, local). */
   auth?: AuthConfig;
+  /** Sign-in/refresh/logout orchestrator. Routes return 503 when absent. */
+  authService?: AuthService;
+  /** Paystack payments orchestrator. Routes return 503 when absent. */
+  paymentsService?: PaymentsService;
   /** Rate-limit thresholds (from env). Defaults applied when unset. */
   rateLimit?: RateLimitConfig;
+  /** Prometheus /metrics exposure. Defaults to unprotected (dev/tests). */
+  metrics?: Partial<MetricsOptions>;
   logger?: boolean;
 }
 
+/**
+ * Build the Fastify app — registers OpenAPI docs, metrics, guards, and all
+ * routes. Dependencies are injected so tests pass in-memory implementations and
+ * production wires the real ones.
+ *
+ * @param deps - repositories, services, and config; sensible defaults applied.
+ * @returns the configured Fastify instance (not yet listening).
+ */
 export async function buildApp(deps: AppDeps = {}): Promise<FastifyInstance> {
   const app = Fastify({ logger: deps.logger ?? false });
 
@@ -73,7 +127,11 @@ export async function buildApp(deps: AppDeps = {}): Promise<FastifyInstance> {
       tags: [
         { name: 'system', description: 'Health, readiness, and service metadata' },
         { name: 'auth', description: 'Authentication and the current user' },
+        { name: 'payments', description: 'Subscriptions checkout (Paystack) + webhook' },
+        { name: 'rides', description: 'Ride entitlement + Ride Credit balance' },
+        { name: 'reservations', description: 'Daily ride confirmation (confirm/decline)' },
         { name: 'mobility', description: 'Routes and stops' },
+        { name: 'boarding', description: 'QR boarding passes + scan verification' },
       ],
       components: {
         // Protected routes set `security: [{ bearerAuth: [] }]`; clients send
@@ -87,12 +145,55 @@ export async function buildApp(deps: AppDeps = {}): Promise<FastifyInstance> {
   });
   await app.register(fastifySwaggerUi, { routePrefix: '/docs' });
 
+  // Metrics early so its onResponse hook observes every route (RED + runtime).
+  await app.register(metricsPlugin, {
+    token: deps.metrics?.token,
+    allowUnprotected: deps.metrics?.allowUnprotected ?? true,
+  });
+
   // Guards first (decorators on the root instance), then routes that use them.
   const kv = deps.kv ?? new InMemoryKvStore();
-  await app.register(authPlugin, { config: deps.auth ?? DEV_AUTH_CONFIG });
+  const objectStore = deps.objectStore ?? new FakeObjectStore();
+  const authConfig = deps.auth ?? DEV_AUTH_CONFIG;
+  await app.register(authPlugin, { config: authConfig });
   await app.register(rateLimitPlugin, { kv });
   await app.register(authRoutes, {
     users: deps.users,
+    objectStore,
+    authService: deps.authService,
+    rateLimit: deps.rateLimit ?? DEFAULT_RATE_LIMIT,
+  });
+  await app.register(userRoutes, {
+    users: deps.users,
+    objectStore,
+    rateLimit: deps.rateLimit ?? DEFAULT_RATE_LIMIT,
+  });
+  await app.register(deviceRoutes, {
+    deviceTokens: deps.deviceTokens ?? new InMemoryDeviceTokenRepository(),
+    rateLimit: deps.rateLimit ?? DEFAULT_RATE_LIMIT,
+  });
+  await app.register(paymentRoutes, {
+    paymentsService: deps.paymentsService,
+    rateLimit: deps.rateLimit ?? DEFAULT_RATE_LIMIT,
+  });
+  await app.register(entitlementRoutes, {
+    entitlements: deps.entitlements ?? new InMemoryEntitlementLedgerRepository(),
+    credits: deps.credits ?? new InMemoryCreditLedgerRepository(),
+    rateLimit: deps.rateLimit ?? DEFAULT_RATE_LIMIT,
+  });
+  await app.register(reservationRoutes, {
+    reservations: deps.reservations ?? new InMemoryReservationRepository(),
+    rateLimit: deps.rateLimit ?? DEFAULT_RATE_LIMIT,
+  });
+  await app.register(boardingRoutes, {
+    boardingService:
+      deps.boardingService ??
+      new BoardingService({
+        scanEvents: new InMemoryScanEventRepository(),
+        kv,
+        secret: authConfig.secret,
+        passTtlSeconds: 60,
+      }),
     rateLimit: deps.rateLimit ?? DEFAULT_RATE_LIMIT,
   });
   await app.register(mobilityRoutes, {

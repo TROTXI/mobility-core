@@ -35,6 +35,37 @@ services:
       # Render dashboard; never commit it. Generate: openssl rand -base64 48
       - key: JWT_SECRET
         sync: false
+      # Google "Web" OAuth client ID — the audience verified on sign-in. This is
+      # PUBLIC (a Web client ID ships in clients; only a client *secret* would be
+      # sensitive, and we don't use one), so it lives in the blueprint, not the
+      # dashboard. Unset -> POST /auth/google returns 503.
+      - key: GOOGLE_CLIENT_ID
+        value: 431341307838-pc4m046v2lj18ssfnfl1g52fl5g1cg4q.apps.googleusercontent.com
+      # Observability (#28). Set in the dashboard when Grafana Cloud is wired up.
+      # METRICS_TOKEN gates GET /metrics (scraper sends it as a bearer token);
+      # unset -> /metrics is disabled (404) in production.
+      - key: METRICS_TOKEN
+        sync: false
+      # OpenTelemetry tracing → Grafana Cloud (Tempo) via OTLP/HTTP. Unset ->
+      # tracing disabled. OTEL_EXPORTER_OTLP_HEADERS carries the Grafana auth,
+      # e.g. "Authorization=Basic <base64 instanceID:token>".
+      - key: OTEL_EXPORTER_OTLP_ENDPOINT
+        sync: false
+      - key: OTEL_EXPORTER_OTLP_HEADERS
+        sync: false
+      - key: OTEL_SERVICE_NAME
+        value: trotxi-api
+      # Cloudflare R2 (avatars, #24) — S3-compatible object storage. The access
+      # keys are secrets → set in the dashboard, never commit. All four unset ->
+      # in-memory object store (no avatars persisted).
+      - key: R2_ACCOUNT_ID
+        sync: false
+      - key: R2_ACCESS_KEY_ID
+        sync: false
+      - key: R2_SECRET_ACCESS_KEY
+        sync: false
+      - key: R2_BUCKET
+        sync: false
 
   # ---- Production (uncomment when going live) ----
   # Needs a paid Postgres plan so data doesn't expire. After applying, set the
@@ -61,6 +92,8 @@ services:
   #         property: connectionString
   #     - key: JWT_SECRET
   #       sync: false   # required; set in dashboard (ADR-0007)
+  #     - key: GOOGLE_CLIENT_ID
+  #       sync: false   # set in dashboard
   #
   # …and add under `databases:`
   # - name: trotxi-db-production

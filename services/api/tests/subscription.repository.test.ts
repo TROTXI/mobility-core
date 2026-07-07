@@ -4,21 +4,21 @@ import { InMemorySubscriptionRepository } from '../src/modules/subscriptions/sub
 describe('InMemorySubscriptionRepository', () => {
   it('creates a subscription with active status and returns it', async () => {
     const repo = new InMemorySubscriptionRepository();
-    const created = await repo.create({ userId: 'user-1', plan: 'monthly' });
+    const created = await repo.create({ userId: 'user-1', plan: 'monthly' as const });
 
     expect(created.id).toBeTruthy();
     expect(created.userId).toBe('user-1');
-    expect(created.plan).toBe('monthly');
+    expect(created.plan).toBe('monthly' as const);
     expect(created.status).toBe('active');
     expect(created.createdAt).toBeInstanceOf(Date);
   });
 
   it('finds the active subscription for a user', async () => {
     const repo = new InMemorySubscriptionRepository();
-    await repo.create({ userId: 'user-1', plan: 'monthly' });
+    await repo.create({ userId: 'user-1', plan: 'monthly' as const });
 
     const found = await repo.findActiveByUser('user-1');
-    expect(found?.plan).toBe('monthly');
+    expect(found?.plan).toBe('monthly' as const);
   });
 
   it('returns null when the user has no active subscription', async () => {
@@ -28,7 +28,7 @@ describe('InMemorySubscriptionRepository', () => {
 
   it('returns null for a different user', async () => {
     const repo = new InMemorySubscriptionRepository();
-    await repo.create({ userId: 'user-1', plan: 'monthly' });
+    await repo.create({ userId: 'user-1', plan: 'monthly' as const });
 
     expect(await repo.findActiveByUser('user-2')).toBeNull();
   });

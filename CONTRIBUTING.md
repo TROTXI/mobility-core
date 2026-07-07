@@ -67,6 +67,15 @@ Open the repo on GitHub → **Code → Codespaces → Create codespace on main**
 The container builds automatically on first open and on any change to
 `.devcontainer/`.
 
+## Types generation
+
+API types for the Flutter apps are generated from the live OpenAPI contract
+published by the staging API at `/docs/json`.
+
+```bash
+pnpm codegen    # generates Dart models + Dio client into apps/api_client
+```
+
 **To use it in VS Code locally:**
 Install the [Dev Containers extension](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-containers),
 then **Reopen in Container** from the command palette.

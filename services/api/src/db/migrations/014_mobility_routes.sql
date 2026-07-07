@@ -1,4 +1,6 @@
--- 004_mobility_routes: routes, stops (PostGIS), and route_stops join table.
+-- 014_mobility_routes: routes, stops (PostGIS), and route_stops join table.
+-- (Renumbered 004 → 014 when the branch was merged up to main, which had already
+-- taken 004–013; content unchanged.)
 
 CREATE TABLE IF NOT EXISTS routes (
   id          uuid PRIMARY KEY DEFAULT gen_random_uuid(),

@@ -9,11 +9,15 @@ import type { FastifyReply, FastifyRequest, preHandlerHookHandler } from 'fastif
 import fp from 'fastify-plugin';
 import type { KvStore } from '../../kv/kv.store';
 
+/** Fixed-window thresholds for a rate limit. */
 export interface RateLimitConfig {
+  /** Max requests allowed per window. */
   max: number;
+  /** Window length in seconds. */
   windowSeconds: number;
 }
 
+/** Per-route rate-limit options: thresholds plus the bucketing key. */
 export interface RateLimitOptions extends RateLimitConfig {
   /** Bucket by client IP (default) or by authenticated user id. */
   by?: 'ip' | 'user';

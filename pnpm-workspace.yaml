@@ -5,4 +5,11 @@ packages:
 # pnpm blocks dependency build scripts by default (supply-chain safety).
 # esbuild (used by tsup + vitest) needs its postinstall to fetch its binary.
 allowBuilds:
+  '@openapitools/openapi-generator-cli': true
   esbuild: true
+  # protobufjs (via the OTLP protobuf exporter) works at runtime from its
+  # prebuilt dist; its postinstall build script is not needed.
+  protobufjs: false
+  # sharp (avatar resize/EXIF-strip, #24) needs its postinstall to install the
+  # platform's prebuilt libvips binary.
+  sharp: true
