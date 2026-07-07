@@ -8,17 +8,17 @@ areas land; it is not authoritative once the code moves.
 `services/api` — Fastify 5 + TypeScript (Node 24), single process, layered
 `server.ts → buildApp (app.ts) → plugins/routes → repositories`.
 
-| Layer        | Modules                                                                                                                                                     |
-| ------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Config       | `config/env.ts` (zod-validated env), `config/dotenv.ts`                                                                                                     |
-| Data         | `db/migrate.ts` (runner), `db/pool.ts`; migrations `001_init` (users, auth_identity, sessions), `002`/`003` (subscriptions + constraints), `004` (mobility) |
-| KV           | `kv/kv.store.ts` (interface + in-memory), `kv.store.redis.ts` (ADR-0010)                                                                                    |
-| Auth         | `auth/jwt.ts`, `auth/auth.plugin.ts` (`authenticate`/`requireRole`), `auth/auth.routes.ts` (`/me`) (ADR-0007)                                               |
-| Rate limit   | `ratelimit/ratelimit.plugin.ts` (#23)                                                                                                                       |
-| Domain repos | `users/*`, `subscriptions/*` — **repos only, no routes**; `mobility/*` — repos + browse routes (#17)                                                        |
-| Contract     | `lib/schemas.ts`, `user.schema.ts`, `mobility.schema.ts`, OpenAPI via zod type-provider (ADR-0008)                                                          |
+| Layer        | Modules                                                                                                                                                                                                  |
+| ------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Config       | `config/env.ts` (zod-validated env), `config/dotenv.ts`                                                                                                                                                  |
+| Data         | `db/migrate.ts` (runner), `db/pool.ts`; migrations `001_init` (users, auth_identity, sessions), `002`/`003` (subscriptions + constraints), `014` (mobility routes/stops), `015` (trips/vehicles/drivers) |
+| KV           | `kv/kv.store.ts` (interface + in-memory), `kv.store.redis.ts` (ADR-0010)                                                                                                                                 |
+| Auth         | `auth/jwt.ts`, `auth/auth.plugin.ts` (`authenticate`/`requireRole`), `auth/auth.routes.ts` (`/me`) (ADR-0007)                                                                                            |
+| Rate limit   | `ratelimit/ratelimit.plugin.ts` (#23)                                                                                                                                                                    |
+| Domain repos | `users/*`, `subscriptions/*` — **repos only, no routes**; `mobility/*` — repos + browse routes (#17)                                                                                                     |
+| Contract     | `lib/schemas.ts`, `user.schema.ts`, `mobility.schema.ts`, OpenAPI via zod type-provider (ADR-0008)                                                                                                       |
 
-**Live HTTP surface:** `/`, `/version`, `/healthz`, `/readyz`, `/me`, `/docs`, `/routes`, `/routes/:id`.
+**Live HTTP surface:** `/`, `/version`, `/healthz`, `/readyz`, `/me`, `/docs`, `/routes`, `/routes/:id`, `/trips`, `/trips/:id`.
 
 **Cross-cutting (in place):** repository pattern (ADR-0009), KV fallback
 (ADR-0010), readiness pings DB+KV, rate limiting, typed OpenAPI, ~100% unit
@@ -42,8 +42,8 @@ staging auto / prod gated), CODEOWNERS + code-owner reviews.
 
 ### 🟡 Mobility — browse layer only (closes #17, PR #57)
 
-Data model and read endpoints are in place; the operational layer (trips,
-boarding, live positions) is not yet started.
+Data model and read endpoints are in place; trips landed (#18), so the
+operational layer now has schedules — boarding and live positions are next.
 
 **What landed (migration `004_mobility_routes.sql`):**
 
@@ -72,12 +72,12 @@ boarding, live positions) is not yet started.
 
 **Still missing (mobility):**
 
-| Area                               | Issue | Notes                                           |
-| ---------------------------------- | ----- | ----------------------------------------------- |
-| Trips & schedules                  | #18   | no tables or endpoints                          |
-| QR boarding / passes / scan_events | #20   | none                                            |
-| Live vehicle positions (polling)   | #25   | no positions table; ADR-0002 telemetry deferred |
-| Nearest-stop spatial query         | —     | GiST index is in place; no endpoint yet         |
+| Area                               | Issue | Notes                                                                                                               |
+| ---------------------------------- | ----- | ------------------------------------------------------------------------------------------------------------------- |
+| Trips & schedules                  | #18   | ✅ landed — trips/vehicles/drivers + `assigned_driver_id`; `GET /trips` (`?routeId`), `GET /trips/:id` (auth-gated) |
+| QR boarding / passes / scan_events | #20   | none                                                                                                                |
+| Live vehicle positions (polling)   | #25   | no positions table; ADR-0002 telemetry deferred                                                                     |
+| Nearest-stop spatial query         | —     | GiST index is in place; no endpoint yet                                                                             |
 
 ### ❌ Not started (mapped to issues)
 
