@@ -55,3 +55,22 @@ export const listTripsQuerySchema = z.object({
 export const tripListResponseSchema = z.object({
   trips: z.array(tripResponseSchema),
 });
+
+// A vehicle (bus) in the fleet. Exposed by admin ops (#26); no public endpoint.
+export const vehicleResponseSchema = z.object({
+  id: z.string().uuid(),
+  registration: z.string(),
+  label: z.string().nullable(),
+  capacity: z.number().int(),
+  createdAt: z.date(),
+});
+
+// A driver. userId links to an auth principal once driver sign-in lands (#25).
+export const driverResponseSchema = z.object({
+  id: z.string().uuid(),
+  fullName: z.string(),
+  phone: z.string().nullable(),
+  licenseNumber: z.string().nullable(),
+  userId: z.string().uuid().nullable(),
+  createdAt: z.date(),
+});

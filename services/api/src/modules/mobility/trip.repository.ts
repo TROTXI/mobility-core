@@ -5,6 +5,8 @@
 // a trip's live position (system-design §7, #25). Two implementations: InMemory
 // for dev/tests, Postgres (trip.repository.pg.ts) for real runs.
 
+import { applyPatch } from '../../lib/patch';
+
 /** Valid trip lifecycle states — the source of truth for the DB CHECK, the
  * domain type, and the response enum (imported by mobility.schema.ts). */
 export const TRIP_STATUSES = ['scheduled', 'active', 'completed', 'cancelled'] as const;
@@ -35,6 +37,17 @@ export interface TripFilter {
   routeId?: string;
 }
 
+/** Editable {@link Trip} fields for a partial update (admin, #26). routeId is
+ * intentionally not editable — a trip belongs to the route it was created for.
+ * vehicleId/assignedDriverId cover the driver↔trip assignment (set null to
+ * unassign); the assignment endpoint validates they exist before writing. */
+export interface TripUpdate {
+  status?: TripStatus;
+  scheduledAt?: Date;
+  vehicleId?: string | null;
+  assignedDriverId?: string | null;
+}
+
 /** Persistence for trips (Postgres in prod, in-memory in dev/tests). */
 export interface TripRepository {
   /**
@@ -58,6 +71,15 @@ export interface TripRepository {
    * @returns the matching trips.
    */
   findAll(filter?: TripFilter): Promise<Trip[]>;
+  /**
+   * Update a trip's editable fields (partial — omitted fields are unchanged).
+   * Covers status/schedule changes and driver↔vehicle assignment.
+   *
+   * @param id - the trip id.
+   * @param patch - the fields to change.
+   * @returns the updated trip, or null if not found.
+   */
+  update(id: string, patch: TripUpdate): Promise<Trip | null>;
 }
 
 /** In-memory {@link TripRepository} for dev and unit tests. */
@@ -86,5 +108,13 @@ export class InMemoryTripRepository implements TripRepository {
     return Array.from(this.trips.values())
       .filter((t) => !filter?.routeId || t.routeId === filter.routeId)
       .sort((a, b) => a.scheduledAt.getTime() - b.scheduledAt.getTime());
+  }
+
+  async update(id: string, patch: TripUpdate): Promise<Trip | null> {
+    const existing = this.trips.get(id);
+    if (!existing) return null;
+    const updated = applyPatch(existing, patch);
+    this.trips.set(id, updated);
+    return updated;
   }
 }

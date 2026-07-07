@@ -30,4 +30,23 @@ describe('InMemoryVehicleRepository', () => {
     const repo = new InMemoryVehicleRepository();
     expect(await repo.findById('does-not-exist')).toBeNull();
   });
+
+  it('findAll returns every vehicle', async () => {
+    const repo = new InMemoryVehicleRepository();
+    await repo.create({ registration: 'GR-1' });
+    await repo.create({ registration: 'GR-2' });
+    expect(await repo.findAll()).toHaveLength(2);
+  });
+
+  it('update merges a partial patch', async () => {
+    const repo = new InMemoryVehicleRepository();
+    const vehicle = await repo.create({ registration: 'GR-1', label: 'Bus 7', capacity: 33 });
+    const updated = await repo.update(vehicle.id, { capacity: 40 });
+    expect(updated).toMatchObject({ registration: 'GR-1', label: 'Bus 7', capacity: 40 });
+  });
+
+  it('update returns null for an unknown id', async () => {
+    const repo = new InMemoryVehicleRepository();
+    expect(await repo.update('does-not-exist', { capacity: 1 })).toBeNull();
+  });
 });

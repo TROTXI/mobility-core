@@ -5,6 +5,8 @@
 // authorized (only the assigned driver — system-design §7, #25). Two
 // implementations: InMemory for dev/tests, Postgres (driver.repository.pg.ts).
 
+import { applyPatch } from '../../lib/patch';
+
 /** A driver who operates a vehicle on a trip. */
 export interface Driver {
   id: string;
@@ -19,6 +21,14 @@ export interface Driver {
 /** Fields needed to create a {@link Driver}. */
 export interface NewDriver {
   fullName: string;
+  phone?: string | null;
+  licenseNumber?: string | null;
+  userId?: string | null;
+}
+
+/** Editable {@link Driver} fields for a partial update (admin, #26). */
+export interface DriverUpdate {
+  fullName?: string;
   phone?: string | null;
   licenseNumber?: string | null;
   userId?: string | null;
@@ -40,6 +50,16 @@ export interface DriverRepository {
    * @returns the driver, or null if it doesn't exist.
    */
   findById(id: string): Promise<Driver | null>;
+  /** Returns all drivers. Used by admin ops (#26). */
+  findAll(): Promise<Driver[]>;
+  /**
+   * Update a driver's editable fields (partial — omitted fields are unchanged).
+   *
+   * @param id - the driver id.
+   * @param patch - the fields to change.
+   * @returns the updated driver, or null if not found.
+   */
+  update(id: string, patch: DriverUpdate): Promise<Driver | null>;
 }
 
 /** In-memory {@link DriverRepository} for dev and unit tests. */
@@ -61,5 +81,17 @@ export class InMemoryDriverRepository implements DriverRepository {
 
   async findById(id: string): Promise<Driver | null> {
     return this.drivers.get(id) ?? null;
+  }
+
+  async findAll(): Promise<Driver[]> {
+    return Array.from(this.drivers.values());
+  }
+
+  async update(id: string, patch: DriverUpdate): Promise<Driver | null> {
+    const existing = this.drivers.get(id);
+    if (!existing) return null;
+    const updated = applyPatch(existing, patch);
+    this.drivers.set(id, updated);
+    return updated;
   }
 }
