@@ -3,6 +3,8 @@
 // in route_stops. Two implementations: InMemory for unit tests and zero-infra
 // dev, Postgres (route.repository.pg.ts) for real runs.
 
+import { applyPatch } from '../../lib/patch';
+
 /** A named journey path (e.g. "Circle to Legon"). Metadata only — the ordered
  * stops it passes through live in route_stops. */
 export interface Route {
@@ -15,6 +17,12 @@ export interface Route {
 /** Fields needed to create a {@link Route}. */
 export interface NewRoute {
   name: string;
+  description?: string | null;
+}
+
+/** Editable {@link Route} fields for a partial update (admin, #26). */
+export interface RouteUpdate {
+  name?: string;
   description?: string | null;
 }
 
@@ -36,6 +44,14 @@ export interface RouteRepository {
   findById(id: string): Promise<Route | null>;
   /** Returns all routes. Used by GET /routes (public browse). */
   findAll(): Promise<Route[]>;
+  /**
+   * Update a route's editable fields (partial — omitted fields are unchanged).
+   *
+   * @param id - the route id.
+   * @param patch - the fields to change.
+   * @returns the updated route, or null if not found.
+   */
+  update(id: string, patch: RouteUpdate): Promise<Route | null>;
 }
 
 /** In-memory {@link RouteRepository} for dev and unit tests. */
@@ -59,5 +75,13 @@ export class InMemoryRouteRepository implements RouteRepository {
 
   async findAll(): Promise<Route[]> {
     return Array.from(this.routes.values());
+  }
+
+  async update(id: string, patch: RouteUpdate): Promise<Route | null> {
+    const existing = this.routes.get(id);
+    if (!existing) return null;
+    const updated = applyPatch(existing, patch);
+    this.routes.set(id, updated);
+    return updated;
   }
 }

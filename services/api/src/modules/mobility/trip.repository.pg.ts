@@ -1,5 +1,13 @@
 import type { Pool } from 'pg';
-import type { NewTrip, Trip, TripFilter, TripRepository, TripStatus } from './trip.repository';
+import { applyPatch } from '../../lib/patch';
+import type {
+  NewTrip,
+  Trip,
+  TripFilter,
+  TripRepository,
+  TripStatus,
+  TripUpdate,
+} from './trip.repository';
 
 interface TripRow {
   id: string;
@@ -56,5 +64,18 @@ export class PgTripRepository implements TripRepository {
         )
       : await this.pool.query<TripRow>('SELECT * FROM trips ORDER BY scheduled_at');
     return rows.map(toTrip);
+  }
+
+  async update(id: string, patch: TripUpdate): Promise<Trip | null> {
+    const existing = await this.findById(id);
+    if (!existing) return null;
+    const next = applyPatch(existing, patch);
+    const { rows } = await this.pool.query<TripRow>(
+      `UPDATE trips
+         SET status = $2, scheduled_at = $3, vehicle_id = $4, assigned_driver_id = $5
+       WHERE id = $1 RETURNING *`,
+      [id, next.status, next.scheduledAt, next.vehicleId, next.assignedDriverId],
+    );
+    return rows[0] ? toTrip(rows[0]) : null;
   }
 }

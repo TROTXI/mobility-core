@@ -31,4 +31,23 @@ describe('InMemoryDriverRepository', () => {
     const repo = new InMemoryDriverRepository();
     expect(await repo.findById('does-not-exist')).toBeNull();
   });
+
+  it('findAll returns every driver', async () => {
+    const repo = new InMemoryDriverRepository();
+    await repo.create({ fullName: 'A' });
+    await repo.create({ fullName: 'B' });
+    expect(await repo.findAll()).toHaveLength(2);
+  });
+
+  it('update merges a partial patch and can clear a nullable field', async () => {
+    const repo = new InMemoryDriverRepository();
+    const driver = await repo.create({ fullName: 'Kwame', phone: '+233200000000' });
+    const updated = await repo.update(driver.id, { licenseNumber: 'DL-1', phone: null });
+    expect(updated).toMatchObject({ fullName: 'Kwame', licenseNumber: 'DL-1', phone: null });
+  });
+
+  it('update returns null for an unknown id', async () => {
+    const repo = new InMemoryDriverRepository();
+    expect(await repo.update('does-not-exist', { fullName: 'x' })).toBeNull();
+  });
 });

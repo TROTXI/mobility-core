@@ -1,5 +1,6 @@
 import type { Pool } from 'pg';
-import type { Driver, DriverRepository, NewDriver } from './driver.repository';
+import { applyPatch } from '../../lib/patch';
+import type { Driver, DriverRepository, DriverUpdate, NewDriver } from './driver.repository';
 
 interface DriverRow {
   id: string;
@@ -35,6 +36,23 @@ export class PgDriverRepository implements DriverRepository {
 
   async findById(id: string): Promise<Driver | null> {
     const { rows } = await this.pool.query<DriverRow>('SELECT * FROM drivers WHERE id = $1', [id]);
+    return rows[0] ? toDriver(rows[0]) : null;
+  }
+
+  async findAll(): Promise<Driver[]> {
+    const { rows } = await this.pool.query<DriverRow>('SELECT * FROM drivers ORDER BY created_at');
+    return rows.map(toDriver);
+  }
+
+  async update(id: string, patch: DriverUpdate): Promise<Driver | null> {
+    const existing = await this.findById(id);
+    if (!existing) return null;
+    const next = applyPatch(existing, patch);
+    const { rows } = await this.pool.query<DriverRow>(
+      `UPDATE drivers SET full_name = $2, phone = $3, license_number = $4, user_id = $5
+       WHERE id = $1 RETURNING *`,
+      [id, next.fullName, next.phone, next.licenseNumber, next.userId],
+    );
     return rows[0] ? toDriver(rows[0]) : null;
   }
 }

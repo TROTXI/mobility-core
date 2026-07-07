@@ -5,7 +5,8 @@
 // Note: ST_MakePoint takes (longitude, latitude) — X is longitude, Y is latitude.
 
 import type { Pool } from 'pg';
-import type { NewStop, Stop, StopRepository } from './stop.repository';
+import { applyPatch } from '../../lib/patch';
+import type { NewStop, Stop, StopRepository, StopUpdate } from './stop.repository';
 
 interface StopRow {
   id: string;
@@ -47,6 +48,35 @@ export class PgStopRepository implements StopRepository {
          ST_X(location::geometry) AS longitude
        FROM stops WHERE id = $1`,
       [id],
+    );
+    return rows[0] ? toStop(rows[0]) : null;
+  }
+
+  async findAll(): Promise<Stop[]> {
+    const { rows } = await this.pool.query<StopRow>(
+      `SELECT id, name, created_at,
+         ST_Y(location::geometry) AS latitude,
+         ST_X(location::geometry) AS longitude
+       FROM stops ORDER BY created_at`,
+    );
+    return rows.map(toStop);
+  }
+
+  // Read-modify-write so a partial patch can change name and/or coordinates; the
+  // location point is rebuilt from the merged lat/lng (ST_MakePoint is lng, lat).
+  async update(id: string, patch: StopUpdate): Promise<Stop | null> {
+    const existing = await this.findById(id);
+    if (!existing) return null;
+    const next = applyPatch(existing, patch);
+    const { rows } = await this.pool.query<StopRow>(
+      `UPDATE stops
+         SET name = $2,
+             location = ST_SetSRID(ST_MakePoint($3, $4), 4326)::geography
+       WHERE id = $1
+       RETURNING id, name, created_at,
+         ST_Y(location::geometry) AS latitude,
+         ST_X(location::geometry) AS longitude`,
+      [id, next.name, next.longitude, next.latitude],
     );
     return rows[0] ? toStop(rows[0]) : null;
   }

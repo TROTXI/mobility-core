@@ -37,6 +37,16 @@ import { PgStopRepository } from './modules/mobility/stop.repository.pg';
 import { InMemoryTripRepository, type TripRepository } from './modules/mobility/trip.repository';
 import { PgTripRepository } from './modules/mobility/trip.repository.pg';
 import {
+  InMemoryVehicleRepository,
+  type VehicleRepository,
+} from './modules/mobility/vehicle.repository';
+import { PgVehicleRepository } from './modules/mobility/vehicle.repository.pg';
+import {
+  InMemoryDriverRepository,
+  type DriverRepository,
+} from './modules/mobility/driver.repository';
+import { PgDriverRepository } from './modules/mobility/driver.repository.pg';
+import {
   InMemorySubscriptionRepository,
   type SubscriptionRepository,
 } from './modules/subscriptions/subscription.repository';
@@ -127,6 +137,8 @@ async function main(): Promise<void> {
   let stops: StopRepository;
   let routeStops: RouteStopRepository;
   let trips: TripRepository;
+  let vehicles: VehicleRepository;
+  let drivers: DriverRepository;
   let sessions: SessionRepository;
   let authIdentities: AuthIdentityRepository;
   let payments: PaymentRepository;
@@ -143,6 +155,8 @@ async function main(): Promise<void> {
     stops = new PgStopRepository(pool);
     routeStops = new PgRouteStopRepository(pool);
     trips = new PgTripRepository(pool);
+    vehicles = new PgVehicleRepository(pool);
+    drivers = new PgDriverRepository(pool);
     sessions = new PgSessionRepository(pool);
     authIdentities = new PgAuthIdentityRepository(pool);
     payments = new PgPaymentRepository(pool);
@@ -159,6 +173,8 @@ async function main(): Promise<void> {
     stops = new InMemoryStopRepository();
     routeStops = new InMemoryRouteStopRepository();
     trips = new InMemoryTripRepository();
+    vehicles = new InMemoryVehicleRepository();
+    drivers = new InMemoryDriverRepository();
     sessions = new InMemorySessionRepository();
     authIdentities = new InMemoryAuthIdentityRepository();
     payments = new InMemoryPaymentRepository();
@@ -250,6 +266,8 @@ async function main(): Promise<void> {
     stops,
     routeStops,
     trips,
+    vehicles,
+    drivers,
     deviceTokens,
     boardingService,
     authService,

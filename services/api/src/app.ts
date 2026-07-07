@@ -48,9 +48,12 @@ import {
 import type { RouteStopRepository } from './modules/mobility/route-stop.repository';
 import { mobilityRoutes } from './modules/mobility/mobility.routes';
 import { tripRoutes } from './modules/mobility/trips.routes';
+import { adminRoutes } from './modules/admin/admin.routes';
 import type { RouteRepository } from './modules/mobility/route.repository';
 import type { StopRepository } from './modules/mobility/stop.repository';
 import type { TripRepository } from './modules/mobility/trip.repository';
+import type { VehicleRepository } from './modules/mobility/vehicle.repository';
+import type { DriverRepository } from './modules/mobility/driver.repository';
 import type { SubscriptionRepository } from './modules/subscriptions/subscription.repository';
 import type { UserRepository } from './modules/users/user.repository';
 
@@ -72,6 +75,9 @@ export interface AppDeps {
   routeStops?: RouteStopRepository;
   /** Trips (scheduled route runs). Reads require auth; routes return 503 when absent. */
   trips?: TripRepository;
+  /** Fleet vehicles + drivers. Managed via the admin/ops endpoints (#26). */
+  vehicles?: VehicleRepository;
+  drivers?: DriverRepository;
   /** Device push-token registry (in-memory vs Postgres). Defaults to in-memory. */
   deviceTokens?: DeviceTokenRepository;
   /** Boarding pass issuance + scan verification. Defaults to an in-memory scan store. */
@@ -135,6 +141,10 @@ export async function buildApp(deps: AppDeps = {}): Promise<FastifyInstance> {
         { name: 'rides', description: 'Ride entitlement + Ride Credit balance' },
         { name: 'reservations', description: 'Daily ride confirmation (confirm/decline)' },
         { name: 'mobility', description: 'Routes and stops' },
+        {
+          name: 'admin',
+          description: 'Admin/ops: manage fleet (routes/stops/vehicles/drivers/trips) + assignment',
+        },
         { name: 'boarding', description: 'QR boarding passes + scan verification' },
       ],
       components: {
@@ -213,6 +223,15 @@ export async function buildApp(deps: AppDeps = {}): Promise<FastifyInstance> {
     routeStops: deps.routeStops,
   });
   await app.register(tripRoutes, {
+    trips: deps.trips,
+    rateLimit: deps.rateLimit ?? DEFAULT_RATE_LIMIT,
+  });
+  await app.register(adminRoutes, {
+    routes: deps.routes,
+    stops: deps.stops,
+    routeStops: deps.routeStops,
+    vehicles: deps.vehicles,
+    drivers: deps.drivers,
     trips: deps.trips,
     rateLimit: deps.rateLimit ?? DEFAULT_RATE_LIMIT,
   });
