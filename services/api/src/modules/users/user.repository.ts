@@ -56,6 +56,15 @@ export interface UserRepository {
    * @returns the updated user, or null if not found.
    */
   setAvatarKey(id: string, key: string | null): Promise<User | null>;
+  /**
+   * Change a user's role (admin op, #26). The JWT carries the role at sign-in,
+   * so the change takes effect on the user's next token refresh/sign-in.
+   *
+   * @param id - the user id.
+   * @param role - the role to grant.
+   * @returns the updated user, or null if not found.
+   */
+  setRole(id: string, role: UserRole): Promise<User | null>;
 }
 
 /** In-memory {@link UserRepository} for dev and unit tests. */
@@ -91,6 +100,14 @@ export class InMemoryUserRepository implements UserRepository {
     const user = this.users.get(id);
     if (!user) return null;
     const updated = { ...user, avatarUrl: key };
+    this.users.set(id, updated);
+    return updated;
+  }
+
+  async setRole(id: string, role: UserRole): Promise<User | null> {
+    const user = this.users.get(id);
+    if (!user) return null;
+    const updated = { ...user, role };
     this.users.set(id, updated);
     return updated;
   }
