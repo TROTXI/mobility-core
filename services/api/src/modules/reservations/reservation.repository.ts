@@ -127,6 +127,15 @@ export interface ReservationRepository {
    * @returns the updated reservation, or null if not found.
    */
   markBoarded(id: string): Promise<Reservation | null>;
+  /**
+   * All reservations attached to a trip — the raw rows behind a driver's
+   * manifest (the handler filters to the confirmed ones and enriches with rider
+   * name/photo).
+   *
+   * @param tripId - the trip.
+   * @returns the trip's reservations (any status).
+   */
+  listForTrip(tripId: string): Promise<Reservation[]>;
 }
 
 /** In-memory {@link ReservationRepository} for dev and unit tests. */
@@ -245,5 +254,11 @@ export class InMemoryReservationRepository implements ReservationRepository {
     row.status = 'boarded';
     row.updatedAt = new Date();
     return row;
+  }
+
+  async listForTrip(tripId: string): Promise<Reservation[]> {
+    return this.rows
+      .filter((r) => r.tripId === tripId)
+      .sort((a, b) => (a.direction < b.direction ? -1 : 1));
   }
 }

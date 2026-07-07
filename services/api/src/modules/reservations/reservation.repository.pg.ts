@@ -123,4 +123,13 @@ export class PgReservationRepository implements ReservationRepository {
     );
     return rows[0] ? toReservation(rows[0]) : null;
   }
+
+  async listForTrip(tripId: string): Promise<Reservation[]> {
+    const { rows } = await this.pool.query<ReservationRow>(
+      `SELECT * FROM reservations WHERE trip_id = $1
+       ORDER BY CASE direction WHEN 'morning' THEN 0 ELSE 1 END`,
+      [tripId],
+    );
+    return rows.map(toReservation);
+  }
 }

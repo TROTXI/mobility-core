@@ -20,3 +20,22 @@ export const scanResponseSchema = z.object({
    * for today). False for a valid pass with no reservation to board. */
   deducted: z.boolean(),
 });
+
+export const manifestQuerySchema = z.object({
+  tripId: z.string().uuid(),
+});
+
+export const manifestResponseSchema = z.object({
+  tripId: z.string().uuid(),
+  riders: z.array(
+    z.object({
+      reservationId: z.string().uuid(),
+      userId: z.string().uuid(),
+      name: z.string().nullable(),
+      /** Short-lived signed avatar URL, or null when the rider has no photo. */
+      avatarUrl: z.string().nullable(),
+      direction: z.enum(['morning', 'evening']),
+      boarded: z.boolean(),
+    }),
+  ),
+});

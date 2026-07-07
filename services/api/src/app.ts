@@ -17,6 +17,7 @@ import {
 } from './modules/devices/device-token.repository';
 import { deviceRoutes } from './modules/devices/devices.routes';
 import { BoardingService } from './modules/boarding/boarding.service';
+import { ManifestService } from './modules/boarding/manifest.service';
 import { boardingRoutes } from './modules/boarding/boarding.routes';
 import { InMemoryScanEventRepository } from './modules/boarding/scan-event.repository';
 import { metricsPlugin, type MetricsOptions } from './modules/metrics/metrics.plugin';
@@ -55,7 +56,7 @@ import type { TripRepository } from './modules/mobility/trip.repository';
 import type { VehicleRepository } from './modules/mobility/vehicle.repository';
 import type { DriverRepository } from './modules/mobility/driver.repository';
 import type { SubscriptionRepository } from './modules/subscriptions/subscription.repository';
-import type { UserRepository } from './modules/users/user.repository';
+import { InMemoryUserRepository, type UserRepository } from './modules/users/user.repository';
 
 /**
  * Dependencies are injected here — services and repositories register as the
@@ -169,7 +170,9 @@ export async function buildApp(deps: AppDeps = {}): Promise<FastifyInstance> {
   const kv = deps.kv ?? new InMemoryKvStore();
   const objectStore = deps.objectStore ?? new FakeObjectStore();
   // Shared so a boarding scan boards the same reservation the rider confirmed
-  // and debits the same entitlement ledger GET /me/rides reads (E4).
+  // and debits the same entitlement ledger GET /me/rides reads (E4); the manifest
+  // reads the same users auth writes.
+  const users = deps.users ?? new InMemoryUserRepository();
   const entitlements = deps.entitlements ?? new InMemoryEntitlementLedgerRepository();
   const credits = deps.credits ?? new InMemoryCreditLedgerRepository();
   const reservations = deps.reservations ?? new InMemoryReservationRepository();
@@ -177,13 +180,13 @@ export async function buildApp(deps: AppDeps = {}): Promise<FastifyInstance> {
   await app.register(authPlugin, { config: authConfig });
   await app.register(rateLimitPlugin, { kv });
   await app.register(authRoutes, {
-    users: deps.users,
+    users,
     objectStore,
     authService: deps.authService,
     rateLimit: deps.rateLimit ?? DEFAULT_RATE_LIMIT,
   });
   await app.register(userRoutes, {
-    users: deps.users,
+    users,
     objectStore,
     rateLimit: deps.rateLimit ?? DEFAULT_RATE_LIMIT,
   });
@@ -215,6 +218,7 @@ export async function buildApp(deps: AppDeps = {}): Promise<FastifyInstance> {
         secret: authConfig.secret,
         passTtlSeconds: 60,
       }),
+    manifestService: new ManifestService({ reservations, users, objectStore }),
     rateLimit: deps.rateLimit ?? DEFAULT_RATE_LIMIT,
   });
   await app.register(mobilityRoutes, {

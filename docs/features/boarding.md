@@ -86,10 +86,14 @@ three verification layers**, and boarding consumes **1 ride from the subscriptio
 entitlement**. **Done in this slice:** ride deduction on a valid scan (above).
 Still to come (blocked on trips/admin, #26):
 
-- **Driver manifest layer** — name + **photo** (server-side, R2 #24) + pickup
-  point for the day's reservations. The photo pass is now required product.
-- **Daily 4-digit PIN layer** — offline-friendly fallback; only works _with_ the
-  manifest (a 4-digit code can't identify a rider alone), so it ships with #26.
+- ✅ **Driver manifest layer** — `GET /boarding/manifest?tripId=` (driver only)
+  returns the trip's confirmed riders with **name + signed photo URL** + boarded
+  status (the photo pass; the photo comes from the server, never the QR). Only
+  `reserved`/`boarded` seats appear. _Follow-ups:_ restrict to the trip's
+  **assigned driver** (needs the driver↔user lookup #25 also uses; they land
+  together), and add a per-rider **pickup point** (needs a rider↔stop link).
+- **Daily 4-digit PIN layer** — offline-friendly fallback; rides on the manifest
+  (a 4-digit code can't identify a rider alone) — next up.
 - **Confirmed-yes no-show** deduction job (cron); operator cancellation never
   deducts. Same idempotency key space (`board:<reservationId>`) so a late board
   and the no-show sweep can't both charge.
