@@ -55,14 +55,26 @@ export class PgTripRepository implements TripRepository {
   }
 
   async findAll(filter?: TripFilter): Promise<Trip[]> {
-    // routeId is the only filter today (GET /trips?routeId); build the WHERE
-    // clause conditionally so the unfiltered list stays a plain scan + sort.
-    const { rows } = filter?.routeId
-      ? await this.pool.query<TripRow>(
-          'SELECT * FROM trips WHERE route_id = $1 ORDER BY scheduled_at',
-          [filter.routeId],
-        )
-      : await this.pool.query<TripRow>('SELECT * FROM trips ORDER BY scheduled_at');
+    // Build the WHERE clause from whichever filters are present. `date` compares
+    // the UTC calendar day, matching the in-memory adapter's toISOString().
+    const where: string[] = [];
+    const params: unknown[] = [];
+    if (filter?.routeId) {
+      params.push(filter.routeId);
+      where.push(`route_id = $${params.length}`);
+    }
+    if (filter?.status) {
+      params.push(filter.status);
+      where.push(`status = $${params.length}`);
+    }
+    if (filter?.date) {
+      params.push(filter.date);
+      where.push(`(scheduled_at AT TIME ZONE 'UTC')::date = $${params.length}::date`);
+    }
+    const { rows } = await this.pool.query<TripRow>(
+      `SELECT * FROM trips ${where.length ? `WHERE ${where.join(' AND ')}` : ''} ORDER BY scheduled_at`,
+      params,
+    );
     return rows.map(toTrip);
   }
 

@@ -17,6 +17,7 @@ import type { RouteRepository } from '../mobility/route.repository';
 import type { StopRepository } from '../mobility/stop.repository';
 import type { TripRepository } from '../mobility/trip.repository';
 import type { VehicleRepository } from '../mobility/vehicle.repository';
+import type { UserRepository } from '../users/user.repository';
 import {
   driverResponseSchema,
   routeResponseSchema,
@@ -25,6 +26,7 @@ import {
   vehicleResponseSchema,
 } from '../mobility/mobility.schema';
 import {
+  adminUserResponseSchema,
   assignTripBodySchema,
   attachStopBodySchema,
   createDriverBodySchema,
@@ -32,12 +34,21 @@ import {
   createStopBodySchema,
   createTripBodySchema,
   createVehicleBodySchema,
+  listTripsAdminQuerySchema,
+  setRoleBodySchema,
   updateDriverBodySchema,
   updateRouteBodySchema,
   updateStopBodySchema,
   updateTripBodySchema,
   updateVehicleBodySchema,
 } from './admin.schema';
+
+// True when a repository error is a (Postgres-shaped) unique-constraint
+// violation — SQLSTATE 23505. The in-memory route-stop adapter throws the same
+// shape, so both paths map to a clean 409.
+function isUniqueViolation(err: unknown): boolean {
+  return (err as { code?: string }).code === '23505';
+}
 
 const idParam = z.object({ id: z.string().uuid() });
 
@@ -66,6 +77,8 @@ export interface AdminDeps {
   vehicles?: VehicleRepository;
   drivers?: DriverRepository;
   trips?: TripRepository;
+  /** For the role grant (PATCH /admin/users/:id/role) + driver user_id checks. */
+  users?: UserRepository;
   rateLimit: RateLimitConfig;
 }
 
@@ -80,11 +93,13 @@ export async function adminRoutes(app: FastifyInstance, opts: AdminDeps): Promis
   const UNAVAILABLE = { error: 'unavailable', message: 'Admin ops are not configured' };
   const notFound = (message: string) => ({ error: 'not_found', message });
 
-  // authenticate → requireRole('admin') → rate limit. Reused by every route.
+  // authenticate → rate limit → requireRole('admin'). Throttle BEFORE the role
+  // check (house convention, cf. boarding #93) — otherwise non-admin tokens
+  // could hammer 403s without ever being rate limited. Reused by every route.
   const adminOnly = [
     app.authenticate,
-    app.requireRole('admin'),
     app.rateLimit({ ...opts.rateLimit, by: 'user' }),
+    app.requireRole('admin'),
   ];
 
   // ---------------------------------------------------------------- routes ---
@@ -154,7 +169,7 @@ export async function adminRoutes(app: FastifyInstance, opts: AdminDeps): Promis
         security: [{ bearerAuth: [] }],
         params: idParam,
         body: attachStopBodySchema,
-        response: { 200: routeStopResponseSchema, ...authErrorsNF },
+        response: { 200: routeStopResponseSchema, 409: errorResponseSchema, ...authErrorsNF },
       },
       preHandler: adminOnly,
     },
@@ -168,11 +183,22 @@ export async function adminRoutes(app: FastifyInstance, opts: AdminDeps): Promis
       if (!(await opts.stops.findById(request.body.stopId))) {
         return reply.code(404).send(notFound('Stop not found'));
       }
-      return opts.routeStops.create({
-        routeId: request.params.id,
-        stopId: request.body.stopId,
-        seq: request.body.seq,
-      });
+      try {
+        return await opts.routeStops.create({
+          routeId: request.params.id,
+          stopId: request.body.stopId,
+          seq: request.body.seq,
+        });
+      } catch (err) {
+        // UNIQUE (route_id, seq) — the position is already taken on this route.
+        if (isUniqueViolation(err)) {
+          return reply.code(409).send({
+            error: 'conflict',
+            message: `Sequence position ${request.body.seq} is already taken on this route`,
+          });
+        }
+        throw err;
+      }
     },
   );
 
@@ -299,12 +325,21 @@ export async function adminRoutes(app: FastifyInstance, opts: AdminDeps): Promis
         summary: 'Create a driver',
         security: [{ bearerAuth: [] }],
         body: createDriverBodySchema,
-        response: { 200: driverResponseSchema, ...authErrors },
+        response: { 200: driverResponseSchema, ...authErrorsNF },
       },
       preHandler: adminOnly,
     },
     async (request, reply) => {
       if (!opts.drivers) return reply.code(503).send(UNAVAILABLE);
+      // Validate the linked auth principal exists — clean 404 instead of a DB
+      // FK violation (consistent with trip create). users is only needed when a
+      // link is actually being made.
+      if (request.body.userId) {
+        if (!opts.users) return reply.code(503).send(UNAVAILABLE);
+        if (!(await opts.users.findById(request.body.userId))) {
+          return reply.code(404).send(notFound('User not found'));
+        }
+      }
       return opts.drivers.create(request.body);
     },
   );
@@ -341,6 +376,12 @@ export async function adminRoutes(app: FastifyInstance, opts: AdminDeps): Promis
     },
     async (request, reply) => {
       if (!opts.drivers) return reply.code(503).send(UNAVAILABLE);
+      if (request.body.userId) {
+        if (!opts.users) return reply.code(503).send(UNAVAILABLE);
+        if (!(await opts.users.findById(request.body.userId))) {
+          return reply.code(404).send(notFound('User not found'));
+        }
+      }
       const updated = await opts.drivers.update(request.params.id, request.body);
       if (!updated) return reply.code(404).send(notFound('Driver not found'));
       return updated;
@@ -391,15 +432,20 @@ export async function adminRoutes(app: FastifyInstance, opts: AdminDeps): Promis
     {
       schema: {
         tags: ['admin'],
-        summary: 'List all trips',
+        summary: 'List trips, filterable by route, status, and UTC day',
         security: [{ bearerAuth: [] }],
+        querystring: listTripsAdminQuerySchema,
         response: { 200: z.array(tripResponseSchema), ...authErrors },
       },
       preHandler: adminOnly,
     },
-    async (_request, reply) => {
+    async (request, reply) => {
       if (!opts.trips) return reply.code(503).send(UNAVAILABLE);
-      return opts.trips.findAll();
+      return opts.trips.findAll({
+        routeId: request.query.routeId,
+        status: request.query.status,
+        date: request.query.date,
+      });
     },
   );
 
@@ -455,6 +501,36 @@ export async function adminRoutes(app: FastifyInstance, opts: AdminDeps): Promis
       }
       const updated = await opts.trips.update(request.params.id, { vehicleId, assignedDriverId });
       if (!updated) return reply.code(404).send(notFound('Trip not found'));
+      return updated;
+    },
+  );
+
+  // ----------------------------------------------------------- users (role) ---
+  // The missing half of "make a user a driver": creating a `drivers` fleet row
+  // never touches users.role, but the JWT is signed from users.role at sign-in —
+  // so without this, a linked driver still authenticates as a commuter and gets
+  // 403 on POST /boarding/scan. The change takes effect on the user's next token
+  // refresh/sign-in (existing access tokens keep their old role until expiry,
+  // ≤15m). Bootstrap note: the FIRST admin cannot be created through this
+  // endpoint (it requires an admin) — grant it once via SQL:
+  //   UPDATE users SET role = 'admin' WHERE id = '<uuid>';
+  r.patch(
+    '/admin/users/:id/role',
+    {
+      schema: {
+        tags: ['admin'],
+        summary: "Change a user's role (commuter | driver | admin)",
+        security: [{ bearerAuth: [] }],
+        params: idParam,
+        body: setRoleBodySchema,
+        response: { 200: adminUserResponseSchema, ...authErrorsNF },
+      },
+      preHandler: adminOnly,
+    },
+    async (request, reply) => {
+      if (!opts.users) return reply.code(503).send(UNAVAILABLE);
+      const updated = await opts.users.setRole(request.params.id, request.body.role);
+      if (!updated) return reply.code(404).send(notFound('User not found'));
       return updated;
     },
   );

@@ -37,6 +37,15 @@ export class InMemoryRouteStopRepository implements RouteStopRepository {
   private readonly routeStops = new Map<string, RouteStop>();
 
   async create(input: NewRouteStop): Promise<RouteStop> {
+    // Mirror the DB's UNIQUE (route_id, seq): throw the same shape as a Postgres
+    // unique violation (SQLSTATE 23505) so handlers behave identically on both
+    // adapters — the admin attach-stop route maps this to a 409.
+    const duplicate = Array.from(this.routeStops.values()).some(
+      (rs) => rs.routeId === input.routeId && rs.seq === input.seq,
+    );
+    if (duplicate) {
+      throw Object.assign(new Error('duplicate (route_id, seq)'), { code: '23505' });
+    }
     const routeStop: RouteStop = {
       id: crypto.randomUUID(),
       routeId: input.routeId,

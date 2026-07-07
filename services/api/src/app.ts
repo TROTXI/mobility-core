@@ -233,6 +233,7 @@ export async function buildApp(deps: AppDeps = {}): Promise<FastifyInstance> {
     vehicles: deps.vehicles,
     drivers: deps.drivers,
     trips: deps.trips,
+    users: deps.users,
     rateLimit: deps.rateLimit ?? DEFAULT_RATE_LIMIT,
   });
 

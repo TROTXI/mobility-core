@@ -35,6 +35,10 @@ export interface NewTrip {
 /** Optional filters for {@link TripRepository.findAll}. */
 export interface TripFilter {
   routeId?: string;
+  status?: TripStatus;
+  /** UTC calendar day (`YYYY-MM-DD`) the trip is scheduled on — what the
+   * ask-dispatch will use for "tomorrow's trips" (E3). */
+  date?: string;
 }
 
 /** Editable {@link Trip} fields for a partial update (admin, #26). routeId is
@@ -107,6 +111,8 @@ export class InMemoryTripRepository implements TripRepository {
   async findAll(filter?: TripFilter): Promise<Trip[]> {
     return Array.from(this.trips.values())
       .filter((t) => !filter?.routeId || t.routeId === filter.routeId)
+      .filter((t) => !filter?.status || t.status === filter.status)
+      .filter((t) => !filter?.date || t.scheduledAt.toISOString().slice(0, 10) === filter.date)
       .sort((a, b) => a.scheduledAt.getTime() - b.scheduledAt.getTime());
   }
 

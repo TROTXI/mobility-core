@@ -7,6 +7,7 @@
 
 import { z } from 'zod';
 import { TRIP_STATUSES } from '../mobility/trip.repository';
+import { USER_ROLES } from '../users/user.repository';
 
 const latitude = z.number().min(-90).max(90);
 const longitude = z.number().min(-180).max(180);
@@ -76,6 +77,33 @@ export const createTripBodySchema = z.object({
 export const updateTripBodySchema = z.object({
   status: z.enum(TRIP_STATUSES).optional(),
   scheduledAt: z.string().datetime().optional(),
+});
+
+// List filters for GET /admin/trips — `date` is the UTC calendar day, the shape
+// the E3 ask-dispatch needs ("tomorrow's scheduled trips").
+export const listTripsAdminQuerySchema = z.object({
+  routeId: z.string().uuid().optional(),
+  status: z.enum(TRIP_STATUSES).optional(),
+  date: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, 'expected YYYY-MM-DD')
+    .optional(),
+});
+
+// --- users (role grant) ---
+// Changing users.role is what turns a signed-in account into a driver/admin —
+// the JWT carries the role, so it takes effect on the next refresh/sign-in.
+export const setRoleBodySchema = z.object({
+  role: z.enum(USER_ROLES),
+});
+// Slim admin view of a user (no avatar URL — that needs the object store and
+// belongs to the profile endpoints).
+export const adminUserResponseSchema = z.object({
+  id: z.string().uuid(),
+  displayName: z.string(),
+  phone: z.string().nullable(),
+  role: z.enum(USER_ROLES),
+  createdAt: z.date(),
 });
 
 // Driver↔trip (and vehicle) assignment — the field that authorizes GPS
