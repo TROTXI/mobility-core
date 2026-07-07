@@ -45,6 +45,10 @@ import {
   rateLimitPlugin,
   type RateLimitConfig,
 } from './modules/ratelimit/ratelimit.plugin';
+import type { RouteStopRepository } from './modules/mobility/route-stop.repository';
+import { mobilityRoutes } from './modules/mobility/mobility.routes';
+import type { RouteRepository } from './modules/mobility/route.repository';
+import type { StopRepository } from './modules/mobility/stop.repository';
 import type { SubscriptionRepository } from './modules/subscriptions/subscription.repository';
 import type { UserRepository } from './modules/users/user.repository';
 
@@ -60,6 +64,10 @@ export interface AppDeps {
   users?: UserRepository;
   /** Selected by DATABASE_URL (in-memory vs Postgres). Consumed by routes/services. */
   subscriptions?: SubscriptionRepository;
+  /** Selected by DATABASE_URL (in-memory vs Postgres). Mobility domain. */
+  routes?: RouteRepository;
+  stops?: StopRepository;
+  routeStops?: RouteStopRepository;
   /** Device push-token registry (in-memory vs Postgres). Defaults to in-memory. */
   deviceTokens?: DeviceTokenRepository;
   /** Boarding pass issuance + scan verification. Defaults to an in-memory scan store. */
@@ -122,6 +130,7 @@ export async function buildApp(deps: AppDeps = {}): Promise<FastifyInstance> {
         { name: 'payments', description: 'Subscriptions checkout (Paystack) + webhook' },
         { name: 'rides', description: 'Ride entitlement + Ride Credit balance' },
         { name: 'reservations', description: 'Daily ride confirmation (confirm/decline)' },
+        { name: 'mobility', description: 'Routes and stops' },
         { name: 'boarding', description: 'QR boarding passes + scan verification' },
       ],
       components: {
@@ -186,6 +195,11 @@ export async function buildApp(deps: AppDeps = {}): Promise<FastifyInstance> {
         passTtlSeconds: 60,
       }),
     rateLimit: deps.rateLimit ?? DEFAULT_RATE_LIMIT,
+  });
+  await app.register(mobilityRoutes, {
+    routes: deps.routes,
+    stops: deps.stops,
+    routeStops: deps.routeStops,
   });
 
   r.get(

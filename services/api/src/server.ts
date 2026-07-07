@@ -26,6 +26,15 @@ import {
 import { PgSessionRepository } from './modules/auth/session.repository.pg';
 import type { RateLimitConfig } from './modules/ratelimit/ratelimit.plugin';
 import {
+  InMemoryRouteStopRepository,
+  type RouteStopRepository,
+} from './modules/mobility/route-stop.repository';
+import { PgRouteStopRepository } from './modules/mobility/route-stop.repository.pg';
+import { InMemoryRouteRepository, type RouteRepository } from './modules/mobility/route.repository';
+import { PgRouteRepository } from './modules/mobility/route.repository.pg';
+import { InMemoryStopRepository, type StopRepository } from './modules/mobility/stop.repository';
+import { PgStopRepository } from './modules/mobility/stop.repository.pg';
+import {
   InMemorySubscriptionRepository,
   type SubscriptionRepository,
 } from './modules/subscriptions/subscription.repository';
@@ -112,6 +121,9 @@ async function main(): Promise<void> {
   let pool: Pool | undefined;
   let users: UserRepository;
   let subscriptions: SubscriptionRepository;
+  let routes: RouteRepository;
+  let stops: StopRepository;
+  let routeStops: RouteStopRepository;
   let sessions: SessionRepository;
   let authIdentities: AuthIdentityRepository;
   let payments: PaymentRepository;
@@ -124,6 +136,9 @@ async function main(): Promise<void> {
     pool = createPool(env.DATABASE_URL);
     users = new PgUserRepository(pool);
     subscriptions = new PgSubscriptionRepository(pool);
+    routes = new PgRouteRepository(pool);
+    stops = new PgStopRepository(pool);
+    routeStops = new PgRouteStopRepository(pool);
     sessions = new PgSessionRepository(pool);
     authIdentities = new PgAuthIdentityRepository(pool);
     payments = new PgPaymentRepository(pool);
@@ -136,6 +151,9 @@ async function main(): Promise<void> {
   } else {
     users = new InMemoryUserRepository();
     subscriptions = new InMemorySubscriptionRepository();
+    routes = new InMemoryRouteRepository();
+    stops = new InMemoryStopRepository();
+    routeStops = new InMemoryRouteStopRepository();
     sessions = new InMemorySessionRepository();
     authIdentities = new InMemoryAuthIdentityRepository();
     payments = new InMemoryPaymentRepository();
@@ -220,6 +238,9 @@ async function main(): Promise<void> {
   const app = await buildApp({
     users,
     subscriptions,
+    routes,
+    stops,
+    routeStops,
     deviceTokens,
     boardingService,
     authService,
