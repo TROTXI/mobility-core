@@ -56,7 +56,6 @@ class DefaultFirebaseOptions {
     projectId: 'trotxi-501218',
     storageBucket: 'trotxi-501218.firebasestorage.app',
   );
-
   static const FirebaseOptions ios = FirebaseOptions(
     apiKey: 'AIzaSyA4tqnxHVIbYDj_aqB4toHgmpSK23mbbY8',
     appId: '1:431341307838:ios:2bd968c3c2c9d369ff1bef',

@@ -1,1 +1,22 @@
-{"flutter":{"platforms":{"android":{"default":{"projectId":"trotxi-501218","appId":"1:431341307838:android:95c73d83390d6229ff1bef","fileOutput":"android/app/google-services.json"}},"dart":{"lib/firebase_options.dart":{"projectId":"trotxi-501218","configurations":{"android":"1:431341307838:android:95c73d83390d6229ff1bef","ios":"1:431341307838:ios:2bd968c3c2c9d369ff1bef"}}}}}}
+{
+  "flutter": {
+    "platforms": {
+      "android": {
+        "default": {
+          "projectId": "trotxi-501218",
+          "appId": "1:431341307838:android:95c73d83390d6229ff1bef",
+          "fileOutput": "android/app/google-services.json"
+        }
+      },
+      "dart": {
+        "lib/firebase_options.dart": {
+          "projectId": "trotxi-501218",
+          "configurations": {
+            "android": "1:431341307838:android:95c73d83390d6229ff1bef",
+            "ios": "1:431341307838:ios:2bd968c3c2c9d369ff1bef"
+          }
+        }
+      }
+    }
+  }
+}
