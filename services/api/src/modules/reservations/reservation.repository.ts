@@ -109,6 +109,24 @@ export interface ReservationRepository {
     travelDate: string,
     direction: ReservationDirection,
   ): Promise<Reservation | null>;
+  /**
+   * The rider's next boardable reservation for a day — the earliest still-open
+   * `reserved` seat (morning before evening), or null. This is what a boarding
+   * scan consumes; already-`boarded` seats are skipped so a re-scan can't
+   * double-deduct.
+   *
+   * @param userId - the rider.
+   * @param travelDate - the travel day (`YYYY-MM-DD`).
+   * @returns the reservation to board, or null.
+   */
+  findBoardable(userId: string, travelDate: string): Promise<Reservation | null>;
+  /**
+   * Mark a reservation `boarded` (the rider verified onto the vehicle).
+   *
+   * @param id - the reservation id.
+   * @returns the updated reservation, or null if not found.
+   */
+  markBoarded(id: string): Promise<Reservation | null>;
 }
 
 /** In-memory {@link ReservationRepository} for dev and unit tests. */
@@ -209,5 +227,23 @@ export class InMemoryReservationRepository implements ReservationRepository {
   ): Promise<Reservation | null> {
     const i = this.index(userId, travelDate, direction);
     return i >= 0 ? this.rows[i]! : null;
+  }
+
+  async findBoardable(userId: string, travelDate: string): Promise<Reservation | null> {
+    // Earliest open leg first — morning before evening (not alphabetical:
+    // 'evening' < 'morning', so we rank explicitly).
+    const rank = (d: ReservationDirection): number => (d === 'morning' ? 0 : 1);
+    const open = this.rows
+      .filter((r) => r.userId === userId && r.travelDate === travelDate && r.status === 'reserved')
+      .sort((a, b) => rank(a.direction) - rank(b.direction));
+    return open[0] ?? null;
+  }
+
+  async markBoarded(id: string): Promise<Reservation | null> {
+    const row = this.rows.find((r) => r.id === id);
+    if (!row) return null;
+    row.status = 'boarded';
+    row.updatedAt = new Date();
+    return row;
   }
 }

@@ -102,4 +102,25 @@ export class PgReservationRepository implements ReservationRepository {
     );
     return rows[0] ? toReservation(rows[0]) : null;
   }
+
+  async findBoardable(userId: string, travelDate: string): Promise<Reservation | null> {
+    // Earliest still-open leg (morning before evening — explicit, not
+    // alphabetical); boarded seats excluded.
+    const { rows } = await this.pool.query<ReservationRow>(
+      `SELECT * FROM reservations
+       WHERE user_id = $1 AND travel_date = $2 AND status = 'reserved'
+       ORDER BY CASE direction WHEN 'morning' THEN 0 ELSE 1 END
+       LIMIT 1`,
+      [userId, travelDate],
+    );
+    return rows[0] ? toReservation(rows[0]) : null;
+  }
+
+  async markBoarded(id: string): Promise<Reservation | null> {
+    const { rows } = await this.pool.query<ReservationRow>(
+      `UPDATE reservations SET status = 'boarded', updated_at = now() WHERE id = $1 RETURNING *`,
+      [id],
+    );
+    return rows[0] ? toReservation(rows[0]) : null;
+  }
 }

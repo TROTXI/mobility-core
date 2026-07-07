@@ -2,9 +2,10 @@
 
 **Owner:** Godfred Awuku · **Last updated:** 2026-07-02
 
-**Status:** 🟡 integrity slice live (#20). The **eligibility gates** (active
-membership + token debit on board) and the **photo-pass** fallback are deferred —
-see below.
+**Status:** 🟢 QR scan **+ ride deduction** live (#20, E4). A valid scan now
+consumes the rider's confirmed reservation and **debits one ride** from their
+entitlement (ADR-0014). Still deferred: the **manifest + daily-PIN** layers and
+the confirmed-yes **no-show** job (both need trips/admin #26) — see below.
 
 Lets a driver confirm a rider is boarding with a **genuine, unforged, unexpired
 pass**, and logs every scan for audit. Rationale: #20.
@@ -20,9 +21,13 @@ pass**, and logs every scan for audit. Rationale: #20.
   scan, not just at the TTL. Signed with the server key but a distinct audience,
   so a pass can't be used as an access token (or vice-versa). Verification allows
   5s clock tolerance (drift across instances).
-- **Integrity vs eligibility** — verifying a pass proves it's a **real pass for
-  rider X**. It does **not** (yet) check membership or debit tokens — those are the
-  money-gated part (#19/#21), deliberately deferred.
+- **Integrity → boarding** — verifying a pass proves it's a **real pass for
+  rider X**; a valid scan then **boards the rider's confirmed reservation for
+  today** and debits **1 ride** from their entitlement (E1 ledger). The debit is
+  **idempotent per reservation** (`board:<reservationId>`), and `findBoardable`
+  skips already-boarded seats — so re-scanning a rider (even with a freshly
+  rotated QR) never double-charges. A valid pass with **no confirmed reservation**
+  boards nothing (`deducted: false`) — walk-up/standby is E6.
 - **Scan event** — every verification is one **append-only** audit row
   (`scan_events`): rider, driver, trip, result, method. `rider_id` is null for an
   invalid/forged pass (unattributable).
@@ -44,9 +49,10 @@ Verify a scanned pass (drivers only) and record the scan.
 
 - **Auth:** `Bearer` + **role `driver`** (else **403**). **Rate limit:** per user.
 - **Body:** `{ "pass": "<scanned token>", "tripId?": "<uuid>" }`
-- **200:** `{ "valid": true|false, "riderId": "<uuid>|null", "reason": "ok"|"invalid"|"expired"|"reused" }`
-  (`reused` = the pass was already consumed by an earlier scan; `riderId` is still
-  returned so the driver sees who presented it)
+- **200:** `{ "valid": true|false, "riderId": "<uuid>|null", "reason": "ok"|"invalid"|"expired"|"reused", "deducted": true|false }`
+  (`reused` = the pass was already consumed; `deducted` = a confirmed reservation
+  was boarded and a ride debited. `riderId` is still returned so the driver sees
+  who presented it.)
 
 ---
 
@@ -75,18 +81,21 @@ no FK yet (trips are #18).
 ## Next (Hybrid Subscription Model — ADR-0014, boarding v2 / epic E4)
 
 The commercial model is decided
-([ADR-0014](../adr/0014-hybrid-subscription-model.md)): this QR core becomes
-**one of three verification layers**, and boarding consumes **1 ride from the
-subscription entitlement** (not a fare debit from a wallet). Coming in E4:
+([ADR-0014](../adr/0014-hybrid-subscription-model.md)): this QR scan is **one of
+three verification layers**, and boarding consumes **1 ride from the subscription
+entitlement**. **Done in this slice:** ride deduction on a valid scan (above).
+Still to come (blocked on trips/admin, #26):
 
 - **Driver manifest layer** — name + **photo** (server-side, R2 #24) + pickup
   point for the day's reservations. The photo pass is now required product.
-- **Daily 4-digit PIN layer** — offline-friendly fallback; any layer completes
-  verification.
-- **Ride deduction on verify** (idempotency key = reservation id) + the
-  confirmed-yes **no-show** deduction job; operator cancellation never deducts.
-- Eligibility: active subscription + a **confirmed reservation** for the trip
-  (from the daily-confirmation flow), replacing the old wallet-balance gate.
+- **Daily 4-digit PIN layer** — offline-friendly fallback; only works _with_ the
+  manifest (a 4-digit code can't identify a rider alone), so it ships with #26.
+- **Confirmed-yes no-show** deduction job (cron); operator cancellation never
+  deducts. Same idempotency key space (`board:<reservationId>`) so a late board
+  and the no-show sweep can't both charge.
+- Direction/trip resolution: today a scan boards the rider's **earliest open leg
+  for the day** (morning before evening); when trips carry the run's direction,
+  the scan will target that specific reservation.
 
 ## Where the code lives
 
