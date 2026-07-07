@@ -1,0 +1,68 @@
+{
+  "project_info": {
+    "project_number": "431341307838",
+    "project_id": "trotxi-501218",
+    "storage_bucket": "trotxi-501218.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:431341307838:android:02359687d30d7a1dff1bef",
+        "android_client_info": {
+          "package_name": "com.trotxi.trotxi_commuter"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "431341307838-pc4m046v2lj18ssfnfl1g52fl5g1cg4q.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBWmYDIMd1q2NVNBJIETOEXZp3a3t3uHEI"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "431341307838-pc4m046v2lj18ssfnfl1g52fl5g1cg4q.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:431341307838:android:95c73d83390d6229ff1bef",
+        "android_client_info": {
+          "package_name": "com.trotxi.trotxi_driver"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "431341307838-pc4m046v2lj18ssfnfl1g52fl5g1cg4q.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBWmYDIMd1q2NVNBJIETOEXZp3a3t3uHEI"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "431341307838-pc4m046v2lj18ssfnfl1g52fl5g1cg4q.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
