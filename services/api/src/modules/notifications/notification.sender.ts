@@ -1,8 +1,8 @@
 // Push notifications (E3). A seam over the delivery channel: the daily
-// ask-dispatch calls send(); the real backend is Firebase Cloud Messaging, which
-// needs the Firebase service account (owned by the FE lane, #88–90) — not wired
-// yet. Until then the Fake records + logs, so the ask-dispatch flow is fully
-// exercisable and the real sender drops in behind this interface later.
+// ask-dispatch calls send(). The real backend is Firebase Cloud Messaging
+// (notification.sender.live.ts), wired when FIREBASE_SERVICE_ACCOUNT is set; the
+// Fake below records + logs for dev/tests so the ask-dispatch flow is fully
+// exercisable without a network.
 
 /** A push to one user (fanned out to their registered devices by the sender). */
 export interface Notification {
