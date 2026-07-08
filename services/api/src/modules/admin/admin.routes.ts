@@ -18,6 +18,8 @@ import type { StopRepository } from '../mobility/stop.repository';
 import type { TripRepository } from '../mobility/trip.repository';
 import type { VehicleRepository } from '../mobility/vehicle.repository';
 import type { UserRepository } from '../users/user.repository';
+import type { FeatureFlagRepository } from '../flags/feature-flag.repository';
+import { APP_PLATFORMS, type MinVersionRepository } from '../flags/min-version.repository';
 import {
   driverResponseSchema,
   routeResponseSchema,
@@ -25,6 +27,7 @@ import {
   tripResponseSchema,
   vehicleResponseSchema,
 } from '../mobility/mobility.schema';
+import { featureFlagResponseSchema, minVersionResponseSchema } from '../flags/flags.schema';
 import {
   adminUserResponseSchema,
   assignTripBodySchema,
@@ -35,12 +38,14 @@ import {
   createTripBodySchema,
   createVehicleBodySchema,
   listTripsAdminQuerySchema,
+  setMinVersionBodySchema,
   setRoleBodySchema,
   updateDriverBodySchema,
   updateRouteBodySchema,
   updateStopBodySchema,
   updateTripBodySchema,
   updateVehicleBodySchema,
+  upsertFeatureFlagBodySchema,
 } from './admin.schema';
 
 // True when a repository error is a (Postgres-shaped) unique-constraint
@@ -79,6 +84,9 @@ export interface AdminDeps {
   trips?: TripRepository;
   /** For the role grant (PATCH /admin/users/:id/role) + driver user_id checks. */
   users?: UserRepository;
+  /** Feature flags + force-update floor (#27), managed under /admin/flags + /admin/min-versions. */
+  featureFlags?: FeatureFlagRepository;
+  minVersions?: MinVersionRepository;
   rateLimit: RateLimitConfig;
 }
 
@@ -532,6 +540,86 @@ export async function adminRoutes(app: FastifyInstance, opts: AdminDeps): Promis
       const updated = await opts.users.setRole(request.params.id, request.body.role);
       if (!updated) return reply.code(404).send(notFound('User not found'));
       return updated;
+    },
+  );
+
+  // --------------------------------------------------------- feature flags ---
+  // The apps read these (kill-switch + %-rollout) on launch via public GET /flags;
+  // ops flip them here without a deploy — the "deploy != release" keystone (#27).
+  r.get(
+    '/admin/flags',
+    {
+      schema: {
+        tags: ['admin'],
+        summary: 'List all feature flags',
+        security: [{ bearerAuth: [] }],
+        response: { 200: z.array(featureFlagResponseSchema), ...authErrors },
+      },
+      preHandler: adminOnly,
+    },
+    async (_request, reply) => {
+      if (!opts.featureFlags) return reply.code(503).send(UNAVAILABLE);
+      return opts.featureFlags.findAll();
+    },
+  );
+
+  // Upsert (create or update) a flag by key. Idempotent — the kill-switch: PUT
+  // { enabled: false } instantly hides a feature on the apps' next fetch.
+  r.put(
+    '/admin/flags/:key',
+    {
+      schema: {
+        tags: ['admin'],
+        summary: 'Create or update a feature flag',
+        security: [{ bearerAuth: [] }],
+        params: z.object({ key: z.string().min(1) }),
+        body: upsertFeatureFlagBodySchema,
+        response: { 200: featureFlagResponseSchema, ...authErrors },
+      },
+      preHandler: adminOnly,
+    },
+    async (request, reply) => {
+      if (!opts.featureFlags) return reply.code(503).send(UNAVAILABLE);
+      return opts.featureFlags.upsert(request.params.key, request.body);
+    },
+  );
+
+  // ------------------------------------------------------- min app versions ---
+  // The force-update floor per platform: bumping it forces older builds to update
+  // on their next launch (they read it via public GET /flags).
+  r.get(
+    '/admin/min-versions',
+    {
+      schema: {
+        tags: ['admin'],
+        summary: 'List the minimum supported app version per platform',
+        security: [{ bearerAuth: [] }],
+        response: { 200: z.array(minVersionResponseSchema), ...authErrors },
+      },
+      preHandler: adminOnly,
+    },
+    async (_request, reply) => {
+      if (!opts.minVersions) return reply.code(503).send(UNAVAILABLE);
+      return opts.minVersions.findAll();
+    },
+  );
+
+  r.put(
+    '/admin/min-versions/:platform',
+    {
+      schema: {
+        tags: ['admin'],
+        summary: 'Set the minimum supported app version for a platform',
+        security: [{ bearerAuth: [] }],
+        params: z.object({ platform: z.enum(APP_PLATFORMS) }),
+        body: setMinVersionBodySchema,
+        response: { 200: minVersionResponseSchema, ...authErrors },
+      },
+      preHandler: adminOnly,
+    },
+    async (request, reply) => {
+      if (!opts.minVersions) return reply.code(503).send(UNAVAILABLE);
+      return opts.minVersions.set(request.params.platform, request.body.version);
     },
   );
 }

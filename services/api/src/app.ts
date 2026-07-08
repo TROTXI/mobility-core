@@ -51,6 +51,9 @@ import { mobilityRoutes } from './modules/mobility/mobility.routes';
 import { tripRoutes } from './modules/mobility/trips.routes';
 import { positionRoutes } from './modules/mobility/positions.routes';
 import { adminRoutes } from './modules/admin/admin.routes';
+import { flagsRoutes } from './modules/flags/flags.routes';
+import type { FeatureFlagRepository } from './modules/flags/feature-flag.repository';
+import type { MinVersionRepository } from './modules/flags/min-version.repository';
 import type { RouteRepository } from './modules/mobility/route.repository';
 import type { StopRepository } from './modules/mobility/stop.repository';
 import type { TripRepository } from './modules/mobility/trip.repository';
@@ -96,6 +99,10 @@ export interface AppDeps {
   credits?: CreditLedgerRepository;
   /** Daily reservation store (in-memory vs Postgres). Defaults to in-memory. */
   reservations?: ReservationRepository;
+  /** Feature flags (#27). Read by public GET /flags; ops-managed via /admin/flags. */
+  featureFlags?: FeatureFlagRepository;
+  /** Per-platform min supported version (#27) — the apps' force-update floor. */
+  minVersions?: MinVersionRepository;
   /** Selected by REDIS_URL (in-memory vs Redis). For rate limits, idempotency, cache. */
   kv?: KvStore;
   /** Avatar/media storage (R2 in prod, in-memory Fake in dev/tests). */
@@ -154,6 +161,10 @@ export async function buildApp(deps: AppDeps = {}): Promise<FastifyInstance> {
           description: 'Admin/ops: manage fleet (routes/stops/vehicles/drivers/trips) + assignment',
         },
         { name: 'boarding', description: 'QR boarding passes + scan verification' },
+        {
+          name: 'flags',
+          description: 'Feature flags + minimum supported app version (force-update)',
+        },
       ],
       components: {
         // Protected routes set `security: [{ bearerAuth: [] }]`; clients send
@@ -255,7 +266,13 @@ export async function buildApp(deps: AppDeps = {}): Promise<FastifyInstance> {
     drivers: deps.drivers,
     trips: deps.trips,
     users: deps.users,
+    featureFlags: deps.featureFlags,
+    minVersions: deps.minVersions,
     rateLimit: deps.rateLimit ?? DEFAULT_RATE_LIMIT,
+  });
+  await app.register(flagsRoutes, {
+    featureFlags: deps.featureFlags,
+    minVersions: deps.minVersions,
   });
 
   r.get(
