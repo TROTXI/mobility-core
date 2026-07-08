@@ -22,6 +22,10 @@ const envSchema = z
     // Paystack SECRET key (sk_...). Used for the API + webhook signature check.
     // Set -> real payments; unset -> dev fake client (non-prod) / 503 (prod).
     PAYSTACK_SECRET_KEY: z.string().optional(),
+    // Firebase Cloud Messaging (push, E3). The service-account key JSON (owned by
+    // the FE lane, #88-90). Set -> real FCM sender; unset -> recording fake
+    // (dev/tests). A secret -> Render dashboard only, never committed.
+    FIREBASE_SERVICE_ACCOUNT: z.string().optional(),
     // Cloudflare R2 (avatars, #24). All four set -> real R2; any unset ->
     // in-memory Fake object store (dev/tests). Secrets -> Render dashboard only.
     R2_ACCOUNT_ID: z.string().optional(),

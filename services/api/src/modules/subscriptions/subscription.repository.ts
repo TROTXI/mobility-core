@@ -7,6 +7,8 @@ export interface Subscription {
   userId: string;
   plan: SubscriptionPlan;
   status: SubscriptionStatus;
+  /** The rider's pinned route/corridor (E3); null for pre-E3 subscriptions. */
+  routeId: string | null;
   createdAt: Date;
 }
 
@@ -14,6 +16,7 @@ export interface Subscription {
 export interface NewSubscription {
   userId: string;
   plan: SubscriptionPlan;
+  routeId?: string | null;
 }
 
 /** Persistence for memberships; one active subscription per user. */
@@ -21,7 +24,7 @@ export interface SubscriptionRepository {
   /**
    * Create a subscription (active).
    *
-   * @param input - the user and plan to subscribe.
+   * @param input - the user, plan, and pinned route.
    * @returns the persisted subscription.
    * @throws on a unique-violation if the user already has an active subscription.
    */
@@ -33,6 +36,14 @@ export interface SubscriptionRepository {
    * @returns the active subscription, or null.
    */
   findActiveByUser(userId: string): Promise<Subscription | null>;
+  /**
+   * Active subscriptions pinned to a route — who the ask-dispatch prompts for
+   * that route's trips (E3).
+   *
+   * @param routeId - the route/corridor.
+   * @returns the active subscriptions on that route.
+   */
+  findActiveByRoute(routeId: string): Promise<Subscription[]>;
 }
 
 /** In-memory {@link SubscriptionRepository} for dev and unit tests. */
@@ -45,6 +56,7 @@ export class InMemorySubscriptionRepository implements SubscriptionRepository {
       userId: input.userId,
       plan: input.plan,
       status: 'active',
+      routeId: input.routeId ?? null,
       createdAt: new Date(),
     };
     this.subscriptions.set(subscription.id, subscription);
@@ -58,5 +70,11 @@ export class InMemorySubscriptionRepository implements SubscriptionRepository {
       }
     }
     return null;
+  }
+
+  async findActiveByRoute(routeId: string): Promise<Subscription[]> {
+    return Array.from(this.subscriptions.values()).filter(
+      (s) => s.status === 'active' && s.routeId === routeId,
+    );
   }
 }

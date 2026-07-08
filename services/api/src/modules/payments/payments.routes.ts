@@ -64,6 +64,7 @@ export async function paymentRoutes(
         return await opts.paymentsService.initializeSubscription(
           request.user!.id,
           request.body.plan,
+          request.body.routeId,
         );
       } catch (err) {
         if (err instanceof PaymentsNotConfiguredError) return reply.code(503).send(UNAVAILABLE);

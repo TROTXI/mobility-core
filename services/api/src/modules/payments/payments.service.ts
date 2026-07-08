@@ -105,14 +105,21 @@ export class PaymentsService {
    *
    * @param userId - the authenticated user subscribing.
    * @param plan - membership tier (`monthly` | `annual`); selects the fee.
+   * @param routeId - the rider's pinned route/corridor (E3), carried to the
+   *   subscription on activation.
    * @returns the Paystack `authorizationUrl` and our payment `reference`.
    * @throws PaymentsNotConfiguredError when no Paystack client is wired.
    */
-  async initializeSubscription(userId: string, plan: SubscriptionPlan): Promise<CheckoutResult> {
+  async initializeSubscription(
+    userId: string,
+    plan: SubscriptionPlan,
+    routeId?: string | null,
+  ): Promise<CheckoutResult> {
     return this.startCheckout({
       userId,
       purpose: 'subscription',
       plan,
+      routeId: routeId ?? null,
       amount: this.deps.subscriptionFees[plan],
       currency: 'GHS',
     });
@@ -170,9 +177,9 @@ export class PaymentsService {
     if (!payment) return; // unknown reference — not ours
 
     if (payment.purpose === 'subscription' && payment.plan) {
-      // Membership fee paid — activate the subscription and allocate the
-      // period's rides. Both are idempotent, so a replayed webhook is a no-op.
-      await this.activateSubscription(payment.userId, payment.plan);
+      // Membership fee paid — activate the subscription (pinned to the paid
+      // route) and allocate the period's rides. Both idempotent → replay-safe.
+      await this.activateSubscription(payment.userId, payment.plan, payment.routeId);
       await this.allocateEntitlement(payment.userId, reference);
     }
     // Legacy 'topup' payments (pre-ADR-0014 staging data) are ignored.
@@ -204,10 +211,15 @@ export class PaymentsService {
    *
    * @param userId - the subscriber.
    * @param plan - the membership tier to activate.
+   * @param routeId - the rider's pinned route/corridor (E3).
    */
-  private async activateSubscription(userId: string, plan: SubscriptionPlan): Promise<void> {
+  private async activateSubscription(
+    userId: string,
+    plan: SubscriptionPlan,
+    routeId: string | null,
+  ): Promise<void> {
     try {
-      await this.deps.subscriptions.create({ userId, plan });
+      await this.deps.subscriptions.create({ userId, plan, routeId });
     } catch (err) {
       // one-active-per-user index fired — already activated, treat as done.
       if (!isUniqueViolation(err)) throw err;

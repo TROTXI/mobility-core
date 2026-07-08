@@ -35,6 +35,12 @@ import {
   InMemoryReservationRepository,
   type ReservationRepository,
 } from './modules/reservations/reservation.repository';
+import { askDispatchRoutes } from './modules/notifications/ask-dispatch.routes';
+import { AskDispatchService } from './modules/notifications/ask-dispatch.service';
+import {
+  FakeNotificationSender,
+  type NotificationSender,
+} from './modules/notifications/notification.sender';
 import { paymentRoutes } from './modules/payments/payments.routes';
 import type { PaymentsService } from './modules/payments/payments.service';
 import { authPlugin } from './modules/auth/auth.plugin';
@@ -99,6 +105,8 @@ export interface AppDeps {
   credits?: CreditLedgerRepository;
   /** Daily reservation store (in-memory vs Postgres). Defaults to in-memory. */
   reservations?: ReservationRepository;
+  /** Push notification sender (FCM in prod, recording fake in dev/tests). */
+  notifier?: NotificationSender;
   /** Feature flags (#27). Read by public GET /flags; ops-managed via /admin/flags. */
   featureFlags?: FeatureFlagRepository;
   /** Per-platform min supported version (#27) — the apps' force-update floor. */
@@ -224,6 +232,22 @@ export async function buildApp(deps: AppDeps = {}): Promise<FastifyInstance> {
   await app.register(reservationRoutes, {
     reservations,
     secret: authConfig.secret,
+    rateLimit: deps.rateLimit ?? DEFAULT_RATE_LIMIT,
+  });
+  // Ask-dispatch (E3): only wired when trips + subscriptions are available (the
+  // route 503s otherwise). The notifier defaults to the recording fake until the
+  // Firebase service account lands.
+  const notifier = deps.notifier ?? new FakeNotificationSender();
+  await app.register(askDispatchRoutes, {
+    askDispatch:
+      deps.trips && deps.subscriptions
+        ? new AskDispatchService({
+            trips: deps.trips,
+            subscriptions: deps.subscriptions,
+            reservations,
+            notifier,
+          })
+        : undefined,
     rateLimit: deps.rateLimit ?? DEFAULT_RATE_LIMIT,
   });
   await app.register(boardingRoutes, {

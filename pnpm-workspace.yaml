@@ -5,6 +5,9 @@ packages:
 # pnpm blocks dependency build scripts by default (supply-chain safety).
 # esbuild (used by tsup + vitest) needs its postinstall to fetch its binary.
 allowBuilds:
+  # firebase-admin (FCM push, E3) works from its prebuilt dist; @firebase/util's
+  # postinstall build script is not needed at runtime.
+  '@firebase/util': false
   '@openapitools/openapi-generator-cli': true
   esbuild: true
   # protobufjs (via the OTLP protobuf exporter) works at runtime from its

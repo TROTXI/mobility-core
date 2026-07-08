@@ -10,7 +10,7 @@
   "scripts": {
     "dev": "tsx watch src/server.ts",
     "start": "node --import ./dist/observability/tracing.live.js dist/server.js",
-    "build": "tsup src/server.ts src/observability/tracing.live.ts --format esm --clean",
+    "build": "tsup src/server.ts src/observability/tracing.live.ts src/cron/ask-dispatch-cron.ts --format esm --clean",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
@@ -42,6 +42,7 @@
     "fastify-plugin": "^6.0.0",
     "fastify-raw-body": "^5.0.0",
     "fastify-type-provider-zod": "^4.0.2",
+    "firebase-admin": "^14.1.0",
     "ioredis": "^5.11.1",
     "jose": "^6.2.3",
     "pg": "^8.13.1",

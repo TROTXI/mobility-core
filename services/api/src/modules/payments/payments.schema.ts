@@ -7,6 +7,9 @@ const PLANS = ['monthly', 'annual'] as const satisfies readonly SubscriptionPlan
 
 export const subscribeBodySchema = z.object({
   plan: z.enum(PLANS),
+  /** The route/corridor the rider commutes (E3); pins the subscription so the
+   * daily ask-dispatch knows which riders to prompt. Optional for now. */
+  routeId: z.string().uuid().optional(),
 });
 
 export const checkoutResponseSchema = z.object({

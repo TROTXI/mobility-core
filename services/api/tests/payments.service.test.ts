@@ -80,6 +80,18 @@ describe('PaymentsService.handleWebhook', () => {
     expect((await payments.findByReference(reference))?.status).toBe('paid');
   });
 
+  it('pins the paid route onto the activated subscription (E3 rider↔route)', async () => {
+    const { service, subscriptions } = make();
+    const routeId = crypto.randomUUID();
+    const { reference } = await service.initializeSubscription('u1', 'monthly', routeId);
+    const { body, signature } = chargeSuccess(reference);
+
+    await service.handleWebhook(body, signature);
+
+    expect(await subscriptions.findActiveByUser('u1')).toMatchObject({ routeId });
+    expect(await subscriptions.findActiveByRoute(routeId)).toHaveLength(1);
+  });
+
   it('is idempotent — a replayed webhook does not double-activate or double-allocate', async () => {
     const { service, subscriptions, entitlements } = make();
     const { reference } = await service.initializeSubscription('u1', 'monthly');
@@ -106,6 +118,7 @@ describe('PaymentsService.handleWebhook', () => {
   it('treats a unique-violation on activation as already-active', async () => {
     const subscriptions: SubscriptionRepository = {
       findActiveByUser: async () => null,
+      findActiveByRoute: async () => [],
       create: async () => {
         throw Object.assign(new Error('dup'), { code: '23505' });
       },
@@ -119,6 +132,7 @@ describe('PaymentsService.handleWebhook', () => {
   it('propagates non-unique errors from activation', async () => {
     const subscriptions: SubscriptionRepository = {
       findActiveByUser: async () => null,
+      findActiveByRoute: async () => [],
       create: async () => {
         throw new Error('db down');
       },

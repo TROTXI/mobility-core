@@ -12,6 +12,7 @@ export default defineConfig({
       // to the logic layer (services + in-memory repos).
       exclude: [
         'src/server.ts',
+        'src/cron/**',
         'src/db/**',
         'src/**/*.pg.ts',
         'src/**/*.redis.ts',

@@ -61,6 +61,11 @@ import {
   type DeviceTokenRepository,
 } from './modules/devices/device-token.repository';
 import { PgDeviceTokenRepository } from './modules/devices/device-token.repository.pg';
+import {
+  FakeNotificationSender,
+  type NotificationSender,
+} from './modules/notifications/notification.sender';
+import { createFcmSender } from './modules/notifications/notification.sender.live';
 import { BoardingService } from './modules/boarding/boarding.service';
 import {
   InMemoryScanEventRepository,
@@ -266,6 +271,17 @@ async function main(): Promise<void> {
     ridesPerPeriod: PLACEHOLDER_RIDES_PER_PERIOD,
   });
 
+  // Push notifications (E3): real FCM when the service account is set, else the
+  // recording fake (harmless — logs; the ask-dispatch reservation is durable).
+  let notifier: NotificationSender;
+  if (env.FIREBASE_SERVICE_ACCOUNT) {
+    notifier = createFcmSender(env.FIREBASE_SERVICE_ACCOUNT, deviceTokens);
+    console.log('Using Firebase Cloud Messaging sender');
+  } else {
+    notifier = new FakeNotificationSender();
+    console.warn('FIREBASE_SERVICE_ACCOUNT not set — using recording fake notifier (no push).');
+  }
+
   // Readiness pings every configured backing service (DB + KV).
   const isReady = async (): Promise<boolean> => {
     if (pool) {
@@ -294,6 +310,7 @@ async function main(): Promise<void> {
     vehicles,
     drivers,
     deviceTokens,
+    notifier,
     boardingService,
     authService,
     paymentsService,
