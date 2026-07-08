@@ -37,6 +37,11 @@ import { PgStopRepository } from './modules/mobility/stop.repository.pg';
 import { InMemoryTripRepository, type TripRepository } from './modules/mobility/trip.repository';
 import { PgTripRepository } from './modules/mobility/trip.repository.pg';
 import {
+  InMemoryTripPositionRepository,
+  type TripPositionRepository,
+} from './modules/mobility/trip-position.repository';
+import { PgTripPositionRepository } from './modules/mobility/trip-position.repository.pg';
+import {
   InMemoryVehicleRepository,
   type VehicleRepository,
 } from './modules/mobility/vehicle.repository';
@@ -137,6 +142,7 @@ async function main(): Promise<void> {
   let stops: StopRepository;
   let routeStops: RouteStopRepository;
   let trips: TripRepository;
+  let tripPositions: TripPositionRepository;
   let vehicles: VehicleRepository;
   let drivers: DriverRepository;
   let sessions: SessionRepository;
@@ -155,6 +161,7 @@ async function main(): Promise<void> {
     stops = new PgStopRepository(pool);
     routeStops = new PgRouteStopRepository(pool);
     trips = new PgTripRepository(pool);
+    tripPositions = new PgTripPositionRepository(pool);
     vehicles = new PgVehicleRepository(pool);
     drivers = new PgDriverRepository(pool);
     sessions = new PgSessionRepository(pool);
@@ -173,6 +180,7 @@ async function main(): Promise<void> {
     stops = new InMemoryStopRepository();
     routeStops = new InMemoryRouteStopRepository();
     trips = new InMemoryTripRepository();
+    tripPositions = new InMemoryTripPositionRepository();
     vehicles = new InMemoryVehicleRepository();
     drivers = new InMemoryDriverRepository();
     sessions = new InMemorySessionRepository();
@@ -266,6 +274,7 @@ async function main(): Promise<void> {
     stops,
     routeStops,
     trips,
+    tripPositions,
     vehicles,
     drivers,
     deviceTokens,

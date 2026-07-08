@@ -50,6 +50,15 @@ export interface DriverRepository {
    * @returns the driver, or null if it doesn't exist.
    */
   findById(id: string): Promise<Driver | null>;
+  /**
+   * Look up a driver by the auth principal linked via userId. This resolves a
+   * signed-in user to their driver record — the basis for GPS-reporting authz
+   * (only the assigned driver may report a trip's position, #25).
+   *
+   * @param userId - the auth user id.
+   * @returns the linked driver, or null if none is linked to that user.
+   */
+  findByUserId(userId: string): Promise<Driver | null>;
   /** Returns all drivers. Used by admin ops (#26). */
   findAll(): Promise<Driver[]>;
   /**
@@ -81,6 +90,13 @@ export class InMemoryDriverRepository implements DriverRepository {
 
   async findById(id: string): Promise<Driver | null> {
     return this.drivers.get(id) ?? null;
+  }
+
+  async findByUserId(userId: string): Promise<Driver | null> {
+    for (const driver of this.drivers.values()) {
+      if (driver.userId === userId) return driver;
+    }
+    return null;
   }
 
   async findAll(): Promise<Driver[]> {
