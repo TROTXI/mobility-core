@@ -90,10 +90,14 @@ sends via `firebase-admin` to a rider's registered device tokens (#84), used whe
 `FIREBASE_SERVICE_ACCOUNT` is set (else the recording fake). The service-account
 key is a **secret → Render env only**.
 
+**Cron schedule** is wired in `render.yaml`: four Render cron jobs run
+`dist/cron/ask-dispatch-cron.js` at the windows above (18:00 / 21:00 morning,
+12:00 / 14:00 evening — Ghana is UTC). Each mints a short-lived admin token and
+POSTs the trigger. To activate: apply the blueprint and set `JWT_SECRET` on the
+`trotxi-cron-staging` env group to the **same value** as the web service's.
+
 ## Deferred
 
-- **Cron schedule** — the Render cron that hits `POST /admin/ask-dispatch` at the
-  ask windows and `POST /admin/resolve-defaults` at each cutoff (infra config).
 - **Capacity / release** — seat caps + releasing a declined seat to standby (E6).
 
 ## Where the code lives
@@ -107,7 +111,9 @@ services/api/src/modules/reservations/
 services/api/src/modules/notifications/
   ask-dispatch.service.ts          # dispatchAsks + resolveDefaults (the loop)
   ask-dispatch.routes.ts           # POST /admin/ask-dispatch, /resolve-defaults
-  notification.sender.ts           # NotificationSender + FakeNotificationSender
+  notification.sender.ts(.live)    # NotificationSender + Fake / real FCM
+services/api/src/cron/ask-dispatch-cron.ts   # cron entry (mints token, POSTs)
+render.yaml                        # 4 Render cron jobs (the schedule)
 services/api/src/db/migrations/013_reservations.sql
 services/api/src/db/migrations/019_subscription_route.sql   # rider↔route pin
 ```

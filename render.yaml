@@ -11,6 +11,18 @@ databases:
     plan: free # NB: free Postgres expires ~30 days after creation
     region: frankfurt # closest Render region to Ghana
 
+# Shared config for the ask-dispatch cron jobs (E3). The cron mints a short-lived
+# admin token, so its JWT_SECRET MUST equal the web service's JWT_SECRET — set it
+# once here in the dashboard and all four crons inherit it. API_BASE_URL is the
+# public staging URL (not a secret).
+envVarGroups:
+  - name: trotxi-cron-staging
+    envVars:
+      - key: JWT_SECRET
+        sync: false # set in dashboard; MUST match trotxi-api-staging's JWT_SECRET
+      - key: API_BASE_URL
+        value: https://trotxi-api-staging.onrender.com
+
 services:
   - type: web
     name: trotxi-api-staging
@@ -66,6 +78,70 @@ services:
         sync: false
       - key: R2_BUCKET
         sync: false
+
+  # ---- Ask-dispatch cron jobs (E3) — the daily confirmation loop ----
+  # Each mints an admin token and POSTs a trigger on the deployed API. Windows are
+  # from docs/features/reservations.md; Ghana is UTC (GMT+0) so schedules are plain
+  # UTC. autoDeploy off — they redeploy with the API (GitHub Actions / manual).
+  # NB: on Render, cron jobs may require a paid instance type; bump `plan` if so.
+  # The free web service also sleeps when idle — the first trigger warms it (a
+  # slow cold start), which is fine for the pilot.
+  - type: cron
+    name: trotxi-ask-morning-staging
+    runtime: docker
+    repo: https://github.com/TROTXI/mobility-core
+    branch: main
+    dockerfilePath: services/api/Dockerfile
+    dockerContext: .
+    plan: free
+    region: frankfurt
+    autoDeploy: false
+    schedule: '0 18 * * *' # 18:00 — ask tomorrow-morning riders
+    dockerCommand: node dist/cron/ask-dispatch-cron.js ask morning
+    envVars:
+      - fromGroup: trotxi-cron-staging
+  - type: cron
+    name: trotxi-resolve-morning-staging
+    runtime: docker
+    repo: https://github.com/TROTXI/mobility-core
+    branch: main
+    dockerfilePath: services/api/Dockerfile
+    dockerContext: .
+    plan: free
+    region: frankfurt
+    autoDeploy: false
+    schedule: '0 21 * * *' # 21:00 cutoff — default-yes the still-pending (morning)
+    dockerCommand: node dist/cron/ask-dispatch-cron.js resolve morning
+    envVars:
+      - fromGroup: trotxi-cron-staging
+  - type: cron
+    name: trotxi-ask-evening-staging
+    runtime: docker
+    repo: https://github.com/TROTXI/mobility-core
+    branch: main
+    dockerfilePath: services/api/Dockerfile
+    dockerContext: .
+    plan: free
+    region: frankfurt
+    autoDeploy: false
+    schedule: '0 12 * * *' # 12:00 — ask this-evening riders
+    dockerCommand: node dist/cron/ask-dispatch-cron.js ask evening
+    envVars:
+      - fromGroup: trotxi-cron-staging
+  - type: cron
+    name: trotxi-resolve-evening-staging
+    runtime: docker
+    repo: https://github.com/TROTXI/mobility-core
+    branch: main
+    dockerfilePath: services/api/Dockerfile
+    dockerContext: .
+    plan: free
+    region: frankfurt
+    autoDeploy: false
+    schedule: '0 14 * * *' # 14:00 cutoff — default-yes the still-pending (evening)
+    dockerCommand: node dist/cron/ask-dispatch-cron.js resolve evening
+    envVars:
+      - fromGroup: trotxi-cron-staging
 
   # ---- Production (uncomment when going live) ----
   # Needs a paid Postgres plan so data doesn't expire. After applying, set the

@@ -10,7 +10,7 @@
   "scripts": {
     "dev": "tsx watch src/server.ts",
     "start": "node --import ./dist/observability/tracing.live.js dist/server.js",
-    "build": "tsup src/server.ts src/observability/tracing.live.ts --format esm --clean",
+    "build": "tsup src/server.ts src/observability/tracing.live.ts src/cron/ask-dispatch-cron.ts --format esm --clean",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
