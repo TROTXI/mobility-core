@@ -18,7 +18,7 @@ areas land; it is not authoritative once the code moves.
 | Domain repos | `users/*`, `subscriptions/*` — **repos only, no routes**; `mobility/*` — repos + browse routes (#17)                                                                                                     |
 | Contract     | `lib/schemas.ts`, `user.schema.ts`, `mobility.schema.ts`, OpenAPI via zod type-provider (ADR-0008)                                                                                                       |
 
-**Live HTTP surface:** `/`, `/version`, `/healthz`, `/readyz`, `/me`, `/docs`, `/routes`, `/routes/:id`, `/trips`, `/trips/:id`, `/admin/*` (fleet CRUD + trip assignment, admin-only, #26).
+**Live HTTP surface:** `/`, `/version`, `/healthz`, `/readyz`, `/me`, `/docs`, `/routes`, `/routes/:id`, `/trips`, `/trips/:id`, `/flags` (public feature flags + min supported version, #27), `/admin/*` (fleet CRUD + trip assignment + flags/min-versions, admin-only, #26/#27).
 
 **Cross-cutting (in place):** repository pattern (ADR-0009), KV fallback
 (ADR-0010), readiness pings DB+KV, rate limiting, typed OpenAPI, ~100% unit
@@ -88,7 +88,6 @@ operational layer now has schedules — boarding and live positions are next.
 | QR boarding / passes / scan_events      | #20           | none (CTO)                              |
 | Avatar upload → R2                      | #24           | none                                    |
 | Observability (RED metrics, `/metrics`) | #28           | only default pino logs                  |
-| Feature flags + force-update            | #27           | none                                    |
 | Account deletion                        | #30           | none                                    |
 | Flutter apps                            | #32+          | `apps/` is a README — no scaffold       |
 | Telemetry (MQTT→Go)                     | ADR-0002/0006 | EMQX in compose, no pipeline (deferred) |
