@@ -47,6 +47,11 @@ services:
       # Render dashboard; never commit it. Generate: openssl rand -base64 48
       - key: JWT_SECRET
         sync: false
+      # Firebase service-account key JSON (FCM push, E3). A SECRET → paste the
+      # whole JSON as the value in the dashboard, never commit. Unset -> the
+      # recording fake sender runs (no real push).
+      - key: FIREBASE_SERVICE_ACCOUNT
+        sync: false
       # Google "Web" OAuth client ID — the audience verified on sign-in. This is
       # PUBLIC (a Web client ID ships in clients; only a client *secret* would be
       # sensitive, and we don't use one), so it lives in the blueprint, not the
