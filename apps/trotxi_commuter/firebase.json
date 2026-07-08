@@ -1,0 +1,22 @@
+{
+  "flutter": {
+    "platforms": {
+      "android": {
+        "default": {
+          "projectId": "trotxi-501218",
+          "appId": "1:431341307838:android:02359687d30d7a1dff1bef",
+          "fileOutput": "android/app/google-services.json"
+        }
+      },
+      "dart": {
+        "lib/firebase_options.dart": {
+          "projectId": "trotxi-501218",
+          "configurations": {
+            "android": "1:431341307838:android:02359687d30d7a1dff1bef",
+            "ios": "1:431341307838:ios:4d867ba4b6f60dd1ff1bef"
+          }
+        }
+      }
+    }
+  }
+}
