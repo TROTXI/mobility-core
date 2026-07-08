@@ -11,11 +11,10 @@ pool (E6) fills when declined.
 > **Scope shipped (E3):** the reservation lifecycle + the rider's confirm/decline
 > API + the default-yes operation (E3-core), **plus the scheduled _ask-dispatch_**
 > — now that trips (#18) have landed, the loop seeds `pending` rows for tomorrow's
-> route trips and sends the (fake, until FCM) prompt, and a cutoff trigger runs
-> the default-yes. **Still deferred:** the real **FCM push** (needs the Firebase
-> service account, #88–90), seat **capacity / release** to standby (E6), and the
-> **cron schedule** itself (Render infra hits the admin triggers below). So
-> `trip_id` still carries **no FK yet** (same as `scan_events`).
+> route trips and pushes the "travelling?" prompt over **FCM**, and a cutoff
+> trigger runs the default-yes. **Still deferred:** seat **capacity / release** to
+> standby (E6) and the **cron schedule** itself (Render infra hits the admin
+> triggers below). So `trip_id` still carries **no FK yet** (same as `scan_events`).
 
 **Rider ↔ route (the pilot model).** A rider is linked to a corridor by their
 **subscription**: at checkout the chosen `route_id` is threaded through the
@@ -86,11 +85,13 @@ confirmed_at, created_at, updated_at)`, unique `(user_id, travel_date,
 direction)`. `trip_id` has no FK yet (trips are #18). Rider↔route lives on
 `subscriptions.route_id` / `payments.route_id` (migration `019`).
 
+**FCM push** is wired: `FcmNotificationSender` (`notification.sender.live.ts`)
+sends via `firebase-admin` to a rider's registered device tokens (#84), used when
+`FIREBASE_SERVICE_ACCOUNT` is set (else the recording fake). The service-account
+key is a **secret → Render env only**.
+
 ## Deferred
 
-- **FCM push** — swap `FakeNotificationSender` for the Firebase Admin sender —
-  needs the Firebase service account (adomfosugit, #88–90). The `ask-dispatch`
-  loop is built and sends via the fake sender until then.
 - **Cron schedule** — the Render cron that hits `POST /admin/ask-dispatch` at the
   ask windows and `POST /admin/resolve-defaults` at each cutoff (infra config).
 - **Capacity / release** — seat caps + releasing a declined seat to standby (E6).
