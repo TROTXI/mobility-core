@@ -17,6 +17,7 @@ interface ReservationRow {
   direction: ReservationDirection;
   status: ReservationStatus;
   source: ReservationSource;
+  daily_pin_hash: string | null;
   confirmed_at: Date | null;
   created_at: Date;
   updated_at: Date;
@@ -31,6 +32,7 @@ function toReservation(row: ReservationRow): Reservation {
     direction: row.direction,
     status: row.status,
     source: row.source,
+    pinHash: row.daily_pin_hash,
     confirmedAt: row.confirmed_at,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
@@ -43,16 +45,24 @@ export class PgReservationRepository implements ReservationRepository {
   async respond(input: ReservationResponse): Promise<Reservation> {
     const status: ReservationStatus = input.travelling ? 'reserved' : 'declined';
     const { rows } = await this.pool.query<ReservationRow>(
-      `INSERT INTO reservations (user_id, trip_id, travel_date, direction, status, source, confirmed_at)
-       VALUES ($1, $2, $3, $4, $5, 'confirmation', now())
+      `INSERT INTO reservations (user_id, trip_id, travel_date, direction, status, source, daily_pin_hash, confirmed_at)
+       VALUES ($1, $2, $3, $4, $5, 'confirmation', $6, now())
        ON CONFLICT (user_id, travel_date, direction)
        DO UPDATE SET trip_id = COALESCE(EXCLUDED.trip_id, reservations.trip_id),
                      status = EXCLUDED.status,
                      source = 'confirmation',
+                     daily_pin_hash = EXCLUDED.daily_pin_hash,
                      confirmed_at = now(),
                      updated_at = now()
        RETURNING *`,
-      [input.userId, input.tripId ?? null, input.travelDate, input.direction, status],
+      [
+        input.userId,
+        input.tripId ?? null,
+        input.travelDate,
+        input.direction,
+        status,
+        input.pinHash ?? null,
+      ],
     );
     return toReservation(rows[0]!);
   }
@@ -131,5 +141,13 @@ export class PgReservationRepository implements ReservationRepository {
       [tripId],
     );
     return rows.map(toReservation);
+  }
+
+  async findById(id: string): Promise<Reservation | null> {
+    const { rows } = await this.pool.query<ReservationRow>(
+      'SELECT * FROM reservations WHERE id = $1',
+      [id],
+    );
+    return rows[0] ? toReservation(rows[0]) : null;
   }
 }

@@ -205,6 +205,7 @@ export async function buildApp(deps: AppDeps = {}): Promise<FastifyInstance> {
   });
   await app.register(reservationRoutes, {
     reservations,
+    secret: authConfig.secret,
     rateLimit: deps.rateLimit ?? DEFAULT_RATE_LIMIT,
   });
   await app.register(boardingRoutes, {

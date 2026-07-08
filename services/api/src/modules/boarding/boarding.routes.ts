@@ -15,6 +15,8 @@ import {
   passResponseSchema,
   scanBodySchema,
   scanResponseSchema,
+  verifyPinBodySchema,
+  verifyPinResponseSchema,
 } from './boarding.schema';
 
 /**
@@ -78,6 +80,37 @@ export async function boardingRoutes(
         pass: request.body.pass,
         scannedBy: request.user!.id,
         tripId: request.body.tripId,
+      }),
+  );
+
+  // Verification layer 2 — board a rider by the daily PIN they present (driver
+  // types it against the manifest row). Boards + debits like the QR scan.
+  r.post(
+    '/boarding/verify-pin',
+    {
+      schema: {
+        tags: ['boarding'],
+        summary: 'Board a rider via their daily 4-digit PIN (driver only)',
+        security: [{ bearerAuth: [] }],
+        body: verifyPinBodySchema,
+        response: {
+          200: verifyPinResponseSchema,
+          400: errorResponseSchema,
+          401: errorResponseSchema,
+          403: errorResponseSchema,
+        },
+      },
+      preHandler: [
+        app.authenticate,
+        app.rateLimit({ ...opts.rateLimit, by: 'user' }),
+        app.requireRole('driver'),
+      ],
+    },
+    async (request) =>
+      opts.boardingService.verifyPin({
+        reservationId: request.body.reservationId,
+        pin: request.body.pin,
+        scannedBy: request.user!.id,
       }),
   );
 

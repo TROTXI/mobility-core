@@ -21,6 +21,20 @@ export const scanResponseSchema = z.object({
   deducted: z.boolean(),
 });
 
+export const verifyPinBodySchema = z.object({
+  /** The reservation the driver picked off the manifest. */
+  reservationId: z.string().uuid(),
+  /** The rider's daily 4-digit PIN. */
+  pin: z.string().regex(/^\d{4}$/, 'expected a 4-digit PIN'),
+});
+
+export const verifyPinResponseSchema = z.object({
+  valid: z.boolean(),
+  riderId: z.string().nullable(),
+  reason: z.enum(['ok', 'invalid', 'not_found', 'already_boarded']),
+  deducted: z.boolean(),
+});
+
 export const manifestQuerySchema = z.object({
   tripId: z.string().uuid(),
 });
