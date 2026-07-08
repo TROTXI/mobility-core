@@ -30,6 +30,11 @@ import {
   InMemoryCreditLedgerRepository,
   type CreditLedgerRepository,
 } from './modules/entitlements/credit-ledger.repository';
+import { creditRoutes } from './modules/entitlements/credit.routes';
+import {
+  CreditService,
+  PLACEHOLDER_CREDIT_PESEWAS_PER_RIDE,
+} from './modules/entitlements/credit.service';
 import { reservationRoutes } from './modules/reservations/reservations.routes';
 import {
   InMemoryReservationRepository,
@@ -103,6 +108,8 @@ export interface AppDeps {
   entitlements?: EntitlementLedgerRepository;
   /** Ride Credit ledger (in-memory vs Postgres). Defaults to in-memory. */
   credits?: CreditLedgerRepository;
+  /** Pesewas granted per unused ride on month-end conversion (E5). Placeholder default. */
+  creditPesewasPerRide?: number;
   /** Daily reservation store (in-memory vs Postgres). Defaults to in-memory. */
   reservations?: ReservationRepository;
   /** Push notification sender (FCM in prod, recording fake in dev/tests). */
@@ -227,6 +234,19 @@ export async function buildApp(deps: AppDeps = {}): Promise<FastifyInstance> {
   await app.register(entitlementRoutes, {
     entitlements,
     credits,
+    rateLimit: deps.rateLimit ?? DEFAULT_RATE_LIMIT,
+  });
+  // Credit conversion (E5): the month-end job. Only wired when a subscription
+  // store is available (the route 503s otherwise), since it iterates active subs.
+  await app.register(creditRoutes, {
+    creditService: deps.subscriptions
+      ? new CreditService({
+          entitlements,
+          credits,
+          subscriptions: deps.subscriptions,
+          creditPesewasPerRide: deps.creditPesewasPerRide ?? PLACEHOLDER_CREDIT_PESEWAS_PER_RIDE,
+        })
+      : undefined,
     rateLimit: deps.rateLimit ?? DEFAULT_RATE_LIMIT,
   });
   await app.register(reservationRoutes, {

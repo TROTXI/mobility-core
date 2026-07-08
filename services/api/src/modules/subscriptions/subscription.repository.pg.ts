@@ -58,4 +58,12 @@ export class PgSubscriptionRepository implements SubscriptionRepository {
     );
     return rows.map(toSubscription);
   }
+
+  /** Every active subscription (E5 month-end credit conversion iterates these). */
+  async findAllActive(): Promise<Subscription[]> {
+    const { rows } = await this.pool.query<SubscriptionRow>(
+      `SELECT * FROM subscriptions WHERE status = 'active'`,
+    );
+    return rows.map(toSubscription);
+  }
 }
