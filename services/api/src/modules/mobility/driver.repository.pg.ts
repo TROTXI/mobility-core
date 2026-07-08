@@ -39,6 +39,14 @@ export class PgDriverRepository implements DriverRepository {
     return rows[0] ? toDriver(rows[0]) : null;
   }
 
+  async findByUserId(userId: string): Promise<Driver | null> {
+    const { rows } = await this.pool.query<DriverRow>(
+      'SELECT * FROM drivers WHERE user_id = $1 LIMIT 1',
+      [userId],
+    );
+    return rows[0] ? toDriver(rows[0]) : null;
+  }
+
   async findAll(): Promise<Driver[]> {
     const { rows } = await this.pool.query<DriverRow>('SELECT * FROM drivers ORDER BY created_at');
     return rows.map(toDriver);

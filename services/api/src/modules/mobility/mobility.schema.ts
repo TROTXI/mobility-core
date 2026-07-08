@@ -74,3 +74,42 @@ export const driverResponseSchema = z.object({
   userId: z.string().uuid().nullable(),
   createdAt: z.date(),
 });
+
+// A GPS fix reported by a trip's assigned driver (#25). recordedAt is assigned by
+// the server, so the body carries only coordinates; ranges match WGS84 lat/lng.
+export const reportPositionBodySchema = z.object({
+  latitude: z.number().min(-90).max(90),
+  longitude: z.number().min(-180).max(180),
+});
+
+// Acknowledgement returned to the driver after a fix is recorded — the stored
+// fix, no ETA (the driver knows the route; ETA is for riders via GET).
+export const recordedPositionResponseSchema = z.object({
+  tripId: z.string().uuid(),
+  position: z.object({
+    latitude: z.number(),
+    longitude: z.number(),
+    recordedAt: z.date(),
+  }),
+});
+
+// The trip's latest live position plus a deterministic ETA to each upcoming stop
+// along the route's ordered stops (system-design §7). etaToStops is empty when the
+// route has fewer than two stops or the vehicle is past the last stop.
+export const livePositionResponseSchema = z.object({
+  tripId: z.string().uuid(),
+  position: z.object({
+    latitude: z.number(),
+    longitude: z.number(),
+    recordedAt: z.date(),
+  }),
+  etaToStops: z.array(
+    z.object({
+      stopId: z.string().uuid(),
+      seq: z.number().int(),
+      name: z.string(),
+      distanceMeters: z.number(),
+      etaSeconds: z.number(),
+    }),
+  ),
+});

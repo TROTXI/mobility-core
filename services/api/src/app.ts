@@ -48,10 +48,15 @@ import {
 import type { RouteStopRepository } from './modules/mobility/route-stop.repository';
 import { mobilityRoutes } from './modules/mobility/mobility.routes';
 import { tripRoutes } from './modules/mobility/trips.routes';
+import { positionRoutes } from './modules/mobility/positions.routes';
 import { adminRoutes } from './modules/admin/admin.routes';
 import type { RouteRepository } from './modules/mobility/route.repository';
 import type { StopRepository } from './modules/mobility/stop.repository';
 import type { TripRepository } from './modules/mobility/trip.repository';
+import {
+  InMemoryTripPositionRepository,
+  type TripPositionRepository,
+} from './modules/mobility/trip-position.repository';
 import type { VehicleRepository } from './modules/mobility/vehicle.repository';
 import type { DriverRepository } from './modules/mobility/driver.repository';
 import type { SubscriptionRepository } from './modules/subscriptions/subscription.repository';
@@ -75,6 +80,8 @@ export interface AppDeps {
   routeStops?: RouteStopRepository;
   /** Trips (scheduled route runs). Reads require auth; routes return 503 when absent. */
   trips?: TripRepository;
+  /** Live trip GPS fixes (#25). Defaults to in-memory; source of truth for positions. */
+  tripPositions?: TripPositionRepository;
   /** Fleet vehicles + drivers. Managed via the admin/ops endpoints (#26). */
   vehicles?: VehicleRepository;
   drivers?: DriverRepository;
@@ -224,6 +231,15 @@ export async function buildApp(deps: AppDeps = {}): Promise<FastifyInstance> {
   });
   await app.register(tripRoutes, {
     trips: deps.trips,
+    rateLimit: deps.rateLimit ?? DEFAULT_RATE_LIMIT,
+  });
+  await app.register(positionRoutes, {
+    trips: deps.trips,
+    drivers: deps.drivers,
+    routeStops: deps.routeStops,
+    stops: deps.stops,
+    tripPositions: deps.tripPositions ?? new InMemoryTripPositionRepository(),
+    kv,
     rateLimit: deps.rateLimit ?? DEFAULT_RATE_LIMIT,
   });
   await app.register(adminRoutes, {
