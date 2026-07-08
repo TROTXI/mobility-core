@@ -96,6 +96,16 @@ import {
 import { PgReservationRepository } from './modules/reservations/reservation.repository.pg';
 import { InMemoryUserRepository, type UserRepository } from './modules/users/user.repository';
 import { PgUserRepository } from './modules/users/user.repository.pg';
+import {
+  InMemoryFeatureFlagRepository,
+  type FeatureFlagRepository,
+} from './modules/flags/feature-flag.repository';
+import { PgFeatureFlagRepository } from './modules/flags/feature-flag.repository.pg';
+import {
+  InMemoryMinVersionRepository,
+  type MinVersionRepository,
+} from './modules/flags/min-version.repository';
+import { PgMinVersionRepository } from './modules/flags/min-version.repository.pg';
 
 async function main(): Promise<void> {
   loadDotenv();
@@ -153,6 +163,8 @@ async function main(): Promise<void> {
   let entitlements: EntitlementLedgerRepository;
   let credits: CreditLedgerRepository;
   let reservations: ReservationRepository;
+  let featureFlags: FeatureFlagRepository;
+  let minVersions: MinVersionRepository;
   if (env.DATABASE_URL) {
     pool = createPool(env.DATABASE_URL);
     users = new PgUserRepository(pool);
@@ -172,6 +184,8 @@ async function main(): Promise<void> {
     entitlements = new PgEntitlementLedgerRepository(pool);
     credits = new PgCreditLedgerRepository(pool);
     reservations = new PgReservationRepository(pool);
+    featureFlags = new PgFeatureFlagRepository(pool);
+    minVersions = new PgMinVersionRepository(pool);
     console.log('Using Postgres repositories');
   } else {
     users = new InMemoryUserRepository();
@@ -191,6 +205,8 @@ async function main(): Promise<void> {
     entitlements = new InMemoryEntitlementLedgerRepository();
     credits = new InMemoryCreditLedgerRepository();
     reservations = new InMemoryReservationRepository();
+    featureFlags = new InMemoryFeatureFlagRepository();
+    minVersions = new InMemoryMinVersionRepository();
     console.log('Using in-memory repositories (no DATABASE_URL set)');
   }
 
@@ -284,6 +300,8 @@ async function main(): Promise<void> {
     entitlements,
     credits,
     reservations,
+    featureFlags,
+    minVersions,
     kv,
     objectStore,
     isReady,

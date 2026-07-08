@@ -113,3 +113,18 @@ export const assignTripBodySchema = z.object({
   vehicleId: z.string().uuid().nullable().optional(),
   assignedDriverId: z.string().uuid().nullable().optional(),
 });
+
+// --- feature flags (#27) ---
+// The flag key is the path param; the body carries the editable fields. Every
+// field is optional so PUT /admin/flags/:key both creates (defaults applied) and
+// updates (patch merged over the existing row). See flags/feature-flag.repository.
+export const upsertFeatureFlagBodySchema = z.object({
+  enabled: z.boolean().optional(),
+  rolloutPercentage: z.number().int().min(0).max(100).optional(),
+  description: z.string().nullable().optional(),
+});
+
+// Set the minimum supported app version for a platform (the force-update floor).
+export const setMinVersionBodySchema = z.object({
+  version: z.string().min(1),
+});
