@@ -5,7 +5,14 @@
 // here, Postgres in *.pg.ts.
 
 /** Why an entitlement row exists. */
-export type EntitlementReason = 'allocation' | 'boarding' | 'no_show' | 'returned' | 'refund';
+export type EntitlementReason =
+  | 'allocation'
+  | 'boarding'
+  | 'no_show'
+  | 'returned'
+  | 'refund'
+  /** Month-end conversion of unused rides to Ride Credits (E5) — the ride debit. */
+  | 'converted';
 
 /** A single append to the entitlement ledger. */
 export interface EntitlementEntry {
