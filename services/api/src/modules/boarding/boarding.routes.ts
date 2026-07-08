@@ -7,6 +7,8 @@ import type { FastifyInstance } from 'fastify';
 import type { ZodTypeProvider } from 'fastify-type-provider-zod';
 import { errorResponseSchema } from '../../lib/schemas';
 import type { RateLimitConfig } from '../ratelimit/ratelimit.plugin';
+import type { TripRepository } from '../mobility/trip.repository';
+import type { DriverRepository } from '../mobility/driver.repository';
 import type { BoardingService } from './boarding.service';
 import type { ManifestService } from './manifest.service';
 import {
@@ -27,6 +29,8 @@ import {
  * @param opts - route dependencies.
  * @param opts.boardingService - issues passes + verifies scans.
  * @param opts.manifestService - builds a trip's driver manifest (503 when absent).
+ * @param opts.trips - trip lookup for the manifest assigned-driver authz.
+ * @param opts.drivers - resolves the signed-in user to their driver record (authz).
  * @param opts.rateLimit - per-user rate-limit config.
  */
 export async function boardingRoutes(
@@ -34,6 +38,10 @@ export async function boardingRoutes(
   opts: {
     boardingService: BoardingService;
     manifestService?: ManifestService;
+    /** Trip lookup (existence + assignedDriverId) for the manifest authz. */
+    trips?: TripRepository;
+    /** Resolves the signed-in user to their driver record (manifest authz). */
+    drivers?: DriverRepository;
     rateLimit: RateLimitConfig;
   },
 ): Promise<void> {
@@ -115,21 +123,23 @@ export async function boardingRoutes(
   );
 
   // Driver manifest for a trip — name + photo + boarded status of confirmed
-  // riders (the "photo pass"). Driver-role gated. (Restricting to the trip's
-  // ASSIGNED driver is a security follow-up — it needs the driver↔user lookup
-  // that GPS reporting #25 also requires; both land together.)
+  // riders (the "photo pass"). Restricted to the trip's ASSIGNED driver: it
+  // exposes rider PII (names + faces), so a driver role alone is not enough —
+  // the signed-in user must be the driver this trip is assigned to (same authz
+  // as GPS reporting #25).
   r.get(
     '/boarding/manifest',
     {
       schema: {
         tags: ['boarding'],
-        summary: "A trip's manifest — confirmed riders with name + photo (driver only)",
+        summary: "A trip's manifest — confirmed riders with name + photo (assigned driver only)",
         security: [{ bearerAuth: [] }],
         querystring: manifestQuerySchema,
         response: {
           200: manifestResponseSchema,
           401: errorResponseSchema,
           403: errorResponseSchema,
+          404: errorResponseSchema,
           503: errorResponseSchema,
         },
       },
@@ -140,11 +150,23 @@ export async function boardingRoutes(
       ],
     },
     async (request, reply) => {
-      if (!opts.manifestService) {
+      if (!opts.manifestService || !opts.trips || !opts.drivers) {
         return reply
           .code(503)
           .send({ error: 'unavailable', message: 'Manifest is not configured' });
       }
+      const trip = await opts.trips.findById(request.query.tripId);
+      if (!trip) return reply.code(404).send({ error: 'not_found', message: 'Trip not found' });
+
+      // Assigned-driver authz: the signed-in user must be linked to the driver
+      // this trip is assigned to. A driver role alone is not enough.
+      const driver = await opts.drivers.findByUserId(request.user!.id);
+      if (!driver || trip.assignedDriverId !== driver.id) {
+        return reply
+          .code(403)
+          .send({ error: 'forbidden', message: 'Not the assigned driver for this trip' });
+      }
+
       const riders = await opts.manifestService.getManifest(request.query.tripId);
       return { tripId: request.query.tripId, riders };
     },
