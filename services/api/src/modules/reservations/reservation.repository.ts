@@ -35,6 +35,9 @@ export interface Reservation {
   direction: ReservationDirection;
   status: ReservationStatus;
   source: ReservationSource;
+  /** Keyed hash of the rider's daily boarding PIN (null until confirmed / when
+   * declined). Never exposed in a response — verified server-side only (E4). */
+  pinHash: string | null;
   /** When the rider (or the default) settled the reservation. */
   confirmedAt: Date | null;
   createdAt: Date;
@@ -49,6 +52,8 @@ export interface ReservationResponse {
   direction: ReservationDirection;
   /** true → reserve the seat; false → decline it. */
   travelling: boolean;
+  /** Keyed PIN hash to store on confirm (null when declining). */
+  pinHash?: string | null;
 }
 
 /** Seed of a `pending` reservation (the ask-dispatch creates these; #18). */
@@ -127,6 +132,22 @@ export interface ReservationRepository {
    * @returns the updated reservation, or null if not found.
    */
   markBoarded(id: string): Promise<Reservation | null>;
+  /**
+   * All reservations attached to a trip — the raw rows behind a driver's
+   * manifest (the handler filters to the confirmed ones and enriches with rider
+   * name/photo).
+   *
+   * @param tripId - the trip.
+   * @returns the trip's reservations (any status).
+   */
+  listForTrip(tripId: string): Promise<Reservation[]>;
+  /**
+   * Look up a reservation by id — used to board it via the daily PIN (E4).
+   *
+   * @param id - the reservation id.
+   * @returns the reservation, or null.
+   */
+  findById(id: string): Promise<Reservation | null>;
 }
 
 /** In-memory {@link ReservationRepository} for dev and unit tests. */
@@ -154,6 +175,7 @@ export class InMemoryReservationRepository implements ReservationRepository {
         tripId: input.tripId ?? this.rows[i]!.tripId,
         status,
         source: 'confirmation',
+        pinHash: input.pinHash ?? null,
         confirmedAt: now,
         updatedAt: now,
       };
@@ -168,6 +190,7 @@ export class InMemoryReservationRepository implements ReservationRepository {
       direction: input.direction,
       status,
       source: 'confirmation',
+      pinHash: input.pinHash ?? null,
       confirmedAt: now,
       createdAt: now,
       updatedAt: now,
@@ -188,6 +211,7 @@ export class InMemoryReservationRepository implements ReservationRepository {
       direction: input.direction,
       status: 'pending',
       source: 'confirmation',
+      pinHash: null,
       confirmedAt: null,
       createdAt: now,
       updatedAt: now,
@@ -245,5 +269,18 @@ export class InMemoryReservationRepository implements ReservationRepository {
     row.status = 'boarded';
     row.updatedAt = new Date();
     return row;
+  }
+
+  async listForTrip(tripId: string): Promise<Reservation[]> {
+    // Morning before evening — explicit rank (NOT alphabetical: 'evening' <
+    // 'morning'), matching the Pg CASE ordering and findBoardable above.
+    const rank = (d: ReservationDirection): number => (d === 'morning' ? 0 : 1);
+    return this.rows
+      .filter((r) => r.tripId === tripId)
+      .sort((a, b) => rank(a.direction) - rank(b.direction));
+  }
+
+  async findById(id: string): Promise<Reservation | null> {
+    return this.rows.find((r) => r.id === id) ?? null;
   }
 }

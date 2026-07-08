@@ -14,9 +14,10 @@
 import { errors } from 'jose';
 import type { KvStore } from '../../kv/kv.store';
 import type { EntitlementLedgerRepository } from '../entitlements/entitlement-ledger.repository';
-import type { ReservationRepository } from '../reservations/reservation.repository';
+import type { Reservation, ReservationRepository } from '../reservations/reservation.repository';
+import { verifyPin as checkPin } from '../reservations/pin';
 import { signPass, verifyPass, type IssuedPass } from './pass';
-import type { ScanEventRepository } from './scan-event.repository';
+import type { ScanEventRepository, ScanMethod } from './scan-event.repository';
 
 /** A driver's request to verify a scanned pass. */
 export interface VerifyScanInput {
@@ -35,6 +36,24 @@ export interface VerifyScanResult {
   riderId: string | null;
   reason: 'ok' | 'invalid' | 'expired' | 'reused';
   /** True when this scan consumed a ride (a confirmed reservation was boarded). */
+  deducted: boolean;
+}
+
+/** A driver's request to board a rider via their daily PIN (verification layer 2). */
+export interface VerifyPinInput {
+  /** The reservation the driver picked off the manifest. */
+  reservationId: string;
+  /** The 4-digit PIN the rider presented. */
+  pin: string;
+  /** The driver performing the verification. */
+  scannedBy: string;
+}
+
+/** The outcome of a PIN verification. */
+export interface VerifyPinResult {
+  valid: boolean;
+  riderId: string | null;
+  reason: 'ok' | 'invalid' | 'not_found' | 'already_boarded';
   deducted: boolean;
 }
 
@@ -110,47 +129,124 @@ export class BoardingService {
       }
     }
 
-    // A valid scan consumes the rider's confirmed reservation for today: mark it
-    // boarded and debit one ride (ADR-0014, E4). Idempotent by reservation, and
-    // findBoardable skips already-boarded seats, so re-scanning a rider (with a
-    // freshly rotated QR) can't double-charge. Fails OPEN — a hiccup here must
-    // not stop the bus; reconciliation catches any gap.
+    // A valid scan consumes the rider's confirmed reservation for today. Fails
+    // OPEN — a hiccup here must not stop the bus; reconciliation catches any gap.
     let deducted = false;
     if (reason === 'ok' && riderId && this.deps.reservations && this.deps.entitlements) {
       try {
         const boardable = await this.deps.reservations.findBoardable(riderId, todayISO());
-        if (boardable) {
-          await this.deps.reservations.markBoarded(boardable.id);
-          await this.deps.entitlements.record({
-            userId: riderId,
-            deltaRides: -1,
-            reason: 'boarding',
-            refType: 'reservation',
-            refId: boardable.id,
-            idempotencyKey: `board:${boardable.id}`,
-          });
-          deducted = true;
-        }
+        if (boardable) deducted = await this.boardAndDebit(boardable);
       } catch (err) {
         console.error('boarding: ride deduction failed (allowed to board anyway)', err);
       }
     }
 
-    // Audit is best-effort here: verification already answered the driver, and a
-    // DB blip (or a rider deleted mid-window tripping the FK) must not 500 the
-    // scan. Failures are logged loudly instead.
+    await this.recordScan(riderId, input.scannedBy, input.tripId ?? null, reason, 'qr');
+    return { valid: reason === 'ok', riderId, reason, deducted };
+  }
+
+  /**
+   * Verification layer 2 — board a rider via the daily PIN the driver typed
+   * against the manifest (offline-friendly when the QR can't be scanned). The
+   * PIN only matches a `reserved` seat, and boarding is idempotent per
+   * reservation, so a repeat returns `already_boarded` without a second debit.
+   *
+   * @param input - the reservation, the presented PIN, and the driver.
+   * @returns whether the PIN boarded the seat, the rider id, and the reason.
+   */
+  async verifyPin(input: VerifyPinInput): Promise<VerifyPinResult> {
+    if (!this.deps.reservations) {
+      return { valid: false, riderId: null, reason: 'not_found', deducted: false };
+    }
+    const reservation = await this.deps.reservations.findById(input.reservationId);
+    if (!reservation) {
+      return { valid: false, riderId: null, reason: 'not_found', deducted: false };
+    }
+    if (!checkPin(input.pin, reservation.pinHash, this.deps.secret)) {
+      await this.recordScan(
+        reservation.userId,
+        input.scannedBy,
+        reservation.tripId,
+        'invalid',
+        'pin',
+      );
+      return { valid: false, riderId: reservation.userId, reason: 'invalid', deducted: false };
+    }
+    // Correct PIN. A `reserved` seat boards + debits; an already-`boarded` one is
+    // a no-op (idempotent — no second charge).
+    if (reservation.status !== 'reserved') {
+      await this.recordScan(
+        reservation.userId,
+        input.scannedBy,
+        reservation.tripId,
+        'reused',
+        'pin',
+      );
+      return {
+        valid: true,
+        riderId: reservation.userId,
+        reason: 'already_boarded',
+        deducted: false,
+      };
+    }
+    let deducted = false;
+    try {
+      deducted = await this.boardAndDebit(reservation);
+    } catch (err) {
+      console.error('boarding: PIN ride deduction failed (allowed to board anyway)', err);
+    }
+    await this.recordScan(reservation.userId, input.scannedBy, reservation.tripId, 'ok', 'pin');
+    return { valid: true, riderId: reservation.userId, reason: 'ok', deducted };
+  }
+
+  /**
+   * Board a reservation and debit one ride — the shared consume step for both
+   * the QR scan and the PIN. Idempotent per reservation (`board:<id>`).
+   *
+   * @param reservation - the confirmed reservation being boarded.
+   * @returns whether a ride was debited (true when the ledger is wired).
+   */
+  private async boardAndDebit(reservation: Reservation): Promise<boolean> {
+    if (!this.deps.reservations || !this.deps.entitlements) return false;
+    await this.deps.reservations.markBoarded(reservation.id);
+    await this.deps.entitlements.record({
+      userId: reservation.userId,
+      deltaRides: -1,
+      reason: 'boarding',
+      refType: 'reservation',
+      refId: reservation.id,
+      idempotencyKey: `board:${reservation.id}`,
+    });
+    return true;
+  }
+
+  /**
+   * Append a best-effort scan-audit row. A DB blip (or an FK race on a deleted
+   * rider) must not fail the boarding, so errors are logged, never thrown.
+   *
+   * @param riderId - the rider (null when unattributable).
+   * @param scannedBy - the driver.
+   * @param tripId - the trip, if known.
+   * @param result - the verification outcome to record.
+   * @param method - how the rider was verified (`qr` | `pin`).
+   */
+  private async recordScan(
+    riderId: string | null,
+    scannedBy: string,
+    tripId: string | null,
+    result: VerifyScanResult['reason'],
+    method: ScanMethod,
+  ): Promise<void> {
     try {
       await this.deps.scanEvents.record({
         riderId,
-        scannedBy: input.scannedBy,
-        tripId: input.tripId ?? null,
-        result: reason === 'ok' ? 'valid' : reason,
-        method: 'qr',
+        scannedBy,
+        tripId,
+        result: result === 'ok' ? 'valid' : result,
+        method,
       });
     } catch (err) {
       console.error('boarding: failed to record scan event (audit gap)', err);
     }
-
-    return { valid: reason === 'ok', riderId, reason, deducted };
   }
 }
