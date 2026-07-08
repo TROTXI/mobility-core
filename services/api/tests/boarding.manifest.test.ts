@@ -108,6 +108,33 @@ describe('GET /boarding/manifest', () => {
     expect(body.riders[0]).toMatchObject({ userId: yes.id, boarded: true });
   });
 
+  it('orders morning before evening (not alphabetical)', async () => {
+    const { app, users, reservations, driverToken } = await setup();
+    const m = await users.create({ displayName: 'Morning Rider' });
+    const e = await users.create({ displayName: 'Evening Rider' });
+    // insert evening first so a stable/alphabetical sort would keep it first
+    await reservations.respond({
+      userId: e.id,
+      tripId: TRIP,
+      travelDate: DATE,
+      direction: 'evening',
+      travelling: true,
+    });
+    await reservations.respond({
+      userId: m.id,
+      tripId: TRIP,
+      travelDate: DATE,
+      direction: 'morning',
+      travelling: true,
+    });
+
+    const riders = (await manifest(app, driverToken)).json().riders;
+    expect(riders.map((row: { direction: string }) => row.direction)).toEqual([
+      'morning',
+      'evening',
+    ]);
+  });
+
   it('empty manifest for a trip with no reservations', async () => {
     const { app, driverToken } = await setup();
     const body = (await manifest(app, driverToken)).json();

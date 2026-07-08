@@ -272,9 +272,12 @@ export class InMemoryReservationRepository implements ReservationRepository {
   }
 
   async listForTrip(tripId: string): Promise<Reservation[]> {
+    // Morning before evening — explicit rank (NOT alphabetical: 'evening' <
+    // 'morning'), matching the Pg CASE ordering and findBoardable above.
+    const rank = (d: ReservationDirection): number => (d === 'morning' ? 0 : 1);
     return this.rows
       .filter((r) => r.tripId === tripId)
-      .sort((a, b) => (a.direction < b.direction ? -1 : 1));
+      .sort((a, b) => rank(a.direction) - rank(b.direction));
   }
 
   async findById(id: string): Promise<Reservation | null> {
