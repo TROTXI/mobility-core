@@ -27,7 +27,8 @@ jobs:
       - name: gitleaks detect
         run: |
           docker run --rm -v "$PWD:/repo" ghcr.io/gitleaks/gitleaks:latest \
-            detect --source=/repo --redact --verbose --exit-code=1 --config=/repo/.gitleaks.toml
+            detect --source=/repo --redact --verbose --exit-code=1
+
   codeql:
     name: CodeQL (JS/TS)
     runs-on: ubuntu-latest

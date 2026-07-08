@@ -1,14 +1,12 @@
-title = "Trotxi gitleaks config"
+# gitleaks config — extends the default ruleset with an allowlist for
+# INTENTIONAL non-secret placeholders: the dev-only JWT fallback (config/env.ts,
+# auth/jwt.ts) and test fixtures. See ADR-0007. Real secrets are injected via
+# environment variables and are never committed.
 
 [extend]
 useDefault = true
 
 [allowlist]
-description = "Firebase client config keys are not secrets - restricted by package name/SHA-1, not confidentiality"
-paths = [
-  '''.*google-services\.json''',
-  '''.*GoogleService-Info\.plist''',
-  '''.*firebase_options\.dart''',
 description = "Intentional non-secret placeholders (dev JWT fallback + test fixtures) + Firebase client config"
 regexes = [
   '''dev-only-insecure-secret-change-me-[0-9a-f]+''',
