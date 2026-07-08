@@ -2,10 +2,11 @@
 
 **Owner:** Godfred Awuku · **Last updated:** 2026-07-02
 
-**Status:** 🟢 QR scan **+ ride deduction** live (#20, E4). A valid scan now
-consumes the rider's confirmed reservation and **debits one ride** from their
-entitlement (ADR-0014). Still deferred: the **manifest + daily-PIN** layers and
-the confirmed-yes **no-show** job (both need trips/admin #26) — see below.
+**Status:** 🟢 All three verification layers live (#20, E4): **QR scan**,
+**driver manifest** (photo pass), and **daily PIN** — any one boards the rider's
+confirmed reservation and **debits one ride** (ADR-0014). Still deferred: the
+confirmed-yes **no-show** cron and restricting the manifest to a trip's assigned
+driver (both pair with #25) — see below.
 
 Lets a driver confirm a rider is boarding with a **genuine, unforged, unexpired
 pass**, and logs every scan for audit. Rationale: #20.
@@ -54,13 +55,32 @@ Verify a scanned pass (drivers only) and record the scan.
   was boarded and a ride debited. `riderId` is still returned so the driver sees
   who presented it.)
 
+#### `GET /boarding/manifest?tripId=<uuid>`
+
+The trip's confirmed riders (driver only) — the photo pass.
+
+- **Auth:** `Bearer` + **role `driver`**. **Rate limit:** per user.
+- **200:** `{ "tripId", "riders": [ { reservationId, userId, name, avatarUrl, direction, boarded } ] }`
+  — `avatarUrl` is a short-lived signed URL (null when no photo); only
+  `reserved`/`boarded` seats appear. **400** bad tripId · **403** · **503**
+
+#### `POST /boarding/verify-pin`
+
+Board a rider by their daily 4-digit PIN (driver only) — verification layer 2.
+
+- **Auth:** `Bearer` + **role `driver`**. **Rate limit:** per user.
+- **Body:** `{ "reservationId": "<uuid>", "pin": "1234" }`
+- **200:** `{ "valid", "riderId", "reason": "ok"|"invalid"|"not_found"|"already_boarded", "deducted" }`
+  — `ok` boards + debits; `already_boarded` is the idempotent no-op. **400** bad PIN · **403**
+
 ---
 
 ## Data
 
 `scan_events(id, rider_id, scanned_by, trip_id, result, method, created_at)` —
-`result` ∈ `valid|invalid|expired|reused`, `method` ∈ `qr|photo`. `trip_id` has
-no FK yet (trips are #18).
+`result` ∈ `valid|invalid|expired|reused`, `method` ∈ `qr|photo|pin`. `trip_id`
+has no FK yet (trips are #18). The daily PIN is stored on `reservations`
+(`daily_pin_hash`, a keyed HMAC — never plaintext).
 
 ## Security notes
 
@@ -81,21 +101,23 @@ no FK yet (trips are #18).
 ## Next (Hybrid Subscription Model — ADR-0014, boarding v2 / epic E4)
 
 The commercial model is decided
-([ADR-0014](../adr/0014-hybrid-subscription-model.md)): this QR scan is **one of
-three verification layers**, and boarding consumes **1 ride from the subscription
-entitlement**. **Done in this slice:** ride deduction on a valid scan (above).
-Still to come (blocked on trips/admin, #26):
+([ADR-0014](../adr/0014-hybrid-subscription-model.md)): boarding is **three
+verification layers**, and any one consumes **1 ride from the subscription
+entitlement**. **Done (this + prior slices):** QR scan + deduction, the driver
+**manifest** (photo pass), and the **daily PIN**. Still to come:
 
-- **Driver manifest layer** — name + **photo** (server-side, R2 #24) + pickup
-  point for the day's reservations. The photo pass is now required product.
-- **Daily 4-digit PIN layer** — offline-friendly fallback; only works _with_ the
-  manifest (a 4-digit code can't identify a rider alone), so it ships with #26.
+- ✅ **QR scan** — `POST /boarding/scan` (deducts).
+- ✅ **Driver manifest** — `GET /boarding/manifest?tripId=` (name + signed photo).
+- ✅ **Daily PIN** — `POST /boarding/verify-pin` (boards + deducts, idempotent).
 - **Confirmed-yes no-show** deduction job (cron); operator cancellation never
   deducts. Same idempotency key space (`board:<reservationId>`) so a late board
   and the no-show sweep can't both charge.
-- Direction/trip resolution: today a scan boards the rider's **earliest open leg
-  for the day** (morning before evening); when trips carry the run's direction,
-  the scan will target that specific reservation.
+- **Manifest → assigned driver only** — restrict a trip's manifest to its
+  assigned driver (needs the driver↔user lookup #25 also uses; they land together).
+- **Per-rider pickup point** on the manifest — needs a rider↔stop link.
+- Direction/trip resolution: a QR scan still boards the rider's **earliest open
+  leg for the day** (morning before evening); the PIN + manifest target a
+  specific reservation. When trips carry the run's direction, the scan converges.
 
 ## Where the code lives
 

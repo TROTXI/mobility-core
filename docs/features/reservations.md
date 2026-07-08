@@ -41,8 +41,11 @@ Confirm or decline (an upsert per day+direction).
 
 - **Auth:** `Bearer`. **Rate limit:** per user.
 - **Body:** `{ "tripId?": "<uuid>", "travelDate": "YYYY-MM-DD", "direction": "morning"|"evening", "travelling": true|false }`
-- **200:** the reservation `{ id, tripId, travelDate, direction, status, source }`
-  (`reserved` when travelling, else `declined`) · **400** bad date · **401** · **429** · **503**
+- **200:** the reservation `{ id, tripId, travelDate, direction, status, source, pin? }`
+  (`reserved` when travelling, else `declined`). On a **confirm**, `pin` is the
+  rider's daily **4-digit boarding PIN** — returned **once** here; only its keyed
+  hash (`daily_pin_hash`) is stored. The driver types it against the manifest to
+  board (E4, `POST /boarding/verify-pin`). · **400** bad date · **401** · **429** · **503**
 
 #### `GET /me/reservations?from=YYYY-MM-DD`
 

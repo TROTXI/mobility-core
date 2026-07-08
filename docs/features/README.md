@@ -25,7 +25,7 @@ repo (`system-design.md`, `security.md`). Each doc links to both.
 | Daily ride confirmation — `POST /me/reservations` (confirm/decline) (#101)  | [reservations.md](reservations.md)               | 🟡 E3 core (ask-dispatch deferred #18) |
 | Mobility — routes, stops, browse                                            | _(in review — #57)_                              | 🚧                                     |
 | Rate limiting (#23)                                                         | [rate-limiting.md](rate-limiting.md)             | ✅ live                                |
-| Boarding — QR scan + ride deduction (#20, E4)                               | [boarding.md](boarding.md)                       | 🟢 scan + deduction (manifest/PIN #26) |
+| Boarding — QR scan + manifest + PIN, all deduct (#20, E4)                   | [boarding.md](boarding.md)                       | 🟢 3-layer verification live           |
 | Observability & performance (#28)                                           | [design](../design/observability.md)             | ✅ backend live (metrics/traces/logs)  |
 
 ## Conventions for a feature doc
