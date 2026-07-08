@@ -282,6 +282,8 @@ export async function buildApp(deps: AppDeps = {}): Promise<FastifyInstance> {
         passTtlSeconds: 60,
       }),
     manifestService: new ManifestService({ reservations, users, objectStore }),
+    trips: deps.trips,
+    drivers: deps.drivers,
     rateLimit: deps.rateLimit ?? DEFAULT_RATE_LIMIT,
   });
   await app.register(mobilityRoutes, {
