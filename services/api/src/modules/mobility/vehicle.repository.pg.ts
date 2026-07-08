@@ -1,5 +1,6 @@
 import type { Pool } from 'pg';
-import type { NewVehicle, Vehicle, VehicleRepository } from './vehicle.repository';
+import { applyPatch } from '../../lib/patch';
+import type { NewVehicle, Vehicle, VehicleRepository, VehicleUpdate } from './vehicle.repository';
 
 interface VehicleRow {
   id: string;
@@ -35,6 +36,24 @@ export class PgVehicleRepository implements VehicleRepository {
     const { rows } = await this.pool.query<VehicleRow>('SELECT * FROM vehicles WHERE id = $1', [
       id,
     ]);
+    return rows[0] ? toVehicle(rows[0]) : null;
+  }
+
+  async findAll(): Promise<Vehicle[]> {
+    const { rows } = await this.pool.query<VehicleRow>(
+      'SELECT * FROM vehicles ORDER BY created_at',
+    );
+    return rows.map(toVehicle);
+  }
+
+  async update(id: string, patch: VehicleUpdate): Promise<Vehicle | null> {
+    const existing = await this.findById(id);
+    if (!existing) return null;
+    const next = applyPatch(existing, patch);
+    const { rows } = await this.pool.query<VehicleRow>(
+      `UPDATE vehicles SET registration = $2, label = $3, capacity = $4 WHERE id = $1 RETURNING *`,
+      [id, next.registration, next.label, next.capacity],
+    );
     return rows[0] ? toVehicle(rows[0]) : null;
   }
 }

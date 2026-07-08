@@ -8,6 +8,7 @@ import type { ZodTypeProvider } from 'fastify-type-provider-zod';
 import { errorResponseSchema } from '../../lib/schemas';
 import type { RateLimitConfig } from '../ratelimit/ratelimit.plugin';
 import type { Reservation, ReservationRepository } from './reservation.repository';
+import { generatePin, hashPin } from './pin';
 import {
   listReservationsQuerySchema,
   reservationListResponseSchema,
@@ -15,14 +16,19 @@ import {
   respondBodySchema,
 } from './reservations.schema';
 
-// Map a stored reservation to its public (client-facing) shape.
-function toResponse(r: Reservation): {
+// Map a stored reservation to its public (client-facing) shape. Never includes
+// the PIN hash; `pin` (plaintext) is added only on the confirming response.
+function toResponse(
+  r: Reservation,
+  pin?: string,
+): {
   id: string;
   tripId: string | null;
   travelDate: string;
   direction: Reservation['direction'];
   status: Reservation['status'];
   source: Reservation['source'];
+  pin?: string;
 } {
   return {
     id: r.id,
@@ -31,6 +37,7 @@ function toResponse(r: Reservation): {
     direction: r.direction,
     status: r.status,
     source: r.source,
+    ...(pin ? { pin } : {}),
   };
 }
 
@@ -40,11 +47,12 @@ function toResponse(r: Reservation): {
  * @param app - the Fastify instance to register on.
  * @param opts - route dependencies.
  * @param opts.reservations - the reservation repository (503 when absent).
+ * @param opts.secret - server key for hashing the daily boarding PIN.
  * @param opts.rateLimit - rate-limit config (applied per user).
  */
 export async function reservationRoutes(
   app: FastifyInstance,
-  opts: { reservations?: ReservationRepository; rateLimit: RateLimitConfig },
+  opts: { reservations?: ReservationRepository; secret: string; rateLimit: RateLimitConfig },
 ): Promise<void> {
   const r = app.withTypeProvider<ZodTypeProvider>();
   const UNAVAILABLE = { error: 'unavailable', message: 'Reservations are not configured' };
@@ -68,14 +76,18 @@ export async function reservationRoutes(
     },
     async (request, reply) => {
       if (!opts.reservations) return reply.code(503).send(UNAVAILABLE);
+      // Confirming issues a fresh daily PIN; only the hash is stored, the
+      // plaintext is returned once here for the rider to show at boarding.
+      const pin = request.body.travelling ? generatePin() : undefined;
       const reservation = await opts.reservations.respond({
         userId: request.user!.id,
         tripId: request.body.tripId ?? null,
         travelDate: request.body.travelDate,
         direction: request.body.direction,
         travelling: request.body.travelling,
+        pinHash: pin ? hashPin(pin, opts.secret) : null,
       });
-      return toResponse(reservation);
+      return toResponse(reservation, pin);
     },
   );
 
@@ -101,7 +113,7 @@ export async function reservationRoutes(
       const rows = await opts.reservations.listForUser(request.user!.id, {
         fromDate: request.query.from,
       });
-      return { reservations: rows.map(toResponse) };
+      return { reservations: rows.map((row) => toResponse(row)) };
     },
   );
 }

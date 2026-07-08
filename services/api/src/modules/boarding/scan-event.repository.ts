@@ -5,7 +5,7 @@
 /** Outcome of a scan. */
 export type ScanResult = 'valid' | 'invalid' | 'expired' | 'reused';
 /** How the rider was verified. */
-export type ScanMethod = 'qr' | 'photo';
+export type ScanMethod = 'qr' | 'photo' | 'pin';
 
 /** A recorded boarding scan. */
 export interface ScanEvent {

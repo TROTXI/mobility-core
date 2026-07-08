@@ -1,5 +1,13 @@
 import type { Pool } from 'pg';
-import type { NewTrip, Trip, TripFilter, TripRepository, TripStatus } from './trip.repository';
+import { applyPatch } from '../../lib/patch';
+import type {
+  NewTrip,
+  Trip,
+  TripFilter,
+  TripRepository,
+  TripStatus,
+  TripUpdate,
+} from './trip.repository';
 
 interface TripRow {
   id: string;
@@ -47,14 +55,39 @@ export class PgTripRepository implements TripRepository {
   }
 
   async findAll(filter?: TripFilter): Promise<Trip[]> {
-    // routeId is the only filter today (GET /trips?routeId); build the WHERE
-    // clause conditionally so the unfiltered list stays a plain scan + sort.
-    const { rows } = filter?.routeId
-      ? await this.pool.query<TripRow>(
-          'SELECT * FROM trips WHERE route_id = $1 ORDER BY scheduled_at',
-          [filter.routeId],
-        )
-      : await this.pool.query<TripRow>('SELECT * FROM trips ORDER BY scheduled_at');
+    // Build the WHERE clause from whichever filters are present. `date` compares
+    // the UTC calendar day, matching the in-memory adapter's toISOString().
+    const where: string[] = [];
+    const params: unknown[] = [];
+    if (filter?.routeId) {
+      params.push(filter.routeId);
+      where.push(`route_id = $${params.length}`);
+    }
+    if (filter?.status) {
+      params.push(filter.status);
+      where.push(`status = $${params.length}`);
+    }
+    if (filter?.date) {
+      params.push(filter.date);
+      where.push(`(scheduled_at AT TIME ZONE 'UTC')::date = $${params.length}::date`);
+    }
+    const { rows } = await this.pool.query<TripRow>(
+      `SELECT * FROM trips ${where.length ? `WHERE ${where.join(' AND ')}` : ''} ORDER BY scheduled_at`,
+      params,
+    );
     return rows.map(toTrip);
+  }
+
+  async update(id: string, patch: TripUpdate): Promise<Trip | null> {
+    const existing = await this.findById(id);
+    if (!existing) return null;
+    const next = applyPatch(existing, patch);
+    const { rows } = await this.pool.query<TripRow>(
+      `UPDATE trips
+         SET status = $2, scheduled_at = $3, vehicle_id = $4, assigned_driver_id = $5
+       WHERE id = $1 RETURNING *`,
+      [id, next.status, next.scheduledAt, next.vehicleId, next.assignedDriverId],
+    );
+    return rows[0] ? toTrip(rows[0]) : null;
   }
 }

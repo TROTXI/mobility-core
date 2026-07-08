@@ -18,7 +18,7 @@ areas land; it is not authoritative once the code moves.
 | Domain repos | `users/*`, `subscriptions/*` — **repos only, no routes**; `mobility/*` — repos + browse routes (#17)                                                                                                     |
 | Contract     | `lib/schemas.ts`, `user.schema.ts`, `mobility.schema.ts`, OpenAPI via zod type-provider (ADR-0008)                                                                                                       |
 
-**Live HTTP surface:** `/`, `/version`, `/healthz`, `/readyz`, `/me`, `/docs`, `/routes`, `/routes/:id`, `/trips`, `/trips/:id`.
+**Live HTTP surface:** `/`, `/version`, `/healthz`, `/readyz`, `/me`, `/docs`, `/routes`, `/routes/:id`, `/trips`, `/trips/:id`, `/admin/*` (fleet CRUD + trip assignment, admin-only, #26).
 
 **Cross-cutting (in place):** repository pattern (ADR-0009), KV fallback
 (ADR-0010), readiness pings DB+KV, rate limiting, typed OpenAPI, ~100% unit
@@ -72,12 +72,13 @@ operational layer now has schedules — boarding and live positions are next.
 
 **Still missing (mobility):**
 
-| Area                               | Issue | Notes                                                                                                               |
-| ---------------------------------- | ----- | ------------------------------------------------------------------------------------------------------------------- |
-| Trips & schedules                  | #18   | ✅ landed — trips/vehicles/drivers + `assigned_driver_id`; `GET /trips` (`?routeId`), `GET /trips/:id` (auth-gated) |
-| QR boarding / passes / scan_events | #20   | none                                                                                                                |
-| Live vehicle positions (polling)   | #25   | no positions table; ADR-0002 telemetry deferred                                                                     |
-| Nearest-stop spatial query         | —     | GiST index is in place; no endpoint yet                                                                             |
+| Area                                | Issue | Notes                                                                                                                 |
+| ----------------------------------- | ----- | --------------------------------------------------------------------------------------------------------------------- |
+| Trips & schedules                   | #18   | ✅ landed — trips/vehicles/drivers + `assigned_driver_id`; `GET /trips` (`?routeId`), `GET /trips/:id` (auth-gated)   |
+| Admin/ops (fleet CRUD + assignment) | #26   | ✅ landed — `/admin/*` admin-guarded CRUD for routes/stops/vehicles/drivers/trips + `PUT /admin/trips/:id/assignment` |
+| QR boarding / passes / scan_events  | #20   | none                                                                                                                  |
+| Live vehicle positions (polling)    | #25   | no positions table; ADR-0002 telemetry deferred                                                                       |
+| Nearest-stop spatial query          | —     | GiST index is in place; no endpoint yet                                                                               |
 
 ### ❌ Not started (mapped to issues)
 

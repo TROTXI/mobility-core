@@ -17,6 +17,7 @@ import {
 } from './modules/devices/device-token.repository';
 import { deviceRoutes } from './modules/devices/devices.routes';
 import { BoardingService } from './modules/boarding/boarding.service';
+import { ManifestService } from './modules/boarding/manifest.service';
 import { boardingRoutes } from './modules/boarding/boarding.routes';
 import { InMemoryScanEventRepository } from './modules/boarding/scan-event.repository';
 import { metricsPlugin, type MetricsOptions } from './modules/metrics/metrics.plugin';
@@ -48,11 +49,19 @@ import {
 import type { RouteStopRepository } from './modules/mobility/route-stop.repository';
 import { mobilityRoutes } from './modules/mobility/mobility.routes';
 import { tripRoutes } from './modules/mobility/trips.routes';
+import { positionRoutes } from './modules/mobility/positions.routes';
+import { adminRoutes } from './modules/admin/admin.routes';
 import type { RouteRepository } from './modules/mobility/route.repository';
 import type { StopRepository } from './modules/mobility/stop.repository';
 import type { TripRepository } from './modules/mobility/trip.repository';
+import {
+  InMemoryTripPositionRepository,
+  type TripPositionRepository,
+} from './modules/mobility/trip-position.repository';
+import type { VehicleRepository } from './modules/mobility/vehicle.repository';
+import type { DriverRepository } from './modules/mobility/driver.repository';
 import type { SubscriptionRepository } from './modules/subscriptions/subscription.repository';
-import type { UserRepository } from './modules/users/user.repository';
+import { InMemoryUserRepository, type UserRepository } from './modules/users/user.repository';
 
 /**
  * Dependencies are injected here — services and repositories register as the
@@ -72,6 +81,11 @@ export interface AppDeps {
   routeStops?: RouteStopRepository;
   /** Trips (scheduled route runs). Reads require auth; routes return 503 when absent. */
   trips?: TripRepository;
+  /** Live trip GPS fixes (#25). Defaults to in-memory; source of truth for positions. */
+  tripPositions?: TripPositionRepository;
+  /** Fleet vehicles + drivers. Managed via the admin/ops endpoints (#26). */
+  vehicles?: VehicleRepository;
+  drivers?: DriverRepository;
   /** Device push-token registry (in-memory vs Postgres). Defaults to in-memory. */
   deviceTokens?: DeviceTokenRepository;
   /** Boarding pass issuance + scan verification. Defaults to an in-memory scan store. */
@@ -135,6 +149,10 @@ export async function buildApp(deps: AppDeps = {}): Promise<FastifyInstance> {
         { name: 'rides', description: 'Ride entitlement + Ride Credit balance' },
         { name: 'reservations', description: 'Daily ride confirmation (confirm/decline)' },
         { name: 'mobility', description: 'Routes and stops' },
+        {
+          name: 'admin',
+          description: 'Admin/ops: manage fleet (routes/stops/vehicles/drivers/trips) + assignment',
+        },
         { name: 'boarding', description: 'QR boarding passes + scan verification' },
       ],
       components: {
@@ -159,7 +177,9 @@ export async function buildApp(deps: AppDeps = {}): Promise<FastifyInstance> {
   const kv = deps.kv ?? new InMemoryKvStore();
   const objectStore = deps.objectStore ?? new FakeObjectStore();
   // Shared so a boarding scan boards the same reservation the rider confirmed
-  // and debits the same entitlement ledger GET /me/rides reads (E4).
+  // and debits the same entitlement ledger GET /me/rides reads (E4); the manifest
+  // reads the same users auth writes.
+  const users = deps.users ?? new InMemoryUserRepository();
   const entitlements = deps.entitlements ?? new InMemoryEntitlementLedgerRepository();
   const credits = deps.credits ?? new InMemoryCreditLedgerRepository();
   const reservations = deps.reservations ?? new InMemoryReservationRepository();
@@ -167,13 +187,13 @@ export async function buildApp(deps: AppDeps = {}): Promise<FastifyInstance> {
   await app.register(authPlugin, { config: authConfig });
   await app.register(rateLimitPlugin, { kv });
   await app.register(authRoutes, {
-    users: deps.users,
+    users,
     objectStore,
     authService: deps.authService,
     rateLimit: deps.rateLimit ?? DEFAULT_RATE_LIMIT,
   });
   await app.register(userRoutes, {
-    users: deps.users,
+    users,
     objectStore,
     rateLimit: deps.rateLimit ?? DEFAULT_RATE_LIMIT,
   });
@@ -192,6 +212,7 @@ export async function buildApp(deps: AppDeps = {}): Promise<FastifyInstance> {
   });
   await app.register(reservationRoutes, {
     reservations,
+    secret: authConfig.secret,
     rateLimit: deps.rateLimit ?? DEFAULT_RATE_LIMIT,
   });
   await app.register(boardingRoutes, {
@@ -205,6 +226,7 @@ export async function buildApp(deps: AppDeps = {}): Promise<FastifyInstance> {
         secret: authConfig.secret,
         passTtlSeconds: 60,
       }),
+    manifestService: new ManifestService({ reservations, users, objectStore }),
     rateLimit: deps.rateLimit ?? DEFAULT_RATE_LIMIT,
   });
   await app.register(mobilityRoutes, {
@@ -214,6 +236,25 @@ export async function buildApp(deps: AppDeps = {}): Promise<FastifyInstance> {
   });
   await app.register(tripRoutes, {
     trips: deps.trips,
+    rateLimit: deps.rateLimit ?? DEFAULT_RATE_LIMIT,
+  });
+  await app.register(positionRoutes, {
+    trips: deps.trips,
+    drivers: deps.drivers,
+    routeStops: deps.routeStops,
+    stops: deps.stops,
+    tripPositions: deps.tripPositions ?? new InMemoryTripPositionRepository(),
+    kv,
+    rateLimit: deps.rateLimit ?? DEFAULT_RATE_LIMIT,
+  });
+  await app.register(adminRoutes, {
+    routes: deps.routes,
+    stops: deps.stops,
+    routeStops: deps.routeStops,
+    vehicles: deps.vehicles,
+    drivers: deps.drivers,
+    trips: deps.trips,
+    users: deps.users,
     rateLimit: deps.rateLimit ?? DEFAULT_RATE_LIMIT,
   });
 

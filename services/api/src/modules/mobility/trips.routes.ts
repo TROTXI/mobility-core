@@ -3,7 +3,7 @@
 // public route browsing): schedules are app-facing data for signed-in commuters
 // and drivers, and this is the guard the issue calls out as a dependency. Write
 // paths (create/assign) live in the admin/ops module (#26). GPS position
-// reporting authorized by assignedDriverId is #25.
+// reporting authorized by assignedDriverId lives in positions.routes.ts (#25).
 
 import type { FastifyInstance } from 'fastify';
 import type { ZodTypeProvider } from 'fastify-type-provider-zod';

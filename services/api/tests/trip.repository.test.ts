@@ -63,4 +63,28 @@ describe('InMemoryTripRepository', () => {
     expect(onA).toHaveLength(2);
     expect(onA.every((t) => t.routeId === ROUTE_A)).toBe(true);
   });
+
+  it('update changes status and assignment; explicit null unassigns', async () => {
+    const repo = new InMemoryTripRepository();
+    const trip = await repo.create({
+      routeId: ROUTE_A,
+      assignedDriverId: 'drv-1',
+      scheduledAt: new Date('2026-07-08T06:00:00Z'),
+    });
+
+    const activated = await repo.update(trip.id, { status: 'active', vehicleId: 'veh-1' });
+    expect(activated).toMatchObject({
+      status: 'active',
+      vehicleId: 'veh-1',
+      assignedDriverId: 'drv-1',
+    });
+
+    const unassigned = await repo.update(trip.id, { assignedDriverId: null });
+    expect(unassigned?.assignedDriverId).toBeNull();
+  });
+
+  it('update returns null for an unknown id', async () => {
+    const repo = new InMemoryTripRepository();
+    expect(await repo.update('does-not-exist', { status: 'active' })).toBeNull();
+  });
 });

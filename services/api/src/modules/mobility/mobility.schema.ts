@@ -55,3 +55,61 @@ export const listTripsQuerySchema = z.object({
 export const tripListResponseSchema = z.object({
   trips: z.array(tripResponseSchema),
 });
+
+// A vehicle (bus) in the fleet. Exposed by admin ops (#26); no public endpoint.
+export const vehicleResponseSchema = z.object({
+  id: z.string().uuid(),
+  registration: z.string(),
+  label: z.string().nullable(),
+  capacity: z.number().int(),
+  createdAt: z.date(),
+});
+
+// A driver. userId links to an auth principal once driver sign-in lands (#25).
+export const driverResponseSchema = z.object({
+  id: z.string().uuid(),
+  fullName: z.string(),
+  phone: z.string().nullable(),
+  licenseNumber: z.string().nullable(),
+  userId: z.string().uuid().nullable(),
+  createdAt: z.date(),
+});
+
+// A GPS fix reported by a trip's assigned driver (#25). recordedAt is assigned by
+// the server, so the body carries only coordinates; ranges match WGS84 lat/lng.
+export const reportPositionBodySchema = z.object({
+  latitude: z.number().min(-90).max(90),
+  longitude: z.number().min(-180).max(180),
+});
+
+// Acknowledgement returned to the driver after a fix is recorded — the stored
+// fix, no ETA (the driver knows the route; ETA is for riders via GET).
+export const recordedPositionResponseSchema = z.object({
+  tripId: z.string().uuid(),
+  position: z.object({
+    latitude: z.number(),
+    longitude: z.number(),
+    recordedAt: z.date(),
+  }),
+});
+
+// The trip's latest live position plus a deterministic ETA to each upcoming stop
+// along the route's ordered stops (system-design §7). etaToStops is empty when the
+// route has fewer than two stops or the vehicle is past the last stop.
+export const livePositionResponseSchema = z.object({
+  tripId: z.string().uuid(),
+  position: z.object({
+    latitude: z.number(),
+    longitude: z.number(),
+    recordedAt: z.date(),
+  }),
+  etaToStops: z.array(
+    z.object({
+      stopId: z.string().uuid(),
+      seq: z.number().int(),
+      name: z.string(),
+      distanceMeters: z.number(),
+      etaSeconds: z.number(),
+    }),
+  ),
+});
