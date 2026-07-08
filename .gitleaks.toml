@@ -7,9 +7,20 @@
 useDefault = true
 
 [allowlist]
-description = "Intentional non-secret placeholders (dev JWT fallback + test fixtures)"
+description = "Intentional non-secret placeholders (dev JWT fallback + test fixtures) + Firebase client config"
 regexes = [
   '''dev-only-insecure-secret-change-me-[0-9a-f]+''',
   '''test-secret-at-least-32-characters-long-[0-9]+''',
   '''a-totally-different-secret-32-chars-min''',
+]
+# Firebase CLIENT config (google-services.json / firebase_options.dart /
+# GoogleService-Info.plist). The "API key" in these is a PUBLIC project
+# identifier that ships in the app — access is controlled by Firebase Security
+# Rules + App Check, not by key secrecy (Google docs). Same class as the
+# committed GOOGLE_CLIENT_ID and Paystack pk_ public key. Path-scoped so a real
+# GCP service-account key committed elsewhere is still caught. (See #88.)
+paths = [
+  '''.*google-services\.json$''',
+  '''.*firebase_options\.dart$''',
+  '''.*GoogleService-Info\.plist$''',
 ]
