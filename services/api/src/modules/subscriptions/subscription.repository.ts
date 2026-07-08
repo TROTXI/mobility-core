@@ -44,6 +44,13 @@ export interface SubscriptionRepository {
    * @returns the active subscriptions on that route.
    */
   findActiveByRoute(routeId: string): Promise<Subscription[]>;
+  /**
+   * Every active subscription — the month-end credit conversion job iterates
+   * these to convert each rider's unused rides (E5).
+   *
+   * @returns all active subscriptions.
+   */
+  findAllActive(): Promise<Subscription[]>;
 }
 
 /** In-memory {@link SubscriptionRepository} for dev and unit tests. */
@@ -76,5 +83,9 @@ export class InMemorySubscriptionRepository implements SubscriptionRepository {
     return Array.from(this.subscriptions.values()).filter(
       (s) => s.status === 'active' && s.routeId === routeId,
     );
+  }
+
+  async findAllActive(): Promise<Subscription[]> {
+    return Array.from(this.subscriptions.values()).filter((s) => s.status === 'active');
   }
 }

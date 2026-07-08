@@ -119,6 +119,7 @@ describe('PaymentsService.handleWebhook', () => {
     const subscriptions: SubscriptionRepository = {
       findActiveByUser: async () => null,
       findActiveByRoute: async () => [],
+      findAllActive: async () => [],
       create: async () => {
         throw Object.assign(new Error('dup'), { code: '23505' });
       },
@@ -133,6 +134,7 @@ describe('PaymentsService.handleWebhook', () => {
     const subscriptions: SubscriptionRepository = {
       findActiveByUser: async () => null,
       findActiveByRoute: async () => [],
+      findAllActive: async () => [],
       create: async () => {
         throw new Error('db down');
       },
