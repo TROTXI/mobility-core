@@ -22,6 +22,8 @@ export interface Payment {
   purpose: PaymentPurpose;
   /** Set for subscription payments; null for top-ups. */
   plan: SubscriptionPlan | null;
+  /** The route the rider is subscribing to (E3); carried to the subscription on activation. */
+  routeId: string | null;
   /** Amount in pesewas (1 GHS = 100 pesewas). */
   amount: number;
   /** ISO 4217 currency code (currently always `GHS`). */
@@ -38,6 +40,7 @@ export interface NewPayment {
   reference: string;
   purpose: PaymentPurpose;
   plan: SubscriptionPlan | null;
+  routeId?: string | null;
   /** Amount in pesewas (1 GHS = 100 pesewas). */
   amount: number;
   currency: string;
@@ -79,6 +82,7 @@ export class InMemoryPaymentRepository implements PaymentRepository {
       reference: input.reference,
       purpose: input.purpose,
       plan: input.plan,
+      routeId: input.routeId ?? null,
       amount: input.amount,
       currency: input.currency,
       status: 'pending',

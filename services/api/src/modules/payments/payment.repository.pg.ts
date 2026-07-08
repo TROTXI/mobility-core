@@ -14,6 +14,7 @@ interface PaymentRow {
   reference: string;
   purpose: PaymentPurpose;
   plan: SubscriptionPlan | null;
+  route_id: string | null;
   amount: number;
   currency: string;
   status: PaymentStatus;
@@ -28,6 +29,7 @@ function toPayment(row: PaymentRow): Payment {
     reference: row.reference,
     purpose: row.purpose,
     plan: row.plan,
+    routeId: row.route_id,
     amount: row.amount,
     currency: row.currency,
     status: row.status,
@@ -41,10 +43,18 @@ export class PgPaymentRepository implements PaymentRepository {
 
   async create(input: NewPayment): Promise<Payment> {
     const { rows } = await this.pool.query<PaymentRow>(
-      `INSERT INTO payments (user_id, reference, purpose, plan, amount, currency)
-       VALUES ($1, $2, $3, $4, $5, $6)
+      `INSERT INTO payments (user_id, reference, purpose, plan, route_id, amount, currency)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)
        RETURNING *`,
-      [input.userId, input.reference, input.purpose, input.plan, input.amount, input.currency],
+      [
+        input.userId,
+        input.reference,
+        input.purpose,
+        input.plan,
+        input.routeId ?? null,
+        input.amount,
+        input.currency,
+      ],
     );
     return toPayment(rows[0]!);
   }
