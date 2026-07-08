@@ -35,6 +35,16 @@ export const verifyPinResponseSchema = z.object({
   deducted: z.boolean(),
 });
 
+export const resolveNoShowsBodySchema = z.object({
+  travelDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'expected YYYY-MM-DD'),
+  direction: z.enum(['morning', 'evening']),
+});
+
+export const resolveNoShowsResponseSchema = z.object({
+  /** How many confirmed-but-unboarded seats were deducted as no-shows. */
+  noShows: z.number().int(),
+});
+
 export const manifestQuerySchema = z.object({
   tripId: z.string().uuid(),
 });

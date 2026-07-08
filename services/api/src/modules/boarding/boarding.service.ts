@@ -14,7 +14,11 @@
 import { errors } from 'jose';
 import type { KvStore } from '../../kv/kv.store';
 import type { EntitlementLedgerRepository } from '../entitlements/entitlement-ledger.repository';
-import type { Reservation, ReservationRepository } from '../reservations/reservation.repository';
+import type {
+  Reservation,
+  ReservationDirection,
+  ReservationRepository,
+} from '../reservations/reservation.repository';
 import { verifyPin as checkPin } from '../reservations/pin';
 import { signPass, verifyPass, type IssuedPass } from './pass';
 import type { ScanEventRepository, ScanMethod } from './scan-event.repository';
@@ -218,6 +222,42 @@ export class BoardingService {
       idempotencyKey: `board:${reservation.id}`,
     });
     return true;
+  }
+
+  /**
+   * Cutoff no-show resolution (E4): every still-`reserved` seat for the
+   * day+direction that was never boarded is a no-show — deduct one ride and mark
+   * it `no_show`. The mirror of boarding: both consume the confirmed seat's ride.
+   *
+   * Deducts on the **same idempotency key as boarding** (`board:<reservationId>`)
+   * so a seat is charged **at most once**: a late board after a no-show sweep (or
+   * a re-run) collides on the key and is a no-op. Combined with only selecting
+   * `reserved` rows, a re-run neither double-deducts nor re-marks. Deducts BEFORE
+   * marking (like the credit conversion) so a partial run converges without
+   * losing the deduction. No-op when the ledgers aren't wired.
+   *
+   * @param travelDate - the travel day (`YYYY-MM-DD`).
+   * @param direction - morning or evening.
+   * @returns how many reservations were resolved as no-shows.
+   */
+  async resolveNoShows(
+    travelDate: string,
+    direction: ReservationDirection,
+  ): Promise<{ noShows: number }> {
+    if (!this.deps.reservations || !this.deps.entitlements) return { noShows: 0 };
+    const reserved = await this.deps.reservations.listReserved(travelDate, direction);
+    for (const r of reserved) {
+      await this.deps.entitlements.record({
+        userId: r.userId,
+        deltaRides: -1,
+        reason: 'no_show',
+        refType: 'reservation',
+        refId: r.id,
+        idempotencyKey: `board:${r.id}`,
+      });
+      await this.deps.reservations.markNoShow(r.id);
+    }
+    return { noShows: reserved.length };
   }
 
   /**

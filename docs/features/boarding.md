@@ -1,12 +1,12 @@
 # Boarding — QR passes & scan verification
 
-**Owner:** Godfred Awuku · **Last updated:** 2026-07-02
+**Owner:** Godfred Awuku · **Last updated:** 2026-07-08
 
 **Status:** 🟢 All three verification layers live (#20, E4): **QR scan**,
 **driver manifest** (photo pass), and **daily PIN** — any one boards the rider's
-confirmed reservation and **debits one ride** (ADR-0014). Still deferred: the
-confirmed-yes **no-show** cron and restricting the manifest to a trip's assigned
-driver (both pair with #25) — see below.
+confirmed reservation and **debits one ride** (ADR-0014). The **confirmed-yes
+no-show** deduction (cutoff cron) and the **assigned-driver-only manifest**
+(#129) are now built too — see below.
 
 Lets a driver confirm a rider is boarding with a **genuine, unforged, unexpired
 pass**, and logs every scan for audit. Rationale: #20.
@@ -104,16 +104,19 @@ The commercial model is decided
 ([ADR-0014](../adr/0014-hybrid-subscription-model.md)): boarding is **three
 verification layers**, and any one consumes **1 ride from the subscription
 entitlement**. **Done (this + prior slices):** QR scan + deduction, the driver
-**manifest** (photo pass), and the **daily PIN**. Still to come:
+**manifest** (photo pass, assigned-driver-gated), the **daily PIN**, and the
+**no-show** cutoff deduction. Still to come:
 
 - ✅ **QR scan** — `POST /boarding/scan` (deducts).
 - ✅ **Driver manifest** — `GET /boarding/manifest?tripId=` (name + signed photo).
 - ✅ **Daily PIN** — `POST /boarding/verify-pin` (boards + deducts, idempotent).
-- **Confirmed-yes no-show** deduction job (cron); operator cancellation never
-  deducts. Same idempotency key space (`board:<reservationId>`) so a late board
-  and the no-show sweep can't both charge.
-- **Manifest → assigned driver only** — restrict a trip's manifest to its
-  assigned driver (needs the driver↔user lookup #25 also uses; they land together).
+- ✅ **Confirmed-yes no-show** — `POST /admin/resolve-no-shows` (admin cutoff
+  cron): every still-`reserved` seat that wasn't boarded is deducted and marked
+  `no_show`. Deducts on the **same idempotency key as boarding**
+  (`board:<reservationId>`) so a late board and the no-show sweep can't both
+  charge; operator cancellation never deducts.
+- ✅ **Manifest → assigned driver only** (#129) — a trip's manifest is restricted
+  to its assigned driver (`drivers.findByUserId` + `trip.assignedDriverId`).
 - **Per-rider pickup point** on the manifest — needs a rider↔stop link.
 - Direction/trip resolution: a QR scan still boards the rider's **earliest open
   leg for the day** (morning before evening); the PIN + manifest target a
