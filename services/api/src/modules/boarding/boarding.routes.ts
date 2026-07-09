@@ -15,6 +15,8 @@ import {
   manifestQuerySchema,
   manifestResponseSchema,
   passResponseSchema,
+  resolveNoShowsBodySchema,
+  resolveNoShowsResponseSchema,
   scanBodySchema,
   scanResponseSchema,
   verifyPinBodySchema,
@@ -170,5 +172,33 @@ export async function boardingRoutes(
       const riders = await opts.manifestService.getManifest(request.query.tripId);
       return { tripId: request.query.tripId, riders };
     },
+  );
+
+  // Cutoff no-show resolution (E4). A scheduled Render cron hits this with an
+  // admin token after each travel window: every still-reserved seat that was
+  // never boarded is deducted as a no-show. Admin-role gated, like the rest of
+  // the ops surface (#26) and the E3/E5 cutoff triggers.
+  r.post(
+    '/admin/resolve-no-shows',
+    {
+      schema: {
+        tags: ['admin'],
+        summary: 'Cutoff: deduct confirmed-but-unboarded seats as no-shows',
+        security: [{ bearerAuth: [] }],
+        body: resolveNoShowsBodySchema,
+        response: {
+          200: resolveNoShowsResponseSchema,
+          401: errorResponseSchema,
+          403: errorResponseSchema,
+        },
+      },
+      preHandler: [
+        app.authenticate,
+        app.rateLimit({ ...opts.rateLimit, by: 'user' }),
+        app.requireRole('admin'),
+      ],
+    },
+    async (request) =>
+      opts.boardingService.resolveNoShows(request.body.travelDate, request.body.direction),
   );
 }

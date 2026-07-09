@@ -134,6 +134,25 @@ export class PgReservationRepository implements ReservationRepository {
     return rows[0] ? toReservation(rows[0]) : null;
   }
 
+  /** Still-`reserved` reservations for a day+direction (no-show candidates, E4). */
+  async listReserved(travelDate: string, direction: ReservationDirection): Promise<Reservation[]> {
+    const { rows } = await this.pool.query<ReservationRow>(
+      `SELECT * FROM reservations
+       WHERE travel_date = $1 AND direction = $2 AND status = 'reserved'`,
+      [travelDate, direction],
+    );
+    return rows.map(toReservation);
+  }
+
+  /** Mark a reservation `no_show` (caller deducts the ride, E4). */
+  async markNoShow(id: string): Promise<Reservation | null> {
+    const { rows } = await this.pool.query<ReservationRow>(
+      `UPDATE reservations SET status = 'no_show', updated_at = now() WHERE id = $1 RETURNING *`,
+      [id],
+    );
+    return rows[0] ? toReservation(rows[0]) : null;
+  }
+
   async listForTrip(tripId: string): Promise<Reservation[]> {
     const { rows } = await this.pool.query<ReservationRow>(
       `SELECT * FROM reservations WHERE trip_id = $1

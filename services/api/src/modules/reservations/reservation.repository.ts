@@ -133,6 +133,24 @@ export interface ReservationRepository {
    */
   markBoarded(id: string): Promise<Reservation | null>;
   /**
+   * Confirmed-but-not-boarded reservations for a day+direction — the no-show
+   * candidates the cutoff resolves (still `reserved`, so a boarded seat is
+   * never a no-show). E4.
+   *
+   * @param travelDate - the travel day (`YYYY-MM-DD`).
+   * @param direction - morning or evening.
+   * @returns the still-`reserved` reservations for that day+direction.
+   */
+  listReserved(travelDate: string, direction: ReservationDirection): Promise<Reservation[]>;
+  /**
+   * Mark a reservation `no_show` (confirmed but didn't board — a ride is
+   * deducted by the caller). E4.
+   *
+   * @param id - the reservation id.
+   * @returns the updated reservation, or null if not found.
+   */
+  markNoShow(id: string): Promise<Reservation | null>;
+  /**
    * All reservations attached to a trip — the raw rows behind a driver's
    * manifest (the handler filters to the confirmed ones and enriches with rider
    * name/photo).
@@ -267,6 +285,20 @@ export class InMemoryReservationRepository implements ReservationRepository {
     const row = this.rows.find((r) => r.id === id);
     if (!row) return null;
     row.status = 'boarded';
+    row.updatedAt = new Date();
+    return row;
+  }
+
+  async listReserved(travelDate: string, direction: ReservationDirection): Promise<Reservation[]> {
+    return this.rows.filter(
+      (r) => r.travelDate === travelDate && r.direction === direction && r.status === 'reserved',
+    );
+  }
+
+  async markNoShow(id: string): Promise<Reservation | null> {
+    const row = this.rows.find((r) => r.id === id);
+    if (!row) return null;
+    row.status = 'no_show';
     row.updatedAt = new Date();
     return row;
   }
