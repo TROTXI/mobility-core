@@ -295,6 +295,68 @@
         background: var(--accent-bg);
         border-color: var(--accent);
       }
+      .rolebadge {
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        font-size: 12px;
+        font-weight: 500;
+        padding: 5px 11px;
+        border-radius: 999px;
+        margin-bottom: 12px;
+        background: var(--blue-bg);
+        color: var(--blue-ink);
+      }
+      .rolebadge.driver {
+        background: var(--amber-bg);
+        color: var(--amber);
+      }
+      .rolebadge.ops {
+        background: var(--tile);
+        color: var(--muted);
+      }
+      .rolebadge .rdot {
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        background: currentColor;
+      }
+      .man {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+      }
+      .manrow {
+        display: flex;
+        align-items: center;
+        gap: 9px;
+        font-size: 13px;
+        padding: 7px 9px;
+        border-radius: 9px;
+        background: var(--surface);
+      }
+      .manrow.ama {
+        outline: 1.5px solid var(--accent);
+      }
+      .manrow .av {
+        width: 22px;
+        height: 22px;
+        border-radius: 50%;
+        background: var(--tile);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 11px;
+        color: var(--muted);
+      }
+      .manrow .st {
+        margin-left: auto;
+        font-size: 12px;
+        color: var(--muted);
+      }
+      .manrow .st.on {
+        color: var(--accent-ink);
+      }
       .controls {
         display: flex;
         align-items: center;
@@ -368,6 +430,9 @@
 
       <div class="main">
         <div class="col rider">
+          <div class="rolebadge" id="rolebadge">
+            <span class="rdot"></span>Commuter · Ama Mensah
+          </div>
           <div class="phone"><div class="screen" id="screen"></div></div>
           <div class="rl">
             <div class="b">
@@ -449,6 +514,7 @@
       const BEATS = [
         {
           key: 'intro',
+          role: 'intro',
           eye: 'the problem',
           h: 'Meet Ama',
           p: 'A daily Circle ⇄ Madina commuter — cash fares, no guaranteed seat. Press play to run the real loop for her and 39 neighbours.',
@@ -458,6 +524,7 @@
         {
           key: 'subscribe',
           call: 'subscribe',
+          role: 'commuter',
           eye: 'step 1 — subscribe',
           h: 'A membership, not a fare',
           p: 'Ama and 39 others pay a monthly fee. The API activates each subscription and allocates guaranteed rides — real recurring revenue, live on the right.',
@@ -467,6 +534,7 @@
         {
           key: 'confirm',
           call: 'confirm',
+          role: 'commuter',
           eye: 'step 2 — confirm',
           h: 'One tap the evening before',
           p: 'Trotxi asks who is travelling. Most confirm; a few decline and their seats go to standby. Ama gets a real boarding PIN.',
@@ -478,15 +546,16 @@
         {
           key: 'board',
           call: 'board',
+          role: 'driver',
           eye: 'step 3 — board',
-          h: 'QR or PIN, one ride used',
-          p: 'The driver verifies each rider; the API deducts one ride per boarding. Watch the bus fill and the occupancy climb on the right.',
-          screen: (d) =>
-            '<div class="k">Trip 7:10 · Madina</div><div class="seats" id="busseats"></div>',
+          h: 'The driver verifies each rider',
+          p: 'This is the driver app. Ama is on the trip manifest; the driver checks her PIN or QR and the API verifies it, deducting one ride. Same loop, the driver side.',
+          screen: (d) => man(d),
         },
         {
           key: 'noshow',
           call: 'noshow',
+          role: 'ops',
           eye: 'step 4 — cutoff',
           h: 'Every outcome, fairly',
           p: 'Confirmed-but-missed is a no-show — still charged, because a seat was held. Declined seats already earned standby fares. The ledger stays exact.',
@@ -496,6 +565,7 @@
         {
           key: 'convert',
           call: 'convert',
+          role: 'commuter',
           eye: 'step 5 — month-end',
           h: 'Unused rides become credit',
           p: 'At period end the API converts every unused ride into credit toward renewal — value is never lost. The operator sees the exact liability owed back to riders.',
@@ -508,6 +578,7 @@
 
       let i = 0,
         timer = null,
+        nav = 0,
         ar = 0,
         ac = 0;
       const stage = $('#dots');
@@ -535,20 +606,59 @@
         if (e) e.textContent = v;
       }
 
+      const ROLE = {
+        driver: ['driver', 'Driver · Kwame Boateng'],
+        ops: ['ops', 'Cutoff · operations'],
+        commuter: ['', 'Commuter · Ama Mensah'],
+        intro: ['ops', 'Circle ⇄ Madina corridor'],
+      };
+
+      function man(d) {
+        if (!d || !d.manifest || !d.manifest.riders.length)
+          return '<div class="k">Trip manifest · 7:10 Madina</div><div style="color:var(--muted);font-size:13px;flex:1;display:flex;align-items:center;justify-content:center">no confirmed riders yet</div>';
+        const m = d.manifest;
+        const rows = m.riders
+          .map(
+            (r) =>
+              '<div class="manrow' +
+              (r.isAma ? ' ama' : '') +
+              '"><span class="av">' +
+              (r.name[0] || '?') +
+              '</span>' +
+              r.name +
+              (r.isAma ? ' · you' : '') +
+              '<span class="st' +
+              (r.boarded ? ' on' : '') +
+              '">' +
+              (r.boarded ? '✓ boarded' : 'waiting') +
+              '</span></div>',
+          )
+          .join('');
+        const more =
+          m.total > m.riders.length
+            ? '<div style="text-align:center;font-size:12px;color:var(--muted);padding-top:6px">+' +
+              (m.total - m.riders.length) +
+              ' more · ' +
+              m.boarded +
+              ' boarded</div>'
+            : '';
+        return (
+          '<div class="k">Trip manifest · 7:10 Madina</div><div class="man">' +
+          rows +
+          '</div>' +
+          more
+        );
+      }
+
       function paintRider(b, d) {
+        const rb = $('#rolebadge');
+        const role = ROLE[b.role] || ROLE.commuter;
+        rb.className = 'rolebadge ' + role[0];
+        rb.innerHTML = '<span class="rdot"></span>' + role[1];
         $('#reye').textContent = b.eye;
         $('#rh').textContent = b.h;
         $('#rp').textContent = b.p;
         $('#screen').innerHTML = b.screen(d);
-        if (b.key === 'board') {
-          const w = $('#busseats');
-          if (w)
-            for (let s = 0; s < 36; s++) {
-              const c = document.createElement('div');
-              c.className = 'seat' + (d && d.boarded && s < d.boarded ? ' on' : '');
-              w.appendChild(c);
-            }
-        }
       }
 
       function paintConsole(d, phase) {
@@ -570,6 +680,7 @@
 
       async function go(k) {
         i = (k + BEATS.length) % BEATS.length;
+        const myNav = ++nav;
         BEATS.forEach((_, x) => stage.children[x].classList.toggle('on', x === i));
         $('#next').textContent = i === BEATS.length - 1 ? 'Restart' : 'Next';
         const b = BEATS[i];
@@ -581,6 +692,7 @@
         try {
           const res = await fetch('/demo/' + b.call, { method: 'POST' });
           const d = await res.json();
+          if (myNav !== nav) return; // navigated away — drop this stale response
           if (!d.ok) throw new Error(d.error || 'failed');
           const ms = Math.round(performance.now() - t0);
           paintRider(b, d);
@@ -609,7 +721,10 @@
         ar = 0;
         ac = 0;
         try {
-          await fetch('/demo/reset', { method: 'POST' });
+          const r = await fetch('/demo/reset', { method: 'POST' });
+          paintConsole(await r.json(), 'idle');
+          setText('ar', '0');
+          setText('ac', 'GHS 0');
         } catch (e) {}
         go(0);
       }

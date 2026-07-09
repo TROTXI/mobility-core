@@ -140,10 +140,34 @@ async function build(): Promise<DemoState> {
     assignedDriverId: driver.id,
     scheduledAt: new Date(`${day(1)}T06:30:00Z`),
   });
-  const names = ['Ama Mensah', 'Kofi Owusu', 'Efua Sarpong', 'Yaw Darko', 'Adjoa Nkrumah'];
+  const firsts = [
+    'Ama',
+    'Kofi',
+    'Efua',
+    'Yaw',
+    'Adjoa',
+    'Kwabena',
+    'Akosua',
+    'Kojo',
+    'Abena',
+    'Fiifi',
+  ];
+  const lasts = [
+    'Mensah',
+    'Owusu',
+    'Sarpong',
+    'Darko',
+    'Nkrumah',
+    'Asante',
+    'Agyeman',
+    'Addo',
+    'Quaye',
+    'Tetteh',
+  ];
   const riders: Rider[] = [];
   for (let n = 0; n < FLEET; n++) {
-    const u = await users.create({ displayName: names[n % names.length] });
+    const name = `${firsts[n % firsts.length]} ${lasts[(n * 7) % lasts.length]}`;
+    const u = await users.create({ displayName: name });
     riders.push({ id: u.id, token: await jwt.signAccessToken({ userId: u.id, role: 'commuter' }) });
   }
 
@@ -219,7 +243,24 @@ async function metrics(s: DemoState): Promise<Record<string, unknown>> {
   const count = (st: string) => rows.filter((x) => x.status === st).length;
   const boarded = count('boarded');
   const allocated = active.length * RIDES_PER_PERIOD;
-  const ama = s.riders[0];
+  const ama = s.riders[0]!;
+
+  // The driver's real manifest (the assigned driver's view). Trimmed to a few
+  // rows for the demo device; Ama is flagged so the UI can highlight her.
+  const man = await call(s, 'GET', `/boarding/manifest?tripId=${s.tripId}`, s.driverToken);
+  const manRiders = (Array.isArray(man.riders) ? man.riders : []) as {
+    userId: string;
+    name?: string;
+    boarded: boolean;
+  }[];
+  const manifest = {
+    total: manRiders.length,
+    boarded,
+    riders: [...manRiders]
+      .sort((a, b) => (a.userId === ama.id ? -1 : b.userId === ama.id ? 1 : 0))
+      .slice(0, 7)
+      .map((r) => ({ name: r.name ?? 'Rider', boarded: r.boarded, isAma: r.userId === ama.id })),
+  };
   return {
     subscribers: active.length,
     ridesAllocated: allocated,
@@ -233,6 +274,7 @@ async function metrics(s: DemoState): Promise<Record<string, unknown>> {
     occupancy: CAPACITY ? Math.round((boarded / CAPACITY) * 100) : 0,
     subRevenue: active.length * FEE.monthly,
     creditLiability: liability,
+    manifest,
     ama: {
       rides: await s.ents.remainingRides(ama.id),
       credits: await s.creds.balancePesewas(ama.id),
