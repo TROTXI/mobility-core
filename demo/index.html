@@ -1,0 +1,219 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Trotxi — live investor demo</title>
+    <style>
+      :root {
+        --bg: #f6f7f5; --surface: #ffffff; --tile: #f1f2ef; --ink: #16181d; --muted: #6b6f76;
+        --line: #e4e6e2; --accent: #0f9d76; --accent-ink: #0a5f48; --accent-bg: #e4f5ee;
+        --blue: #2a78d6; --blue-bg: #e6f1fb; --blue-ink: #185fa5; --amber: #b9770f; --amber-bg: #faeeda;
+        --purple: #4a3aa7; --red: #b23b3b; --radius: 10px;
+        --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
+        --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: #14161a; --surface: #1c1f24; --tile: #23262c; --ink: #f0f1f3; --muted: #9aa0a8;
+          --line: #2b2f36; --accent: #2fbd93; --accent-ink: #8fe3c9; --accent-bg: #123a2e;
+          --blue: #6aa8f0; --blue-bg: #12233a; --blue-ink: #9cc6f5; --amber: #e0a545; --amber-bg: #3a2e12;
+          --purple: #9085e9; --red: #e07070;
+        }
+      }
+      * { box-sizing: border-box; }
+      body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--sans); line-height: 1.5; }
+      .wrap { max-width: 760px; margin: 0 auto; padding: 26px 20px 60px; }
+      .top { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+      .brand { display: flex; align-items: center; gap: 11px; }
+      .logo { width: 40px; height: 40px; border-radius: 11px; background: var(--accent-bg); color: var(--accent-ink); display: flex; align-items: center; justify-content: center; font-size: 22px; }
+      h1 { font-size: 19px; font-weight: 600; margin: 0; }
+      .sub { color: var(--muted); font-size: 13px; margin: 1px 0 0; }
+      .live { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 500; color: var(--accent-ink); background: var(--accent-bg); padding: 5px 11px; border-radius: 999px; }
+      .live .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); animation: pulse 1.5s infinite; }
+      @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: .35; } }
+      .ledger { display: flex; align-items: center; gap: 14px; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 13px 16px; margin: 18px 0; flex-wrap: wrap; }
+      .ledger .cell { display: flex; align-items: center; gap: 9px; }
+      .ledger .k { font-size: 11px; color: var(--muted); }
+      .ledger .v { font-size: 22px; font-weight: 600; font-variant-numeric: tabular-nums; }
+      .ledger .sep { width: 1px; height: 30px; background: var(--line); }
+      .note { flex: 1; min-width: 160px; font-size: 13px; color: var(--muted); }
+      .stage { min-height: 320px; }
+      .beat { display: none; }
+      .beat.on { display: block; animation: fade .45s ease both; }
+      @keyframes fade { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+      .g2 { display: grid; grid-template-columns: 220px 1fr; gap: 26px; align-items: center; }
+      @media (max-width: 600px) { .g2 { grid-template-columns: 1fr; } }
+      .eyebrow { font-size: 11px; letter-spacing: .06em; color: var(--muted); text-transform: uppercase; }
+      h2 { font-size: 20px; font-weight: 600; margin: 5px 0 9px; }
+      .beat p { margin: 0 0 14px; color: var(--muted); font-size: 15px; }
+      .phone { width: 220px; margin: 0 auto; background: var(--surface); border: 1px solid var(--line); border-radius: 28px; padding: 9px; }
+      .screen { background: var(--tile); border-radius: 20px; padding: 15px; min-height: 290px; display: flex; flex-direction: column; }
+      .chip { display: inline-flex; align-items: center; gap: 7px; font-size: 13px; padding: 6px 11px; border-radius: 999px; background: var(--tile); color: var(--muted); }
+      .pill { display: inline-block; font-size: 13px; font-weight: 500; padding: 4px 10px; border-radius: 8px; }
+      .p-accent { background: var(--accent-bg); color: var(--accent-ink); }
+      .p-blue { background: var(--blue-bg); color: var(--blue-ink); }
+      .p-amber { background: var(--amber-bg); color: var(--amber); }
+      .stat { background: var(--tile); border-radius: 12px; padding: 13px 15px; display: inline-block; }
+      .seats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 7px; }
+      .seat { aspect-ratio: 1; border-radius: 8px; background: var(--surface); border: 1px solid var(--line); display: flex; align-items: center; justify-content: center; color: var(--muted); font-size: 15px; transition: all .4s; }
+      .seat.full { background: var(--tile); color: var(--muted); }
+      .seat.me { background: var(--accent-bg); border-color: var(--accent); color: var(--accent-ink); }
+      .apistat { font-family: var(--mono); font-size: 11.5px; color: var(--muted); margin-top: 12px; min-height: 16px; }
+      .apistat.ok { color: var(--accent-ink); } .apistat.err { color: var(--red); }
+      .controls { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 20px; border-top: 1px solid var(--line); padding-top: 15px; }
+      .dots { display: flex; gap: 6px; }
+      .dot2 { width: 8px; height: 8px; border-radius: 999px; background: var(--line); border: none; padding: 0; cursor: pointer; transition: width .25s, background .25s; }
+      .dot2.on { background: var(--accent); width: 22px; }
+      button.b { font-family: var(--sans); font-size: 14px; font-weight: 500; cursor: pointer; border-radius: var(--radius); border: 1px solid var(--line); background: var(--surface); color: var(--ink); padding: 8px 15px; display: inline-flex; align-items: center; gap: 6px; }
+      button.b:hover { border-color: var(--accent); }
+      button.b.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+      button.b:disabled { opacity: .5; cursor: default; }
+      .two { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+      .card { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 15px; }
+      .kpis { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 12px; }
+      .lead { font-size: 13px; line-height: 1.9; color: var(--muted); }
+      code { font-family: var(--mono); font-size: 12px; }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <div class="top">
+        <div class="brand">
+          <div class="logo">◐</div>
+          <div>
+            <h1>Trotxi — live demo</h1>
+            <p class="sub">Accra commuting, on subscription</p>
+          </div>
+        </div>
+        <span class="live"><span class="dot"></span>live API</span>
+      </div>
+
+      <div class="ledger">
+        <div class="cell"><div><div class="k">Rides left</div><div class="v" id="rides">0</div></div></div>
+        <div class="sep"></div>
+        <div class="cell"><div><div class="k">Ride credits</div><div class="v" id="credits">GHS 0.00</div></div></div>
+        <div class="sep"></div>
+        <div class="note" id="note">Every number below is returned live by the Trotxi API.</div>
+      </div>
+
+      <div class="stage" id="stage"></div>
+
+      <div class="controls">
+        <div class="dots" id="dots"></div>
+        <div style="display:flex;gap:8px;">
+          <button class="b" id="back">Back</button>
+          <button class="b" id="play">Play</button>
+          <button class="b primary" id="next">Next</button>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      const $ = (s) => document.querySelector(s);
+      const money = (pesewas) => 'GHS ' + (pesewas / 100).toFixed(2);
+
+      const BEATS = [
+        { key: 'intro', eyebrow: 'the problem', h: 'The daily commute is a gamble',
+          body: 'Accra runs on 1.5M+ trotro trips a day — cash only, no guaranteed seat, unpredictable for riders and operators. Trotxi turns the seat into a membership. Press play to run the real loop.',
+          visual: () => '<div style="text-align:center"><div style="width:150px;height:150px;margin:auto;border-radius:20px;background:var(--blue-bg);display:flex;align-items:center;justify-content:center;font-size:60px;color:var(--blue-ink)">◍</div></div>' },
+        { key: 'subscribe', call: 'subscribe', eyebrow: 'step 1 — subscribe', h: 'A membership, not a fare',
+          body: 'Ama pays a monthly fee. The API activates her subscription and allocates a ride entitlement — a real balance, live above.',
+          visual: () => phone('<div class="k" style="font-size:12px;color:var(--muted);margin-bottom:10px">Circle ⇄ Madina · monthly</div><div style="background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px"><div style="font-size:22px;font-weight:600">GHS 200</div><div style="font-size:12px;color:var(--muted)">44 guaranteed rides</div></div><div style="flex:1"></div><div style="margin-top:12px;text-align:center;background:var(--accent);color:#fff;padding:11px;border-radius:10px;font-size:14px;font-weight:500">Pay with mobile money</div>') },
+        { key: 'confirm', call: 'confirm', eyebrow: 'step 2 — confirm', h: 'One tap the evening before',
+          body: 'Trotxi asks who is travelling. A tap holds the seat and the API issues a real daily boarding PIN — shown here, straight from the response.',
+          visual: (d) => phone('<div style="font-size:12px;color:var(--muted);margin-bottom:10px">Trotxi · now</div><div style="background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:13px"><div style="font-weight:500;font-size:14px">Travelling tomorrow morning?</div><div style="font-size:12px;color:var(--muted);margin-top:3px">Tap to hold your seat.</div></div><div style="display:flex;gap:8px;margin-top:12px"><div style="flex:1;text-align:center;padding:10px;border-radius:10px;background:var(--accent-bg);color:var(--accent-ink);font-size:13px;font-weight:500">Yes</div><div style="flex:1;text-align:center;padding:10px;border-radius:10px;background:var(--surface);border:1px solid var(--line);color:var(--muted);font-size:13px">No</div></div><div style="flex:1"></div><div style="margin-top:12px;text-align:center;font-size:12px;color:var(--muted)">boarding PIN <strong id="pin" style="color:var(--ink);font-size:15px">' + (d && d.pin ? d.pin : '––––') + '</strong></div>') },
+        { key: 'board', call: 'board', eyebrow: 'step 3 — board', h: 'QR or PIN, one ride used',
+          body: 'The driver verifies Ama and the API deducts one ride from the ledger — idempotent, so she is never double-charged. Watch the counter above tick down for real.',
+          visual: () => '<div class="card"><div style="font-size:12px;color:var(--muted);margin-bottom:10px">Trip 7:10 · Madina</div><div class="seats" id="seats"></div></div>' },
+        { key: 'noshow', call: 'noshow', eyebrow: 'step 4 — every outcome, fairly', h: 'The model handles real life',
+          body: 'Confirm-then-miss is a no-show — still counted, because a seat was held. Declines are resold to standby riders. The API just deducted a real no-show above.',
+          visual: () => '<div style="display:flex;flex-direction:column;gap:8px">' + dayRow('Mon', 'Boarded', 'p-accent') + dayRow('Tue', 'Declined → standby', 'p-blue') + dayRow('Wed', 'No-show', 'p-amber') + '</div>' },
+        { key: 'convert', call: 'convert', eyebrow: 'step 5 — month-end', h: 'Unused rides become credit',
+          body: 'At period end the API converts her remaining rides into Ride Credits toward renewal. Value is never lost — the credit above is the real converted amount.',
+          visual: (d) => '<div style="text-align:center"><div style="display:inline-flex;align-items:center;gap:14px"><div class="stat" style="text-align:center"><div style="font-size:12px;color:var(--muted)">converted</div><div style="font-size:26px;font-weight:600" id="conv">' + (d && d.converted != null ? d.converted : '–') + '</div><div style="font-size:11px;color:var(--muted)">rides</div></div><div style="font-size:22px;color:var(--muted)">→</div><div class="stat" style="text-align:center;background:var(--accent-bg)"><div style="font-size:12px;color:var(--accent-ink)">credit</div><div style="font-size:26px;font-weight:600;color:var(--accent-ink)" id="cred2">' + (d ? money(d.credits) : 'GHS 0') + '</div></div></div></div>' },
+        { key: 'close', eyebrow: 'the model', h: 'Predictable, and fair to both sides',
+          body: 'One subscription loop — proven live above against the real API.',
+          visual: () => '<div class="two"><div class="card"><div style="font-weight:600;font-size:14px;margin-bottom:8px;color:var(--blue-ink)">For the rider</div><div class="lead">Guaranteed seat every morning<br>One tap to confirm, one PIN to board<br>Unused rides return as credit</div></div><div class="card"><div style="font-weight:600;font-size:14px;margin-bottom:8px;color:var(--accent-ink)">For the operator</div><div class="lead">Predictable recurring revenue<br>Declined seats resold to standby<br>Demand forecast from confirmations</div></div></div><div class="kpis"><div class="stat"><div style="font-size:12px;color:var(--muted)">Seat use</div><div style="font-size:18px;font-weight:600">62% → 89%</div></div><div class="stat"><div style="font-size:12px;color:var(--muted)">Revenue</div><div style="font-size:18px;font-weight:600">Recurring</div></div><div class="stat"><div style="font-size:12px;color:var(--muted)">Value kept</div><div style="font-size:18px;font-weight:600">100%</div></div></div>' },
+      ];
+
+      function phone(inner) { return '<div class="phone"><div class="screen">' + inner + '</div></div>'; }
+      function dayRow(d, label, cls) { return '<div style="display:flex;align-items:center;gap:10px;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:9px 11px;font-size:13px"><span style="width:34px;color:var(--muted)">' + d + '</span><span class="pill ' + cls + '">' + label + '</span></div>'; }
+
+      let i = 0, timer = null, curRides = 0, curCredits = 0;
+      const stage = $('#stage'), dots = $('#dots');
+
+      BEATS.forEach((b, k) => {
+        const sec = document.createElement('section');
+        sec.className = 'beat' + (k === 0 ? ' on' : ''); sec.id = 'beat' + k;
+        stage.appendChild(sec);
+        const dot = document.createElement('button');
+        dot.className = 'dot2' + (k === 0 ? ' on' : '');
+        dot.onclick = () => { stopPlay(); go(k); };
+        dots.appendChild(dot);
+      });
+
+      function tween(el, from, to, fmt) {
+        const t0 = performance.now(), d = 650;
+        (function f(now) { const p = Math.min(1, (now - t0) / d); const v = from + (to - from) * p; el.textContent = fmt(v); if (p < 1) requestAnimationFrame(f); })(t0);
+      }
+
+      function paint(k, data) {
+        const b = BEATS[k], sec = $('#beat' + k);
+        sec.innerHTML = '<div class="g2"><div>' + b.visual(data) + '</div><div><div class="eyebrow">' + b.eyebrow + '</div><h2>' + b.h + '</h2><p>' + b.body + '</p>' + (b.call ? '<div class="apistat" id="api' + k + '"></div>' : '') + '</div></div>';
+        if (b.key === 'close') sec.innerHTML = '<div class="eyebrow">' + b.eyebrow + '</div><h2>' + b.h + '</h2><p>' + b.body + '</p>' + b.visual();
+        if (k >= 3) { const sw = sec.querySelector('#seats'); if (sw) for (let s = 0; s < 12; s++) { const d = document.createElement('div'); d.className = 'seat ' + (s < 7 ? 'full' : (s === 7 ? 'me' : '')); d.textContent = s === 7 ? '★' : '·'; sw.appendChild(d); } }
+      }
+
+      async function go(k) {
+        i = (k + BEATS.length) % BEATS.length;
+        BEATS.forEach((_, x) => { $('#beat' + x).classList.toggle('on', x === i); dots.children[x].classList.toggle('on', x === i); });
+        $('#next').innerHTML = i === BEATS.length - 1 ? 'Restart' : 'Next';
+        const b = BEATS[i];
+        paint(i, {});
+        if (b.call) {
+          const st = $('#api' + i); if (st) { st.className = 'apistat'; st.textContent = 'calling the API…'; }
+          const t0 = performance.now();
+          try {
+            const res = await fetch('/demo/' + b.call, { method: 'POST' });
+            const data = await res.json();
+            const ms = Math.round(performance.now() - t0);
+            if (!data.ok) throw new Error(data.error || 'step failed');
+            paint(i, data);
+            tween($('#rides'), curRides, data.rides, (v) => Math.round(v));
+            tween($('#credits'), curCredits, data.credits, (v) => money(v));
+            curRides = data.rides; curCredits = data.credits;
+            $('#note').textContent = noteFor(b.key, data);
+            const st2 = $('#api' + i); if (st2) { st2.className = 'apistat ok'; st2.textContent = 'live · POST /demo/' + b.call + ' · ' + res.status + ' · ' + ms + ' ms'; }
+          } catch (e) {
+            const st2 = $('#api' + i); if (st2) { st2.className = 'apistat err'; st2.textContent = 'API error: ' + (e && e.message ? e.message : e) + ' — is the demo server running?'; }
+          }
+        }
+      }
+
+      function noteFor(key, d) {
+        if (key === 'subscribe') return 'Subscription activated — ' + d.rides + ' rides allocated by the API.';
+        if (key === 'confirm') return 'Seat reserved — PIN ' + d.pin + ' issued for boarding.';
+        if (key === 'board') return 'Boarded and verified — one ride deducted.';
+        if (key === 'noshow') return 'No-show resolved — a held-but-unused seat was deducted.';
+        if (key === 'convert') return 'Month-end — ' + d.converted + ' unused rides converted to ' + money(d.credits) + ' credit.';
+        return 'Every number is returned live by the Trotxi API.';
+      }
+
+      function stopPlay() { if (timer) { clearInterval(timer); timer = null; $('#play').textContent = 'Play'; } }
+      $('#next').onclick = () => { stopPlay(); go(i + 1); };
+      $('#back').onclick = () => { stopPlay(); go(i - 1); };
+      $('#play').onclick = () => {
+        if (timer) { stopPlay(); return; }
+        $('#play').textContent = 'Pause';
+        timer = setInterval(() => { if (i === BEATS.length - 1) { stopPlay(); return; } go(i + 1); }, 3200);
+      };
+      document.addEventListener('keydown', (e) => { if (e.key === 'ArrowRight') { stopPlay(); go(i + 1); } else if (e.key === 'ArrowLeft') { stopPlay(); go(i - 1); } });
+
+      (async () => {
+        try { await fetch('/demo/reset', { method: 'POST' }); } catch (e) {}
+        paint(0, {});
+      })();
+    </script>
+  </body>
+</html>

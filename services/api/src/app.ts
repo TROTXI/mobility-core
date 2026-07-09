@@ -1,3 +1,4 @@
+import fastifyCors from '@fastify/cors';
 import fastifySwagger from '@fastify/swagger';
 import fastifySwaggerUi from '@fastify/swagger-ui';
 import Fastify, { type FastifyInstance } from 'fastify';
@@ -130,6 +131,8 @@ export interface AppDeps {
   paymentsService?: PaymentsService;
   /** Rate-limit thresholds (from env). Defaults applied when unset. */
   rateLimit?: RateLimitConfig;
+  /** CORS origin allowlist (from CORS_ORIGINS). Empty/unset -> reflect any origin. */
+  corsOrigins?: string[];
   /** Prometheus /metrics exposure. Defaults to unprotected (dev/tests). */
   metrics?: Partial<MetricsOptions>;
   logger?: boolean;
@@ -145,6 +148,17 @@ export interface AppDeps {
  */
 export async function buildApp(deps: AppDeps = {}): Promise<FastifyInstance> {
   const app = Fastify({ logger: deps.logger ?? false });
+
+  // CORS for browser clients (the live demo page, a future web dashboard).
+  // Registered first so preflight is handled for every route. A specific
+  // allowlist when configured; otherwise reflect any origin — safe because auth
+  // is a bearer token, not cookies, so a cross-site call can't ride ambient
+  // credentials. `credentials: false` for the same reason.
+  await app.register(fastifyCors, {
+    origin: deps.corsOrigins && deps.corsOrigins.length > 0 ? deps.corsOrigins : true,
+    credentials: false,
+    methods: ['GET', 'POST', 'PATCH', 'PUT', 'DELETE', 'OPTIONS'],
+  });
 
   // zod is the single source for validation AND the OpenAPI spec (ADR-0008):
   // route schemas are zod, compiled here and rendered into the docs by

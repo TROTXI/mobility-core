@@ -32,6 +32,11 @@ const envSchema = z
     R2_ACCESS_KEY_ID: z.string().optional(),
     R2_SECRET_ACCESS_KEY: z.string().optional(),
     R2_BUCKET: z.string().optional(),
+    // CORS allowlist for browser clients (comma-separated origins), e.g. the
+    // live demo page or a web dashboard. Unset -> reflect any origin, which is
+    // safe here because auth is a bearer token (no cookies/ambient credentials
+    // for a cross-site request to ride on). Set to lock down to known origins.
+    CORS_ORIGINS: z.string().optional(),
     // Rate limiting (fixed window). Tunable without a code change.
     RATE_LIMIT_MAX: z.coerce.number().int().positive().default(100),
     RATE_LIMIT_WINDOW_SECONDS: z.coerce.number().int().positive().default(60),

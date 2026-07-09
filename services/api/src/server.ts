@@ -299,6 +299,11 @@ async function main(): Promise<void> {
     windowSeconds: env.RATE_LIMIT_WINDOW_SECONDS,
   };
 
+  // CORS allowlist (comma-separated origins). Unset -> reflect any origin.
+  const corsOrigins = env.CORS_ORIGINS?.split(',')
+    .map((o) => o.trim())
+    .filter(Boolean);
+
   const app = await buildApp({
     users,
     subscriptions,
@@ -324,6 +329,7 @@ async function main(): Promise<void> {
     isReady,
     auth,
     rateLimit,
+    corsOrigins,
     // /metrics: protected by a token when set; disabled in prod when unset.
     metrics: { token: env.METRICS_TOKEN, allowUnprotected: env.NODE_ENV !== 'production' },
     logger: true,
