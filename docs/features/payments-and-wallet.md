@@ -12,9 +12,9 @@ The old wallet/top-up flow has been **removed from the code** (clean-slate
 sweep): `POST /payments/topup`, `GET /me/balance`, and the entire ledger module
 are deleted. What remains — and what epic **E1** builds on — is
 `POST /payments/subscribe` + the Paystack webhook that activates a membership.
-The `token_ledger` table stays in migration history (dropped by a later
-migration); the **append-only-ledger pattern** it established returns in E1 as
-the entitlement and credit ledgers.
+The `token_ledger` table stays in migration history and is **dropped by
+migration `021`** (E7, #106); the **append-only-ledger pattern** it established
+returns in E1 as the entitlement and credit ledgers.
 
 ---
 
@@ -162,7 +162,7 @@ services/api/src/modules/payments/
   payments.schema.ts
 services/api/src/db/migrations/
   007_payments.sql · 008_payment_purpose.sql
-  # 006_token_ledger.sql retained (history); table dropped by a later migration
+  # 006_token_ledger.sql retained (history); table dropped by 021_drop_token_ledger.sql (E7)
 ```
 
 ## Related

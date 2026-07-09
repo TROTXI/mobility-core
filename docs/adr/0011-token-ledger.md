@@ -1,6 +1,12 @@
 # ADR-0011 — Append-only token ledger (the GHS wallet)
 
-**Status:** accepted · **Date:** 2026-06-27
+**Status:** superseded by [ADR-0014](0014-hybrid-subscription-model.md) · **Date:** 2026-06-27
+
+> **Superseded (2026-07-08).** The prepaid GHS wallet this ADR introduced was
+> dropped in the Hybrid Subscription Model pivot (ADR-0014): the `token_ledger`
+> code was removed (#99) and the table dropped by migration `021` (E7, #106).
+> The **append-only-ledger pattern** decided here lives on, reused by E1's
+> entitlement and credit ledgers — this ADR is retained for that rationale.
 
 ## Context
 
