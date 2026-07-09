@@ -1,9 +1,13 @@
 # Trotxi live demo
 
 An animated investor walkthrough of the Hybrid Subscription Model loop —
-**subscribe → confirm → board → no-show → month-end credit** — where every number
-on screen (the ride entitlement, the daily PIN, each deduction, the converted
-credit) is returned **live by the real Trotxi API**, not scripted.
+**subscribe → confirm → board → no-show → month-end credit** — for a real fleet
+of **40 members** on the Circle ⇄ Madina corridor. It's a **two-sided** view:
+Ama's phone journey on one side, and a live **operator console** on the other
+(members, monthly revenue, seats confirmed, boarded, occupancy, credit liability).
+Every number — the ride entitlement, the daily PIN, each deduction, the operator
+economics, the converted credit — is returned **live by the real Trotxi API**,
+not scripted.
 
 ## Run it
 
