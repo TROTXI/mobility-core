@@ -262,6 +262,17 @@
       }
       .cname {
         flex: 1;
+        min-width: 0;
+      }
+      .cdesc {
+        display: block;
+        font-size: 11px;
+        color: var(--muted);
+        line-height: 1.35;
+        margin-top: 1px;
+      }
+      .cdesc::first-line {
+        font-family: var(--sans);
       }
       .who {
         font-size: 11px;
@@ -554,6 +565,10 @@
           '</span>' +
           '<span class="cname">' +
           esc(r.name) +
+          '<span class="cdesc">' +
+          esc(r.endpoint || '') +
+          (r.doc ? ' — ' + esc(r.doc) : '') +
+          '</span>' +
           '</span>' +
           (r.as ? '<span class="who">' + esc(r.as) + '</span>' : '') +
           '<span class="st ' +

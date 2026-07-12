@@ -65,6 +65,10 @@ interface CaseResult {
   name: string;
   method: string;
   path: string;
+  /** Normalised endpoint pattern, e.g. GET /trips/:id/position. */
+  endpoint: string;
+  /** One-line description of what this endpoint does (for the dashboard). */
+  doc: string;
   requestBody?: unknown;
   as?: string;
   status: number;
@@ -72,6 +76,69 @@ interface CaseResult {
   expected: string;
   pass: boolean;
   response: unknown;
+}
+
+/** What each endpoint is for — shown under every case on the dashboard. */
+const ENDPOINT_DOCS: Record<string, string> = {
+  'GET /version': 'Build metadata: service name, version and deployed commit.',
+  'GET /healthz': 'Liveness probe — is the process up. Used by Render health checks.',
+  'GET /readyz': 'Readiness probe — pings Postgres and the KV store before traffic is routed.',
+  'GET /flags': 'Public feature flags + minimum supported app version (drives force-update).',
+  'GET /docs/json':
+    'The machine-readable OpenAPI 3 contract — powers Swagger UI and client codegen.',
+  'POST /auth/google':
+    'Social sign-in: verifies a Google ID token, upserts the user, returns access + refresh tokens.',
+  'POST /auth/refresh':
+    'Rotates the refresh token and issues a fresh access token — role changes take effect here.',
+  'GET /me': "The authenticated user's own profile (id, name, role).",
+  'GET /admin/routes': 'Admin: list all corridors (role admin required).',
+  'PATCH /admin/users/:id/role':
+    'Admin: grant a role — turns a signed-in account into a driver or admin.',
+  'POST /admin/routes': 'Admin: create a corridor (route).',
+  'POST /admin/stops': 'Admin: create a geo-located stop (PostGIS point in production).',
+  'POST /admin/routes/:id/stops':
+    'Admin: attach a stop to a route at a boarding-order position (seq).',
+  'POST /admin/vehicles': 'Admin: register a vehicle — capacity feeds occupancy planning.',
+  'POST /admin/drivers': 'Admin: register a driver, linked to their signed-in user account.',
+  'POST /admin/trips': 'Admin: schedule a run of a route; the time decides morning vs evening.',
+  'PUT /admin/trips/:id/assignment':
+    'Admin: assign driver + vehicle — this is what authorises GPS reporting and manifest access.',
+  'GET /routes/:id': 'Public route detail with stops in boarding order — browsable before sign-in.',
+  'GET /trips': 'Rider-facing trip list, filterable by route.',
+  'GET /trips/:id': 'Trip detail (status, schedule, route).',
+  'POST /payments/subscribe':
+    'Start a Paystack checkout for the membership plan; returns the hosted checkout URL.',
+  'POST /webhooks/paystack':
+    'Paystack calls back here on payment events — HMAC-verified; activates the subscription and allocates rides.',
+  'GET /me/rides': "The rider's ledger balances: remaining rides + Ride Credits (pesewas).",
+  'POST /admin/ask-dispatch':
+    'The daily "travelling?" fan-out: seeds a pending reservation + push for every subscriber (cron-driven).',
+  'POST /me/reservations':
+    'Rider confirms or declines a leg; confirming issues the daily 4-digit boarding PIN.',
+  'POST /admin/resolve-defaults': 'Cutoff sweep: riders who never replied default to travelling.',
+  'GET /me/reservations': "The rider's reservations, newest travel day first.",
+  'GET /me/pass':
+    'Issues the rotating, single-use QR boarding pass (60 s TTL, signed, one scan only).',
+  'POST /boarding/scan':
+    "Driver verifies a rider's QR pass — boards the reservation and debits one ride.",
+  'GET /boarding/manifest':
+    "The trip's confirmed riders with photos — the assigned driver's checklist.",
+  'POST /boarding/verify-pin':
+    'Boards a rider by their daily PIN against the manifest — no camera needed.',
+  'POST /admin/resolve-no-shows':
+    'Cutoff sweep: confirmed-but-absent seats are debited (the seat was held).',
+  'POST /admin/convert-credits':
+    'Month-end conversion: every unused ride becomes Ride Credits toward renewal.',
+  'POST /trips/:id/position': 'Assigned driver publishes a GPS fix (hot KV cache + history).',
+  'GET /trips/:id/position': 'Latest live fix + deterministic ETA to each upcoming stop.',
+};
+
+const UUID_RE = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi;
+
+/** Normalise a concrete path to its documented pattern (uuids → :id, no query). */
+function endpointPattern(method: string, path: string): string {
+  const clean = (path.split('?')[0] ?? path).replace(UUID_RE, ':id').replace('/not-a-uuid', '/:id');
+  return `${method} ${clean}`;
 }
 
 /** Declarative case. Lazy thunks resolve at run time, after earlier cases. */
@@ -223,10 +290,13 @@ async function runCase(c: Ctx, spec: CaseSpec): Promise<CaseResult> {
   }
   const pass = spec.check(out.status, out.json);
   if (pass && spec.after) spec.after(out.json);
+  const pattern = endpointPattern(spec.method, path);
   return {
     name: spec.name,
     method: spec.method,
     path: attempts > 1 ? `${path} (×${usedAttempts})` : path,
+    endpoint: pattern,
+    doc: ENDPOINT_DOCS[pattern] ?? '',
     requestBody: shownBody,
     as: spec.as,
     status: out.status,
