@@ -16,7 +16,8 @@
     "test:coverage": "vitest run --coverage",
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
-    "migrate": "tsx src/db/migrate.ts"
+    "migrate": "tsx src/db/migrate.ts",
+    "demo:endpoints": "tsx scripts/endpoint-demo.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1079.0",

@@ -1,0 +1,677 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Trotxi — endpoint test console</title>
+    <style>
+      :root {
+        --bg: #f6f7f5;
+        --surface: #ffffff;
+        --tile: #f0f1ee;
+        --ink: #16181d;
+        --muted: #6b6f76;
+        --line: #e4e6e2;
+        --green: #0f9d76;
+        --green-ink: #0a5f48;
+        --green-bg: #e4f5ee;
+        --red: #c0392b;
+        --red-bg: #fdecea;
+        --blue: #2a78d6;
+        --blue-bg: #e6f1fb;
+        --blue-ink: #185fa5;
+        --amber: #b9770f;
+        --amber-bg: #faeeda;
+        --mono: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, monospace;
+        --sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: #14161a;
+          --surface: #1c1f24;
+          --tile: #22252b;
+          --ink: #f0f1f3;
+          --muted: #9aa0a8;
+          --line: #2b2f36;
+          --green: #2fbd93;
+          --green-ink: #8fe3c9;
+          --green-bg: #123a2e;
+          --red: #e07070;
+          --red-bg: #3a1a1a;
+          --blue: #6aa8f0;
+          --blue-bg: #12233a;
+          --blue-ink: #9cc6f5;
+          --amber: #e0a545;
+          --amber-bg: #3a2e12;
+        }
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--ink);
+        font-family: var(--sans);
+        line-height: 1.5;
+      }
+      .wrap {
+        max-width: 900px;
+        margin: 0 auto;
+        padding: 24px 20px 80px;
+      }
+      .top {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 14px;
+        flex-wrap: wrap;
+      }
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 11px;
+      }
+      .logo {
+        width: 40px;
+        height: 40px;
+        border-radius: 11px;
+        background: var(--green-bg);
+        color: var(--green-ink);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 22px;
+      }
+      h1 {
+        font-size: 19px;
+        font-weight: 600;
+        margin: 0;
+      }
+      .sub {
+        color: var(--muted);
+        font-size: 13px;
+        margin: 1px 0 0;
+      }
+      .actions {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        flex-wrap: wrap;
+      }
+      button.b {
+        font-family: var(--sans);
+        font-size: 14px;
+        font-weight: 500;
+        cursor: pointer;
+        border-radius: 10px;
+        border: 1px solid var(--line);
+        background: var(--surface);
+        color: var(--ink);
+        padding: 8px 15px;
+      }
+      button.b:hover {
+        border-color: var(--green);
+      }
+      button.b.primary {
+        background: var(--green);
+        color: #fff;
+        border-color: var(--green);
+      }
+      button.b:disabled {
+        opacity: 0.5;
+        cursor: default;
+      }
+      a.swag {
+        font-size: 13px;
+        color: var(--blue-ink);
+        text-decoration: none;
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        padding: 8px 13px;
+        background: var(--surface);
+      }
+      .totals {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 10px;
+        margin: 18px 0;
+      }
+      .tot {
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        padding: 12px 14px;
+      }
+      .tot .k {
+        font-size: 11px;
+        color: var(--muted);
+      }
+      .tot .v {
+        font-size: 22px;
+        font-weight: 600;
+        font-variant-numeric: tabular-nums;
+      }
+      .tot .v.ok {
+        color: var(--green-ink);
+      }
+      .tot .v.bad {
+        color: var(--red);
+      }
+      .bar {
+        height: 6px;
+        border-radius: 999px;
+        background: var(--line);
+        overflow: hidden;
+        margin: 0 0 20px;
+      }
+      .bar > i {
+        display: block;
+        height: 100%;
+        width: 0;
+        background: var(--green);
+        transition: width 0.4s ease;
+      }
+      .suite {
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        margin-bottom: 14px;
+        overflow: hidden;
+      }
+      .shead {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 12px 16px;
+      }
+      .shead .num {
+        width: 24px;
+        height: 24px;
+        border-radius: 7px;
+        background: var(--tile);
+        color: var(--muted);
+        font-size: 12px;
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .shead .t {
+        font-weight: 600;
+        font-size: 14.5px;
+        flex: 1;
+      }
+      .shead .stat {
+        font-size: 12.5px;
+        color: var(--muted);
+        font-variant-numeric: tabular-nums;
+      }
+      .shead .stat.ok {
+        color: var(--green-ink);
+      }
+      .shead .stat.bad {
+        color: var(--red);
+      }
+      .shead button {
+        font-size: 12.5px;
+        padding: 5px 11px;
+      }
+      .case {
+        border-top: 1px solid var(--line);
+      }
+      .crow {
+        display: flex;
+        align-items: center;
+        gap: 9px;
+        padding: 8px 16px;
+        cursor: pointer;
+        font-size: 13px;
+      }
+      .crow:hover {
+        background: var(--tile);
+      }
+      .m {
+        font-family: var(--mono);
+        font-size: 10.5px;
+        font-weight: 600;
+        padding: 2px 7px;
+        border-radius: 5px;
+        background: var(--blue-bg);
+        color: var(--blue-ink);
+        min-width: 44px;
+        text-align: center;
+      }
+      .m.POST {
+        background: var(--green-bg);
+        color: var(--green-ink);
+      }
+      .m.PATCH,
+      .m.PUT {
+        background: var(--amber-bg);
+        color: var(--amber);
+      }
+      .path {
+        font-family: var(--mono);
+        font-size: 11.5px;
+        color: var(--muted);
+        max-width: 250px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .cname {
+        flex: 1;
+        min-width: 0;
+      }
+      .cdesc {
+        display: block;
+        font-size: 11px;
+        color: var(--muted);
+        line-height: 1.35;
+        margin-top: 1px;
+      }
+      .cdesc::first-line {
+        font-family: var(--sans);
+      }
+      .who {
+        font-size: 11px;
+        color: var(--muted);
+        background: var(--tile);
+        padding: 2px 8px;
+        border-radius: 999px;
+        white-space: nowrap;
+      }
+      .st {
+        font-family: var(--mono);
+        font-size: 11.5px;
+        font-weight: 600;
+        min-width: 34px;
+        text-align: right;
+      }
+      .st.ok {
+        color: var(--green-ink);
+      }
+      .st.bad {
+        color: var(--red);
+      }
+      .ms {
+        font-family: var(--mono);
+        font-size: 10.5px;
+        color: var(--muted);
+        min-width: 52px;
+        text-align: right;
+      }
+      .verdict {
+        width: 20px;
+        text-align: center;
+        font-weight: 700;
+      }
+      .verdict.ok {
+        color: var(--green);
+      }
+      .verdict.bad {
+        color: var(--red);
+      }
+      .detail {
+        display: none;
+        padding: 4px 16px 14px 16px;
+        background: var(--tile);
+        font-size: 12.5px;
+      }
+      .detail.open {
+        display: block;
+      }
+      .detail .lbl {
+        font-size: 10.5px;
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
+        color: var(--muted);
+        margin: 10px 0 3px;
+      }
+      .detail pre {
+        margin: 0;
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        padding: 9px 11px;
+        font-family: var(--mono);
+        font-size: 11px;
+        overflow-x: auto;
+        white-space: pre-wrap;
+        word-break: break-word;
+        max-height: 260px;
+        overflow-y: auto;
+      }
+      .tokens {
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        padding: 14px 16px;
+        margin-bottom: 14px;
+        display: none;
+      }
+      .tokens.open {
+        display: block;
+      }
+      .tokens .row {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+        margin: 6px 0;
+        font-size: 12.5px;
+      }
+      .tokens .role {
+        min-width: 64px;
+        font-weight: 600;
+      }
+      .tokens code {
+        font-family: var(--mono);
+        font-size: 10.5px;
+        color: var(--muted);
+        flex: 1;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .tokens button {
+        font-size: 11px;
+        padding: 3px 9px;
+      }
+      .foot {
+        font-size: 12px;
+        color: var(--muted);
+        margin-top: 8px;
+      }
+      .spin {
+        display: inline-block;
+        width: 12px;
+        height: 12px;
+        border: 2px solid var(--line);
+        border-top-color: var(--green);
+        border-radius: 50%;
+        animation: sp 0.7s linear infinite;
+        vertical-align: -2px;
+      }
+      @keyframes sp {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <div class="top">
+        <div class="brand">
+          <div class="logo">◐</div>
+          <div>
+            <h1>Trotxi API — endpoint test console</h1>
+            <p class="sub" id="sub">Live test cases against the real API, suite by suite</p>
+          </div>
+        </div>
+        <div class="actions">
+          <a class="swag" id="swag" href="http://localhost:3001/docs" target="_blank"
+            >Swagger UI ↗</a
+          >
+          <button class="b" id="tokbtn">Tokens</button>
+          <button class="b" id="reset">Reset state</button>
+          <button class="b primary" id="runall">Run all suites</button>
+        </div>
+      </div>
+
+      <div class="totals">
+        <div class="tot">
+          <div class="k">Cases run</div>
+          <div class="v" id="t_run">0</div>
+        </div>
+        <div class="tot">
+          <div class="k">Passed</div>
+          <div class="v ok" id="t_pass">0</div>
+        </div>
+        <div class="tot">
+          <div class="k">Failed</div>
+          <div class="v" id="t_fail">0</div>
+        </div>
+        <div class="tot">
+          <div class="k">Total time</div>
+          <div class="v" id="t_ms">0 ms</div>
+        </div>
+      </div>
+      <div class="bar"><i id="prog"></i></div>
+
+      <div class="tokens" id="tokens">
+        <div style="font-weight: 600; font-size: 13.5px; margin-bottom: 4px">
+          Bearer tokens (dev-signed) — paste into Swagger's Authorize box
+        </div>
+        <div id="tokrows"></div>
+        <div class="foot">
+          The API is listening for real on <code id="apihost">localhost:3001</code> — every row
+          below is replayable there with curl or Swagger.
+        </div>
+      </div>
+
+      <div id="suites"></div>
+
+      <p class="foot">
+        Every case sends a real request to the real <code>buildApp</code> instance — the same code
+        deployed to staging. State flows forward (sign-in → fleet → subscribe → reserve → board →
+        settle), so run suites top-to-bottom; <em>Reset state</em> starts a fresh in-memory world.
+      </p>
+    </div>
+
+    <script>
+      const $ = (s) => document.querySelector(s);
+      let SUITES = [];
+      let running = false;
+      let totals = { run: 0, pass: 0, fail: 0, ms: 0, planned: 0 };
+
+      function esc(x) {
+        return String(x).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      }
+      function pretty(x) {
+        if (x === undefined || x === null) return '—';
+        try {
+          return typeof x === 'string' ? x : JSON.stringify(x, null, 2);
+        } catch (e) {
+          return String(x);
+        }
+      }
+
+      async function loadInfo() {
+        const r = await fetch('/info');
+        const d = await r.json();
+        SUITES = d.suites;
+        totals.planned = SUITES.reduce((a, s) => a + s.count, 0);
+        $('#sub').textContent =
+          (d.endpointCount ? d.endpointCount + ' documented endpoints · ' : '') +
+          totals.planned +
+          ' test cases across ' +
+          SUITES.length +
+          ' suites';
+        $('#swag').href = 'http://localhost:' + d.apiPort + '/docs';
+        $('#apihost').textContent = 'localhost:' + d.apiPort;
+        renderTokens(d.tokens);
+        renderSuites();
+      }
+
+      function renderTokens(tokens) {
+        const rows = Object.entries(tokens)
+          .filter(([k]) => k !== 'driverStale')
+          .map(
+            ([role, tok]) =>
+              '<div class="row"><span class="role">' +
+              esc(role) +
+              '</span><code>' +
+              esc(tok) +
+              '</code>' +
+              '<button class="b" onclick="navigator.clipboard.writeText(\'' +
+              tok +
+              '\')">copy</button></div>',
+          )
+          .join('');
+        $('#tokrows').innerHTML =
+          rows || '<div class="row">run the auth suite to mint rider/driver tokens</div>';
+      }
+
+      function renderSuites() {
+        $('#suites').innerHTML = SUITES.map(
+          (s, i) =>
+            '<div class="suite" id="suite-' +
+            s.key +
+            '">' +
+            '<div class="shead">' +
+            '<span class="num">' +
+            (i + 1) +
+            '</span>' +
+            '<span class="t">' +
+            esc(s.title) +
+            '</span>' +
+            '<span class="stat" id="stat-' +
+            s.key +
+            '">' +
+            s.count +
+            ' cases</span>' +
+            '<button class="b" onclick="runSuite(\'' +
+            s.key +
+            '\')" id="btn-' +
+            s.key +
+            '">Run</button>' +
+            '</div>' +
+            '<div id="cases-' +
+            s.key +
+            '"></div>' +
+            '</div>',
+        ).join('');
+      }
+
+      function caseRow(r, key, i) {
+        const okCls = r.pass ? 'ok' : 'bad';
+        return (
+          '<div class="case">' +
+          '<div class="crow" onclick="toggle(\'' +
+          key +
+          i +
+          '\')">' +
+          '<span class="verdict ' +
+          okCls +
+          '">' +
+          (r.pass ? '✓' : '✕') +
+          '</span>' +
+          '<span class="m ' +
+          r.method +
+          '">' +
+          r.method +
+          '</span>' +
+          '<span class="cname">' +
+          esc(r.name) +
+          '<span class="cdesc">' +
+          esc(r.endpoint || '') +
+          (r.doc ? ' — ' + esc(r.doc) : '') +
+          '</span>' +
+          '</span>' +
+          (r.as ? '<span class="who">' + esc(r.as) + '</span>' : '') +
+          '<span class="st ' +
+          okCls +
+          '">' +
+          r.status +
+          '</span>' +
+          '<span class="ms">' +
+          r.ms +
+          ' ms</span>' +
+          '</div>' +
+          '<div class="detail" id="d-' +
+          key +
+          i +
+          '">' +
+          '<div class="lbl">request</div><pre>' +
+          r.method +
+          ' ' +
+          esc(r.path) +
+          (r.requestBody !== undefined ? '\n\n' + esc(pretty(r.requestBody)) : '') +
+          '</pre>' +
+          '<div class="lbl">expected</div><pre>' +
+          esc(r.expected) +
+          '</pre>' +
+          '<div class="lbl">actual response · HTTP ' +
+          r.status +
+          '</div><pre>' +
+          esc(pretty(r.response)) +
+          '</pre>' +
+          '</div>' +
+          '</div>'
+        );
+      }
+
+      window.toggle = (id) => {
+        $('#d-' + id).classList.toggle('open');
+      };
+
+      window.runSuite = async (key) => {
+        const btn = $('#btn-' + key);
+        const stat = $('#stat-' + key);
+        btn.disabled = true;
+        stat.innerHTML = '<span class="spin"></span>';
+        try {
+          const res = await fetch('/run/' + key, { method: 'POST' });
+          const d = await res.json();
+          if (!d.ok) throw new Error(d.error);
+          const pass = d.results.filter((r) => r.pass).length;
+          const fail = d.results.length - pass;
+          const ms = d.results.reduce((a, r) => a + r.ms, 0);
+          $('#cases-' + key).innerHTML = d.results.map((r, i) => caseRow(r, key, i)).join('');
+          stat.textContent = pass + '/' + d.results.length + ' passed · ' + Math.round(ms) + ' ms';
+          stat.className = 'stat ' + (fail ? 'bad' : 'ok');
+          totals.run += d.results.length;
+          totals.pass += pass;
+          totals.fail += fail;
+          totals.ms += ms;
+          paintTotals();
+          if (key === 'auth' || key === 'platform') {
+            const inf = await fetch('/info');
+            renderTokens((await inf.json()).tokens);
+          }
+          return fail === 0;
+        } catch (e) {
+          stat.textContent = 'error: ' + e.message;
+          stat.className = 'stat bad';
+          return false;
+        } finally {
+          btn.disabled = false;
+        }
+      };
+
+      function paintTotals() {
+        $('#t_run').textContent = totals.run;
+        $('#t_pass').textContent = totals.pass;
+        $('#t_fail').textContent = totals.fail;
+        $('#t_fail').className = 'v' + (totals.fail ? ' bad' : '');
+        $('#t_ms').textContent = Math.round(totals.ms) + ' ms';
+        $('#prog').style.width = Math.min(100, (totals.run / totals.planned) * 100) + '%';
+      }
+
+      async function resetAll() {
+        await fetch('/reset', { method: 'POST' });
+        totals = { run: 0, pass: 0, fail: 0, ms: 0, planned: totals.planned };
+        paintTotals();
+        await loadInfo();
+      }
+
+      $('#reset').onclick = resetAll;
+      $('#tokbtn').onclick = () => $('#tokens').classList.toggle('open');
+      $('#runall').onclick = async () => {
+        if (running) return;
+        running = true;
+        $('#runall').disabled = true;
+        await resetAll();
+        for (const s of SUITES) {
+          await window.runSuite(s.key);
+        }
+        $('#runall').disabled = false;
+        running = false;
+      };
+
+      loadInfo();
+    </script>
+  </body>
+</html>
