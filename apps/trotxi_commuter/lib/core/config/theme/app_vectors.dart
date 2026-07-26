@@ -4,5 +4,7 @@ class Appvectors {
   static const String imageformat = ".png";
   static const String logo = '${basepath}TrotxiLogo$imageformat';
   static const String splashImage = '${basepath}bus_illustrator$imageformat';
+  static const String googleIconImage = '${basepath}googleIcon$imageformat';
+  static const String appleIconImage = '${basepath}appleIcon$imageformat';
 }
 
