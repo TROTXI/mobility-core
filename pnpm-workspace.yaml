@@ -2,6 +2,18 @@ packages:
   - 'services/*'
   - 'e2e'
 
+# Security overrides: force patched versions of transitive dependencies whose
+# direct parents still pin a vulnerable range. Each entry clears a high-severity
+# advisory that `pnpm audit --prod` fails CI on. All are patch/minor bumps within
+# the same major, so they are drop-in. Remove an entry once the parent's own
+# range has moved past it.
+overrides:
+  brace-expansion: '>=5.0.8' # DoS via unbounded expansion length
+  '@opentelemetry/propagator-jaeger': '>=2.9.0' # DoS in the Jaeger propagator
+  fast-uri: '>=3.1.4' # host confusion via literal/IDN parsing (@fastify/swagger)
+  fast-xml-parser: '>=5.10.1' # DOCTYPE entity-expansion reset (firebase-admin)
+  find-my-way: '>=9.6.1' # HTTP/2 DDoS (fastify router)
+
 # pnpm blocks dependency build scripts by default (supply-chain safety).
 # esbuild (used by tsup + vitest) needs its postinstall to fetch its binary.
 allowBuilds:
