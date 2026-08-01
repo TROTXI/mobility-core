@@ -1,28 +1,26 @@
 # trotxi_api_client.api.SystemApi
 
 ## Load the API package
-
 ```dart
 import 'package:trotxi_api_client/api.dart';
 ```
 
-All URIs are relative to _http://localhost_
+All URIs are relative to *http://localhost*
 
-| Method                                    | HTTP request     | Description                              |
-| ----------------------------------------- | ---------------- | ---------------------------------------- |
-| [**healthzGet**](SystemApi.md#healthzget) | **GET** /healthz | Liveness probe                           |
-| [**readyzGet**](SystemApi.md#readyzget)   | **GET** /readyz  | Readiness probe (pings backing services) |
-| [**rootGet**](SystemApi.md#rootget)       | **GET** /        | Service metadata and useful links        |
-| [**versionGet**](SystemApi.md#versionget) | **GET** /version | Build version and commit                 |
+Method | HTTP request | Description
+------------- | ------------- | -------------
+[**healthzGet**](SystemApi.md#healthzget) | **GET** /healthz | Liveness probe
+[**readyzGet**](SystemApi.md#readyzget) | **GET** /readyz | Readiness probe (pings backing services)
+[**rootGet**](SystemApi.md#rootget) | **GET** / | Service metadata and useful links
+[**versionGet**](SystemApi.md#versionget) | **GET** /version | Build version and commit
+
 
 # **healthzGet**
-
 > HealthzGet200Response healthzGet()
 
 Liveness probe
 
 ### Example
-
 ```dart
 import 'package:trotxi_api_client/api.dart';
 
@@ -37,7 +35,6 @@ try {
 ```
 
 ### Parameters
-
 This endpoint does not need any parameter.
 
 ### Return type
@@ -50,19 +47,17 @@ No authorization required
 
 ### HTTP request headers
 
-- **Content-Type**: Not defined
-- **Accept**: application/json
+ - **Content-Type**: Not defined
+ - **Accept**: application/json
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **readyzGet**
-
 > ReadyzGet200Response readyzGet()
 
 Readiness probe (pings backing services)
 
 ### Example
-
 ```dart
 import 'package:trotxi_api_client/api.dart';
 
@@ -77,7 +72,6 @@ try {
 ```
 
 ### Parameters
-
 This endpoint does not need any parameter.
 
 ### Return type
@@ -90,19 +84,17 @@ No authorization required
 
 ### HTTP request headers
 
-- **Content-Type**: Not defined
-- **Accept**: application/json
+ - **Content-Type**: Not defined
+ - **Accept**: application/json
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **rootGet**
-
 > Get200Response rootGet()
 
 Service metadata and useful links
 
 ### Example
-
 ```dart
 import 'package:trotxi_api_client/api.dart';
 
@@ -117,7 +109,6 @@ try {
 ```
 
 ### Parameters
-
 This endpoint does not need any parameter.
 
 ### Return type
@@ -130,19 +121,17 @@ No authorization required
 
 ### HTTP request headers
 
-- **Content-Type**: Not defined
-- **Accept**: application/json
+ - **Content-Type**: Not defined
+ - **Accept**: application/json
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **versionGet**
-
 > VersionGet200Response versionGet()
 
 Build version and commit
 
 ### Example
-
 ```dart
 import 'package:trotxi_api_client/api.dart';
 
@@ -157,7 +146,6 @@ try {
 ```
 
 ### Parameters
-
 This endpoint does not need any parameter.
 
 ### Return type
@@ -170,7 +158,8 @@ No authorization required
 
 ### HTTP request headers
 
-- **Content-Type**: Not defined
-- **Accept**: application/json
+ - **Content-Type**: Not defined
+ - **Accept**: application/json
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+

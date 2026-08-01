@@ -37,10 +37,13 @@ class _OnBoardPageState extends State<OnBoardPage> {
   void _initializeApi() {
     final dio = Dio(
       BaseOptions(
-        baseUrl: 'https://trotxi-api-staging.onrender.com/',
-        connectTimeout: const Duration(seconds: 30),
-        receiveTimeout: const Duration(seconds: 30),
-        sendTimeout: const Duration(seconds: 30),
+        baseUrl: 'https://trotxi-api-staging.onrender.com',
+        // Staging runs on a free instance that sleeps when idle, so the first
+        // request after a quiet spell pays a cold start. Keep these generous
+        // enough to survive it rather than failing on a healthy backend.
+        connectTimeout: const Duration(seconds: 60),
+        receiveTimeout: const Duration(seconds: 60),
+        sendTimeout: const Duration(seconds: 60),
       ),
     );
 

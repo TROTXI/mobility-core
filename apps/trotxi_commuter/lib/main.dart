@@ -10,7 +10,7 @@ import 'package:trotxi_client/trotxi_client.dart';
 import 'package:trotxi_commuter/firebase_options.dart';
 import 'package:trotxi_commuter/firebase_performance.dart';
 
-const String _apiBaseUrl = 'https://trotxi-api-staging.onrender.com/';
+const String _apiBaseUrl = 'https://trotxi-api-staging.onrender.com';
 
 Future<void> main() async {
   await runZonedGuarded(() async {
