@@ -10,7 +10,7 @@ import 'package:trotxi_client/trotxi_client.dart';
 import 'package:trotxi_commuter/firebase_options.dart';
 import 'package:trotxi_commuter/firebase_performance.dart';
 
-const _apiBaseUrl = String.fromEnvironment('API_BASE_URL');
+const String _apiBaseUrl = 'https://trotxi-api-staging.onrender.com/';
 
 Future<void> main() async {
   await runZonedGuarded(() async {
@@ -27,7 +27,6 @@ Future<void> main() async {
       FirebaseCrashlytics.instance.recordError(error, stack, fatal: true);
       return true;
     };
-
     final client = TrotxiClientFactory.create(baseUrl: _apiBaseUrl);
     client.dio.interceptors.add(PerformanceInterceptor());
     runApp(TrotxiCommuterApp(client: client));

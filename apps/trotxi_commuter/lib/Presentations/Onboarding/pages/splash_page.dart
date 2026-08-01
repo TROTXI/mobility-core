@@ -2,9 +2,10 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:trotxi_client/trotxi_client.dart';
+import 'package:trotxi_commuter/Presentations/Home/pages/home_page.dart';
 import 'package:trotxi_commuter/Presentations/Onboarding/pages/onboard_page.dart';
 import 'package:trotxi_commuter/core/config/theme/app_vectors.dart';
-
+import 'package:trotxi_commuter/core/Tokens/token_storage.dart';
 
 class SplashPage extends StatefulWidget {
   const SplashPage({
@@ -27,16 +28,25 @@ class _SplashPageState extends State<SplashPage> {
 
     _splashTimer = Timer(
       const Duration(seconds: 10),
-          () {
-        if (!mounted) return;
+          () => _navigateNext(),
+    );
+  }
 
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-            builder: (context) => OnBoardPage(),
-          ),
-        );
-      },
+  Future<void> _navigateNext() async {
+    if (!mounted) return;
+
+    final token = await TokenStorage.instance.getAccessToken();
+    final isLoggedIn = token != null && token.isNotEmpty;
+
+    if (!mounted) return;
+
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(
+        builder: (context) => isLoggedIn
+            ? const HomePage()
+            : OnBoardPage(),
+      ),
     );
   }
 
@@ -51,15 +61,12 @@ class _SplashPageState extends State<SplashPage> {
     return Scaffold(
       body: Stack(
         children: [
-          // Background PNG
           Positioned.fill(
             child: Image.asset(
               Appvectors.splashImage,
               fit: BoxFit.cover,
             ),
           ),
-
-          // Centered Logo
           Align(
             alignment: Alignment.topCenter,
             child: SafeArea(
