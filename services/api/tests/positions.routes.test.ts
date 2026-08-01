@@ -20,7 +20,7 @@ const bearer = (t: string) => ({ authorization: `Bearer ${t}` });
 const access = (userId: string, role: 'commuter' | 'driver' | 'admin' = 'commuter') =>
   jwt.signAccessToken({ userId, role });
 
-const UNKNOWN_TRIP = '00000000-0000-0000-0000-0000000000ff';
+const UNKNOWN_TRIP = '00000000-0000-4000-8000-0000000000ff';
 const DRIVER_USER = 'user-of-assigned-driver';
 
 // A route of three stops on the prime meridian (~1.1 km apart) with a trip
