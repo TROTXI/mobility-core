@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { InMemoryTripPositionRepository } from '../src/modules/mobility/trip-position.repository';
 
-const TRIP_A = '00000000-0000-0000-0000-0000000000a1';
-const TRIP_B = '00000000-0000-0000-0000-0000000000b2';
+const TRIP_A = '00000000-0000-4000-8000-0000000000a1';
+const TRIP_B = '00000000-0000-4000-8000-0000000000b2';
 
 describe('InMemoryTripPositionRepository', () => {
   it('records a fix and returns it as the latest', async () => {
