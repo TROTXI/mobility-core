@@ -47,7 +47,7 @@ describe('GET /routes/:id', () => {
     const app = await buildApp();
     const res = await app.inject({
       method: 'GET',
-      url: `/routes/00000000-0000-0000-0000-000000000001`,
+      url: `/routes/00000000-0000-4000-8000-000000000001`,
     });
     expect(res.statusCode).toBe(404);
     expect(res.json()).toMatchObject({ error: 'not_found' });
@@ -57,7 +57,7 @@ describe('GET /routes/:id', () => {
     const { app } = await appWithRepos();
     const res = await app.inject({
       method: 'GET',
-      url: `/routes/00000000-0000-0000-0000-000000000001`,
+      url: `/routes/00000000-0000-4000-8000-000000000001`,
     });
     expect(res.statusCode).toBe(404);
     expect(res.json()).toMatchObject({ error: 'not_found' });

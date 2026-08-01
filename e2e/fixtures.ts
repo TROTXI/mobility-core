@@ -11,7 +11,7 @@ export const JWT_AUDIENCE = 'trotxi-api';
 
 /** A user seeded into the e2e database (fixed id so specs can mint its token). */
 export const SEED_USER = {
-  id: '00000000-0000-0000-0000-0000000000e2',
+  id: '00000000-0000-4000-8000-0000000000e2',
   displayName: 'E2E User',
   role: 'commuter' as const,
 };
