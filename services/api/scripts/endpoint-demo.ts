@@ -90,7 +90,34 @@ const ENDPOINT_DOCS: Record<string, string> = {
     'Social sign-in: verifies a Google ID token, upserts the user, returns access + refresh tokens.',
   'POST /auth/refresh':
     'Rotates the refresh token and issues a fresh access token — role changes take effect here.',
+  'GET /': 'Service root — points at the docs and health endpoints.',
   'GET /me': "The authenticated user's own profile (id, name, role).",
+  'PATCH /me': 'Update your own profile (display name).',
+  'POST /me/devices':
+    'Register this device\'s FCM token so the daily "travelling?" push can reach it.',
+  'GET /me/sessions': 'Your active sessions — one per signed-in device.',
+  'DELETE /me/sessions/:id':
+    'Revoke one session (sign out a single device) — enforced server-side.',
+  'POST /auth/logout': 'Revoke the refresh token for this session.',
+  'GET /routes': 'Public corridor list — browsable before sign-in.',
+  'GET /admin/stops': 'Admin: all stops.',
+  'GET /admin/vehicles': 'Admin: the vehicle fleet.',
+  'GET /admin/drivers': 'Admin: registered drivers.',
+  'GET /admin/trips':
+    'Admin: scheduled runs, filterable by day — what the ask-dispatch cron reads.',
+  'PATCH /admin/routes/:id': 'Admin: edit a corridor.',
+  'PATCH /admin/stops/:id': 'Admin: edit a stop (name or coordinates).',
+  'PATCH /admin/vehicles/:id': 'Admin: edit a vehicle.',
+  'PATCH /admin/drivers/:id': 'Admin: edit a driver record.',
+  'PATCH /admin/trips/:id': "Admin: change a trip's status or schedule.",
+  'PUT /admin/flags/:key':
+    'Admin: create or patch a feature flag — the kill switch new features ship behind.',
+  'GET /admin/flags': 'Admin: all feature flags with their rollout state.',
+  'PUT /admin/min-versions/:platform':
+    'Admin: set the force-update floor that retires broken app builds.',
+  'GET /admin/min-versions': 'Admin: current minimum supported version per platform.',
+  'GET /me/avatar': 'Short-lived signed URL for your avatar — what the driver manifest shows.',
+  'POST /me/avatar': 'Upload a profile photo (multipart); resized and EXIF-stripped, stored in R2.',
   'GET /admin/routes': 'Admin: list all corridors (role admin required).',
   'PATCH /admin/users/:id/role':
     'Admin: grant a role — turns a signed-in account into a driver or admin.',
@@ -137,7 +164,14 @@ const UUID_RE = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi
 
 /** Normalise a concrete path to its documented pattern (uuids → :id, no query). */
 function endpointPattern(method: string, path: string): string {
-  const clean = (path.split('?')[0] ?? path).replace(UUID_RE, ':id').replace('/not-a-uuid', '/:id');
+  const clean = (path.split('?')[0] ?? path)
+    .replace(UUID_RE, ':id')
+    .replace('/not-a-uuid', '/:id')
+    // Not every path param is a uuid: flag keys and platform names are plain
+    // strings, and without these the pattern misses both the docs lookup and
+    // the coverage report.
+    .replace(/^\/admin\/flags\/[^/]+$/, '/admin/flags/:key')
+    .replace(/^\/admin\/min-versions\/[^/]+$/, '/admin/min-versions/:platform');
   return `${method} ${clean}`;
 }
 
@@ -152,7 +186,7 @@ interface CaseSpec {
   as?: string;
   body?: unknown | (() => unknown);
   /** Fully raw request (headers+payload) for signature/malformed-JSON cases. */
-  raw?: () => { headers: Record<string, string>; payload: string };
+  raw?: () => { headers: Record<string, string>; payload: string | Buffer };
   expected: string;
   check: (status: number, json: any) => boolean;
   after?: (json: any) => void;
@@ -239,7 +273,7 @@ async function inject(
   method: string,
   path: string,
   headers: Record<string, string>,
-  payload?: string,
+  payload?: string | Buffer,
 ): Promise<{ status: number; json: any; ms: number }> {
   const t0 = performance.now();
   const res = await c.app.inject({
@@ -260,13 +294,17 @@ async function inject(
 async function runCase(c: Ctx, spec: CaseSpec): Promise<CaseResult> {
   const path = typeof spec.path === 'function' ? spec.path() : spec.path;
   const headers: Record<string, string> = {};
-  let payload: string | undefined;
+  let payload: string | Buffer | undefined;
   let shownBody: unknown;
   if (spec.raw) {
     const raw = spec.raw();
     Object.assign(headers, raw.headers);
     payload = raw.payload;
-    shownBody = spec.redactBody ?? raw.payload.slice(0, 120);
+    shownBody =
+      spec.redactBody ??
+      (typeof raw.payload === 'string'
+        ? raw.payload.slice(0, 120)
+        : `<${raw.payload.length} bytes>`);
   } else {
     const token = spec.token?.();
     if (token) headers.authorization = `Bearer ${token}`;
@@ -329,6 +367,13 @@ function suites(c: Ctx): Record<string, { title: string; cases: CaseSpec[] }> {
     platform: {
       title: 'Platform & contract',
       cases: [
+        {
+          name: 'service root advertises the docs',
+          method: 'GET',
+          path: '/',
+          expected: '200 {service, version, docs, health}',
+          check: (s, j) => s === 200 && j.service === 'trotxi-api' && j.docs === '/docs',
+        },
         {
           name: 'service identity',
           method: 'GET',
@@ -412,6 +457,7 @@ function suites(c: Ctx): Record<string, { title: string; cases: CaseSpec[] }> {
           after: (j) => {
             t.rider2 = j.accessToken;
             id.rider2UserId = j.user.id;
+            v.rider2Refresh = j.refreshToken;
           },
         },
         {
@@ -473,6 +519,73 @@ function suites(c: Ctx): Record<string, { title: string; cases: CaseSpec[] }> {
           expected: '200; fresh access token carries role driver',
           check: (s, j) => s === 200 && !!j.accessToken,
           after: (j) => (t.driver = j.accessToken),
+        },
+        {
+          name: 'rider registers a device for push',
+          method: 'POST',
+          path: '/me/devices',
+          token: () => t.rider,
+          as: 'rider',
+          body: { fcmToken: 'demo-fcm-token-abc123', platform: 'android' },
+          expected: '200 {registered:true} — the token FCM delivers to',
+          check: (s, j) => s === 200 && j.registered === true,
+        },
+        {
+          name: 'a throwaway session signs in',
+          method: 'POST',
+          path: '/auth/google',
+          body: { idToken: JSON.stringify({ sub: 'g-temp', name: 'Temp Session' }) },
+          expected: '200; used below to exercise revoke + logout in isolation',
+          check: (s, j) => s === 200 && !!j.refreshToken,
+          after: (j) => {
+            t.temp = j.accessToken;
+            v.tempRefresh = j.refreshToken;
+          },
+        },
+        {
+          name: 'lists own active sessions',
+          method: 'GET',
+          path: '/me/sessions',
+          token: () => t.temp,
+          as: 'temp user',
+          expected: '200 with at least one session',
+          check: (s, j) => s === 200 && (j.sessions ?? []).length >= 1,
+          after: (j) => (v.tempSessionId = j.sessions[0].id),
+        },
+        {
+          name: 'revokes a single session',
+          method: 'DELETE',
+          path: () => `/me/sessions/${v.tempSessionId}`,
+          token: () => t.temp,
+          as: 'temp user',
+          expected: '200/204 — that device is signed out',
+          check: (s) => s === 200 || s === 204,
+        },
+        {
+          name: 'the revoked refresh token no longer works',
+          method: 'POST',
+          path: '/auth/refresh',
+          body: () => ({ refreshToken: v.tempRefresh }),
+          expected: '401 — revocation is enforced server-side',
+          check: (s) => s === 401,
+        },
+        {
+          name: 'logout revokes the remaining refresh token',
+          method: 'POST',
+          path: '/auth/logout',
+          token: () => t.rider2,
+          as: 'rider2',
+          body: () => ({ refreshToken: v.rider2Refresh }),
+          expected: '200/204',
+          check: (s) => s === 200 || s === 204,
+        },
+        {
+          name: 'refreshing after logout fails',
+          method: 'POST',
+          path: '/auth/refresh',
+          body: () => ({ refreshToken: v.rider2Refresh }),
+          expected: '401 — the session is gone',
+          check: (s) => s === 401,
         },
       ],
     },
@@ -596,6 +709,79 @@ function suites(c: Ctx): Record<string, { title: string; cases: CaseSpec[] }> {
           as: 'rider',
           expected: '200 {trips:[…]} — the scheduled run is visible',
           check: (s, j) => s === 200 && (j.trips ?? []).length >= 1,
+        },
+        {
+          name: 'public route list (no auth)',
+          method: 'GET',
+          path: '/routes',
+          expected: '200; the corridor is publicly browsable',
+          check: (s, j) => s === 200 && (Array.isArray(j) ? j : (j.routes ?? [])).length >= 1,
+        },
+        {
+          name: 'admin lists stops',
+          method: 'GET',
+          path: '/admin/stops',
+          token: () => t.admin,
+          as: 'admin',
+          expected: '200 with both stops',
+          check: (s, j) => s === 200 && (Array.isArray(j) ? j : (j.stops ?? [])).length >= 2,
+        },
+        {
+          name: 'admin lists vehicles',
+          method: 'GET',
+          path: '/admin/vehicles',
+          token: () => t.admin,
+          as: 'admin',
+          expected: '200 with the registered vehicle',
+          check: (s, j) => s === 200 && (Array.isArray(j) ? j : (j.vehicles ?? [])).length >= 1,
+        },
+        {
+          name: 'admin lists drivers',
+          method: 'GET',
+          path: '/admin/drivers',
+          token: () => t.admin,
+          as: 'admin',
+          expected: '200 with the registered driver',
+          check: (s, j) => s === 200 && (Array.isArray(j) ? j : (j.drivers ?? [])).length >= 1,
+        },
+        {
+          name: 'admin lists trips (filterable by day)',
+          method: 'GET',
+          path: () => `/admin/trips?date=${D}`,
+          token: () => t.admin,
+          as: 'admin',
+          expected: "200 — the shape the ask-dispatch cron reads ('tomorrow's trips')",
+          check: (s, j) => s === 200 && (Array.isArray(j) ? j : (j.trips ?? [])).length >= 1,
+        },
+        {
+          name: 'admin renames the route',
+          method: 'PATCH',
+          path: () => `/admin/routes/${id.routeId}`,
+          token: () => t.admin,
+          as: 'admin',
+          body: { description: 'Pilot corridor (updated)' },
+          expected: '200 with the patched field',
+          check: (s, j) => s === 200 && j.description === 'Pilot corridor (updated)',
+        },
+        {
+          name: 'admin updates the vehicle',
+          method: 'PATCH',
+          path: () => `/admin/vehicles/${id.vehicleId}`,
+          token: () => t.admin,
+          as: 'admin',
+          body: { label: 'Blue Bird II' },
+          expected: '200 with the patched label',
+          check: (s, j) => s === 200 && j.label === 'Blue Bird II',
+        },
+        {
+          name: 'admin updates the driver',
+          method: 'PATCH',
+          path: () => `/admin/drivers/${id.driverId}`,
+          token: () => t.admin,
+          as: 'admin',
+          body: { phone: '+233201234567' },
+          expected: '200 with the patched phone',
+          check: (s, j) => s === 200 && j.phone === '+233201234567',
         },
       ],
     },
@@ -956,6 +1142,151 @@ function suites(c: Ctx): Record<string, { title: string; cases: CaseSpec[] }> {
       ],
     },
 
+    ops: {
+      title: 'Feature flags, force-update & trip status',
+      cases: [
+        {
+          name: 'admin creates a feature flag',
+          method: 'PUT',
+          path: '/admin/flags/standby_pool',
+          token: () => t.admin,
+          as: 'admin',
+          body: { enabled: false, rolloutPercentage: 0, description: 'E6 standby pool' },
+          expected: '200 — the kill switch new features ship behind',
+          check: (s, j) => s === 200 && j.enabled === false,
+        },
+        {
+          name: 'flag flips on with a partial rollout',
+          method: 'PUT',
+          path: '/admin/flags/standby_pool',
+          token: () => t.admin,
+          as: 'admin',
+          body: { enabled: true, rolloutPercentage: 25 },
+          expected: '200 {enabled:true, rolloutPercentage:25} — PUT patches, not replaces',
+          check: (s, j) => s === 200 && j.enabled === true && j.rolloutPercentage === 25,
+        },
+        {
+          name: 'admin lists flags',
+          method: 'GET',
+          path: '/admin/flags',
+          token: () => t.admin,
+          as: 'admin',
+          expected: '200 including the new flag',
+          check: (s, j) => s === 200 && JSON.stringify(j).includes('standby_pool'),
+        },
+        {
+          name: 'the apps see it on the public endpoint',
+          method: 'GET',
+          path: '/flags',
+          expected: '200 — no auth; this is what the apps poll at launch',
+          check: (s, j) => s === 200 && JSON.stringify(j.flags).includes('standby_pool'),
+        },
+        {
+          name: 'admin sets the minimum supported Android version',
+          method: 'PUT',
+          path: '/admin/min-versions/android',
+          token: () => t.admin,
+          as: 'admin',
+          body: { version: '1.2.0' },
+          expected: '200 — the force-update floor that retires broken builds',
+          check: (s, j) => s === 200 && j.version === '1.2.0',
+        },
+        {
+          name: 'admin reads min supported versions',
+          method: 'GET',
+          path: '/admin/min-versions',
+          token: () => t.admin,
+          as: 'admin',
+          expected: '200 including android 1.2.0',
+          check: (s, j) => s === 200 && JSON.stringify(j).includes('1.2.0'),
+        },
+        {
+          name: 'force-update floor is published to the apps',
+          method: 'GET',
+          path: '/flags',
+          expected: '200 {minSupportedVersion:{android:"1.2.0"}}',
+          check: (s, j) => s === 200 && j.minSupportedVersion?.android === '1.2.0',
+        },
+        {
+          name: 'no avatar yet → 404',
+          method: 'GET',
+          path: '/me/avatar',
+          token: () => t.rider,
+          as: 'rider',
+          expected: '404 — nothing uploaded',
+          check: (s) => s === 404,
+        },
+        {
+          name: 'rider uploads an avatar (multipart PNG)',
+          method: 'POST',
+          path: '/me/avatar',
+          raw: () => {
+            const boundary = '----trotxidemo';
+            // Smallest valid PNG; sharp resizes and strips EXIF server-side.
+            const png = Buffer.from(
+              'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
+              'base64',
+            );
+            const head = Buffer.from(
+              `--${boundary}\r\nContent-Disposition: form-data; name="file"; filename="a.png"\r\nContent-Type: image/png\r\n\r\n`,
+            );
+            const tail = Buffer.from(`\r\n--${boundary}--\r\n`);
+            // Must stay a Buffer: a string payload is re-encoded as UTF-8,
+            // which corrupts the PNG bytes and fails image validation.
+            return {
+              headers: {
+                authorization: `Bearer ${t.rider}`,
+                'content-type': `multipart/form-data; boundary=${boundary}`,
+              },
+              payload: Buffer.concat([head, png, tail]),
+            };
+          },
+          redactBody: 'multipart/form-data — 1×1 PNG',
+          expected: '200 with an avatar URL',
+          check: (s, j) => s === 200 && !!(j.avatarUrl ?? j.url),
+        },
+        {
+          name: 'avatar now returns a short-lived signed URL',
+          method: 'GET',
+          path: '/me/avatar',
+          token: () => t.rider,
+          as: 'rider',
+          expected: '200 — the manifest uses this for the photo pass',
+          check: (s, j) => s === 200 && !!(j.avatarUrl ?? j.url),
+        },
+        {
+          name: 'rider updates their display name',
+          method: 'PATCH',
+          path: '/me',
+          token: () => t.rider,
+          as: 'rider',
+          body: { displayName: 'Ama M.' },
+          expected: '200 with the new displayName (runs late: the manifest asserts her name)',
+          check: (s, j) => s === 200 && j.displayName === 'Ama M.',
+        },
+        {
+          name: 'admin renames a stop',
+          method: 'PATCH',
+          path: () => `/admin/stops/${id.stopB}`,
+          token: () => t.admin,
+          as: 'admin',
+          body: { name: 'Madina Market (New Road)' },
+          expected: '200 with the patched name (runs late: the ETA case asserts it)',
+          check: (s, j) => s === 200 && j.name === 'Madina Market (New Road)',
+        },
+        {
+          name: 'admin completes the trip',
+          method: 'PATCH',
+          path: () => `/admin/trips/${id.tripId}`,
+          token: () => t.admin,
+          as: 'admin',
+          body: { status: 'completed' },
+          expected: '200 {status:"completed"} — run last, boarding needs it scheduled',
+          check: (s, j) => s === 200 && j.status === 'completed',
+        },
+      ],
+    },
+
     guardrails: {
       title: 'Guardrails: validation & rate limiting',
       cases: [
@@ -1021,6 +1352,7 @@ const SUITE_ORDER = [
   'boarding',
   'settlement',
   'positions',
+  'ops',
   'guardrails',
 ];
 
