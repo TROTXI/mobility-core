@@ -58,6 +58,12 @@ export class InMemorySubscriptionRepository implements SubscriptionRepository {
   private readonly subscriptions = new Map<string, Subscription>();
 
   async create(input: NewSubscription): Promise<Subscription> {
+    // Mirror the Postgres one-active-per-user partial unique index (ADR-0009:
+    // in-memory repos should behave like the real adapter). A duplicate active
+    // subscription throws the same SQLSTATE the service's replay-guard expects.
+    if (await this.findActiveByUser(input.userId)) {
+      throw Object.assign(new Error('duplicate active subscription'), { code: '23505' });
+    }
     const subscription: Subscription = {
       id: crypto.randomUUID(),
       userId: input.userId,

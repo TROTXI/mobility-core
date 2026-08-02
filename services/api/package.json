@@ -17,6 +17,7 @@
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
     "migrate": "tsx src/db/migrate.ts",
+    "demo:endpoints": "tsx scripts/endpoint-demo.ts",
     "seed:staging": "tsx scripts/seed-staging.ts"
   },
   "dependencies": {
