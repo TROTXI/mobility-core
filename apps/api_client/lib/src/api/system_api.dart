@@ -4,12 +4,14 @@
 
 import 'dart:async';
 
+import 'package:built_value/json_object.dart';
 import 'package:built_value/serializer.dart';
 import 'package:dio/dio.dart';
 
 import 'package:trotxi_api_client/src/model/get200_response.dart';
 import 'package:trotxi_api_client/src/model/healthz_get200_response.dart';
 import 'package:trotxi_api_client/src/model/readyz_get200_response.dart';
+import 'package:trotxi_api_client/src/model/readyz_get503_response.dart';
 import 'package:trotxi_api_client/src/model/version_get200_response.dart';
 
 class SystemApi {

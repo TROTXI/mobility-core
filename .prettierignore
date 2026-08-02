@@ -16,3 +16,7 @@ package-lock.json
 # Flutter build artifacts
 apps/**/build/
 apps/**/.dart_tool/
+
+# Generated OpenAPI client (regenerate with `pnpm codegen`, do not hand-edit).
+# Exempt from formatting so a regeneration never fails CI on machine output.
+apps/api_client/

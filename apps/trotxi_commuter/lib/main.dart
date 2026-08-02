@@ -4,12 +4,13 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:trotxi_commuter/Presentations/Onboarding/pages/splash_page.dart';
 import 'package:trotxi_commuter/core/config/theme/app_theme.dart';
 import 'package:trotxi_client/trotxi_client.dart';
 import 'package:trotxi_commuter/firebase_options.dart';
 import 'package:trotxi_commuter/firebase_performance.dart';
 
-const _apiBaseUrl = String.fromEnvironment('API_BASE_URL');
+const String _apiBaseUrl = 'https://trotxi-api-staging.onrender.com';
 
 Future<void> main() async {
   await runZonedGuarded(() async {
@@ -26,7 +27,6 @@ Future<void> main() async {
       FirebaseCrashlytics.instance.recordError(error, stack, fatal: true);
       return true;
     };
-
     final client = TrotxiClientFactory.create(baseUrl: _apiBaseUrl);
     client.dio.interceptors.add(PerformanceInterceptor());
     runApp(TrotxiCommuterApp(client: client));
@@ -46,42 +46,7 @@ class TrotxiCommuterApp extends StatelessWidget {
     return MaterialApp(
       title: 'Trotxi Commuter',
       theme: AppTheme.lightTheme,
-      home: _PlaceholderHome(client: client),
-    );
-  }
-}
-
-class _PlaceholderHome extends StatelessWidget {
-  const _PlaceholderHome({required this.client});
-
-  final TrotxiApiClient client;
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        title: const Text('Trotxi Commuter'),
-      ),
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(Icons.directions_bus_outlined, size: 64),
-            const SizedBox(height: 16),
-            Text(
-              'Commuter App',
-              style: Theme.of(context).textTheme.headlineMedium,
-            ),
-            const SizedBox(height: 8),
-            Text(_apiBaseUrl, style: Theme.of(context).textTheme.bodySmall),
-             ElevatedButton(
-              onPressed: () => FirebaseCrashlytics.instance.crash(),
-              child: const Text('Test Crash Commuter'),
-            ),
-          ],
-        ),
-      ),
+      home: SplashPage(client: client),
     );
   }
 }

@@ -14,7 +14,15 @@
       },
       "oauth_client": [
         {
-          "client_id": "431341307838-pc4m046v2lj18ssfnfl1g52fl5g1cg4q.apps.googleusercontent.com",
+          "client_id": "431341307838-oe2b1p4o283d93lh4lburlqarm3kn3rm.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.trotxi.trotxi_commuter",
+            "certificate_hash": "80414e4f4b9eee00ec8725087bd94d92829fd8c4"
+          }
+        },
+        {
+          "client_id": "431341307838-7gjd9olb7st58s6c6btoudq79h7jaglv.apps.googleusercontent.com",
           "client_type": 3
         }
       ],
@@ -27,8 +35,15 @@
         "appinvite_service": {
           "other_platform_oauth_client": [
             {
-              "client_id": "431341307838-pc4m046v2lj18ssfnfl1g52fl5g1cg4q.apps.googleusercontent.com",
+              "client_id": "431341307838-7gjd9olb7st58s6c6btoudq79h7jaglv.apps.googleusercontent.com",
               "client_type": 3
+            },
+            {
+              "client_id": "431341307838-5enbgcoc0o5k9a93ojo1i31uhh31nuqs.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.trotxi.trotxiCommuter"
+              }
             }
           ]
         }
@@ -43,7 +58,15 @@
       },
       "oauth_client": [
         {
-          "client_id": "431341307838-pc4m046v2lj18ssfnfl1g52fl5g1cg4q.apps.googleusercontent.com",
+          "client_id": "431341307838-kbaq6h0h3o5euhehu849snjdovnqt393.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.trotxi.trotxi_driver",
+            "certificate_hash": "ceceb7d1c11d2ab7de4156aacdda8a390c0e3387"
+          }
+        },
+        {
+          "client_id": "431341307838-7gjd9olb7st58s6c6btoudq79h7jaglv.apps.googleusercontent.com",
           "client_type": 3
         }
       ],
@@ -56,8 +79,15 @@
         "appinvite_service": {
           "other_platform_oauth_client": [
             {
-              "client_id": "431341307838-pc4m046v2lj18ssfnfl1g52fl5g1cg4q.apps.googleusercontent.com",
+              "client_id": "431341307838-7gjd9olb7st58s6c6btoudq79h7jaglv.apps.googleusercontent.com",
               "client_type": 3
+            },
+            {
+              "client_id": "431341307838-5enbgcoc0o5k9a93ojo1i31uhh31nuqs.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.trotxi.trotxiCommuter"
+              }
             }
           ]
         }

@@ -13,11 +13,15 @@ part 'payments_subscribe_post_request.g.dart';
 ///
 /// Properties:
 /// * [plan] 
+/// * [routeId] 
 @BuiltValue()
 abstract class PaymentsSubscribePostRequest implements Built<PaymentsSubscribePostRequest, PaymentsSubscribePostRequestBuilder> {
   @BuiltValueField(wireName: r'plan')
   PaymentsSubscribePostRequestPlanEnum get plan;
   // enum planEnum {  monthly,  annual,  };
+
+  @BuiltValueField(wireName: r'routeId')
+  String? get routeId;
 
   PaymentsSubscribePostRequest._();
 
@@ -47,6 +51,13 @@ class _$PaymentsSubscribePostRequestSerializer implements PrimitiveSerializer<Pa
       object.plan,
       specifiedType: const FullType(PaymentsSubscribePostRequestPlanEnum),
     );
+    if (object.routeId != null) {
+      yield r'routeId';
+      yield serializers.serialize(
+        object.routeId,
+        specifiedType: const FullType(String),
+      );
+    }
   }
 
   @override
@@ -76,6 +87,13 @@ class _$PaymentsSubscribePostRequestSerializer implements PrimitiveSerializer<Pa
             specifiedType: const FullType(PaymentsSubscribePostRequestPlanEnum),
           ) as PaymentsSubscribePostRequestPlanEnum;
           result.plan = valueDes;
+          break;
+        case r'routeId':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType(String),
+          ) as String;
+          result.routeId = valueDes;
           break;
         default:
           unhandled.add(key);
