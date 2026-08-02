@@ -136,6 +136,23 @@ export interface AppDeps {
 }
 
 /**
+ * The commit this instance is running, for `GET /version` — the first question
+ * a rollback asks. `RENDER_GIT_COMMIT` is injected by Render on every deploy,
+ * so hosted environments report their real commit with no build wiring;
+ * `GIT_SHA` overrides it for images built elsewhere (CI, local docker).
+ *
+ * Empty values are treated as absent: the Dockerfile declares `ARG GIT_SHA=""`,
+ * so an unstamped image bakes in an empty string that `??` would otherwise
+ * prefer over the platform value.
+ *
+ * @returns the deployed commit, or `dev` when nothing is stamped.
+ */
+function deployedCommit(): string {
+  const candidates = [process.env['GIT_SHA'], process.env['RENDER_GIT_COMMIT']];
+  return candidates.find((value) => value !== undefined && value.trim() !== '')?.trim() ?? 'dev';
+}
+
+/**
  * Build the Fastify app — registers OpenAPI docs, metrics, guards, and all
  * routes. Dependencies are injected so tests pass in-memory implementations and
  * production wires the real ones.
@@ -354,7 +371,7 @@ export async function buildApp(deps: AppDeps = {}): Promise<FastifyInstance> {
     async () => ({
       name: 'trotxi-api',
       version: '0.1.0',
-      commit: process.env['GIT_SHA'] ?? 'dev',
+      commit: deployedCommit(),
     }),
   );
 
