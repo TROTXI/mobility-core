@@ -18,7 +18,7 @@ const jwt = createJwtService(auth);
 const bearer = (t: string) => ({ authorization: `Bearer ${t}` });
 const adminToken = () => jwt.signAccessToken({ userId: 'admin-1', role: 'admin' });
 const commuterToken = () => jwt.signAccessToken({ userId: 'rider-1', role: 'commuter' });
-const UNKNOWN = '00000000-0000-0000-0000-0000000000ff';
+const UNKNOWN = '00000000-0000-4000-8000-0000000000ff';
 const SCHEDULED_AT = '2026-07-08T06:00:00.000Z';
 
 async function adminApp() {

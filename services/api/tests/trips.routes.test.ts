@@ -13,8 +13,8 @@ const jwt = createJwtService(auth);
 const bearer = (t: string) => ({ authorization: `Bearer ${t}` });
 const token = () => jwt.signAccessToken({ userId: 'rider-1', role: 'commuter' });
 
-const ROUTE_A = '00000000-0000-0000-0000-0000000000a1';
-const ROUTE_B = '00000000-0000-0000-0000-0000000000b2';
+const ROUTE_A = '00000000-0000-4000-8000-0000000000a1';
+const ROUTE_B = '00000000-0000-4000-8000-0000000000b2';
 
 async function appWithTrips() {
   const trips = new InMemoryTripRepository();
@@ -88,7 +88,7 @@ describe('GET /trips/:id', () => {
     const { app } = await appWithTrips();
     const res = await app.inject({
       method: 'GET',
-      url: '/trips/00000000-0000-0000-0000-000000000001',
+      url: '/trips/00000000-0000-4000-8000-000000000001',
     });
     expect(res.statusCode).toBe(401);
   });
@@ -97,7 +97,7 @@ describe('GET /trips/:id', () => {
     const { app } = await appWithTrips();
     const res = await app.inject({
       method: 'GET',
-      url: '/trips/00000000-0000-0000-0000-000000000001',
+      url: '/trips/00000000-0000-4000-8000-000000000001',
       headers: bearer(await token()),
     });
     expect(res.statusCode).toBe(404);
@@ -118,8 +118,8 @@ describe('GET /trips/:id', () => {
     const { app, trips } = await appWithTrips();
     const trip = await trips.create({
       routeId: ROUTE_A,
-      vehicleId: '00000000-0000-0000-0000-0000000000f1',
-      assignedDriverId: '00000000-0000-0000-0000-0000000000f2',
+      vehicleId: '00000000-0000-4000-8000-0000000000f1',
+      assignedDriverId: '00000000-0000-4000-8000-0000000000f2',
       status: 'active',
       scheduledAt: new Date('2026-07-08T06:00:00Z'),
     });
@@ -133,8 +133,8 @@ describe('GET /trips/:id', () => {
     expect(res.json()).toMatchObject({
       id: trip.id,
       routeId: ROUTE_A,
-      vehicleId: '00000000-0000-0000-0000-0000000000f1',
-      assignedDriverId: '00000000-0000-0000-0000-0000000000f2',
+      vehicleId: '00000000-0000-4000-8000-0000000000f1',
+      assignedDriverId: '00000000-0000-4000-8000-0000000000f2',
       status: 'active',
     });
   });

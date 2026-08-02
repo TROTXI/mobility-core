@@ -37,7 +37,7 @@ test.describe('GET /me', () => {
     });
 
     test('returns 404 for a valid token whose user does not exist', async ({ request }) => {
-      const token = await accessToken('00000000-0000-0000-0000-0000000000ff', 'commuter');
+      const token = await accessToken('00000000-0000-4000-8000-0000000000ff', 'commuter');
       const res = await request.get('/me', { headers: { authorization: `Bearer ${token}` } });
       expect(res.status()).toBe(404);
     });

@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { InMemoryTripRepository } from '../src/modules/mobility/trip.repository';
 
-const ROUTE_A = '00000000-0000-0000-0000-0000000000a1';
-const ROUTE_B = '00000000-0000-0000-0000-0000000000b2';
+const ROUTE_A = '00000000-0000-4000-8000-0000000000a1';
+const ROUTE_B = '00000000-0000-4000-8000-0000000000b2';
 
 describe('InMemoryTripRepository', () => {
   it('creates a trip and finds it by id', async () => {

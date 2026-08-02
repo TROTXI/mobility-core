@@ -31,3 +31,8 @@ apps/**/build/
 apps/**/.flutter-plugins
 apps/**/.flutter-plugins-dependencies
 apps/**/*.iml
+
+# Local editor / agent tooling (machine-specific)
+.claude/
+.vscode/
+.idea/
