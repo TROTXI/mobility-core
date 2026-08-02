@@ -294,6 +294,13 @@ async function main(): Promise<void> {
     return kv.ping();
   };
 
+  // Browser clients only reach the API if it advertises CORS. Unset -> reflect
+  // any origin (bearer auth, so no ambient credentials at risk).
+  const corsOrigins = (env.CORS_ORIGINS ?? '')
+    .split(',')
+    .map((o) => o.trim())
+    .filter((o) => o !== '');
+
   const rateLimit: RateLimitConfig = {
     max: env.RATE_LIMIT_MAX,
     windowSeconds: env.RATE_LIMIT_WINDOW_SECONDS,
@@ -324,6 +331,7 @@ async function main(): Promise<void> {
     isReady,
     auth,
     rateLimit,
+    corsOrigins,
     // /metrics: protected by a token when set; disabled in prod when unset.
     metrics: { token: env.METRICS_TOKEN, allowUnprotected: env.NODE_ENV !== 'production' },
     logger: true,
