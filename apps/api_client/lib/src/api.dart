@@ -9,10 +9,15 @@ import 'package:trotxi_api_client/src/auth/api_key_auth.dart';
 import 'package:trotxi_api_client/src/auth/basic_auth.dart';
 import 'package:trotxi_api_client/src/auth/bearer_auth.dart';
 import 'package:trotxi_api_client/src/auth/oauth.dart';
+import 'package:trotxi_api_client/src/api/admin_api.dart';
 import 'package:trotxi_api_client/src/api/auth_api.dart';
+import 'package:trotxi_api_client/src/api/boarding_api.dart';
+import 'package:trotxi_api_client/src/api/flags_api.dart';
+import 'package:trotxi_api_client/src/api/mobility_api.dart';
 import 'package:trotxi_api_client/src/api/payments_api.dart';
+import 'package:trotxi_api_client/src/api/reservations_api.dart';
+import 'package:trotxi_api_client/src/api/rides_api.dart';
 import 'package:trotxi_api_client/src/api/system_api.dart';
-import 'package:trotxi_api_client/src/api/wallet_api.dart';
 
 class TrotxiApiClient {
   static const String basePath = r'http://localhost';
@@ -108,10 +113,34 @@ class TrotxiApiClient {
     }
   }
 
+  /// Get AdminApi instance, base route and serializer can be overridden by a given but be careful,
+  /// by doing that all interceptors will not be executed
+  AdminApi getAdminApi() {
+    return AdminApi(dio, serializers);
+  }
+
   /// Get AuthApi instance, base route and serializer can be overridden by a given but be careful,
   /// by doing that all interceptors will not be executed
   AuthApi getAuthApi() {
     return AuthApi(dio, serializers);
+  }
+
+  /// Get BoardingApi instance, base route and serializer can be overridden by a given but be careful,
+  /// by doing that all interceptors will not be executed
+  BoardingApi getBoardingApi() {
+    return BoardingApi(dio, serializers);
+  }
+
+  /// Get FlagsApi instance, base route and serializer can be overridden by a given but be careful,
+  /// by doing that all interceptors will not be executed
+  FlagsApi getFlagsApi() {
+    return FlagsApi(dio, serializers);
+  }
+
+  /// Get MobilityApi instance, base route and serializer can be overridden by a given but be careful,
+  /// by doing that all interceptors will not be executed
+  MobilityApi getMobilityApi() {
+    return MobilityApi(dio, serializers);
   }
 
   /// Get PaymentsApi instance, base route and serializer can be overridden by a given but be careful,
@@ -120,15 +149,21 @@ class TrotxiApiClient {
     return PaymentsApi(dio, serializers);
   }
 
+  /// Get ReservationsApi instance, base route and serializer can be overridden by a given but be careful,
+  /// by doing that all interceptors will not be executed
+  ReservationsApi getReservationsApi() {
+    return ReservationsApi(dio, serializers);
+  }
+
+  /// Get RidesApi instance, base route and serializer can be overridden by a given but be careful,
+  /// by doing that all interceptors will not be executed
+  RidesApi getRidesApi() {
+    return RidesApi(dio, serializers);
+  }
+
   /// Get SystemApi instance, base route and serializer can be overridden by a given but be careful,
   /// by doing that all interceptors will not be executed
   SystemApi getSystemApi() {
     return SystemApi(dio, serializers);
-  }
-
-  /// Get WalletApi instance, base route and serializer can be overridden by a given but be careful,
-  /// by doing that all interceptors will not be executed
-  WalletApi getWalletApi() {
-    return WalletApi(dio, serializers);
   }
 }

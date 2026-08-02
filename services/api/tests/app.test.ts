@@ -55,4 +55,51 @@ describe('app', () => {
       commit: 'dev',
     });
   });
+
+  // Rollback starts with "what is actually running?", so /version must report
+  // the deployed commit. Render injects RENDER_GIT_COMMIT; GIT_SHA overrides it
+  // for images built elsewhere.
+  it.each([
+    { env: 'GIT_SHA', value: 'abc1234', expected: 'abc1234' },
+    { env: 'RENDER_GIT_COMMIT', value: 'def5678', expected: 'def5678' },
+  ])('reports the commit from $env', async ({ env, value, expected }) => {
+    const previous = process.env[env];
+    process.env[env] = value;
+    try {
+      const app = await buildApp();
+      const res = await app.inject({ method: 'GET', url: '/version' });
+      expect(res.json()).toMatchObject({ commit: expected });
+    } finally {
+      if (previous === undefined) delete process.env[env];
+      else process.env[env] = previous;
+    }
+  });
+
+  // The Dockerfile declares ARG GIT_SHA="", so an unstamped image ships an
+  // empty GIT_SHA. It must not mask the platform-injected commit.
+  it('ignores an empty GIT_SHA and falls back to the platform commit', async () => {
+    process.env['GIT_SHA'] = '';
+    process.env['RENDER_GIT_COMMIT'] = 'render123';
+    try {
+      const app = await buildApp();
+      const res = await app.inject({ method: 'GET', url: '/version' });
+      expect(res.json()).toMatchObject({ commit: 'render123' });
+    } finally {
+      delete process.env['GIT_SHA'];
+      delete process.env['RENDER_GIT_COMMIT'];
+    }
+  });
+
+  it('prefers an explicit GIT_SHA over the platform-injected commit', async () => {
+    process.env['GIT_SHA'] = 'explicit';
+    process.env['RENDER_GIT_COMMIT'] = 'platform';
+    try {
+      const app = await buildApp();
+      const res = await app.inject({ method: 'GET', url: '/version' });
+      expect(res.json()).toMatchObject({ commit: 'explicit' });
+    } finally {
+      delete process.env['GIT_SHA'];
+      delete process.env['RENDER_GIT_COMMIT'];
+    }
+  });
 });

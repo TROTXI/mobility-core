@@ -71,12 +71,15 @@ class _$PaymentsSubscribePostRequestPlanEnumSerializer
 class _$PaymentsSubscribePostRequest extends PaymentsSubscribePostRequest {
   @override
   final PaymentsSubscribePostRequestPlanEnum plan;
+  @override
+  final String? routeId;
 
   factory _$PaymentsSubscribePostRequest(
           [void Function(PaymentsSubscribePostRequestBuilder)? updates]) =>
       (PaymentsSubscribePostRequestBuilder()..update(updates))._build();
 
-  _$PaymentsSubscribePostRequest._({required this.plan}) : super._();
+  _$PaymentsSubscribePostRequest._({required this.plan, this.routeId})
+      : super._();
   @override
   PaymentsSubscribePostRequest rebuild(
           void Function(PaymentsSubscribePostRequestBuilder) updates) =>
@@ -89,13 +92,16 @@ class _$PaymentsSubscribePostRequest extends PaymentsSubscribePostRequest {
   @override
   bool operator ==(Object other) {
     if (identical(other, this)) return true;
-    return other is PaymentsSubscribePostRequest && plan == other.plan;
+    return other is PaymentsSubscribePostRequest &&
+        plan == other.plan &&
+        routeId == other.routeId;
   }
 
   @override
   int get hashCode {
     var _$hash = 0;
     _$hash = $jc(_$hash, plan.hashCode);
+    _$hash = $jc(_$hash, routeId.hashCode);
     _$hash = $jf(_$hash);
     return _$hash;
   }
@@ -103,7 +109,8 @@ class _$PaymentsSubscribePostRequest extends PaymentsSubscribePostRequest {
   @override
   String toString() {
     return (newBuiltValueToStringHelper(r'PaymentsSubscribePostRequest')
-          ..add('plan', plan))
+          ..add('plan', plan)
+          ..add('routeId', routeId))
         .toString();
   }
 }
@@ -118,6 +125,10 @@ class PaymentsSubscribePostRequestBuilder
   PaymentsSubscribePostRequestPlanEnum? get plan => _$this._plan;
   set plan(PaymentsSubscribePostRequestPlanEnum? plan) => _$this._plan = plan;
 
+  String? _routeId;
+  String? get routeId => _$this._routeId;
+  set routeId(String? routeId) => _$this._routeId = routeId;
+
   PaymentsSubscribePostRequestBuilder() {
     PaymentsSubscribePostRequest._defaults(this);
   }
@@ -126,6 +137,7 @@ class PaymentsSubscribePostRequestBuilder
     final $v = _$v;
     if ($v != null) {
       _plan = $v.plan;
+      _routeId = $v.routeId;
       _$v = null;
     }
     return this;
@@ -149,6 +161,7 @@ class PaymentsSubscribePostRequestBuilder
         _$PaymentsSubscribePostRequest._(
           plan: BuiltValueNullFieldError.checkNotNull(
               plan, r'PaymentsSubscribePostRequest', 'plan'),
+          routeId: routeId,
         );
     replace(_$result);
     return _$result;
