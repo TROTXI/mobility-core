@@ -19,6 +19,11 @@ RUN pnpm --filter @trotxi/api run build \
 FROM node:24-alpine
 WORKDIR /app
 ENV NODE_ENV=production
+# Stamp the build's commit so GET /version can answer "what is running?".
+# On Render this is unnecessary (RENDER_GIT_COMMIT is injected at runtime); this
+# covers images built anywhere else: docker build --build-arg GIT_SHA=$(git rev-parse HEAD)
+ARG GIT_SHA=""
+ENV GIT_SHA=$GIT_SHA
 COPY --from=build /app/node_modules ./node_modules
 COPY --from=build /app/dist ./dist
 COPY --from=build /app/package.json ./package.json
