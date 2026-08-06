@@ -44,8 +44,8 @@ class _SplashPageState extends State<SplashPage> {
       context,
       MaterialPageRoute(
         builder: (context) => isLoggedIn
-            ? const HomePage()
-            : OnBoardPage(),
+            ? HomePage(client: widget.client,)
+            : OnBoardPage(client: widget.client),
       ),
     );
   }

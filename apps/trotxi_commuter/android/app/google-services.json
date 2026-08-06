@@ -14,6 +14,14 @@
       },
       "oauth_client": [
         {
+          "client_id": "431341307838-m0fcu46at5m2oupguse868ggvpqush35.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.trotxi.trotxi_commuter",
+            "certificate_hash": "3db539b57d52cfe6ad1f94b4efd349940f0fc0f9"
+          }
+        },
+        {
           "client_id": "431341307838-oe2b1p4o283d93lh4lburlqarm3kn3rm.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {
