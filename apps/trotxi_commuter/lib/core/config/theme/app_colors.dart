@@ -8,5 +8,6 @@ class AppColors {
   // static const darkbackground = Color(0xff1E1E1E)  ---> darktheme if included in build
   static const textsecondary = Color(0xff3E4A41);
   static const textPrimary = Color(0xff0B1C30);
-  static const elevatedbackground = Color(0xffBDCABE);   // bottom Navigation
+  static const elevatedbackground = Color(0xffBDCABE); // bottom Navigation
+  static const navborder = Color(0xff0B1C30); // bottom Navigation border color
 }
