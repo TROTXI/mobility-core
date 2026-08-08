@@ -3,16 +3,24 @@ packages:
   - 'e2e'
 
 # Security overrides: force patched versions of transitive dependencies whose
-# direct parents still pin a vulnerable range. Each entry clears a high-severity
-# advisory that `pnpm audit --prod` fails CI on. All are patch/minor bumps within
-# the same major, so they are drop-in. Remove an entry once the parent's own
-# range has moved past it.
+# direct parents still pin a vulnerable range. Each entry clears an advisory
+# that `pnpm audit --prod` reports. All are patch/minor bumps within the same
+# major, so they are drop-in. Remove an entry once the parent's own range has
+# moved past it.
 overrides:
   brace-expansion: '>=5.0.8' # DoS via unbounded expansion length
   '@opentelemetry/propagator-jaeger': '>=2.9.0' # DoS in the Jaeger propagator
   fast-uri: '>=3.1.4' # host confusion via literal/IDN parsing (@fastify/swagger)
   fast-xml-parser: '>=5.10.1' # DOCTYPE entity-expansion reset (firebase-admin)
   find-my-way: '>=9.6.1' # HTTP/2 DDoS (fastify router)
+  # Moderate, and in production paths: uuid ships with the FCM push sender and
+  # protobufjs with the OTLP exporter, so both run in prod even though the
+  # `--audit-level=high` gate stays quiet about them.
+  # Pinned to the same major the parents expect: an unbounded `>=` floats to the
+  # next major (uuid 14, protobufjs 8), which our unit tests would not catch —
+  # they use the fake notification sender and never load the real SDKs.
+  uuid: '^11.1.1' # missing buffer bounds check in v3/v5/v6 (firebase-admin)
+  protobufjs: '^7.6.5' # DoS via infinite loop (@opentelemetry/sdk-node)
 
 # pnpm blocks dependency build scripts by default (supply-chain safety).
 # esbuild (used by tsup + vitest) needs its postinstall to fetch its binary.
