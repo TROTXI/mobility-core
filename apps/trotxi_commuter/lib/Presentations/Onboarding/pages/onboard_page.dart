@@ -75,7 +75,6 @@ class _OnBoardPageState extends State<OnBoardPage> {
       final GoogleSignInAuthentication authentication = user.authentication;
       final String? idToken = authentication.idToken;
 
-
       if (idToken == null) {
         throw Exception('Google ID token was not returned.');
       }
@@ -83,7 +82,7 @@ class _OnBoardPageState extends State<OnBoardPage> {
       debugPrint('Google ID token received. $idToken');
 
       final AuthGooglePostRequest request = AuthGooglePostRequest(
-            (builder) => builder..idToken = idToken,
+        (builder) => builder..idToken = idToken,
       );
 
       final response = await _authApi.authGooglePost(
@@ -109,7 +108,9 @@ class _OnBoardPageState extends State<OnBoardPage> {
 
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (context) => HomePage(client: widget.client)),
+        MaterialPageRoute(
+          builder: (context) => HomePage(client: widget.client),
+        ),
       );
     } on DioException catch (e) {
       debugPrint('Backend authentication failed: ${e.message}');

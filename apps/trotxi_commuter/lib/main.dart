@@ -5,7 +5,7 @@ import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:trotxi_commuter/Presentations/Onboarding/pages/splash_page.dart';
-//import 'package:trotxi_commuter/core/Tokens/token_storage.dart';
+import 'package:trotxi_commuter/core/Tokens/token_storage.dart';
 import 'package:trotxi_commuter/core/config/theme/app_theme.dart';
 import 'package:trotxi_client/trotxi_client.dart';
 import 'package:trotxi_commuter/firebase_options.dart';
@@ -31,9 +31,13 @@ Future<void> main() async {
         FirebaseCrashlytics.instance.recordError(error, stack, fatal: true);
         return true;
       };
-      final client = TrotxiClientFactory.create(baseUrl: _apiBaseUrl);
+
+      final client = TrotxiClientFactory.create(
+        baseUrl: _apiBaseUrl,
+        tokenStore: TokenStorage.instance,
+      );
       client.dio.interceptors.add(PerformanceInterceptor());
-      // await TokenStorage.instance.clearTokens();
+      //await TokenStorage.instance.clearTokens();
       runApp(TrotxiCommuterApp(client: client));
     },
     (error, stack) {

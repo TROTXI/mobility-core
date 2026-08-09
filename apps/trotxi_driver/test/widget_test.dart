@@ -3,11 +3,34 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:trotxi_client/trotxi_client.dart';
 import 'package:trotxi_driver/main.dart';
 
+class FakeTokenStore implements TokenStore {
+  String? _refreshToken;
+
+  @override
+  Future<String?> getRefreshToken() async => _refreshToken;
+
+  @override
+  Future<void> saveTokens({
+    required String accessToken,
+    required String refreshToken,
+  }) async {
+    _refreshToken = refreshToken;
+  }
+
+  @override
+  Future<void> clearTokens() async {
+    _refreshToken = null;
+  }
+}
+
 void main() {
   late TrotxiApiClient client;
 
   setUp(() {
-    client = TrotxiClientFactory.create(baseUrl: 'https://string.com');
+    client = TrotxiClientFactory.create(
+      baseUrl: 'https://string.com',
+      tokenStore: FakeTokenStore(),
+    );
   });
 
   testWidgets('App renders without crashing', (WidgetTester tester) async {
