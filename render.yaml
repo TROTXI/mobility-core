@@ -147,6 +147,37 @@ services:
     dockerCommand: node dist/cron/ask-dispatch-cron.js resolve evening
     envVars:
       - fromGroup: trotxi-cron-staging
+  # No-show sweeps (E4). These run AFTER the run has departed and debit riders
+  # who confirmed a seat but never boarded — the seat was held for them, so it
+  # costs a ride. They target the day that just happened, not tomorrow.
+  - type: cron
+    name: trotxi-noshow-morning-staging
+    runtime: docker
+    repo: https://github.com/TROTXI/mobility-core
+    branch: main
+    dockerfilePath: services/api/Dockerfile
+    dockerContext: .
+    plan: free
+    region: frankfurt
+    autoDeploy: false
+    schedule: '0 10 * * *' # 10:00 — after the 06:30 morning run has finished
+    dockerCommand: node dist/cron/ask-dispatch-cron.js noshow morning
+    envVars:
+      - fromGroup: trotxi-cron-staging
+  - type: cron
+    name: trotxi-noshow-evening-staging
+    runtime: docker
+    repo: https://github.com/TROTXI/mobility-core
+    branch: main
+    dockerfilePath: services/api/Dockerfile
+    dockerContext: .
+    plan: free
+    region: frankfurt
+    autoDeploy: false
+    schedule: '0 20 * * *' # 20:00 — after the evening run, still the same UTC day
+    dockerCommand: node dist/cron/ask-dispatch-cron.js noshow evening
+    envVars:
+      - fromGroup: trotxi-cron-staging
 
   # ---- Production (uncomment when going live) ----
   # Needs a paid Postgres plan so data doesn't expire. After applying, set the
