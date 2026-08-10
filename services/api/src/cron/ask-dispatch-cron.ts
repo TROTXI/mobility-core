@@ -1,41 +1,55 @@
-// Ask-dispatch cron entrypoint (E3). A Render cron job runs this at each
-// confirmation window: it mints a short-lived admin token from JWT_SECRET (auth
-// is stateless — no user row needed) and POSTs the deployed API's admin trigger.
-// Two actions x two directions (schedules live in render.yaml):
-//   ask morning  (18:00) -> prompt tomorrow-morning riders   cutoff resolve 21:00
-//   ask evening  (12:00) -> prompt this-evening riders        cutoff resolve 14:00
+// Daily-loop cron entrypoint (E3/E4). A Render cron job runs this at each point
+// in the day: it mints a short-lived admin token from JWT_SECRET (auth is
+// stateless — no user row needed) and POSTs the deployed API's admin trigger.
+// Three actions x two directions (schedules live in render.yaml):
+//   ask     morning (18:00) -> prompt tomorrow-morning riders  cutoff resolve 21:00
+//   ask     evening (12:00) -> prompt this-evening riders      cutoff resolve 14:00
+//   noshow  morning (10:00) -> debit confirmed-but-absent seats after the run
+//   noshow  evening (20:00) -> same, after the evening run
 // Ghana runs on UTC (GMT+0), so the cron schedules are plain UTC, no offset.
+//
+// Deliberately NOT scheduled: /admin/convert-credits. Its conversion is keyed by
+// subscription id rather than by billing period, so it can only ever run once per
+// subscription and would zero a rider who subscribed days earlier. It stays a
+// manual admin action until E5b makes it period-aware (#128).
 
 import { createJwtService, type AuthConfig } from '../modules/auth/jwt';
 
-type Action = 'ask' | 'resolve';
+type Action = 'ask' | 'resolve' | 'noshow';
 type Direction = 'morning' | 'evening';
 
 const PATH_FOR: Record<Action, string> = {
   ask: '/admin/ask-dispatch',
   resolve: '/admin/resolve-defaults',
+  noshow: '/admin/resolve-no-shows',
 };
 
-// Morning is asked (and defaulted) the evening BEFORE, for tomorrow; evening is
-// asked midday, for today. So the target travel day is tomorrow for morning and
-// today for evening — the trip's own scheduled time still decides its direction.
-function travelDateFor(direction: Direction, now: Date): string {
+// Which travel day an action targets.
+//
+// ask/resolve run BEFORE travel: morning is asked (and defaulted) the evening
+// before, for tomorrow; evening is asked midday, for today.
+//
+// noshow runs AFTER the run has departed, so it always sweeps the day that just
+// happened — today for both directions. Getting this wrong would sweep a day
+// whose trips have not run yet and debit riders who are not late, they are early.
+// (The trip's own scheduled time still decides its direction.)
+function travelDateFor(action: Action, direction: Direction, now: Date): string {
   const d = new Date(now);
-  if (direction === 'morning') d.setUTCDate(d.getUTCDate() + 1);
+  if (action !== 'noshow' && direction === 'morning') d.setUTCDate(d.getUTCDate() + 1);
   return d.toISOString().slice(0, 10);
 }
 
+const ACTIONS: readonly Action[] = ['ask', 'resolve', 'noshow'];
+const DIRECTIONS: readonly Direction[] = ['morning', 'evening'];
+
 function parseArgs(argv: readonly string[]): { action: Action; direction: Direction } {
   const [action, direction] = argv;
-  if (
-    (action !== 'ask' && action !== 'resolve') ||
-    (direction !== 'morning' && direction !== 'evening')
-  ) {
+  if (!ACTIONS.includes(action as Action) || !DIRECTIONS.includes(direction as Direction)) {
     throw new Error(
-      `usage: ask-dispatch-cron <ask|resolve> <morning|evening> (got: "${argv.join(' ')}")`,
+      `usage: ask-dispatch-cron <${ACTIONS.join('|')}> <${DIRECTIONS.join('|')}> (got: "${argv.join(' ')}")`,
     );
   }
-  return { action, direction };
+  return { action: action as Action, direction: direction as Direction };
 }
 
 async function main(): Promise<void> {
@@ -53,11 +67,11 @@ async function main(): Promise<void> {
     audience: process.env.JWT_AUDIENCE ?? 'trotxi-api',
   };
   const token = await createJwtService(auth).signAccessToken({
-    userId: 'cron-ask-dispatch',
+    userId: 'cron-daily-loop',
     role: 'admin',
   });
 
-  const travelDate = travelDateFor(direction, new Date());
+  const travelDate = travelDateFor(action, direction, new Date());
   const url = `${baseUrl.replace(/\/$/, '')}${PATH_FOR[action]}`;
   const res = await fetch(url, {
     method: 'POST',
