@@ -31,6 +31,56 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm run format:check
 
+  # A lockfile change with no accompanying manifest change means someone ran a
+  # bare `pnpm install` (often on a pnpm version other than the pinned one) and
+  # committed a re-resolution. That silently moved @opentelemetry/propagator-jaeger
+  # from 2.10.0 back to 2.8.0 on a Flutter-only branch and tripped the security
+  # gate. Dependency changes are fine — they just have to come with the manifest
+  # edit that justifies them.
+  lockfile:
+    name: Lockfile guard
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    if: github.event_name == 'pull_request'
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Lockfile may only change alongside a manifest
+        env:
+          BASE: ${{ github.event.pull_request.base.sha }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          changed=$(git diff --name-only "$BASE" "$HEAD")
+          echo "$changed" | grep -qx 'pnpm-lock.yaml' || {
+            echo "pnpm-lock.yaml unchanged — nothing to check."; exit 0; }
+
+          if echo "$changed" | grep -qE '(^|/)package\.json$|^pnpm-workspace\.yaml$'; then
+            echo "Lockfile changed alongside a manifest — expected."; exit 0
+          fi
+
+          echo "::error file=pnpm-lock.yaml::pnpm-lock.yaml changed but no package.json or pnpm-workspace.yaml did."
+          cat <<'MSG'
+
+          The lockfile was modified without any dependency actually changing.
+          This usually means a bare `pnpm install` re-resolved the tree — which
+          can silently downgrade transitive packages past our security overrides.
+
+          If you did not mean to change dependencies:
+
+            git checkout origin/main -- pnpm-lock.yaml
+            git commit -m "chore: restore pnpm-lock.yaml from main"
+
+          To avoid it next time, use the pinned pnpm and don't re-resolve:
+
+            corepack enable                  # uses the repo's pnpm (packageManager field)
+            pnpm install --frozen-lockfile   # install without rewriting the lockfile
+
+          Flutter/app work never needs to touch the Node lockfile.
+          MSG
+          exit 1
+
   api:
     name: API (services/api)
     runs-on: ubuntu-latest
