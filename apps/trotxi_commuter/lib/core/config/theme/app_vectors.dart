@@ -6,5 +6,5 @@ class Appvectors {
   static const String splashImage = '${basepath}bus_illustrator$imageformat';
   static const String googleIconImage = '${basepath}googleIcon$imageformat';
   static const String appleIconImage = '${basepath}appleIcon$imageformat';
-  static const String avatarImage = '${basepath}avatar$vectorformat';
+  static const String avatarImage = '${basepath}Avatar$imageformat';
 }

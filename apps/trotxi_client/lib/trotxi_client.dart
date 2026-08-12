@@ -28,10 +28,9 @@ class ApiException extends TrotxiException {
   const ApiException(this.statusCode, String message) : super(message);
 }
 
-/// Interface the app-side token storage must implement.
-/// Keeps this package free of any dependency on flutter_secure_storage
-/// or any specific storage implementation.
+/// Interface for app-level storage of JWT tokens
 abstract class TokenStore {
+  Future<String?> getAccessToken();
   Future<String?> getRefreshToken();
   Future<void> saveTokens({
     required String accessToken,
@@ -40,6 +39,108 @@ abstract class TokenStore {
   Future<void> clearTokens();
 }
 
+/// 1. AuthInterceptor: Handles Bearer injection & Automatic 401 Token Refresh
+class AuthInterceptor extends QueuedInterceptor {
+  final Dio _dio;
+  final TokenStore _tokenStore;
+
+  AuthInterceptor({
+    required Dio dio,
+    required TokenStore tokenStore,
+  })  : _dio = dio,
+        _tokenStore = tokenStore;
+
+  @override
+  Future<void> onRequest(
+    RequestOptions options,
+    RequestInterceptorHandler handler,
+  ) async {
+    final accessToken = await _tokenStore.getAccessToken();
+    if (accessToken != null && accessToken.isNotEmpty) {
+      options.headers['Authorization'] = 'Bearer $accessToken';
+    }
+    return handler.next(options);
+  }
+
+  @override
+  Future<void> onError(
+    DioException err,
+    ErrorInterceptorHandler handler,
+  ) async {
+    // Only attempt refresh on genuine HTTP 401 status codes
+    if (err.response?.statusCode != 401) {
+      return handler.next(err);
+    }
+
+    // Guard: Prevent infinite loops if the refresh call itself returns 401
+    final requestPath = err.requestOptions.path;
+    if (requestPath.contains('auth/refresh') ||
+        requestPath.contains('refresh')) {
+      await _tokenStore.clearTokens();
+      return handler.next(err);
+    }
+
+    try {
+      final refreshToken = await _tokenStore.getRefreshToken();
+      if (refreshToken == null || refreshToken.isEmpty) {
+        await _tokenStore.clearTokens();
+        return handler.next(err);
+      }
+
+      // Instantiate a isolated client for the refresh call
+      final refreshClient = TrotxiApiClient(
+        basePathOverride: _dio.options.baseUrl,
+      );
+
+      // Attach logging to inspect the generated refresh API call in debug console
+      refreshClient.dio.interceptors.add(
+        LogInterceptor(
+          requestHeader: true,
+          requestBody: true,
+          responseHeader: false,
+          responseBody: true,
+          error: true,
+        ),
+      );
+
+      // Construct the generated built_value request model
+      final refreshRequest = AuthRefreshPostRequest(
+        (b) => b..refreshToken = refreshToken,
+      );
+
+      // Call the generated AuthApi endpoint
+      final response = await refreshClient
+          .getAuthApi()
+          .authRefreshPost(authRefreshPostRequest: refreshRequest);
+
+      final newAccessToken = response.data?.accessToken;
+      final newRefreshToken = response.data?.refreshToken;
+
+      if (newAccessToken == null || newRefreshToken == null) {
+        await _tokenStore.clearTokens();
+        return handler.next(err);
+      }
+
+      // Store new credentials
+      await _tokenStore.saveTokens(
+        accessToken: newAccessToken,
+        refreshToken: newRefreshToken,
+      );
+
+      // Clone and retry the original failed request with the new access token
+      final requestOptions = err.requestOptions;
+      requestOptions.headers['Authorization'] = 'Bearer $newAccessToken';
+
+      final clonedResponse = await _dio.fetch(requestOptions);
+      return handler.resolve(clonedResponse);
+    } catch (refreshError) {
+      await _tokenStore.clearTokens();
+      return handler.next(err);
+    }
+  }
+}
+
+/// 2. ErrorInterceptor: Maps raw DioExceptions to typed Domain Exceptions
 class ErrorInterceptor extends Interceptor {
   @override
   void onError(DioException err, ErrorInterceptorHandler handler) {
@@ -47,7 +148,8 @@ class ErrorInterceptor extends Interceptor {
 
     if (response == null) {
       if (err.type == DioExceptionType.connectionError ||
-          err.type == DioExceptionType.unknown) {
+          err.type == DioExceptionType.unknown ||
+          err.type == DioExceptionType.connectionTimeout) {
         return handler.reject(
           DioException(
             requestOptions: err.requestOptions,
@@ -60,24 +162,30 @@ class ErrorInterceptor extends Interceptor {
 
     switch (response.statusCode) {
       case 401:
-        return handler.reject(DioException(
-          requestOptions: err.requestOptions,
-          error: const UnauthorizedException(),
-        ));
+        return handler.reject(
+          DioException(
+            requestOptions: err.requestOptions,
+            error: const UnauthorizedException(),
+          ),
+        );
       case 429:
         final retryAfter = _parseRetryAfter(response);
-        return handler.reject(DioException(
-          requestOptions: err.requestOptions,
-          error: RateLimitException(retryAfter),
-        ));
-      default:
-        return handler.reject(DioException(
-          requestOptions: err.requestOptions,
-          error: ApiException(
-            response.statusCode ?? 0,
-            response.statusMessage ?? 'Unknown error',
+        return handler.reject(
+          DioException(
+            requestOptions: err.requestOptions,
+            error: RateLimitException(retryAfter),
           ),
-        ));
+        );
+      default:
+        return handler.reject(
+          DioException(
+            requestOptions: err.requestOptions,
+            error: ApiException(
+              response.statusCode ?? 0,
+              response.statusMessage ?? 'Unknown error',
+            ),
+          ),
+        );
     }
   }
 
@@ -88,62 +196,23 @@ class ErrorInterceptor extends Interceptor {
   }
 }
 
-/// Intercepts 401s, performs a single-flight token refresh, and retries
-/// the original request. Must be added AFTER ErrorInterceptor so it runs
-/// FIRST on the error path (Dio processes error interceptors in reverse
-/// order of registration).
-class AuthInterceptor extends QueuedInterceptor {
-  AuthInterceptor(this._dio, this._plainDio, this._tokenStore);
-
-  final Dio _dio;
-  final Dio _plainDio;
-  final TokenStore _tokenStore;
-
-  Future<String>? _refreshing;
-
-  @override
-  void onError(DioException err, ErrorInterceptorHandler handler) async {
-    if (err.response?.statusCode != 401) {
-      return handler.next(err);
-    }
-
-    try {
-      final newAccessToken = await _refreshOnce();
-
-      final opts = err.requestOptions;
-      opts.headers['Authorization'] = 'Bearer $newAccessToken';
-      final response = await _dio.fetch(opts);
-      return handler.resolve(response);
-    } catch (e) {
-      return handler.next(err);
-    }
-  }
-
-  Future<String> _refreshOnce() {
-    return _refreshing ??= _doRefresh().whenComplete(() => _refreshing = null);
-  }
-
-  Future<String> _doRefresh() async {
-    final rt = await _tokenStore.getRefreshToken();
-    if (rt == null) throw const UnauthorizedException();
-    final res =
-        await _plainDio.post('/auth/refresh', data: {'refreshToken': rt});
-    await _tokenStore.saveTokens(
-      accessToken: res.data['accessToken'],
-      refreshToken: res.data['refreshToken'],
-    );
-    return res.data['accessToken'];
-  }
-}
-
+/// 3. Factory: Assembles the client with correct interceptor order
 class TrotxiClientFactory {
   static TrotxiApiClient create({
     required String baseUrl,
     required TokenStore tokenStore,
   }) {
     final client = TrotxiApiClient(basePathOverride: baseUrl);
-    final plainDio = Dio(BaseOptions(baseUrl: baseUrl));
 
+    // CRITICAL: AuthInterceptor MUST come BEFORE ErrorInterceptor.
+    // Otherwise ErrorInterceptor transforms 401s to UnauthorizedException
+    // before AuthInterceptor can trigger the refresh flow.
+    client.dio.interceptors.add(
+      AuthInterceptor(
+        dio: client.dio,
+        tokenStore: tokenStore,
+      ),
+    );
     client.dio.interceptors.add(ErrorInterceptor());
     client.dio.interceptors.add(
       LogInterceptor(
@@ -153,9 +222,6 @@ class TrotxiClientFactory {
         responseBody: true,
         error: true,
       ),
-    );
-    client.dio.interceptors.add(
-      AuthInterceptor(client.dio, plainDio, tokenStore),
     );
 
     return client;

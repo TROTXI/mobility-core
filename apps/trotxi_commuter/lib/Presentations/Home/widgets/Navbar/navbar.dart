@@ -10,34 +10,41 @@ class Navbar extends StatelessWidget implements PreferredSizeWidget {
   const Navbar({super.key, required this.userData, required this.userName});
 
   @override
-  Size get preferredSize => const Size.fromHeight(kToolbarHeight);
+  Size get preferredSize => const Size.fromHeight(kToolbarHeight + 32);
+
+  String _getInitials(String name) {
+    final trimmed = name.trim();
+    if (trimmed.isEmpty) return '?';
+
+    final parts = trimmed.split(RegExp(r'\s+'));
+    if (parts.length == 1) {
+      return parts.first.substring(0, 1).toUpperCase();
+    }
+    return (parts.first.substring(0, 1) + parts.last.substring(0, 1))
+        .toUpperCase();
+  }
 
   @override
   Widget build(BuildContext context) {
     final String? avatarUrl = userData.avatarUrl;
-
-    final ImageProvider avatarProvider =
-        (avatarUrl != null && avatarUrl.isNotEmpty)
-        ? NetworkImage(avatarUrl)
-        : AssetImage(Appvectors.avatarImage) as ImageProvider;
+    final bool hasAvatar = avatarUrl != null && avatarUrl.isNotEmpty;
 
     return SafeArea(
+      bottom: false,
       child: Column(
         children: [
           Container(
             width: double.infinity,
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             decoration: ShapeDecoration(
-              color: AppColors.elevatedbackground,
+              color: AppColors.lightBackground,
               shape: RoundedRectangleBorder(
                 side: BorderSide(width: 1, color: AppColors.navborder),
               ),
             ),
             child: Row(
-              mainAxisSize: MainAxisSize.min,
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               crossAxisAlignment: CrossAxisAlignment.center,
-              spacing: 186,
               children: [
                 Container(
                   width: 70,
@@ -84,7 +91,7 @@ class Navbar extends StatelessWidget implements PreferredSizeWidget {
                       height: 40,
                       clipBehavior: Clip.antiAlias,
                       decoration: ShapeDecoration(
-                        color: AppColors.elevatedbackground,
+                        color: AppColors.lightBackground,
                         shape: RoundedRectangleBorder(
                           side: BorderSide(
                             width: 1,
@@ -93,26 +100,37 @@ class Navbar extends StatelessWidget implements PreferredSizeWidget {
                           borderRadius: BorderRadius.circular(12),
                         ),
                       ),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Expanded(
-                            child: Container(
+                      child: hasAvatar
+                          ? Container(
                               width: double.infinity,
-                              clipBehavior: Clip.antiAlias,
+                              height: double.infinity,
                               decoration: BoxDecoration(
                                 borderRadius: BorderRadius.circular(12),
                                 image: DecorationImage(
-                                  image: avatarProvider,
-                                  fit: BoxFit.contain,
+                                  image: NetworkImage(avatarUrl),
+                                  fit: BoxFit.cover,
+                                ),
+                              ),
+                            )
+                          : Container(
+                              width: double.infinity,
+                              height: double.infinity,
+                              alignment: Alignment.center,
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(12),
+                                color: AppColors
+                                    .navborder, // adjust to your preferred fallback color
+                              ),
+                              child: Text(
+                                _getInitials(userName),
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w600,
+                                  fontFamily: 'Inter',
                                 ),
                               ),
                             ),
-                          ),
-                        ],
-                      ),
                     ),
                   ],
                 ),

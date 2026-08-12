@@ -47,8 +47,6 @@ class _OnBoardPageState extends State<OnBoardPage> {
 
       _isGoogleSignInInitialized = true;
 
-      await _googleSignIn.attemptLightweightAuthentication();
-
       if (mounted) {
         setState(() {});
       }

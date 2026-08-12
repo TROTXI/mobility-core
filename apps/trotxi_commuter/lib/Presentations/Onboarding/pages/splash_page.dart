@@ -30,10 +30,8 @@ class _SplashPageState extends State<SplashPage> {
     if (!mounted) return;
 
     final token = await TokenStorage.instance.getAccessToken();
-    final rf = await TokenStorage.instance.getRefreshToken();
     final isLoggedIn = token != null && token.isNotEmpty;
-    debugPrint('token: $rf');
-    debugPrint('isLoggedIn: $isLoggedIn');
+
     if (!mounted) return;
 
     Navigator.pushReplacement(

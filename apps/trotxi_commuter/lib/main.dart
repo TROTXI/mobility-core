@@ -38,6 +38,7 @@ Future<void> main() async {
       );
       client.dio.interceptors.add(PerformanceInterceptor());
       //await TokenStorage.instance.clearTokens();
+
       runApp(TrotxiCommuterApp(client: client));
     },
     (error, stack) {
