@@ -72,6 +72,12 @@ services:
         sync: false
       - key: OTEL_SERVICE_NAME
         value: trotxi-api
+      # Browser-client origin allowlist, comma-separated (#174). Unset -> the
+      # API reflects any origin, which is fine while no browser client exists.
+      # Set in the dashboard to the ops console's origin when trotxi-ops-staging
+      # (below) goes live.
+      - key: CORS_ORIGINS
+        sync: false
       # Cloudflare R2 (avatars, #24) — S3-compatible object storage. The access
       # keys are secrets → set in the dashboard, never commit. All four unset ->
       # in-memory object store (no avatars persisted).
@@ -178,6 +184,20 @@ services:
     dockerCommand: node dist/cron/ask-dispatch-cron.js noshow evening
     envVars:
       - fromGroup: trotxi-cron-staging
+
+  # ---- Ops console (apps/ops, #170/#174) — uncomment when the first build lands ----
+  # Static bundle only, no server process (free plan). Uncommenting before the
+  # package has a `build` script would fail every deploy, hence the comment.
+  # After applying: set CORS_ORIGINS on trotxi-api-staging to this site's origin.
+  #
+  # - type: web
+  #   name: trotxi-ops-staging
+  #   runtime: static
+  #   repo: https://github.com/TROTXI/mobility-core
+  #   branch: main
+  #   buildCommand: corepack enable && pnpm install --frozen-lockfile && pnpm --filter @trotxi/ops run build
+  #   staticPublishPath: apps/ops/dist
+  #   autoDeploy: false
 
   # ---- Production (uncomment when going live) ----
   # Needs a paid Postgres plan so data doesn't expire. After applying, set the
