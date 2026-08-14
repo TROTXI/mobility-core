@@ -81,8 +81,13 @@ jobs:
           MSG
           exit 1
 
-  api:
-    name: API (services/api)
+  # Recursive on purpose: every workspace package that defines one of these
+  # scripts is gated automatically — a new package (e.g. apps/ops, #170) cannot
+  # merge with zero coverage just because nobody edited this file. Packages
+  # without a script are skipped (--if-present); Playwright stays in the e2e
+  # job because @trotxi/e2e's `test` needs the Postgres service container.
+  node:
+    name: Node packages (workspace)
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -94,10 +99,10 @@ jobs:
           cache: pnpm
 
       - run: pnpm install --frozen-lockfile
-      - run: pnpm --filter @trotxi/api run typecheck
-      - run: pnpm --filter @trotxi/api run lint
-      - run: pnpm --filter @trotxi/api run test:coverage
-      - run: pnpm --filter @trotxi/api run build
+      - run: pnpm -r --if-present run typecheck
+      - run: pnpm -r --if-present run lint
+      - run: pnpm -r --if-present run test:coverage
+      - run: pnpm -r --if-present run build
 
   migrations:
     name: Migrations (Postgres)
