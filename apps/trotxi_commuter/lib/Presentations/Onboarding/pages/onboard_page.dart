@@ -6,6 +6,7 @@ import 'package:trotxi_commuter/Presentations/Home/pages/home_page.dart';
 import 'package:trotxi_commuter/Presentations/Onboarding/widgets/app_button.dart';
 import 'package:trotxi_commuter/core/config/theme/app_vectors.dart';
 import 'package:trotxi_commuter/core/Tokens/token_storage.dart';
+import 'package:trotxi_commuter/core/config/theme/app_colors.dart';
 
 class OnBoardPage extends StatefulWidget {
   const OnBoardPage({super.key, required this.client});
@@ -27,7 +28,7 @@ class _OnBoardPageState extends State<OnBoardPage> {
   // Your Android OAuth serverId
   static const String _serverId =
       '431341307838-pc4m046v2lj18ssfnfl1g52fl5g1cg4q.apps.googleusercontent.com';
-  //'431341307838-7gjd9olb7st58s6c6btoudq79h7jaglv.apps.googleusercontent.com';
+
   @override
   void initState() {
     super.initState();
@@ -167,26 +168,101 @@ class _OnBoardPageState extends State<OnBoardPage> {
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     const Text(
-                      'Welcome to Trotxi',
-                      textAlign: TextAlign.center,
+                      'Join the Network',
                       style: TextStyle(
-                        fontSize: 28,
-                        fontWeight: FontWeight.bold,
+                        color: AppColors.dark,
+                        fontSize: 24,
+                        fontFamily: 'Hanken Grotesk',
+                        fontWeight: FontWeight.w700,
+                        height: 1.33,
                       ),
                     ),
-                    const SizedBox(height: 40),
-                    AppSignInButton(
-                      onPressed: _signInWithGoogle,
-                      text: _isSigningIn
-                          ? 'Signing in...'
-                          : 'Continue with Google',
-                      icon: Image.asset(Appvectors.googleIconImage),
+                    const SizedBox(height: 4),
+                    const Text(
+                      'Create your Accra Commuter account to start moving smarter.',
+                      style: TextStyle(
+                        color: AppColors.body,
+                        fontSize: 16,
+                        fontFamily: 'Inter',
+                        fontWeight: FontWeight.w400,
+                        height: 1.50,
+                      ),
                     ),
-                    const SizedBox(height: 16),
-                    AppSignInButton(
-                      onPressed: _signInWithApple,
-                      text: 'Continue with Apple',
-                      icon: Image.asset(Appvectors.appleIconImage),
+                    const SizedBox(height: 24),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(24),
+                      decoration: BoxDecoration(
+                        border: Border.all(color: AppColors.border),
+                        borderRadius: BorderRadius.circular(8),
+                        boxShadow: const [
+                          BoxShadow(
+                            color: Color(0x0C000000),
+                            blurRadius: 2,
+                            offset: Offset(0, 1),
+                          ),
+                        ],
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          AppSignInButton(
+                            onPressed: _signInWithGoogle,
+                            text: _isSigningIn
+                                ? 'Signing in...'
+                                : 'Continue with Google',
+                            icon: Image.asset(Appvectors.googleIconImage),
+                          ),
+                          const SizedBox(height: 16),
+                          AppSignInButton(
+                            onPressed: _signInWithApple,
+                            text: 'Continue with Apple',
+                            icon: Image.asset(Appvectors.appleIconImage),
+                          ),
+                          const SizedBox(height: 16),
+                          const Text(
+                            'By continuing, you agree to Trotxi\'s Terms and Conditions '
+                            'and Usage Policy, and acknowledge their Privacy Policy',
+                            style: TextStyle(
+                              color: AppColors.body,
+                              fontSize: 14,
+                              fontFamily: 'Inter',
+                              fontWeight: FontWeight.w400,
+                              height: 1.25,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                    const Center(
+                      child: Text.rich(
+                        TextSpan(
+                          children: [
+                            TextSpan(
+                              text: 'Already have an account? ',
+                              style: TextStyle(
+                                color: AppColors.body,
+                                fontSize: 16,
+                                fontFamily: 'Inter',
+                                fontWeight: FontWeight.w400,
+                                height: 1.50,
+                              ),
+                            ),
+                            TextSpan(
+                              text: 'Sign In',
+                              style: TextStyle(
+                                color: AppColors.primary,
+                                fontSize: 16,
+                                fontFamily: 'Inter',
+                                fontWeight: FontWeight.w400,
+                                height: 1.50,
+                              ),
+                            ),
+                          ],
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
                     ),
                   ],
                 ),

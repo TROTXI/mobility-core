@@ -17,7 +17,7 @@ class NavItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = selected ? AppColors.primary : AppColors.elevatedbackground;
+    final color = selected ? AppColors.primary : AppColors.lightBackground;
     final iconColor = selected ? AppColors.buttontext : AppColors.textsecondary;
     final textColor = selected ? AppColors.buttontext : AppColors.textsecondary;
 

@@ -4,8 +4,62 @@ import 'package:trotxi_client/trotxi_client.dart';
 import 'package:trotxi_commuter/Presentations/Home/widgets/BottomNavigation/app_bottom_nav.dart';
 import 'package:trotxi_commuter/Presentations/Home/widgets/BottomNavigation/nav_destination.dart';
 import 'package:trotxi_commuter/Presentations/Home/widgets/Navbar/navbar.dart';
+import 'package:trotxi_commuter/Presentations/Home/widgets/Tabs/home_tab.dart';
+import 'package:trotxi_commuter/Presentations/Home/widgets/Tabs/pass_tab.dart';
+import 'package:trotxi_commuter/Presentations/Home/widgets/Tabs/profile_tab.dart';
+import 'package:trotxi_commuter/Presentations/Home/widgets/Tabs/routes_tab.dart';
+import 'package:trotxi_commuter/Presentations/Home/widgets/Tabs/wallet_tab.dart';
 import 'package:trotxi_commuter/Presentations/Onboarding/pages/onboard_page.dart';
 import 'package:trotxi_commuter/core/config/theme/app_colors.dart';
+
+/// An [IndexedStack] replacement that only builds a child the first time
+/// its index becomes active, instead of building all children up front.
+///
+/// Once a child has been built it stays mounted (like a normal
+/// [IndexedStack]), so switching tabs away and back preserves its state
+/// (including any data it has already fetched) without needing
+/// [AutomaticKeepAliveClientMixin].
+class LazyIndexedStack extends StatefulWidget {
+  const LazyIndexedStack({
+    super.key,
+    required this.index,
+    required this.children,
+  });
+
+  final int index;
+  final List<Widget> children;
+
+  @override
+  State<LazyIndexedStack> createState() => _LazyIndexedStackState();
+}
+
+class _LazyIndexedStackState extends State<LazyIndexedStack> {
+  final Set<int> _builtIndices = {};
+
+  @override
+  void initState() {
+    super.initState();
+    _builtIndices.add(widget.index);
+  }
+
+  @override
+  void didUpdateWidget(covariant LazyIndexedStack oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    _builtIndices.add(widget.index);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return IndexedStack(
+      index: widget.index,
+      children: List.generate(widget.children.length, (i) {
+        return _builtIndices.contains(i)
+            ? widget.children[i]
+            : const SizedBox.shrink();
+      }),
+    );
+  }
+}
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key, required this.client});
@@ -21,6 +75,8 @@ class _HomePageState extends State<HomePage> {
   MeGet200Response? _userData;
   bool _loadingUser = true;
   TrotxiException? _activeError;
+
+  late final List<Widget> _pages;
 
   final List<NavDestination> _items = [
     NavDestination(label: 'Home', iconPath: Icons.home_filled, route: '/home'),
@@ -46,17 +102,17 @@ class _HomePageState extends State<HomePage> {
     ),
   ];
 
-  final List<Widget> _pages = const [
-    Center(child: Text('Welcome to Trotxi')),
-    Center(child: Text('Routes Page')),
-    Center(child: Text('Pass Page')),
-    Center(child: Text('Wallet Page')),
-    Center(child: Text('Profile Page')),
-  ];
-
   @override
   void initState() {
     super.initState();
+
+    _pages = [
+      HomeTab(client: widget.client),
+      RoutesTab(client: widget.client),
+      PassTab(client: widget.client),
+      WalletTab(client: widget.client),
+      ProfileTab(client: widget.client),
+    ];
     _fetchCurrentUser();
   }
 
@@ -234,7 +290,7 @@ class _HomePageState extends State<HomePage> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Text('Something went wrong.'),
+              const Text('Something went wrong.'),
               const SizedBox(height: 16),
               ElevatedButton(
                 onPressed: _fetchCurrentUser,
@@ -249,7 +305,7 @@ class _HomePageState extends State<HomePage> {
     // 5. Success State
     return Scaffold(
       appBar: Navbar(userData: _userData!, userName: _userData!.displayName),
-      body: IndexedStack(index: _currentIndex, children: _pages),
+      body: LazyIndexedStack(index: _currentIndex, children: _pages),
       bottomNavigationBar: AppBottomNav(
         currentIndex: _currentIndex,
         items: _items,

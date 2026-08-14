@@ -19,6 +19,7 @@ class TokenStorage implements TokenStore {
     await _storage.write(key: _refreshTokenKey, value: refreshToken);
   }
 
+  @override
   Future<String?> getAccessToken() => _storage.read(key: _accessTokenKey);
 
   @override
