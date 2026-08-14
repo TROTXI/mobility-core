@@ -1,6 +1,10 @@
 packages:
   - 'services/*'
   - 'e2e'
+  # Explicit path, not `apps/*`: the rest of apps/ is Flutter (pubspec, not
+  # package.json) and must stay invisible to pnpm. Next Node package under
+  # apps/ gets its own line here.
+  - 'apps/ops'
 
 # Security overrides: force patched versions of transitive dependencies whose
 # direct parents still pin a vulnerable range. Each entry clears an advisory
