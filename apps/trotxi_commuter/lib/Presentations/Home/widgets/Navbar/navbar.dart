@@ -119,7 +119,7 @@ class Navbar extends StatelessWidget implements PreferredSizeWidget {
                               decoration: BoxDecoration(
                                 borderRadius: BorderRadius.circular(12),
                                 color: AppColors
-                                    .navborder, // adjust to your preferred fallback color
+                                    .primary, // adjust to your preferred fallback color
                               ),
                               child: Text(
                                 _getInitials(userName),

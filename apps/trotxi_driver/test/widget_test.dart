@@ -8,8 +8,7 @@ class FakeTokenStore implements TokenStore {
   String? _accessToken;
   String? _refreshToken;
 
-  FakeTokenStore({this._accessToken, String? refreshToken})
-    : _refreshToken = refreshToken;
+  FakeTokenStore({this._accessToken, this._refreshToken});
 
   @override
   Future<String?> getAccessToken() async => _accessToken;

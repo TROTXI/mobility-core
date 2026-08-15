@@ -70,13 +70,18 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
-  int _currentIndex = 0;
+  // Keep in sync with the order of _items below.
+  static const int _homeTabIndex = 0;
+  static const int _routesTabIndex = 1;
+  static const int _passTabIndex = 2;
+  static const int _walletTabIndex = 3;
+  static const int _profileTabIndex = 4;
+
+  int _currentIndex = _homeTabIndex;
 
   MeGet200Response? _userData;
   bool _loadingUser = true;
   TrotxiException? _activeError;
-
-  late final List<Widget> _pages;
 
   final List<NavDestination> _items = [
     NavDestination(label: 'Home', iconPath: Icons.home_filled, route: '/home'),
@@ -105,14 +110,6 @@ class _HomePageState extends State<HomePage> {
   @override
   void initState() {
     super.initState();
-
-    _pages = [
-      HomeTab(client: widget.client),
-      RoutesTab(client: widget.client),
-      PassTab(client: widget.client),
-      WalletTab(client: widget.client),
-      ProfileTab(client: widget.client),
-    ];
     _fetchCurrentUser();
   }
 
@@ -161,6 +158,10 @@ class _HomePageState extends State<HomePage> {
       ),
       (route) => false,
     );
+  }
+
+  void _goToTab(int index) {
+    setState(() => _currentIndex = index);
   }
 
   @override
@@ -302,16 +303,29 @@ class _HomePageState extends State<HomePage> {
       );
     }
 
-    // 5. Success State
+    // 5. Success State — _userData is guaranteed non-null past this point,
+    // so it's safe to build tabs that require it (HomeTab).
+    final userData = _userData!;
+
+    final pages = [
+      HomeTab(
+        client: widget.client,
+        userData: userData,
+        onShowBoardingPass: () => _goToTab(_passTabIndex),
+      ),
+      RoutesTab(client: widget.client),
+      PassTab(client: widget.client),
+      WalletTab(client: widget.client),
+      ProfileTab(client: widget.client),
+    ];
+
     return Scaffold(
-      appBar: Navbar(userData: _userData!, userName: _userData!.displayName),
-      body: LazyIndexedStack(index: _currentIndex, children: _pages),
+      appBar: Navbar(userData: userData, userName: userData.displayName),
+      body: LazyIndexedStack(index: _currentIndex, children: pages),
       bottomNavigationBar: AppBottomNav(
         currentIndex: _currentIndex,
         items: _items,
-        onTap: (index) {
-          setState(() => _currentIndex = index);
-        },
+        onTap: _goToTab,
       ),
     );
   }

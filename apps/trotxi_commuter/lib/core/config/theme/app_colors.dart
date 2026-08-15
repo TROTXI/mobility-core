@@ -10,7 +10,12 @@ class AppColors {
   static const textsecondary = Color(0xff3E4A41);
   static const textPrimary = Color(0xff0B1C30);
   static const elevatedbackground = Color(0xffFFFFFF);
-  static const navborder = Color(0xff0B1C30); // bottom Navigation border color
+  static const navborder = Color.fromARGB(
+    255,
+    243,
+    243,
+    243,
+  ); // bottom Navigation border color
   static const dark = Color(0xFF0B1C30);
   static const green = Color(0xFF006B3F);
   static const greenAccent = Color(0xFF008751);
@@ -23,4 +28,5 @@ class AppColors {
   static const tipBg = Color(0x7FDCE9FF);
   static const tipBorder = Color(0x4CBDCABE);
   static const buttonBorder = Color(0xFF6E7A70);
+  static const background = Color(0xFFBDCABE);
 }

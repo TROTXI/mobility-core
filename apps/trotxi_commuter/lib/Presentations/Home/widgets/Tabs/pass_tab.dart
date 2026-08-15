@@ -154,7 +154,7 @@ class _PassHeader extends StatelessWidget {
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
           decoration: BoxDecoration(
-            color: AppColors.greenAccent,
+            color: AppColors.primary,
             borderRadius: BorderRadius.circular(12),
           ),
           child: const Row(

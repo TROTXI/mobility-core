@@ -31,6 +31,7 @@ class AppSignInButton extends StatelessWidget {
         onTap: onPressed,
         borderRadius: BorderRadius.circular(borderRadius),
         child: Container(
+          width: double.infinity,
           padding: padding,
           decoration: BoxDecoration(
             color: backgroundColor,
