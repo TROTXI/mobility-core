@@ -72,10 +72,10 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   // Keep in sync with the order of _items below.
   static const int _homeTabIndex = 0;
-  static const int _routesTabIndex = 1;
+  //static const int _routesTabIndex = 1;
   static const int _passTabIndex = 2;
-  static const int _walletTabIndex = 3;
-  static const int _profileTabIndex = 4;
+  //static const int _walletTabIndex = 3;
+  //static const int _profileTabIndex = 4;
 
   int _currentIndex = _homeTabIndex;
 

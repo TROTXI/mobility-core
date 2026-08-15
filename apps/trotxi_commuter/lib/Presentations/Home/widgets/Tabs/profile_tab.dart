@@ -57,7 +57,7 @@ class _ProfileTabState extends State<ProfileTab> {
     final newName = await showDialog<String>(
       context: context,
       builder: (dialogContext) =>
-          _EditNameDialog(initialValue: user.displayName ?? ''),
+          _EditNameDialog(initialValue: user.displayName),
     );
 
     final trimmed = newName?.trim();

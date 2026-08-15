@@ -424,14 +424,6 @@ class _PassMetaRow extends StatelessWidget {
   final DateTime? expiresAt;
   final Duration remaining;
 
-  String _formatTime(DateTime dt) {
-    final local = dt.toLocal();
-    final h = local.hour.toString().padLeft(2, '0');
-    final m = local.minute.toString().padLeft(2, '0');
-    final s = local.second.toString().padLeft(2, '0');
-    return '$h:$m:$s';
-  }
-
   String _formatCountdown(Duration d) {
     final m = d.inMinutes.toString().padLeft(2, '0');
     final s = (d.inSeconds % 60).toString().padLeft(2, '0');

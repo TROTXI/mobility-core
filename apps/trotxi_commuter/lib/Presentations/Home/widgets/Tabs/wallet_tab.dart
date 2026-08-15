@@ -69,14 +69,12 @@ class WalletTab extends StatefulWidget {
 
 class _WalletTabState extends State<WalletTab> {
   // Colors from the design that don't have AppColors tokens yet.
-  static const _gradientStart = Color(0xFF006B3F);
-  static const _gradientEnd = Color(0xFF008751);
-  static const _activeBadgeColor = Color(0xFF006B3F);
+
   static const _cardBorder = Color(0xFFBDCABE);
   static const _debitColor = Color(0xFFBA1A1A);
-  static const _creditColor = Color(0xFF006B3F);
+  static const _creditColor = AppColors.primary;
   static const _rideIconBackground = Color(0xFFDCE9FF);
-  static const _topUpIconBackground = Color(0x4C8DF8B7);
+  static const _topUpIconBackground = AppColors.primary;
 
   @override
   void initState() {
