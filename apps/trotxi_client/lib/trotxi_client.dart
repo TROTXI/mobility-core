@@ -92,17 +92,6 @@ class AuthInterceptor extends QueuedInterceptor {
         basePathOverride: _dio.options.baseUrl,
       );
 
-      // Attach logging to inspect the generated refresh API call in debug console
-      refreshClient.dio.interceptors.add(
-        LogInterceptor(
-          requestHeader: true,
-          requestBody: true,
-          responseHeader: false,
-          responseBody: true,
-          error: true,
-        ),
-      );
-
       // Construct the generated built_value request model
       final refreshRequest = AuthRefreshPostRequest(
         (b) => b..refreshToken = refreshToken,
@@ -214,15 +203,6 @@ class TrotxiClientFactory {
       ),
     );
     client.dio.interceptors.add(ErrorInterceptor());
-    client.dio.interceptors.add(
-      LogInterceptor(
-        requestHeader: true,
-        requestBody: true,
-        responseHeader: false,
-        responseBody: true,
-        error: true,
-      ),
-    );
 
     return client;
   }

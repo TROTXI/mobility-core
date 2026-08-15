@@ -57,7 +57,6 @@ class _OnBoardPageState extends State<OnBoardPage> {
       final idToken = await _authenticateWithGoogle();
       final tokens = await _exchangeGoogleToken(idToken);
 
-      if (!mounted) return;
       await TokenStorage.instance.saveTokens(
         accessToken: tokens.accessToken,
         refreshToken: tokens.refreshToken,
@@ -67,10 +66,7 @@ class _OnBoardPageState extends State<OnBoardPage> {
       _navigateToHome();
     } on DioException catch (e) {
       debugPrint('Backend authentication failed: ${e.message}');
-      debugPrint('Type: ${e.type}');
-      debugPrint('Error: ${e.error}');
-      debugPrint('Status code: ${e.response?.statusCode}');
-      debugPrint('Response: ${e.response?.data}');
+
       _showError('Unable to sign in. Please try again.');
     } catch (e) {
       debugPrint('Google Sign-In failed: $e');
@@ -82,8 +78,6 @@ class _OnBoardPageState extends State<OnBoardPage> {
 
   Future<String> _authenticateWithGoogle() async {
     final GoogleSignInAccount user = await _googleSignIn.authenticate();
-    debugPrint('Google user: ${user.email}');
-    debugPrint('Google user ID: ${user.id}');
 
     final GoogleSignInAuthentication authentication = user.authentication;
     final String? idToken = authentication.idToken;
@@ -92,7 +86,6 @@ class _OnBoardPageState extends State<OnBoardPage> {
       throw Exception('Google ID token was not returned.');
     }
 
-    debugPrint('Google ID token received. $idToken');
     return idToken;
   }
 
@@ -108,14 +101,12 @@ class _OnBoardPageState extends State<OnBoardPage> {
     );
 
     final data = response.data;
-    debugPrint('Backend Google login successful.');
-    debugPrint('Response: $data');
 
     return (accessToken: data!.accessToken, refreshToken: data.refreshToken);
   }
 
   Future<void> _signInWithApple() async {
-    debugPrint('Continue with Apple');
+    debugPrint('Pending Implementation: Apple Sign-In is not yet implemented.');
   }
 
   void _navigateToHome() {

@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+
 import 'package:trotxi_client/trotxi_client.dart';
 import 'package:trotxi_commuter/Presentations/Onboarding/pages/onboard_page.dart';
 import 'package:trotxi_commuter/core/config/theme/app_colors.dart';
+import 'package:trotxi_commuter/core/Tokens/token_storage.dart';
 
 class ProfileTab extends StatefulWidget {
   const ProfileTab({super.key, required this.client});
@@ -106,13 +107,26 @@ class _ProfileTabState extends State<ProfileTab> {
   }
 
   Future<void> _signOut() async {
-    // Clear cached auth/session tokens on-device.
-    // TODO: swap in the actual storage keys your auth layer writes under
-    // (this assumes flutter_secure_storage with 'access_token' /
-    // 'refresh_token' keys — adjust to match your real implementation).
-    const storage = FlutterSecureStorage();
-    await storage.delete(key: 'access_token');
-    await storage.delete(key: 'refresh_token');
+    final refreshToken = await TokenStorage.instance.getRefreshToken();
+
+    if (refreshToken != null && refreshToken.isNotEmpty) {
+      try {
+        await widget.client
+            .getAuthApi()
+            .authLogoutPost(
+              authRefreshPostRequest: AuthRefreshPostRequest(
+                (b) => b..refreshToken = refreshToken,
+              ),
+            )
+            .timeout(const Duration(seconds: 5));
+      } catch (_) {
+        // Best effort: /auth/logout is idempotent and outside the auth
+        // guard, so this only fails on things like a dead network — in
+        // which case we still clear locally so the rider isn't stuck.
+      }
+    }
+
+    await TokenStorage.instance.clearTokens();
 
     if (!mounted) return;
     Navigator.of(context).pushAndRemoveUntil(
