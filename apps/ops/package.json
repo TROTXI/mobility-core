@@ -1,0 +1,6 @@
+{
+  "name": "@trotxi/ops",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Trotxi ops console — the dispatcher's web app (#170). Seam only: no scripts yet, so the workspace-wide CI gates (#172) skip this package until the scaffold adds typecheck/lint/build."
+}
