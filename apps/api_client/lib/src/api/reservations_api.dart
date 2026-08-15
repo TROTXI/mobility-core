@@ -4,18 +4,15 @@
 
 import 'dart:async';
 
-import 'package:built_value/json_object.dart';
 import 'package:built_value/serializer.dart';
 import 'package:dio/dio.dart';
 
 import 'package:trotxi_api_client/src/api_util.dart';
-import 'package:trotxi_api_client/src/model/me_get401_response.dart';
 import 'package:trotxi_api_client/src/model/me_reservations_get200_response.dart';
 import 'package:trotxi_api_client/src/model/me_reservations_get200_response_reservations_inner.dart';
 import 'package:trotxi_api_client/src/model/me_reservations_post_request.dart';
 
 class ReservationsApi {
-
   final Dio _dio;
 
   final Serializers _serializers;
@@ -23,10 +20,10 @@ class ReservationsApi {
   const ReservationsApi(this._dio, this._serializers);
 
   /// List the rider&#39;s reservations (newest travel day first)
-  /// 
+  ///
   ///
   /// Parameters:
-  /// * [from] 
+  /// * [from]
   /// * [cancelToken] - A [CancelToken] that can be used to cancel the operation
   /// * [headers] - Can be used to add additional headers to the request
   /// * [extras] - Can be used to add flags to the request
@@ -36,7 +33,7 @@ class ReservationsApi {
   ///
   /// Returns a [Future] containing a [Response] with a [MeReservationsGet200Response] as data
   /// Throws [DioException] if API call or serialization fails
-  Future<Response<MeReservationsGet200Response>> meReservationsGet({ 
+  Future<Response<MeReservationsGet200Response>> meReservationsGet({
     String? from,
     CancelToken? cancelToken,
     Map<String, dynamic>? headers,
@@ -65,7 +62,9 @@ class ReservationsApi {
     );
 
     final _queryParameters = <String, dynamic>{
-      if (from != null) r'from': encodeQueryParameter(_serializers, from, const FullType(String)),
+      if (from != null)
+        r'from':
+            encodeQueryParameter(_serializers, from, const FullType(String)),
     };
 
     final _response = await _dio.request<Object>(
@@ -81,11 +80,12 @@ class ReservationsApi {
 
     try {
       final rawResponse = _response.data;
-      _responseData = rawResponse == null ? null : _serializers.deserialize(
-        rawResponse,
-        specifiedType: const FullType(MeReservationsGet200Response),
-      ) as MeReservationsGet200Response;
-
+      _responseData = rawResponse == null
+          ? null
+          : _serializers.deserialize(
+              rawResponse,
+              specifiedType: const FullType(MeReservationsGet200Response),
+            ) as MeReservationsGet200Response;
     } catch (error, stackTrace) {
       throw DioException(
         requestOptions: _response.requestOptions,
@@ -109,10 +109,10 @@ class ReservationsApi {
   }
 
   /// Confirm or decline the daily ride (upsert per day + direction)
-  /// 
+  ///
   ///
   /// Parameters:
-  /// * [meReservationsPostRequest] 
+  /// * [meReservationsPostRequest]
   /// * [cancelToken] - A [CancelToken] that can be used to cancel the operation
   /// * [headers] - Can be used to add additional headers to the request
   /// * [extras] - Can be used to add flags to the request
@@ -122,7 +122,8 @@ class ReservationsApi {
   ///
   /// Returns a [Future] containing a [Response] with a [MeReservationsGet200ResponseReservationsInner] as data
   /// Throws [DioException] if API call or serialization fails
-  Future<Response<MeReservationsGet200ResponseReservationsInner>> meReservationsPost({ 
+  Future<Response<MeReservationsGet200ResponseReservationsInner>>
+      meReservationsPost({
     required MeReservationsPostRequest meReservationsPostRequest,
     CancelToken? cancelToken,
     Map<String, dynamic>? headers,
@@ -155,11 +156,11 @@ class ReservationsApi {
 
     try {
       const _type = FullType(MeReservationsPostRequest);
-      _bodyData = _serializers.serialize(meReservationsPostRequest, specifiedType: _type);
-
-    } catch(error, stackTrace) {
+      _bodyData = _serializers.serialize(meReservationsPostRequest,
+          specifiedType: _type);
+    } catch (error, stackTrace) {
       throw DioException(
-         requestOptions: _options.compose(
+        requestOptions: _options.compose(
           _dio.options,
           _path,
         ),
@@ -182,11 +183,13 @@ class ReservationsApi {
 
     try {
       final rawResponse = _response.data;
-      _responseData = rawResponse == null ? null : _serializers.deserialize(
-        rawResponse,
-        specifiedType: const FullType(MeReservationsGet200ResponseReservationsInner),
-      ) as MeReservationsGet200ResponseReservationsInner;
-
+      _responseData = rawResponse == null
+          ? null
+          : _serializers.deserialize(
+              rawResponse,
+              specifiedType:
+                  const FullType(MeReservationsGet200ResponseReservationsInner),
+            ) as MeReservationsGet200ResponseReservationsInner;
     } catch (error, stackTrace) {
       throw DioException(
         requestOptions: _response.requestOptions,
@@ -208,5 +211,4 @@ class ReservationsApi {
       extra: _response.extra,
     );
   }
-
 }

@@ -8,10 +8,7 @@ import 'package:trotxi_commuter/core/config/theme/app_vectors.dart';
 import 'package:trotxi_commuter/core/Tokens/token_storage.dart';
 
 class SplashPage extends StatefulWidget {
-  const SplashPage({
-    super.key,
-    required this.client,
-  });
+  const SplashPage({super.key, required this.client});
 
   final TrotxiApiClient client;
 
@@ -26,10 +23,7 @@ class _SplashPageState extends State<SplashPage> {
   void initState() {
     super.initState();
 
-    _splashTimer = Timer(
-      const Duration(seconds: 10),
-          () => _navigateNext(),
-    );
+    _splashTimer = Timer(const Duration(seconds: 10), () => _navigateNext());
   }
 
   Future<void> _navigateNext() async {
@@ -44,7 +38,7 @@ class _SplashPageState extends State<SplashPage> {
       context,
       MaterialPageRoute(
         builder: (context) => isLoggedIn
-            ? HomePage(client: widget.client,)
+            ? HomePage(client: widget.client)
             : OnBoardPage(client: widget.client),
       ),
     );
@@ -62,20 +56,14 @@ class _SplashPageState extends State<SplashPage> {
       body: Stack(
         children: [
           Positioned.fill(
-            child: Image.asset(
-              Appvectors.splashImage,
-              fit: BoxFit.cover,
-            ),
+            child: Image.asset(Appvectors.splashImage, fit: BoxFit.cover),
           ),
           Align(
             alignment: Alignment.topCenter,
             child: SafeArea(
               child: Padding(
                 padding: const EdgeInsets.only(top: 40),
-                child: Image.asset(
-                  Appvectors.logo,
-                  width: 180,
-                ),
+                child: Image.asset(Appvectors.logo, width: 180),
               ),
             ),
           ),
