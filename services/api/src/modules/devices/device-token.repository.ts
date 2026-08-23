@@ -42,6 +42,14 @@ export interface DeviceTokenRepository {
    * @returns the user's device tokens.
    */
   listForUser(userId: string): Promise<DeviceToken[]>;
+  /**
+   * Drop every registered device for a user (#30). Account deletion must stop
+   * push, and it also prevents the next person to use a shared handset from
+   * inheriting the previous rider's notifications.
+   *
+   * @param userId - the user whose devices to unregister.
+   */
+  removeForUser(userId: string): Promise<void>;
 }
 
 /** In-memory {@link DeviceTokenRepository} for dev and unit tests. */
@@ -69,5 +77,10 @@ export class InMemoryDeviceTokenRepository implements DeviceTokenRepository {
 
   async listForUser(userId: string): Promise<DeviceToken[]> {
     return [...this.byToken.values()].filter((t) => t.userId === userId);
+  }
+  async removeForUser(userId: string): Promise<void> {
+    for (const [key, token] of this.byToken) {
+      if (token.userId === userId) this.byToken.delete(key);
+    }
   }
 }

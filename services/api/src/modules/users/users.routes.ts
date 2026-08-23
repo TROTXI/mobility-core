@@ -6,6 +6,7 @@
 import type { FastifyInstance } from 'fastify';
 import fastifyMultipart from '@fastify/multipart';
 import type { ZodTypeProvider } from 'fastify-type-provider-zod';
+import { z } from 'zod';
 import { errorResponseSchema } from '../../lib/schemas';
 import type { ObjectStore } from '../../storage/object-store';
 import type { RateLimitConfig } from '../ratelimit/ratelimit.plugin';
@@ -16,6 +17,7 @@ import {
   processAvatar,
   PROCESSED_MIME,
 } from './avatar';
+import type { AccountDeletionService } from './account-deletion.service';
 import { toUserResponse } from './user.presenter';
 import type { UserRepository } from './user.repository';
 import { avatarResponseSchema, updateProfileBodySchema, userResponseSchema } from './user.schema';
@@ -29,10 +31,16 @@ import { avatarResponseSchema, updateProfileBodySchema, userResponseSchema } fro
  * @param opts.users - the user repository.
  * @param opts.objectStore - avatar storage (R2 in prod, in-memory in dev/tests).
  * @param opts.rateLimit - rate-limit config (applied per user).
+ * @param opts.accountDeletion - account erasure service (503 when absent).
  */
 export async function userRoutes(
   app: FastifyInstance,
-  opts: { users?: UserRepository; objectStore: ObjectStore; rateLimit: RateLimitConfig },
+  opts: {
+    users?: UserRepository;
+    objectStore: ObjectStore;
+    rateLimit: RateLimitConfig;
+    accountDeletion?: AccountDeletionService;
+  },
 ): Promise<void> {
   await app.register(fastifyMultipart, { limits: { fileSize: MAX_UPLOAD_BYTES, files: 1 } });
   const r = app.withTypeProvider<ZodTypeProvider>();
@@ -153,6 +161,40 @@ export async function userRoutes(
         return reply.code(404).send({ error: 'not_found', message: 'No avatar set' });
       }
       return { avatarUrl: await opts.objectStore.signedUrl(user.avatarUrl) };
+    },
+  );
+
+  r.delete(
+    '/me',
+    {
+      schema: {
+        tags: ['users'],
+        summary: 'Delete my account (erases personal data; keeps financial records)',
+        description:
+          'Revokes every session, unregisters push devices, unlinks sign-in providers, ' +
+          'deletes the avatar, and clears personal data. Payment and ride-ledger rows ' +
+          'are retained in anonymised form because they are accounting records. ' +
+          'Signing in again creates a new account.',
+        security: [{ bearerAuth: [] }],
+        response: {
+          204: z.null(),
+          401: errorResponseSchema,
+          429: errorResponseSchema,
+          503: errorResponseSchema,
+        },
+      },
+      preHandler: [app.authenticate, app.rateLimit({ ...opts.rateLimit, by: 'user' })],
+    },
+    async (request, reply) => {
+      if (!opts.accountDeletion) {
+        return reply
+          .code(503)
+          .send({ error: 'unavailable', message: 'Account deletion is not configured' });
+      }
+      // Idempotent by design: a client retrying after a timeout gets 204 again
+      // rather than a 404 that would read as "deletion failed".
+      await opts.accountDeletion.deleteAccount(request.user!.id);
+      return reply.code(204).send(null);
     },
   );
 }

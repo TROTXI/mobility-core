@@ -11,6 +11,7 @@ import {
   type SubscriptionRepository,
 } from '../src/modules/subscriptions/subscription.repository';
 import { InMemoryEntitlementLedgerRepository } from '../src/modules/entitlements/entitlement-ledger.repository';
+import { InMemoryUserRepository } from '../src/modules/users/user.repository';
 
 const FAKE_SECRET = 'fake-paystack-secret';
 const subscriptionFees = { monthly: 2000, annual: 20000 }; // pesewas (GHS 20 / 200)
@@ -24,6 +25,7 @@ function make(subscriptions: SubscriptionRepository = new InMemorySubscriptionRe
     subscriptions,
     entitlements,
     paystack: new FakePaystackClient(FAKE_SECRET),
+    users: new InMemoryUserRepository(),
     subscriptionFees,
     ridesPerPeriod: RIDES,
   });
@@ -53,6 +55,7 @@ describe('PaymentsService.initializeSubscription', () => {
       payments: new InMemoryPaymentRepository(),
       subscriptions: new InMemorySubscriptionRepository(),
       entitlements: new InMemoryEntitlementLedgerRepository(),
+      users: new InMemoryUserRepository(),
       subscriptionFees,
       ridesPerPeriod: RIDES,
     });

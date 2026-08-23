@@ -99,6 +99,7 @@ import {
   type ReservationRepository,
 } from './modules/reservations/reservation.repository';
 import { PgReservationRepository } from './modules/reservations/reservation.repository.pg';
+import { AccountDeletionService } from './modules/users/account-deletion.service';
 import { InMemoryUserRepository, type UserRepository } from './modules/users/user.repository';
 import { PgUserRepository } from './modules/users/user.repository.pg';
 import {
@@ -262,10 +263,21 @@ async function main(): Promise<void> {
     console.warn('PAYSTACK_SECRET_KEY not set — payments disabled (POST /payments/* returns 503).');
   }
 
+  // Account erasure (#30): anonymise across every store that holds personal
+  // data — sessions, devices, provider links, the avatar object, and the row.
+  const accountDeletion = new AccountDeletionService({
+    users,
+    sessions,
+    authIdentities,
+    devices: deviceTokens,
+    objectStore,
+  });
+
   const paymentsService = new PaymentsService({
     payments,
     subscriptions,
     entitlements,
+    users,
     paystack,
     subscriptionFees: SUBSCRIPTION_FEES_PESEWAS,
     ridesPerPeriod: PLACEHOLDER_RIDES_PER_PERIOD,
@@ -308,6 +320,7 @@ async function main(): Promise<void> {
 
   const app = await buildApp({
     users,
+    accountDeletion,
     subscriptions,
     routes,
     stops,
