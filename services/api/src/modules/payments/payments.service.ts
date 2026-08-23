@@ -13,11 +13,13 @@
 // retried/partial webhook converges. Paystack retries; reconciliation (future)
 // backstops the rest.
 
+import { normaliseGhanaPhone } from '../../lib/phone';
 import type { EntitlementLedgerRepository } from '../entitlements/entitlement-ledger.repository';
 import type {
   SubscriptionPlan,
   SubscriptionRepository,
 } from '../subscriptions/subscription.repository';
+import type { UserRepository } from '../users/user.repository';
 import type { NewPayment, PaymentRepository } from './payment.repository';
 import type { PaystackClient } from './paystack.client';
 
@@ -59,6 +61,8 @@ export interface PaymentsServiceDeps {
   entitlements: EntitlementLedgerRepository;
   /** Undefined when payments aren't configured (e.g. prod without a Paystack key). */
   paystack?: PaystackClient;
+  /** Users, for capturing the payer's verified phone on charge.success (#182). */
+  users: UserRepository;
   /** Plan → membership fee in pesewas (server-authoritative). */
   subscriptionFees: Record<SubscriptionPlan, number>;
   /** Rides allocated per activated period (placeholder until E1b tiers). */
@@ -78,7 +82,12 @@ function isUniqueViolation(err: unknown): boolean {
 /** The subset of Paystack's webhook payload we read. */
 interface PaystackWebhookEvent {
   event?: string;
-  data?: { reference?: string };
+  data?: {
+    reference?: string;
+    /** Present on mobile-money charges; the handset that approved the debit. */
+    customer?: { phone?: string | null };
+    authorization?: { mobile_money_number?: string | null };
+  };
 }
 
 /** What initiating a checkout returns to the caller (and the route). */
@@ -182,6 +191,12 @@ export class PaymentsService {
       await this.activateSubscription(payment.userId, payment.plan, payment.routeId);
       await this.allocateEntitlement(payment.userId, reference);
     }
+
+    // The payer approved this debit on their handset, so the number is verified
+    // by the charge itself — no OTP needed. Best effort: a failure here must not
+    // fail the webhook, because a non-200 costs us the subscription activation
+    // above on Paystack's retry.
+    await this.capturePayerPhone(payment.userId, event);
     // Legacy 'topup' payments (pre-ADR-0014 staging data) are ignored.
 
     await this.deps.payments.markPaid(reference);
@@ -203,6 +218,30 @@ export class PaymentsService {
       refId: reference,
       idempotencyKey: `alloc:${reference}`,
     });
+  }
+
+  /**
+   * Record the payer's phone number from a successful charge, when we do not
+   * already have one (#182).
+   *
+   * Swallows every failure by design. Two accounts legitimately paying from one
+   * handset trips the UNIQUE constraint on users.phone, and that must not turn
+   * into a 500 — the subscription is already activated by the time we get here,
+   * and Paystack would retry the whole webhook.
+   *
+   * @param userId - the paying user.
+   * @param event - the verified `charge.success` payload.
+   */
+  private async capturePayerPhone(userId: string, event: PaystackWebhookEvent): Promise<void> {
+    const raw = event.data?.authorization?.mobile_money_number ?? event.data?.customer?.phone;
+    const phone = normaliseGhanaPhone(raw);
+    if (!phone) return;
+    try {
+      await this.deps.users.backfillContact(userId, { phone });
+    } catch {
+      // Already held by another account, or the row vanished. Neither is worth
+      // failing a paid subscription over.
+    }
   }
 
   /**

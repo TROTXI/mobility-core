@@ -39,6 +39,14 @@ export interface AuthIdentityRepository {
    * @throws on a unique-violation if the identity already exists (race).
    */
   create(input: NewAuthIdentity): Promise<AuthIdentity>;
+  /**
+   * Remove every provider link for a user (#30). Called on account deletion so a
+   * returning person signs up as a NEW account rather than resurrecting the
+   * anonymised one their ledger history is attached to.
+   *
+   * @param userId - the user whose identities to unlink.
+   */
+  deleteForUser(userId: string): Promise<void>;
 }
 
 /** In-memory {@link AuthIdentityRepository} for dev and unit tests. */
@@ -63,5 +71,10 @@ export class InMemoryAuthIdentityRepository implements AuthIdentityRepository {
     };
     this.identities.set(this.key(input.provider, input.providerId), identity);
     return identity;
+  }
+  async deleteForUser(userId: string): Promise<void> {
+    for (const [key, identity] of this.identities) {
+      if (identity.userId === userId) this.identities.delete(key);
+    }
   }
 }

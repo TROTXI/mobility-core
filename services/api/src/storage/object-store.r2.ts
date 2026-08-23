@@ -3,7 +3,12 @@
 // The bucket is private; reads go through presigned GET URLs (zero egress on R2).
 // Excluded from unit coverage (needs a live bucket) — exercised via staging.
 
-import { GetObjectCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
+import {
+  DeleteObjectCommand,
+  GetObjectCommand,
+  PutObjectCommand,
+  S3Client,
+} from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { avatarKey, SIGNED_URL_TTL_SECONDS, type ObjectStore } from './object-store';
 
@@ -48,5 +53,11 @@ export class R2ObjectStore implements ObjectStore {
       new GetObjectCommand({ Bucket: this.config.bucket, Key: key }),
       { expiresIn: ttlSeconds },
     );
+  }
+
+  async deleteObject(key: string): Promise<void> {
+    // S3 DELETE is already idempotent — removing an absent key returns 204 —
+    // so a retried deletion request does not fail on the second attempt.
+    await this.client.send(new DeleteObjectCommand({ Bucket: this.config.bucket, Key: key }));
   }
 }

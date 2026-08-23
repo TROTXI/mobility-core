@@ -9,7 +9,18 @@
 import { timingSafeEqual } from 'node:crypto';
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import fp from 'fastify-plugin';
-import { collectDefaultMetrics, Histogram, Registry } from 'prom-client';
+import { collectDefaultMetrics, Counter, Histogram, Registry } from 'prom-client';
+
+declare module 'fastify' {
+  interface FastifyInstance {
+    /**
+     * Count a rate-limited (429) response. Decorated by this plugin; the
+     * rate-limit plugin calls it through `request.server` so the two stay
+     * independent and registration order does not matter.
+     */
+    recordRateLimited?: (route: string, bucket: 'ip' | 'user') => void;
+  }
+}
 
 /** Controls how the `/metrics` endpoint is exposed and protected. */
 export interface MetricsOptions {
@@ -40,6 +51,23 @@ export const metricsPlugin = fp<MetricsOptions>(async (app, opts) => {
     labelNames: ['method', 'route', 'status_code'] as const,
     buckets: DURATION_BUCKETS,
     registers: [register],
+  });
+
+  // 429s are visible on the histogram's status_code label, but not by BUCKET —
+  // and that is the dimension that matters (#154). Ghanaian carriers use
+  // carrier-grade NAT, so many riders share one public IP; without knowing
+  // whether a limit fired on `ip` or `user` we cannot tell a real abuser from a
+  // whole neighbourhood behind one address. Nothing tunes thresholds until this
+  // has produced data.
+  const rateLimited = new Counter({
+    name: 'rate_limited_total',
+    help: 'Requests rejected with 429 by the rate limiter.',
+    labelNames: ['route', 'bucket'] as const,
+    registers: [register],
+  });
+
+  app.decorate('recordRateLimited', (route: string, bucket: 'ip' | 'user') => {
+    rateLimited.inc({ route, bucket });
   });
 
   // Record every response except the scrape itself. Use the route TEMPLATE

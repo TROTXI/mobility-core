@@ -11,6 +11,7 @@ import {
 import { z } from 'zod';
 import { InMemoryKvStore, type KvStore } from './kv/kv.store';
 import { FakeObjectStore, type ObjectStore } from './storage/object-store';
+import type { AccountDeletionService } from './modules/users/account-deletion.service';
 import { userRoutes } from './modules/users/users.routes';
 import {
   InMemoryDeviceTokenRepository,
@@ -88,6 +89,8 @@ export interface AppDeps {
   isReady?: () => Promise<boolean>;
   /** Selected by DATABASE_URL (in-memory vs Postgres). Consumed by routes/services. */
   users?: UserRepository;
+  /** Account erasure (#30). Omitted -> DELETE /me returns 503. */
+  accountDeletion?: AccountDeletionService;
   /** Selected by DATABASE_URL (in-memory vs Postgres). Consumed by routes/services. */
   subscriptions?: SubscriptionRepository;
   /** Selected by DATABASE_URL (in-memory vs Postgres). Mobility domain. */
@@ -253,6 +256,7 @@ export async function buildApp(deps: AppDeps = {}): Promise<FastifyInstance> {
     users,
     objectStore,
     rateLimit: deps.rateLimit ?? DEFAULT_RATE_LIMIT,
+    accountDeletion: deps.accountDeletion,
   });
   await app.register(deviceRoutes, {
     deviceTokens: deps.deviceTokens ?? new InMemoryDeviceTokenRepository(),

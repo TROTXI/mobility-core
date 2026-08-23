@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { buildApp } from '../src/app';
 import { InMemoryPaymentRepository } from '../src/modules/payments/payment.repository';
 import { FakePaystackClient, paystackSignature } from '../src/modules/payments/paystack.client';
+import { InMemoryUserRepository } from '../src/modules/users/user.repository';
 import { PaymentsService } from '../src/modules/payments/payments.service';
 import { InMemorySubscriptionRepository } from '../src/modules/subscriptions/subscription.repository';
 import { InMemoryEntitlementLedgerRepository } from '../src/modules/entitlements/entitlement-ledger.repository';
@@ -25,6 +26,7 @@ function appWithPayments() {
     subscriptions,
     entitlements,
     paystack: new FakePaystackClient(FAKE_SECRET),
+    users: new InMemoryUserRepository(),
     subscriptionFees: { monthly: 2000, annual: 20000 },
     ridesPerPeriod: 44,
   });

@@ -47,4 +47,8 @@ export class PgDeviceTokenRepository implements DeviceTokenRepository {
     );
     return rows.map(toDeviceToken);
   }
+
+  async removeForUser(userId: string): Promise<void> {
+    await this.pool.query('DELETE FROM device_tokens WHERE user_id = $1', [userId]);
+  }
 }

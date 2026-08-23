@@ -57,6 +57,9 @@ export const rateLimitPlugin = fp<{ kv: KvStore }>(async (app, opts) => {
       reply.header('X-RateLimit-Remaining', String(Math.max(0, options.max - count)));
 
       if (count > options.max) {
+        // Optional chaining, not a hard dependency: the limiter must keep
+        // working when metrics are disabled (production without METRICS_TOKEN).
+        request.server.recordRateLimited?.(request.routeOptions.url ?? 'unknown', by);
         reply.header('Retry-After', String(options.windowSeconds));
         return reply
           .code(429)
