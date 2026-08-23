@@ -341,6 +341,7 @@ async function main(): Promise<void> {
     minVersions,
     kv,
     objectStore,
+    mapTilesUrl: env.MAP_TILES_URL,
     isReady,
     auth,
     rateLimit,

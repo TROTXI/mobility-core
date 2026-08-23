@@ -89,6 +89,18 @@ services:
         sync: false
       - key: R2_BUCKET
         sync: false
+      # Basemap tiles (#178). PUBLIC by design: the bucket serves anonymous HTTP
+      # range requests, which is how PMTiles works — a client reads the index,
+      # then asks for exactly the bytes it needs. Nothing secret, so it lives
+      # here rather than the dashboard. Unset -> GET /flags reports
+      # mapTiles.url = null and clients render without a basemap.
+      #
+      # NB: this r2.dev hostname carries a generated hash and is rate-limited by
+      # Cloudflare, who state it is not for production. Replace with a custom
+      # domain (tiles.trotxi.com) before riders depend on it — clients read this
+      # from GET /flags, so that swap is a config change, not an app release.
+      - key: MAP_TILES_URL
+        value: https://pub-9962de9eb91548789ca7e319561d8386.r2.dev/ghana.pmtiles
 
   # ---- Ask-dispatch cron jobs (E3) — the daily confirmation loop ----
   # Each mints an admin token and POSTs a trigger on the deployed API. Windows are
