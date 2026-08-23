@@ -32,6 +32,10 @@ const envSchema = z
     R2_ACCESS_KEY_ID: z.string().optional(),
     R2_SECRET_ACCESS_KEY: z.string().optional(),
     R2_BUCKET: z.string().optional(),
+    // Public PMTiles archive URL (#178). Public by design — it is a bucket that
+    // serves anonymous range requests — so it lives in the blueprint, not the
+    // dashboard. Unset -> GET /flags reports mapTiles.url = null.
+    MAP_TILES_URL: z.string().url().optional(),
     // CORS allowlist for browser clients (comma-separated origins), e.g. Swagger
     // UI served from another origin or a web dashboard. Unset -> reflect any
     // origin, which is safe here because auth is a bearer token (no cookies or

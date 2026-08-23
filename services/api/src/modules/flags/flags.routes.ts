@@ -12,16 +12,30 @@ import type { MinVersionRepository } from './min-version.repository';
 import { flagsResponseSchema } from './flags.schema';
 
 /**
+ * Credit required by the data licences, shown on every surface that renders a
+ * map. Two parties, not one: the underlying data is OpenStreetMap (ODbL) and
+ * the tiles are built with the OpenMapTiles schema, whose CC-BY grant carries
+ * its own visible-credit condition.
+ */
+const MAP_ATTRIBUTION = '© OpenStreetMap contributors · © OpenMapTiles';
+
+/**
  * Register the public flags route (`GET /flags`).
  *
  * @param app - the Fastify instance to register on.
  * @param opts - route dependencies (both optional; absent -> empty payload).
  * @param opts.featureFlags - the feature-flag repository.
  * @param opts.minVersions - the minimum-supported-version repository.
+ * @param opts.mapTilesUrl - public PMTiles archive URL (#178); absent -> null,
+ *   and clients render without a basemap rather than failing.
  */
 export async function flagsRoutes(
   app: FastifyInstance,
-  opts: { featureFlags?: FeatureFlagRepository; minVersions?: MinVersionRepository },
+  opts: {
+    featureFlags?: FeatureFlagRepository;
+    minVersions?: MinVersionRepository;
+    mapTilesUrl?: string;
+  },
 ): Promise<void> {
   app.withTypeProvider<ZodTypeProvider>().get(
     '/flags',
@@ -51,6 +65,10 @@ export async function flagsRoutes(
           rolloutPercentage: f.rolloutPercentage,
         })),
         minSupportedVersion,
+        mapTiles: {
+          url: opts.mapTilesUrl ?? null,
+          attribution: MAP_ATTRIBUTION,
+        },
       };
     },
   );

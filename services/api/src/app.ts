@@ -136,6 +136,8 @@ export interface AppDeps {
   rateLimit?: RateLimitConfig;
   /** CORS origin allowlist (from CORS_ORIGINS). Empty/unset -> reflect any origin. */
   corsOrigins?: string[];
+  /** Public PMTiles basemap URL, served to clients on GET /flags (#178). */
+  mapTilesUrl?: string;
   /** Prometheus /metrics exposure. Defaults to unprotected (dev/tests). */
   metrics?: Partial<MetricsOptions>;
   logger?: boolean;
@@ -354,6 +356,7 @@ export async function buildApp(deps: AppDeps = {}): Promise<FastifyInstance> {
   await app.register(flagsRoutes, {
     featureFlags: deps.featureFlags,
     minVersions: deps.minVersions,
+    mapTilesUrl: deps.mapTilesUrl,
   });
 
   r.get(
