@@ -56,4 +56,18 @@ export class PgTripPositionRepository implements TripPositionRepository {
     );
     return rows[0] ? toTripPosition(rows[0]) : null;
   }
+
+  async findAllForTrip(tripId: string): Promise<TripPosition[]> {
+    const { rows } = await this.pool.query<TripPositionRow>(
+      `SELECT id, trip_id,
+              ST_Y(location::geometry) AS latitude,
+              ST_X(location::geometry) AS longitude,
+              recorded_at
+         FROM trip_positions
+        WHERE trip_id = $1
+        ORDER BY recorded_at ASC`,
+      [tripId],
+    );
+    return rows.map(toTripPosition);
+  }
 }
