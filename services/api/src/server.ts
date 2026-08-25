@@ -45,6 +45,11 @@ import {
   InMemoryRouteGeometryRepository,
   type RouteGeometryRepository,
 } from './modules/mobility/route-geometry.repository';
+import {
+  InMemoryPricingRepository,
+  type PricingRepository,
+} from './modules/payments/pricing.repository';
+import { PgPricingRepository } from './modules/payments/pricing.repository.pg';
 import { PgRouteGeometryRepository } from './modules/mobility/route-geometry.repository.pg';
 import { RouteLearningService } from './modules/mobility/route-learning.service';
 import {
@@ -90,11 +95,7 @@ import {
 import { PgPaymentRepository } from './modules/payments/payment.repository.pg';
 import { FakePaystackClient, type PaystackClient } from './modules/payments/paystack.client';
 import { PaystackHttpClient } from './modules/payments/paystack.client.live';
-import {
-  PaymentsService,
-  PLACEHOLDER_RIDES_PER_PERIOD,
-  SUBSCRIPTION_FEES_PESEWAS,
-} from './modules/payments/payments.service';
+import { PaymentsService, PLACEHOLDER_RIDES_PER_PERIOD } from './modules/payments/payments.service';
 import {
   InMemoryEntitlementLedgerRepository,
   type EntitlementLedgerRepository,
@@ -170,6 +171,7 @@ async function main(): Promise<void> {
   let routeStops: RouteStopRepository;
   let trips: TripRepository;
   let tripPositions: TripPositionRepository;
+  let pricing: PricingRepository;
   let routeGeometry: RouteGeometryRepository;
   let segmentSpeeds: SegmentSpeedRepository;
   let vehicles: VehicleRepository;
@@ -193,6 +195,7 @@ async function main(): Promise<void> {
     routeStops = new PgRouteStopRepository(pool);
     trips = new PgTripRepository(pool);
     tripPositions = new PgTripPositionRepository(pool);
+    pricing = new PgPricingRepository(pool);
     routeGeometry = new PgRouteGeometryRepository(pool);
     segmentSpeeds = new PgSegmentSpeedRepository(pool);
     vehicles = new PgVehicleRepository(pool);
@@ -216,6 +219,7 @@ async function main(): Promise<void> {
     routeStops = new InMemoryRouteStopRepository();
     trips = new InMemoryTripRepository();
     tripPositions = new InMemoryTripPositionRepository();
+    pricing = new InMemoryPricingRepository();
     routeGeometry = new InMemoryRouteGeometryRepository();
     segmentSpeeds = new InMemorySegmentSpeedRepository();
     vehicles = new InMemoryVehicleRepository();
@@ -296,7 +300,7 @@ async function main(): Promise<void> {
     entitlements,
     users,
     paystack,
-    subscriptionFees: SUBSCRIPTION_FEES_PESEWAS,
+    pricing,
     ridesPerPeriod: PLACEHOLDER_RIDES_PER_PERIOD,
   });
 
@@ -372,6 +376,7 @@ async function main(): Promise<void> {
     mapTilesUrl: env.MAP_TILES_URL,
     segmentSpeeds,
     routeLearning,
+    pricing,
     isReady,
     auth,
     rateLimit,

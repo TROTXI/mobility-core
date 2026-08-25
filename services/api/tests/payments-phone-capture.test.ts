@@ -5,23 +5,27 @@ import { PaymentsService } from '../src/modules/payments/payments.service';
 import { InMemorySubscriptionRepository } from '../src/modules/subscriptions/subscription.repository';
 import { InMemoryEntitlementLedgerRepository } from '../src/modules/entitlements/entitlement-ledger.repository';
 import { InMemoryUserRepository, type User } from '../src/modules/users/user.repository';
+import { InMemoryPricingRepository } from '../src/modules/payments/pricing.repository';
 
 const FAKE_SECRET = 'fake-paystack-secret';
-const FEES = { monthly: 2000, annual: 20000 } as const;
+const FARE = 600;
+const ROUTE = '11111111-1111-4111-8111-111111111111';
 
 async function make(users = new InMemoryUserRepository()) {
   const payments = new InMemoryPaymentRepository();
   const subscriptions = new InMemorySubscriptionRepository();
+  const pricing = new InMemoryPricingRepository();
+  await pricing.setFare(ROUTE, FARE);
   const service = new PaymentsService({
     payments,
     subscriptions,
     entitlements: new InMemoryEntitlementLedgerRepository(),
     users,
     paystack: new FakePaystackClient(FAKE_SECRET),
-    subscriptionFees: FEES,
+    pricing,
     ridesPerPeriod: 44,
   });
-  return { service, payments, subscriptions, users };
+  return { service, payments, subscriptions, users, pricing };
 }
 
 /** A charge.success payload carrying the payer's mobile-money number. */
@@ -43,7 +47,7 @@ describe('phone capture on charge.success (#182)', () => {
     const user = await users.create({ displayName: 'Ama' });
     const { service } = await make(users);
 
-    const { reference } = await service.initializeSubscription(user.id, 'monthly');
+    const { reference } = await service.initializeSubscription(user.id, 'monthly', ROUTE);
     const { body, signature } = chargeSuccess(reference, '0244123456');
     await service.handleWebhook(body, signature);
 
@@ -57,7 +61,7 @@ describe('phone capture on charge.success (#182)', () => {
     const user = await users.create({ displayName: 'Ama' });
     const { service } = await make(users);
 
-    const { reference } = await service.initializeSubscription(user.id, 'monthly');
+    const { reference } = await service.initializeSubscription(user.id, 'monthly', ROUTE);
     const { body, signature } = chargeSuccess(reference, undefined, '+233 244 999 888');
     await service.handleWebhook(body, signature);
 
@@ -69,7 +73,7 @@ describe('phone capture on charge.success (#182)', () => {
     const user = await users.create({ displayName: 'Ama', phone: '+233201111111' });
     const { service } = await make(users);
 
-    const { reference } = await service.initializeSubscription(user.id, 'monthly');
+    const { reference } = await service.initializeSubscription(user.id, 'monthly', ROUTE);
     const { body, signature } = chargeSuccess(reference, '0244123456');
     await service.handleWebhook(body, signature);
 
@@ -89,7 +93,7 @@ describe('phone capture on charge.success (#182)', () => {
     }) as InMemoryUserRepository;
 
     const { service, subscriptions, payments } = await make(exploding);
-    const { reference } = await service.initializeSubscription(user.id, 'monthly');
+    const { reference } = await service.initializeSubscription(user.id, 'monthly', ROUTE);
     const { body, signature } = chargeSuccess(reference, '0244123456');
 
     await expect(service.handleWebhook(body, signature)).resolves.toBeUndefined();
@@ -102,7 +106,7 @@ describe('phone capture on charge.success (#182)', () => {
     const user = await users.create({ displayName: 'Ama' });
     const { service } = await make(users);
 
-    const { reference } = await service.initializeSubscription(user.id, 'monthly');
+    const { reference } = await service.initializeSubscription(user.id, 'monthly', ROUTE);
     const { body, signature } = chargeSuccess(reference, 'not-a-number');
     await service.handleWebhook(body, signature);
 

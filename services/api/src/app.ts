@@ -11,6 +11,8 @@ import {
 import { z } from 'zod';
 import { InMemoryKvStore, type KvStore } from './kv/kv.store';
 import { FakeObjectStore, type ObjectStore } from './storage/object-store';
+import type { PricingRepository } from './modules/payments/pricing.repository';
+import { pricingRoutes } from './modules/payments/pricing.routes';
 import type { AccountDeletionService } from './modules/users/account-deletion.service';
 import type { RouteLearningService } from './modules/mobility/route-learning.service';
 import { routeLearningRoutes } from './modules/mobility/route-learning.routes';
@@ -145,6 +147,8 @@ export interface AppDeps {
   segmentSpeeds?: SegmentSpeedRepository;
   /** Derives geometry + speeds from completed runs (#179, #181). */
   routeLearning?: RouteLearningService;
+  /** Corridor fares + plan levers (#103); admin-editable, never constants. */
+  pricing?: PricingRepository;
   /** Prometheus /metrics exposure. Defaults to unprotected (dev/tests). */
   metrics?: Partial<MetricsOptions>;
   logger?: boolean;
@@ -347,6 +351,10 @@ export async function buildApp(deps: AppDeps = {}): Promise<FastifyInstance> {
     tripPositions: deps.tripPositions ?? new InMemoryTripPositionRepository(),
     segmentSpeeds: deps.segmentSpeeds,
     kv,
+    rateLimit: deps.rateLimit ?? DEFAULT_RATE_LIMIT,
+  });
+  await app.register(pricingRoutes, {
+    pricing: deps.pricing,
     rateLimit: deps.rateLimit ?? DEFAULT_RATE_LIMIT,
   });
   await app.register(routeLearningRoutes, {
