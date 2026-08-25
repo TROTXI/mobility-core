@@ -6,6 +6,8 @@
 import type { FastifyInstance } from 'fastify';
 import type { ZodTypeProvider } from 'fastify-type-provider-zod';
 import { errorResponseSchema } from '../../lib/schemas';
+import type { TripRepository } from '../mobility/trip.repository';
+import type { VehicleRepository } from '../mobility/vehicle.repository';
 import type { RateLimitConfig } from '../ratelimit/ratelimit.plugin';
 import type { Reservation, ReservationRepository } from './reservation.repository';
 import { generatePin, hashPin } from './pin';
@@ -47,15 +49,40 @@ function toResponse(
  * @param app - the Fastify instance to register on.
  * @param opts - route dependencies.
  * @param opts.reservations - the reservation repository (503 when absent).
+ * @param opts.trips - trip lookup, to resolve the assigned vehicle (#161).
+ * @param opts.vehicles - the fleet, for the seat ceiling; absent -> not enforced.
  * @param opts.secret - server key for hashing the daily boarding PIN.
  * @param opts.rateLimit - rate-limit config (applied per user).
  */
 export async function reservationRoutes(
   app: FastifyInstance,
-  opts: { reservations?: ReservationRepository; secret: string; rateLimit: RateLimitConfig },
+  opts: {
+    reservations?: ReservationRepository;
+    /** Trip lookup, to resolve the assigned vehicle's seat ceiling (#161). */
+    trips?: TripRepository;
+    /** Fleet, for that ceiling. Absent -> capacity is not enforced. */
+    vehicles?: VehicleRepository;
+    secret: string;
+    rateLimit: RateLimitConfig;
+  },
 ): Promise<void> {
   const r = app.withTypeProvider<ZodTypeProvider>();
   const UNAVAILABLE = { error: 'unavailable', message: 'Reservations are not configured' };
+
+  /**
+   * The seat ceiling for a trip, or null when there is none to enforce.
+   *
+   * @param tripId - the trip being reserved on, if any.
+   * @returns the vehicle's capacity, or null for unlimited.
+   */
+  const seatCeiling = async (tripId: string | null): Promise<number | null> => {
+    if (!tripId || !opts.trips || !opts.vehicles) return null;
+    const trip = await opts.trips.findById(tripId);
+    if (!trip?.vehicleId) return null;
+    const vehicle = await opts.vehicles.findById(trip.vehicleId);
+    // capacity 0 means "not recorded" in the fleet data, not "no seats".
+    return vehicle && vehicle.capacity > 0 ? vehicle.capacity : null;
+  };
 
   r.post(
     '/me/reservations',
@@ -68,6 +95,7 @@ export async function reservationRoutes(
         response: {
           200: reservationResponseSchema,
           401: errorResponseSchema,
+          409: errorResponseSchema,
           429: errorResponseSchema,
           503: errorResponseSchema,
         },
@@ -79,14 +107,34 @@ export async function reservationRoutes(
       // Confirming issues a fresh daily PIN; only the hash is stored, the
       // plaintext is returned once here for the rider to show at boarding.
       const pin = request.body.travelling ? generatePin() : undefined;
-      const reservation = await opts.reservations.respond({
+      const input = {
         userId: request.user!.id,
         tripId: request.body.tripId ?? null,
         travelDate: request.body.travelDate,
         direction: request.body.direction,
         travelling: request.body.travelling,
         pinHash: pin ? hashPin(pin, opts.secret) : null,
-      });
+      };
+
+      const capacity = request.body.travelling
+        ? await seatCeiling(request.body.tripId ?? null)
+        : null;
+
+      // null ceiling = no vehicle assigned yet, or capacity not recorded. Ops
+      // routinely creates trips before crewing them, so that means unlimited
+      // rather than zero — otherwise nobody could reserve on a run until a bus
+      // was attached.
+      const reservation =
+        capacity === null
+          ? await opts.reservations.respond(input)
+          : await opts.reservations.respondWithinCapacity(input, capacity);
+
+      if (!reservation) {
+        // Its own error code, not a bare 409: the app has to tell "this run is
+        // full" from a generic conflict to show the right thing. This is also
+        // where the standby offer cascade attaches (#105).
+        return reply.code(409).send({ error: 'trip_full', message: 'This run is full' });
+      }
       return toResponse(reservation, pin);
     },
   );

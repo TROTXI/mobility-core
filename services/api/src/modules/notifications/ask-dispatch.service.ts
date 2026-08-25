@@ -10,6 +10,7 @@
 // this targets those subscribers.
 
 import { directionOf } from '../mobility/direction';
+import type { VehicleRepository } from '../mobility/vehicle.repository';
 import type { TripRepository } from '../mobility/trip.repository';
 import type {
   ReservationDirection,
@@ -24,6 +25,12 @@ export interface AskDispatchDeps {
   subscriptions: SubscriptionRepository;
   reservations: ReservationRepository;
   notifier: NotificationSender;
+  /**
+   * Seat ceiling per trip (#161). Absent -> the cutoff defaults everyone, as
+   * before. Present -> riders are never defaulted into a seat that does not
+   * exist, which is how an overfull trip used to get worse at 21:00.
+   */
+  vehicles?: VehicleRepository;
 }
 
 /** How many riders were prompted, across how many trips. */
@@ -83,12 +90,35 @@ export class AskDispatchService {
    *
    * @param travelDate - the travel day (`YYYY-MM-DD`).
    * @param direction - morning or evening.
-   * @returns how many reservations were defaulted.
+   * @returns how many were defaulted, and how many were skipped because their
+   *   trip was already full.
    */
   async resolveDefaults(
     travelDate: string,
     direction: ReservationDirection,
-  ): Promise<{ defaulted: number }> {
-    return { defaulted: await this.deps.reservations.markDefaultTravelling(travelDate, direction) };
+  ): Promise<{ defaulted: number; skippedFull: number }> {
+    return this.deps.reservations.markDefaultTravelling(
+      travelDate,
+      direction,
+      this.deps.vehicles ? (tripId) => this.capacityOf(tripId) : undefined,
+    );
+  }
+
+  /**
+   * The seat ceiling for a trip, or null when it has none.
+   *
+   * A trip with no vehicle assigned is unlimited, not zero: ops routinely
+   * creates trips before assigning a bus, and treating that as zero would stop
+   * anyone reserving on a run that has not been crewed yet.
+   *
+   * @param tripId - the trip.
+   * @returns the vehicle's capacity, or null for unlimited.
+   */
+  private async capacityOf(tripId: string): Promise<number | null> {
+    const trip = await this.deps.trips.findById(tripId);
+    if (!trip?.vehicleId) return null;
+    const vehicle = await this.deps.vehicles!.findById(trip.vehicleId);
+    // capacity 0 means "not recorded" in the fleet data, not "no seats".
+    return vehicle && vehicle.capacity > 0 ? vehicle.capacity : null;
   }
 }
