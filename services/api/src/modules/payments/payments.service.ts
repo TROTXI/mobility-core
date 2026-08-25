@@ -20,7 +20,9 @@ import type {
   SubscriptionRepository,
 } from '../subscriptions/subscription.repository';
 import type { UserRepository } from '../users/user.repository';
-import type { NewPayment, PaymentRepository } from './payment.repository';
+import { derivePrice, type DerivedPrice } from './pricing';
+import type { PricingRepository } from './pricing.repository';
+import type { NewPayment, Payment, PaymentRepository } from './payment.repository';
 import type { PaystackClient } from './paystack.client';
 
 /**
@@ -30,24 +32,23 @@ import type { PaystackClient } from './paystack.client';
 export class PaymentsNotConfiguredError extends Error {}
 
 /**
+ * Thrown when a corridor has no fare in force, or a plan has no pricing row.
+ * Routes map it to HTTP 409: the request is well-formed, the corridor simply is
+ * not priced yet. Deliberately not a fallback to some default — charging a
+ * number nobody chose is exactly what #103 exists to stop.
+ */
+export class NotPricedError extends Error {}
+
+/**
  * Thrown when an incoming Paystack webhook fails signature verification. Routes
  * map it to HTTP 401.
  */
 export class InvalidWebhookError extends Error {}
 
 /**
- * Membership fee in PESEWAS to be on the platform. Server-authoritative
- * (security.md §7). PLACEHOLDERS — replaced by the `plans` table in epic E1b.
- */
-export const SUBSCRIPTION_FEES_PESEWAS: Record<SubscriptionPlan, number> = {
-  monthly: 2000, // GHS 20
-  annual: 20000, // GHS 200
-};
-
-/**
- * Rides granted when a subscription activates. PLACEHOLDER — the real formula
- * (working-days × 2, per tier) lands with the `plans` table in epic E1b; this
- * flat value keeps the allocation flow buildable now (ADR-0014).
+ * Fallback ride count for payments created before #103, whose rows carry no
+ * frozen `ridesGranted`. Live pricing comes from `plan_pricing`; this only
+ * exists so replaying an old webhook still allocates something sane.
  */
 export const PLACEHOLDER_RIDES_PER_PERIOD = 44;
 
@@ -63,8 +64,8 @@ export interface PaymentsServiceDeps {
   paystack?: PaystackClient;
   /** Users, for capturing the payer's verified phone on charge.success (#182). */
   users: UserRepository;
-  /** Plan → membership fee in pesewas (server-authoritative). */
-  subscriptionFees: Record<SubscriptionPlan, number>;
+  /** Corridor fares + plan levers (#103). Prices are derived, never stored. */
+  pricing: PricingRepository;
   /** Rides allocated per activated period (placeholder until E1b tiers). */
   ridesPerPeriod: number;
 }
@@ -122,16 +123,44 @@ export class PaymentsService {
   async initializeSubscription(
     userId: string,
     plan: SubscriptionPlan,
-    routeId?: string | null,
+    routeId: string,
   ): Promise<CheckoutResult> {
+    const price = await this.priceFor(plan, routeId);
     return this.startCheckout({
       userId,
       purpose: 'subscription',
       plan,
-      routeId: routeId ?? null,
-      amount: this.deps.subscriptionFees[plan],
+      routeId,
+      amount: price.pricePesewas,
       currency: 'GHS',
+      // Frozen here, not re-derived at activation: minutes pass before
+      // charge.success arrives, and a fare that moved in that window would
+      // grant rides priced against a fare the rider never paid.
+      ridesGranted: price.ridesGranted,
+      farePesewas: price.farePesewas,
+      creditPesewasPerRide: price.creditPesewasPerRide,
     });
+  }
+
+  /**
+   * Derive what this rider pays for this plan on this corridor.
+   *
+   * routeId is required, unlike before: the price depends on the corridor's
+   * regulated fare, so there is no meaningful price for "some route".
+   *
+   * @param plan - the plan tier.
+   * @param routeId - the corridor being subscribed to.
+   * @returns the derived price and everything snapshotted with it.
+   * @throws NotPricedError when the corridor has no fare or the plan no levers.
+   */
+  async priceFor(plan: SubscriptionPlan, routeId: string): Promise<DerivedPrice> {
+    const [fare, pricing] = await Promise.all([
+      this.deps.pricing.currentFare(routeId),
+      this.deps.pricing.planPricing(plan),
+    ]);
+    if (!fare) throw new NotPricedError(`No fare set for route ${routeId}`);
+    if (!pricing) throw new NotPricedError(`No pricing configured for plan ${plan}`);
+    return derivePrice(fare.farePesewas, pricing);
   }
 
   /**
@@ -188,8 +217,8 @@ export class PaymentsService {
     if (payment.purpose === 'subscription' && payment.plan) {
       // Membership fee paid — activate the subscription (pinned to the paid
       // route) and allocate the period's rides. Both idempotent → replay-safe.
-      await this.activateSubscription(payment.userId, payment.plan, payment.routeId);
-      await this.allocateEntitlement(payment.userId, reference);
+      await this.activateSubscription(payment.userId, payment.plan, payment.routeId, payment);
+      await this.allocateEntitlement(payment.userId, reference, payment.ridesGranted);
     }
 
     // The payer approved this debit on their handset, so the number is verified
@@ -208,11 +237,18 @@ export class PaymentsService {
    *
    * @param userId - the subscriber.
    * @param reference - the payment reference (the allocation's idempotency key).
+   * @param ridesGranted - the count frozen at checkout; null for pre-#103 rows.
    */
-  private async allocateEntitlement(userId: string, reference: string): Promise<void> {
+  private async allocateEntitlement(
+    userId: string,
+    reference: string,
+    ridesGranted: number | null,
+  ): Promise<void> {
     await this.deps.entitlements.record({
       userId,
-      deltaRides: this.deps.ridesPerPeriod,
+      // The count fixed at checkout. Pre-#103 payments have none; those fall
+      // back to the configured default so replaying an old webhook still works.
+      deltaRides: ridesGranted ?? this.deps.ridesPerPeriod,
       reason: 'allocation',
       refType: 'payment',
       refId: reference,
@@ -251,14 +287,27 @@ export class PaymentsService {
    * @param userId - the subscriber.
    * @param plan - the membership tier to activate.
    * @param routeId - the rider's pinned route/corridor (E3).
+   * @param payment - the paid payment, carrying the checkout-time snapshot.
    */
   private async activateSubscription(
     userId: string,
     plan: SubscriptionPlan,
     routeId: string | null,
+    payment: Payment,
   ): Promise<void> {
     try {
-      await this.deps.subscriptions.create({ userId, plan, routeId });
+      await this.deps.subscriptions.create({
+        userId,
+        plan,
+        routeId,
+        // Carried from the payment, so what this rider owes and what their
+        // credit is worth cannot move under them when the fare next changes
+        // (ADR-0015 §3). New prices apply at renewal.
+        pricePesewas: payment.amount,
+        ridesGranted: payment.ridesGranted,
+        farePesewas: payment.farePesewas,
+        creditPesewasPerRide: payment.creditPesewasPerRide,
+      });
     } catch (err) {
       // one-active-per-user index fired — already activated, treat as done.
       if (!isUniqueViolation(err)) throw err;

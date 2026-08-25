@@ -3,6 +3,7 @@ import { buildApp } from '../src/app';
 import { InMemoryPaymentRepository } from '../src/modules/payments/payment.repository';
 import { FakePaystackClient, paystackSignature } from '../src/modules/payments/paystack.client';
 import { InMemoryUserRepository } from '../src/modules/users/user.repository';
+import { InMemoryPricingRepository } from '../src/modules/payments/pricing.repository';
 import { PaymentsService } from '../src/modules/payments/payments.service';
 import { InMemorySubscriptionRepository } from '../src/modules/subscriptions/subscription.repository';
 import { InMemoryEntitlementLedgerRepository } from '../src/modules/entitlements/entitlement-ledger.repository';
@@ -18,16 +19,22 @@ const jwt = createJwtService(auth);
 const FAKE_SECRET = 'fake-paystack-secret';
 const bearer = (t: string) => ({ authorization: `Bearer ${t}` });
 
+const ROUTE = '11111111-1111-4111-8111-111111111111';
+const FARE = 600;
+
 function appWithPayments() {
   const subscriptions = new InMemorySubscriptionRepository();
   const entitlements = new InMemoryEntitlementLedgerRepository();
+  const pricing = new InMemoryPricingRepository();
+  // Price the corridor: since #103 there is no price without a fare in force.
+  void pricing.setFare(ROUTE, FARE);
   const paymentsService = new PaymentsService({
     payments: new InMemoryPaymentRepository(),
     subscriptions,
     entitlements,
     paystack: new FakePaystackClient(FAKE_SECRET),
     users: new InMemoryUserRepository(),
-    subscriptionFees: { monthly: 2000, annual: 20000 },
+    pricing,
     ridesPerPeriod: 44,
   });
   // Share the entitlements instance with the app so GET /me/rides sees the
@@ -56,7 +63,7 @@ describe('POST /payments/subscribe', () => {
         await app.inject({
           method: 'POST',
           url: '/payments/subscribe',
-          payload: { plan: 'monthly' },
+          payload: { plan: 'monthly', routeId: ROUTE },
         })
       ).statusCode,
     ).toBe(401);
@@ -69,7 +76,7 @@ describe('POST /payments/subscribe', () => {
       method: 'POST',
       url: '/payments/subscribe',
       headers: bearer(token),
-      payload: { plan: 'monthly' },
+      payload: { plan: 'monthly', routeId: ROUTE },
     });
     expect(res.statusCode).toBe(200);
     expect(res.json().authorizationUrl).toBeTruthy();
@@ -85,7 +92,7 @@ describe('POST /payments/subscribe', () => {
           method: 'POST',
           url: '/payments/subscribe',
           headers: bearer(token),
-          payload: { plan: 'monthly' },
+          payload: { plan: 'monthly', routeId: ROUTE },
         })
       ).statusCode,
     ).toBe(503);
@@ -114,7 +121,7 @@ describe('POST /webhooks/paystack', () => {
         method: 'POST',
         url: '/payments/subscribe',
         headers: bearer(token),
-        payload: { plan: 'monthly' },
+        payload: { plan: 'monthly', routeId: ROUTE },
       })
     ).json();
 

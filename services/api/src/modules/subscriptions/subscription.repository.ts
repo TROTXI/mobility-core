@@ -9,6 +9,14 @@ export interface Subscription {
   status: SubscriptionStatus;
   /** The rider's pinned route/corridor (E3); null for pre-E3 subscriptions. */
   routeId: string | null;
+  /** What this rider actually paid, frozen at activation (#103). */
+  pricePesewas: number | null;
+  /** Rides granted for the period, frozen at activation. */
+  ridesGranted: number | null;
+  /** The corridor fare the price was derived from — the audit trail. */
+  farePesewas: number | null;
+  /** Ride Credit value per unused ride, frozen at activation. */
+  creditPesewasPerRide: number | null;
   createdAt: Date;
 }
 
@@ -17,6 +25,10 @@ export interface NewSubscription {
   userId: string;
   plan: SubscriptionPlan;
   routeId?: string | null;
+  pricePesewas?: number | null;
+  ridesGranted?: number | null;
+  farePesewas?: number | null;
+  creditPesewasPerRide?: number | null;
 }
 
 /** Persistence for memberships; one active subscription per user. */
@@ -70,6 +82,10 @@ export class InMemorySubscriptionRepository implements SubscriptionRepository {
       plan: input.plan,
       status: 'active',
       routeId: input.routeId ?? null,
+      pricePesewas: input.pricePesewas ?? null,
+      ridesGranted: input.ridesGranted ?? null,
+      farePesewas: input.farePesewas ?? null,
+      creditPesewasPerRide: input.creditPesewasPerRide ?? null,
       createdAt: new Date(),
     };
     this.subscriptions.set(subscription.id, subscription);

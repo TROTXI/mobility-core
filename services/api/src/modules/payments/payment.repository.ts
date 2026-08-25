@@ -24,6 +24,12 @@ export interface Payment {
   plan: SubscriptionPlan | null;
   /** The route the rider is subscribing to (E3); carried to the subscription on activation. */
   routeId: string | null;
+  /** Rides this payment buys, frozen at checkout (#103). Null for pre-#103 rows. */
+  ridesGranted: number | null;
+  /** The corridor fare the price was derived from, frozen at checkout. */
+  farePesewas: number | null;
+  /** Ride Credit value per unused ride, frozen at checkout. */
+  creditPesewasPerRide: number | null;
   /** Amount in pesewas (1 GHS = 100 pesewas). */
   amount: number;
   /** ISO 4217 currency code (currently always `GHS`). */
@@ -44,6 +50,12 @@ export interface NewPayment {
   /** Amount in pesewas (1 GHS = 100 pesewas). */
   amount: number;
   currency: string;
+  /** Rides this payment buys, frozen at checkout (#103). Null pre-#103. */
+  ridesGranted?: number | null;
+  /** The corridor fare the price was derived from, frozen at checkout. */
+  farePesewas?: number | null;
+  /** Ride Credit value per unused ride, frozen at checkout. */
+  creditPesewasPerRide?: number | null;
 }
 
 /** Persistence for payments. Backed by Postgres in prod, in-memory in dev/tests. */
@@ -85,6 +97,9 @@ export class InMemoryPaymentRepository implements PaymentRepository {
       routeId: input.routeId ?? null,
       amount: input.amount,
       currency: input.currency,
+      ridesGranted: input.ridesGranted ?? null,
+      farePesewas: input.farePesewas ?? null,
+      creditPesewasPerRide: input.creditPesewasPerRide ?? null,
       status: 'pending',
       createdAt: now,
       updatedAt: now,
