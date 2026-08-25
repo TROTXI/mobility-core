@@ -11,6 +11,14 @@ databases:
     plan: free # NB: free Postgres expires ~30 days after creation
     region: frankfurt # closest Render region to Ghana
 
+  - name: trotxi-db-production
+    databaseName: trotxi
+    user: trotxi
+    # Paid so the data does not expire. The free tier drops after ~30 days,
+    # which is survivable for staging and would be a company-ending event here.
+    plan: basic-256mb
+    region: frankfurt
+
 # Shared config for the ask-dispatch cron jobs (E3). The cron mints a short-lived
 # admin token, so its JWT_SECRET MUST equal the web service's JWT_SECRET — set it
 # once here in the dashboard and all four crons inherit it. API_BASE_URL is the
@@ -51,6 +59,13 @@ services:
       # whole JSON as the value in the dashboard, never commit. Unset -> the
       # recording fake sender runs (no real push).
       - key: FIREBASE_SERVICE_ACCOUNT
+        sync: false
+      # Paystack secret key. Was set in the dashboard but never declared here,
+      # so a fresh blueprint apply would have created a service with payments
+      # SILENTLY DISABLED — /payments/subscribe returns 503, health checks pass,
+      # and nobody finds out until a rider tries to pay. Staging uses the TEST
+      # key (sk_test_…); production must use the live one.
+      - key: PAYSTACK_SECRET_KEY
         sync: false
       # Google "Web" OAuth client ID — the audience verified on sign-in. This is
       # PUBLIC (a Web client ID ships in clients; only a client *secret* would be
@@ -232,37 +247,90 @@ services:
     envVars:
       - fromGroup: trotxi-cron-staging
 
-  # ---- Production (uncomment when going live) ----
-  # Needs a paid Postgres plan so data doesn't expire. After applying, set the
-  # RENDER_PRODUCTION_SERVICE_ID + PRODUCTION_URL GitHub variables to activate
-  # the production stage of deploy.yml (it is skipped until then).
+  # ---- Production ----
+  # Rebuilt from staging's ACTUAL configuration (#103/#178/#182 all added env
+  # vars the old commented block never learned about). A production service
+  # missing FIREBASE_SERVICE_ACCOUNT, R2_* or MAP_TILES_URL boots cleanly,
+  # passes /healthz, and is quietly broken in four ways — so every var staging
+  # has is declared here, even where the value differs.
   #
-  # - type: web
-  #   name: trotxi-api
-  #   runtime: docker
-  #   repo: https://github.com/TROTXI/mobility-core
-  #   branch: main
-  #   dockerfilePath: services/api/Dockerfile
-  #   dockerContext: .
-  #   plan: starter
-  #   region: frankfurt
-  #   healthCheckPath: /healthz
-  #   autoDeploy: false
-  #   envVars:
-  #     - key: NODE_ENV
-  #       value: production
-  #     - key: DATABASE_URL
-  #       fromDatabase:
-  #         name: trotxi-db-production
-  #         property: connectionString
-  #     - key: JWT_SECRET
-  #       sync: false   # required; set in dashboard (ADR-0007)
-  #     - key: GOOGLE_CLIENT_ID
-  #       sync: false   # set in dashboard
+  # APPLY ORDER
+  #   1. Create the database first (Render provisions it before the web service
+  #      so DATABASE_URL resolves).
+  #   2. Apply the blueprint; the service is created but NOT yet reachable by
+  #      the deploy workflow.
+  #   3. Set every `sync: false` value in the dashboard (list below).
+  #   4. Run the migrations against the production database once.
+  #   5. Set the GitHub repository variables RENDER_PRODUCTION_SERVICE_ID and
+  #      PRODUCTION_URL. The production stage of deploy.yml is skipped until
+  #      both exist (`if: vars.RENDER_PRODUCTION_SERVICE_ID != ''`), and it
+  #      additionally requires a manual approval in the `production`
+  #      environment before it runs.
   #
-  # …and add under `databases:`
-  # - name: trotxi-db-production
-  #   databaseName: trotxi
-  #   user: trotxi
-  #   plan: basic-256mb
-  #   region: frankfurt
+  # SECRETS TO SET IN THE DASHBOARD (never committed):
+  #   JWT_SECRET               generate fresh — do NOT reuse staging's. A
+  #                            leaked staging secret must not mint production
+  #                            tokens.
+  #   PAYSTACK_SECRET_KEY      the LIVE key (sk_live_…), not staging's test key.
+  #   FIREBASE_SERVICE_ACCOUNT the whole service-account JSON.
+  #   R2_*                     four values; may reuse the staging bucket or a
+  #                            separate production one.
+  #   METRICS_TOKEN            required in production or /metrics is disabled.
+  #   OTEL_EXPORTER_OTLP_*     Grafana Cloud endpoint + auth header.
+  - type: web
+    name: trotxi-api
+    runtime: docker
+    repo: https://github.com/TROTXI/mobility-core
+    branch: main
+    dockerfilePath: services/api/Dockerfile
+    dockerContext: .
+    plan: starter
+    region: frankfurt
+    healthCheckPath: /healthz
+    autoDeploy: false # GitHub Actions deploys after CI + manual approval
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        fromDatabase:
+          name: trotxi-db-production
+          property: connectionString
+      # Required because NODE_ENV=production (ADR-0007). Generate a NEW one:
+      #   openssl rand -base64 48
+      - key: JWT_SECRET
+        sync: false
+      # Live Paystack key. Copying the staging test key here would take real
+      # payments nowhere and look like it worked.
+      - key: PAYSTACK_SECRET_KEY
+        sync: false
+      - key: FIREBASE_SERVICE_ACCOUNT
+        sync: false
+      # Public Web client id — same Google project as staging unless a separate
+      # production project is created. Public by design, so it lives here.
+      - key: GOOGLE_CLIENT_ID
+        value: 431341307838-pc4m046v2lj18ssfnfl1g52fl5g1cg4q.apps.googleusercontent.com
+      # Unset in production -> /metrics is disabled (404) rather than left open.
+      - key: METRICS_TOKEN
+        sync: false
+      - key: OTEL_EXPORTER_OTLP_ENDPOINT
+        sync: false
+      - key: OTEL_EXPORTER_OTLP_HEADERS
+        sync: false
+      - key: OTEL_SERVICE_NAME
+        value: trotxi-api-production
+      # Set once the ops console has a production origin. Unset -> any origin is
+      # reflected, which is safe here only because auth is a bearer token.
+      - key: CORS_ORIGINS
+        sync: false
+      - key: R2_ACCOUNT_ID
+        sync: false
+      - key: R2_ACCESS_KEY_ID
+        sync: false
+      - key: R2_SECRET_ACCESS_KEY
+        sync: false
+      - key: R2_BUCKET
+        sync: false
+      # Same public basemap as staging — the tiles are world-readable and there
+      # is no reason to duplicate a 97 MB archive per environment.
+      - key: MAP_TILES_URL
+        value: https://pub-9962de9eb91548789ca7e319561d8386.r2.dev/ghana.pmtiles
