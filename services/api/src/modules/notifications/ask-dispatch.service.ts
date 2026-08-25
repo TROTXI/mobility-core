@@ -9,6 +9,7 @@
 // rider↔route model): confirm at subscribe → the route pins the subscription →
 // this targets those subscribers.
 
+import { directionOf } from '../mobility/direction';
 import type { TripRepository } from '../mobility/trip.repository';
 import type {
   ReservationDirection,
@@ -29,13 +30,6 @@ export interface AskDispatchDeps {
 export interface AskDispatchResult {
   trips: number;
   asked: number;
-}
-
-// A trip's direction from its scheduled time — morning before noon, else evening
-// (UTC). Pilot heuristic, consistent with the boarding scan; converges when
-// trips carry an explicit direction.
-function directionOf(scheduledAt: Date): ReservationDirection {
-  return scheduledAt.getUTCHours() < 12 ? 'morning' : 'evening';
 }
 
 /** The daily ask-dispatch + cutoff default-yes (see the file header). */

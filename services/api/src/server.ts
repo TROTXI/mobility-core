@@ -42,6 +42,17 @@ import {
 } from './modules/mobility/trip-position.repository';
 import { PgTripPositionRepository } from './modules/mobility/trip-position.repository.pg';
 import {
+  InMemoryRouteGeometryRepository,
+  type RouteGeometryRepository,
+} from './modules/mobility/route-geometry.repository';
+import { PgRouteGeometryRepository } from './modules/mobility/route-geometry.repository.pg';
+import { RouteLearningService } from './modules/mobility/route-learning.service';
+import {
+  InMemorySegmentSpeedRepository,
+  type SegmentSpeedRepository,
+} from './modules/mobility/segment-speed.repository';
+import { PgSegmentSpeedRepository } from './modules/mobility/segment-speed.repository.pg';
+import {
   InMemoryVehicleRepository,
   type VehicleRepository,
 } from './modules/mobility/vehicle.repository';
@@ -159,6 +170,8 @@ async function main(): Promise<void> {
   let routeStops: RouteStopRepository;
   let trips: TripRepository;
   let tripPositions: TripPositionRepository;
+  let routeGeometry: RouteGeometryRepository;
+  let segmentSpeeds: SegmentSpeedRepository;
   let vehicles: VehicleRepository;
   let drivers: DriverRepository;
   let sessions: SessionRepository;
@@ -180,6 +193,8 @@ async function main(): Promise<void> {
     routeStops = new PgRouteStopRepository(pool);
     trips = new PgTripRepository(pool);
     tripPositions = new PgTripPositionRepository(pool);
+    routeGeometry = new PgRouteGeometryRepository(pool);
+    segmentSpeeds = new PgSegmentSpeedRepository(pool);
     vehicles = new PgVehicleRepository(pool);
     drivers = new PgDriverRepository(pool);
     sessions = new PgSessionRepository(pool);
@@ -201,6 +216,8 @@ async function main(): Promise<void> {
     routeStops = new InMemoryRouteStopRepository();
     trips = new InMemoryTripRepository();
     tripPositions = new InMemoryTripPositionRepository();
+    routeGeometry = new InMemoryRouteGeometryRepository();
+    segmentSpeeds = new InMemorySegmentSpeedRepository();
     vehicles = new InMemoryVehicleRepository();
     drivers = new InMemoryDriverRepository();
     sessions = new InMemorySessionRepository();
@@ -318,6 +335,17 @@ async function main(): Promise<void> {
     windowSeconds: env.RATE_LIMIT_WINDOW_SECONDS,
   };
 
+  // Route learning (#179, #181): reads back completed runs' GPS traces to derive
+  // the corridor's real path and its observed per-segment speeds.
+  const routeLearning = new RouteLearningService({
+    trips,
+    tripPositions,
+    routeStops,
+    stops,
+    geometry: routeGeometry,
+    segmentSpeeds,
+  });
+
   const app = await buildApp({
     users,
     accountDeletion,
@@ -342,6 +370,8 @@ async function main(): Promise<void> {
     kv,
     objectStore,
     mapTilesUrl: env.MAP_TILES_URL,
+    segmentSpeeds,
+    routeLearning,
     isReady,
     auth,
     rateLimit,

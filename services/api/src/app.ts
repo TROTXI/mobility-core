@@ -12,6 +12,9 @@ import { z } from 'zod';
 import { InMemoryKvStore, type KvStore } from './kv/kv.store';
 import { FakeObjectStore, type ObjectStore } from './storage/object-store';
 import type { AccountDeletionService } from './modules/users/account-deletion.service';
+import type { RouteLearningService } from './modules/mobility/route-learning.service';
+import { routeLearningRoutes } from './modules/mobility/route-learning.routes';
+import type { SegmentSpeedRepository } from './modules/mobility/segment-speed.repository';
 import { userRoutes } from './modules/users/users.routes';
 import {
   InMemoryDeviceTokenRepository,
@@ -138,6 +141,10 @@ export interface AppDeps {
   corsOrigins?: string[];
   /** Public PMTiles basemap URL, served to clients on GET /flags (#178). */
   mapTilesUrl?: string;
+  /** Observed segment speeds (#181). Absent -> ETAs use the cold-start speed. */
+  segmentSpeeds?: SegmentSpeedRepository;
+  /** Derives geometry + speeds from completed runs (#179, #181). */
+  routeLearning?: RouteLearningService;
   /** Prometheus /metrics exposure. Defaults to unprotected (dev/tests). */
   metrics?: Partial<MetricsOptions>;
   logger?: boolean;
@@ -338,7 +345,12 @@ export async function buildApp(deps: AppDeps = {}): Promise<FastifyInstance> {
     routeStops: deps.routeStops,
     stops: deps.stops,
     tripPositions: deps.tripPositions ?? new InMemoryTripPositionRepository(),
+    segmentSpeeds: deps.segmentSpeeds,
     kv,
+    rateLimit: deps.rateLimit ?? DEFAULT_RATE_LIMIT,
+  });
+  await app.register(routeLearningRoutes, {
+    routeLearning: deps.routeLearning,
     rateLimit: deps.rateLimit ?? DEFAULT_RATE_LIMIT,
   });
   await app.register(adminRoutes, {

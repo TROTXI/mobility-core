@@ -37,6 +37,17 @@ export interface TripPositionRepository {
    * @returns the latest fix, or null if none has been reported.
    */
   findLatest(tripId: string): Promise<TripPosition | null>;
+  /**
+   * Every fix for a trip, oldest first — the run's full trace.
+   *
+   * Read back by route learning (#179, #181) to derive the corridor's real
+   * shape and its per-segment speeds. The table has been append-only since #25
+   * specifically so this history would exist when we came to need it.
+   *
+   * @param tripId - the trip id.
+   * @returns the trip's fixes in recorded order (empty when none).
+   */
+  findAllForTrip(tripId: string): Promise<TripPosition[]>;
 }
 
 /** In-memory {@link TripPositionRepository} for dev and unit tests. */
@@ -64,5 +75,10 @@ export class InMemoryTripPositionRepository implements TripPositionRepository {
       if (!latest || p.recordedAt.getTime() >= latest.recordedAt.getTime()) latest = p;
     }
     return latest;
+  }
+  async findAllForTrip(tripId: string): Promise<TripPosition[]> {
+    return this.positions
+      .filter((p) => p.tripId === tripId)
+      .sort((a, b) => a.recordedAt.getTime() - b.recordedAt.getTime());
   }
 }
