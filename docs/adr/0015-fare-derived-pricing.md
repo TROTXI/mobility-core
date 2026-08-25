@@ -1,6 +1,14 @@
 # ADR-0015 — Subscription prices are derived from regulated fares, never stored
 
-**Status:** accepted · **Date:** 2026-08-23 · **Refines** ADR-0014 (the Hybrid Subscription Model stands; this decides how its prices are set)
+**Status:** accepted · **Date:** 2026-08-23 · **Amended:** 2026-08-24 · **Refines** ADR-0014 (the Hybrid Subscription Model stands; this decides how its prices are set)
+
+> **Amendment, 2026-08-24.** As first written this said `(1 − subscription
+discount)`, which assumed we compete on price. We do not: on these corridors
+> there is frequently **no vehicle available at all**, so what we sell is
+> certainty, and certainty in a supply-constrained market commands parity or a
+> premium rather than a discount. The term is now a **price multiplier** that
+> can sit below, at, or above 1. The architecture is unchanged; the assumption
+> baked into the old name is removed before anything is built against it.
 
 ## Context
 
@@ -29,8 +37,19 @@ migration every time fuel moves.
 ### 1. The fare is the input, the price is computed
 
 ```
-plan price = corridor fare × rides per period × (1 − subscription discount)
+plan price = corridor fare × rides per period × price multiplier
 ```
+
+The multiplier is deliberately not called a discount:
+
+| Value | Meaning                                         |
+| ----- | ----------------------------------------------- |
+| `< 1` | discount — we compete on price                  |
+| `= 1` | parity — same spend, guaranteed seat            |
+| `> 1` | premium — certainty is worth more than the fare |
+
+A column named `discount_percent` would quietly insist the answer is below 1,
+and that framing would outlive whoever chose it.
 
 Fares are held per corridor with an **effective-dated** validity window, so a
 fare change is one insert per corridor — or one multiplier across all of them —
@@ -60,6 +79,34 @@ New prices therefore apply at **renewal**, which makes the billing periods in
 #162 load-bearing: without a period boundary there is no moment at which to
 reprice.
 
+### 4. What we are actually selling
+
+Worth stating plainly, because it decides the multiplier and was missing from
+the first draft.
+
+On these corridors the binding constraint is **supply, not price**. There is
+frequently no vehicle available at all — a commuter's alternative is not a
+cheaper trotro, it is waiting, and possibly not getting to work on time.
+
+So the comparison a rider makes is not
+
+> GHS 264 with a trotro versus GHS 238 with Trotxi
+
+but
+
+> GHS 264 **and uncertainty** versus a guaranteed seat on a scheduled departure
+
+Every business selling guaranteed capacity into constrained supply — season
+tickets, reserved parking, standing hotel rates — prices at or above spot, not
+below. Discounting here means paying people to accept the thing they already
+want most.
+
+The revenue per ride is also not the prize. Prepayment gives us **a month of
+fares as working capital** and, more valuably, **demand certainty**: we know how
+many seats to put on which corridor tomorrow. That is what makes the model
+asset-light, and we get it from the subscription existing at all, not from
+pricing it below spot.
+
 ## Consequences
 
 **The entitlement model already absorbs the shock.** ADR-0014 sells _rides_, not
@@ -85,18 +132,30 @@ migration every time fuel moves.
 **What this does not decide.** The architecture is settled; three product
 numbers remain, and they are now the only blockers:
 
-1. **The discount** versus paying per trip. One percentage.
+1. **The price multiplier.** One number.
 2. **The entitlement formula** — working days × 2, holiday handling, one-way
    commuters. One formula.
 3. **Band boundaries.** Three or four numbers.
 
 None of them move when the government moves fares. That is the unblock: #103 was
 waiting on per-corridor prices that can never be stable, when it was only ever
-waiting on a discount.
+waiting on one multiplier.
+
+**Default to 1.0 — parity.** The pitch is "the same fare you already pay, except
+your seat is waiting for you", which needs no justification, protects margin
+entirely, and is far easier to sell than explaining a percentage. Ship that; the
+pilot will say more about the right number than any amount of reasoning will.
+
+A launch offer for the first cohort is a **separate, expiring promotion**, not
+this multiplier. Keep them apart: one is pricing architecture, the other is
+marketing with a sunset date. Conflating them is how a temporary incentive
+becomes a permanent margin leak nobody can explain the origin of.
+
+None of these three numbers should live in code. They belong in ops-editable
+configuration, so setting them is data entry rather than a deploy — see #103.
 
 The survey instrument (Q11 spend, Q17 willingness-to-pay) should be read as
-measuring **what discount converts a per-trip commuter into a subscriber**, not
-as finding a price.
+measuring **what makes a commuter prepay a month**, not as finding a price.
 
 ## Alternatives considered
 
