@@ -20,6 +20,10 @@ export interface Trip {
   assignedDriverId: string | null;
   status: TripStatus;
   scheduledAt: Date;
+  /** When the driver actually started the run (#163); null while scheduled. */
+  startedAt: Date | null;
+  /** When the driver ended it; null until completed. */
+  completedAt: Date | null;
   createdAt: Date;
 }
 
@@ -46,6 +50,8 @@ export interface TripFilter {
  * vehicleId/assignedDriverId cover the driver↔trip assignment (set null to
  * unassign); the assignment endpoint validates they exist before writing. */
 export interface TripUpdate {
+  startedAt?: Date;
+  completedAt?: Date;
   status?: TripStatus;
   scheduledAt?: Date;
   vehicleId?: string | null;
@@ -97,6 +103,8 @@ export class InMemoryTripRepository implements TripRepository {
       vehicleId: input.vehicleId ?? null,
       assignedDriverId: input.assignedDriverId ?? null,
       status: input.status ?? 'scheduled',
+      startedAt: null,
+      completedAt: null,
       scheduledAt: input.scheduledAt,
       createdAt: new Date(),
     };

@@ -16,6 +16,8 @@ import { pricingRoutes } from './modules/payments/pricing.routes';
 import type { AccountDeletionService } from './modules/users/account-deletion.service';
 import type { RouteLearningService } from './modules/mobility/route-learning.service';
 import { routeLearningRoutes } from './modules/mobility/route-learning.routes';
+import { TripLifecycleService } from './modules/mobility/trip-lifecycle.service';
+import { tripLifecycleRoutes } from './modules/mobility/trip-lifecycle.routes';
 import type { SegmentSpeedRepository } from './modules/mobility/segment-speed.repository';
 import { userRoutes } from './modules/users/users.routes';
 import {
@@ -26,6 +28,7 @@ import { deviceRoutes } from './modules/devices/devices.routes';
 import { BoardingService } from './modules/boarding/boarding.service';
 import { ManifestService } from './modules/boarding/manifest.service';
 import { boardingRoutes } from './modules/boarding/boarding.routes';
+import type { ScanEventRepository } from './modules/boarding/scan-event.repository';
 import { InMemoryScanEventRepository } from './modules/boarding/scan-event.repository';
 import { metricsPlugin, type MetricsOptions } from './modules/metrics/metrics.plugin';
 import { entitlementRoutes } from './modules/entitlements/entitlements.routes';
@@ -149,6 +152,12 @@ export interface AppDeps {
   routeLearning?: RouteLearningService;
   /** Corridor fares + plan levers (#103); admin-editable, never constants. */
   pricing?: PricingRepository;
+  /**
+   * Boarding audit trail. Shared between the boarding service (which writes) and
+   * the run summary (which reads) — two instances would leave every summary
+   * reporting zero boardings while scans succeeded.
+   */
+  scanEvents?: ScanEventRepository;
   /** Prometheus /metrics exposure. Defaults to unprotected (dev/tests). */
   metrics?: Partial<MetricsOptions>;
   logger?: boolean;
@@ -321,11 +330,12 @@ export async function buildApp(deps: AppDeps = {}): Promise<FastifyInstance> {
         : undefined,
     rateLimit: deps.rateLimit ?? DEFAULT_RATE_LIMIT,
   });
+  const scanEvents = deps.scanEvents ?? new InMemoryScanEventRepository();
   await app.register(boardingRoutes, {
     boardingService:
       deps.boardingService ??
       new BoardingService({
-        scanEvents: new InMemoryScanEventRepository(),
+        scanEvents,
         kv,
         reservations,
         entitlements,
@@ -358,6 +368,20 @@ export async function buildApp(deps: AppDeps = {}): Promise<FastifyInstance> {
   });
   await app.register(pricingRoutes, {
     pricing: deps.pricing,
+    rateLimit: deps.rateLimit ?? DEFAULT_RATE_LIMIT,
+  });
+  // Driver-owned lifecycle (#163). Needs the full set: trips to transition,
+  // drivers to authorize, reservations + scan events for the run summary.
+  await app.register(tripLifecycleRoutes, {
+    lifecycle:
+      deps.trips && deps.drivers
+        ? new TripLifecycleService({
+            trips: deps.trips,
+            drivers: deps.drivers,
+            reservations,
+            scanEvents,
+          })
+        : undefined,
     rateLimit: deps.rateLimit ?? DEFAULT_RATE_LIMIT,
   });
   await app.register(routeLearningRoutes, {

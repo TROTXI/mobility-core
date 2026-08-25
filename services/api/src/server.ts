@@ -377,6 +377,7 @@ async function main(): Promise<void> {
     segmentSpeeds,
     routeLearning,
     pricing,
+    scanEvents,
     isReady,
     auth,
     rateLimit,

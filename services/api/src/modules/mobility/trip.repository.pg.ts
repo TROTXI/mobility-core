@@ -16,6 +16,8 @@ interface TripRow {
   assigned_driver_id: string | null;
   status: TripStatus;
   scheduled_at: Date;
+  started_at: Date | null;
+  completed_at: Date | null;
   created_at: Date;
 }
 
@@ -27,6 +29,8 @@ function toTrip(row: TripRow): Trip {
     assignedDriverId: row.assigned_driver_id,
     status: row.status,
     scheduledAt: row.scheduled_at,
+    startedAt: row.started_at,
+    completedAt: row.completed_at,
     createdAt: row.created_at,
   };
 }
@@ -84,9 +88,18 @@ export class PgTripRepository implements TripRepository {
     const next = applyPatch(existing, patch);
     const { rows } = await this.pool.query<TripRow>(
       `UPDATE trips
-         SET status = $2, scheduled_at = $3, vehicle_id = $4, assigned_driver_id = $5
+         SET status = $2, scheduled_at = $3, vehicle_id = $4, assigned_driver_id = $5,
+             started_at = $6, completed_at = $7
        WHERE id = $1 RETURNING *`,
-      [id, next.status, next.scheduledAt, next.vehicleId, next.assignedDriverId],
+      [
+        id,
+        next.status,
+        next.scheduledAt,
+        next.vehicleId,
+        next.assignedDriverId,
+        next.startedAt,
+        next.completedAt,
+      ],
     );
     return rows[0] ? toTrip(rows[0]) : null;
   }
