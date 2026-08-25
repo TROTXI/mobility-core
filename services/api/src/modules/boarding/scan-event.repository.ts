@@ -46,6 +46,17 @@ export interface ScanEventRepository {
    * @returns the rider's scan events.
    */
   listForRider(riderId: string): Promise<ScanEvent[]>;
+  /**
+   * Every scan recorded against a trip — the run summary's QR/PIN split (#163).
+   *
+   * Worth having beyond the summary: it is the only way to see whether QR
+   * actually works in the field. A corridor boarding mostly by PIN means the
+   * scanner is failing, and nobody would otherwise find out.
+   *
+   * @param tripId - the trip.
+   * @returns the trip's scan events, oldest first.
+   */
+  listForTrip(tripId: string): Promise<ScanEvent[]>;
 }
 
 /** In-memory {@link ScanEventRepository} for dev and unit tests. */
@@ -70,5 +81,10 @@ export class InMemoryScanEventRepository implements ScanEventRepository {
     return this.events
       .filter((e) => e.riderId === riderId)
       .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+  }
+  async listForTrip(tripId: string): Promise<ScanEvent[]> {
+    return this.events
+      .filter((e) => e.tripId === tripId)
+      .sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
   }
 }

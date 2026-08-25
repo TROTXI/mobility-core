@@ -49,4 +49,12 @@ export class PgScanEventRepository implements ScanEventRepository {
     );
     return rows.map(toScanEvent);
   }
+
+  async listForTrip(tripId: string): Promise<ScanEvent[]> {
+    const { rows } = await this.pool.query<ScanEventRow>(
+      `SELECT * FROM scan_events WHERE trip_id = $1 ORDER BY created_at ASC`,
+      [tripId],
+    );
+    return rows.map(toScanEvent);
+  }
 }

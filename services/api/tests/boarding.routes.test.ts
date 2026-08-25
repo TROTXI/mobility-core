@@ -157,6 +157,7 @@ describe('POST /boarding/scan', () => {
         throw new Error('db down');
       },
       listForRider: async () => [],
+      listForTrip: async () => [],
     };
     const { boardingService } = make({ scanEvents: failingScanEvents });
     const app = await buildApp({ auth, boardingService });
