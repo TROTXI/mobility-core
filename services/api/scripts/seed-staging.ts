@@ -39,6 +39,15 @@ const auth: AuthConfig = {
 
 const ROUTE_NAME = 'Circle ⇄ Madina';
 
+// Corridor fare in pesewas. Since #103 a route without a fare in force cannot be
+// subscribed to at all — POST /payments/subscribe returns 409 not_priced — so a
+// seeded environment without one looks complete right up until checkout.
+//
+// A PLACEHOLDER, like everything else this script creates. GHS 6 is a plausible
+// Accra trotro fare; the real number comes from the union rate for the corridor
+// and is ops' to set. Override with SEED_FARE_PESEWAS.
+const FARE_PESEWAS = Number(process.env.SEED_FARE_PESEWAS ?? 600);
+
 // Real Accra coordinates along the corridor, in boarding order.
 const STOPS = [
   { name: 'Circle Interchange', latitude: 5.5717, longitude: -0.2107 },
@@ -211,9 +220,32 @@ async function main(): Promise<void> {
   }
   console.log(`trips: ${created} created, ${skipped} already present (${DAYS} days)`);
 
+  // Price the corridor. Idempotent by intent rather than by accident: setting an
+  // identical fare would close the current row and open a new one, growing the
+  // history with changes that never happened, so re-running only writes when the
+  // fare actually differs.
+  const fares = must('read fares', await api('GET', `/admin/routes/${route.id}/fares`));
+  const current = (fares.fares ?? []).find((f: { effectiveTo: string | null }) => !f.effectiveTo);
+  if (current?.farePesewas === FARE_PESEWAS) {
+    console.log(`fare: unchanged at ${FARE_PESEWAS} pesewas`);
+  } else {
+    must(
+      'set fare',
+      await api('PUT', `/admin/routes/${route.id}/fare`, {
+        farePesewas: FARE_PESEWAS,
+        note: 'seed placeholder — replace with the corridor’s union rate',
+      }),
+    );
+    console.log(`fare: set to ${FARE_PESEWAS} pesewas (GHS ${(FARE_PESEWAS / 100).toFixed(2)})`);
+  }
+
   const finalRoutes = must('verify', await api('GET', '/routes'));
   const n = Array.isArray(finalRoutes) ? finalRoutes.length : (finalRoutes.routes?.length ?? 0);
   console.log(`\ndone — ${n} route(s) live at ${BASE}/routes`);
+  console.log(
+    'NB: the fare is a placeholder. Set the real corridor rate via ' +
+      `PUT ${BASE}/admin/routes/${route.id}/fare`,
+  );
 }
 
 main().catch((err: unknown) => {
