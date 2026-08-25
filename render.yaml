@@ -211,6 +211,27 @@ services:
   #   staticPublishPath: apps/ops/dist
   #   autoDeploy: false
 
+  # ---- Route learning (E4/#179/#181) — the corridor teaches us its own shape ----
+  # Reads back completed runs' GPS traces and updates each route's derived path
+  # and its observed per-segment speeds. Nightly and deliberately after the
+  # evening no-show sweep (20:00), so the day's runs are settled before we learn
+  # from them. Slow background improvement with no deadline — kept separate from
+  # the ask-dispatch crons, whose timing is critical to the rider loop.
+  - type: cron
+    name: trotxi-route-learning-staging
+    runtime: docker
+    repo: https://github.com/TROTXI/mobility-core
+    branch: main
+    dockerfilePath: services/api/Dockerfile
+    dockerContext: .
+    plan: free
+    region: frankfurt
+    autoDeploy: false
+    schedule: '0 23 * * *' # 23:00 — after the evening sweep, before the next day
+    dockerCommand: node dist/cron/route-learning-cron.js
+    envVars:
+      - fromGroup: trotxi-cron-staging
+
   # ---- Production (uncomment when going live) ----
   # Needs a paid Postgres plan so data doesn't expire. After applying, set the
   # RENDER_PRODUCTION_SERVICE_ID + PRODUCTION_URL GitHub variables to activate
