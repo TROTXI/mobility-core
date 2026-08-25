@@ -300,6 +300,8 @@ export async function buildApp(deps: AppDeps = {}): Promise<FastifyInstance> {
   await app.register(reservationRoutes, {
     reservations,
     secret: authConfig.secret,
+    trips: deps.trips,
+    vehicles: deps.vehicles,
     rateLimit: deps.rateLimit ?? DEFAULT_RATE_LIMIT,
   });
   // Ask-dispatch (E3): only wired when trips + subscriptions are available (the
@@ -314,6 +316,7 @@ export async function buildApp(deps: AppDeps = {}): Promise<FastifyInstance> {
             subscriptions: deps.subscriptions,
             reservations,
             notifier,
+            vehicles: deps.vehicles,
           })
         : undefined,
     rateLimit: deps.rateLimit ?? DEFAULT_RATE_LIMIT,
@@ -372,6 +375,7 @@ export async function buildApp(deps: AppDeps = {}): Promise<FastifyInstance> {
     featureFlags: deps.featureFlags,
     minVersions: deps.minVersions,
     rateLimit: deps.rateLimit ?? DEFAULT_RATE_LIMIT,
+    reservations,
   });
   await app.register(flagsRoutes, {
     featureFlags: deps.featureFlags,

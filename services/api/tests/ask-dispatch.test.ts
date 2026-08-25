@@ -74,7 +74,10 @@ describe('AskDispatchService.dispatchAsks', () => {
     await subscriptions.create({ userId: 'ama', plan: 'monthly', routeId: ROUTE_A });
     await svc.dispatchAsks(TOMORROW, 'morning'); // ama is pending
 
-    expect(await svc.resolveDefaults(TOMORROW, 'morning')).toEqual({ defaulted: 1 });
+    expect(await svc.resolveDefaults(TOMORROW, 'morning')).toEqual({
+      defaulted: 1,
+      skippedFull: 0,
+    });
     expect(await reservations.find('ama', TOMORROW, 'morning')).toMatchObject({
       status: 'reserved',
       source: 'default',
@@ -124,7 +127,7 @@ describe('POST /admin/ask-dispatch (+ resolve-defaults)', () => {
       headers: bearer(admin),
       payload: { travelDate: TOMORROW, direction: 'morning' },
     });
-    expect(resolve.json()).toEqual({ defaulted: 1 });
+    expect(resolve.json()).toEqual({ defaulted: 1, skippedFull: 0 });
     expect((await reservations.find('rider-x', TOMORROW, 'morning'))?.status).toBe('reserved');
   });
 });

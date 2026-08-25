@@ -11,6 +11,7 @@ import type { ZodTypeProvider } from 'fastify-type-provider-zod';
 import { z } from 'zod';
 import { errorResponseSchema } from '../../lib/schemas';
 import type { RateLimitConfig } from '../ratelimit/ratelimit.plugin';
+import type { ReservationRepository } from '../reservations/reservation.repository';
 import type { DriverRepository } from '../mobility/driver.repository';
 import type { RouteStopRepository } from '../mobility/route-stop.repository';
 import type { RouteRepository } from '../mobility/route.repository';
@@ -87,6 +88,8 @@ export interface AdminDeps {
   /** Feature flags + force-update floor (#27), managed under /admin/flags + /admin/min-versions. */
   featureFlags?: FeatureFlagRepository;
   minVersions?: MinVersionRepository;
+  /** Reservations, to refuse a bus smaller than the confirmed seats (#161). */
+  reservations?: ReservationRepository;
   rateLimit: RateLimitConfig;
 }
 
@@ -492,7 +495,7 @@ export async function adminRoutes(app: FastifyInstance, opts: AdminDeps): Promis
         security: [{ bearerAuth: [] }],
         params: idParam,
         body: assignTripBodySchema,
-        response: { 200: tripResponseSchema, ...authErrorsNF },
+        response: { 200: tripResponseSchema, 409: errorResponseSchema, ...authErrorsNF },
       },
       preHandler: adminOnly,
     },
@@ -501,11 +504,26 @@ export async function adminRoutes(app: FastifyInstance, opts: AdminDeps): Promis
         return reply.code(503).send(UNAVAILABLE);
       }
       const { vehicleId, assignedDriverId } = request.body;
-      if (vehicleId && !(await opts.vehicles.findById(vehicleId))) {
+      const vehicle = vehicleId ? await opts.vehicles.findById(vehicleId) : null;
+      if (vehicleId && !vehicle) {
         return reply.code(404).send(notFound('Vehicle not found'));
       }
       if (assignedDriverId && !(await opts.drivers.findById(assignedDriverId))) {
         return reply.code(404).send(notFound('Driver not found'));
+      }
+
+      // Refuse a bus smaller than the seats already confirmed (#161). Silently
+      // accepting it would put riders holding a valid reservation on a vehicle
+      // with nowhere to sit, and nobody would find out until boarding.
+      // Reassigning to a bigger bus, or to none, is always allowed.
+      if (vehicle && vehicle.capacity > 0 && opts.reservations) {
+        const taken = await opts.reservations.countSeatsTaken(request.params.id);
+        if (taken > vehicle.capacity) {
+          return reply.code(409).send({
+            error: 'capacity_too_small',
+            message: `${vehicle.registration} seats ${vehicle.capacity}, but ${taken} riders are already confirmed on this trip`,
+          });
+        }
       }
       const updated = await opts.trips.update(request.params.id, { vehicleId, assignedDriverId });
       if (!updated) return reply.code(404).send(notFound('Trip not found'));
