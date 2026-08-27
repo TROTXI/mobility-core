@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 import 'package:trotxi_client/trotxi_client.dart';
 import 'package:trotxi_commuter/core/config/theme/app_colors.dart';
 
