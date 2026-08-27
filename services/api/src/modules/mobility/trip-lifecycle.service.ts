@@ -1,12 +1,8 @@
-// Driver-owned trip lifecycle (#163). The two buttons that matter most in the
-// driver app — "Start trip" and "End trip" — had no endpoint behind them.
-// Transitions lived only on PATCH /admin/trips/:id, which is admin-only, so a
-// dispatcher would have had to flip every run by hand from Swagger.
+// Driver-owned trip lifecycle (#163). Start/end a run and report what it did.
 //
-// Authorization is assigned-driver, not the `driver` role: the signed-in user
-// must be linked to the driver THIS trip is assigned to. Same rule that already
-// guards position reporting and the manifest, and the same reason — one driver
-// must not be able to start, end, or read the manifest of another's run.
+// Authorization is assigned-driver, not the `driver` role: the caller must be
+// linked to the driver THIS trip is assigned to, matching position reporting
+// and the manifest.
 
 import type { ScanEventRepository } from '../boarding/scan-event.repository';
 import type { ReservationRepository } from '../reservations/reservation.repository';
@@ -47,12 +43,7 @@ export interface TripLifecycleDeps {
   scanEvents: ScanEventRepository;
 }
 
-/**
- * Legal transitions. A trip moves forward only:
- *   scheduled -> active -> completed
- * Cancellation stays with ops (a driver cancelling their own run is an
- * operational decision, not a driving one).
- */
+/** Forward only: scheduled -> active -> completed. Cancellation stays with ops. */
 const ALLOWED: Record<TripStatus, readonly TripStatus[]> = {
   scheduled: ['active'],
   active: ['completed'],
@@ -66,11 +57,8 @@ export class TripLifecycleService {
   constructor(private readonly deps: TripLifecycleDeps) {}
 
   /**
-   * Move a trip to `active`.
-   *
-   * Idempotent: starting an already-active trip succeeds rather than erroring.
-   * A driver whose phone lost signal mid-tap will press it again, and a 409 at
-   * the roadside is a worse answer than "yes, it is running".
+   * Move a trip to `active`. Idempotent — a driver whose phone dropped mid-tap
+   * will press it again, and an error at the roadside is the worse answer.
    *
    * @param tripId - the trip to start.
    * @param userId - the signed-in user, resolved to a driver.
@@ -81,11 +69,8 @@ export class TripLifecycleService {
   }
 
   /**
-   * Move a trip to `completed`.
-   *
-   * Completing a trip that never started is refused: it means the driver tapped
-   * the wrong run, and silently accepting it would produce a "completed" trip
-   * with no GPS trace, which then poisons route learning (#179).
+   * Move a trip to `completed`. Refuses one that never started — that means the
+   * wrong run was tapped, and a completed trip with no trace poisons #179.
    *
    * @param tripId - the trip to complete.
    * @param userId - the signed-in user, resolved to a driver.
@@ -96,10 +81,8 @@ export class TripLifecycleService {
   }
 
   /**
-   * The runs assigned to this driver, optionally for one UTC day.
-   *
-   * Scoped to the caller rather than accepting a driver id, so one driver
-   * cannot enumerate another's schedule.
+   * The runs assigned to this driver, optionally for one UTC day. Scoped to the
+   * caller so nobody can enumerate another driver's schedule.
    *
    * @param userId - the signed-in user.
    * @param date - optional `YYYY-MM-DD` filter.
@@ -115,11 +98,8 @@ export class TripLifecycleService {
   }
 
   /**
-   * What a run did: who boarded, who did not, and by which method.
-   *
-   * Reports `notBoarded` rather than "no-shows deducted". The debit is the
-   * cutoff's job, not this screen's — a driver seeing "2 deducted" would be
-   * reading a decision that has not been made yet.
+   * What a run did. Reports `notBoarded`, not "deducted" — the debit is the
+   * cutoff's decision, not this screen's.
    *
    * @param tripId - the trip.
    * @param userId - the signed-in user, resolved to a driver.
@@ -137,8 +117,7 @@ export class TripLifecycleService {
 
     const byMethod = { qr: 0, pin: 0, photo: 0 };
     for (const e of events) {
-      // Only successful verifications count; a rejected scan is not a boarding.
-      if (e.result === 'valid') byMethod[e.method] += 1;
+      if (e.result === 'valid') byMethod[e.method] += 1; // a rejected scan is not a boarding
     }
 
     return {
@@ -193,8 +172,6 @@ export class TripLifecycleService {
     if (!guard.ok) return guard;
 
     const { trip } = guard;
-    // Already there: report success rather than erroring, so a retried tap is
-    // safe (see start()).
     if (trip.status === to) return { ok: true, trip };
     if (!ALLOWED[trip.status].includes(to)) {
       return { ok: false, reason: 'illegal_transition' };

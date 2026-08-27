@@ -1,7 +1,6 @@
-// Reservation routes (#101, epic E3). The rider answers the daily "travelling?"
-// prompt here (confirm/decline) and lists their upcoming reservations. The
-// scheduled ask-dispatch + default-yes cron and the FCM push are deferred until
-// trips (#18) land — see the module header.
+// Reservation routes (#101, E3). The rider answers the daily "travelling?"
+// prompt here and lists upcoming reservations. Capacity is enforced on confirm
+// (#161).
 
 import type { FastifyInstance } from 'fastify';
 import type { ZodTypeProvider } from 'fastify-type-provider-zod';

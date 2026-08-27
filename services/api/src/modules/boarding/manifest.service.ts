@@ -1,12 +1,10 @@
-// Driver manifest (#20, E4) — the "photo pass". For a trip, the list of riders
-// expected to board, each with their name and a short-lived signed avatar URL so
-// the driver can eyeball the right person (security.md §7: the photo comes from
-// the SERVER, never the QR — a faker can't embed their own face). Only confirmed
-// seats appear (reserved | boarded); declined/pending rows are excluded.
+// Driver manifest (#20, E4) — the "photo pass": the riders expected to board,
+// each with a name and short-lived signed avatar URL. The photo comes from the
+// SERVER, never the QR (security.md §7), so a faker can't embed their own face.
+// Only confirmed seats appear (reserved | boarded).
 //
-// Enrichment reads the user (name + avatar key) and signs the key. Any rider
-// whose lookup fails still appears (name null) rather than dropping them from the
-// manifest — the driver should see every seat.
+// A rider whose user lookup fails still appears with a null name — the driver
+// should see every seat.
 
 import type { ObjectStore } from '../../storage/object-store';
 import type { Reservation, ReservationRepository } from '../reservations/reservation.repository';

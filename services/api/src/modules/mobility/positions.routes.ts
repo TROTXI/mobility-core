@@ -1,14 +1,11 @@
-// Live vehicle position — HTTP pilot (#25, system-design §7). The MQTT/Go/WS
-// telemetry path (ADR-0006) is deferred; here a driver POSTs GPS fixes over HTTP
-// and riders GET the latest fix with a deterministic ETA to each upcoming stop.
+// Live vehicle position — HTTP pilot (#25). The MQTT/WS path (ADR-0006) is
+// deferred.
 //
-//   POST /trips/:id/position  driver-only AND must be THE trip's assigned driver.
-//   GET  /trips/:id/position  any signed-in user (rider); returns position + ETA.
+//   POST /trips/:id/position  must be THE trip's assigned driver
+//   GET  /trips/:id/position  any signed-in user; returns position + ETA
 //
-// The durable trip_positions store is the source of truth; the latest fix is also
-// written through to the KV store (Redis when available) so rider polls read a
-// hot cache instead of the DB. ETA is recomputed per read from the route's stops
-// (see eta.ts) — cheap and always reflects the current route configuration.
+// trip_positions is the source of truth; the latest fix is also cached in KV so
+// rider polls skip the DB.
 
 import type { FastifyInstance } from 'fastify';
 import type { ZodTypeProvider } from 'fastify-type-provider-zod';

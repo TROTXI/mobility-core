@@ -1,13 +1,7 @@
-// Learning a corridor from the runs we have already driven (#179, #181).
-//
-// Every completed trip leaves a dense timestamped trace in trip_positions —
-// a fix every 5 seconds — which we were storing and never reading back. This
-// service turns that history into the two things the ETA needs: the road the
-// bus actually follows, and how fast it actually moves along each stretch.
-//
-// Both outputs improve on their own as runs accumulate. Nothing here is bought
-// from a vendor, and nothing a competitor can buy replaces it: it measures our
-// vehicles, on our corridors, at the times we run them.
+// Learning a corridor from the runs already driven (#179, #181). Turns the
+// 5-second trace every completed trip leaves in trip_positions into the two
+// things the ETA needs: the road the bus actually follows, and how fast it
+// actually moves along each stretch. Both improve as runs accumulate.
 
 import { directionOf, type ServiceWindow } from './direction';
 import type { RouteStopPoint } from './eta';
@@ -21,13 +15,8 @@ import type { TripPositionRepository } from './trip-position.repository';
 import type { TripRepository } from './trip.repository';
 
 /**
- * How many completed runs to read back, **per direction**.
- *
- * Per direction, not overall: a corridor running morning and evening would
- * otherwise have one window starve the other. Five recent evening runs and
- * three morning ones, sliced to the five newest overall, leaves morning with
- * two — below the sample threshold — and that window silently keeps the
- * cold-start speed forever.
+ * Completed runs to read back, **per direction** — overall would let one window
+ * starve the other below the sample threshold, keeping its cold-start speed.
  */
 const RUNS_TO_CONSIDER = 5;
 

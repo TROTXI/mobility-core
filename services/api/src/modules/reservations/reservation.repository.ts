@@ -3,10 +3,7 @@
 // to travelling at the cutoff. Repository pattern (ADR-0009): interface +
 // InMemory here, Postgres in *.pg.ts.
 //
-// Scope of E3-core: the reservation lifecycle + the rider's confirm/decline API.
-// Deferred to when trips (#18) land: the scheduled ask-dispatch that seeds
-// `pending` rows for tomorrow's trips, the FCM push that asks, and capacity /
-// seat-release to the standby pool (E6).
+// Seat-release to the standby pool is still deferred (E6).
 
 /** Which leg of the day a reservation is for. */
 export type ReservationDirection = 'morning' | 'evening';
@@ -82,13 +79,11 @@ export interface ReservationRepository {
    */
   respond(input: ReservationResponse): Promise<Reservation>;
   /**
-   * Confirm a seat, refusing when the trip is already full (#161).
+   * Confirm a seat, refusing when the trip is full (#161).
    *
-   * Capacity is enforced HERE rather than by the caller because a
-   * check-then-write in application code races: the 18:00 push means a
-   * corridor's riders all answer within the same few seconds, and two riders
-   * confirming into the last seat would both read "one free" before either
-   * wrote. Only the store can make the count and the write atomic.
+   * Enforced here, not by the caller: a check-then-write races. The 18:00 push
+   * lands a corridor's answers within seconds, so two riders would both read
+   * "one free". Only the store can make count and write atomic.
    *
    * @param input - the rider's response.
    * @param capacity - the assigned vehicle's seat count.
@@ -96,11 +91,8 @@ export interface ReservationRepository {
    */
   respondWithinCapacity(input: ReservationResponse, capacity: number): Promise<Reservation | null>;
   /**
-   * Seats currently taken on a trip.
-   *
-   * Only `reserved` and `boarded` consume one. `declined`, `no_show`,
-   * `released` and `operator_cancelled` do not — a no-show has already been
-   * charged for a seat the vehicle no longer needs to hold.
+   * Seats taken on a trip. Only `reserved` and `boarded` consume one — a
+   * no-show has already been charged for a seat the vehicle no longer holds.
    *
    * @param tripId - the trip.
    * @returns how many seats are taken.

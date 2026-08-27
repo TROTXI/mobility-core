@@ -1,14 +1,8 @@
-// Billing period arithmetic (#162). Pure and clock-free, so the same inputs
-// always give the same period and the awkward dates are testable.
-//
-// Periods are half-open: [start, end). The instant `end` arrives the period is
-// over. Inclusive ends invite off-by-one-second arguments for a rider who
-// subscribed at 23:59:59, and there is no good answer to "is 1 Sep 00:00:00 in
-// August's period" other than "no".
+// Billing period arithmetic (#162). Pure and clock-free.
 
 import type { SubscriptionPlan } from './subscription.repository';
 
-/** A half-open billing window. */
+/** A half-open billing window: `[start, end)`. */
 export interface BillingPeriod {
   start: Date;
   /** Exclusive. */
@@ -16,16 +10,10 @@ export interface BillingPeriod {
 }
 
 /**
- * Add whole months to a date, clamping the day to the target month's length.
+ * Add whole months, clamping the day to the target month's length.
  *
- * JavaScript's `setUTCMonth` overflows instead of clamping: 31 Jan + 1 month
- * becomes 3 March (or 2 March in a leap year), because February has no 31st.
- * A rider who subscribes on the 31st would silently get a period ending in the
- * following month, and their renewal date would drift further every cycle.
- *
- * Clamping to the 28th/29th/30th instead keeps the renewal on or before the
- * anniversary, which is the behaviour every subscription business uses and the
- * one a rider can predict.
+ * `setUTCMonth` overflows instead: 31 Jan + 1 month becomes 3 March, so a rider
+ * subscribing on the 31st would see their renewal drift every cycle.
  *
  * @param from - the starting instant.
  * @param months - whole months to add.
@@ -33,7 +21,6 @@ export interface BillingPeriod {
  */
 export function addMonthsClamped(from: Date, months: number): Date {
   const day = from.getUTCDate();
-  // Day 1 of the target month, then clamp the day onto it — never overflows.
   const target = new Date(
     Date.UTC(
       from.getUTCFullYear(),
@@ -45,18 +32,18 @@ export function addMonthsClamped(from: Date, months: number): Date {
       from.getUTCMilliseconds(),
     ),
   );
-  const lastDayOfTarget = new Date(
+  const lastDay = new Date(
     Date.UTC(target.getUTCFullYear(), target.getUTCMonth() + 1, 0),
   ).getUTCDate();
-  target.setUTCDate(Math.min(day, lastDayOfTarget));
+  target.setUTCDate(Math.min(day, lastDay));
   return target;
 }
 
 /**
- * The billing period a plan buys, starting now.
+ * The billing period a plan buys.
  *
  * @param plan - monthly or annual.
- * @param start - when the period begins (activation time).
+ * @param start - when the period begins.
  * @returns the half-open period.
  */
 export function periodFor(plan: SubscriptionPlan, start: Date): BillingPeriod {
@@ -64,10 +51,10 @@ export function periodFor(plan: SubscriptionPlan, start: Date): BillingPeriod {
 }
 
 /**
- * The period that follows this one, with no gap.
+ * The period following this one, with no gap.
  *
- * The next period starts exactly where the last ended, not "now": renewing a
- * day late must not shift a rider's anniversary forward permanently.
+ * Starts where the last ended, not "now" — renewing late must not shift a
+ * rider's anniversary permanently.
  *
  * @param plan - monthly or annual.
  * @param current - the period ending.
@@ -78,7 +65,7 @@ export function nextPeriod(plan: SubscriptionPlan, current: BillingPeriod): Bill
 }
 
 /**
- * Whether a period has ended as of `now`.
+ * Whether a period has ended.
  *
  * @param period - the period to test.
  * @param now - the current instant.
@@ -89,18 +76,14 @@ export function hasEnded(period: BillingPeriod, now: Date): boolean {
 }
 
 /**
- * A stable identifier for one period of one subscription.
+ * Idempotency key for one period of one subscription.
  *
- * This is the fix at the heart of #162. Conversion was keyed on the
- * subscription id alone, so it could only ever run once in that
- * subscription's lifetime — scheduling it would zero a rider who subscribed
- * days earlier, then no-op forever afterwards. Including the period end makes
- * the key unique per cycle, which is what lets the job run every month and
- * still be safe to retry within one.
+ * Includes the period end because keying on the subscription alone let
+ * conversion fire only once in its lifetime (#162).
  *
  * @param subscriptionId - the subscription.
  * @param periodEnd - the period's exclusive end.
- * @returns a key stable for that period and no other.
+ * @returns a key unique to that period.
  */
 export function periodRef(subscriptionId: string, periodEnd: Date): string {
   return `${subscriptionId}:${periodEnd.toISOString()}`;

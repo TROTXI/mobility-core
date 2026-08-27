@@ -75,12 +75,10 @@ export interface UserRepository {
    */
   setRole(id: string, role: UserRole): Promise<User | null>;
   /**
-   * Fill in contact details we did not have before, without overwriting details
-   * we already hold. Used to backfill users who signed up before #182 (on their
-   * next sign-in) and to capture the payer's phone from the Paystack webhook.
+   * Fill in missing contact details without overwriting what we hold (#182).
    *
-   * A field is written only when the stored value is null, so a rider who edits
-   * their profile is never silently reverted by a later webhook.
+   * Only writes where the stored value is null, so a webhook never reverts a
+   * detail the rider edited.
    *
    * @param id - the user to backfill.
    * @param contact - the contact details to fill in where missing.
@@ -95,12 +93,8 @@ export interface UserRepository {
   /**
    * Erase a user's personal data while keeping the row (#30).
    *
-   * Not a DELETE: payments, entitlement_ledger and credit_ledger all cascade off
-   * users, so removing the row would destroy the financial record of what the
-   * rider paid and was charged. Those are our books and have to outlive a
-   * deletion request; the person behind them does not.
-   *
-   * Idempotent — anonymising twice is a no-op, so a retried request is safe.
+   * Not a DELETE: payments and both ledgers cascade off users, so removing the
+   * row would destroy the financial record. Idempotent.
    *
    * @param id - the user to erase.
    * @returns the anonymised user, or null if not found.

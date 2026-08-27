@@ -1,15 +1,7 @@
-// Deriving a route's real shape from our own GPS traces (#179).
+// Deriving a route's shape from our own GPS traces (#179). Pure functions.
 //
-// Pure functions — no clock, no I/O — so the same traces always yield the same
-// polyline and the whole thing is unit-testable. The repository layer supplies
-// the fixes and persists the result.
-//
-// Why our traces and not a routing engine: a router describes where a generic
-// vehicle COULD go. Our traces record where our bus DOES go, including the
-// informal stop and the shortcut OSM has never heard of. For a fixed-corridor
-// service ours is the one that matters. Valhalla map-matching is a later
-// cleanup pass (an offline job, never a running service) for when raw GPS in
-// dense Accra wanders across carriageways.
+// A router describes where a generic vehicle could go; our traces record where
+// our bus does go, including shortcuts OSM has never heard of.
 
 import { haversineMeters, type LatLng } from './eta';
 
@@ -17,24 +9,13 @@ import { haversineMeters, type LatLng } from './eta';
 export const GEOMETRY_SOURCES = ['traces', 'matched', 'manual'] as const;
 export type GeometrySource = (typeof GEOMETRY_SOURCES)[number];
 
-/**
- * Runs are used from the first one, then superseded by the median of the last
- * five. One run makes a route usable immediately; five stop a single diversion
- * or wrong turn from defining the corridor forever.
- */
+/** First run is used immediately; the median of five stops one diversion defining the corridor. */
 export const RUNS_FOR_STABLE_GEOMETRY = 5;
 
-/**
- * Fixes closer together than this add vertices without adding information. A
- * bus at 20 km/h covers ~28 m between 5-second fixes, so 15 m keeps genuine
- * movement while dropping the jitter of a vehicle standing at a stop.
- */
+/** Below this, fixes are a stationary bus jittering, not movement. */
 const MIN_VERTEX_SPACING_M = 15;
 
-/**
- * A fix further than this from the previous one is treated as a GPS glitch
- * rather than travel — at 5-second intervals it implies over 250 km/h.
- */
+/** Further than this between 5s fixes implies >250 km/h — a glitch. */
 const MAX_PLAUSIBLE_JUMP_M = 350;
 
 /** One completed run's fixes, in recorded order. */
@@ -68,21 +49,18 @@ export function cleanTrace(points: LatLng[]): LatLng[] {
       continue;
     }
     const gap = haversineMeters(previous, point);
-    if (gap < MIN_VERTEX_SPACING_M) continue; // parked or crawling
-    if (gap > MAX_PLAUSIBLE_JUMP_M) continue; // glitch, not travel
+    if (gap < MIN_VERTEX_SPACING_M) continue; // parked
+    if (gap > MAX_PLAUSIBLE_JUMP_M) continue; // glitch
     cleaned.push(point);
   }
   return cleaned;
 }
 
 /**
- * Resample a trace to a fixed number of evenly spaced vertices along its own
- * length.
+ * Resample a trace to evenly spaced vertices along its own length.
  *
- * Runs cannot be averaged fix-by-fix: two drivers hit different traffic, so
- * their nth fix is at a different place on the road. Resampling by *fraction of
- * distance travelled* puts every run on a comparable footing, which is what
- * makes a median meaningful.
+ * Runs cannot be averaged fix-by-fix — two drivers hit different traffic, so
+ * their nth fix is elsewhere. Resampling by distance makes a median meaningful.
  *
  * @param points - a cleaned trace.
  * @param sampleCount - how many vertices to produce (at least 2).
@@ -102,7 +80,6 @@ export function resampleByDistance(points: LatLng[], sampleCount: number): LatLn
   for (let s = 0; s < sampleCount; s++) {
     const target = (total * s) / (sampleCount - 1);
 
-    // Walk to the segment containing `target`, then interpolate within it.
     let seg = 0;
     while (seg < cumulative.length - 2 && cumulative[seg + 1]! < target) seg++;
 
@@ -120,10 +97,9 @@ export function resampleByDistance(points: LatLng[], sampleCount: number): LatLn
 }
 
 /**
- * Element-wise median of several equal-length resampled traces.
+ * Element-wise median of equal-length resampled traces.
  *
- * Median rather than mean: one driver taking a wrong turn should not bend the
- * corridor. A mean is dragged by the outlier; a median ignores it.
+ * Median, not mean: one wrong turn should not bend the corridor.
  *
  * @param traces - resampled traces, all of the same length.
  * @returns the median path.
@@ -175,9 +151,8 @@ export function deriveRouteGeometry(traces: Trace[], sampleCount = 200): Derived
 /**
  * Distance along a derived path to each stop, for `route_stops.distance_m`.
  *
- * Each stop is projected onto its nearest vertex; the pilot's stops sit metres
- * from the road, so nearest-vertex is accurate enough and far simpler than
- * projecting onto every segment.
+ * Nearest-vertex projection: stops sit metres from the road, so it is accurate
+ * enough and simpler than projecting onto every segment.
  *
  * @param path - the derived route path.
  * @param stops - the route's stops in seq order.

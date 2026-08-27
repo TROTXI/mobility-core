@@ -1,11 +1,6 @@
-// Which service window a trip belongs to (#181, E3/E4).
-//
-// Extracted from ask-dispatch.service.ts, which had this as a private helper
-// with the note "converges when trips carry an explicit direction". A second
-// copy in the ETA path would be exactly the drift that comment anticipates:
-// two definitions of "morning" that agree until one is fixed and the other is
-// not, with the disagreement showing up as riders being asked about one run and
-// charged for another.
+// Which service window a trip belongs to (#181, E3/E4). Shared rather than
+// duplicated in the ETA path: two definitions of "morning" would drift, and the
+// disagreement shows up as riders asked about one run and charged for another.
 //
 // Ghana runs on UTC (GMT+0), so no offset is applied.
 

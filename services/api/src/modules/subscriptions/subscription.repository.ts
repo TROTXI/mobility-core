@@ -70,11 +70,9 @@ export interface SubscriptionRepository {
    */
   findAllActive(): Promise<Subscription[]>;
   /**
-   * Active subscriptions whose period has ended (#162).
-   *
-   * The renewal/expiry sweep's input. Without it nothing ever transitions a
-   * lapsed subscription out of `active`, and the partial unique index means
-   * that stale row blocks the rider from ever subscribing again.
+   * Active subscriptions whose period has ended (#162) — the expiry sweep's
+   * input. Without it a lapsed row stays active and, via the one-active index,
+   * blocks the rider from subscribing again.
    *
    * @param now - the instant to compare against.
    * @returns active subscriptions with `periodEnd <= now`.

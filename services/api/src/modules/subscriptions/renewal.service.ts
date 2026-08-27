@@ -1,15 +1,9 @@
-// What happens when a billing period ends (#162).
+// Expiry sweep for ended billing periods (#162).
 //
-// Nothing did this before. `status` could be 'expired' but no job ever set it,
-// so a lapsed subscription stayed 'active' forever — and because of the partial
-// unique index (003_subscriptions_constraints), that stale row also blocked the
-// rider from ever subscribing again. Their only route back was an admin
-// deleting a row by hand.
-//
-// This sweep expires them. It deliberately does NOT auto-renew: taking money
-// without the rider initiating it needs a stored mandate we do not have, and
-// #128 (E5b, credit-netted renewal) is where that belongs. Expiring is the
-// honest half we can do correctly today.
+// Nothing set `expired` before, so a lapsed subscription stayed active — and
+// the one-active-per-user index meant that stale row blocked the rider from
+// subscribing again. Does NOT auto-renew: charging without the rider
+// initiating it needs a stored mandate we lack (#128).
 
 import { hasEnded, type BillingPeriod } from './period';
 import type { Subscription, SubscriptionRepository } from './subscription.repository';
@@ -33,11 +27,8 @@ export class RenewalService {
   constructor(private readonly deps: RenewalDeps) {}
 
   /**
-   * Expire every active subscription whose period has ended.
-   *
-   * Idempotent: an already-expired subscription is not returned by
-   * `findEndedPeriods` (it filters on `status = 'active'`), so re-running is a
-   * no-op rather than a double transition.
+   * Expire every active subscription whose period has ended. Idempotent —
+   * `findEndedPeriods` filters on `status = 'active'`.
    *
    * @param now - the instant to judge against; injectable so the behaviour at
    *   a period boundary is testable without waiting a month.

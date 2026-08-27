@@ -1,17 +1,8 @@
-// Route-learning cron entrypoint (#179, #181). A Render cron runs this nightly:
-// it mints a short-lived admin token from JWT_SECRET (auth is stateless — no
-// user row needed) and POSTs the deployed API's learning trigger, which reads
-// back the day's completed runs and updates each corridor's derived path and
-// observed segment speeds.
+// Route-learning cron (#179, #181). Mints a short-lived admin token and POSTs
+// /admin/learn-routes, which re-derives each corridor from completed runs.
 //
-// Deliberately separate from ask-dispatch-cron: that one is the daily rider
-// loop and its actions are time-critical to the minute (ask at 18:00, cut off
-// at 21:00). This is a slow background improvement with no deadline, and a
-// failure here must never be confused with a failure to ask riders about
-// tomorrow.
-//
-// Safe to re-run: geometry is overwritten rather than appended and speeds are
-// replaced per direction, so repeated passes converge instead of compounding.
+// Separate from ask-dispatch-cron: that one is time-critical to the rider loop,
+// this is a slow background improvement with no deadline.
 
 import { createJwtService, type AuthConfig } from '../modules/auth/jwt';
 

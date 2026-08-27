@@ -1,17 +1,11 @@
-// PaymentsService — Paystack money-in for the platform membership: initiate a
-// subscription checkout and process the charge.success webhook that activates
-// it. (The former wallet/top-up flow is removed — superseded by ride
-// entitlements, ADR-0014; epic E1 extends this service with plans, periods and
-// entitlement allocation.)
+// PaymentsService — Paystack money-in: initiate a subscription checkout and
+// process the charge.success webhook that activates it. Money is in PESEWAS
+// (integers, never floats), matching Paystack.
 //
-// Money unit: PESEWAS everywhere (1 GHS = 100 pesewas), matching Paystack — the
-// client converts to/from GHS for display. Integers only; never floats.
-//
-// Not wrapped in one DB transaction by design (system-design §4.2: "idempotent
-// webhooks") — each step is individually idempotent (the one-active-per-user
-// index guards activation; markPaid only does pending→paid), so a
-// retried/partial webhook converges. Paystack retries; reconciliation (future)
-// backstops the rest.
+// Deliberately not one DB transaction (system-design §4.2 "idempotent
+// webhooks"): each step is individually idempotent — the one-active-per-user
+// index guards activation, markPaid only does pending→paid — so a retried or
+// partial webhook converges.
 
 import { normaliseGhanaPhone } from '../../lib/phone';
 import type { EntitlementLedgerRepository } from '../entitlements/entitlement-ledger.repository';
@@ -134,9 +128,8 @@ export class PaymentsService {
       routeId,
       amount: price.pricePesewas,
       currency: 'GHS',
-      // Frozen here, not re-derived at activation: minutes pass before
-      // charge.success arrives, and a fare that moved in that window would
-      // grant rides priced against a fare the rider never paid.
+      // Frozen here, not at activation: a fare moving between checkout and
+      // charge.success would grant rides priced against a fare never paid.
       ridesGranted: price.ridesGranted,
       farePesewas: price.farePesewas,
       creditPesewasPerRide: price.creditPesewasPerRide,
@@ -222,10 +215,8 @@ export class PaymentsService {
       await this.allocateEntitlement(payment.userId, reference, payment.ridesGranted);
     }
 
-    // The payer approved this debit on their handset, so the number is verified
-    // by the charge itself — no OTP needed. Best effort: a failure here must not
-    // fail the webhook, because a non-200 costs us the subscription activation
-    // above on Paystack's retry.
+    // The charge itself verifies the handset — no OTP needed. Best effort: a
+    // non-200 here would cost us the activation above on Paystack's retry.
     await this.capturePayerPhone(payment.userId, event);
     // Legacy 'topup' payments (pre-ADR-0014 staging data) are ignored.
 
@@ -258,13 +249,10 @@ export class PaymentsService {
   }
 
   /**
-   * Record the payer's phone number from a successful charge, when we do not
-   * already have one (#182).
+   * Record the payer's phone from a successful charge (#182).
    *
-   * Swallows every failure by design. Two accounts legitimately paying from one
-   * handset trips the UNIQUE constraint on users.phone, and that must not turn
-   * into a 500 — the subscription is already activated by the time we get here,
-   * and Paystack would retry the whole webhook.
+   * Swallows failures by design: two accounts paying from one handset trips the
+   * UNIQUE constraint, and a 500 here would cost us the activation on retry.
    *
    * @param userId - the paying user.
    * @param event - the verified `charge.success` payload.
@@ -302,12 +290,10 @@ export class PaymentsService {
         userId,
         plan,
         routeId,
-        // The billing window this payment buys (#162). Without it nothing can
-        // renew, expire, or convert credit per period.
+        // The billing window this payment buys (#162).
         periodStart: period.start,
         periodEnd: period.end,
-        // Carried from the payment, so what this rider owes and what their
-        // credit is worth cannot move under them when the fare next changes
+        // From the payment, so a fare change cannot move what this rider owes
         // (ADR-0015 §3). New prices apply at renewal.
         pricePesewas: payment.amount,
         ridesGranted: payment.ridesGranted,

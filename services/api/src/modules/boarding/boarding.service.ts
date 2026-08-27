@@ -1,15 +1,9 @@
-// BoardingService — issue a rider's rotating QR pass, and verify a scanned pass
-// (#20). Verification is integrity-only: it proves the pass is a genuine,
-// unexpired, not-already-used pass for a rider, and records every scan for
-// audit. The eligibility gates (active membership, token debit on board) are
-// deferred with the money work (#19/#21) — a valid scan here means "real pass",
-// not "cleared to ride".
+// BoardingService — issue a rider's rotating QR pass, verify a scan, debit the
+// ride (#20, E4). Every scan is recorded for audit.
 //
-// Availability over strictness (same posture as the rate limiter): the KV
-// single-use check and the audit write both fail OPEN — a KV/DB blip must never
-// stop a bus from boarding. The audit trail is best-effort in this phase; when
-// the money work lands, the token debit becomes the transactional anchor and
-// the scan record should ride with it.
+// Availability over strictness, like the rate limiter: the KV single-use check
+// and the audit write both fail OPEN. A KV or DB blip must never stop a bus
+// from boarding.
 
 import { errors } from 'jose';
 import type { KvStore } from '../../kv/kv.store';
@@ -229,12 +223,9 @@ export class BoardingService {
    * day+direction that was never boarded is a no-show — deduct one ride and mark
    * it `no_show`. The mirror of boarding: both consume the confirmed seat's ride.
    *
-   * Deducts on the **same idempotency key as boarding** (`board:<reservationId>`)
-   * so a seat is charged **at most once**: a late board after a no-show sweep (or
-   * a re-run) collides on the key and is a no-op. Combined with only selecting
-   * `reserved` rows, a re-run neither double-deducts nor re-marks. Deducts BEFORE
-   * marking (like the credit conversion) so a partial run converges without
-   * losing the deduction. No-op when the ledgers aren't wired.
+   * Shares boarding's idempotency key (`board:<reservationId>`), so a seat is
+   * charged at most once — a late board after the sweep collides and no-ops.
+   * Deducts BEFORE marking, so a partial run converges without losing it.
    *
    * @param travelDate - the travel day (`YYYY-MM-DD`).
    * @param direction - morning or evening.
