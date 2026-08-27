@@ -119,6 +119,23 @@ matters — the service cannot resolve `DATABASE_URL` before the database exists
    they do, it still waits for a manual approval in the `production`
    environment.
 
+### Cron jobs are commented out
+
+Render has **no free tier for cron jobs** — they bill per minute with a ~$1/month
+minimum each, on `starter` as the smallest instance. Declared at `plan: free`,
+an apply fails on all seven and takes the rest of the blueprint with it.
+
+They stay commented until that cost is approved. The daily loop can be driven by
+hand in the meantime:
+
+```
+POST /admin/ask-dispatch       { travelDate, direction }
+POST /admin/resolve-defaults   { travelDate, direction }
+POST /admin/resolve-no-shows   { travelDate, direction }
+```
+
+To enable: uncomment, change every `plan: free` to `plan: starter`, apply.
+
 ### Blueprint changes need an apply
 
 Render syncs blueprint-declared values (those with `value:` rather than
