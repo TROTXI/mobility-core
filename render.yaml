@@ -110,108 +110,123 @@ services:
       # here rather than the dashboard. Unset -> GET /flags reports
       # mapTiles.url = null and clients render without a basemap.
       #
-      # NB: this r2.dev hostname carries a generated hash and is rate-limited by
-      # Cloudflare, who state it is not for production. Replace with a custom
-      # domain (tiles.trotxi.com) before riders depend on it — clients read this
-      # from GET /flags, so that swap is a config change, not an app release.
+      # Custom domain on Cloudflare, replacing the r2.dev hostname that carried
+      # a generated hash and was rate-limited. Clients read this from GET
+      # /flags, so this swap was one env var rather than three app releases —
+      # which is the whole reason it is served rather than compiled in.
       - key: MAP_TILES_URL
-        value: https://pub-9962de9eb91548789ca7e319561d8386.r2.dev/ghana.pmtiles
+        value: https://tiles.trotxi.com/ghana.pmtiles
 
-  # ---- Ask-dispatch cron jobs (E3) — the daily confirmation loop ----
+  # ---- Ask-dispatch cron jobs (E3) — COMMENTED OUT, see below ----
+  #
+  # Render has NO FREE TIER for cron jobs: they bill per minute of runtime with
+  # a ~$1/month minimum each, on `starter` as the smallest instance. Declared at
+  # `plan: free`, an apply fails on all seven — which made the whole blueprint
+  # unappliable, and is why staging spent days serving mapTiles.url = null with
+  # nobody able to fix it by applying.
+  #
+  # A blueprint you cannot safely apply is a document, not infrastructure. These
+  # stay commented until the ~$7/month is approved; the daily loop can be driven
+  # by hand in the meantime via /admin/ask-dispatch, /admin/resolve-defaults and
+  # /admin/resolve-no-shows.
+  #
+  # TO ENABLE: uncomment, change every `plan: free` to `plan: starter`, and
+  # apply. Route learning (23:00) has nothing to learn until riders board, so it
+  # can stay off longest.
   # Each mints an admin token and POSTs a trigger on the deployed API. Windows are
   # from docs/features/reservations.md; Ghana is UTC (GMT+0) so schedules are plain
   # UTC. autoDeploy off — they redeploy with the API (GitHub Actions / manual).
   # NB: on Render, cron jobs may require a paid instance type; bump `plan` if so.
   # The free web service also sleeps when idle — the first trigger warms it (a
   # slow cold start), which is fine for the pilot.
-  - type: cron
-    name: trotxi-ask-morning-staging
-    runtime: docker
-    repo: https://github.com/TROTXI/mobility-core
-    branch: main
-    dockerfilePath: services/api/Dockerfile
-    dockerContext: .
-    plan: free
-    region: frankfurt
-    autoDeploy: false
-    schedule: '0 18 * * *' # 18:00 — ask tomorrow-morning riders
-    dockerCommand: node dist/cron/ask-dispatch-cron.js ask morning
-    envVars:
-      - fromGroup: trotxi-cron-staging
-  - type: cron
-    name: trotxi-resolve-morning-staging
-    runtime: docker
-    repo: https://github.com/TROTXI/mobility-core
-    branch: main
-    dockerfilePath: services/api/Dockerfile
-    dockerContext: .
-    plan: free
-    region: frankfurt
-    autoDeploy: false
-    schedule: '0 21 * * *' # 21:00 cutoff — default-yes the still-pending (morning)
-    dockerCommand: node dist/cron/ask-dispatch-cron.js resolve morning
-    envVars:
-      - fromGroup: trotxi-cron-staging
-  - type: cron
-    name: trotxi-ask-evening-staging
-    runtime: docker
-    repo: https://github.com/TROTXI/mobility-core
-    branch: main
-    dockerfilePath: services/api/Dockerfile
-    dockerContext: .
-    plan: free
-    region: frankfurt
-    autoDeploy: false
-    schedule: '0 12 * * *' # 12:00 — ask this-evening riders
-    dockerCommand: node dist/cron/ask-dispatch-cron.js ask evening
-    envVars:
-      - fromGroup: trotxi-cron-staging
-  - type: cron
-    name: trotxi-resolve-evening-staging
-    runtime: docker
-    repo: https://github.com/TROTXI/mobility-core
-    branch: main
-    dockerfilePath: services/api/Dockerfile
-    dockerContext: .
-    plan: free
-    region: frankfurt
-    autoDeploy: false
-    schedule: '0 14 * * *' # 14:00 cutoff — default-yes the still-pending (evening)
-    dockerCommand: node dist/cron/ask-dispatch-cron.js resolve evening
-    envVars:
-      - fromGroup: trotxi-cron-staging
-  # No-show sweeps (E4). These run AFTER the run has departed and debit riders
-  # who confirmed a seat but never boarded — the seat was held for them, so it
-  # costs a ride. They target the day that just happened, not tomorrow.
-  - type: cron
-    name: trotxi-noshow-morning-staging
-    runtime: docker
-    repo: https://github.com/TROTXI/mobility-core
-    branch: main
-    dockerfilePath: services/api/Dockerfile
-    dockerContext: .
-    plan: free
-    region: frankfurt
-    autoDeploy: false
-    schedule: '0 10 * * *' # 10:00 — after the 06:30 morning run has finished
-    dockerCommand: node dist/cron/ask-dispatch-cron.js noshow morning
-    envVars:
-      - fromGroup: trotxi-cron-staging
-  - type: cron
-    name: trotxi-noshow-evening-staging
-    runtime: docker
-    repo: https://github.com/TROTXI/mobility-core
-    branch: main
-    dockerfilePath: services/api/Dockerfile
-    dockerContext: .
-    plan: free
-    region: frankfurt
-    autoDeploy: false
-    schedule: '0 20 * * *' # 20:00 — after the evening run, still the same UTC day
-    dockerCommand: node dist/cron/ask-dispatch-cron.js noshow evening
-    envVars:
-      - fromGroup: trotxi-cron-staging
-
+  # - type: cron
+  #   name: trotxi-ask-morning-staging
+  #   runtime: docker
+  #   repo: https://github.com/TROTXI/mobility-core
+  #   branch: main
+  #   dockerfilePath: services/api/Dockerfile
+  #   dockerContext: .
+  #   plan: free
+  #   region: frankfurt
+  #   autoDeploy: false
+  #   schedule: '0 18 * * *' # 18:00 — ask tomorrow-morning riders
+  #   dockerCommand: node dist/cron/ask-dispatch-cron.js ask morning
+  #   envVars:
+  #     - fromGroup: trotxi-cron-staging
+  # - type: cron
+  #   name: trotxi-resolve-morning-staging
+  #   runtime: docker
+  #   repo: https://github.com/TROTXI/mobility-core
+  #   branch: main
+  #   dockerfilePath: services/api/Dockerfile
+  #   dockerContext: .
+  #   plan: free
+  #   region: frankfurt
+  #   autoDeploy: false
+  #   schedule: '0 21 * * *' # 21:00 cutoff — default-yes the still-pending (morning)
+  #   dockerCommand: node dist/cron/ask-dispatch-cron.js resolve morning
+  #   envVars:
+  #     - fromGroup: trotxi-cron-staging
+  # - type: cron
+  #   name: trotxi-ask-evening-staging
+  #   runtime: docker
+  #   repo: https://github.com/TROTXI/mobility-core
+  #   branch: main
+  #   dockerfilePath: services/api/Dockerfile
+  #   dockerContext: .
+  #   plan: free
+  #   region: frankfurt
+  #   autoDeploy: false
+  #   schedule: '0 12 * * *' # 12:00 — ask this-evening riders
+  #   dockerCommand: node dist/cron/ask-dispatch-cron.js ask evening
+  #   envVars:
+  #     - fromGroup: trotxi-cron-staging
+  # - type: cron
+  #   name: trotxi-resolve-evening-staging
+  #   runtime: docker
+  #   repo: https://github.com/TROTXI/mobility-core
+  #   branch: main
+  #   dockerfilePath: services/api/Dockerfile
+  #   dockerContext: .
+  #   plan: free
+  #   region: frankfurt
+  #   autoDeploy: false
+  #   schedule: '0 14 * * *' # 14:00 cutoff — default-yes the still-pending (evening)
+  #   dockerCommand: node dist/cron/ask-dispatch-cron.js resolve evening
+  #   envVars:
+  #     - fromGroup: trotxi-cron-staging
+  # # No-show sweeps (E4). These run AFTER the run has departed and debit riders
+  # # who confirmed a seat but never boarded — the seat was held for them, so it
+  # # costs a ride. They target the day that just happened, not tomorrow.
+  # - type: cron
+  #   name: trotxi-noshow-morning-staging
+  #   runtime: docker
+  #   repo: https://github.com/TROTXI/mobility-core
+  #   branch: main
+  #   dockerfilePath: services/api/Dockerfile
+  #   dockerContext: .
+  #   plan: free
+  #   region: frankfurt
+  #   autoDeploy: false
+  #   schedule: '0 10 * * *' # 10:00 — after the 06:30 morning run has finished
+  #   dockerCommand: node dist/cron/ask-dispatch-cron.js noshow morning
+  #   envVars:
+  #     - fromGroup: trotxi-cron-staging
+  # - type: cron
+  #   name: trotxi-noshow-evening-staging
+  #   runtime: docker
+  #   repo: https://github.com/TROTXI/mobility-core
+  #   branch: main
+  #   dockerfilePath: services/api/Dockerfile
+  #   dockerContext: .
+  #   plan: free
+  #   region: frankfurt
+  #   autoDeploy: false
+  #   schedule: '0 20 * * *' # 20:00 — after the evening run, still the same UTC day
+  #   dockerCommand: node dist/cron/ask-dispatch-cron.js noshow evening
+  #   envVars:
+  #     - fromGroup: trotxi-cron-staging
+  #
   # ---- Ops console (apps/ops, #170/#174) — uncomment when the first build lands ----
   # Static bundle only, no server process (free plan). Uncommenting before the
   # package has a `build` script would fail every deploy, hence the comment.
@@ -232,21 +247,21 @@ services:
   # evening no-show sweep (20:00), so the day's runs are settled before we learn
   # from them. Slow background improvement with no deadline — kept separate from
   # the ask-dispatch crons, whose timing is critical to the rider loop.
-  - type: cron
-    name: trotxi-route-learning-staging
-    runtime: docker
-    repo: https://github.com/TROTXI/mobility-core
-    branch: main
-    dockerfilePath: services/api/Dockerfile
-    dockerContext: .
-    plan: free
-    region: frankfurt
-    autoDeploy: false
-    schedule: '0 23 * * *' # 23:00 — after the evening sweep, before the next day
-    dockerCommand: node dist/cron/route-learning-cron.js
-    envVars:
-      - fromGroup: trotxi-cron-staging
-
+  # - type: cron
+  #   name: trotxi-route-learning-staging
+  #   runtime: docker
+  #   repo: https://github.com/TROTXI/mobility-core
+  #   branch: main
+  #   dockerfilePath: services/api/Dockerfile
+  #   dockerContext: .
+  #   plan: free
+  #   region: frankfurt
+  #   autoDeploy: false
+  #   schedule: '0 23 * * *' # 23:00 — after the evening sweep, before the next day
+  #   dockerCommand: node dist/cron/route-learning-cron.js
+  #   envVars:
+  #     - fromGroup: trotxi-cron-staging
+  #
   # ---- Production ----
   # Rebuilt from staging's ACTUAL configuration (#103/#178/#182 all added env
   # vars the old commented block never learned about). A production service
@@ -333,4 +348,4 @@ services:
       # Same public basemap as staging — the tiles are world-readable and there
       # is no reason to duplicate a 97 MB archive per environment.
       - key: MAP_TILES_URL
-        value: https://pub-9962de9eb91548789ca7e319561d8386.r2.dev/ghana.pmtiles
+        value: https://tiles.trotxi.com/ghana.pmtiles
