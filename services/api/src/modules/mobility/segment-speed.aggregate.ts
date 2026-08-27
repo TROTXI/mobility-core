@@ -1,15 +1,8 @@
-// Turning completed runs into per-segment observed speeds (#181).
+// Per-segment observed speeds from completed runs (#181). Pure functions.
 //
-// Pure functions — no clock, no I/O — so the same traces always produce the
-// same medians and this is testable without a database.
-//
-// The model: for each pair of adjacent stops, find when the vehicle passed the
-// first and when it passed the second, and divide the distance between them by
-// the time it took. Do that across several runs and take the median.
-//
-// Median rather than mean throughout. One breakdown, one driver waiting for a
-// police check, one run in a downpour — a mean carries all of that into every
-// future ETA, a median ignores it.
+// For each stop pair: when did the bus pass the first, when the second, divide
+// distance by elapsed. Median across runs, so one breakdown does not ride in
+// every future ETA.
 
 import { haversineMeters, type LatLng, type RouteStopPoint } from './eta';
 
@@ -31,11 +24,7 @@ export interface AggregatedSegment {
   sampleCount: number;
 }
 
-/**
- * A speed this far outside plausible urban travel is a data problem, not
- * traffic — a GPS glitch, a stopped clock, or a bus that never actually left.
- * Observations outside the band are discarded rather than dragging a median.
- */
+/** Outside this band it is a data problem, not traffic. Discarded. */
 const MIN_PLAUSIBLE_MS = 0.5; // ~1.8 km/h — slower than walking pace
 const MAX_PLAUSIBLE_MS = 33; // ~120 km/h — implausible on an Accra corridor
 
@@ -52,11 +41,10 @@ function median(values: number[]): number {
 }
 
 /**
- * When the vehicle was closest to a stop, as a timestamp.
+ * When the vehicle was closest to a stop.
  *
- * Nearest-approach rather than a radius test: a radius has to be tuned per stop
- * (a kerbside stop and a terminus are not the same size) and silently returns
- * nothing when a driver passes wide.
+ * Nearest-approach, not a radius: a radius needs per-stop tuning and silently
+ * misses a driver who passes wide.
  *
  * @param fixes - the run's fixes in order.
  * @param stop - the stop to find.
@@ -108,9 +96,7 @@ export function aggregateSegmentSpeeds(
       if (!departed || !arrived) continue;
 
       const seconds = (arrived.getTime() - departed.getTime()) / 1000;
-      // Non-positive means the bus reached the later stop first — a trace
-      // recorded in the opposite direction, or fixes out of order. Either way
-      // it is not an observation of this segment.
+      // Reached the later stop first: opposite direction, or fixes out of order.
       if (seconds <= 0) continue;
 
       const speed = distance / seconds;

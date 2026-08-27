@@ -1,12 +1,9 @@
-// CreditService — month-end conversion of unused rides to Ride Credits (E5, the
-// Hybrid Subscription Model / ADR-0014). At the end of a period the rider's
-// remaining entitlement rides are worth a credit (in pesewas) toward their next
-// renewal; the rides themselves are retired so they don't carry forward. Both
-// ledgers are append-only and idempotent — running the job twice is a no-op.
+// CreditService — month-end conversion of unused rides to Ride Credits (E5,
+// ADR-0014). Remaining rides are retired and become pesewas toward the next
+// renewal. Both ledgers are append-only and idempotent.
 //
-// PLACEHOLDER pricing: `creditPesewasPerRide` is a stand-in until E5 pricing is
-// decided (see #104 — plan price ÷ entitlement vs a fixed table). The mechanism
-// ships now; only the number changes later.
+// Keyed per PERIOD, not per subscription (#162) — the old key could only ever
+// fire once in a subscription lifetime, which is why this was never scheduled.
 
 import { periodRef as makePeriodRef } from '../subscriptions/period';
 import type { CreditLedgerRepository } from './credit-ledger.repository';
@@ -53,10 +50,9 @@ export class CreditService {
 
   /**
    * Convert one rider's remaining rides to Ride Credits for a period. Idempotent
-   * per `periodRef`: the same key writes both ledgers exactly once. Credit is
-   * granted *before* the rides are retired, so a retry re-reads the full
-   * remaining, recomputes the identical amount, no-ops the already-granted
-   * credit, and applies the (still-pending) debit — converging exactly-once.
+   * per `periodRef`. Credit is granted BEFORE the rides are retired, so a retry
+   * recomputes the same amount, no-ops the granted credit and applies the
+   * still-pending debit — converging exactly-once.
    *
    * @param userId - the rider whose unused rides to convert.
    * @param periodRef - a stable id for the ending period, from
@@ -91,13 +87,8 @@ export class CreditService {
   }
 
   /**
-   * Convert unused rides for every subscriber whose PERIOD HAS ENDED — the
-   * month-end job.
-   *
-   * Keyed by subscription AND period, so a re-run within a period is a no-op
-   * while the next period converts normally. Keyed on the subscription alone
-   * (pre-#162) it could only ever fire once in a subscription's lifetime,
-   * which is why this was never put on a schedule.
+   * Convert unused rides for subscribers whose period has ENDED — the month-end
+   * job. Keyed per period, so a re-run within one is a no-op.
    *
    * @param now - the instant to judge "period has ended" against; injectable
    *   so the boundary is testable without waiting a month.

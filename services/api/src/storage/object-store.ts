@@ -38,12 +38,8 @@ export interface ObjectStore {
    */
   signedUrl(key: string, ttlSeconds?: number): Promise<string>;
   /**
-   * Remove a stored object. Used by account deletion (#30) — the avatar is the
-   * one piece of personal data that does not live in Postgres, so clearing the
-   * DB column alone would leave the image sitting in the bucket.
-   *
-   * Idempotent: deleting an absent key is not an error, so a retried deletion
-   * request does not fail on the second attempt.
+   * Remove a stored object (#30). The avatar is the only PII outside Postgres,
+   * so clearing the column alone would leave it in the bucket. Idempotent.
    *
    * @param key - the object key to remove.
    */

@@ -171,9 +171,8 @@ export interface AppDeps {
  * so hosted environments report their real commit with no build wiring;
  * `GIT_SHA` overrides it for images built elsewhere (CI, local docker).
  *
- * Empty values are treated as absent: the Dockerfile declares `ARG GIT_SHA=""`,
- * so an unstamped image bakes in an empty string that `??` would otherwise
- * prefer over the platform value.
+ * Empty is treated as absent: an unstamped image bakes in `GIT_SHA=""`, which
+ * `??` would otherwise prefer over the platform value.
  *
  * @returns the deployed commit, or `dev` when nothing is stamped.
  */

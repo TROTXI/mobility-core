@@ -1,12 +1,9 @@
 // Deterministic ETA-to-stop (#25, system-design §7). Pure functions — no clock,
-// no I/O, no external routing/traffic service — so the same inputs always yield
-// the same ETAs and the whole thing is trivially unit-testable.
+// no I/O, no routing vendor — so the same inputs always yield the same ETAs.
 //
-// Model: the route's ordered stops form a polyline. We project the vehicle's
-// latest fix onto that polyline to get "distance travelled along the route", then
-// for every stop still ahead, remaining distance = cumulative(stop) − travelled,
-// and ETA = remaining / a fixed assumed speed. The assumed speed is a pilot
-// placeholder; a live speed/traffic model arrives with the telemetry path (ADR-0006).
+// The route's stops form a polyline. Project the vehicle's latest fix onto it to
+// get distance travelled, then for each stop ahead:
+// remaining = cumulative(stop) − travelled, ETA = remaining / segment speed.
 
 /**
  * Cold-start speed, used for any segment we have not observed yet (urban trotro

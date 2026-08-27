@@ -1,13 +1,10 @@
-// AuthService — the first service-layer service (ADR-0009 layering: routes ->
-// services -> repositories). It owns the sign-in/refresh/logout *business logic*
-// and orchestrates the repos + JWT + verifier; the routes stay thin.
+// AuthService — sign-in/refresh/logout, orchestrating the repos + JWT +
+// verifier. Reuse detection (#83): replaying an already-rotated refresh token
+// revokes every session for the user.
 //
-// Not wrapped in a DB transaction yet: on a concurrent *first* sign-in for a new
-// identity the loser may leave an orphan user row (harmless — never linked), and
-// refresh rotation revokes-then-creates (a crash mid-way just forces re-login).
-// Transactional sign-in is slice-3 hardening. Refresh-token reuse detection is
-// implemented (#83): replaying an already-rotated token revokes every session
-// for the user.
+// Not yet transactional: a concurrent FIRST sign-in can leave an orphan user row
+// (harmless — never linked), and rotation revokes-then-creates, so a crash
+// mid-way just forces re-login.
 
 import type { JwtService } from './jwt';
 import type { AuthIdentityRepository } from './auth-identity.repository';

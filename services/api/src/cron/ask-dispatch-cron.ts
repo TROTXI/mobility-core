@@ -1,19 +1,11 @@
-// Daily-loop cron entrypoint (E3/E4). A Render cron job runs this at each point
-// in the day: it mints a short-lived admin token from JWT_SECRET (auth is
-// stateless — no user row needed) and POSTs the deployed API's admin trigger.
-// Three actions x two directions (schedules live in render.yaml):
-//   ask     morning (18:00) -> prompt tomorrow-morning riders  cutoff resolve 21:00
-//   ask     evening (12:00) -> prompt this-evening riders      cutoff resolve 14:00
-//   noshow  morning (10:00) -> debit confirmed-but-absent seats after the run
-//   noshow  evening (20:00) -> same, after the evening run
-// Ghana runs on UTC (GMT+0), so the cron schedules are plain UTC, no offset.
+// Daily-loop cron entrypoint (E3/E4). Mints a short-lived admin token from
+// JWT_SECRET and POSTs an admin trigger. Schedules live in render.yaml; Ghana
+// is UTC so they carry no offset.
 //
-// /admin/convert-credits was deliberately NOT scheduled here, because its
-// conversion was keyed by subscription id rather than billing period: it could
-// only ever run once per subscription and would have zeroed a rider who
-// subscribed days earlier. #162 fixed that — conversion is now keyed per period
-// and only touches subscriptions whose period has ENDED, so it is safe to
-// schedule alongside /admin/expire-subscriptions once the crons are funded.
+//   ask     morning (18:00) -> prompt tomorrow-morning riders, cutoff 21:00
+//   ask     evening (12:00) -> prompt this-evening riders,      cutoff 14:00
+//   noshow  morning (10:00) -> debit confirmed-but-absent after the run
+//   noshow  evening (20:00) -> same, after the evening run
 
 import { createJwtService, type AuthConfig } from '../modules/auth/jwt';
 

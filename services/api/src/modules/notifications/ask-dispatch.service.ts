@@ -1,13 +1,10 @@
-// Daily ask-dispatch (E3) — the scheduled heart of the confirmation loop. For a
-// travel day + direction, it finds tomorrow's trips, seeds a `pending`
-// reservation for every active subscriber of each trip's route, and pushes the
-// "travelling?" prompt. At the cutoff, resolveDefaults flips the still-`pending`
-// rows to reserved (default-yes). These are the operations a Render cron invokes
-// (via the admin endpoints); the cron schedule itself is infra.
+// Daily ask-dispatch (E3). For a travel day + direction: find the trips, seed a
+// `pending` reservation for every active subscriber of each trip's route, and
+// push the "travelling?" prompt. At the cutoff, resolveDefaults flips
+// still-`pending` rows to reserved (default-yes). A Render cron invokes both via
+// the admin endpoints.
 //
-// A rider is linked to a route by their subscription (ADR-0014 / the pilot
-// rider↔route model): confirm at subscribe → the route pins the subscription →
-// this targets those subscribers.
+// A rider is linked to a route by their subscription (ADR-0014).
 
 import { directionOf } from '../mobility/direction';
 import type { VehicleRepository } from '../mobility/vehicle.repository';

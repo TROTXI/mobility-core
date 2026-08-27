@@ -1,11 +1,7 @@
-// Observed median speed per route segment, direction and service window (#181).
-//
-// This is what replaces the flat ASSUMED_SPEED_KPH in eta.ts. Aggregated from
-// completed runs rather than bought from a traffic vendor: a traffic API models
-// a generic vehicle on a generic road, this measures our vehicles on our
-// corridors at the exact times we run them.
-//
-// Repository pattern (ADR-0009): interface + InMemory here, Postgres in *.pg.ts.
+// Observed median speed per route segment, direction and service window (#181)
+// — what replaces the flat ASSUMED_SPEED_KPH in eta.ts, aggregated from our own
+// completed runs. Repository pattern (ADR-0009): interface + InMemory here,
+// Postgres in *.pg.ts.
 
 import type { SegmentSpeed } from './eta';
 
