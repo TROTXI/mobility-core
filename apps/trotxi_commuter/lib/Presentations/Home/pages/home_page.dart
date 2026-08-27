@@ -1,8 +1,8 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:trotxi_client/trotxi_client.dart';
-import 'package:trotxi_commuter/Presentations/Home/widgets/BottomNavigation/app_bottom_nav.dart';
-import 'package:trotxi_commuter/Presentations/Home/widgets/BottomNavigation/nav_destination.dart';
+import 'package:trotxi_commuter/Presentations/Home/models/home_ride_lifecycle_state.dart';
+import 'package:trotxi_commuter/Presentations/Home/widgets/BottomNavigation/commuter_navigation.dart';
 import 'package:trotxi_commuter/Presentations/Home/widgets/Navbar/navbar.dart';
 import 'package:trotxi_commuter/Presentations/Home/widgets/Tabs/home_tab.dart';
 import 'package:trotxi_commuter/Presentations/Home/widgets/Tabs/pass_tab.dart';
@@ -70,42 +70,13 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
-  // Keep in sync with the order of _items below.
-  static const int _homeTabIndex = 0;
-  //static const int _routesTabIndex = 1;
-  static const int _passTabIndex = 2;
-  //static const int _walletTabIndex = 3;
-  //static const int _profileTabIndex = 4;
-
-  int _currentIndex = _homeTabIndex;
+  // Pages are indexed in the same order as CommuterDestination.values:
+  // 0 = home, 1 = trips, 2 = wallet, 3 = profile.
+  CommuterDestination _selected = CommuterDestination.home;
 
   MeGet200Response? _userData;
   bool _loadingUser = true;
   TrotxiException? _activeError;
-
-  final List<NavDestination> _items = [
-    NavDestination(label: 'Home', iconPath: Icons.home_filled, route: '/home'),
-    NavDestination(
-      label: 'Routes',
-      iconPath: Icons.bus_alert_outlined,
-      route: '/routes',
-    ),
-    NavDestination(
-      label: 'Pass',
-      iconPath: Icons.qr_code_scanner,
-      route: '/pass',
-    ),
-    NavDestination(
-      label: 'Wallet',
-      iconPath: Icons.account_balance_wallet_outlined,
-      route: '/wallet',
-    ),
-    NavDestination(
-      label: 'Profile',
-      iconPath: Icons.person_outline_rounded,
-      route: '/profile',
-    ),
-  ];
 
   @override
   void initState() {
@@ -160,8 +131,16 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  void _goToTab(int index) {
-    setState(() => _currentIndex = index);
+  void _goToDestination(CommuterDestination destination) {
+    setState(() => _selected = destination);
+  }
+
+  /// Pass is no longer a persistent bottom-nav tab (CommuterDestination has
+  /// no slot for it), so it's opened as a pushed screen instead.
+  void _showBoardingPass() {
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (context) => PassTab(client: widget.client)),
+    );
   }
 
   @override
@@ -307,25 +286,26 @@ class _HomePageState extends State<HomePage> {
     // so it's safe to build tabs that require it (HomeTab).
     final userData = _userData!;
 
+    // Order matches CommuterDestination.values: home, trips, wallet, profile.
     final pages = [
       HomeTab(
         client: widget.client,
         userData: userData,
-        onShowBoardingPass: () => _goToTab(_passTabIndex),
+        onShowBoardingPass: _showBoardingPass,
       ),
       RoutesTab(client: widget.client),
-      PassTab(client: widget.client),
       WalletTab(client: widget.client),
       ProfileTab(client: widget.client),
     ];
 
     return Scaffold(
       appBar: Navbar(userData: userData, userName: userData.displayName),
-      body: LazyIndexedStack(index: _currentIndex, children: pages),
-      bottomNavigationBar: AppBottomNav(
-        currentIndex: _currentIndex,
-        items: _items,
-        onTap: _goToTab,
+      body: LazyIndexedStack(index: _selected.index, children: pages),
+      bottomNavigationBar: CommuterBottomNavigation(
+        selected: _selected,
+        onDestinationSelected: _goToDestination,
+        onSearch: null,
+        isTabletPortrait: false,
       ),
     );
   }

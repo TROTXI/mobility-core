@@ -1,12 +1,15 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:trotxi_client/trotxi_client.dart';
 import 'package:trotxi_commuter/Presentations/Home/pages/home_page.dart';
-import 'package:trotxi_commuter/Presentations/Onboarding/widgets/app_button.dart';
-import 'package:trotxi_commuter/core/config/theme/app_vectors.dart';
 import 'package:trotxi_commuter/core/Tokens/token_storage.dart';
 import 'package:trotxi_commuter/core/config/theme/app_colors.dart';
+import 'package:trotxi_commuter/core/config/theme/app_spacing.dart';
+import 'package:trotxi_commuter/core/config/theme/app_typography.dart';
+import 'package:trotxi_commuter/core/config/theme/app_vectors.dart';
+import 'package:trotxi_commuter/Presentations/Onboarding/widgets/app_button.dart';
 
 class OnBoardPage extends StatefulWidget {
   const OnBoardPage({super.key, required this.client});
@@ -35,7 +38,7 @@ class _OnBoardPageState extends State<OnBoardPage> {
   }
 
   // ---------------------------------------------------------------------
-  // Auth logic
+  // Auth logic (unchanged from the original implementation)
   // ---------------------------------------------------------------------
 
   Future<void> _initializeGoogleSignIn() async {
@@ -66,7 +69,6 @@ class _OnBoardPageState extends State<OnBoardPage> {
       _navigateToHome();
     } on DioException catch (e) {
       debugPrint('Backend authentication failed: ${e.message}');
-
       _showError('Unable to sign in. Please try again.');
     } catch (e) {
       debugPrint('Google Sign-In failed: $e');
@@ -109,6 +111,18 @@ class _OnBoardPageState extends State<OnBoardPage> {
     debugPrint('Pending Implementation: Apple Sign-In is not yet implemented.');
   }
 
+  // void _continueWithPhone() {
+  //   debugPrint('Pending Implementation: Phone sign-in is not yet implemented.');
+  // }
+
+  // void _continueWithEmail() {
+  //   debugPrint('Pending Implementation: Email sign-in is not yet implemented.');
+  // }
+
+  // void _goToCreateAccount() {
+  //   debugPrint('Pending Implementation: Create account is not yet implemented.');
+  // }
+
   void _navigateToHome() {
     Navigator.pushReplacement(
       context,
@@ -124,155 +138,252 @@ class _OnBoardPageState extends State<OnBoardPage> {
   }
 
   // ---------------------------------------------------------------------
-  // UI
+  // UI — matches the Figma "Sign in to Trotxi" layout, theme-aware via
+  // context.appColors so it adapts automatically to light/dark, the same
+  // pattern EntryAuthView already uses.
   // ---------------------------------------------------------------------
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: SafeArea(
-        child: Column(
-          children: [
-            _buildLogo(),
-            const SizedBox(height: 24),
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 24,
-                  vertical: 40,
-                ),
-                child: Align(
-                  alignment: Alignment.topCenter,
-                  child: ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 448),
-                    child: _buildOnboardingContent(),
+    final brightness = Theme.of(context).brightness;
+    final pageColor = AppPrimitiveColors.authPage(brightness);
+    final systemIconBrightness = brightness == Brightness.dark
+        ? Brightness.light
+        : Brightness.dark;
+
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: SystemUiOverlayStyle(
+        statusBarColor: pageColor,
+        statusBarIconBrightness: systemIconBrightness,
+        statusBarBrightness: brightness,
+        systemNavigationBarColor: pageColor,
+        systemNavigationBarIconBrightness: systemIconBrightness,
+      ),
+      child: Scaffold(
+        backgroundColor: pageColor,
+        body: SafeArea(
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              return SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(24, 12, 24, 18),
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(
+                    minHeight: constraints.maxHeight - 30,
+                  ),
+                  child: IntrinsicHeight(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        _buildLogo(),
+                        const SizedBox(height: AppSpacing.space24),
+                        _buildHeader(context),
+                        const SizedBox(height: 22),
+                        _buildAuthCard(context),
+                        const SizedBox(height: 10),
+
+                        const Spacer(),
+                        const SizedBox(height: AppSpacing.space24),
+
+                        const SizedBox(height: AppSpacing.space20),
+                        _buildTagline(context),
+                      ],
+                    ),
                   ),
                 ),
-              ),
-            ),
-          ],
+              );
+            },
+          ),
         ),
       ),
     );
   }
 
   Widget _buildLogo() {
-    return Padding(
-      padding: const EdgeInsets.only(top: 30),
-      child: Image.asset(Appvectors.logo, width: 180),
-    );
+    return Center(child: Image.asset(Appvectors.logo, width: 180));
   }
 
-  Widget _buildOnboardingContent() {
+  Widget _buildHeader(BuildContext context) {
+    final colors = context.appColors;
     return Column(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.stretch,
+      crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        _buildHeader(),
-        const SizedBox(height: 24),
-        _buildAuthCard(),
-        const SizedBox(height: 24),
-        _buildSignInPrompt(),
-      ],
-    );
-  }
-
-  Widget _buildHeader() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: const [
         Text(
-          'Join the Network',
+          'Sign in to Trotxi',
           textAlign: TextAlign.center,
-          style: TextStyle(
-            color: AppColors.dark,
-            fontSize: 24,
-            fontFamily: 'Hanken Grotesk',
-            fontWeight: FontWeight.w700,
-            height: 1.33,
+          style: AppTypography.heading1.copyWith(
+            color: colors.textPrimary,
+            fontSize: 27,
+            height: 34 / 27,
+            letterSpacing: -0.2,
           ),
         ),
-        SizedBox(height: 4),
+        const SizedBox(height: AppSpacing.space12),
         Text(
-          'Create your Accra Commuter account to start moving smarter.',
+          'Use Google, Apple, phone number, or email to access your Trotxi account.',
           textAlign: TextAlign.center,
-          style: TextStyle(
-            color: AppColors.body,
-            fontSize: 16,
-            fontFamily: 'Inter',
-            fontWeight: FontWeight.w400,
-            height: 1.50,
+          style: AppTypography.body.copyWith(
+            color: colors.textSecondary,
+            fontSize: 14.5,
+            height: 22 / 14.5,
           ),
         ),
       ],
     );
   }
 
-  Widget _buildAuthCard() {
+  Widget _buildAuthCard(BuildContext context) {
+    final colors = context.appColors;
     return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.all(22),
       decoration: BoxDecoration(
-        border: Border.all(color: AppColors.border),
-        borderRadius: BorderRadius.circular(8),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x0C000000),
-            blurRadius: 2,
-            offset: Offset(0, 1),
-          ),
-        ],
+        color: colors.surfaceElevated,
+        border: Border.all(color: colors.borderSubtle),
+        borderRadius: BorderRadius.circular(18),
       ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           AppSignInButton(
             onPressed: _signInWithGoogle,
             text: _isSigningIn ? 'Signing in...' : 'Continue with Google',
             icon: Image.asset(Appvectors.googleIconImage),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 13),
           AppSignInButton(
             onPressed: _signInWithApple,
             text: 'Continue with Apple',
             icon: Image.asset(Appvectors.appleIconImage),
           ),
-          const SizedBox(height: 16),
-          const Text(
-            'By continuing, you agree to Trotxi\'s Terms and Conditions '
-            'and Usage Policy, and acknowledge their Privacy Policy',
+          const SizedBox(height: AppSpacing.space8),
+          Text(
+            'Use an existing Google or Apple account to continue. By continuing, '
+            'you agree to Trotxi\u2019s Terms and acknowledge the Privacy Policy.',
             textAlign: TextAlign.center,
-            style: TextStyle(
-              color: AppColors.body,
-              fontSize: 14,
-              fontFamily: 'Inter',
-              fontWeight: FontWeight.w400,
-              height: 1.25,
+            style: AppTypography.caption.copyWith(
+              color: colors.textTertiary,
+              fontSize: 9.5,
+              height: 14 / 10,
             ),
           ),
         ],
       ),
     );
   }
+  //Future kyc will implement these
+  // Widget _buildPhoneEmailActions(BuildContext context) {
+  //   final narrow = MediaQuery.sizeOf(context).width < 360;
+  //   final largeText = MediaQuery.textScalerOf(context).scale(14) > 19;
 
-  Widget _buildSignInPrompt() {
-    return const Center(
-      child: Text.rich(
-        TextSpan(
-          children: [
-            TextSpan(
-              text: 'Move Smarter Live Better ',
-              style: TextStyle(
-                color: AppColors.body,
-                fontSize: 16,
-                fontFamily: 'Inter',
-                fontWeight: FontWeight.w400,
-                height: 1.50,
-              ),
-            ),
-          ],
-        ),
-        textAlign: TextAlign.center,
+  //   if (narrow || largeText) {
+  //     return Column(
+  //       children: [
+  //         _textAction(
+  //           context: context,
+  //           label: 'Sign in with phone number',
+  //           onPressed: _continueWithPhone,
+  //           alignment: Alignment.center,
+  //         ),
+  //         _textAction(
+  //           context: context,
+  //           label: 'Sign in with email',
+  //           onPressed: _continueWithEmail,
+  //           alignment: Alignment.center,
+  //         ),
+  //       ],
+  //     );
+  //   }
+
+  //   return Row(
+  //     children: [
+  //       Expanded(
+  //         flex: 3,
+  //         child: _textAction(
+  //           context: context,
+  //           label: 'Sign in with phone number',
+  //           onPressed: _continueWithPhone,
+  //           alignment: Alignment.centerLeft,
+  //         ),
+  //       ),
+  //       const SizedBox(width: AppSpacing.space8),
+  //       Expanded(
+  //         flex: 2,
+  //         child: _textAction(
+  //           context: context,
+  //           label: 'Sign in with email',
+  //           onPressed: _continueWithEmail,
+  //           alignment: Alignment.centerRight,
+  //         ),
+  //       ),
+  //     ],
+  //   );
+  // }
+
+  // Widget _textAction({
+  //   required BuildContext context,
+  //   required String label,
+  //   required VoidCallback onPressed,
+  //   required AlignmentGeometry alignment,
+  // }) {
+  //   return Align(
+  //     alignment: alignment,
+  //     child: TextButton(
+  //       onPressed: onPressed,
+  //       style: TextButton.styleFrom(
+  //         minimumSize: const Size(44, 44),
+  //         padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 10),
+  //         foregroundColor: context.appColors.actionPrimaryDefault,
+  //         textStyle: AppTypography.bodySmall.copyWith(
+  //           fontWeight: FontWeight.w600,
+  //         ),
+  //       ),
+  //       child: FittedBox(
+  //         fit: BoxFit.scaleDown,
+  //         child: Text(label, maxLines: 1, textAlign: TextAlign.center),
+  //       ),
+  //     ),
+  //   );
+  // }
+
+  // Widget _buildCreateAccountPrompt(BuildContext context) {
+  //   final colors = context.appColors;
+  //   return Center(
+  //     child: TextButton(
+  //       onPressed: _goToCreateAccount,
+  //       style: TextButton.styleFrom(
+  //         minimumSize: const Size(44, 44),
+  //         padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 10),
+  //       ),
+  //       child: Text.rich(
+  //         TextSpan(
+  //           children: [
+  //             TextSpan(
+  //               text: 'New to Trotxi?  ',
+  //               style: AppTypography.bodySmall.copyWith(
+  //                 color: colors.textSecondary,
+  //               ),
+  //             ),
+  //             TextSpan(
+  //               text: 'Create account',
+  //               style: AppTypography.bodySmall.copyWith(
+  //                 color: colors.actionPrimaryDefault,
+  //                 fontWeight: FontWeight.w600,
+  //               ),
+  //             ),
+  //           ],
+  //         ),
+  //         textAlign: TextAlign.center,
+  //       ),
+  //     ),
+  //   );
+  // }
+
+  Widget _buildTagline(BuildContext context) {
+    return Text(
+      'Move smart. Live better.',
+      textAlign: TextAlign.center,
+      style: AppTypography.caption.copyWith(
+        color: context.appColors.textTertiary,
+        fontWeight: FontWeight.w500,
       ),
     );
   }

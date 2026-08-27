@@ -99,14 +99,14 @@ class _HomeTabState extends State<HomeTab> {
     return displayName.trim().split(' ').first;
   }
 
+  final _busLocation = "Adenta";
+
   String get _greeting {
     final hour = DateTime.now().hour;
-    if (hour < 12) return 'Morning';
-    if (hour < 17) return 'Afternoon';
-    return 'Evening';
+    if (hour < 12) return 'Good Morning';
+    if (hour < 17) return 'Good Afternoon';
+    return 'Good Evening';
   }
-
-  String get _formattedDate => DateFormat('EEEE d MMMM').format(DateTime.now());
 
   void _onShowBoardingPass() {
     if (widget.onShowBoardingPass != null) {
@@ -188,8 +188,10 @@ class _HomeTabState extends State<HomeTab> {
                   ),
                 ),
                 const SizedBox(height: 4),
+
+                const SizedBox(height: 4),
                 Text(
-                  _formattedDate,
+                  "Your Van is approaching $_busLocation pickup",
                   style: const TextStyle(
                     color: AppColors.body,
                     fontSize: 14,

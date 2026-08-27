@@ -44,6 +44,12 @@ class AuthInterceptor extends QueuedInterceptor {
   final Dio _dio;
   final TokenStore _tokenStore;
 
+  /// The "whiteboard": null when no refresh is in progress. The first 401
+  /// to arrive starts a refresh and writes its Future here; any 401 that
+  /// arrives while this is non-null just awaits the same Future instead
+  /// of starting a redundant refresh of its own.
+  Future<String>? _refreshFuture;
+
   AuthInterceptor({
     required Dio dio,
     required TokenStore tokenStore,
@@ -81,10 +87,30 @@ class AuthInterceptor extends QueuedInterceptor {
     }
 
     try {
+      // Single-flight: if a refresh is already in progress, await that
+      // one instead of starting a new one. First caller creates the
+      // Future and stores it; every concurrent caller reuses it.
+      final newAccessToken = await (_refreshFuture ??= _refreshTokens());
+
+      // Clone and retry the original failed request with the new access token
+      final requestOptions = err.requestOptions;
+      requestOptions.headers['Authorization'] = 'Bearer $newAccessToken';
+
+      final clonedResponse = await _dio.fetch(requestOptions);
+      return handler.resolve(clonedResponse);
+    } catch (refreshError) {
+      await _tokenStore.clearTokens();
+      return handler.next(err);
+    }
+  }
+
+  /// Performs the actual refresh call. Only ever invoked once per batch of
+  /// concurrent 401s, via the `_refreshFuture ??=` guard in onError.
+  Future<String> _refreshTokens() async {
+    try {
       final refreshToken = await _tokenStore.getRefreshToken();
       if (refreshToken == null || refreshToken.isEmpty) {
-        await _tokenStore.clearTokens();
-        return handler.next(err);
+        throw StateError('No refresh token available');
       }
 
       // Instantiate a isolated client for the refresh call
@@ -106,8 +132,7 @@ class AuthInterceptor extends QueuedInterceptor {
       final newRefreshToken = response.data?.refreshToken;
 
       if (newAccessToken == null || newRefreshToken == null) {
-        await _tokenStore.clearTokens();
-        return handler.next(err);
+        throw StateError('Refresh response missing tokens');
       }
 
       // Store new credentials
@@ -116,15 +141,12 @@ class AuthInterceptor extends QueuedInterceptor {
         refreshToken: newRefreshToken,
       );
 
-      // Clone and retry the original failed request with the new access token
-      final requestOptions = err.requestOptions;
-      requestOptions.headers['Authorization'] = 'Bearer $newAccessToken';
-
-      final clonedResponse = await _dio.fetch(requestOptions);
-      return handler.resolve(clonedResponse);
-    } catch (refreshError) {
-      await _tokenStore.clearTokens();
-      return handler.next(err);
+      return newAccessToken;
+    } finally {
+      // Reset the whiteboard once this refresh settles (success or
+      // failure), so the *next* distinct expiry event starts fresh
+      // instead of reusing a completed/failed Future.
+      _refreshFuture = null;
     }
   }
 }

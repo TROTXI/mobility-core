@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:trotxi_client/trotxi_client.dart';
 import 'package:trotxi_commuter/Presentations/Home/pages/home_page.dart';
 import 'package:trotxi_commuter/Presentations/Onboarding/pages/onboard_page.dart';
+import 'package:trotxi_commuter/Presentations/Onboarding/widgets/splash_view.dart';
 import 'package:trotxi_commuter/core/config/theme/app_vectors.dart';
 import 'package:trotxi_commuter/core/Tokens/token_storage.dart';
 
@@ -52,23 +53,6 @@ class _SplashPageState extends State<SplashPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: Stack(
-        children: [
-          Positioned.fill(
-            child: Image.asset(Appvectors.splashImage, fit: BoxFit.cover),
-          ),
-          Align(
-            alignment: Alignment.topCenter,
-            child: SafeArea(
-              child: Padding(
-                padding: const EdgeInsets.only(top: 40),
-                child: Image.asset(Appvectors.logo, width: 180),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
+    return const Scaffold(body: SplashView());
   }
 }
