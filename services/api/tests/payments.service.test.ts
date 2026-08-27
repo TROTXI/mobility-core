@@ -177,6 +177,8 @@ describe('PaymentsService.handleWebhook', () => {
       findActiveByUser: async () => null,
       findActiveByRoute: async () => [],
       findAllActive: async () => [],
+      findEndedPeriods: async () => [],
+      rollPeriod: async () => null,
       create: async () => {
         throw Object.assign(new Error('dup'), { code: '23505' });
       },
@@ -192,6 +194,8 @@ describe('PaymentsService.handleWebhook', () => {
       findActiveByUser: async () => null,
       findActiveByRoute: async () => [],
       findAllActive: async () => [],
+      findEndedPeriods: async () => [],
+      rollPeriod: async () => null,
       create: async () => {
         throw new Error('db down');
       },

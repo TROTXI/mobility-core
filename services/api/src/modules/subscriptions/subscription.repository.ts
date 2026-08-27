@@ -17,6 +17,10 @@ export interface Subscription {
   farePesewas: number | null;
   /** Ride Credit value per unused ride, frozen at activation. */
   creditPesewasPerRide: number | null;
+  /** Start of the current billing period, inclusive (#162). */
+  periodStart: Date | null;
+  /** End of the current period, EXCLUSIVE — drives renewal and expiry. */
+  periodEnd: Date | null;
   createdAt: Date;
 }
 
@@ -29,6 +33,8 @@ export interface NewSubscription {
   ridesGranted?: number | null;
   farePesewas?: number | null;
   creditPesewasPerRide?: number | null;
+  periodStart?: Date | null;
+  periodEnd?: Date | null;
 }
 
 /** Persistence for memberships; one active subscription per user. */
@@ -63,6 +69,28 @@ export interface SubscriptionRepository {
    * @returns all active subscriptions.
    */
   findAllActive(): Promise<Subscription[]>;
+  /**
+   * Active subscriptions whose period has ended (#162).
+   *
+   * The renewal/expiry sweep's input. Without it nothing ever transitions a
+   * lapsed subscription out of `active`, and the partial unique index means
+   * that stale row blocks the rider from ever subscribing again.
+   *
+   * @param now - the instant to compare against.
+   * @returns active subscriptions with `periodEnd <= now`.
+   */
+  findEndedPeriods(now: Date): Promise<Subscription[]>;
+  /**
+   * Move a subscription into its next period, or mark it expired.
+   *
+   * @param id - the subscription.
+   * @param patch - the new period, or the terminal status.
+   * @returns the updated subscription, or null if not found.
+   */
+  rollPeriod(
+    id: string,
+    patch: { periodStart: Date; periodEnd: Date } | { status: 'expired' },
+  ): Promise<Subscription | null>;
 }
 
 /** In-memory {@link SubscriptionRepository} for dev and unit tests. */
@@ -86,6 +114,8 @@ export class InMemorySubscriptionRepository implements SubscriptionRepository {
       ridesGranted: input.ridesGranted ?? null,
       farePesewas: input.farePesewas ?? null,
       creditPesewasPerRide: input.creditPesewasPerRide ?? null,
+      periodStart: input.periodStart ?? null,
+      periodEnd: input.periodEnd ?? null,
       createdAt: new Date(),
     };
     this.subscriptions.set(subscription.id, subscription);
@@ -109,5 +139,22 @@ export class InMemorySubscriptionRepository implements SubscriptionRepository {
 
   async findAllActive(): Promise<Subscription[]> {
     return Array.from(this.subscriptions.values()).filter((s) => s.status === 'active');
+  }
+  async findEndedPeriods(now: Date): Promise<Subscription[]> {
+    return [...this.subscriptions.values()].filter(
+      (s) =>
+        s.status === 'active' && s.periodEnd !== null && s.periodEnd.getTime() <= now.getTime(),
+    );
+  }
+
+  async rollPeriod(
+    id: string,
+    patch: { periodStart: Date; periodEnd: Date } | { status: 'expired' },
+  ): Promise<Subscription | null> {
+    const existing = this.subscriptions.get(id);
+    if (!existing) return null;
+    const updated: Subscription = { ...existing, ...patch };
+    this.subscriptions.set(id, updated);
+    return updated;
   }
 }

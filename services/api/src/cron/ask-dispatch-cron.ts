@@ -8,10 +8,12 @@
 //   noshow  evening (20:00) -> same, after the evening run
 // Ghana runs on UTC (GMT+0), so the cron schedules are plain UTC, no offset.
 //
-// Deliberately NOT scheduled: /admin/convert-credits. Its conversion is keyed by
-// subscription id rather than by billing period, so it can only ever run once per
-// subscription and would zero a rider who subscribed days earlier. It stays a
-// manual admin action until E5b makes it period-aware (#128).
+// /admin/convert-credits was deliberately NOT scheduled here, because its
+// conversion was keyed by subscription id rather than billing period: it could
+// only ever run once per subscription and would have zeroed a rider who
+// subscribed days earlier. #162 fixed that — conversion is now keyed per period
+// and only touches subscriptions whose period has ENDED, so it is safe to
+// schedule alongside /admin/expire-subscriptions once the crons are funded.
 
 import { createJwtService, type AuthConfig } from '../modules/auth/jwt';
 

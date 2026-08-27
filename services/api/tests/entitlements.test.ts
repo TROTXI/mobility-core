@@ -103,7 +103,12 @@ describe('GET /me/rides', () => {
 
     const res = await app.inject({ method: 'GET', url: '/me/rides', headers: bearer(token) });
     expect(res.statusCode).toBe(200);
-    expect(res.json()).toEqual({ remainingRides: 44, creditPesewas: 4000 });
+    expect(res.json()).toEqual({
+      remainingRides: 44,
+      creditPesewas: 4000,
+      ridesPerPeriod: null,
+      renewsAt: null,
+    });
   });
 
   it('defaults to zero for a rider with no ledger entries', async () => {
@@ -111,6 +116,11 @@ describe('GET /me/rides', () => {
     const token = await jwt.signAccessToken({ userId: 'newbie', role: 'commuter' });
     const res = await app.inject({ method: 'GET', url: '/me/rides', headers: bearer(token) });
     expect(res.statusCode).toBe(200);
-    expect(res.json()).toEqual({ remainingRides: 0, creditPesewas: 0 });
+    expect(res.json()).toEqual({
+      remainingRides: 0,
+      creditPesewas: 0,
+      ridesPerPeriod: null,
+      renewsAt: null,
+    });
   });
 });

@@ -20,6 +20,7 @@ import type {
   SubscriptionRepository,
 } from '../subscriptions/subscription.repository';
 import type { UserRepository } from '../users/user.repository';
+import { periodFor } from '../subscriptions/period';
 import { derivePrice, type DerivedPrice } from './pricing';
 import type { PricingRepository } from './pricing.repository';
 import type { NewPayment, Payment, PaymentRepository } from './payment.repository';
@@ -296,10 +297,15 @@ export class PaymentsService {
     payment: Payment,
   ): Promise<void> {
     try {
+      const period = periodFor(plan, new Date());
       await this.deps.subscriptions.create({
         userId,
         plan,
         routeId,
+        // The billing window this payment buys (#162). Without it nothing can
+        // renew, expire, or convert credit per period.
+        periodStart: period.start,
+        periodEnd: period.end,
         // Carried from the payment, so what this rider owes and what their
         // credit is worth cannot move under them when the fare next changes
         // (ADR-0015 §3). New prices apply at renewal.
