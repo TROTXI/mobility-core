@@ -5,7 +5,6 @@ import 'package:trotxi_client/trotxi_client.dart';
 import 'package:trotxi_commuter/Presentations/Home/pages/home_page.dart';
 import 'package:trotxi_commuter/Presentations/Onboarding/pages/onboard_page.dart';
 import 'package:trotxi_commuter/Presentations/Onboarding/widgets/splash_view.dart';
-import 'package:trotxi_commuter/core/config/theme/app_vectors.dart';
 import 'package:trotxi_commuter/core/Tokens/token_storage.dart';
 
 class SplashPage extends StatefulWidget {
