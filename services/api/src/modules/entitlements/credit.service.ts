@@ -8,6 +8,7 @@
 // decided (see #104 — plan price ÷ entitlement vs a fixed table). The mechanism
 // ships now; only the number changes later.
 
+import { periodRef as makePeriodRef } from '../subscriptions/period';
 import type { CreditLedgerRepository } from './credit-ledger.repository';
 import type { EntitlementLedgerRepository } from './entitlement-ledger.repository';
 import type { SubscriptionRepository } from '../subscriptions/subscription.repository';
@@ -58,8 +59,10 @@ export class CreditService {
    * credit, and applies the (still-pending) debit — converging exactly-once.
    *
    * @param userId - the rider whose unused rides to convert.
-   * @param periodRef - a stable id for the ending period (the subscription id);
-   *   also the idempotency key, so re-running is a no-op.
+   * @param periodRef - a stable id for the ending period, from
+   *   {@link makePeriodRef}: `${subscriptionId}:${periodEnd}`. Also the
+   *   idempotency key, so re-running within a period is a no-op while the NEXT
+   *   period converts normally.
    * @returns how many rides were converted and the credit minted.
    */
   async convertUnusedRides(userId: string, periodRef: string): Promise<ConversionResult> {
@@ -88,17 +91,31 @@ export class CreditService {
   }
 
   /**
-   * Convert unused rides for every active subscriber — the month-end job. Each
-   * rider is keyed by their active subscription id, so a re-run (or a run that
-   * partially completed) converges without double-crediting.
+   * Convert unused rides for every subscriber whose PERIOD HAS ENDED — the
+   * month-end job.
    *
+   * Keyed by subscription AND period, so a re-run within a period is a no-op
+   * while the next period converts normally. Keyed on the subscription alone
+   * (pre-#162) it could only ever fire once in a subscription's lifetime,
+   * which is why this was never put on a schedule.
+   *
+   * @param now - the instant to judge "period has ended" against; injectable
+   *   so the boundary is testable without waiting a month.
    * @returns batch totals (riders credited, rides retired, pesewas minted).
    */
-  async convertAllActive(): Promise<BatchConversionResult> {
-    const subs = await this.deps.subscriptions.findAllActive();
+  async convertAllActive(now: Date = new Date()): Promise<BatchConversionResult> {
+    // Only subscriptions whose period has actually ENDED — not every active
+    // rider. Converting mid-period would zero someone who subscribed three
+    // days ago and still has a month of travel ahead of them, which is what
+    // made this unsafe to schedule at all before #162.
+    const subs = await this.deps.subscriptions.findEndedPeriods(now);
     const totals: BatchConversionResult = { riders: 0, ridesConverted: 0, creditPesewas: 0 };
     for (const sub of subs) {
-      const res = await this.convertUnusedRides(sub.userId, sub.id);
+      // Keyed on the PERIOD, not the subscription. The old key (`sub.id`) could
+      // only ever fire once in a subscription's lifetime, so month two onwards
+      // silently no-opped.
+      if (!sub.periodEnd) continue; // pre-#162 row that somehow escaped backfill
+      const res = await this.convertUnusedRides(sub.userId, makePeriodRef(sub.id, sub.periodEnd));
       if (res.ridesConverted > 0) {
         totals.riders++;
         totals.ridesConverted += res.ridesConverted;

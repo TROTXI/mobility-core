@@ -6,6 +6,19 @@ import { InMemoryEntitlementLedgerRepository } from '../src/modules/entitlements
 import { InMemorySubscriptionRepository } from '../src/modules/subscriptions/subscription.repository';
 import { createJwtService, type AuthConfig } from '../src/modules/auth/jwt';
 
+/**
+ * A period that ended a month ago. Relative to `Date.now()` rather than a fixed
+ * date, because one of these cases goes through the HTTP route, which uses the
+ * real clock — a hard-coded date would pass today and silently stop converting
+ * once it drifted into the future.
+ */
+const DAY = 86_400_000;
+const ENDED_PERIOD = {
+  periodStart: new Date(Date.now() - 60 * DAY),
+  periodEnd: new Date(Date.now() - 30 * DAY),
+};
+const NOW = new Date();
+
 const auth: AuthConfig = {
   secret: 'test-secret-at-least-32-characters-long-0000',
   accessTtl: '15m',
@@ -104,13 +117,15 @@ describe('CreditService.convertUnusedRides', () => {
 describe('CreditService.convertAllActive', () => {
   it('converts every active subscriber and sums the totals (skipping empties)', async () => {
     const { entitlements, subscriptions, svc } = make();
-    await subscriptions.create({ userId: 'ama', plan: 'monthly' });
-    await subscriptions.create({ userId: 'kofi', plan: 'monthly' });
-    await subscriptions.create({ userId: 'norides', plan: 'monthly' });
+    // Since #162 only subscriptions whose PERIOD HAS ENDED are converted, so
+    // these need a period that is already over.
+    for (const userId of ['ama', 'kofi', 'norides']) {
+      await subscriptions.create({ userId, plan: 'monthly', ...ENDED_PERIOD });
+    }
     await allocate(entitlements, 'ama', 10);
     await allocate(entitlements, 'kofi', 4);
 
-    expect(await svc.convertAllActive()).toEqual({
+    expect(await svc.convertAllActive(NOW)).toEqual({
       riders: 2, // 'norides' had nothing → skipped
       ridesConverted: 14,
       creditPesewas: 14 * PER_RIDE,
@@ -145,7 +160,7 @@ describe('POST /admin/convert-credits', () => {
     const entitlements = new InMemoryEntitlementLedgerRepository();
     const credits = new InMemoryCreditLedgerRepository();
     const subscriptions = new InMemorySubscriptionRepository();
-    await subscriptions.create({ userId: 'ama', plan: 'monthly' });
+    await subscriptions.create({ userId: 'ama', plan: 'monthly', ...ENDED_PERIOD });
     await entitlements.record({
       userId: 'ama',
       deltaRides: 12,

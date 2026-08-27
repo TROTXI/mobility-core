@@ -11,6 +11,8 @@ import {
 import { z } from 'zod';
 import { InMemoryKvStore, type KvStore } from './kv/kv.store';
 import { FakeObjectStore, type ObjectStore } from './storage/object-store';
+import { RenewalService } from './modules/subscriptions/renewal.service';
+import { renewalRoutes } from './modules/subscriptions/renewal.routes';
 import type { PricingRepository } from './modules/payments/pricing.repository';
 import { pricingRoutes } from './modules/payments/pricing.routes';
 import type { AccountDeletionService } from './modules/users/account-deletion.service';
@@ -292,6 +294,7 @@ export async function buildApp(deps: AppDeps = {}): Promise<FastifyInstance> {
     entitlements,
     credits,
     rateLimit: deps.rateLimit ?? DEFAULT_RATE_LIMIT,
+    subscriptions: deps.subscriptions,
   });
   // Credit conversion (E5): the month-end job. Only wired when a subscription
   // store is available (the route 503s otherwise), since it iterates active subs.
@@ -364,6 +367,12 @@ export async function buildApp(deps: AppDeps = {}): Promise<FastifyInstance> {
     tripPositions: deps.tripPositions ?? new InMemoryTripPositionRepository(),
     segmentSpeeds: deps.segmentSpeeds,
     kv,
+    rateLimit: deps.rateLimit ?? DEFAULT_RATE_LIMIT,
+  });
+  await app.register(renewalRoutes, {
+    renewal: deps.subscriptions
+      ? new RenewalService({ subscriptions: deps.subscriptions })
+      : undefined,
     rateLimit: deps.rateLimit ?? DEFAULT_RATE_LIMIT,
   });
   await app.register(pricingRoutes, {
