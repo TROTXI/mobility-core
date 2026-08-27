@@ -15,11 +15,11 @@ class Appvectors {
   static const String appleIconImage = '${basepath}appleIcon$imageformat';
   static const String avatarImage = '${basepath}Avatar$imageformat';
   static const String splashTabletPortraitDark =
-      '${basepath}splashTabletPortraitDark$imageformat';
+      '${basepath}splash_tablet_portrait_dark$imageformat';
   static const String splashTabletPortraitLight =
-      '${basepath}splashTabletPortraitLight$imageformat';
+      '${basepath}splash_tablet_portrait_light$imageformat';
   static const String splashTabletLandscapeDark =
-      '${basepath}splashTabletLandscapeDark$imageformat';
+      '${basepath}splash_tablet_landscape_dark$imageformat';
   static const String splashTabletLandscapeLight =
-      '${basepath}splashTabletLandscapeLight$imageformat';
+      '${basepath}splash_tablet_landscape_light$imageformat';
 }
