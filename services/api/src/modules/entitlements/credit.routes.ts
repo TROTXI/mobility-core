@@ -35,7 +35,13 @@ export async function creditRoutes(
     {
       schema: {
         tags: ['admin'],
-        summary: "Month-end: convert every active rider's unused rides to Ride Credits",
+        summary: 'Month-end: convert unused rides to Ride Credits for ENDED periods',
+        description:
+          'Only subscriptions whose billing period has ended are converted — not every ' +
+          'active rider. Keyed per period (#162), so this is safe to run repeatedly ' +
+          'within a period and converts normally in the next one. Before #162 it was ' +
+          'keyed on the subscription id and could only ever fire once in its lifetime, ' +
+          'which is why it was excluded from the cron schedule.',
         security: [{ bearerAuth: [] }],
         response: {
           200: convertCreditsResponseSchema,

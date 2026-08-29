@@ -36,8 +36,8 @@ describe('ReservationRepository', () => {
     // a different direction stays pending
     await repo.createPending({ userId: 'a', travelDate: DATE, direction: 'evening' });
 
-    const count = await repo.markDefaultTravelling(DATE, 'morning');
-    expect(count).toBe(1); // only 'a' morning
+    const { defaulted } = await repo.markDefaultTravelling(DATE, 'morning');
+    expect(defaulted).toBe(1); // only 'a' morning
 
     expect(await repo.find('a', DATE, 'morning')).toMatchObject({
       status: 'reserved',

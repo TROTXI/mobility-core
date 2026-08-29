@@ -1,13 +1,11 @@
-// CreditService — month-end conversion of unused rides to Ride Credits (E5, the
-// Hybrid Subscription Model / ADR-0014). At the end of a period the rider's
-// remaining entitlement rides are worth a credit (in pesewas) toward their next
-// renewal; the rides themselves are retired so they don't carry forward. Both
-// ledgers are append-only and idempotent — running the job twice is a no-op.
+// CreditService — month-end conversion of unused rides to Ride Credits (E5,
+// ADR-0014). Remaining rides are retired and become pesewas toward the next
+// renewal. Both ledgers are append-only and idempotent.
 //
-// PLACEHOLDER pricing: `creditPesewasPerRide` is a stand-in until E5 pricing is
-// decided (see #104 — plan price ÷ entitlement vs a fixed table). The mechanism
-// ships now; only the number changes later.
+// Keyed per PERIOD, not per subscription (#162) — the old key could only ever
+// fire once in a subscription lifetime, which is why this was never scheduled.
 
+import { periodRef as makePeriodRef } from '../subscriptions/period';
 import type { CreditLedgerRepository } from './credit-ledger.repository';
 import type { EntitlementLedgerRepository } from './entitlement-ledger.repository';
 import type { SubscriptionRepository } from '../subscriptions/subscription.repository';
@@ -52,14 +50,15 @@ export class CreditService {
 
   /**
    * Convert one rider's remaining rides to Ride Credits for a period. Idempotent
-   * per `periodRef`: the same key writes both ledgers exactly once. Credit is
-   * granted *before* the rides are retired, so a retry re-reads the full
-   * remaining, recomputes the identical amount, no-ops the already-granted
-   * credit, and applies the (still-pending) debit — converging exactly-once.
+   * per `periodRef`. Credit is granted BEFORE the rides are retired, so a retry
+   * recomputes the same amount, no-ops the granted credit and applies the
+   * still-pending debit — converging exactly-once.
    *
    * @param userId - the rider whose unused rides to convert.
-   * @param periodRef - a stable id for the ending period (the subscription id);
-   *   also the idempotency key, so re-running is a no-op.
+   * @param periodRef - a stable id for the ending period, from
+   *   {@link makePeriodRef}: `${subscriptionId}:${periodEnd}`. Also the
+   *   idempotency key, so re-running within a period is a no-op while the NEXT
+   *   period converts normally.
    * @returns how many rides were converted and the credit minted.
    */
   async convertUnusedRides(userId: string, periodRef: string): Promise<ConversionResult> {
@@ -88,17 +87,26 @@ export class CreditService {
   }
 
   /**
-   * Convert unused rides for every active subscriber — the month-end job. Each
-   * rider is keyed by their active subscription id, so a re-run (or a run that
-   * partially completed) converges without double-crediting.
+   * Convert unused rides for subscribers whose period has ENDED — the month-end
+   * job. Keyed per period, so a re-run within one is a no-op.
    *
+   * @param now - the instant to judge "period has ended" against; injectable
+   *   so the boundary is testable without waiting a month.
    * @returns batch totals (riders credited, rides retired, pesewas minted).
    */
-  async convertAllActive(): Promise<BatchConversionResult> {
-    const subs = await this.deps.subscriptions.findAllActive();
+  async convertAllActive(now: Date = new Date()): Promise<BatchConversionResult> {
+    // Only subscriptions whose period has actually ENDED — not every active
+    // rider. Converting mid-period would zero someone who subscribed three
+    // days ago and still has a month of travel ahead of them, which is what
+    // made this unsafe to schedule at all before #162.
+    const subs = await this.deps.subscriptions.findEndedPeriods(now);
     const totals: BatchConversionResult = { riders: 0, ridesConverted: 0, creditPesewas: 0 };
     for (const sub of subs) {
-      const res = await this.convertUnusedRides(sub.userId, sub.id);
+      // Keyed on the PERIOD, not the subscription. The old key (`sub.id`) could
+      // only ever fire once in a subscription's lifetime, so month two onwards
+      // silently no-opped.
+      if (!sub.periodEnd) continue; // pre-#162 row that somehow escaped backfill
+      const res = await this.convertUnusedRides(sub.userId, makePeriodRef(sub.id, sub.periodEnd));
       if (res.ridesConverted > 0) {
         totals.riders++;
         totals.ridesConverted += res.ridesConverted;

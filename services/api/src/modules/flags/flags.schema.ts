@@ -15,8 +15,22 @@ export const publicFlagSchema = z.object({
 });
 
 /**
- * The launch/session payload: the flag set plus the per-platform force-update
- * floor. A platform with no configured minimum is `null` (no force-update yet).
+ * Basemap tiles, served from the API rather than compiled into clients (#178) so
+ * changing the host is config rather than three app releases.
+ *
+ * `attribution` travels with the URL because it is a licence condition (ODbL +
+ * OpenMapTiles), not decoration.
+ */
+export const mapTilesSchema = z.object({
+  /** PMTiles archive URL, or null when tiles are not configured. */
+  url: z.string().nullable(),
+  attribution: z.string(),
+});
+
+/**
+ * The launch/session payload: the flag set, the per-platform force-update
+ * floor, and the basemap config. A platform with no configured minimum is
+ * `null` (no force-update yet).
  */
 export const flagsResponseSchema = z.object({
   flags: z.array(publicFlagSchema),
@@ -24,6 +38,7 @@ export const flagsResponseSchema = z.object({
     ios: z.string().nullable(),
     android: z.string().nullable(),
   }),
+  mapTiles: mapTilesSchema,
 });
 
 // --- admin (full rows) ---

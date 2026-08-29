@@ -37,6 +37,13 @@ export interface ObjectStore {
    * @returns a time-limited URL the client can GET directly.
    */
   signedUrl(key: string, ttlSeconds?: number): Promise<string>;
+  /**
+   * Remove a stored object (#30). The avatar is the only PII outside Postgres,
+   * so clearing the column alone would leave it in the bucket. Idempotent.
+   *
+   * @param key - the object key to remove.
+   */
+  deleteObject(key: string): Promise<void>;
 }
 
 /** In-memory {@link ObjectStore} for dev and unit tests (no network). */
@@ -61,5 +68,9 @@ export class FakeObjectStore implements ObjectStore {
    */
   peek(key: string): { bytes: Buffer; contentType: string } | undefined {
     return this.objects.get(key);
+  }
+
+  async deleteObject(key: string): Promise<void> {
+    this.objects.delete(key);
   }
 }

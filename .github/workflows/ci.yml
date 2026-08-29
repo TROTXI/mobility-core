@@ -133,6 +133,10 @@ jobs:
           cache: pnpm
 
       - run: pnpm install --frozen-lockfile
+      # Ordering guard (#184): migrate.ts sorts on the full filename, so two
+      # migrations sharing a number run in alphabetical order of their
+      # description. Catch that before it silently decides a dependency.
+      - run: services/api/scripts/check-migration-prefixes.sh
       - run: pnpm --filter @trotxi/api run migrate
       # Idempotency: a second run must be a clean no-op.
       - run: pnpm --filter @trotxi/api run migrate

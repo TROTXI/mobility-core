@@ -2,6 +2,9 @@
 // InMemory (tests + zero-infra dev) and Postgres (real runs, see *.pg.ts).
 // The server picks one by DATABASE_URL. Copy this shape for new domain modules.
 
+/** Display name left behind after erasure — never a real person's name. */
+export const ANONYMISED_DISPLAY_NAME = 'Deleted user';
+
 export const USER_ROLES = ['commuter', 'driver', 'admin'] as const;
 export type UserRole = (typeof USER_ROLES)[number];
 
@@ -9,6 +12,11 @@ export type UserRole = (typeof USER_ROLES)[number];
 export interface User {
   id: string;
   displayName: string;
+  /** Set when the account was erased on request (#30); PII columns are cleared. */
+  deletedAt: Date | null;
+  /** Verified address from the social identity provider; null for pre-#182 rows. */
+  email: string | null;
+  /** E.164 normalised (+233…), captured from a successful Paystack charge. */
   phone: string | null;
   avatarUrl: string | null;
   role: UserRole;
@@ -18,6 +26,7 @@ export interface User {
 /** Fields needed to create a user; the rest default or are server-set. */
 export interface NewUser {
   displayName: string;
+  email?: string | null;
   phone?: string | null;
   /** Defaults to `commuter` when omitted. */
   role?: UserRole;
@@ -65,6 +74,32 @@ export interface UserRepository {
    * @returns the updated user, or null if not found.
    */
   setRole(id: string, role: UserRole): Promise<User | null>;
+  /**
+   * Fill in missing contact details without overwriting what we hold (#182).
+   *
+   * Only writes where the stored value is null, so a webhook never reverts a
+   * detail the rider edited.
+   *
+   * @param id - the user to backfill.
+   * @param contact - the contact details to fill in where missing.
+   * @param contact.email - verified email, or undefined to leave alone.
+   * @param contact.phone - E.164 phone, or undefined to leave alone.
+   * @returns the updated user, or null if not found.
+   */
+  backfillContact(
+    id: string,
+    contact: { email?: string | null; phone?: string | null },
+  ): Promise<User | null>;
+  /**
+   * Erase a user's personal data while keeping the row (#30).
+   *
+   * Not a DELETE: payments and both ledgers cascade off users, so removing the
+   * row would destroy the financial record. Idempotent.
+   *
+   * @param id - the user to erase.
+   * @returns the anonymised user, or null if not found.
+   */
+  anonymise(id: string): Promise<User | null>;
 }
 
 /** In-memory {@link UserRepository} for dev and unit tests. */
@@ -75,6 +110,8 @@ export class InMemoryUserRepository implements UserRepository {
     const user: User = {
       id: crypto.randomUUID(),
       displayName: input.displayName,
+      deletedAt: null,
+      email: input.email ?? null,
       phone: input.phone ?? null,
       avatarUrl: null,
       role: input.role ?? 'commuter',
@@ -108,6 +145,36 @@ export class InMemoryUserRepository implements UserRepository {
     const user = this.users.get(id);
     if (!user) return null;
     const updated = { ...user, role };
+    this.users.set(id, updated);
+    return updated;
+  }
+
+  async backfillContact(
+    id: string,
+    contact: { email?: string | null; phone?: string | null },
+  ): Promise<User | null> {
+    const user = this.users.get(id);
+    if (!user) return null;
+    const updated: User = {
+      ...user,
+      email: user.email ?? contact.email ?? null,
+      phone: user.phone ?? contact.phone ?? null,
+    };
+    this.users.set(id, updated);
+    return updated;
+  }
+
+  async anonymise(id: string): Promise<User | null> {
+    const user = this.users.get(id);
+    if (!user) return null;
+    const updated: User = {
+      ...user,
+      displayName: ANONYMISED_DISPLAY_NAME,
+      email: null,
+      phone: null,
+      avatarUrl: null,
+      deletedAt: user.deletedAt ?? new Date(),
+    };
     this.users.set(id, updated);
     return updated;
   }

@@ -24,7 +24,8 @@ new code ships.
 - The pipeline is **dormant** until the `DEPLOY_ENABLED` repo variable is
   `true` — flip it after the one-time setup below.
 - The production stage is **skipped** until `RENDER_PRODUCTION_SERVICE_ID` is
-  set (uncomment the production block in `render.yaml` when going live).
+  set. The production service is now declared in `render.yaml`; see
+  "Going live" below for the order things must happen in.
 
 ## One-time setup (≈15 minutes)
 
@@ -71,3 +72,77 @@ new code ships.
 - The same `Dockerfile` runs anywhere (Fly.io, Railway, ECS, Cloud Run):
   provide `DATABASE_URL` once a datastore lands; the container listens on
   `$PORT` (default 3000).
+
+## Going live
+
+The production service and its database are declared in `render.yaml`. Order
+matters — the service cannot resolve `DATABASE_URL` before the database exists.
+
+1. **Apply the blueprint.** Render creates `trotxi-db-production` and
+   `trotxi-api`. The service will not be reachable by CI yet.
+
+2. **Set every `sync: false` value** in the Render dashboard:
+
+   | Variable                                                                 | Notes                                                                                                                                             |
+   | ------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+   | `JWT_SECRET`                                                             | **Generate a fresh one** (`openssl rand -base64 48`). Never reuse staging's — a leaked staging secret must not be able to mint production tokens. |
+   | `PAYSTACK_SECRET_KEY`                                                    | The **live** key (`sk_live_…`). Staging's test key would accept payments that go nowhere and look like they worked.                               |
+   | `FIREBASE_SERVICE_ACCOUNT`                                               | The whole service-account JSON. Unset -> no push, so the daily ask never reaches anyone.                                                          |
+   | `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET` | Unset -> avatars are held in memory and lost on restart.                                                                                          |
+   | `METRICS_TOKEN`                                                          | Unset in production -> `/metrics` is disabled (404) rather than left open.                                                                        |
+   | `OTEL_EXPORTER_OTLP_ENDPOINT`, `OTEL_EXPORTER_OTLP_HEADERS`              | Grafana Cloud. Unset -> no tracing.                                                                                                               |
+   | `CORS_ORIGINS`                                                           | Set once the ops console has a production origin.                                                                                                 |
+
+   Everything else (`NODE_ENV`, `GOOGLE_CLIENT_ID`, `OTEL_SERVICE_NAME`,
+   `MAP_TILES_URL`) comes from the blueprint and needs no dashboard entry.
+
+3. **Migrate the production database once**, before any traffic:
+
+   ```bash
+   DATABASE_URL=<production-connection-string> pnpm --filter @trotxi/api run migrate
+   ```
+
+4. **Seed the corridors and set their fares.** Since #103 a route with no fare
+   in force cannot be subscribed to — `/payments/subscribe` returns
+   `409 not_priced`.
+
+   ```bash
+   JWT_SECRET=<production-secret> API_BASE_URL=https://<production-url> \
+     pnpm --filter @trotxi/api seed:staging
+   ```
+
+   The seed's fare is a **placeholder**. Replace it with the corridor's real
+   rate via `PUT /admin/routes/:id/fare`.
+
+5. **Set the GitHub repository variables** `RENDER_PRODUCTION_SERVICE_ID` and
+   `PRODUCTION_URL`. Until both exist the production stage is skipped; once
+   they do, it still waits for a manual approval in the `production`
+   environment.
+
+### Cron jobs are commented out
+
+Render has **no free tier for cron jobs** — they bill per minute with a ~$1/month
+minimum each, on `starter` as the smallest instance. Declared at `plan: free`,
+an apply fails on all seven and takes the rest of the blueprint with it.
+
+They stay commented until that cost is approved. The daily loop can be driven by
+hand in the meantime:
+
+```
+POST /admin/ask-dispatch       { travelDate, direction }
+POST /admin/resolve-defaults   { travelDate, direction }
+POST /admin/resolve-no-shows   { travelDate, direction }
+```
+
+To enable: uncomment, change every `plan: free` to `plan: starter`, apply.
+
+### Blueprint changes need an apply
+
+Render syncs blueprint-declared values (those with `value:` rather than
+`sync: false`) **only when the blueprint is applied**. Merging a change to
+`render.yaml` does not push it to a running service.
+
+This has already bitten once: `MAP_TILES_URL` shipped in #186 and staging
+served `mapTiles.url: null` for days, because the blueprint was never
+re-applied. If a config change does not appear, apply the blueprint before
+looking for a bug.

@@ -1,16 +1,13 @@
-// Admin/ops endpoints (#26). Operations manages the mobility fleet here rather
-// than via seed scripts: CRUD for routes/stops/vehicles/drivers/trips plus the
-// driver↔trip assignment that authorizes GPS reporting (#25). Every route is
-// gated by `requireRole('admin')` (401 unauth → 403 non-admin). Handlers call
-// repositories directly (no service layer yet) and 503 when a repo is unwired,
-// matching the rest of the API. Update bodies are partial; the repository merges
-// the patch over the existing row (see admin.schema.ts).
+// Admin/ops endpoints (#26): fleet CRUD plus driver↔trip assignment. Every
+// route is requireRole('admin'); handlers hit repositories directly and 503
+// when one is unwired. Update bodies are partial (see admin.schema.ts).
 
 import type { FastifyInstance } from 'fastify';
 import type { ZodTypeProvider } from 'fastify-type-provider-zod';
 import { z } from 'zod';
 import { errorResponseSchema } from '../../lib/schemas';
 import type { RateLimitConfig } from '../ratelimit/ratelimit.plugin';
+import type { ReservationRepository } from '../reservations/reservation.repository';
 import type { DriverRepository } from '../mobility/driver.repository';
 import type { RouteStopRepository } from '../mobility/route-stop.repository';
 import type { RouteRepository } from '../mobility/route.repository';
@@ -48,9 +45,7 @@ import {
   upsertFeatureFlagBodySchema,
 } from './admin.schema';
 
-// True when a repository error is a (Postgres-shaped) unique-constraint
-// violation — SQLSTATE 23505. The in-memory route-stop adapter throws the same
-// shape, so both paths map to a clean 409.
+// SQLSTATE 23505. The in-memory adapter throws the same shape, so both map to 409.
 function isUniqueViolation(err: unknown): boolean {
   return (err as { code?: string }).code === '23505';
 }
@@ -65,8 +60,7 @@ const routeStopResponseSchema = z.object({
   createdAt: z.date(),
 });
 
-// Shared error-response maps. Spread into a route's `response` — this only
-// affects the (error) response shapes, never request body/param inference.
+// Spread into a route's `response`; affects error shapes only.
 const authErrors = {
   401: errorResponseSchema,
   403: errorResponseSchema,
@@ -87,6 +81,8 @@ export interface AdminDeps {
   /** Feature flags + force-update floor (#27), managed under /admin/flags + /admin/min-versions. */
   featureFlags?: FeatureFlagRepository;
   minVersions?: MinVersionRepository;
+  /** Reservations, to refuse a bus smaller than the confirmed seats (#161). */
+  reservations?: ReservationRepository;
   rateLimit: RateLimitConfig;
 }
 
@@ -101,9 +97,7 @@ export async function adminRoutes(app: FastifyInstance, opts: AdminDeps): Promis
   const UNAVAILABLE = { error: 'unavailable', message: 'Admin ops are not configured' };
   const notFound = (message: string) => ({ error: 'not_found', message });
 
-  // authenticate → rate limit → requireRole('admin'). Throttle BEFORE the role
-  // check (house convention, cf. boarding #93) — otherwise non-admin tokens
-  // could hammer 403s without ever being rate limited. Reused by every route.
+  // Throttle BEFORE the role check, or non-admin tokens hammer 403s unlimited.
   const adminOnly = [
     app.authenticate,
     app.rateLimit({ ...opts.rateLimit, by: 'user' }),
@@ -339,9 +333,7 @@ export async function adminRoutes(app: FastifyInstance, opts: AdminDeps): Promis
     },
     async (request, reply) => {
       if (!opts.drivers) return reply.code(503).send(UNAVAILABLE);
-      // Validate the linked auth principal exists — clean 404 instead of a DB
-      // FK violation (consistent with trip create). users is only needed when a
-      // link is actually being made.
+      // Clean 404 rather than a DB FK violation.
       if (request.body.userId) {
         if (!opts.users) return reply.code(503).send(UNAVAILABLE);
         if (!(await opts.users.findById(request.body.userId))) {
@@ -414,8 +406,7 @@ export async function adminRoutes(app: FastifyInstance, opts: AdminDeps): Promis
         return reply.code(503).send(UNAVAILABLE);
       }
       const { routeId, vehicleId, assignedDriverId, status, scheduledAt } = request.body;
-      // Validate FK targets up front so the client gets a clean 404 rather than
-      // a DB constraint error (and so it works in the in-memory adapter too).
+      // Clean 404 rather than a DB constraint error; also works in-memory.
       if (!(await opts.routes.findById(routeId))) {
         return reply.code(404).send(notFound('Route not found'));
       }
@@ -492,7 +483,7 @@ export async function adminRoutes(app: FastifyInstance, opts: AdminDeps): Promis
         security: [{ bearerAuth: [] }],
         params: idParam,
         body: assignTripBodySchema,
-        response: { 200: tripResponseSchema, ...authErrorsNF },
+        response: { 200: tripResponseSchema, 409: errorResponseSchema, ...authErrorsNF },
       },
       preHandler: adminOnly,
     },
@@ -501,11 +492,24 @@ export async function adminRoutes(app: FastifyInstance, opts: AdminDeps): Promis
         return reply.code(503).send(UNAVAILABLE);
       }
       const { vehicleId, assignedDriverId } = request.body;
-      if (vehicleId && !(await opts.vehicles.findById(vehicleId))) {
+      const vehicle = vehicleId ? await opts.vehicles.findById(vehicleId) : null;
+      if (vehicleId && !vehicle) {
         return reply.code(404).send(notFound('Vehicle not found'));
       }
       if (assignedDriverId && !(await opts.drivers.findById(assignedDriverId))) {
         return reply.code(404).send(notFound('Driver not found'));
+      }
+
+      // Refuse a bus smaller than the confirmed seats (#161) — otherwise riders
+      // with valid reservations discover it at boarding. Bigger is always fine.
+      if (vehicle && vehicle.capacity > 0 && opts.reservations) {
+        const taken = await opts.reservations.countSeatsTaken(request.params.id);
+        if (taken > vehicle.capacity) {
+          return reply.code(409).send({
+            error: 'capacity_too_small',
+            message: `${vehicle.registration} seats ${vehicle.capacity}, but ${taken} riders are already confirmed on this trip`,
+          });
+        }
       }
       const updated = await opts.trips.update(request.params.id, { vehicleId, assignedDriverId });
       if (!updated) return reply.code(404).send(notFound('Trip not found'));

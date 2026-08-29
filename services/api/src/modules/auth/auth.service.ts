@@ -1,13 +1,10 @@
-// AuthService — the first service-layer service (ADR-0009 layering: routes ->
-// services -> repositories). It owns the sign-in/refresh/logout *business logic*
-// and orchestrates the repos + JWT + verifier; the routes stay thin.
+// AuthService — sign-in/refresh/logout, orchestrating the repos + JWT +
+// verifier. Reuse detection (#83): replaying an already-rotated refresh token
+// revokes every session for the user.
 //
-// Not wrapped in a DB transaction yet: on a concurrent *first* sign-in for a new
-// identity the loser may leave an orphan user row (harmless — never linked), and
-// refresh rotation revokes-then-creates (a crash mid-way just forces re-login).
-// Transactional sign-in is slice-3 hardening. Refresh-token reuse detection is
-// implemented (#83): replaying an already-rotated token revokes every session
-// for the user.
+// Not yet transactional: a concurrent FIRST sign-in can leave an orphan user row
+// (harmless — never linked), and rotation revokes-then-creates, so a crash
+// mid-way just forces re-login.
 
 import type { JwtService } from './jwt';
 import type { AuthIdentityRepository } from './auth-identity.repository';
@@ -31,6 +28,12 @@ export interface AuthTokens {
 /** A successful sign-in: the user plus their fresh token pair. */
 export interface AuthResult extends AuthTokens {
   user: User;
+  /**
+   * True only on the sign-in that created the account (#182). Lets callers
+   * branch on first contact — welcome flows, onboarding, activation metrics —
+   * without a second round trip to guess from `createdAt`.
+   */
+  isNewUser: boolean;
 }
 
 /** Collaborators for {@link AuthService}, injected at app wiring (app.ts). */
@@ -78,9 +81,9 @@ export class AuthService {
       throw new SignInNotConfiguredError('Sign-in is not configured');
     }
     const identity = await this.deps.verifier.verify(idToken); // throws if invalid
-    const user = await this.findOrCreateUser(identity);
+    const { user, isNewUser } = await this.findOrCreateUser(identity);
     const tokens = await this.issueTokens(user);
-    return { user, ...tokens };
+    return { user, isNewUser, ...tokens };
   }
 
   /**
@@ -183,17 +186,25 @@ export class AuthService {
    * @param identity - the verified provider identity.
    * @returns the existing or newly created user.
    */
-  private async findOrCreateUser(identity: VerifiedIdentity): Promise<User> {
+  private async findOrCreateUser(
+    identity: VerifiedIdentity,
+  ): Promise<{ user: User; isNewUser: boolean }> {
     const existing = await this.deps.authIdentities.findByProvider(
       identity.provider,
       identity.providerId,
     );
     if (existing) {
       const user = await this.deps.users.findById(existing.userId);
-      if (user) return user;
+      // Backfill the verified email for anyone who signed up before #182, so
+      // existing riders become reachable on their next sign-in rather than
+      // staying permanently uncontactable. Never overwrites a stored value.
+      if (user) return { user: await this.backfillEmail(user, identity), isNewUser: false };
     }
 
-    const user = await this.deps.users.create({ displayName: identity.displayName ?? 'New User' });
+    const user = await this.deps.users.create({
+      displayName: identity.displayName ?? 'New User',
+      email: identity.email,
+    });
     try {
       await this.deps.authIdentities.create({
         userId: user.id,
@@ -208,10 +219,23 @@ export class AuthService {
           identity.providerId,
         );
         const user2 = winner && (await this.deps.users.findById(winner.userId));
-        if (user2) return user2;
+        if (user2) return { user: user2, isNewUser: false };
       }
       throw err;
     }
-    return user;
+    return { user, isNewUser: true };
+  }
+
+  /**
+   * Fill in a missing email from the verified identity. A no-op when the user
+   * already has one or the provider did not supply one.
+   *
+   * @param user - the signing-in user.
+   * @param identity - the verified provider identity.
+   * @returns the user, updated when a backfill happened.
+   */
+  private async backfillEmail(user: User, identity: VerifiedIdentity): Promise<User> {
+    if (user.email || !identity.email) return user;
+    return (await this.deps.users.backfillContact(user.id, { email: identity.email })) ?? user;
   }
 }

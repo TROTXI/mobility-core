@@ -15,10 +15,13 @@ const bearer = (t: string) => ({ authorization: `Bearer ${t}` });
 const adminToken = () => jwt.signAccessToken({ userId: 'admin-1', role: 'admin' });
 const commuterToken = () => jwt.signAccessToken({ userId: 'rider-1', role: 'commuter' });
 
+const TILES_URL = 'https://pub-test.r2.dev/ghana.pmtiles';
+const ATTRIBUTION = '© OpenStreetMap contributors · © OpenMapTiles';
+
 async function flagsApp() {
   const featureFlags = new InMemoryFeatureFlagRepository();
   const minVersions = new InMemoryMinVersionRepository();
-  const app = await buildApp({ auth, featureFlags, minVersions });
+  const app = await buildApp({ auth, featureFlags, minVersions, mapTilesUrl: TILES_URL });
   return { app, featureFlags, minVersions };
 }
 
@@ -30,6 +33,7 @@ describe('GET /flags (public)', () => {
     expect(res.json()).toEqual({
       flags: [],
       minSupportedVersion: { ios: null, android: null },
+      mapTiles: { url: TILES_URL, attribution: ATTRIBUTION },
     });
   });
 
@@ -40,7 +44,29 @@ describe('GET /flags (public)', () => {
     expect(res.json()).toEqual({
       flags: [],
       minSupportedVersion: { ios: null, android: null },
+      // No tiles configured -> null, and the client renders without a basemap
+      // rather than failing on a URL that was never set.
+      mapTiles: { url: null, attribution: ATTRIBUTION },
     });
+  });
+
+  it('serves the basemap URL so clients do not compile it in (#178)', async () => {
+    // The r2.dev hostname carries a generated hash and is not portable. Serving
+    // it here means moving to a custom domain is a config change rather than a
+    // new build of the rider app, the driver app and the console.
+    const { app } = await flagsApp();
+    const res = await app.inject({ method: 'GET', url: '/flags' });
+    expect(res.json().mapTiles.url).toBe(TILES_URL);
+  });
+
+  it('always returns attribution, even with no tiles configured', async () => {
+    // Attribution is a licence condition, not decoration: ODbL for the OSM data
+    // and CC-BY for the OpenMapTiles schema. It travels with the URL so a client
+    // cannot render a map without having been handed the notice.
+    const app = await buildApp({ auth });
+    const res = await app.inject({ method: 'GET', url: '/flags' });
+    expect(res.json().mapTiles.attribution).toContain('OpenStreetMap');
+    expect(res.json().mapTiles.attribution).toContain('OpenMapTiles');
   });
 
   it('returns the flag set (slim shape) and per-platform min versions', async () => {

@@ -44,4 +44,8 @@ export class PgAuthIdentityRepository implements AuthIdentityRepository {
     );
     return toAuthIdentity(rows[0]!);
   }
+
+  async deleteForUser(userId: string): Promise<void> {
+    await this.pool.query('DELETE FROM auth_identity WHERE user_id = $1', [userId]);
+  }
 }

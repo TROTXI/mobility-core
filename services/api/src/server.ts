@@ -42,6 +42,22 @@ import {
 } from './modules/mobility/trip-position.repository';
 import { PgTripPositionRepository } from './modules/mobility/trip-position.repository.pg';
 import {
+  InMemoryRouteGeometryRepository,
+  type RouteGeometryRepository,
+} from './modules/mobility/route-geometry.repository';
+import {
+  InMemoryPricingRepository,
+  type PricingRepository,
+} from './modules/payments/pricing.repository';
+import { PgPricingRepository } from './modules/payments/pricing.repository.pg';
+import { PgRouteGeometryRepository } from './modules/mobility/route-geometry.repository.pg';
+import { RouteLearningService } from './modules/mobility/route-learning.service';
+import {
+  InMemorySegmentSpeedRepository,
+  type SegmentSpeedRepository,
+} from './modules/mobility/segment-speed.repository';
+import { PgSegmentSpeedRepository } from './modules/mobility/segment-speed.repository.pg';
+import {
   InMemoryVehicleRepository,
   type VehicleRepository,
 } from './modules/mobility/vehicle.repository';
@@ -79,11 +95,7 @@ import {
 import { PgPaymentRepository } from './modules/payments/payment.repository.pg';
 import { FakePaystackClient, type PaystackClient } from './modules/payments/paystack.client';
 import { PaystackHttpClient } from './modules/payments/paystack.client.live';
-import {
-  PaymentsService,
-  PLACEHOLDER_RIDES_PER_PERIOD,
-  SUBSCRIPTION_FEES_PESEWAS,
-} from './modules/payments/payments.service';
+import { PaymentsService, PLACEHOLDER_RIDES_PER_PERIOD } from './modules/payments/payments.service';
 import {
   InMemoryEntitlementLedgerRepository,
   type EntitlementLedgerRepository,
@@ -99,6 +111,7 @@ import {
   type ReservationRepository,
 } from './modules/reservations/reservation.repository';
 import { PgReservationRepository } from './modules/reservations/reservation.repository.pg';
+import { AccountDeletionService } from './modules/users/account-deletion.service';
 import { InMemoryUserRepository, type UserRepository } from './modules/users/user.repository';
 import { PgUserRepository } from './modules/users/user.repository.pg';
 import {
@@ -158,6 +171,9 @@ async function main(): Promise<void> {
   let routeStops: RouteStopRepository;
   let trips: TripRepository;
   let tripPositions: TripPositionRepository;
+  let pricing: PricingRepository;
+  let routeGeometry: RouteGeometryRepository;
+  let segmentSpeeds: SegmentSpeedRepository;
   let vehicles: VehicleRepository;
   let drivers: DriverRepository;
   let sessions: SessionRepository;
@@ -179,6 +195,9 @@ async function main(): Promise<void> {
     routeStops = new PgRouteStopRepository(pool);
     trips = new PgTripRepository(pool);
     tripPositions = new PgTripPositionRepository(pool);
+    pricing = new PgPricingRepository(pool);
+    routeGeometry = new PgRouteGeometryRepository(pool);
+    segmentSpeeds = new PgSegmentSpeedRepository(pool);
     vehicles = new PgVehicleRepository(pool);
     drivers = new PgDriverRepository(pool);
     sessions = new PgSessionRepository(pool);
@@ -200,6 +219,9 @@ async function main(): Promise<void> {
     routeStops = new InMemoryRouteStopRepository();
     trips = new InMemoryTripRepository();
     tripPositions = new InMemoryTripPositionRepository();
+    pricing = new InMemoryPricingRepository();
+    routeGeometry = new InMemoryRouteGeometryRepository();
+    segmentSpeeds = new InMemorySegmentSpeedRepository();
     vehicles = new InMemoryVehicleRepository();
     drivers = new InMemoryDriverRepository();
     sessions = new InMemorySessionRepository();
@@ -262,12 +284,23 @@ async function main(): Promise<void> {
     console.warn('PAYSTACK_SECRET_KEY not set — payments disabled (POST /payments/* returns 503).');
   }
 
+  // Account erasure (#30): anonymise across every store that holds personal
+  // data — sessions, devices, provider links, the avatar object, and the row.
+  const accountDeletion = new AccountDeletionService({
+    users,
+    sessions,
+    authIdentities,
+    devices: deviceTokens,
+    objectStore,
+  });
+
   const paymentsService = new PaymentsService({
     payments,
     subscriptions,
     entitlements,
+    users,
     paystack,
-    subscriptionFees: SUBSCRIPTION_FEES_PESEWAS,
+    pricing,
     ridesPerPeriod: PLACEHOLDER_RIDES_PER_PERIOD,
   });
 
@@ -306,8 +339,20 @@ async function main(): Promise<void> {
     windowSeconds: env.RATE_LIMIT_WINDOW_SECONDS,
   };
 
+  // Route learning (#179, #181): reads back completed runs' GPS traces to derive
+  // the corridor's real path and its observed per-segment speeds.
+  const routeLearning = new RouteLearningService({
+    trips,
+    tripPositions,
+    routeStops,
+    stops,
+    geometry: routeGeometry,
+    segmentSpeeds,
+  });
+
   const app = await buildApp({
     users,
+    accountDeletion,
     subscriptions,
     routes,
     stops,
@@ -328,6 +373,11 @@ async function main(): Promise<void> {
     minVersions,
     kv,
     objectStore,
+    mapTilesUrl: env.MAP_TILES_URL,
+    segmentSpeeds,
+    routeLearning,
+    pricing,
+    scanEvents,
     isReady,
     auth,
     rateLimit,

@@ -91,6 +91,7 @@ describe('AuthService.signIn', () => {
     const authIdentities: AuthIdentityRepository = {
       findByProvider: async (provider, providerId) =>
         raced ? { id: 'x', userId: winner.id, provider, providerId, createdAt: new Date() } : null,
+      deleteForUser: async () => {},
       create: async () => {
         raced = true; // the "winner" created it between our check and our insert
         throw Object.assign(new Error('duplicate'), { code: '23505' });
@@ -112,6 +113,7 @@ describe('AuthService.signIn', () => {
   it('propagates non-unique errors from identity creation', async () => {
     const authIdentities: AuthIdentityRepository = {
       findByProvider: async () => null,
+      deleteForUser: async () => {},
       create: async () => {
         throw new Error('db down');
       },

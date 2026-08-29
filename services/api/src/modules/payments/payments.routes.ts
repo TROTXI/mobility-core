@@ -16,6 +16,7 @@ import {
 } from './payments.schema';
 import {
   InvalidWebhookError,
+  NotPricedError,
   PaymentsNotConfiguredError,
   type PaymentsService,
 } from './payments.service';
@@ -52,6 +53,7 @@ export async function paymentRoutes(
         response: {
           200: checkoutResponseSchema,
           401: errorResponseSchema,
+          409: errorResponseSchema,
           429: errorResponseSchema,
           503: errorResponseSchema,
         },
@@ -68,6 +70,12 @@ export async function paymentRoutes(
         );
       } catch (err) {
         if (err instanceof PaymentsNotConfiguredError) return reply.code(503).send(UNAVAILABLE);
+        // 409, not 500: the request is well-formed, the corridor simply has no
+        // fare set yet. Deliberately not falling back to a default — charging a
+        // number nobody chose is what #103 exists to prevent.
+        if (err instanceof NotPricedError) {
+          return reply.code(409).send({ error: 'not_priced', message: err.message });
+        }
         throw err;
       }
     },

@@ -1,14 +1,16 @@
 // Deterministic ETA-to-stop (#25, system-design §7). Pure functions — no clock,
-// no I/O, no external routing/traffic service — so the same inputs always yield
-// the same ETAs and the whole thing is trivially unit-testable.
+// no I/O, no routing vendor — so the same inputs always yield the same ETAs.
 //
-// Model: the route's ordered stops form a polyline. We project the vehicle's
-// latest fix onto that polyline to get "distance travelled along the route", then
-// for every stop still ahead, remaining distance = cumulative(stop) − travelled,
-// and ETA = remaining / a fixed assumed speed. The assumed speed is a pilot
-// placeholder; a live speed/traffic model arrives with the telemetry path (ADR-0006).
+// The route's stops form a polyline. Project the vehicle's latest fix onto it to
+// get distance travelled, then for each stop ahead:
+// remaining = cumulative(stop) − travelled, ETA = remaining / segment speed.
 
-/** Assumed average vehicle speed for the pilot ETA (urban trotro ~20 km/h). */
+/**
+ * Cold-start speed, used for any segment we have not observed yet (urban trotro
+ * ~20 km/h). Every segment starts here and is superseded by its own measured
+ * median as runs accumulate (#181) — so a brand-new corridor still produces an
+ * ETA on day one, and gets more accurate without anyone doing anything.
+ */
 export const ASSUMED_SPEED_KPH = 20;
 const ASSUMED_SPEED_MS = (ASSUMED_SPEED_KPH * 1000) / 3600;
 
@@ -30,6 +32,24 @@ export interface RouteStopPoint extends LatLng {
   name: string;
   seq: number;
 }
+
+/**
+ * Observed median speed for one segment of a route, from completed runs.
+ * Keyed by the seq of the segment's FIRST stop: `fromSeq` 0 is the stretch
+ * between stop 0 and stop 1.
+ */
+export interface SegmentSpeed {
+  fromSeq: number;
+  metresPerSecond: number;
+  /** How many runs the median came from; low counts are ignored (see below). */
+  sampleCount: number;
+}
+
+/**
+ * Below this many observations a median is noise, not signal — one unusual run
+ * would swing the ETA. Segments under it keep the cold-start speed.
+ */
+export const MIN_SAMPLES_FOR_OBSERVED_SPEED = 3;
 
 /** A stop still ahead of the vehicle, with distance + ETA along the route. */
 export interface StopEta {
@@ -79,10 +99,16 @@ function toPlane(p: LatLng, cosLatRef: number): { x: number; y: number } {
  *
  * @param position - the vehicle's latest fix.
  * @param stops - the route's stops in seq order (as returned by the route-stop repo).
+ * @param speeds - observed median speeds by segment index (#181). Omit, or leave
+ *   a segment out, to charge that stretch the cold-start speed.
  * @returns upcoming stops in order, each with remaining distance + ETA seconds.
  *   Empty when there are fewer than two stops or the vehicle is past the last stop.
  */
-export function computeEtas(position: LatLng, stops: RouteStopPoint[]): StopEta[] {
+export function computeEtas(
+  position: LatLng,
+  stops: RouteStopPoint[],
+  speeds?: Map<number, SegmentSpeed>,
+): StopEta[] {
   // Need at least one segment to define "progress along the route".
   if (stops.length < 2) return [];
 
@@ -131,16 +157,39 @@ export function computeEtas(position: LatLng, stops: RouteStopPoint[]): StopEta[
   if (bestSeg === lastSeg && bestTRaw > 1) tEff = bestTRaw;
   const travelled = cumulative[bestSeg]! + tEff * segLen[bestSeg]!;
 
+  // Speed per segment: the observed median where we have enough runs, the
+  // cold-start constant everywhere else. Building the lookup once keeps the
+  // per-stop loop linear.
+  const speedForSegment = (index: number): number => {
+    const observed = speeds?.get(index);
+    if (observed && observed.sampleCount >= MIN_SAMPLES_FOR_OBSERVED_SPEED) {
+      return observed.metresPerSecond;
+    }
+    return ASSUMED_SPEED_MS;
+  };
+
   const etas: StopEta[] = [];
   for (let j = 0; j < stops.length; j++) {
     const remaining = cumulative[j]! - travelled;
     if (remaining <= REACHED_EPS_M) continue; // reached or behind → not upcoming
+
+    // Walk the segments between the vehicle and this stop, charging each its own
+    // speed. Summing per segment rather than dividing the total distance by one
+    // number is the whole point: a run is fast on the highway and slow through
+    // the junction, and an average of the two is wrong for both.
+    let seconds = 0;
+    for (let seg = bestSeg; seg < j; seg++) {
+      const segmentRemaining = seg === bestSeg ? cumulative[seg + 1]! - travelled : segLen[seg]!;
+      if (segmentRemaining <= 0) continue;
+      seconds += segmentRemaining / speedForSegment(seg);
+    }
+
     etas.push({
       stopId: stops[j]!.stopId,
       seq: stops[j]!.seq,
       name: stops[j]!.name,
       distanceMeters: Math.round(remaining),
-      etaSeconds: Math.round(remaining / ASSUMED_SPEED_MS),
+      etaSeconds: Math.round(seconds),
     });
   }
   return etas;

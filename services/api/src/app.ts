@@ -11,6 +11,16 @@ import {
 import { z } from 'zod';
 import { InMemoryKvStore, type KvStore } from './kv/kv.store';
 import { FakeObjectStore, type ObjectStore } from './storage/object-store';
+import { RenewalService } from './modules/subscriptions/renewal.service';
+import { renewalRoutes } from './modules/subscriptions/renewal.routes';
+import type { PricingRepository } from './modules/payments/pricing.repository';
+import { pricingRoutes } from './modules/payments/pricing.routes';
+import type { AccountDeletionService } from './modules/users/account-deletion.service';
+import type { RouteLearningService } from './modules/mobility/route-learning.service';
+import { routeLearningRoutes } from './modules/mobility/route-learning.routes';
+import { TripLifecycleService } from './modules/mobility/trip-lifecycle.service';
+import { tripLifecycleRoutes } from './modules/mobility/trip-lifecycle.routes';
+import type { SegmentSpeedRepository } from './modules/mobility/segment-speed.repository';
 import { userRoutes } from './modules/users/users.routes';
 import {
   InMemoryDeviceTokenRepository,
@@ -20,6 +30,7 @@ import { deviceRoutes } from './modules/devices/devices.routes';
 import { BoardingService } from './modules/boarding/boarding.service';
 import { ManifestService } from './modules/boarding/manifest.service';
 import { boardingRoutes } from './modules/boarding/boarding.routes';
+import type { ScanEventRepository } from './modules/boarding/scan-event.repository';
 import { InMemoryScanEventRepository } from './modules/boarding/scan-event.repository';
 import { metricsPlugin, type MetricsOptions } from './modules/metrics/metrics.plugin';
 import { entitlementRoutes } from './modules/entitlements/entitlements.routes';
@@ -88,6 +99,8 @@ export interface AppDeps {
   isReady?: () => Promise<boolean>;
   /** Selected by DATABASE_URL (in-memory vs Postgres). Consumed by routes/services. */
   users?: UserRepository;
+  /** Account erasure (#30). Omitted -> DELETE /me returns 503. */
+  accountDeletion?: AccountDeletionService;
   /** Selected by DATABASE_URL (in-memory vs Postgres). Consumed by routes/services. */
   subscriptions?: SubscriptionRepository;
   /** Selected by DATABASE_URL (in-memory vs Postgres). Mobility domain. */
@@ -133,6 +146,20 @@ export interface AppDeps {
   rateLimit?: RateLimitConfig;
   /** CORS origin allowlist (from CORS_ORIGINS). Empty/unset -> reflect any origin. */
   corsOrigins?: string[];
+  /** Public PMTiles basemap URL, served to clients on GET /flags (#178). */
+  mapTilesUrl?: string;
+  /** Observed segment speeds (#181). Absent -> ETAs use the cold-start speed. */
+  segmentSpeeds?: SegmentSpeedRepository;
+  /** Derives geometry + speeds from completed runs (#179, #181). */
+  routeLearning?: RouteLearningService;
+  /** Corridor fares + plan levers (#103); admin-editable, never constants. */
+  pricing?: PricingRepository;
+  /**
+   * Boarding audit trail. Shared between the boarding service (which writes) and
+   * the run summary (which reads) — two instances would leave every summary
+   * reporting zero boardings while scans succeeded.
+   */
+  scanEvents?: ScanEventRepository;
   /** Prometheus /metrics exposure. Defaults to unprotected (dev/tests). */
   metrics?: Partial<MetricsOptions>;
   logger?: boolean;
@@ -144,9 +171,8 @@ export interface AppDeps {
  * so hosted environments report their real commit with no build wiring;
  * `GIT_SHA` overrides it for images built elsewhere (CI, local docker).
  *
- * Empty values are treated as absent: the Dockerfile declares `ARG GIT_SHA=""`,
- * so an unstamped image bakes in an empty string that `??` would otherwise
- * prefer over the platform value.
+ * Empty is treated as absent: an unstamped image bakes in `GIT_SHA=""`, which
+ * `??` would otherwise prefer over the platform value.
  *
  * @returns the deployed commit, or `dev` when nothing is stamped.
  */
@@ -253,6 +279,7 @@ export async function buildApp(deps: AppDeps = {}): Promise<FastifyInstance> {
     users,
     objectStore,
     rateLimit: deps.rateLimit ?? DEFAULT_RATE_LIMIT,
+    accountDeletion: deps.accountDeletion,
   });
   await app.register(deviceRoutes, {
     deviceTokens: deps.deviceTokens ?? new InMemoryDeviceTokenRepository(),
@@ -266,6 +293,7 @@ export async function buildApp(deps: AppDeps = {}): Promise<FastifyInstance> {
     entitlements,
     credits,
     rateLimit: deps.rateLimit ?? DEFAULT_RATE_LIMIT,
+    subscriptions: deps.subscriptions,
   });
   // Credit conversion (E5): the month-end job. Only wired when a subscription
   // store is available (the route 503s otherwise), since it iterates active subs.
@@ -283,6 +311,8 @@ export async function buildApp(deps: AppDeps = {}): Promise<FastifyInstance> {
   await app.register(reservationRoutes, {
     reservations,
     secret: authConfig.secret,
+    trips: deps.trips,
+    vehicles: deps.vehicles,
     rateLimit: deps.rateLimit ?? DEFAULT_RATE_LIMIT,
   });
   // Ask-dispatch (E3): only wired when trips + subscriptions are available (the
@@ -297,15 +327,17 @@ export async function buildApp(deps: AppDeps = {}): Promise<FastifyInstance> {
             subscriptions: deps.subscriptions,
             reservations,
             notifier,
+            vehicles: deps.vehicles,
           })
         : undefined,
     rateLimit: deps.rateLimit ?? DEFAULT_RATE_LIMIT,
   });
+  const scanEvents = deps.scanEvents ?? new InMemoryScanEventRepository();
   await app.register(boardingRoutes, {
     boardingService:
       deps.boardingService ??
       new BoardingService({
-        scanEvents: new InMemoryScanEventRepository(),
+        scanEvents,
         kv,
         reservations,
         entitlements,
@@ -332,7 +364,36 @@ export async function buildApp(deps: AppDeps = {}): Promise<FastifyInstance> {
     routeStops: deps.routeStops,
     stops: deps.stops,
     tripPositions: deps.tripPositions ?? new InMemoryTripPositionRepository(),
+    segmentSpeeds: deps.segmentSpeeds,
     kv,
+    rateLimit: deps.rateLimit ?? DEFAULT_RATE_LIMIT,
+  });
+  await app.register(renewalRoutes, {
+    renewal: deps.subscriptions
+      ? new RenewalService({ subscriptions: deps.subscriptions })
+      : undefined,
+    rateLimit: deps.rateLimit ?? DEFAULT_RATE_LIMIT,
+  });
+  await app.register(pricingRoutes, {
+    pricing: deps.pricing,
+    rateLimit: deps.rateLimit ?? DEFAULT_RATE_LIMIT,
+  });
+  // Driver-owned lifecycle (#163). Needs the full set: trips to transition,
+  // drivers to authorize, reservations + scan events for the run summary.
+  await app.register(tripLifecycleRoutes, {
+    lifecycle:
+      deps.trips && deps.drivers
+        ? new TripLifecycleService({
+            trips: deps.trips,
+            drivers: deps.drivers,
+            reservations,
+            scanEvents,
+          })
+        : undefined,
+    rateLimit: deps.rateLimit ?? DEFAULT_RATE_LIMIT,
+  });
+  await app.register(routeLearningRoutes, {
+    routeLearning: deps.routeLearning,
     rateLimit: deps.rateLimit ?? DEFAULT_RATE_LIMIT,
   });
   await app.register(adminRoutes, {
@@ -346,10 +407,12 @@ export async function buildApp(deps: AppDeps = {}): Promise<FastifyInstance> {
     featureFlags: deps.featureFlags,
     minVersions: deps.minVersions,
     rateLimit: deps.rateLimit ?? DEFAULT_RATE_LIMIT,
+    reservations,
   });
   await app.register(flagsRoutes, {
     featureFlags: deps.featureFlags,
     minVersions: deps.minVersions,
+    mapTilesUrl: deps.mapTilesUrl,
   });
 
   r.get(

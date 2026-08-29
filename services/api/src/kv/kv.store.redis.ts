@@ -4,6 +4,16 @@
 import { Redis } from 'ioredis';
 import type { KvStore } from './kv.store';
 
+// INCR plus a conditional EXPIRE, evaluated server-side so the pair cannot be
+// torn apart by a dropped connection. Returns the post-increment count.
+const INCREMENT_WITH_TTL = `
+  local count = redis.call('INCR', KEYS[1])
+  if count == 1 then
+    redis.call('EXPIRE', KEYS[1], ARGV[1])
+  end
+  return count
+`;
+
 export class RedisKvStore implements KvStore {
   private readonly redis: Redis;
 
@@ -31,11 +41,16 @@ export class RedisKvStore implements KvStore {
   }
 
   async increment(key: string, ttlSeconds: number): Promise<number> {
-    const count = await this.redis.incr(key);
-    // Set the expiry only on first creation so the window doesn't slide.
-    if (count === 1) {
-      await this.redis.expire(key, ttlSeconds);
-    }
+    // One atomic operation, not INCR-then-EXPIRE (#154). Split across two round
+    // trips, a connection drop between them leaves the key with NO TTL: the
+    // counter climbs forever, `count === 1` never recurs so the expiry is never
+    // set again, and that subject is permanently 429'd until someone deletes the
+    // key by hand. Low probability, but the failure mode is a locked-out rider
+    // with no alert and nothing in the logs to explain it.
+    //
+    // Fixed-window semantics are unchanged: the TTL is still set only when the
+    // counter is new, so the window does not slide on each request.
+    const count = (await this.redis.eval(INCREMENT_WITH_TTL, 1, key, String(ttlSeconds))) as number;
     return count;
   }
 

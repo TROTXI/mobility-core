@@ -13,6 +13,12 @@ interface SubscriptionRow {
   plan: SubscriptionPlan;
   status: SubscriptionStatus;
   route_id: string | null;
+  price_pesewas: number | null;
+  rides_granted: number | null;
+  fare_pesewas: number | null;
+  credit_pesewas_per_ride: number | null;
+  period_start: Date | null;
+  period_end: Date | null;
   created_at: Date;
 }
 
@@ -23,6 +29,12 @@ function toSubscription(row: SubscriptionRow): Subscription {
     plan: row.plan,
     status: row.status,
     routeId: row.route_id,
+    pricePesewas: row.price_pesewas,
+    ridesGranted: row.rides_granted,
+    farePesewas: row.fare_pesewas,
+    creditPesewasPerRide: row.credit_pesewas_per_ride,
+    periodStart: row.period_start,
+    periodEnd: row.period_end,
     createdAt: row.created_at,
   };
 }
@@ -33,10 +45,22 @@ export class PgSubscriptionRepository implements SubscriptionRepository {
   /** Creates a new subscription for a user with the given plan + route. Status defaults to 'active'. */
   async create(input: NewSubscription): Promise<Subscription> {
     const { rows } = await this.pool.query<SubscriptionRow>(
-      `INSERT INTO subscriptions (user_id, plan, route_id)
-       VALUES ($1, $2, $3)
+      `INSERT INTO subscriptions (user_id, plan, route_id,
+                                  price_pesewas, rides_granted, fare_pesewas, credit_pesewas_per_ride,
+                                  period_start, period_end)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
        RETURNING *`,
-      [input.userId, input.plan, input.routeId ?? null],
+      [
+        input.userId,
+        input.plan,
+        input.routeId ?? null,
+        input.pricePesewas ?? null,
+        input.ridesGranted ?? null,
+        input.farePesewas ?? null,
+        input.creditPesewasPerRide ?? null,
+        input.periodStart ?? null,
+        input.periodEnd ?? null,
+      ],
     );
     return toSubscription(rows[0]!);
   }
@@ -65,5 +89,32 @@ export class PgSubscriptionRepository implements SubscriptionRepository {
       `SELECT * FROM subscriptions WHERE status = 'active'`,
     );
     return rows.map(toSubscription);
+  }
+
+  async findEndedPeriods(now: Date): Promise<Subscription[]> {
+    const { rows } = await this.pool.query<SubscriptionRow>(
+      `SELECT * FROM subscriptions
+        WHERE status = 'active' AND period_end IS NOT NULL AND period_end <= $1
+        ORDER BY period_end ASC`,
+      [now],
+    );
+    return rows.map(toSubscription);
+  }
+
+  async rollPeriod(
+    id: string,
+    patch: { periodStart: Date; periodEnd: Date } | { status: 'expired' },
+  ): Promise<Subscription | null> {
+    const { rows } =
+      'status' in patch
+        ? await this.pool.query<SubscriptionRow>(
+            `UPDATE subscriptions SET status = 'expired' WHERE id = $1 RETURNING *`,
+            [id],
+          )
+        : await this.pool.query<SubscriptionRow>(
+            `UPDATE subscriptions SET period_start = $2, period_end = $3 WHERE id = $1 RETURNING *`,
+            [id, patch.periodStart, patch.periodEnd],
+          );
+    return rows[0] ? toSubscription(rows[0]) : null;
   }
 }

@@ -3,10 +3,7 @@
 // to travelling at the cutoff. Repository pattern (ADR-0009): interface +
 // InMemory here, Postgres in *.pg.ts.
 //
-// Scope of E3-core: the reservation lifecycle + the rider's confirm/decline API.
-// Deferred to when trips (#18) land: the scheduled ask-dispatch that seeds
-// `pending` rows for tomorrow's trips, the FCM push that asks, and capacity /
-// seat-release to the standby pool (E6).
+// Seat-release to the standby pool is still deferred (E6).
 
 /** Which leg of the day a reservation is for. */
 export type ReservationDirection = 'morning' | 'evening';
@@ -20,6 +17,13 @@ export type ReservationStatus =
   | 'no_show' // confirmed but didn't board — deducted (E4)
   | 'released' // freed to the standby pool (E6)
   | 'operator_cancelled'; // Trotxi couldn't run it — no deduction
+
+/**
+ * The statuses that occupy a seat (#161). A `no_show` deliberately does not:
+ * the rider has already been charged for it, and the vehicle no longer needs to
+ * hold it. `released` frees the seat to the standby pool (E6).
+ */
+export const SEAT_CONSUMING_STATUSES = ['reserved', 'boarded'] as const;
 
 /** How a reservation reached its current state. */
 export type ReservationSource = 'confirmation' | 'default' | 'standby';
@@ -75,6 +79,26 @@ export interface ReservationRepository {
    */
   respond(input: ReservationResponse): Promise<Reservation>;
   /**
+   * Confirm a seat, refusing when the trip is full (#161).
+   *
+   * Enforced here, not by the caller: a check-then-write races. The 18:00 push
+   * lands a corridor's answers within seconds, so two riders would both read
+   * "one free". Only the store can make count and write atomic.
+   *
+   * @param input - the rider's response.
+   * @param capacity - the assigned vehicle's seat count.
+   * @returns the reservation, or null when the trip is at capacity.
+   */
+  respondWithinCapacity(input: ReservationResponse, capacity: number): Promise<Reservation | null>;
+  /**
+   * Seats taken on a trip. Only `reserved` and `boarded` consume one — a
+   * no-show has already been charged for a seat the vehicle no longer holds.
+   *
+   * @param tripId - the trip.
+   * @returns how many seats are taken.
+   */
+  countSeatsTaken(tripId: string): Promise<number>;
+  /**
    * Seed a `pending` reservation (the scheduled ask-dispatch; #18). A duplicate
    * day+direction for the rider is left untouched.
    *
@@ -91,7 +115,11 @@ export interface ReservationRepository {
    * @param direction - morning or evening.
    * @returns how many reservations were defaulted.
    */
-  markDefaultTravelling(travelDate: string, direction: ReservationDirection): Promise<number>;
+  markDefaultTravelling(
+    travelDate: string,
+    direction: ReservationDirection,
+    capacityOf?: (tripId: string) => Promise<number | null>,
+  ): Promise<{ defaulted: number; skippedFull: number }>;
   /**
    * List a rider's reservations, newest travel day first.
    *
@@ -238,22 +266,58 @@ export class InMemoryReservationRepository implements ReservationRepository {
     return created;
   }
 
+  async countSeatsTaken(tripId: string): Promise<number> {
+    return this.rows.filter(
+      (r) =>
+        r.tripId === tripId && (SEAT_CONSUMING_STATUSES as readonly string[]).includes(r.status),
+    ).length;
+  }
+
+  async respondWithinCapacity(
+    input: ReservationResponse,
+    capacity: number,
+  ): Promise<Reservation | null> {
+    // Declining never needs a seat, so it is never refused.
+    if (input.travelling && input.tripId) {
+      const taken = await this.countSeatsTaken(input.tripId);
+      const existing = this.rows[this.index(input.userId, input.travelDate, input.direction)];
+      const alreadyHolds =
+        existing?.tripId === input.tripId &&
+        (SEAT_CONSUMING_STATUSES as readonly string[]).includes(existing.status);
+      // A rider re-confirming a seat they already hold is not a new seat.
+      if (!alreadyHolds && taken >= capacity) return null;
+    }
+    return this.respond(input);
+  }
+
   async markDefaultTravelling(
     travelDate: string,
     direction: ReservationDirection,
-  ): Promise<number> {
-    let count = 0;
+    capacityOf?: (tripId: string) => Promise<number | null>,
+  ): Promise<{ defaulted: number; skippedFull: number }> {
+    let defaulted = 0;
+    let skippedFull = 0;
     const now = new Date();
     for (const r of this.rows) {
       if (r.travelDate === travelDate && r.direction === direction && r.status === 'pending') {
+        // The cutoff must not default a rider into a seat that does not exist.
+        // Without this the default-yes makes an overfull trip worse, silently,
+        // at 21:00 when nobody is looking.
+        if (capacityOf && r.tripId) {
+          const capacity = await capacityOf(r.tripId);
+          if (capacity !== null && (await this.countSeatsTaken(r.tripId)) >= capacity) {
+            skippedFull++;
+            continue;
+          }
+        }
         r.status = 'reserved';
         r.source = 'default';
         r.confirmedAt = now;
         r.updatedAt = now;
-        count++;
+        defaulted++;
       }
     }
-    return count;
+    return { defaulted, skippedFull };
   }
 
   async listForUser(userId: string, opts?: { fromDate?: string }): Promise<Reservation[]> {

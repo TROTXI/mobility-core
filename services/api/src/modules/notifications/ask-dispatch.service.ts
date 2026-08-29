@@ -1,14 +1,13 @@
-// Daily ask-dispatch (E3) — the scheduled heart of the confirmation loop. For a
-// travel day + direction, it finds tomorrow's trips, seeds a `pending`
-// reservation for every active subscriber of each trip's route, and pushes the
-// "travelling?" prompt. At the cutoff, resolveDefaults flips the still-`pending`
-// rows to reserved (default-yes). These are the operations a Render cron invokes
-// (via the admin endpoints); the cron schedule itself is infra.
+// Daily ask-dispatch (E3). For a travel day + direction: find the trips, seed a
+// `pending` reservation for every active subscriber of each trip's route, and
+// push the "travelling?" prompt. At the cutoff, resolveDefaults flips
+// still-`pending` rows to reserved (default-yes). A Render cron invokes both via
+// the admin endpoints.
 //
-// A rider is linked to a route by their subscription (ADR-0014 / the pilot
-// rider↔route model): confirm at subscribe → the route pins the subscription →
-// this targets those subscribers.
+// A rider is linked to a route by their subscription (ADR-0014).
 
+import { directionOf } from '../mobility/direction';
+import type { VehicleRepository } from '../mobility/vehicle.repository';
 import type { TripRepository } from '../mobility/trip.repository';
 import type {
   ReservationDirection,
@@ -23,19 +22,18 @@ export interface AskDispatchDeps {
   subscriptions: SubscriptionRepository;
   reservations: ReservationRepository;
   notifier: NotificationSender;
+  /**
+   * Seat ceiling per trip (#161). Absent -> the cutoff defaults everyone, as
+   * before. Present -> riders are never defaulted into a seat that does not
+   * exist, which is how an overfull trip used to get worse at 21:00.
+   */
+  vehicles?: VehicleRepository;
 }
 
 /** How many riders were prompted, across how many trips. */
 export interface AskDispatchResult {
   trips: number;
   asked: number;
-}
-
-// A trip's direction from its scheduled time — morning before noon, else evening
-// (UTC). Pilot heuristic, consistent with the boarding scan; converges when
-// trips carry an explicit direction.
-function directionOf(scheduledAt: Date): ReservationDirection {
-  return scheduledAt.getUTCHours() < 12 ? 'morning' : 'evening';
 }
 
 /** The daily ask-dispatch + cutoff default-yes (see the file header). */
@@ -89,12 +87,35 @@ export class AskDispatchService {
    *
    * @param travelDate - the travel day (`YYYY-MM-DD`).
    * @param direction - morning or evening.
-   * @returns how many reservations were defaulted.
+   * @returns how many were defaulted, and how many were skipped because their
+   *   trip was already full.
    */
   async resolveDefaults(
     travelDate: string,
     direction: ReservationDirection,
-  ): Promise<{ defaulted: number }> {
-    return { defaulted: await this.deps.reservations.markDefaultTravelling(travelDate, direction) };
+  ): Promise<{ defaulted: number; skippedFull: number }> {
+    return this.deps.reservations.markDefaultTravelling(
+      travelDate,
+      direction,
+      this.deps.vehicles ? (tripId) => this.capacityOf(tripId) : undefined,
+    );
+  }
+
+  /**
+   * The seat ceiling for a trip, or null when it has none.
+   *
+   * A trip with no vehicle assigned is unlimited, not zero: ops routinely
+   * creates trips before assigning a bus, and treating that as zero would stop
+   * anyone reserving on a run that has not been crewed yet.
+   *
+   * @param tripId - the trip.
+   * @returns the vehicle's capacity, or null for unlimited.
+   */
+  private async capacityOf(tripId: string): Promise<number | null> {
+    const trip = await this.deps.trips.findById(tripId);
+    if (!trip?.vehicleId) return null;
+    const vehicle = await this.deps.vehicles!.findById(trip.vehicleId);
+    // capacity 0 means "not recorded" in the fleet data, not "no seats".
+    return vehicle && vehicle.capacity > 0 ? vehicle.capacity : null;
   }
 }

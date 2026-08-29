@@ -1,3 +1,4 @@
+import { SEAT_CONSUMING_STATUSES } from './reservation.repository';
 import type { Pool } from 'pg';
 import type {
   Reservation,
@@ -78,17 +79,129 @@ export class PgReservationRepository implements ReservationRepository {
     return toReservation(rows[0]!);
   }
 
+  async countSeatsTaken(tripId: string): Promise<number> {
+    const { rows } = await this.pool.query<{ count: string }>(
+      `SELECT count(*)::text AS count FROM reservations
+        WHERE trip_id = $1 AND status = ANY($2::text[])`,
+      [tripId, [...SEAT_CONSUMING_STATUSES]],
+    );
+    return Number(rows[0]?.count ?? 0);
+  }
+
+  async respondWithinCapacity(
+    input: ReservationResponse,
+    capacity: number,
+  ): Promise<Reservation | null> {
+    // Declining never needs a seat.
+    if (!input.travelling || !input.tripId) return this.respond(input);
+
+    const client = await this.pool.connect();
+    try {
+      await client.query('BEGIN');
+
+      // Lock the trip row for the duration. This is what makes the count and
+      // the write atomic: the 18:00 push lands a corridor's riders within the
+      // same few seconds, so without it two riders both read "one seat free"
+      // before either writes, and both get it.
+      await client.query('SELECT id FROM trips WHERE id = $1 FOR UPDATE', [input.tripId]);
+
+      const { rows: counted } = await client.query<{ count: string }>(
+        `SELECT count(*)::text AS count FROM reservations
+          WHERE trip_id = $1 AND status = ANY($2::text[])
+            AND user_id <> $3`,
+        [input.tripId, [...SEAT_CONSUMING_STATUSES], input.userId],
+      );
+      // Excluding this rider means re-confirming a seat they already hold is
+      // never refused, and never double-counts them against the ceiling.
+      if (Number(counted[0]?.count ?? 0) >= capacity) {
+        await client.query('ROLLBACK');
+        return null;
+      }
+
+      const { rows } = await client.query<ReservationRow>(
+        `INSERT INTO reservations (user_id, trip_id, travel_date, direction, status, source, daily_pin_hash, confirmed_at)
+         VALUES ($1, $2, $3, $4, 'reserved', 'confirmation', $5, now())
+         ON CONFLICT (user_id, travel_date, direction)
+         DO UPDATE SET trip_id = COALESCE(EXCLUDED.trip_id, reservations.trip_id),
+                       status = EXCLUDED.status,
+                       source = 'confirmation',
+                       daily_pin_hash = EXCLUDED.daily_pin_hash,
+                       confirmed_at = now(),
+                       updated_at = now()
+         RETURNING *`,
+        [input.userId, input.tripId, input.travelDate, input.direction, input.pinHash ?? null],
+      );
+      await client.query('COMMIT');
+      return toReservation(rows[0]!);
+    } catch (err) {
+      await client.query('ROLLBACK');
+      throw err;
+    } finally {
+      client.release();
+    }
+  }
+
   async markDefaultTravelling(
     travelDate: string,
     direction: ReservationDirection,
-  ): Promise<number> {
-    const { rowCount } = await this.pool.query(
-      `UPDATE reservations
-         SET status = 'reserved', source = 'default', confirmed_at = now(), updated_at = now()
-       WHERE travel_date = $1 AND direction = $2 AND status = 'pending'`,
+    capacityOf?: (tripId: string) => Promise<number | null>,
+  ): Promise<{ defaulted: number; skippedFull: number }> {
+    // No capacity resolver (or nothing to resolve): the original bulk update.
+    if (!capacityOf) {
+      const { rowCount } = await this.pool.query(
+        `UPDATE reservations
+           SET status = 'reserved', source = 'default', confirmed_at = now(), updated_at = now()
+         WHERE travel_date = $1 AND direction = $2 AND status = 'pending'`,
+        [travelDate, direction],
+      );
+      return { defaulted: rowCount ?? 0, skippedFull: 0 };
+    }
+
+    // Capacity-aware: defaulting a rider into a seat that does not exist is
+    // how the cutoff turns an overfull trip into a worse one, silently, at
+    // 21:00. Grouped by trip so each ceiling is resolved once, not per rider.
+    const { rows: pending } = await this.pool.query<{ id: string; trip_id: string | null }>(
+      `SELECT id, trip_id FROM reservations
+        WHERE travel_date = $1 AND direction = $2 AND status = 'pending'
+        ORDER BY created_at ASC`,
       [travelDate, direction],
     );
-    return rowCount ?? 0;
+
+    let defaulted = 0;
+    let skippedFull = 0;
+    const remaining = new Map<string, number>();
+
+    for (const row of pending) {
+      if (row.trip_id) {
+        if (!remaining.has(row.trip_id)) {
+          const capacity = await capacityOf(row.trip_id);
+          remaining.set(
+            row.trip_id,
+            capacity === null
+              ? Number.POSITIVE_INFINITY
+              : capacity - (await this.countSeatsTaken(row.trip_id)),
+          );
+        }
+        const free = remaining.get(row.trip_id)!;
+        if (free <= 0) {
+          skippedFull++;
+          continue;
+        }
+        remaining.set(row.trip_id, free - 1);
+      }
+
+      // Oldest pending first (ORDER BY created_at): when a trip cannot take
+      // everyone, the rider who was asked first gets the seat. Arbitrary is
+      // worse than a rule we can explain.
+      await this.pool.query(
+        `UPDATE reservations
+           SET status = 'reserved', source = 'default', confirmed_at = now(), updated_at = now()
+         WHERE id = $1`,
+        [row.id],
+      );
+      defaulted++;
+    }
+    return { defaulted, skippedFull };
   }
 
   async listForUser(userId: string, opts?: { fromDate?: string }): Promise<Reservation[]> {

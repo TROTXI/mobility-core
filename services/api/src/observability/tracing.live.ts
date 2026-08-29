@@ -1,17 +1,10 @@
-// OpenTelemetry telemetry bootstrap (Phases 1+2, docs/design/observability.md, #28).
-// Auto-instruments HTTP, Fastify, Postgres (pg) and Redis (ioredis) and pushes
-// TRACES (→ Tempo), METRICS (→ Prometheus/Mimir) and LOGS (→ Loki) to an OTLP
-// endpoint (Grafana Cloud) over OTLP/HTTP protobuf — Grafana's default, so its
-// generated OTEL_* config works as a copy-paste. Metrics = HTTP RED (http/fastify)
-// + Node runtime (event loop, GC, heap) via runtime-node. Logs = pino with
-// trace_id/span_id injected (pino instrumentation) so logs ↔ traces correlate.
-// The prom-client `/metrics` endpoint stays for local pull; Grafana gets the push.
+// OpenTelemetry bootstrap (#28, docs/design/observability.md). Auto-instruments
+// HTTP, Fastify, pg and ioredis; pushes traces, metrics and logs to an OTLP
+// endpoint (Grafana Cloud). Logs carry trace_id/span_id so they correlate.
 //
 // GATED: a no-op unless OTEL_EXPORTER_OTLP_ENDPOINT is set, so dev/tests stay
-// zero-infra. It must load BEFORE the libraries it instruments, so production
-// runs it via `node --import ./dist/observability/tracing.live.js` (package.json
-// `start`); importing it from server.ts also triggers it as a fallback.
-// `*.live.ts` is excluded from unit coverage (it needs a real collector to verify).
+// zero-infra. Must load BEFORE the libraries it instruments — production uses
+// `node --import ./dist/observability/tracing.live.js`.
 
 import { OTLPLogExporter } from '@opentelemetry/exporter-logs-otlp-proto';
 import { OTLPMetricExporter } from '@opentelemetry/exporter-metrics-otlp-proto';

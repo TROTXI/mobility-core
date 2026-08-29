@@ -1,14 +1,11 @@
-// Live vehicle position — HTTP pilot (#25, system-design §7). The MQTT/Go/WS
-// telemetry path (ADR-0006) is deferred; here a driver POSTs GPS fixes over HTTP
-// and riders GET the latest fix with a deterministic ETA to each upcoming stop.
+// Live vehicle position — HTTP pilot (#25). The MQTT/WS path (ADR-0006) is
+// deferred.
 //
-//   POST /trips/:id/position  driver-only AND must be THE trip's assigned driver.
-//   GET  /trips/:id/position  any signed-in user (rider); returns position + ETA.
+//   POST /trips/:id/position  must be THE trip's assigned driver
+//   GET  /trips/:id/position  any signed-in user; returns position + ETA
 //
-// The durable trip_positions store is the source of truth; the latest fix is also
-// written through to the KV store (Redis when available) so rider polls read a
-// hot cache instead of the DB. ETA is recomputed per read from the route's stops
-// (see eta.ts) — cheap and always reflects the current route configuration.
+// trip_positions is the source of truth; the latest fix is also cached in KV so
+// rider polls skip the DB.
 
 import type { FastifyInstance } from 'fastify';
 import type { ZodTypeProvider } from 'fastify-type-provider-zod';
@@ -17,7 +14,9 @@ import type { KvStore } from '../../kv/kv.store';
 import { errorResponseSchema } from '../../lib/schemas';
 import type { RateLimitConfig } from '../ratelimit/ratelimit.plugin';
 import type { DriverRepository } from './driver.repository';
+import { directionOf } from './direction';
 import { computeEtas, type RouteStopPoint } from './eta';
+import type { SegmentSpeedRepository } from './segment-speed.repository';
 import {
   livePositionResponseSchema,
   recordedPositionResponseSchema,
@@ -49,6 +48,7 @@ const cacheKey = (tripId: string): string => `trip:position:${tripId}`;
  * @param opts.routeStops - the route's ordered stop placements (for ETA).
  * @param opts.stops - stop coordinates (for ETA).
  * @param opts.tripPositions - durable fix store (source of truth).
+ * @param opts.segmentSpeeds - observed segment speeds (#181); absent -> cold-start speed.
  * @param opts.kv - latest-fix cache (Redis when available).
  * @param opts.rateLimit - per-user rate-limit config.
  */
@@ -60,6 +60,8 @@ export async function positionRoutes(
     routeStops?: RouteStopRepository;
     stops?: StopRepository;
     tripPositions?: TripPositionRepository;
+    /** Observed segment speeds (#181). Absent -> ETAs use the cold-start speed. */
+    segmentSpeeds?: SegmentSpeedRepository;
     kv: KvStore;
     rateLimit: RateLimitConfig;
   },
@@ -184,10 +186,17 @@ export async function positionRoutes(
         )
       ).filter((s): s is RouteStopPoint => s !== null);
 
+      // Observed medians where we have them, cold-start speed everywhere else.
+      // Optional on purpose: a corridor with no run history still returns an
+      // ETA on its first day rather than nothing at all.
+      const speeds = opts.segmentSpeeds
+        ? await opts.segmentSpeeds.findByRoute(trip.routeId, directionOf(trip.scheduledAt))
+        : undefined;
+
       return {
         tripId: trip.id,
         position,
-        etaToStops: computeEtas(position, stopPoints),
+        etaToStops: computeEtas(position, stopPoints, speeds),
       };
     },
   );

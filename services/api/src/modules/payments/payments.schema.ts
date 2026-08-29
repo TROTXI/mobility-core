@@ -3,13 +3,17 @@ import type { SubscriptionPlan } from '../subscriptions/subscription.repository'
 
 // Single source for the plan values; `satisfies` makes TS error if these drift
 // from the SubscriptionPlan union.
-const PLANS = ['monthly', 'annual'] as const satisfies readonly SubscriptionPlan[];
+export const PLANS = ['monthly', 'annual'] as const satisfies readonly SubscriptionPlan[];
 
 export const subscribeBodySchema = z.object({
   plan: z.enum(PLANS),
-  /** The route/corridor the rider commutes (E3); pins the subscription so the
-   * daily ask-dispatch knows which riders to prompt. Optional for now. */
-  routeId: z.string().uuid().optional(),
+  /**
+   * The corridor the rider commutes. **Required since #103**: the price is
+   * derived from that corridor's regulated fare, so there is no meaningful
+   * price for "some route". It also pins the subscription so the daily
+   * ask-dispatch knows which riders to prompt (E3).
+   */
+  routeId: z.string().uuid(),
 });
 
 export const checkoutResponseSchema = z.object({

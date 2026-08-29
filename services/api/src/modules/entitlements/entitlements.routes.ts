@@ -6,6 +6,7 @@ import type { FastifyInstance } from 'fastify';
 import type { ZodTypeProvider } from 'fastify-type-provider-zod';
 import { errorResponseSchema } from '../../lib/schemas';
 import type { RateLimitConfig } from '../ratelimit/ratelimit.plugin';
+import type { SubscriptionRepository } from '../subscriptions/subscription.repository';
 import type { CreditLedgerRepository } from './credit-ledger.repository';
 import type { EntitlementLedgerRepository } from './entitlement-ledger.repository';
 import { ridesResponseSchema } from './entitlements.schema';
@@ -17,6 +18,7 @@ import { ridesResponseSchema } from './entitlements.schema';
  * @param opts - route dependencies.
  * @param opts.entitlements - the ride-entitlement ledger (503 when absent).
  * @param opts.credits - the Ride Credit ledger (503 when absent).
+ * @param opts.subscriptions - supplies renewsAt + ridesPerPeriod (#162).
  * @param opts.rateLimit - rate-limit config (applied per user).
  */
 export async function entitlementRoutes(
@@ -25,6 +27,8 @@ export async function entitlementRoutes(
     entitlements?: EntitlementLedgerRepository;
     credits?: CreditLedgerRepository;
     rateLimit: RateLimitConfig;
+    /** Supplies renewsAt + ridesPerPeriod for the balance card (#162). */
+    subscriptions?: SubscriptionRepository;
   },
 ): Promise<void> {
   const r = app.withTypeProvider<ZodTypeProvider>();
@@ -56,7 +60,16 @@ export async function entitlementRoutes(
         opts.entitlements.remainingRides(userId),
         opts.credits.balancePesewas(userId),
       ]);
-      return { remainingRides, creditPesewas };
+      // The subscription supplies what the balance card needs beyond the two
+      // numbers: "23 of 40 · renews 1 Sep" is not computable from the ledgers
+      // alone. Null when there is no active subscription, rather than invented.
+      const sub = opts.subscriptions ? await opts.subscriptions.findActiveByUser(userId) : null;
+      return {
+        remainingRides,
+        creditPesewas,
+        ridesPerPeriod: sub?.ridesGranted ?? null,
+        renewsAt: sub?.periodEnd ?? null,
+      };
     },
   );
 }
