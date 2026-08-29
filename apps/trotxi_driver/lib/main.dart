@@ -4,6 +4,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:trotxi_driver/core/Tokens/token_storage.dart';
 import 'package:trotxi_driver/core/config/theme/app_theme.dart';
 import 'package:trotxi_client/trotxi_client.dart';
 import 'package:trotxi_driver/firebase_options.dart';
@@ -30,7 +31,10 @@ Future<void> main() async {
         return true;
       };
 
-      final client = TrotxiClientFactory.create(baseUrl: _apiBaseUrl);
+      final client = TrotxiClientFactory.create(
+        baseUrl: _apiBaseUrl,
+        tokenStore: TokenStorage.instance,
+      );
       client.dio.interceptors.add(PerformanceInterceptor());
       runApp(TrotxiDriverApp(client: client));
     },

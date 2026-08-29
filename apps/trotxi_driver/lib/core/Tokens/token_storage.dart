@@ -4,10 +4,8 @@ import 'package:trotxi_client/trotxi_client.dart';
 class TokenStorage implements TokenStore {
   TokenStorage._();
   static final TokenStorage instance = TokenStorage._();
-  final _storage = const FlutterSecureStorage(
-    aOptions: AndroidOptions(),
-    iOptions: IOSOptions(accessibility: KeychainAccessibility.first_unlock),
-  );
+
+  final _storage = const FlutterSecureStorage();
 
   static const _accessTokenKey = 'access_token';
   static const _refreshTokenKey = 'refresh_token';
