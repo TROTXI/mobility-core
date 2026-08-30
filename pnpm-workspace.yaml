@@ -5,6 +5,8 @@ packages:
   # package.json) and must stay invisible to pnpm. Next Node package under
   # apps/ gets its own line here.
   - 'apps/ops'
+  # Shared MapLibre styles for both apps and the ops console (#180).
+  - 'maps'
 
 # Security overrides: force patched versions of transitive dependencies whose
 # direct parents still pin a vulnerable range. Each entry clears an advisory
@@ -37,6 +39,10 @@ allowBuilds:
   # protobufjs (via the OTLP protobuf exporter) works at runtime from its
   # prebuilt dist; its postinstall build script is not needed.
   protobufjs: false
+  # fontnik (map glyph generation) is a native addon; its install step fetches
+  # or builds the binary that turns TTFs into the SDF glyph ranges MapLibre
+  # needs. Build-time only, never imported by the API.
+  fontnik: true
   # sharp (avatar resize/EXIF-strip, #24) needs its postinstall to install the
   # platform's prebuilt libvips binary.
   sharp: true

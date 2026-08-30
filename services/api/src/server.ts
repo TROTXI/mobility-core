@@ -375,6 +375,8 @@ async function main(): Promise<void> {
     kv,
     objectStore,
     mapTilesUrl: env.MAP_TILES_URL,
+    mapStyleUrl: env.MAP_STYLE_URL,
+    mapStyleDarkUrl: env.MAP_STYLE_DARK_URL,
     segmentSpeeds,
     routeLearning,
     pricing,

@@ -8,6 +8,10 @@
 # Node
 node_modules/
 dist/
+# ...except the generated map styles. They are deploy artifacts (uploaded to R2
+# alongside the tile archive), and committing them means a palette change shows
+# up as a reviewable diff rather than an opaque rebuild.
+!maps/dist/
 coverage/
 *.log
 .env

@@ -36,6 +36,11 @@ const envSchema = z
     // serves anonymous range requests — so it lives in the blueprint, not the
     // dashboard. Unset -> GET /flags reports mapTiles.url = null.
     MAP_TILES_URL: z.string().url().optional(),
+    // MapLibre styles for the same bucket (#180). Public for the same reason,
+    // and served through /flags so a restyle is a config change rather than a
+    // release of the rider app, the driver app and the ops console.
+    MAP_STYLE_URL: z.string().url().optional(),
+    MAP_STYLE_DARK_URL: z.string().url().optional(),
     // CORS allowlist for browser clients (comma-separated origins), e.g. Swagger
     // UI served from another origin or a web dashboard. Unset -> reflect any
     // origin, which is safe here because auth is a bearer token (no cookies or

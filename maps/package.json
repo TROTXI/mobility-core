@@ -1,0 +1,18 @@
+{
+  "name": "@trotxi/maps",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node build-styles.mjs",
+    "glyphs": "node build-glyphs.mjs",
+    "test:coverage": "node check-styles.mjs"
+  },
+  "devDependencies": {
+    "@fontsource/noto-sans": "5.3.0",
+    "@maplibre/maplibre-gl-style-spec": "^26.4.1",
+    "fontnik": "0.7.7",
+    "glyph-pbf-composite": "0.0.2",
+    "wawoff2": "2.0.1"
+  }
+}

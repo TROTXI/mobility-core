@@ -1,0 +1,110 @@
+<!doctype html>
+<meta charset="utf-8" />
+<title>Trotxi basemap preview</title>
+<link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" />
+<style>
+  html,
+  body {
+    margin: 0;
+    height: 100%;
+    font-family: system-ui, sans-serif;
+  }
+  #map {
+    position: absolute;
+    inset: 0;
+  }
+  #bar {
+    position: absolute;
+    z-index: 2;
+    top: 10px;
+    left: 10px;
+    background: #fff;
+    border-radius: 8px;
+    padding: 6px 8px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+    display: flex;
+    gap: 6px;
+  }
+  button {
+    border: 1px solid #cfd6d1;
+    background: #fff;
+    border-radius: 6px;
+    padding: 5px 10px;
+    cursor: pointer;
+  }
+  button.on {
+    background: #00a651;
+    color: #fff;
+    border-color: #00a651;
+  }
+  #err {
+    position: absolute;
+    z-index: 3;
+    bottom: 10px;
+    left: 10px;
+    right: 10px;
+    background: #2b0f0f;
+    color: #ffb4b4;
+    font:
+      12px/1.5 ui-monospace,
+      monospace;
+    padding: 8px;
+    border-radius: 6px;
+    max-height: 30%;
+    overflow: auto;
+    display: none;
+  }
+</style>
+<div id="bar">
+  <button id="b-light" class="on">Light</button>
+  <button id="b-dark">Dark</button>
+</div>
+<div id="map"></div>
+<pre id="err"></pre>
+<script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+<script src="https://unpkg.com/pmtiles@3.2.1/dist/pmtiles.js"></script>
+<script type="module">
+  const errBox = document.getElementById('err');
+  const seen = new Set();
+  function note(msg) {
+    if (seen.has(msg)) return;
+    seen.add(msg);
+    errBox.style.display = 'block';
+    errBox.textContent += msg + '\n';
+  }
+  maplibregl.addProtocol('pmtiles', new pmtiles.Protocol().tile);
+  // Preview against the glyphs in dist/, which are not uploaded yet. The
+  // shipped styles point at the bucket.
+  const localGlyphs = async (theme) => {
+    const s = await (await fetch('/dist/style.' + theme + '.json')).json();
+    s.glyphs = location.origin + '/dist/fonts/{fontstack}/{range}.pbf';
+    return s;
+  };
+  const map = new maplibregl.Map({
+    container: 'map',
+    style: await localGlyphs('light'),
+    center: [-0.1869, 5.6037], // Accra
+    zoom: 12,
+    attributionControl: { compact: false },
+  });
+  map.on('error', (e) => note('ERROR: ' + (e.error && e.error.message ? e.error.message : e.type)));
+  map.on('load', () => {
+    window.__mapLoaded = true;
+    map.resize();
+  });
+  // The container is sized by CSS after the Map constructor has already read
+  // its dimensions, so without this the canvas stays at its initial guess and
+  // renders a sliver. Harness-only quirk, but it looks exactly like broken tiles.
+  new ResizeObserver(() => map.resize()).observe(document.getElementById('map'));
+  map.on('idle', () => {
+    window.__mapIdle = true;
+  });
+  const set = async (theme) => {
+    map.setStyle(await localGlyphs(theme));
+    document.getElementById('b-light').className = theme === 'light' ? 'on' : '';
+    document.getElementById('b-dark').className = theme === 'dark' ? 'on' : '';
+    window.__mapIdle = false;
+  };
+  document.getElementById('b-light').onclick = () => set('light');
+  document.getElementById('b-dark').onclick = () => set('dark');
+</script>

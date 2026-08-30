@@ -148,6 +148,8 @@ export interface AppDeps {
   corsOrigins?: string[];
   /** Public PMTiles basemap URL, served to clients on GET /flags (#178). */
   mapTilesUrl?: string;
+  mapStyleUrl?: string;
+  mapStyleDarkUrl?: string;
   /** Observed segment speeds (#181). Absent -> ETAs use the cold-start speed. */
   segmentSpeeds?: SegmentSpeedRepository;
   /** Derives geometry + speeds from completed runs (#179, #181). */
@@ -413,6 +415,8 @@ export async function buildApp(deps: AppDeps = {}): Promise<FastifyInstance> {
     featureFlags: deps.featureFlags,
     minVersions: deps.minVersions,
     mapTilesUrl: deps.mapTilesUrl,
+    mapStyleUrl: deps.mapStyleUrl,
+    mapStyleDarkUrl: deps.mapStyleDarkUrl,
   });
 
   r.get(
