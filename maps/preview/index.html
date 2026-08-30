@@ -63,7 +63,7 @@
 <pre id="err"></pre>
 <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
 <script src="https://unpkg.com/pmtiles@3.2.1/dist/pmtiles.js"></script>
-<script>
+<script type="module">
   const errBox = document.getElementById('err');
   const seen = new Set();
   function note(msg) {
@@ -73,9 +73,16 @@
     errBox.textContent += msg + '\n';
   }
   maplibregl.addProtocol('pmtiles', new pmtiles.Protocol().tile);
+  // Preview against the glyphs in dist/, which are not uploaded yet. The
+  // shipped styles point at the bucket.
+  const localGlyphs = async (theme) => {
+    const s = await (await fetch('/dist/style.' + theme + '.json')).json();
+    s.glyphs = location.origin + '/dist/fonts/{fontstack}/{range}.pbf';
+    return s;
+  };
   const map = new maplibregl.Map({
     container: 'map',
-    style: '/dist/style.light.json',
+    style: await localGlyphs('light'),
     center: [-0.1869, 5.6037], // Accra
     zoom: 12,
     attributionControl: { compact: false },
@@ -92,8 +99,8 @@
   map.on('idle', () => {
     window.__mapIdle = true;
   });
-  const set = (theme) => {
-    map.setStyle('/dist/style.' + theme + '.json');
+  const set = async (theme) => {
+    map.setStyle(await localGlyphs(theme));
     document.getElementById('b-light').className = theme === 'light' ? 'on' : '';
     document.getElementById('b-dark').className = theme === 'dark' ? 'on' : '';
     window.__mapIdle = false;

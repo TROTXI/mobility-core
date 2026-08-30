@@ -265,13 +265,13 @@ function road(id, color, filters, base, casingExtra, minzoom) {
 }
 
 // Halo is the theme's own halo colour, so labels stay legible over any fill.
-function placeLabel(palette, id, classes, size, font, color, maxzoom) {
+function placeLabel(palette, id, classes, size, font, color, minzoom) {
   return {
     id,
     type: 'symbol',
     source: 'openmaptiles',
     'source-layer': 'place',
-    maxzoom,
+    minzoom,
     filter: ['in', ['get', 'class'], ['literal', classes]],
     layout: { 'text-field': ['get', 'name'], 'text-font': font, 'text-size': size },
     paint: {

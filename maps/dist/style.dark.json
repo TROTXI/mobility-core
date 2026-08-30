@@ -581,7 +581,7 @@
       "type": "symbol",
       "source": "openmaptiles",
       "source-layer": "place",
-      "maxzoom": 12,
+      "minzoom": 12,
       "filter": [
         "in",
         [
@@ -618,7 +618,7 @@
       "type": "symbol",
       "source": "openmaptiles",
       "source-layer": "place",
-      "maxzoom": 8,
+      "minzoom": 8,
       "filter": [
         "in",
         [
@@ -654,7 +654,7 @@
       "type": "symbol",
       "source": "openmaptiles",
       "source-layer": "place",
-      "maxzoom": 4,
+      "minzoom": 4,
       "filter": [
         "in",
         [

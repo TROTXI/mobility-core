@@ -87,20 +87,30 @@ node maps/build-styles.mjs
 python3 -m http.server 8788 --directory maps   # then open /preview/
 ```
 
-## Glyphs, and why there are no labels yet
+## Glyphs
 
-MapLibre renders text from pre-baked font atlases (`.pbf` per 256-codepoint
-range), fetched from the style's `glyphs` URL. There is no fallback to system
-fonts for Latin text. No glyphs means no labels at all.
+MapLibre renders text from pre-baked SDF atlases (`.pbf` per 256-codepoint
+range) fetched from the style's `glyphs` URL. There is **no fallback to system
+fonts for Latin**, so missing glyphs do not mean plain-looking labels, they mean
+no labels at all. That makes them part of the basemap rather than a nicety.
 
-Nothing is hosted at `https://tiles.trotxi.com/fonts/` today, so the styles
-render geometry correctly and no place names. The data is present and fine: the
-tiles carry 868 place features around Accra alone, including Tema, Ashaiman,
-Teshie, Madina and Nungua. They simply cannot be drawn.
+```bash
+pnpm --filter @trotxi/maps glyphs   # writes maps/dist/fonts/
+```
 
-Closing this needs an OFL-licensed font pack (Noto Sans covers what the OSM Ghana
-extract contains) uploaded to `fonts/{fontstack}/{range}.pbf` in the same bucket.
-The styles already point there.
+Built from Noto Sans (OFL-1.1, redistributable) via Fontsource, which publishes
+woff2 only, so each subset is decompressed back to sfnt before fontnik slices it
+into ranges. The `latin` and `latin-ext` subsets are composited per range because
+Fontsource splits Latin across both and a name like "Nsawam Adoagyiri" can draw
+from either.
+
+Only `0x0000`–`0x024F` is generated (Basic Latin, Latin-1, Latin Extended-A and
+-B). That covers every name in the Ghana extract; further ranges would be empty
+files. Cyrillic, Greek, Devanagari and Vietnamese subsets are deliberately not
+shipped for the same reason.
+
+Two stacks, matching what the styles ask for: `Noto Sans Regular` (weight 400)
+and `Noto Sans Medium` (weight 500).
 
 ## Serving it to clients
 
