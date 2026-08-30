@@ -84,6 +84,13 @@ const PALETTES = {
 const REGULAR = ['Noto Sans Regular'];
 const MEDIUM = ['Noto Sans Medium'];
 
+// Every label uses `['get', 'name']` on purpose, and that is load-bearing for
+// more than wording. The tiles also carry `name:zh`, `name:ko`, `name:ka`,
+// `name:ru` and others, and our glyph atlases only cover U+0000-U+024F (see
+// build-glyphs.mjs). Switching text-field to a localised name, or adding a
+// language toggle, makes MapLibre request glyph ranges that do not exist and
+// those labels silently vanish. Widen the ranges in build-glyphs.mjs first.
+
 /**
  * Road width ramp, shared by casing and fill so they cannot drift apart.
  *
