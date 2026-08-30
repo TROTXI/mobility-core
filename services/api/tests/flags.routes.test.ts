@@ -16,12 +16,21 @@ const adminToken = () => jwt.signAccessToken({ userId: 'admin-1', role: 'admin' 
 const commuterToken = () => jwt.signAccessToken({ userId: 'rider-1', role: 'commuter' });
 
 const TILES_URL = 'https://pub-test.r2.dev/ghana.pmtiles';
+const STYLE_URL = 'https://pub-test.r2.dev/style.light.json';
+const DARK_STYLE_URL = 'https://pub-test.r2.dev/style.dark.json';
 const ATTRIBUTION = '© OpenStreetMap contributors · © OpenMapTiles';
 
 async function flagsApp() {
   const featureFlags = new InMemoryFeatureFlagRepository();
   const minVersions = new InMemoryMinVersionRepository();
-  const app = await buildApp({ auth, featureFlags, minVersions, mapTilesUrl: TILES_URL });
+  const app = await buildApp({
+    auth,
+    featureFlags,
+    minVersions,
+    mapTilesUrl: TILES_URL,
+    mapStyleUrl: STYLE_URL,
+    mapStyleDarkUrl: DARK_STYLE_URL,
+  });
   return { app, featureFlags, minVersions };
 }
 
@@ -33,7 +42,12 @@ describe('GET /flags (public)', () => {
     expect(res.json()).toEqual({
       flags: [],
       minSupportedVersion: { ios: null, android: null },
-      mapTiles: { url: TILES_URL, attribution: ATTRIBUTION },
+      mapTiles: {
+        url: TILES_URL,
+        styleUrl: STYLE_URL,
+        darkStyleUrl: DARK_STYLE_URL,
+        attribution: ATTRIBUTION,
+      },
     });
   });
 
@@ -46,7 +60,7 @@ describe('GET /flags (public)', () => {
       minSupportedVersion: { ios: null, android: null },
       // No tiles configured -> null, and the client renders without a basemap
       // rather than failing on a URL that was never set.
-      mapTiles: { url: null, attribution: ATTRIBUTION },
+      mapTiles: { url: null, styleUrl: null, darkStyleUrl: null, attribution: ATTRIBUTION },
     });
   });
 
@@ -171,5 +185,24 @@ describe('admin flags + min-versions', () => {
       payload: { version: '1.0.0' },
     });
     expect(res.statusCode).toBe(400);
+  });
+});
+
+describe('GET /flags map styles (#180)', () => {
+  it('serves both styles so a restyle is config, not three app releases', async () => {
+    const { app } = await flagsApp();
+    const res = await app.inject({ method: 'GET', url: '/flags' });
+    expect(res.json().mapTiles.styleUrl).toBe(STYLE_URL);
+    expect(res.json().mapTiles.darkStyleUrl).toBe(DARK_STYLE_URL);
+  });
+
+  it('reports null styles rather than failing when they are not configured', async () => {
+    const app = await buildApp({ auth, mapTilesUrl: TILES_URL });
+    const res = await app.inject({ method: 'GET', url: '/flags' });
+    expect(res.json().mapTiles).toMatchObject({
+      url: TILES_URL,
+      styleUrl: null,
+      darkStyleUrl: null,
+    });
   });
 });

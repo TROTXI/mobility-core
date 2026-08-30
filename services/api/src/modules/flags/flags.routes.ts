@@ -28,6 +28,8 @@ const MAP_ATTRIBUTION = '© OpenStreetMap contributors · © OpenMapTiles';
  * @param opts.minVersions - the minimum-supported-version repository.
  * @param opts.mapTilesUrl - public PMTiles archive URL (#178); absent -> null,
  *   and clients render without a basemap rather than failing.
+ * @param opts.mapStyleUrl - light-theme MapLibre style (#180).
+ * @param opts.mapStyleDarkUrl - dark-theme MapLibre style (#180).
  */
 export async function flagsRoutes(
   app: FastifyInstance,
@@ -35,6 +37,8 @@ export async function flagsRoutes(
     featureFlags?: FeatureFlagRepository;
     minVersions?: MinVersionRepository;
     mapTilesUrl?: string;
+    mapStyleUrl?: string;
+    mapStyleDarkUrl?: string;
   },
 ): Promise<void> {
   app.withTypeProvider<ZodTypeProvider>().get(
@@ -67,6 +71,8 @@ export async function flagsRoutes(
         minSupportedVersion,
         mapTiles: {
           url: opts.mapTilesUrl ?? null,
+          styleUrl: opts.mapStyleUrl ?? null,
+          darkStyleUrl: opts.mapStyleDarkUrl ?? null,
           attribution: MAP_ATTRIBUTION,
         },
       };

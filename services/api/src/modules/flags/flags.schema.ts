@@ -24,6 +24,15 @@ export const publicFlagSchema = z.object({
 export const mapTilesSchema = z.object({
   /** PMTiles archive URL, or null when tiles are not configured. */
   url: z.string().nullable(),
+  /**
+   * MapLibre style for the light theme, or null when unconfigured. Served here
+   * for the same reason as `url`: the rider app, the driver app and the ops
+   * console all draw the same basemap, and a restyle should be a config change
+   * rather than three releases.
+   */
+  styleUrl: z.string().nullable(),
+  /** The dark-theme style. Every screen in the designs has a dark variant. */
+  darkStyleUrl: z.string().nullable(),
   attribution: z.string(),
 });
 

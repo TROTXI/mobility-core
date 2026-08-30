@@ -1,0 +1,13 @@
+{
+  "name": "@trotxi/maps",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node build-styles.mjs",
+    "test:coverage": "node check-styles.mjs"
+  },
+  "devDependencies": {
+    "@maplibre/maplibre-gl-style-spec": "^26.4.1"
+  }
+}

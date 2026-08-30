@@ -126,6 +126,12 @@ services:
       # which is the whole reason it is served rather than compiled in.
       - key: MAP_TILES_URL
         value: https://tiles.trotxi.com/ghana.pmtiles
+      # MapLibre styles for the same bucket (#180). Served through /flags so a
+      # restyle is a config change, not three simultaneous app releases.
+      - key: MAP_STYLE_URL
+        value: https://tiles.trotxi.com/style.light.json
+      - key: MAP_STYLE_DARK_URL
+        value: https://tiles.trotxi.com/style.dark.json
 
   # ---- Ask-dispatch cron jobs (E3) — COMMENTED OUT, see below ----
   #

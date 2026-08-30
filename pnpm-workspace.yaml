@@ -5,6 +5,8 @@ packages:
   # package.json) and must stay invisible to pnpm. Next Node package under
   # apps/ gets its own line here.
   - 'apps/ops'
+  # Shared MapLibre styles for both apps and the ops console (#180).
+  - 'maps'
 
 # Security overrides: force patched versions of transitive dependencies whose
 # direct parents still pin a vulnerable range. Each entry clears an advisory
