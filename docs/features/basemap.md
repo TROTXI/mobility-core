@@ -2,86 +2,77 @@
 
 ## Overview
 
-We host our own map. No Google Maps, no Mapbox, no per-request billing, and no
-vendor who can reprice us once riders depend on the map being there.
+We host our own map tiles instead of using Google or Mapbox. It's a bucket and a
+CDN, so there's no per-request bill and nobody can reprice us once riders depend
+on the map.
 
-Four parts make that work, and all four are live: a tile archive, two styles
-(light and dark), the glyph atlases that let text draw at all, and a contract on
-`GET /flags` that hands clients all three. Everything is served anonymously from
-`https://tiles.trotxi.com` with CORS open, so there are no keys to distribute
-and nothing to rotate.
+There are four pieces: the tile archive, a light and a dark style, the font
+atlases, and a bit of `GET /flags` that tells clients where all of it is. They're
+all live and serving from `https://tiles.trotxi.com`. It's public and CORS is
+open, so there are no keys to hand out.
 
-**Status:** live. Phases 1, 2 and 4 shipped (#178, #179, #181). Client
-integration is #180 (rider and driver apps) and #170 (ops console).
+Status: live. #178, #179 and #181 are done. The clients still have to wire it up,
+which is #180 for the apps and #170 for the ops console.
 
 ## Concepts
 
-**PMTiles** is a single file holding the whole tile pyramid, read with HTTP
-range requests. There is no tile server to run or pay for; a bucket and a CDN
-are the entire serving stack.
+PMTiles is the whole tile pyramid in one file, read over HTTP range requests.
+That's why there's no tile server to run.
 
-**A style is not the map data.** The archive is only geometry and attributes.
-Nothing in it says water is blue. The style maps the 16 vector layers onto
-colours, widths and label rules. Without one, a client renders an empty canvas.
+The archive is just geometry and attributes. It doesn't say water is blue. That's
+the style's job, and a client with no style draws an empty canvas.
 
-**Glyphs are not optional.** MapLibre draws text from pre-baked SDF atlases and
-has no system-font fallback for Latin. Missing glyphs do not mean plain labels,
-they mean no labels.
+Glyphs are the font atlases MapLibre uses to draw text. There's no fallback to
+system fonts for Latin, so if they're missing you don't get ugly labels, you get
+none.
 
-**The basemap knows nothing about Trotxi.** It is roads, water, landcover,
-buildings, boundaries and place names. The vehicle marker, route line, pickup
-pin and the rider's own location are all overlays a client draws on top.
+The basemap has no idea Trotxi exists. It's roads, water, landcover, buildings,
+boundaries and place names. The van, the route line and the pickup pin are all
+things the client draws on top.
 
 ## API
 
-One contract, fetched on launch alongside the feature flags:
+`GET /flags` is public and already fetched at launch:
 
 ```jsonc
-GET /flags        // public, no auth
 {
   "mapTiles": {
-    "url":          "https://tiles.trotxi.com/ghana.pmtiles",
-    "styleUrl":     "https://tiles.trotxi.com/style.light.json",
+    "url": "https://tiles.trotxi.com/ghana.pmtiles",
+    "styleUrl": "https://tiles.trotxi.com/style.light.json",
     "darkStyleUrl": "https://tiles.trotxi.com/style.dark.json",
-    "attribution":  "© OpenStreetMap contributors · © OpenMapTiles"
-  }
+    "attribution": "© OpenStreetMap contributors · © OpenMapTiles",
+  },
 }
 ```
 
-| Field          | Meaning                                                     |
-| -------------- | ----------------------------------------------------------- |
-| `url`          | The PMTiles archive. You rarely want this directly.         |
-| `styleUrl`     | Light theme style. **This is what you load.**               |
-| `darkStyleUrl` | Dark theme style.                                           |
-| `attribution`  | Licence notice. Displaying it is a condition, not a choice. |
+`styleUrl` and `darkStyleUrl` are what you load. `url` is the raw archive and you
+probably don't want it. `attribution` is a licence notice you have to show.
 
-Every field is nullable, meaning not configured. Clients **degrade to no basemap
-rather than failing**: a rider whose van is 6 minutes away still needs the ETA
-and the boarding code even when the map cannot draw.
+Any of them can be null, which means it isn't configured yet. Handle that by
+dropping the basemap and carrying on. Someone whose van is six minutes out still
+needs the ETA and their boarding code.
 
 ## Consuming it
 
-Written for #180 and #170. Three clients draw the same basemap, which is exactly
-why none of them should hardcode any of it.
+For whoever picks up #180 and #170.
 
 ### Load the style, not the archive
 
-The style already points at the archive, already sets the zoom ceiling, and
-already carries the attribution. Pointing a client at `url` directly means
-reimplementing all three and getting one of them wrong.
+The style already knows the archive URL, the zoom ceiling and the attribution.
+Load `url` yourself and you have to redo all three, and you'll get one of them
+wrong.
 
-Never bake these URLs into a build. The bucket hostname changed once already,
-and changing it again should be a config change rather than three simultaneous
-app releases.
+Don't hardcode any of these URLs. We already moved the bucket hostname once. Next
+time should be a config change, not three app releases on the same day.
 
-### Register the `pmtiles://` protocol first
+### Register the pmtiles protocol first
 
-The style's source URL is `pmtiles://https://tiles.trotxi.com/ghana.pmtiles`.
-That scheme is not native to the map library. **Register the handler before
-constructing the map**, or the source silently fails to resolve and you get an
-empty canvas with no error.
+The style's source is `pmtiles://https://tiles.trotxi.com/ghana.pmtiles`. Map
+libraries don't know that scheme. Register the handler before you construct the
+map. If you forget, the source never resolves, nothing errors, and you sit there
+looking at a blank canvas wondering why.
 
-Web (ops console):
+On web:
 
 ```js
 import maplibregl from 'maplibre-gl';
@@ -98,75 +89,72 @@ const map = new maplibregl.Map({
 });
 ```
 
-Flutter (rider and driver): **verify this before building screens on top of it.
-It is the biggest unknown in #180.** MapLibre Native does not expose
-`addProtocol` the way the JS library does. Confirm early which of these applies:
-
-1. Native PMTiles support in the MapLibre Native version the Flutter binding
-   wraps, if the binding surfaces it.
-2. A Dart PMTiles reader feeding the map through a local shim.
-3. Asking us to expose a plain `{z}/{x}/{y}` endpoint in front of the archive.
-
-Option 3 is a legitimate answer, not a defeat. It trades a service to run for
-the problem disappearing. Raise it early, because it changes what we operate.
+Flutter is the open question, and it's worth settling before you build screens on
+top of it. MapLibre Native doesn't give you `addProtocol` like the JS library
+does. So either the binding surfaces PMTiles support natively, or you read the
+archive in Dart and feed the map through a local shim, or you ask us for a plain
+`{z}/{x}/{y}` endpoint in front of the archive. That last one is fine by me. It
+means we run a small service, which is a real cost, but it makes the whole problem
+go away. Just raise it early.
 
 ### Light and dark
 
-Every screen in the designs has a dark variant and the map is part of the
-screen. `darkStyleUrl` is a full second style, not a filter.
+The designs have a dark variant of every screen and the map is part of that, so
+there's a second full style rather than a filter over the first. Its background is
+`#0A0D0B`, the same `homeDarkMap` in the app's `app_colors.dart`. The whole
+palette came from there so the map sits inside the design instead of next to it.
 
-Its background is `#0A0D0B`, which is `homeDarkMap` in
-`apps/trotxi_commuter/lib/core/config/theme/app_colors.dart`. The basemap was
-built from the app palette so it sits inside the design rather than beside it.
+Swap themes by setting the other style URL. Your overlays won't survive that, so
+re-add the van, the line and the pins once the new style loads. That's the bug
+everyone hits the first time they wire up a theme toggle.
 
-Swap by calling the library's set-style method with the other URL. **Overlays do
-not survive a style swap.** Re-add the vehicle marker, route line and pins after
-the new style loads. This is the most common bug when wiring a theme toggle.
+### Overlays
 
-### Overlays, and one gap
+You can draw these today:
 
-| Overlay                       | Source                                                        | State           |
-| ----------------------------- | ------------------------------------------------------------- | --------------- |
-| Stop pins                     | `GET /routes/:id`, stops in order with `latitude`/`longitude` | Ready           |
-| Vehicle marker                | `GET /trips/:id/position`, latest fix                         | Ready           |
-| ETA per stop                  | Same call, `etaToStops[]` with `distanceMeters`, `etaSeconds` | Ready           |
-| Stop progress ("2 of 4")      | Route stop count minus `etaToStops` remaining                 | Ready           |
-| **Road-following route line** | Learned geometry (#179)                                       | **Not exposed** |
+- Stop pins from `GET /routes/:id`, which returns stops in order with lat/lng.
+- The van from `GET /trips/:id/position`.
+- Per-stop ETAs from the same call, in `etaToStops[]`.
+- "2 of 4 stops" by comparing the route's stop count against what's left in
+  `etaToStops`.
 
-The last row is a real gap. We derive the road the vehicle actually follows from
-our own GPS traces, but nothing serves it to clients. Today you can only draw a
-straight polyline between consecutive stops, which visibly cuts corners against
-the basemap's roads. If the designs need the line to follow the road, say so and
-we will expose it. Do not spend time approximating it.
+What you can't draw is a route line that follows the road. We work out the actual
+path from our own GPS traces in #179, but nothing serves it, so the best you can
+do right now is a straight line between stops and it'll cut corners visibly. If
+the design needs the real thing, tell me and I'll expose it rather than have you
+approximate it.
 
-Also missing, tracked from the #199 review: nothing pins a rider to a boarding
-stop, so "the van is approaching **your** pickup" cannot be derived from
-`etaToStops` alone.
+Related, and flagged in #199: we don't record which stop a rider boards at, so
+you can't tell someone the van is approaching _their_ pickup from `etaToStops`.
 
 ### Polling
 
-`GET /trips/:id/position` shares a budget of **100 requests per 60 seconds per
-user across every endpoint**, not per route. Polling once a second costs 60 of
-your 100 and starts returning 429 for the rest of the app. Drivers publish a fix
-roughly every 5 seconds, so anything faster re-reads the same row. Poll at 5s
-while a trip is live, back off hard when it is not, stop when backgrounded.
+The rate limit is 100 requests a minute per user across everything, not per
+endpoint. Poll position once a second and you've spent 60 of those before the app
+does anything else, and the rest starts 429ing.
 
-### Things that will bite you
+Drivers report roughly every 5 seconds, so polling faster just re-reads the same
+row. Use 5s while a trip is running, back right off when it isn't, and stop when
+the app is backgrounded.
 
-- **Zoom past 14.** The archive stops at z14 and the style sets `maxzoom: 14` so
-  MapLibre overzooms cleanly rather than requesting tiles that do not exist.
-  Omit it in a style of your own and the map blanks exactly when a rider zooms
-  in to find their stop. Inherit the shipped style and this is free.
-- **Labels are Latin only.** Glyphs cover `U+0000`-`U+024F` and the styles use
-  `['get', 'name']` deliberately. The tiles also carry `name:zh`, `name:ko`,
-  `name:ka` and `name:ru`; switching to a localised field makes those labels
-  silently vanish rather than error. Widen `maps/build-glyphs.mjs` first.
-- **A malformed style does not throw.** It renders a blank grey canvas that is
-  indistinguishable from the tiles being down. If the map is empty, suspect the
-  style before the network.
-- **Range requests are mandatory.** Any proxy or cache in front of the archive
-  must preserve `206`, `accept-ranges`, and `content-range` inside
-  `access-control-expose-headers`.
+### Things that catch people out
+
+The archive stops at zoom 14 and the style sets `maxzoom: 14` so MapLibre
+stretches those tiles instead of asking for z15 and getting nothing. If you write
+your own style and leave it out, the map goes white exactly when someone zooms in
+to find their stop.
+
+Labels only cover `U+0000`-`U+024F`, and the styles ask for `name` on purpose. The
+tiles also carry `name:zh`, `name:ko`, `name:ka` and `name:ru`. Point `text-field`
+at one of those and the labels quietly disappear instead of erroring. Widen
+`maps/build-glyphs.mjs` first.
+
+A broken style doesn't throw, it renders grey. That looks identical to the tiles
+being down, so check the style first.
+
+Anything you put in front of the archive has to keep range requests working: 206
+responses, `accept-ranges`, and `content-range` listed in
+`access-control-expose-headers`.
 
 ## How it works
 
@@ -184,78 +172,68 @@ maps/build-glyphs.mjs ─────┘                            │
                                     GET /flags ──▶ rider · driver · ops
 ```
 
-The archive:
+The archive is PMTiles v3, clustered, gzipped MVT, zoom 0 to 14, covering
+lon -3.807 to 1.394 and lat 3.704 to 11.178. OpenMapTiles 3.16.0 schema, 16 vector
+layers, 101 MB, 79,193 tiles.
 
-```
-format   PMTiles v3, clustered, gzip, MVT vector
-zoom     0 to 14
-bounds   lon -3.807 to 1.394, lat 3.704 to 11.178
-schema   OpenMapTiles 3.16.0, 16 vector layers
-size     101 MB, 79,193 addressed tiles
-```
+One generator produces both styles because they only differ in palette. If they
+were two files someone would add a layer to one and forget the other, and we'd
+find out when a driver couldn't read the dark map at 6am.
 
-Both styles come from one generator rather than two hand-written files, because
-they differ only in palette. Kept apart they drift: a layer gets added to one,
-the dark map quietly loses a road class, and nobody notices until a driver is
-squinting at it at 6am.
-
-Glyphs are built from Noto Sans (OFL-1.1) via Fontsource, which publishes woff2
-only, so each subset is decompressed back to sfnt before fontnik slices it into
-256-codepoint ranges. `latin` and `latin-ext` are composited per range because
-Fontsource splits Latin across both and a name like "Nsawam Adoagyiri" can draw
-from either. Two stacks: `Noto Sans Regular` (400) and `Noto Sans Medium` (500).
+Glyphs come from Noto Sans via Fontsource, which only ships woff2, so the build
+decompresses each subset back to sfnt before fontnik slices it into 256-codepoint
+ranges. `latin` and `latin-ext` get composited together because Fontsource splits
+Latin across both and a name like "Nsawam Adoagyiri" needs characters from each.
+Two stacks, Regular (400) and Medium (500).
 
 ## Configuration
 
-| Var                  | Effect                                            |
-| -------------------- | ------------------------------------------------- |
-| `MAP_TILES_URL`      | Archive URL on `/flags`. Unset means `url: null`. |
-| `MAP_STYLE_URL`      | Light style URL. Unset means `styleUrl: null`.    |
-| `MAP_STYLE_DARK_URL` | Dark style URL. Unset means `darkStyleUrl: null`. |
+`MAP_TILES_URL`, `MAP_STYLE_URL` and `MAP_STYLE_DARK_URL` map onto the three
+fields in `/flags`. Leave one unset and its field comes back null.
 
-All three are **public values** and live in `render.yaml`, not the dashboard.
-There is no secret anywhere in this feature.
+They're all public values, so they live in `render.yaml` rather than the Render
+dashboard. Nothing in this feature is a secret.
 
 ## Security
 
-The bucket is world-readable **by design**. Tiles are public OSM data; there is
-nothing to protect and adding auth would only mean shipping a credential to
-every client.
+The bucket is world-readable on purpose. It's public OSM data. Putting auth on it
+would just mean shipping a credential to every client for no benefit.
 
-What actually matters:
+The things worth actually watching:
 
-- **Licence compliance.** ODbL (OSM) and the OpenMapTiles schema both require
-  credit. `attribution` travels inside the style as well as on `/flags`, so it
-  is hard to render the map without the notice. Do not shrink it to unreadable
-  or hide it behind a tap.
-- **Redistribution.** Noto Sans is OFL-1.1, which permits shipping the glyph
-  atlases. Do not swap in a font without checking its licence allows this.
-- **No PII.** Nothing rider-specific ever goes to the tile host. Overlays are
-  drawn client-side from authenticated API responses; the bucket never learns
-  who is looking or where they are.
+Attribution is a licence condition. OSM is ODbL and the schema is OpenMapTiles,
+and both want credit. It's baked into the style as well as `/flags` so it's hard
+to ship the map without it. Don't shrink it to nothing or bury it behind a tap.
+
+Noto Sans is OFL-1.1, which is why we can serve the glyphs at all. If anyone
+swaps the font, check the licence allows redistribution.
+
+Nothing rider-specific goes near the tile host. Overlays are drawn client-side
+from authenticated API calls, so the bucket never learns who's looking or where
+they are.
 
 ## Local development and testing
 
 ```bash
 pnpm --filter @trotxi/maps build           # styles  -> maps/dist/
 pnpm --filter @trotxi/maps glyphs          # glyphs  -> maps/dist/fonts/
-pnpm --filter @trotxi/maps test:coverage   # validate + check dist matches generator
+pnpm --filter @trotxi/maps test:coverage   # validate, and check dist matches the generator
 ```
 
-Preview both themes against the live hosted tiles:
+To look at both themes against the real hosted tiles:
 
 ```bash
 python3 -m http.server 8788 --directory maps   # then open /preview/
 ```
 
-Style validation is gated in CI and is not ceremony. It already caught a road
-casing whose width wrapped a zoom interpolation in an addition, which the spec
-forbids, so that layer silently never drew.
+Style validation runs in CI and it earns its keep. It caught a road casing whose
+width wrapped a zoom interpolation inside an addition, which the spec doesn't
+allow, so that layer had been silently not drawing.
 
 ### Deploying
 
-Upload the contents of `maps/dist/` to the bucket root, preserving the `fonts/`
-prefix. Nine objects:
+Upload everything in `maps/dist/` to the bucket root, keeping the `fonts/` prefix.
+Nine objects when you're done:
 
 ```
 ghana.pmtiles
@@ -265,8 +243,8 @@ fonts/Noto Sans Regular/{0-255,256-511,512-767}.pbf
 fonts/Noto Sans Medium/{0-255,256-511,512-767}.pbf
 ```
 
-The spaces in the font stack directory names are significant: they must match
-the `text-font` values in the styles exactly. MapLibre requests them as `%20`.
+The spaces in the font directory names matter. They have to match `text-font` in
+the styles exactly, and MapLibre asks for them as `%20`.
 
 ```bash
 for k in style.light.json style.dark.json "fonts/Noto%20Sans%20Regular/0-255.pbf" ghana.pmtiles; do
@@ -276,34 +254,30 @@ done
 
 ### Rebuilding the archive
 
-The OSM snapshot is baked in; check `planetiler:osm:osmosisreplicationtime` in
-the metadata to see how stale it is. Needs **Java 21**, planetiler refuses to
-start on 17.
+The OSM snapshot is baked into the file. `planetiler:osm:osmosisreplicationtime`
+in the metadata tells you how old it is. Needs Java 21; it won't start on 17.
 
 ```bash
 brew install openjdk@21
 java -jar planetiler.jar --download --area=ghana --output=ghana.pmtiles
 ```
 
-Then upload and purge the Cloudflare cache for the object.
+Upload, then purge the Cloudflare cache for that object.
 
 ## Where the code lives
 
-| Path                                             | What                                                        |
-| ------------------------------------------------ | ----------------------------------------------------------- |
-| `maps/build-styles.mjs`                          | Generates both styles from one palette                      |
-| `maps/build-glyphs.mjs`                          | Generates the SDF glyph atlases                             |
-| `maps/validate-styles.mjs`                       | Style-spec validation                                       |
-| `maps/check-styles.mjs`                          | CI gate: validates and checks `dist/` matches the generator |
-| `maps/dist/`                                     | The upload artifacts                                        |
-| `maps/preview/`                                  | Local light/dark preview harness                            |
-| `services/api/src/modules/flags/flags.schema.ts` | The `mapTiles` contract                                     |
-| `services/api/src/modules/flags/flags.routes.ts` | `GET /flags`                                                |
-| `render.yaml`                                    | The three public URL vars                                   |
+Everything generator-side is in `maps/`: `build-styles.mjs` and
+`build-glyphs.mjs` produce the artifacts, `validate-styles.mjs` checks them
+against the spec, and `check-styles.mjs` is the CI gate that also verifies
+`dist/` still matches the generator. `preview/` is the local harness and `dist/`
+is what gets uploaded.
+
+The API side is small: the `mapTiles` shape lives in
+`services/api/src/modules/flags/flags.schema.ts` and it's served from
+`flags.routes.ts`. The three URLs are in `render.yaml`.
 
 ## Related
 
-- #178 basemap hosting, #179 route geometry, #181 segment speeds
-- #180 MapLibre in the apps, #170 ops console
-- [live-positions.md](live-positions.md) for the position and ETA payloads
-- ADR-0006 (telemetry path), ADR-0008 (Zod/OpenAPI contract)
+#178 for the hosting, #179 for route geometry, #181 for segment speeds. #180 and
+#170 are the clients. [live-positions.md](live-positions.md) covers the position
+and ETA payloads. ADR-0006 for the telemetry path, ADR-0008 for the contract.
