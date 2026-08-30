@@ -28,6 +28,7 @@ repo (`system-design.md`, `security.md`). Each doc links to both.
 | Boarding — QR scan + manifest + PIN, all deduct (#20, E4)                   | [boarding.md](boarding.md)                       | 🟢 3-layer verification live           |
 | Observability & performance (#28)                                           | [design](../design/observability.md)             | ✅ backend live (metrics/traces/logs)  |
 | Feature flags + force-update — `GET /flags` + admin ops (#27)               | [feature-flags.md](feature-flags.md)             | ✅ live (home-grown, PostHog later)    |
+| Basemap: self-hosted tiles, styles, glyphs, served via `/flags` (#178)      | [basemap.md](basemap.md)                         | ✅ live (clients: #180, #170)          |
 
 ## Conventions for a feature doc
 
