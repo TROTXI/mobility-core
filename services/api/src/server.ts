@@ -298,6 +298,7 @@ async function main(): Promise<void> {
     payments,
     subscriptions,
     entitlements,
+    credits,
     users,
     paystack,
     pricing,

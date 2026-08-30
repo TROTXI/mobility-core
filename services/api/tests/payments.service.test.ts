@@ -12,8 +12,10 @@ import {
   type SubscriptionRepository,
 } from '../src/modules/subscriptions/subscription.repository';
 import { InMemoryEntitlementLedgerRepository } from '../src/modules/entitlements/entitlement-ledger.repository';
+import { InMemoryCreditLedgerRepository } from '../src/modules/entitlements/credit-ledger.repository';
 import { InMemoryUserRepository } from '../src/modules/users/user.repository';
 import { InMemoryPricingRepository } from '../src/modules/payments/pricing.repository';
+import { MIN_CHARGE_PESEWAS } from '../src/modules/payments/pricing';
 
 const FAKE_SECRET = 'fake-paystack-secret';
 const RIDES = 44;
@@ -25,16 +27,18 @@ function make(subscriptions: SubscriptionRepository = new InMemorySubscriptionRe
   const payments = new InMemoryPaymentRepository();
   const entitlements = new InMemoryEntitlementLedgerRepository();
   const pricing = new InMemoryPricingRepository();
+  const credits = new InMemoryCreditLedgerRepository();
   const service = new PaymentsService({
     payments,
     subscriptions,
     entitlements,
+    credits,
     paystack: new FakePaystackClient(FAKE_SECRET),
     users: new InMemoryUserRepository(),
     pricing,
     ridesPerPeriod: RIDES,
   });
-  return { payments, subscriptions, entitlements, pricing, service };
+  return { payments, subscriptions, entitlements, credits, pricing, service };
 }
 
 /** A priced corridor: without a fare in force there is no price to charge. */
@@ -204,5 +208,109 @@ describe('PaymentsService.handleWebhook', () => {
     const { reference } = await service.initializeSubscription('u1', 'monthly', ROUTE);
     const { body, signature } = chargeSuccess(reference);
     await expect(service.handleWebhook(body, signature)).rejects.toThrow('db down');
+  });
+});
+
+describe('credit-netted checkout (#128)', () => {
+  /** Grant credit the way month-end conversion does, so the balance is real. */
+  async function grant(
+    credits: InMemoryCreditLedgerRepository,
+    userId: string,
+    pesewas: number,
+  ): Promise<void> {
+    await credits.record({
+      userId,
+      deltaPesewas: pesewas,
+      reason: 'month_end_conversion',
+      idempotencyKey: `grant:${userId}:${pesewas}`,
+    });
+  }
+
+  it('charges the price less the credit balance, and says so', async () => {
+    const { service, credits, payments } = await priced();
+    await grant(credits, 'u1', 5_000);
+
+    const checkout = await service.initializeSubscription('u1', 'monthly', ROUTE);
+
+    expect(checkout.pricePesewas).toBe(FARE * RIDES);
+    expect(checkout.appliedCreditPesewas).toBe(5_000);
+    expect(checkout.chargePesewas).toBe(FARE * RIDES - 5_000);
+    expect(await payments.findByReference(checkout.reference)).toMatchObject({
+      amount: FARE * RIDES - 5_000,
+      appliedCreditPesewas: 5_000,
+    });
+  });
+
+  it('does not touch the ledger at checkout — an abandoned one must not burn credit', async () => {
+    const { service, credits } = await priced();
+    await grant(credits, 'u1', 5_000);
+    await service.initializeSubscription('u1', 'monthly', ROUTE);
+    expect(await credits.balancePesewas('u1')).toBe(5_000);
+  });
+
+  it('debits the ledger on charge.success', async () => {
+    const { service, credits } = await priced();
+    await grant(credits, 'u1', 5_000);
+    const { reference } = await service.initializeSubscription('u1', 'monthly', ROUTE);
+
+    const { body, signature } = chargeSuccess(reference);
+    await service.handleWebhook(body, signature);
+
+    expect(await credits.balancePesewas('u1')).toBe(0);
+  });
+
+  it('a replayed webhook does not debit twice', async () => {
+    const { service, credits } = await priced();
+    await grant(credits, 'u1', 5_000);
+    const { reference } = await service.initializeSubscription('u1', 'monthly', ROUTE);
+
+    const { body, signature } = chargeSuccess(reference);
+    await service.handleWebhook(body, signature);
+    await service.handleWebhook(body, signature);
+
+    expect(await credits.balancePesewas('u1')).toBe(0);
+  });
+
+  it('leaves the balance alone when the rider has no credit', async () => {
+    const { service, credits, payments } = await priced();
+    const { reference } = await service.initializeSubscription('u1', 'monthly', ROUTE);
+    expect(await payments.findByReference(reference)).toMatchObject({
+      amount: FARE * RIDES,
+      appliedCreditPesewas: 0,
+    });
+    expect(await credits.balancePesewas('u1')).toBe(0);
+  });
+
+  it('never nets the charge below the Paystack floor; the rest stays on the ledger', async () => {
+    const { service, credits } = await priced();
+    const price = FARE * RIDES;
+    await grant(credits, 'u1', price + 10_000); // more credit than the whole plan
+
+    const checkout = await service.initializeSubscription('u1', 'monthly', ROUTE);
+
+    expect(checkout.chargePesewas).toBe(MIN_CHARGE_PESEWAS);
+    expect(checkout.appliedCreditPesewas).toBe(price - MIN_CHARGE_PESEWAS);
+
+    const { body, signature } = chargeSuccess(checkout.reference);
+    await service.handleWebhook(body, signature);
+    expect(await credits.balancePesewas('u1')).toBe(price + 10_000 - checkout.appliedCreditPesewas);
+  });
+
+  it('clamps the debit to the balance when two checkouts raced the same credit', async () => {
+    const { service, credits } = await priced();
+    await grant(credits, 'u1', 5_000);
+
+    // Both opened before either settled, so both were netted against 5000.
+    const first = await service.initializeSubscription('u1', 'monthly', ROUTE);
+    const second = await service.initializeSubscription('u1', 'monthly', ROUTE);
+    expect(second.appliedCreditPesewas).toBe(5_000);
+
+    for (const ref of [first.reference, second.reference]) {
+      const { body, signature } = chargeSuccess(ref);
+      await service.handleWebhook(body, signature);
+    }
+
+    // The second debit is clamped rather than driving the ledger negative.
+    expect(await credits.balancePesewas('u1')).toBe(0);
   });
 });

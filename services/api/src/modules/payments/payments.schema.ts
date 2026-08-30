@@ -19,6 +19,12 @@ export const subscribeBodySchema = z.object({
 export const checkoutResponseSchema = z.object({
   authorizationUrl: z.string(),
   reference: z.string(),
+  /** Full period price before credit — what the rider would owe with none. */
+  pricePesewas: z.number().int(),
+  /** Ride Credit netted off (#128); 0 when the rider has none. */
+  appliedCreditPesewas: z.number().int(),
+  /** What Paystack will actually charge: `pricePesewas - appliedCreditPesewas`. */
+  chargePesewas: z.number().int(),
 });
 
 export const webhookResponseSchema = z.object({

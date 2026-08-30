@@ -64,6 +64,36 @@ export function derivePrice(farePesewas: number, pricing: PlanPricing): DerivedP
 }
 
 /**
+ * Smallest amount we will send to Paystack. Below this a charge is not worth
+ * attempting, so credit is capped to leave at least this much payable and the
+ * remainder stays in the ledger for the next renewal.
+ */
+export const MIN_CHARGE_PESEWAS = 100;
+
+/** How a checkout splits between Ride Credit and money. */
+export interface NettedCharge {
+  /** Credit to debit on success. */
+  appliedCreditPesewas: number;
+  /** What Paystack is asked for. */
+  chargePesewas: number;
+}
+
+/**
+ * Split a price between the rider's credit balance and money.
+ *
+ * Credit never takes the charge below {@link MIN_CHARGE_PESEWAS}: the unused
+ * remainder is not lost, it simply stays on the ledger for the next renewal.
+ *
+ * @param pricePesewas - the derived price for the period.
+ * @param creditBalancePesewas - the rider's current Ride Credit balance.
+ * @returns how much credit is applied and how much is charged.
+ */
+export function netCharge(pricePesewas: number, creditBalancePesewas: number): NettedCharge {
+  const spendable = Math.max(0, Math.min(creditBalancePesewas, pricePesewas - MIN_CHARGE_PESEWAS));
+  return { appliedCreditPesewas: spendable, chargePesewas: pricePesewas - spendable };
+}
+
+/**
  * What the operator earns for the seats actually run.
  *
  * @param farePesewas - the fare in force when the rides were delivered.
