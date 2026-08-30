@@ -2,12 +2,18 @@
 // process the charge.success webhook that activates it. Money is in PESEWAS
 // (integers, never floats), matching Paystack.
 //
+// Checkouts are netted against the rider's Ride Credit balance (#128): the
+// applied amount is frozen on the payment at initiation, and the ledger is
+// debited on charge.success — never at checkout, or an abandoned checkout would
+// burn credit the rider never spent.
+//
 // Deliberately not one DB transaction (system-design §4.2 "idempotent
 // webhooks"): each step is individually idempotent — the one-active-per-user
 // index guards activation, markPaid only does pending→paid — so a retried or
 // partial webhook converges.
 
 import { normaliseGhanaPhone } from '../../lib/phone';
+import type { CreditLedgerRepository } from '../entitlements/credit-ledger.repository';
 import type { EntitlementLedgerRepository } from '../entitlements/entitlement-ledger.repository';
 import type {
   SubscriptionPlan,
@@ -15,7 +21,7 @@ import type {
 } from '../subscriptions/subscription.repository';
 import type { UserRepository } from '../users/user.repository';
 import { periodFor } from '../subscriptions/period';
-import { derivePrice, type DerivedPrice } from './pricing';
+import { derivePrice, netCharge, type DerivedPrice } from './pricing';
 import type { PricingRepository } from './pricing.repository';
 import type { NewPayment, Payment, PaymentRepository } from './payment.repository';
 import type { PaystackClient } from './paystack.client';
@@ -55,6 +61,8 @@ export interface PaymentsServiceDeps {
   subscriptions: SubscriptionRepository;
   /** Ride entitlement ledger — allocated on a successful subscription payment. */
   entitlements: EntitlementLedgerRepository;
+  /** Ride Credit ledger — netted off a checkout and debited on success (#128). */
+  credits?: CreditLedgerRepository;
   /** Undefined when payments aren't configured (e.g. prod without a Paystack key). */
   paystack?: PaystackClient;
   /** Users, for capturing the payer's verified phone on charge.success (#182). */
@@ -92,6 +100,12 @@ export interface CheckoutResult {
   authorizationUrl: string;
   /** Our unique payment reference, echoed back by the webhook for reconciliation. */
   reference: string;
+  /** Full period price before credit, so the client can show the saving. */
+  pricePesewas: number;
+  /** Ride Credit netted off this checkout (#128). */
+  appliedCreditPesewas: number;
+  /** What Paystack is charging: `pricePesewas - appliedCreditPesewas`. */
+  chargePesewas: number;
 }
 
 /**
@@ -121,12 +135,15 @@ export class PaymentsService {
     routeId: string,
   ): Promise<CheckoutResult> {
     const price = await this.priceFor(plan, routeId);
-    return this.startCheckout({
+    const balance = this.deps.credits ? await this.deps.credits.balancePesewas(userId) : 0;
+    const { appliedCreditPesewas, chargePesewas } = netCharge(price.pricePesewas, balance);
+    const checkout = await this.startCheckout({
       userId,
       purpose: 'subscription',
       plan,
       routeId,
-      amount: price.pricePesewas,
+      amount: chargePesewas,
+      appliedCreditPesewas,
       currency: 'GHS',
       // Frozen here, not at activation: a fare moving between checkout and
       // charge.success would grant rides priced against a fare never paid.
@@ -134,6 +151,7 @@ export class PaymentsService {
       farePesewas: price.farePesewas,
       creditPesewasPerRide: price.creditPesewasPerRide,
     });
+    return { ...checkout, pricePesewas: price.pricePesewas, appliedCreditPesewas, chargePesewas };
   }
 
   /**
@@ -165,7 +183,9 @@ export class PaymentsService {
    * @returns the checkout URL and the generated reference.
    * @throws PaymentsNotConfiguredError when no Paystack client is wired.
    */
-  private async startCheckout(input: Omit<NewPayment, 'reference'>): Promise<CheckoutResult> {
+  private async startCheckout(
+    input: Omit<NewPayment, 'reference'>,
+  ): Promise<Pick<CheckoutResult, 'authorizationUrl' | 'reference'>> {
     if (!this.deps.paystack) {
       throw new PaymentsNotConfiguredError('Payments are not configured');
     }
@@ -209,6 +229,10 @@ export class PaymentsService {
     if (!payment) return; // unknown reference — not ours
 
     if (payment.purpose === 'subscription' && payment.plan) {
+      // Debit BEFORE activating: a crash between the two leaves the rider
+      // without the subscription their retry will grant, rather than with a
+      // subscription they never paid the credit half of.
+      await this.applyCredit(payment.userId, reference, payment.appliedCreditPesewas);
       // Membership fee paid — activate the subscription (pinned to the paid
       // route) and allocate the period's rides. Both idempotent → replay-safe.
       await this.activateSubscription(payment.userId, payment.plan, payment.routeId, payment);
@@ -267,6 +291,38 @@ export class PaymentsService {
       // Already held by another account, or the row vanished. Neither is worth
       // failing a paid subscription over.
     }
+  }
+
+  /**
+   * Debit the Ride Credit this checkout was netted against.
+   *
+   * Clamped to the balance actually on the ledger. Two checkouts opened before
+   * either settles are both netted against the same balance, so the second
+   * would otherwise drive it negative — spending credit that no longer exists.
+   * The clamp caps that at the balance; the rider keeps the discount already
+   * charged, which is the cheaper side of the error to be on.
+   *
+   * @param userId - the rider.
+   * @param reference - the payment reference; also the idempotency key.
+   * @param appliedCreditPesewas - what was netted off at checkout.
+   */
+  private async applyCredit(
+    userId: string,
+    reference: string,
+    appliedCreditPesewas: number,
+  ): Promise<void> {
+    if (!this.deps.credits || appliedCreditPesewas <= 0) return;
+    const balance = await this.deps.credits.balancePesewas(userId);
+    const debit = Math.min(appliedCreditPesewas, balance);
+    if (debit <= 0) return;
+    await this.deps.credits.record({
+      userId,
+      deltaPesewas: -debit,
+      reason: 'renewal_applied',
+      refType: 'payment',
+      refId: reference,
+      idempotencyKey: `renewal:${reference}`,
+    });
   }
 
   /**

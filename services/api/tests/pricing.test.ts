@@ -5,6 +5,8 @@ import {
   derivePrice,
   deriveOperatorPayout,
   deriveRevenue,
+  MIN_CHARGE_PESEWAS,
+  netCharge,
   type PlanPricing,
 } from '../src/modules/payments/pricing';
 
@@ -99,5 +101,32 @@ describe('deriveRevenue', () => {
     // costs us money. The formula must show that rather than clamp it.
     const price = derivePrice(FARE, PARITY);
     expect(deriveRevenue(price, 50, 0)).toBeLessThan(0);
+  });
+});
+
+describe('netCharge', () => {
+  it('applies the whole balance when it is comfortably under the price', () => {
+    expect(netCharge(26_400, 5_000)).toEqual({
+      appliedCreditPesewas: 5_000,
+      chargePesewas: 21_400,
+    });
+  });
+
+  it('applies nothing when the rider has no credit', () => {
+    expect(netCharge(26_400, 0)).toEqual({ appliedCreditPesewas: 0, chargePesewas: 26_400 });
+  });
+
+  it('leaves the Paystack floor payable rather than charging zero', () => {
+    expect(netCharge(26_400, 30_000)).toEqual({
+      appliedCreditPesewas: 26_400 - MIN_CHARGE_PESEWAS,
+      chargePesewas: MIN_CHARGE_PESEWAS,
+    });
+  });
+
+  it('applies nothing when the price is already at or below the floor', () => {
+    expect(netCharge(MIN_CHARGE_PESEWAS, 9_999)).toEqual({
+      appliedCreditPesewas: 0,
+      chargePesewas: MIN_CHARGE_PESEWAS,
+    });
   });
 });

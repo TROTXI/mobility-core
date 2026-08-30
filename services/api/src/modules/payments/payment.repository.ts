@@ -30,8 +30,10 @@ export interface Payment {
   farePesewas: number | null;
   /** Ride Credit value per unused ride, frozen at checkout. */
   creditPesewasPerRide: number | null;
-  /** Amount in pesewas (1 GHS = 100 pesewas). */
+  /** Amount CHARGED in pesewas, already net of `appliedCreditPesewas`. */
   amount: number;
+  /** Ride Credit netted off this checkout, frozen at initiation (#128). */
+  appliedCreditPesewas: number;
   /** ISO 4217 currency code (currently always `GHS`). */
   currency: string;
   /** Current lifecycle state. */
@@ -47,8 +49,10 @@ export interface NewPayment {
   purpose: PaymentPurpose;
   plan: SubscriptionPlan | null;
   routeId?: string | null;
-  /** Amount in pesewas (1 GHS = 100 pesewas). */
+  /** Amount CHARGED in pesewas, already net of `appliedCreditPesewas`. */
   amount: number;
+  /** Ride Credit netted off this checkout (#128). Defaults to 0. */
+  appliedCreditPesewas?: number;
   currency: string;
   /** Rides this payment buys, frozen at checkout (#103). Null pre-#103. */
   ridesGranted?: number | null;
@@ -96,6 +100,7 @@ export class InMemoryPaymentRepository implements PaymentRepository {
       plan: input.plan,
       routeId: input.routeId ?? null,
       amount: input.amount,
+      appliedCreditPesewas: input.appliedCreditPesewas ?? 0,
       currency: input.currency,
       ridesGranted: input.ridesGranted ?? null,
       farePesewas: input.farePesewas ?? null,
