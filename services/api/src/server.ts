@@ -354,6 +354,7 @@ async function main(): Promise<void> {
   const app = await buildApp({
     users,
     accountDeletion,
+    routeGeometry,
     subscriptions,
     routes,
     stops,
