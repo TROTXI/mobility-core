@@ -118,14 +118,18 @@ You can draw these today:
 - "2 of 4 stops" by comparing the route's stop count against what's left in
   `etaToStops`.
 
-What you can't draw is a route line that follows the road. We work out the actual
-path from our own GPS traces in #179, but nothing serves it, so the best you can
-do right now is a straight line between stops and it'll cut corners visibly. If
-the design needs the real thing, tell me and I'll expose it rather than have you
-approximate it.
+For the route line, call `GET /routes/:id/geometry`. You get the road-following
+path we derived from our own GPS traces when the corridor has run enough times,
+and a straight line through the stops when it hasn't. The `source` field says
+which you got, `traces` or `stops`, so you can render the fallback differently
+instead of implying it follows the road.
 
-Related, and flagged in #199: we don't record which stop a rider boards at, so
-you can't tell someone the van is approaching _their_ pickup from `etaToStops`.
+For "the van is approaching _your_ pickup", `GET /trips/:id/position` returns
+`riderStop`: the caller's own entry, already picked out of `etaToStops`. It's
+null when they have no reservation on that trip or no stop recorded.
+
+Riders choose a pickup and drop-off when they subscribe, and both come back on
+`GET /me/reservations` as well.
 
 ### Polling
 

@@ -10,6 +10,10 @@ export interface Vehicle {
   id: string;
   registration: string;
   label: string | null;
+  /** Model as a rider would say it, e.g. "Toyota Hiace" (#205). */
+  make: string | null;
+  /** Livery as a rider would describe it, e.g. "Green / White" (#205). */
+  colour: string | null;
   capacity: number;
   createdAt: Date;
 }
@@ -18,6 +22,8 @@ export interface Vehicle {
 export interface NewVehicle {
   registration: string;
   label?: string | null;
+  make?: string | null;
+  colour?: string | null;
   capacity?: number;
 }
 
@@ -65,6 +71,8 @@ export class InMemoryVehicleRepository implements VehicleRepository {
       id: crypto.randomUUID(),
       registration: input.registration,
       label: input.label ?? null,
+      make: input.make ?? null,
+      colour: input.colour ?? null,
       capacity: input.capacity ?? 0,
       createdAt: new Date(),
     };

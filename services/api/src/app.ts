@@ -79,6 +79,7 @@ import type { FeatureFlagRepository } from './modules/flags/feature-flag.reposit
 import type { MinVersionRepository } from './modules/flags/min-version.repository';
 import type { RouteRepository } from './modules/mobility/route.repository';
 import type { StopRepository } from './modules/mobility/stop.repository';
+import type { RouteGeometryRepository } from './modules/mobility/route-geometry.repository';
 import type { TripRepository } from './modules/mobility/trip.repository';
 import {
   InMemoryTripPositionRepository,
@@ -152,6 +153,8 @@ export interface AppDeps {
   mapStyleDarkUrl?: string;
   /** Observed segment speeds (#181). Absent -> ETAs use the cold-start speed. */
   segmentSpeeds?: SegmentSpeedRepository;
+  /** Derived route shapes (#179), served by GET /routes/:id/geometry (#206). */
+  routeGeometry?: RouteGeometryRepository;
   /** Derives geometry + speeds from completed runs (#179, #181). */
   routeLearning?: RouteLearningService;
   /** Corridor fares + plan levers (#103); admin-editable, never constants. */
@@ -355,9 +358,11 @@ export async function buildApp(deps: AppDeps = {}): Promise<FastifyInstance> {
     routes: deps.routes,
     stops: deps.stops,
     routeStops: deps.routeStops,
+    routeGeometry: deps.routeGeometry,
   });
   await app.register(tripRoutes, {
     trips: deps.trips,
+    vehicles: deps.vehicles,
     rateLimit: deps.rateLimit ?? DEFAULT_RATE_LIMIT,
   });
   await app.register(positionRoutes, {

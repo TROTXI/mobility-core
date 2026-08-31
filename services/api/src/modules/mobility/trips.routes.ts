@@ -12,10 +12,11 @@ import { errorResponseSchema } from '../../lib/schemas';
 import type { RateLimitConfig } from '../ratelimit/ratelimit.plugin';
 import {
   listTripsQuerySchema,
+  riderTripResponseSchema,
   tripListResponseSchema,
-  tripResponseSchema,
 } from './mobility.schema';
 import type { Trip, TripRepository } from './trip.repository';
+import type { VehicleRepository } from './vehicle.repository';
 
 // Map a stored trip to its public (client-facing) shape.
 function toResponse(t: Trip): {
@@ -44,11 +45,12 @@ function toResponse(t: Trip): {
  * @param app - the Fastify instance to register on.
  * @param opts - route dependencies.
  * @param opts.trips - the trip repository (503 when absent).
+ * @param opts.vehicles - vehicles, for the rider-facing van details (#205).
  * @param opts.rateLimit - rate-limit config (applied per user).
  */
 export async function tripRoutes(
   app: FastifyInstance,
-  opts: { trips?: TripRepository; rateLimit: RateLimitConfig },
+  opts: { trips?: TripRepository; vehicles?: VehicleRepository; rateLimit: RateLimitConfig },
 ): Promise<void> {
   const r = app.withTypeProvider<ZodTypeProvider>();
   const UNAVAILABLE = { error: 'unavailable', message: 'Trips are not configured' };
@@ -86,7 +88,7 @@ export async function tripRoutes(
         security: [{ bearerAuth: [] }],
         params: z.object({ id: z.string().uuid() }),
         response: {
-          200: tripResponseSchema,
+          200: riderTripResponseSchema,
           401: errorResponseSchema,
           404: errorResponseSchema,
           429: errorResponseSchema,
@@ -101,7 +103,24 @@ export async function tripRoutes(
       if (!trip) {
         return reply.code(404).send({ error: 'not_found', message: 'Trip not found' });
       }
-      return toResponse(trip);
+
+      // Only what a rider needs to pick the van out at the kerb (#205). The
+      // internal label, seat count and vehicle id stay on the fleet record.
+      const vehicle =
+        trip.vehicleId && opts.vehicles ? await opts.vehicles.findById(trip.vehicleId) : null;
+
+      return {
+        ...toResponse(trip),
+        startedAt: trip.startedAt,
+        completedAt: trip.completedAt,
+        durationSeconds:
+          trip.startedAt && trip.completedAt
+            ? Math.round((trip.completedAt.getTime() - trip.startedAt.getTime()) / 1000)
+            : null,
+        vehicle: vehicle
+          ? { registration: vehicle.registration, make: vehicle.make, colour: vehicle.colour }
+          : null,
+      };
     },
   );
 }
