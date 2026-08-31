@@ -6,6 +6,8 @@ interface VehicleRow {
   id: string;
   registration: string;
   label: string | null;
+  make: string | null;
+  colour: string | null;
   capacity: number;
   created_at: Date;
 }
@@ -15,6 +17,8 @@ function toVehicle(row: VehicleRow): Vehicle {
     id: row.id,
     registration: row.registration,
     label: row.label,
+    make: row.make,
+    colour: row.colour,
     capacity: row.capacity,
     createdAt: row.created_at,
   };
@@ -25,9 +29,15 @@ export class PgVehicleRepository implements VehicleRepository {
 
   async create(input: NewVehicle): Promise<Vehicle> {
     const { rows } = await this.pool.query<VehicleRow>(
-      `INSERT INTO vehicles (registration, label, capacity)
-       VALUES ($1, $2, $3) RETURNING *`,
-      [input.registration, input.label ?? null, input.capacity ?? 0],
+      `INSERT INTO vehicles (registration, label, make, colour, capacity)
+       VALUES ($1, $2, $3, $4, $5) RETURNING *`,
+      [
+        input.registration,
+        input.label ?? null,
+        input.make ?? null,
+        input.colour ?? null,
+        input.capacity ?? 0,
+      ],
     );
     return toVehicle(rows[0]!);
   }
@@ -51,8 +61,9 @@ export class PgVehicleRepository implements VehicleRepository {
     if (!existing) return null;
     const next = applyPatch(existing, patch);
     const { rows } = await this.pool.query<VehicleRow>(
-      `UPDATE vehicles SET registration = $2, label = $3, capacity = $4 WHERE id = $1 RETURNING *`,
-      [id, next.registration, next.label, next.capacity],
+      `UPDATE vehicles SET registration = $2, label = $3, make = $4, colour = $5, capacity = $6
+       WHERE id = $1 RETURNING *`,
+      [id, next.registration, next.label, next.make, next.colour, next.capacity],
     );
     return rows[0] ? toVehicle(rows[0]) : null;
   }

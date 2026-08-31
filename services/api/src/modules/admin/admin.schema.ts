@@ -44,11 +44,16 @@ export const attachStopBodySchema = z.object({
 export const createVehicleBodySchema = z.object({
   registration: z.string().min(1),
   label: z.string().nullable().optional(),
+  /** What a rider sees on the boarding card (#205). */
+  make: z.string().nullable().optional(),
+  colour: z.string().nullable().optional(),
   capacity: z.number().int().nonnegative().optional(),
 });
 export const updateVehicleBodySchema = z.object({
   registration: z.string().min(1).optional(),
   label: z.string().nullable().optional(),
+  make: z.string().nullable().optional(),
+  colour: z.string().nullable().optional(),
   capacity: z.number().int().nonnegative().optional(),
 });
 

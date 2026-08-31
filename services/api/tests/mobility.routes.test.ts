@@ -3,6 +3,7 @@ import { buildApp } from '../src/app';
 import { InMemoryRouteStopRepository } from '../src/modules/mobility/route-stop.repository';
 import { InMemoryRouteRepository } from '../src/modules/mobility/route.repository';
 import { InMemoryStopRepository } from '../src/modules/mobility/stop.repository';
+import { InMemoryRouteGeometryRepository } from '../src/modules/mobility/route-geometry.repository';
 
 async function appWithRepos() {
   const routes = new InMemoryRouteRepository();
@@ -117,5 +118,76 @@ describe('GET /routes/:id', () => {
       latitude: 5.6369,
       longitude: -0.1614,
     });
+  });
+});
+
+describe('GET /routes/:id/geometry (#206)', () => {
+  /** A route with three stops, plus an optional learned path. */
+  async function seedRoute(withGeometry: boolean) {
+    const routes = new InMemoryRouteRepository();
+    const stops = new InMemoryStopRepository();
+    const routeStops = new InMemoryRouteStopRepository();
+    const routeGeometry = new InMemoryRouteGeometryRepository();
+
+    const route = await routes.create({ name: 'Adenta to Airport City', description: null });
+    const a = await stops.create({ name: 'Adenta', latitude: 5.71, longitude: -0.16 });
+    const b = await stops.create({ name: 'Shiashie', latitude: 5.63, longitude: -0.18 });
+    const c = await stops.create({ name: 'Airport City', latitude: 5.6, longitude: -0.18 });
+    await routeStops.create({ routeId: route.id, stopId: a.id, seq: 1 });
+    await routeStops.create({ routeId: route.id, stopId: b.id, seq: 2 });
+    await routeStops.create({ routeId: route.id, stopId: c.id, seq: 3 });
+
+    if (withGeometry) {
+      await routeGeometry.save({
+        routeId: route.id,
+        // more points than stops: the whole point is that it bends with the road
+        points: [
+          { latitude: 5.71, longitude: -0.16 },
+          { latitude: 5.68, longitude: -0.165 },
+          { latitude: 5.65, longitude: -0.172 },
+          { latitude: 5.63, longitude: -0.18 },
+          { latitude: 5.6, longitude: -0.18 },
+        ],
+        source: 'traces',
+        runCount: 12,
+        stopDistances: new Map(),
+      });
+    }
+
+    const app = await buildApp({ routes, stops, routeStops, routeGeometry });
+    return { app, route };
+  }
+
+  it('returns the learned path when the corridor has run enough times', async () => {
+    const { app, route } = await seedRoute(true);
+    const res = await app.inject({ method: 'GET', url: `/routes/${route.id}/geometry` });
+
+    expect(res.statusCode).toBe(200);
+    expect(res.json()).toMatchObject({ routeId: route.id, source: 'traces', runCount: 12 });
+    // it bends with the road, so it has more points than the route has stops
+    expect(res.json().points.length).toBeGreaterThan(3);
+  });
+
+  it('falls back to the stops on a corridor that has never run', async () => {
+    const { app, route } = await seedRoute(false);
+    const res = await app.inject({ method: 'GET', url: `/routes/${route.id}/geometry` });
+
+    expect(res.statusCode).toBe(200);
+    expect(res.json()).toMatchObject({ source: 'stops', runCount: 0 });
+    // a straight line through the three stops, in order
+    expect(res.json().points).toEqual([
+      { latitude: 5.71, longitude: -0.16 },
+      { latitude: 5.63, longitude: -0.18 },
+      { latitude: 5.6, longitude: -0.18 },
+    ]);
+  });
+
+  it('404s for a route that does not exist', async () => {
+    const { app } = await seedRoute(false);
+    const res = await app.inject({
+      method: 'GET',
+      url: '/routes/00000000-0000-4000-8000-0000000000ff/geometry',
+    });
+    expect(res.statusCode).toBe(404);
   });
 });

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { buildApp } from '../src/app';
 import { createJwtService, type AuthConfig } from '../src/modules/auth/jwt';
 import { InMemoryTripRepository } from '../src/modules/mobility/trip.repository';
+import { InMemoryVehicleRepository } from '../src/modules/mobility/vehicle.repository';
 
 const auth: AuthConfig = {
   secret: 'test-secret-at-least-32-characters-long-0000',
@@ -137,5 +138,97 @@ describe('GET /trips/:id', () => {
       assignedDriverId: '00000000-0000-4000-8000-0000000000f2',
       status: 'active',
     });
+  });
+});
+
+describe('GET /trips/:id — what a rider sees (#205)', () => {
+  it('reports when the run started, ended, and how long it took', async () => {
+    const trips = new InMemoryTripRepository();
+    const app = await buildApp({ auth, trips });
+    const trip = await trips.create({
+      routeId: ROUTE_A,
+      status: 'completed',
+      scheduledAt: new Date('2026-07-08T06:30:00Z'),
+    });
+    await trips.update(trip.id, {
+      startedAt: new Date('2026-07-08T06:32:00Z'),
+      completedAt: new Date('2026-07-08T07:20:00Z'),
+    });
+
+    const res = await app.inject({
+      method: 'GET',
+      url: `/trips/${trip.id}`,
+      headers: bearer(await token()),
+    });
+
+    expect(res.statusCode).toBe(200);
+    expect(res.json()).toMatchObject({
+      status: 'completed',
+      durationSeconds: 48 * 60, // the "48 min" on the Trip Completed card
+    });
+  });
+
+  it('leaves duration null while the run is still going', async () => {
+    const { app, trips } = await appWithTrips();
+    const trip = await trips.create({
+      routeId: ROUTE_A,
+      status: 'active',
+      scheduledAt: new Date('2026-07-08T06:30:00Z'),
+    });
+    const res = await app.inject({
+      method: 'GET',
+      url: `/trips/${trip.id}`,
+      headers: bearer(await token()),
+    });
+    expect(res.json()).toMatchObject({ completedAt: null, durationSeconds: null });
+  });
+
+  it('returns the van a rider can recognise, and not the fleet record', async () => {
+    const trips = new InMemoryTripRepository();
+    const vehicles = new InMemoryVehicleRepository();
+    const van = await vehicles.create({
+      registration: 'GT 1234-20',
+      label: 'internal-only #7',
+      make: 'Toyota Hiace',
+      colour: 'Green / White',
+      capacity: 15,
+    });
+    const app = await buildApp({ auth, trips, vehicles });
+    const trip = await trips.create({
+      routeId: ROUTE_A,
+      vehicleId: van.id,
+      status: 'active',
+      scheduledAt: new Date('2026-07-08T06:30:00Z'),
+    });
+
+    const res = await app.inject({
+      method: 'GET',
+      url: `/trips/${trip.id}`,
+      headers: bearer(await token()),
+    });
+
+    expect(res.json().vehicle).toEqual({
+      registration: 'GT 1234-20',
+      make: 'Toyota Hiace',
+      colour: 'Green / White',
+    });
+    // the internal label and seat count are deliberately not in the payload
+    expect(JSON.stringify(res.json())).not.toContain('internal-only');
+    expect(res.json().vehicle).not.toHaveProperty('capacity');
+  });
+
+  it('is null when no van has been assigned yet', async () => {
+    const { app, trips } = await appWithTrips();
+    const trip = await trips.create({
+      routeId: ROUTE_A,
+      status: 'scheduled',
+      scheduledAt: new Date('2026-07-08T06:30:00Z'),
+    });
+    const res = await app.inject({
+      method: 'GET',
+      url: `/trips/${trip.id}`,
+      headers: bearer(await token()),
+    });
+    expect(res.json().vehicle).toBeNull();
   });
 });

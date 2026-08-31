@@ -46,6 +46,29 @@ export const tripResponseSchema = z.object({
   createdAt: z.date(),
 });
 
+/**
+ * A trip as a rider sees it (#205): when it actually ran, and enough about the
+ * van to recognise it at the kerb.
+ *
+ * Deliberately not the fleet record. A rider needs the plate, the model and the
+ * colour; they do not need our internal label, seat count or vehicle id.
+ */
+export const riderTripResponseSchema = tripResponseSchema.extend({
+  /** When the driver started the run; null while scheduled. */
+  startedAt: z.date().nullable(),
+  /** When the driver ended it; null until completed. */
+  completedAt: z.date().nullable(),
+  /** How long the run took. Null until it has both timestamps. */
+  durationSeconds: z.number().int().nullable(),
+  vehicle: z
+    .object({
+      registration: z.string(),
+      make: z.string().nullable(),
+      colour: z.string().nullable(),
+    })
+    .nullable(),
+});
+
 // GET /trips filters: routeId narrows to one route's runs (optional — omit to
 // list all).
 export const listTripsQuerySchema = z.object({
@@ -61,6 +84,8 @@ export const vehicleResponseSchema = z.object({
   id: z.string().uuid(),
   registration: z.string(),
   label: z.string().nullable(),
+  make: z.string().nullable(),
+  colour: z.string().nullable(),
   capacity: z.number().int(),
   createdAt: z.date(),
 });
@@ -96,6 +121,23 @@ export const recordedPositionResponseSchema = z.object({
 // The trip's latest live position plus a deterministic ETA to each upcoming stop
 // along the route's ordered stops (system-design §7). etaToStops is empty when the
 // route has fewer than two stops or the vehicle is past the last stop.
+/**
+ * The path a route actually follows (#206), for drawing a line on the map.
+ *
+ * `source` says where it came from and is meant to be shown, not hidden:
+ * `traces` is the road-following path derived from completed runs (#179),
+ * `stops` is the straight-line fallback for a corridor that has not run enough
+ * times to have learned one yet. A client can render both; only one of them
+ * follows the road.
+ */
+export const routeGeometryResponseSchema = z.object({
+  routeId: z.string().uuid(),
+  points: z.array(z.object({ latitude: z.number(), longitude: z.number() })),
+  source: z.enum(['traces', 'matched', 'manual', 'stops']),
+  /** Completed runs the path was derived from. 0 for the stop fallback. */
+  runCount: z.number().int(),
+});
+
 export const livePositionResponseSchema = z.object({
   tripId: z.string().uuid(),
   position: z.object({
