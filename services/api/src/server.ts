@@ -302,6 +302,7 @@ async function main(): Promise<void> {
     users,
     paystack,
     pricing,
+    routeStops,
     ridesPerPeriod: PLACEHOLDER_RIDES_PER_PERIOD,
   });
 

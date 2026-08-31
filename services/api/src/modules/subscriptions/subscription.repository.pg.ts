@@ -13,6 +13,8 @@ interface SubscriptionRow {
   plan: SubscriptionPlan;
   status: SubscriptionStatus;
   route_id: string | null;
+  pickup_stop_id: string | null;
+  dropoff_stop_id: string | null;
   price_pesewas: number | null;
   rides_granted: number | null;
   fare_pesewas: number | null;
@@ -29,6 +31,8 @@ function toSubscription(row: SubscriptionRow): Subscription {
     plan: row.plan,
     status: row.status,
     routeId: row.route_id,
+    pickupStopId: row.pickup_stop_id,
+    dropoffStopId: row.dropoff_stop_id,
     pricePesewas: row.price_pesewas,
     ridesGranted: row.rides_granted,
     farePesewas: row.fare_pesewas,
@@ -47,8 +51,8 @@ export class PgSubscriptionRepository implements SubscriptionRepository {
     const { rows } = await this.pool.query<SubscriptionRow>(
       `INSERT INTO subscriptions (user_id, plan, route_id,
                                   price_pesewas, rides_granted, fare_pesewas, credit_pesewas_per_ride,
-                                  period_start, period_end)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+                                  period_start, period_end, pickup_stop_id, dropoff_stop_id)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
        RETURNING *`,
       [
         input.userId,
@@ -60,6 +64,8 @@ export class PgSubscriptionRepository implements SubscriptionRepository {
         input.creditPesewasPerRide ?? null,
         input.periodStart ?? null,
         input.periodEnd ?? null,
+        input.pickupStopId ?? null,
+        input.dropoffStopId ?? null,
       ],
     );
     return toSubscription(rows[0]!);

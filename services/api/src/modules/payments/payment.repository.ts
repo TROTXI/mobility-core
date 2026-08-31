@@ -24,6 +24,10 @@ export interface Payment {
   plan: SubscriptionPlan | null;
   /** The route the rider is subscribing to (E3); carried to the subscription on activation. */
   routeId: string | null;
+  /** Where the rider boards, frozen at checkout (#204). */
+  pickupStopId: string | null;
+  /** Where the rider alights, frozen at checkout (#204). */
+  dropoffStopId: string | null;
   /** Rides this payment buys, frozen at checkout (#103). Null for pre-#103 rows. */
   ridesGranted: number | null;
   /** The corridor fare the price was derived from, frozen at checkout. */
@@ -49,6 +53,10 @@ export interface NewPayment {
   purpose: PaymentPurpose;
   plan: SubscriptionPlan | null;
   routeId?: string | null;
+  /** Where the rider boards, frozen at checkout (#204). */
+  pickupStopId?: string | null;
+  /** Where the rider alights, frozen at checkout (#204). */
+  dropoffStopId?: string | null;
   /** Amount CHARGED in pesewas, already net of `appliedCreditPesewas`. */
   amount: number;
   /** Ride Credit netted off this checkout (#128). Defaults to 0. */
@@ -99,6 +107,8 @@ export class InMemoryPaymentRepository implements PaymentRepository {
       purpose: input.purpose,
       plan: input.plan,
       routeId: input.routeId ?? null,
+      pickupStopId: input.pickupStopId ?? null,
+      dropoffStopId: input.dropoffStopId ?? null,
       amount: input.amount,
       appliedCreditPesewas: input.appliedCreditPesewas ?? 0,
       currency: input.currency,

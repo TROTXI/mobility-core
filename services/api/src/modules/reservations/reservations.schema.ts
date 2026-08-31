@@ -23,6 +23,9 @@ export const listReservationsQuerySchema = z.object({
 export const reservationResponseSchema = z.object({
   id: z.string().uuid(),
   tripId: z.string().nullable(),
+  /** Where this rider boards and alights on the day (#204). */
+  pickupStopId: z.string().nullable(),
+  dropoffStopId: z.string().nullable(),
   travelDate: z.string(),
   direction: directionSchema,
   status: z.enum([

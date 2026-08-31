@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { InMemoryPaymentRepository } from '../src/modules/payments/payment.repository';
 import { FakePaystackClient, paystackSignature } from '../src/modules/payments/paystack.client';
 import {
+  InvalidStopsError,
   InvalidWebhookError,
   NotPricedError,
   PaymentsNotConfiguredError,
@@ -15,6 +16,7 @@ import { InMemoryEntitlementLedgerRepository } from '../src/modules/entitlements
 import { InMemoryCreditLedgerRepository } from '../src/modules/entitlements/credit-ledger.repository';
 import { InMemoryUserRepository } from '../src/modules/users/user.repository';
 import { InMemoryPricingRepository } from '../src/modules/payments/pricing.repository';
+import { InMemoryRouteStopRepository } from '../src/modules/mobility/route-stop.repository';
 import { MIN_CHARGE_PESEWAS } from '../src/modules/payments/pricing';
 
 const FAKE_SECRET = 'fake-paystack-secret';
@@ -28,6 +30,7 @@ function make(subscriptions: SubscriptionRepository = new InMemorySubscriptionRe
   const entitlements = new InMemoryEntitlementLedgerRepository();
   const pricing = new InMemoryPricingRepository();
   const credits = new InMemoryCreditLedgerRepository();
+  const routeStops = new InMemoryRouteStopRepository();
   const service = new PaymentsService({
     payments,
     subscriptions,
@@ -36,9 +39,10 @@ function make(subscriptions: SubscriptionRepository = new InMemorySubscriptionRe
     paystack: new FakePaystackClient(FAKE_SECRET),
     users: new InMemoryUserRepository(),
     pricing,
+    routeStops,
     ridesPerPeriod: RIDES,
   });
-  return { payments, subscriptions, entitlements, credits, pricing, service };
+  return { payments, subscriptions, entitlements, credits, pricing, routeStops, service };
 }
 
 /** A priced corridor: without a fare in force there is no price to charge. */
@@ -312,5 +316,119 @@ describe('credit-netted checkout (#128)', () => {
 
     // The second debit is clamped rather than driving the ledger negative.
     expect(await credits.balancePesewas('u1')).toBe(0);
+  });
+});
+
+describe('rider stop pin (#204)', () => {
+  const STOP_A = '22222222-2222-4222-8222-222222222222'; // seq 1
+  const STOP_B = '33333333-3333-4333-8333-333333333333'; // seq 2
+  const OFF_ROUTE = '44444444-4444-4444-8444-444444444444';
+
+  /** A priced corridor with two stops in order, which is what a real route has. */
+  async function withStops() {
+    const ctx = await priced();
+    await ctx.routeStops.create({ routeId: ROUTE, stopId: STOP_A, seq: 1 });
+    await ctx.routeStops.create({ routeId: ROUTE, stopId: STOP_B, seq: 2 });
+    return ctx;
+  }
+
+  it('freezes the chosen stops on the payment', async () => {
+    const { service, payments } = await withStops();
+    const { reference } = await service.initializeSubscription('u1', 'monthly', ROUTE, {
+      pickupStopId: STOP_A,
+      dropoffStopId: STOP_B,
+    });
+    expect(await payments.findByReference(reference)).toMatchObject({
+      pickupStopId: STOP_A,
+      dropoffStopId: STOP_B,
+    });
+  });
+
+  it('carries them onto the subscription when the webhook activates it', async () => {
+    const { service, subscriptions } = await withStops();
+    const { reference } = await service.initializeSubscription('u1', 'monthly', ROUTE, {
+      pickupStopId: STOP_A,
+      dropoffStopId: STOP_B,
+    });
+    const { body, signature } = chargeSuccess(reference);
+    await service.handleWebhook(body, signature);
+
+    expect(await subscriptions.findActiveByUser('u1')).toMatchObject({
+      pickupStopId: STOP_A,
+      dropoffStopId: STOP_B,
+    });
+  });
+
+  it('rejects a stop that is not on the route', async () => {
+    const { service } = await withStops();
+    await expect(
+      service.initializeSubscription('u1', 'monthly', ROUTE, {
+        pickupStopId: STOP_A,
+        dropoffStopId: OFF_ROUTE,
+      }),
+    ).rejects.toBeInstanceOf(InvalidStopsError);
+  });
+
+  it('rejects boarding after the destination', async () => {
+    const { service } = await withStops();
+    await expect(
+      service.initializeSubscription('u1', 'monthly', ROUTE, {
+        pickupStopId: STOP_B,
+        dropoffStopId: STOP_A,
+      }),
+    ).rejects.toBeInstanceOf(InvalidStopsError);
+  });
+
+  it('rejects the same stop for both', async () => {
+    const { service } = await withStops();
+    await expect(
+      service.initializeSubscription('u1', 'monthly', ROUTE, {
+        pickupStopId: STOP_A,
+        dropoffStopId: STOP_A,
+      }),
+    ).rejects.toBeInstanceOf(InvalidStopsError);
+  });
+
+  it('rejects one stop without the other', async () => {
+    const { service } = await withStops();
+    await expect(
+      service.initializeSubscription('u1', 'monthly', ROUTE, { pickupStopId: STOP_A }),
+    ).rejects.toBeInstanceOf(InvalidStopsError);
+  });
+
+  it('still works for clients that send no stops at all', async () => {
+    const { service, payments, subscriptions } = await withStops();
+    const { reference } = await service.initializeSubscription('u1', 'monthly', ROUTE);
+    expect(await payments.findByReference(reference)).toMatchObject({
+      pickupStopId: null,
+      dropoffStopId: null,
+    });
+    const { body, signature } = chargeSuccess(reference);
+    await service.handleWebhook(body, signature);
+    expect(await subscriptions.findActiveByUser('u1')).toMatchObject({ pickupStopId: null });
+  });
+});
+
+describe('subscription price records cash plus credit (#128 follow-up)', () => {
+  it('records the full period price, not just the cash charged', async () => {
+    const { service, subscriptions, credits } = await priced();
+    await credits.record({
+      userId: 'u1',
+      deltaPesewas: 5_000,
+      reason: 'month_end_conversion',
+      idempotencyKey: 'grant:u1',
+    });
+
+    const checkout = await service.initializeSubscription('u1', 'monthly', ROUTE);
+    expect(checkout.chargePesewas).toBe(FARE * RIDES - 5_000); // cash is netted
+
+    const { body, signature } = chargeSuccess(checkout.reference);
+    await service.handleWebhook(body, signature);
+
+    // ...but the period was still worth the full price. Recording only the cash
+    // half would make revenue look worse than it was.
+    expect(await subscriptions.findActiveByUser('u1')).toMatchObject({
+      pricePesewas: FARE * RIDES,
+    });
   });
 });

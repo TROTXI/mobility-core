@@ -68,6 +68,10 @@ export class AskDispatchService {
           tripId: trip.id,
           travelDate,
           direction,
+          // Frozen per travel day (#204): editing the subscription later must
+          // not rewrite where yesterday's van was meant to meet them.
+          pickupStopId: sub.pickupStopId,
+          dropoffStopId: sub.dropoffStopId,
         });
         await this.deps.notifier.send({
           userId: sub.userId,

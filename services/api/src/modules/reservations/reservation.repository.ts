@@ -34,6 +34,10 @@ export interface Reservation {
   userId: string;
   /** The trip, when known (no FK yet — trips are #18). */
   tripId: string | null;
+  /** Where the rider boards, frozen from the subscription when seeded (#204). */
+  pickupStopId: string | null;
+  /** Where the rider alights (#204). */
+  dropoffStopId: string | null;
   /** The travel day as `YYYY-MM-DD`. */
   travelDate: string;
   direction: ReservationDirection;
@@ -66,6 +70,9 @@ export interface PendingReservation {
   tripId?: string | null;
   travelDate: string;
   direction: ReservationDirection;
+  /** Copied from the rider's subscription when the row is seeded (#204). */
+  pickupStopId?: string | null;
+  dropoffStopId?: string | null;
 }
 
 /** Persistence for daily reservations (Postgres in prod, in-memory in dev/tests). */
@@ -232,6 +239,8 @@ export class InMemoryReservationRepository implements ReservationRepository {
       id: crypto.randomUUID(),
       userId: input.userId,
       tripId: input.tripId ?? null,
+      pickupStopId: null,
+      dropoffStopId: null,
       travelDate: input.travelDate,
       direction: input.direction,
       status,
@@ -253,6 +262,8 @@ export class InMemoryReservationRepository implements ReservationRepository {
       id: crypto.randomUUID(),
       userId: input.userId,
       tripId: input.tripId ?? null,
+      pickupStopId: input.pickupStopId ?? null,
+      dropoffStopId: input.dropoffStopId ?? null,
       travelDate: input.travelDate,
       direction: input.direction,
       status: 'pending',

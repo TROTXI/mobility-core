@@ -23,6 +23,7 @@ import {
   reportPositionBodySchema,
 } from './mobility.schema';
 import type { RouteStopRepository } from './route-stop.repository';
+import type { ReservationRepository } from '../reservations/reservation.repository';
 import type { StopRepository } from './stop.repository';
 import type { TripPositionRepository } from './trip-position.repository';
 import type { TripRepository } from './trip.repository';
@@ -43,6 +44,7 @@ const cacheKey = (tripId: string): string => `trip:position:${tripId}`;
  *
  * @param app - the Fastify instance to register on.
  * @param opts - route dependencies (503 when the repos they need are unwired).
+ * @param opts.reservations - reservations, to resolve the caller's own stop (#204).
  * @param opts.trips - trip lookup (existence + assignedDriverId).
  * @param opts.drivers - resolves the signed-in user to their driver record (authz).
  * @param opts.routeStops - the route's ordered stop placements (for ETA).
@@ -62,6 +64,8 @@ export async function positionRoutes(
     tripPositions?: TripPositionRepository;
     /** Observed segment speeds (#181). Absent -> ETAs use the cold-start speed. */
     segmentSpeeds?: SegmentSpeedRepository;
+    /** Reservations, to resolve the caller's own pickup stop (#204). */
+    reservations?: ReservationRepository;
     kv: KvStore;
     rateLimit: RateLimitConfig;
   },
@@ -193,11 +197,22 @@ export async function positionRoutes(
         ? await opts.segmentSpeeds.findByRoute(trip.routeId, directionOf(trip.scheduledAt))
         : undefined;
 
-      return {
-        tripId: trip.id,
-        position,
-        etaToStops: computeEtas(position, stopPoints, speeds),
-      };
+      const etaToStops = computeEtas(position, stopPoints, speeds);
+
+      // Which of those stops is the caller's. Absent reservations store, no
+      // reservation on this trip, or no stop recorded all mean null rather
+      // than an error: the trip's ETAs are still useful without it.
+      let riderStop = null;
+      if (opts.reservations) {
+        const mine = (await opts.reservations.listForTrip(trip.id)).find(
+          (res) => res.userId === request.user!.id,
+        );
+        if (mine?.pickupStopId) {
+          riderStop = etaToStops.find((e) => e.stopId === mine.pickupStopId) ?? null;
+        }
+      }
+
+      return { tripId: trip.id, position, etaToStops, riderStop };
     },
   );
 }

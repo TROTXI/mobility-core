@@ -112,4 +112,22 @@ export const livePositionResponseSchema = z.object({
       etaSeconds: z.number(),
     }),
   ),
+  /**
+   * The caller's own pickup stop on this trip (#204), already picked out of
+   * `etaToStops`. Null when the rider has no reservation on this trip, has no
+   * pickup stop recorded, or the van is already past it.
+   *
+   * Served rather than left to the client because every client would otherwise
+   * reimplement the same "which of these is mine" lookup, and "your van is 6
+   * minutes away" is the whole point of the screen.
+   */
+  riderStop: z
+    .object({
+      stopId: z.string().uuid(),
+      seq: z.number().int(),
+      name: z.string(),
+      distanceMeters: z.number(),
+      etaSeconds: z.number(),
+    })
+    .nullable(),
 });
