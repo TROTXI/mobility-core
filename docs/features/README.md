@@ -16,19 +16,19 @@ repo (`system-design.md`, `security.md`). Each doc links to both.
 
 ## Index
 
-| Feature                                                                     | Doc                                              | Status                                 |
-| --------------------------------------------------------------------------- | ------------------------------------------------ | -------------------------------------- |
-| Authentication — access tokens, route guard, sign-in/refresh/logout         | [authentication.md](authentication.md)           | ✅ live                                |
-| Profile & avatars — `PATCH /me`, avatar upload → R2 (photo pass) (#24)      | [profile-avatars.md](profile-avatars.md)         | ✅ live                                |
-| Payments — Paystack subscribe + webhook (wallet/ledger removed, ADR-0014)   | [payments-and-wallet.md](payments-and-wallet.md) | 🔄 model pivoted (Hybrid Subscription) |
-| Ride entitlements & credits — `GET /me/rides`, allocation on payment (#100) | [entitlements.md](entitlements.md)               | ✅ E1 (ledgers + allocation)           |
-| Daily ride confirmation — `POST /me/reservations` (confirm/decline) (#101)  | [reservations.md](reservations.md)               | 🟡 E3 core (ask-dispatch deferred #18) |
-| Mobility — routes, stops, browse                                            | _(in review — #57)_                              | 🚧                                     |
-| Rate limiting (#23)                                                         | [rate-limiting.md](rate-limiting.md)             | ✅ live                                |
-| Boarding — QR scan + manifest + PIN, all deduct (#20, E4)                   | [boarding.md](boarding.md)                       | 🟢 3-layer verification live           |
-| Observability & performance (#28)                                           | [design](../design/observability.md)             | ✅ backend live (metrics/traces/logs)  |
-| Feature flags + force-update — `GET /flags` + admin ops (#27)               | [feature-flags.md](feature-flags.md)             | ✅ live (home-grown, PostHog later)    |
-| Basemap: self-hosted tiles, styles, glyphs, served via `/flags` (#178)      | [basemap.md](basemap.md)                         | ✅ live (clients: #180, #170)          |
+| Feature                                                                  | Doc                                              | Status                                 |
+| ------------------------------------------------------------------------ | ------------------------------------------------ | -------------------------------------- |
+| Authentication — access tokens, route guard, sign-in/refresh/logout      | [authentication.md](authentication.md)           | ✅ live                                |
+| Profile & avatars — `PATCH /me`, avatar upload → R2 (photo pass) (#24)   | [profile-avatars.md](profile-avatars.md)         | ✅ live                                |
+| Payments — Paystack subscribe + webhook, credit-netted (#128)            | [payments-and-wallet.md](payments-and-wallet.md) | ✅ live (fare-derived pricing, #103)   |
+| Ride entitlements & credits — allocation, month-end conversion, netting  | [entitlements.md](entitlements.md)               | ✅ E1 + E5 (conversion #162, net #128) |
+| Daily ride confirmation — confirm/decline, ask-dispatch, capacity (#161) | [reservations.md](reservations.md)               | ✅ E3 live (crons unfunded, #126)      |
+| Mobility — routes, stops, trips, ETAs, derived geometry                  | [mobility.md](mobility.md)                       | ✅ live                                |
+| Rate limiting (#23)                                                      | [rate-limiting.md](rate-limiting.md)             | ✅ live                                |
+| Boarding — QR scan + manifest + PIN, all deduct (#20, E4)                | [boarding.md](boarding.md)                       | 🟢 3-layer verification live           |
+| Observability & performance (#28)                                        | [design](../design/observability.md)             | ✅ backend live (metrics/traces/logs)  |
+| Feature flags + force-update — `GET /flags` + admin ops (#27)            | [feature-flags.md](feature-flags.md)             | ✅ live (home-grown, PostHog later)    |
+| Basemap: self-hosted tiles, styles, glyphs, served via `/flags` (#178)   | [basemap.md](basemap.md)                         | ✅ live (clients: #180, #170)          |
 
 ## Conventions for a feature doc
 
