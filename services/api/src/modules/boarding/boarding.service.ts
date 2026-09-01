@@ -41,7 +41,7 @@ export interface VerifyScanResult {
 export interface VerifyPinInput {
   /** The reservation the driver picked off the manifest. */
   reservationId: string;
-  /** The 4-digit PIN the rider presented. */
+  /** The boarding code the rider presented, any case. */
   pin: string;
   /** The driver performing the verification. */
   scannedBy: string;

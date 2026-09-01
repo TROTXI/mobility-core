@@ -66,7 +66,7 @@ The trip's confirmed riders (driver only) — the photo pass.
 
 #### `POST /boarding/verify-pin`
 
-Board a rider by their daily 4-digit PIN (driver only) — verification layer 2.
+Board a rider by their daily boarding code (driver only) — verification layer 2.
 
 - **Auth:** `Bearer` + **role `driver`**. **Rate limit:** per user.
 - **Body:** `{ "reservationId": "<uuid>", "pin": "1234" }`

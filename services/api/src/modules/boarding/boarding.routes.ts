@@ -100,7 +100,7 @@ export async function boardingRoutes(
     {
       schema: {
         tags: ['boarding'],
-        summary: 'Board a rider via their daily 4-digit PIN (driver only)',
+        summary: 'Board a rider via their daily boarding code (driver only)',
         security: [{ bearerAuth: [] }],
         body: verifyPinBodySchema,
         response: {

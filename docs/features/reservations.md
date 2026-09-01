@@ -28,15 +28,20 @@ Ask-dispatch targets a trip's riders via `findActiveByRoute(trip.routeId)`.
 One reservation per **rider × travel day × direction** (`morning` | `evening`).
 
 - **status:** `pending` (asked, awaiting reply) → `reserved` (travelling) |
-  `declined`; then `boarded` | `no_show` (E4), `released` (E6),
-  `operator_cancelled`.
+  `declined` | `unseated` (the trip filled up before the cutoff reached them,
+  #210 — terminal, no ride deducted); then `boarded` | `no_show` (E4),
+  `released` (E6), `operator_cancelled`.
 - **source:** `confirmation` (rider answered), `default` (no reply → defaulted),
   `standby` (E6).
 
 **Confirmation windows** (from the master doc; drive the future cron):
 morning ask 18:00–20:45, **cutoff 21:00**; evening ask 12:00–13:45,
 **cutoff 14:00**. At each cutoff, `markDefaultTravelling(date, direction)` flips
-the still-`pending` rows to `reserved`/`default`.
+the still-`pending` rows to `reserved`/`default`, oldest ask first. Once a trip's
+vehicle has no seats left the remaining rows become `unseated` rather than
+staying `pending`, so the rider is told the van filled up instead of being asked
+again about a seat they can't have. Trips with no vehicle assigned have no
+ceiling to enforce, so nobody is unseated on them.
 
 ---
 
@@ -50,7 +55,8 @@ Confirm or decline (an upsert per day+direction).
 - **Body:** `{ "tripId?": "<uuid>", "travelDate": "YYYY-MM-DD", "direction": "morning"|"evening", "travelling": true|false }`
 - **200:** the reservation `{ id, tripId, travelDate, direction, status, source, pin? }`
   (`reserved` when travelling, else `declined`). On a **confirm**, `pin` is the
-  rider's daily **4-digit boarding PIN** — returned **once** here; only its keyed
+  rider's daily **boarding code** (four characters, e.g. `B7K9`) — returned
+  **once** here; only its keyed
   hash (`daily_pin_hash`) is stored. The driver types it against the manifest to
   board (E4, `POST /boarding/verify-pin`). · **400** bad date · **401** · **429** · **503**
 
