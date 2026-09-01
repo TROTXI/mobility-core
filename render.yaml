@@ -90,7 +90,7 @@ services:
       # why Google sign-in is unaffected while this is still blank.
       # Waiting on the Apple Developer team + App ID + Services ID (FE lane).
       # - key: APPLE_CLIENT_ID
-      #   value: com.trotxi.commuter,com.trotxi.commuter.signin
+      #   value: com.trotxi.trotxiCommuter,<Services ID>
       # Observability (#28). Set in the dashboard when Grafana Cloud is wired up.
       # METRICS_TOKEN gates GET /metrics (scraper sends it as a bearer token);
       # unset -> /metrics is disabled (404) in production.
@@ -360,7 +360,7 @@ services:
   #     # Apple audiences (#168), public for the same reason. iOS bundle id plus
   #     # the Services ID, comma-separated.
   #     - key: APPLE_CLIENT_ID
-  #       value: com.trotxi.commuter,com.trotxi.commuter.signin
+  #       value: com.trotxi.trotxiCommuter,<Services ID>
   #     # Unset in production -> /metrics is disabled (404) rather than left open.
   #     - key: METRICS_TOKEN
   #       sync: false
