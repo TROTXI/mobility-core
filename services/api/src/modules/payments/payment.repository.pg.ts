@@ -15,6 +15,8 @@ interface PaymentRow {
   purpose: PaymentPurpose;
   plan: SubscriptionPlan | null;
   route_id: string | null;
+  pickup_stop_id: string | null;
+  dropoff_stop_id: string | null;
   amount: number;
   applied_credit_pesewas: number;
   rides_granted: number | null;
@@ -34,6 +36,8 @@ function toPayment(row: PaymentRow): Payment {
     purpose: row.purpose,
     plan: row.plan,
     routeId: row.route_id,
+    pickupStopId: row.pickup_stop_id,
+    dropoffStopId: row.dropoff_stop_id,
     amount: row.amount,
     appliedCreditPesewas: row.applied_credit_pesewas,
     ridesGranted: row.rides_granted,
@@ -53,8 +57,8 @@ export class PgPaymentRepository implements PaymentRepository {
     const { rows } = await this.pool.query<PaymentRow>(
       `INSERT INTO payments (user_id, reference, purpose, plan, route_id, amount, currency,
                              rides_granted, fare_pesewas, credit_pesewas_per_ride,
-                             applied_credit_pesewas)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+                             applied_credit_pesewas, pickup_stop_id, dropoff_stop_id)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
        RETURNING *`,
       [
         input.userId,
@@ -68,6 +72,8 @@ export class PgPaymentRepository implements PaymentRepository {
         input.farePesewas ?? null,
         input.creditPesewasPerRide ?? null,
         input.appliedCreditPesewas ?? 0,
+        input.pickupStopId ?? null,
+        input.dropoffStopId ?? null,
       ],
     );
     return toPayment(rows[0]!);

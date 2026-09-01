@@ -9,6 +9,10 @@ export interface Subscription {
   status: SubscriptionStatus;
   /** The rider's pinned route/corridor (E3); null for pre-E3 subscriptions. */
   routeId: string | null;
+  /** Where the rider boards (#204); null for subscriptions predating it. */
+  pickupStopId: string | null;
+  /** Where the rider alights (#204). */
+  dropoffStopId: string | null;
   /** What this rider actually paid, frozen at activation (#103). */
   pricePesewas: number | null;
   /** Rides granted for the period, frozen at activation. */
@@ -26,6 +30,10 @@ export interface Subscription {
 
 /** Fields needed to create a subscription. */
 export interface NewSubscription {
+  /** Where the rider boards (#204). */
+  pickupStopId?: string | null;
+  /** Where the rider alights (#204). */
+  dropoffStopId?: string | null;
   userId: string;
   plan: SubscriptionPlan;
   routeId?: string | null;
@@ -108,6 +116,8 @@ export class InMemorySubscriptionRepository implements SubscriptionRepository {
       plan: input.plan,
       status: 'active',
       routeId: input.routeId ?? null,
+      pickupStopId: input.pickupStopId ?? null,
+      dropoffStopId: input.dropoffStopId ?? null,
       pricePesewas: input.pricePesewas ?? null,
       ridesGranted: input.ridesGranted ?? null,
       farePesewas: input.farePesewas ?? null,

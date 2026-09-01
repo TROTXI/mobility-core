@@ -15,6 +15,7 @@ import {
   webhookResponseSchema,
 } from './payments.schema';
 import {
+  InvalidStopsError,
   InvalidWebhookError,
   NotPricedError,
   PaymentsNotConfiguredError,
@@ -52,6 +53,7 @@ export async function paymentRoutes(
         body: subscribeBodySchema,
         response: {
           200: checkoutResponseSchema,
+          400: errorResponseSchema,
           401: errorResponseSchema,
           409: errorResponseSchema,
           429: errorResponseSchema,
@@ -67,9 +69,15 @@ export async function paymentRoutes(
           request.user!.id,
           request.body.plan,
           request.body.routeId,
+          { pickupStopId: request.body.pickupStopId, dropoffStopId: request.body.dropoffStopId },
         );
       } catch (err) {
         if (err instanceof PaymentsNotConfiguredError) return reply.code(503).send(UNAVAILABLE);
+        // 400: the rider picked stops that are not both on the route, or the
+        // wrong way round. Their choice is wrong, not our state.
+        if (err instanceof InvalidStopsError) {
+          return reply.code(400).send({ error: 'invalid_stops', message: err.message });
+        }
         // 409, not 500: the request is well-formed, the corridor simply has no
         // fare set yet. Deliberately not falling back to a default — charging a
         // number nobody chose is what #103 exists to prevent.

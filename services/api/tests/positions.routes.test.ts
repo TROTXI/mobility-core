@@ -8,6 +8,7 @@ import { InMemoryRouteRepository } from '../src/modules/mobility/route.repositor
 import { InMemoryStopRepository } from '../src/modules/mobility/stop.repository';
 import { InMemoryTripPositionRepository } from '../src/modules/mobility/trip-position.repository';
 import { InMemoryTripRepository } from '../src/modules/mobility/trip.repository';
+import { InMemoryReservationRepository } from '../src/modules/reservations/reservation.repository';
 
 const auth: AuthConfig = {
   secret: 'test-secret-at-least-32-characters-long-0000',
@@ -32,6 +33,7 @@ async function seed() {
   const trips = new InMemoryTripRepository();
   const drivers = new InMemoryDriverRepository();
   const tripPositions = new InMemoryTripPositionRepository();
+  const reservations = new InMemoryReservationRepository();
   const kv = new InMemoryKvStore();
 
   const route = await routes.create({ name: 'Circle → Kaneshie', description: null });
@@ -58,9 +60,10 @@ async function seed() {
     trips,
     drivers,
     tripPositions,
+    reservations,
     kv,
   });
-  return { app, trips, drivers, tripPositions, trip, driver };
+  return { app, trips, drivers, tripPositions, reservations, trip, driver, stops: [s1, s2, s3] };
 }
 
 const report = async (
@@ -219,5 +222,62 @@ describe('GET /trips/:id/position (latest position + ETA)', () => {
       headers: bearer(await access('rider-1')),
     });
     expect(res.statusCode).toBe(503);
+  });
+});
+
+describe("GET /trips/:id/position — the rider's own stop (#204)", () => {
+  it("picks out the caller's pickup stop from the ETA list", async () => {
+    const { app, trip, reservations, stops } = await seed();
+    await reservations.createPending({
+      userId: 'rider-1',
+      tripId: trip.id,
+      travelDate: '2026-07-08',
+      direction: 'morning',
+      pickupStopId: stops[1]!.id, // the middle stop, not the first
+      dropoffStopId: stops[2]!.id,
+    });
+    await report(app, trip.id, await access(DRIVER_USER, 'driver'));
+
+    const res = await app.inject({
+      method: 'GET',
+      url: `/trips/${trip.id}/position`,
+      headers: bearer(await access('rider-1')),
+    });
+
+    expect(res.statusCode).toBe(200);
+    const body = res.json();
+    expect(body.riderStop).toMatchObject({ stopId: stops[1]!.id, name: 'Kwame Nkrumah' });
+    // and it is genuinely one of the entries, not a recomputation
+    expect(body.etaToStops).toContainEqual(body.riderStop);
+  });
+
+  it('is null for a rider with no reservation on this trip', async () => {
+    const { app, trip } = await seed();
+    await report(app, trip.id, await access(DRIVER_USER, 'driver'));
+
+    const res = await app.inject({
+      method: 'GET',
+      url: `/trips/${trip.id}/position`,
+      headers: bearer(await access('someone-else')),
+    });
+    expect(res.json().riderStop).toBeNull();
+  });
+
+  it('is null when the reservation predates stops being recorded', async () => {
+    const { app, trip, reservations } = await seed();
+    await reservations.createPending({
+      userId: 'rider-2',
+      tripId: trip.id,
+      travelDate: '2026-07-08',
+      direction: 'morning',
+    });
+    await report(app, trip.id, await access(DRIVER_USER, 'driver'));
+
+    const res = await app.inject({
+      method: 'GET',
+      url: `/trips/${trip.id}/position`,
+      headers: bearer(await access('rider-2')),
+    });
+    expect(res.json().riderStop).toBeNull();
   });
 });

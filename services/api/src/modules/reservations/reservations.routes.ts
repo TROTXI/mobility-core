@@ -25,6 +25,8 @@ function toResponse(
 ): {
   id: string;
   tripId: string | null;
+  pickupStopId: string | null;
+  dropoffStopId: string | null;
   travelDate: string;
   direction: Reservation['direction'];
   status: Reservation['status'];
@@ -34,6 +36,8 @@ function toResponse(
   return {
     id: r.id,
     tripId: r.tripId,
+    pickupStopId: r.pickupStopId,
+    dropoffStopId: r.dropoffStopId,
     travelDate: r.travelDate,
     direction: r.direction,
     status: r.status,

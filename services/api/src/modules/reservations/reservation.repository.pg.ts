@@ -14,6 +14,8 @@ interface ReservationRow {
   id: string;
   user_id: string;
   trip_id: string | null;
+  pickup_stop_id: string | null;
+  dropoff_stop_id: string | null;
   travel_date: string; // pg returns DATE as 'YYYY-MM-DD'
   direction: ReservationDirection;
   status: ReservationStatus;
@@ -29,6 +31,8 @@ function toReservation(row: ReservationRow): Reservation {
     id: row.id,
     userId: row.user_id,
     tripId: row.trip_id,
+    pickupStopId: row.pickup_stop_id,
+    dropoffStopId: row.dropoff_stop_id,
     travelDate: row.travel_date,
     direction: row.direction,
     status: row.status,
@@ -70,11 +74,19 @@ export class PgReservationRepository implements ReservationRepository {
 
   async createPending(input: PendingReservation): Promise<Reservation> {
     const { rows } = await this.pool.query<ReservationRow>(
-      `INSERT INTO reservations (user_id, trip_id, travel_date, direction, status, source)
-       VALUES ($1, $2, $3, $4, 'pending', 'confirmation')
+      `INSERT INTO reservations (user_id, trip_id, travel_date, direction, status, source,
+                                 pickup_stop_id, dropoff_stop_id)
+       VALUES ($1, $2, $3, $4, 'pending', 'confirmation', $5, $6)
        ON CONFLICT (user_id, travel_date, direction) DO UPDATE SET updated_at = reservations.updated_at
        RETURNING *`,
-      [input.userId, input.tripId ?? null, input.travelDate, input.direction],
+      [
+        input.userId,
+        input.tripId ?? null,
+        input.travelDate,
+        input.direction,
+        input.pickupStopId ?? null,
+        input.dropoffStopId ?? null,
+      ],
     );
     return toReservation(rows[0]!);
   }

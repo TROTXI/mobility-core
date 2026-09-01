@@ -22,6 +22,7 @@ import type {
 import type { UserRepository } from '../users/user.repository';
 import { periodFor } from '../subscriptions/period';
 import { derivePrice, netCharge, type DerivedPrice } from './pricing';
+import type { RouteStopRepository } from '../mobility/route-stop.repository';
 import type { PricingRepository } from './pricing.repository';
 import type { NewPayment, Payment, PaymentRepository } from './payment.repository';
 import type { PaystackClient } from './paystack.client';
@@ -47,6 +48,13 @@ export class NotPricedError extends Error {}
 export class InvalidWebhookError extends Error {}
 
 /**
+ * Thrown when the chosen pickup/drop-off stops are not both on the subscribed
+ * route, or are the wrong way round. Routes map it to HTTP 400: this is a
+ * malformed choice rather than a server problem.
+ */
+export class InvalidStopsError extends Error {}
+
+/**
  * Fallback ride count for payments created before #103, whose rows carry no
  * frozen `ridesGranted`. Live pricing comes from `plan_pricing`; this only
  * exists so replaying an old webhook still allocates something sane.
@@ -69,6 +77,8 @@ export interface PaymentsServiceDeps {
   users: UserRepository;
   /** Corridor fares + plan levers (#103). Prices are derived, never stored. */
   pricing: PricingRepository;
+  /** Route/stop placements, for validating the rider's chosen stops (#204). */
+  routeStops?: RouteStopRepository;
   /** Rides allocated per activated period (placeholder until E1b tiers). */
   ridesPerPeriod: number;
 }
@@ -126,6 +136,9 @@ export class PaymentsService {
    * @param plan - membership tier (`monthly` | `annual`); selects the fee.
    * @param routeId - the rider's pinned route/corridor (E3), carried to the
    *   subscription on activation.
+   * @param stops - the rider's chosen boarding and alighting stops (#204).
+   * @param stops.pickupStopId - where they board; omit both to skip stop pinning.
+   * @param stops.dropoffStopId - where they alight.
    * @returns the Paystack `authorizationUrl` and our payment `reference`.
    * @throws PaymentsNotConfiguredError when no Paystack client is wired.
    */
@@ -133,7 +146,9 @@ export class PaymentsService {
     userId: string,
     plan: SubscriptionPlan,
     routeId: string,
+    stops: { pickupStopId?: string; dropoffStopId?: string } = {},
   ): Promise<CheckoutResult> {
+    await this.assertStopsOnRoute(routeId, stops);
     const price = await this.priceFor(plan, routeId);
     const balance = this.deps.credits ? await this.deps.credits.balancePesewas(userId) : 0;
     const { appliedCreditPesewas, chargePesewas } = netCharge(price.pricePesewas, balance);
@@ -150,8 +165,55 @@ export class PaymentsService {
       ridesGranted: price.ridesGranted,
       farePesewas: price.farePesewas,
       creditPesewasPerRide: price.creditPesewasPerRide,
+      pickupStopId: stops.pickupStopId ?? null,
+      dropoffStopId: stops.dropoffStopId ?? null,
     });
     return { ...checkout, pricePesewas: price.pricePesewas, appliedCreditPesewas, chargePesewas };
+  }
+
+  /**
+   * Check the rider's chosen stops before taking any money.
+   *
+   * Both must sit on the route they are subscribing to, and pickup must come
+   * before drop-off in stop order. Boarding after your destination is not a
+   * thing, and catching it here beats discovering it when the van arrives.
+   *
+   * A no-op when neither stop was supplied, so clients predating #204 are
+   * unaffected, and when no route-stop store is wired.
+   *
+   * @param routeId - the corridor being subscribed to.
+   * @param stops - the rider's chosen pickup and drop-off.
+   * @param stops.pickupStopId - where they board.
+   * @param stops.dropoffStopId - where they alight.
+   * @throws InvalidStopsError when a stop is off-route or the pair is reversed.
+   */
+  private async assertStopsOnRoute(
+    routeId: string,
+    stops: { pickupStopId?: string; dropoffStopId?: string },
+  ): Promise<void> {
+    const { pickupStopId, dropoffStopId } = stops;
+    if (!pickupStopId && !dropoffStopId) return;
+    if (!this.deps.routeStops) return;
+    if (!pickupStopId || !dropoffStopId) {
+      throw new InvalidStopsError('Provide both pickupStopId and dropoffStopId, or neither');
+    }
+    if (pickupStopId === dropoffStopId) {
+      throw new InvalidStopsError('Pickup and drop-off cannot be the same stop');
+    }
+
+    const placements = await this.deps.routeStops.findByRoute(routeId);
+    const seqOf = (stopId: string) => placements.find((p) => p.stopId === stopId)?.seq;
+    const pickupSeq = seqOf(pickupStopId);
+    const dropoffSeq = seqOf(dropoffStopId);
+    if (pickupSeq === undefined) {
+      throw new InvalidStopsError(`Stop ${pickupStopId} is not on route ${routeId}`);
+    }
+    if (dropoffSeq === undefined) {
+      throw new InvalidStopsError(`Stop ${dropoffStopId} is not on route ${routeId}`);
+    }
+    if (pickupSeq >= dropoffSeq) {
+      throw new InvalidStopsError('Pickup must come before drop-off on the route');
+    }
   }
 
   /**
@@ -346,12 +408,20 @@ export class PaymentsService {
         userId,
         plan,
         routeId,
+        // Where they board and alight, chosen at checkout (#204).
+        pickupStopId: payment.pickupStopId,
+        dropoffStopId: payment.dropoffStopId,
         // The billing window this payment buys (#162).
         periodStart: period.start,
         periodEnd: period.end,
         // From the payment, so a fare change cannot move what this rider owes
         // (ADR-0015 §3). New prices apply at renewal.
-        pricePesewas: payment.amount,
+        //
+        // Cash charged PLUS credit applied: since #128 `amount` is only the
+        // cash half, and recording that alone would understate the period's
+        // price by whatever credit was spent, making revenue look worse than
+        // it was.
+        pricePesewas: payment.amount + payment.appliedCreditPesewas,
         ridesGranted: payment.ridesGranted,
         farePesewas: payment.farePesewas,
         creditPesewasPerRide: payment.creditPesewasPerRide,
