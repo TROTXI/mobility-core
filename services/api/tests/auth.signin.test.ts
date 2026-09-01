@@ -22,7 +22,7 @@ async function appWithAuth() {
     authIdentities: new InMemoryAuthIdentityRepository(),
     sessions: new InMemorySessionRepository(),
     jwt: createJwtService(auth),
-    verifier: new FakeIdTokenVerifier(),
+    verifiers: { google: new FakeIdTokenVerifier() },
     refreshTtlDays: 30,
   });
   return buildApp({ auth, users, authService });

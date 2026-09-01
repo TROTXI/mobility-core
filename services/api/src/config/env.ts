@@ -19,6 +19,11 @@ const envSchema = z
     // Google "Web" client ID — the audience verified on sign-in. Set to enable
     // real Google sign-in; unset -> dev fake verifier (non-prod) / 503 (prod).
     GOOGLE_CLIENT_ID: z.string().optional(),
+    // Apple audiences, comma-separated. Native iOS sign-in presents the app's
+    // bundle id; the web/Android flow presents the Services ID, so a Flutter app
+    // shipping on both platforms needs BOTH accepted. Set to enable real Apple
+    // sign-in; unset -> dev fake verifier (non-prod) / 503 (prod).
+    APPLE_CLIENT_ID: z.string().optional(),
     // Paystack SECRET key (sk_...). Used for the API + webhook signature check.
     // Set -> real payments; unset -> dev fake client (non-prod) / 503 (prod).
     PAYSTACK_SECRET_KEY: z.string().optional(),

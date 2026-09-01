@@ -11,6 +11,7 @@ import { toUserResponse } from '../users/user.presenter';
 import type { UserRepository } from '../users/user.repository';
 import type { ObjectStore } from '../../storage/object-store';
 import {
+  appleSignInBodySchema,
   authResultSchema,
   googleSignInBodySchema,
   logoutBodySchema,
@@ -30,8 +31,8 @@ const AUTH_RATE_LIMIT = { max: 10, windowSeconds: 60 } as const;
 
 /**
  * Register the auth routes: `GET /me`, `GET /me/sessions`,
- * `DELETE /me/sessions/:id`, `POST /auth/google`, `POST /auth/refresh`,
- * `POST /auth/logout`.
+ * `DELETE /me/sessions/:id`, `POST /auth/google`, `POST /auth/apple`,
+ * `POST /auth/refresh`, `POST /auth/logout`.
  *
  * @param app - the Fastify instance to register on.
  * @param opts - route dependencies.
@@ -146,6 +147,46 @@ export async function authRoutes(
       }
       try {
         return await opts.authService.signIn(request.body.idToken);
+      } catch (err) {
+        if (err instanceof SignInNotConfiguredError) {
+          return reply
+            .code(503)
+            .send({ error: 'unavailable', message: 'Sign-in is not configured' });
+        }
+        return reply.code(401).send({ error: 'unauthorized', message: 'Invalid ID token' });
+      }
+    },
+  );
+
+  r.post(
+    '/auth/apple',
+    {
+      schema: {
+        tags: ['auth'],
+        summary: 'Sign in with an Apple ID token (creates the account on first use)',
+        description:
+          'Send `fullName` on the FIRST authorization only — Apple returns the name once ' +
+          'and never again, so a client that drops it strands the rider with a blank name ' +
+          'on the driver manifest. It is ignored for accounts that already exist.',
+        body: appleSignInBodySchema,
+        response: {
+          200: authResultSchema,
+          401: errorResponseSchema,
+          429: errorResponseSchema,
+          503: errorResponseSchema,
+        },
+      },
+      preHandler: [app.rateLimit({ ...AUTH_RATE_LIMIT, by: 'ip' })],
+    },
+    async (request, reply) => {
+      if (!opts.authService) {
+        return reply.code(503).send({ error: 'unavailable', message: 'Sign-in is not configured' });
+      }
+      try {
+        return await opts.authService.signIn(request.body.idToken, 'apple', {
+          displayName: request.body.fullName,
+          nonce: request.body.nonce,
+        });
       } catch (err) {
         if (err instanceof SignInNotConfiguredError) {
           return reply

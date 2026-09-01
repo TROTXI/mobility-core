@@ -19,7 +19,7 @@ function makeService(users = new InMemoryUserRepository()) {
     authIdentities: new InMemoryAuthIdentityRepository(),
     sessions: new InMemorySessionRepository(),
     jwt: createJwtService(authConfig),
-    verifier: new FakeIdTokenVerifier(),
+    verifiers: { google: new FakeIdTokenVerifier() },
     refreshTtlDays: 30,
   });
   return { service, users };

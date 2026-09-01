@@ -124,6 +124,27 @@ Sign in (or sign up on first use) with a Google ID token.
 - **200:** `{ "user": { id, displayName, phone, avatarUrl, role, createdAt }, "accessToken": "...", "refreshToken": "..." }`
 - **401** invalid token · **429** rate-limited · **503** sign-in not configured
 
+#### `POST /auth/apple`
+
+Sign in (or sign up on first use) with an Apple ID token. Same shape as
+`/auth/google`, because it is the same flow with a different verifier.
+
+- **Auth:** none. **Rate limit:** 10/min per IP.
+- **Body:** `{ "idToken": "<apple ID token>", "fullName?": "Ama Serwaa", "nonce?": "<raw nonce>" }`
+- **200:** identical to `/auth/google`
+- **401** invalid token · **429** rate-limited · **503** Apple sign-in not configured
+
+`fullName` matters more than it looks. Apple returns the user's name **once**, on
+the first authorization only, and it is not in the ID token at all. If the client
+does not send it on that first call it is gone permanently, and the rider shows up
+as "New User" on every driver manifest from then on. It is client-supplied rather
+than a signed claim, so the server only uses it when creating the account. It can
+never rename an existing user.
+
+`nonce` is the raw value the client hashed into the authorization request. Send it
+and a replayed token is rejected; omit it and the token is still verified for
+signature, issuer, audience and expiry.
+
 #### `POST /auth/refresh`
 
 Exchange a refresh token for a new pair (**rotates** — the old refresh token is invalidated).
@@ -175,21 +196,39 @@ Register this device's **FCM push token** (foundation for notifications).
   not trigger this.
 - **Revocation:** logout sets `revoked_at`.
 
-### The verifier (how Google is wired)
+### The verifiers (how Google and Apple are wired)
 
-`AuthService` depends on an `IdTokenVerifier` interface, selected at startup:
+`AuthService` holds one `IdTokenVerifier` per provider, each selected
+independently at startup. That independence is the point: Apple's credentials
+come from a different lane and arrive later, and a missing `APPLE_CLIENT_ID` must
+never take working Google sign-in down with it.
 
-| Condition              | Verifier                                                                  | `/auth/google`                  |
-| ---------------------- | ------------------------------------------------------------------------- | ------------------------------- |
-| `GOOGLE_CLIENT_ID` set | **GoogleIdTokenVerifier** (jose JWKS; checks signature, issuer, audience) | real sign-in                    |
-| unset, non-production  | **FakeIdTokenVerifier**                                                   | dev/test (see below)            |
-| unset, production      | none                                                                      | **503** (keeps staging booting) |
+| Condition                | Verifier                                                                 | That provider's route           |
+| ------------------------ | ------------------------------------------------------------------------ | ------------------------------- |
+| provider's client id set | **Google/AppleIdTokenVerifier** (jose JWKS; signature, issuer, audience) | real sign-in                    |
+| unset, non-production    | **FakeIdTokenVerifier**                                                  | dev/test (see below)            |
+| unset, production        | none                                                                     | **503** (keeps staging booting) |
+
+Apple differs from Google in three ways worth knowing before debugging it:
+
+- **No name in the token.** See `POST /auth/apple` above.
+- **Two audiences.** Native iOS sign-in presents the app's bundle id; the
+  Android and web flow presents the Services ID. `APPLE_CLIENT_ID` is therefore
+  comma-separated, and an app shipping on both platforms needs both listed.
+- **Booleans arrive as strings.** Apple sends `email_verified` and
+  `is_private_email` as either `true` or `"true"` depending on the flow, so the
+  verifier accepts both. Parsing them strictly rejects real sign-ins.
+
+A `@privaterelay.appleid.com` address is stored like any other. It is a real,
+deliverable address that forwards to the rider, and discarding it would make them
+uncontactable for the sake of tidiness.
 
 ### Configuration (Part 2)
 
 | Env var                | Default | Notes                                                                                                                                         |
 | ---------------------- | ------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
 | `GOOGLE_CLIENT_ID`     | unset   | the Google **"Web"** OAuth client ID = the token audience. **Public, not a secret.** No client _secret_ needed (we only verify the ID token). |
+| `APPLE_CLIENT_ID`      | unset   | Apple audiences, **comma-separated**: the iOS bundle id and the Services ID. **Public, not a secret.** Unset → `/auth/apple` returns 503.     |
 | `JWT_REFRESH_TTL_DAYS` | `30`    | refresh-token lifetime                                                                                                                        |
 
 > The mobile apps additionally need **Android + iOS** OAuth client IDs in the
@@ -199,7 +238,7 @@ Register this device's **FCM push token** (foundation for notifications).
 
 ## Rate limiting
 
-`/auth/google` and `/auth/refresh` are capped at **10 requests/min per IP** (the
+`/auth/google`, `/auth/apple` and `/auth/refresh` are capped at **10 requests/min per IP** (the
 credential-endpoint brute-force guard). `/me` is limited per user. Over the
 limit → **429** with a `Retry-After` header. Backed by the KV store (in-memory
 in dev, Redis in prod); it **fails open** if the store is down.

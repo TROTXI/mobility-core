@@ -16,7 +16,12 @@ import {
 } from './modules/auth/auth-identity.repository';
 import { PgAuthIdentityRepository } from './modules/auth/auth-identity.repository.pg';
 import { AuthService } from './modules/auth/auth.service';
-import { FakeIdTokenVerifier, type IdTokenVerifier } from './modules/auth/id-token-verifier';
+import {
+  FakeIdTokenVerifier,
+  type AuthProvider,
+  type IdTokenVerifier,
+} from './modules/auth/id-token-verifier';
+import { AppleIdTokenVerifier } from './modules/auth/id-token-verifier.apple';
 import { GoogleIdTokenVerifier } from './modules/auth/id-token-verifier.google';
 import { createJwtService, DEV_AUTH_CONFIG, type AuthConfig } from './modules/auth/jwt';
 import {
@@ -249,17 +254,33 @@ async function main(): Promise<void> {
     passTtlSeconds: 60,
   });
 
-  // Sign-in verifier: real Google when configured; a dev fake outside production;
-  // otherwise undefined (POST /auth/google returns 503 — keeps staging booting).
-  let verifier: IdTokenVerifier | undefined;
+  // Sign-in verifiers: real when configured; a dev fake outside production;
+  // otherwise absent (that provider's route returns 503 — keeps staging booting).
+  // Kept per-provider so an unconfigured Apple never takes Google down with it.
+  const verifiers: Partial<Record<AuthProvider, IdTokenVerifier>> = {};
   if (env.GOOGLE_CLIENT_ID) {
-    verifier = new GoogleIdTokenVerifier(env.GOOGLE_CLIENT_ID);
+    verifiers.google = new GoogleIdTokenVerifier(env.GOOGLE_CLIENT_ID);
     console.log('Using Google ID-token verifier');
   } else if (env.NODE_ENV !== 'production') {
-    verifier = new FakeIdTokenVerifier();
+    verifiers.google = new FakeIdTokenVerifier('google');
     console.warn('GOOGLE_CLIENT_ID not set — using FAKE sign-in verifier (non-production only).');
   } else {
     console.warn('GOOGLE_CLIENT_ID not set — sign-in disabled (POST /auth/google returns 503).');
+  }
+
+  if (env.APPLE_CLIENT_ID) {
+    const audiences = env.APPLE_CLIENT_ID.split(',')
+      .map((id) => id.trim())
+      .filter(Boolean);
+    verifiers.apple = new AppleIdTokenVerifier(audiences);
+    console.log(`Using Apple ID-token verifier (${audiences.length} audience(s))`);
+  } else if (env.NODE_ENV !== 'production') {
+    verifiers.apple = new FakeIdTokenVerifier('apple');
+    console.warn('APPLE_CLIENT_ID not set — using FAKE Apple verifier (non-production only).');
+  } else {
+    console.warn(
+      'APPLE_CLIENT_ID not set — Apple sign-in disabled (POST /auth/apple returns 503).',
+    );
   }
 
   const authService = new AuthService({
@@ -267,7 +288,7 @@ async function main(): Promise<void> {
     authIdentities,
     sessions,
     jwt: createJwtService(auth),
-    verifier,
+    verifiers,
     refreshTtlDays: env.JWT_REFRESH_TTL_DAYS,
   });
 

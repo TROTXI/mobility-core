@@ -33,7 +33,7 @@ function makeService() {
     authIdentities,
     sessions,
     jwt,
-    verifier: new FakeIdTokenVerifier(),
+    verifiers: { google: new FakeIdTokenVerifier() },
     refreshTtlDays: 30,
   });
   return { users, authIdentities, sessions, service };
@@ -102,7 +102,7 @@ describe('AuthService.signIn', () => {
       authIdentities,
       sessions: new InMemorySessionRepository(),
       jwt,
-      verifier: new FakeIdTokenVerifier(),
+      verifiers: { google: new FakeIdTokenVerifier() },
       refreshTtlDays: 30,
     });
 
@@ -123,7 +123,7 @@ describe('AuthService.signIn', () => {
       authIdentities,
       sessions: new InMemorySessionRepository(),
       jwt,
-      verifier: new FakeIdTokenVerifier(),
+      verifiers: { google: new FakeIdTokenVerifier() },
       refreshTtlDays: 30,
     });
     await expect(service.signIn(googleToken('g-1'))).rejects.toThrow('db down');

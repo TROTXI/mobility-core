@@ -5,6 +5,19 @@ export const googleSignInBodySchema = z.object({
   idToken: z.string().min(1),
 });
 
+/**
+ * Apple carries less in its token than Google does, so the client supplies the
+ * rest. `fullName` is Apple's one-time gift: returned on the first authorization
+ * only, never in the token, and gone forever if we don't store it then. `nonce`
+ * is the raw value the client hashed into the authorization request, letting us
+ * reject a replayed token.
+ */
+export const appleSignInBodySchema = z.object({
+  idToken: z.string().min(1),
+  fullName: z.string().max(200).optional(),
+  nonce: z.string().max(200).optional(),
+});
+
 export const refreshBodySchema = z.object({
   refreshToken: z.string().min(1),
 });
