@@ -24,8 +24,15 @@ export const scanResponseSchema = z.object({
 export const verifyPinBodySchema = z.object({
   /** The reservation the driver picked off the manifest. */
   reservationId: z.string().uuid(),
-  /** The rider's daily 4-digit PIN. */
-  pin: z.string().regex(/^\d{4}$/, 'expected a 4-digit PIN'),
+  /**
+   * The rider's daily boarding code, case-insensitive (for example `B7K9`).
+   *
+   * Deliberately looser than the generator's alphabet: codes issued before the
+   * alphanumeric switch are four digits, including the `0` and `1` the new
+   * alphabet omits, and rejecting those at the edge would strand riders holding
+   * one. The HMAC comparison is the real gate.
+   */
+  pin: z.string().regex(/^[0-9A-Za-z]{4}$/, 'expected a 4-character boarding code'),
 });
 
 export const verifyPinResponseSchema = z.object({

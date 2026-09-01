@@ -1,12 +1,12 @@
-// Daily PIN boarding (#20, E4 layer 2). A rider gets a 4-digit PIN on confirm;
-// the driver types it against the manifest to board offline — same debit as the
-// QR scan, idempotent per reservation.
+// Daily boarding-code boarding (#20, E4 layer 2). A rider gets a four-character
+// code on confirm; the driver types it against the manifest to board offline —
+// same debit as the QR scan, idempotent per reservation.
 
 import { describe, expect, it } from 'vitest';
 import { buildApp } from '../src/app';
 import { InMemoryReservationRepository } from '../src/modules/reservations/reservation.repository';
 import { InMemoryEntitlementLedgerRepository } from '../src/modules/entitlements/entitlement-ledger.repository';
-import { hashPin, verifyPin } from '../src/modules/reservations/pin';
+import { generatePin, hashPin, verifyPin } from '../src/modules/reservations/pin';
 import { createJwtService, type AuthConfig } from '../src/modules/auth/jwt';
 
 const auth: AuthConfig = {
@@ -74,7 +74,7 @@ describe('POST /me/reservations issues a PIN', () => {
   it('returns a 4-digit pin on confirm, none on decline, and never stores plaintext', async () => {
     const { app, reservations, riderToken, riderId } = await setup();
     const body = (await confirm(app, riderToken)).json();
-    expect(body.pin).toMatch(/^\d{4}$/);
+    expect(body.pin).toMatch(/^[23456789ABCDEFGHJKMNPQRSTVWXYZ]{4}$/);
     // stored value is the hash, not the plaintext
     const stored = await reservations.find(riderId, today(), 'morning');
     expect(stored?.pinHash).toBe(hashPin(body.pin, auth.secret));
@@ -138,9 +138,55 @@ describe('POST /boarding/verify-pin', () => {
     expect(res.json()).toMatchObject({ valid: false, reason: 'not_found', deducted: false });
   });
 
-  it('rejects a non-4-digit PIN (400)', async () => {
+  it('rejects a code that is not four characters (400)', async () => {
     const { app, driverToken } = await setup();
     const res = await verify(app, driverToken, crypto.randomUUID(), '12');
     expect(res.statusCode).toBe(400);
+  });
+
+  it('boards a rider whose code the driver typed in lowercase', async () => {
+    // The keypad should not have to force case, and a rejected board at the
+    // kerb costs far more than accepting either case here.
+    const { app, riderToken, driverToken } = await setup();
+    const confirmed = await confirm(app, riderToken);
+    const { id, pin } = confirmed.json();
+
+    const res = await verify(app, driverToken, id, String(pin).toLowerCase());
+    expect(res.json()).toMatchObject({ valid: true, reason: 'ok', deducted: true });
+  });
+});
+
+describe('boarding code generation', () => {
+  it('is four characters from the unambiguous alphabet', () => {
+    for (let i = 0; i < 200; i++) {
+      expect(generatePin()).toMatch(/^[23456789ABCDEFGHJKMNPQRSTVWXYZ]{4}$/);
+    }
+  });
+
+  it('never emits the characters drivers misread', () => {
+    // 0/O and 1/I/L are the pairs that turn a valid code into a failed board.
+    const codes = Array.from({ length: 500 }, () => generatePin()).join('');
+    expect(codes).not.toMatch(/[01ILOU]/);
+  });
+
+  it('is not the old 10,000-code space', () => {
+    // A weak assertion of a real property: over 200 draws from 810,000 codes,
+    // all-digit results should be vanishingly rare, and repeats rarer still.
+    const codes = new Set(Array.from({ length: 200 }, () => generatePin()));
+    expect(codes.size).toBeGreaterThan(190);
+  });
+
+  it('still verifies the digit PINs issued before the switch', () => {
+    // Outstanding codes were four digits. Uppercasing leaves them untouched,
+    // so nobody holding one gets stranded by the deploy.
+    const h = hashPin('0142', 'secret');
+    expect(verifyPin('0142', h, 'secret')).toBe(true);
+  });
+
+  it('verifies a generated code regardless of the case it is typed in', () => {
+    const code = generatePin();
+    const h = hashPin(code, 'secret');
+    expect(verifyPin(code.toLowerCase(), h, 'secret')).toBe(true);
+    expect(verifyPin(`  ${code.toLowerCase()}  `, h, 'secret')).toBe(true);
   });
 });

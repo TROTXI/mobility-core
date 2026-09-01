@@ -196,6 +196,15 @@ export class PgReservationRepository implements ReservationRepository {
         }
         const free = remaining.get(row.trip_id)!;
         if (free <= 0) {
+          // Leaving this `pending` was #210: the rider kept being asked to
+          // confirm a seat that no longer existed, and nothing ever told them
+          // why. Terminal, and no ride is deducted.
+          await this.pool.query(
+            `UPDATE reservations
+               SET status = 'unseated', source = 'default', updated_at = now()
+             WHERE id = $1`,
+            [row.id],
+          );
           skippedFull++;
           continue;
         }
