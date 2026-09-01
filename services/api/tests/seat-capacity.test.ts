@@ -114,4 +114,54 @@ describe('cutoff default-yes respects capacity', () => {
     const result = await repo.markDefaultTravelling(DATE, 'morning', async () => null);
     expect(result).toEqual({ defaulted: 4, skippedFull: 0 });
   });
+
+  it('marks the riders it could not seat `unseated`, not `pending` (#210)', async () => {
+    // Leaving them pending was the bug: the app kept asking them to confirm a
+    // seat that no longer existed, and nothing ever explained why.
+    const repo = new InMemoryReservationRepository();
+    await pending(repo, 4);
+
+    await repo.markDefaultTravelling(DATE, 'morning', async () => 2);
+
+    const statuses = (await repo.listForTrip(TRIP)).map((r) => r.status).sort();
+    expect(statuses).toEqual(['reserved', 'reserved', 'unseated', 'unseated']);
+    expect(await repo.listReserved(DATE, 'morning')).toHaveLength(2);
+  });
+
+  it('unseats the riders asked last, keeping the queue explainable', async () => {
+    const repo = new InMemoryReservationRepository();
+    await pending(repo, 3);
+
+    await repo.markDefaultTravelling(DATE, 'morning', async () => 1);
+
+    const byUser = new Map((await repo.listForTrip(TRIP)).map((r) => [r.userId, r.status]));
+    expect(byUser.get('p0')).toBe('reserved');
+    expect(byUser.get('p1')).toBe('unseated');
+    expect(byUser.get('p2')).toBe('unseated');
+  });
+
+  it('an unseated rider holds no seat and is never swept up as a no-show', async () => {
+    // The whole point of the status: they were never on the van, so they must
+    // not be charged a ride for missing it.
+    const repo = new InMemoryReservationRepository();
+    await pending(repo, 3);
+
+    await repo.markDefaultTravelling(DATE, 'morning', async () => 1);
+
+    expect(await repo.countSeatsTaken(TRIP)).toBe(1);
+    const reserved = await repo.listReserved(DATE, 'morning');
+    expect(reserved.every((r) => r.status === 'reserved')).toBe(true);
+    expect(reserved).toHaveLength(1);
+  });
+
+  it('leaves a second cutoff run with nothing to do', async () => {
+    const repo = new InMemoryReservationRepository();
+    await pending(repo, 3);
+
+    await repo.markDefaultTravelling(DATE, 'morning', async () => 1);
+    const again = await repo.markDefaultTravelling(DATE, 'morning', async () => 1);
+
+    // Unseated is terminal, so a re-run cannot resurrect or re-skip anyone.
+    expect(again).toEqual({ defaulted: 0, skippedFull: 0 });
+  });
 });

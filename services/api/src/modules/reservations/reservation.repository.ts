@@ -16,7 +16,8 @@ export type ReservationStatus =
   | 'boarded' // verified onto the vehicle (E4)
   | 'no_show' // confirmed but didn't board — deducted (E4)
   | 'released' // freed to the standby pool (E6)
-  | 'operator_cancelled'; // Trotxi couldn't run it — no deduction
+  | 'operator_cancelled' // Trotxi couldn't run it — no deduction
+  | 'unseated'; // the van filled up before we reached them (#210) — no deduction
 
 /**
  * The statuses that occupy a seat (#161). A `no_show` deliberately does not:
@@ -118,9 +119,14 @@ export interface ReservationRepository {
    * day+direction to `reserved` (source `default`). Declined/confirmed rows are
    * untouched.
    *
+   * Riders the trip has no room for become `unseated` rather than staying
+   * `pending` (#210), so the app can say the van filled up instead of asking
+   * them again. Oldest first, so the ceiling falls on whoever was asked last.
+   *
    * @param travelDate - the travel day (`YYYY-MM-DD`).
    * @param direction - morning or evening.
-   * @returns how many reservations were defaulted.
+   * @param capacityOf - resolves a trip's seat ceiling; omit to skip the check.
+   * @returns how many were defaulted, and how many were left unseated.
    */
   markDefaultTravelling(
     travelDate: string,
@@ -317,6 +323,12 @@ export class InMemoryReservationRepository implements ReservationRepository {
         if (capacityOf && r.tripId) {
           const capacity = await capacityOf(r.tripId);
           if (capacity !== null && (await this.countSeatsTaken(r.tripId)) >= capacity) {
+            // Leaving this `pending` was #210: the rider kept being asked to
+            // confirm a seat that no longer existed, and nothing ever told them
+            // why. Terminal, and no ride is deducted.
+            r.status = 'unseated';
+            r.source = 'default';
+            r.updatedAt = now;
             skippedFull++;
             continue;
           }

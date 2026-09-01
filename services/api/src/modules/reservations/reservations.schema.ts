@@ -36,10 +36,12 @@ export const reservationResponseSchema = z.object({
     'no_show',
     'released',
     'operator_cancelled',
+    'unseated',
   ]),
   source: z.enum(['confirmation', 'default', 'standby']),
-  /** The daily 4-digit boarding PIN — returned ONLY when confirming (travelling
-   * true); the rider shows it if the QR can't be scanned. Absent otherwise. */
+  /** The daily boarding code (for example `B7K9`) — returned ONLY when
+   * confirming (travelling true); the rider shows it if the QR can't be
+   * scanned. Absent otherwise. */
   pin: z.string().optional(),
 });
 
