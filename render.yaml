@@ -91,6 +91,16 @@ services:
       # Waiting on the Apple Developer team + App ID + Services ID (FE lane).
       # - key: APPLE_CLIENT_ID
       #   value: com.trotxi.trotxiCommuter,<Services ID>
+      # Sign in with Apple signing key (#213), for the code exchange and the
+      # revocation DELETE /me must perform. Team id and key id are public; the
+      # .p8 itself is a SECRET, so it is dashboard-managed (sync: false) and
+      # never appears here. All three unset -> no exchange, no revocation.
+      # - key: APPLE_TEAM_ID
+      #   value: <Apple Developer team id>
+      # - key: APPLE_KEY_ID
+      #   value: <Key ID of the .p8>
+      # - key: APPLE_PRIVATE_KEY
+      #   sync: false
       # Observability (#28). Set in the dashboard when Grafana Cloud is wired up.
       # METRICS_TOKEN gates GET /metrics (scraper sends it as a bearer token);
       # unset -> /metrics is disabled (404) in production.
