@@ -83,6 +83,24 @@ services:
       # dashboard. Unset -> POST /auth/google returns 503.
       - key: GOOGLE_CLIENT_ID
         value: 431341307838-pc4m046v2lj18ssfnfl1g52fl5g1cg4q.apps.googleusercontent.com
+      # Apple audiences, comma-separated (#168). Also PUBLIC: the iOS bundle id
+      # and the Services ID both ship in clients. Native iOS sign-in presents the
+      # bundle id and the Android/web flow presents the Services ID, so both are
+      # listed once they exist. Unset -> POST /auth/apple returns 503, which is
+      # why Google sign-in is unaffected while this is still blank.
+      # Waiting on the Apple Developer team + App ID + Services ID (FE lane).
+      # - key: APPLE_CLIENT_ID
+      #   value: com.trotxi.trotxiCommuter,<Services ID>
+      # Sign in with Apple signing key (#213), for the code exchange and the
+      # revocation DELETE /me must perform. Team id and key id are public; the
+      # .p8 itself is a SECRET, so it is dashboard-managed (sync: false) and
+      # never appears here. All three unset -> no exchange, no revocation.
+      # - key: APPLE_TEAM_ID
+      #   value: <Apple Developer team id>
+      # - key: APPLE_KEY_ID
+      #   value: <Key ID of the .p8>
+      # - key: APPLE_PRIVATE_KEY
+      #   sync: false
       # Observability (#28). Set in the dashboard when Grafana Cloud is wired up.
       # METRICS_TOKEN gates GET /metrics (scraper sends it as a bearer token);
       # unset -> /metrics is disabled (404) in production.
@@ -349,6 +367,10 @@ services:
   #     # production project is created. Public by design, so it lives here.
   #     - key: GOOGLE_CLIENT_ID
   #       value: 431341307838-pc4m046v2lj18ssfnfl1g52fl5g1cg4q.apps.googleusercontent.com
+  #     # Apple audiences (#168), public for the same reason. iOS bundle id plus
+  #     # the Services ID, comma-separated.
+  #     - key: APPLE_CLIENT_ID
+  #       value: com.trotxi.trotxiCommuter,<Services ID>
   #     # Unset in production -> /metrics is disabled (404) rather than left open.
   #     - key: METRICS_TOKEN
   #       sync: false

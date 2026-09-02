@@ -8,13 +8,23 @@
 
 import type { JwtService } from './jwt';
 import type { AuthIdentityRepository } from './auth-identity.repository';
-import type { IdTokenVerifier, VerifiedIdentity } from './id-token-verifier';
+import type { AppleTokenClient } from './apple-token.client';
+import type { AuthProvider, IdTokenVerifier, VerifiedIdentity } from './id-token-verifier';
 import type { Session, SessionRepository } from './session.repository';
 import { generateRefreshToken, hashToken } from './tokens';
 import type { User, UserRepository } from '../users/user.repository';
 
-/** Thrown when sign-in is attempted but no verifier is configured (prod without GOOGLE_CLIENT_ID). Routes map it to 503. */
+/** Thrown when sign-in is attempted for a provider with no verifier configured (prod without GOOGLE_CLIENT_ID / APPLE_CLIENT_ID). Routes map it to 503. */
 export class SignInNotConfiguredError extends Error {}
+
+/**
+ * The longest display name we'll accept from a client.
+ *
+ * Apple's name arrives as client-supplied input rather than a signed claim (see
+ * {@link AuthService.signIn}), so it needs a bound. Long enough for real Ghanaian
+ * names, which are routinely four or five parts.
+ */
+const MAX_DISPLAY_NAME = 80;
 
 /** Thrown when a refresh/logout token is missing, expired, or revoked. Routes map it to 401. */
 export class InvalidRefreshTokenError extends Error {}
@@ -46,8 +56,18 @@ export interface AuthServiceDeps {
   sessions: SessionRepository;
   /** Signs/verifies access tokens. */
   jwt: JwtService;
-  /** Undefined when sign-in isn't configured (e.g. prod without GOOGLE_CLIENT_ID). */
-  verifier?: IdTokenVerifier;
+  /**
+   * One verifier per provider. A provider absent from the map has sign-in
+   * disabled and its route answers 503, so Apple being unconfigured never takes
+   * Google down with it.
+   */
+  verifiers?: Partial<Record<AuthProvider, IdTokenVerifier>>;
+  /**
+   * Apple's token endpoints (#213). Undefined when the signing key isn't
+   * configured, in which case codes are simply not exchanged and sign-in works
+   * exactly as before.
+   */
+  appleTokens?: AppleTokenClient;
   /** Refresh-token lifetime in days. */
   refreshTtlDays: number;
 }
@@ -62,6 +82,17 @@ function isUniqueViolation(err: unknown): boolean {
   return (err as { code?: string }).code === '23505';
 }
 
+/**
+ * Trim and bound a client-supplied display name, or null when there isn't one.
+ *
+ * @param name - the raw name from the request body.
+ * @returns a safe display name, or null.
+ */
+function cleanDisplayName(name?: string): string | null {
+  const trimmed = name?.trim();
+  return trimmed ? trimmed.slice(0, MAX_DISPLAY_NAME) : null;
+}
+
 /** Sign-in, refresh, and logout orchestration (see the file header). */
 export class AuthService {
   /** @param deps - repositories, the JWT service, and the ID-token verifier. */
@@ -71,19 +102,64 @@ export class AuthService {
    * Verify a provider ID token, find-or-create the matching user, and issue a
    * fresh access + refresh token pair.
    *
+   * `opts.displayName` exists for Apple, which returns the user's name exactly
+   * once — on the first authorization, outside the ID token — and never again.
+   * It is therefore client-supplied rather than a signed claim, so it is capped
+   * and used ONLY when creating the account. It can never rename an existing
+   * user, which is the difference between capturing a name we'd otherwise lose
+   * forever and letting any caller relabel someone else's account.
+   *
    * @param idToken - the provider ID token from the client.
+   * @param provider - which provider minted it.
+   * @param opts - optional extras the token itself cannot carry.
+   * @param opts.displayName - the name Apple returned on first authorization.
+   * @param opts.nonce - the raw nonce the client generated, for replay checking.
+   * @param opts.authorizationCode - Apple's one-time code, exchanged for the
+   *   refresh token we need to revoke access when the account is deleted.
    * @returns the user and their new tokens.
-   * @throws SignInNotConfiguredError when no verifier is wired.
+   * @throws SignInNotConfiguredError when that provider has no verifier wired.
    * @throws when the ID token is invalid/untrusted (from the verifier).
    */
-  async signIn(idToken: string): Promise<AuthResult> {
-    if (!this.deps.verifier) {
+  async signIn(
+    idToken: string,
+    provider: AuthProvider = 'google',
+    opts: { displayName?: string; nonce?: string; authorizationCode?: string } = {},
+  ): Promise<AuthResult> {
+    const verifier = this.deps.verifiers?.[provider];
+    if (!verifier) {
       throw new SignInNotConfiguredError('Sign-in is not configured');
     }
-    const identity = await this.deps.verifier.verify(idToken); // throws if invalid
-    const { user, isNewUser } = await this.findOrCreateUser(identity);
+    const identity = await verifier.verify(idToken, opts.nonce); // throws if invalid
+    const providerRefreshToken = await this.exchangeAppleCode(provider, opts.authorizationCode);
+    const { user, isNewUser } = await this.findOrCreateUser(
+      {
+        ...identity,
+        displayName: identity.displayName ?? cleanDisplayName(opts.displayName),
+      },
+      providerRefreshToken,
+    );
     const tokens = await this.issueTokens(user);
     return { user, isNewUser, ...tokens };
+  }
+
+  /**
+   * Trade Apple's authorization code for the refresh token we need at deletion.
+   *
+   * Best effort on purpose. A rider signing in should not be turned away because
+   * Apple's token endpoint is having a bad minute; the cost of failing is that we
+   * cannot revoke later, which is worth strictly less than the sign-in itself.
+   *
+   * @param provider - the provider being signed in with.
+   * @param code - the authorization code, when the client sent one.
+   * @returns the refresh token, or null when there is nothing to exchange.
+   */
+  private async exchangeAppleCode(provider: AuthProvider, code?: string): Promise<string | null> {
+    if (provider !== 'apple' || !code || !this.deps.appleTokens) return null;
+    try {
+      return (await this.deps.appleTokens.exchangeCode(code)).refreshToken;
+    } catch {
+      return null;
+    }
   }
 
   /**
@@ -184,16 +260,23 @@ export class AuthService {
    * winner's identity.
    *
    * @param identity - the verified provider identity.
+   * @param providerRefreshToken - Apple's refresh token, when we obtained one.
    * @returns the existing or newly created user.
    */
   private async findOrCreateUser(
     identity: VerifiedIdentity,
+    providerRefreshToken: string | null = null,
   ): Promise<{ user: User; isNewUser: boolean }> {
     const existing = await this.deps.authIdentities.findByProvider(
       identity.provider,
       identity.providerId,
     );
     if (existing) {
+      // Backfill for anyone who linked Apple before we started asking for codes:
+      // their next sign-in is the only chance to become revocable.
+      if (providerRefreshToken) {
+        await this.deps.authIdentities.saveRefreshToken(existing.id, providerRefreshToken);
+      }
       const user = await this.deps.users.findById(existing.userId);
       // Backfill the verified email for anyone who signed up before #182, so
       // existing riders become reachable on their next sign-in rather than
@@ -210,6 +293,7 @@ export class AuthService {
         userId: user.id,
         provider: identity.provider,
         providerId: identity.providerId,
+        providerRefreshToken,
       });
     } catch (err) {
       // Lost a concurrent first sign-in race — the identity now exists; reuse it.

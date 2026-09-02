@@ -17,6 +17,7 @@ export default defineConfig({
         'src/**/*.pg.ts',
         'src/**/*.redis.ts',
         'src/**/*.google.ts',
+        'src/**/*.apple.ts',
         'src/**/*.live.ts',
         'src/**/*.r2.ts',
       ],

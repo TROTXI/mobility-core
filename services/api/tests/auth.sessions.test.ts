@@ -24,7 +24,7 @@ function make() {
     authIdentities: new InMemoryAuthIdentityRepository(),
     sessions: new InMemorySessionRepository(),
     jwt,
-    verifier: new FakeIdTokenVerifier(),
+    verifiers: { google: new FakeIdTokenVerifier() },
     refreshTtlDays: 30,
   });
   return { users, authService };

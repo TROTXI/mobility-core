@@ -33,7 +33,7 @@ function makeService() {
     authIdentities,
     sessions,
     jwt,
-    verifier: new FakeIdTokenVerifier(),
+    verifiers: { google: new FakeIdTokenVerifier() },
     refreshTtlDays: 30,
   });
   return { users, authIdentities, sessions, service };
@@ -90,8 +90,19 @@ describe('AuthService.signIn', () => {
     let raced = false;
     const authIdentities: AuthIdentityRepository = {
       findByProvider: async (provider, providerId) =>
-        raced ? { id: 'x', userId: winner.id, provider, providerId, createdAt: new Date() } : null,
+        raced
+          ? {
+              id: 'x',
+              userId: winner.id,
+              provider,
+              providerId,
+              providerRefreshToken: null,
+              createdAt: new Date(),
+            }
+          : null,
       deleteForUser: async () => {},
+      listForUser: async () => [],
+      saveRefreshToken: async () => {},
       create: async () => {
         raced = true; // the "winner" created it between our check and our insert
         throw Object.assign(new Error('duplicate'), { code: '23505' });
@@ -102,7 +113,7 @@ describe('AuthService.signIn', () => {
       authIdentities,
       sessions: new InMemorySessionRepository(),
       jwt,
-      verifier: new FakeIdTokenVerifier(),
+      verifiers: { google: new FakeIdTokenVerifier() },
       refreshTtlDays: 30,
     });
 
@@ -114,6 +125,8 @@ describe('AuthService.signIn', () => {
     const authIdentities: AuthIdentityRepository = {
       findByProvider: async () => null,
       deleteForUser: async () => {},
+      listForUser: async () => [],
+      saveRefreshToken: async () => {},
       create: async () => {
         throw new Error('db down');
       },
@@ -123,7 +136,7 @@ describe('AuthService.signIn', () => {
       authIdentities,
       sessions: new InMemorySessionRepository(),
       jwt,
-      verifier: new FakeIdTokenVerifier(),
+      verifiers: { google: new FakeIdTokenVerifier() },
       refreshTtlDays: 30,
     });
     await expect(service.signIn(googleToken('g-1'))).rejects.toThrow('db down');
