@@ -54,7 +54,7 @@ mobility-core/
 ├── apps/             # Flutter apps (commuter, driver) — see apps/README.md
 ├── e2e/              # Playwright black-box suite — real HTTP against the API
 ├── infra/docker/     # Local infra: Postgres+PostGIS, Redis, EMQX
-├── docs/             # Architecture + ADRs (decision records)
+├── docs/             # Architecture, ADRs, feature docs, legal/ (privacy + store readiness)
 └── .github/          # CI/CD workflows, PR template
 ```
 
