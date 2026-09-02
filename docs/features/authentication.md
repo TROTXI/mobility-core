@@ -130,7 +130,7 @@ Sign in (or sign up on first use) with an Apple ID token. Same shape as
 `/auth/google`, because it is the same flow with a different verifier.
 
 - **Auth:** none. **Rate limit:** 10/min per IP.
-- **Body:** `{ "idToken": "<apple ID token>", "fullName?": "Ama Serwaa", "nonce?": "<raw nonce>" }`
+- **Body:** `{ "idToken": "<apple ID token>", "fullName?": "Ama Serwaa", "nonce?": "<raw nonce>", "authorizationCode?": "<one-time code>" }`
 - **200:** identical to `/auth/google`
 - **401** invalid token · **429** rate-limited · **503** Apple sign-in not configured
 
@@ -144,6 +144,15 @@ never rename an existing user.
 `nonce` is the raw value the client hashed into the authorization request. Send it
 and a replayed token is rejected; omit it and the token is still verified for
 signature, issuer, audience and expiry.
+
+`authorizationCode` is Apple's one-time code, sent on first authorization. The
+server trades it for a refresh token and stores that against the identity, for
+one purpose: `DELETE /me` has to revoke our access at Apple, and revoking needs a
+token that verifying an ID token never produces. Apple requires this of any app
+offering both Sign in with Apple and account deletion, and checks it at review.
+Omit the code and sign-in still works; only revocation is lost. The exchange is
+best effort, so Apple's token endpoint being down delays nothing at the login
+screen.
 
 #### `POST /auth/refresh`
 
@@ -229,6 +238,9 @@ uncontactable for the sake of tidiness.
 | ---------------------- | ------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
 | `GOOGLE_CLIENT_ID`     | unset   | the Google **"Web"** OAuth client ID = the token audience. **Public, not a secret.** No client _secret_ needed (we only verify the ID token). |
 | `APPLE_CLIENT_ID`      | unset   | Apple audiences, **comma-separated**: the iOS bundle id and the Services ID. **Public, not a secret.** Unset → `/auth/apple` returns 503.     |
+| `APPLE_TEAM_ID`        | unset   | Apple Developer team id. Public. Needed only for the code exchange and revocation.                                                            |
+| `APPLE_KEY_ID`         | unset   | Key ID of the Sign in with Apple `.p8`. Public.                                                                                               |
+| `APPLE_PRIVATE_KEY`    | unset   | The `.p8` key itself, PKCS#8 PEM. **A real secret** — Render dashboard only, never the blueprint. Unset → no exchange and no revocation.      |
 | `JWT_REFRESH_TTL_DAYS` | `30`    | refresh-token lifetime                                                                                                                        |
 
 > The mobile apps additionally need **Android + iOS** OAuth client IDs in the

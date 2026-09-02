@@ -186,6 +186,7 @@ export async function authRoutes(
         return await opts.authService.signIn(request.body.idToken, 'apple', {
           displayName: request.body.fullName,
           nonce: request.body.nonce,
+          authorizationCode: request.body.authorizationCode,
         });
       } catch (err) {
         if (err instanceof SignInNotConfiguredError) {

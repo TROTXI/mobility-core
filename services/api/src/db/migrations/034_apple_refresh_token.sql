@@ -1,0 +1,12 @@
+-- 034_apple_refresh_token: keep Apple's refresh token so we can revoke it (#213).
+--
+-- Apple requires that an app offering both Sign in with Apple and account
+-- deletion calls their revocation endpoint on delete. Revoking needs a token,
+-- and verifying an ID token never yields one, so we exchange the authorization
+-- code at first sign-in and keep what it returns.
+--
+-- Unlike our OWN refresh tokens (stored hashed, since we only ever compare
+-- them), this one has to be replayable to be usable, so it is stored as issued.
+-- It is a provider credential: scoped to revocation and basic profile, but a
+-- credential. Null for Google, and for Apple sign-ins made before this landed.
+ALTER TABLE auth_identity ADD COLUMN IF NOT EXISTS provider_refresh_token text;
