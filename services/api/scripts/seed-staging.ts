@@ -151,6 +151,22 @@ async function main(): Promise<void> {
   console.log(`${BASE} → readyz ${health.status}`);
   if (!health.ok) throw new Error('environment is not ready; check the database');
 
+  // Check the minted token BEFORE doing any work. Route and stop reads are
+  // public, so without this the first six lines of output look like a healthy
+  // run and the failure lands on "list vehicles failed (HTTP 401)" — which
+  // reads as a broken endpoint rather than the one thing it actually is.
+  const preflight = await api('GET', '/admin/vehicles');
+  if (preflight.status === 401) {
+    throw new Error(
+      `the admin token was rejected, so JWT_SECRET does not match ${BASE}.\n` +
+        '  - Copy it from Render → trotxi-api-staging → Environment → JWT_SECRET.\n' +
+        '  - Check for a trailing newline or space: shells keep them, the HMAC does not forgive them.\n' +
+        '  - trotxi-ops-staging has its own JWT_SECRET that must EQUAL this one; ' +
+        'if they have drifted, one of the two is the wrong value to be using here.',
+    );
+  }
+  must('preflight', preflight);
+
   // Route (idempotent: reuse the corridor if it is already there).
   const existing = must('list routes', await api('GET', '/routes'));
   const routes = Array.isArray(existing) ? existing : (existing.routes ?? []);
