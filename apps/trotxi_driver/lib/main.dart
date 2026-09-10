@@ -6,6 +6,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:trotxi_driver/core/Tokens/token_storage.dart';
 import 'package:trotxi_driver/core/config/theme/app_theme.dart';
+import 'package:trotxi_driver/core/config/theme/app_theme_controller.dart';
 import 'package:trotxi_client/trotxi_client.dart';
 import 'package:trotxi_driver/firebase_options.dart';
 import 'package:trotxi_driver/firebase_performance.dart';
@@ -45,17 +46,44 @@ Future<void> main() async {
   );
 }
 
-class TrotxiDriverApp extends StatelessWidget {
+class TrotxiDriverApp extends StatefulWidget {
   const TrotxiDriverApp({super.key, required this.client});
 
   final TrotxiApiClient client;
 
   @override
+  State<TrotxiDriverApp> createState() => _TrotxiDriverAppState();
+}
+
+class _TrotxiDriverAppState extends State<TrotxiDriverApp> {
+  // Follows the device by default. The prototype puts a Theme control on
+  // Profile > App preferences, which drives this controller; dark is the one
+  // that matters in practice, since these screens are read before dawn and
+  // after dusk on a windscreen-mounted phone.
+  final _themeController = AppThemeController();
+
+  @override
+  void dispose() {
+    _themeController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Trotxi Driver',
-      theme: AppTheme.lightTheme,
-      home: _PlaceholderHome(client: client),
+    return AppThemeControllerScope(
+      controller: _themeController,
+      child: AnimatedBuilder(
+        animation: _themeController,
+        builder: (context, _) {
+          return MaterialApp(
+            title: 'Trotxi Driver',
+            theme: AppTheme.lightTheme,
+            darkTheme: AppTheme.darkTheme,
+            themeMode: _themeController.themeMode,
+            home: _PlaceholderHome(client: widget.client),
+          );
+        },
+      ),
     );
   }
 }
