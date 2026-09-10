@@ -105,6 +105,42 @@ function must(label: string, res: { status: number; json: any }): any {
   return res.json;
 }
 
+/**
+ * Give the seeded driver a code and PIN so the driver app can actually be
+ * signed into (#223).
+ *
+ * Printed to this console and nowhere else: the API returns the PIN exactly
+ * once and stores only a keyed hash, so there is no reading it back later.
+ *
+ * A driver who already has a credential answers 409, and reset-pin does not
+ * return the code alongside the new PIN, so there would be no way to print a
+ * usable pair. Rather than guess, this seeds a separate, uniquely named driver
+ * whose credential is fresh. That keeps the run idempotent in the sense that
+ * matters: it always ends with a pair you can type into the app.
+ *
+ * @param driver - the corridor's assigned driver.
+ */
+async function issueDriverCredential(driver: any): Promise<void> {
+  let target = driver;
+  let issued = await api('POST', `/admin/drivers/${target.id}/credentials`, undefined);
+
+  if (issued.status === 409) {
+    const fullName = `Test Driver ${new Date().toISOString().slice(0, 16).replace('T', ' ')}`;
+    target = must('create test driver', await api('POST', '/admin/drivers', { fullName }));
+    issued = await api('POST', `/admin/drivers/${target.id}/credentials`, undefined);
+  }
+
+  const credential = must('issue driver credential', issued);
+  console.log('');
+  console.log('driver sign-in — type these into the driver app:');
+  console.log(`  name        ${target.fullName}`);
+  console.log(`  driver code ${credential.driverCode}`);
+  console.log(`  PIN         ${credential.pin}`);
+  console.log('  (the PIN is shown ONCE; the API keeps only a keyed hash)');
+  console.log('  First sign-in forces a PIN change, which is the flow to test.');
+  console.log('');
+}
+
 async function main(): Promise<void> {
   token = await createJwtService(auth).signAccessToken({
     userId: 'seed-admin',
@@ -176,6 +212,8 @@ async function main(): Promise<void> {
     );
   }
   console.log(`driver: ${driver.fullName} (${driver.id})`);
+
+  await issueDriverCredential(driver);
 
   // Trips: a morning and an evening run for the next N days. The API's
   // direction heuristic reads the scheduled hour, so 06:30 and 17:30 UTC give

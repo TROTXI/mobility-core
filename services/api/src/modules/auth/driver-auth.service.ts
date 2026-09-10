@@ -236,11 +236,15 @@ export class DriverAuthService {
    * points at: there is no self-service reset because `drivers.phone` is
    * nullable, so there is no verified channel to send one to.
    *
+   * Returns the code alongside the PIN. Operations is reading both down a phone
+   * line to a driver who has lost their slip, and a reset that hands back only
+   * half of what they need is a reset they cannot actually deliver.
+   *
    * @param driverId - the driver.
-   * @returns the new one-time PIN.
+   * @returns the driver's code and the new one-time PIN.
    * @throws DriverNotFoundError when the driver has no credential.
    */
-  async resetPin(driverId: string): Promise<{ pin: string }> {
+  async resetPin(driverId: string): Promise<IssuedCredential> {
     const credential = await this.deps.credentials.findByDriverId(driverId);
     if (!credential) throw new DriverNotFoundError('Driver has no credential');
     const pin = generatePin();
@@ -251,7 +255,7 @@ export class DriverAuthService {
     // The old PIN is gone, so anything signed in on it should be too.
     const driver = await this.deps.drivers.findById(driverId);
     if (driver?.userId) await this.deps.sessions.revokeAllForUser(driver.userId);
-    return { pin };
+    return { driverCode: credential.driverCode, pin };
   }
 
   /**
