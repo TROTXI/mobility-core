@@ -9,7 +9,7 @@ import { buildApp } from '../src/app';
 import { InMemoryAuthIdentityRepository } from '../src/modules/auth/auth-identity.repository';
 import { AuthService } from '../src/modules/auth/auth.service';
 import { FakeIdTokenVerifier } from '../src/modules/auth/id-token-verifier';
-import { nonceMatches } from '../src/modules/auth/id-token-verifier.apple';
+import { assertNonce, nonceMatches } from '../src/modules/auth/id-token-verifier.apple';
 import { createJwtService, type AuthConfig } from '../src/modules/auth/jwt';
 import { InMemorySessionRepository } from '../src/modules/auth/session.repository';
 import { InMemoryUserRepository } from '../src/modules/users/user.repository';
@@ -165,5 +165,30 @@ describe('Apple nonce matching', () => {
 
   it('rejects anything else', () => {
     expect(nonceMatches('someone-elses-nonce', 'random-value')).toBe(false);
+  });
+});
+
+describe('Apple nonce enforcement', () => {
+  it('rejects a nonced token when the request sent no nonce', () => {
+    // The replay case: an intercepted ID token is valid, correctly signed and
+    // addressed to us. Dropping the nonce field from the request body must not
+    // be enough to skip the one check that would catch the replay.
+    expect(() => assertNonce('a-nonce-from-the-token', undefined)).toThrow(/sent none/);
+  });
+
+  it('rejects a nonce that does not correspond to the one sent', () => {
+    expect(() => assertNonce('someone-elses-nonce', 'mine')).toThrow(/mismatch/);
+  });
+
+  it('accepts the raw and hashed forms the SDKs actually send', () => {
+    const raw = 'random-value';
+    expect(() => assertNonce(raw, raw)).not.toThrow();
+    expect(() => assertNonce(createHash('sha256').update(raw).digest('hex'), raw)).not.toThrow();
+  });
+
+  it('leaves a token with no nonce claim alone', () => {
+    // Not every Apple flow sets one; refusing those would break sign-in rather
+    // than harden it.
+    expect(() => assertNonce(undefined, undefined)).not.toThrow();
   });
 });

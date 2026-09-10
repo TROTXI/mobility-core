@@ -1,13 +1,21 @@
 // Reservation routes (#101, E3). The rider answers the daily "travelling?"
 // prompt here and lists upcoming reservations. Capacity is enforced on confirm
-// (#161).
+// (#161), and so is the membership: confirming a seat is the paywall.
+//
+// The gate lives HERE and not at boarding on purpose. Boarding fails open by
+// design (boarding.service.ts) because a rider stuck at the kerb with a queue
+// behind them is a worse outcome than an unpaid ride, so the seat has to be
+// refused at the point it is claimed, hours earlier, where a refusal costs
+// nothing but a message on a phone.
 
 import type { FastifyInstance } from 'fastify';
 import type { ZodTypeProvider } from 'fastify-type-provider-zod';
 import { errorResponseSchema } from '../../lib/schemas';
+import type { EntitlementLedgerRepository } from '../entitlements/entitlement-ledger.repository';
 import type { TripRepository } from '../mobility/trip.repository';
 import type { VehicleRepository } from '../mobility/vehicle.repository';
 import type { RateLimitConfig } from '../ratelimit/ratelimit.plugin';
+import type { SubscriptionRepository } from '../subscriptions/subscription.repository';
 import type { Reservation, ReservationRepository } from './reservation.repository';
 import { generatePin, hashPin } from './pin';
 import {
@@ -54,6 +62,8 @@ function toResponse(
  * @param opts.reservations - the reservation repository (503 when absent).
  * @param opts.trips - trip lookup, to resolve the assigned vehicle (#161).
  * @param opts.vehicles - the fleet, for the seat ceiling; absent -> not enforced.
+ * @param opts.subscriptions - memberships, for the paywall; absent -> not enforced.
+ * @param opts.entitlements - the ride ledger, for the balance check.
  * @param opts.secret - server key for hashing the daily boarding PIN.
  * @param opts.rateLimit - rate-limit config (applied per user).
  */
@@ -65,6 +75,10 @@ export async function reservationRoutes(
     trips?: TripRepository;
     /** Fleet, for that ceiling. Absent -> capacity is not enforced. */
     vehicles?: VehicleRepository;
+    /** Memberships. Absent -> the paywall is not enforced (dev/tests only). */
+    subscriptions?: SubscriptionRepository;
+    /** Ride entitlement ledger, for the remaining-rides check. */
+    entitlements?: EntitlementLedgerRepository;
     secret: string;
     rateLimit: RateLimitConfig;
   },
@@ -87,17 +101,73 @@ export async function reservationRoutes(
     return vehicle && vehicle.capacity > 0 ? vehicle.capacity : null;
   };
 
+  /**
+   * Why this rider may not claim a seat, or null when they may.
+   *
+   * Three questions, cheapest first: are they a member, do they have a ride
+   * left, and is this run even on the corridor they bought. The route check is
+   * skipped when either side is unknown, so trips created before riders were
+   * pinned to a corridor still confirm.
+   *
+   * @param userId - the authenticated rider.
+   * @param tripId - the run they are claiming a seat on, if they named one.
+   * @returns an error code and message to refuse with, or null to allow.
+   */
+  const refusalFor = async (
+    userId: string,
+    tripId: string | null,
+  ): Promise<{ error: string; message: string } | null> => {
+    if (!opts.subscriptions) return null;
+
+    const subscription = await opts.subscriptions.findActiveByUser(userId);
+    if (!subscription) {
+      return {
+        error: 'no_subscription',
+        message: 'An active membership is required to reserve a seat',
+      };
+    }
+
+    // Counting the ledger rather than trusting the period's grant: credit
+    // conversion and no-show deductions both move this number mid-period.
+    if (opts.entitlements && (await opts.entitlements.remainingRides(userId)) <= 0) {
+      return {
+        error: 'no_rides_left',
+        message: 'No rides remaining on your membership for this period',
+      };
+    }
+
+    // A membership is bought for one corridor at one price (ADR-0015), so it
+    // cannot claim seats on another. Without this the paywall is per-rider but
+    // not per-route, and the cheapest corridor buys the whole city.
+    if (tripId && subscription.routeId && opts.trips) {
+      const trip = await opts.trips.findById(tripId);
+      if (trip && trip.routeId !== subscription.routeId) {
+        return {
+          error: 'route_not_covered',
+          message: 'Your membership does not cover this route',
+        };
+      }
+    }
+
+    return null;
+  };
+
   r.post(
     '/me/reservations',
     {
       schema: {
         tags: ['reservations'],
         summary: 'Confirm or decline the daily ride (upsert per day + direction)',
+        description:
+          'Confirming requires an active membership with a ride left on the corridor ' +
+          'the run belongs to; 402 says which of the three is missing. Declining is ' +
+          'always allowed.',
         security: [{ bearerAuth: [] }],
         body: respondBodySchema,
         response: {
           200: reservationResponseSchema,
           401: errorResponseSchema,
+          402: errorResponseSchema,
           409: errorResponseSchema,
           429: errorResponseSchema,
           503: errorResponseSchema,
@@ -107,6 +177,15 @@ export async function reservationRoutes(
     },
     async (request, reply) => {
       if (!opts.reservations) return reply.code(503).send(UNAVAILABLE);
+
+      // Only confirming is gated. Declining stays open to everyone: it consumes
+      // nothing, and a rider whose membership just lapsed should still be able
+      // to tell the driver not to wait for them.
+      if (request.body.travelling) {
+        const refusal = await refusalFor(request.user!.id, request.body.tripId ?? null);
+        if (refusal) return reply.code(402).send(refusal);
+      }
+
       // Confirming issues a fresh daily PIN; only the hash is stored, the
       // plaintext is returned once here for the rider to show at boarding.
       const pin = request.body.travelling ? generatePin() : undefined;

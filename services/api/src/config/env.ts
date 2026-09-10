@@ -61,6 +61,29 @@ const envSchema = z
     // Rate limiting (fixed window). Tunable without a code change.
     RATE_LIMIT_MAX: z.coerce.number().int().positive().default(100),
     RATE_LIMIT_WINDOW_SECONDS: z.coerce.number().int().positive().default(60),
+    // Which peers may set `X-Forwarded-For`, as a comma-separated proxy-addr
+    // list. Without it `request.ip` is Render's load balancer on every request
+    // and all per-IP rate limits collapse into one bucket shared by every
+    // caller. The default trusts private peers only: the balancer reaches us
+    // from inside Render's network, so a direct public client is never trusted
+    // and cannot forge a header to pick its own bucket. Empty disables it.
+    //
+    // A hop COUNT is deliberately refused. Fastify 5.12 made numeric
+    // trustProxy fail closed (GHSA X-Forwarded-* spoofing: a count cannot
+    // validate the immediate peer, so a direct client could supply enough hops
+    // to look proxied), and `1` now silently means "trust nothing" — the exact
+    // bug this setting exists to fix, reintroduced without a word. Better to
+    // refuse the value at boot than to run with a limiter that quietly does
+    // nothing.
+    TRUST_PROXY: z
+      .string()
+      .default('loopback, linklocal, uniquelocal')
+      .refine((v) => !/^\s*\d+\s*$/.test(v), {
+        message:
+          'TRUST_PROXY is an address list, not a hop count. Fastify ignores a number ' +
+          'and trusts nothing. Use "loopback, linklocal, uniquelocal", or the ' +
+          "balancer's CIDR.",
+      }),
     // Protects GET /metrics — the scraper sends `Authorization: Bearer <token>`.
     // Unset -> /metrics is open in non-prod, disabled (404) in production.
     METRICS_TOKEN: z.string().optional(),

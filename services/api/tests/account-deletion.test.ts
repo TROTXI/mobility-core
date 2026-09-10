@@ -42,7 +42,9 @@ describe('AccountDeletionService', () => {
 
     expect(await service.deleteAccount(user.id)).toBe(true);
 
-    const after = await users.findById(user.id);
+    // findByIdIncludingErased, not findById: an erased account is invisible to
+    // every product read, which is the point. The row is still there.
+    const after = await users.findByIdIncludingErased(user.id);
     expect(after?.displayName).toBe(ANONYMISED_DISPLAY_NAME);
     expect(after?.email).toBeNull();
     expect(after?.phone).toBeNull();
@@ -56,7 +58,9 @@ describe('AccountDeletionService', () => {
     // what this design exists to avoid.
     const { service, users, user } = await make();
     await service.deleteAccount(user.id);
-    expect(await users.findById(user.id)).not.toBeNull();
+    expect(await users.findByIdIncludingErased(user.id)).not.toBeNull();
+    // ...and it is nonetheless gone as far as the API is concerned.
+    expect(await users.findById(user.id)).toBeNull();
   });
 
   it('removes the avatar from object storage, not just the column', async () => {
@@ -82,10 +86,10 @@ describe('AccountDeletionService', () => {
   it('is idempotent — a retried request does not fail or move deletedAt', async () => {
     const { service, users, user } = await make();
     await service.deleteAccount(user.id);
-    const first = (await users.findById(user.id))!.deletedAt;
+    const first = (await users.findByIdIncludingErased(user.id))!.deletedAt;
 
     expect(await service.deleteAccount(user.id)).toBe(true);
-    expect((await users.findById(user.id))!.deletedAt).toEqual(first);
+    expect((await users.findByIdIncludingErased(user.id))!.deletedAt).toEqual(first);
   });
 
   it('reports false for an unknown user', async () => {

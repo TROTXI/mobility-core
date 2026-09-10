@@ -8,6 +8,8 @@
 import { errors } from 'jose';
 import type { KvStore } from '../../kv/kv.store';
 import type { EntitlementLedgerRepository } from '../entitlements/entitlement-ledger.repository';
+import type { DriverRepository } from '../mobility/driver.repository';
+import type { TripRepository } from '../mobility/trip.repository';
 import type {
   Reservation,
   ReservationDirection,
@@ -51,9 +53,19 @@ export interface VerifyPinInput {
 export interface VerifyPinResult {
   valid: boolean;
   riderId: string | null;
-  reason: 'ok' | 'invalid' | 'not_found' | 'already_boarded';
+  reason: 'ok' | 'invalid' | 'not_found' | 'already_boarded' | 'forbidden';
   deducted: boolean;
 }
+
+/**
+ * Wrong codes tolerated per reservation per window before the rest are refused
+ * unread. A driver retyping a smudged code at the kerb needs several goes; a
+ * four-character alphabet does not survive thousands.
+ */
+const MAX_PIN_ATTEMPTS = 10;
+
+/** How long that attempt budget lasts, in seconds. */
+const PIN_ATTEMPT_WINDOW_SECONDS = 15 * 60;
 
 /** Collaborators for {@link BoardingService}, injected at app wiring. */
 export interface BoardingServiceDeps {
@@ -66,6 +78,13 @@ export interface BoardingServiceDeps {
   reservations?: ReservationRepository;
   /** Ride entitlement ledger — a boarded seat debits one ride. Optional (see above). */
   entitlements?: EntitlementLedgerRepository;
+  /**
+   * Trips + drivers, to check the scanner is the driver this run is assigned to
+   * (#25's rule, applied to PIN boarding). Both must be wired for the check to
+   * run; unwired leaves verification as it was.
+   */
+  trips?: TripRepository;
+  drivers?: DriverRepository;
   /** Server signing key for passes (the JWT secret). */
   secret: string;
   /** Pass lifetime in seconds (short → the QR rotates). */
@@ -160,6 +179,19 @@ export class BoardingService {
     if (!reservation) {
       return { valid: false, riderId: null, reason: 'not_found', deducted: false };
     }
+    // The manifest and GPS reporting both require the caller to be the driver
+    // this run is assigned to; boarding by code did not, which left a four
+    // character code as the only thing standing between any driver account and
+    // any rider's seat on any trip in the fleet.
+    if (!(await this.isAssignedDriver(input.scannedBy, reservation.tripId))) {
+      return { valid: false, riderId: null, reason: 'forbidden', deducted: false };
+    }
+    // Budget the wrong guesses. Without it the only ceiling on brute-forcing a
+    // 4-character code is the route's generic per-user rate limit, which is
+    // thousands of attempts an hour against a code that lives all day.
+    if (!(await this.withinPinAttemptBudget(reservation.id))) {
+      return { valid: false, riderId: reservation.userId, reason: 'invalid', deducted: false };
+    }
     if (!checkPin(input.pin, reservation.pinHash, this.deps.secret)) {
       await this.recordScan(
         reservation.userId,
@@ -195,6 +227,48 @@ export class BoardingService {
     }
     await this.recordScan(reservation.userId, input.scannedBy, reservation.tripId, 'ok', 'pin');
     return { valid: true, riderId: reservation.userId, reason: 'ok', deducted };
+  }
+
+  /**
+   * Whether this user is the driver the reservation's run is assigned to.
+   *
+   * Permissive in exactly two cases, both of which mean there is no assignment
+   * to check rather than a check that failed: the trip/driver stores are not
+   * wired, or the reservation is not attached to a trip at all.
+   *
+   * @param userId - the signed-in driver doing the boarding.
+   * @param tripId - the reservation's trip, when it has one.
+   * @returns whether boarding may proceed.
+   */
+  private async isAssignedDriver(userId: string, tripId: string | null): Promise<boolean> {
+    if (!this.deps.trips || !this.deps.drivers || !tripId) return true;
+    const trip = await this.deps.trips.findById(tripId);
+    if (!trip) return true;
+    const driver = await this.deps.drivers.findByUserId(userId);
+    return driver !== null && trip.assignedDriverId === driver.id;
+  }
+
+  /**
+   * Count this attempt against the reservation's budget of wrong codes.
+   *
+   * Fails OPEN like the rest of this file: a KV outage must not strand a bus,
+   * and the cost of that choice is a brute-force window that only opens while
+   * Redis is down.
+   *
+   * @param reservationId - the seat being boarded.
+   * @returns whether the attempt is still within budget.
+   */
+  private async withinPinAttemptBudget(reservationId: string): Promise<boolean> {
+    try {
+      const attempts = await this.deps.kv.increment(
+        `pin:attempts:${reservationId}`,
+        PIN_ATTEMPT_WINDOW_SECONDS,
+      );
+      return attempts <= MAX_PIN_ATTEMPTS;
+    } catch (err) {
+      console.warn('boarding: PIN attempt budget unavailable; allowing attempt', err);
+      return true;
+    }
   }
 
   /**

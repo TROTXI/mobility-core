@@ -8,6 +8,7 @@ const DEFAULTS = {
   JWT_REFRESH_TTL_DAYS: 30,
   RATE_LIMIT_MAX: 100,
   RATE_LIMIT_WINDOW_SECONDS: 60,
+  TRUST_PROXY: 'loopback, linklocal, uniquelocal',
 };
 
 describe('loadEnv', () => {
@@ -42,5 +43,12 @@ describe('loadEnv', () => {
 
   it('rejects a JWT_SECRET shorter than 32 chars', () => {
     expect(() => loadEnv({ JWT_SECRET: 'too-short' })).toThrow(/Invalid environment configuration/);
+  });
+
+  it('refuses a hop count for TRUST_PROXY', () => {
+    // Fastify 5.12 ignores a numeric trustProxy and trusts nothing, so `1`
+    // would silently undo the per-IP rate limiting it is meant to enable.
+    // Refusing it at boot beats discovering it from a 429 graph.
+    expect(() => loadEnv({ TRUST_PROXY: '1' })).toThrow(/address list, not a hop count/);
   });
 });

@@ -37,7 +37,10 @@ export class AccountDeletionService {
    * @returns true when the user existed, false when there was nothing to erase.
    */
   async deleteAccount(userId: string): Promise<boolean> {
-    const user = await this.deps.users.findById(userId);
+    // Reads past `deleted_at` deliberately: a client retrying after a timeout
+    // must find the row it already anonymised, so the steps below re-run and
+    // the erasure converges instead of stopping half-done.
+    const user = await this.deps.users.findByIdIncludingErased(userId);
     if (!user) return false;
 
     // Cut access first: an app mid-request must not keep acting as this account.

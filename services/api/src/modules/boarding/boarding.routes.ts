@@ -116,12 +116,22 @@ export async function boardingRoutes(
         app.requireRole('driver'),
       ],
     },
-    async (request) =>
-      opts.boardingService.verifyPin({
+    async (request, reply) => {
+      const result = await opts.boardingService.verifyPin({
         reservationId: request.body.reservationId,
         pin: request.body.pin,
         scannedBy: request.user!.id,
-      }),
+      });
+      // Not this driver's run. A real status rather than a 200 body, matching
+      // the manifest and GPS routes, so the app can tell "wrong code" from
+      // "wrong bus" without parsing a reason string.
+      if (result.reason === 'forbidden') {
+        return reply
+          .code(403)
+          .send({ error: 'forbidden', message: 'Not the assigned driver for this trip' });
+      }
+      return result;
+    },
   );
 
   // Driver manifest for a trip — name + photo + boarded status of confirmed

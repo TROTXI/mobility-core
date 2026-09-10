@@ -93,11 +93,43 @@ function isUniqueViolation(err: unknown): boolean {
   return (err as { code?: string }).code === '23505';
 }
 
+/**
+ * Whether the settled charge is the one we opened this checkout for.
+ *
+ * Amount is compared exactly rather than as a floor: Paystack settles in
+ * pesewas, we charge in pesewas, and an overpayment is as much a sign of a
+ * mismatched reference as a shortfall is. Fields Paystack omits are not treated
+ * as failures, so a payload shape change cannot silently stop every activation.
+ *
+ * @param payment - the pending payment the reference resolved to.
+ * @param event - the signature-verified webhook payload.
+ * @returns whether the charge may grant what the payment bought.
+ */
+function chargeMatches(payment: Payment, event: PaystackWebhookEvent): boolean {
+  const data = event.data;
+  if (!data) return false;
+  if (data.status !== undefined && data.status !== 'success') return false;
+  if (data.amount !== undefined && data.amount !== payment.amount) return false;
+  if (
+    data.currency !== undefined &&
+    data.currency.toUpperCase() !== payment.currency.toUpperCase()
+  ) {
+    return false;
+  }
+  return true;
+}
+
 /** The subset of Paystack's webhook payload we read. */
 interface PaystackWebhookEvent {
   event?: string;
   data?: {
     reference?: string;
+    /** Paystack's own verdict on the charge. Only `success` grants anything. */
+    status?: string;
+    /** What was actually collected, in pesewas. Compared to what we asked for. */
+    amount?: number;
+    /** ISO 4217 code Paystack settled in. */
+    currency?: string;
     /** Present on mobile-money charges; the handset that approved the debit. */
     customer?: { phone?: string | null };
     authorization?: { mobile_money_number?: string | null };
@@ -254,13 +286,25 @@ export class PaymentsService {
     const reference = `trotxi_${crypto.randomUUID()}`;
     await this.deps.payments.create({ ...input, reference });
     const result = await this.deps.paystack.initializeTransaction({
-      // We don't store email yet; a stable per-user address is fine as Paystack's
-      // customer key (follow-up: capture the real email at sign-in).
-      email: `${input.userId}@users.trotxi.app`,
+      // The rider's verified address when we hold one (#182), so Paystack's
+      // receipt reaches a real inbox. The synthesised address is the fallback
+      // for accounts predating email capture: Paystack needs a stable customer
+      // key, and an unroutable one beats refusing the checkout.
+      email: (await this.deps.users.findById(input.userId))?.email ?? this.fallbackEmail(input),
       amountPesewas: input.amount, // amounts are already stored in pesewas
       reference,
     });
     return { authorizationUrl: result.authorizationUrl, reference };
+  }
+
+  /**
+   * A stable, unroutable customer key for a rider whose email we do not hold.
+   *
+   * @param input - the payment being opened.
+   * @returns an address derived from the user id.
+   */
+  private fallbackEmail(input: Omit<NewPayment, 'reference'>): string {
+    return `${input.userId}@users.trotxi.app`;
   }
 
   /**
@@ -289,6 +333,15 @@ export class PaymentsService {
 
     const payment = await this.deps.payments.findByReference(reference);
     if (!payment) return; // unknown reference — not ours
+
+    // The signature proves Paystack sent this. It does not prove the rider paid
+    // what we asked for. `charge.success` is emitted for the transaction, so a
+    // short or foreign-currency collection would otherwise activate a full
+    // period and allocate a full month of rides against it.
+    if (!chargeMatches(payment, event)) {
+      await this.deps.payments.markFailed(reference);
+      return;
+    }
 
     if (payment.purpose === 'subscription' && payment.plan) {
       // Debit BEFORE activating: a crash between the two leaves the rider

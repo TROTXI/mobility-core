@@ -87,7 +87,13 @@ Paystack's payment confirmation. **Public**, but signature-verified.
   the secret key. **Mandatory**.
 - **200:** `{ "received": true }` (also for ignored/duplicate events — idempotent)
 - **401** bad/missing signature · **503** not configured
-- On `charge.success` for a subscription payment: activates the subscription.
+- On `charge.success` for a subscription payment: activates the subscription,
+  but **only if the settlement matches the checkout**. The signature proves
+  Paystack sent the event; it does not prove the rider paid what we asked for, so
+  `data.status`, `data.amount` and `data.currency` are each compared against the
+  stored payment before anything is granted. A mismatch marks the payment
+  `failed` and grants nothing. Fields Paystack omits are not treated as
+  failures, so a payload change cannot silently stop every activation.
 
 ### Idempotency & fail-safe
 
