@@ -7,7 +7,9 @@ import 'package:flutter/material.dart';
 import 'package:trotxi_driver/core/Tokens/token_storage.dart';
 import 'package:trotxi_driver/core/config/theme/app_theme.dart';
 import 'package:trotxi_driver/core/config/theme/app_theme_controller.dart';
+import 'package:provider/provider.dart';
 import 'package:trotxi_driver/Presentations/Auth/pages/auth_gate.dart';
+import 'package:trotxi_driver/core/state/session_controller.dart';
 import 'package:trotxi_driver/data/driver_auth_repository.dart';
 import 'package:trotxi_client/trotxi_client.dart';
 import 'package:trotxi_driver/firebase_options.dart';
@@ -58,40 +60,36 @@ class TrotxiDriverApp extends StatefulWidget {
 }
 
 class _TrotxiDriverAppState extends State<TrotxiDriverApp> {
-  // Follows the device by default. The prototype puts a Theme control on
-  // Profile > App preferences, which drives this controller; dark is the one
-  // that matters in practice, since these screens are read before dawn and
-  // after dusk on a windscreen-mounted phone.
-  final _themeController = AppThemeController();
-
-  @override
-  void dispose() {
-    _themeController.dispose();
-    super.dispose();
-  }
+  late final DriverAuthRepository _auth = DriverAuthRepository(
+    client: widget.client,
+    tokenStore: TokenStorage.instance,
+  );
 
   @override
   Widget build(BuildContext context) {
-    return AppThemeControllerScope(
-      controller: _themeController,
-      child: AnimatedBuilder(
-        animation: _themeController,
-        builder: (context, _) {
-          return MaterialApp(
-            title: 'Trotxi Driver',
-            theme: AppTheme.lightTheme,
-            darkTheme: AppTheme.darkTheme,
-            themeMode: _themeController.themeMode,
-            home: AuthGate(
-              auth: DriverAuthRepository(
-                client: widget.client,
-                tokenStore: TokenStorage.instance,
-              ),
-              home: (context, signOut) =>
-                  _PlaceholderHome(client: widget.client, onSignOut: signOut),
-            ),
-          );
-        },
+    // Composition root (ADR-0016): repositories and controllers are built once
+    // here and read from context, rather than threaded through constructors
+    // down every screen that happens to sit between the two.
+    return MultiProvider(
+      providers: [
+        Provider<DriverAuthRepository>.value(value: _auth),
+        // Follows the device by default. The prototype puts a Theme control on
+        // Profile > App preferences, which drives this; dark is the one that
+        // matters in practice, since these screens are read before dawn and
+        // after dusk on a windscreen-mounted phone.
+        ChangeNotifierProvider(create: (_) => AppThemeController()),
+        ChangeNotifierProvider(create: (_) => SessionController(auth: _auth)),
+      ],
+      child: Consumer<AppThemeController>(
+        builder: (context, theme, _) => MaterialApp(
+          title: 'Trotxi Driver',
+          theme: AppTheme.lightTheme,
+          darkTheme: AppTheme.darkTheme,
+          themeMode: theme.themeMode,
+          home: AuthGate(
+            home: (context) => _PlaceholderHome(client: widget.client),
+          ),
+        ),
       ),
     );
   }
@@ -100,10 +98,9 @@ class _TrotxiDriverAppState extends State<TrotxiDriverApp> {
 /// Stands in until Today lands (frames 14 to 18). Sign-out is wired now so the
 /// auth flow can be walked end to end rather than only in one direction.
 class _PlaceholderHome extends StatelessWidget {
-  const _PlaceholderHome({required this.client, required this.onSignOut});
+  const _PlaceholderHome({required this.client});
 
   final TrotxiApiClient client;
-  final VoidCallback onSignOut;
 
   @override
   Widget build(BuildContext context) {
@@ -125,7 +122,10 @@ class _PlaceholderHome extends StatelessWidget {
             const SizedBox(height: 8),
             Text(_apiBaseUrl, style: Theme.of(context).textTheme.bodySmall),
             const SizedBox(height: 24),
-            OutlinedButton(onPressed: onSignOut, child: const Text('Sign out')),
+            OutlinedButton(
+              onPressed: () => context.read<SessionController>().signOut(),
+              child: const Text('Sign out'),
+            ),
             TextButton(
               onPressed: () => FirebaseCrashlytics.instance.crash(),
               child: const Text('Test Crash Driver'),

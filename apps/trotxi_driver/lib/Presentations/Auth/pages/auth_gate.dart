@@ -1,102 +1,65 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:trotxi_driver/Presentations/Auth/pages/change_pin_page.dart';
 import 'package:trotxi_driver/Presentations/Auth/pages/confirm_account_page.dart';
 import 'package:trotxi_driver/Presentations/Auth/pages/sign_in_page.dart';
 import 'package:trotxi_driver/core/config/theme/app_colors.dart';
 import 'package:trotxi_driver/core/config/theme/app_spacing.dart';
 import 'package:trotxi_driver/core/config/theme/app_typography.dart';
+import 'package:trotxi_driver/core/state/session_controller.dart';
 import 'package:trotxi_driver/data/driver_auth_repository.dart';
 
-/// Which screen the app is on before a driver reaches their runs.
-enum _Stage { checking, signIn, confirm, changePin, ready }
-
-/// Decides what the app opens on: sign in, or straight to today's runs.
+/// Renders whichever screen the session is currently on.
 ///
-/// Only asks whether a token is STORED, never whether it still works. A driver
-/// starting a shift in a yard with no signal should reach their screen and see
-/// stale data, not be held on a spinner by a reachability check. A revoked
-/// session surfaces when the first real call answers 401, which the client
-/// already handles.
+/// The stage machine moved to [SessionController] under ADR-0016; this is now
+/// only the mapping from stage to screen. Sign-out reaches the controller from
+/// anywhere, so a profile screen does not need a callback threaded down to it.
 class AuthGate extends StatefulWidget {
-  const AuthGate({super.key, required this.auth, required this.home});
+  const AuthGate({super.key, required this.home});
 
-  final DriverAuthRepository auth;
-
-  /// What to show once the driver is through. Takes a sign-out callback so the
-  /// profile screen can hand control back here.
-  final Widget Function(BuildContext context, VoidCallback signOut) home;
+  /// What to show once the driver is through.
+  final WidgetBuilder home;
 
   @override
   State<AuthGate> createState() => _AuthGateState();
 }
 
 class _AuthGateState extends State<AuthGate> {
-  _Stage _stage = _Stage.checking;
-  DriverSession? _session;
-
   @override
   void initState() {
     super.initState();
-    _restore();
-  }
-
-  Future<void> _restore() async {
-    final signedIn = await widget.auth.hasStoredSession();
-    if (!mounted) return;
-    setState(() => _stage = signedIn ? _Stage.ready : _Stage.signIn);
-  }
-
-  void _onSignedIn(DriverSession session) {
-    setState(() {
-      _session = session;
-      _stage = _Stage.confirm;
+    // After the first frame: restore() notifies, and notifying a listener that
+    // is still building is what produces "setState during build".
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) context.read<SessionController>().restore();
     });
-  }
-
-  void _onConfirmed() {
-    // A driver still on the PIN operations read out at the depot has to replace
-    // it before they can do anything else.
-    setState(() {
-      _stage = (_session?.mustChangePin ?? false) ? _Stage.changePin : _Stage.ready;
-    });
-  }
-
-  void _backToSignIn() {
-    setState(() {
-      _session = null;
-      _stage = _Stage.signIn;
-    });
-  }
-
-  Future<void> _signOut() async {
-    await widget.auth.signOut();
-    if (!mounted) return;
-    _backToSignIn();
   }
 
   @override
   Widget build(BuildContext context) {
-    return switch (_stage) {
-      _Stage.checking => const _Splash(),
-      _Stage.signIn => SignInPage(auth: widget.auth, onSignedIn: _onSignedIn),
-      _Stage.confirm => ConfirmAccountPage(
-        session: _session!,
-        auth: widget.auth,
-        onConfirmed: _onConfirmed,
-        onRejected: _backToSignIn,
+    final session = context.watch<SessionController>();
+    final auth = context.read<DriverAuthRepository>();
+
+    return switch (session.stage) {
+      SessionStage.restoring => const _Splash(),
+      SessionStage.signedOut => SignInPage(auth: auth, onSignedIn: session.onSignedIn),
+      SessionStage.confirming => ConfirmAccountPage(
+        session: session.session!,
+        auth: auth,
+        onConfirmed: session.confirm,
+        onRejected: session.signOut,
       ),
-      _Stage.changePin => ChangePinPage(
-        auth: widget.auth,
+      SessionStage.mustChangePin => ChangePinPage(
+        auth: auth,
         isForced: true,
-        onChanged: () => setState(() => _stage = _Stage.ready),
+        onChanged: session.onPinChanged,
       ),
-      _Stage.ready => widget.home(context, _signOut),
+      SessionStage.ready => widget.home(context),
     };
   }
 }
 
-/// Shown only while the stored token is read, which is a disk hit rather than a
-/// network one, so this is measured in milliseconds.
+/// Shown only while the stored token is read from disk.
 class _Splash extends StatelessWidget {
   const _Splash();
 
