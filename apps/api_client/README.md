@@ -68,6 +68,9 @@ Class | Method | HTTP request | Description
 [*AdminApi*](doc/AdminApi.md) | [**adminAskDispatchPost**](doc/AdminApi.md#adminaskdispatchpost) | **POST** /admin/ask-dispatch | Prompt a day&#39;s route subscribers to confirm (seed pending + push)
 [*AdminApi*](doc/AdminApi.md) | [**adminConvertCreditsPost**](doc/AdminApi.md#adminconvertcreditspost) | **POST** /admin/convert-credits | Month-end: convert unused rides to Ride Credits for ENDED periods
 [*AdminApi*](doc/AdminApi.md) | [**adminDriversGet**](doc/AdminApi.md#admindriversget) | **GET** /admin/drivers | List all drivers
+[*AdminApi*](doc/AdminApi.md) | [**adminDriversIdCredentialsPatch**](doc/AdminApi.md#admindriversidcredentialspatch) | **PATCH** /admin/drivers/{id}/credentials | Suspend, reinstate, or unlock a driver credential
+[*AdminApi*](doc/AdminApi.md) | [**adminDriversIdCredentialsPost**](doc/AdminApi.md#admindriversidcredentialspost) | **POST** /admin/drivers/{id}/credentials | Issue a driver code and one-time PIN
+[*AdminApi*](doc/AdminApi.md) | [**adminDriversIdCredentialsResetPinPost**](doc/AdminApi.md#admindriversidcredentialsresetpinpost) | **POST** /admin/drivers/{id}/credentials/reset-pin | Reset a driver&#39;s PIN and revoke their sessions
 [*AdminApi*](doc/AdminApi.md) | [**adminDriversIdPatch**](doc/AdminApi.md#admindriversidpatch) | **PATCH** /admin/drivers/{id} | Update a driver
 [*AdminApi*](doc/AdminApi.md) | [**adminDriversPost**](doc/AdminApi.md#admindriverspost) | **POST** /admin/drivers | Create a driver
 [*AdminApi*](doc/AdminApi.md) | [**adminExpireSubscriptionsPost**](doc/AdminApi.md#adminexpiresubscriptionspost) | **POST** /admin/expire-subscriptions | Expire subscriptions whose billing period has ended
@@ -98,6 +101,8 @@ Class | Method | HTTP request | Description
 [*AdminApi*](doc/AdminApi.md) | [**adminVehiclesIdPatch**](doc/AdminApi.md#adminvehiclesidpatch) | **PATCH** /admin/vehicles/{id} | Update a vehicle
 [*AdminApi*](doc/AdminApi.md) | [**adminVehiclesPost**](doc/AdminApi.md#adminvehiclespost) | **POST** /admin/vehicles | Create a vehicle
 [*AuthApi*](doc/AuthApi.md) | [**authApplePost**](doc/AuthApi.md#authapplepost) | **POST** /auth/apple | Sign in with an Apple ID token (creates the account on first use)
+[*AuthApi*](doc/AuthApi.md) | [**authDriverPinPost**](doc/AuthApi.md#authdriverpinpost) | **POST** /auth/driver/pin | Change my driver PIN
+[*AuthApi*](doc/AuthApi.md) | [**authDriverPost**](doc/AuthApi.md#authdriverpost) | **POST** /auth/driver | Sign in with an ops-issued driver code and PIN
 [*AuthApi*](doc/AuthApi.md) | [**authGooglePost**](doc/AuthApi.md#authgooglepost) | **POST** /auth/google | Sign in with a Google ID token (creates the account on first use)
 [*AuthApi*](doc/AuthApi.md) | [**authLogoutPost**](doc/AuthApi.md#authlogoutpost) | **POST** /auth/logout | Revoke a refresh token (idempotent)
 [*AuthApi*](doc/AuthApi.md) | [**authRefreshPost**](doc/AuthApi.md#authrefreshpost) | **POST** /auth/refresh | Exchange a refresh token for a new token pair (rotates the session)
@@ -142,6 +147,9 @@ Class | Method | HTTP request | Description
  - [AdminAskDispatchPostRequest](doc/AdminAskDispatchPostRequest.md)
  - [AdminConvertCreditsPost200Response](doc/AdminConvertCreditsPost200Response.md)
  - [AdminDriversGet200ResponseInner](doc/AdminDriversGet200ResponseInner.md)
+ - [AdminDriversIdCredentialsPatchRequest](doc/AdminDriversIdCredentialsPatchRequest.md)
+ - [AdminDriversIdCredentialsPost201Response](doc/AdminDriversIdCredentialsPost201Response.md)
+ - [AdminDriversIdCredentialsResetPinPost200Response](doc/AdminDriversIdCredentialsResetPinPost200Response.md)
  - [AdminDriversIdPatchRequest](doc/AdminDriversIdPatchRequest.md)
  - [AdminDriversPostRequest](doc/AdminDriversPostRequest.md)
  - [AdminExpireSubscriptionsPost200Response](doc/AdminExpireSubscriptionsPost200Response.md)
@@ -177,6 +185,10 @@ Class | Method | HTTP request | Description
  - [AdminVehiclesIdPatchRequest](doc/AdminVehiclesIdPatchRequest.md)
  - [AdminVehiclesPostRequest](doc/AdminVehiclesPostRequest.md)
  - [AuthApplePostRequest](doc/AuthApplePostRequest.md)
+ - [AuthDriverPinPostRequest](doc/AuthDriverPinPostRequest.md)
+ - [AuthDriverPost200Response](doc/AuthDriverPost200Response.md)
+ - [AuthDriverPost200ResponseDriver](doc/AuthDriverPost200ResponseDriver.md)
+ - [AuthDriverPostRequest](doc/AuthDriverPostRequest.md)
  - [AuthGooglePost200Response](doc/AuthGooglePost200Response.md)
  - [AuthGooglePostRequest](doc/AuthGooglePostRequest.md)
  - [AuthRefreshPost200Response](doc/AuthRefreshPost200Response.md)

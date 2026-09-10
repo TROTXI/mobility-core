@@ -10,6 +10,8 @@ All URIs are relative to *http://localhost*
 Method | HTTP request | Description
 ------------- | ------------- | -------------
 [**authApplePost**](AuthApi.md#authapplepost) | **POST** /auth/apple | Sign in with an Apple ID token (creates the account on first use)
+[**authDriverPinPost**](AuthApi.md#authdriverpinpost) | **POST** /auth/driver/pin | Change my driver PIN
+[**authDriverPost**](AuthApi.md#authdriverpost) | **POST** /auth/driver | Sign in with an ops-issued driver code and PIN
 [**authGooglePost**](AuthApi.md#authgooglepost) | **POST** /auth/google | Sign in with a Google ID token (creates the account on first use)
 [**authLogoutPost**](AuthApi.md#authlogoutpost) | **POST** /auth/logout | Revoke a refresh token (idempotent)
 [**authRefreshPost**](AuthApi.md#authrefreshpost) | **POST** /auth/refresh | Exchange a refresh token for a new token pair (rotates the session)
@@ -53,6 +55,92 @@ Name | Type | Description  | Notes
 ### Return type
 
 [**AuthGooglePost200Response**](AuthGooglePost200Response.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+ - **Content-Type**: application/json
+ - **Accept**: application/json
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
+# **authDriverPinPost**
+> String authDriverPinPost(authDriverPinPostRequest)
+
+Change my driver PIN
+
+Replaces the PIN and revokes every other session on the account. A rotation that leaves the old sessions alive has not evicted whoever prompted it.
+
+### Example
+```dart
+import 'package:trotxi_api_client/api.dart';
+
+final api = TrotxiApiClient().getAuthApi();
+final AuthDriverPinPostRequest authDriverPinPostRequest = ; // AuthDriverPinPostRequest | 
+
+try {
+    final response = api.authDriverPinPost(authDriverPinPostRequest);
+    print(response);
+} on DioException catch (e) {
+    print('Exception when calling AuthApi->authDriverPinPost: $e\n');
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **authDriverPinPostRequest** | [**AuthDriverPinPostRequest**](AuthDriverPinPostRequest.md)|  | 
+
+### Return type
+
+**String**
+
+### Authorization
+
+[bearerAuth](../README.md#bearerAuth)
+
+### HTTP request headers
+
+ - **Content-Type**: application/json
+ - **Accept**: application/json
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
+# **authDriverPost**
+> AuthDriverPost200Response authDriverPost(authDriverPostRequest)
+
+Sign in with an ops-issued driver code and PIN
+
+A wrong code and a wrong PIN both answer 401, on purpose: a driver code is written on depot whiteboards and read down phone lines, so telling them apart would hand out a list of which codes exist. `rememberDevice` chooses the refresh lifetime: omit it on a shared handset and the session lasts a shift rather than a month.
+
+### Example
+```dart
+import 'package:trotxi_api_client/api.dart';
+
+final api = TrotxiApiClient().getAuthApi();
+final AuthDriverPostRequest authDriverPostRequest = ; // AuthDriverPostRequest | 
+
+try {
+    final response = api.authDriverPost(authDriverPostRequest);
+    print(response);
+} on DioException catch (e) {
+    print('Exception when calling AuthApi->authDriverPost: $e\n');
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **authDriverPostRequest** | [**AuthDriverPostRequest**](AuthDriverPostRequest.md)|  | 
+
+### Return type
+
+[**AuthDriverPost200Response**](AuthDriverPost200Response.md)
 
 ### Authorization
 

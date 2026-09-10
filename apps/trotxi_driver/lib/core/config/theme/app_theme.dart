@@ -124,6 +124,17 @@ abstract final class AppTheme {
           borderSide: BorderSide(color: colors.danger, width: 2),
         ),
       ),
+      checkboxTheme: CheckboxThemeData(
+        // Material's default outline is a low-contrast grey that all but
+        // disappears on the dark ground, and "Remember this device" is a
+        // decision a driver makes on a shared handset in a dim yard.
+        side: BorderSide(color: colors.borderStrong, width: 2),
+        fillColor: WidgetStateProperty.resolveWith(
+          (states) => states.contains(WidgetState.selected) ? colors.action : Colors.transparent,
+        ),
+        checkColor: WidgetStatePropertyAll(colors.onAction),
+        shape: RoundedRectangleBorder(borderRadius: AppRadii.circular(AppRadii.xs)),
+      ),
       navigationBarTheme: NavigationBarThemeData(
         backgroundColor: colors.surface,
         surfaceTintColor: Colors.transparent,

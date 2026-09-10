@@ -18,6 +18,32 @@ class RateLimitException extends TrotxiException {
       : super('Too many requests. Please try again shortly.');
 }
 
+/// Too many wrong PINs on a driver credential (HTTP 423). Distinct from a
+/// rate limit: the lock is on the credential, not the caller, so waiting on a
+/// different handset does not help and the driver needs operations.
+class CredentialLockedException extends TrotxiException {
+  final Duration retryAfter;
+  const CredentialLockedException(this.retryAfter)
+      : super('Too many incorrect PINs. Try again later or call operations.');
+}
+
+/// Operations has suspended this account (HTTP 403 on sign-in). Nothing the
+/// driver can do from the app, so the UI has to say so rather than offering a
+/// retry that will never work.
+class AccountSuspendedException extends TrotxiException {
+  const AccountSuspendedException()
+      : super('This driver account is suspended. Contact operations.');
+}
+
+/// Wrong credentials on a sign-in attempt (HTTP 401 on an /auth/ route).
+/// Separate from [UnauthorizedException], which means a session that HAD been
+/// valid has expired: telling a driver "please log in again" while they are
+/// staring at the log-in screen is the wrong sentence.
+class InvalidCredentialsException extends TrotxiException {
+  const InvalidCredentialsException([String message = 'Check your details and try again.'])
+      : super(message);
+}
+
 class OfflineException extends TrotxiException {
   const OfflineException([String message = 'No internet connection.'])
       : super(message);
@@ -86,6 +112,14 @@ class AuthInterceptor extends QueuedInterceptor {
       return handler.next(err);
     }
 
+    // A 401 from a SIGN-IN route means the credentials were wrong, not that a
+    // session expired. Refreshing makes no sense (there is no session yet), and
+    // clearing tokens on the way past would sign out a driver who mistyped a
+    // PIN while already signed in on the same handset.
+    if (_isSignInPath(requestPath)) {
+      return handler.next(err);
+    }
+
     try {
       // Single-flight: if a refresh is already in progress, await that
       // one instead of starting a new one. First caller creates the
@@ -102,6 +136,14 @@ class AuthInterceptor extends QueuedInterceptor {
       await _tokenStore.clearTokens();
       return handler.next(err);
     }
+  }
+
+  /// Whether a path is one of the sign-in routes, where a 401 is a rejected
+  /// credential rather than an expired session.
+  static bool _isSignInPath(String path) {
+    return path.contains('auth/driver') ||
+        path.contains('auth/google') ||
+        path.contains('auth/apple');
   }
 
   /// Performs the actual refresh call. Only ever invoked once per batch of
@@ -171,12 +213,33 @@ class ErrorInterceptor extends Interceptor {
       return handler.next(err);
     }
 
+    final isSignIn = AuthInterceptor._isSignInPath(err.requestOptions.path);
+
     switch (response.statusCode) {
       case 401:
         return handler.reject(
           DioException(
             requestOptions: err.requestOptions,
-            error: const UnauthorizedException(),
+            error: isSignIn
+                ? const InvalidCredentialsException('Invalid driver code or PIN.')
+                : const UnauthorizedException(),
+          ),
+        );
+      case 403:
+        if (isSignIn) {
+          return handler.reject(
+            DioException(
+              requestOptions: err.requestOptions,
+              error: const AccountSuspendedException(),
+            ),
+          );
+        }
+        break;
+      case 423:
+        return handler.reject(
+          DioException(
+            requestOptions: err.requestOptions,
+            error: CredentialLockedException(_parseRetryAfter(response)),
           ),
         );
       case 429:
@@ -188,16 +251,18 @@ class ErrorInterceptor extends Interceptor {
           ),
         );
       default:
-        return handler.reject(
-          DioException(
-            requestOptions: err.requestOptions,
-            error: ApiException(
-              response.statusCode ?? 0,
-              response.statusMessage ?? 'Unknown error',
-            ),
-          ),
-        );
+        break;
     }
+
+    return handler.reject(
+      DioException(
+        requestOptions: err.requestOptions,
+        error: ApiException(
+          response.statusCode ?? 0,
+          response.statusMessage ?? 'Unknown error',
+        ),
+      ),
+    );
   }
 
   Duration _parseRetryAfter(Response response) {

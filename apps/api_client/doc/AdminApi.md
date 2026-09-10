@@ -12,6 +12,9 @@ Method | HTTP request | Description
 [**adminAskDispatchPost**](AdminApi.md#adminaskdispatchpost) | **POST** /admin/ask-dispatch | Prompt a day&#39;s route subscribers to confirm (seed pending + push)
 [**adminConvertCreditsPost**](AdminApi.md#adminconvertcreditspost) | **POST** /admin/convert-credits | Month-end: convert unused rides to Ride Credits for ENDED periods
 [**adminDriversGet**](AdminApi.md#admindriversget) | **GET** /admin/drivers | List all drivers
+[**adminDriversIdCredentialsPatch**](AdminApi.md#admindriversidcredentialspatch) | **PATCH** /admin/drivers/{id}/credentials | Suspend, reinstate, or unlock a driver credential
+[**adminDriversIdCredentialsPost**](AdminApi.md#admindriversidcredentialspost) | **POST** /admin/drivers/{id}/credentials | Issue a driver code and one-time PIN
+[**adminDriversIdCredentialsResetPinPost**](AdminApi.md#admindriversidcredentialsresetpinpost) | **POST** /admin/drivers/{id}/credentials/reset-pin | Reset a driver&#39;s PIN and revoke their sessions
 [**adminDriversIdPatch**](AdminApi.md#admindriversidpatch) | **PATCH** /admin/drivers/{id} | Update a driver
 [**adminDriversPost**](AdminApi.md#admindriverspost) | **POST** /admin/drivers | Create a driver
 [**adminExpireSubscriptionsPost**](AdminApi.md#adminexpiresubscriptionspost) | **POST** /admin/expire-subscriptions | Expire subscriptions whose billing period has ended
@@ -148,6 +151,137 @@ This endpoint does not need any parameter.
 ### Return type
 
 [**BuiltList&lt;AdminDriversGet200ResponseInner&gt;**](AdminDriversGet200ResponseInner.md)
+
+### Authorization
+
+[bearerAuth](../README.md#bearerAuth)
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
+ - **Accept**: application/json
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
+# **adminDriversIdCredentialsPatch**
+> String adminDriversIdCredentialsPatch(id, adminDriversIdCredentialsPatchRequest)
+
+Suspend, reinstate, or unlock a driver credential
+
+Suspending revokes live sessions: the point is to stop someone driving now, not whenever their access token happens to expire.
+
+### Example
+```dart
+import 'package:trotxi_api_client/api.dart';
+
+final api = TrotxiApiClient().getAdminApi();
+final String id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
+final AdminDriversIdCredentialsPatchRequest adminDriversIdCredentialsPatchRequest = ; // AdminDriversIdCredentialsPatchRequest | 
+
+try {
+    final response = api.adminDriversIdCredentialsPatch(id, adminDriversIdCredentialsPatchRequest);
+    print(response);
+} on DioException catch (e) {
+    print('Exception when calling AdminApi->adminDriversIdCredentialsPatch: $e\n');
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **id** | **String**|  | 
+ **adminDriversIdCredentialsPatchRequest** | [**AdminDriversIdCredentialsPatchRequest**](AdminDriversIdCredentialsPatchRequest.md)|  | 
+
+### Return type
+
+**String**
+
+### Authorization
+
+[bearerAuth](../README.md#bearerAuth)
+
+### HTTP request headers
+
+ - **Content-Type**: application/json
+ - **Accept**: application/json
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
+# **adminDriversIdCredentialsPost**
+> AdminDriversIdCredentialsPost201Response adminDriversIdCredentialsPost(id)
+
+Issue a driver code and one-time PIN
+
+Returns the PIN ONCE. It is stored only as a keyed hash and cannot be read back; a driver who loses it needs a reset, not a lookup. Also creates and links the driver's auth account if they do not have one yet.
+
+### Example
+```dart
+import 'package:trotxi_api_client/api.dart';
+
+final api = TrotxiApiClient().getAdminApi();
+final String id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
+
+try {
+    final response = api.adminDriversIdCredentialsPost(id);
+    print(response);
+} on DioException catch (e) {
+    print('Exception when calling AdminApi->adminDriversIdCredentialsPost: $e\n');
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **id** | **String**|  | 
+
+### Return type
+
+[**AdminDriversIdCredentialsPost201Response**](AdminDriversIdCredentialsPost201Response.md)
+
+### Authorization
+
+[bearerAuth](../README.md#bearerAuth)
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
+ - **Accept**: application/json
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
+# **adminDriversIdCredentialsResetPinPost**
+> AdminDriversIdCredentialsResetPinPost200Response adminDriversIdCredentialsResetPinPost(id)
+
+Reset a driver's PIN and revoke their sessions
+
+The recovery path the sign-in screen points at. There is no self-service reset because a driver phone number is optional, so there is no verified channel to send one to.
+
+### Example
+```dart
+import 'package:trotxi_api_client/api.dart';
+
+final api = TrotxiApiClient().getAdminApi();
+final String id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
+
+try {
+    final response = api.adminDriversIdCredentialsResetPinPost(id);
+    print(response);
+} on DioException catch (e) {
+    print('Exception when calling AdminApi->adminDriversIdCredentialsResetPinPost: $e\n');
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **id** | **String**|  | 
+
+### Return type
+
+[**AdminDriversIdCredentialsResetPinPost200Response**](AdminDriversIdCredentialsResetPinPost200Response.md)
 
 ### Authorization
 

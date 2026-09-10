@@ -7,6 +7,8 @@ import 'package:flutter/material.dart';
 import 'package:trotxi_driver/core/Tokens/token_storage.dart';
 import 'package:trotxi_driver/core/config/theme/app_theme.dart';
 import 'package:trotxi_driver/core/config/theme/app_theme_controller.dart';
+import 'package:trotxi_driver/Presentations/Auth/pages/auth_gate.dart';
+import 'package:trotxi_driver/data/driver_auth_repository.dart';
 import 'package:trotxi_client/trotxi_client.dart';
 import 'package:trotxi_driver/firebase_options.dart';
 import 'package:trotxi_driver/firebase_performance.dart';
@@ -80,7 +82,14 @@ class _TrotxiDriverAppState extends State<TrotxiDriverApp> {
             theme: AppTheme.lightTheme,
             darkTheme: AppTheme.darkTheme,
             themeMode: _themeController.themeMode,
-            home: _PlaceholderHome(client: widget.client),
+            home: AuthGate(
+              auth: DriverAuthRepository(
+                client: widget.client,
+                tokenStore: TokenStorage.instance,
+              ),
+              home: (context, signOut) =>
+                  _PlaceholderHome(client: widget.client, onSignOut: signOut),
+            ),
           );
         },
       ),
@@ -88,10 +97,13 @@ class _TrotxiDriverAppState extends State<TrotxiDriverApp> {
   }
 }
 
+/// Stands in until Today lands (frames 14 to 18). Sign-out is wired now so the
+/// auth flow can be walked end to end rather than only in one direction.
 class _PlaceholderHome extends StatelessWidget {
-  const _PlaceholderHome({required this.client});
+  const _PlaceholderHome({required this.client, required this.onSignOut});
 
   final TrotxiApiClient client;
+  final VoidCallback onSignOut;
 
   @override
   Widget build(BuildContext context) {
@@ -112,7 +124,9 @@ class _PlaceholderHome extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             Text(_apiBaseUrl, style: Theme.of(context).textTheme.bodySmall),
-            ElevatedButton(
+            const SizedBox(height: 24),
+            OutlinedButton(onPressed: onSignOut, child: const Text('Sign out')),
+            TextButton(
               onPressed: () => FirebaseCrashlytics.instance.crash(),
               child: const Text('Test Crash Driver'),
             ),

@@ -18,6 +18,9 @@ import 'package:trotxi_api_client/src/model/admin_ask_dispatch_post200_response.
 import 'package:trotxi_api_client/src/model/admin_ask_dispatch_post_request.dart';
 import 'package:trotxi_api_client/src/model/admin_convert_credits_post200_response.dart';
 import 'package:trotxi_api_client/src/model/admin_drivers_get200_response_inner.dart';
+import 'package:trotxi_api_client/src/model/admin_drivers_id_credentials_patch_request.dart';
+import 'package:trotxi_api_client/src/model/admin_drivers_id_credentials_post201_response.dart';
+import 'package:trotxi_api_client/src/model/admin_drivers_id_credentials_reset_pin_post200_response.dart';
 import 'package:trotxi_api_client/src/model/admin_drivers_id_patch_request.dart';
 import 'package:trotxi_api_client/src/model/admin_drivers_post_request.dart';
 import 'package:trotxi_api_client/src/model/admin_expire_subscriptions_post200_response.dart';
@@ -53,6 +56,10 @@ import 'package:trotxi_api_client/src/model/admin_vehicles_get200_response_inner
 import 'package:trotxi_api_client/src/model/admin_vehicles_id_patch_request.dart';
 import 'package:trotxi_api_client/src/model/admin_vehicles_post_request.dart';
 import 'package:trotxi_api_client/src/model/auth_apple_post_request.dart';
+import 'package:trotxi_api_client/src/model/auth_driver_pin_post_request.dart';
+import 'package:trotxi_api_client/src/model/auth_driver_post200_response.dart';
+import 'package:trotxi_api_client/src/model/auth_driver_post200_response_driver.dart';
+import 'package:trotxi_api_client/src/model/auth_driver_post_request.dart';
 import 'package:trotxi_api_client/src/model/auth_google_post200_response.dart';
 import 'package:trotxi_api_client/src/model/auth_google_post_request.dart';
 import 'package:trotxi_api_client/src/model/auth_refresh_post200_response.dart';
@@ -113,6 +120,9 @@ part 'serializers.g.dart';
   AdminAskDispatchPostRequest,
   AdminConvertCreditsPost200Response,
   AdminDriversGet200ResponseInner,
+  AdminDriversIdCredentialsPatchRequest,
+  AdminDriversIdCredentialsPost201Response,
+  AdminDriversIdCredentialsResetPinPost200Response,
   AdminDriversIdPatchRequest,
   AdminDriversPostRequest,
   AdminExpireSubscriptionsPost200Response,
@@ -148,6 +158,10 @@ part 'serializers.g.dart';
   AdminVehiclesIdPatchRequest,
   AdminVehiclesPostRequest,
   AuthApplePostRequest,
+  AuthDriverPinPostRequest,
+  AuthDriverPost200Response,
+  AuthDriverPost200ResponseDriver,
+  AuthDriverPostRequest,
   AuthGooglePost200Response,
   AuthGooglePostRequest,
   AuthRefreshPost200Response,
