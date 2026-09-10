@@ -91,9 +91,19 @@ export class InMemoryPricingRepository implements PricingRepository {
   }
 
   async fareHistory(routeId: string): Promise<CorridorFare[]> {
+    // Tie-break on the open row, not just the timestamp. Two fares set within
+    // the same millisecond compare equal on `effectiveFrom`, and a stable sort
+    // then keeps INSERTION order, putting the superseded fare first and
+    // reporting the wrong price as the one in force. Rare against a database,
+    // routine in a test that sets two fares back to back.
     return this.fares
       .filter((f) => f.routeId === routeId)
-      .sort((a, b) => b.effectiveFrom.getTime() - a.effectiveFrom.getTime());
+      .sort(
+        (a, b) =>
+          b.effectiveFrom.getTime() - a.effectiveFrom.getTime() ||
+          Number(b.effectiveTo === null) - Number(a.effectiveTo === null) ||
+          (b.effectiveTo?.getTime() ?? 0) - (a.effectiveTo?.getTime() ?? 0),
+      );
   }
 
   async setFare(routeId: string, farePesewas: number, note?: string): Promise<CorridorFare> {

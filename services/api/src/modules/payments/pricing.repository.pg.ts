@@ -57,7 +57,11 @@ export class PgPricingRepository implements PricingRepository {
 
   async fareHistory(routeId: string): Promise<CorridorFare[]> {
     const { rows } = await this.pool.query<FareRow>(
-      `SELECT * FROM corridor_fares WHERE route_id = $1 ORDER BY effective_from DESC`,
+      // The second and third keys break a same-instant tie the same way the
+      // in-memory repo does (ADR-0009: the fake must order like the real one):
+      // the still-open fare is the newest, then most recently closed.
+      `SELECT * FROM corridor_fares WHERE route_id = $1
+        ORDER BY effective_from DESC, effective_to IS NULL DESC, effective_to DESC`,
       [routeId],
     );
     return rows.map(toFare);

@@ -1,9 +1,13 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { InMemoryPricingRepository } from '../src/modules/payments/pricing.repository';
 
 const ROUTE = '11111111-1111-4111-8111-111111111111';
 
 describe('fare history', () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   it('closes the previous fare rather than overwriting it', async () => {
     // The whole point of effective dating: a subscription sold in August has to
     // stay explainable in October, after the unions have announced twice.
@@ -16,6 +20,24 @@ describe('fare history', () => {
     expect(history[0]!.farePesewas).toBe(700);
     expect(history[0]!.effectiveTo).toBeNull();
     expect(history[1]!.effectiveTo).not.toBeNull();
+  });
+
+  it('puts the fare in force first even when two land in the same instant', async () => {
+    // Two fares set back to back share a millisecond, so `effectiveFrom` alone
+    // cannot order them and a stable sort falls back to insertion order,
+    // reporting the SUPERSEDED fare as current. Frozen clock so the tie is
+    // certain rather than a race the suite hits on fast machines.
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-09-09T08:00:00.000Z'));
+
+    const repo = new InMemoryPricingRepository();
+    await repo.setFare(ROUTE, 600, 'initial');
+    await repo.setFare(ROUTE, 700, 'fuel adjustment');
+
+    const history = await repo.fareHistory(ROUTE);
+    expect(history[0]!.farePesewas).toBe(700);
+    expect(history[0]!.effectiveTo).toBeNull();
+    expect((await repo.currentFare(ROUTE))?.farePesewas).toBe(700);
   });
 
   it('has exactly one fare in force at a time', async () => {
