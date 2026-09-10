@@ -4,15 +4,18 @@
 
 import 'dart:async';
 
+import 'package:built_value/json_object.dart';
 import 'package:built_value/serializer.dart';
 import 'package:dio/dio.dart';
 
 import 'package:trotxi_api_client/src/model/get200_response.dart';
 import 'package:trotxi_api_client/src/model/healthz_get200_response.dart';
 import 'package:trotxi_api_client/src/model/readyz_get200_response.dart';
+import 'package:trotxi_api_client/src/model/readyz_get503_response.dart';
 import 'package:trotxi_api_client/src/model/version_get200_response.dart';
 
 class SystemApi {
+
   final Dio _dio;
 
   final Serializers _serializers;
@@ -20,7 +23,7 @@ class SystemApi {
   const SystemApi(this._dio, this._serializers);
 
   /// Liveness probe
-  ///
+  /// 
   ///
   /// Parameters:
   /// * [cancelToken] - A [CancelToken] that can be used to cancel the operation
@@ -32,7 +35,7 @@ class SystemApi {
   ///
   /// Returns a [Future] containing a [Response] with a [HealthzGet200Response] as data
   /// Throws [DioException] if API call or serialization fails
-  Future<Response<HealthzGet200Response>> healthzGet({
+  Future<Response<HealthzGet200Response>> healthzGet({ 
     CancelToken? cancelToken,
     Map<String, dynamic>? headers,
     Map<String, dynamic>? extra,
@@ -65,12 +68,11 @@ class SystemApi {
 
     try {
       final rawResponse = _response.data;
-      _responseData = rawResponse == null
-          ? null
-          : _serializers.deserialize(
-              rawResponse,
-              specifiedType: const FullType(HealthzGet200Response),
-            ) as HealthzGet200Response;
+      _responseData = rawResponse == null ? null : _serializers.deserialize(
+        rawResponse,
+        specifiedType: const FullType(HealthzGet200Response),
+      ) as HealthzGet200Response;
+
     } catch (error, stackTrace) {
       throw DioException(
         requestOptions: _response.requestOptions,
@@ -94,7 +96,7 @@ class SystemApi {
   }
 
   /// Readiness probe (pings backing services)
-  ///
+  /// 
   ///
   /// Parameters:
   /// * [cancelToken] - A [CancelToken] that can be used to cancel the operation
@@ -106,7 +108,7 @@ class SystemApi {
   ///
   /// Returns a [Future] containing a [Response] with a [ReadyzGet200Response] as data
   /// Throws [DioException] if API call or serialization fails
-  Future<Response<ReadyzGet200Response>> readyzGet({
+  Future<Response<ReadyzGet200Response>> readyzGet({ 
     CancelToken? cancelToken,
     Map<String, dynamic>? headers,
     Map<String, dynamic>? extra,
@@ -139,12 +141,11 @@ class SystemApi {
 
     try {
       final rawResponse = _response.data;
-      _responseData = rawResponse == null
-          ? null
-          : _serializers.deserialize(
-              rawResponse,
-              specifiedType: const FullType(ReadyzGet200Response),
-            ) as ReadyzGet200Response;
+      _responseData = rawResponse == null ? null : _serializers.deserialize(
+        rawResponse,
+        specifiedType: const FullType(ReadyzGet200Response),
+      ) as ReadyzGet200Response;
+
     } catch (error, stackTrace) {
       throw DioException(
         requestOptions: _response.requestOptions,
@@ -168,7 +169,7 @@ class SystemApi {
   }
 
   /// Service metadata and useful links
-  ///
+  /// 
   ///
   /// Parameters:
   /// * [cancelToken] - A [CancelToken] that can be used to cancel the operation
@@ -180,7 +181,7 @@ class SystemApi {
   ///
   /// Returns a [Future] containing a [Response] with a [Get200Response] as data
   /// Throws [DioException] if API call or serialization fails
-  Future<Response<Get200Response>> rootGet({
+  Future<Response<Get200Response>> rootGet({ 
     CancelToken? cancelToken,
     Map<String, dynamic>? headers,
     Map<String, dynamic>? extra,
@@ -213,12 +214,11 @@ class SystemApi {
 
     try {
       final rawResponse = _response.data;
-      _responseData = rawResponse == null
-          ? null
-          : _serializers.deserialize(
-              rawResponse,
-              specifiedType: const FullType(Get200Response),
-            ) as Get200Response;
+      _responseData = rawResponse == null ? null : _serializers.deserialize(
+        rawResponse,
+        specifiedType: const FullType(Get200Response),
+      ) as Get200Response;
+
     } catch (error, stackTrace) {
       throw DioException(
         requestOptions: _response.requestOptions,
@@ -242,7 +242,7 @@ class SystemApi {
   }
 
   /// Build version and commit
-  ///
+  /// 
   ///
   /// Parameters:
   /// * [cancelToken] - A [CancelToken] that can be used to cancel the operation
@@ -254,7 +254,7 @@ class SystemApi {
   ///
   /// Returns a [Future] containing a [Response] with a [VersionGet200Response] as data
   /// Throws [DioException] if API call or serialization fails
-  Future<Response<VersionGet200Response>> versionGet({
+  Future<Response<VersionGet200Response>> versionGet({ 
     CancelToken? cancelToken,
     Map<String, dynamic>? headers,
     Map<String, dynamic>? extra,
@@ -287,12 +287,11 @@ class SystemApi {
 
     try {
       final rawResponse = _response.data;
-      _responseData = rawResponse == null
-          ? null
-          : _serializers.deserialize(
-              rawResponse,
-              specifiedType: const FullType(VersionGet200Response),
-            ) as VersionGet200Response;
+      _responseData = rawResponse == null ? null : _serializers.deserialize(
+        rawResponse,
+        specifiedType: const FullType(VersionGet200Response),
+      ) as VersionGet200Response;
+
     } catch (error, stackTrace) {
       throw DioException(
         requestOptions: _response.requestOptions,
@@ -314,4 +313,5 @@ class SystemApi {
       extra: _response.extra,
     );
   }
+
 }

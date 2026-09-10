@@ -13,6 +13,9 @@ part 'payments_subscribe_post200_response.g.dart';
 /// Properties:
 /// * [authorizationUrl] 
 /// * [reference] 
+/// * [pricePesewas] 
+/// * [appliedCreditPesewas] 
+/// * [chargePesewas] 
 @BuiltValue()
 abstract class PaymentsSubscribePost200Response implements Built<PaymentsSubscribePost200Response, PaymentsSubscribePost200ResponseBuilder> {
   @BuiltValueField(wireName: r'authorizationUrl')
@@ -20,6 +23,15 @@ abstract class PaymentsSubscribePost200Response implements Built<PaymentsSubscri
 
   @BuiltValueField(wireName: r'reference')
   String get reference;
+
+  @BuiltValueField(wireName: r'pricePesewas')
+  int get pricePesewas;
+
+  @BuiltValueField(wireName: r'appliedCreditPesewas')
+  int get appliedCreditPesewas;
+
+  @BuiltValueField(wireName: r'chargePesewas')
+  int get chargePesewas;
 
   PaymentsSubscribePost200Response._();
 
@@ -53,6 +65,21 @@ class _$PaymentsSubscribePost200ResponseSerializer implements PrimitiveSerialize
     yield serializers.serialize(
       object.reference,
       specifiedType: const FullType(String),
+    );
+    yield r'pricePesewas';
+    yield serializers.serialize(
+      object.pricePesewas,
+      specifiedType: const FullType(int),
+    );
+    yield r'appliedCreditPesewas';
+    yield serializers.serialize(
+      object.appliedCreditPesewas,
+      specifiedType: const FullType(int),
+    );
+    yield r'chargePesewas';
+    yield serializers.serialize(
+      object.chargePesewas,
+      specifiedType: const FullType(int),
     );
   }
 
@@ -90,6 +117,27 @@ class _$PaymentsSubscribePost200ResponseSerializer implements PrimitiveSerialize
             specifiedType: const FullType(String),
           ) as String;
           result.reference = valueDes;
+          break;
+        case r'pricePesewas':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType(int),
+          ) as int;
+          result.pricePesewas = valueDes;
+          break;
+        case r'appliedCreditPesewas':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType(int),
+          ) as int;
+          result.appliedCreditPesewas = valueDes;
+          break;
+        case r'chargePesewas':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType(int),
+          ) as int;
+          result.chargePesewas = valueDes;
           break;
         default:
           unhandled.add(key);

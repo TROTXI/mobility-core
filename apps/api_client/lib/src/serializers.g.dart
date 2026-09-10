@@ -14,13 +14,26 @@ Serializers _$serializers = (Serializers().toBuilder()
       ..add(AdminDriversGet200ResponseInner.serializer)
       ..add(AdminDriversIdPatchRequest.serializer)
       ..add(AdminDriversPostRequest.serializer)
+      ..add(AdminExpireSubscriptionsPost200Response.serializer)
       ..add(AdminFlagsGet200ResponseInner.serializer)
       ..add(AdminFlagsKeyPutRequest.serializer)
+      ..add(AdminLearnRoutesPost200Response.serializer)
+      ..add(AdminLearnRoutesPost200ResponseRoutesInner.serializer)
+      ..add(
+          AdminLearnRoutesPost200ResponseRoutesInnerSegmentsLearned.serializer)
+      ..add(AdminLearnRoutesPostRequest.serializer)
       ..add(AdminMinVersionsGet200ResponseInner.serializer)
       ..add(AdminMinVersionsGet200ResponseInnerPlatformEnum.serializer)
       ..add(AdminMinVersionsPlatformPutRequest.serializer)
+      ..add(AdminPlanPricingGet200Response.serializer)
+      ..add(AdminPlanPricingGet200ResponsePlansInner.serializer)
+      ..add(AdminPlanPricingGet200ResponsePlansInnerPlanEnum.serializer)
+      ..add(AdminPlanPricingPlanPatchRequest.serializer)
       ..add(AdminResolveDefaultsPost200Response.serializer)
       ..add(AdminResolveNoShowsPost200Response.serializer)
+      ..add(AdminRoutesIdFarePutRequest.serializer)
+      ..add(AdminRoutesIdFaresGet200Response.serializer)
+      ..add(AdminRoutesIdFaresGet200ResponseFaresInner.serializer)
       ..add(AdminRoutesIdPatchRequest.serializer)
       ..add(AdminRoutesIdStopsPost200Response.serializer)
       ..add(AdminRoutesIdStopsPostRequest.serializer)
@@ -40,6 +53,7 @@ Serializers _$serializers = (Serializers().toBuilder()
       ..add(AdminVehiclesGet200ResponseInner.serializer)
       ..add(AdminVehiclesIdPatchRequest.serializer)
       ..add(AdminVehiclesPostRequest.serializer)
+      ..add(AuthApplePostRequest.serializer)
       ..add(AuthGooglePost200Response.serializer)
       ..add(AuthGooglePostRequest.serializer)
       ..add(AuthRefreshPost200Response.serializer)
@@ -55,6 +69,7 @@ Serializers _$serializers = (Serializers().toBuilder()
       ..add(BoardingVerifyPinPostRequest.serializer)
       ..add(FlagsGet200Response.serializer)
       ..add(FlagsGet200ResponseFlagsInner.serializer)
+      ..add(FlagsGet200ResponseMapTiles.serializer)
       ..add(FlagsGet200ResponseMinSupportedVersion.serializer)
       ..add(Get200Response.serializer)
       ..add(HealthzGet200Response.serializer)
@@ -87,18 +102,41 @@ Serializers _$serializers = (Serializers().toBuilder()
       ..add(ReadyzGet503Response.serializer)
       ..add(ReadyzGet503ResponseStatusEnum.serializer)
       ..add(RoutesGet200ResponseInner.serializer)
+      ..add(RoutesIdGeometryGet200Response.serializer)
+      ..add(RoutesIdGeometryGet200ResponsePointsInner.serializer)
+      ..add(RoutesIdGeometryGet200ResponseSource_Enum.serializer)
       ..add(RoutesIdGet200Response.serializer)
       ..add(RoutesIdGet200ResponseStopsInner.serializer)
       ..add(TripsGet200Response.serializer)
       ..add(TripsGet200ResponseTripsInner.serializer)
       ..add(TripsGet200ResponseTripsInnerStatusEnum.serializer)
+      ..add(TripsIdGet200Response.serializer)
+      ..add(TripsIdGet200ResponseStatusEnum.serializer)
+      ..add(TripsIdGet200ResponseVehicle.serializer)
       ..add(TripsIdPositionGet200Response.serializer)
       ..add(TripsIdPositionGet200ResponseEtaToStopsInner.serializer)
       ..add(TripsIdPositionGet200ResponsePosition.serializer)
+      ..add(TripsIdPositionGet200ResponseRiderStop.serializer)
       ..add(TripsIdPositionPost200Response.serializer)
       ..add(TripsIdPositionPostRequest.serializer)
+      ..add(TripsIdSummaryGet200Response.serializer)
+      ..add(TripsIdSummaryGet200ResponseByMethod.serializer)
       ..add(VersionGet200Response.serializer)
       ..add(WebhooksPaystackPost200Response.serializer)
+      ..addBuilderFactory(
+          const FullType(BuiltList, const [
+            const FullType(AdminLearnRoutesPost200ResponseRoutesInner)
+          ]),
+          () => ListBuilder<AdminLearnRoutesPost200ResponseRoutesInner>())
+      ..addBuilderFactory(
+          const FullType(BuiltList,
+              const [const FullType(AdminPlanPricingGet200ResponsePlansInner)]),
+          () => ListBuilder<AdminPlanPricingGet200ResponsePlansInner>())
+      ..addBuilderFactory(
+          const FullType(BuiltList, const [
+            const FullType(AdminRoutesIdFaresGet200ResponseFaresInner)
+          ]),
+          () => ListBuilder<AdminRoutesIdFaresGet200ResponseFaresInner>())
       ..addBuilderFactory(
           const FullType(BuiltList, const [
             const FullType(BoardingManifestGet200ResponseRidersInner)
@@ -117,6 +155,11 @@ Serializers _$serializers = (Serializers().toBuilder()
           const FullType(BuiltList,
               const [const FullType(MeSessionsGet200ResponseSessionsInner)]),
           () => ListBuilder<MeSessionsGet200ResponseSessionsInner>())
+      ..addBuilderFactory(
+          const FullType(BuiltList, const [
+            const FullType(RoutesIdGeometryGet200ResponsePointsInner)
+          ]),
+          () => ListBuilder<RoutesIdGeometryGet200ResponsePointsInner>())
       ..addBuilderFactory(
           const FullType(BuiltList,
               const [const FullType(RoutesIdGet200ResponseStopsInner)]),

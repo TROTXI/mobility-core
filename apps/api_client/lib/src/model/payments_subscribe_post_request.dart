@@ -14,6 +14,8 @@ part 'payments_subscribe_post_request.g.dart';
 /// Properties:
 /// * [plan] 
 /// * [routeId] 
+/// * [pickupStopId] 
+/// * [dropoffStopId] 
 @BuiltValue()
 abstract class PaymentsSubscribePostRequest implements Built<PaymentsSubscribePostRequest, PaymentsSubscribePostRequestBuilder> {
   @BuiltValueField(wireName: r'plan')
@@ -21,7 +23,13 @@ abstract class PaymentsSubscribePostRequest implements Built<PaymentsSubscribePo
   // enum planEnum {  monthly,  annual,  };
 
   @BuiltValueField(wireName: r'routeId')
-  String? get routeId;
+  String get routeId;
+
+  @BuiltValueField(wireName: r'pickupStopId')
+  String? get pickupStopId;
+
+  @BuiltValueField(wireName: r'dropoffStopId')
+  String? get dropoffStopId;
 
   PaymentsSubscribePostRequest._();
 
@@ -51,10 +59,22 @@ class _$PaymentsSubscribePostRequestSerializer implements PrimitiveSerializer<Pa
       object.plan,
       specifiedType: const FullType(PaymentsSubscribePostRequestPlanEnum),
     );
-    if (object.routeId != null) {
-      yield r'routeId';
+    yield r'routeId';
+    yield serializers.serialize(
+      object.routeId,
+      specifiedType: const FullType(String),
+    );
+    if (object.pickupStopId != null) {
+      yield r'pickupStopId';
       yield serializers.serialize(
-        object.routeId,
+        object.pickupStopId,
+        specifiedType: const FullType(String),
+      );
+    }
+    if (object.dropoffStopId != null) {
+      yield r'dropoffStopId';
+      yield serializers.serialize(
+        object.dropoffStopId,
         specifiedType: const FullType(String),
       );
     }
@@ -94,6 +114,20 @@ class _$PaymentsSubscribePostRequestSerializer implements PrimitiveSerializer<Pa
             specifiedType: const FullType(String),
           ) as String;
           result.routeId = valueDes;
+          break;
+        case r'pickupStopId':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType(String),
+          ) as String;
+          result.pickupStopId = valueDes;
+          break;
+        case r'dropoffStopId':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType(String),
+          ) as String;
+          result.dropoffStopId = valueDes;
           break;
         default:
           unhandled.add(key);

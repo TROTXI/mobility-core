@@ -10,6 +10,8 @@ Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
 **id** | **String** |  | 
 **tripId** | **String** |  | 
+**pickupStopId** | **String** |  | 
+**dropoffStopId** | **String** |  | 
 **travelDate** | **String** |  | 
 **direction** | **String** |  | 
 **status** | **String** |  | 

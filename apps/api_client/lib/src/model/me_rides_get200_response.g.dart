@@ -11,13 +11,20 @@ class _$MeRidesGet200Response extends MeRidesGet200Response {
   final int remainingRides;
   @override
   final int creditPesewas;
+  @override
+  final int? ridesPerPeriod;
+  @override
+  final DateTime? renewsAt;
 
   factory _$MeRidesGet200Response(
           [void Function(MeRidesGet200ResponseBuilder)? updates]) =>
       (MeRidesGet200ResponseBuilder()..update(updates))._build();
 
   _$MeRidesGet200Response._(
-      {required this.remainingRides, required this.creditPesewas})
+      {required this.remainingRides,
+      required this.creditPesewas,
+      this.ridesPerPeriod,
+      this.renewsAt})
       : super._();
   @override
   MeRidesGet200Response rebuild(
@@ -33,7 +40,9 @@ class _$MeRidesGet200Response extends MeRidesGet200Response {
     if (identical(other, this)) return true;
     return other is MeRidesGet200Response &&
         remainingRides == other.remainingRides &&
-        creditPesewas == other.creditPesewas;
+        creditPesewas == other.creditPesewas &&
+        ridesPerPeriod == other.ridesPerPeriod &&
+        renewsAt == other.renewsAt;
   }
 
   @override
@@ -41,6 +50,8 @@ class _$MeRidesGet200Response extends MeRidesGet200Response {
     var _$hash = 0;
     _$hash = $jc(_$hash, remainingRides.hashCode);
     _$hash = $jc(_$hash, creditPesewas.hashCode);
+    _$hash = $jc(_$hash, ridesPerPeriod.hashCode);
+    _$hash = $jc(_$hash, renewsAt.hashCode);
     _$hash = $jf(_$hash);
     return _$hash;
   }
@@ -49,7 +60,9 @@ class _$MeRidesGet200Response extends MeRidesGet200Response {
   String toString() {
     return (newBuiltValueToStringHelper(r'MeRidesGet200Response')
           ..add('remainingRides', remainingRides)
-          ..add('creditPesewas', creditPesewas))
+          ..add('creditPesewas', creditPesewas)
+          ..add('ridesPerPeriod', ridesPerPeriod)
+          ..add('renewsAt', renewsAt))
         .toString();
   }
 }
@@ -68,6 +81,15 @@ class MeRidesGet200ResponseBuilder
   set creditPesewas(int? creditPesewas) =>
       _$this._creditPesewas = creditPesewas;
 
+  int? _ridesPerPeriod;
+  int? get ridesPerPeriod => _$this._ridesPerPeriod;
+  set ridesPerPeriod(int? ridesPerPeriod) =>
+      _$this._ridesPerPeriod = ridesPerPeriod;
+
+  DateTime? _renewsAt;
+  DateTime? get renewsAt => _$this._renewsAt;
+  set renewsAt(DateTime? renewsAt) => _$this._renewsAt = renewsAt;
+
   MeRidesGet200ResponseBuilder() {
     MeRidesGet200Response._defaults(this);
   }
@@ -77,6 +99,8 @@ class MeRidesGet200ResponseBuilder
     if ($v != null) {
       _remainingRides = $v.remainingRides;
       _creditPesewas = $v.creditPesewas;
+      _ridesPerPeriod = $v.ridesPerPeriod;
+      _renewsAt = $v.renewsAt;
       _$v = null;
     }
     return this;
@@ -102,6 +126,8 @@ class MeRidesGet200ResponseBuilder
               remainingRides, r'MeRidesGet200Response', 'remainingRides'),
           creditPesewas: BuiltValueNullFieldError.checkNotNull(
               creditPesewas, r'MeRidesGet200Response', 'creditPesewas'),
+          ridesPerPeriod: ridesPerPeriod,
+          renewsAt: renewsAt,
         );
     replace(_$result);
     return _$result;

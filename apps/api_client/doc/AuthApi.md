@@ -9,6 +9,7 @@ All URIs are relative to *http://localhost*
 
 Method | HTTP request | Description
 ------------- | ------------- | -------------
+[**authApplePost**](AuthApi.md#authapplepost) | **POST** /auth/apple | Sign in with an Apple ID token (creates the account on first use)
 [**authGooglePost**](AuthApi.md#authgooglepost) | **POST** /auth/google | Sign in with a Google ID token (creates the account on first use)
 [**authLogoutPost**](AuthApi.md#authlogoutpost) | **POST** /auth/logout | Revoke a refresh token (idempotent)
 [**authRefreshPost**](AuthApi.md#authrefreshpost) | **POST** /auth/refresh | Exchange a refresh token for a new token pair (rotates the session)
@@ -20,6 +21,49 @@ Method | HTTP request | Description
 [**meSessionsGet**](AuthApi.md#mesessionsget) | **GET** /me/sessions | List the authenticated user&#39;s active sessions (devices)
 [**meSessionsIdDelete**](AuthApi.md#mesessionsiddelete) | **DELETE** /me/sessions/{id} | Revoke one of your sessions (log out that device)
 
+
+# **authApplePost**
+> AuthGooglePost200Response authApplePost(authApplePostRequest)
+
+Sign in with an Apple ID token (creates the account on first use)
+
+Send `fullName` on the FIRST authorization only — Apple returns the name once and never again, so a client that drops it strands the rider with a blank name on the driver manifest. It is ignored for accounts that already exist.
+
+### Example
+```dart
+import 'package:trotxi_api_client/api.dart';
+
+final api = TrotxiApiClient().getAuthApi();
+final AuthApplePostRequest authApplePostRequest = ; // AuthApplePostRequest | 
+
+try {
+    final response = api.authApplePost(authApplePostRequest);
+    print(response);
+} on DioException catch (e) {
+    print('Exception when calling AuthApi->authApplePost: $e\n');
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **authApplePostRequest** | [**AuthApplePostRequest**](AuthApplePostRequest.md)|  | 
+
+### Return type
+
+[**AuthGooglePost200Response**](AuthGooglePost200Response.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+ - **Content-Type**: application/json
+ - **Accept**: application/json
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **authGooglePost**
 > AuthGooglePost200Response authGooglePost(authGooglePostRequest)
