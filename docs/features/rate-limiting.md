@@ -60,20 +60,20 @@ Clients should honour `Retry-After` and back off.
 
 ## Where it's applied today
 
-| Endpoint(s)                                      | Limit                                            |
-| ------------------------------------------------ | ------------------------------------------------ |
-| `POST /auth/google`, `POST /auth/refresh`        | **10/min per IP** (strict, credential endpoints) |
-| `GET /me`, `GET /me/balance`, `POST /payments/*` | default, **per user**                            |
-| `POST /webhooks/paystack`                        | 60/min per IP                                    |
-
-Public browse endpoints (mobility) should also opt in per IP as they land.
+| Endpoint(s)                                                         | Limit                                            |
+| ------------------------------------------------------------------- | ------------------------------------------------ |
+| `POST /auth/google`, `/auth/apple`, `/auth/refresh`, `/auth/logout` | **10/min per IP** (strict, credential endpoints) |
+| `GET /me`, `GET /me/balance`, `POST /payments/*`                    | default, **per user**                            |
+| `POST /webhooks/paystack`                                           | 60/min per IP                                    |
+| `GET /flags`, `GET /routes`, `GET /routes/:id`, `.../geometry`      | default, **per IP** (public but database-backed) |
 
 ## Configuration
 
-| Env var                     | Default | Notes                                                              |
-| --------------------------- | ------- | ------------------------------------------------------------------ |
-| `RATE_LIMIT_MAX`            | `100`   | default per-window cap (the value passed to per-user route limits) |
-| `RATE_LIMIT_WINDOW_SECONDS` | `60`    | default window                                                     |
+| Env var                     | Default                            | Notes                                                              |
+| --------------------------- | ---------------------------------- | ------------------------------------------------------------------ |
+| `RATE_LIMIT_MAX`            | `100`                              | default per-window cap (the value passed to per-user route limits) |
+| `RATE_LIMIT_WINDOW_SECONDS` | `60`                               | default window                                                     |
+| `TRUST_PROXY`               | `loopback, linklocal, uniquelocal` | which peers may set `X-Forwarded-For` (see below)                  |
 
 Auth/webhook endpoints use their own stricter inline limits (above); the env
 defaults drive the general per-user limits.
@@ -82,6 +82,19 @@ defaults drive the general per-user limits.
 
 - **Per-IP for pre-auth** (login/refresh) is the brute-force guard; **per-user**
   protects authenticated abuse.
+- **`TRUST_PROXY` is what makes "per IP" mean anything.** Render fronts the
+  service with a load balancer, so without it `request.ip` is that balancer on
+  every request and all per-IP limits collapse into a single global bucket: the
+  eleventh sign-in in a minute anywhere in the country gets a 429, while a real
+  attacker is never isolated.
+- **It is an address list, not a hop count, and not `true`.** The balancer
+  reaches us from inside Render's private network, so trusting private peers
+  trusts it and nothing else; a client connecting directly is public, untrusted,
+  and cannot forge a header to pick its own bucket. Fastify 5.12 made a numeric
+  `trustProxy` **fail closed** (GHSA X-Forwarded-\* spoofing: a count cannot
+  validate the immediate peer), so `TRUST_PROXY=1` silently trusts nobody and
+  undoes the whole thing. `loadEnv` refuses a numeric value at boot rather than
+  let that go unnoticed.
 - **Fail-open is a deliberate trade-off** — availability over strictness. A
   determined attacker who can take down Redis could bypass limits; acceptable for
   the pilot, revisit if it becomes a vector.

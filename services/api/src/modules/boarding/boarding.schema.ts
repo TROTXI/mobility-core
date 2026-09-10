@@ -38,7 +38,7 @@ export const verifyPinBodySchema = z.object({
 export const verifyPinResponseSchema = z.object({
   valid: z.boolean(),
   riderId: z.string().nullable(),
-  reason: z.enum(['ok', 'invalid', 'not_found', 'already_boarded']),
+  reason: z.enum(['ok', 'invalid', 'not_found', 'already_boarded', 'forbidden']),
   deducted: z.boolean(),
 });
 

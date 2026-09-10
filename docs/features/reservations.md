@@ -58,7 +58,25 @@ Confirm or decline (an upsert per day+direction).
   rider's daily **boarding code** (four characters, e.g. `B7K9`) — returned
   **once** here; only its keyed
   hash (`daily_pin_hash`) is stored. The driver types it against the manifest to
-  board (E4, `POST /boarding/verify-pin`). · **400** bad date · **401** · **429** · **503**
+  board (E4, `POST /boarding/verify-pin`). · **400** bad date · **401** ·
+  **402** not entitled (see below) · **429** · **503**
+
+**Confirming is the paywall.** A `travelling: true` answer is refused with **402**
+unless all three hold, and the `error` field says which one failed:
+
+| `error`             | Meaning                                                |
+| ------------------- | ------------------------------------------------------ |
+| `no_subscription`   | no active membership                                   |
+| `no_rides_left`     | the period's rides are spent (the ledger is the truth) |
+| `route_not_covered` | the run is on a corridor this membership did not buy   |
+
+Declining is never gated: it consumes nothing, and a rider whose membership has
+just lapsed still needs to tell the driver not to wait for them.
+
+The check lives here rather than at boarding because boarding **fails open** by
+design (see [boarding.md](boarding.md)) — a rider stuck at the kerb with a queue
+behind them is a worse outcome than an unpaid ride. Refusing the seat hours
+earlier, when it is claimed, costs nothing but a message on a phone.
 
 #### `GET /me/reservations?from=YYYY-MM-DD`
 

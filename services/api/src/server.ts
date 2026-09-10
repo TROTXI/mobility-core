@@ -252,6 +252,10 @@ async function main(): Promise<void> {
     kv,
     reservations,
     entitlements,
+    // Only the driver a run is assigned to may board its riders by code, the
+    // same rule the manifest and GPS reporting already apply.
+    trips,
+    drivers,
     secret: auth.secret,
     passTtlSeconds: 60,
   });
@@ -434,6 +438,10 @@ async function main(): Promise<void> {
     auth,
     rateLimit,
     corsOrigins,
+    // Render fronts the service with a load balancer reaching us from inside
+    // its network; without trusting it the rate limiter buckets every rider on
+    // that balancer's IP (see app.ts).
+    trustProxy: env.TRUST_PROXY,
     // /metrics: protected by a token when set; disabled in prod when unset.
     metrics: { token: env.METRICS_TOKEN, allowUnprotected: env.NODE_ENV !== 'production' },
     logger: true,

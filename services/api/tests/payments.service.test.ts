@@ -57,6 +57,21 @@ function chargeSuccess(reference: string): { body: string; signature: string } {
   return { body, signature: paystackSignature(body, FAKE_SECRET) };
 }
 
+/**
+ * A signed `charge.success` carrying whatever Paystack claims it collected.
+ *
+ * @param reference - the payment reference.
+ * @param data - the settlement fields to assert (amount, status, currency).
+ * @returns the raw body and its valid signature.
+ */
+function chargeSuccessWith(
+  reference: string,
+  data: Record<string, unknown>,
+): { body: string; signature: string } {
+  const body = JSON.stringify({ event: 'charge.success', data: { reference, ...data } });
+  return { body, signature: paystackSignature(body, FAKE_SECRET) };
+}
+
 describe('PaymentsService.initializeSubscription', () => {
   it('derives the price from the corridor fare rather than a constant', async () => {
     const { service, payments } = await priced();
@@ -166,6 +181,68 @@ describe('PaymentsService.handleWebhook', () => {
     await expect(service.handleWebhook(body, signature)).resolves.toBeUndefined();
     expect(await subscriptions.findActiveByUser('u1')).not.toBeNull();
     expect(await entitlements.remainingRides('u1')).toBe(RIDES); // not 2×
+  });
+
+  it('grants nothing when the settled amount is not what we charged', async () => {
+    // The signature proves Paystack sent it. It does not prove the rider paid
+    // what we asked for, and a short collection used to buy a full month.
+    const { service, subscriptions, entitlements, payments } = await priced();
+    const { reference, chargePesewas } = await service.initializeSubscription(
+      'u1',
+      'monthly',
+      ROUTE,
+    );
+    const { body, signature } = chargeSuccessWith(reference, { amount: chargePesewas - 1 });
+
+    await service.handleWebhook(body, signature);
+
+    expect(await subscriptions.findActiveByUser('u1')).toBeNull();
+    expect(await entitlements.remainingRides('u1')).toBe(0);
+    expect((await payments.findByReference(reference))?.status).toBe('failed');
+  });
+
+  it('grants nothing when Paystack settled in another currency', async () => {
+    const { service, subscriptions } = await priced();
+    const { reference, chargePesewas } = await service.initializeSubscription(
+      'u1',
+      'monthly',
+      ROUTE,
+    );
+    const { body, signature } = chargeSuccessWith(reference, {
+      amount: chargePesewas,
+      currency: 'NGN',
+    });
+
+    await service.handleWebhook(body, signature);
+    expect(await subscriptions.findActiveByUser('u1')).toBeNull();
+  });
+
+  it("grants nothing when Paystack's own verdict on the charge is not success", async () => {
+    const { service, subscriptions } = await priced();
+    const { reference } = await service.initializeSubscription('u1', 'monthly', ROUTE);
+    const { body, signature } = chargeSuccessWith(reference, { status: 'abandoned' });
+
+    await service.handleWebhook(body, signature);
+    expect(await subscriptions.findActiveByUser('u1')).toBeNull();
+  });
+
+  it('activates when the settlement matches the checkout exactly', async () => {
+    const { service, subscriptions, payments } = await priced();
+    const { reference, chargePesewas } = await service.initializeSubscription(
+      'u1',
+      'monthly',
+      ROUTE,
+    );
+    const { body, signature } = chargeSuccessWith(reference, {
+      status: 'success',
+      amount: chargePesewas,
+      currency: 'GHS',
+    });
+
+    await service.handleWebhook(body, signature);
+
+    expect(await subscriptions.findActiveByUser('u1')).not.toBeNull();
+    expect((await payments.findByReference(reference))?.status).toBe('paid');
   });
 
   it('ignores non charge.success events and unknown references', async () => {

@@ -167,6 +167,18 @@ export interface AppDeps {
   scanEvents?: ScanEventRepository;
   /** Prometheus /metrics exposure. Defaults to unprotected (dev/tests). */
   metrics?: Partial<MetricsOptions>;
+  /**
+   * Which peers may set `X-Forwarded-For` (from `TRUST_PROXY`) — a proxy-addr
+   * list such as `loopback, linklocal, uniquelocal`, or a CIDR. Trusting the
+   * balancer is what makes `request.ip` the real client rather than the
+   * balancer, which is what every per-IP rate limit buckets on.
+   *
+   * Never a number: fastify 5.12 made numeric trustProxy fail closed, so a hop
+   * count silently trusts nothing (see config/env.ts). Defaults to trusting
+   * nobody, so a directly exposed instance cannot be fooled by a forged header;
+   * server.ts supplies the real list.
+   */
+  trustProxy?: string | string[] | boolean;
   logger?: boolean;
 }
 
@@ -195,7 +207,14 @@ function deployedCommit(): string {
  * @returns the configured Fastify instance (not yet listening).
  */
 export async function buildApp(deps: AppDeps = {}): Promise<FastifyInstance> {
-  const app = Fastify({ logger: deps.logger ?? false });
+  // trustProxy matters more than it looks: with it off behind a load balancer,
+  // `request.ip` is the balancer on every request, so every per-IP rate limit
+  // collapses into ONE bucket shared by all callers. Sign-in then 429s the whole
+  // country at 10 requests a minute while a real attacker is never isolated.
+  // An address list rather than `true`: only a peer that matches is allowed to
+  // set the header, so a client connecting directly cannot forge one and pick
+  // its own bucket.
+  const app = Fastify({ logger: deps.logger ?? false, trustProxy: deps.trustProxy ?? false });
 
   // CORS for browser clients (Swagger UI served from another origin, a future
   // web dashboard). Registered first so preflight is handled for every route.
@@ -318,6 +337,11 @@ export async function buildApp(deps: AppDeps = {}): Promise<FastifyInstance> {
     secret: authConfig.secret,
     trips: deps.trips,
     vehicles: deps.vehicles,
+    // The paywall. Absent subscriptions means an unwired store (a bare
+    // buildApp() in a unit test), and the gate stands down rather than
+    // refusing every rider on a repository that was never provided.
+    subscriptions: deps.subscriptions,
+    entitlements,
     rateLimit: deps.rateLimit ?? DEFAULT_RATE_LIMIT,
   });
   // Ask-dispatch (E3): only wired when trips + subscriptions are available (the
@@ -346,6 +370,9 @@ export async function buildApp(deps: AppDeps = {}): Promise<FastifyInstance> {
         kv,
         reservations,
         entitlements,
+        // Assigned-driver authz for PIN boarding; absent leaves it unchecked.
+        trips: deps.trips,
+        drivers: deps.drivers,
         secret: authConfig.secret,
         passTtlSeconds: 60,
       }),
@@ -359,6 +386,7 @@ export async function buildApp(deps: AppDeps = {}): Promise<FastifyInstance> {
     stops: deps.stops,
     routeStops: deps.routeStops,
     routeGeometry: deps.routeGeometry,
+    rateLimit: deps.rateLimit ?? DEFAULT_RATE_LIMIT,
   });
   await app.register(tripRoutes, {
     trips: deps.trips,
@@ -423,6 +451,7 @@ export async function buildApp(deps: AppDeps = {}): Promise<FastifyInstance> {
     mapTilesUrl: deps.mapTilesUrl,
     mapStyleUrl: deps.mapStyleUrl,
     mapStyleDarkUrl: deps.mapStyleDarkUrl,
+    rateLimit: deps.rateLimit ?? DEFAULT_RATE_LIMIT,
   });
 
   r.get(

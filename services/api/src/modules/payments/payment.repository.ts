@@ -92,6 +92,13 @@ export interface PaymentRepository {
    * @param reference - the payment to mark paid.
    */
   markPaid(reference: string): Promise<void>;
+  /**
+   * Transition `pending → failed`. No-op once the row is settled either way, so
+   * a webhook arriving out of order can never un-pay a paid subscription.
+   *
+   * @param reference - the payment to mark failed.
+   */
+  markFailed(reference: string): Promise<void>;
 }
 
 /** In-memory {@link PaymentRepository} for dev and unit tests (no database). */
@@ -131,6 +138,14 @@ export class InMemoryPaymentRepository implements PaymentRepository {
     const payment = this.byReference.get(reference);
     if (payment && payment.status === 'pending') {
       payment.status = 'paid';
+      payment.updatedAt = new Date();
+    }
+  }
+
+  async markFailed(reference: string): Promise<void> {
+    const payment = this.byReference.get(reference);
+    if (payment && payment.status === 'pending') {
+      payment.status = 'failed';
       payment.updatedAt = new Date();
     }
   }

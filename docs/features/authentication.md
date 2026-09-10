@@ -141,9 +141,13 @@ as "New User" on every driver manifest from then on. It is client-supplied rathe
 than a signed claim, so the server only uses it when creating the account. It can
 never rename an existing user.
 
-`nonce` is the raw value the client hashed into the authorization request. Send it
-and a replayed token is rejected; omit it and the token is still verified for
-signature, issuer, audience and expiry.
+`nonce` is the raw value the client hashed into the authorization request. If the
+ID token carries a `nonce` claim, the request **must** send the value it came
+from or sign-in is refused. That is deliberate: comparing only when both sides
+happened to supply a value made replay protection opt-in for the attacker, since
+anyone holding an intercepted token could simply omit the field. A token Apple
+minted without a nonce is unaffected, and is still verified for signature,
+issuer, audience and expiry.
 
 `authorizationCode` is Apple's one-time code, sent on first authorization. The
 server trades it for a refresh token and stores that against the identity, for
@@ -167,6 +171,9 @@ Exchange a refresh token for a new pair (**rotates** — the old refresh token i
 
 Revoke a refresh token. Idempotent.
 
+- **Rate limit:** 10/min per IP, like the other credential endpoints. It takes an
+  untrusted token and hits the session store on every call, so unmetered it was a
+  way to make the database work without ever authenticating.
 - **Body:** `{ "refreshToken": "..." }` → **204** (always, even for an unknown token).
 
 #### `GET /me`

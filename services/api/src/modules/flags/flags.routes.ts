@@ -1,12 +1,15 @@
 // Public feature-flags endpoint (#27) — the "deploy != release" keystone. The
 // apps fetch GET /flags on launch/session to gate features (kill-switch +
 // %-rollout) and to run their force-update check (min_supported_version per
-// platform). Intentionally public and un-throttled, like GET /routes: it must
-// answer before a user signs in, and it degrades gracefully (empty set) when the
-// stores are unwired so the app can always boot.
+// platform). Intentionally public: it must answer before a user signs in, and it
+// degrades gracefully (empty set) when the stores are unwired so the app can
+// always boot. Public is not the same as unmetered, though, so it carries the
+// standard per-IP limit like GET /routes does.
 
 import type { FastifyInstance } from 'fastify';
 import type { ZodTypeProvider } from 'fastify-type-provider-zod';
+import { errorResponseSchema } from '../../lib/schemas';
+import type { RateLimitConfig } from '../ratelimit/ratelimit.plugin';
 import type { FeatureFlagRepository } from './feature-flag.repository';
 import type { MinVersionRepository } from './min-version.repository';
 import { flagsResponseSchema } from './flags.schema';
@@ -30,6 +33,7 @@ const MAP_ATTRIBUTION = '© OpenStreetMap contributors · © OpenMapTiles';
  *   and clients render without a basemap rather than failing.
  * @param opts.mapStyleUrl - light-theme MapLibre style (#180).
  * @param opts.mapStyleDarkUrl - dark-theme MapLibre style (#180).
+ * @param opts.rateLimit - rate-limit config (per IP; this route is public).
  */
 export async function flagsRoutes(
   app: FastifyInstance,
@@ -39,6 +43,7 @@ export async function flagsRoutes(
     mapTilesUrl?: string;
     mapStyleUrl?: string;
     mapStyleDarkUrl?: string;
+    rateLimit: RateLimitConfig;
   },
 ): Promise<void> {
   app.withTypeProvider<ZodTypeProvider>().get(
@@ -47,8 +52,12 @@ export async function flagsRoutes(
       schema: {
         tags: ['flags'],
         summary: 'Feature flags + minimum supported app version (fetched on launch)',
-        response: { 200: flagsResponseSchema },
+        response: { 200: flagsResponseSchema, 429: errorResponseSchema },
       },
+      // Unauthenticated and hit on every app launch, so it is the cheapest way
+      // to make the database work from outside. Per IP, which only became a
+      // real bucket once the proxy hop count was set (app.ts).
+      preHandler: [app.rateLimit({ ...opts.rateLimit, by: 'ip' })],
     },
     async () => {
       const flags = opts.featureFlags ? await opts.featureFlags.findAll() : [];
