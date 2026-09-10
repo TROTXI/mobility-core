@@ -16,6 +16,10 @@ const envSchema = z
     JWT_ISSUER: z.string().default('trotxi'),
     JWT_AUDIENCE: z.string().default('trotxi-api'),
     JWT_REFRESH_TTL_DAYS: z.coerce.number().int().positive().default(30),
+    // Session length for a driver who did NOT tick "Remember this device"
+    // (#223). Depot handsets are shared between shifts, so the default is one
+    // long shift rather than the month a personal phone gets.
+    DRIVER_SHIFT_TTL_HOURS: z.coerce.number().int().positive().default(12),
     // Google "Web" client ID — the audience verified on sign-in. Set to enable
     // real Google sign-in; unset -> dev fake verifier (non-prod) / 503 (prod).
     GOOGLE_CLIENT_ID: z.string().optional(),

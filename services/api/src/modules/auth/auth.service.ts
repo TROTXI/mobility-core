@@ -11,7 +11,8 @@ import type { AuthIdentityRepository } from './auth-identity.repository';
 import type { AppleTokenClient } from './apple-token.client';
 import type { AuthProvider, IdTokenVerifier, VerifiedIdentity } from './id-token-verifier';
 import type { Session, SessionRepository } from './session.repository';
-import { generateRefreshToken, hashToken } from './tokens';
+import { issueSessionTokens, type AuthTokens } from './session-issuer';
+import { hashToken } from './tokens';
 import type { User, UserRepository } from '../users/user.repository';
 
 /** Thrown when sign-in is attempted for a provider with no verifier configured (prod without GOOGLE_CLIENT_ID / APPLE_CLIENT_ID). Routes map it to 503. */
@@ -29,11 +30,7 @@ const MAX_DISPLAY_NAME = 80;
 /** Thrown when a refresh/logout token is missing, expired, or revoked. Routes map it to 401. */
 export class InvalidRefreshTokenError extends Error {}
 
-/** An access token (short-lived) paired with a refresh token (long-lived). */
-export interface AuthTokens {
-  accessToken: string;
-  refreshToken: string;
-}
+export type { AuthTokens } from './session-issuer';
 
 /** A successful sign-in: the user plus their fresh token pair. */
 export interface AuthResult extends AuthTokens {
@@ -243,15 +240,10 @@ export class AuthService {
    * @returns the new token pair.
    */
   private async issueTokens(user: User, rotatedFrom?: string): Promise<AuthTokens> {
-    const refresh = generateRefreshToken(this.deps.refreshTtlDays);
-    await this.deps.sessions.create({
-      userId: user.id,
-      refreshTokenHash: refresh.hash,
-      expiresAt: refresh.expiresAt,
+    return issueSessionTokens({ sessions: this.deps.sessions, jwt: this.deps.jwt }, user, {
+      refreshTtlDays: this.deps.refreshTtlDays,
       rotatedFrom,
     });
-    const accessToken = await this.deps.jwt.signAccessToken({ userId: user.id, role: user.role });
-    return { accessToken, refreshToken: refresh.token };
   }
 
   /**

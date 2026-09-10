@@ -9,6 +9,7 @@ const DEFAULTS = {
   RATE_LIMIT_MAX: 100,
   RATE_LIMIT_WINDOW_SECONDS: 60,
   TRUST_PROXY: 'loopback, linklocal, uniquelocal',
+  DRIVER_SHIFT_TTL_HOURS: 12,
 };
 
 describe('loadEnv', () => {
