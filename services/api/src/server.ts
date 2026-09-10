@@ -17,6 +17,12 @@ import {
 import { PgAuthIdentityRepository } from './modules/auth/auth-identity.repository.pg';
 import { AuthService } from './modules/auth/auth.service';
 import {
+  InMemoryDriverCredentialRepository,
+  type DriverCredentialRepository,
+} from './modules/auth/driver-credential.repository';
+import { PgDriverCredentialRepository } from './modules/auth/driver-credential.repository.pg';
+import { DriverAuthService } from './modules/auth/driver-auth.service';
+import {
   FakeIdTokenVerifier,
   type AuthProvider,
   type IdTokenVerifier,
@@ -185,6 +191,7 @@ async function main(): Promise<void> {
   let drivers: DriverRepository;
   let sessions: SessionRepository;
   let authIdentities: AuthIdentityRepository;
+  let driverCredentials: DriverCredentialRepository;
   let payments: PaymentRepository;
   let deviceTokens: DeviceTokenRepository;
   let scanEvents: ScanEventRepository;
@@ -209,6 +216,7 @@ async function main(): Promise<void> {
     drivers = new PgDriverRepository(pool);
     sessions = new PgSessionRepository(pool);
     authIdentities = new PgAuthIdentityRepository(pool);
+    driverCredentials = new PgDriverCredentialRepository(pool);
     payments = new PgPaymentRepository(pool);
     deviceTokens = new PgDeviceTokenRepository(pool);
     scanEvents = new PgScanEventRepository(pool);
@@ -233,6 +241,7 @@ async function main(): Promise<void> {
     drivers = new InMemoryDriverRepository();
     sessions = new InMemorySessionRepository();
     authIdentities = new InMemoryAuthIdentityRepository();
+    driverCredentials = new InMemoryDriverCredentialRepository();
     payments = new InMemoryPaymentRepository();
     deviceTokens = new InMemoryDeviceTokenRepository();
     scanEvents = new InMemoryScanEventRepository();
@@ -319,6 +328,20 @@ async function main(): Promise<void> {
     verifiers,
     appleTokens,
     refreshTtlDays: env.JWT_REFRESH_TTL_DAYS,
+  });
+
+  // Driver sign-in (#223): an ops-issued code plus a PIN, hashed under the same
+  // server key the boarding code uses. Unlike social sign-in there is nothing
+  // external to configure, so this is always wired.
+  const driverAuth = new DriverAuthService({
+    credentials: driverCredentials,
+    drivers,
+    users,
+    sessions,
+    jwt: createJwtService(auth),
+    secret: auth.secret,
+    refreshTtlDays: env.JWT_REFRESH_TTL_DAYS,
+    shiftTtlHours: env.DRIVER_SHIFT_TTL_HOURS,
   });
 
   // Paystack client: real when the secret key is set; a dev fake outside
@@ -419,6 +442,7 @@ async function main(): Promise<void> {
     notifier,
     boardingService,
     authService,
+    driverAuth,
     paymentsService,
     entitlements,
     credits,

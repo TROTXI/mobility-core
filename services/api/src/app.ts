@@ -62,6 +62,8 @@ import { paymentRoutes } from './modules/payments/payments.routes';
 import type { PaymentsService } from './modules/payments/payments.service';
 import { authPlugin } from './modules/auth/auth.plugin';
 import { authRoutes } from './modules/auth/auth.routes';
+import { driverAuthRoutes } from './modules/auth/driver-auth.routes';
+import type { DriverAuthService } from './modules/auth/driver-auth.service';
 import type { AuthService } from './modules/auth/auth.service';
 import { DEV_AUTH_CONFIG, type AuthConfig } from './modules/auth/jwt';
 import {
@@ -141,6 +143,8 @@ export interface AppDeps {
   auth?: AuthConfig;
   /** Sign-in/refresh/logout orchestrator. Routes return 503 when absent. */
   authService?: AuthService;
+  /** Driver code + PIN sign-in (#223). Routes return 503 when absent. */
+  driverAuth?: DriverAuthService;
   /** Paystack payments orchestrator. Routes return 503 when absent. */
   paymentsService?: PaymentsService;
   /** Rate-limit thresholds (from env). Defaults applied when unset. */
@@ -297,6 +301,11 @@ export async function buildApp(deps: AppDeps = {}): Promise<FastifyInstance> {
     users,
     objectStore,
     authService: deps.authService,
+    rateLimit: deps.rateLimit ?? DEFAULT_RATE_LIMIT,
+  });
+  await app.register(driverAuthRoutes, {
+    driverAuth: deps.driverAuth,
+    objectStore,
     rateLimit: deps.rateLimit ?? DEFAULT_RATE_LIMIT,
   });
   await app.register(userRoutes, {
