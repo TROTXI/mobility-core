@@ -13,6 +13,7 @@
 //   JWT_SECRET=<secret> API_BASE_URL=https://... pnpm --filter @trotxi/api seed:staging
 
 import { createJwtService, type AuthConfig } from '../src/modules/auth/jwt';
+import { paystackSignature } from '../src/modules/payments/paystack.client';
 
 /* eslint-disable @typescript-eslint/no-explicit-any -- this script consumes the
    deployed API's JSON responses, which are untyped at this boundary; narrowing
@@ -91,6 +92,39 @@ async function api(
 }
 
 /**
+ * Call the API as somebody other than the seeded admin.
+ *
+ * @param bearer - the caller's access token.
+ * @param method - HTTP method.
+ * @param path - path beginning with a slash.
+ * @param body - optional JSON body.
+ * @returns the parsed response and its status.
+ */
+async function apiAs(
+  bearer: string,
+  method: string,
+  path: string,
+  body?: unknown,
+): Promise<{ status: number; json: any }> {
+  const res = await fetch(`${BASE}${path}`, {
+    method,
+    headers: {
+      authorization: `Bearer ${bearer}`,
+      ...(body === undefined ? {} : { 'content-type': 'application/json' }),
+    },
+    ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+  });
+  const text = await res.text();
+  let json: unknown;
+  try {
+    json = JSON.parse(text);
+  } catch {
+    json = text.slice(0, 200);
+  }
+  return { status: res.status, json };
+}
+
+/**
  * Fail loudly with the server's own message — a silent partial seed is worse
  * than none, since the apps would build against half a corridor.
  *
@@ -112,33 +146,153 @@ function must(label: string, res: { status: number; json: any }): any {
  * Printed to this console and nowhere else: the API returns the PIN exactly
  * once and stores only a keyed hash, so there is no reading it back later.
  *
- * A driver who already has a credential answers 409, and reset-pin does not
- * return the code alongside the new PIN, so there would be no way to print a
- * usable pair. Rather than guess, this seeds a separate, uniquely named driver
- * whose credential is fresh. That keeps the run idempotent in the sense that
- * matters: it always ends with a pair you can type into the app.
+ * A driver who already has a credential answers 409, in which case the PIN is
+ * reset instead. That has to target the SAME driver: they are the one the
+ * seeded runs are assigned to, and handing back a fresh throwaway driver would
+ * print a pair that signs in to an empty day.
  *
  * @param driver - the corridor's assigned driver.
  */
 async function issueDriverCredential(driver: any): Promise<void> {
-  let target = driver;
-  let issued = await api('POST', `/admin/drivers/${target.id}/credentials`, undefined);
+  let issued = await api('POST', `/admin/drivers/${driver.id}/credentials`, undefined);
+  let reset = false;
 
   if (issued.status === 409) {
-    const fullName = `Test Driver ${new Date().toISOString().slice(0, 16).replace('T', ' ')}`;
-    target = must('create test driver', await api('POST', '/admin/drivers', { fullName }));
-    issued = await api('POST', `/admin/drivers/${target.id}/credentials`, undefined);
+    issued = await api('POST', `/admin/drivers/${driver.id}/credentials/reset-pin`, undefined);
+    reset = true;
   }
 
   const credential = must('issue driver credential', issued);
   console.log('');
   console.log('driver sign-in — type these into the driver app:');
-  console.log(`  name        ${target.fullName}`);
+  console.log(`  name        ${driver.fullName}`);
   console.log(`  driver code ${credential.driverCode}`);
   console.log(`  PIN         ${credential.pin}`);
   console.log('  (the PIN is shown ONCE; the API keeps only a keyed hash)');
+  if (reset) {
+    console.log('  NB: this driver already had a credential, so the PIN was RESET.');
+    console.log('      Any session signed in on the old one has been revoked.');
+  }
   console.log('  First sign-in forces a PIN change, which is the flow to test.');
   console.log('');
+}
+
+/** How many riders to put on each seeded run. */
+const RIDERS_PER_TRIP = Number(process.env.SEED_RIDERS ?? 4);
+
+/** The fake Paystack client's shared secret (paystack.client.ts). */
+const FAKE_PAYSTACK_SECRET = 'fake-paystack-secret';
+
+/**
+ * Put confirmed riders on a run, so the manifest and boarding have something
+ * to act on.
+ *
+ * Only possible outside production, and deliberately so: it signs riders in
+ * through the DEV FAKE id-token verifier and settles their subscription through
+ * the FAKE Paystack client. Both are absent when NODE_ENV=production, which is
+ * why this degrades with a message rather than failing the seed — staging is
+ * production-mode and has real verifiers, so riders there have to come from
+ * real sign-ins.
+ *
+ * The whole chain is walked rather than shortcut, because the paywall added in
+ * #221 means a reservation is only possible for a rider who actually holds an
+ * active membership with rides left on the corridor being travelled. Faking a
+ * reservation row straight into the database would seed a state the API itself
+ * would never produce.
+ *
+ * @param route - the corridor.
+ * @param stops - the corridor's stops in seq order.
+ * @param trips - the runs to fill.
+ * @returns how many reservations were confirmed.
+ */
+async function seedRiders(
+  route: any,
+  stops: any[],
+  trips: { id: string; scheduledAt: string }[],
+): Promise<number> {
+  if (trips.length === 0 || stops.length < 2) return 0;
+
+  let confirmed = 0;
+  for (const [tripIndex, trip] of trips.entries()) {
+    const scheduled = new Date(trip.scheduledAt);
+    const travelDate = trip.scheduledAt.slice(0, 10);
+    // The API reads the scheduled hour to pick a direction; match it here or the
+    // reservation lands on the other half of the day and the manifest is empty.
+    const direction = scheduled.getUTCHours() < 12 ? 'morning' : 'evening';
+
+    for (let i = 0; i < RIDERS_PER_TRIP; i++) {
+      const sub = `seed-rider-${tripIndex}-${i}`;
+      const name = `Seed Rider ${tripIndex + 1}.${i + 1}`;
+
+      // 1. Sign in through the dev fake verifier.
+      const signIn = await api('POST', '/auth/google', {
+        idToken: JSON.stringify({ sub, email: `${sub}@example.test`, name }),
+      });
+      if (signIn.status === 503 || signIn.status === 401) {
+        console.log(
+          `riders: skipped — ${BASE} has no dev sign-in verifier ` +
+            '(production mode). Seed riders only work against a local or dev API.',
+        );
+        return confirmed;
+      }
+      const token = must('rider sign-in', signIn).accessToken as string;
+
+      // 2. Buy a membership on this corridor.
+      const checkout = await apiAs(token, 'POST', '/payments/subscribe', {
+        plan: 'monthly',
+        routeId: route.id,
+        pickupStopId: stops[0].id,
+        dropoffStopId: stops[stops.length - 1].id,
+      });
+      if (checkout.status === 503) {
+        console.log('riders: skipped — payments are not configured on this environment.');
+        return confirmed;
+      }
+      // 409 means this rider already has an active membership from a previous
+      // run of the seed, which is fine: they can still confirm a seat.
+      if (checkout.status < 300) {
+        const { reference, chargePesewas } = must('checkout', checkout);
+
+        // 3. Settle it. Amount and currency have to match the checkout exactly
+        //    or the webhook refuses to grant anything (#221).
+        const payload = JSON.stringify({
+          event: 'charge.success',
+          data: { reference, status: 'success', amount: chargePesewas, currency: 'GHS' },
+        });
+        const webhook = await fetch(`${BASE}/webhooks/paystack`, {
+          method: 'POST',
+          headers: {
+            'content-type': 'application/json',
+            'x-paystack-signature': paystackSignature(payload, FAKE_PAYSTACK_SECRET),
+          },
+          body: payload,
+        });
+        if (webhook.status === 401) {
+          console.log(
+            'riders: skipped — the webhook signature was rejected, so this ' +
+              'environment is running a REAL Paystack key rather than the dev fake.',
+          );
+          return confirmed;
+        }
+      }
+
+      // 4. Confirm the seat.
+      const reservation = await apiAs(token, 'POST', '/me/reservations', {
+        tripId: trip.id,
+        travelDate,
+        direction,
+        travelling: true,
+      });
+      if (reservation.status === 402) {
+        console.log(`riders: ${name} refused (${reservation.json?.error}) — skipping the rest.`);
+        return confirmed;
+      }
+      if (reservation.status === 409) continue; // run is full
+      must('confirm reservation', reservation);
+      confirmed++;
+    }
+  }
+  return confirmed;
 }
 
 async function main(): Promise<void> {
@@ -237,6 +391,10 @@ async function main(): Promise<void> {
   const today = new Date();
   let created = 0;
   let skipped = 0;
+  // Today's runs, collected so riders can be put on them below. Reusing the
+  // ones already present matters: a re-run must fill the SAME trips the driver
+  // sees rather than a fresh set nobody is assigned to.
+  const todaysTrips: { id: string; scheduledAt: string }[] = [];
   for (let d = 0; d < DAYS; d++) {
     const day = new Date(today);
     day.setUTCDate(day.getUTCDate() + d);
@@ -248,10 +406,12 @@ async function main(): Promise<void> {
     const tlist = Array.isArray(onDay) ? onDay : (onDay.trips ?? []);
     for (const hhmm of ['06:30', '17:30']) {
       const scheduledAt = `${date}T${hhmm}:00.000Z`;
-      if (
-        tlist.some((t: { scheduledAt: string }) => t.scheduledAt?.startsWith(`${date}T${hhmm}`))
-      ) {
+      const existing = tlist.find((t: { scheduledAt: string }) =>
+        t.scheduledAt?.startsWith(`${date}T${hhmm}`),
+      );
+      if (existing) {
         skipped++;
+        if (d === 0) todaysTrips.push({ id: existing.id, scheduledAt: existing.scheduledAt });
         continue;
       }
       const trip = must(
@@ -270,9 +430,18 @@ async function main(): Promise<void> {
         }),
       );
       created++;
+      if (d === 0) todaysTrips.push({ id: trip.id, scheduledAt });
     }
   }
   console.log(`trips: ${created} created, ${skipped} already present (${DAYS} days)`);
+
+  // Re-read the corridor so the stops are in seq order with their ids, which is
+  // what a rider's pickup and drop-off have to be chosen from.
+  const seeded = must('read route stops', await api('GET', `/routes/${route.id}`));
+  const confirmed = await seedRiders(route, seeded.stops ?? [], todaysTrips);
+  if (confirmed > 0) {
+    console.log(`riders: ${confirmed} confirmed seat(s) across today's runs`);
+  }
 
   // Price the corridor. Idempotent by intent rather than by accident: setting an
   // identical fare would close the current row and open a new one, growing the
