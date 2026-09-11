@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:trotxi_client/trotxi_client.dart';
+import 'package:trotxi_driver/core/config/corridor_time.dart';
 import 'package:trotxi_driver/core/state/loadable.dart';
 import 'package:trotxi_driver/data/trips_repository.dart';
 
@@ -131,22 +132,12 @@ class TodayController extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Today as `YYYY-MM-DD`, in UTC.
+  /// Today in the corridor's clock.
   ///
-  /// UTC because that is what the API filters on: `GET /me/trips?date=` matches
-  /// `(scheduled_at AT TIME ZONE 'UTC')::date`. Sending a local date instead
-  /// silently returns nothing whenever the device is not on UTC, which is not a
-  /// hypothetical: it is what every developer outside Ghana sees, and it looks
-  /// exactly like "no trips assigned" rather than like a bug.
-  ///
-  /// Ghana is UTC, so in the field the driver's day and this are the same day.
+  /// See [CorridorTime]: the API groups runs by UTC day and the screens render
+  /// in the same frame, so asking and showing agree.
   ///
   /// @param now - the instant to read the day from.
-  /// @returns the UTC calendar day.
-  static String _todayString(DateTime now) {
-    final utc = now.toUtc();
-    return '${utc.year.toString().padLeft(4, '0')}-'
-        '${utc.month.toString().padLeft(2, '0')}-'
-        '${utc.day.toString().padLeft(2, '0')}';
-  }
+  /// @returns the corridor's calendar day.
+  static String _todayString(DateTime now) => CorridorTime.day(now);
 }

@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:trotxi_driver/Presentations/Run/pages/run_page.dart';
 import 'package:trotxi_driver/Presentations/Today/widgets/run_card.dart';
 import 'package:trotxi_driver/core/config/theme/app_colors.dart';
 import 'package:trotxi_driver/core/config/theme/app_radii.dart';
 import 'package:trotxi_driver/core/config/theme/app_spacing.dart';
 import 'package:trotxi_driver/core/config/theme/app_typography.dart';
 import 'package:trotxi_driver/core/state/loadable.dart';
+import 'package:trotxi_driver/core/state/run_controller.dart';
 import 'package:trotxi_driver/core/state/session_controller.dart';
 import 'package:trotxi_driver/core/state/today_controller.dart';
 import 'package:trotxi_driver/data/trips_repository.dart';
@@ -16,10 +18,7 @@ import 'package:trotxi_driver/data/trips_repository.dart';
 /// completely differently from everything finished, and a driver at the start
 /// of a shift needs to tell them apart at a glance.
 class TodayPage extends StatefulWidget {
-  const TodayPage({super.key, this.onOpenRun});
-
-  /// Opens a run's detail. Null until the active-trip screen lands.
-  final void Function(DriverRun run)? onOpenRun;
+  const TodayPage({super.key});
 
   @override
   State<TodayPage> createState() => _TodayPageState();
@@ -58,6 +57,32 @@ class _TodayPageState extends State<TodayPage> {
         ),
       ),
     );
+  }
+
+  /// Open a run, giving it its own controller scoped to that route.
+  ///
+  /// Scoped rather than app-wide: a run's manifest belongs to that run, and a
+  /// controller outliving the screen would serve the previous run's riders to
+  /// the next one.
+  ///
+  /// @param context - the calling context.
+  /// @param run - the run to open.
+  void _openRun(BuildContext context, DriverRun run) {
+    final trips = context.read<TripsRepository>();
+    Navigator.of(context)
+        .push(
+          MaterialPageRoute<void>(
+            builder: (_) => ChangeNotifierProvider(
+              create: (_) => RunController(trips: trips, run: run),
+              child: RunPage(run: run),
+            ),
+          ),
+        )
+        // The run's state may have moved while the driver was in there, so the
+        // day is reloaded on the way back rather than showing a stale card.
+        .then((_) {
+          if (context.mounted) context.read<TodayController>().load();
+        });
   }
 
   Widget _body(
@@ -113,7 +138,7 @@ class _TodayPageState extends State<TodayPage> {
               primaryLabel: 'End trip',
               isBusy: controller.busyRunId == data.active!.id,
               onPrimary: () => controller.complete(data.active!.id),
-              onTap: () => widget.onOpenRun?.call(data.active!),
+              onTap: () => _openRun(context, data.active!),
             ),
             const SizedBox(height: AppSpacing.space24),
           ],
@@ -126,7 +151,7 @@ class _TodayPageState extends State<TodayPage> {
               primaryLabel: 'Start trip',
               isBusy: controller.busyRunId == data.next!.id,
               onPrimary: () => controller.start(data.next!.id),
-              onTap: () => widget.onOpenRun?.call(data.next!),
+              onTap: () => _openRun(context, data.next!),
             ),
             const SizedBox(height: AppSpacing.space24),
           ],
@@ -134,7 +159,7 @@ class _TodayPageState extends State<TodayPage> {
             _SectionLabel(text: 'Later today', colors: colors),
             const SizedBox(height: AppSpacing.space8),
             for (final run in data.later) ...[
-              RunCard(run: run, onTap: () => widget.onOpenRun?.call(run)),
+              RunCard(run: run, onTap: () => _openRun(context, run)),
               const SizedBox(height: AppSpacing.space8),
             ],
             const SizedBox(height: AppSpacing.space16),

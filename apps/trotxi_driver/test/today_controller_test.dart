@@ -4,6 +4,7 @@
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:trotxi_client/trotxi_client.dart';
+import 'package:trotxi_driver/core/config/corridor_time.dart';
 import 'package:trotxi_driver/core/state/loadable.dart';
 import 'package:trotxi_driver/core/state/today_controller.dart';
 import 'package:trotxi_driver/data/trips_repository.dart';
@@ -171,4 +172,20 @@ void main() {
 
     expect(trips.lastDate, '2026-09-10');
   });
+
+  test('run times render in the corridor clock, not the device clock', () async {
+    // Runs are grouped by UTC day by the API. Rendering in device-local time
+    // lets one day straddle two local days, which showed up as a 06:30 run
+    // labelled 23:30 and sorting ahead of the 17:30 one. Ghana is UTC+0 with no
+    // DST, so in the field this IS the driver's wall clock.
+    final morning = DateTime.utc(2026, 9, 10, 6, 30);
+    final evening = DateTime.utc(2026, 9, 10, 17, 30);
+
+    expect(CorridorTime.hhmm(morning), '06:30');
+    expect(CorridorTime.hhmm(evening), '17:30');
+    // Same instants expressed in another zone still read as the corridor's.
+    expect(CorridorTime.hhmm(morning.toLocal()), '06:30');
+    expect(CorridorTime.day(evening.toLocal()), '2026-09-10');
+  });
 }
+

@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
+import 'package:trotxi_driver/core/config/corridor_time.dart';
 import 'package:trotxi_driver/core/config/theme/app_colors.dart';
 import 'package:trotxi_driver/core/config/theme/app_radii.dart';
 import 'package:trotxi_driver/core/config/theme/app_spacing.dart';
@@ -57,7 +57,7 @@ class RunCard extends StatelessWidget {
                 Row(
                   children: [
                     Text(
-                      DateFormat('HH:mm').format(run.scheduledAt.toLocal()),
+                      CorridorTime.hhmm(run.scheduledAt),
                       style: AppTypography.runTitle.copyWith(color: colors.textPrimary),
                     ),
                     const SizedBox(width: AppSpacing.space8),
