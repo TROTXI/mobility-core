@@ -47,6 +47,7 @@ class ManifestRider {
     required this.name,
     required this.avatarUrl,
     required this.boarded,
+    required this.direction,
   });
 
   final String reservationId;
@@ -57,6 +58,10 @@ class ManifestRider {
   final String? name;
   final String? avatarUrl;
   final bool boarded;
+
+  /// `morning` or `evening`. The manifest splits on it, and the Today card
+  /// shows the morning share.
+  final String direction;
 }
 
 /// What a finished run did.
@@ -160,6 +165,7 @@ class TripsRepository {
               name: r.name,
               avatarUrl: r.avatarUrl,
               boarded: r.boarded,
+              direction: r.direction.name,
             ),
           )
           .toList();

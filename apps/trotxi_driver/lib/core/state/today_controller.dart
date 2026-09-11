@@ -15,7 +15,15 @@ class TodayBoard {
     required this.next,
     required this.later,
     required this.completed,
+    this.headline,
   });
+
+  /// Counts for the run the frame gives top billing, and only that one.
+  ///
+  /// The card shows riders and stops, which cost a manifest and a route read
+  /// each. Fetching them for every run on the board would mean four round trips
+  /// to render a screen where three of the cards are one line of text.
+  final RunHeadline? headline;
 
   /// The run under way, if the driver started one.
   final DriverRun? active;
@@ -36,6 +44,21 @@ class TodayBoard {
 
   /// Everything assigned is done.
   bool get isDayDone => active == null && next == null && later.isEmpty && completed.isNotEmpty;
+}
+
+/// The extra numbers the leading run's card carries.
+class RunHeadline {
+  const RunHeadline({required this.riders, required this.morning, required this.stops});
+
+  /// Confirmed seats on this run.
+  final int riders;
+
+  /// How many of them are travelling this morning, which is the split the
+  /// frame shows. Standby is absent on purpose: reservations carry a `standby`
+  /// source but the manifest does not expose it, so the number would be a
+  /// guess dressed as a breakdown.
+  final int morning;
+  final int stops;
 }
 
 /// Today's assignments (prototype frames 14 to 18).
@@ -109,8 +132,10 @@ class TodayController extends ChangeNotifier {
       final upcoming = runs.where((r) => r.status == RunStatus.scheduled).toList();
       final completed = runs.where((r) => r.isFinished).toList();
 
+      final leading = active ?? upcoming.firstOrNull;
       _board = Loadable.data(
         TodayBoard(
+          headline: leading == null ? null : await _headlineFor(leading),
           active: active,
           // Nothing is "next" while a run is under way: the driver's next action
           // is to finish the one they are on, and offering another start button
@@ -129,6 +154,31 @@ class TodayController extends ChangeNotifier {
       _board = Loadable.failure(err.message, previous: _board.valueOrNull);
     }
     notifyListeners();
+  }
+
+  /// Riders and stops for the run the board leads with.
+  ///
+  /// Failure is swallowed and the card simply omits the numbers: a driver
+  /// needs to see the assignment far more than they need to see its headcount,
+  /// and a manifest that will not load must not take Today down with it.
+  ///
+  /// @param run - the leading run.
+  /// @returns its counts, or null when they could not be read.
+  Future<RunHeadline?> _headlineFor(DriverRun run) async {
+    try {
+      final results = await Future.wait([
+        _trips.manifest(run.id),
+        _trips.stopsFor(run.routeId),
+      ]);
+      final riders = results[0] as List<ManifestRider>;
+      return RunHeadline(
+        riders: riders.length,
+        morning: riders.where((r) => r.direction == 'morning').length,
+        stops: (results[1] as List<String>).length,
+      );
+    } on TrotxiException {
+      return null;
+    }
   }
 
   /// Today in the corridor's clock.

@@ -5,15 +5,20 @@ import 'package:trotxi_driver/core/config/theme/app_spacing.dart';
 import 'package:trotxi_driver/core/config/theme/app_typography.dart';
 import 'package:trotxi_driver/data/trips_repository.dart';
 
-/// One rider on the manifest: photo, name, and whether they are aboard.
+/// One rider on the manifest.
 ///
-/// The photo is the point. The manifest is the "photo pass" fallback, so a
-/// driver can match a face to a seat when a code will not scan, which is why a
-/// rider without one still renders with initials rather than being hidden.
+/// The pill on the right is an ACTION, not a label. That is the file's rule
+/// made concrete: "status and next action must remain glanceable". A driver
+/// scanning the list is looking for who still needs boarding, and a row that
+/// only reports state makes them find the person, then find the button.
 class RiderRow extends StatelessWidget {
-  const RiderRow({super.key, required this.rider, this.onTap});
+  const RiderRow({super.key, required this.rider, this.onAction, this.onTap});
 
   final ManifestRider rider;
+
+  /// Fired by the pill. Null renders it as a plain state chip, which is what a
+  /// boarded rider gets: there is nothing left to do to them.
+  final VoidCallback? onAction;
   final VoidCallback? onTap;
 
   @override
@@ -21,34 +26,94 @@ class RiderRow extends StatelessWidget {
     final colors = context.driverColors;
     final name = rider.name?.trim().isNotEmpty == true ? rider.name!.trim() : 'Unnamed rider';
 
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: AppRadii.circular(AppRadii.md),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(
-            horizontal: AppSpacing.space12,
-            vertical: AppSpacing.space12,
-          ),
-          child: Row(
-            children: [
-              _Avatar(url: rider.avatarUrl, name: name, colors: colors),
-              const SizedBox(width: AppSpacing.space12),
-              Expanded(
-                child: Text(
-                  name,
-                  style: AppTypography.body.copyWith(color: colors.textPrimary),
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-              if (rider.boarded)
-                _StatusPill(label: 'Boarded', color: colors.success, colors: colors)
-              else
-                _StatusPill(label: 'Waiting', color: colors.textSecondary, colors: colors),
-            ],
-          ),
+    return InkWell(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.space12,
+          vertical: AppSpacing.space12,
         ),
+        child: Row(
+          children: [
+            _Avatar(url: rider.avatarUrl, name: name, colors: colors),
+            const SizedBox(width: AppSpacing.space12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    name,
+                    style: AppTypography.label.copyWith(color: colors.textPrimary),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  Text(
+                    _subtitle(rider),
+                    style: AppTypography.caption.copyWith(color: colors.textSecondary),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: AppSpacing.space8),
+            _ActionPill(rider: rider, onAction: onAction, colors: colors),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// "Morning · boarded" or "Morning · reserved", as the frame writes it, with
+  /// a missing photo called out because that is what sends a driver to the
+  /// code instead of the face.
+  static String _subtitle(ManifestRider rider) {
+    final when = rider.direction == 'evening' ? 'Evening' : 'Morning';
+    if (rider.boarded) return '$when · boarded';
+    if (rider.avatarUrl == null) return '$when · no photo';
+    return '$when · reserved';
+  }
+}
+
+class _ActionPill extends StatelessWidget {
+  const _ActionPill({required this.rider, required this.onAction, required this.colors});
+
+  final ManifestRider rider;
+  final VoidCallback? onAction;
+  final AppColors colors;
+
+  @override
+  Widget build(BuildContext context) {
+    final boarded = rider.boarded;
+    final background = boarded ? colors.success : colors.action;
+    final label = boarded ? 'BOARDED' : 'BOARD';
+
+    final pill = Container(
+      constraints: const BoxConstraints(minWidth: 84, minHeight: 36),
+      alignment: Alignment.center,
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.space12,
+        vertical: AppSpacing.space8,
+      ),
+      decoration: BoxDecoration(
+        color: background,
+        borderRadius: AppRadii.circular(AppRadii.full),
+      ),
+      child: Text(
+        label,
+        style: AppTypography.caption.copyWith(color: colors.onAction),
+      ),
+    );
+
+    if (boarded || onAction == null) {
+      return Semantics(label: '$label, no action available', child: pill);
+    }
+    return Semantics(
+      button: true,
+      label: 'Board ${rider.name ?? 'rider'}',
+      child: InkWell(
+        onTap: onAction,
+        borderRadius: AppRadii.circular(AppRadii.full),
+        child: pill,
       ),
     );
   }
@@ -61,6 +126,13 @@ class _Avatar extends StatelessWidget {
   final String name;
   final AppColors colors;
 
+  /// A stable colour per person, so the same rider keeps the same disc all
+  /// shift and a driver can find them by shape before reading the name.
+  Color get _tint {
+    const palette = [0xFF147A3B, 0xFF1769AA, 0xFFB76512, 0xFFB42318, 0xFF5B7896];
+    return Color(palette[name.hashCode.abs() % palette.length]);
+  }
+
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -68,12 +140,9 @@ class _Avatar extends StatelessWidget {
       height: 44,
       clipBehavior: Clip.antiAlias,
       alignment: Alignment.center,
-      decoration: BoxDecoration(
-        color: colors.surfaceSelected,
-        borderRadius: AppRadii.circular(AppRadii.full),
-      ),
+      decoration: BoxDecoration(color: _tint, shape: BoxShape.circle),
       child: url == null
-          ? Text(_initials(name), style: AppTypography.label.copyWith(color: colors.textPrimary))
+          ? Text(_initials(name), style: AppTypography.label.copyWith(color: Colors.white))
           : Image.network(
               url!,
               width: 44,
@@ -81,10 +150,8 @@ class _Avatar extends StatelessWidget {
               fit: BoxFit.cover,
               // A photo that will not load must not blank the row: the seat is
               // still taken and the driver still has to account for it.
-              errorBuilder: (_, _, _) => Text(
-                _initials(name),
-                style: AppTypography.label.copyWith(color: colors.textPrimary),
-              ),
+              errorBuilder: (_, _, _) =>
+                  Text(_initials(name), style: AppTypography.label.copyWith(color: Colors.white)),
             ),
     );
   }
@@ -94,28 +161,5 @@ class _Avatar extends StatelessWidget {
     if (parts.isEmpty) return '?';
     if (parts.length == 1) return parts.first.characters.first.toUpperCase();
     return (parts.first.characters.first + parts.last.characters.first).toUpperCase();
-  }
-}
-
-class _StatusPill extends StatelessWidget {
-  const _StatusPill({required this.label, required this.color, required this.colors});
-
-  final String label;
-  final Color color;
-  final AppColors colors;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: AppSpacing.space8,
-        vertical: AppSpacing.space4,
-      ),
-      decoration: BoxDecoration(
-        borderRadius: AppRadii.circular(AppRadii.full),
-        border: Border.all(color: color),
-      ),
-      child: Text(label, style: AppTypography.caption.copyWith(color: color)),
-    );
   }
 }

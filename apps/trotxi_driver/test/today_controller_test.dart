@@ -25,6 +25,10 @@ class _StubTrips implements TripsRepository {
 
   List<DriverRun> runs;
   String? lastDate;
+  int manifestCalls = 0;
+  int stopsCalls = 0;
+  List<ManifestRider> riders = const [];
+  List<String> stops = const [];
   Object? failWith;
   final started = <String>[];
   final completed = <String>[];
@@ -55,8 +59,29 @@ class _StubTrips implements TripsRepository {
   }
 
   @override
+  Future<List<ManifestRider>> manifest(String runId) async {
+    manifestCalls++;
+    return riders;
+  }
+
+  @override
+  Future<List<String>> stopsFor(String routeId) async {
+    stopsCalls++;
+    return stops;
+  }
+
+  @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
+
+ManifestRider _rider({bool boarded = false, String direction = 'morning'}) => ManifestRider(
+  reservationId: 'r',
+  userId: 'u',
+  name: 'Ama Owusu',
+  avatarUrl: null,
+  boarded: boarded,
+  direction: direction,
+);
 
 void main() {
   test('an empty day is "nothing assigned", not "all done"', () async {
@@ -187,5 +212,36 @@ void main() {
     expect(CorridorTime.hhmm(morning.toLocal()), '06:30');
     expect(CorridorTime.day(evening.toLocal()), '2026-09-10');
   });
-}
 
+  test('counts are fetched for the leading run only', () async {
+    // The card shows riders and stops, which cost a manifest and a route read
+    // each. Doing that for every run would mean four round trips to render a
+    // screen where three of the cards are one line of text.
+    final trips = _StubTrips([
+      _run('morning', hour: 6),
+      _run('evening', hour: 17),
+      _run('night', hour: 21),
+    ])..riders = [_rider(), _rider(direction: 'evening')]
+      ..stops = ['Circle', 'Madina'];
+    final controller = TodayController(trips: trips);
+
+    await controller.load();
+
+    expect(trips.manifestCalls, 1);
+    expect(trips.stopsCalls, 1);
+    expect(controller.board.valueOrNull?.headline?.riders, 2);
+    expect(controller.board.valueOrNull?.headline?.morning, 1);
+    expect(controller.board.valueOrNull?.headline?.stops, 2);
+  });
+
+  test('a manifest that will not load does not take Today down', () async {
+    // A driver needs to see the assignment far more than its headcount.
+    final trips = _StubTrips([_run('morning')]);
+    final controller = TodayController(trips: trips);
+    trips.riders = const [];
+
+    await controller.load();
+
+    expect(controller.board.valueOrNull?.next?.id, 'morning');
+  });
+}

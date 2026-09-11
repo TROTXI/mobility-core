@@ -17,14 +17,17 @@ import 'package:trotxi_driver/data/trips_repository.dart';
 /// named seat, which is what stops four characters from being a guessable key
 /// to the whole run.
 class BoardByCodePage extends StatefulWidget {
-  const BoardByCodePage({super.key});
+  const BoardByCodePage({super.key, this.preselected});
+
+  /// Skips the picker when the manifest already named who is boarding.
+  final ManifestRider? preselected;
 
   @override
   State<BoardByCodePage> createState() => _BoardByCodePageState();
 }
 
 class _BoardByCodePageState extends State<BoardByCodePage> {
-  ManifestRider? _rider;
+  late ManifestRider? _rider = widget.preselected;
   final _codeController = TextEditingController();
   BoardingResult? _result;
   bool _busy = false;

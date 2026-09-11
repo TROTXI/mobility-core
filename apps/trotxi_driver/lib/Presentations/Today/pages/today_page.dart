@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:trotxi_driver/Presentations/Run/pages/run_page.dart';
+import 'package:trotxi_driver/Presentations/Today/widgets/next_run_card.dart';
 import 'package:trotxi_driver/Presentations/Today/widgets/run_card.dart';
 import 'package:trotxi_driver/core/config/theme/app_colors.dart';
 import 'package:trotxi_driver/core/config/theme/app_radii.dart';
@@ -136,29 +137,18 @@ class _TodayPageState extends State<TodayPage> {
         else if (data.isDayDone)
           _DayDone(completed: data.completed.length, colors: colors)
         else ...[
-          if (data.active != null) ...[
-            _SectionLabel(text: 'Running now', colors: colors),
-            const SizedBox(height: AppSpacing.space8),
-            RunCard(
-              run: data.active!,
-              emphasis: RunCardEmphasis.active,
-              primaryLabel: 'End trip',
-              isBusy: controller.busyRunId == data.active!.id,
-              onPrimary: () => controller.complete(data.active!.id),
-              onTap: () => _openRun(context, data.active!),
-            ),
-            const SizedBox(height: AppSpacing.space24),
-          ],
-          if (data.next != null) ...[
-            _SectionLabel(text: 'Next', colors: colors),
-            const SizedBox(height: AppSpacing.space8),
-            RunCard(
-              run: data.next!,
-              emphasis: RunCardEmphasis.next,
-              primaryLabel: 'Start trip',
-              isBusy: controller.busyRunId == data.next!.id,
-              onPrimary: () => controller.start(data.next!.id),
-              onTap: () => _openRun(context, data.next!),
+          // One leading card, whether it is running or about to. The frame gives
+          // the same treatment to both: it is the trip that dominates, and
+          // which verb it takes is a detail inside it.
+          if (data.active != null || data.next != null) ...[
+            NextRunCard(
+              run: (data.active ?? data.next)!,
+              headline: data.headline,
+              isBusy: controller.busyRunId == (data.active ?? data.next)!.id,
+              onPrimary: () => data.active != null
+                  ? controller.complete(data.active!.id)
+                  : controller.start(data.next!.id),
+              onTap: () => _openRun(context, (data.active ?? data.next)!),
             ),
             const SizedBox(height: AppSpacing.space24),
           ],
