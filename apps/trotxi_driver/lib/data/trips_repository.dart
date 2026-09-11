@@ -83,7 +83,7 @@ class RunSummary {
 
 /// The driver's runs, their manifests, and the lifecycle transitions.
 class TripsRepository {
-  TripsRepository({required TrotxiApiClient client}) : _client = client;
+  TripsRepository({required this._client});
 
   final TrotxiApiClient _client;
 

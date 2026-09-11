@@ -40,9 +40,8 @@ class TodayBoard {
 
 /// Today's assignments (prototype frames 14 to 18).
 class TodayController extends ChangeNotifier {
-  TodayController({required TripsRepository trips, DateTime Function()? now})
-    : _trips = trips,
-      _now = now ?? DateTime.now;
+  TodayController({required this._trips, DateTime Function()? now})
+    : _now = now ?? DateTime.now;
 
   final TripsRepository _trips;
 

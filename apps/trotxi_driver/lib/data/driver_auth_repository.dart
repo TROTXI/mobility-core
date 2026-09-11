@@ -23,9 +23,7 @@ class DriverSession {
 /// arrive as the typed exceptions from `trotxi_client`, which the sign-in screen
 /// turns into the states the prototype draws: wrong PIN, locked, suspended.
 class DriverAuthRepository {
-  DriverAuthRepository({required TrotxiApiClient client, required TokenStore tokenStore})
-    : _client = client,
-      _tokenStore = tokenStore;
+  DriverAuthRepository({required this._client, required this._tokenStore});
 
   final TrotxiApiClient _client;
   final TokenStore _tokenStore;

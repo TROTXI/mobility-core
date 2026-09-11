@@ -106,23 +106,27 @@ class _ProfilePageState extends State<ProfilePage> {
               _SectionLabel(text: 'Appearance', colors: colors),
               _Card(
                 colors: colors,
-                child: Column(
-                  children: [
-                    for (final mode in ThemeMode.values)
-                      RadioListTile<ThemeMode>(
-                        value: mode,
-                        groupValue: theme.themeMode,
-                        onChanged: (next) => theme.setThemeMode(next ?? ThemeMode.system),
-                        title: Text(
-                          switch (mode) {
-                            ThemeMode.system => 'Match device',
-                            ThemeMode.light => 'Light',
-                            ThemeMode.dark => 'Dark',
-                          },
-                          style: AppTypography.body.copyWith(color: colors.textPrimary),
+                // RadioGroup owns the selection now; per-tile groupValue and
+                // onChanged were deprecated after Flutter 3.32.
+                child: RadioGroup<ThemeMode>(
+                  groupValue: theme.themeMode,
+                  onChanged: (next) => theme.setThemeMode(next ?? ThemeMode.system),
+                  child: Column(
+                    children: [
+                      for (final mode in ThemeMode.values)
+                        RadioListTile<ThemeMode>(
+                          value: mode,
+                          title: Text(
+                            switch (mode) {
+                              ThemeMode.system => 'Match device',
+                              ThemeMode.light => 'Light',
+                              ThemeMode.dark => 'Dark',
+                            },
+                            style: AppTypography.body.copyWith(color: colors.textPrimary),
+                          ),
                         ),
-                      ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
               const SizedBox(height: AppSpacing.space24),

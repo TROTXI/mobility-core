@@ -41,16 +41,18 @@ class _ScanPageState extends State<ScanPage> {
     if (code == null || code.isEmpty) return;
 
     setState(() => _busy = true);
-    await _scanner.stop();
 
-    final outcome = await context.read<TripsRepository>().scan(
-      pass: code,
-      runId: widget.runId,
-    );
-    if (!mounted) return;
+    // Both read BEFORE any await. Reaching for an inherited widget after an
+    // async gap is reaching into a tree that may have been torn down while the
+    // camera was working.
+    final trips = context.read<TripsRepository>();
+    final run = context.read<RunController>();
+
+    await _scanner.stop();
+    final outcome = await trips.scan(pass: code, runId: widget.runId);
 
     // Only a boarding that actually happened needs the manifest re-read.
-    if (outcome.isAccepted) await context.read<RunController>().refreshManifest();
+    if (outcome.isAccepted) await run.refreshManifest();
     if (!mounted) return;
     setState(() {
       _result = outcome;

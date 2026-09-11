@@ -28,7 +28,7 @@ enum SessionStage {
 ///
 /// Holds no `BuildContext`, so it is testable as a plain Dart object.
 class SessionController extends ChangeNotifier {
-  SessionController({required DriverAuthRepository auth}) : _auth = auth;
+  SessionController({required this._auth});
 
   final DriverAuthRepository _auth;
 

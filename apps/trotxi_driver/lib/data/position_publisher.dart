@@ -30,7 +30,7 @@ enum PositionBlock {
 /// costs riders a stale marker; an exception thrown up into the run screen
 /// would cost the driver the screen they are working from.
 class PositionPublisher {
-  PositionPublisher({required TrotxiApiClient client}) : _client = client;
+  PositionPublisher({required this._client});
 
   final TrotxiApiClient _client;
   StreamSubscription<Position>? _subscription;

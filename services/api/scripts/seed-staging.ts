@@ -158,6 +158,17 @@ async function issueDriverCredential(driver: any): Promise<void> {
   let reset = false;
 
   if (issued.status === 409) {
+    // Already has one. Resetting is NOT the default: this script is run
+    // repeatedly while testing, and a reset revokes every session, so the
+    // silent behaviour would be to sign the tester out of the app they are
+    // holding, every single time.
+    if (process.env.SEED_RESET_PIN !== '1') {
+      console.log('');
+      console.log(`driver: ${driver.fullName} already has a credential; PIN left alone.`);
+      console.log('  Re-run with SEED_RESET_PIN=1 to issue a new one (revokes sessions).');
+      console.log('');
+      return;
+    }
     issued = await api('POST', `/admin/drivers/${driver.id}/credentials/reset-pin`, undefined);
     reset = true;
   }
@@ -179,6 +190,33 @@ async function issueDriverCredential(driver: any): Promise<void> {
 
 /** How many riders to put on each seeded run. */
 const RIDERS_PER_TRIP = Number(process.env.SEED_RIDERS ?? 4);
+
+/**
+ * Riders for the seeded runs.
+ *
+ * Real Ghanaian names rather than "Seed Rider 1.1", because the manifest and
+ * the photo-pass screens are read by a person matching a face to a row. A list
+ * of near-identical placeholders makes it impossible to tell whether the screen
+ * is sorting, truncating or duplicating correctly, and every avatar collapses to
+ * the same initials.
+ *
+ * Deliberately varied: a one-word name, a three-part name, and names long
+ * enough to test truncation on a narrow row.
+ */
+const RIDER_NAMES = [
+  'Ama Owusu',
+  'Kwabena Mensah',
+  'Akosua Frimpong-Boateng',
+  'Yaw Asante',
+  'Abena Serwaa Agyeman',
+  'Kojo Darko',
+  'Efua Nyarko',
+  'Kwaku Boadi',
+  'Adwoa Amankwah',
+  'Esi',
+  'Kofi Anum Quartey',
+  'Naa Dedei Lartey',
+];
 
 /** The fake Paystack client's shared secret (paystack.client.ts). */
 const FAKE_PAYSTACK_SECRET = 'fake-paystack-secret';
@@ -224,12 +262,24 @@ async function seedRiders(
     const direction = scheduled.getUTCHours() < 12 ? 'morning' : 'evening';
 
     for (let i = 0; i < RIDERS_PER_TRIP; i++) {
-      const sub = `seed-rider-${tripIndex}-${i}`;
-      const name = `Seed Rider ${tripIndex + 1}.${i + 1}`;
+      const slot = tripIndex * RIDERS_PER_TRIP + i;
+      const name = RIDER_NAMES[slot % RIDER_NAMES.length]!;
+      // Keyed off the NAME, not the slot. Sign-in only sets a display name when
+      // it CREATES the account — deliberately, since a client must never be able
+      // to rename someone else's — so a slot-keyed id would keep resurrecting
+      // whatever name the first seed run happened to use. Keying on the name
+      // means editing the list above produces the riders it describes.
+      const sub = `seed-rider-${name.toLowerCase().replace(/[^a-z]+/g, '-')}`;
 
       // 1. Sign in through the dev fake verifier.
       const signIn = await api('POST', '/auth/google', {
-        idToken: JSON.stringify({ sub, email: `${sub}@example.test`, name }),
+        idToken: JSON.stringify({
+          sub,
+          // A plausible address derived from the name, so the ops console and
+          // any receipt rendering have something realistic to lay out.
+          email: `${name.toLowerCase().replace(/[^a-z]+/g, '.')}@example.test`,
+          name,
+        }),
       });
       if (signIn.status === 503 || signIn.status === 401) {
         console.log(
@@ -438,20 +488,6 @@ async function main(): Promise<void> {
   }
   console.log(`trips: ${created} created, ${skipped} already present (${DAYS} days)`);
 
-  // Re-read the corridor so the stops are in seq order with their ids, which is
-  // what a rider's pickup and drop-off have to be chosen from.
-  const seeded = must('read route stops', await api('GET', `/routes/${route.id}`));
-  const confirmed = await seedRiders(route, seeded.stops ?? [], todaysTrips);
-  if (confirmed.length > 0) {
-    console.log(`riders: ${confirmed.length} confirmed seat(s) across today's runs`);
-    console.log('');
-    console.log('boarding codes — what a rider reads out at the door:');
-    for (const seat of confirmed) {
-      console.log(`  ${seat.code}  ${seat.name}`);
-    }
-    console.log('');
-  }
-
   // Price the corridor. Idempotent by intent rather than by accident: setting an
   // identical fare would close the current row and open a new one, growing the
   // history with changes that never happened, so re-running only writes when the
@@ -469,6 +505,20 @@ async function main(): Promise<void> {
       }),
     );
     console.log(`fare: set to ${FARE_PESEWAS} pesewas (GHS ${(FARE_PESEWAS / 100).toFixed(2)})`);
+  }
+
+  // Re-read the corridor so the stops are in seq order with their ids, which is
+  // what a rider's pickup and drop-off have to be chosen from.
+  const seeded = must('read route stops', await api('GET', `/routes/${route.id}`));
+  const confirmed = await seedRiders(route, seeded.stops ?? [], todaysTrips);
+  if (confirmed.length > 0) {
+    console.log(`riders: ${confirmed.length} confirmed seat(s) across today's runs`);
+    console.log('');
+    console.log('boarding codes — what a rider reads out at the door:');
+    for (const seat of confirmed) {
+      console.log(`  ${seat.code}  ${seat.name}`);
+    }
+    console.log('');
   }
 
   const finalRoutes = must('verify', await api('GET', '/routes'));

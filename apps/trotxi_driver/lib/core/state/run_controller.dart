@@ -28,9 +28,7 @@ class RunDetail {
 
 /// One run's detail (prototype frames 19 to 24), and its manifest.
 class RunController extends ChangeNotifier {
-  RunController({required TripsRepository trips, required DriverRun run})
-    : _trips = trips,
-      _run = run;
+  RunController({required this._trips, required this._run});
 
   final TripsRepository _trips;
   DriverRun _run;
