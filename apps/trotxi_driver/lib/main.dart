@@ -9,7 +9,7 @@ import 'package:trotxi_driver/core/config/theme/app_theme.dart';
 import 'package:trotxi_driver/core/config/theme/app_theme_controller.dart';
 import 'package:provider/provider.dart';
 import 'package:trotxi_driver/Presentations/Auth/pages/auth_gate.dart';
-import 'package:trotxi_driver/Presentations/Today/pages/today_page.dart';
+import 'package:trotxi_driver/Presentations/Shell/pages/driver_shell.dart';
 import 'package:trotxi_driver/core/state/session_controller.dart';
 import 'package:trotxi_driver/core/state/today_controller.dart';
 import 'package:trotxi_driver/data/driver_auth_repository.dart';
@@ -95,7 +95,7 @@ class _TrotxiDriverAppState extends State<TrotxiDriverApp> {
           theme: AppTheme.lightTheme,
           darkTheme: AppTheme.darkTheme,
           themeMode: theme.themeMode,
-          home: AuthGate(home: (context) => const TodayPage()),
+          home: AuthGate(home: (context) => const DriverShell()),
         ),
       ),
     );

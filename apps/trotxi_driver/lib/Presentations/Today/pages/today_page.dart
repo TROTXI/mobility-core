@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
-import 'package:trotxi_driver/Presentations/Profile/pages/profile_page.dart';
 import 'package:trotxi_driver/Presentations/Run/pages/run_page.dart';
 import 'package:trotxi_driver/Presentations/Today/widgets/run_card.dart';
 import 'package:trotxi_driver/core/config/theme/app_colors.dart';
@@ -39,25 +39,12 @@ class _TodayPageState extends State<TodayPage> {
     final controller = context.watch<TodayController>();
     final board = controller.board;
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Today'),
-        actions: [
-          IconButton(
-            tooltip: 'Profile and settings',
-            icon: const Icon(Icons.person_outline),
-            onPressed: () => Navigator.of(context).push(
-              MaterialPageRoute<void>(builder: (_) => const ProfilePage()),
-            ),
-          ),
-        ],
-      ),
-      body: SafeArea(
-        child: RefreshIndicator(
-          onRefresh: controller.load,
-          child: _body(context, controller, board, colors),
-        ),
-      ),
+    // No Scaffold and no AppBar: the shell owns the identity header and the tab
+    // bar, and a second app bar here would push the screen's own title down
+    // behind one that says the same thing.
+    return RefreshIndicator(
+      onRefresh: controller.load,
+      child: _body(context, controller, board, colors),
     );
   }
 
@@ -109,12 +96,30 @@ class _TodayPageState extends State<TodayPage> {
       );
     }
 
+    final assigned = [
+      if (data.active != null) data.active!,
+      if (data.next != null) data.next!,
+      ...data.later,
+      ...data.completed,
+    ].length;
+
     return ListView(
       padding: const EdgeInsets.symmetric(
         horizontal: AppSpacing.space20,
-        vertical: AppSpacing.space16,
+        vertical: AppSpacing.space8,
       ),
       children: [
+        Text('Today', style: AppTypography.heading1.copyWith(color: colors.textPrimary)),
+        const SizedBox(height: AppSpacing.space4),
+        Text(
+          // "Tuesday, 18 August · 3 trips assigned" in the frame. The count is
+          // everything on the board, finished included: a driver reading "3
+          // trips assigned" at 16:00 means the day they were given, not what is
+          // left of it.
+          '${_longDate(DateTime.now())} · ${assigned == 1 ? '1 trip' : '$assigned trips'} assigned',
+          style: AppTypography.body.copyWith(color: colors.textSecondary),
+        ),
+        const SizedBox(height: AppSpacing.space16),
         if (board is Failure<TodayBoard>) ...[
           _StaleBanner(message: board.message, colors: colors),
           const SizedBox(height: AppSpacing.space16),
@@ -179,6 +184,12 @@ class _TodayPageState extends State<TodayPage> {
     );
   }
 }
+
+/// "Tuesday, 18 August", as the frame writes it.
+///
+/// @param at - the day to render.
+/// @returns the long-form date.
+String _longDate(DateTime at) => DateFormat('EEEE, d MMMM').format(at);
 
 class _SectionLabel extends StatelessWidget {
   const _SectionLabel({required this.text, required this.colors});

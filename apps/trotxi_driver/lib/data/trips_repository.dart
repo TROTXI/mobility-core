@@ -20,6 +20,7 @@ class DriverRun {
     required this.scheduledAt,
     required this.status,
     this.vehicleId,
+    this.vehicleRegistration,
   });
 
   final String id;
@@ -28,6 +29,11 @@ class DriverRun {
   final DateTime scheduledAt;
   final RunStatus status;
   final String? vehicleId;
+
+  /// The plate, once a run has told us which vehicle it is. The header shows it
+  /// beside the driver's name; null until then, because inventing a plate is
+  /// worse than showing none.
+  final String? vehicleRegistration;
 
   bool get isActive => status == RunStatus.active;
   bool get isFinished => status == RunStatus.completed || status == RunStatus.cancelled;
