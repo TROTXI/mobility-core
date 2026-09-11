@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:trotxi_client/trotxi_client.dart';
 import 'package:trotxi_driver/Presentations/Boarding/pages/board_by_code_page.dart';
 import 'package:trotxi_driver/Presentations/Boarding/pages/scan_page.dart';
+import 'package:trotxi_driver/Presentations/Completion/pages/end_run_page.dart';
 import 'package:trotxi_driver/Presentations/Run/pages/manifest_page.dart';
 import 'package:trotxi_driver/Presentations/Run/widgets/boarding_counter.dart';
 import 'package:trotxi_driver/core/config/theme/app_colors.dart';
@@ -296,7 +297,21 @@ class _PrimaryAction extends StatelessWidget {
       onPressed: busy
           ? null
           : () async {
-              await (run.isActive ? controller.complete() : controller.start());
+              // Ending goes through the confirmation flow; starting does not.
+              // Completing is the one irreversible action here, and a stray tap
+              // at the kerb should not close a run with riders still aboard.
+              if (run.isActive) {
+                await Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (_) => ChangeNotifierProvider.value(
+                      value: controller,
+                      child: const EndRunPage(),
+                    ),
+                  ),
+                );
+              } else {
+                await controller.start();
+              }
               await onChanged();
             },
       child: busy

@@ -25,23 +25,3 @@ class AppThemeController extends ChangeNotifier {
     setThemeMode(isDark ? ThemeMode.light : ThemeMode.dark);
   }
 }
-
-class AppThemeControllerScope extends InheritedNotifier<AppThemeController> {
-  const AppThemeControllerScope({
-    super.key,
-    required AppThemeController controller,
-    required super.child,
-  }) : super(notifier: controller);
-
-  static AppThemeController of(BuildContext context) {
-    final controller = maybeOf(context);
-    assert(controller != null, 'No AppThemeControllerScope found in context.');
-    return controller!;
-  }
-
-  static AppThemeController? maybeOf(BuildContext context) {
-    return context
-        .dependOnInheritedWidgetOfExactType<AppThemeControllerScope>()
-        ?.notifier;
-  }
-}

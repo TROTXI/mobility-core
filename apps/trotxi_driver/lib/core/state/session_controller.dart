@@ -38,6 +38,12 @@ class SessionController extends ChangeNotifier {
   SessionStage get stage => _stage;
   DriverSession? get session => _session;
 
+  bool _busy = false;
+
+  /// True while a sign-out is in flight, so the button cannot be tapped twice
+  /// on a depot connection that takes its time.
+  bool get isBusy => _busy;
+
   /// Decide the opening screen from what is stored on the device.
   ///
   /// Asks only whether a token EXISTS, never whether it still works. A driver
@@ -47,6 +53,17 @@ class SessionController extends ChangeNotifier {
   Future<void> restore() async {
     final signedIn = await _auth.hasStoredSession();
     _set(signedIn ? SessionStage.ready : SessionStage.signedOut);
+    if (!signedIn) return;
+
+    // Fill in WHO, after opening the app rather than before. The stage is
+    // already decided, so this cannot hold a driver on a splash screen; it just
+    // means the profile knows their name a moment later instead of calling them
+    // "Driver" for the rest of the shift.
+    final driver = await _auth.currentDriver();
+    if (driver != null) {
+      _session = driver;
+      notifyListeners();
+    }
   }
 
   /// Sign-in succeeded. The driver confirms the account before going further,
@@ -75,9 +92,18 @@ class SessionController extends ChangeNotifier {
   /// Clears locally whatever the server says: a depot with no signal is exactly
   /// when someone hands the phone to the next driver.
   Future<void> signOut() async {
-    await _auth.signOut();
-    _session = null;
-    _set(SessionStage.signedOut);
+    _busy = true;
+    notifyListeners();
+    try {
+      await _auth.signOut();
+    } finally {
+      _busy = false;
+      _session = null;
+      _set(SessionStage.signedOut);
+      // _set only notifies on a stage CHANGE, and signing out from the
+      // signed-out stage is a no-op there, so the busy flag needs its own.
+      notifyListeners();
+    }
   }
 
   /// Move to a stage, notifying only on a real change so a rebuild is never

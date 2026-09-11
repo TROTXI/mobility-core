@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:trotxi_driver/Presentations/Profile/pages/profile_page.dart';
 import 'package:trotxi_driver/Presentations/Run/pages/run_page.dart';
 import 'package:trotxi_driver/Presentations/Today/widgets/run_card.dart';
 import 'package:trotxi_driver/core/config/theme/app_colors.dart';
@@ -8,7 +9,6 @@ import 'package:trotxi_driver/core/config/theme/app_spacing.dart';
 import 'package:trotxi_driver/core/config/theme/app_typography.dart';
 import 'package:trotxi_driver/core/state/loadable.dart';
 import 'package:trotxi_driver/core/state/run_controller.dart';
-import 'package:trotxi_driver/core/state/session_controller.dart';
 import 'package:trotxi_driver/core/state/today_controller.dart';
 import 'package:trotxi_driver/data/trips_repository.dart';
 
@@ -44,9 +44,11 @@ class _TodayPageState extends State<TodayPage> {
         title: const Text('Today'),
         actions: [
           IconButton(
-            tooltip: 'Sign out',
-            icon: const Icon(Icons.logout),
-            onPressed: () => context.read<SessionController>().signOut(),
+            tooltip: 'Profile and settings',
+            icon: const Icon(Icons.person_outline),
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(builder: (_) => const ProfilePage()),
+            ),
           ),
         ],
       ),

@@ -43,6 +43,34 @@ class DriverAuthRepository {
     return token != null && token.isNotEmpty;
   }
 
+  /// Who this device is signed in as.
+  ///
+  /// Needed because a restored session only proves a token EXISTS; it carries
+  /// no name. Without this the profile screen greets a driver who has been
+  /// using the app all shift as "Driver", which reads like the app has lost
+  /// track of them.
+  ///
+  /// @returns the session, or null when the stored token is no longer good.
+  Future<DriverSession?> currentDriver() async {
+    try {
+      final response = await _client.getAuthApi().meGet();
+      final user = response.data;
+      if (user == null) return null;
+      return DriverSession(
+        // The user id, not the driver id: /me knows nothing about the fleet
+        // record. Nothing on the profile screen needs the driver id, and
+        // inventing one here would be a lie waiting to be used.
+        driverId: user.id,
+        fullName: user.displayName,
+        // A restored session is by definition past the forced change: the
+        // driver could not have reached this state without clearing it.
+        mustChangePin: false,
+      );
+    } on DioException {
+      return null;
+    }
+  }
+
   /// Sign in with the code and PIN operations issued.
   ///
   /// @param driverCode - the code as typed; the server normalises case and the

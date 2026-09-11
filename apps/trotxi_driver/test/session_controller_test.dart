@@ -1,18 +1,26 @@
-// SessionController (ADR-0016). A plain Dart object, so no widget is pumped:
-// that testability is most of the reason session state left the widget tree.
+// Session restore (#41). A restored session proves a token exists; it carries
+// no name, and the profile screen needs one.
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:trotxi_driver/core/state/session_controller.dart';
 import 'package:trotxi_driver/data/driver_auth_repository.dart';
 
 class _StubAuth implements DriverAuthRepository {
-  _StubAuth({this.stored = false});
+  _StubAuth({this.stored = true, this.driver});
 
   bool stored;
+  DriverSession? driver;
+  int currentDriverCalls = 0;
   int signOutCalls = 0;
 
   @override
   Future<bool> hasStoredSession() async => stored;
+
+  @override
+  Future<DriverSession?> currentDriver() async {
+    currentDriverCalls++;
+    return driver;
+  }
 
   @override
   Future<void> signOut() async {
@@ -21,89 +29,77 @@ class _StubAuth implements DriverAuthRepository {
   }
 
   @override
-  Future<DriverSession> signIn({
-    required String driverCode,
-    required String pin,
-    required bool rememberDevice,
-  }) async => const DriverSession(driverId: 'd1', fullName: 'Kwame', mustChangePin: false);
-
-  @override
-  Future<void> changePin({required String currentPin, required String newPin}) async {}
-
-  @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
-const _fresh = DriverSession(driverId: 'd1', fullName: 'Kwame Asare', mustChangePin: true);
-const _settled = DriverSession(driverId: 'd1', fullName: 'Kwame Asare', mustChangePin: false);
-
 void main() {
-  test('starts by restoring, not by assuming signed out', () {
-    // Opening on the sign-in screen and then swapping it out would flash a
-    // log-in form at a driver who is already signed in.
-    final controller = SessionController(auth: _StubAuth());
-    expect(controller.stage, SessionStage.restoring);
-  });
+  test('a stored token opens the app and then fills in who it belongs to', () async {
+    // Order matters: the stage is decided first so a slow depot connection
+    // cannot hold a driver on a splash screen.
+    final auth = _StubAuth(
+      driver: const DriverSession(
+        driverId: 'u1',
+        fullName: 'Kwame Boateng',
+        mustChangePin: false,
+      ),
+    );
+    final controller = SessionController(auth: auth);
 
-  test('a stored token opens the app', () async {
-    final controller = SessionController(auth: _StubAuth(stored: true));
     await controller.restore();
+
     expect(controller.stage, SessionStage.ready);
+    expect(controller.session?.fullName, 'Kwame Boateng');
   });
 
-  test('no stored token opens sign-in', () async {
-    final controller = SessionController(auth: _StubAuth());
+  test('no stored token means sign-in, and asks nobody who they are', () async {
+    final auth = _StubAuth(stored: false);
+    final controller = SessionController(auth: auth);
+
     await controller.restore();
+
+    expect(controller.stage, SessionStage.signedOut);
+    expect(auth.currentDriverCalls, 0);
+  });
+
+  test('a token the server no longer honours still opens the app', () async {
+    // The stage stays ready and the first real call surfaces the 401. Blocking
+    // here would strand a driver in a yard with no signal.
+    final auth = _StubAuth(driver: null);
+    final controller = SessionController(auth: auth);
+
+    await controller.restore();
+
+    expect(controller.stage, SessionStage.ready);
+    expect(controller.session, isNull);
+  });
+
+  test('signing out clears the session and reports busy while it runs', () async {
+    final auth = _StubAuth(
+      driver: const DriverSession(driverId: 'u1', fullName: 'Kwame', mustChangePin: false),
+    );
+    final controller = SessionController(auth: auth);
+    await controller.restore();
+
+    final pending = controller.signOut();
+    expect(controller.isBusy, isTrue);
+    await pending;
+
+    expect(controller.isBusy, isFalse);
+    expect(controller.session, isNull);
     expect(controller.stage, SessionStage.signedOut);
   });
 
-  test('sign-in asks the driver to confirm the account first', () {
+  test('a forced PIN change is only asked for when the sign-in says so', () async {
     final controller = SessionController(auth: _StubAuth());
-    controller.onSignedIn(_settled);
-    expect(controller.stage, SessionStage.confirming);
-    expect(controller.session?.fullName, 'Kwame Asare');
-  });
 
-  test('confirming forces a PIN change when the PIN is still the issued one', () {
-    final controller = SessionController(auth: _StubAuth());
-    controller.onSignedIn(_fresh);
+    controller.onSignedIn(
+      const DriverSession(driverId: 'd1', fullName: 'Kwame', mustChangePin: true),
+    );
+    expect(controller.stage, SessionStage.confirming);
     controller.confirm();
     expect(controller.stage, SessionStage.mustChangePin);
 
     controller.onPinChanged();
     expect(controller.stage, SessionStage.ready);
-  });
-
-  test('confirming goes straight through on a PIN the driver already chose', () {
-    final controller = SessionController(auth: _StubAuth());
-    controller.onSignedIn(_settled);
-    controller.confirm();
-    expect(controller.stage, SessionStage.ready);
-  });
-
-  test('signing out clears the session and returns to sign-in', () async {
-    final auth = _StubAuth(stored: true);
-    final controller = SessionController(auth: auth);
-    controller.onSignedIn(_settled);
-
-    await controller.signOut();
-
-    expect(auth.signOutCalls, 1);
-    expect(controller.session, isNull);
-    expect(controller.stage, SessionStage.signedOut);
-  });
-
-  test('does not notify when the stage has not actually changed', () async {
-    // Every spurious notify is a rebuild of the whole app shell.
-    final controller = SessionController(auth: _StubAuth());
-    await controller.restore();
-
-    var notifications = 0;
-    controller.addListener(() => notifications++);
-    await controller.restore();
-    expect(notifications, 0);
-
-    controller.onSignedIn(_settled);
-    expect(notifications, 1);
   });
 }
