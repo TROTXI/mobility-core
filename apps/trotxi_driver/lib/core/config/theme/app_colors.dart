@@ -10,37 +10,42 @@ import 'package:flutter/material.dart';
 /// Naming is `role + weight`, so a designer changing "the 700 navy" changes one
 /// line here rather than a search across screens.
 abstract final class AppPrimitiveColors {
-  // Navy — the app's ground in dark, and its ink in light.
-  static const navy950 = Color(0xFF060F1C);
-  static const navy900 = Color(0xFF0B1220);
-  static const navy800 = Color(0xFF0B1C30);
-  static const navy700 = Color(0xFF142438);
-  static const navy600 = Color(0xFF1B3350);
-  static const navy500 = Color(0xFF27466B);
+  // Read from the file's own "02 — Driver Colour System" page via the Figma
+  // API, not eyedropped. Its stated intent: "Muted off-blue signals brand and
+  // action. Semantic status colours remain distinct and are used only for
+  // operational meaning."
 
-  // Steel — borders, dividers and secondary text across both themes.
-  static const steel400 = Color(0xFF6E7A8A);
-  static const steel300 = Color(0xFF8FA3B8);
-  static const steel200 = Color(0xFFBDC9D8);
-  static const steel100 = Color(0xFFE2E8F0);
-  static const steel50 = Color(0xFFF1F5F9);
+  // Blue-black — navigation, structure, text hierarchy, dark surfaces.
+  static const ink900 = Color(0xFF09131D); // dark page
+  static const ink800 = Color(0xFF0E1B28); // dark surface
+  static const ink700 = Color(0xFF152235); // light text primary
+  static const ink600 = Color(0xFF466681); // footnote / muted
+  static const ink500 = Color(0xFF46596D); // light text secondary
 
-  // Periwinkle — the primary action in dark, where a navy button would vanish.
-  static const periwinkle300 = Color(0xFFA8C4E0);
-  static const periwinkle200 = Color(0xFFC7DAEE);
+  // Muted off-blue — the primary action, in BOTH themes. Not navy in light and
+  // something else in dark: the file's rule is one action colour per mode of
+  // the same hue, so a driver learns one shape of "this is the button".
+  static const action = Color(0xFF5B7896);
+  static const actionDark = Color(0xFF7A9AB8);
 
-  // Ghana green — Trotxi's accent. Live location, boarded riders, success.
-  static const green700 = Color(0xFF006B3F);
-  static const green600 = Color(0xFF008751);
-  static const green500 = Color(0xFF00A651);
-  static const green400 = Color(0xFF22C55E);
+  // Surfaces and text on the light side.
+  static const paper = Color(0xFFF7F9FB); // light page
+  static const paperRaised = Color(0xFFEDF2F6); // light surface
+  static const mist = Color(0xFFBAC5D0); // dark text secondary
+  static const frost = Color(0xFFF2F5F8); // dark text primary
 
-  static const amber500 = Color(0xFFF59E0B);
-  static const red600 = Color(0xFFDC2626);
-  static const red500 = Color(0xFFEF4444);
+  // Status. Reserved for operational meaning, never decoration: green is
+  // "verified success, live connectivity and completed boarding".
+  static const successLight = Color(0xFF147A3B);
+  static const successDark = Color(0xFF4FD37A);
+  static const errorLight = Color(0xFFB42318);
+  static const errorDark = Color(0xFFFF776B);
+  static const infoLight = Color(0xFF1769AA);
+  static const infoDark = Color(0xFF64B5F6);
+  static const warningLight = Color(0xFFB76512);
+  static const warningDark = Color(0xFFFF9D3D);
 
   static const white = Color(0xFFFFFFFF);
-  static const pageWhite = Color(0xFFF8F9FF);
 }
 
 /// Semantic colour roles, resolved per theme.
@@ -67,6 +72,7 @@ class AppColors extends ThemeExtension<AppColors> {
     required this.onAction,
     required this.live,
     required this.success,
+    required this.info,
     required this.warning,
     required this.danger,
     required this.scanTrack,
@@ -101,6 +107,10 @@ class AppColors extends ThemeExtension<AppColors> {
   /// "Location sharing live" and other in-progress affordances.
   final Color live;
   final Color success;
+
+  /// Informational, never success or warning. The file keeps these four apart
+  /// deliberately: they carry operational meaning, not emphasis.
+  final Color info;
   final Color warning;
   final Color danger;
 
@@ -110,46 +120,50 @@ class AppColors extends ThemeExtension<AppColors> {
 
   /// The light theme's roles, from the "Phone prototype — Light" frames.
   static const light = AppColors(
-    page: AppPrimitiveColors.pageWhite,
+    page: AppPrimitiveColors.paper,
     surface: AppPrimitiveColors.white,
     surfaceElevated: AppPrimitiveColors.white,
-    surfaceSelected: AppPrimitiveColors.steel50,
-    border: AppPrimitiveColors.steel100,
-    borderStrong: AppPrimitiveColors.steel200,
-    textPrimary: AppPrimitiveColors.navy800,
-    textSecondary: AppPrimitiveColors.steel400,
+    surfaceSelected: AppPrimitiveColors.paperRaised,
+    border: AppPrimitiveColors.paperRaised,
+    borderStrong: AppPrimitiveColors.mist,
+    textPrimary: AppPrimitiveColors.ink700,
+    textSecondary: AppPrimitiveColors.ink500,
+    // The file's contrast rule, verbatim: "muted off-blue CTAs use white text".
     textInverse: AppPrimitiveColors.white,
-    action: AppPrimitiveColors.navy800,
+    action: AppPrimitiveColors.action,
     onAction: AppPrimitiveColors.white,
-    live: AppPrimitiveColors.green600,
-    success: AppPrimitiveColors.green600,
-    warning: AppPrimitiveColors.amber500,
-    danger: AppPrimitiveColors.red600,
-    scanTrack: AppPrimitiveColors.steel50,
-    scanTrackBorder: AppPrimitiveColors.steel100,
+    live: AppPrimitiveColors.successLight,
+    success: AppPrimitiveColors.successLight,
+    info: AppPrimitiveColors.infoLight,
+    warning: AppPrimitiveColors.warningLight,
+    danger: AppPrimitiveColors.errorLight,
+    scanTrack: AppPrimitiveColors.paperRaised,
+    scanTrackBorder: AppPrimitiveColors.mist,
   );
 
   /// The dark theme's roles, from the "Phone prototype — Dark" frames. Dark is
   /// the one drivers will actually use: these screens are read at 05:40 and
   /// again after dusk, mounted on a windscreen.
   static const dark = AppColors(
-    page: AppPrimitiveColors.navy900,
-    surface: AppPrimitiveColors.navy800,
-    surfaceElevated: AppPrimitiveColors.navy700,
-    surfaceSelected: AppPrimitiveColors.navy600,
-    border: AppPrimitiveColors.navy600,
-    borderStrong: AppPrimitiveColors.navy500,
-    textPrimary: AppPrimitiveColors.white,
-    textSecondary: AppPrimitiveColors.steel300,
-    textInverse: AppPrimitiveColors.navy900,
-    action: AppPrimitiveColors.periwinkle300,
-    onAction: AppPrimitiveColors.navy900,
-    live: AppPrimitiveColors.green400,
-    success: AppPrimitiveColors.green500,
-    warning: AppPrimitiveColors.amber500,
-    danger: AppPrimitiveColors.red500,
-    scanTrack: AppPrimitiveColors.navy950,
-    scanTrackBorder: AppPrimitiveColors.navy600,
+    page: AppPrimitiveColors.ink900,
+    surface: AppPrimitiveColors.ink800,
+    surfaceElevated: AppPrimitiveColors.ink800,
+    surfaceSelected: AppPrimitiveColors.ink700,
+    border: AppPrimitiveColors.ink700,
+    borderStrong: AppPrimitiveColors.ink600,
+    textPrimary: AppPrimitiveColors.frost,
+    textSecondary: AppPrimitiveColors.mist,
+    textInverse: AppPrimitiveColors.ink900,
+    action: AppPrimitiveColors.actionDark,
+    // Blue-black on the lighter off-blue, the other half of the contrast rule.
+    onAction: AppPrimitiveColors.ink900,
+    live: AppPrimitiveColors.successDark,
+    success: AppPrimitiveColors.successDark,
+    info: AppPrimitiveColors.infoDark,
+    warning: AppPrimitiveColors.warningDark,
+    danger: AppPrimitiveColors.errorDark,
+    scanTrack: AppPrimitiveColors.ink900,
+    scanTrackBorder: AppPrimitiveColors.ink700,
   );
 
   @override
@@ -167,6 +181,7 @@ class AppColors extends ThemeExtension<AppColors> {
     Color? onAction,
     Color? live,
     Color? success,
+    Color? info,
     Color? warning,
     Color? danger,
     Color? scanTrack,
@@ -186,6 +201,7 @@ class AppColors extends ThemeExtension<AppColors> {
       onAction: onAction ?? this.onAction,
       live: live ?? this.live,
       success: success ?? this.success,
+      info: info ?? this.info,
       warning: warning ?? this.warning,
       danger: danger ?? this.danger,
       scanTrack: scanTrack ?? this.scanTrack,
@@ -210,6 +226,7 @@ class AppColors extends ThemeExtension<AppColors> {
       onAction: Color.lerp(onAction, other.onAction, t)!,
       live: Color.lerp(live, other.live, t)!,
       success: Color.lerp(success, other.success, t)!,
+      info: Color.lerp(info, other.info, t)!,
       warning: Color.lerp(warning, other.warning, t)!,
       danger: Color.lerp(danger, other.danger, t)!,
       scanTrack: Color.lerp(scanTrack, other.scanTrack, t)!,

@@ -96,4 +96,36 @@ void main() {
       expect(notifications, 1);
     });
   });
+
+  group('values come from the file, not from guesswork', () {
+    // Read from "02 — Driver Colour System" via the Figma API. Pinned because
+    // the first pass at this app invented a navy/periwinkle palette that looked
+    // plausible and was wrong in every role.
+    test('the action colour is the muted off-blue, in both modes', () {
+      expect(AppColors.light.action, const Color(0xFF5B7896));
+      expect(AppColors.dark.action, const Color(0xFF7A9AB8));
+    });
+
+    test('the contrast rule holds: white on the CTA in light, ink in dark', () {
+      expect(AppColors.light.onAction, const Color(0xFFFFFFFF));
+      expect(AppColors.dark.onAction, const Color(0xFF09131D));
+    });
+
+    test('status colours are the four the file defines, kept apart', () {
+      expect(AppColors.light.success, const Color(0xFF147A3B));
+      expect(AppColors.light.danger, const Color(0xFFB42318));
+      expect(AppColors.light.info, const Color(0xFF1769AA));
+      expect(AppColors.light.warning, const Color(0xFFB76512));
+
+      expect(AppColors.dark.success, const Color(0xFF4FD37A));
+      expect(AppColors.dark.danger, const Color(0xFFFF776B));
+      expect(AppColors.dark.info, const Color(0xFF64B5F6));
+      expect(AppColors.dark.warning, const Color(0xFFFF9D3D));
+    });
+
+    test('grounds match the file', () {
+      expect(AppColors.light.page, const Color(0xFFF7F9FB));
+      expect(AppColors.dark.page, const Color(0xFF09131D));
+    });
+  });
 }
