@@ -14,23 +14,34 @@ enum DriverTab { today, trip, scan, manifest, me }
 /// single stop, and making that a back-button journey costs taps at exactly the
 /// moment there is a queue at the door.
 ///
-/// Trip and Scan are disabled with no run under way. They are drawn rather than
-/// hidden so the bar never changes shape mid-shift, which is what lets a driver
-/// hit a target without looking.
+/// Trip and Manifest open as soon as the day has a run, started or not: a
+/// driver checks who is booked before they pull out, and a manifest you cannot
+/// read until you have already started is a manifest read too late.
+///
+/// Scan is the one that needs a run under way, because a boarding recorded
+/// against a trip that never started leaves a run with no start time and no
+/// GPS trace, which the lifecycle then refuses to complete.
+///
+/// Disabled tabs are drawn rather than hidden so the bar never changes shape
+/// mid-shift, which is what lets a driver hit a target without looking.
 class DriverNav extends StatelessWidget {
   const DriverNav({
     super.key,
     required this.current,
     required this.onSelect,
-    this.hasActiveRun = false,
+    this.hasRun = false,
+    this.canScan = false,
     this.tripHasAlert = false,
   });
 
   final DriverTab current;
   final ValueChanged<DriverTab> onSelect;
 
-  /// Whether a run is open. Gates the run-scoped tabs.
-  final bool hasActiveRun;
+  /// Whether the day has a run at all. Gates Trip and Manifest.
+  final bool hasRun;
+
+  /// Whether a run is actually under way. Gates Scan alone.
+  final bool canScan;
 
   /// The dot the frames put beside Trip when the run needs attention.
   final bool tripHasAlert;
@@ -69,7 +80,7 @@ class DriverNav extends StatelessWidget {
               current: current,
               onSelect: onSelect,
               colors: colors,
-              enabled: hasActiveRun,
+              enabled: hasRun,
               alert: tripHasAlert,
             ),
             _Item(
@@ -79,7 +90,7 @@ class DriverNav extends StatelessWidget {
               current: current,
               onSelect: onSelect,
               colors: colors,
-              enabled: hasActiveRun,
+              enabled: canScan,
             ),
             _Item(
               tab: DriverTab.manifest,
@@ -88,7 +99,7 @@ class DriverNav extends StatelessWidget {
               current: current,
               onSelect: onSelect,
               colors: colors,
-              enabled: hasActiveRun,
+              enabled: hasRun,
             ),
             _Item(
               tab: DriverTab.me,

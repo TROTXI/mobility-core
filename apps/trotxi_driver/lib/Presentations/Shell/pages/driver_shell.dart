@@ -63,9 +63,11 @@ class _DriverShellState extends State<DriverShell> {
   @override
   Widget build(BuildContext context) {
     final colors = context.driverColors;
-    // The run-scoped tabs are only reachable while something is running, and
-    // the header only knows a vehicle once a run has named one.
-    final active = context.watch<TodayController>().board.valueOrNull?.active;
+    final board = context.watch<TodayController>().board.valueOrNull;
+    // Trip and Manifest follow whichever run the day leads with, started or
+    // not. Scan needs one actually under way.
+    final leading = board?.active ?? board?.next;
+    final isRunning = board?.active != null;
 
     return Scaffold(
       backgroundColor: colors.page,
@@ -73,33 +75,34 @@ class _DriverShellState extends State<DriverShell> {
         bottom: false,
         child: Column(
           children: [
-            DriverHeader(vehicleRegistration: active?.vehicleRegistration),
-            Expanded(child: _body(active)),
+            DriverHeader(vehicleRegistration: leading?.vehicleRegistration),
+            Expanded(child: _body(leading)),
           ],
         ),
       ),
       bottomNavigationBar: DriverNav(
         current: _tab,
-        hasActiveRun: active != null,
+        hasRun: leading != null,
+        canScan: isRunning,
         onSelect: (tab) => setState(() => _tab = tab),
       ),
     );
   }
 
-  Widget _body(DriverRun? active) {
+  Widget _body(DriverRun? leading) {
     if (_tab == DriverTab.today) return const TodayPage();
     if (_tab == DriverTab.me) return const ProfilePage();
 
-    final run = _controllerFor(active);
-    // The nav disables these without a run, so this only happens if one ends
-    // while the driver is standing on its tab.
+    final run = _controllerFor(leading);
+    // The nav disables these without a run, so this only happens if the day's
+    // last run finishes while the driver is standing on one of its tabs.
     if (run == null) return const TodayPage();
 
     return ChangeNotifierProvider<RunController>.value(
       value: run,
       child: switch (_tab) {
-        DriverTab.trip => RunPage(run: active!),
-        DriverTab.scan => ScanPage(runId: active!.id),
+        DriverTab.trip => RunPage(run: leading!),
+        DriverTab.scan => ScanPage(runId: leading!.id),
         _ => const ManifestPage(),
       },
     );
