@@ -25,7 +25,9 @@ class ScanPage extends StatefulWidget {
 }
 
 class _ScanPageState extends State<ScanPage> {
-  final _scanner = MobileScannerController(detectionSpeed: DetectionSpeed.noDuplicates);
+  final _scanner = MobileScannerController(
+    detectionSpeed: DetectionSpeed.noDuplicates,
+  );
   BoardingResult? _result;
   bool _busy = false;
 
@@ -67,12 +69,8 @@ class _ScanPageState extends State<ScanPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Scan rider pass')),
-      body: SafeArea(
-        child: _result == null ? _viewfinder(context) : _outcome(context, _result!),
-      ),
-    );
+    // A tab on the shell; no Scaffold or app bar of its own.
+    return _result == null ? _viewfinder(context) : _outcome(context, _result!);
   }
 
   Widget _viewfinder(BuildContext context) {
@@ -167,7 +165,10 @@ class _ScanPageState extends State<ScanPage> {
             style: AppTypography.body.copyWith(color: colors.textSecondary),
           ),
           const Spacer(),
-          ElevatedButton(onPressed: _scanAgain, child: const Text('Scan next rider')),
+          ElevatedButton(
+            onPressed: _scanAgain,
+            child: const Text('Scan next rider'),
+          ),
           const SizedBox(height: AppSpacing.space12),
           OutlinedButton(
             onPressed: () => _openCodeEntry(context),
@@ -207,7 +208,11 @@ class _CameraUnavailable extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.no_photography_outlined, size: 48, color: colors.textSecondary),
+            Icon(
+              Icons.no_photography_outlined,
+              size: 48,
+              color: colors.textSecondary,
+            ),
             const SizedBox(height: AppSpacing.space16),
             Text(
               denied ? 'Camera access is off' : 'Camera unavailable',

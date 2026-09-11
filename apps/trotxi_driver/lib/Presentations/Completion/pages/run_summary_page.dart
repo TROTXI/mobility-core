@@ -83,8 +83,16 @@ class _RunSummaryPageState extends State<RunSummaryPage> {
             else if (summary == null)
               const Center(child: CircularProgressIndicator())
             else ...[
-              _Stat(label: 'Boarded', value: '${summary.boarded}', colors: colors),
-              _Stat(label: 'Not boarded', value: '${summary.notBoarded}', colors: colors),
+              _Stat(
+                label: 'Boarded',
+                value: '${summary.boarded}',
+                colors: colors,
+              ),
+              _Stat(
+                label: 'Not boarded',
+                value: '${summary.notBoarded}',
+                colors: colors,
+              ),
               if (summary.duration != null)
                 _Stat(
                   label: 'Time on the road',
@@ -112,7 +120,8 @@ class _RunSummaryPageState extends State<RunSummaryPage> {
               // popUntil rather than pop: the run screen behind this belongs to
               // a trip that is now finished, and dropping the driver back onto
               // it would offer actions the API will refuse.
-              onPressed: () => Navigator.of(context).popUntil((route) => route.isFirst),
+              onPressed: () =>
+                  Navigator.of(context).popUntil((route) => route.isFirst),
               child: const Text('Back to today'),
             ),
           ],
@@ -147,8 +156,14 @@ class _Stat extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label, style: AppTypography.body.copyWith(color: colors.textSecondary)),
-          Text(value, style: AppTypography.title.copyWith(color: colors.textPrimary)),
+          Text(
+            label,
+            style: AppTypography.body.copyWith(color: colors.textSecondary),
+          ),
+          Text(
+            value,
+            style: AppTypography.title.copyWith(color: colors.textPrimary),
+          ),
         ],
       ),
     );

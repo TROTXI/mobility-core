@@ -40,7 +40,9 @@ class RunCard extends StatelessWidget {
         color: prominent ? colors.surfaceSelected : colors.surface,
         borderRadius: AppRadii.circular(AppRadii.lg),
         border: Border.all(
-          color: emphasis == RunCardEmphasis.active ? colors.live : colors.border,
+          color: emphasis == RunCardEmphasis.active
+              ? colors.live
+              : colors.border,
           width: emphasis == RunCardEmphasis.active ? 2 : 1,
         ),
       ),
@@ -58,24 +60,33 @@ class RunCard extends StatelessWidget {
                   children: [
                     Text(
                       CorridorTime.hhmm(run.scheduledAt),
-                      style: AppTypography.runTitle.copyWith(color: colors.textPrimary),
+                      style: AppTypography.runTitle.copyWith(
+                        color: colors.textPrimary,
+                      ),
                     ),
                     const SizedBox(width: AppSpacing.space8),
                     Expanded(
                       child: Text(
                         run.routeName,
-                        style: AppTypography.runTitle.copyWith(color: colors.textPrimary),
+                        style: AppTypography.runTitle.copyWith(
+                          color: colors.textPrimary,
+                        ),
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
-                    if (emphasis == RunCardEmphasis.active) _LivePill(colors: colors),
+                    if (emphasis == RunCardEmphasis.active)
+                      _LivePill(colors: colors),
                   ],
                 ),
                 if (run.isFinished) ...[
                   const SizedBox(height: AppSpacing.space4),
                   Text(
-                    run.status == RunStatus.completed ? 'Completed' : 'Cancelled',
-                    style: AppTypography.caption.copyWith(color: colors.textSecondary),
+                    run.status == RunStatus.completed
+                        ? 'Completed'
+                        : 'Cancelled',
+                    style: AppTypography.caption.copyWith(
+                      color: colors.textSecondary,
+                    ),
                   ),
                 ],
                 if (onPrimary != null) ...[

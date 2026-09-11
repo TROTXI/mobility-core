@@ -48,7 +48,9 @@ class _BoardByCodePageState extends State<BoardByCodePage> {
       code: _codeController.text,
     );
     if (!mounted) return;
-    if (outcome.isAccepted) await context.read<RunController>().refreshManifest();
+    if (outcome.isAccepted) {
+      await context.read<RunController>().refreshManifest();
+    }
     if (!mounted) return;
     setState(() {
       _result = outcome;
@@ -60,7 +62,8 @@ class _BoardByCodePageState extends State<BoardByCodePage> {
   @override
   Widget build(BuildContext context) {
     final colors = context.driverColors;
-    final waiting = context.watch<RunController>().detail.valueOrNull?.waiting ?? [];
+    final waiting =
+        context.watch<RunController>().detail.valueOrNull?.waiting ?? [];
 
     return Scaffold(
       appBar: AppBar(title: const Text('Board by code')),
@@ -117,7 +120,11 @@ class _BoardByCodePageState extends State<BoardByCodePage> {
     );
   }
 
-  Widget _enterCode(BuildContext context, ManifestRider rider, AppColors colors) {
+  Widget _enterCode(
+    BuildContext context,
+    ManifestRider rider,
+    AppColors colors,
+  ) {
     final result = _result;
     return ListView(
       padding: const EdgeInsets.all(AppSpacing.space20),
@@ -179,7 +186,9 @@ class _BoardByCodePageState extends State<BoardByCodePage> {
                 const SizedBox(height: AppSpacing.space4),
                 Text(
                   result.detail,
-                  style: AppTypography.bodySmall.copyWith(color: colors.textSecondary),
+                  style: AppTypography.bodySmall.copyWith(
+                    color: colors.textSecondary,
+                  ),
                 ),
               ],
             ),

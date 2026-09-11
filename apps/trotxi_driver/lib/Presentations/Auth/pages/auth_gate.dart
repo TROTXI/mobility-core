@@ -42,7 +42,10 @@ class _AuthGateState extends State<AuthGate> {
 
     return switch (session.stage) {
       SessionStage.restoring => const _Splash(),
-      SessionStage.signedOut => SignInPage(auth: auth, onSignedIn: session.onSignedIn),
+      SessionStage.signedOut => SignInPage(
+        auth: auth,
+        onSignedIn: session.onSignedIn,
+      ),
       SessionStage.confirming => ConfirmAccountPage(
         session: session.session!,
         auth: auth,

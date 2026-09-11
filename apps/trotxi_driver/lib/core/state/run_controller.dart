@@ -5,7 +5,11 @@ import 'package:trotxi_driver/data/trips_repository.dart';
 
 /// Everything one run's screen needs, loaded together.
 class RunDetail {
-  const RunDetail({required this.run, required this.riders, required this.stops});
+  const RunDetail({
+    required this.run,
+    required this.riders,
+    required this.stops,
+  });
 
   final DriverRun run;
   final List<ManifestRider> riders;

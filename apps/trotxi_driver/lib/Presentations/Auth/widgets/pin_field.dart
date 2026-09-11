@@ -138,7 +138,10 @@ class _PinBox extends StatelessWidget {
       decoration: BoxDecoration(
         color: colors.surface,
         borderRadius: AppRadii.circular(AppRadii.md),
-        border: Border.all(color: borderColor, width: focused || hasError ? 2 : 1),
+        border: Border.all(
+          color: borderColor,
+          width: focused || hasError ? 2 : 1,
+        ),
       ),
       child: filled
           // A dot, not the digit: this is typed in a vehicle with people
@@ -151,7 +154,10 @@ class _PinBox extends StatelessWidget {
                 shape: BoxShape.circle,
               ),
             )
-          : Text('', style: AppTypography.title.copyWith(color: colors.textSecondary)),
+          : Text(
+              '',
+              style: AppTypography.title.copyWith(color: colors.textSecondary),
+            ),
     );
   }
 }

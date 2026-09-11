@@ -6,6 +6,9 @@ import 'package:trotxi_driver/core/config/theme/app_radii.dart';
 import 'package:trotxi_driver/core/config/theme/app_spacing.dart';
 import 'package:trotxi_driver/core/config/theme/app_theme_controller.dart';
 import 'package:trotxi_driver/core/config/theme/app_typography.dart';
+import 'package:trotxi_driver/Presentations/Schedule/pages/schedule_page.dart';
+import 'package:trotxi_driver/Presentations/Support/pages/incident_support_page.dart';
+import 'package:trotxi_driver/Presentations/Work/pages/work_requests_page.dart';
 import 'package:trotxi_driver/core/state/session_controller.dart';
 
 /// Profile and settings (prototype frames 49 to 54).
@@ -50,131 +53,201 @@ class _ProfilePageState extends State<ProfilePage> {
     final theme = context.watch<AppThemeController>();
     final driver = session.session;
 
-    return Scaffold(
-      appBar: AppBar(title: const Text('Profile & settings')),
-      body: SafeArea(
-        child: RefreshIndicator(
-          onRefresh: _readDeviceState,
-          child: ListView(
+    return RefreshIndicator(
+      onRefresh: _readDeviceState,
+      child: ListView(
+        padding: const EdgeInsets.all(AppSpacing.space20),
+        children: [
+          Container(
             padding: const EdgeInsets.all(AppSpacing.space20),
-            children: [
-              Container(
-                padding: const EdgeInsets.all(AppSpacing.space20),
-                decoration: BoxDecoration(
-                  color: colors.surface,
-                  borderRadius: AppRadii.circular(AppRadii.lg),
-                  border: Border.all(color: colors.border),
-                ),
-                child: Row(
-                  children: [
-                    Container(
-                      width: 56,
-                      height: 56,
-                      alignment: Alignment.center,
-                      decoration: BoxDecoration(
-                        color: colors.surfaceSelected,
-                        borderRadius: AppRadii.circular(AppRadii.full),
-                      ),
-                      child: Text(
-                        _initials(driver?.fullName ?? '?'),
-                        style: AppTypography.title.copyWith(color: colors.textPrimary),
-                      ),
+            decoration: BoxDecoration(
+              color: colors.surface,
+              borderRadius: AppRadii.circular(AppRadii.lg),
+              border: Border.all(color: colors.border),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 56,
+                  height: 56,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: colors.surfaceSelected,
+                    borderRadius: AppRadii.circular(AppRadii.full),
+                  ),
+                  child: Text(
+                    _initials(driver?.fullName ?? '?'),
+                    style: AppTypography.title.copyWith(
+                      color: colors.textPrimary,
                     ),
-                    const SizedBox(width: AppSpacing.space16),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            driver?.fullName ?? 'Driver',
-                            style: AppTypography.title.copyWith(color: colors.textPrimary),
-                          ),
-                          Text(
-                            'Driver',
-                            style: AppTypography.bodySmall.copyWith(
-                              color: colors.textSecondary,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
+                  ),
                 ),
-              ),
-              const SizedBox(height: AppSpacing.space24),
-
-              _SectionLabel(text: 'Appearance', colors: colors),
-              _Card(
-                colors: colors,
-                // RadioGroup owns the selection now; per-tile groupValue and
-                // onChanged were deprecated after Flutter 3.32.
-                child: RadioGroup<ThemeMode>(
-                  groupValue: theme.themeMode,
-                  onChanged: (next) => theme.setThemeMode(next ?? ThemeMode.system),
+                const SizedBox(width: AppSpacing.space16),
+                Expanded(
                   child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      for (final mode in ThemeMode.values)
-                        RadioListTile<ThemeMode>(
-                          value: mode,
-                          title: Text(
-                            switch (mode) {
-                              ThemeMode.system => 'Match device',
-                              ThemeMode.light => 'Light',
-                              ThemeMode.dark => 'Dark',
-                            },
-                            style: AppTypography.body.copyWith(color: colors.textPrimary),
-                          ),
+                      Text(
+                        driver?.fullName ?? 'Driver',
+                        style: AppTypography.title.copyWith(
+                          color: colors.textPrimary,
                         ),
+                      ),
+                      Text(
+                        'Driver',
+                        style: AppTypography.bodySmall.copyWith(
+                          color: colors.textSecondary,
+                        ),
+                      ),
                     ],
                   ),
                 ),
-              ),
-              const SizedBox(height: AppSpacing.space24),
-
-              _SectionLabel(text: 'Device & permissions', colors: colors),
-              _Card(
-                colors: colors,
-                child: Column(
-                  children: [
-                    _StatusRow(
-                      label: 'Location services',
-                      ok: _locationServices ?? false,
-                      detail: (_locationServices ?? false)
-                          ? 'On'
-                          : 'Off — riders cannot see the bus',
-                      colors: colors,
-                    ),
-                    _StatusRow(
-                      label: 'Location access',
-                      ok: _locationGranted,
-                      detail: _locationDetail,
-                      colors: colors,
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: AppSpacing.space12),
-              OutlinedButton(
-                onPressed: Geolocator.openAppSettings,
-                child: const Text('Open device settings'),
-              ),
-              const SizedBox(height: AppSpacing.space32),
-
-              ElevatedButton(
-                onPressed: session.isBusy ? null : () => _confirmSignOut(context, session),
-                style: ElevatedButton.styleFrom(backgroundColor: colors.danger),
-                child: const Text('Sign out'),
-              ),
-              const SizedBox(height: AppSpacing.space8),
-              Text(
-                'Signing out on a shared vehicle phone is what stops the next '
-                'driver boarding riders as you.',
-                textAlign: TextAlign.center,
-                style: AppTypography.caption.copyWith(color: colors.textSecondary),
-              ),
-            ],
+              ],
+            ),
           ),
-        ),
+          const SizedBox(height: AppSpacing.space24),
+
+          _SectionLabel(text: 'Appearance', colors: colors),
+          _Card(
+            colors: colors,
+            // RadioGroup owns the selection now; per-tile groupValue and
+            // onChanged were deprecated after Flutter 3.32.
+            child: RadioGroup<ThemeMode>(
+              groupValue: theme.themeMode,
+              onChanged: (next) => theme.setThemeMode(next ?? ThemeMode.system),
+              child: Column(
+                children: [
+                  for (final mode in ThemeMode.values)
+                    RadioListTile<ThemeMode>(
+                      value: mode,
+                      title: Text(
+                        switch (mode) {
+                          ThemeMode.system => 'Match device',
+                          ThemeMode.light => 'Light',
+                          ThemeMode.dark => 'Dark',
+                        },
+                        style: AppTypography.body.copyWith(
+                          color: colors.textPrimary,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: AppSpacing.space24),
+
+          _SectionLabel(text: 'Work', colors: colors),
+          _Card(
+            colors: colors,
+            child: Column(
+              children: [
+                ListTile(
+                  title: Text(
+                    'Schedule',
+                    style: AppTypography.body.copyWith(color: colors.textPrimary),
+                  ),
+                  subtitle: Text(
+                    'Assigned trips by date',
+                    style: AppTypography.caption.copyWith(color: colors.textSecondary),
+                  ),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () => Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (_) => Scaffold(
+                        appBar: AppBar(title: const Text('Schedule')),
+                        body: const SafeArea(child: SchedulePage()),
+                      ),
+                    ),
+                  ),
+                ),
+                ListTile(
+                  title: Text(
+                    'Work & requests',
+                    style: AppTypography.body.copyWith(color: colors.textPrimary),
+                  ),
+                  subtitle: Text(
+                    'Routes, changes and leave',
+                    style: AppTypography.caption.copyWith(color: colors.textSecondary),
+                  ),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () => Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (_) => Scaffold(
+                        appBar: AppBar(title: const Text('Work & Requests')),
+                        body: const SafeArea(child: WorkRequestsPage()),
+                      ),
+                    ),
+                  ),
+                ),
+                ListTile(
+                  title: Text(
+                    'Incident & support',
+                    style: AppTypography.body.copyWith(color: colors.danger),
+                  ),
+                  subtitle: Text(
+                    'Report a problem or call operations',
+                    style: AppTypography.caption.copyWith(color: colors.textSecondary),
+                  ),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () => Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (_) => Scaffold(
+                        appBar: AppBar(title: const Text('Incident & support')),
+                        body: const SafeArea(child: IncidentSupportPage()),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: AppSpacing.space24),
+
+          _SectionLabel(text: 'Device & permissions', colors: colors),
+          _Card(
+            colors: colors,
+            child: Column(
+              children: [
+                _StatusRow(
+                  label: 'Location services',
+                  ok: _locationServices ?? false,
+                  detail: (_locationServices ?? false)
+                      ? 'On'
+                      : 'Off — riders cannot see the bus',
+                  colors: colors,
+                ),
+                _StatusRow(
+                  label: 'Location access',
+                  ok: _locationGranted,
+                  detail: _locationDetail,
+                  colors: colors,
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: AppSpacing.space12),
+          OutlinedButton(
+            onPressed: Geolocator.openAppSettings,
+            child: const Text('Open device settings'),
+          ),
+          const SizedBox(height: AppSpacing.space32),
+
+          ElevatedButton(
+            onPressed: session.isBusy
+                ? null
+                : () => _confirmSignOut(context, session),
+            style: ElevatedButton.styleFrom(backgroundColor: colors.danger),
+            child: const Text('Sign out'),
+          ),
+          const SizedBox(height: AppSpacing.space8),
+          Text(
+            'Signing out on a shared vehicle phone is what stops the next '
+            'driver boarding riders as you.',
+            textAlign: TextAlign.center,
+            style: AppTypography.caption.copyWith(color: colors.textSecondary),
+          ),
+        ],
       ),
     );
   }
@@ -191,7 +264,10 @@ class _ProfilePageState extends State<ProfilePage> {
     _ => 'Unknown',
   };
 
-  Future<void> _confirmSignOut(BuildContext context, SessionController session) async {
+  Future<void> _confirmSignOut(
+    BuildContext context,
+    SessionController session,
+  ) async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
@@ -216,10 +292,15 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   static String _initials(String name) {
-    final parts = name.trim().split(RegExp(r'\s+')).where((p) => p.isNotEmpty).toList();
+    final parts = name
+        .trim()
+        .split(RegExp(r'\s+'))
+        .where((p) => p.isNotEmpty)
+        .toList();
     if (parts.isEmpty) return '?';
     if (parts.length == 1) return parts.first.characters.first.toUpperCase();
-    return (parts.first.characters.first + parts.last.characters.first).toUpperCase();
+    return (parts.first.characters.first + parts.last.characters.first)
+        .toUpperCase();
   }
 }
 
@@ -276,7 +357,10 @@ class _StatusRow extends StatelessWidget {
         ok ? Icons.check_circle_outline : Icons.error_outline,
         color: ok ? colors.success : colors.warning,
       ),
-      title: Text(label, style: AppTypography.body.copyWith(color: colors.textPrimary)),
+      title: Text(
+        label,
+        style: AppTypography.body.copyWith(color: colors.textPrimary),
+      ),
       subtitle: Text(
         detail,
         style: AppTypography.bodySmall.copyWith(color: colors.textSecondary),

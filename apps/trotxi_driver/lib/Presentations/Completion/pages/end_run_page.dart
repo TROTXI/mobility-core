@@ -59,7 +59,8 @@ class _EndRunPageState extends State<EndRunPage> {
   @override
   Widget build(BuildContext context) {
     final colors = context.driverColors;
-    final waiting = context.watch<RunController>().detail.valueOrNull?.waiting.length ?? 0;
+    final waiting =
+        context.watch<RunController>().detail.valueOrNull?.waiting.length ?? 0;
 
     return Scaffold(
       appBar: AppBar(title: const Text('End trip?')),
@@ -84,8 +85,12 @@ class _EndRunPageState extends State<EndRunPage> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      waiting == 1 ? '1 rider never boarded' : '$waiting riders never boarded',
-                      style: AppTypography.label.copyWith(color: colors.warning),
+                      waiting == 1
+                          ? '1 rider never boarded'
+                          : '$waiting riders never boarded',
+                      style: AppTypography.label.copyWith(
+                        color: colors.warning,
+                      ),
                     ),
                     const SizedBox(height: AppSpacing.space4),
                     Text(
@@ -95,7 +100,9 @@ class _EndRunPageState extends State<EndRunPage> {
                       // has not happened.
                       'They stay on the manifest as not boarded. Operations decides '
                       'what happens to their seat.',
-                      style: AppTypography.bodySmall.copyWith(color: colors.textSecondary),
+                      style: AppTypography.bodySmall.copyWith(
+                        color: colors.textSecondary,
+                      ),
                     ),
                   ],
                 ),
@@ -104,7 +111,9 @@ class _EndRunPageState extends State<EndRunPage> {
             const SizedBox(height: AppSpacing.space24),
             Text(
               'BEFORE YOU FINISH',
-              style: AppTypography.caption.copyWith(color: colors.textSecondary),
+              style: AppTypography.caption.copyWith(
+                color: colors.textSecondary,
+              ),
             ),
             const SizedBox(height: AppSpacing.space8),
             Container(
@@ -127,7 +136,9 @@ class _EndRunPageState extends State<EndRunPage> {
                       }),
                       title: Text(
                         check,
-                        style: AppTypography.body.copyWith(color: colors.textPrimary),
+                        style: AppTypography.body.copyWith(
+                          color: colors.textPrimary,
+                        ),
                       ),
                     ),
                 ],

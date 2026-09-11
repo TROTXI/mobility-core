@@ -92,7 +92,9 @@ class _TodayPageState extends State<TodayPage> {
     if (data == null) {
       return _ScrollableMessage(
         title: 'Could not load your day',
-        detail: board is Failure<TodayBoard> ? board.message : 'Pull down to try again.',
+        detail: board is Failure<TodayBoard>
+            ? board.message
+            : 'Pull down to try again.',
         colors: colors,
       );
     }
@@ -110,7 +112,10 @@ class _TodayPageState extends State<TodayPage> {
         vertical: AppSpacing.space8,
       ),
       children: [
-        Text('Today', style: AppTypography.heading1.copyWith(color: colors.textPrimary)),
+        Text(
+          'Today',
+          style: AppTypography.heading1.copyWith(color: colors.textPrimary),
+        ),
         const SizedBox(height: AppSpacing.space4),
         Text(
           // "Tuesday, 18 August · 3 trips assigned" in the frame. The count is
@@ -251,7 +256,10 @@ class _StaleBanner extends StatelessWidget {
         borderRadius: AppRadii.circular(AppRadii.md),
         border: Border.all(color: colors.warning),
       ),
-      child: Text(message, style: AppTypography.bodySmall.copyWith(color: colors.textSecondary)),
+      child: Text(
+        message,
+        style: AppTypography.bodySmall.copyWith(color: colors.textSecondary),
+      ),
     );
   }
 }

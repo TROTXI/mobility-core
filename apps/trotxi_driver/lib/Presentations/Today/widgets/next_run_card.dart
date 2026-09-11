@@ -83,7 +83,9 @@ class NextRunCard extends StatelessWidget {
                   onPressed: isBusy ? null : onPrimary,
                   style: FilledButton.styleFrom(
                     backgroundColor: isDark ? colors.page : Colors.white,
-                    foregroundColor: isDark ? colors.textPrimary : colors.action,
+                    foregroundColor: isDark
+                        ? colors.textPrimary
+                        : colors.action,
                     minimumSize: const Size.fromHeight(56),
                     shape: RoundedRectangleBorder(
                       borderRadius: AppRadii.circular(AppRadii.full),
@@ -154,7 +156,9 @@ class _StatusStrip extends StatelessWidget {
                 if (run.vehicleRegistration != null)
                   Text(
                     run.vehicleRegistration!,
-                    style: AppTypography.bodySmall.copyWith(color: colors.textSecondary),
+                    style: AppTypography.bodySmall.copyWith(
+                      color: colors.textSecondary,
+                    ),
                   ),
               ],
             ),
@@ -170,7 +174,9 @@ class _StatusStrip extends StatelessWidget {
                 borderRadius: AppRadii.circular(AppRadii.full),
               ),
               child: Text(
-                headline!.riders == 1 ? '1 rider' : '${headline!.riders} riders',
+                headline!.riders == 1
+                    ? '1 rider'
+                    : '${headline!.riders} riders',
                 style: AppTypography.caption.copyWith(color: ink),
               ),
             ),

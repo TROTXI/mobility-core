@@ -40,15 +40,21 @@ class TodayBoard {
   /// Nothing assigned at all (prototype frame 16), as distinct from having
   /// finished everything (frame 17). The two look alike and read completely
   /// differently to a driver at the start of a shift.
-  bool get isEmpty => active == null && next == null && later.isEmpty && completed.isEmpty;
+  bool get isEmpty =>
+      active == null && next == null && later.isEmpty && completed.isEmpty;
 
   /// Everything assigned is done.
-  bool get isDayDone => active == null && next == null && later.isEmpty && completed.isNotEmpty;
+  bool get isDayDone =>
+      active == null && next == null && later.isEmpty && completed.isNotEmpty;
 }
 
 /// The extra numbers the leading run's card carries.
 class RunHeadline {
-  const RunHeadline({required this.riders, required this.morning, required this.stops});
+  const RunHeadline({
+    required this.riders,
+    required this.morning,
+    required this.stops,
+  });
 
   /// Confirmed seats on this run.
   final int riders;
@@ -97,7 +103,8 @@ class TodayController extends ChangeNotifier {
   /// End a run.
   ///
   /// @param runId - the run to complete.
-  Future<void> complete(String runId) => _act(runId, () => _trips.complete(runId));
+  Future<void> complete(String runId) =>
+      _act(runId, () => _trips.complete(runId));
 
   /// Run a lifecycle transition, then reload so the board reflects it.
   ///
@@ -129,7 +136,9 @@ class TodayController extends ChangeNotifier {
       final runs = await _trips.myRuns(date: today);
 
       final active = runs.where((r) => r.isActive).firstOrNull;
-      final upcoming = runs.where((r) => r.status == RunStatus.scheduled).toList();
+      final upcoming = runs
+          .where((r) => r.status == RunStatus.scheduled)
+          .toList();
       final completed = runs.where((r) => r.isFinished).toList();
 
       final leading = active ?? upcoming.firstOrNull;

@@ -62,7 +62,9 @@ class _ConfirmAccountPageState extends State<ConfirmAccountPage> {
             children: [
               Text(
                 'Confirm your account',
-                style: AppTypography.heading1.copyWith(color: colors.textPrimary),
+                style: AppTypography.heading1.copyWith(
+                  color: colors.textPrimary,
+                ),
               ),
               const SizedBox(height: AppSpacing.space8),
               Text(
@@ -90,7 +92,9 @@ class _ConfirmAccountPageState extends State<ConfirmAccountPage> {
                       ),
                       child: Text(
                         initials,
-                        style: AppTypography.title.copyWith(color: colors.textPrimary),
+                        style: AppTypography.title.copyWith(
+                          color: colors.textPrimary,
+                        ),
                       ),
                     ),
                     const SizedBox(width: AppSpacing.space16),
@@ -100,7 +104,9 @@ class _ConfirmAccountPageState extends State<ConfirmAccountPage> {
                         children: [
                           Text(
                             widget.session.fullName,
-                            style: AppTypography.title.copyWith(color: colors.textPrimary),
+                            style: AppTypography.title.copyWith(
+                              color: colors.textPrimary,
+                            ),
                           ),
                           const SizedBox(height: AppSpacing.space4),
                           Text(
@@ -143,9 +149,14 @@ class _ConfirmAccountPageState extends State<ConfirmAccountPage> {
   /// @param fullName - the driver's name.
   /// @returns one or two uppercase letters.
   static String _initials(String fullName) {
-    final parts = fullName.trim().split(RegExp(r'\s+')).where((p) => p.isNotEmpty).toList();
+    final parts = fullName
+        .trim()
+        .split(RegExp(r'\s+'))
+        .where((p) => p.isNotEmpty)
+        .toList();
     if (parts.isEmpty) return '?';
     if (parts.length == 1) return parts.first.characters.first.toUpperCase();
-    return (parts.first.characters.first + parts.last.characters.first).toUpperCase();
+    return (parts.first.characters.first + parts.last.characters.first)
+        .toUpperCase();
   }
 }

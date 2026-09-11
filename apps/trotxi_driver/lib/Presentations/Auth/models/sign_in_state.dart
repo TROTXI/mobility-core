@@ -30,7 +30,11 @@ enum SignInStatus {
 
 /// The sign-in form's state, including why it last failed.
 class SignInState {
-  const SignInState({this.status = SignInStatus.idle, this.message, this.retryAfter});
+  const SignInState({
+    this.status = SignInStatus.idle,
+    this.message,
+    this.retryAfter,
+  });
 
   final SignInStatus status;
 
@@ -48,7 +52,8 @@ class SignInState {
 
   /// Whether the PIN boxes should be painted as rejected.
   bool get highlightsPin =>
-      status == SignInStatus.invalidCredentials || status == SignInStatus.locked;
+      status == SignInStatus.invalidCredentials ||
+      status == SignInStatus.locked;
 
   static const idle = SignInState();
   static const submitting = SignInState(status: SignInStatus.submitting);

@@ -73,12 +73,16 @@ class CantSignInPage extends StatelessWidget {
                 children: [
                   Text(
                     'Operations',
-                    style: AppTypography.label.copyWith(color: colors.textSecondary),
+                    style: AppTypography.label.copyWith(
+                      color: colors.textSecondary,
+                    ),
                   ),
                   const SizedBox(height: AppSpacing.space4),
                   Text(
                     'Your depot office',
-                    style: AppTypography.title.copyWith(color: colors.textPrimary),
+                    style: AppTypography.title.copyWith(
+                      color: colors.textPrimary,
+                    ),
                   ),
                   const SizedBox(height: AppSpacing.space8),
                   Text(
@@ -87,7 +91,9 @@ class CantSignInPage extends StatelessWidget {
                     // comes from /flags once the contact block lands there.
                     'Contact details are set by your operator and appear here once '
                     'your device has synced.',
-                    style: AppTypography.bodySmall.copyWith(color: colors.textSecondary),
+                    style: AppTypography.bodySmall.copyWith(
+                      color: colors.textSecondary,
+                    ),
                   ),
                 ],
               ),
@@ -143,11 +149,18 @@ class _Step extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title, style: AppTypography.label.copyWith(color: colors.textPrimary)),
+                Text(
+                  title,
+                  style: AppTypography.label.copyWith(
+                    color: colors.textPrimary,
+                  ),
+                ),
                 const SizedBox(height: AppSpacing.space4),
                 Text(
                   detail,
-                  style: AppTypography.bodySmall.copyWith(color: colors.textSecondary),
+                  style: AppTypography.bodySmall.copyWith(
+                    color: colors.textSecondary,
+                  ),
                 ),
               ],
             ),

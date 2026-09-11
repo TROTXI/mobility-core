@@ -139,7 +139,9 @@ class _ChangePinPageState extends State<ChangePinPage> {
             ),
             Text(
               'Six digits. Not all the same, and not a run like 123456.',
-              style: AppTypography.caption.copyWith(color: colors.textSecondary),
+              style: AppTypography.caption.copyWith(
+                color: colors.textSecondary,
+              ),
             ),
             if (_error != null) ...[
               const SizedBox(height: AppSpacing.space16),
@@ -176,7 +178,11 @@ class _ChangePinPageState extends State<ChangePinPage> {
 }
 
 class _PinRow extends StatelessWidget {
-  const _PinRow({required this.label, required this.controller, required this.onChanged});
+  const _PinRow({
+    required this.label,
+    required this.controller,
+    required this.onChanged,
+  });
 
   final String label;
   final TextEditingController controller;
@@ -190,11 +196,17 @@ class _PinRow extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(label, style: AppTypography.label.copyWith(color: colors.textSecondary)),
+          Text(
+            label,
+            style: AppTypography.label.copyWith(color: colors.textSecondary),
+          ),
           const SizedBox(height: AppSpacing.space8),
           SizedBox(
             height: 56,
-            child: PinField(controller: controller, onCompleted: (_) => onChanged()),
+            child: PinField(
+              controller: controller,
+              onCompleted: (_) => onChanged(),
+            ),
           ),
         ],
       ),

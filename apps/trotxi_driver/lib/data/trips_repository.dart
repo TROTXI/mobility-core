@@ -36,7 +36,8 @@ class DriverRun {
   final String? vehicleRegistration;
 
   bool get isActive => status == RunStatus.active;
-  bool get isFinished => status == RunStatus.completed || status == RunStatus.cancelled;
+  bool get isFinished =>
+      status == RunStatus.completed || status == RunStatus.cancelled;
 }
 
 /// A rider on a run's manifest.
@@ -117,19 +118,20 @@ class TripsRepository {
         ..removeWhere(_routeNames.containsKey);
       await Future.wait(unknown.map(_cacheRouteName));
 
-      final runs = trips
-          .map(
-            (t) => DriverRun(
-              id: t.id,
-              routeId: t.routeId,
-              routeName: _routeNames[t.routeId] ?? 'Route',
-              scheduledAt: t.scheduledAt,
-              status: _statusOf(t.status.name),
-              vehicleId: t.vehicleId,
-            ),
-          )
-          .toList()
-        ..sort((a, b) => a.scheduledAt.compareTo(b.scheduledAt));
+      final runs =
+          trips
+              .map(
+                (t) => DriverRun(
+                  id: t.id,
+                  routeId: t.routeId,
+                  routeName: _routeNames[t.routeId] ?? 'Route',
+                  scheduledAt: t.scheduledAt,
+                  status: _statusOf(t.status.name),
+                  vehicleId: t.vehicleId,
+                ),
+              )
+              .toList()
+            ..sort((a, b) => a.scheduledAt.compareTo(b.scheduledAt));
       return runs;
     } on DioException catch (err) {
       throw _unwrap(err);
@@ -156,7 +158,9 @@ class TripsRepository {
   /// @returns the manifest.
   Future<List<ManifestRider>> manifest(String runId) async {
     try {
-      final response = await _client.getBoardingApi().boardingManifestGet(tripId: runId);
+      final response = await _client.getBoardingApi().boardingManifestGet(
+        tripId: runId,
+      );
       return (response.data?.riders.toList() ?? [])
           .map(
             (r) => ManifestRider(
@@ -180,9 +184,13 @@ class TripsRepository {
   /// @returns the summary.
   Future<RunSummary> summary(String runId) async {
     try {
-      final response = await _client.getMobilityApi().tripsIdSummaryGet(id: runId);
+      final response = await _client.getMobilityApi().tripsIdSummaryGet(
+        id: runId,
+      );
       final data = response.data;
-      if (data == null) throw const ApiException(200, 'Summary returned nothing.');
+      if (data == null) {
+        throw const ApiException(200, 'Summary returned nothing.');
+      }
       return RunSummary(
         boarded: data.boarded,
         notBoarded: data.notBoarded,
@@ -215,7 +223,10 @@ class TripsRepository {
   /// @param pass - the token decoded from the QR.
   /// @param runId - the run being boarded.
   /// @returns the outcome, with the rider when the pass identified one.
-  Future<BoardingResult> scan({required String pass, required String runId}) async {
+  Future<BoardingResult> scan({
+    required String pass,
+    required String runId,
+  }) async {
     try {
       final response = await _client.getBoardingApi().boardingScanPost(
         boardingScanPostRequest: BoardingScanPostRequest(
@@ -225,7 +236,9 @@ class TripsRepository {
         ),
       );
       final data = response.data;
-      if (data == null) return const BoardingResult(outcome: BoardingOutcome.invalid);
+      if (data == null) {
+        return const BoardingResult(outcome: BoardingOutcome.invalid);
+      }
       return BoardingResult(
         outcome: switch (data.reason.name) {
           'ok' => BoardingOutcome.ok,
@@ -259,7 +272,9 @@ class TripsRepository {
         ),
       );
       final data = response.data;
-      if (data == null) return const BoardingResult(outcome: BoardingOutcome.invalid);
+      if (data == null) {
+        return const BoardingResult(outcome: BoardingOutcome.invalid);
+      }
       return BoardingResult(
         outcome: switch (data.reason.name) {
           'ok' => BoardingOutcome.ok,
@@ -290,7 +305,8 @@ class TripsRepository {
     // A dead session is NOT a bad pass. Saying "pass not accepted" to a driver
     // whose token expired turns our problem into an accusation about a paying
     // rider, and turns them away at the door.
-    if (inner is UnauthorizedException || inner is InvalidCredentialsException) {
+    if (inner is UnauthorizedException ||
+        inner is InvalidCredentialsException) {
       return const BoardingResult(outcome: BoardingOutcome.sessionExpired);
     }
     if (inner is ApiException && inner.statusCode == 403) {
@@ -313,7 +329,9 @@ class TripsRepository {
           ? await api.tripsIdStartPost(id: runId)
           : await api.tripsIdCompletePost(id: runId);
       final trip = response.data;
-      if (trip == null) throw const ApiException(200, 'The run returned nothing.');
+      if (trip == null) {
+        throw const ApiException(200, 'The run returned nothing.');
+      }
       await _cacheRouteName(trip.routeId);
       return DriverRun(
         id: trip.id,

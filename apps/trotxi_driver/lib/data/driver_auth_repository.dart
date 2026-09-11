@@ -124,7 +124,10 @@ class DriverAuthRepository {
   /// @param newPin - the replacement.
   /// @throws InvalidCredentialsException when the current PIN is wrong.
   /// @throws ApiException with 400 when the new PIN is a repeat or a run.
-  Future<void> changePin({required String currentPin, required String newPin}) async {
+  Future<void> changePin({
+    required String currentPin,
+    required String newPin,
+  }) async {
     try {
       await _client.getAuthApi().authDriverPinPost(
         authDriverPinPostRequest: AuthDriverPinPostRequest(
@@ -150,7 +153,9 @@ class DriverAuthRepository {
         // The generated client reuses the refresh request model here: the
         // logout body is the same single field.
         await _client.getAuthApi().authLogoutPost(
-          authRefreshPostRequest: AuthRefreshPostRequest((b) => b..refreshToken = refreshToken),
+          authRefreshPostRequest: AuthRefreshPostRequest(
+            (b) => b..refreshToken = refreshToken,
+          ),
         );
       }
     } on DioException {

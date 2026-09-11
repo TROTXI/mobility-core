@@ -79,7 +79,9 @@ class SessionController extends ChangeNotifier {
   /// The driver confirmed the account is theirs.
   void confirm() {
     _set(
-      (_session?.mustChangePin ?? false) ? SessionStage.mustChangePin : SessionStage.ready,
+      (_session?.mustChangePin ?? false)
+          ? SessionStage.mustChangePin
+          : SessionStage.ready,
     );
   }
 

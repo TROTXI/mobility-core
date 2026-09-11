@@ -53,11 +53,15 @@ class BoardingCounter extends StatelessWidget {
             children: [
               Text(
                 '$value',
-                style: AppTypography.counter.copyWith(color: tone ?? colors.textPrimary),
+                style: AppTypography.counter.copyWith(
+                  color: tone ?? colors.textPrimary,
+                ),
               ),
               Text(
                 ' / $of',
-                style: AppTypography.title.copyWith(color: colors.textSecondary),
+                style: AppTypography.title.copyWith(
+                  color: colors.textSecondary,
+                ),
               ),
             ],
           ),

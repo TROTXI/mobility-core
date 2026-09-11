@@ -81,7 +81,9 @@ class _SignInPageState extends State<SignInPage> {
       _fail(const SignInState(status: SignInStatus.invalidCredentials));
     } on CredentialLockedException catch (err) {
       _pinController.clear();
-      _fail(SignInState(status: SignInStatus.locked, retryAfter: err.retryAfter));
+      _fail(
+        SignInState(status: SignInStatus.locked, retryAfter: err.retryAfter),
+      );
     } on AccountSuspendedException catch (err) {
       _fail(SignInState(status: SignInStatus.suspended, message: err.message));
     } on OfflineException {
@@ -109,7 +111,12 @@ class _SignInPageState extends State<SignInPage> {
               vertical: AppSpacing.space32,
             ),
             children: [
-              Text('Sign in', style: AppTypography.heading1.copyWith(color: colors.textPrimary)),
+              Text(
+                'Sign in',
+                style: AppTypography.heading1.copyWith(
+                  color: colors.textPrimary,
+                ),
+              ),
               const SizedBox(height: AppSpacing.space8),
               Text(
                 'Use the driver code and PIN your operator issued.',
@@ -119,7 +126,9 @@ class _SignInPageState extends State<SignInPage> {
 
               Text(
                 'Driver code',
-                style: AppTypography.label.copyWith(color: colors.textSecondary),
+                style: AppTypography.label.copyWith(
+                  color: colors.textSecondary,
+                ),
               ),
               const SizedBox(height: AppSpacing.space8),
               TextField(
@@ -137,7 +146,12 @@ class _SignInPageState extends State<SignInPage> {
               ),
               const SizedBox(height: AppSpacing.space24),
 
-              Text('PIN', style: AppTypography.label.copyWith(color: colors.textSecondary)),
+              Text(
+                'PIN',
+                style: AppTypography.label.copyWith(
+                  color: colors.textSecondary,
+                ),
+              ),
               const SizedBox(height: AppSpacing.space8),
               SizedBox(
                 height: 56,
@@ -148,7 +162,8 @@ class _SignInPageState extends State<SignInPage> {
                 ),
               ),
 
-              if (_state.status != SignInStatus.idle && !_state.isSubmitting) ...[
+              if (_state.status != SignInStatus.idle &&
+                  !_state.isSubmitting) ...[
                 const SizedBox(height: AppSpacing.space16),
                 _FailureNotice(state: _state),
               ],
@@ -173,7 +188,9 @@ class _SignInPageState extends State<SignInPage> {
               const SizedBox(height: AppSpacing.space16),
               TextButton(
                 onPressed: () => Navigator.of(context).push(
-                  MaterialPageRoute<void>(builder: (_) => const CantSignInPage()),
+                  MaterialPageRoute<void>(
+                    builder: (_) => const CantSignInPage(),
+                  ),
                 ),
                 child: const Text("Can't sign in?"),
               ),
@@ -217,7 +234,11 @@ class _FailureNotice extends StatelessWidget {
         'No connection',
         'You are offline. Sign-in needs a connection, so try again once you have signal.',
       ),
-      _ => (colors.danger, 'Could not sign in', state.message ?? 'Please try again.'),
+      _ => (
+        colors.danger,
+        'Could not sign in',
+        state.message ?? 'Please try again.',
+      ),
     };
 
     return Container(
@@ -233,7 +254,12 @@ class _FailureNotice extends StatelessWidget {
         children: [
           Text(title, style: AppTypography.label.copyWith(color: tone)),
           const SizedBox(height: AppSpacing.space4),
-          Text(detail, style: AppTypography.bodySmall.copyWith(color: colors.textSecondary)),
+          Text(
+            detail,
+            style: AppTypography.bodySmall.copyWith(
+              color: colors.textSecondary,
+            ),
+          ),
         ],
       ),
     );
@@ -264,7 +290,10 @@ class _RememberDeviceToggle extends StatelessWidget {
         padding: const EdgeInsets.symmetric(vertical: AppSpacing.space8),
         child: Row(
           children: [
-            Checkbox(value: value, onChanged: (next) => onChanged(next ?? false)),
+            Checkbox(
+              value: value,
+              onChanged: (next) => onChanged(next ?? false),
+            ),
             const SizedBox(width: AppSpacing.space8),
             Expanded(
               child: Column(
@@ -272,12 +301,16 @@ class _RememberDeviceToggle extends StatelessWidget {
                 children: [
                   Text(
                     'Remember this device',
-                    style: AppTypography.body.copyWith(color: colors.textPrimary),
+                    style: AppTypography.body.copyWith(
+                      color: colors.textPrimary,
+                    ),
                   ),
                   Text(
                     'Leave this off on a shared vehicle phone. Your session then '
                     'ends with the shift instead of lasting a month.',
-                    style: AppTypography.caption.copyWith(color: colors.textSecondary),
+                    style: AppTypography.caption.copyWith(
+                      color: colors.textSecondary,
+                    ),
                   ),
                 ],
               ),

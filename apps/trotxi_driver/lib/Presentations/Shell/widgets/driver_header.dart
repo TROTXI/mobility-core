@@ -24,7 +24,8 @@ class DriverHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = context.driverColors;
     final theme = context.watch<AppThemeController>();
-    final name = context.watch<SessionController>().session?.fullName ?? 'Driver';
+    final name =
+        context.watch<SessionController>().session?.fullName ?? 'Driver';
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Container(
@@ -51,14 +52,20 @@ class DriverHeader extends StatelessWidget {
               children: [
                 Text(
                   name,
-                  style: AppTypography.title.copyWith(color: colors.textPrimary),
+                  style: AppTypography.title.copyWith(
+                    color: colors.textPrimary,
+                  ),
                   overflow: TextOverflow.ellipsis,
                 ),
                 Text(
                   // The registration only appears once a run has named a
                   // vehicle. Showing a placeholder would be inventing a plate.
-                  vehicleRegistration == null ? 'Driver' : '$vehicleRegistration · Driver',
-                  style: AppTypography.bodySmall.copyWith(color: colors.textSecondary),
+                  vehicleRegistration == null
+                      ? 'Driver'
+                      : '$vehicleRegistration · Driver',
+                  style: AppTypography.bodySmall.copyWith(
+                    color: colors.textSecondary,
+                  ),
                   overflow: TextOverflow.ellipsis,
                 ),
               ],
@@ -70,7 +77,9 @@ class DriverHeader extends StatelessWidget {
             // the frames use: a moon on the light screens, a sun on the dark.
             icon: isDark ? Icons.light_mode_outlined : Icons.dark_mode_outlined,
             onTap: () => theme.toggle(Theme.of(context).brightness),
-            semanticLabel: isDark ? 'Switch to light theme' : 'Switch to dark theme',
+            semanticLabel: isDark
+                ? 'Switch to light theme'
+                : 'Switch to dark theme',
           ),
           const SizedBox(width: AppSpacing.space8),
           _Initials(name: name, colors: colors),
@@ -105,7 +114,10 @@ class _CircleButton extends StatelessWidget {
           width: 40,
           height: 40,
           alignment: Alignment.center,
-          decoration: BoxDecoration(color: colors.surfaceSelected, shape: BoxShape.circle),
+          decoration: BoxDecoration(
+            color: colors.surfaceSelected,
+            shape: BoxShape.circle,
+          ),
           child: Icon(icon, size: 20, color: colors.textSecondary),
         ),
       ),
@@ -121,19 +133,30 @@ class _Initials extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final parts = name.trim().split(RegExp(r'\s+')).where((p) => p.isNotEmpty).toList();
+    final parts = name
+        .trim()
+        .split(RegExp(r'\s+'))
+        .where((p) => p.isNotEmpty)
+        .toList();
     final initials = parts.isEmpty
         ? '?'
         : parts.length == 1
         ? parts.first.characters.first.toUpperCase()
-        : (parts.first.characters.first + parts.last.characters.first).toUpperCase();
+        : (parts.first.characters.first + parts.last.characters.first)
+              .toUpperCase();
 
     return Container(
       width: 40,
       height: 40,
       alignment: Alignment.center,
-      decoration: BoxDecoration(color: colors.surfaceSelected, shape: BoxShape.circle),
-      child: Text(initials, style: AppTypography.label.copyWith(color: colors.textPrimary)),
+      decoration: BoxDecoration(
+        color: colors.surfaceSelected,
+        shape: BoxShape.circle,
+      ),
+      child: Text(
+        initials,
+        style: AppTypography.label.copyWith(color: colors.textPrimary),
+      ),
     );
   }
 }

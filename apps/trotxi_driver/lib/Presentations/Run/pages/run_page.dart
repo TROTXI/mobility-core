@@ -81,7 +81,8 @@ class _RunPageState extends State<RunPage> {
   void _open(BuildContext context, RunController controller, Widget page) {
     Navigator.of(context).push(
       MaterialPageRoute<void>(
-        builder: (_) => ChangeNotifierProvider.value(value: controller, child: page),
+        builder: (_) =>
+            ChangeNotifierProvider.value(value: controller, child: page),
       ),
     );
   }
@@ -92,16 +93,12 @@ class _RunPageState extends State<RunPage> {
     final controller = context.watch<RunController>();
     final detail = controller.detail;
 
-    return Scaffold(
-      appBar: AppBar(title: Text(widget.run.routeName)),
-      body: SafeArea(
-        child: RefreshIndicator(
-          onRefresh: controller.load,
-          child: detail.isInitialLoad
-              ? const Center(child: CircularProgressIndicator())
-              : _body(context, controller, detail, colors),
-        ),
-      ),
+    // A tab on the shell, which already owns the header and the nav bar.
+    return RefreshIndicator(
+      onRefresh: controller.load,
+      child: detail.isInitialLoad
+          ? const Center(child: CircularProgressIndicator())
+          : _body(context, controller, detail, colors),
     );
   }
 
@@ -118,7 +115,9 @@ class _RunPageState extends State<RunPage> {
         padding: const EdgeInsets.all(AppSpacing.space24),
         children: [
           Text(
-            detail is Failure<RunDetail> ? detail.message : 'Could not load this run.',
+            detail is Failure<RunDetail>
+                ? detail.message
+                : 'Could not load this run.',
             textAlign: TextAlign.center,
             style: AppTypography.body.copyWith(color: colors.textSecondary),
           ),
@@ -144,7 +143,9 @@ class _RunPageState extends State<RunPage> {
             ),
             child: Text(
               detail.message,
-              style: AppTypography.bodySmall.copyWith(color: colors.textSecondary),
+              style: AppTypography.bodySmall.copyWith(
+                color: colors.textSecondary,
+              ),
             ),
           ),
           const SizedBox(height: AppSpacing.space16),
@@ -169,7 +170,9 @@ class _RunPageState extends State<RunPage> {
                 label: 'Boarded',
                 value: data.boarded,
                 of: data.expected,
-                tone: data.boarded == data.expected && data.expected > 0 ? colors.success : null,
+                tone: data.boarded == data.expected && data.expected > 0
+                    ? colors.success
+                    : null,
               ),
             ),
             const SizedBox(width: AppSpacing.space12),
@@ -193,7 +196,8 @@ class _RunPageState extends State<RunPage> {
             children: [
               Expanded(
                 child: ElevatedButton.icon(
-                  onPressed: () => _open(context, controller, ScanPage(runId: run.id)),
+                  onPressed: () =>
+                      _open(context, controller, ScanPage(runId: run.id)),
                   icon: const Icon(Icons.qr_code_scanner),
                   label: const Text('Scan'),
                 ),
@@ -201,7 +205,8 @@ class _RunPageState extends State<RunPage> {
               const SizedBox(width: AppSpacing.space12),
               Expanded(
                 child: OutlinedButton.icon(
-                  onPressed: () => _open(context, controller, const BoardByCodePage()),
+                  onPressed: () =>
+                      _open(context, controller, const BoardByCodePage()),
                   icon: const Icon(Icons.dialpad),
                   label: const Text('By code'),
                 ),
@@ -218,7 +223,8 @@ class _RunPageState extends State<RunPage> {
         ),
         const SizedBox(height: AppSpacing.space12),
 
-        if (run.isActive) _LocationNotice(block: _positionBlock, colors: colors),
+        if (run.isActive)
+          _LocationNotice(block: _positionBlock, colors: colors),
 
         _PrimaryAction(
           controller: controller,
@@ -227,12 +233,17 @@ class _RunPageState extends State<RunPage> {
         ),
 
         const SizedBox(height: AppSpacing.space32),
-        Text('STOPS', style: AppTypography.caption.copyWith(color: colors.textSecondary)),
+        Text(
+          'STOPS',
+          style: AppTypography.caption.copyWith(color: colors.textSecondary),
+        ),
         const SizedBox(height: AppSpacing.space8),
         if (data.stops.isEmpty)
           Text(
             'This corridor has no stops recorded yet.',
-            style: AppTypography.bodySmall.copyWith(color: colors.textSecondary),
+            style: AppTypography.bodySmall.copyWith(
+              color: colors.textSecondary,
+            ),
           )
         else
           for (final (index, stop) in data.stops.indexed)
@@ -250,14 +261,18 @@ class _RunPageState extends State<RunPage> {
                     ),
                     child: Text(
                       '${index + 1}',
-                      style: AppTypography.caption.copyWith(color: colors.textPrimary),
+                      style: AppTypography.caption.copyWith(
+                        color: colors.textPrimary,
+                      ),
                     ),
                   ),
                   const SizedBox(width: AppSpacing.space12),
                   Expanded(
                     child: Text(
                       stop,
-                      style: AppTypography.body.copyWith(color: colors.textPrimary),
+                      style: AppTypography.body.copyWith(
+                        color: colors.textPrimary,
+                      ),
                     ),
                   ),
                 ],
@@ -288,7 +303,9 @@ class _PrimaryAction extends StatelessWidget {
       return Text(
         'This run is finished.',
         textAlign: TextAlign.center,
-        style: AppTypography.bodySmall.copyWith(color: context.driverColors.textSecondary),
+        style: AppTypography.bodySmall.copyWith(
+          color: context.driverColors.textSecondary,
+        ),
       );
     }
 
@@ -315,7 +332,11 @@ class _PrimaryAction extends StatelessWidget {
               await onChanged();
             },
       child: busy
-          ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2))
+          ? const SizedBox(
+              height: 20,
+              width: 20,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            )
           : Text(run.isActive ? 'End trip' : 'Start trip'),
     );
   }
@@ -395,7 +416,9 @@ class _LocationNotice extends StatelessWidget {
           Expanded(
             child: Text(
               message,
-              style: AppTypography.caption.copyWith(color: colors.textSecondary),
+              style: AppTypography.caption.copyWith(
+                color: colors.textSecondary,
+              ),
             ),
           ),
         ],

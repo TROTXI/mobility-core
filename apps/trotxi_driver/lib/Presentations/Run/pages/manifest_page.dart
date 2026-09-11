@@ -61,7 +61,9 @@ class _ManifestPageState extends State<ManifestPage> {
           const SizedBox(height: AppSpacing.space4),
           Text(
             data.run.routeName,
-            style: AppTypography.bodySmall.copyWith(color: colors.textSecondary),
+            style: AppTypography.bodySmall.copyWith(
+              color: colors.textSecondary,
+            ),
           ),
           const SizedBox(height: AppSpacing.space16),
 
@@ -81,7 +83,11 @@ class _ManifestPageState extends State<ManifestPage> {
           ),
           const SizedBox(height: AppSpacing.space12),
 
-          _Progress(boarded: data.boarded, expected: data.expected, colors: colors),
+          _Progress(
+            boarded: data.boarded,
+            expected: data.expected,
+            colors: colors,
+          ),
           const SizedBox(height: AppSpacing.space12),
 
           if (data.riders.isEmpty)
@@ -105,8 +111,12 @@ class _ManifestPageState extends State<ManifestPage> {
                       // Boarding needs the rider's code, so the pill opens the
                       // code screen on that person rather than pretending a tap
                       // alone can board them.
-                      onAction: rider.boarded ? null : () => _board(context, controller, rider),
-                      onTap: rider.boarded ? null : () => _board(context, controller, rider),
+                      onAction: rider.boarded
+                          ? null
+                          : () => _board(context, controller, rider),
+                      onTap: rider.boarded
+                          ? null
+                          : () => _board(context, controller, rider),
                     ),
                 ],
               ),
@@ -116,7 +126,11 @@ class _ManifestPageState extends State<ManifestPage> {
     );
   }
 
-  void _board(BuildContext context, RunController controller, ManifestRider rider) {
+  void _board(
+    BuildContext context,
+    RunController controller,
+    ManifestRider rider,
+  ) {
     Navigator.of(context).push(
       MaterialPageRoute<void>(
         builder: (_) => ChangeNotifierProvider.value(
@@ -133,13 +147,19 @@ class _ManifestPageState extends State<ManifestPage> {
   static List<ManifestRider> _filter(List<ManifestRider> riders, String query) {
     final q = query.trim().toLowerCase();
     if (q.isEmpty) return riders;
-    return riders.where((r) => (r.name ?? '').toLowerCase().contains(q)).toList();
+    return riders
+        .where((r) => (r.name ?? '').toLowerCase().contains(q))
+        .toList();
   }
 }
 
 /// "12 of 18 boarded · 6 remaining", with a bar behind it.
 class _Progress extends StatelessWidget {
-  const _Progress({required this.boarded, required this.expected, required this.colors});
+  const _Progress({
+    required this.boarded,
+    required this.expected,
+    required this.colors,
+  });
 
   final int boarded;
   final int expected;
@@ -166,12 +186,16 @@ class _Progress extends StatelessWidget {
               Expanded(
                 child: Text(
                   '$boarded of $expected boarded',
-                  style: AppTypography.label.copyWith(color: colors.textPrimary),
+                  style: AppTypography.label.copyWith(
+                    color: colors.textPrimary,
+                  ),
                 ),
               ),
               Text(
                 remaining == 0 ? 'all aboard' : '$remaining remaining',
-                style: AppTypography.caption.copyWith(color: colors.textSecondary),
+                style: AppTypography.caption.copyWith(
+                  color: colors.textSecondary,
+                ),
               ),
             ],
           ),

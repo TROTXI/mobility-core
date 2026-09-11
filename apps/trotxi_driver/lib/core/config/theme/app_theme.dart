@@ -22,16 +22,17 @@ abstract final class AppTheme {
     final base = ThemeData(brightness: brightness, useMaterial3: true);
 
     return base.copyWith(
-      colorScheme: ColorScheme.fromSeed(
-        seedColor: colors.action,
-        brightness: brightness,
-      ).copyWith(
-        primary: colors.action,
-        onPrimary: colors.onAction,
-        surface: colors.surface,
-        onSurface: colors.textPrimary,
-        error: colors.danger,
-      ),
+      colorScheme:
+          ColorScheme.fromSeed(
+            seedColor: colors.action,
+            brightness: brightness,
+          ).copyWith(
+            primary: colors.action,
+            onPrimary: colors.onAction,
+            surface: colors.surface,
+            onSurface: colors.textPrimary,
+            error: colors.danger,
+          ),
       scaffoldBackgroundColor: colors.page,
       extensions: <ThemeExtension<dynamic>>[colors],
       textTheme: _textTheme(colors, base.textTheme),
@@ -53,7 +54,11 @@ abstract final class AppTheme {
           side: BorderSide(color: colors.border),
         ),
       ),
-      dividerTheme: DividerThemeData(color: colors.border, space: 1, thickness: 1),
+      dividerTheme: DividerThemeData(
+        color: colors.border,
+        space: 1,
+        thickness: 1,
+      ),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
           backgroundColor: colors.action,
@@ -130,10 +135,14 @@ abstract final class AppTheme {
         // decision a driver makes on a shared handset in a dim yard.
         side: BorderSide(color: colors.borderStrong, width: 2),
         fillColor: WidgetStateProperty.resolveWith(
-          (states) => states.contains(WidgetState.selected) ? colors.action : Colors.transparent,
+          (states) => states.contains(WidgetState.selected)
+              ? colors.action
+              : Colors.transparent,
         ),
         checkColor: WidgetStatePropertyAll(colors.onAction),
-        shape: RoundedRectangleBorder(borderRadius: AppRadii.circular(AppRadii.xs)),
+        shape: RoundedRectangleBorder(
+          borderRadius: AppRadii.circular(AppRadii.xs),
+        ),
       ),
       navigationBarTheme: NavigationBarThemeData(
         backgroundColor: colors.surface,
@@ -146,7 +155,9 @@ abstract final class AppTheme {
       ),
       snackBarTheme: SnackBarThemeData(
         backgroundColor: colors.surfaceElevated,
-        contentTextStyle: AppTypography.body.copyWith(color: colors.textPrimary),
+        contentTextStyle: AppTypography.body.copyWith(
+          color: colors.textPrimary,
+        ),
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(
           borderRadius: AppRadii.circular(AppRadii.md),

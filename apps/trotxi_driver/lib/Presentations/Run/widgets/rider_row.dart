@@ -24,7 +24,9 @@ class RiderRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = context.driverColors;
-    final name = rider.name?.trim().isNotEmpty == true ? rider.name!.trim() : 'Unnamed rider';
+    final name = rider.name?.trim().isNotEmpty == true
+        ? rider.name!.trim()
+        : 'Unnamed rider';
 
     return InkWell(
       onTap: onTap,
@@ -44,12 +46,16 @@ class RiderRow extends StatelessWidget {
                 children: [
                   Text(
                     name,
-                    style: AppTypography.label.copyWith(color: colors.textPrimary),
+                    style: AppTypography.label.copyWith(
+                      color: colors.textPrimary,
+                    ),
                     overflow: TextOverflow.ellipsis,
                   ),
                   Text(
                     _subtitle(rider),
-                    style: AppTypography.caption.copyWith(color: colors.textSecondary),
+                    style: AppTypography.caption.copyWith(
+                      color: colors.textSecondary,
+                    ),
                     overflow: TextOverflow.ellipsis,
                   ),
                 ],
@@ -75,7 +81,11 @@ class RiderRow extends StatelessWidget {
 }
 
 class _ActionPill extends StatelessWidget {
-  const _ActionPill({required this.rider, required this.onAction, required this.colors});
+  const _ActionPill({
+    required this.rider,
+    required this.onAction,
+    required this.colors,
+  });
 
   final ManifestRider rider;
   final VoidCallback? onAction;
@@ -129,7 +139,13 @@ class _Avatar extends StatelessWidget {
   /// A stable colour per person, so the same rider keeps the same disc all
   /// shift and a driver can find them by shape before reading the name.
   Color get _tint {
-    const palette = [0xFF147A3B, 0xFF1769AA, 0xFFB76512, 0xFFB42318, 0xFF5B7896];
+    const palette = [
+      0xFF147A3B,
+      0xFF1769AA,
+      0xFFB76512,
+      0xFFB42318,
+      0xFF5B7896,
+    ];
     return Color(palette[name.hashCode.abs() % palette.length]);
   }
 
@@ -142,7 +158,10 @@ class _Avatar extends StatelessWidget {
       alignment: Alignment.center,
       decoration: BoxDecoration(color: _tint, shape: BoxShape.circle),
       child: url == null
-          ? Text(_initials(name), style: AppTypography.label.copyWith(color: Colors.white))
+          ? Text(
+              _initials(name),
+              style: AppTypography.label.copyWith(color: Colors.white),
+            )
           : Image.network(
               url!,
               width: 44,
@@ -150,16 +169,22 @@ class _Avatar extends StatelessWidget {
               fit: BoxFit.cover,
               // A photo that will not load must not blank the row: the seat is
               // still taken and the driver still has to account for it.
-              errorBuilder: (_, _, _) =>
-                  Text(_initials(name), style: AppTypography.label.copyWith(color: Colors.white)),
+              errorBuilder: (_, _, _) => Text(
+                _initials(name),
+                style: AppTypography.label.copyWith(color: Colors.white),
+              ),
             ),
     );
   }
 
   static String _initials(String name) {
-    final parts = name.split(RegExp(r'\s+')).where((p) => p.isNotEmpty).toList();
+    final parts = name
+        .split(RegExp(r'\s+'))
+        .where((p) => p.isNotEmpty)
+        .toList();
     if (parts.isEmpty) return '?';
     if (parts.length == 1) return parts.first.characters.first.toUpperCase();
-    return (parts.first.characters.first + parts.last.characters.first).toUpperCase();
+    return (parts.first.characters.first + parts.last.characters.first)
+        .toUpperCase();
   }
 }

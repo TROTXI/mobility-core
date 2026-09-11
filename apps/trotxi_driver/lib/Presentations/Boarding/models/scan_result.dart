@@ -94,12 +94,14 @@ class BoardingResult {
       'Passes rotate every minute. Ask the rider to refresh and show it again.',
     BoardingOutcome.reused =>
       'This pass has already been used on this run. Check the manifest before boarding.',
-    BoardingOutcome.alreadyBoarded => 'This seat is already aboard. Nothing to do.',
+    BoardingOutcome.alreadyBoarded =>
+      'This seat is already aboard. Nothing to do.',
     BoardingOutcome.noReservation =>
       'This rider has no confirmed seat on this run. Check the manifest.',
     BoardingOutcome.forbidden =>
       'This run is assigned to another driver, so you cannot board its riders.',
-    BoardingOutcome.offline => 'Boarding needs a connection. Try again once you have signal.',
+    BoardingOutcome.offline =>
+      'Boarding needs a connection. Try again once you have signal.',
     BoardingOutcome.sessionExpired =>
       'Your session has ended, so this could not be checked. Sign in again, then '
           'board this rider. Their pass is fine.',
