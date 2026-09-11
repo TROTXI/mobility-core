@@ -1,0 +1,264 @@
+import 'package:dio/dio.dart';
+import 'package:trotxi_client/trotxi_client.dart';
+
+/// How far a run has got.
+enum RunStatus { scheduled, active, completed, cancelled }
+
+/// One of the driver's assigned runs, with the corridor's name resolved.
+///
+/// `GET /me/trips` returns `routeId` and nothing readable, but every frame in
+/// the prototype labels a run by its corridor ("7:40 Medina · Circle"). The
+/// repository joins the name on rather than making each screen do it, and
+/// caches routes for the session since a depot runs a handful of corridors and
+/// they do not change during a shift.
+class DriverRun {
+  const DriverRun({
+    required this.id,
+    required this.routeId,
+    required this.routeName,
+    required this.scheduledAt,
+    required this.status,
+    this.vehicleId,
+  });
+
+  final String id;
+  final String routeId;
+  final String routeName;
+  final DateTime scheduledAt;
+  final RunStatus status;
+  final String? vehicleId;
+
+  bool get isActive => status == RunStatus.active;
+  bool get isFinished => status == RunStatus.completed || status == RunStatus.cancelled;
+}
+
+/// A rider on a run's manifest.
+class ManifestRider {
+  const ManifestRider({
+    required this.reservationId,
+    required this.userId,
+    required this.name,
+    required this.avatarUrl,
+    required this.boarded,
+  });
+
+  final String reservationId;
+  final String userId;
+
+  /// Null for a rider who never set one, which the manifest has to render
+  /// rather than skip: the seat is still taken.
+  final String? name;
+  final String? avatarUrl;
+  final bool boarded;
+}
+
+/// What a finished run did.
+class RunSummary {
+  const RunSummary({
+    required this.boarded,
+    required this.notBoarded,
+    required this.byQr,
+    required this.byPin,
+    required this.stopCount,
+    this.startedAt,
+    this.completedAt,
+  });
+
+  final int boarded;
+
+  /// Reported as "not boarded" rather than "no-shows": the deduction is the ops
+  /// cutoff's decision, and a driver should not read one that has not happened.
+  final int notBoarded;
+  final int byQr;
+  final int byPin;
+  final int stopCount;
+  final DateTime? startedAt;
+  final DateTime? completedAt;
+
+  Duration? get duration => startedAt == null || completedAt == null
+      ? null
+      : completedAt!.difference(startedAt!);
+}
+
+/// The driver's runs, their manifests, and the lifecycle transitions.
+class TripsRepository {
+  TripsRepository({required TrotxiApiClient client}) : _client = client;
+
+  final TrotxiApiClient _client;
+
+  /// Corridor names by route id. A depot runs a handful of corridors and they
+  /// do not change mid-shift, so one lookup each is plenty.
+  final Map<String, String> _routeNames = {};
+
+  /// The signed-in driver's assigned runs.
+  ///
+  /// @param date - optional `YYYY-MM-DD` filter; omitted returns all assigned.
+  /// @returns the runs, soonest first.
+  Future<List<DriverRun>> myRuns({String? date}) async {
+    try {
+      final response = await _client.getMobilityApi().meTripsGet(date: date);
+      final trips = response.data?.trips.toList() ?? [];
+
+      // Resolved once per unseen corridor, in parallel: a driver with a morning
+      // and an evening run on the same route should not pay for two lookups.
+      final unknown = trips.map((t) => t.routeId).toSet()
+        ..removeWhere(_routeNames.containsKey);
+      await Future.wait(unknown.map(_cacheRouteName));
+
+      final runs = trips
+          .map(
+            (t) => DriverRun(
+              id: t.id,
+              routeId: t.routeId,
+              routeName: _routeNames[t.routeId] ?? 'Route',
+              scheduledAt: t.scheduledAt,
+              status: _statusOf(t.status.name),
+              vehicleId: t.vehicleId,
+            ),
+          )
+          .toList()
+        ..sort((a, b) => a.scheduledAt.compareTo(b.scheduledAt));
+      return runs;
+    } on DioException catch (err) {
+      throw _unwrap(err);
+    }
+  }
+
+  /// Start a run. Idempotent server-side: starting an already-active run
+  /// succeeds, because a driver whose phone dropped mid-tap will press it again
+  /// and an error at the roadside is a worse answer than "yes, it is running".
+  ///
+  /// @param runId - the run to start.
+  /// @returns the run in its new state.
+  Future<DriverRun> start(String runId) => _transition(runId, start: true);
+
+  /// End a run. Refused server-side if it never started.
+  ///
+  /// @param runId - the run to complete.
+  /// @returns the run in its new state.
+  Future<DriverRun> complete(String runId) => _transition(runId, start: false);
+
+  /// The confirmed riders on a run, with who has boarded.
+  ///
+  /// @param runId - the run.
+  /// @returns the manifest.
+  Future<List<ManifestRider>> manifest(String runId) async {
+    try {
+      final response = await _client.getBoardingApi().boardingManifestGet(tripId: runId);
+      return (response.data?.riders.toList() ?? [])
+          .map(
+            (r) => ManifestRider(
+              reservationId: r.reservationId,
+              userId: r.userId,
+              name: r.name,
+              avatarUrl: r.avatarUrl,
+              boarded: r.boarded,
+            ),
+          )
+          .toList();
+    } on DioException catch (err) {
+      throw _unwrap(err);
+    }
+  }
+
+  /// What a run did.
+  ///
+  /// @param runId - the run.
+  /// @returns the summary.
+  Future<RunSummary> summary(String runId) async {
+    try {
+      final response = await _client.getMobilityApi().tripsIdSummaryGet(id: runId);
+      final data = response.data;
+      if (data == null) throw const ApiException(200, 'Summary returned nothing.');
+      return RunSummary(
+        boarded: data.boarded,
+        notBoarded: data.notBoarded,
+        byQr: data.byMethod.qr,
+        byPin: data.byMethod.pin,
+        stopCount: data.stopCount,
+        startedAt: data.startedAt,
+        completedAt: data.completedAt,
+      );
+    } on DioException catch (err) {
+      throw _unwrap(err);
+    }
+  }
+
+  /// The corridor's stops, in order, for the stop list and progress counter.
+  ///
+  /// @param routeId - the corridor.
+  /// @returns the stop names in sequence.
+  Future<List<String>> stopsFor(String routeId) async {
+    try {
+      final response = await _client.getMobilityApi().routesIdGet(id: routeId);
+      return (response.data?.stops.toList() ?? []).map((s) => s.name).toList();
+    } on DioException catch (err) {
+      throw _unwrap(err);
+    }
+  }
+
+  /// Shared start/complete path.
+  ///
+  /// @param runId - the run.
+  /// @param start - true to start, false to complete.
+  /// @returns the run in its new state.
+  Future<DriverRun> _transition(String runId, {required bool start}) async {
+    try {
+      final api = _client.getMobilityApi();
+      final response = start
+          ? await api.tripsIdStartPost(id: runId)
+          : await api.tripsIdCompletePost(id: runId);
+      final trip = response.data;
+      if (trip == null) throw const ApiException(200, 'The run returned nothing.');
+      await _cacheRouteName(trip.routeId);
+      return DriverRun(
+        id: trip.id,
+        routeId: trip.routeId,
+        routeName: _routeNames[trip.routeId] ?? 'Route',
+        scheduledAt: trip.scheduledAt,
+        status: _statusOf(trip.status.name),
+        vehicleId: trip.vehicleId,
+      );
+    } on DioException catch (err) {
+      throw _unwrap(err);
+    }
+  }
+
+  /// Look up and remember a corridor's name.
+  ///
+  /// Failure is swallowed: a run with an unresolved name still has to appear on
+  /// Today, because a driver who cannot see their assignment cannot work.
+  ///
+  /// @param routeId - the corridor to resolve.
+  Future<void> _cacheRouteName(String routeId) async {
+    if (_routeNames.containsKey(routeId)) return;
+    try {
+      final response = await _client.getMobilityApi().routesIdGet(id: routeId);
+      final name = response.data?.name;
+      if (name != null) _routeNames[routeId] = name;
+    } on DioException {
+      // Left unresolved; the run still lists, labelled generically.
+    }
+  }
+
+  /// Map the wire status onto the enum, defaulting to scheduled for a value we
+  /// do not know rather than dropping the run off the screen.
+  ///
+  /// @param raw - the status string from the API.
+  /// @returns the status.
+  static RunStatus _statusOf(String raw) => switch (raw) {
+    'active' => RunStatus.active,
+    'completed' => RunStatus.completed,
+    'cancelled' => RunStatus.cancelled,
+    _ => RunStatus.scheduled,
+  };
+
+  /// Recover the typed exception the interceptors attached.
+  ///
+  /// @param err - the caught Dio exception.
+  /// @returns the exception to surface.
+  Object _unwrap(DioException err) {
+    final inner = err.error;
+    return inner is TrotxiException ? inner : err;
+  }
+}

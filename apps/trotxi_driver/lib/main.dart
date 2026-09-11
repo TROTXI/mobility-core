@@ -9,8 +9,11 @@ import 'package:trotxi_driver/core/config/theme/app_theme.dart';
 import 'package:trotxi_driver/core/config/theme/app_theme_controller.dart';
 import 'package:provider/provider.dart';
 import 'package:trotxi_driver/Presentations/Auth/pages/auth_gate.dart';
+import 'package:trotxi_driver/Presentations/Today/pages/today_page.dart';
 import 'package:trotxi_driver/core/state/session_controller.dart';
+import 'package:trotxi_driver/core/state/today_controller.dart';
 import 'package:trotxi_driver/data/driver_auth_repository.dart';
+import 'package:trotxi_driver/data/trips_repository.dart';
 import 'package:trotxi_client/trotxi_client.dart';
 import 'package:trotxi_driver/firebase_options.dart';
 import 'package:trotxi_driver/firebase_performance.dart';
@@ -64,6 +67,7 @@ class _TrotxiDriverAppState extends State<TrotxiDriverApp> {
     client: widget.client,
     tokenStore: TokenStorage.instance,
   );
+  late final TripsRepository _trips = TripsRepository(client: widget.client);
 
   @override
   Widget build(BuildContext context) {
@@ -73,12 +77,14 @@ class _TrotxiDriverAppState extends State<TrotxiDriverApp> {
     return MultiProvider(
       providers: [
         Provider<DriverAuthRepository>.value(value: _auth),
+        Provider<TripsRepository>.value(value: _trips),
         // Follows the device by default. The prototype puts a Theme control on
         // Profile > App preferences, which drives this; dark is the one that
         // matters in practice, since these screens are read before dawn and
         // after dusk on a windscreen-mounted phone.
         ChangeNotifierProvider(create: (_) => AppThemeController()),
         ChangeNotifierProvider(create: (_) => SessionController(auth: _auth)),
+        ChangeNotifierProvider(create: (_) => TodayController(trips: _trips)),
       ],
       child: Consumer<AppThemeController>(
         builder: (context, theme, _) => MaterialApp(
@@ -86,51 +92,7 @@ class _TrotxiDriverAppState extends State<TrotxiDriverApp> {
           theme: AppTheme.lightTheme,
           darkTheme: AppTheme.darkTheme,
           themeMode: theme.themeMode,
-          home: AuthGate(
-            home: (context) => _PlaceholderHome(client: widget.client),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-/// Stands in until Today lands (frames 14 to 18). Sign-out is wired now so the
-/// auth flow can be walked end to end rather than only in one direction.
-class _PlaceholderHome extends StatelessWidget {
-  const _PlaceholderHome({required this.client});
-
-  final TrotxiApiClient client;
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        title: const Text('Trotxi Driver'),
-      ),
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(Icons.directions_bus_outlined, size: 64),
-            const SizedBox(height: 16),
-            Text(
-              'Driver App',
-              style: Theme.of(context).textTheme.headlineMedium,
-            ),
-            const SizedBox(height: 8),
-            Text(_apiBaseUrl, style: Theme.of(context).textTheme.bodySmall),
-            const SizedBox(height: 24),
-            OutlinedButton(
-              onPressed: () => context.read<SessionController>().signOut(),
-              child: const Text('Sign out'),
-            ),
-            TextButton(
-              onPressed: () => FirebaseCrashlytics.instance.crash(),
-              child: const Text('Test Crash Driver'),
-            ),
-          ],
+          home: AuthGate(home: (context) => const TodayPage()),
         ),
       ),
     );
