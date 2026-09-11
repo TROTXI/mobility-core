@@ -76,6 +76,9 @@ class _TrotxiDriverAppState extends State<TrotxiDriverApp> {
     // down every screen that happens to sit between the two.
     return MultiProvider(
       providers: [
+        // The raw client, for the position publisher, which is created per run
+        // screen rather than held app-wide.
+        Provider<TrotxiApiClient>.value(value: widget.client),
         Provider<DriverAuthRepository>.value(value: _auth),
         Provider<TripsRepository>.value(value: _trips),
         // Follows the device by default. The prototype puts a Theme control on

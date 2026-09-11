@@ -203,16 +203,19 @@ const FAKE_PAYSTACK_SECRET = 'fake-paystack-secret';
  * @param route - the corridor.
  * @param stops - the corridor's stops in seq order.
  * @param trips - the runs to fill.
- * @returns how many reservations were confirmed.
+ * @returns the confirmed seats, with the boarding code each rider would read
+ *   out. The API returns that code exactly once, on the confirming response,
+ *   and stores only a keyed hash, so capturing it here is the only way the
+ *   board-by-code screen can be exercised.
  */
 async function seedRiders(
   route: any,
   stops: any[],
   trips: { id: string; scheduledAt: string }[],
-): Promise<number> {
-  if (trips.length === 0 || stops.length < 2) return 0;
+): Promise<{ name: string; code: string }[]> {
+  if (trips.length === 0 || stops.length < 2) return [];
 
-  let confirmed = 0;
+  const confirmed: { name: string; code: string }[] = [];
   for (const [tripIndex, trip] of trips.entries()) {
     const scheduled = new Date(trip.scheduledAt);
     const travelDate = trip.scheduledAt.slice(0, 10);
@@ -288,8 +291,8 @@ async function seedRiders(
         return confirmed;
       }
       if (reservation.status === 409) continue; // run is full
-      must('confirm reservation', reservation);
-      confirmed++;
+      const seat = must('confirm reservation', reservation);
+      if (seat.pin) confirmed.push({ name, code: seat.pin as string });
     }
   }
   return confirmed;
@@ -439,8 +442,14 @@ async function main(): Promise<void> {
   // what a rider's pickup and drop-off have to be chosen from.
   const seeded = must('read route stops', await api('GET', `/routes/${route.id}`));
   const confirmed = await seedRiders(route, seeded.stops ?? [], todaysTrips);
-  if (confirmed > 0) {
-    console.log(`riders: ${confirmed} confirmed seat(s) across today's runs`);
+  if (confirmed.length > 0) {
+    console.log(`riders: ${confirmed.length} confirmed seat(s) across today's runs`);
+    console.log('');
+    console.log('boarding codes — what a rider reads out at the door:');
+    for (const seat of confirmed) {
+      console.log(`  ${seat.code}  ${seat.name}`);
+    }
+    console.log('');
   }
 
   // Price the corridor. Idempotent by intent rather than by accident: setting an

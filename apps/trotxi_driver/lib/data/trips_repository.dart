@@ -1,5 +1,6 @@
 import 'package:dio/dio.dart';
 import 'package:trotxi_client/trotxi_client.dart';
+import 'package:trotxi_driver/Presentations/Boarding/models/scan_result.dart';
 
 /// How far a run has got.
 enum RunStatus { scheduled, active, completed, cancelled }
@@ -195,6 +196,97 @@ class TripsRepository {
     } on DioException catch (err) {
       throw _unwrap(err);
     }
+  }
+
+  /// Board a rider from a scanned QR pass.
+  ///
+  /// @param pass - the token decoded from the QR.
+  /// @param runId - the run being boarded.
+  /// @returns the outcome, with the rider when the pass identified one.
+  Future<BoardingResult> scan({required String pass, required String runId}) async {
+    try {
+      final response = await _client.getBoardingApi().boardingScanPost(
+        boardingScanPostRequest: BoardingScanPostRequest(
+          (b) => b
+            ..pass = pass
+            ..tripId = runId,
+        ),
+      );
+      final data = response.data;
+      if (data == null) return const BoardingResult(outcome: BoardingOutcome.invalid);
+      return BoardingResult(
+        outcome: switch (data.reason.name) {
+          'ok' => BoardingOutcome.ok,
+          'expired' => BoardingOutcome.expired,
+          'reused' => BoardingOutcome.reused,
+          _ => BoardingOutcome.invalid,
+        },
+        riderId: data.riderId,
+        deducted: data.deducted,
+      );
+    } on DioException catch (err) {
+      return _boardingFailure(err);
+    }
+  }
+
+  /// Board a rider by the daily code they read out.
+  ///
+  /// @param reservationId - the seat from the manifest.
+  /// @param code - the four-character code as typed.
+  /// @returns the outcome.
+  Future<BoardingResult> boardByCode({
+    required String reservationId,
+    required String code,
+  }) async {
+    try {
+      final response = await _client.getBoardingApi().boardingVerifyPinPost(
+        boardingVerifyPinPostRequest: BoardingVerifyPinPostRequest(
+          (b) => b
+            ..reservationId = reservationId
+            ..pin = code,
+        ),
+      );
+      final data = response.data;
+      if (data == null) return const BoardingResult(outcome: BoardingOutcome.invalid);
+      return BoardingResult(
+        outcome: switch (data.reason.name) {
+          'ok' => BoardingOutcome.ok,
+          'already_boarded' => BoardingOutcome.alreadyBoarded,
+          'not_found' => BoardingOutcome.noReservation,
+          _ => BoardingOutcome.invalid,
+        },
+        riderId: data.riderId,
+        deducted: data.deducted,
+      );
+    } on DioException catch (err) {
+      return _boardingFailure(err);
+    }
+  }
+
+  /// Turn a transport failure into an outcome rather than an exception.
+  ///
+  /// Boarding happens at a door with people waiting, so every path has to end
+  /// in something the driver can read and act on.
+  ///
+  /// @param err - the caught Dio exception.
+  /// @returns the outcome to show.
+  BoardingResult _boardingFailure(DioException err) {
+    final inner = err.error;
+    if (inner is OfflineException) {
+      return const BoardingResult(outcome: BoardingOutcome.offline);
+    }
+    // A dead session is NOT a bad pass. Saying "pass not accepted" to a driver
+    // whose token expired turns our problem into an accusation about a paying
+    // rider, and turns them away at the door.
+    if (inner is UnauthorizedException || inner is InvalidCredentialsException) {
+      return const BoardingResult(outcome: BoardingOutcome.sessionExpired);
+    }
+    if (inner is ApiException && inner.statusCode == 403) {
+      return const BoardingResult(outcome: BoardingOutcome.forbidden);
+    }
+    // Only the API actually saying so makes a pass invalid. Everything else is
+    // our failure and has to read as one.
+    return const BoardingResult(outcome: BoardingOutcome.failed);
   }
 
   /// Shared start/complete path.
