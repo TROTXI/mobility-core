@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:trotxi_driver/Presentations/Boarding/models/scan_result.dart';
+import 'package:trotxi_driver/Presentations/Boarding/widgets/boarding_keypad.dart';
 import 'package:trotxi_driver/core/config/theme/app_colors.dart';
 import 'package:trotxi_driver/core/config/theme/app_radii.dart';
 import 'package:trotxi_driver/core/config/theme/app_spacing.dart';
@@ -39,7 +39,11 @@ class BoardByCodePage extends StatefulWidget {
 
 class _BoardByCodePageState extends State<BoardByCodePage> {
   late final ManifestRider? _rider = widget.preselected;
-  final _codeController = TextEditingController();
+
+  /// What has been keyed so far. A plain string rather than a controller: the
+  /// keypad owns input now, so there is no text field to drive.
+  String _code = '';
+
   BoardingResult? _result;
   bool _busy = false;
 
@@ -50,14 +54,8 @@ class _BoardByCodePageState extends State<BoardByCodePage> {
   /// leave the driver no way to notice.
   String? _boardedName;
 
-  @override
-  void dispose() {
-    _codeController.dispose();
-    super.dispose();
-  }
-
   Future<void> _submit() async {
-    if (_codeController.text.length != 4 || _busy) return;
+    if (_code.length != 4 || _busy) return;
     setState(() => _busy = true);
 
     final trips = context.read<TripsRepository>();
@@ -67,13 +65,10 @@ class _BoardByCodePageState extends State<BoardByCodePage> {
     // Two paths on purpose. With a rider already named, the code confirms that
     // person; without one, it names them. The second is the door flow.
     final outcome = rider == null
-        ? await trips.boardByCodeOnRun(
-            runId: widget.runId,
-            code: _codeController.text,
-          )
+        ? await trips.boardByCodeOnRun(runId: widget.runId, code: _code)
         : await trips.boardByCode(
             reservationId: rider.reservationId,
-            code: _codeController.text,
+            code: _code,
           );
 
     if (outcome.isAccepted ||
@@ -86,7 +81,10 @@ class _BoardByCodePageState extends State<BoardByCodePage> {
       _result = outcome;
       _boardedName = _nameFor(run, outcome.riderId) ?? rider?.name;
       _busy = false;
-      if (outcome.isAccepted) _codeController.clear();
+      // Cleared on success so the next rider can be keyed straight away, and
+      // kept on failure so a driver can correct one character rather than
+      // retype all four.
+      if (outcome.isAccepted) _code = '';
     });
   }
 
@@ -125,7 +123,7 @@ class _BoardByCodePageState extends State<BoardByCodePage> {
       padding: const EdgeInsets.all(AppSpacing.space20),
       children: [
         Text(
-          rider?.name ?? 'Enter the boarding code',
+          rider?.name ?? 'Board by code',
           style: AppTypography.heading3.copyWith(color: colors.textPrimary),
         ),
         const SizedBox(height: AppSpacing.space4),
@@ -133,32 +131,17 @@ class _BoardByCodePageState extends State<BoardByCodePage> {
           rider == null
               ? 'Four characters, read out by the rider. You do not need to find '
                     'them on the manifest first.'
-              : 'Ask for their four-character boarding code.',
-          style: AppTypography.body.copyWith(color: colors.textSecondary),
+              : 'Morning · reserved',
+          style: AppTypography.bodySmall.copyWith(color: colors.textSecondary),
         ),
-        const SizedBox(height: AppSpacing.space24),
+        const SizedBox(height: AppSpacing.space20),
 
-        TextField(
-          controller: _codeController,
-          autofocus: true,
-          textCapitalization: TextCapitalization.characters,
+        BoardingCodeDisplay(code: _code),
+        const SizedBox(height: AppSpacing.space8),
+        Text(
+          "Enter the rider's 4-character boarding code",
           textAlign: TextAlign.center,
-          autocorrect: false,
-          maxLength: 4,
-          style: AppTypography.boardingCode.copyWith(color: colors.textPrimary),
-          decoration: const InputDecoration(counterText: '', hintText: 'B7K9'),
-          inputFormatters: [
-            // Uppercased on the way in so the field shows what the server will
-            // compare. The code alphabet has no O or I, so a driver typing a
-            // letter where a digit belongs gets a clean rejection rather than a
-            // silent mismatch.
-            FilteringTextInputFormatter.allow(RegExp('[A-Za-z0-9]')),
-            TextInputFormatter.withFunction(
-              (_, next) => next.copyWith(text: next.text.toUpperCase()),
-            ),
-          ],
-          onChanged: (_) => setState(() => _result = null),
-          onSubmitted: (_) => _submit(),
+          style: AppTypography.caption.copyWith(color: colors.textSecondary),
         ),
 
         if (result != null) ...[
@@ -173,20 +156,27 @@ class _BoardByCodePageState extends State<BoardByCodePage> {
           ),
         ],
 
-        const SizedBox(height: AppSpacing.space24),
-        ElevatedButton(
-          onPressed: _busy ? null : _submit,
-          style: ElevatedButton.styleFrom(
-            minimumSize: const Size.fromHeight(56),
-          ),
-          child: _busy
-              ? const SizedBox(
-                  height: 20,
-                  width: 20,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                )
-              : const Text('Board rider'),
+        const SizedBox(height: AppSpacing.space20),
+        BoardingKeypad(
+          enabled: !_busy,
+          canSubmit: _code.length == 4,
+          onKey: (key) => setState(() {
+            if (_code.length < 4) _code += key;
+            // Any new keystroke means the driver has moved on from the last
+            // answer, so the old result stops applying.
+            _result = null;
+          }),
+          onClear: () => setState(() {
+            _code = '';
+            _result = null;
+          }),
+          onSubmit: _submit,
         ),
+
+        if (_busy) ...[
+          const SizedBox(height: AppSpacing.space16),
+          const Center(child: CircularProgressIndicator()),
+        ],
       ],
     );
   }

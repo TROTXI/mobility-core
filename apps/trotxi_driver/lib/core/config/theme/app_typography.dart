@@ -54,6 +54,24 @@ abstract final class AppTypography {
     height: 26 / 20,
   );
 
+  /// A key on the boarding keypad, and the CLEAR beside it. 14/500 in the file
+  /// for a key, 13/600 for CLEAR; one style covers both at this size.
+  static const keyLabel = TextStyle(
+    fontFamily: fontFamily,
+    fontSize: 15,
+    fontWeight: FontWeight.w600,
+    height: 1.2,
+  );
+
+  /// BOARD. Heavier than the keys around it, because it is the one that acts.
+  static const keyAction = TextStyle(
+    fontFamily: fontFamily,
+    fontSize: 14,
+    fontWeight: FontWeight.w700,
+    height: 1.2,
+    letterSpacing: 0.4,
+  );
+
   /// The stop name on the next-stop card. 18/700 in the file — heavier than
   /// [title] at the same sort of size, because it is the one word a driver
   /// reads while moving.
