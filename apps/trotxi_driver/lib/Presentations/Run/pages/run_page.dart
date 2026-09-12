@@ -6,6 +6,7 @@ import 'package:trotxi_driver/Presentations/Boarding/pages/board_by_code_page.da
 import 'package:trotxi_driver/Presentations/Boarding/pages/scan_page.dart';
 import 'package:trotxi_driver/Presentations/Completion/pages/end_run_page.dart';
 import 'package:trotxi_driver/Presentations/Run/pages/manifest_page.dart';
+import 'package:trotxi_driver/Presentations/Run/widgets/pre_trip.dart';
 import 'package:trotxi_driver/Presentations/Run/widgets/run_map.dart';
 import 'package:trotxi_driver/core/widgets/driver_chip.dart';
 import 'package:trotxi_driver/core/widgets/driver_tiles.dart';
@@ -106,9 +107,7 @@ class _RunPageState extends State<RunPage> {
           child: title == null
               ? page
               : Scaffold(
-                  appBar: AppBar(
-                    title: title.isEmpty ? null : Text(title),
-                  ),
+                  appBar: AppBar(title: title.isEmpty ? null : Text(title)),
                   body: SafeArea(child: page),
                 ),
         ),
@@ -180,206 +179,239 @@ class _RunPageState extends State<RunPage> {
           const SizedBox(height: AppSpacing.space16),
         ],
 
-        // The Active Trip Hero (Components / Active Trip Hero): one dominant
-        // operating surface that answers what the driver must do next. The
-        // earlier build spread these parts down a flat list, which is the same
-        // information and a different screen.
-        Container(
-          padding: const EdgeInsets.all(AppSpacing.space20),
-          decoration: BoxDecoration(
-            color: colors.surface,
-            borderRadius: AppRadii.circular(AppRadii.hero),
-            border: Border.all(color: colors.border),
+        // Before departure the screen is page 08, not a quieter page 09.
+        // The driver is confirming an assignment they have not started, so the
+        // run leads as a filled summary and the check under it says what that
+        // confirmation rests on. Once the run is active the same space has to
+        // carry what is happening now, and the hero takes over.
+        if (!run.isActive) ...[
+          Text(
+            'Pre-trip check',
+            style: AppTypography.heading2.copyWith(color: colors.textPrimary),
           ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          '${CorridorTime.hhmm(run.scheduledAt)} ${run.routeName}',
-                          style: AppTypography.runTitle.copyWith(
-                            color: colors.textPrimary,
+          const SizedBox(height: AppSpacing.space2),
+          Text(
+            'Confirm the run is ready before departure',
+            style: AppTypography.screenContext.copyWith(
+              color: colors.textSecondary,
+            ),
+          ),
+          const SizedBox(height: AppSpacing.space12),
+          TripSummary(data: data),
+          const SizedBox(height: AppSpacing.space12),
+          ReadinessCard(data: data),
+          const SizedBox(height: AppSpacing.space12),
+          // Page 08 carries the same indicator as the active screen. Location
+          // is a readiness fact before departure, and finding out it is off
+          // after pulling away costs the run its trace.
+          GpsIndicator(
+            state: _gpsState(_positionBlock),
+            detail: _gpsDetail(_positionBlock),
+          ),
+        ] else ...[
+          // The Active Trip Hero (Components / Active Trip Hero): one dominant
+          // operating surface that answers what the driver must do next. The
+          // earlier build spread these parts down a flat list, which is the same
+          // information and a different screen.
+          Container(
+            padding: const EdgeInsets.all(AppSpacing.space20),
+            decoration: BoxDecoration(
+              color: colors.surface,
+              borderRadius: AppRadii.circular(AppRadii.hero),
+              border: Border.all(color: colors.border),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            '${CorridorTime.hhmm(run.scheduledAt)} ${run.routeName}',
+                            style: AppTypography.runTitle.copyWith(
+                              color: colors.textPrimary,
+                            ),
                           ),
-                        ),
-                        const SizedBox(height: AppSpacing.space4),
-                        Text(
-                          // "GT 4821-22 · ACTIVE RUN" in the file. The plate is
-                          // dropped rather than invented when no vehicle is
-                          // assigned yet.
-                          [
-                            if (data.vehicleRegistration != null)
-                              data.vehicleRegistration!,
-                            _runState(run),
-                          ].join(' · '),
-                          style: AppTypography.caption.copyWith(
-                            color: colors.textSecondary,
+                          const SizedBox(height: AppSpacing.space4),
+                          Text(
+                            // "GT 4821-22 · ACTIVE RUN" in the file. The plate is
+                            // dropped rather than invented when no vehicle is
+                            // assigned yet.
+                            [
+                              if (data.vehicleRegistration != null)
+                                data.vehicleRegistration!,
+                              _runState(run),
+                            ].join(' · '),
+                            style: AppTypography.caption.copyWith(
+                              color: colors.textSecondary,
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: AppSpacing.space8),
-                  DriverChip(
-                    // Short in the chip, long in the caption — which is how the
-                    // file has it: "ACTIVE" beside "GT 4821-22 · ACTIVE RUN".
-                    label: _chipLabel(run),
-                    status: switch (run.status) {
-                      RunStatus.active => DriverStatus.active,
-                      RunStatus.completed => DriverStatus.boarded,
-                      RunStatus.cancelled => DriverStatus.error,
-                      RunStatus.scheduled => DriverStatus.neutral,
-                    },
-                  ),
-                ],
-              ),
-              const SizedBox(height: AppSpacing.space16),
-
-              Row(
-                children: [
-                  Expanded(
-                    // Against the van's seat ceiling when the API gives one
-                    // (#230), and confirmed riders when it does not. The
-                    // caption says which, so the number is never read as
-                    // something it is not.
-                    child: DriverStatTile(
-                      label: 'Boarded',
-                      value: '${data.boarded} / ${data.ceiling}',
-                      caption: data.hasCapacity
-                          ? '${data.waiting.length} remaining · seats'
-                          : '${data.waiting.length} remaining',
-                      tone: data.boarded >= data.ceiling && data.ceiling > 0
-                          ? colors.success
-                          : null,
+                    const SizedBox(width: AppSpacing.space8),
+                    DriverChip(
+                      // Short in the chip, long in the caption — which is how the
+                      // file has it: "ACTIVE" beside "GT 4821-22 · ACTIVE RUN".
+                      label: _chipLabel(run),
+                      status: switch (run.status) {
+                        RunStatus.active => DriverStatus.active,
+                        RunStatus.completed => DriverStatus.boarded,
+                        RunStatus.cancelled => DriverStatus.error,
+                        RunStatus.scheduled => DriverStatus.neutral,
+                      },
                     ),
-                  ),
-                  const SizedBox(width: AppSpacing.space12),
-                  Expanded(
-                    // Zero until the driver reports an arrival (#230). The API
-                    // does not guess from GPS and neither does this.
-                    child: DriverStatTile(
-                      label: 'Stop',
-                      value: '${data.currentStopSeq ?? 0} of ${data.stops.length}',
-                      caption: _stopCaption(data),
-                    ),
-                  ),
-                ],
-              ),
-
-              // The corridor (#237). Above the next-stop card rather than
-              // below it: the design leads the active-trip frame with the map,
-              // and a driver glancing down wants where they are before what is
-              // next.
-              const SizedBox(height: AppSpacing.space16),
-              RunMap(
-                routeId: run.routeId,
-                runId: run.id,
-                isActive: run.isActive,
-                onExpand: () => _openMap(context, run),
-              ),
-
-              if (data.stops.isNotEmpty) ...[
-                const SizedBox(height: AppSpacing.space16),
-                NextStopCard(
-                  label: data.currentStopName == null
-                      ? 'Next stop'
-                      : 'At stop',
-                  stop: data.currentStopName ?? data.stops.first,
-                  // The file shows "1.2 km · ~4 min" here. Left out until #237
-                  // lands a routing engine: a distance the app cannot compute
-                  // is worse on the one card a driver navigates by than none.
+                  ],
                 ),
-              ],
-
-              // Boarding is only offered on a run actually under way. Scanning
-              // riders onto a trip nobody has started produces boardings
-              // against a run with no GPS trace and no start time, which is the
-              // state the lifecycle refuses to complete.
-              if (run.isActive) ...[
                 const SizedBox(height: AppSpacing.space16),
+
                 Row(
                   children: [
                     Expanded(
-                      child: FilledButton(
-                        onPressed: () => _open(
-                          context,
-                          controller,
-                          ScanPage(runId: run.id),
-                          title: 'Scan a pass',
-                        ),
-                        style: FilledButton.styleFrom(
-                          minimumSize: const Size.fromHeight(53),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: AppRadii.circular(AppRadii.full),
-                          ),
-                        ),
-                        child: const Text('SCAN RIDER'),
+                      // Against the van's seat ceiling when the API gives one
+                      // (#230), and confirmed riders when it does not. The
+                      // caption says which, so the number is never read as
+                      // something it is not.
+                      child: DriverStatTile(
+                        label: 'Boarded',
+                        value: '${data.boarded} / ${data.ceiling}',
+                        caption: data.hasCapacity
+                            ? '${data.waiting.length} remaining · seats'
+                            : '${data.waiting.length} remaining',
+                        tone: data.boarded >= data.ceiling && data.ceiling > 0
+                            ? colors.success
+                            : null,
                       ),
                     ),
-                    const SizedBox(width: AppSpacing.space10),
+                    const SizedBox(width: AppSpacing.space12),
                     Expanded(
-                      child: OutlinedButton(
-                        onPressed: () => _open(
-                          context,
-                          controller,
-                          const ManifestPage(),
-                          title: '',
-                        ),
-                        style: OutlinedButton.styleFrom(
-                          minimumSize: const Size.fromHeight(53),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: AppRadii.circular(AppRadii.full),
-                          ),
-                        ),
-                        child: const Text('MANIFEST'),
+                      // Zero until the driver reports an arrival (#230). The API
+                      // does not guess from GPS and neither does this.
+                      child: DriverStatTile(
+                        label: 'Stop',
+                        value:
+                            '${data.currentStopSeq ?? 0} of ${data.stops.length}',
+                        caption: _stopCaption(data),
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(height: AppSpacing.space12),
-                OutlinedButton.icon(
-                  onPressed: () => _open(
-                    context,
-                    controller,
-                    BoardByCodePage(runId: run.id),
-                  ),
-                  icon: const Icon(Icons.dialpad),
-                  label: const Text('Board by code'),
-                ),
-              ] else ...[
-                const SizedBox(height: AppSpacing.space16),
-                OutlinedButton.icon(
-                  onPressed: () => _open(
-                    context,
-                    controller,
-                    const ManifestPage(),
-                    title: '',
-                  ),
-                  icon: const Icon(Icons.people_outline),
-                  label: Text('Manifest (${data.waiting.length} waiting)'),
-                ),
-              ],
 
-              if (run.isActive) ...[
+                // The corridor (#237). Above the next-stop card rather than
+                // below it: the design leads the active-trip frame with the map,
+                // and a driver glancing down wants where they are before what is
+                // next.
                 const SizedBox(height: AppSpacing.space16),
-                // The file's GPS & Connectivity component, whose whole rule is
-                // "never imply live accuracy when GPS is weak, queued offline
-                // or disabled". The earlier build had one line that said
-                // "sharing" whatever was actually happening underneath.
-                GpsIndicator(
-                  state: _gpsState(_positionBlock),
-                  detail: _gpsDetail(_positionBlock),
+                RunMap(
+                  routeId: run.routeId,
+                  runId: run.id,
+                  isActive: run.isActive,
+                  onExpand: () => _openMap(context, run),
                 ),
+
+                if (data.stops.isNotEmpty) ...[
+                  const SizedBox(height: AppSpacing.space16),
+                  NextStopCard(
+                    label: data.currentStopName == null
+                        ? 'Next stop'
+                        : 'At stop',
+                    stop: data.currentStopName ?? data.stops.first,
+                    // The file shows "1.2 km · ~4 min" here. Left out until #237
+                    // lands a routing engine: a distance the app cannot compute
+                    // is worse on the one card a driver navigates by than none.
+                  ),
+                ],
+
+                // Boarding is only offered on a run actually under way. Scanning
+                // riders onto a trip nobody has started produces boardings
+                // against a run with no GPS trace and no start time, which is the
+                // state the lifecycle refuses to complete.
+                if (run.isActive) ...[
+                  const SizedBox(height: AppSpacing.space16),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: FilledButton(
+                          onPressed: () => _open(
+                            context,
+                            controller,
+                            ScanPage(runId: run.id),
+                            title: 'Scan a pass',
+                          ),
+                          style: FilledButton.styleFrom(
+                            minimumSize: const Size.fromHeight(53),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: AppRadii.circular(AppRadii.full),
+                            ),
+                          ),
+                          child: const Text('SCAN RIDER'),
+                        ),
+                      ),
+                      const SizedBox(width: AppSpacing.space10),
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: () => _open(
+                            context,
+                            controller,
+                            const ManifestPage(),
+                            title: '',
+                          ),
+                          style: OutlinedButton.styleFrom(
+                            minimumSize: const Size.fromHeight(53),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: AppRadii.circular(AppRadii.full),
+                            ),
+                          ),
+                          child: const Text('MANIFEST'),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: AppSpacing.space12),
+                  OutlinedButton.icon(
+                    onPressed: () => _open(
+                      context,
+                      controller,
+                      BoardByCodePage(runId: run.id),
+                    ),
+                    icon: const Icon(Icons.dialpad),
+                    label: const Text('Board by code'),
+                  ),
+                ] else ...[
+                  const SizedBox(height: AppSpacing.space16),
+                  OutlinedButton.icon(
+                    onPressed: () => _open(
+                      context,
+                      controller,
+                      const ManifestPage(),
+                      title: '',
+                    ),
+                    icon: const Icon(Icons.people_outline),
+                    label: Text('Manifest (${data.waiting.length} waiting)'),
+                  ),
+                ],
+
+                if (run.isActive) ...[
+                  const SizedBox(height: AppSpacing.space16),
+                  // The file's GPS & Connectivity component, whose whole rule is
+                  // "never imply live accuracy when GPS is weak, queued offline
+                  // or disabled". The earlier build had one line that said
+                  // "sharing" whatever was actually happening underneath.
+                  GpsIndicator(
+                    state: _gpsState(_positionBlock),
+                    detail: _gpsDetail(_positionBlock),
+                  ),
+                ],
               ],
-            ],
+            ),
           ),
-        ),
+        ],
+
         const SizedBox(height: AppSpacing.space16),
 
         _PrimaryAction(
@@ -605,9 +637,7 @@ class _StopRow extends StatelessWidget {
                     : Text(
                         '$seq',
                         style: AppTypography.caption.copyWith(
-                          color: current
-                              ? colors.onAction
-                              : colors.textPrimary,
+                          color: current ? colors.onAction : colors.textPrimary,
                         ),
                       ),
               ),
