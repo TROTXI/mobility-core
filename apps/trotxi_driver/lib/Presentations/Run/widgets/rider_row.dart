@@ -12,9 +12,35 @@ import 'package:trotxi_driver/data/trips_repository.dart';
 /// scanning the list is looking for who still needs boarding, and a row that
 /// only reports state makes them find the person, then find the button.
 class RiderRow extends StatelessWidget {
-  const RiderRow({super.key, required this.rider, this.onAction, this.onTap});
+  const RiderRow({
+    super.key,
+    required this.rider,
+    required this.position,
+    required this.total,
+    this.onAction,
+    this.onTap,
+  });
 
   final ManifestRider rider;
+
+  /// This rider's place in the manifest, counting from one.
+  ///
+  /// The design's trip table shows "Seat · 12A" here. Trotros do not assign
+  /// seats (#229), so there is no seat number to print and inventing one would
+  /// be worse than leaving it out — a driver reading "12A" aloud sends a rider
+  /// hunting for a seat that does not exist.
+  ///
+  /// The line number is a real fact about the manifest, fills the same slot,
+  /// and costs nothing to be wrong about.
+  final int position;
+
+  /// How many riders the manifest holds. Always the FULL manifest, never the
+  /// filtered view — a rider's number must not change when the driver types in
+  /// the search box.
+  ///
+  /// Not drawn on the row, which shows the bare `#3`; kept for the semantics
+  /// label, where a screen reader has no progress line to read it from.
+  final int total;
 
   /// Fired by the pill. Null renders it as a plain state chip, which is what a
   /// boarded rider gets: there is nothing left to do to them.
@@ -28,42 +54,63 @@ class RiderRow extends StatelessWidget {
         ? rider.name!.trim()
         : 'Unnamed rider';
 
-    return InkWell(
-      onTap: onTap,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(
-          horizontal: AppSpacing.space12,
-          vertical: AppSpacing.space12,
-        ),
-        child: Row(
-          children: [
-            _Avatar(url: rider.avatarUrl, name: name, colors: colors),
-            const SizedBox(width: AppSpacing.space12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    name,
-                    style: AppTypography.label.copyWith(
-                      color: colors.textPrimary,
+    return Semantics(
+      label: 'Number $position of $total',
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.space12,
+            vertical: AppSpacing.space12,
+          ),
+          child: Row(
+            children: [
+              _Avatar(url: rider.avatarUrl, name: name, colors: colors),
+              const SizedBox(width: AppSpacing.space12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            name,
+                            style: AppTypography.label.copyWith(
+                              color: colors.textPrimary,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        const SizedBox(width: AppSpacing.space8),
+                        // Just "#3" here, not "No. 3 of 12". The long form pushed
+                        // "Akosua Frimpong-Boateng" into an ellipsis, and on a
+                        // screen whose job is matching a name to a face the name
+                        // wins. The total is already on the progress line above,
+                        // and the detail sheet spells it out in full.
+                        Text(
+                          '#$position',
+                          style: AppTypography.caption.copyWith(
+                            color: colors.textSecondary,
+                          ),
+                        ),
+                      ],
                     ),
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  Text(
-                    _subtitle(rider),
-                    style: AppTypography.caption.copyWith(
-                      color: colors.textSecondary,
+                    Text(
+                      _subtitle(rider),
+                      style: AppTypography.caption.copyWith(
+                        color: colors.textSecondary,
+                      ),
+                      overflow: TextOverflow.ellipsis,
                     ),
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
-            const SizedBox(width: AppSpacing.space8),
-            _ActionPill(rider: rider, onAction: onAction, colors: colors),
-          ],
+              const SizedBox(width: AppSpacing.space8),
+              _ActionPill(rider: rider, onAction: onAction, colors: colors),
+            ],
+          ),
         ),
       ),
     );

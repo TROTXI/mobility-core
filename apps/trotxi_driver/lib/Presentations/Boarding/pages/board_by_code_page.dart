@@ -62,20 +62,28 @@ class _BoardByCodePageState extends State<BoardByCodePage> {
   @override
   Widget build(BuildContext context) {
     final colors = context.driverColors;
-    final waiting =
-        context.watch<RunController>().detail.valueOrNull?.waiting ?? [];
+    final detail = context.watch<RunController>().detail.valueOrNull;
+    final waiting = detail?.waiting ?? const <ManifestRider>[];
+    // The whole manifest, so a rider's number here is the same one the manifest
+    // screen shows them. Numbering against `waiting` would renumber everybody
+    // each time someone boards.
+    final all = detail?.riders ?? const <ManifestRider>[];
 
     return Scaffold(
       appBar: AppBar(title: const Text('Board by code')),
       body: SafeArea(
         child: _rider == null
-            ? _pickRider(waiting, colors)
+            ? _pickRider(waiting, all, colors)
             : _enterCode(context, _rider!, colors),
       ),
     );
   }
 
-  Widget _pickRider(List<ManifestRider> waiting, AppColors colors) {
+  Widget _pickRider(
+    List<ManifestRider> waiting,
+    List<ManifestRider> all,
+    AppColors colors,
+  ) {
     if (waiting.isEmpty) {
       return Center(
         child: Padding(
@@ -108,6 +116,8 @@ class _BoardByCodePageState extends State<BoardByCodePage> {
               for (final rider in waiting)
                 RiderRow(
                   rider: rider,
+                  position: all.indexOf(rider) + 1,
+                  total: all.length,
                   onTap: () => setState(() {
                     _rider = rider;
                     _result = null;

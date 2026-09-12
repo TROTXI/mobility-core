@@ -109,6 +109,11 @@ class _ManifestPageState extends State<ManifestPage> {
                   for (final rider in riders)
                     RiderRow(
                       rider: rider,
+                      // Numbered against the FULL manifest, not the filtered
+                      // view: a rider who is "No. 3 of 12" must stay No. 3 when
+                      // the driver types their name into the search box.
+                      position: data.riders.indexOf(rider) + 1,
+                      total: data.riders.length,
                       // Both open the detail sheet rather than boarding from
                       // the list. The design puts BOARD PASSENGER on the detail
                       // frame for a reason: the photo pass only works if the
@@ -116,8 +121,20 @@ class _ManifestPageState extends State<ManifestPage> {
                       // that debits a ride from a 44-pixel thumbnail defeats it.
                       onAction: rider.boarded
                           ? null
-                          : () => _openRider(context, controller, rider),
-                      onTap: () => _openRider(context, controller, rider),
+                          : () => _openRider(
+                              context,
+                              controller,
+                              rider,
+                              data.riders.indexOf(rider) + 1,
+                              data.riders.length,
+                            ),
+                      onTap: () => _openRider(
+                        context,
+                        controller,
+                        rider,
+                        data.riders.indexOf(rider) + 1,
+                        data.riders.length,
+                      ),
                     ),
                 ],
               ),
@@ -132,17 +149,25 @@ class _ManifestPageState extends State<ManifestPage> {
   /// @param context - for the sheet.
   /// @param controller - the run, for the actions.
   /// @param rider - the rider tapped.
+  /// @param position - their place in the manifest, counting from one.
+  /// @param total - how many riders the manifest holds.
   void _openRider(
     BuildContext context,
     RunController controller,
     ManifestRider rider,
+    int position,
+    int total,
   ) {
     showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
       builder: (_) => ChangeNotifierProvider.value(
         value: controller,
-        child: _RiderSheet(rider: rider),
+        child: _RiderSheet(
+          rider: rider,
+          position: position,
+          total: total,
+        ),
       ),
     );
   }
@@ -254,9 +279,18 @@ class _Empty extends StatelessWidget {
 /// photo-pass fallback rests on the driver actually looking at it before
 /// tapping BOARD PASSENGER.
 class _RiderSheet extends StatefulWidget {
-  const _RiderSheet({required this.rider});
+  const _RiderSheet({
+    required this.rider,
+    required this.position,
+    required this.total,
+  });
 
   final ManifestRider rider;
+
+  /// Their place in the manifest. The design's "Seat · 12A" slot, filled with
+  /// something true: trotros do not assign seats (#229).
+  final int position;
+  final int total;
 
   @override
   State<_RiderSheet> createState() => _RiderSheetState();
@@ -300,6 +334,7 @@ class _RiderSheetState extends State<_RiderSheet> {
             const SizedBox(height: AppSpacing.space4),
             Text(
               [
+                'No. ${widget.position} of ${widget.total}',
                 rider.direction == 'evening' ? 'Evening' : 'Morning',
                 if (rider.isStandby) 'standby seat',
                 if (rider.boarded) 'boarded',
