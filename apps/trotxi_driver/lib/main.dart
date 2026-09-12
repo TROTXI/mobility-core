@@ -10,10 +10,14 @@ import 'package:trotxi_driver/core/config/theme/app_theme_controller.dart';
 import 'package:provider/provider.dart';
 import 'package:trotxi_driver/Presentations/Auth/pages/auth_gate.dart';
 import 'package:trotxi_driver/Presentations/Shell/pages/driver_shell.dart';
+import 'package:trotxi_driver/core/state/config_controller.dart';
 import 'package:trotxi_driver/core/state/session_controller.dart';
 import 'package:trotxi_driver/core/state/today_controller.dart';
+import 'package:trotxi_driver/data/config_repository.dart';
 import 'package:trotxi_driver/data/driver_auth_repository.dart';
+import 'package:trotxi_driver/data/incidents_repository.dart';
 import 'package:trotxi_driver/data/trips_repository.dart';
+import 'package:trotxi_driver/data/work_repository.dart';
 import 'package:trotxi_client/trotxi_client.dart';
 import 'package:trotxi_driver/firebase_options.dart';
 import 'package:trotxi_driver/firebase_performance.dart';
@@ -68,6 +72,11 @@ class _TrotxiDriverAppState extends State<TrotxiDriverApp> {
     tokenStore: TokenStorage.instance,
   );
   late final TripsRepository _trips = TripsRepository(client: widget.client);
+  late final ConfigRepository _config = ConfigRepository(client: widget.client);
+  late final IncidentsRepository _incidents = IncidentsRepository(
+    client: widget.client,
+  );
+  late final WorkRepository _work = WorkRepository(client: widget.client);
 
   @override
   Widget build(BuildContext context) {
@@ -81,6 +90,15 @@ class _TrotxiDriverAppState extends State<TrotxiDriverApp> {
         Provider<TrotxiApiClient>.value(value: widget.client),
         Provider<DriverAuthRepository>.value(value: _auth),
         Provider<TripsRepository>.value(value: _trips),
+        Provider<ConfigRepository>.value(value: _config),
+        Provider<IncidentsRepository>.value(value: _incidents),
+        Provider<WorkRepository>.value(value: _work),
+        // Fetched at start, not per screen: GET /flags answers before sign-in,
+        // and the screen that needs the operations number most is the one a
+        // driver reaches when they cannot get in (#234).
+        ChangeNotifierProvider(
+          create: (_) => ConfigController(config: _config)..load(),
+        ),
         // Follows the device by default. The prototype puts a Theme control on
         // Profile > App preferences, which drives this; dark is the one that
         // matters in practice, since these screens are read before dawn and

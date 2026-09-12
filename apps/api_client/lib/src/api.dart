@@ -13,12 +13,14 @@ import 'package:trotxi_api_client/src/api/admin_api.dart';
 import 'package:trotxi_api_client/src/api/auth_api.dart';
 import 'package:trotxi_api_client/src/api/boarding_api.dart';
 import 'package:trotxi_api_client/src/api/flags_api.dart';
+import 'package:trotxi_api_client/src/api/incidents_api.dart';
 import 'package:trotxi_api_client/src/api/mobility_api.dart';
 import 'package:trotxi_api_client/src/api/payments_api.dart';
 import 'package:trotxi_api_client/src/api/reservations_api.dart';
 import 'package:trotxi_api_client/src/api/rides_api.dart';
 import 'package:trotxi_api_client/src/api/system_api.dart';
 import 'package:trotxi_api_client/src/api/users_api.dart';
+import 'package:trotxi_api_client/src/api/work_api.dart';
 
 class TrotxiApiClient {
   static const String basePath = r'http://localhost';
@@ -138,6 +140,12 @@ class TrotxiApiClient {
     return FlagsApi(dio, serializers);
   }
 
+  /// Get IncidentsApi instance, base route and serializer can be overridden by a given but be careful,
+  /// by doing that all interceptors will not be executed
+  IncidentsApi getIncidentsApi() {
+    return IncidentsApi(dio, serializers);
+  }
+
   /// Get MobilityApi instance, base route and serializer can be overridden by a given but be careful,
   /// by doing that all interceptors will not be executed
   MobilityApi getMobilityApi() {
@@ -172,5 +180,11 @@ class TrotxiApiClient {
   /// by doing that all interceptors will not be executed
   UsersApi getUsersApi() {
     return UsersApi(dio, serializers);
+  }
+
+  /// Get WorkApi instance, base route and serializer can be overridden by a given but be careful,
+  /// by doing that all interceptors will not be executed
+  WorkApi getWorkApi() {
+    return WorkApi(dio, serializers);
   }
 }

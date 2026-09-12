@@ -1,6 +1,10 @@
 import 'package:dio/dio.dart';
 import 'package:trotxi_api_client/trotxi_api_client.dart';
 export 'package:trotxi_api_client/trotxi_api_client.dart';
+// A request body for a discriminated union (the work requests in #232) is
+// generated as a OneOf, so building one needs this type. Exported here so an
+// app never imports the generated client's own dependencies directly.
+export 'package:one_of/one_of.dart' show OneOf, OneOf2;
 
 class TrotxiException implements Exception {
   final String message;

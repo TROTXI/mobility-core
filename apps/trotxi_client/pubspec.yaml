@@ -10,6 +10,10 @@ dependencies:
   dio: '^5.7.0'
   trotxi_api_client:
     path: ../api_client
+  # Re-exported below. The generated client models a discriminated union as a
+  # OneOf, so any caller building one needs the type — and the point of this
+  # package is that callers never reach past it for a generated-client detail.
+  one_of: '>=1.5.0 <2.0.0'
   flutter:
     sdk: flutter
 

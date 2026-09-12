@@ -11,6 +11,8 @@ Method | HTTP request | Description
 ------------- | ------------- | -------------
 [**adminAskDispatchPost**](AdminApi.md#adminaskdispatchpost) | **POST** /admin/ask-dispatch | Prompt a day&#39;s route subscribers to confirm (seed pending + push)
 [**adminConvertCreditsPost**](AdminApi.md#adminconvertcreditspost) | **POST** /admin/convert-credits | Month-end: convert unused rides to Ride Credits for ENDED periods
+[**adminDriverRequestsGet**](AdminApi.md#admindriverrequestsget) | **GET** /admin/driver-requests | Driver route-change and leave requests, newest first
+[**adminDriverRequestsIdPatch**](AdminApi.md#admindriverrequestsidpatch) | **PATCH** /admin/driver-requests/{id} | Approve or decline a driver request
 [**adminDriversGet**](AdminApi.md#admindriversget) | **GET** /admin/drivers | List all drivers
 [**adminDriversIdCredentialsPatch**](AdminApi.md#admindriversidcredentialspatch) | **PATCH** /admin/drivers/{id}/credentials | Suspend, reinstate, or unlock a driver credential
 [**adminDriversIdCredentialsPost**](AdminApi.md#admindriversidcredentialspost) | **POST** /admin/drivers/{id}/credentials | Issue a driver code and one-time PIN
@@ -20,6 +22,8 @@ Method | HTTP request | Description
 [**adminExpireSubscriptionsPost**](AdminApi.md#adminexpiresubscriptionspost) | **POST** /admin/expire-subscriptions | Expire subscriptions whose billing period has ended
 [**adminFlagsGet**](AdminApi.md#adminflagsget) | **GET** /admin/flags | List all feature flags
 [**adminFlagsKeyPut**](AdminApi.md#adminflagskeyput) | **PUT** /admin/flags/{key} | Create or update a feature flag
+[**adminIncidentsGet**](AdminApi.md#adminincidentsget) | **GET** /admin/incidents | Driver incident reports, newest first
+[**adminIncidentsIdPatch**](AdminApi.md#adminincidentsidpatch) | **PATCH** /admin/incidents/{id} | Acknowledge or resolve a driver incident report
 [**adminLearnRoutesPost**](AdminApi.md#adminlearnroutespost) | **POST** /admin/learn-routes | Derive route geometry + segment speeds from completed trips&#39; GPS traces
 [**adminMinVersionsGet**](AdminApi.md#adminminversionsget) | **GET** /admin/min-versions | List the minimum supported app version per platform
 [**adminMinVersionsPlatformPut**](AdminApi.md#adminminversionsplatformput) | **PUT** /admin/min-versions/{platform} | Set the minimum supported app version for a platform
@@ -122,6 +126,92 @@ This endpoint does not need any parameter.
 ### HTTP request headers
 
  - **Content-Type**: Not defined
+ - **Accept**: application/json
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
+# **adminDriverRequestsGet**
+> AdminDriverRequestsGet200Response adminDriverRequestsGet(status)
+
+Driver route-change and leave requests, newest first
+
+### Example
+```dart
+import 'package:trotxi_api_client/api.dart';
+
+final api = TrotxiApiClient().getAdminApi();
+final String status = status_example; // String | 
+
+try {
+    final response = api.adminDriverRequestsGet(status);
+    print(response);
+} on DioException catch (e) {
+    print('Exception when calling AdminApi->adminDriverRequestsGet: $e\n');
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **status** | **String**|  | [optional] 
+
+### Return type
+
+[**AdminDriverRequestsGet200Response**](AdminDriverRequestsGet200Response.md)
+
+### Authorization
+
+[bearerAuth](../README.md#bearerAuth)
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
+ - **Accept**: application/json
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
+# **adminDriverRequestsIdPatch**
+> AdminDriverRequestsGet200ResponseRequestsInner adminDriverRequestsIdPatch(id, adminDriverRequestsIdPatchRequest)
+
+Approve or decline a driver request
+
+Records the decision only. Approving a route change does not reassign the driver — do that at PUT /admin/trips/:id/assignment, which checks capacity.
+
+### Example
+```dart
+import 'package:trotxi_api_client/api.dart';
+
+final api = TrotxiApiClient().getAdminApi();
+final String id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
+final AdminDriverRequestsIdPatchRequest adminDriverRequestsIdPatchRequest = ; // AdminDriverRequestsIdPatchRequest | 
+
+try {
+    final response = api.adminDriverRequestsIdPatch(id, adminDriverRequestsIdPatchRequest);
+    print(response);
+} on DioException catch (e) {
+    print('Exception when calling AdminApi->adminDriverRequestsIdPatch: $e\n');
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **id** | **String**|  | 
+ **adminDriverRequestsIdPatchRequest** | [**AdminDriverRequestsIdPatchRequest**](AdminDriverRequestsIdPatchRequest.md)|  | 
+
+### Return type
+
+[**AdminDriverRequestsGet200ResponseRequestsInner**](AdminDriverRequestsGet200ResponseRequestsInner.md)
+
+### Authorization
+
+[bearerAuth](../README.md#bearerAuth)
+
+### HTTP request headers
+
+ - **Content-Type**: application/json
  - **Accept**: application/json
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
@@ -485,6 +575,90 @@ Name | Type | Description  | Notes
 ### Return type
 
 [**AdminFlagsGet200ResponseInner**](AdminFlagsGet200ResponseInner.md)
+
+### Authorization
+
+[bearerAuth](../README.md#bearerAuth)
+
+### HTTP request headers
+
+ - **Content-Type**: application/json
+ - **Accept**: application/json
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
+# **adminIncidentsGet**
+> AdminIncidentsGet200Response adminIncidentsGet(status)
+
+Driver incident reports, newest first
+
+### Example
+```dart
+import 'package:trotxi_api_client/api.dart';
+
+final api = TrotxiApiClient().getAdminApi();
+final String status = status_example; // String | 
+
+try {
+    final response = api.adminIncidentsGet(status);
+    print(response);
+} on DioException catch (e) {
+    print('Exception when calling AdminApi->adminIncidentsGet: $e\n');
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **status** | **String**|  | [optional] 
+
+### Return type
+
+[**AdminIncidentsGet200Response**](AdminIncidentsGet200Response.md)
+
+### Authorization
+
+[bearerAuth](../README.md#bearerAuth)
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
+ - **Accept**: application/json
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
+# **adminIncidentsIdPatch**
+> AdminIncidentsGet200ResponseIncidentsInner adminIncidentsIdPatch(id, adminIncidentsIdPatchRequest)
+
+Acknowledge or resolve a driver incident report
+
+### Example
+```dart
+import 'package:trotxi_api_client/api.dart';
+
+final api = TrotxiApiClient().getAdminApi();
+final String id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
+final AdminIncidentsIdPatchRequest adminIncidentsIdPatchRequest = ; // AdminIncidentsIdPatchRequest | 
+
+try {
+    final response = api.adminIncidentsIdPatch(id, adminIncidentsIdPatchRequest);
+    print(response);
+} on DioException catch (e) {
+    print('Exception when calling AdminApi->adminIncidentsIdPatch: $e\n');
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **id** | **String**|  | 
+ **adminIncidentsIdPatchRequest** | [**AdminIncidentsIdPatchRequest**](AdminIncidentsIdPatchRequest.md)|  | 
+
+### Return type
+
+[**AdminIncidentsGet200ResponseIncidentsInner**](AdminIncidentsGet200ResponseIncidentsInner.md)
 
 ### Authorization
 

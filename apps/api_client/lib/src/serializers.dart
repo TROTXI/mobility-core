@@ -17,6 +17,9 @@ import 'package:trotxi_api_client/src/model/date.dart';
 import 'package:trotxi_api_client/src/model/admin_ask_dispatch_post200_response.dart';
 import 'package:trotxi_api_client/src/model/admin_ask_dispatch_post_request.dart';
 import 'package:trotxi_api_client/src/model/admin_convert_credits_post200_response.dart';
+import 'package:trotxi_api_client/src/model/admin_driver_requests_get200_response.dart';
+import 'package:trotxi_api_client/src/model/admin_driver_requests_get200_response_requests_inner.dart';
+import 'package:trotxi_api_client/src/model/admin_driver_requests_id_patch_request.dart';
 import 'package:trotxi_api_client/src/model/admin_drivers_get200_response_inner.dart';
 import 'package:trotxi_api_client/src/model/admin_drivers_id_credentials_patch_request.dart';
 import 'package:trotxi_api_client/src/model/admin_drivers_id_credentials_post201_response.dart';
@@ -26,6 +29,9 @@ import 'package:trotxi_api_client/src/model/admin_drivers_post_request.dart';
 import 'package:trotxi_api_client/src/model/admin_expire_subscriptions_post200_response.dart';
 import 'package:trotxi_api_client/src/model/admin_flags_get200_response_inner.dart';
 import 'package:trotxi_api_client/src/model/admin_flags_key_put_request.dart';
+import 'package:trotxi_api_client/src/model/admin_incidents_get200_response.dart';
+import 'package:trotxi_api_client/src/model/admin_incidents_get200_response_incidents_inner.dart';
+import 'package:trotxi_api_client/src/model/admin_incidents_id_patch_request.dart';
 import 'package:trotxi_api_client/src/model/admin_learn_routes_post200_response.dart';
 import 'package:trotxi_api_client/src/model/admin_learn_routes_post200_response_routes_inner.dart';
 import 'package:trotxi_api_client/src/model/admin_learn_routes_post200_response_routes_inner_segments_learned.dart';
@@ -64,8 +70,11 @@ import 'package:trotxi_api_client/src/model/auth_google_post200_response.dart';
 import 'package:trotxi_api_client/src/model/auth_google_post_request.dart';
 import 'package:trotxi_api_client/src/model/auth_refresh_post200_response.dart';
 import 'package:trotxi_api_client/src/model/auth_refresh_post_request.dart';
+import 'package:trotxi_api_client/src/model/boarding_board_post200_response.dart';
+import 'package:trotxi_api_client/src/model/boarding_board_post_request.dart';
 import 'package:trotxi_api_client/src/model/boarding_manifest_get200_response.dart';
 import 'package:trotxi_api_client/src/model/boarding_manifest_get200_response_riders_inner.dart';
+import 'package:trotxi_api_client/src/model/boarding_no_show_post200_response.dart';
 import 'package:trotxi_api_client/src/model/boarding_scan_post200_response.dart';
 import 'package:trotxi_api_client/src/model/boarding_scan_post_request.dart';
 import 'package:trotxi_api_client/src/model/boarding_verify_pin_post200_response.dart';
@@ -74,6 +83,7 @@ import 'package:trotxi_api_client/src/model/flags_get200_response.dart';
 import 'package:trotxi_api_client/src/model/flags_get200_response_flags_inner.dart';
 import 'package:trotxi_api_client/src/model/flags_get200_response_map_tiles.dart';
 import 'package:trotxi_api_client/src/model/flags_get200_response_min_supported_version.dart';
+import 'package:trotxi_api_client/src/model/flags_get200_response_operations.dart';
 import 'package:trotxi_api_client/src/model/get200_response.dart';
 import 'package:trotxi_api_client/src/model/healthz_get200_response.dart';
 import 'package:trotxi_api_client/src/model/me_avatar_get200_response.dart';
@@ -81,6 +91,9 @@ import 'package:trotxi_api_client/src/model/me_devices_post200_response.dart';
 import 'package:trotxi_api_client/src/model/me_devices_post_request.dart';
 import 'package:trotxi_api_client/src/model/me_get200_response.dart';
 import 'package:trotxi_api_client/src/model/me_get401_response.dart';
+import 'package:trotxi_api_client/src/model/me_incidents_get200_response.dart';
+import 'package:trotxi_api_client/src/model/me_incidents_get200_response_incidents_inner.dart';
+import 'package:trotxi_api_client/src/model/me_incidents_post_request.dart';
 import 'package:trotxi_api_client/src/model/me_pass_get200_response.dart';
 import 'package:trotxi_api_client/src/model/me_patch_request.dart';
 import 'package:trotxi_api_client/src/model/me_reservations_get200_response.dart';
@@ -89,6 +102,13 @@ import 'package:trotxi_api_client/src/model/me_reservations_post_request.dart';
 import 'package:trotxi_api_client/src/model/me_rides_get200_response.dart';
 import 'package:trotxi_api_client/src/model/me_sessions_get200_response.dart';
 import 'package:trotxi_api_client/src/model/me_sessions_get200_response_sessions_inner.dart';
+import 'package:trotxi_api_client/src/model/me_work_requests_get200_response.dart';
+import 'package:trotxi_api_client/src/model/me_work_requests_get200_response_requests_inner.dart';
+import 'package:trotxi_api_client/src/model/me_work_requests_post_request.dart';
+import 'package:trotxi_api_client/src/model/me_work_requests_post_request_one_of.dart';
+import 'package:trotxi_api_client/src/model/me_work_requests_post_request_one_of1.dart';
+import 'package:trotxi_api_client/src/model/me_work_routes_get200_response.dart';
+import 'package:trotxi_api_client/src/model/me_work_routes_get200_response_routes_inner.dart';
 import 'package:trotxi_api_client/src/model/payments_subscribe_post200_response.dart';
 import 'package:trotxi_api_client/src/model/payments_subscribe_post_request.dart';
 import 'package:trotxi_api_client/src/model/readyz_get200_response.dart';
@@ -100,6 +120,7 @@ import 'package:trotxi_api_client/src/model/routes_id_get200_response.dart';
 import 'package:trotxi_api_client/src/model/routes_id_get200_response_stops_inner.dart';
 import 'package:trotxi_api_client/src/model/trips_get200_response.dart';
 import 'package:trotxi_api_client/src/model/trips_get200_response_trips_inner.dart';
+import 'package:trotxi_api_client/src/model/trips_id_arrive_post_request.dart';
 import 'package:trotxi_api_client/src/model/trips_id_get200_response.dart';
 import 'package:trotxi_api_client/src/model/trips_id_get200_response_vehicle.dart';
 import 'package:trotxi_api_client/src/model/trips_id_position_get200_response.dart';
@@ -119,6 +140,9 @@ part 'serializers.g.dart';
   AdminAskDispatchPost200Response,
   AdminAskDispatchPostRequest,
   AdminConvertCreditsPost200Response,
+  AdminDriverRequestsGet200Response,
+  AdminDriverRequestsGet200ResponseRequestsInner,
+  AdminDriverRequestsIdPatchRequest,
   AdminDriversGet200ResponseInner,
   AdminDriversIdCredentialsPatchRequest,
   AdminDriversIdCredentialsPost201Response,
@@ -128,6 +152,9 @@ part 'serializers.g.dart';
   AdminExpireSubscriptionsPost200Response,
   AdminFlagsGet200ResponseInner,
   AdminFlagsKeyPutRequest,
+  AdminIncidentsGet200Response,
+  AdminIncidentsGet200ResponseIncidentsInner,
+  AdminIncidentsIdPatchRequest,
   AdminLearnRoutesPost200Response,
   AdminLearnRoutesPost200ResponseRoutesInner,
   AdminLearnRoutesPost200ResponseRoutesInnerSegmentsLearned,
@@ -166,8 +193,11 @@ part 'serializers.g.dart';
   AuthGooglePostRequest,
   AuthRefreshPost200Response,
   AuthRefreshPostRequest,
+  BoardingBoardPost200Response,
+  BoardingBoardPostRequest,
   BoardingManifestGet200Response,
   BoardingManifestGet200ResponseRidersInner,
+  BoardingNoShowPost200Response,
   BoardingScanPost200Response,
   BoardingScanPostRequest,
   BoardingVerifyPinPost200Response,
@@ -176,6 +206,7 @@ part 'serializers.g.dart';
   FlagsGet200ResponseFlagsInner,
   FlagsGet200ResponseMapTiles,
   FlagsGet200ResponseMinSupportedVersion,
+  FlagsGet200ResponseOperations,
   Get200Response,
   HealthzGet200Response,
   MeAvatarGet200Response,
@@ -183,6 +214,9 @@ part 'serializers.g.dart';
   MeDevicesPostRequest,
   MeGet200Response,
   MeGet401Response,
+  MeIncidentsGet200Response,
+  MeIncidentsGet200ResponseIncidentsInner,
+  MeIncidentsPostRequest,
   MePassGet200Response,
   MePatchRequest,
   MeReservationsGet200Response,
@@ -191,6 +225,13 @@ part 'serializers.g.dart';
   MeRidesGet200Response,
   MeSessionsGet200Response,
   MeSessionsGet200ResponseSessionsInner,
+  MeWorkRequestsGet200Response,
+  MeWorkRequestsGet200ResponseRequestsInner,
+  MeWorkRequestsPostRequest,
+  MeWorkRequestsPostRequestOneOf,
+  MeWorkRequestsPostRequestOneOf1,
+  MeWorkRoutesGet200Response,
+  MeWorkRoutesGet200ResponseRoutesInner,
   PaymentsSubscribePost200Response,
   PaymentsSubscribePostRequest,
   ReadyzGet200Response,
@@ -202,6 +243,7 @@ part 'serializers.g.dart';
   RoutesIdGet200ResponseStopsInner,
   TripsGet200Response,
   TripsGet200ResponseTripsInner,
+  TripsIdArrivePostRequest,
   TripsIdGet200Response,
   TripsIdGet200ResponseVehicle,
   TripsIdPositionGet200Response,

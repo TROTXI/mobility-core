@@ -14,6 +14,8 @@ class _$RoutesGet200ResponseInner extends RoutesGet200ResponseInner {
   @override
   final String? description;
   @override
+  final bool acceptsRequests;
+  @override
   final DateTime createdAt;
 
   factory _$RoutesGet200ResponseInner(
@@ -24,6 +26,7 @@ class _$RoutesGet200ResponseInner extends RoutesGet200ResponseInner {
       {required this.id,
       required this.name,
       this.description,
+      required this.acceptsRequests,
       required this.createdAt})
       : super._();
   @override
@@ -42,6 +45,7 @@ class _$RoutesGet200ResponseInner extends RoutesGet200ResponseInner {
         id == other.id &&
         name == other.name &&
         description == other.description &&
+        acceptsRequests == other.acceptsRequests &&
         createdAt == other.createdAt;
   }
 
@@ -51,6 +55,7 @@ class _$RoutesGet200ResponseInner extends RoutesGet200ResponseInner {
     _$hash = $jc(_$hash, id.hashCode);
     _$hash = $jc(_$hash, name.hashCode);
     _$hash = $jc(_$hash, description.hashCode);
+    _$hash = $jc(_$hash, acceptsRequests.hashCode);
     _$hash = $jc(_$hash, createdAt.hashCode);
     _$hash = $jf(_$hash);
     return _$hash;
@@ -62,6 +67,7 @@ class _$RoutesGet200ResponseInner extends RoutesGet200ResponseInner {
           ..add('id', id)
           ..add('name', name)
           ..add('description', description)
+          ..add('acceptsRequests', acceptsRequests)
           ..add('createdAt', createdAt))
         .toString();
   }
@@ -84,6 +90,11 @@ class RoutesGet200ResponseInnerBuilder
   String? get description => _$this._description;
   set description(String? description) => _$this._description = description;
 
+  bool? _acceptsRequests;
+  bool? get acceptsRequests => _$this._acceptsRequests;
+  set acceptsRequests(bool? acceptsRequests) =>
+      _$this._acceptsRequests = acceptsRequests;
+
   DateTime? _createdAt;
   DateTime? get createdAt => _$this._createdAt;
   set createdAt(DateTime? createdAt) => _$this._createdAt = createdAt;
@@ -98,6 +109,7 @@ class RoutesGet200ResponseInnerBuilder
       _id = $v.id;
       _name = $v.name;
       _description = $v.description;
+      _acceptsRequests = $v.acceptsRequests;
       _createdAt = $v.createdAt;
       _$v = null;
     }
@@ -125,6 +137,8 @@ class RoutesGet200ResponseInnerBuilder
           name: BuiltValueNullFieldError.checkNotNull(
               name, r'RoutesGet200ResponseInner', 'name'),
           description: description,
+          acceptsRequests: BuiltValueNullFieldError.checkNotNull(
+              acceptsRequests, r'RoutesGet200ResponseInner', 'acceptsRequests'),
           createdAt: BuiltValueNullFieldError.checkNotNull(
               createdAt, r'RoutesGet200ResponseInner', 'createdAt'),
         );

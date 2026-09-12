@@ -18,6 +18,8 @@ part 'boarding_manifest_get200_response_riders_inner.g.dart';
 /// * [avatarUrl] 
 /// * [direction] 
 /// * [boarded] 
+/// * [source_] 
+/// * [noShow] 
 @BuiltValue()
 abstract class BoardingManifestGet200ResponseRidersInner implements Built<BoardingManifestGet200ResponseRidersInner, BoardingManifestGet200ResponseRidersInnerBuilder> {
   @BuiltValueField(wireName: r'reservationId')
@@ -38,6 +40,13 @@ abstract class BoardingManifestGet200ResponseRidersInner implements Built<Boardi
 
   @BuiltValueField(wireName: r'boarded')
   bool get boarded;
+
+  @BuiltValueField(wireName: r'source')
+  BoardingManifestGet200ResponseRidersInnerSource_Enum get source_;
+  // enum source_Enum {  confirmation,  default,  standby,  };
+
+  @BuiltValueField(wireName: r'noShow')
+  bool get noShow;
 
   BoardingManifestGet200ResponseRidersInner._();
 
@@ -90,6 +99,16 @@ class _$BoardingManifestGet200ResponseRidersInnerSerializer implements Primitive
     yield r'boarded';
     yield serializers.serialize(
       object.boarded,
+      specifiedType: const FullType(bool),
+    );
+    yield r'source';
+    yield serializers.serialize(
+      object.source_,
+      specifiedType: const FullType(BoardingManifestGet200ResponseRidersInnerSource_Enum),
+    );
+    yield r'noShow';
+    yield serializers.serialize(
+      object.noShow,
       specifiedType: const FullType(bool),
     );
   }
@@ -159,6 +178,20 @@ class _$BoardingManifestGet200ResponseRidersInnerSerializer implements Primitive
           ) as bool;
           result.boarded = valueDes;
           break;
+        case r'source':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType(BoardingManifestGet200ResponseRidersInnerSource_Enum),
+          ) as BoardingManifestGet200ResponseRidersInnerSource_Enum;
+          result.source_ = valueDes;
+          break;
+        case r'noShow':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType(bool),
+          ) as bool;
+          result.noShow = valueDes;
+          break;
         default:
           unhandled.add(key);
           unhandled.add(value);
@@ -201,5 +234,22 @@ class BoardingManifestGet200ResponseRidersInnerDirectionEnum extends EnumClass {
 
   static BuiltSet<BoardingManifestGet200ResponseRidersInnerDirectionEnum> get values => _$boardingManifestGet200ResponseRidersInnerDirectionEnumValues;
   static BoardingManifestGet200ResponseRidersInnerDirectionEnum valueOf(String name) => _$boardingManifestGet200ResponseRidersInnerDirectionEnumValueOf(name);
+}
+
+class BoardingManifestGet200ResponseRidersInnerSource_Enum extends EnumClass {
+
+  @BuiltValueEnumConst(wireName: r'confirmation')
+  static const BoardingManifestGet200ResponseRidersInnerSource_Enum confirmation = _$boardingManifestGet200ResponseRidersInnerSourceEnum_confirmation;
+  @BuiltValueEnumConst(wireName: r'default')
+  static const BoardingManifestGet200ResponseRidersInnerSource_Enum default_ = _$boardingManifestGet200ResponseRidersInnerSourceEnum_default_;
+  @BuiltValueEnumConst(wireName: r'standby')
+  static const BoardingManifestGet200ResponseRidersInnerSource_Enum standby = _$boardingManifestGet200ResponseRidersInnerSourceEnum_standby;
+
+  static Serializer<BoardingManifestGet200ResponseRidersInnerSource_Enum> get serializer => _$boardingManifestGet200ResponseRidersInnerSourceEnumSerializer;
+
+  const BoardingManifestGet200ResponseRidersInnerSource_Enum._(String name): super(name);
+
+  static BuiltSet<BoardingManifestGet200ResponseRidersInnerSource_Enum> get values => _$boardingManifestGet200ResponseRidersInnerSourceEnumValues;
+  static BoardingManifestGet200ResponseRidersInnerSource_Enum valueOf(String name) => _$boardingManifestGet200ResponseRidersInnerSourceEnumValueOf(name);
 }
 

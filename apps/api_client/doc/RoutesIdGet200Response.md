@@ -11,6 +11,7 @@ Name | Type | Description | Notes
 **id** | **String** |  | 
 **name** | **String** |  | 
 **description** | **String** |  | 
+**acceptsRequests** | **bool** |  | 
 **createdAt** | [**DateTime**](DateTime.md) |  | 
 **stops** | [**BuiltList&lt;RoutesIdGet200ResponseStopsInner&gt;**](RoutesIdGet200ResponseStopsInner.md) |  | 
 

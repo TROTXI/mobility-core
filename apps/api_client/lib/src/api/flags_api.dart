@@ -19,7 +19,7 @@ class FlagsApi {
 
   const FlagsApi(this._dio, this._serializers);
 
-  /// Feature flags + minimum supported app version (fetched on launch)
+  /// Feature flags, minimum supported app version, basemap and operations contact
   /// 
   ///
   /// Parameters:

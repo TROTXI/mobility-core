@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:trotxi_driver/core/config/theme/app_colors.dart';
 import 'package:trotxi_driver/core/config/theme/app_radii.dart';
 import 'package:trotxi_driver/core/config/theme/app_spacing.dart';
 import 'package:trotxi_driver/core/config/theme/app_typography.dart';
+import 'package:trotxi_driver/core/state/config_controller.dart';
+import 'package:trotxi_driver/core/widgets/operations_contact.dart';
 
 /// "Can't sign in?" (prototype frame 06).
 ///
@@ -16,6 +19,7 @@ class CantSignInPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = context.driverColors;
+    final config = context.watch<ConfigController>();
 
     return Scaffold(
       appBar: AppBar(title: const Text("Can't sign in?")),
@@ -61,42 +65,18 @@ class CantSignInPage extends StatelessWidget {
               isLast: true,
             ),
             const SizedBox(height: AppSpacing.space24),
-            Container(
-              padding: const EdgeInsets.all(AppSpacing.space16),
-              decoration: BoxDecoration(
-                color: colors.surface,
-                borderRadius: AppRadii.circular(AppRadii.md),
-                border: Border.all(color: colors.border),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Operations',
-                    style: AppTypography.label.copyWith(
-                      color: colors.textSecondary,
-                    ),
-                  ),
-                  const SizedBox(height: AppSpacing.space4),
-                  Text(
-                    'Your depot office',
-                    style: AppTypography.title.copyWith(
-                      color: colors.textPrimary,
-                    ),
-                  ),
-                  const SizedBox(height: AppSpacing.space8),
-                  Text(
-                    // Hard-coding a number would be wrong: depots differ, and a
-                    // stale number in a shipped build is worse than none. This
-                    // comes from /flags once the contact block lands there.
-                    'Contact details are set by your operator and appear here once '
-                    'your device has synced.',
-                    style: AppTypography.bodySmall.copyWith(
-                      color: colors.textSecondary,
-                    ),
-                  ),
-                ],
-              ),
+            // Served from /flags (#234), which answers before sign-in — which
+            // is the whole reason this screen can show it at all. Depots differ
+            // and a number compiled into the build goes stale, so when the
+            // operator has published nothing the card says so rather than
+            // promising details will turn up later. The old copy promised
+            // exactly that, and nothing kept it.
+            OperationsContactCard(
+              contact: config.operations,
+              isLoaded: config.isLoaded,
+              emptyDetail:
+                  'Your operator has not published a number. Ask at the depot '
+                  'office, or another driver on your corridor will have it.',
             ),
             const SizedBox(height: AppSpacing.space24),
             OutlinedButton(

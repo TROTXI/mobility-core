@@ -67,6 +67,8 @@ Class | Method | HTTP request | Description
 ------------ | ------------- | ------------- | -------------
 [*AdminApi*](doc/AdminApi.md) | [**adminAskDispatchPost**](doc/AdminApi.md#adminaskdispatchpost) | **POST** /admin/ask-dispatch | Prompt a day&#39;s route subscribers to confirm (seed pending + push)
 [*AdminApi*](doc/AdminApi.md) | [**adminConvertCreditsPost**](doc/AdminApi.md#adminconvertcreditspost) | **POST** /admin/convert-credits | Month-end: convert unused rides to Ride Credits for ENDED periods
+[*AdminApi*](doc/AdminApi.md) | [**adminDriverRequestsGet**](doc/AdminApi.md#admindriverrequestsget) | **GET** /admin/driver-requests | Driver route-change and leave requests, newest first
+[*AdminApi*](doc/AdminApi.md) | [**adminDriverRequestsIdPatch**](doc/AdminApi.md#admindriverrequestsidpatch) | **PATCH** /admin/driver-requests/{id} | Approve or decline a driver request
 [*AdminApi*](doc/AdminApi.md) | [**adminDriversGet**](doc/AdminApi.md#admindriversget) | **GET** /admin/drivers | List all drivers
 [*AdminApi*](doc/AdminApi.md) | [**adminDriversIdCredentialsPatch**](doc/AdminApi.md#admindriversidcredentialspatch) | **PATCH** /admin/drivers/{id}/credentials | Suspend, reinstate, or unlock a driver credential
 [*AdminApi*](doc/AdminApi.md) | [**adminDriversIdCredentialsPost**](doc/AdminApi.md#admindriversidcredentialspost) | **POST** /admin/drivers/{id}/credentials | Issue a driver code and one-time PIN
@@ -76,6 +78,8 @@ Class | Method | HTTP request | Description
 [*AdminApi*](doc/AdminApi.md) | [**adminExpireSubscriptionsPost**](doc/AdminApi.md#adminexpiresubscriptionspost) | **POST** /admin/expire-subscriptions | Expire subscriptions whose billing period has ended
 [*AdminApi*](doc/AdminApi.md) | [**adminFlagsGet**](doc/AdminApi.md#adminflagsget) | **GET** /admin/flags | List all feature flags
 [*AdminApi*](doc/AdminApi.md) | [**adminFlagsKeyPut**](doc/AdminApi.md#adminflagskeyput) | **PUT** /admin/flags/{key} | Create or update a feature flag
+[*AdminApi*](doc/AdminApi.md) | [**adminIncidentsGet**](doc/AdminApi.md#adminincidentsget) | **GET** /admin/incidents | Driver incident reports, newest first
+[*AdminApi*](doc/AdminApi.md) | [**adminIncidentsIdPatch**](doc/AdminApi.md#adminincidentsidpatch) | **PATCH** /admin/incidents/{id} | Acknowledge or resolve a driver incident report
 [*AdminApi*](doc/AdminApi.md) | [**adminLearnRoutesPost**](doc/AdminApi.md#adminlearnroutespost) | **POST** /admin/learn-routes | Derive route geometry + segment speeds from completed trips&#39; GPS traces
 [*AdminApi*](doc/AdminApi.md) | [**adminMinVersionsGet**](doc/AdminApi.md#adminminversionsget) | **GET** /admin/min-versions | List the minimum supported app version per platform
 [*AdminApi*](doc/AdminApi.md) | [**adminMinVersionsPlatformPut**](doc/AdminApi.md#adminminversionsplatformput) | **PUT** /admin/min-versions/{platform} | Set the minimum supported app version for a platform
@@ -113,16 +117,21 @@ Class | Method | HTTP request | Description
 [*AuthApi*](doc/AuthApi.md) | [**mePatch**](doc/AuthApi.md#mepatch) | **PATCH** /me | Update the authenticated user&#39;s profile
 [*AuthApi*](doc/AuthApi.md) | [**meSessionsGet**](doc/AuthApi.md#mesessionsget) | **GET** /me/sessions | List the authenticated user&#39;s active sessions (devices)
 [*AuthApi*](doc/AuthApi.md) | [**meSessionsIdDelete**](doc/AuthApi.md#mesessionsiddelete) | **DELETE** /me/sessions/{id} | Revoke one of your sessions (log out that device)
+[*BoardingApi*](doc/BoardingApi.md) | [**boardingBoardPost**](doc/BoardingApi.md#boardingboardpost) | **POST** /boarding/board | Board a rider identified from the manifest photo (assigned driver only)
 [*BoardingApi*](doc/BoardingApi.md) | [**boardingManifestGet**](doc/BoardingApi.md#boardingmanifestget) | **GET** /boarding/manifest | A trip&#39;s manifest — confirmed riders with name + photo (assigned driver only)
+[*BoardingApi*](doc/BoardingApi.md) | [**boardingNoShowPost**](doc/BoardingApi.md#boardingnoshowpost) | **POST** /boarding/no-show | Mark one rider as not having turned up (assigned driver only)
 [*BoardingApi*](doc/BoardingApi.md) | [**boardingScanPost**](doc/BoardingApi.md#boardingscanpost) | **POST** /boarding/scan | Verify a scanned rider pass (driver only) and record the scan
 [*BoardingApi*](doc/BoardingApi.md) | [**boardingVerifyPinPost**](doc/BoardingApi.md#boardingverifypinpost) | **POST** /boarding/verify-pin | Board a rider via their daily boarding code (driver only)
 [*BoardingApi*](doc/BoardingApi.md) | [**mePassGet**](doc/BoardingApi.md#mepassget) | **GET** /me/pass | Issue the rider a short-lived boarding pass (render as a QR)
-[*FlagsApi*](doc/FlagsApi.md) | [**flagsGet**](doc/FlagsApi.md#flagsget) | **GET** /flags | Feature flags + minimum supported app version (fetched on launch)
+[*FlagsApi*](doc/FlagsApi.md) | [**flagsGet**](doc/FlagsApi.md#flagsget) | **GET** /flags | Feature flags, minimum supported app version, basemap and operations contact
+[*IncidentsApi*](doc/IncidentsApi.md) | [**meIncidentsGet**](doc/IncidentsApi.md#meincidentsget) | **GET** /me/incidents | My incident reports and what operations did with them (driver)
+[*IncidentsApi*](doc/IncidentsApi.md) | [**meIncidentsPost**](doc/IncidentsApi.md#meincidentspost) | **POST** /me/incidents | File an incident report (driver)
 [*MobilityApi*](doc/MobilityApi.md) | [**meTripsGet**](doc/MobilityApi.md#metripsget) | **GET** /me/trips | The signed-in driver&#39;s assigned runs
 [*MobilityApi*](doc/MobilityApi.md) | [**routesGet**](doc/MobilityApi.md#routesget) | **GET** /routes | List all routes
 [*MobilityApi*](doc/MobilityApi.md) | [**routesIdGeometryGet**](doc/MobilityApi.md#routesidgeometryget) | **GET** /routes/{id}/geometry | The path a route follows, for drawing it on a map
 [*MobilityApi*](doc/MobilityApi.md) | [**routesIdGet**](doc/MobilityApi.md#routesidget) | **GET** /routes/{id} | Get a route with its stops in order
 [*MobilityApi*](doc/MobilityApi.md) | [**tripsGet**](doc/MobilityApi.md#tripsget) | **GET** /trips | List trips, optionally filtered by route
+[*MobilityApi*](doc/MobilityApi.md) | [**tripsIdArrivePost**](doc/MobilityApi.md#tripsidarrivepost) | **POST** /trips/{id}/arrive | Report reaching a stop on my run
 [*MobilityApi*](doc/MobilityApi.md) | [**tripsIdCompletePost**](doc/MobilityApi.md#tripsidcompletepost) | **POST** /trips/{id}/complete | End my assigned run
 [*MobilityApi*](doc/MobilityApi.md) | [**tripsIdGet**](doc/MobilityApi.md#tripsidget) | **GET** /trips/{id} | Get a trip by id
 [*MobilityApi*](doc/MobilityApi.md) | [**tripsIdPositionGet**](doc/MobilityApi.md#tripsidpositionget) | **GET** /trips/{id}/position | Get a trip&#39;s latest position with a deterministic ETA to each upcoming stop
@@ -139,6 +148,10 @@ Class | Method | HTTP request | Description
 [*SystemApi*](doc/SystemApi.md) | [**rootGet**](doc/SystemApi.md#rootget) | **GET** / | Service metadata and useful links
 [*SystemApi*](doc/SystemApi.md) | [**versionGet**](doc/SystemApi.md#versionget) | **GET** /version | Build version and commit
 [*UsersApi*](doc/UsersApi.md) | [**meDelete**](doc/UsersApi.md#medelete) | **DELETE** /me | Delete my account (erases personal data; keeps financial records)
+[*WorkApi*](doc/WorkApi.md) | [**meWorkRequestsGet**](doc/WorkApi.md#meworkrequestsget) | **GET** /me/work/requests | My requests and what operations decided
+[*WorkApi*](doc/WorkApi.md) | [**meWorkRequestsIdWithdrawPost**](doc/WorkApi.md#meworkrequestsidwithdrawpost) | **POST** /me/work/requests/{id}/withdraw | Take back a request operations has not answered yet
+[*WorkApi*](doc/WorkApi.md) | [**meWorkRequestsPost**](doc/WorkApi.md#meworkrequestspost) | **POST** /me/work/requests | Ask operations for a route change or leave
+[*WorkApi*](doc/WorkApi.md) | [**meWorkRoutesGet**](doc/WorkApi.md#meworkroutesget) | **GET** /me/work/routes | Routes operations will accept reassignment requests for
 
 
 ## Documentation For Models
@@ -146,6 +159,9 @@ Class | Method | HTTP request | Description
  - [AdminAskDispatchPost200Response](doc/AdminAskDispatchPost200Response.md)
  - [AdminAskDispatchPostRequest](doc/AdminAskDispatchPostRequest.md)
  - [AdminConvertCreditsPost200Response](doc/AdminConvertCreditsPost200Response.md)
+ - [AdminDriverRequestsGet200Response](doc/AdminDriverRequestsGet200Response.md)
+ - [AdminDriverRequestsGet200ResponseRequestsInner](doc/AdminDriverRequestsGet200ResponseRequestsInner.md)
+ - [AdminDriverRequestsIdPatchRequest](doc/AdminDriverRequestsIdPatchRequest.md)
  - [AdminDriversGet200ResponseInner](doc/AdminDriversGet200ResponseInner.md)
  - [AdminDriversIdCredentialsPatchRequest](doc/AdminDriversIdCredentialsPatchRequest.md)
  - [AdminDriversIdCredentialsPost201Response](doc/AdminDriversIdCredentialsPost201Response.md)
@@ -155,6 +171,9 @@ Class | Method | HTTP request | Description
  - [AdminExpireSubscriptionsPost200Response](doc/AdminExpireSubscriptionsPost200Response.md)
  - [AdminFlagsGet200ResponseInner](doc/AdminFlagsGet200ResponseInner.md)
  - [AdminFlagsKeyPutRequest](doc/AdminFlagsKeyPutRequest.md)
+ - [AdminIncidentsGet200Response](doc/AdminIncidentsGet200Response.md)
+ - [AdminIncidentsGet200ResponseIncidentsInner](doc/AdminIncidentsGet200ResponseIncidentsInner.md)
+ - [AdminIncidentsIdPatchRequest](doc/AdminIncidentsIdPatchRequest.md)
  - [AdminLearnRoutesPost200Response](doc/AdminLearnRoutesPost200Response.md)
  - [AdminLearnRoutesPost200ResponseRoutesInner](doc/AdminLearnRoutesPost200ResponseRoutesInner.md)
  - [AdminLearnRoutesPost200ResponseRoutesInnerSegmentsLearned](doc/AdminLearnRoutesPost200ResponseRoutesInnerSegmentsLearned.md)
@@ -193,8 +212,11 @@ Class | Method | HTTP request | Description
  - [AuthGooglePostRequest](doc/AuthGooglePostRequest.md)
  - [AuthRefreshPost200Response](doc/AuthRefreshPost200Response.md)
  - [AuthRefreshPostRequest](doc/AuthRefreshPostRequest.md)
+ - [BoardingBoardPost200Response](doc/BoardingBoardPost200Response.md)
+ - [BoardingBoardPostRequest](doc/BoardingBoardPostRequest.md)
  - [BoardingManifestGet200Response](doc/BoardingManifestGet200Response.md)
  - [BoardingManifestGet200ResponseRidersInner](doc/BoardingManifestGet200ResponseRidersInner.md)
+ - [BoardingNoShowPost200Response](doc/BoardingNoShowPost200Response.md)
  - [BoardingScanPost200Response](doc/BoardingScanPost200Response.md)
  - [BoardingScanPostRequest](doc/BoardingScanPostRequest.md)
  - [BoardingVerifyPinPost200Response](doc/BoardingVerifyPinPost200Response.md)
@@ -203,6 +225,7 @@ Class | Method | HTTP request | Description
  - [FlagsGet200ResponseFlagsInner](doc/FlagsGet200ResponseFlagsInner.md)
  - [FlagsGet200ResponseMapTiles](doc/FlagsGet200ResponseMapTiles.md)
  - [FlagsGet200ResponseMinSupportedVersion](doc/FlagsGet200ResponseMinSupportedVersion.md)
+ - [FlagsGet200ResponseOperations](doc/FlagsGet200ResponseOperations.md)
  - [Get200Response](doc/Get200Response.md)
  - [HealthzGet200Response](doc/HealthzGet200Response.md)
  - [MeAvatarGet200Response](doc/MeAvatarGet200Response.md)
@@ -210,6 +233,9 @@ Class | Method | HTTP request | Description
  - [MeDevicesPostRequest](doc/MeDevicesPostRequest.md)
  - [MeGet200Response](doc/MeGet200Response.md)
  - [MeGet401Response](doc/MeGet401Response.md)
+ - [MeIncidentsGet200Response](doc/MeIncidentsGet200Response.md)
+ - [MeIncidentsGet200ResponseIncidentsInner](doc/MeIncidentsGet200ResponseIncidentsInner.md)
+ - [MeIncidentsPostRequest](doc/MeIncidentsPostRequest.md)
  - [MePassGet200Response](doc/MePassGet200Response.md)
  - [MePatchRequest](doc/MePatchRequest.md)
  - [MeReservationsGet200Response](doc/MeReservationsGet200Response.md)
@@ -218,6 +244,13 @@ Class | Method | HTTP request | Description
  - [MeRidesGet200Response](doc/MeRidesGet200Response.md)
  - [MeSessionsGet200Response](doc/MeSessionsGet200Response.md)
  - [MeSessionsGet200ResponseSessionsInner](doc/MeSessionsGet200ResponseSessionsInner.md)
+ - [MeWorkRequestsGet200Response](doc/MeWorkRequestsGet200Response.md)
+ - [MeWorkRequestsGet200ResponseRequestsInner](doc/MeWorkRequestsGet200ResponseRequestsInner.md)
+ - [MeWorkRequestsPostRequest](doc/MeWorkRequestsPostRequest.md)
+ - [MeWorkRequestsPostRequestOneOf](doc/MeWorkRequestsPostRequestOneOf.md)
+ - [MeWorkRequestsPostRequestOneOf1](doc/MeWorkRequestsPostRequestOneOf1.md)
+ - [MeWorkRoutesGet200Response](doc/MeWorkRoutesGet200Response.md)
+ - [MeWorkRoutesGet200ResponseRoutesInner](doc/MeWorkRoutesGet200ResponseRoutesInner.md)
  - [PaymentsSubscribePost200Response](doc/PaymentsSubscribePost200Response.md)
  - [PaymentsSubscribePostRequest](doc/PaymentsSubscribePostRequest.md)
  - [ReadyzGet200Response](doc/ReadyzGet200Response.md)
@@ -229,6 +262,7 @@ Class | Method | HTTP request | Description
  - [RoutesIdGet200ResponseStopsInner](doc/RoutesIdGet200ResponseStopsInner.md)
  - [TripsGet200Response](doc/TripsGet200Response.md)
  - [TripsGet200ResponseTripsInner](doc/TripsGet200ResponseTripsInner.md)
+ - [TripsIdArrivePostRequest](doc/TripsIdArrivePostRequest.md)
  - [TripsIdGet200Response](doc/TripsIdGet200Response.md)
  - [TripsIdGet200ResponseVehicle](doc/TripsIdGet200ResponseVehicle.md)
  - [TripsIdPositionGet200Response](doc/TripsIdPositionGet200Response.md)

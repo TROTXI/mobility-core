@@ -98,6 +98,10 @@ class _$TripsGet200ResponseTripsInner extends TripsGet200ResponseTripsInner {
   @override
   final DateTime scheduledAt;
   @override
+  final int? currentStopSeq;
+  @override
+  final DateTime? assignmentChangedAt;
+  @override
   final DateTime createdAt;
 
   factory _$TripsGet200ResponseTripsInner(
@@ -111,6 +115,8 @@ class _$TripsGet200ResponseTripsInner extends TripsGet200ResponseTripsInner {
       this.assignedDriverId,
       required this.status,
       required this.scheduledAt,
+      this.currentStopSeq,
+      this.assignmentChangedAt,
       required this.createdAt})
       : super._();
   @override
@@ -132,6 +138,8 @@ class _$TripsGet200ResponseTripsInner extends TripsGet200ResponseTripsInner {
         assignedDriverId == other.assignedDriverId &&
         status == other.status &&
         scheduledAt == other.scheduledAt &&
+        currentStopSeq == other.currentStopSeq &&
+        assignmentChangedAt == other.assignmentChangedAt &&
         createdAt == other.createdAt;
   }
 
@@ -144,6 +152,8 @@ class _$TripsGet200ResponseTripsInner extends TripsGet200ResponseTripsInner {
     _$hash = $jc(_$hash, assignedDriverId.hashCode);
     _$hash = $jc(_$hash, status.hashCode);
     _$hash = $jc(_$hash, scheduledAt.hashCode);
+    _$hash = $jc(_$hash, currentStopSeq.hashCode);
+    _$hash = $jc(_$hash, assignmentChangedAt.hashCode);
     _$hash = $jc(_$hash, createdAt.hashCode);
     _$hash = $jf(_$hash);
     return _$hash;
@@ -158,6 +168,8 @@ class _$TripsGet200ResponseTripsInner extends TripsGet200ResponseTripsInner {
           ..add('assignedDriverId', assignedDriverId)
           ..add('status', status)
           ..add('scheduledAt', scheduledAt)
+          ..add('currentStopSeq', currentStopSeq)
+          ..add('assignmentChangedAt', assignmentChangedAt)
           ..add('createdAt', createdAt))
         .toString();
   }
@@ -195,6 +207,16 @@ class TripsGet200ResponseTripsInnerBuilder
   DateTime? get scheduledAt => _$this._scheduledAt;
   set scheduledAt(DateTime? scheduledAt) => _$this._scheduledAt = scheduledAt;
 
+  int? _currentStopSeq;
+  int? get currentStopSeq => _$this._currentStopSeq;
+  set currentStopSeq(int? currentStopSeq) =>
+      _$this._currentStopSeq = currentStopSeq;
+
+  DateTime? _assignmentChangedAt;
+  DateTime? get assignmentChangedAt => _$this._assignmentChangedAt;
+  set assignmentChangedAt(DateTime? assignmentChangedAt) =>
+      _$this._assignmentChangedAt = assignmentChangedAt;
+
   DateTime? _createdAt;
   DateTime? get createdAt => _$this._createdAt;
   set createdAt(DateTime? createdAt) => _$this._createdAt = createdAt;
@@ -212,6 +234,8 @@ class TripsGet200ResponseTripsInnerBuilder
       _assignedDriverId = $v.assignedDriverId;
       _status = $v.status;
       _scheduledAt = $v.scheduledAt;
+      _currentStopSeq = $v.currentStopSeq;
+      _assignmentChangedAt = $v.assignmentChangedAt;
       _createdAt = $v.createdAt;
       _$v = null;
     }
@@ -244,6 +268,8 @@ class TripsGet200ResponseTripsInnerBuilder
               status, r'TripsGet200ResponseTripsInner', 'status'),
           scheduledAt: BuiltValueNullFieldError.checkNotNull(
               scheduledAt, r'TripsGet200ResponseTripsInner', 'scheduledAt'),
+          currentStopSeq: currentStopSeq,
+          assignmentChangedAt: assignmentChangedAt,
           createdAt: BuiltValueNullFieldError.checkNotNull(
               createdAt, r'TripsGet200ResponseTripsInner', 'createdAt'),
         );

@@ -13,6 +13,9 @@ import 'package:trotxi_api_client/src/api_util.dart';
 import 'package:trotxi_api_client/src/model/admin_ask_dispatch_post200_response.dart';
 import 'package:trotxi_api_client/src/model/admin_ask_dispatch_post_request.dart';
 import 'package:trotxi_api_client/src/model/admin_convert_credits_post200_response.dart';
+import 'package:trotxi_api_client/src/model/admin_driver_requests_get200_response.dart';
+import 'package:trotxi_api_client/src/model/admin_driver_requests_get200_response_requests_inner.dart';
+import 'package:trotxi_api_client/src/model/admin_driver_requests_id_patch_request.dart';
 import 'package:trotxi_api_client/src/model/admin_drivers_get200_response_inner.dart';
 import 'package:trotxi_api_client/src/model/admin_drivers_id_credentials_patch_request.dart';
 import 'package:trotxi_api_client/src/model/admin_drivers_id_credentials_post201_response.dart';
@@ -22,6 +25,9 @@ import 'package:trotxi_api_client/src/model/admin_drivers_post_request.dart';
 import 'package:trotxi_api_client/src/model/admin_expire_subscriptions_post200_response.dart';
 import 'package:trotxi_api_client/src/model/admin_flags_get200_response_inner.dart';
 import 'package:trotxi_api_client/src/model/admin_flags_key_put_request.dart';
+import 'package:trotxi_api_client/src/model/admin_incidents_get200_response.dart';
+import 'package:trotxi_api_client/src/model/admin_incidents_get200_response_incidents_inner.dart';
+import 'package:trotxi_api_client/src/model/admin_incidents_id_patch_request.dart';
 import 'package:trotxi_api_client/src/model/admin_learn_routes_post200_response.dart';
 import 'package:trotxi_api_client/src/model/admin_learn_routes_post_request.dart';
 import 'package:trotxi_api_client/src/model/admin_min_versions_get200_response_inner.dart';
@@ -230,6 +236,195 @@ class AdminApi {
     }
 
     return Response<AdminConvertCreditsPost200Response>(
+      data: _responseData,
+      headers: _response.headers,
+      isRedirect: _response.isRedirect,
+      requestOptions: _response.requestOptions,
+      redirects: _response.redirects,
+      statusCode: _response.statusCode,
+      statusMessage: _response.statusMessage,
+      extra: _response.extra,
+    );
+  }
+
+  /// Driver route-change and leave requests, newest first
+  /// 
+  ///
+  /// Parameters:
+  /// * [status] 
+  /// * [cancelToken] - A [CancelToken] that can be used to cancel the operation
+  /// * [headers] - Can be used to add additional headers to the request
+  /// * [extras] - Can be used to add flags to the request
+  /// * [validateStatus] - A [ValidateStatus] callback that can be used to determine request success based on the HTTP status of the response
+  /// * [onSendProgress] - A [ProgressCallback] that can be used to get the send progress
+  /// * [onReceiveProgress] - A [ProgressCallback] that can be used to get the receive progress
+  ///
+  /// Returns a [Future] containing a [Response] with a [AdminDriverRequestsGet200Response] as data
+  /// Throws [DioException] if API call or serialization fails
+  Future<Response<AdminDriverRequestsGet200Response>> adminDriverRequestsGet({ 
+    String? status,
+    CancelToken? cancelToken,
+    Map<String, dynamic>? headers,
+    Map<String, dynamic>? extra,
+    ValidateStatus? validateStatus,
+    ProgressCallback? onSendProgress,
+    ProgressCallback? onReceiveProgress,
+  }) async {
+    final _path = r'/admin/driver-requests';
+    final _options = Options(
+      method: r'GET',
+      headers: <String, dynamic>{
+        ...?headers,
+      },
+      extra: <String, dynamic>{
+        'secure': <Map<String, String>>[
+          {
+            'type': 'http',
+            'scheme': 'bearer',
+            'name': 'bearerAuth',
+          },
+        ],
+        ...?extra,
+      },
+      validateStatus: validateStatus,
+    );
+
+    final _queryParameters = <String, dynamic>{
+      if (status != null) r'status': encodeQueryParameter(_serializers, status, const FullType(String)),
+    };
+
+    final _response = await _dio.request<Object>(
+      _path,
+      options: _options,
+      queryParameters: _queryParameters,
+      cancelToken: cancelToken,
+      onSendProgress: onSendProgress,
+      onReceiveProgress: onReceiveProgress,
+    );
+
+    AdminDriverRequestsGet200Response? _responseData;
+
+    try {
+      final rawResponse = _response.data;
+      _responseData = rawResponse == null ? null : _serializers.deserialize(
+        rawResponse,
+        specifiedType: const FullType(AdminDriverRequestsGet200Response),
+      ) as AdminDriverRequestsGet200Response;
+
+    } catch (error, stackTrace) {
+      throw DioException(
+        requestOptions: _response.requestOptions,
+        response: _response,
+        type: DioExceptionType.unknown,
+        error: error,
+        stackTrace: stackTrace,
+      );
+    }
+
+    return Response<AdminDriverRequestsGet200Response>(
+      data: _responseData,
+      headers: _response.headers,
+      isRedirect: _response.isRedirect,
+      requestOptions: _response.requestOptions,
+      redirects: _response.redirects,
+      statusCode: _response.statusCode,
+      statusMessage: _response.statusMessage,
+      extra: _response.extra,
+    );
+  }
+
+  /// Approve or decline a driver request
+  /// Records the decision only. Approving a route change does not reassign the driver — do that at PUT /admin/trips/:id/assignment, which checks capacity.
+  ///
+  /// Parameters:
+  /// * [id] 
+  /// * [adminDriverRequestsIdPatchRequest] 
+  /// * [cancelToken] - A [CancelToken] that can be used to cancel the operation
+  /// * [headers] - Can be used to add additional headers to the request
+  /// * [extras] - Can be used to add flags to the request
+  /// * [validateStatus] - A [ValidateStatus] callback that can be used to determine request success based on the HTTP status of the response
+  /// * [onSendProgress] - A [ProgressCallback] that can be used to get the send progress
+  /// * [onReceiveProgress] - A [ProgressCallback] that can be used to get the receive progress
+  ///
+  /// Returns a [Future] containing a [Response] with a [AdminDriverRequestsGet200ResponseRequestsInner] as data
+  /// Throws [DioException] if API call or serialization fails
+  Future<Response<AdminDriverRequestsGet200ResponseRequestsInner>> adminDriverRequestsIdPatch({ 
+    required String id,
+    required AdminDriverRequestsIdPatchRequest adminDriverRequestsIdPatchRequest,
+    CancelToken? cancelToken,
+    Map<String, dynamic>? headers,
+    Map<String, dynamic>? extra,
+    ValidateStatus? validateStatus,
+    ProgressCallback? onSendProgress,
+    ProgressCallback? onReceiveProgress,
+  }) async {
+    final _path = r'/admin/driver-requests/{id}'.replaceAll('{' r'id' '}', encodeQueryParameter(_serializers, id, const FullType(String)).toString());
+    final _options = Options(
+      method: r'PATCH',
+      headers: <String, dynamic>{
+        ...?headers,
+      },
+      extra: <String, dynamic>{
+        'secure': <Map<String, String>>[
+          {
+            'type': 'http',
+            'scheme': 'bearer',
+            'name': 'bearerAuth',
+          },
+        ],
+        ...?extra,
+      },
+      contentType: 'application/json',
+      validateStatus: validateStatus,
+    );
+
+    dynamic _bodyData;
+
+    try {
+      const _type = FullType(AdminDriverRequestsIdPatchRequest);
+      _bodyData = _serializers.serialize(adminDriverRequestsIdPatchRequest, specifiedType: _type);
+
+    } catch(error, stackTrace) {
+      throw DioException(
+         requestOptions: _options.compose(
+          _dio.options,
+          _path,
+        ),
+        type: DioExceptionType.unknown,
+        error: error,
+        stackTrace: stackTrace,
+      );
+    }
+
+    final _response = await _dio.request<Object>(
+      _path,
+      data: _bodyData,
+      options: _options,
+      cancelToken: cancelToken,
+      onSendProgress: onSendProgress,
+      onReceiveProgress: onReceiveProgress,
+    );
+
+    AdminDriverRequestsGet200ResponseRequestsInner? _responseData;
+
+    try {
+      final rawResponse = _response.data;
+      _responseData = rawResponse == null ? null : _serializers.deserialize(
+        rawResponse,
+        specifiedType: const FullType(AdminDriverRequestsGet200ResponseRequestsInner),
+      ) as AdminDriverRequestsGet200ResponseRequestsInner;
+
+    } catch (error, stackTrace) {
+      throw DioException(
+        requestOptions: _response.requestOptions,
+        response: _response,
+        type: DioExceptionType.unknown,
+        error: error,
+        stackTrace: stackTrace,
+      );
+    }
+
+    return Response<AdminDriverRequestsGet200ResponseRequestsInner>(
       data: _responseData,
       headers: _response.headers,
       isRedirect: _response.isRedirect,
@@ -1036,6 +1231,195 @@ class AdminApi {
     }
 
     return Response<AdminFlagsGet200ResponseInner>(
+      data: _responseData,
+      headers: _response.headers,
+      isRedirect: _response.isRedirect,
+      requestOptions: _response.requestOptions,
+      redirects: _response.redirects,
+      statusCode: _response.statusCode,
+      statusMessage: _response.statusMessage,
+      extra: _response.extra,
+    );
+  }
+
+  /// Driver incident reports, newest first
+  /// 
+  ///
+  /// Parameters:
+  /// * [status] 
+  /// * [cancelToken] - A [CancelToken] that can be used to cancel the operation
+  /// * [headers] - Can be used to add additional headers to the request
+  /// * [extras] - Can be used to add flags to the request
+  /// * [validateStatus] - A [ValidateStatus] callback that can be used to determine request success based on the HTTP status of the response
+  /// * [onSendProgress] - A [ProgressCallback] that can be used to get the send progress
+  /// * [onReceiveProgress] - A [ProgressCallback] that can be used to get the receive progress
+  ///
+  /// Returns a [Future] containing a [Response] with a [AdminIncidentsGet200Response] as data
+  /// Throws [DioException] if API call or serialization fails
+  Future<Response<AdminIncidentsGet200Response>> adminIncidentsGet({ 
+    String? status,
+    CancelToken? cancelToken,
+    Map<String, dynamic>? headers,
+    Map<String, dynamic>? extra,
+    ValidateStatus? validateStatus,
+    ProgressCallback? onSendProgress,
+    ProgressCallback? onReceiveProgress,
+  }) async {
+    final _path = r'/admin/incidents';
+    final _options = Options(
+      method: r'GET',
+      headers: <String, dynamic>{
+        ...?headers,
+      },
+      extra: <String, dynamic>{
+        'secure': <Map<String, String>>[
+          {
+            'type': 'http',
+            'scheme': 'bearer',
+            'name': 'bearerAuth',
+          },
+        ],
+        ...?extra,
+      },
+      validateStatus: validateStatus,
+    );
+
+    final _queryParameters = <String, dynamic>{
+      if (status != null) r'status': encodeQueryParameter(_serializers, status, const FullType(String)),
+    };
+
+    final _response = await _dio.request<Object>(
+      _path,
+      options: _options,
+      queryParameters: _queryParameters,
+      cancelToken: cancelToken,
+      onSendProgress: onSendProgress,
+      onReceiveProgress: onReceiveProgress,
+    );
+
+    AdminIncidentsGet200Response? _responseData;
+
+    try {
+      final rawResponse = _response.data;
+      _responseData = rawResponse == null ? null : _serializers.deserialize(
+        rawResponse,
+        specifiedType: const FullType(AdminIncidentsGet200Response),
+      ) as AdminIncidentsGet200Response;
+
+    } catch (error, stackTrace) {
+      throw DioException(
+        requestOptions: _response.requestOptions,
+        response: _response,
+        type: DioExceptionType.unknown,
+        error: error,
+        stackTrace: stackTrace,
+      );
+    }
+
+    return Response<AdminIncidentsGet200Response>(
+      data: _responseData,
+      headers: _response.headers,
+      isRedirect: _response.isRedirect,
+      requestOptions: _response.requestOptions,
+      redirects: _response.redirects,
+      statusCode: _response.statusCode,
+      statusMessage: _response.statusMessage,
+      extra: _response.extra,
+    );
+  }
+
+  /// Acknowledge or resolve a driver incident report
+  /// 
+  ///
+  /// Parameters:
+  /// * [id] 
+  /// * [adminIncidentsIdPatchRequest] 
+  /// * [cancelToken] - A [CancelToken] that can be used to cancel the operation
+  /// * [headers] - Can be used to add additional headers to the request
+  /// * [extras] - Can be used to add flags to the request
+  /// * [validateStatus] - A [ValidateStatus] callback that can be used to determine request success based on the HTTP status of the response
+  /// * [onSendProgress] - A [ProgressCallback] that can be used to get the send progress
+  /// * [onReceiveProgress] - A [ProgressCallback] that can be used to get the receive progress
+  ///
+  /// Returns a [Future] containing a [Response] with a [AdminIncidentsGet200ResponseIncidentsInner] as data
+  /// Throws [DioException] if API call or serialization fails
+  Future<Response<AdminIncidentsGet200ResponseIncidentsInner>> adminIncidentsIdPatch({ 
+    required String id,
+    required AdminIncidentsIdPatchRequest adminIncidentsIdPatchRequest,
+    CancelToken? cancelToken,
+    Map<String, dynamic>? headers,
+    Map<String, dynamic>? extra,
+    ValidateStatus? validateStatus,
+    ProgressCallback? onSendProgress,
+    ProgressCallback? onReceiveProgress,
+  }) async {
+    final _path = r'/admin/incidents/{id}'.replaceAll('{' r'id' '}', encodeQueryParameter(_serializers, id, const FullType(String)).toString());
+    final _options = Options(
+      method: r'PATCH',
+      headers: <String, dynamic>{
+        ...?headers,
+      },
+      extra: <String, dynamic>{
+        'secure': <Map<String, String>>[
+          {
+            'type': 'http',
+            'scheme': 'bearer',
+            'name': 'bearerAuth',
+          },
+        ],
+        ...?extra,
+      },
+      contentType: 'application/json',
+      validateStatus: validateStatus,
+    );
+
+    dynamic _bodyData;
+
+    try {
+      const _type = FullType(AdminIncidentsIdPatchRequest);
+      _bodyData = _serializers.serialize(adminIncidentsIdPatchRequest, specifiedType: _type);
+
+    } catch(error, stackTrace) {
+      throw DioException(
+         requestOptions: _options.compose(
+          _dio.options,
+          _path,
+        ),
+        type: DioExceptionType.unknown,
+        error: error,
+        stackTrace: stackTrace,
+      );
+    }
+
+    final _response = await _dio.request<Object>(
+      _path,
+      data: _bodyData,
+      options: _options,
+      cancelToken: cancelToken,
+      onSendProgress: onSendProgress,
+      onReceiveProgress: onReceiveProgress,
+    );
+
+    AdminIncidentsGet200ResponseIncidentsInner? _responseData;
+
+    try {
+      final rawResponse = _response.data;
+      _responseData = rawResponse == null ? null : _serializers.deserialize(
+        rawResponse,
+        specifiedType: const FullType(AdminIncidentsGet200ResponseIncidentsInner),
+      ) as AdminIncidentsGet200ResponseIncidentsInner;
+
+    } catch (error, stackTrace) {
+      throw DioException(
+        requestOptions: _response.requestOptions,
+        response: _response,
+        type: DioExceptionType.unknown,
+        error: error,
+        stackTrace: stackTrace,
+      );
+    }
+
+    return Response<AdminIncidentsGet200ResponseIncidentsInner>(
       data: _responseData,
       headers: _response.headers,
       isRedirect: _response.isRedirect,

@@ -16,6 +16,7 @@ part 'routes_id_get200_response.g.dart';
 /// * [id] 
 /// * [name] 
 /// * [description] 
+/// * [acceptsRequests] 
 /// * [createdAt] 
 /// * [stops] 
 @BuiltValue()
@@ -28,6 +29,9 @@ abstract class RoutesIdGet200Response implements Built<RoutesIdGet200Response, R
 
   @BuiltValueField(wireName: r'description')
   String? get description;
+
+  @BuiltValueField(wireName: r'acceptsRequests')
+  bool get acceptsRequests;
 
   @BuiltValueField(wireName: r'createdAt')
   DateTime get createdAt;
@@ -72,6 +76,11 @@ class _$RoutesIdGet200ResponseSerializer implements PrimitiveSerializer<RoutesId
     yield object.description == null ? null : serializers.serialize(
       object.description,
       specifiedType: const FullType.nullable(String),
+    );
+    yield r'acceptsRequests';
+    yield serializers.serialize(
+      object.acceptsRequests,
+      specifiedType: const FullType(bool),
     );
     yield r'createdAt';
     yield serializers.serialize(
@@ -127,6 +136,13 @@ class _$RoutesIdGet200ResponseSerializer implements PrimitiveSerializer<RoutesId
           ) as String?;
           if (valueDes == null) continue;
           result.description = valueDes;
+          break;
+        case r'acceptsRequests':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType(bool),
+          ) as bool;
+          result.acceptsRequests = valueDes;
           break;
         case r'createdAt':
           final valueDes = serializers.deserialize(
