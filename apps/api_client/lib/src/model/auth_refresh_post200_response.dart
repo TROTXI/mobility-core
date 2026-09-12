@@ -120,3 +120,4 @@ class _$AuthRefreshPost200ResponseSerializer implements PrimitiveSerializer<Auth
   }
 }
 
+

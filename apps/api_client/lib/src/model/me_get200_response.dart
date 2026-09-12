@@ -188,6 +188,7 @@ class _$MeGet200ResponseSerializer implements PrimitiveSerializer<MeGet200Respon
   }
 }
 
+
 class MeGet200ResponseRoleEnum extends EnumClass {
 
   @BuiltValueEnumConst(wireName: r'commuter')

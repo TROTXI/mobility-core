@@ -126,3 +126,4 @@ class _$AdminTripsIdAssignmentPutRequestSerializer implements PrimitiveSerialize
   }
 }
 
+

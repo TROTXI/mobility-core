@@ -138,6 +138,7 @@ class _$AdminMinVersionsGet200ResponseInnerSerializer implements PrimitiveSerial
   }
 }
 
+
 class AdminMinVersionsGet200ResponseInnerPlatformEnum extends EnumClass {
 
   @BuiltValueEnumConst(wireName: r'ios')

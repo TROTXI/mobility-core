@@ -104,3 +104,4 @@ class _$MeAvatarGet200ResponseSerializer implements PrimitiveSerializer<MeAvatar
   }
 }
 
+

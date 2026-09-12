@@ -188,6 +188,7 @@ class _$BoardingManifestGet200ResponseRidersInnerSerializer implements Primitive
   }
 }
 
+
 class BoardingManifestGet200ResponseRidersInnerDirectionEnum extends EnumClass {
 
   @BuiltValueEnumConst(wireName: r'morning')

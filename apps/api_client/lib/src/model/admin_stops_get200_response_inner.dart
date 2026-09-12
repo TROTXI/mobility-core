@@ -168,3 +168,4 @@ class _$AdminStopsGet200ResponseInnerSerializer implements PrimitiveSerializer<A
   }
 }
 
+

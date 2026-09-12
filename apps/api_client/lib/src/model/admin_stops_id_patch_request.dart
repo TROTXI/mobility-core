@@ -95,22 +95,25 @@ class _$AdminStopsIdPatchRequestSerializer implements PrimitiveSerializer<AdminS
         case r'name':
           final valueDes = serializers.deserialize(
             value,
-            specifiedType: const FullType(String),
-          ) as String;
+            specifiedType: const FullType.nullable(String),
+          ) as String?;
+          if (valueDes == null) continue;
           result.name = valueDes;
           break;
         case r'latitude':
           final valueDes = serializers.deserialize(
             value,
-            specifiedType: const FullType(num),
-          ) as num;
+            specifiedType: const FullType.nullable(num),
+          ) as num?;
+          if (valueDes == null) continue;
           result.latitude = valueDes;
           break;
         case r'longitude':
           final valueDes = serializers.deserialize(
             value,
-            specifiedType: const FullType(num),
-          ) as num;
+            specifiedType: const FullType.nullable(num),
+          ) as num?;
+          if (valueDes == null) continue;
           result.longitude = valueDes;
           break;
         default:
@@ -141,4 +144,5 @@ class _$AdminStopsIdPatchRequestSerializer implements PrimitiveSerializer<AdminS
     return result.build();
   }
 }
+
 

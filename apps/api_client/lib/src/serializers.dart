@@ -20,12 +20,23 @@ import 'package:trotxi_api_client/src/model/admin_convert_credits_post200_respon
 import 'package:trotxi_api_client/src/model/admin_drivers_get200_response_inner.dart';
 import 'package:trotxi_api_client/src/model/admin_drivers_id_patch_request.dart';
 import 'package:trotxi_api_client/src/model/admin_drivers_post_request.dart';
+import 'package:trotxi_api_client/src/model/admin_expire_subscriptions_post200_response.dart';
 import 'package:trotxi_api_client/src/model/admin_flags_get200_response_inner.dart';
 import 'package:trotxi_api_client/src/model/admin_flags_key_put_request.dart';
+import 'package:trotxi_api_client/src/model/admin_learn_routes_post200_response.dart';
+import 'package:trotxi_api_client/src/model/admin_learn_routes_post200_response_routes_inner.dart';
+import 'package:trotxi_api_client/src/model/admin_learn_routes_post200_response_routes_inner_segments_learned.dart';
+import 'package:trotxi_api_client/src/model/admin_learn_routes_post_request.dart';
 import 'package:trotxi_api_client/src/model/admin_min_versions_get200_response_inner.dart';
 import 'package:trotxi_api_client/src/model/admin_min_versions_platform_put_request.dart';
+import 'package:trotxi_api_client/src/model/admin_plan_pricing_get200_response.dart';
+import 'package:trotxi_api_client/src/model/admin_plan_pricing_get200_response_plans_inner.dart';
+import 'package:trotxi_api_client/src/model/admin_plan_pricing_plan_patch_request.dart';
 import 'package:trotxi_api_client/src/model/admin_resolve_defaults_post200_response.dart';
 import 'package:trotxi_api_client/src/model/admin_resolve_no_shows_post200_response.dart';
+import 'package:trotxi_api_client/src/model/admin_routes_id_fare_put_request.dart';
+import 'package:trotxi_api_client/src/model/admin_routes_id_fares_get200_response.dart';
+import 'package:trotxi_api_client/src/model/admin_routes_id_fares_get200_response_fares_inner.dart';
 import 'package:trotxi_api_client/src/model/admin_routes_id_patch_request.dart';
 import 'package:trotxi_api_client/src/model/admin_routes_id_stops_post200_response.dart';
 import 'package:trotxi_api_client/src/model/admin_routes_id_stops_post_request.dart';
@@ -41,6 +52,7 @@ import 'package:trotxi_api_client/src/model/admin_users_id_role_patch_request.da
 import 'package:trotxi_api_client/src/model/admin_vehicles_get200_response_inner.dart';
 import 'package:trotxi_api_client/src/model/admin_vehicles_id_patch_request.dart';
 import 'package:trotxi_api_client/src/model/admin_vehicles_post_request.dart';
+import 'package:trotxi_api_client/src/model/auth_apple_post_request.dart';
 import 'package:trotxi_api_client/src/model/auth_google_post200_response.dart';
 import 'package:trotxi_api_client/src/model/auth_google_post_request.dart';
 import 'package:trotxi_api_client/src/model/auth_refresh_post200_response.dart';
@@ -53,6 +65,7 @@ import 'package:trotxi_api_client/src/model/boarding_verify_pin_post200_response
 import 'package:trotxi_api_client/src/model/boarding_verify_pin_post_request.dart';
 import 'package:trotxi_api_client/src/model/flags_get200_response.dart';
 import 'package:trotxi_api_client/src/model/flags_get200_response_flags_inner.dart';
+import 'package:trotxi_api_client/src/model/flags_get200_response_map_tiles.dart';
 import 'package:trotxi_api_client/src/model/flags_get200_response_min_supported_version.dart';
 import 'package:trotxi_api_client/src/model/get200_response.dart';
 import 'package:trotxi_api_client/src/model/healthz_get200_response.dart';
@@ -74,15 +87,22 @@ import 'package:trotxi_api_client/src/model/payments_subscribe_post_request.dart
 import 'package:trotxi_api_client/src/model/readyz_get200_response.dart';
 import 'package:trotxi_api_client/src/model/readyz_get503_response.dart';
 import 'package:trotxi_api_client/src/model/routes_get200_response_inner.dart';
+import 'package:trotxi_api_client/src/model/routes_id_geometry_get200_response.dart';
+import 'package:trotxi_api_client/src/model/routes_id_geometry_get200_response_points_inner.dart';
 import 'package:trotxi_api_client/src/model/routes_id_get200_response.dart';
 import 'package:trotxi_api_client/src/model/routes_id_get200_response_stops_inner.dart';
 import 'package:trotxi_api_client/src/model/trips_get200_response.dart';
 import 'package:trotxi_api_client/src/model/trips_get200_response_trips_inner.dart';
+import 'package:trotxi_api_client/src/model/trips_id_get200_response.dart';
+import 'package:trotxi_api_client/src/model/trips_id_get200_response_vehicle.dart';
 import 'package:trotxi_api_client/src/model/trips_id_position_get200_response.dart';
 import 'package:trotxi_api_client/src/model/trips_id_position_get200_response_eta_to_stops_inner.dart';
 import 'package:trotxi_api_client/src/model/trips_id_position_get200_response_position.dart';
+import 'package:trotxi_api_client/src/model/trips_id_position_get200_response_rider_stop.dart';
 import 'package:trotxi_api_client/src/model/trips_id_position_post200_response.dart';
 import 'package:trotxi_api_client/src/model/trips_id_position_post_request.dart';
+import 'package:trotxi_api_client/src/model/trips_id_summary_get200_response.dart';
+import 'package:trotxi_api_client/src/model/trips_id_summary_get200_response_by_method.dart';
 import 'package:trotxi_api_client/src/model/version_get200_response.dart';
 import 'package:trotxi_api_client/src/model/webhooks_paystack_post200_response.dart';
 
@@ -95,12 +115,23 @@ part 'serializers.g.dart';
   AdminDriversGet200ResponseInner,
   AdminDriversIdPatchRequest,
   AdminDriversPostRequest,
+  AdminExpireSubscriptionsPost200Response,
   AdminFlagsGet200ResponseInner,
   AdminFlagsKeyPutRequest,
+  AdminLearnRoutesPost200Response,
+  AdminLearnRoutesPost200ResponseRoutesInner,
+  AdminLearnRoutesPost200ResponseRoutesInnerSegmentsLearned,
+  AdminLearnRoutesPostRequest,
   AdminMinVersionsGet200ResponseInner,
   AdminMinVersionsPlatformPutRequest,
+  AdminPlanPricingGet200Response,
+  AdminPlanPricingGet200ResponsePlansInner,
+  AdminPlanPricingPlanPatchRequest,
   AdminResolveDefaultsPost200Response,
   AdminResolveNoShowsPost200Response,
+  AdminRoutesIdFarePutRequest,
+  AdminRoutesIdFaresGet200Response,
+  AdminRoutesIdFaresGet200ResponseFaresInner,
   AdminRoutesIdPatchRequest,
   AdminRoutesIdStopsPost200Response,
   AdminRoutesIdStopsPostRequest,
@@ -116,6 +147,7 @@ part 'serializers.g.dart';
   AdminVehiclesGet200ResponseInner,
   AdminVehiclesIdPatchRequest,
   AdminVehiclesPostRequest,
+  AuthApplePostRequest,
   AuthGooglePost200Response,
   AuthGooglePostRequest,
   AuthRefreshPost200Response,
@@ -128,6 +160,7 @@ part 'serializers.g.dart';
   BoardingVerifyPinPostRequest,
   FlagsGet200Response,
   FlagsGet200ResponseFlagsInner,
+  FlagsGet200ResponseMapTiles,
   FlagsGet200ResponseMinSupportedVersion,
   Get200Response,
   HealthzGet200Response,
@@ -149,19 +182,62 @@ part 'serializers.g.dart';
   ReadyzGet200Response,
   ReadyzGet503Response,
   RoutesGet200ResponseInner,
+  RoutesIdGeometryGet200Response,
+  RoutesIdGeometryGet200ResponsePointsInner,
   RoutesIdGet200Response,
   RoutesIdGet200ResponseStopsInner,
   TripsGet200Response,
   TripsGet200ResponseTripsInner,
+  TripsIdGet200Response,
+  TripsIdGet200ResponseVehicle,
   TripsIdPositionGet200Response,
   TripsIdPositionGet200ResponseEtaToStopsInner,
   TripsIdPositionGet200ResponsePosition,
+  TripsIdPositionGet200ResponseRiderStop,
   TripsIdPositionPost200Response,
   TripsIdPositionPostRequest,
+  TripsIdSummaryGet200Response,
+  TripsIdSummaryGet200ResponseByMethod,
   VersionGet200Response,
   WebhooksPaystackPost200Response,
 ])
 Serializers serializers = (_$serializers.toBuilder()
+      ..addBuilderFactory(
+        const FullType(BuiltList, [FullType(RoutesIdGet200ResponseStopsInner)]),
+        () => ListBuilder<RoutesIdGet200ResponseStopsInner>(),
+      )
+      ..addBuilderFactory(
+        const FullType(BuiltList, [FullType(RoutesGet200ResponseInner)]),
+        () => ListBuilder<RoutesGet200ResponseInner>(),
+      )
+      ..addBuilderFactory(
+        const FullType(BuiltList, [FullType(AdminVehiclesGet200ResponseInner)]),
+        () => ListBuilder<AdminVehiclesGet200ResponseInner>(),
+      )
+      ..addBuilderFactory(
+        const FullType(BuiltList, [FullType(MeSessionsGet200ResponseSessionsInner)]),
+        () => ListBuilder<MeSessionsGet200ResponseSessionsInner>(),
+      )
+      ..addBuilderFactory(
+        const FullType(BuiltList, [FullType(AdminRoutesIdFaresGet200ResponseFaresInner)]),
+        () => ListBuilder<AdminRoutesIdFaresGet200ResponseFaresInner>(),
+      )
+      ..addBuilderFactory(
+        const FullType(BuiltList, [FullType(TripsIdPositionGet200ResponseEtaToStopsInner)]),
+        () => ListBuilder<TripsIdPositionGet200ResponseEtaToStopsInner>(),
+      )
+      ..addBuilderFactory(
+        const FullType(BuiltList, [FullType(AdminPlanPricingGet200ResponsePlansInner)]),
+        () => ListBuilder<AdminPlanPricingGet200ResponsePlansInner>(),
+      )
+      ..addBuilderFactory(
+        const FullType(BuiltList, [FullType(FlagsGet200ResponseFlagsInner)]),
+        () => ListBuilder<FlagsGet200ResponseFlagsInner>(),
+      )
+      ..addBuilderFactory(
+        const FullType(BuiltList, [FullType(RoutesIdGeometryGet200ResponsePointsInner)]),
+        () => ListBuilder<RoutesIdGeometryGet200ResponsePointsInner>(),
+      )
       ..addBuilderFactory(
         const FullType(BuiltList, [FullType(AdminDriversGet200ResponseInner)]),
         () => ListBuilder<AdminDriversGet200ResponseInner>(),
@@ -171,20 +247,24 @@ Serializers serializers = (_$serializers.toBuilder()
         () => ListBuilder<AdminMinVersionsGet200ResponseInner>(),
       )
       ..addBuilderFactory(
-        const FullType(BuiltList, [FullType(RoutesGet200ResponseInner)]),
-        () => ListBuilder<RoutesGet200ResponseInner>(),
-      )
-      ..addBuilderFactory(
         const FullType(BuiltList, [FullType(AdminStopsGet200ResponseInner)]),
         () => ListBuilder<AdminStopsGet200ResponseInner>(),
       )
       ..addBuilderFactory(
-        const FullType(BuiltList, [FullType(AdminVehiclesGet200ResponseInner)]),
-        () => ListBuilder<AdminVehiclesGet200ResponseInner>(),
+        const FullType(BuiltList, [FullType(BoardingManifestGet200ResponseRidersInner)]),
+        () => ListBuilder<BoardingManifestGet200ResponseRidersInner>(),
       )
       ..addBuilderFactory(
         const FullType(BuiltList, [FullType(AdminFlagsGet200ResponseInner)]),
         () => ListBuilder<AdminFlagsGet200ResponseInner>(),
+      )
+      ..addBuilderFactory(
+        const FullType(BuiltList, [FullType(MeReservationsGet200ResponseReservationsInner)]),
+        () => ListBuilder<MeReservationsGet200ResponseReservationsInner>(),
+      )
+      ..addBuilderFactory(
+        const FullType(BuiltList, [FullType(AdminLearnRoutesPost200ResponseRoutesInner)]),
+        () => ListBuilder<AdminLearnRoutesPost200ResponseRoutesInner>(),
       )
       ..addBuilderFactory(
         const FullType(BuiltList, [FullType(TripsGet200ResponseTripsInner)]),

@@ -155,6 +155,7 @@ class _$BoardingScanPost200ResponseSerializer implements PrimitiveSerializer<Boa
   }
 }
 
+
 class BoardingScanPost200ResponseReasonEnum extends EnumClass {
 
   @BuiltValueEnumConst(wireName: r'ok')

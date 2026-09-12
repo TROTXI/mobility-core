@@ -95,15 +95,17 @@ class _$AdminFlagsKeyPutRequestSerializer implements PrimitiveSerializer<AdminFl
         case r'enabled':
           final valueDes = serializers.deserialize(
             value,
-            specifiedType: const FullType(bool),
-          ) as bool;
+            specifiedType: const FullType.nullable(bool),
+          ) as bool?;
+          if (valueDes == null) continue;
           result.enabled = valueDes;
           break;
         case r'rolloutPercentage':
           final valueDes = serializers.deserialize(
             value,
-            specifiedType: const FullType(int),
-          ) as int;
+            specifiedType: const FullType.nullable(int),
+          ) as int?;
+          if (valueDes == null) continue;
           result.rolloutPercentage = valueDes;
           break;
         case r'description':
@@ -142,4 +144,5 @@ class _$AdminFlagsKeyPutRequestSerializer implements PrimitiveSerializer<AdminFl
     return result.build();
   }
 }
+
 

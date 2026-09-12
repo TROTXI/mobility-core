@@ -122,6 +122,7 @@ class _$AdminAskDispatchPostRequestSerializer implements PrimitiveSerializer<Adm
   }
 }
 
+
 class AdminAskDispatchPostRequestDirectionEnum extends EnumClass {
 
   @BuiltValueEnumConst(wireName: r'morning')

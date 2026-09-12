@@ -120,3 +120,4 @@ class _$MePassGet200ResponseSerializer implements PrimitiveSerializer<MePassGet2
   }
 }
 
+

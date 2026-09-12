@@ -86,15 +86,17 @@ class _$AdminTripsIdPatchRequestSerializer implements PrimitiveSerializer<AdminT
         case r'status':
           final valueDes = serializers.deserialize(
             value,
-            specifiedType: const FullType(AdminTripsIdPatchRequestStatusEnum),
-          ) as AdminTripsIdPatchRequestStatusEnum;
+            specifiedType: const FullType.nullable(AdminTripsIdPatchRequestStatusEnum),
+          ) as AdminTripsIdPatchRequestStatusEnum?;
+          if (valueDes == null) continue;
           result.status = valueDes;
           break;
         case r'scheduledAt':
           final valueDes = serializers.deserialize(
             value,
-            specifiedType: const FullType(DateTime),
-          ) as DateTime;
+            specifiedType: const FullType.nullable(DateTime),
+          ) as DateTime?;
+          if (valueDes == null) continue;
           result.scheduledAt = valueDes;
           break;
         default:
@@ -125,6 +127,7 @@ class _$AdminTripsIdPatchRequestSerializer implements PrimitiveSerializer<AdminT
     return result.build();
   }
 }
+
 
 class AdminTripsIdPatchRequestStatusEnum extends EnumClass {
 

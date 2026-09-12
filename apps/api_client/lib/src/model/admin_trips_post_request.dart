@@ -138,8 +138,9 @@ class _$AdminTripsPostRequestSerializer implements PrimitiveSerializer<AdminTrip
         case r'status':
           final valueDes = serializers.deserialize(
             value,
-            specifiedType: const FullType(AdminTripsPostRequestStatusEnum),
-          ) as AdminTripsPostRequestStatusEnum;
+            specifiedType: const FullType.nullable(AdminTripsPostRequestStatusEnum),
+          ) as AdminTripsPostRequestStatusEnum?;
+          if (valueDes == null) continue;
           result.status = valueDes;
           break;
         case r'scheduledAt':
@@ -177,6 +178,7 @@ class _$AdminTripsPostRequestSerializer implements PrimitiveSerializer<AdminTrip
     return result.build();
   }
 }
+
 
 class AdminTripsPostRequestStatusEnum extends EnumClass {
 

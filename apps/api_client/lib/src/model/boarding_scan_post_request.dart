@@ -89,8 +89,9 @@ class _$BoardingScanPostRequestSerializer implements PrimitiveSerializer<Boardin
         case r'tripId':
           final valueDes = serializers.deserialize(
             value,
-            specifiedType: const FullType(String),
-          ) as String;
+            specifiedType: const FullType.nullable(String),
+          ) as String?;
+          if (valueDes == null) continue;
           result.tripId = valueDes;
           break;
         default:
@@ -121,4 +122,5 @@ class _$BoardingScanPostRequestSerializer implements PrimitiveSerializer<Boardin
     return result.build();
   }
 }
+
 

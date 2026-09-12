@@ -13,6 +13,8 @@ part 'me_rides_get200_response.g.dart';
 /// Properties:
 /// * [remainingRides] 
 /// * [creditPesewas] 
+/// * [ridesPerPeriod] 
+/// * [renewsAt] 
 @BuiltValue()
 abstract class MeRidesGet200Response implements Built<MeRidesGet200Response, MeRidesGet200ResponseBuilder> {
   @BuiltValueField(wireName: r'remainingRides')
@@ -20,6 +22,12 @@ abstract class MeRidesGet200Response implements Built<MeRidesGet200Response, MeR
 
   @BuiltValueField(wireName: r'creditPesewas')
   int get creditPesewas;
+
+  @BuiltValueField(wireName: r'ridesPerPeriod')
+  int? get ridesPerPeriod;
+
+  @BuiltValueField(wireName: r'renewsAt')
+  DateTime? get renewsAt;
 
   MeRidesGet200Response._();
 
@@ -53,6 +61,16 @@ class _$MeRidesGet200ResponseSerializer implements PrimitiveSerializer<MeRidesGe
     yield serializers.serialize(
       object.creditPesewas,
       specifiedType: const FullType(int),
+    );
+    yield r'ridesPerPeriod';
+    yield object.ridesPerPeriod == null ? null : serializers.serialize(
+      object.ridesPerPeriod,
+      specifiedType: const FullType.nullable(int),
+    );
+    yield r'renewsAt';
+    yield object.renewsAt == null ? null : serializers.serialize(
+      object.renewsAt,
+      specifiedType: const FullType.nullable(DateTime),
     );
   }
 
@@ -91,6 +109,22 @@ class _$MeRidesGet200ResponseSerializer implements PrimitiveSerializer<MeRidesGe
           ) as int;
           result.creditPesewas = valueDes;
           break;
+        case r'ridesPerPeriod':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType.nullable(int),
+          ) as int?;
+          if (valueDes == null) continue;
+          result.ridesPerPeriod = valueDes;
+          break;
+        case r'renewsAt':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType.nullable(DateTime),
+          ) as DateTime?;
+          if (valueDes == null) continue;
+          result.renewsAt = valueDes;
+          break;
         default:
           unhandled.add(key);
           unhandled.add(value);
@@ -119,4 +153,5 @@ class _$MeRidesGet200ResponseSerializer implements PrimitiveSerializer<MeRidesGe
     return result.build();
   }
 }
+
 

@@ -4,12 +4,15 @@
 
 import 'dart:async';
 
+import 'package:built_value/json_object.dart';
 import 'package:built_value/serializer.dart';
 import 'package:dio/dio.dart';
 
+import 'package:trotxi_api_client/src/model/me_get401_response.dart';
 import 'package:trotxi_api_client/src/model/me_rides_get200_response.dart';
 
 class RidesApi {
+
   final Dio _dio;
 
   final Serializers _serializers;
@@ -17,7 +20,7 @@ class RidesApi {
   const RidesApi(this._dio, this._serializers);
 
   /// Remaining ride entitlement + Ride Credit balance
-  ///
+  /// 
   ///
   /// Parameters:
   /// * [cancelToken] - A [CancelToken] that can be used to cancel the operation
@@ -29,7 +32,7 @@ class RidesApi {
   ///
   /// Returns a [Future] containing a [Response] with a [MeRidesGet200Response] as data
   /// Throws [DioException] if API call or serialization fails
-  Future<Response<MeRidesGet200Response>> meRidesGet({
+  Future<Response<MeRidesGet200Response>> meRidesGet({ 
     CancelToken? cancelToken,
     Map<String, dynamic>? headers,
     Map<String, dynamic>? extra,
@@ -68,12 +71,11 @@ class RidesApi {
 
     try {
       final rawResponse = _response.data;
-      _responseData = rawResponse == null
-          ? null
-          : _serializers.deserialize(
-              rawResponse,
-              specifiedType: const FullType(MeRidesGet200Response),
-            ) as MeRidesGet200Response;
+      _responseData = rawResponse == null ? null : _serializers.deserialize(
+        rawResponse,
+        specifiedType: const FullType(MeRidesGet200Response),
+      ) as MeRidesGet200Response;
+
     } catch (error, stackTrace) {
       throw DioException(
         requestOptions: _response.requestOptions,
@@ -95,4 +97,5 @@ class RidesApi {
       extra: _response.extra,
     );
   }
+
 }

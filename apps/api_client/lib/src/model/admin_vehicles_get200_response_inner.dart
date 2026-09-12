@@ -14,6 +14,8 @@ part 'admin_vehicles_get200_response_inner.g.dart';
 /// * [id] 
 /// * [registration] 
 /// * [label] 
+/// * [make] 
+/// * [colour] 
 /// * [capacity] 
 /// * [createdAt] 
 @BuiltValue()
@@ -26,6 +28,12 @@ abstract class AdminVehiclesGet200ResponseInner implements Built<AdminVehiclesGe
 
   @BuiltValueField(wireName: r'label')
   String? get label;
+
+  @BuiltValueField(wireName: r'make')
+  String? get make;
+
+  @BuiltValueField(wireName: r'colour')
+  String? get colour;
 
   @BuiltValueField(wireName: r'capacity')
   int get capacity;
@@ -69,6 +77,16 @@ class _$AdminVehiclesGet200ResponseInnerSerializer implements PrimitiveSerialize
     yield r'label';
     yield object.label == null ? null : serializers.serialize(
       object.label,
+      specifiedType: const FullType.nullable(String),
+    );
+    yield r'make';
+    yield object.make == null ? null : serializers.serialize(
+      object.make,
+      specifiedType: const FullType.nullable(String),
+    );
+    yield r'colour';
+    yield object.colour == null ? null : serializers.serialize(
+      object.colour,
       specifiedType: const FullType.nullable(String),
     );
     yield r'capacity';
@@ -126,6 +144,22 @@ class _$AdminVehiclesGet200ResponseInnerSerializer implements PrimitiveSerialize
           if (valueDes == null) continue;
           result.label = valueDes;
           break;
+        case r'make':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType.nullable(String),
+          ) as String?;
+          if (valueDes == null) continue;
+          result.make = valueDes;
+          break;
+        case r'colour':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType.nullable(String),
+          ) as String?;
+          if (valueDes == null) continue;
+          result.colour = valueDes;
+          break;
         case r'capacity':
           final valueDes = serializers.deserialize(
             value,
@@ -168,4 +202,5 @@ class _$AdminVehiclesGet200ResponseInnerSerializer implements PrimitiveSerialize
     return result.build();
   }
 }
+
 

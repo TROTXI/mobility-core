@@ -155,6 +155,7 @@ class _$BoardingVerifyPinPost200ResponseSerializer implements PrimitiveSerialize
   }
 }
 
+
 class BoardingVerifyPinPost200ResponseReasonEnum extends EnumClass {
 
   @BuiltValueEnumConst(wireName: r'ok')

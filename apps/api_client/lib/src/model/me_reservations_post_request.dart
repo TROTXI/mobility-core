@@ -102,8 +102,9 @@ class _$MeReservationsPostRequestSerializer implements PrimitiveSerializer<MeRes
         case r'tripId':
           final valueDes = serializers.deserialize(
             value,
-            specifiedType: const FullType(String),
-          ) as String;
+            specifiedType: const FullType.nullable(String),
+          ) as String?;
+          if (valueDes == null) continue;
           result.tripId = valueDes;
           break;
         case r'travelDate':
@@ -155,6 +156,7 @@ class _$MeReservationsPostRequestSerializer implements PrimitiveSerializer<MeRes
     return result.build();
   }
 }
+
 
 class MeReservationsPostRequestDirectionEnum extends EnumClass {
 

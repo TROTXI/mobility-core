@@ -204,6 +204,7 @@ class _$TripsGet200ResponseTripsInnerSerializer implements PrimitiveSerializer<T
   }
 }
 
+
 class TripsGet200ResponseTripsInnerStatusEnum extends EnumClass {
 
   @BuiltValueEnumConst(wireName: r'scheduled')

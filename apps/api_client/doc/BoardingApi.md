@@ -11,7 +11,7 @@ Method | HTTP request | Description
 ------------- | ------------- | -------------
 [**boardingManifestGet**](BoardingApi.md#boardingmanifestget) | **GET** /boarding/manifest | A trip&#39;s manifest — confirmed riders with name + photo (assigned driver only)
 [**boardingScanPost**](BoardingApi.md#boardingscanpost) | **POST** /boarding/scan | Verify a scanned rider pass (driver only) and record the scan
-[**boardingVerifyPinPost**](BoardingApi.md#boardingverifypinpost) | **POST** /boarding/verify-pin | Board a rider via their daily 4-digit PIN (driver only)
+[**boardingVerifyPinPost**](BoardingApi.md#boardingverifypinpost) | **POST** /boarding/verify-pin | Board a rider via their daily boarding code (driver only)
 [**mePassGet**](BoardingApi.md#mepassget) | **GET** /me/pass | Issue the rider a short-lived boarding pass (render as a QR)
 
 
@@ -100,7 +100,7 @@ Name | Type | Description  | Notes
 # **boardingVerifyPinPost**
 > BoardingVerifyPinPost200Response boardingVerifyPinPost(boardingVerifyPinPostRequest)
 
-Board a rider via their daily 4-digit PIN (driver only)
+Board a rider via their daily boarding code (driver only)
 
 ### Example
 ```dart

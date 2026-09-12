@@ -14,6 +14,8 @@ part 'me_reservations_get200_response_reservations_inner.g.dart';
 /// Properties:
 /// * [id] 
 /// * [tripId] 
+/// * [pickupStopId] 
+/// * [dropoffStopId] 
 /// * [travelDate] 
 /// * [direction] 
 /// * [status] 
@@ -27,6 +29,12 @@ abstract class MeReservationsGet200ResponseReservationsInner implements Built<Me
   @BuiltValueField(wireName: r'tripId')
   String? get tripId;
 
+  @BuiltValueField(wireName: r'pickupStopId')
+  String? get pickupStopId;
+
+  @BuiltValueField(wireName: r'dropoffStopId')
+  String? get dropoffStopId;
+
   @BuiltValueField(wireName: r'travelDate')
   String get travelDate;
 
@@ -36,7 +44,7 @@ abstract class MeReservationsGet200ResponseReservationsInner implements Built<Me
 
   @BuiltValueField(wireName: r'status')
   MeReservationsGet200ResponseReservationsInnerStatusEnum get status;
-  // enum statusEnum {  pending,  reserved,  declined,  boarded,  no_show,  released,  operator_cancelled,  };
+  // enum statusEnum {  pending,  reserved,  declined,  boarded,  no_show,  released,  operator_cancelled,  unseated,  };
 
   @BuiltValueField(wireName: r'source')
   MeReservationsGet200ResponseReservationsInnerSource_Enum get source_;
@@ -76,6 +84,16 @@ class _$MeReservationsGet200ResponseReservationsInnerSerializer implements Primi
     yield r'tripId';
     yield object.tripId == null ? null : serializers.serialize(
       object.tripId,
+      specifiedType: const FullType.nullable(String),
+    );
+    yield r'pickupStopId';
+    yield object.pickupStopId == null ? null : serializers.serialize(
+      object.pickupStopId,
+      specifiedType: const FullType.nullable(String),
+    );
+    yield r'dropoffStopId';
+    yield object.dropoffStopId == null ? null : serializers.serialize(
+      object.dropoffStopId,
       specifiedType: const FullType.nullable(String),
     );
     yield r'travelDate';
@@ -143,6 +161,22 @@ class _$MeReservationsGet200ResponseReservationsInnerSerializer implements Primi
           if (valueDes == null) continue;
           result.tripId = valueDes;
           break;
+        case r'pickupStopId':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType.nullable(String),
+          ) as String?;
+          if (valueDes == null) continue;
+          result.pickupStopId = valueDes;
+          break;
+        case r'dropoffStopId':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType.nullable(String),
+          ) as String?;
+          if (valueDes == null) continue;
+          result.dropoffStopId = valueDes;
+          break;
         case r'travelDate':
           final valueDes = serializers.deserialize(
             value,
@@ -174,8 +208,9 @@ class _$MeReservationsGet200ResponseReservationsInnerSerializer implements Primi
         case r'pin':
           final valueDes = serializers.deserialize(
             value,
-            specifiedType: const FullType(String),
-          ) as String;
+            specifiedType: const FullType.nullable(String),
+          ) as String?;
+          if (valueDes == null) continue;
           result.pin = valueDes;
           break;
         default:
@@ -206,6 +241,7 @@ class _$MeReservationsGet200ResponseReservationsInnerSerializer implements Primi
     return result.build();
   }
 }
+
 
 class MeReservationsGet200ResponseReservationsInnerDirectionEnum extends EnumClass {
 
@@ -238,6 +274,8 @@ class MeReservationsGet200ResponseReservationsInnerStatusEnum extends EnumClass 
   static const MeReservationsGet200ResponseReservationsInnerStatusEnum released = _$meReservationsGet200ResponseReservationsInnerStatusEnum_released;
   @BuiltValueEnumConst(wireName: r'operator_cancelled')
   static const MeReservationsGet200ResponseReservationsInnerStatusEnum operatorCancelled = _$meReservationsGet200ResponseReservationsInnerStatusEnum_operatorCancelled;
+  @BuiltValueEnumConst(wireName: r'unseated')
+  static const MeReservationsGet200ResponseReservationsInnerStatusEnum unseated = _$meReservationsGet200ResponseReservationsInnerStatusEnum_unseated;
 
   static Serializer<MeReservationsGet200ResponseReservationsInnerStatusEnum> get serializer => _$meReservationsGet200ResponseReservationsInnerStatusEnumSerializer;
 

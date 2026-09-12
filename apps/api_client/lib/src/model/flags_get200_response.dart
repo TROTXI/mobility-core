@@ -4,6 +4,7 @@
 
 // ignore_for_file: unused_element
 import 'package:built_collection/built_collection.dart';
+import 'package:trotxi_api_client/src/model/flags_get200_response_map_tiles.dart';
 import 'package:trotxi_api_client/src/model/flags_get200_response_flags_inner.dart';
 import 'package:trotxi_api_client/src/model/flags_get200_response_min_supported_version.dart';
 import 'package:built_value/built_value.dart';
@@ -16,6 +17,7 @@ part 'flags_get200_response.g.dart';
 /// Properties:
 /// * [flags] 
 /// * [minSupportedVersion] 
+/// * [mapTiles] 
 @BuiltValue()
 abstract class FlagsGet200Response implements Built<FlagsGet200Response, FlagsGet200ResponseBuilder> {
   @BuiltValueField(wireName: r'flags')
@@ -23,6 +25,9 @@ abstract class FlagsGet200Response implements Built<FlagsGet200Response, FlagsGe
 
   @BuiltValueField(wireName: r'minSupportedVersion')
   FlagsGet200ResponseMinSupportedVersion get minSupportedVersion;
+
+  @BuiltValueField(wireName: r'mapTiles')
+  FlagsGet200ResponseMapTiles get mapTiles;
 
   FlagsGet200Response._();
 
@@ -56,6 +61,11 @@ class _$FlagsGet200ResponseSerializer implements PrimitiveSerializer<FlagsGet200
     yield serializers.serialize(
       object.minSupportedVersion,
       specifiedType: const FullType(FlagsGet200ResponseMinSupportedVersion),
+    );
+    yield r'mapTiles';
+    yield serializers.serialize(
+      object.mapTiles,
+      specifiedType: const FullType(FlagsGet200ResponseMapTiles),
     );
   }
 
@@ -94,6 +104,13 @@ class _$FlagsGet200ResponseSerializer implements PrimitiveSerializer<FlagsGet200
           ) as FlagsGet200ResponseMinSupportedVersion;
           result.minSupportedVersion.replace(valueDes);
           break;
+        case r'mapTiles':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType(FlagsGet200ResponseMapTiles),
+          ) as FlagsGet200ResponseMapTiles;
+          result.mapTiles.replace(valueDes);
+          break;
         default:
           unhandled.add(key);
           unhandled.add(value);
@@ -122,4 +139,5 @@ class _$FlagsGet200ResponseSerializer implements PrimitiveSerializer<FlagsGet200
     return result.build();
   }
 }
+
 
