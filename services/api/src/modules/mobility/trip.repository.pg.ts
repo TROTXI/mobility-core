@@ -18,6 +18,8 @@ interface TripRow {
   scheduled_at: Date;
   started_at: Date | null;
   completed_at: Date | null;
+  current_stop_seq: number | null;
+  assignment_changed_at: Date | null;
   created_at: Date;
 }
 
@@ -31,6 +33,8 @@ function toTrip(row: TripRow): Trip {
     scheduledAt: row.scheduled_at,
     startedAt: row.started_at,
     completedAt: row.completed_at,
+    currentStopSeq: row.current_stop_seq,
+    assignmentChangedAt: row.assignment_changed_at,
     createdAt: row.created_at,
   };
 }
@@ -75,6 +79,17 @@ export class PgTripRepository implements TripRepository {
       params.push(filter.date);
       where.push(`(scheduled_at AT TIME ZONE 'UTC')::date = $${params.length}::date`);
     }
+    // Same cast as `date`, for the same reason: the driver app sends corridor
+    // time, and a range compared in the server's local zone would quietly return
+    // a different month than the single-day filter does.
+    if (filter?.from) {
+      params.push(filter.from);
+      where.push(`(scheduled_at AT TIME ZONE 'UTC')::date >= $${params.length}::date`);
+    }
+    if (filter?.to) {
+      params.push(filter.to);
+      where.push(`(scheduled_at AT TIME ZONE 'UTC')::date <= $${params.length}::date`);
+    }
     const { rows } = await this.pool.query<TripRow>(
       `SELECT * FROM trips ${where.length ? `WHERE ${where.join(' AND ')}` : ''} ORDER BY scheduled_at`,
       params,
@@ -89,7 +104,8 @@ export class PgTripRepository implements TripRepository {
     const { rows } = await this.pool.query<TripRow>(
       `UPDATE trips
          SET status = $2, scheduled_at = $3, vehicle_id = $4, assigned_driver_id = $5,
-             started_at = $6, completed_at = $7
+             started_at = $6, completed_at = $7, current_stop_seq = $8,
+             assignment_changed_at = $9
        WHERE id = $1 RETURNING *`,
       [
         id,
@@ -99,6 +115,8 @@ export class PgTripRepository implements TripRepository {
         next.assignedDriverId,
         next.startedAt,
         next.completedAt,
+        next.currentStopSeq,
+        next.assignmentChangedAt,
       ],
     );
     return rows[0] ? toTrip(rows[0]) : null;

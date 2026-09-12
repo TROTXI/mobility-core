@@ -21,6 +21,16 @@ import {
   type DriverCredentialRepository,
 } from './modules/auth/driver-credential.repository';
 import { PgDriverCredentialRepository } from './modules/auth/driver-credential.repository.pg';
+import {
+  InMemoryDriverIncidentRepository,
+  type DriverIncidentRepository,
+} from './modules/incidents/driver-incident.repository';
+import { PgDriverIncidentRepository } from './modules/incidents/driver-incident.repository.pg';
+import {
+  InMemoryDriverRequestRepository,
+  type DriverRequestRepository,
+} from './modules/work/driver-request.repository';
+import { PgDriverRequestRepository } from './modules/work/driver-request.repository.pg';
 import { DriverAuthService } from './modules/auth/driver-auth.service';
 import {
   FakeIdTokenVerifier,
@@ -192,6 +202,8 @@ async function main(): Promise<void> {
   let sessions: SessionRepository;
   let authIdentities: AuthIdentityRepository;
   let driverCredentials: DriverCredentialRepository;
+  let driverIncidents: DriverIncidentRepository;
+  let driverRequests: DriverRequestRepository;
   let payments: PaymentRepository;
   let deviceTokens: DeviceTokenRepository;
   let scanEvents: ScanEventRepository;
@@ -217,6 +229,8 @@ async function main(): Promise<void> {
     sessions = new PgSessionRepository(pool);
     authIdentities = new PgAuthIdentityRepository(pool);
     driverCredentials = new PgDriverCredentialRepository(pool);
+    driverIncidents = new PgDriverIncidentRepository(pool);
+    driverRequests = new PgDriverRequestRepository(pool);
     payments = new PgPaymentRepository(pool);
     deviceTokens = new PgDeviceTokenRepository(pool);
     scanEvents = new PgScanEventRepository(pool);
@@ -242,6 +256,8 @@ async function main(): Promise<void> {
     sessions = new InMemorySessionRepository();
     authIdentities = new InMemoryAuthIdentityRepository();
     driverCredentials = new InMemoryDriverCredentialRepository();
+    driverIncidents = new InMemoryDriverIncidentRepository();
+    driverRequests = new InMemoryDriverRequestRepository();
     payments = new InMemoryPaymentRepository();
     deviceTokens = new InMemoryDeviceTokenRepository();
     scanEvents = new InMemoryScanEventRepository();
@@ -454,6 +470,16 @@ async function main(): Promise<void> {
     mapTilesUrl: env.MAP_TILES_URL,
     mapStyleUrl: env.MAP_STYLE_URL,
     mapStyleDarkUrl: env.MAP_STYLE_DARK_URL,
+    // Who a driver calls (#234). Config rather than a shipped constant, for the
+    // same reason the map styles are.
+    operations: {
+      phone: env.OPERATIONS_PHONE,
+      whatsapp: env.OPERATIONS_WHATSAPP,
+      email: env.OPERATIONS_EMAIL,
+      hours: env.OPERATIONS_HOURS,
+    },
+    driverIncidents,
+    driverRequests,
     segmentSpeeds,
     routeLearning,
     pricing,

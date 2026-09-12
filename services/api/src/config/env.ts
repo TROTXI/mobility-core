@@ -57,6 +57,17 @@ const envSchema = z
     // release of the rider app, the driver app and the ops console.
     MAP_STYLE_URL: z.string().url().optional(),
     MAP_STYLE_DARK_URL: z.string().url().optional(),
+    // Who a driver calls when something goes wrong (#234). Served through
+    // /flags for the same reason the map styles are: depots differ, and a number
+    // baked into a shipped build is worse than none — a driver at a roadside
+    // dialling a line that no longer answers is the exact failure this prevents.
+    // Not secret: it is the number on the side of the van.
+    OPERATIONS_PHONE: z.string().optional(),
+    OPERATIONS_WHATSAPP: z.string().optional(),
+    OPERATIONS_EMAIL: z.string().email().optional(),
+    // Free text, e.g. "05:00-22:00 daily". Shown next to the number so a driver
+    // knows whether anyone will pick up before they stand in the road dialling.
+    OPERATIONS_HOURS: z.string().optional(),
     // CORS allowlist for browser clients (comma-separated origins), e.g. Swagger
     // UI served from another origin or a web dashboard. Unset -> reflect any
     // origin, which is safe here because auth is a bearer token (no cookies or
