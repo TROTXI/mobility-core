@@ -25,8 +25,15 @@ class SchedulePage extends StatefulWidget {
 }
 
 class _SchedulePageState extends State<SchedulePage> {
-  DateTime _month = DateTime(DateTime.now().year, DateTime.now().month);
-  DateTime _selected = DateTime.now();
+  // Both in the corridor's clock, not the device's. West of UTC in the evening
+  // the corridor has already rolled over, so opening on the local date would
+  // land the driver on a day with no work while their real next run sits on the
+  // cell beside it.
+  DateTime _month = DateTime(
+    CorridorTime.todayDate().year,
+    CorridorTime.todayDate().month,
+  );
+  DateTime _selected = CorridorTime.todayDate();
 
   /// The month's runs, grouped by corridor day. Empty until the first fetch
   /// lands, which is why the grid marks nothing rather than marking wrongly.
@@ -330,7 +337,7 @@ class _MonthGrid extends StatelessWidget {
     final daysInMonth = DateTime(month.year, month.month + 1, 0).day;
     // weekday is 1=Mon..7=Sun; the grid starts on Sunday, so Sunday is 0.
     final leading = first.weekday % 7;
-    final today = DateTime.now();
+    final today = CorridorTime.todayDate();
 
     return Column(
       children: [

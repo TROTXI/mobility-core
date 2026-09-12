@@ -44,6 +44,22 @@ class SessionController extends ChangeNotifier {
   /// on a depot connection that takes its time.
   bool get isBusy => _busy;
 
+  /// The session was taken away underneath us (#235).
+  ///
+  /// Called when the token store is cleared, which the client does only after a
+  /// refresh has actually failed — a proven 401, not a reachability check. That
+  /// distinction is the point: a driver in a yard with no signal must still
+  /// reach their screen, so this fires on evidence rather than on suspicion.
+  ///
+  /// Before this, a revoked session (an operations PIN reset does exactly that)
+  /// left the app in the shell with the header showing "Driver", every call
+  /// failing quietly, and nothing telling the driver to sign in again.
+  void onSessionRevoked() {
+    if (_stage == SessionStage.signedOut) return;
+    _session = null;
+    _set(SessionStage.signedOut);
+  }
+
   /// Decide the opening screen from what is stored on the device.
   ///
   /// Asks only whether a token EXISTS, never whether it still works. A driver

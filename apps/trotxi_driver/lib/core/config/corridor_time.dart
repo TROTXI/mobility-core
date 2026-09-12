@@ -30,6 +30,24 @@ abstract final class CorridorTime {
   /// @returns the corridor's day.
   static String day(DateTime at) => _format(at.toUtc());
 
+  /// Today, in the corridor's clock, as a date with no time on it.
+  ///
+  /// What "today" means to this app is the UTC calendar day, because that is
+  /// the day `/me/trips` groups runs by. On a device west of UTC in the evening
+  /// the corridor has already rolled over, so the local date and the corridor
+  /// date are different days — and a screen that fetches one and labels it with
+  /// the other tells the driver their Friday runs are on Thursday.
+  ///
+  /// Returned as a plain date so it can be formatted for display, compared
+  /// against calendar cells, and passed to [calendarDay] without any of them
+  /// converting it again.
+  ///
+  /// @returns the corridor's current calendar day, at midnight.
+  static DateTime todayDate() {
+    final utc = DateTime.now().toUtc();
+    return DateTime(utc.year, utc.month, utc.day);
+  }
+
   /// A date the driver picked off a calendar, as `YYYY-MM-DD`.
   ///
   /// Deliberately does NOT convert. A calendar cell or a date picker hands back

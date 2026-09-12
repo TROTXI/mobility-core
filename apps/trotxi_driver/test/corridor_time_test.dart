@@ -30,6 +30,34 @@ void main() {
     });
   });
 
+  group('today, in the corridor clock', () {
+    test('is the UTC calendar day, not the device one', () {
+      final utcNow = DateTime.now().toUtc();
+      final today = CorridorTime.todayDate();
+
+      expect(today.year, utcNow.year);
+      expect(today.month, utcNow.month);
+      expect(today.day, utcNow.day);
+    });
+
+    test('carries no time, so it compares cleanly against calendar cells', () {
+      final today = CorridorTime.todayDate();
+      expect(today.hour, 0);
+      expect(today.minute, 0);
+    });
+
+    test('round-trips through calendarDay to the day the API filters on', () {
+      // The whole point: what Today fetches and what Schedule preselects have
+      // to be the same day. West of UTC in the evening the corridor has already
+      // rolled over, and using the local date would open the driver on a day
+      // with no work while their next run sat on the cell beside it.
+      expect(
+        CorridorTime.calendarDay(CorridorTime.todayDate()),
+        CorridorTime.day(DateTime.now()),
+      );
+    });
+  });
+
   group('a date the driver picked', () {
     test('is taken exactly as chosen, with no conversion', () {
       // A calendar cell or a date picker hands back a LOCAL midnight. Converting

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:trotxi_driver/core/config/corridor_time.dart';
 import 'package:provider/provider.dart';
 import 'package:trotxi_driver/Presentations/Run/pages/run_page.dart';
 import 'package:trotxi_driver/Presentations/Today/widgets/next_run_card.dart';
@@ -122,7 +123,10 @@ class _TodayPageState extends State<TodayPage> {
           // everything on the board, finished included: a driver reading "3
           // trips assigned" at 16:00 means the day they were given, not what is
           // left of it.
-          '${_longDate(DateTime.now())} · ${assigned == 1 ? '1 trip' : '$assigned trips'} assigned',
+          // The corridor's day, not the device's. The board below is fetched
+          // for the corridor day, and labelling it with a local date that has
+          // not rolled over yet would date a driver's runs to yesterday.
+          '${_longDate(CorridorTime.todayDate())} · ${assigned == 1 ? '1 trip' : '$assigned trips'} assigned',
           style: AppTypography.body.copyWith(color: colors.textSecondary),
         ),
         const SizedBox(height: AppSpacing.space16),

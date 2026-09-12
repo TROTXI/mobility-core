@@ -77,6 +77,22 @@ class _TrotxiDriverAppState extends State<TrotxiDriverApp> {
     client: widget.client,
   );
   late final WorkRepository _work = WorkRepository(client: widget.client);
+  late final SessionController _session = SessionController(auth: _auth);
+
+  @override
+  void initState() {
+    super.initState();
+    // A session revoked server-side now returns the app to sign-in on its own
+    // (#235). The store is cleared only after a refresh has genuinely failed,
+    // so this reacts to a proven 401 and never to a bad connection.
+    TokenStorage.instance.onCleared = _session.onSessionRevoked;
+  }
+
+  @override
+  void dispose() {
+    TokenStorage.instance.onCleared = null;
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -104,7 +120,7 @@ class _TrotxiDriverAppState extends State<TrotxiDriverApp> {
         // matters in practice, since these screens are read before dawn and
         // after dusk on a windscreen-mounted phone.
         ChangeNotifierProvider(create: (_) => AppThemeController()),
-        ChangeNotifierProvider(create: (_) => SessionController(auth: _auth)),
+        ChangeNotifierProvider.value(value: _session),
         ChangeNotifierProvider(create: (_) => TodayController(trips: _trips)),
       ],
       child: Consumer<AppThemeController>(

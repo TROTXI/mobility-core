@@ -78,11 +78,43 @@ class _RunPageState extends State<RunPage> {
   /// @param context - the calling context.
   /// @param controller - the run's controller, passed down rather than rebuilt.
   /// @param page - the screen to open.
-  void _open(BuildContext context, RunController controller, Widget page) {
+  /// Push a screen that normally lives as a shell tab.
+  ///
+  /// The Scaffold is not decoration. Manifest and Scan are written as tabs —
+  /// bare ListViews, because the shell owns the header and nav bar — so pushed
+  /// as a plain route they have no Material ancestor, and the manifest's search
+  /// field threw "No Material widget found" the moment it built. That made the
+  /// Manifest button on this screen a crash rather than a screen.
+  ///
+  /// [title] is null for a page that brings its own Scaffold, so it does not
+  /// end up with two app bars, and empty for one that prints its own heading —
+  /// the manifest says "Passenger manifest" in the body already, and repeating
+  /// it in the bar is a stutter that costs a line of a small screen.
+  ///
+  /// @param context - the navigator's context.
+  /// @param controller - the run, provided to the pushed page.
+  /// @param page - the screen to open.
+  /// @param title - app-bar title; empty for chrome only, null for a page that
+  ///   already has its own Scaffold.
+  void _open(
+    BuildContext context,
+    RunController controller,
+    Widget page, {
+    String? title,
+  }) {
     Navigator.of(context).push(
       MaterialPageRoute<void>(
-        builder: (_) =>
-            ChangeNotifierProvider.value(value: controller, child: page),
+        builder: (_) => ChangeNotifierProvider.value(
+          value: controller,
+          child: title == null
+              ? page
+              : Scaffold(
+                  appBar: AppBar(
+                    title: title.isEmpty ? null : Text(title),
+                  ),
+                  body: SafeArea(child: page),
+                ),
+        ),
       ),
     );
   }
@@ -204,7 +236,12 @@ class _RunPageState extends State<RunPage> {
               Expanded(
                 child: ElevatedButton.icon(
                   onPressed: () =>
-                      _open(context, controller, ScanPage(runId: run.id)),
+                      _open(
+                        context,
+                        controller,
+                        ScanPage(runId: run.id),
+                        title: 'Scan a pass',
+                      ),
                   icon: const Icon(Icons.qr_code_scanner),
                   label: const Text('Scan'),
                 ),
@@ -224,7 +261,12 @@ class _RunPageState extends State<RunPage> {
         ],
 
         OutlinedButton.icon(
-          onPressed: () => _open(context, controller, const ManifestPage()),
+          onPressed: () => _open(
+            context,
+            controller,
+            const ManifestPage(),
+            title: '',
+          ),
           icon: const Icon(Icons.people_outline),
           label: Text('Manifest (${data.waiting.length} waiting)'),
         ),

@@ -102,4 +102,41 @@ void main() {
     controller.onPinChanged();
     expect(controller.stage, SessionStage.ready);
   });
+
+  test('a session revoked server-side returns the app to sign-in (#235)', () async {
+    // An operations PIN reset revokes sessions. Before this the app stayed in
+    // the shell, the header fell back to "Driver", every call failed quietly,
+    // and nothing told the driver to sign in again.
+    final controller = SessionController(
+      auth: _StubAuth(
+        driver: const DriverSession(
+          driverId: 'd1',
+          fullName: 'Kofi Anum Quartey',
+          mustChangePin: false,
+        ),
+      ),
+    );
+    await controller.restore();
+    expect(controller.stage, SessionStage.ready);
+    expect(controller.session, isNotNull);
+
+    controller.onSessionRevoked();
+
+    expect(controller.stage, SessionStage.signedOut);
+    expect(controller.session, isNull);
+  });
+
+  test('a revocation while already signed out changes nothing', () async {
+    // Signing out clears tokens too, so the same callback arrives on the
+    // ordinary path. It has to be a no-op there rather than a second rebuild.
+    final controller = SessionController(auth: _StubAuth(stored: false));
+    await controller.restore();
+    expect(controller.stage, SessionStage.signedOut);
+
+    var notifications = 0;
+    controller.addListener(() => notifications++);
+    controller.onSessionRevoked();
+
+    expect(notifications, 0);
+  });
 }
