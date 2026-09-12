@@ -8,6 +8,7 @@ import 'package:trotxi_driver/core/config/theme/app_radii.dart';
 import 'package:trotxi_driver/core/config/theme/app_spacing.dart';
 import 'package:trotxi_driver/core/config/theme/app_typography.dart';
 import 'package:trotxi_driver/core/state/today_controller.dart';
+import 'package:trotxi_driver/core/widgets/driver_chip.dart';
 import 'package:trotxi_driver/data/work_repository.dart';
 
 /// Work routes and requests (prototype page 19).
@@ -229,12 +230,6 @@ class _RequestCardState extends State<_RequestCard> {
   Widget build(BuildContext context) {
     final colors = context.driverColors;
     final request = widget.request;
-    final tone = switch (request.status) {
-      RequestStatus.pending => colors.warning,
-      RequestStatus.approved => colors.success,
-      RequestStatus.declined => colors.danger,
-      RequestStatus.withdrawn => colors.textSecondary,
-    };
 
     return Container(
       padding: const EdgeInsets.all(AppSpacing.space16),
@@ -256,19 +251,17 @@ class _RequestCardState extends State<_RequestCard> {
                   ),
                 ),
               ),
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: AppSpacing.space8,
-                  vertical: AppSpacing.space4,
-                ),
-                decoration: BoxDecoration(
-                  color: tone.withValues(alpha: 0.15),
-                  borderRadius: AppRadii.circular(AppRadii.full),
-                ),
-                child: Text(
-                  request.status.label,
-                  style: AppTypography.caption.copyWith(color: tone),
-                ),
+              // The file's status chip rather than a tinted pill of this
+              // screen's own: same height, same tracking, and the dot that
+              // makes the state readable without relying on the colour.
+              DriverChip(
+                label: request.status.label,
+                status: switch (request.status) {
+                  RequestStatus.pending => DriverStatus.warning,
+                  RequestStatus.approved => DriverStatus.boarded,
+                  RequestStatus.declined => DriverStatus.error,
+                  RequestStatus.withdrawn => DriverStatus.neutral,
+                },
               ),
             ],
           ),

@@ -7,6 +7,7 @@ import 'package:trotxi_driver/core/config/theme/app_colors.dart';
 import 'package:trotxi_driver/core/config/theme/app_radii.dart';
 import 'package:trotxi_driver/core/config/theme/app_spacing.dart';
 import 'package:trotxi_driver/core/config/theme/app_typography.dart';
+import 'package:trotxi_driver/core/widgets/driver_chip.dart';
 import 'package:trotxi_driver/data/trips_repository.dart';
 
 /// Schedule and future trips (prototype page 18).
@@ -292,20 +293,7 @@ class _AgendaRow extends StatelessWidget {
           // Read from `assignmentChangedAt` rather than from a push (#233), so
           // it survives a notification the phone never received.
           if (run.wasRecentlyChanged)
-            Container(
-              padding: const EdgeInsets.symmetric(
-                horizontal: AppSpacing.space8,
-                vertical: AppSpacing.space4,
-              ),
-              decoration: BoxDecoration(
-                color: colors.warning.withValues(alpha: 0.15),
-                borderRadius: AppRadii.circular(AppRadii.full),
-              ),
-              child: Text(
-                'CHANGED',
-                style: AppTypography.caption.copyWith(color: colors.warning),
-              ),
-            ),
+            const DriverChip(label: 'Changed', status: DriverStatus.warning),
         ],
       ),
     );

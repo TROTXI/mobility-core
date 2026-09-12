@@ -10,6 +10,7 @@ import 'package:trotxi_driver/core/config/theme/app_spacing.dart';
 import 'package:trotxi_driver/core/config/theme/app_typography.dart';
 import 'package:trotxi_driver/core/state/config_controller.dart';
 import 'package:trotxi_driver/core/state/today_controller.dart';
+import 'package:trotxi_driver/core/widgets/driver_chip.dart';
 import 'package:trotxi_driver/core/widgets/operations_contact.dart';
 import 'package:trotxi_driver/data/incidents_repository.dart';
 import 'package:trotxi_driver/data/trips_repository.dart';
@@ -654,12 +655,6 @@ class _ReportCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final tone = switch (report.status) {
-      IncidentStatus.open => colors.warning,
-      IncidentStatus.acknowledged => colors.info,
-      IncidentStatus.resolved => colors.success,
-    };
-
     return Container(
       padding: const EdgeInsets.all(AppSpacing.space16),
       decoration: BoxDecoration(
@@ -680,19 +675,13 @@ class _ReportCard extends StatelessWidget {
                   ),
                 ),
               ),
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: AppSpacing.space8,
-                  vertical: AppSpacing.space4,
-                ),
-                decoration: BoxDecoration(
-                  color: tone.withValues(alpha: 0.15),
-                  borderRadius: AppRadii.circular(AppRadii.full),
-                ),
-                child: Text(
-                  report.status.label,
-                  style: AppTypography.caption.copyWith(color: tone),
-                ),
+              DriverChip(
+                label: report.status.label,
+                status: switch (report.status) {
+                  IncidentStatus.open => DriverStatus.warning,
+                  IncidentStatus.acknowledged => DriverStatus.ready,
+                  IncidentStatus.resolved => DriverStatus.boarded,
+                },
               ),
             ],
           ),
