@@ -37,6 +37,11 @@ dependencies:
   cupertino_icons: ^1.0.8
   trotxi_client:
     path: ../trotxi_client
+  # The shared map surface (#180): renderer, style swap and attribution, built
+  # once so this app and the rider app do not grow two integrations against the
+  # same tile server.
+  trotxi_map:
+    path: ../trotxi_map
   firebase_core: ^4.11.0
   firebase_crashlytics: ^5.2.4
   firebase_analytics: ^12.4.3

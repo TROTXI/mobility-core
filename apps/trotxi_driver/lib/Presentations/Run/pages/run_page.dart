@@ -6,6 +6,7 @@ import 'package:trotxi_driver/Presentations/Boarding/pages/board_by_code_page.da
 import 'package:trotxi_driver/Presentations/Boarding/pages/scan_page.dart';
 import 'package:trotxi_driver/Presentations/Completion/pages/end_run_page.dart';
 import 'package:trotxi_driver/Presentations/Run/pages/manifest_page.dart';
+import 'package:trotxi_driver/Presentations/Run/widgets/run_map.dart';
 import 'package:trotxi_driver/core/widgets/driver_chip.dart';
 import 'package:trotxi_driver/core/widgets/driver_tiles.dart';
 import 'package:trotxi_driver/core/config/theme/app_colors.dart';
@@ -271,6 +272,18 @@ class _RunPageState extends State<RunPage> {
                 ],
               ),
 
+              // The corridor (#237). Above the next-stop card rather than
+              // below it: the design leads the active-trip frame with the map,
+              // and a driver glancing down wants where they are before what is
+              // next.
+              const SizedBox(height: AppSpacing.space16),
+              RunMap(
+                routeId: run.routeId,
+                runId: run.id,
+                isActive: run.isActive,
+                onExpand: () => _openMap(context, run),
+              ),
+
               if (data.stops.isNotEmpty) ...[
                 const SizedBox(height: AppSpacing.space16),
                 NextStopCard(
@@ -492,6 +505,35 @@ class _RunPageState extends State<RunPage> {
     final left = data.stops.length - seq;
     if (left <= 0) return 'Last stop';
     return left == 1 ? '1 to go' : '$left to go';
+  }
+
+  /// Open the corridor full-screen.
+  ///
+  /// The design makes the active-trip map expandable, and the reason is
+  /// practical: a 220pt strip is enough to confirm you are on the right road
+  /// and not enough to work out where a stop is.
+  ///
+  /// @param context - the navigator's context.
+  /// @param run - the run to draw.
+  void _openMap(BuildContext context, DriverRun run) {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => Scaffold(
+          appBar: AppBar(title: Text(run.routeName)),
+          body: SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.all(AppSpacing.space12),
+              child: RunMap(
+                routeId: run.routeId,
+                runId: run.id,
+                isActive: run.isActive,
+                height: double.infinity,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
   }
 
   /// Report reaching a stop (#230).

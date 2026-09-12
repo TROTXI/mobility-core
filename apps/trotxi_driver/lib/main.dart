@@ -16,6 +16,7 @@ import 'package:trotxi_driver/core/state/today_controller.dart';
 import 'package:trotxi_driver/data/config_repository.dart';
 import 'package:trotxi_driver/data/driver_auth_repository.dart';
 import 'package:trotxi_driver/data/incidents_repository.dart';
+import 'package:trotxi_driver/data/route_map_repository.dart';
 import 'package:trotxi_driver/data/trips_repository.dart';
 import 'package:trotxi_driver/data/work_repository.dart';
 import 'package:trotxi_client/trotxi_client.dart';
@@ -77,6 +78,9 @@ class _TrotxiDriverAppState extends State<TrotxiDriverApp> {
     client: widget.client,
   );
   late final WorkRepository _work = WorkRepository(client: widget.client);
+  late final RouteMapRepository _maps = RouteMapRepository(
+    client: widget.client,
+  );
   late final SessionController _session = SessionController(auth: _auth);
 
   @override
@@ -109,6 +113,7 @@ class _TrotxiDriverAppState extends State<TrotxiDriverApp> {
         Provider<ConfigRepository>.value(value: _config),
         Provider<IncidentsRepository>.value(value: _incidents),
         Provider<WorkRepository>.value(value: _work),
+        Provider<RouteMapRepository>.value(value: _maps),
         // Fetched at start, not per screen: GET /flags answers before sign-in,
         // and the screen that needs the operations number most is the one a
         // driver reaches when they cannot get in (#234).

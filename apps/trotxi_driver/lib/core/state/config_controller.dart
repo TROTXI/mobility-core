@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:trotxi_driver/data/config_repository.dart';
+import 'package:trotxi_map/trotxi_map.dart';
 
 /// Client configuration, held for the life of the app.
 ///
@@ -27,6 +28,11 @@ class ConfigController extends ChangeNotifier {
   bool get isLoaded => _loaded;
 
   OperationsContact get operations => _value.operations;
+
+  /// The basemap style, or [TrotxiMapStyle.none] when the operator has not
+  /// configured one — in which case map surfaces draw blank and the screens
+  /// around them keep working.
+  TrotxiMapStyle get mapStyle => _value.mapStyle;
 
   /// Fetch the configuration. Safe to call again — a driver pulling to refresh
   /// the support screen after operations set a number should get it.

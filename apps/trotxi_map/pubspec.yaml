@@ -1,0 +1,26 @@
+name: trotxi_map
+version: 1.0.0
+description: >-
+  The shared map surface for the Trotxi apps. Owns the renderer, the style
+  swap and the attribution so the rider and driver apps do not each grow their
+  own integration against the same tile server.
+publish_to: none
+
+environment:
+  sdk: ^3.12.0
+
+dependencies:
+  flutter:
+    sdk: flutter
+  # The official MapLibre Flutter plugin (#180). BSD, no API key, no telemetry,
+  # no vendor account. PMTiles is handled by MapLibre Native itself from 11.9.0
+  # on Android and 6.14.0 on iOS, so the `pmtiles://` protocol in our style
+  # needs nothing from us.
+  maplibre_gl: ^0.27.1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:

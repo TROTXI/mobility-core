@@ -1,5 +1,6 @@
 import 'package:dio/dio.dart';
 import 'package:trotxi_client/trotxi_client.dart';
+import 'package:trotxi_map/trotxi_map.dart';
 
 /// How to reach the control room (#234).
 ///
@@ -32,11 +33,18 @@ class OperationsContact {
 
 /// The client configuration served before sign-in.
 class AppConfig {
-  const AppConfig({required this.operations});
+  const AppConfig({required this.operations, required this.mapStyle});
 
   final OperationsContact operations;
 
-  static const empty = AppConfig(operations: OperationsContact.empty);
+  /// Where the basemap comes from (#178, #180). Served rather than compiled in
+  /// so moving the tile host is a config change instead of three app releases.
+  final TrotxiMapStyle mapStyle;
+
+  static const empty = AppConfig(
+    operations: OperationsContact.empty,
+    mapStyle: TrotxiMapStyle.none,
+  );
 }
 
 /// Reads `GET /flags`, the one endpoint that answers without a session.
@@ -58,12 +66,21 @@ class ConfigRepository {
     try {
       final response = await _client.getFlagsApi().flagsGet();
       final ops = response.data?.operations;
+      final tiles = response.data?.mapTiles;
       return AppConfig(
         operations: OperationsContact(
           phone: _clean(ops?.phone),
           whatsapp: _clean(ops?.whatsapp),
           email: _clean(ops?.email),
           hours: _clean(ops?.hours),
+        ),
+        mapStyle: TrotxiMapStyle(
+          lightUrl: _clean(tiles?.styleUrl),
+          darkUrl: _clean(tiles?.darkStyleUrl),
+          // The credit travels with the URL because it is a licence condition.
+          // Falling back to the constant keeps the map legal to draw if the
+          // field is ever missing.
+          attribution: _clean(tiles?.attribution) ?? TrotxiMapStyle.none.attribution,
         ),
       );
     } on DioException {
