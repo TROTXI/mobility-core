@@ -6,6 +6,7 @@ interface RouteRow {
   id: string;
   name: string;
   description: string | null;
+  accepts_requests: boolean;
   created_at: Date;
 }
 
@@ -14,6 +15,7 @@ function toRoute(row: RouteRow): Route {
     id: row.id,
     name: row.name,
     description: row.description,
+    acceptsRequests: row.accepts_requests,
     createdAt: row.created_at,
   };
 }
@@ -23,8 +25,9 @@ export class PgRouteRepository implements RouteRepository {
 
   async create(input: NewRoute): Promise<Route> {
     const { rows } = await this.pool.query<RouteRow>(
-      `INSERT INTO routes (name, description) VALUES ($1, $2) RETURNING *`,
-      [input.name, input.description ?? null],
+      `INSERT INTO routes (name, description, accepts_requests)
+       VALUES ($1, $2, COALESCE($3, false)) RETURNING *`,
+      [input.name, input.description ?? null, input.acceptsRequests ?? null],
     );
     return toRoute(rows[0]!);
   }
@@ -48,8 +51,9 @@ export class PgRouteRepository implements RouteRepository {
     if (!existing) return null;
     const next = applyPatch(existing, patch);
     const { rows } = await this.pool.query<RouteRow>(
-      `UPDATE routes SET name = $2, description = $3 WHERE id = $1 RETURNING *`,
-      [id, next.name, next.description],
+      `UPDATE routes SET name = $2, description = $3, accepts_requests = $4
+       WHERE id = $1 RETURNING *`,
+      [id, next.name, next.description, next.acceptsRequests],
     );
     return rows[0] ? toRoute(rows[0]) : null;
   }

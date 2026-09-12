@@ -58,6 +58,19 @@ import {
   FakeNotificationSender,
   type NotificationSender,
 } from './modules/notifications/notification.sender';
+import { DriverNotifier } from './modules/notifications/driver-notifier.service';
+import {
+  InMemoryDriverIncidentRepository,
+  type DriverIncidentRepository,
+} from './modules/incidents/driver-incident.repository';
+import { IncidentService } from './modules/incidents/incident.service';
+import { incidentRoutes } from './modules/incidents/incidents.routes';
+import {
+  InMemoryDriverRequestRepository,
+  type DriverRequestRepository,
+} from './modules/work/driver-request.repository';
+import { WorkRequestService } from './modules/work/work-request.service';
+import { workRoutes } from './modules/work/work.routes';
 import { paymentRoutes } from './modules/payments/payments.routes';
 import type { PaymentsService } from './modules/payments/payments.service';
 import { authPlugin } from './modules/auth/auth.plugin';
@@ -79,6 +92,7 @@ import { adminRoutes } from './modules/admin/admin.routes';
 import { flagsRoutes } from './modules/flags/flags.routes';
 import type { FeatureFlagRepository } from './modules/flags/feature-flag.repository';
 import type { MinVersionRepository } from './modules/flags/min-version.repository';
+import type { OperationsContact } from './modules/flags/flags.schema';
 import type { RouteRepository } from './modules/mobility/route.repository';
 import type { StopRepository } from './modules/mobility/stop.repository';
 import type { RouteGeometryRepository } from './modules/mobility/route-geometry.repository';
@@ -155,6 +169,16 @@ export interface AppDeps {
   mapTilesUrl?: string;
   mapStyleUrl?: string;
   mapStyleDarkUrl?: string;
+  /**
+   * How a driver reaches the control room (#234), served on GET /flags. Public
+   * on purpose: the "Can't sign in?" screen is reached while signed out, and PIN
+   * recovery runs through a person rather than a self-service reset.
+   */
+  operations?: OperationsContact;
+  /** Driver incident reports (#226). Defaults to in-memory. */
+  driverIncidents?: DriverIncidentRepository;
+  /** Driver route-change and leave requests (#232). Defaults to in-memory. */
+  driverRequests?: DriverRequestRepository;
   /** Observed segment speeds (#181). Absent -> ETAs use the cold-start speed. */
   segmentSpeeds?: SegmentSpeedRepository;
   /** Derived route shapes (#179), served by GET /routes/:id/geometry (#206). */
@@ -265,6 +289,8 @@ export async function buildApp(deps: AppDeps = {}): Promise<FastifyInstance> {
           name: 'flags',
           description: 'Feature flags + minimum supported app version (force-update)',
         },
+        { name: 'incidents', description: 'Driver incident reports' },
+        { name: 'work', description: 'Driver route-change and leave requests' },
       ],
       components: {
         // Protected routes set `security: [{ bearerAuth: [] }]`; clients send
@@ -400,6 +426,8 @@ export async function buildApp(deps: AppDeps = {}): Promise<FastifyInstance> {
   await app.register(tripRoutes, {
     trips: deps.trips,
     vehicles: deps.vehicles,
+    routeStops: deps.routeStops,
+    drivers: deps.drivers,
     rateLimit: deps.rateLimit ?? DEFAULT_RATE_LIMIT,
   });
   await app.register(positionRoutes, {
@@ -433,8 +461,40 @@ export async function buildApp(deps: AppDeps = {}): Promise<FastifyInstance> {
             drivers: deps.drivers,
             reservations,
             scanEvents,
+            // The stop counter's denominator, and the bound an arrival is
+            // checked against (#230).
+            routeStops: deps.routeStops,
           })
         : undefined,
+    rateLimit: deps.rateLimit ?? DEFAULT_RATE_LIMIT,
+  });
+
+  // Driver self-service (#226, #232). Both need the fleet driver store to
+  // resolve the caller, so both stand down together when it is unwired.
+  const driverIncidents = deps.driverIncidents ?? new InMemoryDriverIncidentRepository();
+  await app.register(incidentRoutes, {
+    incidentService:
+      deps.drivers && deps.trips
+        ? new IncidentService({
+            incidents: driverIncidents,
+            drivers: deps.drivers,
+            trips: deps.trips,
+          })
+        : undefined,
+    incidents: driverIncidents,
+    rateLimit: deps.rateLimit ?? DEFAULT_RATE_LIMIT,
+  });
+  const driverRequests = deps.driverRequests ?? new InMemoryDriverRequestRepository();
+  await app.register(workRoutes, {
+    workRequests:
+      deps.drivers && deps.routes
+        ? new WorkRequestService({
+            requests: driverRequests,
+            drivers: deps.drivers,
+            routes: deps.routes,
+          })
+        : undefined,
+    requests: driverRequests,
     rateLimit: deps.rateLimit ?? DEFAULT_RATE_LIMIT,
   });
   await app.register(routeLearningRoutes, {
@@ -451,6 +511,11 @@ export async function buildApp(deps: AppDeps = {}): Promise<FastifyInstance> {
     users: deps.users,
     featureFlags: deps.featureFlags,
     minVersions: deps.minVersions,
+    // Assignment changes reach the driver's phone (#233). Only wired when the
+    // driver store is present — without it there is no user id to push to.
+    driverNotifier: deps.drivers
+      ? new DriverNotifier({ notifier, drivers: deps.drivers })
+      : undefined,
     rateLimit: deps.rateLimit ?? DEFAULT_RATE_LIMIT,
     reservations,
   });
@@ -460,6 +525,7 @@ export async function buildApp(deps: AppDeps = {}): Promise<FastifyInstance> {
     mapTilesUrl: deps.mapTilesUrl,
     mapStyleUrl: deps.mapStyleUrl,
     mapStyleDarkUrl: deps.mapStyleDarkUrl,
+    operations: deps.operations,
     rateLimit: deps.rateLimit ?? DEFAULT_RATE_LIMIT,
   });
 

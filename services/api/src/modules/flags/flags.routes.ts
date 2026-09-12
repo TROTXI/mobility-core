@@ -12,7 +12,7 @@ import { errorResponseSchema } from '../../lib/schemas';
 import type { RateLimitConfig } from '../ratelimit/ratelimit.plugin';
 import type { FeatureFlagRepository } from './feature-flag.repository';
 import type { MinVersionRepository } from './min-version.repository';
-import { flagsResponseSchema } from './flags.schema';
+import { flagsResponseSchema, type OperationsContact } from './flags.schema';
 
 /**
  * Credit required by the data licences, shown on every surface that renders a
@@ -33,6 +33,9 @@ const MAP_ATTRIBUTION = '© OpenStreetMap contributors · © OpenMapTiles';
  *   and clients render without a basemap rather than failing.
  * @param opts.mapStyleUrl - light-theme MapLibre style (#180).
  * @param opts.mapStyleDarkUrl - dark-theme MapLibre style (#180).
+ * @param opts.operations - how to reach the control room (#234); each field
+ *   absent -> null, and the app hides the control rather than offering a dial
+ *   that goes nowhere.
  * @param opts.rateLimit - rate-limit config (per IP; this route is public).
  */
 export async function flagsRoutes(
@@ -43,6 +46,7 @@ export async function flagsRoutes(
     mapTilesUrl?: string;
     mapStyleUrl?: string;
     mapStyleDarkUrl?: string;
+    operations?: OperationsContact;
     rateLimit: RateLimitConfig;
   },
 ): Promise<void> {
@@ -51,7 +55,7 @@ export async function flagsRoutes(
     {
       schema: {
         tags: ['flags'],
-        summary: 'Feature flags + minimum supported app version (fetched on launch)',
+        summary: 'Feature flags, minimum supported app version, basemap and operations contact',
         response: { 200: flagsResponseSchema, 429: errorResponseSchema },
       },
       // Unauthenticated and hit on every app launch, so it is the cheapest way
@@ -83,6 +87,12 @@ export async function flagsRoutes(
           styleUrl: opts.mapStyleUrl ?? null,
           darkStyleUrl: opts.mapStyleDarkUrl ?? null,
           attribution: MAP_ATTRIBUTION,
+        },
+        operations: {
+          phone: opts.operations?.phone ?? null,
+          whatsapp: opts.operations?.whatsapp ?? null,
+          email: opts.operations?.email ?? null,
+          hours: opts.operations?.hours ?? null,
         },
       };
     },

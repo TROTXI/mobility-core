@@ -163,6 +163,22 @@ services:
         value: https://tiles.trotxi.com/style.light.json
       - key: MAP_STYLE_DARK_URL
         value: https://tiles.trotxi.com/style.dark.json
+      # Who a driver calls when something goes wrong (#234). Served on /flags for
+      # the same reason the map styles are: depots differ, and a number baked
+      # into a shipped build is worse than none. Not secret — it is the number on
+      # the side of the van — so it belongs here rather than in the dashboard.
+      #
+      # Deliberately NOT set to a placeholder. Unset -> /flags reports null and
+      # the app hides the control, which is the safe answer; a real-looking
+      # number that rings nowhere is the exact failure #234 exists to prevent.
+      # Fill these in once operations confirms the line, then redeploy.
+      #
+      #   - key: OPERATIONS_PHONE
+      #     value: '+233XXXXXXXXX'
+      #   - key: OPERATIONS_WHATSAPP
+      #     value: '+233XXXXXXXXX'
+      #   - key: OPERATIONS_HOURS
+      #     value: 05:00-22:00 daily
 
   # ---- Ask-dispatch cron jobs (E3) — COMMENTED OUT, see below ----
   #
