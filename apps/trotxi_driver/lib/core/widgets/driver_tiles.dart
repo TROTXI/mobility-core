@@ -87,6 +87,7 @@ class NextStopCard extends StatelessWidget {
     required this.label,
     required this.stop,
     this.detail,
+    this.onNavigate,
   });
 
   /// "NEXT STOP", or "AT STOP" once the driver has reported arriving.
@@ -94,11 +95,17 @@ class NextStopCard extends StatelessWidget {
 
   final String stop;
 
-  /// "1.2 km · ~4 min" in the file. Null here until a routing engine exists —
-  /// distance and time to a stop are not something this app can compute, and a
-  /// made-up number on the one card a driver navigates by would be worse than
-  /// an absent one.
+  /// "1.2 km · ~4 min" in the file, and now the API's own figures: the server
+  /// derives both from the corridor's learned geometry, which is the only
+  /// place in this stack that can. Still null when the run has reported no
+  /// position, because a made-up number on the one card a driver navigates by
+  /// is worse than an absent one.
   final String? detail;
+
+  /// Hands the stop to the device's navigation app. Null when the stop has no
+  /// coordinates. Turn-by-turn is explicitly out of scope for this app (#237):
+  /// a routing engine is not a tile server, and the phone already has one.
+  final VoidCallback? onNavigate;
 
   @override
   Widget build(BuildContext context) {
@@ -138,6 +145,30 @@ class NextStopCard extends StatelessWidget {
               detail!,
               style: AppTypography.bodySmall.copyWith(
                 color: colors.textSecondary,
+              ),
+            ),
+          ],
+          if (onNavigate != null) ...[
+            const SizedBox(height: AppSpacing.space8),
+            SizedBox(
+              height: 38,
+              child: FilledButton(
+                onPressed: onNavigate,
+                style: FilledButton.styleFrom(
+                  backgroundColor: colors.action,
+                  foregroundColor: colors.onAction,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 18,
+                  ),
+                  textStyle: AppTypography.tileLabel.copyWith(
+                    fontSize: 12,
+                    letterSpacing: 0.3,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: AppRadii.circular(19),
+                  ),
+                ),
+                child: const Text('NAVIGATE TO STOP'),
               ),
             ),
           ],

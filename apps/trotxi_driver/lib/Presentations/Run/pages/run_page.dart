@@ -16,6 +16,8 @@ import 'package:trotxi_driver/core/config/theme/app_spacing.dart';
 import 'package:trotxi_driver/core/config/theme/app_typography.dart';
 import 'package:trotxi_driver/core/state/loadable.dart';
 import 'package:trotxi_driver/core/state/run_controller.dart';
+import 'package:trotxi_driver/data/route_map_repository.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:trotxi_driver/data/position_publisher.dart';
 import 'package:trotxi_driver/data/trips_repository.dart';
 
@@ -43,6 +45,15 @@ class _RunPageState extends State<RunPage> {
   /// Why location sharing is not running, when it is not.
   PositionBlock? _positionBlock;
 
+  /// The API's distance and ETA to each stop still ahead (design page 10).
+  /// Null until the run reports a position, which is most of a run's first
+  /// minutes and every run in a dead zone.
+  VehicleFix? _fix;
+
+  /// The corridor's stops with their coordinates, for handing one to the
+  /// phone's navigation app. Cached for the session by the repository.
+  RouteShape? _shape;
+
   @override
   void initState() {
     super.initState();
@@ -50,7 +61,61 @@ class _RunPageState extends State<RunPage> {
       if (!mounted) return;
       await context.read<RunController>().load();
       if (mounted) await _syncPublishing();
+      if (mounted) await _loadFix();
     });
+  }
+
+  /// Read the vehicle's position for its stop ETAs.
+  ///
+  /// Shares the repository's short-lived cache with the map, so the two
+  /// surfaces on this screen that want a fix make one call between them.
+  Future<void> _loadFix() async {
+    final run = context.read<RunController>().detail.valueOrNull?.run;
+    if (run == null || !run.isActive) return;
+    final maps = context.read<RouteMapRepository>();
+    final fix = await maps.vehicleOn(run.id);
+    final shape = await maps.shapeFor(run.routeId);
+    if (mounted) {
+      setState(() {
+        _fix = fix;
+        _shape = shape;
+      });
+    }
+  }
+
+  /// The stop a NAVIGATE tap should open, or null when nothing can be opened.
+  ///
+  /// Needs both halves: the API's next stop, and that stop's coordinates off
+  /// the corridor shape. Either missing and the control is not offered rather
+  /// than offered and dead.
+  MappedStop? get _navigationTarget {
+    final next = _fix?.nextStop;
+    final stops = _shape?.stops;
+    if (next == null || stops == null) return null;
+    for (final stop in stops) {
+      if (stop.seq == next.seq) return stop;
+    }
+    return null;
+  }
+
+  /// Hand a stop to whatever the phone navigates with.
+  ///
+  /// Turn-by-turn is out of scope for this app (#237) and the device already
+  /// does it better. `geo:` is Android's; iOS takes the Apple Maps URL, and
+  /// `launchUrl` falls through to whichever the platform can open.
+  Future<void> _navigateTo(MappedStop stop) async {
+    final lat = stop.position.latitude;
+    final lng = stop.position.longitude;
+    final label = Uri.encodeComponent(stop.name);
+    for (final url in [
+      Uri.parse('geo:$lat,$lng?q=$lat,$lng($label)'),
+      Uri.parse('https://maps.apple.com/?daddr=$lat,$lng&dirflg=d'),
+    ]) {
+      if (await canLaunchUrl(url)) {
+        await launchUrl(url, mode: LaunchMode.externalApplication);
+        return;
+      }
+    }
   }
 
   @override
@@ -123,7 +188,10 @@ class _RunPageState extends State<RunPage> {
 
     // A tab on the shell, which already owns the header and the nav bar.
     return RefreshIndicator(
-      onRefresh: controller.load,
+      onRefresh: () async {
+        await controller.load();
+        await _loadFix();
+      },
       child: detail.isInitialLoad
           ? const Center(child: CircularProgressIndicator())
           : _body(context, controller, detail, colors),
@@ -321,9 +389,15 @@ class _RunPageState extends State<RunPage> {
                         ? 'Next stop'
                         : 'At stop',
                     stop: data.currentStopName ?? data.stops.first,
-                    // The file shows "1.2 km · ~4 min" here. Left out until #237
-                    // lands a routing engine: a distance the app cannot compute
-                    // is worse on the one card a driver navigates by than none.
+                    // The file's "1.2 km · ~4 min", from the API rather than
+                    // computed here: the server derives both from the
+                    // corridor's learned geometry. Null until the run has
+                    // reported a position, because a made-up number on the one
+                    // card a driver navigates by is worse than an absent one.
+                    detail: _fix?.nextStop?.summary,
+                    onNavigate: _navigationTarget == null
+                        ? null
+                        : () => _navigateTo(_navigationTarget!),
                   ),
                 ],
 
@@ -420,58 +494,102 @@ class _RunPageState extends State<RunPage> {
           onChanged: _syncPublishing,
         ),
 
-        const SizedBox(height: AppSpacing.space32),
-        Row(
-          children: [
-            Expanded(
-              child: Text(
-                'STOPS',
-                style: AppTypography.caption.copyWith(
-                  color: colors.textSecondary,
+        const SizedBox(height: AppSpacing.space16),
+        // The file's stop-sequence card (design page 10): the whole corridor in
+        // one panel rather than a bare list under a caption, so the three
+        // states read as one thing a driver scans down.
+        Container(
+          padding: const EdgeInsets.fromLTRB(
+            AppSpacing.space8,
+            AppSpacing.space16,
+            AppSpacing.space8,
+            AppSpacing.space8,
+          ),
+          decoration: BoxDecoration(
+            color: colors.field,
+            borderRadius: AppRadii.circular(AppRadii.xl),
+            border: Border.all(color: colors.border),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppSpacing.space10,
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        'Stop sequence',
+                        style: AppTypography.label.copyWith(
+                          fontSize: 15,
+                          color: colors.textPrimary,
+                        ),
+                      ),
+                    ),
+                    if (run.isActive && data.stops.isNotEmpty)
+                      Text(
+                        data.currentStopName == null
+                            ? 'Tap one when you reach it'
+                            : 'At ${data.currentStopName}',
+                        style: AppTypography.tileCaption.copyWith(
+                          fontSize: 11,
+                          color: colors.textSecondary,
+                        ),
+                      ),
+                  ],
                 ),
               ),
-            ),
-            if (run.isActive && data.stops.isNotEmpty)
-              Text(
-                data.currentStopName == null
-                    ? 'Tap a stop when you reach it'
-                    : 'At ${data.currentStopName}',
-                style: AppTypography.caption.copyWith(
-                  color: colors.textSecondary,
-                ),
-              ),
-          ],
+              const SizedBox(height: AppSpacing.space8),
+              if (data.stops.isEmpty)
+                Padding(
+                  padding: const EdgeInsets.all(AppSpacing.space10),
+                  child: Text(
+                    'This corridor has no stops recorded yet.',
+                    style: AppTypography.bodySmall.copyWith(
+                      color: colors.textSecondary,
+                    ),
+                  ),
+                )
+              else
+                for (final (index, stop) in data.stops.indexed)
+                  _StopRow(
+                    seq: index + 1,
+                    name: stop,
+                    eta: _etaFor(index + 1),
+                    // Passed rather than "done": the driver said they reached
+                    // stop 4, which means 1 to 3 are behind them.
+                    passed:
+                        data.currentStopSeq != null &&
+                        index + 1 < data.currentStopSeq!,
+                    current: data.currentStopSeq == index + 1,
+                    // Only on a run that is under way. Reporting arrivals on a
+                    // trip nobody has started would record progress along a
+                    // route the van is not on.
+                    onArrive: run.isActive
+                        ? () => _arrive(context, controller, index + 1)
+                        : null,
+                    colors: colors,
+                  ),
+            ],
+          ),
         ),
-        const SizedBox(height: AppSpacing.space8),
-        if (data.stops.isEmpty)
-          Text(
-            'This corridor has no stops recorded yet.',
-            style: AppTypography.bodySmall.copyWith(
-              color: colors.textSecondary,
-            ),
-          )
-        else
-          for (final (index, stop) in data.stops.indexed)
-            _StopRow(
-              seq: index + 1,
-              name: stop,
-              // Passed rather than "done": the driver said they reached stop 4,
-              // which means 1 to 3 are behind them.
-              passed:
-                  data.currentStopSeq != null &&
-                  index + 1 < data.currentStopSeq!,
-              current: data.currentStopSeq == index + 1,
-              // Only on a run that is under way. Reporting arrivals on a trip
-              // nobody has started would record progress along a route the van
-              // is not on.
-              onArrive: run.isActive
-                  ? () => _arrive(context, controller, index + 1)
-                  : null,
-              colors: colors,
-            ),
         const SizedBox(height: AppSpacing.space24),
       ],
     );
+  }
+
+  /// This stop's figure from the API, or null when it is behind the van or the
+  /// run has reported nothing.
+  ///
+  /// @param seq - the stop's one-based position.
+  /// @returns the ETA, or null.
+  StopEta? _etaFor(int seq) {
+    for (final eta in _fix?.etas ?? const <StopEta>[]) {
+      if (eta.seq == seq) return eta;
+    }
+    return null;
   }
 
   /// The run's state in the words the file uses on the hero's second line.
@@ -592,6 +710,11 @@ class _RunPageState extends State<RunPage> {
 /// Tappable on an active run, because the API takes any stop on the route
 /// rather than only the next one: a driver who missed a tap two stops back
 /// should be able to put the counter right instead of living with it wrong.
+/// One row of the file's stop sequence (design page 10).
+///
+/// Three states, and each says what it means rather than only how it looks: a
+/// stop behind the van reads DONE, the one it is working reads CURRENT, and the
+/// rest read NEXT with whatever the API can say about when.
 class _StopRow extends StatelessWidget {
   const _StopRow({
     required this.seq,
@@ -600,6 +723,7 @@ class _StopRow extends StatelessWidget {
     required this.current,
     required this.onArrive,
     required this.colors,
+    this.eta,
   });
 
   final int seq;
@@ -609,53 +733,99 @@ class _StopRow extends StatelessWidget {
   final VoidCallback? onArrive;
   final AppColors colors;
 
+  /// The API's figure for this stop, when the run has reported a position.
+  final StopEta? eta;
+
   @override
   Widget build(BuildContext context) {
-    final tone = current
-        ? colors.action
-        : (passed ? colors.success : colors.surfaceSelected);
+    final (badge, tone) = passed
+        ? ('DONE', colors.success)
+        : current
+        ? ('CURRENT', colors.surfaceStrong)
+        : ('NEXT', colors.page);
+
+    final sub = passed
+        ? 'Reported'
+        : (eta?.summary ?? (current ? 'Working this stop' : 'Ahead'));
 
     return Padding(
       padding: const EdgeInsets.only(bottom: AppSpacing.space8),
       child: InkWell(
         onTap: onArrive,
-        borderRadius: AppRadii.circular(AppRadii.md),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: AppSpacing.space4),
+        borderRadius: AppRadii.circular(AppRadii.field),
+        child: Container(
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.space14,
+            vertical: AppSpacing.space10,
+          ),
+          decoration: BoxDecoration(
+            color: current ? colors.surface : Colors.transparent,
+            borderRadius: AppRadii.circular(AppRadii.field),
+            border: Border.all(
+              color: current ? colors.border : Colors.transparent,
+            ),
+          ),
           child: Row(
             children: [
               Container(
-                width: 24,
-                height: 24,
+                width: 34,
+                height: 34,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: passed
+                      ? colors.success
+                      : (current ? colors.surfaceStrong : colors.page),
+                  shape: BoxShape.circle,
+                ),
+                child: Text(
+                  '$seq',
+                  style: AppTypography.screenContext.copyWith(
+                    fontWeight: FontWeight.w600,
+                    color: passed ? colors.textInverse : colors.textPrimary,
+                  ),
+                ),
+              ),
+              const SizedBox(width: AppSpacing.space12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      name,
+                      style: AppTypography.fieldLabel.copyWith(
+                        fontSize: 13,
+                        color: colors.textPrimary,
+                      ),
+                    ),
+                    Text(
+                      sub,
+                      style: AppTypography.tileCaption.copyWith(
+                        fontSize: 11,
+                        color: colors.textSecondary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: AppSpacing.space8),
+              Container(
+                height: 27,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppSpacing.space10,
+                ),
                 alignment: Alignment.center,
                 decoration: BoxDecoration(
                   color: tone,
                   borderRadius: AppRadii.circular(AppRadii.full),
+                  border: Border.all(color: passed ? tone : colors.border),
                 ),
-                child: passed
-                    ? Icon(Icons.check, size: 14, color: colors.onAction)
-                    : Text(
-                        '$seq',
-                        style: AppTypography.caption.copyWith(
-                          color: current ? colors.onAction : colors.textPrimary,
-                        ),
-                      ),
-              ),
-              const SizedBox(width: AppSpacing.space12),
-              Expanded(
                 child: Text(
-                  name,
-                  style: AppTypography.body.copyWith(
-                    color: colors.textPrimary,
-                    fontWeight: current ? FontWeight.w600 : null,
+                  badge,
+                  style: AppTypography.tileLabel.copyWith(
+                    color: passed ? colors.textInverse : colors.textPrimary,
                   ),
                 ),
               ),
-              if (onArrive != null && !current)
-                Text(
-                  passed ? 'Back to here' : 'Arrived',
-                  style: AppTypography.caption.copyWith(color: colors.action),
-                ),
             ],
           ),
         ),

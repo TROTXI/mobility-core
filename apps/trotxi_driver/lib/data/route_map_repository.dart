@@ -72,12 +72,57 @@ class RouteShape {
   }
 }
 
+/// How far a stop is and when the vehicle is due, from the API.
+///
+/// Not computed here. The server derives both from the corridor's learned
+/// geometry and the vehicle's progress along it (system-design §7), which is
+/// the only place in this stack that can: a straight line between two points
+/// is not a road, and a driver reading "1.2 km" off one would be reading a
+/// number no van can drive.
+class StopEta {
+  const StopEta({
+    required this.seq,
+    required this.name,
+    required this.distanceMeters,
+    required this.etaSeconds,
+  });
+
+  final int seq;
+  final String name;
+  final double distanceMeters;
+  final double etaSeconds;
+
+  /// "1.2 km · ~4 min", as the file sets it.
+  String get summary {
+    final km = distanceMeters / 1000;
+    final distance = km >= 1
+        ? '${km.toStringAsFixed(1)} km'
+        : '${distanceMeters.round()} m';
+    final minutes = (etaSeconds / 60).round();
+    // Under a minute is "arriving", not "~0 min": a driver reading zero would
+    // look up expecting to already be there.
+    final when = minutes < 1 ? 'arriving' : '~$minutes min';
+    return '$distance · $when';
+  }
+}
+
 /// The vehicle's last known position, and how old it is.
 class VehicleFix {
-  const VehicleFix({required this.position, required this.recordedAt});
+  const VehicleFix({
+    required this.position,
+    required this.recordedAt,
+    this.etas = const [],
+  });
 
   final LatLng position;
   final DateTime recordedAt;
+
+  /// Every stop still ahead, in order. Empty when the corridor has fewer than
+  /// two stops or the van is past the last one, both of which the API states.
+  final List<StopEta> etas;
+
+  /// The next stop the van is due at, or null when it is past the last.
+  StopEta? get nextStop => etas.isEmpty ? null : etas.first;
 
   /// How stale this fix is.
   ///
@@ -98,6 +143,11 @@ class RouteMapRepository {
   /// a driver reopening the trip screen should not pay for it again.
   final Map<String, RouteShape> _shapes = {};
 
+  /// Fixes are cached for seconds, not for the session: a position that is
+  /// stale by design is the one thing this app must not serve.
+  static const Duration _fixTtl = Duration(seconds: 5);
+  final Map<String, (DateTime, VehicleFix)> _fixes = {};
+
   /// The line and stops for a corridor.
   ///
   /// Geometry and stops are fetched together and degrade independently: a
@@ -116,7 +166,8 @@ class RouteMapRepository {
     // The documented fallback: null geometry draws the stop-to-stop line.
     // Angular, but not broken — and `source` says so, so the screen can label
     // it rather than passing it off as the real path.
-    final shape = geometry ??
+    final shape =
+        geometry ??
         RouteShape(
           points: stops.map((s) => s.position).toList(),
           stops: stops,
@@ -142,16 +193,35 @@ class RouteMapRepository {
   /// @param runId - the run.
   /// @returns the fix, or null.
   Future<VehicleFix?> vehicleOn(String runId) async {
+    // Two surfaces on the trip screen want this: the marker on the map and the
+    // next-stop card's ETA. A few seconds of cache means they share one call
+    // rather than each polling the same endpoint.
+    final cached = _fixes[runId];
+    if (cached != null && DateTime.now().difference(cached.$1) < _fixTtl) {
+      return cached.$2;
+    }
     try {
       final response = await _client.getMobilityApi().tripsIdPositionGet(
         id: runId,
       );
-      final p = response.data?.position;
-      if (p == null) return null;
-      return VehicleFix(
+      final body = response.data;
+      final p = body?.position;
+      if (body == null || p == null) return null;
+      final fix = VehicleFix(
         position: LatLng(p.latitude.toDouble(), p.longitude.toDouble()),
         recordedAt: p.recordedAt,
+        etas: [
+          for (final e in body.etaToStops)
+            StopEta(
+              seq: e.seq,
+              name: e.name,
+              distanceMeters: e.distanceMeters.toDouble(),
+              etaSeconds: e.etaSeconds.toDouble(),
+            ),
+        ],
       );
+      _fixes[runId] = (DateTime.now(), fix);
+      return fix;
     } on DioException {
       // The vehicle marker is one of two independent things on this map (#180).
       // A position that will not load must not take the route line with it.
@@ -195,9 +265,7 @@ class RouteMapRepository {
       if (data == null || data.points.isEmpty) return null;
       return RouteShape(
         points: data.points
-            .map(
-              (p) => LatLng(p.latitude.toDouble(), p.longitude.toDouble()),
-            )
+            .map((p) => LatLng(p.latitude.toDouble(), p.longitude.toDouble()))
             .toList(),
         stops: const [],
         source: switch (data.source_.name) {
