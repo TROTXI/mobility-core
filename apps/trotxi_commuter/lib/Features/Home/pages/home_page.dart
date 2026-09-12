@@ -1,15 +1,15 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:trotxi_client/trotxi_client.dart';
-import 'package:trotxi_commuter/Presentations/Home/models/home_ride_lifecycle_state.dart';
-import 'package:trotxi_commuter/Presentations/Home/widgets/BottomNavigation/commuter_navigation.dart';
-import 'package:trotxi_commuter/Presentations/Home/widgets/Navbar/navbar.dart';
-import 'package:trotxi_commuter/Presentations/Home/widgets/Tabs/home_tab.dart';
-import 'package:trotxi_commuter/Presentations/Home/widgets/Tabs/pass_tab.dart';
-import 'package:trotxi_commuter/Presentations/Home/widgets/Tabs/profile_tab.dart';
-import 'package:trotxi_commuter/Presentations/Home/widgets/Tabs/routes_tab.dart';
-import 'package:trotxi_commuter/Presentations/Home/widgets/Tabs/wallet_tab.dart';
-import 'package:trotxi_commuter/Presentations/Onboarding/pages/onboard_page.dart';
+import 'package:trotxi_commuter/Features/Home/models/home_ride_lifecycle_state.dart';
+import 'package:trotxi_commuter/Features/Home/widgets/BottomNavigation/commuter_navigation.dart';
+import 'package:trotxi_commuter/Features/Home/widgets/Navbar/navbar.dart';
+import 'package:trotxi_commuter/Features/Home/widgets/Tabs/home_tab.dart';
+import 'package:trotxi_commuter/Features/Home/widgets/Tabs/pass_tab.dart';
+import 'package:trotxi_commuter/Features/Home/widgets/Tabs/profile_tab.dart';
+import 'package:trotxi_commuter/Features/Home/widgets/Tabs/routes_tab.dart';
+import 'package:trotxi_commuter/Features/Home/widgets/Tabs/wallet_tab.dart';
+import 'package:trotxi_commuter/Features/Onboarding/pages/onboard_page.dart';
 import 'package:trotxi_commuter/core/config/theme/app_colors.dart';
 
 /// An [IndexedStack] replacement that only builds a child the first time

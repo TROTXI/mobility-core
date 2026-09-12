@@ -28,6 +28,8 @@ class Navbar extends StatelessWidget implements PreferredSizeWidget {
   Widget build(BuildContext context) {
     final String? avatarUrl = userData.avatarUrl;
     final bool hasAvatar = avatarUrl != null && avatarUrl.isNotEmpty;
+    final colors = context.appColors;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return SafeArea(
       bottom: false,
@@ -37,9 +39,9 @@ class Navbar extends StatelessWidget implements PreferredSizeWidget {
             width: double.infinity,
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             decoration: ShapeDecoration(
-              color: AppColors.lightBackground,
+              color: colors.surfaceElevated,
               shape: RoundedRectangleBorder(
-                side: BorderSide(width: 1, color: AppColors.navborder),
+                side: BorderSide(width: 1, color: colors.borderSubtle),
               ),
             ),
             child: Row(
@@ -51,7 +53,9 @@ class Navbar extends StatelessWidget implements PreferredSizeWidget {
                   height: 47,
                   decoration: BoxDecoration(
                     image: DecorationImage(
-                      image: AssetImage(Appvectors.logo),
+                      image: AssetImage(
+                        isDark ? Appvectors.logodarktheme : Appvectors.logo,
+                      ),
                       fit: BoxFit.contain,
                     ),
                   ),
@@ -75,7 +79,7 @@ class Navbar extends StatelessWidget implements PreferredSizeWidget {
                             Text(
                               userName,
                               style: TextStyle(
-                                color: AppColors.textPrimary,
+                                color: colors.textPrimary,
                                 fontSize: 16,
                                 fontFamily: 'Inter',
                                 fontWeight: FontWeight.w400,
@@ -91,11 +95,11 @@ class Navbar extends StatelessWidget implements PreferredSizeWidget {
                       height: 40,
                       clipBehavior: Clip.antiAlias,
                       decoration: ShapeDecoration(
-                        color: AppColors.lightBackground,
+                        color: colors.surfaceElevated,
                         shape: RoundedRectangleBorder(
                           side: BorderSide(
                             width: 1,
-                            color: AppColors.navborder,
+                            color: colors.borderSubtle,
                           ),
                           borderRadius: BorderRadius.circular(12),
                         ),
@@ -118,12 +122,12 @@ class Navbar extends StatelessWidget implements PreferredSizeWidget {
                               alignment: Alignment.center,
                               decoration: BoxDecoration(
                                 borderRadius: BorderRadius.circular(20),
-                                color: AppColors.green,
+                                color: colors.actionPrimaryDefault,
                               ),
                               child: Text(
                                 _getInitials(userName),
-                                style: const TextStyle(
-                                  color: Colors.white,
+                                style: TextStyle(
+                                  color: colors.actionOnPrimary,
                                   fontSize: 14,
                                   fontWeight: FontWeight.w600,
                                   fontFamily: 'Inter',

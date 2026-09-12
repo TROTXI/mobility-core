@@ -277,5 +277,3 @@ lib/src/model/webhooks_paystack_post200_response.dart
 lib/src/serializers.dart
 lib/trotxi_api_client.dart
 pubspec.yaml
-test/boarding_verify_code_post200_response_test.dart
-test/boarding_verify_code_post_request_test.dart

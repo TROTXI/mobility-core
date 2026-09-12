@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:trotxi_commuter/Presentations/Home/models/home_ride_lifecycle_state.dart';
+import 'package:trotxi_commuter/Features/Home/models/home_ride_lifecycle_state.dart';
 import 'package:trotxi_commuter/core/config/theme/app_colors.dart';
 import 'package:trotxi_commuter/core/config/theme/app_radii.dart';
 import 'package:trotxi_commuter/core/config/theme/app_shadows.dart';

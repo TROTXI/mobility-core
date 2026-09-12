@@ -1,15 +1,16 @@
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:trotxi_client/trotxi_client.dart';
-import 'package:trotxi_commuter/Presentations/Home/pages/home_page.dart';
+import 'package:trotxi_commuter/Features/Home/pages/home_page.dart';
 import 'package:trotxi_commuter/core/Tokens/token_storage.dart';
 import 'package:trotxi_commuter/core/config/theme/app_colors.dart';
 import 'package:trotxi_commuter/core/config/theme/app_spacing.dart';
 import 'package:trotxi_commuter/core/config/theme/app_typography.dart';
 import 'package:trotxi_commuter/core/config/theme/app_vectors.dart';
-import 'package:trotxi_commuter/Presentations/Onboarding/widgets/app_button.dart';
+import 'package:trotxi_commuter/Features/Onboarding/widgets/app_button.dart';
 
 class OnBoardPage extends StatefulWidget {
   const OnBoardPage({super.key, required this.client});
@@ -103,6 +104,9 @@ class _OnBoardPageState extends State<OnBoardPage> {
     );
 
     final data = response.data;
+    if (kDebugMode) {
+      debugPrint('Backend authentication response: $data');
+    }
 
     return (accessToken: data!.accessToken, refreshToken: data.refreshToken);
   }
@@ -174,7 +178,7 @@ class _OnBoardPageState extends State<OnBoardPage> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        _buildLogo(),
+                        _buildLogo(context),
                         const SizedBox(height: AppSpacing.space24),
                         _buildHeader(context),
                         const SizedBox(height: 22),
@@ -198,8 +202,15 @@ class _OnBoardPageState extends State<OnBoardPage> {
     );
   }
 
-  Widget _buildLogo() {
-    return Center(child: Image.asset(Appvectors.logo, width: 180));
+  Widget _buildLogo(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Center(
+      child: Image.asset(
+        isDark ? Appvectors.logodarktheme : Appvectors.logo,
+        key: ValueKey('onboard-logo-${isDark ? 'dark' : 'light'}'),
+        width: 180,
+      ),
+    );
   }
 
   Widget _buildHeader(BuildContext context) {
