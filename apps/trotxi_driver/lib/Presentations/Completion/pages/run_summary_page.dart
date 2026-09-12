@@ -108,8 +108,9 @@ class _RunSummaryPageState extends State<RunSummaryPage> {
               const SizedBox(height: AppSpacing.space16),
               _Note(
                 text:
-                    'Riders who never boarded stay on the manifest as not boarded. '
-                    'Operations decides what happens to their seat.',
+                    'Riders who never boarded stay on the manifest as not '
+                    'boarded, and nothing has been deducted for them. The '
+                    'cutoff settles any you did not mark as a no-show.',
                 tone: colors.border,
                 colors: colors,
               ),

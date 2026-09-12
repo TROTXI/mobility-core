@@ -43,7 +43,9 @@ class DriverNav extends StatelessWidget {
   /// Whether a run is actually under way. Gates Scan alone.
   final bool canScan;
 
-  /// The dot the frames put beside Trip when the run needs attention.
+  /// The blue dot the file keeps beside Trip for the whole of a live run, even
+  /// while another destination is selected. Not an alert in the sense of
+  /// something wrong — it is the bar's answer to "is a run still going".
   final bool tripHasAlert;
 
   @override
@@ -59,8 +61,12 @@ class DriverNav extends StatelessWidget {
           vertical: AppSpacing.space8,
         ),
         decoration: BoxDecoration(
-          color: colors.surface,
-          borderRadius: AppRadii.circular(AppRadii.full),
+          // Surface plus a hairline, at radius 38 (Components / Driver phone
+          // navigation). White with no border was the earlier build's guess and
+          // left the bar floating with no edge against a near-white page.
+          color: colors.surfaceSelected,
+          borderRadius: AppRadii.circular(AppRadii.navBar),
+          border: Border.all(color: colors.border),
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceEvenly,
@@ -160,7 +166,9 @@ class _Item extends StatelessWidget {
             constraints: const BoxConstraints(minHeight: 56),
             padding: const EdgeInsets.symmetric(vertical: AppSpacing.space8),
             decoration: BoxDecoration(
-              color: selected ? colors.surfaceSelected : Colors.transparent,
+              // The heavier surface, so the selected pill reads against the
+              // bar rather than disappearing into it.
+              color: selected ? colors.surfaceStrong : Colors.transparent,
               borderRadius: AppRadii.circular(AppRadii.full),
             ),
             child: Column(

@@ -8,6 +8,12 @@ abstract final class AppSpacing {
   static const double space4 = 4;
   static const double space8 = 8;
   static const double space12 = 12;
+
+  /// Both odd numbers, and both straight out of the file: the GPS indicator
+  /// pads 10 vertically, and every stat tile pads 14 all round.
+  static const double space10 = 10;
+  static const double space14 = 14;
+
   static const double space16 = 16;
   static const double space20 = 20;
   static const double space24 = 24;

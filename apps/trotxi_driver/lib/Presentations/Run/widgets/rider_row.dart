@@ -54,62 +54,75 @@ class RiderRow extends StatelessWidget {
         ? rider.name!.trim()
         : 'Unnamed rider';
 
+    // Each rider is its own bounded row (Components / Passenger / Manifest
+    // Row): surface at radius 14 with a hairline, 14/12 of padding, a 44px
+    // avatar. The earlier build ran them together inside one card separated by
+    // dividers, which reads as a table rather than as a list of people.
     return Semantics(
       label: 'Number $position of $total',
-      child: InkWell(
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(
-            horizontal: AppSpacing.space12,
-            vertical: AppSpacing.space12,
-          ),
-          child: Row(
-            children: [
-              _Avatar(url: rider.avatarUrl, name: name, colors: colors),
-              const SizedBox(width: AppSpacing.space12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            name,
-                            style: AppTypography.label.copyWith(
-                              color: colors.textPrimary,
+      child: Container(
+        decoration: BoxDecoration(
+          color: colors.surfaceSelected,
+          borderRadius: AppRadii.circular(AppRadii.button),
+          border: Border.all(color: colors.border),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.space14,
+              vertical: AppSpacing.space12,
+            ),
+            child: Row(
+              children: [
+                _Avatar(url: rider.avatarUrl, name: name, colors: colors),
+                const SizedBox(width: AppSpacing.space10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              name,
+                              style: AppTypography.label.copyWith(
+                                color: colors.textPrimary,
+                              ),
+                              overflow: TextOverflow.ellipsis,
                             ),
-                            overflow: TextOverflow.ellipsis,
                           ),
-                        ),
-                        const SizedBox(width: AppSpacing.space8),
-                        // Just "#3" here, not "No. 3 of 12". The long form pushed
-                        // "Akosua Frimpong-Boateng" into an ellipsis, and on a
-                        // screen whose job is matching a name to a face the name
-                        // wins. The total is already on the progress line above,
-                        // and the detail sheet spells it out in full.
-                        Text(
-                          '#$position',
-                          style: AppTypography.caption.copyWith(
-                            color: colors.textSecondary,
+                          const SizedBox(width: AppSpacing.space8),
+                          // Just "#3" here, not "No. 3 of 12". The long form
+                          // pushed "Akosua Frimpong-Boateng" into an ellipsis,
+                          // and on a screen whose job is matching a name to a
+                          // face the name wins. The total is on the progress
+                          // line above, and the detail sheet spells it out.
+                          Text(
+                            '#$position',
+                            style: AppTypography.caption.copyWith(
+                              color: colors.textSecondary,
+                            ),
                           ),
-                        ),
-                      ],
-                    ),
-                    Text(
-                      _subtitle(rider),
-                      style: AppTypography.caption.copyWith(
-                        color: colors.textSecondary,
+                        ],
                       ),
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ],
+                      const SizedBox(height: 2),
+                      Text(
+                        _subtitle(rider),
+                        style: AppTypography.caption.copyWith(
+                          color: colors.textSecondary,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-              const SizedBox(width: AppSpacing.space8),
-              _ActionPill(rider: rider, onAction: onAction, colors: colors),
-            ],
+                const SizedBox(width: AppSpacing.space12),
+                _ActionPill(rider: rider, onAction: onAction, colors: colors),
+              ],
+            ),
           ),
         ),
       ),
@@ -154,8 +167,12 @@ class _ActionPill extends StatelessWidget {
         : (rider.noShow ? colors.warning : colors.action);
     final label = boarded ? 'BOARDED' : 'BOARD';
 
+    // 67 wide in the file (pad 8/12 on a 44 height), not the 84 the earlier
+    // build used. The difference is 17 points of name, and on this row the name
+    // is the thing being matched to a face — "Akosua Frimpong-Boateng" was
+    // losing its surname to the pill.
     final pill = Container(
-      constraints: const BoxConstraints(minWidth: 84, minHeight: 36),
+      constraints: const BoxConstraints(minWidth: 67, minHeight: 44),
       alignment: Alignment.center,
       padding: const EdgeInsets.symmetric(
         horizontal: AppSpacing.space12,

@@ -8,10 +8,12 @@ import 'package:flutter/material.dart';
 /// capacity, and stop N of M. Those are not body text and should not inherit
 /// body's line height.
 abstract final class AppTypography {
-  /// NOT BUNDLED YET. No Poppins asset ships with either app, so Flutter falls
-  /// back to the platform face and only the sizes, weights and line heights
-  /// below take effect. Naming it anyway keeps the switch to one line once the
-  /// TTFs land in pubspec. The commuter app has the same gap.
+  /// Bundled from assets/fonts (#236). Until it was, this named a face that did
+  /// not ship, so every screen rendered in SF Pro or Roboto and only the sizes
+  /// and weights below took effect — which is most of why the built screens did
+  /// not look like the file.
+  ///
+  /// The commuter app still has that gap.
   static const String fontFamily = 'Poppins';
 
   static const heading1 = TextStyle(
@@ -50,6 +52,44 @@ abstract final class AppTypography {
     fontSize: 20,
     fontWeight: FontWeight.w700,
     height: 26 / 20,
+  );
+
+  /// The stop name on the next-stop card. 18/700 in the file — heavier than
+  /// [title] at the same sort of size, because it is the one word a driver
+  /// reads while moving.
+  static const stopName = TextStyle(
+    fontFamily: fontFamily,
+    fontSize: 18,
+    fontWeight: FontWeight.w700,
+    height: 27 / 18,
+  );
+
+  /// The uppercase label inside a status chip. 11/600 at 0.44 letter spacing,
+  /// straight off Components / Driver Status Chips.
+  static const chipLabel = TextStyle(
+    fontFamily: fontFamily,
+    fontSize: 11,
+    fontWeight: FontWeight.w600,
+    height: 17 / 11,
+    letterSpacing: 0.44,
+  );
+
+  /// The small uppercase heading above a number in a stat tile — "BOARDED",
+  /// "STOP", "NEXT STOP". 10/600 in the file.
+  static const tileLabel = TextStyle(
+    fontFamily: fontFamily,
+    fontSize: 10,
+    fontWeight: FontWeight.w600,
+    height: 15 / 10,
+    letterSpacing: 0.3,
+  );
+
+  /// The line under a stat tile's number — "7 remaining", "Shiashie next".
+  static const tileCaption = TextStyle(
+    fontFamily: fontFamily,
+    fontSize: 11,
+    fontWeight: FontWeight.w400,
+    height: 17 / 11,
   );
 
   /// "11 / 18" and "3 of 11". Tabular so the layout does not jump as riders

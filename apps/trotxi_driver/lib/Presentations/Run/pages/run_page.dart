@@ -6,7 +6,8 @@ import 'package:trotxi_driver/Presentations/Boarding/pages/board_by_code_page.da
 import 'package:trotxi_driver/Presentations/Boarding/pages/scan_page.dart';
 import 'package:trotxi_driver/Presentations/Completion/pages/end_run_page.dart';
 import 'package:trotxi_driver/Presentations/Run/pages/manifest_page.dart';
-import 'package:trotxi_driver/Presentations/Run/widgets/boarding_counter.dart';
+import 'package:trotxi_driver/core/widgets/driver_chip.dart';
+import 'package:trotxi_driver/core/widgets/driver_tiles.dart';
 import 'package:trotxi_driver/core/config/theme/app_colors.dart';
 import 'package:trotxi_driver/core/config/theme/app_radii.dart';
 import 'package:trotxi_driver/core/config/theme/app_spacing.dart';
@@ -73,11 +74,6 @@ class _RunPageState extends State<RunPage> {
     }
   }
 
-  /// Push a screen that needs this run's controller.
-  ///
-  /// @param context - the calling context.
-  /// @param controller - the run's controller, passed down rather than rebuilt.
-  /// @param page - the screen to open.
   /// Push a screen that normally lives as a shell tab.
   ///
   /// The Scaffold is not decoration. Manifest and Scan are written as tabs —
@@ -183,97 +179,188 @@ class _RunPageState extends State<RunPage> {
           const SizedBox(height: AppSpacing.space16),
         ],
 
-        Row(
-          children: [
-            Text(
-              CorridorTime.hhmm(run.scheduledAt),
-              style: AppTypography.heading2.copyWith(color: colors.textPrimary),
-            ),
-            const SizedBox(width: AppSpacing.space12),
-            _RunStatusPill(run: run, colors: colors),
-          ],
-        ),
-        const SizedBox(height: AppSpacing.space20),
-
-        Row(
-          children: [
-            Expanded(
-              // Against the van's seat ceiling when the API gives one (#230),
-              // and confirmed riders when it does not — a run with no vehicle
-              // assigned has no ceiling to show. The label says which, so the
-              // number is never read as something it is not.
-              child: BoardingCounter(
-                label: data.hasCapacity ? 'Boarded / seats' : 'Boarded',
-                value: data.boarded,
-                of: data.ceiling,
-                tone: data.boarded >= data.ceiling && data.ceiling > 0
-                    ? colors.success
-                    : null,
-              ),
-            ),
-            const SizedBox(width: AppSpacing.space12),
-            Expanded(
-              // Zero until the driver reports an arrival (#230). The API does
-              // not guess from GPS and neither does this: "Stop 1" before
-              // anyone has said so would be a number the screen invented.
-              child: BoardingCounter(
-                label: 'Stops',
-                value: data.currentStopSeq ?? 0,
-                of: data.stops.length,
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: AppSpacing.space24),
-
-        // Boarding is only offered on a run that is actually under way. Scanning
-        // riders onto a trip nobody has started produces boardings against a
-        // run with no GPS trace and no start time, which is the state the
-        // lifecycle refuses to complete.
-        if (run.isActive) ...[
-          Row(
+        // The Active Trip Hero (Components / Active Trip Hero): one dominant
+        // operating surface that answers what the driver must do next. The
+        // earlier build spread these parts down a flat list, which is the same
+        // information and a different screen.
+        Container(
+          padding: const EdgeInsets.all(AppSpacing.space20),
+          decoration: BoxDecoration(
+            color: colors.surface,
+            borderRadius: AppRadii.circular(AppRadii.hero),
+            border: Border.all(color: colors.border),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Expanded(
-                child: ElevatedButton.icon(
-                  onPressed: () =>
-                      _open(
-                        context,
-                        controller,
-                        ScanPage(runId: run.id),
-                        title: 'Scan a pass',
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          '${CorridorTime.hhmm(run.scheduledAt)} ${run.routeName}',
+                          style: AppTypography.runTitle.copyWith(
+                            color: colors.textPrimary,
+                          ),
+                        ),
+                        const SizedBox(height: AppSpacing.space4),
+                        Text(
+                          // "GT 4821-22 · ACTIVE RUN" in the file. The plate is
+                          // dropped rather than invented when no vehicle is
+                          // assigned yet.
+                          [
+                            if (data.vehicleRegistration != null)
+                              data.vehicleRegistration!,
+                            _runState(run),
+                          ].join(' · '),
+                          style: AppTypography.caption.copyWith(
+                            color: colors.textSecondary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: AppSpacing.space8),
+                  DriverChip(
+                    // Short in the chip, long in the caption — which is how the
+                    // file has it: "ACTIVE" beside "GT 4821-22 · ACTIVE RUN".
+                    label: _chipLabel(run),
+                    status: switch (run.status) {
+                      RunStatus.active => DriverStatus.active,
+                      RunStatus.completed => DriverStatus.boarded,
+                      RunStatus.cancelled => DriverStatus.error,
+                      RunStatus.scheduled => DriverStatus.neutral,
+                    },
+                  ),
+                ],
+              ),
+              const SizedBox(height: AppSpacing.space16),
+
+              Row(
+                children: [
+                  Expanded(
+                    // Against the van's seat ceiling when the API gives one
+                    // (#230), and confirmed riders when it does not. The
+                    // caption says which, so the number is never read as
+                    // something it is not.
+                    child: DriverStatTile(
+                      label: 'Boarded',
+                      value: '${data.boarded} / ${data.ceiling}',
+                      caption: data.hasCapacity
+                          ? '${data.waiting.length} remaining · seats'
+                          : '${data.waiting.length} remaining',
+                      tone: data.boarded >= data.ceiling && data.ceiling > 0
+                          ? colors.success
+                          : null,
+                    ),
+                  ),
+                  const SizedBox(width: AppSpacing.space12),
+                  Expanded(
+                    // Zero until the driver reports an arrival (#230). The API
+                    // does not guess from GPS and neither does this.
+                    child: DriverStatTile(
+                      label: 'Stop',
+                      value: '${data.currentStopSeq ?? 0} of ${data.stops.length}',
+                      caption: _stopCaption(data),
+                    ),
+                  ),
+                ],
+              ),
+
+              if (data.stops.isNotEmpty) ...[
+                const SizedBox(height: AppSpacing.space16),
+                NextStopCard(
+                  label: data.currentStopName == null
+                      ? 'Next stop'
+                      : 'At stop',
+                  stop: data.currentStopName ?? data.stops.first,
+                  // The file shows "1.2 km · ~4 min" here. Left out until #237
+                  // lands a routing engine: a distance the app cannot compute
+                  // is worse on the one card a driver navigates by than none.
+                ),
+              ],
+
+              // Boarding is only offered on a run actually under way. Scanning
+              // riders onto a trip nobody has started produces boardings
+              // against a run with no GPS trace and no start time, which is the
+              // state the lifecycle refuses to complete.
+              if (run.isActive) ...[
+                const SizedBox(height: AppSpacing.space16),
+                Row(
+                  children: [
+                    Expanded(
+                      child: FilledButton(
+                        onPressed: () => _open(
+                          context,
+                          controller,
+                          ScanPage(runId: run.id),
+                          title: 'Scan a pass',
+                        ),
+                        style: FilledButton.styleFrom(
+                          minimumSize: const Size.fromHeight(53),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: AppRadii.circular(AppRadii.full),
+                          ),
+                        ),
+                        child: const Text('SCAN RIDER'),
                       ),
-                  icon: const Icon(Icons.qr_code_scanner),
-                  label: const Text('Scan'),
+                    ),
+                    const SizedBox(width: AppSpacing.space10),
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () => _open(
+                          context,
+                          controller,
+                          const ManifestPage(),
+                          title: '',
+                        ),
+                        style: OutlinedButton.styleFrom(
+                          minimumSize: const Size.fromHeight(53),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: AppRadii.circular(AppRadii.full),
+                          ),
+                        ),
+                        child: const Text('MANIFEST'),
+                      ),
+                    ),
+                  ],
                 ),
-              ),
-              const SizedBox(width: AppSpacing.space12),
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: () =>
-                      _open(context, controller, BoardByCodePage(runId: run.id)),
+                const SizedBox(height: AppSpacing.space12),
+                OutlinedButton.icon(
+                  onPressed: () => _open(
+                    context,
+                    controller,
+                    BoardByCodePage(runId: run.id),
+                  ),
                   icon: const Icon(Icons.dialpad),
-                  label: const Text('By code'),
+                  label: const Text('Board by code'),
                 ),
-              ),
+              ] else ...[
+                const SizedBox(height: AppSpacing.space16),
+                OutlinedButton.icon(
+                  onPressed: () => _open(
+                    context,
+                    controller,
+                    const ManifestPage(),
+                    title: '',
+                  ),
+                  icon: const Icon(Icons.people_outline),
+                  label: Text('Manifest (${data.waiting.length} waiting)'),
+                ),
+              ],
+
+              if (run.isActive) ...[
+                const SizedBox(height: AppSpacing.space16),
+                _LocationNotice(block: _positionBlock, colors: colors),
+              ],
             ],
           ),
-          const SizedBox(height: AppSpacing.space12),
-        ],
-
-        OutlinedButton.icon(
-          onPressed: () => _open(
-            context,
-            controller,
-            const ManifestPage(),
-            title: '',
-          ),
-          icon: const Icon(Icons.people_outline),
-          label: Text('Manifest (${data.waiting.length} waiting)'),
         ),
-        const SizedBox(height: AppSpacing.space12),
-
-        if (run.isActive)
-          _LocationNotice(block: _positionBlock, colors: colors),
+        const SizedBox(height: AppSpacing.space16),
 
         _PrimaryAction(
           controller: controller,
@@ -333,6 +420,47 @@ class _RunPageState extends State<RunPage> {
         const SizedBox(height: AppSpacing.space24),
       ],
     );
+  }
+
+  /// The run's state in the words the file uses on the hero's second line.
+  ///
+  /// @param run - the run.
+  /// @returns the state label.
+  static String _runState(DriverRun run) => switch (run.status) {
+    RunStatus.active => 'Active run',
+    RunStatus.completed => 'Completed',
+    RunStatus.cancelled => 'Cancelled',
+    RunStatus.scheduled => 'Scheduled',
+  };
+
+  /// The one word inside the chip.
+  ///
+  /// @param run - the run.
+  /// @returns the chip label.
+  static String _chipLabel(DriverRun run) => switch (run.status) {
+    RunStatus.active => 'Active',
+    RunStatus.completed => 'Done',
+    RunStatus.cancelled => 'Cancelled',
+    RunStatus.scheduled => 'Scheduled',
+  };
+
+  /// What the stop counter's caption says.
+  ///
+  /// The file writes "Shiashie next" here, but in the file the next-stop card
+  /// is a separate frame; on a 402pt phone the card sits directly beneath this
+  /// tile and already names the stop in 18/700. Repeating it in a 11px caption
+  /// only truncated it — "Circle Interchange fi…" — so the caption counts what
+  /// is left instead, which the card does not say.
+  ///
+  /// @param data - the loaded run.
+  /// @returns the caption.
+  static String _stopCaption(RunDetail data) {
+    if (data.stops.isEmpty) return 'No stops recorded';
+    final seq = data.currentStopSeq;
+    if (seq == null) return '${data.stops.length} to go';
+    final left = data.stops.length - seq;
+    if (left <= 0) return 'Last stop';
+    return left == 1 ? '1 to go' : '$left to go';
   }
 
   /// Report reaching a stop (#230).
@@ -492,39 +620,6 @@ class _PrimaryAction extends StatelessWidget {
   }
 }
 
-class _RunStatusPill extends StatelessWidget {
-  const _RunStatusPill({required this.run, required this.colors});
-
-  final DriverRun run;
-  final AppColors colors;
-
-  @override
-  Widget build(BuildContext context) {
-    final (label, tone) = switch (run.status) {
-      RunStatus.active => ('RUNNING', colors.live),
-      RunStatus.completed => ('COMPLETED', colors.textSecondary),
-      RunStatus.cancelled => ('CANCELLED', colors.danger),
-      RunStatus.scheduled => ('SCHEDULED', colors.textSecondary),
-    };
-    return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: AppSpacing.space8,
-        vertical: AppSpacing.space4,
-      ),
-      decoration: BoxDecoration(
-        borderRadius: AppRadii.circular(AppRadii.full),
-        border: Border.all(color: tone),
-      ),
-      child: Text(label, style: AppTypography.caption.copyWith(color: tone)),
-    );
-  }
-}
-
-/// Tells the driver whether riders can see the bus, and what to do when they
-/// cannot.
-///
-/// Worth a line on screen rather than failing quietly: riders watching a stale
-/// marker will ring the depot, and the driver is the only one who can fix it.
 class _LocationNotice extends StatelessWidget {
   const _LocationNotice({required this.block, required this.colors});
 

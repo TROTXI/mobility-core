@@ -59,6 +59,10 @@ abstract final class AppTheme {
         space: 1,
         thickness: 1,
       ),
+      // Secondary, in the file's terms: the supporting task. Radius 14 and the
+      // soft surface, not a pill — the file reserves the pill for the primary
+      // action alone, and making everything a pill is what flattened the
+      // hierarchy in the earlier build.
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
           backgroundColor: colors.action,
@@ -67,13 +71,29 @@ abstract final class AppTheme {
           disabledForegroundColor: colors.textSecondary,
           textStyle: AppTypography.label.copyWith(fontSize: 16),
           padding: const EdgeInsets.symmetric(
-            horizontal: AppSpacing.space24,
+            horizontal: AppSpacing.space20,
             vertical: AppSpacing.space16,
           ),
           minimumSize: const Size.fromHeight(minTapTarget),
           elevation: 0,
           shape: RoundedRectangleBorder(
-            borderRadius: AppRadii.circular(AppRadii.md),
+            borderRadius: AppRadii.circular(AppRadii.button),
+          ),
+        ),
+      ),
+      // Primary: the next required task, and the only pill. 56 high, radius 28,
+      // 20 of horizontal padding.
+      filledButtonTheme: FilledButtonThemeData(
+        style: FilledButton.styleFrom(
+          backgroundColor: colors.action,
+          foregroundColor: colors.onAction,
+          disabledBackgroundColor: colors.border,
+          disabledForegroundColor: colors.textSecondary,
+          textStyle: AppTypography.label.copyWith(fontSize: 16),
+          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.space20),
+          minimumSize: const Size.fromHeight(minTapTarget),
+          shape: RoundedRectangleBorder(
+            borderRadius: AppRadii.circular(AppRadii.pill),
           ),
         ),
       ),
@@ -86,9 +106,9 @@ abstract final class AppTheme {
             vertical: AppSpacing.space16,
           ),
           minimumSize: const Size.fromHeight(minTapTarget),
-          side: BorderSide(color: colors.borderStrong),
+          side: BorderSide(color: colors.border),
           shape: RoundedRectangleBorder(
-            borderRadius: AppRadii.circular(AppRadii.md),
+            borderRadius: AppRadii.circular(AppRadii.button),
           ),
         ),
       ),

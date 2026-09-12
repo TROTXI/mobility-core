@@ -11,6 +11,7 @@ class RunDetail {
     required this.riders,
     required this.stops,
     this.capacity,
+    this.vehicleRegistration,
   });
 
   final DriverRun run;
@@ -23,6 +24,11 @@ class RunDetail {
   /// assigned yet. Reachable now that `GET /trips/:id` serves it to the trip's
   /// own assigned driver; it used to live only behind the admin API.
   final int? capacity;
+
+  /// The plate, from `GET /trips/:id`. The hero's second line reads
+  /// "GT 4821-22 · ACTIVE RUN"; null until a vehicle is assigned, and the line
+  /// drops the plate rather than inventing one.
+  final String? vehicleRegistration;
 
   int get boarded => riders.where((r) => r.boarded).length;
 
@@ -100,6 +106,7 @@ class RunController extends ChangeNotifier {
           riders: riders,
           stops: current.stops,
           capacity: current.capacity,
+          vehicleRegistration: current.vehicleRegistration,
         ),
       );
     } on TrotxiException catch (err) {
@@ -132,6 +139,7 @@ class RunController extends ChangeNotifier {
             riders: current.riders,
             stops: current.stops,
             capacity: current.capacity,
+            vehicleRegistration: current.vehicleRegistration,
           ),
         );
       }
@@ -187,12 +195,14 @@ class RunController extends ChangeNotifier {
       final riders = _trips.manifest(_run.id);
       final stops = _trips.stopsFor(_run.routeId);
       final detail = _trips.detail(_run.id);
+      final facts = await detail;
       _detail = Loadable.data(
         RunDetail(
           run: _run,
           riders: await riders,
           stops: await stops,
-          capacity: (await detail).capacity,
+          capacity: facts.capacity,
+          vehicleRegistration: facts.vehicleRegistration,
         ),
       );
     } on OfflineException {

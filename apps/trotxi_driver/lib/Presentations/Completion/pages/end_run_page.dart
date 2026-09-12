@@ -94,12 +94,13 @@ class _EndRunPageState extends State<EndRunPage> {
                     ),
                     const SizedBox(height: AppSpacing.space4),
                     Text(
-                      // Deliberately not "they will be charged". Whether a seat
-                      // is deducted is the ops cutoff's decision, not this
-                      // screen's, and a driver should not read a deduction that
-                      // has not happened.
-                      'They stay on the manifest as not boarded. Operations decides '
-                      'what happens to their seat.',
+                      // Accurate since #227 gave the driver the no-show action.
+                      // Still not "they will be charged": these riders have not
+                      // been marked, so nothing has been deducted for them, and
+                      // the cutoff is what decides if the driver leaves it.
+                      'Nothing has been deducted for them. Mark a no-show on the '
+                      'manifest if they did not turn up, or leave it and the '
+                      'cutoff will settle it.',
                       style: AppTypography.bodySmall.copyWith(
                         color: colors.textSecondary,
                       ),

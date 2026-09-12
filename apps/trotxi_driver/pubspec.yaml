@@ -87,6 +87,26 @@ flutter:
   # "family" key with the font family name, and a "fonts" key with a
   # list giving the asset and other descriptors for the font. For
   # example:
+  # Poppins is the typeface the driver designs are drawn in. Bundled rather than
+  # fetched at runtime: a depot handset on a bad connection must not fall back
+  # to a different face on first launch, and the design's type is not decoration
+  # — the stat tiles and the boarding code lean on its figures.
+  #
+  # SIL Open Font License 1.1; assets/fonts/OFL.txt ships alongside as the
+  # licence requires. Weight 900 in the file (one 11px "LIVE" label) maps to 700
+  # here; Black for a single caption is not worth another 150KB on a phone.
+  fonts:
+    - family: Poppins
+      fonts:
+        - asset: assets/fonts/Poppins-Regular.ttf
+          weight: 400
+        - asset: assets/fonts/Poppins-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/Poppins-SemiBold.ttf
+          weight: 600
+        - asset: assets/fonts/Poppins-Bold.ttf
+          weight: 700
+
   # fonts:
   #   - family: Schyler
   #     fonts:

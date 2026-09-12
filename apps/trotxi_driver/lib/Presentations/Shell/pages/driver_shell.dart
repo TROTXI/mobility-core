@@ -84,6 +84,11 @@ class _DriverShellState extends State<DriverShell> {
         current: _tab,
         hasRun: leading != null,
         canScan: isRunning,
+        // The file's navigation rule, stated in as many words: "Trip retains a
+        // live blue indicator during an active run even when another
+        // destination is selected". A driver who has wandered to Manifest or Me
+        // should be able to see at a glance that a run is still going.
+        tripHasAlert: isRunning,
         onSelect: (tab) => setState(() => _tab = tab),
       ),
     );

@@ -31,6 +31,14 @@ abstract final class AppPrimitiveColors {
   // Surfaces and text on the light side.
   static const paper = Color(0xFFF7F9FB); // light page
   static const paperRaised = Color(0xFFEDF2F6); // light surface
+  /// The stronger off-blue the file uses where a surface has to carry weight:
+  /// the next-stop card, and the selected pill in the phone nav.
+  static const paperStrong = Color(0xFFDCE6EF);
+  /// Hairlines. Previously borders were drawn in `paperRaised`, which is the
+  /// surface colour — so every border in light mode was invisible against the
+  /// thing it was meant to bound.
+  static const line = Color(0xFFD4DEE7);
+  static const lineDark = Color(0xFF2D4053);
   static const mist = Color(0xFFBAC5D0); // dark text secondary
   static const frost = Color(0xFFF2F5F8); // dark text primary
 
@@ -63,6 +71,7 @@ class AppColors extends ThemeExtension<AppColors> {
     required this.surface,
     required this.surfaceElevated,
     required this.surfaceSelected,
+    required this.surfaceStrong,
     required this.border,
     required this.borderStrong,
     required this.textPrimary,
@@ -90,6 +99,11 @@ class AppColors extends ThemeExtension<AppColors> {
 
   /// The active assignment card, which the frames tint rather than outline.
   final Color surfaceSelected;
+
+  /// One step heavier than [surfaceSelected]. The file uses it where a surface
+  /// has to pull the eye without becoming the action colour — the next-stop
+  /// card, and the selected pill in the phone nav.
+  final Color surfaceStrong;
 
   final Color border;
   final Color borderStrong;
@@ -124,7 +138,8 @@ class AppColors extends ThemeExtension<AppColors> {
     surface: AppPrimitiveColors.white,
     surfaceElevated: AppPrimitiveColors.white,
     surfaceSelected: AppPrimitiveColors.paperRaised,
-    border: AppPrimitiveColors.paperRaised,
+    surfaceStrong: AppPrimitiveColors.paperStrong,
+    border: AppPrimitiveColors.line,
     borderStrong: AppPrimitiveColors.mist,
     textPrimary: AppPrimitiveColors.ink700,
     textSecondary: AppPrimitiveColors.ink500,
@@ -149,7 +164,8 @@ class AppColors extends ThemeExtension<AppColors> {
     surface: AppPrimitiveColors.ink800,
     surfaceElevated: AppPrimitiveColors.ink800,
     surfaceSelected: AppPrimitiveColors.ink700,
-    border: AppPrimitiveColors.ink700,
+    surfaceStrong: AppPrimitiveColors.ink700,
+    border: AppPrimitiveColors.lineDark,
     borderStrong: AppPrimitiveColors.ink600,
     textPrimary: AppPrimitiveColors.frost,
     textSecondary: AppPrimitiveColors.mist,
@@ -172,6 +188,7 @@ class AppColors extends ThemeExtension<AppColors> {
     Color? surface,
     Color? surfaceElevated,
     Color? surfaceSelected,
+    Color? surfaceStrong,
     Color? border,
     Color? borderStrong,
     Color? textPrimary,
@@ -192,6 +209,7 @@ class AppColors extends ThemeExtension<AppColors> {
       surface: surface ?? this.surface,
       surfaceElevated: surfaceElevated ?? this.surfaceElevated,
       surfaceSelected: surfaceSelected ?? this.surfaceSelected,
+      surfaceStrong: surfaceStrong ?? this.surfaceStrong,
       border: border ?? this.border,
       borderStrong: borderStrong ?? this.borderStrong,
       textPrimary: textPrimary ?? this.textPrimary,
@@ -217,6 +235,7 @@ class AppColors extends ThemeExtension<AppColors> {
       surface: Color.lerp(surface, other.surface, t)!,
       surfaceElevated: Color.lerp(surfaceElevated, other.surfaceElevated, t)!,
       surfaceSelected: Color.lerp(surfaceSelected, other.surfaceSelected, t)!,
+      surfaceStrong: Color.lerp(surfaceStrong, other.surfaceStrong, t)!,
       border: Color.lerp(border, other.border, t)!,
       borderStrong: Color.lerp(borderStrong, other.borderStrong, t)!,
       textPrimary: Color.lerp(textPrimary, other.textPrimary, t)!,

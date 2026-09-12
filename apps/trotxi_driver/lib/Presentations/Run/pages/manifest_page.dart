@@ -99,46 +99,41 @@ class _ManifestPageState extends State<ManifestPage> {
           else if (riders.isEmpty)
             _Empty(text: 'No passenger matches "$_query".', colors: colors)
           else
-            Container(
-              decoration: BoxDecoration(
-                color: colors.surface,
-                borderRadius: AppRadii.circular(AppRadii.lg),
-              ),
-              child: Column(
-                children: [
-                  for (final rider in riders)
-                    RiderRow(
-                      rider: rider,
-                      // Numbered against the FULL manifest, not the filtered
-                      // view: a rider who is "No. 3 of 12" must stay No. 3 when
-                      // the driver types their name into the search box.
-                      position: data.riders.indexOf(rider) + 1,
-                      total: data.riders.length,
-                      // Both open the detail sheet rather than boarding from
-                      // the list. The design puts BOARD PASSENGER on the detail
-                      // frame for a reason: the photo pass only works if the
-                      // driver has actually looked at the photo, and a pill
-                      // that debits a ride from a 44-pixel thumbnail defeats it.
-                      onAction: rider.boarded
-                          ? null
-                          : () => _openRider(
-                              context,
-                              controller,
-                              rider,
-                              data.riders.indexOf(rider) + 1,
-                              data.riders.length,
-                            ),
-                      onTap: () => _openRider(
+            // No wrapping card and no dividers: each row carries its own
+            // surface and hairline (Components / Passenger / Manifest Row), so
+            // boxing them again would draw a border inside a border.
+            for (final rider in riders) ...[
+              RiderRow(
+                rider: rider,
+                // Numbered against the FULL manifest, not the filtered view: a
+                // rider who is "#3" must stay #3 when the driver types their
+                // name into the search box.
+                position: data.riders.indexOf(rider) + 1,
+                total: data.riders.length,
+                // Both open the detail sheet rather than boarding from the
+                // list. The design puts BOARD PASSENGER on the detail frame for
+                // a reason: the photo pass only works if the driver has looked
+                // at the photo, and a pill that debits a ride off a 44-pixel
+                // thumbnail defeats the point of it.
+                onAction: rider.boarded
+                    ? null
+                    : () => _openRider(
                         context,
                         controller,
                         rider,
                         data.riders.indexOf(rider) + 1,
                         data.riders.length,
                       ),
-                    ),
-                ],
+                onTap: () => _openRider(
+                  context,
+                  controller,
+                  rider,
+                  data.riders.indexOf(rider) + 1,
+                  data.riders.length,
+                ),
               ),
-            ),
+              const SizedBox(height: AppSpacing.space8),
+            ],
         ],
       ),
     );
@@ -163,11 +158,7 @@ class _ManifestPageState extends State<ManifestPage> {
       isScrollControlled: true,
       builder: (_) => ChangeNotifierProvider.value(
         value: controller,
-        child: _RiderSheet(
-          rider: rider,
-          position: position,
-          total: total,
-        ),
+        child: _RiderSheet(rider: rider, position: position, total: total),
       ),
     );
   }
