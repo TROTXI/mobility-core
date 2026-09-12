@@ -222,7 +222,9 @@ class _ResultCard extends StatelessWidget {
           const SizedBox(height: AppSpacing.space4),
           Text(
             result.detail,
-            style: AppTypography.bodySmall.copyWith(color: colors.textSecondary),
+            style: AppTypography.bodySmall.copyWith(
+              color: colors.textSecondary,
+            ),
           ),
           if (onOpenManifest != null) ...[
             const SizedBox(height: AppSpacing.space12),

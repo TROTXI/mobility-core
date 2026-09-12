@@ -3,6 +3,7 @@ import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:provider/provider.dart';
 import 'package:trotxi_driver/Presentations/Boarding/models/scan_result.dart';
 import 'package:trotxi_driver/Presentations/Boarding/pages/board_by_code_page.dart';
+import 'package:trotxi_driver/Presentations/Boarding/widgets/scan_outcome.dart';
 import 'package:trotxi_driver/core/config/theme/app_colors.dart';
 import 'package:trotxi_driver/core/config/theme/app_radii.dart';
 import 'package:trotxi_driver/core/config/theme/app_spacing.dart';
@@ -69,58 +70,158 @@ class _ScanPageState extends State<ScanPage> {
 
   @override
   Widget build(BuildContext context) {
-    // A tab on the shell; no Scaffold or app bar of its own.
-    return _result == null ? _viewfinder(context) : _outcome(context, _result!);
-  }
-
-  Widget _viewfinder(BuildContext context) {
     final colors = context.driverColors;
-    return Column(
+    final data = context.watch<RunController>().detail.valueOrNull;
+    final result = _result;
+
+    final (tone, status) = switch (result?.outcome) {
+      null => (colors.action, 'SCANNING'),
+      BoardingOutcome.ok => (colors.success, 'BOARDED'),
+      BoardingOutcome.alreadyBoarded => (colors.warning, 'ALREADY ABOARD'),
+      BoardingOutcome.expired => (colors.warning, 'EXPIRED'),
+      BoardingOutcome.offline => (colors.warning, 'NO CONNECTION'),
+      _ => (colors.danger, 'NOT BOARDED'),
+    };
+
+    // A tab on the shell; no Scaffold or app bar of its own.
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.space16,
+        AppSpacing.space16,
+        AppSpacing.space16,
+        AppSpacing.space24,
+      ),
       children: [
-        Expanded(
-          child: Stack(
-            fit: StackFit.expand,
-            children: [
-              MobileScanner(
-                controller: _scanner,
-                onDetect: _onDetect,
-                // The camera can be unavailable for reasons the driver can act
-                // on (permission) and reasons they cannot (no camera at all).
-                // Either way this has to say so and offer the code path, not
-                // leave a black rectangle.
-                errorBuilder: (context, error) =>
-                    _CameraUnavailable(error: error, colors: colors),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: Text(
+                'Scan rider pass',
+                style: AppTypography.heading3.copyWith(
+                  color: colors.textPrimary,
+                ),
               ),
-              IgnorePointer(
-                child: Center(
-                  child: Container(
-                    width: 240,
-                    height: 240,
+            ),
+            if (data != null)
+              Text(
+                '${data.boarded} / ${data.ceiling}',
+                style: AppTypography.label.copyWith(
+                  fontSize: 15,
+                  color: colors.textPrimary,
+                ),
+              ),
+          ],
+        ),
+        if (data != null) ...[
+          const SizedBox(height: AppSpacing.space4),
+          Text(
+            _whereabouts(data),
+            style: AppTypography.screenContext.copyWith(
+              fontSize: 13,
+              color: colors.textSecondary,
+            ),
+          ),
+        ],
+        const SizedBox(height: 18),
+
+        Container(
+          padding: const EdgeInsets.all(AppSpacing.space16),
+          decoration: BoxDecoration(
+            color: colors.field,
+            borderRadius: AppRadii.circular(AppRadii.xl),
+            border: Border.all(color: colors.border),
+          ),
+          child: Column(
+            children: [
+              // The file keeps one status line across all five states, so the
+              // driver reads the same place every time rather than hunting for
+              // where the answer moved to.
+              Row(
+                children: [
+                  Container(
+                    width: 12,
+                    height: 12,
                     decoration: BoxDecoration(
-                      border: Border.all(color: colors.onAction, width: 3),
-                      borderRadius: AppRadii.circular(AppRadii.xl),
+                      color: tone,
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                  const SizedBox(width: AppSpacing.space10),
+                  Text(
+                    status,
+                    style: AppTypography.screenContext.copyWith(
+                      fontWeight: FontWeight.w600,
+                      color: tone,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: AppSpacing.space12),
+
+              // The camera needs a box; a result does not. The file draws the
+              // panel at a fixed 406, which is a mock's height — a long name
+              // and a three-line refusal both have to fit, so this takes that
+              // as a floor and grows.
+              if (result == null)
+                SizedBox(height: 396, child: _viewfinder(context, colors, tone))
+              else
+                ConstrainedBox(
+                  constraints: const BoxConstraints(minHeight: 396),
+                  child: ScanOutcome(result: result, data: data, tone: tone),
+                ),
+
+              if (result != null) ...[
+                const SizedBox(height: AppSpacing.space12),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(AppSpacing.space14),
+                  decoration: BoxDecoration(
+                    color: colors.field,
+                    borderRadius: AppRadii.circular(AppRadii.field),
+                    border: Border.all(color: tone),
+                  ),
+                  child: Text(
+                    // The money line. A driver's first question after a refusal
+                    // is whether the rider was charged anyway.
+                    result.deducted ? 'One ride deducted' : 'No ride deducted',
+                    textAlign: TextAlign.center,
+                    style: AppTypography.screenContext.copyWith(
+                      fontWeight: FontWeight.w600,
+                      color: tone,
                     ),
                   ),
                 ),
-              ),
-              if (_busy) const Center(child: CircularProgressIndicator()),
-            ],
-          ),
-        ),
-        Padding(
-          padding: const EdgeInsets.all(AppSpacing.space20),
-          child: Column(
-            children: [
-              Text(
-                'Hold the rider’s QR inside the frame.',
-                textAlign: TextAlign.center,
-                style: AppTypography.body.copyWith(color: colors.textSecondary),
-              ),
+              ],
+
               const SizedBox(height: AppSpacing.space12),
-              OutlinedButton(
-                onPressed: () => _openCodeEntry(context),
-                child: const Text('Enter code instead'),
+              SizedBox(
+                height: 52,
+                width: double.infinity,
+                child: FilledButton(
+                  onPressed: result == null
+                      ? () => _openCodeEntry(context)
+                      : _scanAgain,
+                  style: FilledButton.styleFrom(
+                    backgroundColor: colors.surfaceStrong,
+                    foregroundColor: colors.textPrimary,
+                    textStyle: AppTypography.fieldLabel.copyWith(fontSize: 13),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: AppRadii.circular(26),
+                    ),
+                  ),
+                  child: Text(
+                    result == null ? 'ENTER CODE INSTEAD' : 'BACK TO SCANNER',
+                  ),
+                ),
               ),
+              if (result != null && !result.isAccepted) ...[
+                const SizedBox(height: AppSpacing.space8),
+                TextButton(
+                  onPressed: () => _openCodeEntry(context),
+                  child: const Text('Board by code instead'),
+                ),
+              ],
             ],
           ),
         ),
@@ -128,53 +229,68 @@ class _ScanPageState extends State<ScanPage> {
     );
   }
 
-  Widget _outcome(BuildContext context, BoardingResult result) {
-    final colors = context.driverColors;
-    final tone = switch (result.outcome) {
-      BoardingOutcome.ok => colors.success,
-      BoardingOutcome.alreadyBoarded => colors.warning,
-      BoardingOutcome.expired => colors.warning,
-      _ => colors.danger,
-    };
+  /// "Shiashie · Stop 3 of 11", or what is knowable before the first arrival.
+  ///
+  /// @param data - the run and its manifest.
+  /// @returns the line under the title.
+  static String _whereabouts(RunDetail data) {
+    final total = data.stops.length;
+    final seq = data.currentStopSeq;
+    if (seq == null || data.currentStopName == null) {
+      return total == 0
+          ? data.run.routeName
+          : '$total stops · none reported yet';
+    }
+    return '${data.currentStopName} · Stop $seq of $total';
+  }
 
-    return Padding(
-      padding: const EdgeInsets.all(AppSpacing.space24),
-      child: Column(
-        children: [
-          const Spacer(),
-          Container(
-            width: 96,
-            height: 96,
-            decoration: BoxDecoration(color: tone, shape: BoxShape.circle),
-            child: Icon(
-              result.isAccepted ? Icons.check : Icons.close,
-              size: 56,
-              color: colors.textInverse,
+  Widget _viewfinder(BuildContext context, AppColors colors, Color tone) {
+    return ClipRRect(
+      borderRadius: AppRadii.circular(AppRadii.xl),
+      child: Container(
+        decoration: BoxDecoration(
+          color: colors.scanTrack,
+          borderRadius: AppRadii.circular(AppRadii.xl),
+          border: Border.all(color: tone, width: 2),
+        ),
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            MobileScanner(
+              controller: _scanner,
+              onDetect: _onDetect,
+              // The camera can be unavailable for reasons the driver can act
+              // on (permission) and reasons they cannot (no camera at all).
+              // Either way this has to say so and offer the code path, not
+              // leave a black rectangle.
+              errorBuilder: (context, error) =>
+                  _CameraUnavailable(error: error, colors: colors),
             ),
-          ),
-          const SizedBox(height: AppSpacing.space24),
-          Text(
-            result.title,
-            textAlign: TextAlign.center,
-            style: AppTypography.heading2.copyWith(color: tone),
-          ),
-          const SizedBox(height: AppSpacing.space8),
-          Text(
-            result.detail,
-            textAlign: TextAlign.center,
-            style: AppTypography.body.copyWith(color: colors.textSecondary),
-          ),
-          const Spacer(),
-          ElevatedButton(
-            onPressed: _scanAgain,
-            child: const Text('Scan next rider'),
-          ),
-          const SizedBox(height: AppSpacing.space12),
-          OutlinedButton(
-            onPressed: () => _openCodeEntry(context),
-            child: const Text('Board by code instead'),
-          ),
-        ],
+            // Four corner brackets rather than a closed rectangle, which is
+            // what the file draws: a full box reads as a boundary the code has
+            // to sit inside, and riders hold passes closer than that.
+            IgnorePointer(
+              child: Padding(
+                padding: const EdgeInsets.all(AppSpacing.space24),
+                child: Stack(
+                  children: [
+                    for (final corner in const [
+                      Alignment.topLeft,
+                      Alignment.topRight,
+                      Alignment.bottomLeft,
+                      Alignment.bottomRight,
+                    ])
+                      Align(
+                        alignment: corner,
+                        child: _ScanCorner(corner: corner),
+                      ),
+                  ],
+                ),
+              ),
+            ),
+            if (_busy) const Center(child: CircularProgressIndicator()),
+          ],
+        ),
       ),
     );
   }
@@ -229,6 +345,38 @@ class _CameraUnavailable extends StatelessWidget {
               style: AppTypography.body.copyWith(color: colors.textSecondary),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+/// One L-shaped corner of the viewfinder.
+class _ScanCorner extends StatelessWidget {
+  const _ScanCorner({required this.corner});
+
+  final Alignment corner;
+
+  @override
+  Widget build(BuildContext context) {
+    final top = corner.y < 0;
+    final left = corner.x < 0;
+    // White in both themes. The file draws these in ink over its white "QR
+    // camera area" placeholder, but they sit over a live camera feed here, and
+    // the feed is whatever the driver is pointing at — not a theme surface.
+    // The dark theme's ink on a night-time street is invisible.
+    const side = BorderSide(color: AppPrimitiveColors.white, width: 4);
+    return SizedBox(
+      width: 56,
+      height: 56,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          border: Border(
+            top: top ? side : BorderSide.none,
+            bottom: top ? BorderSide.none : side,
+            left: left ? side : BorderSide.none,
+            right: left ? BorderSide.none : side,
+          ),
         ),
       ),
     );
