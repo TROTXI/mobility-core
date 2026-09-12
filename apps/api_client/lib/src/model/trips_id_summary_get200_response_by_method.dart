@@ -136,4 +136,3 @@ class _$TripsIdSummaryGet200ResponseByMethodSerializer implements PrimitiveSeria
   }
 }
 
-

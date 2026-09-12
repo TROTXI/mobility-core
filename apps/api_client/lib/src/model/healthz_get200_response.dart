@@ -106,7 +106,6 @@ class _$HealthzGet200ResponseSerializer implements PrimitiveSerializer<HealthzGe
   }
 }
 
-
 class HealthzGet200ResponseStatusEnum extends EnumClass {
 
   @BuiltValueEnumConst(wireName: r'ok')

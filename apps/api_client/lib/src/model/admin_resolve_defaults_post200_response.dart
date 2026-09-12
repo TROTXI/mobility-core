@@ -120,4 +120,3 @@ class _$AdminResolveDefaultsPost200ResponseSerializer implements PrimitiveSerial
   }
 }
 
-

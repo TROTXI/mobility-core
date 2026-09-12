@@ -57,8 +57,12 @@ export class AppleIdTokenVerifier implements IdTokenVerifier {
     });
     const claims = appleClaimsSchema.parse(payload);
 
-    if (claims.nonce && expectedNonce && !nonceMatches(claims.nonce, expectedNonce)) {
-      throw new Error('Apple nonce mismatch');
+    assertNonce(claims.nonce, expectedNonce);
+
+    // Same rule Google gets: an address Apple has not verified is not evidence
+    // of anything, and we store it as the rider's contact detail.
+    if (claims.email && !claims.email_verified) {
+      throw new Error('Apple email not verified');
     }
 
     // A private-relay address is a real, deliverable address that forwards to
@@ -70,6 +74,31 @@ export class AppleIdTokenVerifier implements IdTokenVerifier {
       email: claims.email ?? null,
       displayName: null,
     };
+  }
+}
+
+/**
+ * Enforce the token's nonce against the one the client says it generated.
+ *
+ * A token carrying a nonce MUST be matched. Comparing only when both sides
+ * happened to supply a value made replay protection opt-in for the attacker:
+ * anyone holding a captured ID token simply omitted `nonce` from the request
+ * and the comparison was skipped entirely.
+ *
+ * A token with no nonce claim is left alone; some Apple flows do not set one,
+ * and rejecting those would break sign-in rather than harden it.
+ *
+ * @param claim - the `nonce` claim from the verified token, if it has one.
+ * @param expected - the raw nonce the client sent with the request.
+ * @throws when the token is nonced and the request cannot account for it.
+ */
+export function assertNonce(claim: string | undefined, expected: string | undefined): void {
+  if (!claim) return;
+  if (!expected) {
+    throw new Error('Apple token carries a nonce but the request sent none');
+  }
+  if (!nonceMatches(claim, expected)) {
+    throw new Error('Apple nonce mismatch');
   }
 }
 

@@ -186,4 +186,3 @@ class _$AdminRoutesIdFaresGet200ResponseFaresInnerSerializer implements Primitiv
   }
 }
 
-

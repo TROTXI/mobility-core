@@ -106,7 +106,6 @@ class _$ReadyzGet503ResponseSerializer implements PrimitiveSerializer<ReadyzGet5
   }
 }
 
-
 class ReadyzGet503ResponseStatusEnum extends EnumClass {
 
   @BuiltValueEnumConst(wireName: r'not_ready')

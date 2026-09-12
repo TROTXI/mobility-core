@@ -120,4 +120,3 @@ class _$AdminAskDispatchPost200ResponseSerializer implements PrimitiveSerializer
   }
 }
 
-

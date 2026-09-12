@@ -118,17 +118,15 @@ class _$PaymentsSubscribePostRequestSerializer implements PrimitiveSerializer<Pa
         case r'pickupStopId':
           final valueDes = serializers.deserialize(
             value,
-            specifiedType: const FullType.nullable(String),
-          ) as String?;
-          if (valueDes == null) continue;
+            specifiedType: const FullType(String),
+          ) as String;
           result.pickupStopId = valueDes;
           break;
         case r'dropoffStopId':
           final valueDes = serializers.deserialize(
             value,
-            specifiedType: const FullType.nullable(String),
-          ) as String?;
-          if (valueDes == null) continue;
+            specifiedType: const FullType(String),
+          ) as String;
           result.dropoffStopId = valueDes;
           break;
         default:
@@ -159,7 +157,6 @@ class _$PaymentsSubscribePostRequestSerializer implements PrimitiveSerializer<Pa
     return result.build();
   }
 }
-
 
 class PaymentsSubscribePostRequestPlanEnum extends EnumClass {
 

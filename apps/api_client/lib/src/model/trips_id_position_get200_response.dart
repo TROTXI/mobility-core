@@ -157,4 +157,3 @@ class _$TripsIdPositionGet200ResponseSerializer implements PrimitiveSerializer<T
   }
 }
 
-

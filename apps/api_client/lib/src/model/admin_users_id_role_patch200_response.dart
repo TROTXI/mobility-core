@@ -171,7 +171,6 @@ class _$AdminUsersIdRolePatch200ResponseSerializer implements PrimitiveSerialize
   }
 }
 
-
 class AdminUsersIdRolePatch200ResponseRoleEnum extends EnumClass {
 
   @BuiltValueEnumConst(wireName: r'commuter')

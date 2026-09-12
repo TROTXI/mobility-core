@@ -203,4 +203,3 @@ class _$AdminVehiclesGet200ResponseInnerSerializer implements PrimitiveSerialize
   }
 }
 
-

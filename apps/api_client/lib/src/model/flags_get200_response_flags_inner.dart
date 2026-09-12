@@ -136,4 +136,3 @@ class _$FlagsGet200ResponseFlagsInnerSerializer implements PrimitiveSerializer<F
   }
 }
 
-

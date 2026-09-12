@@ -95,6 +95,10 @@ class _$TripsIdGet200Response extends TripsIdGet200Response {
   @override
   final DateTime scheduledAt;
   @override
+  final int? currentStopSeq;
+  @override
+  final DateTime? assignmentChangedAt;
+  @override
   final DateTime createdAt;
   @override
   final DateTime? startedAt;
@@ -102,6 +106,8 @@ class _$TripsIdGet200Response extends TripsIdGet200Response {
   final DateTime? completedAt;
   @override
   final int? durationSeconds;
+  @override
+  final int stopCount;
   @override
   final TripsIdGet200ResponseVehicle? vehicle;
 
@@ -116,10 +122,13 @@ class _$TripsIdGet200Response extends TripsIdGet200Response {
       this.assignedDriverId,
       required this.status,
       required this.scheduledAt,
+      this.currentStopSeq,
+      this.assignmentChangedAt,
       required this.createdAt,
       this.startedAt,
       this.completedAt,
       this.durationSeconds,
+      required this.stopCount,
       this.vehicle})
       : super._();
   @override
@@ -141,10 +150,13 @@ class _$TripsIdGet200Response extends TripsIdGet200Response {
         assignedDriverId == other.assignedDriverId &&
         status == other.status &&
         scheduledAt == other.scheduledAt &&
+        currentStopSeq == other.currentStopSeq &&
+        assignmentChangedAt == other.assignmentChangedAt &&
         createdAt == other.createdAt &&
         startedAt == other.startedAt &&
         completedAt == other.completedAt &&
         durationSeconds == other.durationSeconds &&
+        stopCount == other.stopCount &&
         vehicle == other.vehicle;
   }
 
@@ -157,10 +169,13 @@ class _$TripsIdGet200Response extends TripsIdGet200Response {
     _$hash = $jc(_$hash, assignedDriverId.hashCode);
     _$hash = $jc(_$hash, status.hashCode);
     _$hash = $jc(_$hash, scheduledAt.hashCode);
+    _$hash = $jc(_$hash, currentStopSeq.hashCode);
+    _$hash = $jc(_$hash, assignmentChangedAt.hashCode);
     _$hash = $jc(_$hash, createdAt.hashCode);
     _$hash = $jc(_$hash, startedAt.hashCode);
     _$hash = $jc(_$hash, completedAt.hashCode);
     _$hash = $jc(_$hash, durationSeconds.hashCode);
+    _$hash = $jc(_$hash, stopCount.hashCode);
     _$hash = $jc(_$hash, vehicle.hashCode);
     _$hash = $jf(_$hash);
     return _$hash;
@@ -175,10 +190,13 @@ class _$TripsIdGet200Response extends TripsIdGet200Response {
           ..add('assignedDriverId', assignedDriverId)
           ..add('status', status)
           ..add('scheduledAt', scheduledAt)
+          ..add('currentStopSeq', currentStopSeq)
+          ..add('assignmentChangedAt', assignmentChangedAt)
           ..add('createdAt', createdAt)
           ..add('startedAt', startedAt)
           ..add('completedAt', completedAt)
           ..add('durationSeconds', durationSeconds)
+          ..add('stopCount', stopCount)
           ..add('vehicle', vehicle))
         .toString();
   }
@@ -214,6 +232,16 @@ class TripsIdGet200ResponseBuilder
   DateTime? get scheduledAt => _$this._scheduledAt;
   set scheduledAt(DateTime? scheduledAt) => _$this._scheduledAt = scheduledAt;
 
+  int? _currentStopSeq;
+  int? get currentStopSeq => _$this._currentStopSeq;
+  set currentStopSeq(int? currentStopSeq) =>
+      _$this._currentStopSeq = currentStopSeq;
+
+  DateTime? _assignmentChangedAt;
+  DateTime? get assignmentChangedAt => _$this._assignmentChangedAt;
+  set assignmentChangedAt(DateTime? assignmentChangedAt) =>
+      _$this._assignmentChangedAt = assignmentChangedAt;
+
   DateTime? _createdAt;
   DateTime? get createdAt => _$this._createdAt;
   set createdAt(DateTime? createdAt) => _$this._createdAt = createdAt;
@@ -230,6 +258,10 @@ class TripsIdGet200ResponseBuilder
   int? get durationSeconds => _$this._durationSeconds;
   set durationSeconds(int? durationSeconds) =>
       _$this._durationSeconds = durationSeconds;
+
+  int? _stopCount;
+  int? get stopCount => _$this._stopCount;
+  set stopCount(int? stopCount) => _$this._stopCount = stopCount;
 
   TripsIdGet200ResponseVehicleBuilder? _vehicle;
   TripsIdGet200ResponseVehicleBuilder get vehicle =>
@@ -250,10 +282,13 @@ class TripsIdGet200ResponseBuilder
       _assignedDriverId = $v.assignedDriverId;
       _status = $v.status;
       _scheduledAt = $v.scheduledAt;
+      _currentStopSeq = $v.currentStopSeq;
+      _assignmentChangedAt = $v.assignmentChangedAt;
       _createdAt = $v.createdAt;
       _startedAt = $v.startedAt;
       _completedAt = $v.completedAt;
       _durationSeconds = $v.durationSeconds;
+      _stopCount = $v.stopCount;
       _vehicle = $v.vehicle?.toBuilder();
       _$v = null;
     }
@@ -288,11 +323,15 @@ class TripsIdGet200ResponseBuilder
                 status, r'TripsIdGet200Response', 'status'),
             scheduledAt: BuiltValueNullFieldError.checkNotNull(
                 scheduledAt, r'TripsIdGet200Response', 'scheduledAt'),
+            currentStopSeq: currentStopSeq,
+            assignmentChangedAt: assignmentChangedAt,
             createdAt: BuiltValueNullFieldError.checkNotNull(
                 createdAt, r'TripsIdGet200Response', 'createdAt'),
             startedAt: startedAt,
             completedAt: completedAt,
             durationSeconds: durationSeconds,
+            stopCount: BuiltValueNullFieldError.checkNotNull(
+                stopCount, r'TripsIdGet200Response', 'stopCount'),
             vehicle: _vehicle?.build(),
           );
     } catch (_) {

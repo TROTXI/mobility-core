@@ -120,4 +120,3 @@ class _$BoardingVerifyPinPostRequestSerializer implements PrimitiveSerializer<Bo
   }
 }
 
-

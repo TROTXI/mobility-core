@@ -106,4 +106,3 @@ class _$AdminPlanPricingGet200ResponseSerializer implements PrimitiveSerializer<
   }
 }
 
-

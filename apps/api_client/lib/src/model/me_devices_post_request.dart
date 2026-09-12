@@ -122,7 +122,6 @@ class _$MeDevicesPostRequestSerializer implements PrimitiveSerializer<MeDevicesP
   }
 }
 
-
 class MeDevicesPostRequestPlatformEnum extends EnumClass {
 
   @BuiltValueEnumConst(wireName: r'android')

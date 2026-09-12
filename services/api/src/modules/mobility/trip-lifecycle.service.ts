@@ -7,6 +7,7 @@
 import type { ScanEventRepository } from '../boarding/scan-event.repository';
 import type { ReservationRepository } from '../reservations/reservation.repository';
 import type { DriverRepository } from './driver.repository';
+import type { RouteStopRepository } from './route-stop.repository';
 import type { Trip, TripRepository, TripStatus } from './trip.repository';
 
 /**
@@ -18,9 +19,23 @@ import type { Trip, TripRepository, TripStatus } from './trip.repository';
  */
 export type AccessRefusal = 'not_found' | 'not_assigned_driver';
 export type LifecycleRefusal = AccessRefusal | 'illegal_transition';
+/** Reporting an arrival adds one more way to be wrong: a stop off the route. */
+export type ArrivalRefusal = AccessRefusal | 'no_such_stop';
 
 /** Either the updated trip, or why not. */
 export type LifecycleResult = { ok: true; trip: Trip } | { ok: false; reason: LifecycleRefusal };
+
+/** Either the trip with its progress advanced, or why not. */
+export type ArrivalResult = { ok: true; trip: Trip } | { ok: false; reason: ArrivalRefusal };
+
+/** Which day (or span of days) of a driver's schedule to return (#231). */
+export interface MyTripsFilter {
+  /** One UTC calendar day. */
+  date?: string | undefined;
+  /** Inclusive UTC day range — the month calendar, in one request. */
+  from?: string | undefined;
+  to?: string | undefined;
+}
 
 /** What a finished run actually did — the driver's end-of-trip screen. */
 export interface RunSummary {
@@ -32,6 +47,7 @@ export interface RunSummary {
   byMethod: { qr: number; pin: number; photo: number };
   startedAt: Date | null;
   completedAt: Date | null;
+  /** Stops on the run's route. Zero when no stops are attached to it yet. */
   stopCount: number;
 }
 
@@ -41,6 +57,13 @@ export interface TripLifecycleDeps {
   drivers: DriverRepository;
   reservations: ReservationRepository;
   scanEvents: ScanEventRepository;
+  /**
+   * The route's ordered stops (#230) — the "of 11" in the stop counter, and the
+   * bound an arrival is checked against. Optional: without it the summary
+   * reports a stop count of zero, as it always has, and arrivals are refused
+   * rather than written unchecked.
+   */
+  routeStops?: RouteStopRepository;
 }
 
 /** Forward only: scheduled -> active -> completed. Cancellation stays with ops. */
@@ -81,20 +104,53 @@ export class TripLifecycleService {
   }
 
   /**
-   * The runs assigned to this driver, optionally for one UTC day. Scoped to the
-   * caller so nobody can enumerate another driver's schedule.
+   * The runs assigned to this driver — one UTC day, an inclusive range, or all
+   * of them. Scoped to the caller so nobody can enumerate another driver's
+   * schedule.
    *
    * @param userId - the signed-in user.
-   * @param date - optional `YYYY-MM-DD` filter.
+   * @param filter - one day (`date`) or a span (`from`/`to`); omit for all.
    * @returns the driver's trips, earliest first; empty when not a linked driver.
    */
-  async myTrips(userId: string, date?: string): Promise<Trip[]> {
+  async myTrips(userId: string, filter: MyTripsFilter = {}): Promise<Trip[]> {
     const driver = await this.deps.drivers.findByUserId(userId);
     if (!driver) return [];
-    const all = await this.deps.trips.findAll(date ? { date } : undefined);
+    const all = await this.deps.trips.findAll({
+      date: filter.date,
+      from: filter.from,
+      to: filter.to,
+    });
     return all
       .filter((t) => t.assignedDriverId === driver.id)
       .sort((a, b) => a.scheduledAt.getTime() - b.scheduledAt.getTime());
+  }
+
+  /**
+   * Record that the driver has reached a stop, as a `route_stops.seq` (#230).
+   *
+   * Idempotent, and deliberately not monotonic. A driver who taps one stop too
+   * far needs a way back, and refusing to go backwards would leave the counter
+   * wrong for the rest of the run with no way to correct it. The seq is checked
+   * against the route's real stops so it can only ever name one of them.
+   *
+   * @param tripId - the trip.
+   * @param userId - the signed-in user, resolved to a driver.
+   * @param seq - the stop reached.
+   * @returns the updated trip, or why it was refused.
+   */
+  async arrive(tripId: string, userId: string, seq: number): Promise<ArrivalResult> {
+    const guard = await this.authorize(tripId, userId);
+    if (!guard.ok) return guard;
+
+    const stops = this.deps.routeStops
+      ? await this.deps.routeStops.findByRoute(guard.trip.routeId)
+      : [];
+    if (!stops.some((stop) => stop.seq === seq)) {
+      return { ok: false, reason: 'no_such_stop' };
+    }
+
+    const updated = await this.deps.trips.update(tripId, { currentStopSeq: seq });
+    return updated ? { ok: true, trip: updated } : { ok: false, reason: 'not_found' };
   }
 
   /**
@@ -114,6 +170,9 @@ export class TripLifecycleService {
 
     const reservations = await this.deps.reservations.listForTrip(tripId);
     const events = await this.deps.scanEvents.listForTrip(tripId);
+    const stops = this.deps.routeStops
+      ? await this.deps.routeStops.findByRoute(guard.trip.routeId)
+      : [];
 
     const byMethod = { qr: 0, pin: 0, photo: 0 };
     for (const e of events) {
@@ -129,7 +188,7 @@ export class TripLifecycleService {
         byMethod,
         startedAt: guard.trip.startedAt,
         completedAt: guard.trip.completedAt,
-        stopCount: 0,
+        stopCount: stops.length,
       },
     };
   }

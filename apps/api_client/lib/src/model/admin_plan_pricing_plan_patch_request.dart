@@ -106,33 +106,29 @@ class _$AdminPlanPricingPlanPatchRequestSerializer implements PrimitiveSerialize
         case r'ridesPerPeriod':
           final valueDes = serializers.deserialize(
             value,
-            specifiedType: const FullType.nullable(int),
-          ) as int?;
-          if (valueDes == null) continue;
+            specifiedType: const FullType(int),
+          ) as int;
           result.ridesPerPeriod = valueDes;
           break;
         case r'priceMultiplierBp':
           final valueDes = serializers.deserialize(
             value,
-            specifiedType: const FullType.nullable(int),
-          ) as int?;
-          if (valueDes == null) continue;
+            specifiedType: const FullType(int),
+          ) as int;
           result.priceMultiplierBp = valueDes;
           break;
         case r'takeRateBp':
           final valueDes = serializers.deserialize(
             value,
-            specifiedType: const FullType.nullable(int),
-          ) as int?;
-          if (valueDes == null) continue;
+            specifiedType: const FullType(int),
+          ) as int;
           result.takeRateBp = valueDes;
           break;
         case r'creditPesewasPerRide':
           final valueDes = serializers.deserialize(
             value,
-            specifiedType: const FullType.nullable(int),
-          ) as int?;
-          if (valueDes == null) continue;
+            specifiedType: const FullType(int),
+          ) as int;
           result.creditPesewasPerRide = valueDes;
           break;
         default:
@@ -163,5 +159,4 @@ class _$AdminPlanPricingPlanPatchRequestSerializer implements PrimitiveSerialize
     return result.build();
   }
 }
-
 

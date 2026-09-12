@@ -73,9 +73,8 @@ class _$AdminLearnRoutesPostRequestSerializer implements PrimitiveSerializer<Adm
         case r'routeId':
           final valueDes = serializers.deserialize(
             value,
-            specifiedType: const FullType.nullable(String),
-          ) as String?;
-          if (valueDes == null) continue;
+            specifiedType: const FullType(String),
+          ) as String;
           result.routeId = valueDes;
           break;
         default:
@@ -106,5 +105,4 @@ class _$AdminLearnRoutesPostRequestSerializer implements PrimitiveSerializer<Adm
     return result.build();
   }
 }
-
 

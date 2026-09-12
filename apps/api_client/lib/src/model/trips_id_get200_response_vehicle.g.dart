@@ -13,13 +13,15 @@ class _$TripsIdGet200ResponseVehicle extends TripsIdGet200ResponseVehicle {
   final String? make;
   @override
   final String? colour;
+  @override
+  final int? capacity;
 
   factory _$TripsIdGet200ResponseVehicle(
           [void Function(TripsIdGet200ResponseVehicleBuilder)? updates]) =>
       (TripsIdGet200ResponseVehicleBuilder()..update(updates))._build();
 
   _$TripsIdGet200ResponseVehicle._(
-      {required this.registration, this.make, this.colour})
+      {required this.registration, this.make, this.colour, this.capacity})
       : super._();
   @override
   TripsIdGet200ResponseVehicle rebuild(
@@ -36,7 +38,8 @@ class _$TripsIdGet200ResponseVehicle extends TripsIdGet200ResponseVehicle {
     return other is TripsIdGet200ResponseVehicle &&
         registration == other.registration &&
         make == other.make &&
-        colour == other.colour;
+        colour == other.colour &&
+        capacity == other.capacity;
   }
 
   @override
@@ -45,6 +48,7 @@ class _$TripsIdGet200ResponseVehicle extends TripsIdGet200ResponseVehicle {
     _$hash = $jc(_$hash, registration.hashCode);
     _$hash = $jc(_$hash, make.hashCode);
     _$hash = $jc(_$hash, colour.hashCode);
+    _$hash = $jc(_$hash, capacity.hashCode);
     _$hash = $jf(_$hash);
     return _$hash;
   }
@@ -54,7 +58,8 @@ class _$TripsIdGet200ResponseVehicle extends TripsIdGet200ResponseVehicle {
     return (newBuiltValueToStringHelper(r'TripsIdGet200ResponseVehicle')
           ..add('registration', registration)
           ..add('make', make)
-          ..add('colour', colour))
+          ..add('colour', colour)
+          ..add('capacity', capacity))
         .toString();
   }
 }
@@ -77,6 +82,10 @@ class TripsIdGet200ResponseVehicleBuilder
   String? get colour => _$this._colour;
   set colour(String? colour) => _$this._colour = colour;
 
+  int? _capacity;
+  int? get capacity => _$this._capacity;
+  set capacity(int? capacity) => _$this._capacity = capacity;
+
   TripsIdGet200ResponseVehicleBuilder() {
     TripsIdGet200ResponseVehicle._defaults(this);
   }
@@ -87,6 +96,7 @@ class TripsIdGet200ResponseVehicleBuilder
       _registration = $v.registration;
       _make = $v.make;
       _colour = $v.colour;
+      _capacity = $v.capacity;
       _$v = null;
     }
     return this;
@@ -112,6 +122,7 @@ class TripsIdGet200ResponseVehicleBuilder
               registration, r'TripsIdGet200ResponseVehicle', 'registration'),
           make: make,
           colour: colour,
+          capacity: capacity,
         );
     replace(_$result);
     return _$result;

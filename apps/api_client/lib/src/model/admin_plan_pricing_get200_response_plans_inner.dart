@@ -170,7 +170,6 @@ class _$AdminPlanPricingGet200ResponsePlansInnerSerializer implements PrimitiveS
   }
 }
 
-
 class AdminPlanPricingGet200ResponsePlansInnerPlanEnum extends EnumClass {
 
   @BuiltValueEnumConst(wireName: r'monthly')

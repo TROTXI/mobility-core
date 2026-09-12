@@ -29,13 +29,22 @@ jobs:
           docker run --rm -v "$PWD:/repo" ghcr.io/gitleaks/gitleaks:latest \
             detect --source=/repo --redact --verbose --exit-code=1
 
+  # The analysis is free; publishing it is not. Uploading SARIF to the
+  # code-scanning API needs GitHub Advanced Security, a paid add-on on a private
+  # repo, and every run since 2026-09-02 failed on exactly that step with
+  # "Advanced Security must be enabled for this repository to use code scanning"
+  # after the queries had already run clean. So we keep the scan and gate on the
+  # SARIF ourselves instead of throwing the result away.
+  #
+  # When Advanced Security is switched on: drop `upload`/`output` and the two
+  # steps below. The hosted version tracks findings across commits and remembers
+  # dismissals, which a text gate cannot do.
   codeql:
     name: CodeQL (JS/TS)
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:
       contents: read
-      security-events: write
       actions: read
     steps:
       - uses: actions/checkout@v7
@@ -44,6 +53,22 @@ jobs:
           languages: javascript-typescript
           queries: security-extended
       - uses: github/codeql-action/analyze@v4
+        with:
+          upload: never
+          output: sarif-results
+      # Same bar as the dependency audit below: CVSS 7.0 and up blocks a merge,
+      # anything lower is reported in the job summary and kept in the artifact.
+      - name: Gate on high-severity findings
+        run: python3 .github/scripts/codeql-gate.py sarif-results
+      # Always, so a red gate leaves the full report behind to look at rather
+      # than just the lines it printed.
+      - name: Keep the report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: codeql-sarif
+          path: sarif-results/
+          retention-days: 14
 
   audit:
     name: Dependency audit (pnpm)

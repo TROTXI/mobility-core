@@ -1,11 +1,14 @@
 // Mobility route handlers. Browse endpoints are intentionally public (no auth)
 // so the mobile app can display routes before a user signs in — this mirrors
 // how transit apps work (you browse routes, then authenticate to board/pay).
+// Public still means metered: each carries the standard per-IP limit, because
+// unauthenticated and database-backed is the combination worth throttling.
 // GET /routes/:id resolves stops in a single async fan-out rather than a JOIN
 // so the domain model stays decoupled from the DB schema.
 
 import type { FastifyInstance } from 'fastify';
 import type { ZodTypeProvider } from 'fastify-type-provider-zod';
+import type { RateLimitConfig } from '../ratelimit/ratelimit.plugin';
 import { z } from 'zod';
 import { errorResponseSchema } from '../../lib/schemas';
 import type { RouteStopRepository } from './route-stop.repository';
@@ -27,6 +30,7 @@ import type { StopRepository } from './stop.repository';
  * @param opts.stops - the stop repository.
  * @param opts.routeStops - the route-stop join repository.
  * @param opts.routeGeometry - derived route shapes (#179); absent -> stop fallback.
+ * @param opts.rateLimit - rate-limit config (per IP; these routes are public).
  */
 export async function mobilityRoutes(
   app: FastifyInstance,
@@ -36,6 +40,7 @@ export async function mobilityRoutes(
     routeStops?: RouteStopRepository;
     /** Derived route shapes (#179). Absent -> the stop fallback is always used. */
     routeGeometry?: RouteGeometryRepository;
+    rateLimit: RateLimitConfig;
   },
 ): Promise<void> {
   const r = app.withTypeProvider<ZodTypeProvider>();
@@ -48,8 +53,10 @@ export async function mobilityRoutes(
         summary: 'List all routes',
         response: {
           200: z.array(routeResponseSchema),
+          429: errorResponseSchema,
         },
       },
+      preHandler: [app.rateLimit({ ...opts.rateLimit, by: 'ip' })],
     },
     async () => {
       return opts.routes ? await opts.routes.findAll() : [];
@@ -66,8 +73,10 @@ export async function mobilityRoutes(
         response: {
           200: routeWithStopsResponseSchema,
           404: errorResponseSchema,
+          429: errorResponseSchema,
         },
       },
+      preHandler: [app.rateLimit({ ...opts.rateLimit, by: 'ip' })],
     },
     async (request, reply) => {
       if (!opts.routes || !opts.stops || !opts.routeStops) {
@@ -108,9 +117,11 @@ export async function mobilityRoutes(
         response: {
           200: routeGeometryResponseSchema,
           404: errorResponseSchema,
+          429: errorResponseSchema,
           503: errorResponseSchema,
         },
       },
+      preHandler: [app.rateLimit({ ...opts.rateLimit, by: 'ip' })],
     },
     async (request, reply) => {
       if (!opts.routes || !opts.routeStops || !opts.stops) {

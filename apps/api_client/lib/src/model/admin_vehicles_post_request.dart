@@ -146,9 +146,8 @@ class _$AdminVehiclesPostRequestSerializer implements PrimitiveSerializer<AdminV
         case r'capacity':
           final valueDes = serializers.deserialize(
             value,
-            specifiedType: const FullType.nullable(int),
-          ) as int?;
-          if (valueDes == null) continue;
+            specifiedType: const FullType(int),
+          ) as int;
           result.capacity = valueDes;
           break;
         default:
@@ -179,5 +178,4 @@ class _$AdminVehiclesPostRequestSerializer implements PrimitiveSerializer<AdminV
     return result.build();
   }
 }
-
 

@@ -104,4 +104,3 @@ class _$AdminMinVersionsPlatformPutRequestSerializer implements PrimitiveSeriali
   }
 }
 
-

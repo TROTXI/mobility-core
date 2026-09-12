@@ -21,6 +21,15 @@ export interface ManifestRider {
   direction: Reservation['direction'];
   /** Whether the rider has already been verified onto the vehicle. */
   boarded: boolean;
+  /**
+   * How the seat was taken (#230): confirmed by the rider, defaulted at the
+   * cutoff, or filled from the standby pool. The Today card breaks a run down as
+   * "12 morning · 6 standby", which was unanswerable while this was stored but
+   * not returned.
+   */
+  source: Reservation['source'];
+  /** True once a driver has marked the rider as not having turned up (#227). */
+  noShow: boolean;
 }
 
 /** Collaborators for {@link ManifestService}. */
@@ -38,13 +47,18 @@ export class ManifestService {
   /**
    * The manifest for a trip: confirmed riders with name + signed photo.
    *
+   * `no_show` riders stay on the list rather than vanishing. A driver who marked
+   * someone by mistake has to be able to find them again, and a rider who turns
+   * up late at the next stop is still boardable (#227) — a row that disappeared
+   * would leave the driver with no way to do either.
+   *
    * @param tripId - the trip whose riders to list.
    * @returns the manifest riders (morning before evening).
    */
   async getManifest(tripId: string): Promise<ManifestRider[]> {
     const reservations = await this.deps.reservations.listForTrip(tripId);
     const confirmed = reservations.filter(
-      (rsv) => rsv.status === 'reserved' || rsv.status === 'boarded',
+      (rsv) => rsv.status === 'reserved' || rsv.status === 'boarded' || rsv.status === 'no_show',
     );
     return Promise.all(
       confirmed.map(async (rsv) => {
@@ -59,6 +73,8 @@ export class ManifestService {
           avatarUrl,
           direction: rsv.direction,
           boarded: rsv.status === 'boarded',
+          source: rsv.source,
+          noShow: rsv.status === 'no_show',
         };
       }),
     );

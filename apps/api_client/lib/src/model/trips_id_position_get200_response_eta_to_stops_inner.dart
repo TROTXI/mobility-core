@@ -168,4 +168,3 @@ class _$TripsIdPositionGet200ResponseEtaToStopsInnerSerializer implements Primit
   }
 }
 
-

@@ -155,7 +155,6 @@ class _$RoutesIdGeometryGet200ResponseSerializer implements PrimitiveSerializer<
   }
 }
 
-
 class RoutesIdGeometryGet200ResponseSource_Enum extends EnumClass {
 
   @BuiltValueEnumConst(wireName: r'traces')

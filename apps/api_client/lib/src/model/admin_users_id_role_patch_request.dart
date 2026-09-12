@@ -106,7 +106,6 @@ class _$AdminUsersIdRolePatchRequestSerializer implements PrimitiveSerializer<Ad
   }
 }
 
-
 class AdminUsersIdRolePatchRequestRoleEnum extends EnumClass {
 
   @BuiltValueEnumConst(wireName: r'commuter')

@@ -106,4 +106,3 @@ class _$AdminLearnRoutesPost200ResponseSerializer implements PrimitiveSerializer
   }
 }
 
-

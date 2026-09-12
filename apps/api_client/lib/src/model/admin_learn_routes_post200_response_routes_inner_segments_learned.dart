@@ -120,4 +120,3 @@ class _$AdminLearnRoutesPost200ResponseRoutesInnerSegmentsLearnedSerializer impl
   }
 }
 
-

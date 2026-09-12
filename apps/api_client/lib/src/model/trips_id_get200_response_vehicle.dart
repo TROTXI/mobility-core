@@ -14,6 +14,7 @@ part 'trips_id_get200_response_vehicle.g.dart';
 /// * [registration] 
 /// * [make] 
 /// * [colour] 
+/// * [capacity] 
 @BuiltValue()
 abstract class TripsIdGet200ResponseVehicle implements Built<TripsIdGet200ResponseVehicle, TripsIdGet200ResponseVehicleBuilder> {
   @BuiltValueField(wireName: r'registration')
@@ -24,6 +25,9 @@ abstract class TripsIdGet200ResponseVehicle implements Built<TripsIdGet200Respon
 
   @BuiltValueField(wireName: r'colour')
   String? get colour;
+
+  @BuiltValueField(wireName: r'capacity')
+  int? get capacity;
 
   TripsIdGet200ResponseVehicle._();
 
@@ -62,6 +66,11 @@ class _$TripsIdGet200ResponseVehicleSerializer implements PrimitiveSerializer<Tr
     yield object.colour == null ? null : serializers.serialize(
       object.colour,
       specifiedType: const FullType.nullable(String),
+    );
+    yield r'capacity';
+    yield object.capacity == null ? null : serializers.serialize(
+      object.capacity,
+      specifiedType: const FullType.nullable(int),
     );
   }
 
@@ -109,6 +118,14 @@ class _$TripsIdGet200ResponseVehicleSerializer implements PrimitiveSerializer<Tr
           if (valueDes == null) continue;
           result.colour = valueDes;
           break;
+        case r'capacity':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType.nullable(int),
+          ) as int?;
+          if (valueDes == null) continue;
+          result.capacity = valueDes;
+          break;
         default:
           unhandled.add(key);
           unhandled.add(value);
@@ -137,5 +154,4 @@ class _$TripsIdGet200ResponseVehicleSerializer implements PrimitiveSerializer<Tr
     return result.build();
   }
 }
-
 

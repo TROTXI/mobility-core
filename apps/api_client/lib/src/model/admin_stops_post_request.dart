@@ -136,4 +136,3 @@ class _$AdminStopsPostRequestSerializer implements PrimitiveSerializer<AdminStop
   }
 }
 
-

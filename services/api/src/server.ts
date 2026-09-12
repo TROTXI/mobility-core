@@ -17,6 +17,22 @@ import {
 import { PgAuthIdentityRepository } from './modules/auth/auth-identity.repository.pg';
 import { AuthService } from './modules/auth/auth.service';
 import {
+  InMemoryDriverCredentialRepository,
+  type DriverCredentialRepository,
+} from './modules/auth/driver-credential.repository';
+import { PgDriverCredentialRepository } from './modules/auth/driver-credential.repository.pg';
+import {
+  InMemoryDriverIncidentRepository,
+  type DriverIncidentRepository,
+} from './modules/incidents/driver-incident.repository';
+import { PgDriverIncidentRepository } from './modules/incidents/driver-incident.repository.pg';
+import {
+  InMemoryDriverRequestRepository,
+  type DriverRequestRepository,
+} from './modules/work/driver-request.repository';
+import { PgDriverRequestRepository } from './modules/work/driver-request.repository.pg';
+import { DriverAuthService } from './modules/auth/driver-auth.service';
+import {
   FakeIdTokenVerifier,
   type AuthProvider,
   type IdTokenVerifier,
@@ -185,6 +201,9 @@ async function main(): Promise<void> {
   let drivers: DriverRepository;
   let sessions: SessionRepository;
   let authIdentities: AuthIdentityRepository;
+  let driverCredentials: DriverCredentialRepository;
+  let driverIncidents: DriverIncidentRepository;
+  let driverRequests: DriverRequestRepository;
   let payments: PaymentRepository;
   let deviceTokens: DeviceTokenRepository;
   let scanEvents: ScanEventRepository;
@@ -209,6 +228,9 @@ async function main(): Promise<void> {
     drivers = new PgDriverRepository(pool);
     sessions = new PgSessionRepository(pool);
     authIdentities = new PgAuthIdentityRepository(pool);
+    driverCredentials = new PgDriverCredentialRepository(pool);
+    driverIncidents = new PgDriverIncidentRepository(pool);
+    driverRequests = new PgDriverRequestRepository(pool);
     payments = new PgPaymentRepository(pool);
     deviceTokens = new PgDeviceTokenRepository(pool);
     scanEvents = new PgScanEventRepository(pool);
@@ -233,6 +255,9 @@ async function main(): Promise<void> {
     drivers = new InMemoryDriverRepository();
     sessions = new InMemorySessionRepository();
     authIdentities = new InMemoryAuthIdentityRepository();
+    driverCredentials = new InMemoryDriverCredentialRepository();
+    driverIncidents = new InMemoryDriverIncidentRepository();
+    driverRequests = new InMemoryDriverRequestRepository();
     payments = new InMemoryPaymentRepository();
     deviceTokens = new InMemoryDeviceTokenRepository();
     scanEvents = new InMemoryScanEventRepository();
@@ -252,6 +277,10 @@ async function main(): Promise<void> {
     kv,
     reservations,
     entitlements,
+    // Only the driver a run is assigned to may board its riders by code, the
+    // same rule the manifest and GPS reporting already apply.
+    trips,
+    drivers,
     secret: auth.secret,
     passTtlSeconds: 60,
   });
@@ -315,6 +344,20 @@ async function main(): Promise<void> {
     verifiers,
     appleTokens,
     refreshTtlDays: env.JWT_REFRESH_TTL_DAYS,
+  });
+
+  // Driver sign-in (#223): an ops-issued code plus a PIN, hashed under the same
+  // server key the boarding code uses. Unlike social sign-in there is nothing
+  // external to configure, so this is always wired.
+  const driverAuth = new DriverAuthService({
+    credentials: driverCredentials,
+    drivers,
+    users,
+    sessions,
+    jwt: createJwtService(auth),
+    secret: auth.secret,
+    refreshTtlDays: env.JWT_REFRESH_TTL_DAYS,
+    shiftTtlHours: env.DRIVER_SHIFT_TTL_HOURS,
   });
 
   // Paystack client: real when the secret key is set; a dev fake outside
@@ -415,6 +458,7 @@ async function main(): Promise<void> {
     notifier,
     boardingService,
     authService,
+    driverAuth,
     paymentsService,
     entitlements,
     credits,
@@ -426,6 +470,16 @@ async function main(): Promise<void> {
     mapTilesUrl: env.MAP_TILES_URL,
     mapStyleUrl: env.MAP_STYLE_URL,
     mapStyleDarkUrl: env.MAP_STYLE_DARK_URL,
+    // Who a driver calls (#234). Config rather than a shipped constant, for the
+    // same reason the map styles are.
+    operations: {
+      phone: env.OPERATIONS_PHONE,
+      whatsapp: env.OPERATIONS_WHATSAPP,
+      email: env.OPERATIONS_EMAIL,
+      hours: env.OPERATIONS_HOURS,
+    },
+    driverIncidents,
+    driverRequests,
     segmentSpeeds,
     routeLearning,
     pricing,
@@ -434,6 +488,10 @@ async function main(): Promise<void> {
     auth,
     rateLimit,
     corsOrigins,
+    // Render fronts the service with a load balancer reaching us from inside
+    // its network; without trusting it the rate limiter buckets every rider on
+    // that balancer's IP (see app.ts).
+    trustProxy: env.TRUST_PROXY,
     // /metrics: protected by a token when set; disabled in prod when unset.
     metrics: { token: env.METRICS_TOKEN, allowUnprotected: env.NODE_ENV !== 'production' },
     logger: true,

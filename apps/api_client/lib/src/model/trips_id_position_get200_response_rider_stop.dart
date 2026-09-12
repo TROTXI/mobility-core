@@ -168,4 +168,3 @@ class _$TripsIdPositionGet200ResponseRiderStopSerializer implements PrimitiveSer
   }
 }
 
-

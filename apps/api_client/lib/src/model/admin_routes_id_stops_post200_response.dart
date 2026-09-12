@@ -168,4 +168,3 @@ class _$AdminRoutesIdStopsPost200ResponseSerializer implements PrimitiveSerializ
   }
 }
 
-

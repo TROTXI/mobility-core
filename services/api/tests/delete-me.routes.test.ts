@@ -54,10 +54,12 @@ describe('DELETE /me', () => {
     });
 
     expect(res.statusCode).toBe(204);
-    const after = await users.findById(user.id);
+    const after = await users.findByIdIncludingErased(user.id);
     expect(after?.displayName).toBe(ANONYMISED_DISPLAY_NAME);
     expect(after?.email).toBeNull();
     expect(after?.phone).toBeNull();
+    // The erased row is unreachable through the normal reader every route uses.
+    expect(await users.findById(user.id)).toBeNull();
   });
 
   it('requires authentication', async () => {

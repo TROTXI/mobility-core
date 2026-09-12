@@ -122,4 +122,3 @@ class _$BoardingManifestGet200ResponseSerializer implements PrimitiveSerializer<
   }
 }
 
-

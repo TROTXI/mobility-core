@@ -58,10 +58,25 @@ import {
   FakeNotificationSender,
   type NotificationSender,
 } from './modules/notifications/notification.sender';
+import { DriverNotifier } from './modules/notifications/driver-notifier.service';
+import {
+  InMemoryDriverIncidentRepository,
+  type DriverIncidentRepository,
+} from './modules/incidents/driver-incident.repository';
+import { IncidentService } from './modules/incidents/incident.service';
+import { incidentRoutes } from './modules/incidents/incidents.routes';
+import {
+  InMemoryDriverRequestRepository,
+  type DriverRequestRepository,
+} from './modules/work/driver-request.repository';
+import { WorkRequestService } from './modules/work/work-request.service';
+import { workRoutes } from './modules/work/work.routes';
 import { paymentRoutes } from './modules/payments/payments.routes';
 import type { PaymentsService } from './modules/payments/payments.service';
 import { authPlugin } from './modules/auth/auth.plugin';
 import { authRoutes } from './modules/auth/auth.routes';
+import { driverAuthRoutes } from './modules/auth/driver-auth.routes';
+import type { DriverAuthService } from './modules/auth/driver-auth.service';
 import type { AuthService } from './modules/auth/auth.service';
 import { DEV_AUTH_CONFIG, type AuthConfig } from './modules/auth/jwt';
 import {
@@ -77,6 +92,7 @@ import { adminRoutes } from './modules/admin/admin.routes';
 import { flagsRoutes } from './modules/flags/flags.routes';
 import type { FeatureFlagRepository } from './modules/flags/feature-flag.repository';
 import type { MinVersionRepository } from './modules/flags/min-version.repository';
+import type { OperationsContact } from './modules/flags/flags.schema';
 import type { RouteRepository } from './modules/mobility/route.repository';
 import type { StopRepository } from './modules/mobility/stop.repository';
 import type { RouteGeometryRepository } from './modules/mobility/route-geometry.repository';
@@ -141,6 +157,8 @@ export interface AppDeps {
   auth?: AuthConfig;
   /** Sign-in/refresh/logout orchestrator. Routes return 503 when absent. */
   authService?: AuthService;
+  /** Driver code + PIN sign-in (#223). Routes return 503 when absent. */
+  driverAuth?: DriverAuthService;
   /** Paystack payments orchestrator. Routes return 503 when absent. */
   paymentsService?: PaymentsService;
   /** Rate-limit thresholds (from env). Defaults applied when unset. */
@@ -151,6 +169,16 @@ export interface AppDeps {
   mapTilesUrl?: string;
   mapStyleUrl?: string;
   mapStyleDarkUrl?: string;
+  /**
+   * How a driver reaches the control room (#234), served on GET /flags. Public
+   * on purpose: the "Can't sign in?" screen is reached while signed out, and PIN
+   * recovery runs through a person rather than a self-service reset.
+   */
+  operations?: OperationsContact;
+  /** Driver incident reports (#226). Defaults to in-memory. */
+  driverIncidents?: DriverIncidentRepository;
+  /** Driver route-change and leave requests (#232). Defaults to in-memory. */
+  driverRequests?: DriverRequestRepository;
   /** Observed segment speeds (#181). Absent -> ETAs use the cold-start speed. */
   segmentSpeeds?: SegmentSpeedRepository;
   /** Derived route shapes (#179), served by GET /routes/:id/geometry (#206). */
@@ -167,6 +195,18 @@ export interface AppDeps {
   scanEvents?: ScanEventRepository;
   /** Prometheus /metrics exposure. Defaults to unprotected (dev/tests). */
   metrics?: Partial<MetricsOptions>;
+  /**
+   * Which peers may set `X-Forwarded-For` (from `TRUST_PROXY`) — a proxy-addr
+   * list such as `loopback, linklocal, uniquelocal`, or a CIDR. Trusting the
+   * balancer is what makes `request.ip` the real client rather than the
+   * balancer, which is what every per-IP rate limit buckets on.
+   *
+   * Never a number: fastify 5.12 made numeric trustProxy fail closed, so a hop
+   * count silently trusts nothing (see config/env.ts). Defaults to trusting
+   * nobody, so a directly exposed instance cannot be fooled by a forged header;
+   * server.ts supplies the real list.
+   */
+  trustProxy?: string | string[] | boolean;
   logger?: boolean;
 }
 
@@ -195,7 +235,14 @@ function deployedCommit(): string {
  * @returns the configured Fastify instance (not yet listening).
  */
 export async function buildApp(deps: AppDeps = {}): Promise<FastifyInstance> {
-  const app = Fastify({ logger: deps.logger ?? false });
+  // trustProxy matters more than it looks: with it off behind a load balancer,
+  // `request.ip` is the balancer on every request, so every per-IP rate limit
+  // collapses into ONE bucket shared by all callers. Sign-in then 429s the whole
+  // country at 10 requests a minute while a real attacker is never isolated.
+  // An address list rather than `true`: only a peer that matches is allowed to
+  // set the header, so a client connecting directly cannot forge one and pick
+  // its own bucket.
+  const app = Fastify({ logger: deps.logger ?? false, trustProxy: deps.trustProxy ?? false });
 
   // CORS for browser clients (Swagger UI served from another origin, a future
   // web dashboard). Registered first so preflight is handled for every route.
@@ -242,6 +289,8 @@ export async function buildApp(deps: AppDeps = {}): Promise<FastifyInstance> {
           name: 'flags',
           description: 'Feature flags + minimum supported app version (force-update)',
         },
+        { name: 'incidents', description: 'Driver incident reports' },
+        { name: 'work', description: 'Driver route-change and leave requests' },
       ],
       components: {
         // Protected routes set `security: [{ bearerAuth: [] }]`; clients send
@@ -278,6 +327,11 @@ export async function buildApp(deps: AppDeps = {}): Promise<FastifyInstance> {
     users,
     objectStore,
     authService: deps.authService,
+    rateLimit: deps.rateLimit ?? DEFAULT_RATE_LIMIT,
+  });
+  await app.register(driverAuthRoutes, {
+    driverAuth: deps.driverAuth,
+    objectStore,
     rateLimit: deps.rateLimit ?? DEFAULT_RATE_LIMIT,
   });
   await app.register(userRoutes, {
@@ -318,6 +372,11 @@ export async function buildApp(deps: AppDeps = {}): Promise<FastifyInstance> {
     secret: authConfig.secret,
     trips: deps.trips,
     vehicles: deps.vehicles,
+    // The paywall. Absent subscriptions means an unwired store (a bare
+    // buildApp() in a unit test), and the gate stands down rather than
+    // refusing every rider on a repository that was never provided.
+    subscriptions: deps.subscriptions,
+    entitlements,
     rateLimit: deps.rateLimit ?? DEFAULT_RATE_LIMIT,
   });
   // Ask-dispatch (E3): only wired when trips + subscriptions are available (the
@@ -346,6 +405,9 @@ export async function buildApp(deps: AppDeps = {}): Promise<FastifyInstance> {
         kv,
         reservations,
         entitlements,
+        // Assigned-driver authz for PIN boarding; absent leaves it unchecked.
+        trips: deps.trips,
+        drivers: deps.drivers,
         secret: authConfig.secret,
         passTtlSeconds: 60,
       }),
@@ -359,10 +421,13 @@ export async function buildApp(deps: AppDeps = {}): Promise<FastifyInstance> {
     stops: deps.stops,
     routeStops: deps.routeStops,
     routeGeometry: deps.routeGeometry,
+    rateLimit: deps.rateLimit ?? DEFAULT_RATE_LIMIT,
   });
   await app.register(tripRoutes, {
     trips: deps.trips,
     vehicles: deps.vehicles,
+    routeStops: deps.routeStops,
+    drivers: deps.drivers,
     rateLimit: deps.rateLimit ?? DEFAULT_RATE_LIMIT,
   });
   await app.register(positionRoutes, {
@@ -396,8 +461,40 @@ export async function buildApp(deps: AppDeps = {}): Promise<FastifyInstance> {
             drivers: deps.drivers,
             reservations,
             scanEvents,
+            // The stop counter's denominator, and the bound an arrival is
+            // checked against (#230).
+            routeStops: deps.routeStops,
           })
         : undefined,
+    rateLimit: deps.rateLimit ?? DEFAULT_RATE_LIMIT,
+  });
+
+  // Driver self-service (#226, #232). Both need the fleet driver store to
+  // resolve the caller, so both stand down together when it is unwired.
+  const driverIncidents = deps.driverIncidents ?? new InMemoryDriverIncidentRepository();
+  await app.register(incidentRoutes, {
+    incidentService:
+      deps.drivers && deps.trips
+        ? new IncidentService({
+            incidents: driverIncidents,
+            drivers: deps.drivers,
+            trips: deps.trips,
+          })
+        : undefined,
+    incidents: driverIncidents,
+    rateLimit: deps.rateLimit ?? DEFAULT_RATE_LIMIT,
+  });
+  const driverRequests = deps.driverRequests ?? new InMemoryDriverRequestRepository();
+  await app.register(workRoutes, {
+    workRequests:
+      deps.drivers && deps.routes
+        ? new WorkRequestService({
+            requests: driverRequests,
+            drivers: deps.drivers,
+            routes: deps.routes,
+          })
+        : undefined,
+    requests: driverRequests,
     rateLimit: deps.rateLimit ?? DEFAULT_RATE_LIMIT,
   });
   await app.register(routeLearningRoutes, {
@@ -414,6 +511,11 @@ export async function buildApp(deps: AppDeps = {}): Promise<FastifyInstance> {
     users: deps.users,
     featureFlags: deps.featureFlags,
     minVersions: deps.minVersions,
+    // Assignment changes reach the driver's phone (#233). Only wired when the
+    // driver store is present — without it there is no user id to push to.
+    driverNotifier: deps.drivers
+      ? new DriverNotifier({ notifier, drivers: deps.drivers })
+      : undefined,
     rateLimit: deps.rateLimit ?? DEFAULT_RATE_LIMIT,
     reservations,
   });
@@ -423,6 +525,8 @@ export async function buildApp(deps: AppDeps = {}): Promise<FastifyInstance> {
     mapTilesUrl: deps.mapTilesUrl,
     mapStyleUrl: deps.mapStyleUrl,
     mapStyleDarkUrl: deps.mapStyleDarkUrl,
+    operations: deps.operations,
+    rateLimit: deps.rateLimit ?? DEFAULT_RATE_LIMIT,
   });
 
   r.get(

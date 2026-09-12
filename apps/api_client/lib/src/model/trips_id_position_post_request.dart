@@ -120,4 +120,3 @@ class _$TripsIdPositionPostRequestSerializer implements PrimitiveSerializer<Trip
   }
 }
 
-

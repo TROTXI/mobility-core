@@ -168,4 +168,3 @@ class _$PaymentsSubscribePost200ResponseSerializer implements PrimitiveSerialize
   }
 }
 
-

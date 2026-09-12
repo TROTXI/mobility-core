@@ -184,4 +184,3 @@ class _$RoutesIdGet200ResponseStopsInnerSerializer implements PrimitiveSerialize
   }
 }
 
-

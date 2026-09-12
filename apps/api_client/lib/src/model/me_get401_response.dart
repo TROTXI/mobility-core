@@ -120,4 +120,3 @@ class _$MeGet401ResponseSerializer implements PrimitiveSerializer<MeGet401Respon
   }
 }
 
-

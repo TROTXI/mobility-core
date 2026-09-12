@@ -154,4 +154,3 @@ class _$MeRidesGet200ResponseSerializer implements PrimitiveSerializer<MeRidesGe
   }
 }
 
-

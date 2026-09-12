@@ -14,6 +14,8 @@ class _$RoutesIdGet200Response extends RoutesIdGet200Response {
   @override
   final String? description;
   @override
+  final bool acceptsRequests;
+  @override
   final DateTime createdAt;
   @override
   final BuiltList<RoutesIdGet200ResponseStopsInner> stops;
@@ -26,6 +28,7 @@ class _$RoutesIdGet200Response extends RoutesIdGet200Response {
       {required this.id,
       required this.name,
       this.description,
+      required this.acceptsRequests,
       required this.createdAt,
       required this.stops})
       : super._();
@@ -45,6 +48,7 @@ class _$RoutesIdGet200Response extends RoutesIdGet200Response {
         id == other.id &&
         name == other.name &&
         description == other.description &&
+        acceptsRequests == other.acceptsRequests &&
         createdAt == other.createdAt &&
         stops == other.stops;
   }
@@ -55,6 +59,7 @@ class _$RoutesIdGet200Response extends RoutesIdGet200Response {
     _$hash = $jc(_$hash, id.hashCode);
     _$hash = $jc(_$hash, name.hashCode);
     _$hash = $jc(_$hash, description.hashCode);
+    _$hash = $jc(_$hash, acceptsRequests.hashCode);
     _$hash = $jc(_$hash, createdAt.hashCode);
     _$hash = $jc(_$hash, stops.hashCode);
     _$hash = $jf(_$hash);
@@ -67,6 +72,7 @@ class _$RoutesIdGet200Response extends RoutesIdGet200Response {
           ..add('id', id)
           ..add('name', name)
           ..add('description', description)
+          ..add('acceptsRequests', acceptsRequests)
           ..add('createdAt', createdAt)
           ..add('stops', stops))
         .toString();
@@ -89,6 +95,11 @@ class RoutesIdGet200ResponseBuilder
   String? get description => _$this._description;
   set description(String? description) => _$this._description = description;
 
+  bool? _acceptsRequests;
+  bool? get acceptsRequests => _$this._acceptsRequests;
+  set acceptsRequests(bool? acceptsRequests) =>
+      _$this._acceptsRequests = acceptsRequests;
+
   DateTime? _createdAt;
   DateTime? get createdAt => _$this._createdAt;
   set createdAt(DateTime? createdAt) => _$this._createdAt = createdAt;
@@ -109,6 +120,7 @@ class RoutesIdGet200ResponseBuilder
       _id = $v.id;
       _name = $v.name;
       _description = $v.description;
+      _acceptsRequests = $v.acceptsRequests;
       _createdAt = $v.createdAt;
       _stops = $v.stops.toBuilder();
       _$v = null;
@@ -139,6 +151,8 @@ class RoutesIdGet200ResponseBuilder
             name: BuiltValueNullFieldError.checkNotNull(
                 name, r'RoutesIdGet200Response', 'name'),
             description: description,
+            acceptsRequests: BuiltValueNullFieldError.checkNotNull(
+                acceptsRequests, r'RoutesIdGet200Response', 'acceptsRequests'),
             createdAt: BuiltValueNullFieldError.checkNotNull(
                 createdAt, r'RoutesIdGet200Response', 'createdAt'),
             stops: stops.build(),

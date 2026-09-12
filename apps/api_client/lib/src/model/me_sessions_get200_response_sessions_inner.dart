@@ -136,4 +136,3 @@ class _$MeSessionsGet200ResponseSessionsInnerSerializer implements PrimitiveSeri
   }
 }
 
-

@@ -115,6 +115,19 @@ services:
         sync: false
       - key: OTEL_SERVICE_NAME
         value: trotxi-api
+      # Render fronts every service with a load balancer, so the API must be
+      # told to read the client's address out of X-Forwarded-For. Unset, all
+      # per-IP rate limits (sign-in, refresh, the Paystack webhook) bucket on the
+      # balancer instead and every caller shares one counter.
+      #
+      # An address list, NOT a hop count. Render's balancer reaches us from
+      # inside its private network, so trusting private peers trusts it and
+      # nothing else: a client connecting directly is public, is not trusted,
+      # and cannot forge the header. Fastify 5.12 ignores a numeric value
+      # entirely and trusts nobody, so `1` here would silently switch the whole
+      # thing off; the API refuses to boot on one rather than let that happen.
+      - key: TRUST_PROXY
+        value: 'loopback, linklocal, uniquelocal'
       # Browser-client origin allowlist, comma-separated (#174). Unset -> the
       # API reflects any origin, which is fine while no browser client exists.
       # Set in the dashboard to the ops console's origin when trotxi-ops-staging
@@ -150,6 +163,22 @@ services:
         value: https://tiles.trotxi.com/style.light.json
       - key: MAP_STYLE_DARK_URL
         value: https://tiles.trotxi.com/style.dark.json
+      # Who a driver calls when something goes wrong (#234). Served on /flags for
+      # the same reason the map styles are: depots differ, and a number baked
+      # into a shipped build is worse than none. Not secret — it is the number on
+      # the side of the van — so it belongs here rather than in the dashboard.
+      #
+      # Deliberately NOT set to a placeholder. Unset -> /flags reports null and
+      # the app hides the control, which is the safe answer; a real-looking
+      # number that rings nowhere is the exact failure #234 exists to prevent.
+      # Fill these in once operations confirms the line, then redeploy.
+      #
+      #   - key: OPERATIONS_PHONE
+      #     value: '+233XXXXXXXXX'
+      #   - key: OPERATIONS_WHATSAPP
+      #     value: '+233XXXXXXXXX'
+      #   - key: OPERATIONS_HOURS
+      #     value: 05:00-22:00 daily
 
   # ---- Ask-dispatch cron jobs (E3) — COMMENTED OUT, see below ----
   #

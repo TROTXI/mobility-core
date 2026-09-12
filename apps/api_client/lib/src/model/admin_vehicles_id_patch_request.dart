@@ -117,9 +117,8 @@ class _$AdminVehiclesIdPatchRequestSerializer implements PrimitiveSerializer<Adm
         case r'registration':
           final valueDes = serializers.deserialize(
             value,
-            specifiedType: const FullType.nullable(String),
-          ) as String?;
-          if (valueDes == null) continue;
+            specifiedType: const FullType(String),
+          ) as String;
           result.registration = valueDes;
           break;
         case r'label':
@@ -149,9 +148,8 @@ class _$AdminVehiclesIdPatchRequestSerializer implements PrimitiveSerializer<Adm
         case r'capacity':
           final valueDes = serializers.deserialize(
             value,
-            specifiedType: const FullType.nullable(int),
-          ) as int?;
-          if (valueDes == null) continue;
+            specifiedType: const FullType(int),
+          ) as int;
           result.capacity = valueDes;
           break;
         default:
@@ -182,5 +180,4 @@ class _$AdminVehiclesIdPatchRequestSerializer implements PrimitiveSerializer<Adm
     return result.build();
   }
 }
-
 

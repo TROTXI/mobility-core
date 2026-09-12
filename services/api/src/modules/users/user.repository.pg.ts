@@ -45,13 +45,26 @@ export class PgUserRepository implements UserRepository {
   }
 
   async findById(id: string): Promise<User | null> {
+    // `deleted_at IS NULL` on every read and write below, not just this one: the
+    // row outlives erasure so the ledgers stay balanced (migration 026), but it
+    // must stop being a person the API will talk to or write PII back onto.
+    // This is what `idx_users_active` was created for.
+    const { rows } = await this.pool.query<UserRow>(
+      'SELECT * FROM users WHERE id = $1 AND deleted_at IS NULL',
+      [id],
+    );
+    return rows[0] ? toUser(rows[0]) : null;
+  }
+
+  async findByIdIncludingErased(id: string): Promise<User | null> {
     const { rows } = await this.pool.query<UserRow>('SELECT * FROM users WHERE id = $1', [id]);
     return rows[0] ? toUser(rows[0]) : null;
   }
 
   async updateProfile(id: string, patch: { displayName: string }): Promise<User | null> {
     const { rows } = await this.pool.query<UserRow>(
-      `UPDATE users SET display_name = $2, updated_at = now() WHERE id = $1 RETURNING *`,
+      `UPDATE users SET display_name = $2, updated_at = now()
+        WHERE id = $1 AND deleted_at IS NULL RETURNING *`,
       [id, patch.displayName],
     );
     return rows[0] ? toUser(rows[0]) : null;
@@ -59,7 +72,8 @@ export class PgUserRepository implements UserRepository {
 
   async setAvatarKey(id: string, key: string | null): Promise<User | null> {
     const { rows } = await this.pool.query<UserRow>(
-      `UPDATE users SET avatar_url = $2, updated_at = now() WHERE id = $1 RETURNING *`,
+      `UPDATE users SET avatar_url = $2, updated_at = now()
+        WHERE id = $1 AND deleted_at IS NULL RETURNING *`,
       [id, key],
     );
     return rows[0] ? toUser(rows[0]) : null;
@@ -67,7 +81,8 @@ export class PgUserRepository implements UserRepository {
 
   async setRole(id: string, role: UserRole): Promise<User | null> {
     const { rows } = await this.pool.query<UserRow>(
-      `UPDATE users SET role = $2, updated_at = now() WHERE id = $1 RETURNING *`,
+      `UPDATE users SET role = $2, updated_at = now()
+        WHERE id = $1 AND deleted_at IS NULL RETURNING *`,
       [id, role],
     );
     return rows[0] ? toUser(rows[0]) : null;
@@ -80,13 +95,15 @@ export class PgUserRepository implements UserRepository {
     // COALESCE keeps whatever is already stored: a webhook must never overwrite
     // a number the rider has since corrected on their profile. Writing the same
     // value twice is therefore a no-op, which is what makes Paystack's webhook
-    // re-delivery safe.
+    // re-delivery safe. `deleted_at IS NULL` makes it safe in the other
+    // direction: Paystack retries for days, and a late charge.success must not
+    // restore a phone number onto an account the rider had erased.
     const { rows } = await this.pool.query<UserRow>(
       `UPDATE users
           SET email      = COALESCE(email, $2),
               phone      = COALESCE(phone, $3),
               updated_at = now()
-        WHERE id = $1
+        WHERE id = $1 AND deleted_at IS NULL
         RETURNING *`,
       [id, contact.email ?? null, contact.phone ?? null],
     );
@@ -94,8 +111,10 @@ export class PgUserRepository implements UserRepository {
   }
 
   async anonymise(id: string): Promise<User | null> {
-    // COALESCE on deleted_at keeps the FIRST deletion timestamp, so a retried
-    // request does not rewrite when the erasure actually happened.
+    // Deliberately NOT filtered by deleted_at, unlike every query above: this is
+    // the one operation that must still run on an already-erased row so a retry
+    // converges. COALESCE keeps the FIRST deletion timestamp, so the retry does
+    // not rewrite when the erasure actually happened.
     const { rows } = await this.pool.query<UserRow>(
       `UPDATE users
           SET display_name = $2,

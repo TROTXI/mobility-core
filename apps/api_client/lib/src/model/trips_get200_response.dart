@@ -106,4 +106,3 @@ class _$TripsGet200ResponseSerializer implements PrimitiveSerializer<TripsGet200
   }
 }
 
-

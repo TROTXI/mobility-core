@@ -95,4 +95,14 @@ export class PgPaymentRepository implements PaymentRepository {
       [reference],
     );
   }
+
+  async markFailed(reference: string): Promise<void> {
+    // Only pending → failed, for the same reason markPaid is one-way: a settled
+    // row is the accounting record and a late webhook must not rewrite it.
+    await this.pool.query(
+      `UPDATE payments SET status = 'failed', updated_at = now()
+       WHERE reference = $1 AND status = 'pending'`,
+      [reference],
+    );
+  }
 }

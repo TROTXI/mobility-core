@@ -59,6 +59,8 @@ Name | Type | Description  | Notes
 
 Confirm or decline the daily ride (upsert per day + direction)
 
+Confirming requires an active membership with a ride left on the corridor the run belongs to; 402 says which of the three is missing. Declining is always allowed.
+
 ### Example
 ```dart
 import 'package:trotxi_api_client/api.dart';

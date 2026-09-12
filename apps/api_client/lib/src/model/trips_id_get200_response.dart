@@ -19,10 +19,13 @@ part 'trips_id_get200_response.g.dart';
 /// * [assignedDriverId] 
 /// * [status] 
 /// * [scheduledAt] 
+/// * [currentStopSeq] 
+/// * [assignmentChangedAt] 
 /// * [createdAt] 
 /// * [startedAt] 
 /// * [completedAt] 
 /// * [durationSeconds] 
+/// * [stopCount] 
 /// * [vehicle] 
 @BuiltValue()
 abstract class TripsIdGet200Response implements Built<TripsIdGet200Response, TripsIdGet200ResponseBuilder> {
@@ -45,6 +48,12 @@ abstract class TripsIdGet200Response implements Built<TripsIdGet200Response, Tri
   @BuiltValueField(wireName: r'scheduledAt')
   DateTime get scheduledAt;
 
+  @BuiltValueField(wireName: r'currentStopSeq')
+  int? get currentStopSeq;
+
+  @BuiltValueField(wireName: r'assignmentChangedAt')
+  DateTime? get assignmentChangedAt;
+
   @BuiltValueField(wireName: r'createdAt')
   DateTime get createdAt;
 
@@ -56,6 +65,9 @@ abstract class TripsIdGet200Response implements Built<TripsIdGet200Response, Tri
 
   @BuiltValueField(wireName: r'durationSeconds')
   int? get durationSeconds;
+
+  @BuiltValueField(wireName: r'stopCount')
+  int get stopCount;
 
   @BuiltValueField(wireName: r'vehicle')
   TripsIdGet200ResponseVehicle? get vehicle;
@@ -113,6 +125,16 @@ class _$TripsIdGet200ResponseSerializer implements PrimitiveSerializer<TripsIdGe
       object.scheduledAt,
       specifiedType: const FullType(DateTime),
     );
+    yield r'currentStopSeq';
+    yield object.currentStopSeq == null ? null : serializers.serialize(
+      object.currentStopSeq,
+      specifiedType: const FullType.nullable(int),
+    );
+    yield r'assignmentChangedAt';
+    yield object.assignmentChangedAt == null ? null : serializers.serialize(
+      object.assignmentChangedAt,
+      specifiedType: const FullType.nullable(DateTime),
+    );
     yield r'createdAt';
     yield serializers.serialize(
       object.createdAt,
@@ -132,6 +154,11 @@ class _$TripsIdGet200ResponseSerializer implements PrimitiveSerializer<TripsIdGe
     yield object.durationSeconds == null ? null : serializers.serialize(
       object.durationSeconds,
       specifiedType: const FullType.nullable(int),
+    );
+    yield r'stopCount';
+    yield serializers.serialize(
+      object.stopCount,
+      specifiedType: const FullType(int),
     );
     yield r'vehicle';
     yield object.vehicle == null ? null : serializers.serialize(
@@ -205,6 +232,22 @@ class _$TripsIdGet200ResponseSerializer implements PrimitiveSerializer<TripsIdGe
           ) as DateTime;
           result.scheduledAt = valueDes;
           break;
+        case r'currentStopSeq':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType.nullable(int),
+          ) as int?;
+          if (valueDes == null) continue;
+          result.currentStopSeq = valueDes;
+          break;
+        case r'assignmentChangedAt':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType.nullable(DateTime),
+          ) as DateTime?;
+          if (valueDes == null) continue;
+          result.assignmentChangedAt = valueDes;
+          break;
         case r'createdAt':
           final valueDes = serializers.deserialize(
             value,
@@ -235,6 +278,13 @@ class _$TripsIdGet200ResponseSerializer implements PrimitiveSerializer<TripsIdGe
           ) as int?;
           if (valueDes == null) continue;
           result.durationSeconds = valueDes;
+          break;
+        case r'stopCount':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType(int),
+          ) as int;
+          result.stopCount = valueDes;
           break;
         case r'vehicle':
           final valueDes = serializers.deserialize(
@@ -272,7 +322,6 @@ class _$TripsIdGet200ResponseSerializer implements PrimitiveSerializer<TripsIdGe
     return result.build();
   }
 }
-
 
 class TripsIdGet200ResponseStatusEnum extends EnumClass {
 

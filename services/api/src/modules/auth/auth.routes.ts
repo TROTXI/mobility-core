@@ -240,6 +240,10 @@ export async function authRoutes(
         summary: 'Revoke a refresh token (idempotent)',
         body: logoutBodySchema,
       },
+      // The one credential endpoint that had no limit. It takes an untrusted
+      // token and hits the session store on every call, so it is a free way to
+      // make the database work without ever authenticating.
+      preHandler: [app.rateLimit({ ...AUTH_RATE_LIMIT, by: 'ip' })],
     },
     async (request, reply) => {
       if (opts.authService) {

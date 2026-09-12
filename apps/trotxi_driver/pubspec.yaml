@@ -37,11 +37,24 @@ dependencies:
   cupertino_icons: ^1.0.8
   trotxi_client:
     path: ../trotxi_client
+  # The shared map surface (#180): renderer, style swap and attribution, built
+  # once so this app and the rider app do not grow two integrations against the
+  # same tile server.
+  trotxi_map:
+    path: ../trotxi_map
   firebase_core: ^4.11.0
   firebase_crashlytics: ^5.2.4
   firebase_analytics: ^12.4.3
   firebase_performance: ^0.11.4+3
   flutter_secure_storage: ^10.3.1
+  provider: ^6.1.5+1
+  intl: ^0.20.3
+  mobile_scanner: ^7.4.1
+  geolocator: ^14.0.3
+  # Dialling operations (#234). The recovery screen, incident support and the
+  # emergency control all end in a phone call, and there is no in-app substitute
+  # for one — a driver at a roadside needs a person, not a queue.
+  url_launcher: ^6.3.1
 dev_dependencies:
   flutter_test:
     sdk: flutter
@@ -63,10 +76,11 @@ flutter:
   # the material Icons class.
   uses-material-design: true
 
-  # To add assets to your application, add an assets section, like this:
-  # assets:
-  #   - images/a_dot_burr.jpeg
-  #   - images/a_dot_ham.jpeg
+  # The wordmark, exported from the design file at 4x in both variants. Two
+  # images rather than one under a colour filter: only the lettering changes
+  # between themes, and the arrow and the green accent are meant to stay put.
+  assets:
+    - assets/brand/
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images
@@ -79,6 +93,26 @@ flutter:
   # "family" key with the font family name, and a "fonts" key with a
   # list giving the asset and other descriptors for the font. For
   # example:
+  # Poppins is the typeface the driver designs are drawn in. Bundled rather than
+  # fetched at runtime: a depot handset on a bad connection must not fall back
+  # to a different face on first launch, and the design's type is not decoration
+  # — the stat tiles and the boarding code lean on its figures.
+  #
+  # SIL Open Font License 1.1; assets/fonts/OFL.txt ships alongside as the
+  # licence requires. Weight 900 in the file (one 11px "LIVE" label) maps to 700
+  # here; Black for a single caption is not worth another 150KB on a phone.
+  fonts:
+    - family: Poppins
+      fonts:
+        - asset: assets/fonts/Poppins-Regular.ttf
+          weight: 400
+        - asset: assets/fonts/Poppins-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/Poppins-SemiBold.ttf
+          weight: 600
+        - asset: assets/fonts/Poppins-Bold.ttf
+          weight: 700
+
   # fonts:
   #   - family: Schyler
   #     fonts:

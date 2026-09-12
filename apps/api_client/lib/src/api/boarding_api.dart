@@ -9,9 +9,14 @@ import 'package:built_value/serializer.dart';
 import 'package:dio/dio.dart';
 
 import 'package:trotxi_api_client/src/api_util.dart';
+import 'package:trotxi_api_client/src/model/boarding_board_post200_response.dart';
+import 'package:trotxi_api_client/src/model/boarding_board_post_request.dart';
 import 'package:trotxi_api_client/src/model/boarding_manifest_get200_response.dart';
+import 'package:trotxi_api_client/src/model/boarding_no_show_post200_response.dart';
 import 'package:trotxi_api_client/src/model/boarding_scan_post200_response.dart';
 import 'package:trotxi_api_client/src/model/boarding_scan_post_request.dart';
+import 'package:trotxi_api_client/src/model/boarding_verify_code_post200_response.dart';
+import 'package:trotxi_api_client/src/model/boarding_verify_code_post_request.dart';
 import 'package:trotxi_api_client/src/model/boarding_verify_pin_post200_response.dart';
 import 'package:trotxi_api_client/src/model/boarding_verify_pin_post_request.dart';
 import 'package:trotxi_api_client/src/model/me_get401_response.dart';
@@ -24,6 +29,107 @@ class BoardingApi {
   final Serializers _serializers;
 
   const BoardingApi(this._dio, this._serializers);
+
+  /// Board a rider identified from the manifest photo (assigned driver only)
+  /// The fallback for when a code will not scan or the rider cannot produce one. Idempotent per reservation, and shares boarding’s ledger key, so a rider previously marked a no-show is charged once rather than twice.
+  ///
+  /// Parameters:
+  /// * [boardingBoardPostRequest] 
+  /// * [cancelToken] - A [CancelToken] that can be used to cancel the operation
+  /// * [headers] - Can be used to add additional headers to the request
+  /// * [extras] - Can be used to add flags to the request
+  /// * [validateStatus] - A [ValidateStatus] callback that can be used to determine request success based on the HTTP status of the response
+  /// * [onSendProgress] - A [ProgressCallback] that can be used to get the send progress
+  /// * [onReceiveProgress] - A [ProgressCallback] that can be used to get the receive progress
+  ///
+  /// Returns a [Future] containing a [Response] with a [BoardingBoardPost200Response] as data
+  /// Throws [DioException] if API call or serialization fails
+  Future<Response<BoardingBoardPost200Response>> boardingBoardPost({ 
+    required BoardingBoardPostRequest boardingBoardPostRequest,
+    CancelToken? cancelToken,
+    Map<String, dynamic>? headers,
+    Map<String, dynamic>? extra,
+    ValidateStatus? validateStatus,
+    ProgressCallback? onSendProgress,
+    ProgressCallback? onReceiveProgress,
+  }) async {
+    final _path = r'/boarding/board';
+    final _options = Options(
+      method: r'POST',
+      headers: <String, dynamic>{
+        ...?headers,
+      },
+      extra: <String, dynamic>{
+        'secure': <Map<String, String>>[
+          {
+            'type': 'http',
+            'scheme': 'bearer',
+            'name': 'bearerAuth',
+          },
+        ],
+        ...?extra,
+      },
+      contentType: 'application/json',
+      validateStatus: validateStatus,
+    );
+
+    dynamic _bodyData;
+
+    try {
+      const _type = FullType(BoardingBoardPostRequest);
+      _bodyData = _serializers.serialize(boardingBoardPostRequest, specifiedType: _type);
+
+    } catch(error, stackTrace) {
+      throw DioException(
+         requestOptions: _options.compose(
+          _dio.options,
+          _path,
+        ),
+        type: DioExceptionType.unknown,
+        error: error,
+        stackTrace: stackTrace,
+      );
+    }
+
+    final _response = await _dio.request<Object>(
+      _path,
+      data: _bodyData,
+      options: _options,
+      cancelToken: cancelToken,
+      onSendProgress: onSendProgress,
+      onReceiveProgress: onReceiveProgress,
+    );
+
+    BoardingBoardPost200Response? _responseData;
+
+    try {
+      final rawResponse = _response.data;
+      _responseData = rawResponse == null ? null : _serializers.deserialize(
+        rawResponse,
+        specifiedType: const FullType(BoardingBoardPost200Response),
+      ) as BoardingBoardPost200Response;
+
+    } catch (error, stackTrace) {
+      throw DioException(
+        requestOptions: _response.requestOptions,
+        response: _response,
+        type: DioExceptionType.unknown,
+        error: error,
+        stackTrace: stackTrace,
+      );
+    }
+
+    return Response<BoardingBoardPost200Response>(
+      data: _responseData,
+      headers: _response.headers,
+      isRedirect: _response.isRedirect,
+      requestOptions: _response.requestOptions,
+      redirects: _response.redirects,
+      statusCode: _response.statusCode,
+      statusMessage: _response.statusMessage,
+      extra: _response.extra,
+    );
+  }
 
   /// A trip&#39;s manifest — confirmed riders with name + photo (assigned driver only)
   /// 
@@ -100,6 +206,107 @@ class BoardingApi {
     }
 
     return Response<BoardingManifestGet200Response>(
+      data: _responseData,
+      headers: _response.headers,
+      isRedirect: _response.isRedirect,
+      requestOptions: _response.requestOptions,
+      redirects: _response.redirects,
+      statusCode: _response.statusCode,
+      statusMessage: _response.statusMessage,
+      extra: _response.extra,
+    );
+  }
+
+  /// Mark one rider as not having turned up (assigned driver only)
+  /// Deducts the ride now rather than at the cutoff. Reversible by boarding the rider afterwards — the shared ledger key means that costs nothing extra.
+  ///
+  /// Parameters:
+  /// * [boardingBoardPostRequest] 
+  /// * [cancelToken] - A [CancelToken] that can be used to cancel the operation
+  /// * [headers] - Can be used to add additional headers to the request
+  /// * [extras] - Can be used to add flags to the request
+  /// * [validateStatus] - A [ValidateStatus] callback that can be used to determine request success based on the HTTP status of the response
+  /// * [onSendProgress] - A [ProgressCallback] that can be used to get the send progress
+  /// * [onReceiveProgress] - A [ProgressCallback] that can be used to get the receive progress
+  ///
+  /// Returns a [Future] containing a [Response] with a [BoardingNoShowPost200Response] as data
+  /// Throws [DioException] if API call or serialization fails
+  Future<Response<BoardingNoShowPost200Response>> boardingNoShowPost({ 
+    required BoardingBoardPostRequest boardingBoardPostRequest,
+    CancelToken? cancelToken,
+    Map<String, dynamic>? headers,
+    Map<String, dynamic>? extra,
+    ValidateStatus? validateStatus,
+    ProgressCallback? onSendProgress,
+    ProgressCallback? onReceiveProgress,
+  }) async {
+    final _path = r'/boarding/no-show';
+    final _options = Options(
+      method: r'POST',
+      headers: <String, dynamic>{
+        ...?headers,
+      },
+      extra: <String, dynamic>{
+        'secure': <Map<String, String>>[
+          {
+            'type': 'http',
+            'scheme': 'bearer',
+            'name': 'bearerAuth',
+          },
+        ],
+        ...?extra,
+      },
+      contentType: 'application/json',
+      validateStatus: validateStatus,
+    );
+
+    dynamic _bodyData;
+
+    try {
+      const _type = FullType(BoardingBoardPostRequest);
+      _bodyData = _serializers.serialize(boardingBoardPostRequest, specifiedType: _type);
+
+    } catch(error, stackTrace) {
+      throw DioException(
+         requestOptions: _options.compose(
+          _dio.options,
+          _path,
+        ),
+        type: DioExceptionType.unknown,
+        error: error,
+        stackTrace: stackTrace,
+      );
+    }
+
+    final _response = await _dio.request<Object>(
+      _path,
+      data: _bodyData,
+      options: _options,
+      cancelToken: cancelToken,
+      onSendProgress: onSendProgress,
+      onReceiveProgress: onReceiveProgress,
+    );
+
+    BoardingNoShowPost200Response? _responseData;
+
+    try {
+      final rawResponse = _response.data;
+      _responseData = rawResponse == null ? null : _serializers.deserialize(
+        rawResponse,
+        specifiedType: const FullType(BoardingNoShowPost200Response),
+      ) as BoardingNoShowPost200Response;
+
+    } catch (error, stackTrace) {
+      throw DioException(
+        requestOptions: _response.requestOptions,
+        response: _response,
+        type: DioExceptionType.unknown,
+        error: error,
+        stackTrace: stackTrace,
+      );
+    }
+
+    return Response<BoardingNoShowPost200Response>(
       data: _responseData,
       headers: _response.headers,
       isRedirect: _response.isRedirect,
@@ -201,6 +408,107 @@ class BoardingApi {
     }
 
     return Response<BoardingScanPost200Response>(
+      data: _responseData,
+      headers: _response.headers,
+      isRedirect: _response.isRedirect,
+      requestOptions: _response.requestOptions,
+      redirects: _response.redirects,
+      statusCode: _response.statusCode,
+      statusMessage: _response.statusMessage,
+      extra: _response.extra,
+    );
+  }
+
+  /// Board whoever holds this code on this run (assigned driver only)
+  /// Searches the run’s open seats for the code rather than checking one named seat. Safe because the caller is already the assigned driver, who can board any rider on their manifest with no code at all (POST /boarding/board). Two seats holding one code is refused rather than guessed.
+  ///
+  /// Parameters:
+  /// * [boardingVerifyCodePostRequest] 
+  /// * [cancelToken] - A [CancelToken] that can be used to cancel the operation
+  /// * [headers] - Can be used to add additional headers to the request
+  /// * [extras] - Can be used to add flags to the request
+  /// * [validateStatus] - A [ValidateStatus] callback that can be used to determine request success based on the HTTP status of the response
+  /// * [onSendProgress] - A [ProgressCallback] that can be used to get the send progress
+  /// * [onReceiveProgress] - A [ProgressCallback] that can be used to get the receive progress
+  ///
+  /// Returns a [Future] containing a [Response] with a [BoardingVerifyCodePost200Response] as data
+  /// Throws [DioException] if API call or serialization fails
+  Future<Response<BoardingVerifyCodePost200Response>> boardingVerifyCodePost({ 
+    required BoardingVerifyCodePostRequest boardingVerifyCodePostRequest,
+    CancelToken? cancelToken,
+    Map<String, dynamic>? headers,
+    Map<String, dynamic>? extra,
+    ValidateStatus? validateStatus,
+    ProgressCallback? onSendProgress,
+    ProgressCallback? onReceiveProgress,
+  }) async {
+    final _path = r'/boarding/verify-code';
+    final _options = Options(
+      method: r'POST',
+      headers: <String, dynamic>{
+        ...?headers,
+      },
+      extra: <String, dynamic>{
+        'secure': <Map<String, String>>[
+          {
+            'type': 'http',
+            'scheme': 'bearer',
+            'name': 'bearerAuth',
+          },
+        ],
+        ...?extra,
+      },
+      contentType: 'application/json',
+      validateStatus: validateStatus,
+    );
+
+    dynamic _bodyData;
+
+    try {
+      const _type = FullType(BoardingVerifyCodePostRequest);
+      _bodyData = _serializers.serialize(boardingVerifyCodePostRequest, specifiedType: _type);
+
+    } catch(error, stackTrace) {
+      throw DioException(
+         requestOptions: _options.compose(
+          _dio.options,
+          _path,
+        ),
+        type: DioExceptionType.unknown,
+        error: error,
+        stackTrace: stackTrace,
+      );
+    }
+
+    final _response = await _dio.request<Object>(
+      _path,
+      data: _bodyData,
+      options: _options,
+      cancelToken: cancelToken,
+      onSendProgress: onSendProgress,
+      onReceiveProgress: onReceiveProgress,
+    );
+
+    BoardingVerifyCodePost200Response? _responseData;
+
+    try {
+      final rawResponse = _response.data;
+      _responseData = rawResponse == null ? null : _serializers.deserialize(
+        rawResponse,
+        specifiedType: const FullType(BoardingVerifyCodePost200Response),
+      ) as BoardingVerifyCodePost200Response;
+
+    } catch (error, stackTrace) {
+      throw DioException(
+        requestOptions: _response.requestOptions,
+        response: _response,
+        type: DioExceptionType.unknown,
+        error: error,
+        stackTrace: stackTrace,
+      );
+    }
+
+    return Response<BoardingVerifyCodePost200Response>(
       data: _responseData,
       headers: _response.headers,
       isRedirect: _response.isRedirect,

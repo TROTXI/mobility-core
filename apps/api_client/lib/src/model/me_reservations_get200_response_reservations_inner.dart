@@ -208,9 +208,8 @@ class _$MeReservationsGet200ResponseReservationsInnerSerializer implements Primi
         case r'pin':
           final valueDes = serializers.deserialize(
             value,
-            specifiedType: const FullType.nullable(String),
-          ) as String?;
-          if (valueDes == null) continue;
+            specifiedType: const FullType(String),
+          ) as String;
           result.pin = valueDes;
           break;
         default:
@@ -241,7 +240,6 @@ class _$MeReservationsGet200ResponseReservationsInnerSerializer implements Primi
     return result.build();
   }
 }
-
 
 class MeReservationsGet200ResponseReservationsInnerDirectionEnum extends EnumClass {
 

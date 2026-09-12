@@ -9,6 +9,7 @@ import 'package:built_value/serializer.dart';
 import 'package:dio/dio.dart';
 
 import 'package:trotxi_api_client/src/model/flags_get200_response.dart';
+import 'package:trotxi_api_client/src/model/me_get401_response.dart';
 
 class FlagsApi {
 
@@ -18,7 +19,7 @@ class FlagsApi {
 
   const FlagsApi(this._dio, this._serializers);
 
-  /// Feature flags + minimum supported app version (fetched on launch)
+  /// Feature flags, minimum supported app version, basemap and operations contact
   /// 
   ///
   /// Parameters:

@@ -153,4 +153,3 @@ class _$AdminLearnRoutesPost200ResponseRoutesInnerSerializer implements Primitiv
   }
 }
 
-

@@ -68,10 +68,14 @@ The trip's confirmed riders (driver only) — the photo pass.
 
 Board a rider by their daily boarding code (driver only) — verification layer 2.
 
-- **Auth:** `Bearer` + **role `driver`**. **Rate limit:** per user.
-- **Body:** `{ "reservationId": "<uuid>", "pin": "1234" }`
+- **Auth:** `Bearer` + **role `driver`**, and the caller must be the driver the
+  reservation's trip is **assigned to** — the same rule as the manifest and GPS
+  reporting (#25). **Rate limit:** per user, plus a per-reservation budget of
+  wrong codes.
+- **Body:** `{ "reservationId": "<uuid>", "pin": "B7K9" }`
 - **200:** `{ "valid", "riderId", "reason": "ok"|"invalid"|"not_found"|"already_boarded", "deducted" }`
-  — `ok` boards + debits; `already_boarded` is the idempotent no-op. **400** bad PIN · **403**
+  — `ok` boards + debits; `already_boarded` is the idempotent no-op. **400** bad PIN ·
+  **403** not this driver's run
 
 ---
 
@@ -97,6 +101,14 @@ has no FK yet (trips are #18). The daily PIN is stored on `reservations`
 - **Input hygiene** — the scanned pass is capped at 512 chars before it reaches
   `jwtVerify`; the scan route throttles **before** the role check so non-driver
   tokens can't hammer unthrottled 403s.
+- **Assigned-driver authz on PIN boarding** — a `driver` role alone is not enough
+  to board a seat by code. Without this the four-character code was the only
+  thing between any driver account and any rider on any trip in the fleet, which
+  is not what a code that short is for.
+- **Bounded guessing** — 30⁴ is 810,000 codes, which is only a real number if you
+  cannot try thousands an hour against a code that stays valid all day. Wrong
+  guesses are budgeted per reservation (10 per 15 minutes); the budget fails
+  open, so a KV outage costs the ceiling rather than the boarding.
 
 ## Next (Hybrid Subscription Model — ADR-0014, boarding v2 / epic E4)
 

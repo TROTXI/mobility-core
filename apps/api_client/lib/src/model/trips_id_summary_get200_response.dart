@@ -203,4 +203,3 @@ class _$TripsIdSummaryGet200ResponseSerializer implements PrimitiveSerializer<Tr
   }
 }
 
-

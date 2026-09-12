@@ -120,4 +120,3 @@ class _$AdminRoutesIdStopsPostRequestSerializer implements PrimitiveSerializer<A
   }
 }
 
-

@@ -106,7 +106,6 @@ class _$ReadyzGet200ResponseSerializer implements PrimitiveSerializer<ReadyzGet2
   }
 }
 
-
 class ReadyzGet200ResponseStatusEnum extends EnumClass {
 
   @BuiltValueEnumConst(wireName: r'ready')

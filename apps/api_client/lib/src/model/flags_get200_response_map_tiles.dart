@@ -155,4 +155,3 @@ class _$FlagsGet200ResponseMapTilesSerializer implements PrimitiveSerializer<Fla
   }
 }
 
-

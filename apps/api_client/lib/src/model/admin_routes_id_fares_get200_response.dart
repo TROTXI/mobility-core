@@ -106,4 +106,3 @@ class _$AdminRoutesIdFaresGet200ResponseSerializer implements PrimitiveSerialize
   }
 }
 
-

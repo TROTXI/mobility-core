@@ -16,6 +16,10 @@ const envSchema = z
     JWT_ISSUER: z.string().default('trotxi'),
     JWT_AUDIENCE: z.string().default('trotxi-api'),
     JWT_REFRESH_TTL_DAYS: z.coerce.number().int().positive().default(30),
+    // Session length for a driver who did NOT tick "Remember this device"
+    // (#223). Depot handsets are shared between shifts, so the default is one
+    // long shift rather than the month a personal phone gets.
+    DRIVER_SHIFT_TTL_HOURS: z.coerce.number().int().positive().default(12),
     // Google "Web" client ID — the audience verified on sign-in. Set to enable
     // real Google sign-in; unset -> dev fake verifier (non-prod) / 503 (prod).
     GOOGLE_CLIENT_ID: z.string().optional(),
@@ -53,6 +57,17 @@ const envSchema = z
     // release of the rider app, the driver app and the ops console.
     MAP_STYLE_URL: z.string().url().optional(),
     MAP_STYLE_DARK_URL: z.string().url().optional(),
+    // Who a driver calls when something goes wrong (#234). Served through
+    // /flags for the same reason the map styles are: depots differ, and a number
+    // baked into a shipped build is worse than none — a driver at a roadside
+    // dialling a line that no longer answers is the exact failure this prevents.
+    // Not secret: it is the number on the side of the van.
+    OPERATIONS_PHONE: z.string().optional(),
+    OPERATIONS_WHATSAPP: z.string().optional(),
+    OPERATIONS_EMAIL: z.string().email().optional(),
+    // Free text, e.g. "05:00-22:00 daily". Shown next to the number so a driver
+    // knows whether anyone will pick up before they stand in the road dialling.
+    OPERATIONS_HOURS: z.string().optional(),
     // CORS allowlist for browser clients (comma-separated origins), e.g. Swagger
     // UI served from another origin or a web dashboard. Unset -> reflect any
     // origin, which is safe here because auth is a bearer token (no cookies or
@@ -61,6 +76,29 @@ const envSchema = z
     // Rate limiting (fixed window). Tunable without a code change.
     RATE_LIMIT_MAX: z.coerce.number().int().positive().default(100),
     RATE_LIMIT_WINDOW_SECONDS: z.coerce.number().int().positive().default(60),
+    // Which peers may set `X-Forwarded-For`, as a comma-separated proxy-addr
+    // list. Without it `request.ip` is Render's load balancer on every request
+    // and all per-IP rate limits collapse into one bucket shared by every
+    // caller. The default trusts private peers only: the balancer reaches us
+    // from inside Render's network, so a direct public client is never trusted
+    // and cannot forge a header to pick its own bucket. Empty disables it.
+    //
+    // A hop COUNT is deliberately refused. Fastify 5.12 made numeric
+    // trustProxy fail closed (GHSA X-Forwarded-* spoofing: a count cannot
+    // validate the immediate peer, so a direct client could supply enough hops
+    // to look proxied), and `1` now silently means "trust nothing" — the exact
+    // bug this setting exists to fix, reintroduced without a word. Better to
+    // refuse the value at boot than to run with a limiter that quietly does
+    // nothing.
+    TRUST_PROXY: z
+      .string()
+      .default('loopback, linklocal, uniquelocal')
+      .refine((v) => !/^\s*\d+\s*$/.test(v), {
+        message:
+          'TRUST_PROXY is an address list, not a hop count. Fastify ignores a number ' +
+          'and trusts nothing. Use "loopback, linklocal, uniquelocal", or the ' +
+          "balancer's CIDR.",
+      }),
     // Protects GET /metrics — the scraper sends `Authorization: Bearer <token>`.
     // Unset -> /metrics is open in non-prod, disabled (404) in production.
     METRICS_TOKEN: z.string().optional(),

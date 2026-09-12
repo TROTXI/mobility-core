@@ -111,25 +111,22 @@ class _$AuthApplePostRequestSerializer implements PrimitiveSerializer<AuthAppleP
         case r'fullName':
           final valueDes = serializers.deserialize(
             value,
-            specifiedType: const FullType.nullable(String),
-          ) as String?;
-          if (valueDes == null) continue;
+            specifiedType: const FullType(String),
+          ) as String;
           result.fullName = valueDes;
           break;
         case r'nonce':
           final valueDes = serializers.deserialize(
             value,
-            specifiedType: const FullType.nullable(String),
-          ) as String?;
-          if (valueDes == null) continue;
+            specifiedType: const FullType(String),
+          ) as String;
           result.nonce = valueDes;
           break;
         case r'authorizationCode':
           final valueDes = serializers.deserialize(
             value,
-            specifiedType: const FullType.nullable(String),
-          ) as String?;
-          if (valueDes == null) continue;
+            specifiedType: const FullType(String),
+          ) as String;
           result.authorizationCode = valueDes;
           break;
         default:
@@ -160,5 +157,4 @@ class _$AuthApplePostRequestSerializer implements PrimitiveSerializer<AuthAppleP
     return result.build();
   }
 }
-
 

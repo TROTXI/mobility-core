@@ -18,6 +18,9 @@ const BoardingVerifyPinPost200ResponseReasonEnum
 const BoardingVerifyPinPost200ResponseReasonEnum
     _$boardingVerifyPinPost200ResponseReasonEnum_alreadyBoarded =
     const BoardingVerifyPinPost200ResponseReasonEnum._('alreadyBoarded');
+const BoardingVerifyPinPost200ResponseReasonEnum
+    _$boardingVerifyPinPost200ResponseReasonEnum_forbidden =
+    const BoardingVerifyPinPost200ResponseReasonEnum._('forbidden');
 
 BoardingVerifyPinPost200ResponseReasonEnum
     _$boardingVerifyPinPost200ResponseReasonEnumValueOf(String name) {
@@ -30,6 +33,8 @@ BoardingVerifyPinPost200ResponseReasonEnum
       return _$boardingVerifyPinPost200ResponseReasonEnum_notFound;
     case 'alreadyBoarded':
       return _$boardingVerifyPinPost200ResponseReasonEnum_alreadyBoarded;
+    case 'forbidden':
+      return _$boardingVerifyPinPost200ResponseReasonEnum_forbidden;
     default:
       throw ArgumentError(name);
   }
@@ -42,6 +47,7 @@ final BuiltSet<BoardingVerifyPinPost200ResponseReasonEnum>
   _$boardingVerifyPinPost200ResponseReasonEnum_invalid,
   _$boardingVerifyPinPost200ResponseReasonEnum_notFound,
   _$boardingVerifyPinPost200ResponseReasonEnum_alreadyBoarded,
+  _$boardingVerifyPinPost200ResponseReasonEnum_forbidden,
 ]);
 
 Serializer<BoardingVerifyPinPost200ResponseReasonEnum>
@@ -55,12 +61,14 @@ class _$BoardingVerifyPinPost200ResponseReasonEnumSerializer
     'invalid': 'invalid',
     'notFound': 'not_found',
     'alreadyBoarded': 'already_boarded',
+    'forbidden': 'forbidden',
   };
   static const Map<Object, String> _fromWire = const <Object, String>{
     'ok': 'ok',
     'invalid': 'invalid',
     'not_found': 'notFound',
     'already_boarded': 'alreadyBoarded',
+    'forbidden': 'forbidden',
   };
 
   @override

@@ -18,6 +18,8 @@ part 'trips_get200_response_trips_inner.g.dart';
 /// * [assignedDriverId] 
 /// * [status] 
 /// * [scheduledAt] 
+/// * [currentStopSeq] 
+/// * [assignmentChangedAt] 
 /// * [createdAt] 
 @BuiltValue()
 abstract class TripsGet200ResponseTripsInner implements Built<TripsGet200ResponseTripsInner, TripsGet200ResponseTripsInnerBuilder> {
@@ -39,6 +41,12 @@ abstract class TripsGet200ResponseTripsInner implements Built<TripsGet200Respons
 
   @BuiltValueField(wireName: r'scheduledAt')
   DateTime get scheduledAt;
+
+  @BuiltValueField(wireName: r'currentStopSeq')
+  int? get currentStopSeq;
+
+  @BuiltValueField(wireName: r'assignmentChangedAt')
+  DateTime? get assignmentChangedAt;
 
   @BuiltValueField(wireName: r'createdAt')
   DateTime get createdAt;
@@ -95,6 +103,16 @@ class _$TripsGet200ResponseTripsInnerSerializer implements PrimitiveSerializer<T
     yield serializers.serialize(
       object.scheduledAt,
       specifiedType: const FullType(DateTime),
+    );
+    yield r'currentStopSeq';
+    yield object.currentStopSeq == null ? null : serializers.serialize(
+      object.currentStopSeq,
+      specifiedType: const FullType.nullable(int),
+    );
+    yield r'assignmentChangedAt';
+    yield object.assignmentChangedAt == null ? null : serializers.serialize(
+      object.assignmentChangedAt,
+      specifiedType: const FullType.nullable(DateTime),
     );
     yield r'createdAt';
     yield serializers.serialize(
@@ -168,6 +186,22 @@ class _$TripsGet200ResponseTripsInnerSerializer implements PrimitiveSerializer<T
           ) as DateTime;
           result.scheduledAt = valueDes;
           break;
+        case r'currentStopSeq':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType.nullable(int),
+          ) as int?;
+          if (valueDes == null) continue;
+          result.currentStopSeq = valueDes;
+          break;
+        case r'assignmentChangedAt':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType.nullable(DateTime),
+          ) as DateTime?;
+          if (valueDes == null) continue;
+          result.assignmentChangedAt = valueDes;
+          break;
         case r'createdAt':
           final valueDes = serializers.deserialize(
             value,
@@ -203,7 +237,6 @@ class _$TripsGet200ResponseTripsInnerSerializer implements PrimitiveSerializer<T
     return result.build();
   }
 }
-
 
 class TripsGet200ResponseTripsInnerStatusEnum extends EnumClass {
 

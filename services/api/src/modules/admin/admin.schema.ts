@@ -16,10 +16,16 @@ const longitude = z.number().min(-180).max(180);
 export const createRouteBodySchema = z.object({
   name: z.string().min(1),
   description: z.string().nullable().optional(),
+  /**
+   * Whether drivers may ask to be reassigned here (#232). Omitted -> false, so
+   * a new corridor collects no requests until someone is willing to act on them.
+   */
+  acceptsRequests: z.boolean().optional(),
 });
 export const updateRouteBodySchema = z.object({
   name: z.string().min(1).optional(),
   description: z.string().nullable().optional(),
+  acceptsRequests: z.boolean().optional(),
 });
 
 // --- stops ---

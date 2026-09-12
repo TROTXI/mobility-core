@@ -141,9 +141,13 @@ as "New User" on every driver manifest from then on. It is client-supplied rathe
 than a signed claim, so the server only uses it when creating the account. It can
 never rename an existing user.
 
-`nonce` is the raw value the client hashed into the authorization request. Send it
-and a replayed token is rejected; omit it and the token is still verified for
-signature, issuer, audience and expiry.
+`nonce` is the raw value the client hashed into the authorization request. If the
+ID token carries a `nonce` claim, the request **must** send the value it came
+from or sign-in is refused. That is deliberate: comparing only when both sides
+happened to supply a value made replay protection opt-in for the attacker, since
+anyone holding an intercepted token could simply omit the field. A token Apple
+minted without a nonce is unaffected, and is still verified for signature,
+issuer, audience and expiry.
 
 `authorizationCode` is Apple's one-time code, sent on first authorization. The
 server trades it for a refresh token and stores that against the identity, for
@@ -153,6 +157,68 @@ offering both Sign in with Apple and account deletion, and checks it at review.
 Omit the code and sign-in still works; only revocation is lost. The exchange is
 best effort, so Apple's token endpoint being down delays nothing at the login
 screen.
+
+#### `POST /auth/driver` (#223)
+
+Sign in with an ops-issued **driver code** and a **6-digit PIN**. Drivers are
+issued by an operator rather than self-registering, so social sign-in answers
+nothing here: there is no promise a driver holds a Google account, and ops has to
+be able to hand out credentials at a depot and revoke them the same afternoon.
+
+- **Auth:** none. **Rate limit:** 10/min per IP.
+- **Body:** `{ "driverCode": "DR-B7K9", "pin": "482913", "rememberDevice?": false }`
+- **200:** `{ accessToken, refreshToken, user, driver: { id, fullName }, mustChangePin }`
+- **401** bad code or PIN · **403** suspended · **423** locked (with `Retry-After`) ·
+  **429** · **503** not configured
+
+A wrong code and a wrong PIN answer the **same** 401. Telling them apart would
+enumerate which codes exist, and a driver code is written on depot whiteboards and
+read down phone lines. It is an identifier; the PIN is the credential.
+
+`rememberDevice` picks the refresh lifetime and nothing else. Omitted or false
+gives `DRIVER_SHIFT_TTL_HOURS` (12h) so a shared depot handset does not stay
+signed in past the shift that used it; true gives the usual
+`JWT_REFRESH_TTL_DAYS`.
+
+`mustChangePin` is true while the driver is still on the PIN ops issued, and the
+app sends them straight to the change screen.
+
+The access token is an ordinary one carrying `role: 'driver'`, so every existing
+driver check (`requireRole('driver')`, the assigned-driver rules on the manifest
+and GPS reporting) works unchanged. This is what finally populates the
+`drivers.user_id` that migration `015` left nullable "until driver sign-in lands".
+
+#### `POST /auth/driver/pin`
+
+Replace the PIN. Revokes every other session on the account: a rotation that
+leaves the old sessions alive has not evicted whoever prompted it.
+
+- **Auth:** `Bearer` + role `driver`. **Body:** `{ currentPin, newPin }` → **204**
+- **400** the new PIN is a repeat or a run of digits · **401** current PIN wrong
+
+#### Ops credential lifecycle (admin)
+
+| Endpoint                                        | Does                                                                         |
+| ----------------------------------------------- | ---------------------------------------------------------------------------- |
+| `POST /admin/drivers/:id/credentials`           | Issues a code and one-time PIN, and creates + links the driver's account     |
+| `POST /admin/drivers/:id/credentials/reset-pin` | New one-time PIN (returned with the code), forces a change, revokes sessions |
+| `PATCH /admin/drivers/:id/credentials`          | `{ status?, unlock? }` — suspend, reinstate, or clear a lockout              |
+
+The reset returns the driver code alongside the new PIN, because operations is reading both down a phone line to someone who has lost their slip. The PIN is returned **once** on issue and reset. It is stored only as a keyed
+hash, so a driver who loses it needs a reset, not a lookup. There is no
+self-service reset because `drivers.phone` is nullable and there is therefore no
+verified channel to send one to, which is why the sign-in screen's recovery path
+ends at "call operations".
+
+**Security.** The PIN is HMAC-SHA256 under the server key and compared with
+`timingSafeEqual`, the same construction the daily boarding code uses, with the
+input domain-separated so a value from one table cannot verify against the other.
+Five wrong PINs lock the credential for 15 minutes. That counter lives in
+Postgres rather than the KV store on purpose: the boarding-code budget fails
+**open** because a rider must never be stranded at the kerb, but a credential
+check has to fail **closed**, and a counter in a cache can be cleared by flushing
+it. Keeping it in Postgres also avoids putting the depot's 05:40 behind a second
+piece of infrastructure.
 
 #### `POST /auth/refresh`
 
@@ -167,6 +233,9 @@ Exchange a refresh token for a new pair (**rotates** — the old refresh token i
 
 Revoke a refresh token. Idempotent.
 
+- **Rate limit:** 10/min per IP, like the other credential endpoints. It takes an
+  untrusted token and hits the session store on every call, so unmetered it was a
+  way to make the database work without ever authenticating.
 - **Body:** `{ "refreshToken": "..." }` → **204** (always, even for an unknown token).
 
 #### `GET /me`

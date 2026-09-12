@@ -120,4 +120,3 @@ class _$RoutesIdGeometryGet200ResponsePointsInnerSerializer implements Primitive
   }
 }
 
-

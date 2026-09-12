@@ -5,7 +5,10 @@ class PerformanceInterceptor extends Interceptor {
   final _metrics = <RequestOptions, HttpMetric>{};
 
   @override
-  void onRequest(RequestOptions options, RequestInterceptorHandler handler) async {
+  void onRequest(
+    RequestOptions options,
+    RequestInterceptorHandler handler,
+  ) async {
     final metric = FirebasePerformance.instance.newHttpMetric(
       options.uri.toString(),
       _mapMethod(options.method),
@@ -37,12 +40,18 @@ class PerformanceInterceptor extends Interceptor {
 
   HttpMethod _mapMethod(String method) {
     switch (method.toUpperCase()) {
-      case 'GET': return HttpMethod.Get;
-      case 'POST': return HttpMethod.Post;
-      case 'PUT': return HttpMethod.Put;
-      case 'DELETE': return HttpMethod.Delete;
-      case 'PATCH': return HttpMethod.Patch;
-      default: return HttpMethod.Get;
+      case 'GET':
+        return HttpMethod.Get;
+      case 'POST':
+        return HttpMethod.Post;
+      case 'PUT':
+        return HttpMethod.Put;
+      case 'DELETE':
+        return HttpMethod.Delete;
+      case 'PATCH':
+        return HttpMethod.Patch;
+      default:
+        return HttpMethod.Get;
     }
   }
 }

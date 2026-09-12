@@ -11,12 +11,15 @@ class _$AdminRoutesPostRequest extends AdminRoutesPostRequest {
   final String name;
   @override
   final String? description;
+  @override
+  final bool? acceptsRequests;
 
   factory _$AdminRoutesPostRequest(
           [void Function(AdminRoutesPostRequestBuilder)? updates]) =>
       (AdminRoutesPostRequestBuilder()..update(updates))._build();
 
-  _$AdminRoutesPostRequest._({required this.name, this.description})
+  _$AdminRoutesPostRequest._(
+      {required this.name, this.description, this.acceptsRequests})
       : super._();
   @override
   AdminRoutesPostRequest rebuild(
@@ -32,7 +35,8 @@ class _$AdminRoutesPostRequest extends AdminRoutesPostRequest {
     if (identical(other, this)) return true;
     return other is AdminRoutesPostRequest &&
         name == other.name &&
-        description == other.description;
+        description == other.description &&
+        acceptsRequests == other.acceptsRequests;
   }
 
   @override
@@ -40,6 +44,7 @@ class _$AdminRoutesPostRequest extends AdminRoutesPostRequest {
     var _$hash = 0;
     _$hash = $jc(_$hash, name.hashCode);
     _$hash = $jc(_$hash, description.hashCode);
+    _$hash = $jc(_$hash, acceptsRequests.hashCode);
     _$hash = $jf(_$hash);
     return _$hash;
   }
@@ -48,7 +53,8 @@ class _$AdminRoutesPostRequest extends AdminRoutesPostRequest {
   String toString() {
     return (newBuiltValueToStringHelper(r'AdminRoutesPostRequest')
           ..add('name', name)
-          ..add('description', description))
+          ..add('description', description)
+          ..add('acceptsRequests', acceptsRequests))
         .toString();
   }
 }
@@ -65,6 +71,11 @@ class AdminRoutesPostRequestBuilder
   String? get description => _$this._description;
   set description(String? description) => _$this._description = description;
 
+  bool? _acceptsRequests;
+  bool? get acceptsRequests => _$this._acceptsRequests;
+  set acceptsRequests(bool? acceptsRequests) =>
+      _$this._acceptsRequests = acceptsRequests;
+
   AdminRoutesPostRequestBuilder() {
     AdminRoutesPostRequest._defaults(this);
   }
@@ -74,6 +85,7 @@ class AdminRoutesPostRequestBuilder
     if ($v != null) {
       _name = $v.name;
       _description = $v.description;
+      _acceptsRequests = $v.acceptsRequests;
       _$v = null;
     }
     return this;
@@ -98,6 +110,7 @@ class AdminRoutesPostRequestBuilder
           name: BuiltValueNullFieldError.checkNotNull(
               name, r'AdminRoutesPostRequest', 'name'),
           description: description,
+          acceptsRequests: acceptsRequests,
         );
     replace(_$result);
     return _$result;
