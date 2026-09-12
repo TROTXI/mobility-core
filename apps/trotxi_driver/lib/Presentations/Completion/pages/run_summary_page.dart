@@ -45,7 +45,8 @@ class _RunSummaryPageState extends State<RunSummaryPage> {
   @override
   Widget build(BuildContext context) {
     final colors = context.driverColors;
-    final run = context.watch<RunController>().detail.valueOrNull?.run;
+    final detail = context.watch<RunController>().detail.valueOrNull;
+    final run = detail?.run;
     final summary = _summary;
 
     return Scaffold(
@@ -57,22 +58,70 @@ class _RunSummaryPageState extends State<RunSummaryPage> {
         child: ListView(
           padding: const EdgeInsets.all(AppSpacing.space20),
           children: [
-            Icon(Icons.check_circle, size: 64, color: colors.success),
-            const SizedBox(height: AppSpacing.space16),
             Text(
               'Trip completed',
-              textAlign: TextAlign.center,
-              style: AppTypography.heading2.copyWith(color: colors.textPrimary),
-            ),
-            if (run != null) ...[
-              const SizedBox(height: AppSpacing.space4),
-              Text(
-                '${CorridorTime.hhmm(run.scheduledAt)}  ${run.routeName}',
-                textAlign: TextAlign.center,
-                style: AppTypography.body.copyWith(color: colors.textSecondary),
+              style: AppTypography.heading3.copyWith(
+                fontWeight: FontWeight.w700,
+                color: colors.textPrimary,
               ),
-            ],
-            const SizedBox(height: AppSpacing.space32),
+            ),
+            const SizedBox(height: AppSpacing.space4),
+            Text(
+              run == null
+                  ? 'Saved to today'
+                  : '${CorridorTime.hhmm(run.scheduledAt)} ${run.routeName} · '
+                        'saved to today',
+              style: AppTypography.screenContext.copyWith(
+                color: colors.textSecondary,
+              ),
+            ),
+            const SizedBox(height: AppSpacing.space14),
+
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(AppSpacing.space16),
+              decoration: BoxDecoration(
+                color: colors.surfaceStrong,
+                borderRadius: AppRadii.circular(AppRadii.hero),
+                border: Border.all(color: colors.border),
+              ),
+              child: Column(
+                children: [
+                  Container(
+                    width: 72,
+                    height: 72,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: colors.success,
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      Icons.check,
+                      size: 36,
+                      color: colors.textInverse,
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.space10),
+                  Text(
+                    'Run closed',
+                    textAlign: TextAlign.center,
+                    style: AppTypography.title.copyWith(
+                      fontWeight: FontWeight.w700,
+                      color: colors.textPrimary,
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.space4),
+                  Text(
+                    'Boarding is closed and the final position is saved.',
+                    textAlign: TextAlign.center,
+                    style: AppTypography.screenContext.copyWith(
+                      color: colors.textSecondary,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: AppSpacing.space14),
 
             if (_error != null)
               _Note(
@@ -83,37 +132,55 @@ class _RunSummaryPageState extends State<RunSummaryPage> {
             else if (summary == null)
               const Center(child: CircularProgressIndicator())
             else ...[
-              _Stat(
-                label: 'Boarded',
-                value: '${summary.boarded}',
-                colors: colors,
+              // The file's 2x2 grid. Four figures a driver reads at a glance
+              // instead of four rows they read one at a time.
+              Row(
+                children: [
+                  _Metric(
+                    value: summary.duration == null
+                        ? '—'
+                        : _minutes(summary.duration!),
+                    label: 'Duration',
+                  ),
+                  const SizedBox(width: AppSpacing.space12),
+                  _Metric(value: _stops(detail), label: 'Stops completed'),
+                ],
               ),
-              _Stat(
-                label: 'Not boarded',
-                value: '${summary.notBoarded}',
-                colors: colors,
+              const SizedBox(height: AppSpacing.space12),
+              Row(
+                children: [
+                  _Metric(
+                    value: '${summary.boarded}',
+                    label: 'Passengers boarded',
+                  ),
+                  const SizedBox(width: AppSpacing.space12),
+                  // "Not boarded", not "No-shows", which is what the file
+                  // prints. A no-show is a mark a driver makes and the cutoff
+                  // settles; nothing has been deducted for these riders, and
+                  // calling them no-shows here would report a charge that has
+                  // not happened.
+                  _Metric(value: '${summary.notBoarded}', label: 'Not boarded'),
+                ],
               ),
-              if (summary.duration != null)
-                _Stat(
-                  label: 'Time on the road',
-                  value: _minutes(summary.duration!),
-                  colors: colors,
-                ),
+              const SizedBox(height: AppSpacing.space12),
               if (summary.boarded > 0)
-                _Stat(
-                  label: 'Boarded by',
-                  value: '${summary.byQr} scanned, ${summary.byPin} by code',
+                _Record(
+                  heading: 'Boarded by',
+                  value: '${summary.byQr} scanned · ${summary.byPin} by code',
+                  note:
+                      'Riders who never boarded stay on the manifest as not '
+                      'boarded, and nothing has been deducted for them. The '
+                      'cutoff settles any you did not mark as a no-show.',
+                )
+              else
+                _Note(
+                  text:
+                      'Riders who never boarded stay on the manifest as not '
+                      'boarded, and nothing has been deducted for them. The '
+                      'cutoff settles any you did not mark as a no-show.',
+                  tone: colors.border,
                   colors: colors,
                 ),
-              const SizedBox(height: AppSpacing.space16),
-              _Note(
-                text:
-                    'Riders who never boarded stay on the manifest as not '
-                    'boarded, and nothing has been deducted for them. The '
-                    'cutoff settles any you did not mark as a no-show.',
-                tone: colors.border,
-                colors: colors,
-              ),
             ],
 
             const SizedBox(height: AppSpacing.space32),
@@ -131,6 +198,15 @@ class _RunSummaryPageState extends State<RunSummaryPage> {
     );
   }
 
+  /// "11 / 11", or what is knowable when the driver reported no arrivals.
+  ///
+  /// @param detail - the run and its stops.
+  /// @returns the grid's stop figure.
+  static String _stops(RunDetail? detail) {
+    if (detail == null || detail.stops.isEmpty) return '—';
+    return '${detail.currentStopSeq ?? 0} / ${detail.stops.length}';
+  }
+
   /// A duration as whole minutes, which is the only precision a driver cares
   /// about when reading how long a run took.
   ///
@@ -140,34 +216,6 @@ class _RunSummaryPageState extends State<RunSummaryPage> {
     final total = duration.inMinutes;
     if (total < 60) return '$total min';
     return '${total ~/ 60}h ${total % 60}m';
-  }
-}
-
-class _Stat extends StatelessWidget {
-  const _Stat({required this.label, required this.value, required this.colors});
-
-  final String label;
-  final String value;
-  final AppColors colors;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: AppSpacing.space12),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(
-            label,
-            style: AppTypography.body.copyWith(color: colors.textSecondary),
-          ),
-          Text(
-            value,
-            style: AppTypography.title.copyWith(color: colors.textPrimary),
-          ),
-        ],
-      ),
-    );
   }
 }
 
@@ -190,6 +238,113 @@ class _Note extends StatelessWidget {
       child: Text(
         text,
         style: AppTypography.bodySmall.copyWith(color: colors.textSecondary),
+      ),
+    );
+  }
+}
+
+/// One figure in the completion grid.
+class _Metric extends StatelessWidget {
+  const _Metric({required this.value, required this.label});
+
+  final String value;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.driverColors;
+    return Expanded(
+      child: Container(
+        height: 66,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: colors.field,
+          borderRadius: AppRadii.circular(AppRadii.lg),
+          border: Border.all(color: colors.border),
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(
+              value,
+              style: AppTypography.title.copyWith(
+                fontSize: 19,
+                fontWeight: FontWeight.w700,
+                color: colors.textPrimary,
+              ),
+            ),
+            Text(
+              label,
+              textAlign: TextAlign.center,
+              style: AppTypography.tileCaption.copyWith(
+                fontSize: 11,
+                color: colors.textSecondary,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// The trip-record strip under the grid: one fact, and what it means.
+class _Record extends StatelessWidget {
+  const _Record({
+    required this.heading,
+    required this.value,
+    required this.note,
+  });
+
+  final String heading;
+  final String value;
+  final String note;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.driverColors;
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(AppSpacing.space12),
+      decoration: BoxDecoration(
+        color: colors.field,
+        borderRadius: AppRadii.circular(AppRadii.lg),
+        border: Border.all(color: colors.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Text(
+                heading,
+                style: AppTypography.fieldLabel.copyWith(
+                  color: colors.textPrimary,
+                ),
+              ),
+              const SizedBox(width: AppSpacing.space12),
+              Expanded(
+                child: Text(
+                  value,
+                  textAlign: TextAlign.right,
+                  style: AppTypography.tileLabel.copyWith(
+                    fontSize: 11,
+                    letterSpacing: 0,
+                    color: colors.textPrimary,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.space4),
+          Text(
+            note,
+            style: AppTypography.tileCaption.copyWith(
+              fontSize: 11,
+              color: colors.textMuted,
+            ),
+          ),
+        ],
       ),
     );
   }
