@@ -249,6 +249,75 @@ describe('marking one rider a no-show (#227)', () => {
   });
 });
 
+describe('a reservation that is not a seat (#227)', () => {
+  it('will not board a rider who declined', async () => {
+    const { app, reservations, entitlements } = await setup();
+    const declined = await reservations.respond({
+      userId: RIDER,
+      travelDate: today(),
+      direction: 'evening',
+      travelling: false,
+    });
+
+    const res = await app.inject({
+      method: 'POST',
+      url: '/boarding/board',
+      headers: await asDriver(ASSIGNED_USER),
+      payload: { reservationId: declined.id },
+    });
+
+    // The manifest never offers this row, but the endpoint takes an id — and
+    // boarding it would seat someone in a place capacity had given away.
+    expect(res.json()).toMatchObject({ reason: 'not_boardable', deducted: false });
+    expect((await reservations.findById(declined.id))?.status).toBe('declined');
+    expect(await ridesLeft(entitlements)).toBe(STARTING_RIDES);
+  });
+
+  it('will not charge a no-show to a rider who declined', async () => {
+    const { app, reservations, entitlements } = await setup();
+    const declined = await reservations.respond({
+      userId: RIDER,
+      travelDate: today(),
+      direction: 'evening',
+      travelling: false,
+    });
+
+    const res = await app.inject({
+      method: 'POST',
+      url: '/boarding/no-show',
+      headers: await asDriver(ASSIGNED_USER),
+      payload: { reservationId: declined.id },
+    });
+
+    // The group that must never be charged: they said they were not travelling.
+    expect(res.json()).toMatchObject({ reason: 'not_boardable', deducted: false });
+    expect((await reservations.findById(declined.id))?.status).toBe('declined');
+    expect(await ridesLeft(entitlements)).toBe(STARTING_RIDES);
+  });
+
+  it('will not act on a seat that was never confirmed', async () => {
+    const { app, trip, reservations, entitlements } = await setup();
+    const pending = await reservations.createPending({
+      userId: RIDER,
+      tripId: trip.id,
+      travelDate: today(),
+      direction: 'evening',
+    });
+
+    for (const url of ['/boarding/board', '/boarding/no-show']) {
+      const res = await app.inject({
+        method: 'POST',
+        url,
+        headers: await asDriver(ASSIGNED_USER),
+        payload: { reservationId: pending.id },
+      });
+      expect(res.json()).toMatchObject({ reason: 'not_boardable', deducted: false });
+    }
+    expect((await reservations.findById(pending.id))?.status).toBe('pending');
+    expect(await ridesLeft(entitlements)).toBe(STARTING_RIDES);
+  });
+});
+
 describe('the manifest after a no-show (#227, #230)', () => {
   it('keeps the rider visible, flagged, so the driver can undo it', async () => {
     const { app, trip, reservationId } = await setup();

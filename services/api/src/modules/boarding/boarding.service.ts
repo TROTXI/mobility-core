@@ -68,16 +68,31 @@ export interface ManifestActionInput {
 /** The outcome of boarding a rider straight off the manifest. */
 export interface BoardRiderResult {
   riderId: string | null;
-  reason: 'ok' | 'not_found' | 'already_boarded' | 'forbidden';
+  reason: 'ok' | 'not_found' | 'already_boarded' | 'not_boardable' | 'forbidden';
   deducted: boolean;
 }
 
 /** The outcome of marking one rider a no-show. */
 export interface MarkNoShowResult {
   riderId: string | null;
-  reason: 'ok' | 'not_found' | 'already_boarded' | 'already_no_show' | 'forbidden';
+  reason:
+    'ok' | 'not_found' | 'already_boarded' | 'already_no_show' | 'not_boardable' | 'forbidden';
   deducted: boolean;
 }
+
+/**
+ * The reservation states a driver may act on from the manifest.
+ *
+ * Both endpoints take a reservation id rather than something the manifest
+ * handed back, so neither can assume the row is one the manifest would have
+ * shown. Without this, an assigned driver could board a seat that was
+ * `declined` or `released` — overfilling a van whose seat had been given up —
+ * or debit a ride from a rider who correctly declined to travel.
+ *
+ * `no_show` is included because boarding one is the documented way to undo a
+ * mark; `markNoShow` narrows further to `reserved` on its own.
+ */
+const MANIFEST_ACTIONABLE = ['reserved', 'boarded', 'no_show'] as const;
 
 /**
  * Wrong codes tolerated per reservation per window before the rest are refused
@@ -286,6 +301,13 @@ export class BoardingService {
       );
       return { riderId: reservation.userId, reason: 'already_boarded', deducted: false };
     }
+    // A seat that was declined, released or never confirmed is not a seat. The
+    // manifest never offers one, but this endpoint takes an id, and boarding it
+    // would both charge someone who said they were not travelling and put a
+    // rider in a place the capacity check had already given away.
+    if (!MANIFEST_ACTIONABLE.includes(reservation.status as (typeof MANIFEST_ACTIONABLE)[number])) {
+      return { riderId: reservation.userId, reason: 'not_boardable', deducted: false };
+    }
 
     let deducted = false;
     try {
@@ -329,6 +351,12 @@ export class BoardingService {
     }
     if (reservation.status === 'no_show') {
       return { riderId: reservation.userId, reason: 'already_no_show', deducted: false };
+    }
+    // Only a confirmed seat can fail to turn up. Marking anything else would
+    // deduct a ride from a rider who declined, was never seated, or had the run
+    // cancelled under them — the one group who must never be charged.
+    if (reservation.status !== 'reserved') {
+      return { riderId: reservation.userId, reason: 'not_boardable', deducted: false };
     }
 
     // Debit BEFORE marking, the same order the cutoff sweep uses: a run that

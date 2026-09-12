@@ -88,7 +88,8 @@ export const boardRiderBodySchema = z.object({
 
 export const boardRiderResponseSchema = z.object({
   riderId: z.string().uuid().nullable(),
-  reason: z.enum(['ok', 'not_found', 'already_boarded', 'forbidden']),
+  /** `not_boardable`: the seat was declined, released or never confirmed. */
+  reason: z.enum(['ok', 'not_found', 'already_boarded', 'not_boardable', 'forbidden']),
   deducted: z.boolean(),
 });
 
@@ -99,7 +100,14 @@ export const markNoShowBodySchema = z.object({
 
 export const markNoShowResponseSchema = z.object({
   riderId: z.string().uuid().nullable(),
-  reason: z.enum(['ok', 'not_found', 'already_boarded', 'already_no_show', 'forbidden']),
+  reason: z.enum([
+    'ok',
+    'not_found',
+    'already_boarded',
+    'already_no_show',
+    'not_boardable',
+    'forbidden',
+  ]),
   /** True when this call consumed the seat's ride. */
   deducted: z.boolean(),
 });
