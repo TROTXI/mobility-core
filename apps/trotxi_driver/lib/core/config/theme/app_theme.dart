@@ -119,33 +119,40 @@ abstract final class AppTheme {
           minimumSize: const Size(0, minTapTarget),
         ),
       ),
+      // The auth frames draw the field precisely: 58 high, 18 radius, a 1px
+      // border that thickens to 2 in danger, and a fill that is raised in
+      // light but sunken in dark. Set here rather than per screen so the one
+      // field style reaches every screen that has ever used a TextField.
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: colors.surface,
-        hintStyle: AppTypography.body.copyWith(color: colors.textSecondary),
-        labelStyle: AppTypography.label.copyWith(color: colors.textSecondary),
+        fillColor: colors.field,
+        constraints: const BoxConstraints(minHeight: 58),
+        hintStyle: AppTypography.fieldText.copyWith(color: colors.textMuted),
+        labelStyle: AppTypography.fieldLabel.copyWith(
+          color: colors.textPrimary,
+        ),
         contentPadding: const EdgeInsets.symmetric(
           horizontal: AppSpacing.space16,
-          vertical: AppSpacing.space16,
+          vertical: 18,
         ),
         border: OutlineInputBorder(
-          borderRadius: AppRadii.circular(AppRadii.md),
+          borderRadius: AppRadii.circular(AppRadii.field),
           borderSide: BorderSide(color: colors.border),
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: AppRadii.circular(AppRadii.md),
+          borderRadius: AppRadii.circular(AppRadii.field),
           borderSide: BorderSide(color: colors.border),
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: AppRadii.circular(AppRadii.md),
+          borderRadius: AppRadii.circular(AppRadii.field),
           borderSide: BorderSide(color: colors.action, width: 2),
         ),
         errorBorder: OutlineInputBorder(
-          borderRadius: AppRadii.circular(AppRadii.md),
-          borderSide: BorderSide(color: colors.danger),
+          borderRadius: AppRadii.circular(AppRadii.field),
+          borderSide: BorderSide(color: colors.danger, width: 2),
         ),
         focusedErrorBorder: OutlineInputBorder(
-          borderRadius: AppRadii.circular(AppRadii.md),
+          borderRadius: AppRadii.circular(AppRadii.field),
           borderSide: BorderSide(color: colors.danger, width: 2),
         ),
       ),

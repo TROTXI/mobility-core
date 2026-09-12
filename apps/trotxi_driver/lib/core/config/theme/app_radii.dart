@@ -13,6 +13,14 @@ abstract final class AppRadii {
   /// destructive are rounded rectangles.
   static const double button = 14;
 
+  /// An input field on the auth frames. 18 on a 58-high field, which is not
+  /// the 12 the rest of the app used before the file was read.
+  static const double field = 18;
+
+  /// The quiet note card that carries a single explanatory line — the operator
+  /// linking note under sign-in. 20 in the file.
+  static const double note = 20;
+
   /// Status chips, and the GPS indicator's own corner is 20.
   static const double chip = 16;
   static const double indicator = 20;

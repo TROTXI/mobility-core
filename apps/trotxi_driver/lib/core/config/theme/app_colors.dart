@@ -37,6 +37,12 @@ abstract final class AppPrimitiveColors {
   /// Hairlines. Previously borders were drawn in `paperRaised`, which is the
   /// surface colour — so every border in light mode was invisible against the
   /// thing it was meant to bound.
+  /// The placeholder and the security note under the sign-in button. Lighter
+  /// than [ink500] without dropping to a tint of the border, and the only pair
+  /// on the auth frames that no existing role covered.
+  static const slate500 = Color(0xFF6B7C8D); // light muted
+  static const slate400 = Color(0xFF8795A3); // dark muted
+
   static const line = Color(0xFFD4DEE7);
   static const lineDark = Color(0xFF2D4053);
   static const mist = Color(0xFFBAC5D0); // dark text secondary
@@ -72,10 +78,12 @@ class AppColors extends ThemeExtension<AppColors> {
     required this.surfaceElevated,
     required this.surfaceSelected,
     required this.surfaceStrong,
+    required this.field,
     required this.border,
     required this.borderStrong,
     required this.textPrimary,
     required this.textSecondary,
+    required this.textMuted,
     required this.textInverse,
     required this.action,
     required this.onAction,
@@ -105,11 +113,20 @@ class AppColors extends ThemeExtension<AppColors> {
   /// card, and the selected pill in the phone nav.
   final Color surfaceStrong;
 
+  /// An input's ground, and the quiet note cards that share its fill. Its own
+  /// role rather than a surface: light raises the field off a white card, dark
+  /// sinks it into the page, so no single existing token is correct in both.
+  final Color field;
+
   final Color border;
   final Color borderStrong;
 
   final Color textPrimary;
   final Color textSecondary;
+
+  /// Text that must recede without becoming decoration: a field's placeholder,
+  /// and the line telling a driver their PIN is never shown to operations.
+  final Color textMuted;
 
   /// Text on top of [action].
   final Color textInverse;
@@ -139,10 +156,12 @@ class AppColors extends ThemeExtension<AppColors> {
     surfaceElevated: AppPrimitiveColors.white,
     surfaceSelected: AppPrimitiveColors.paperRaised,
     surfaceStrong: AppPrimitiveColors.paperStrong,
+    field: AppPrimitiveColors.paperRaised,
     border: AppPrimitiveColors.line,
     borderStrong: AppPrimitiveColors.mist,
     textPrimary: AppPrimitiveColors.ink700,
     textSecondary: AppPrimitiveColors.ink500,
+    textMuted: AppPrimitiveColors.slate500,
     // The file's contrast rule, verbatim: "muted off-blue CTAs use white text".
     textInverse: AppPrimitiveColors.white,
     action: AppPrimitiveColors.action,
@@ -165,10 +184,12 @@ class AppColors extends ThemeExtension<AppColors> {
     surfaceElevated: AppPrimitiveColors.ink800,
     surfaceSelected: AppPrimitiveColors.ink700,
     surfaceStrong: AppPrimitiveColors.ink700,
+    field: AppPrimitiveColors.ink800,
     border: AppPrimitiveColors.lineDark,
     borderStrong: AppPrimitiveColors.ink600,
     textPrimary: AppPrimitiveColors.frost,
     textSecondary: AppPrimitiveColors.mist,
+    textMuted: AppPrimitiveColors.slate400,
     textInverse: AppPrimitiveColors.ink900,
     action: AppPrimitiveColors.actionDark,
     // Blue-black on the lighter off-blue, the other half of the contrast rule.
@@ -189,10 +210,12 @@ class AppColors extends ThemeExtension<AppColors> {
     Color? surfaceElevated,
     Color? surfaceSelected,
     Color? surfaceStrong,
+    Color? field,
     Color? border,
     Color? borderStrong,
     Color? textPrimary,
     Color? textSecondary,
+    Color? textMuted,
     Color? textInverse,
     Color? action,
     Color? onAction,
@@ -210,10 +233,12 @@ class AppColors extends ThemeExtension<AppColors> {
       surfaceElevated: surfaceElevated ?? this.surfaceElevated,
       surfaceSelected: surfaceSelected ?? this.surfaceSelected,
       surfaceStrong: surfaceStrong ?? this.surfaceStrong,
+      field: field ?? this.field,
       border: border ?? this.border,
       borderStrong: borderStrong ?? this.borderStrong,
       textPrimary: textPrimary ?? this.textPrimary,
       textSecondary: textSecondary ?? this.textSecondary,
+      textMuted: textMuted ?? this.textMuted,
       textInverse: textInverse ?? this.textInverse,
       action: action ?? this.action,
       onAction: onAction ?? this.onAction,
@@ -236,10 +261,12 @@ class AppColors extends ThemeExtension<AppColors> {
       surfaceElevated: Color.lerp(surfaceElevated, other.surfaceElevated, t)!,
       surfaceSelected: Color.lerp(surfaceSelected, other.surfaceSelected, t)!,
       surfaceStrong: Color.lerp(surfaceStrong, other.surfaceStrong, t)!,
+      field: Color.lerp(field, other.field, t)!,
       border: Color.lerp(border, other.border, t)!,
       borderStrong: Color.lerp(borderStrong, other.borderStrong, t)!,
       textPrimary: Color.lerp(textPrimary, other.textPrimary, t)!,
       textSecondary: Color.lerp(textSecondary, other.textSecondary, t)!,
+      textMuted: Color.lerp(textMuted, other.textMuted, t)!,
       textInverse: Color.lerp(textInverse, other.textInverse, t)!,
       action: Color.lerp(action, other.action, t)!,
       onAction: Color.lerp(onAction, other.onAction, t)!,

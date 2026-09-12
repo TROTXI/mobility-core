@@ -168,4 +168,28 @@ void main() {
     await tester.pump();
     expect(find.text('Check your PIN'), findsNothing);
   });
+
+  testWidgets('a wrong PIN keeps the code and names the digit count', (
+    tester,
+  ) async {
+    // The file states the rule as "retain the entered Driver ID, explain the
+    // next attempt and provide a visible recovery path". All three, on the
+    // screen the driver is already looking at rather than a new one.
+    final auth = _StubAuth(
+      onSignIn: () => Future.error(const InvalidCredentialsException()),
+    );
+    await _pump(tester, auth);
+    await _fillForm(tester, code: 'DR-B7K9');
+    await tester.pumpAndSettle();
+
+    expect(
+      tester.widget<TextField>(find.byType(TextField).first).controller?.text,
+      'DR-B7K9',
+    );
+    // Six, because that is what the API accepts. The frames label the field
+    // "4-digit", which describes the rider's boarding code, not this.
+    expect(find.textContaining('Check the 6 digits'), findsOneWidget);
+    expect(find.text("Can't sign in?"), findsOneWidget);
+    expect(find.text('Try again'), findsOneWidget);
+  });
 }

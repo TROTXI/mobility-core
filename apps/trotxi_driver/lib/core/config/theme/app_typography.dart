@@ -120,6 +120,58 @@ abstract final class AppTypography {
     fontFeatures: [FontFeature.tabularFigures()],
   );
 
+  /// The centred title on a full-screen auth or readiness frame. 26/600 in the
+  /// file, deliberately smaller than [heading1]: these screens lead with the
+  /// wordmark, so the title sits under a logo rather than carrying the page.
+  static const screenTitle = TextStyle(
+    fontFamily: fontFamily,
+    fontSize: 26,
+    fontWeight: FontWeight.w600,
+    height: 39 / 26,
+  );
+
+  /// The one explanatory line under [screenTitle].
+  static const screenContext = TextStyle(
+    fontFamily: fontFamily,
+    fontSize: 12,
+    fontWeight: FontWeight.w400,
+    height: 18 / 12,
+  );
+
+  /// The label above an input, and the inline links at this size. 12/600.
+  static const fieldLabel = TextStyle(
+    fontFamily: fontFamily,
+    fontSize: 12,
+    fontWeight: FontWeight.w600,
+    height: 18 / 12,
+  );
+
+  /// What a driver types, and the placeholder before they do. The file draws
+  /// the placeholder at 400 and the entered value at 500.
+  static const fieldText = TextStyle(
+    fontFamily: fontFamily,
+    fontSize: 14,
+    fontWeight: FontWeight.w400,
+    height: 21 / 14,
+  );
+
+  /// The label on the primary action. 16/700, heavier than [label].
+  static const actionLabel = TextStyle(
+    fontFamily: fontFamily,
+    fontSize: 16,
+    fontWeight: FontWeight.w700,
+    height: 24 / 16,
+  );
+
+  /// The smallest type in the app: a note card's body, the security line under
+  /// sign-in, and an inline field error. 10/400.
+  static const footnote = TextStyle(
+    fontFamily: fontFamily,
+    fontSize: 10,
+    fontWeight: FontWeight.w400,
+    height: 15 / 10,
+  );
+
   static const bodyLarge = TextStyle(
     fontFamily: fontFamily,
     fontSize: 18,
