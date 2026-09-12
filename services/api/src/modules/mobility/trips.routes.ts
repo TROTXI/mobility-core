@@ -15,6 +15,8 @@ import {
   riderTripResponseSchema,
   tripListResponseSchema,
 } from './mobility.schema';
+import type { DriverRepository } from './driver.repository';
+import type { RouteStopRepository } from './route-stop.repository';
 import type { Trip, TripRepository } from './trip.repository';
 import type { VehicleRepository } from './vehicle.repository';
 
@@ -26,6 +28,8 @@ function toResponse(t: Trip): {
   assignedDriverId: string | null;
   status: Trip['status'];
   scheduledAt: Date;
+  currentStopSeq: number | null;
+  assignmentChangedAt: Date | null;
   createdAt: Date;
 } {
   return {
@@ -35,6 +39,8 @@ function toResponse(t: Trip): {
     assignedDriverId: t.assignedDriverId,
     status: t.status,
     scheduledAt: t.scheduledAt,
+    currentStopSeq: t.currentStopSeq,
+    assignmentChangedAt: t.assignmentChangedAt,
     createdAt: t.createdAt,
   };
 }
@@ -46,11 +52,20 @@ function toResponse(t: Trip): {
  * @param opts - route dependencies.
  * @param opts.trips - the trip repository (503 when absent).
  * @param opts.vehicles - vehicles, for the rider-facing van details (#205).
+ * @param opts.routeStops - the route's stops, for the driver's stop counter (#230).
+ * @param opts.drivers - resolves the caller, so seat capacity goes only to the
+ *   trip's assigned driver (#230) and the rider shape stays as #205 left it.
  * @param opts.rateLimit - rate-limit config (applied per user).
  */
 export async function tripRoutes(
   app: FastifyInstance,
-  opts: { trips?: TripRepository; vehicles?: VehicleRepository; rateLimit: RateLimitConfig },
+  opts: {
+    trips?: TripRepository;
+    vehicles?: VehicleRepository;
+    routeStops?: RouteStopRepository;
+    drivers?: DriverRepository;
+    rateLimit: RateLimitConfig;
+  },
 ): Promise<void> {
   const r = app.withTypeProvider<ZodTypeProvider>();
   const UNAVAILABLE = { error: 'unavailable', message: 'Trips are not configured' };
@@ -105,9 +120,23 @@ export async function tripRoutes(
       }
 
       // Only what a rider needs to pick the van out at the kerb (#205). The
-      // internal label, seat count and vehicle id stay on the fleet record.
+      // internal label and the vehicle id stay on the fleet record.
       const vehicle =
         trip.vehicleId && opts.vehicles ? await opts.vehicles.findById(trip.vehicleId) : null;
+
+      // The seat count is the one field that is not rider-facing. A driver's
+      // active-trip frame counts boarded riders against it (#230), so the
+      // trip's own driver gets it and nobody else does.
+      const driver =
+        opts.drivers && trip.assignedDriverId
+          ? await opts.drivers.findByUserId(request.user!.id)
+          : null;
+      const isAssignedDriver = driver !== null && driver.id === trip.assignedDriverId;
+
+      // The "of 11" in the driver's stop counter. Zero when route stops are
+      // unwired or none are attached, which reads as "unknown" rather than
+      // inventing a number the app would then draw.
+      const stops = opts.routeStops ? await opts.routeStops.findByRoute(trip.routeId) : [];
 
       return {
         ...toResponse(trip),
@@ -117,8 +146,14 @@ export async function tripRoutes(
           trip.startedAt && trip.completedAt
             ? Math.round((trip.completedAt.getTime() - trip.startedAt.getTime()) / 1000)
             : null,
+        stopCount: stops.length,
         vehicle: vehicle
-          ? { registration: vehicle.registration, make: vehicle.make, colour: vehicle.colour }
+          ? {
+              registration: vehicle.registration,
+              make: vehicle.make,
+              colour: vehicle.colour,
+              capacity: isAssignedDriver ? vehicle.capacity : null,
+            }
           : null,
       };
     },

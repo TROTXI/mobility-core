@@ -8,6 +8,7 @@ import { z } from 'zod';
 import { errorResponseSchema } from '../../lib/schemas';
 import type { RateLimitConfig } from '../ratelimit/ratelimit.plugin';
 import type { ReservationRepository } from '../reservations/reservation.repository';
+import type { DriverNotifier } from '../notifications/driver-notifier.service';
 import type { DriverRepository } from '../mobility/driver.repository';
 import type { RouteStopRepository } from '../mobility/route-stop.repository';
 import type { RouteRepository } from '../mobility/route.repository';
@@ -78,6 +79,12 @@ export interface AdminDeps {
   trips?: TripRepository;
   /** For the role grant (PATCH /admin/users/:id/role) + driver user_id checks. */
   users?: UserRepository;
+  /**
+   * Tells a driver their run moved (#233). Absent -> the write still happens and
+   * `assignment_changed_at` is still stamped, so the app finds out on its next
+   * read; only the push is missing.
+   */
+  driverNotifier?: DriverNotifier;
   /** Feature flags + force-update floor (#27), managed under /admin/flags + /admin/min-versions. */
   featureFlags?: FeatureFlagRepository;
   minVersions?: MinVersionRepository;
@@ -463,11 +470,23 @@ export async function adminRoutes(app: FastifyInstance, opts: AdminDeps): Promis
     },
     async (request, reply) => {
       if (!opts.trips) return reply.code(503).send(UNAVAILABLE);
+      const before = await opts.trips.findById(request.params.id);
+      if (!before) return reply.code(404).send(notFound('Trip not found'));
+
+      // Retiming a run is an assignment change as far as the driver is
+      // concerned — it is the field they plan their morning around. A status
+      // flip is not, so the stamp is conditional on the time actually moving.
+      const retimed =
+        request.body.scheduledAt !== undefined &&
+        new Date(request.body.scheduledAt).getTime() !== before.scheduledAt.getTime();
+
       const updated = await opts.trips.update(request.params.id, {
         status: request.body.status,
         scheduledAt: request.body.scheduledAt ? new Date(request.body.scheduledAt) : undefined,
+        ...(retimed ? { assignmentChangedAt: new Date() } : {}),
       });
       if (!updated) return reply.code(404).send(notFound('Trip not found'));
+      if (retimed) await opts.driverNotifier?.assignmentChanged(before, updated);
       return updated;
     },
   );
@@ -492,6 +511,11 @@ export async function adminRoutes(app: FastifyInstance, opts: AdminDeps): Promis
         return reply.code(503).send(UNAVAILABLE);
       }
       const { vehicleId, assignedDriverId } = request.body;
+      // Read first: the push has to know who is losing the run, not just who is
+      // gaining it, and after the write that is gone.
+      const before = await opts.trips.findById(request.params.id);
+      if (!before) return reply.code(404).send(notFound('Trip not found'));
+
       const vehicle = vehicleId ? await opts.vehicles.findById(vehicleId) : null;
       if (vehicleId && !vehicle) {
         return reply.code(404).send(notFound('Vehicle not found'));
@@ -511,8 +535,16 @@ export async function adminRoutes(app: FastifyInstance, opts: AdminDeps): Promis
           });
         }
       }
-      const updated = await opts.trips.update(request.params.id, { vehicleId, assignedDriverId });
+      const updated = await opts.trips.update(request.params.id, {
+        vehicleId,
+        assignedDriverId,
+        assignmentChangedAt: new Date(),
+      });
       if (!updated) return reply.code(404).send(notFound('Trip not found'));
+      // After the write, and never allowed to fail it: the change is real
+      // whether or not a phone heard about it, and the app reads
+      // assignment_changed_at back regardless.
+      await opts.driverNotifier?.assignmentChanged(before, updated);
       return updated;
     },
   );

@@ -37,9 +37,43 @@ export const mapTilesSchema = z.object({
 });
 
 /**
+ * How to reach operations (#234) — the control room, and the number behind the
+ * design's EMERGENCY HELP control.
+ *
+ * Here rather than in the app bundle for the reason the map styles are here:
+ * depots differ, and a number compiled into a shipped build is worse than none.
+ * A driver at a roadside dialling a line that no longer answers is the precise
+ * failure this exists to prevent, and a change becomes config rather than three
+ * app releases.
+ *
+ * Read before sign-in on purpose. "Can't sign in?" is the screen that needs it
+ * most, because PIN recovery runs through a person — `drivers.phone` is
+ * nullable, so there is no verified channel to send a reset to.
+ *
+ * The configured form (every field optional) as the app and server pass it
+ * around, separate from the response shape above, where absent means `null`.
+ */
+export interface OperationsContact {
+  phone?: string;
+  whatsapp?: string;
+  email?: string;
+  hours?: string;
+}
+
+export const operationsContactSchema = z.object({
+  /** Dialled directly, so E.164 (`+233…`). Null when unconfigured. */
+  phone: z.string().nullable(),
+  /** Often the line that actually gets answered in a depot. */
+  whatsapp: z.string().nullable(),
+  email: z.string().nullable(),
+  /** Free text, e.g. "05:00-22:00 daily". */
+  hours: z.string().nullable(),
+});
+
+/**
  * The launch/session payload: the flag set, the per-platform force-update
- * floor, and the basemap config. A platform with no configured minimum is
- * `null` (no force-update yet).
+ * floor, the basemap config, and how to reach operations. A platform with no
+ * configured minimum is `null` (no force-update yet).
  */
 export const flagsResponseSchema = z.object({
   flags: z.array(publicFlagSchema),
@@ -48,6 +82,7 @@ export const flagsResponseSchema = z.object({
     android: z.string().nullable(),
   }),
   mapTiles: mapTilesSchema,
+  operations: operationsContactSchema,
 });
 
 // --- admin (full rows) ---

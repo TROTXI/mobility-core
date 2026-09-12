@@ -12,8 +12,12 @@ import type { DriverRepository } from '../mobility/driver.repository';
 import type { BoardingService } from './boarding.service';
 import type { ManifestService } from './manifest.service';
 import {
+  boardRiderBodySchema,
+  boardRiderResponseSchema,
   manifestQuerySchema,
   manifestResponseSchema,
+  markNoShowBodySchema,
+  markNoShowResponseSchema,
   passResponseSchema,
   resolveNoShowsBodySchema,
   resolveNoShowsResponseSchema,
@@ -125,6 +129,89 @@ export async function boardingRoutes(
       // Not this driver's run. A real status rather than a 200 body, matching
       // the manifest and GPS routes, so the app can tell "wrong code" from
       // "wrong bus" without parsing a reason string.
+      if (result.reason === 'forbidden') {
+        return reply
+          .code(403)
+          .send({ error: 'forbidden', message: 'Not the assigned driver for this trip' });
+      }
+      return result;
+    },
+  );
+
+  // Board a rider straight off the manifest (#227) — the photo-pass path. The
+  // frame's BOARD PASSENGER sits on a rider the driver has already matched to
+  // the photo the SERVER supplied, so there is no code to ask for; the
+  // assigned-driver check is the gate.
+  r.post(
+    '/boarding/board',
+    {
+      schema: {
+        tags: ['boarding'],
+        summary: 'Board a rider identified from the manifest photo (assigned driver only)',
+        description:
+          'The fallback for when a code will not scan or the rider cannot produce one. ' +
+          'Idempotent per reservation, and shares boarding’s ledger key, so a rider ' +
+          'previously marked a no-show is charged once rather than twice.',
+        security: [{ bearerAuth: [] }],
+        body: boardRiderBodySchema,
+        response: {
+          200: boardRiderResponseSchema,
+          401: errorResponseSchema,
+          403: errorResponseSchema,
+        },
+      },
+      preHandler: [
+        app.authenticate,
+        app.rateLimit({ ...opts.rateLimit, by: 'user' }),
+        app.requireRole('driver'),
+      ],
+    },
+    async (request, reply) => {
+      const result = await opts.boardingService.boardRider({
+        reservationId: request.body.reservationId,
+        actedBy: request.user!.id,
+      });
+      if (result.reason === 'forbidden') {
+        return reply
+          .code(403)
+          .send({ error: 'forbidden', message: 'Not the assigned driver for this trip' });
+      }
+      return result;
+    },
+  );
+
+  // Per-rider no-show (#227). The bulk cutoff at /admin/resolve-no-shows stays
+  // as it was; this is the driver at the stop, who is the one who actually
+  // knows. Both share the `board:<reservationId>` ledger key, so a seat is
+  // charged once no matter which of them gets there first.
+  r.post(
+    '/boarding/no-show',
+    {
+      schema: {
+        tags: ['boarding'],
+        summary: 'Mark one rider as not having turned up (assigned driver only)',
+        description:
+          'Deducts the ride now rather than at the cutoff. Reversible by boarding the ' +
+          'rider afterwards — the shared ledger key means that costs nothing extra.',
+        security: [{ bearerAuth: [] }],
+        body: markNoShowBodySchema,
+        response: {
+          200: markNoShowResponseSchema,
+          401: errorResponseSchema,
+          403: errorResponseSchema,
+        },
+      },
+      preHandler: [
+        app.authenticate,
+        app.rateLimit({ ...opts.rateLimit, by: 'user' }),
+        app.requireRole('driver'),
+      ],
+    },
+    async (request, reply) => {
+      const result = await opts.boardingService.markNoShow({
+        reservationId: request.body.reservationId,
+        actedBy: request.user!.id,
+      });
       if (result.reason === 'forbidden') {
         return reply
           .code(403)

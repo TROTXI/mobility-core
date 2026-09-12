@@ -57,6 +57,28 @@ export interface VerifyPinResult {
   deducted: boolean;
 }
 
+/** A driver acting on one rider they picked off the manifest (#227). */
+export interface ManifestActionInput {
+  /** The reservation the driver tapped. */
+  reservationId: string;
+  /** The driver performing it. */
+  actedBy: string;
+}
+
+/** The outcome of boarding a rider straight off the manifest. */
+export interface BoardRiderResult {
+  riderId: string | null;
+  reason: 'ok' | 'not_found' | 'already_boarded' | 'forbidden';
+  deducted: boolean;
+}
+
+/** The outcome of marking one rider a no-show. */
+export interface MarkNoShowResult {
+  riderId: string | null;
+  reason: 'ok' | 'not_found' | 'already_boarded' | 'already_no_show' | 'forbidden';
+  deducted: boolean;
+}
+
 /**
  * Wrong codes tolerated per reservation per window before the rest are refused
  * unread. A driver retyping a smudged code at the kerb needs several goes; a
@@ -227,6 +249,104 @@ export class BoardingService {
     }
     await this.recordScan(reservation.userId, input.scannedBy, reservation.tripId, 'ok', 'pin');
     return { valid: true, riderId: reservation.userId, reason: 'ok', deducted };
+  }
+
+  /**
+   * Board a rider the driver has already identified by face and photo (#227).
+   *
+   * No code is asked for, on purpose. The photo pass exists precisely for the
+   * case where a code will not scan or the rider cannot produce one, and
+   * demanding a code here would defeat the fallback it is. The assigned-driver
+   * check is what stands in its place, and it is the same one `verifyPin` gained
+   * in #221.
+   *
+   * A `no_show` seat can be boarded: a rider who ran up at the next stop should
+   * not be stuck because a driver marked them a minute early. The shared
+   * `board:<id>` key means the ride is charged once either way.
+   *
+   * @param input - the reservation and the driver.
+   * @returns whether the rider boarded, and whether a ride was consumed.
+   */
+  async boardRider(input: ManifestActionInput): Promise<BoardRiderResult> {
+    if (!this.deps.reservations) {
+      return { riderId: null, reason: 'not_found', deducted: false };
+    }
+    const reservation = await this.deps.reservations.findById(input.reservationId);
+    if (!reservation) return { riderId: null, reason: 'not_found', deducted: false };
+    if (!(await this.isAssignedDriver(input.actedBy, reservation.tripId))) {
+      return { riderId: null, reason: 'forbidden', deducted: false };
+    }
+    if (reservation.status === 'boarded') {
+      await this.recordScan(
+        reservation.userId,
+        input.actedBy,
+        reservation.tripId,
+        'reused',
+        'photo',
+      );
+      return { riderId: reservation.userId, reason: 'already_boarded', deducted: false };
+    }
+
+    let deducted = false;
+    try {
+      deducted = await this.boardAndDebit(reservation);
+    } catch (err) {
+      console.error('boarding: manifest ride deduction failed (allowed to board anyway)', err);
+    }
+    await this.recordScan(reservation.userId, input.actedBy, reservation.tripId, 'ok', 'photo');
+    return { riderId: reservation.userId, reason: 'ok', deducted };
+  }
+
+  /**
+   * Mark one rider as not having turned up (#227).
+   *
+   * The driver at the stop knows this; the admin sweep hours later is guessing
+   * from the same data with less of it. So the mark is final for the seat, and
+   * the ride is debited now rather than at the cutoff.
+   *
+   * Final is not irreversible: boarding the rider afterwards still works, and
+   * because both paths share `board:<reservationId>` the ledger charges once
+   * whichever order they arrive in. The cutoff sweep only looks at still
+   * `reserved` seats, so it never sees this one again either.
+   *
+   * @param input - the reservation and the driver.
+   * @returns whether the mark landed, and whether a ride was consumed.
+   */
+  async markNoShow(input: ManifestActionInput): Promise<MarkNoShowResult> {
+    if (!this.deps.reservations) {
+      return { riderId: null, reason: 'not_found', deducted: false };
+    }
+    const reservation = await this.deps.reservations.findById(input.reservationId);
+    if (!reservation) return { riderId: null, reason: 'not_found', deducted: false };
+    if (!(await this.isAssignedDriver(input.actedBy, reservation.tripId))) {
+      return { riderId: null, reason: 'forbidden', deducted: false };
+    }
+    // Refused rather than silently reversed. A rider verified onto the vehicle
+    // is on it, and letting a later tap undo that would make the manifest
+    // disagree with the bus.
+    if (reservation.status === 'boarded') {
+      return { riderId: reservation.userId, reason: 'already_boarded', deducted: false };
+    }
+    if (reservation.status === 'no_show') {
+      return { riderId: reservation.userId, reason: 'already_no_show', deducted: false };
+    }
+
+    // Debit BEFORE marking, the same order the cutoff sweep uses: a run that
+    // fails between the two converges on a retry rather than losing the charge.
+    let deducted = false;
+    if (this.deps.entitlements) {
+      await this.deps.entitlements.record({
+        userId: reservation.userId,
+        deltaRides: -1,
+        reason: 'no_show',
+        refType: 'reservation',
+        refId: reservation.id,
+        idempotencyKey: `board:${reservation.id}`,
+      });
+      deducted = true;
+    }
+    await this.deps.reservations.markNoShow(reservation.id);
+    return { riderId: reservation.userId, reason: 'ok', deducted };
   }
 
   /**

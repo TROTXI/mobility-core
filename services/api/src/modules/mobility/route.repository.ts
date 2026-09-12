@@ -11,6 +11,13 @@ export interface Route {
   id: string;
   name: string;
   description: string | null;
+  /**
+   * Whether drivers may ask to be reassigned to this route (#232). Ops-controlled
+   * and false by default: the design shows routes "only when operations can
+   * accept reassignment requests", so a corridor stays invisible until someone
+   * is willing to act on the requests it would collect.
+   */
+  acceptsRequests: boolean;
   createdAt: Date;
 }
 
@@ -18,12 +25,14 @@ export interface Route {
 export interface NewRoute {
   name: string;
   description?: string | null;
+  acceptsRequests?: boolean;
 }
 
 /** Editable {@link Route} fields for a partial update (admin, #26). */
 export interface RouteUpdate {
   name?: string;
   description?: string | null;
+  acceptsRequests?: boolean;
 }
 
 /** Persistence for routes (Postgres in prod, in-memory in dev/tests). */
@@ -63,6 +72,7 @@ export class InMemoryRouteRepository implements RouteRepository {
       id: crypto.randomUUID(),
       name: input.name,
       description: input.description ?? null,
+      acceptsRequests: input.acceptsRequests ?? false,
       createdAt: new Date(),
     };
     this.routes.set(route.id, route);

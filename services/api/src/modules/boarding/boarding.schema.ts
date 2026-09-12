@@ -67,6 +67,39 @@ export const manifestResponseSchema = z.object({
       avatarUrl: z.string().nullable(),
       direction: z.enum(['morning', 'evening']),
       boarded: z.boolean(),
+      /** How the seat was taken (#230) — the standby share the Today card shows. */
+      source: z.enum(['confirmation', 'default', 'standby']),
+      /** Marked as not having turned up by the driver (#227). Still boardable. */
+      noShow: z.boolean(),
     }),
   ),
+});
+
+/**
+ * Board a rider the driver has already identified by face and photo (#227).
+ *
+ * No code: the whole point of the photo pass is the case where a code will not
+ * scan or the rider cannot produce one, and requiring one here would defeat it.
+ * The assigned-driver check is what stands in its place.
+ */
+export const boardRiderBodySchema = z.object({
+  reservationId: z.string().uuid(),
+});
+
+export const boardRiderResponseSchema = z.object({
+  riderId: z.string().uuid().nullable(),
+  reason: z.enum(['ok', 'not_found', 'already_boarded', 'forbidden']),
+  deducted: z.boolean(),
+});
+
+/** One rider the driver says did not turn up at their stop (#227). */
+export const markNoShowBodySchema = z.object({
+  reservationId: z.string().uuid(),
+});
+
+export const markNoShowResponseSchema = z.object({
+  riderId: z.string().uuid().nullable(),
+  reason: z.enum(['ok', 'not_found', 'already_boarded', 'already_no_show', 'forbidden']),
+  /** True when this call consumed the seat's ride. */
+  deducted: z.boolean(),
 });

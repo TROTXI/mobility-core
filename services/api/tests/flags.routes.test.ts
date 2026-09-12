@@ -48,6 +48,9 @@ describe('GET /flags (public)', () => {
         darkStyleUrl: DARK_STYLE_URL,
         attribution: ATTRIBUTION,
       },
+      // Nothing configured -> every field null, and the app hides the control
+      // rather than offering a dial that goes nowhere (#234).
+      operations: { phone: null, whatsapp: null, email: null, hours: null },
     });
   });
 
@@ -61,6 +64,44 @@ describe('GET /flags (public)', () => {
       // No tiles configured -> null, and the client renders without a basemap
       // rather than failing on a URL that was never set.
       mapTiles: { url: null, styleUrl: null, darkStyleUrl: null, attribution: ATTRIBUTION },
+      operations: { phone: null, whatsapp: null, email: null, hours: null },
+    });
+  });
+
+  it('serves how to reach operations, before anyone has signed in (#234)', async () => {
+    // The screen that needs this most is "Can't sign in?", which is reached
+    // while signed out: PIN recovery runs through a person, because
+    // `drivers.phone` is nullable and there is no verified channel to reset to.
+    const app = await buildApp({
+      auth,
+      operations: {
+        phone: '+233302000000',
+        whatsapp: '+233550000000',
+        email: 'ops@trotxi.test',
+        hours: '05:00-22:00 daily',
+      },
+    });
+
+    const res = await app.inject({ method: 'GET', url: '/flags' });
+    expect(res.statusCode).toBe(200);
+    expect(res.json().operations).toEqual({
+      phone: '+233302000000',
+      whatsapp: '+233550000000',
+      email: 'ops@trotxi.test',
+      hours: '05:00-22:00 daily',
+    });
+  });
+
+  it('leaves a field null rather than inventing one (#234)', async () => {
+    const app = await buildApp({ auth, operations: { phone: '+233302000000' } });
+    const res = await app.inject({ method: 'GET', url: '/flags' });
+
+    // The app hides WhatsApp rather than offering a chat that goes nowhere.
+    expect(res.json().operations).toEqual({
+      phone: '+233302000000',
+      whatsapp: null,
+      email: null,
+      hours: null,
     });
   });
 

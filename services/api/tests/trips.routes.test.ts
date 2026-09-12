@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { buildApp } from '../src/app';
 import { createJwtService, type AuthConfig } from '../src/modules/auth/jwt';
 import { InMemoryTripRepository } from '../src/modules/mobility/trip.repository';
+import { InMemoryDriverRepository } from '../src/modules/mobility/driver.repository';
 import { InMemoryVehicleRepository } from '../src/modules/mobility/vehicle.repository';
 
 const auth: AuthConfig = {
@@ -211,10 +212,48 @@ describe('GET /trips/:id — what a rider sees (#205)', () => {
       registration: 'GT 1234-20',
       make: 'Toyota Hiace',
       colour: 'Green / White',
+      // Present as a field now (#230) but null for a rider: the seat count is
+      // for the driver counting boarded riders against a ceiling, and #205's
+      // reasoning about what a rider needs at a kerb is unchanged.
+      capacity: null,
     });
-    // the internal label and seat count are deliberately not in the payload
+    // the internal label is deliberately not in the payload
     expect(JSON.stringify(res.json())).not.toContain('internal-only');
-    expect(res.json().vehicle).not.toHaveProperty('capacity');
+  });
+
+  it('gives the seat count to the trip’s assigned driver, and nobody else (#230)', async () => {
+    const trips = new InMemoryTripRepository();
+    const vehicles = new InMemoryVehicleRepository();
+    const drivers = new InMemoryDriverRepository();
+    const van = await vehicles.create({ registration: 'GT 1234-20', capacity: 15 });
+    const driver = await drivers.create({ fullName: 'Kofi Anum Quartey', userId: 'driver-user-1' });
+    const other = await drivers.create({ fullName: 'Naa Dedei Lartey', userId: 'driver-user-2' });
+
+    const app = await buildApp({ auth, trips, vehicles, drivers });
+    const trip = await trips.create({
+      routeId: ROUTE_A,
+      vehicleId: van.id,
+      assignedDriverId: driver.id,
+      status: 'active',
+      scheduledAt: new Date('2026-07-08T06:30:00Z'),
+    });
+
+    const asDriver = await app.inject({
+      method: 'GET',
+      url: `/trips/${trip.id}`,
+      headers: bearer(await jwt.signAccessToken({ userId: 'driver-user-1', role: 'driver' })),
+    });
+    expect(asDriver.json().vehicle.capacity).toBe(15);
+
+    // Another driver on the same fleet is not on this run, so the ceiling is
+    // not theirs to read either.
+    expect(other.id).not.toBe(driver.id);
+    const asOtherDriver = await app.inject({
+      method: 'GET',
+      url: `/trips/${trip.id}`,
+      headers: bearer(await jwt.signAccessToken({ userId: 'driver-user-2', role: 'driver' })),
+    });
+    expect(asOtherDriver.json().vehicle.capacity).toBeNull();
   });
 
   it('is null when no van has been assigned yet', async () => {

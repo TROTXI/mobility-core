@@ -24,6 +24,18 @@ export interface Trip {
   startedAt: Date | null;
   /** When the driver ended it; null until completed. */
   completedAt: Date | null;
+  /**
+   * How far along the route the driver has reported being, as a
+   * `route_stops.seq` (#230). Null until the first arrival is reported, which is
+   * the honest answer before departure rather than a false "stop 1 of 11".
+   */
+  currentStopSeq: number | null;
+  /**
+   * When ops last changed the driver, the vehicle or the departure time (#233).
+   * Drives the CHANGED badge in the app, and outlives the push that announced
+   * it — a phone that was off at 04:00 still finds out.
+   */
+  assignmentChangedAt: Date | null;
   createdAt: Date;
 }
 
@@ -43,6 +55,14 @@ export interface TripFilter {
   /** UTC calendar day (`YYYY-MM-DD`) the trip is scheduled on — what the
    * ask-dispatch will use for "tomorrow's trips" (E3). */
   date?: string;
+  /**
+   * Inclusive UTC day range (`YYYY-MM-DD`), for the driver's month calendar
+   * (#231). UTC on purpose: `date` already compares the UTC calendar day, and a
+   * range that filtered differently would return a different set for the same
+   * day depending on which parameter the caller reached for.
+   */
+  from?: string;
+  to?: string;
 }
 
 /** Editable {@link Trip} fields for a partial update (admin, #26). routeId is
@@ -56,6 +76,10 @@ export interface TripUpdate {
   scheduledAt?: Date;
   vehicleId?: string | null;
   assignedDriverId?: string | null;
+  /** Stop progress, advanced by the assigned driver (#230). */
+  currentStopSeq?: number | null;
+  /** Stamped by the admin assignment/reschedule paths, never by the driver (#233). */
+  assignmentChangedAt?: Date;
 }
 
 /** Persistence for trips (Postgres in prod, in-memory in dev/tests). */
@@ -92,6 +116,20 @@ export interface TripRepository {
   update(id: string, patch: TripUpdate): Promise<Trip | null>;
 }
 
+/**
+ * The UTC calendar day a trip is scheduled on, as `YYYY-MM-DD`.
+ *
+ * The one shape both day and range filters compare against, and the same day the
+ * Postgres adapter's `AT TIME ZONE 'UTC'` casts produce. String comparison is
+ * safe because the format is fixed-width and zero-padded.
+ *
+ * @param trip - the trip.
+ * @returns its UTC calendar day.
+ */
+function utcDay(trip: Trip): string {
+  return trip.scheduledAt.toISOString().slice(0, 10);
+}
+
 /** In-memory {@link TripRepository} for dev and unit tests. */
 export class InMemoryTripRepository implements TripRepository {
   private readonly trips = new Map<string, Trip>();
@@ -105,6 +143,8 @@ export class InMemoryTripRepository implements TripRepository {
       status: input.status ?? 'scheduled',
       startedAt: null,
       completedAt: null,
+      currentStopSeq: null,
+      assignmentChangedAt: null,
       scheduledAt: input.scheduledAt,
       createdAt: new Date(),
     };
@@ -120,7 +160,9 @@ export class InMemoryTripRepository implements TripRepository {
     return Array.from(this.trips.values())
       .filter((t) => !filter?.routeId || t.routeId === filter.routeId)
       .filter((t) => !filter?.status || t.status === filter.status)
-      .filter((t) => !filter?.date || t.scheduledAt.toISOString().slice(0, 10) === filter.date)
+      .filter((t) => !filter?.date || utcDay(t) === filter.date)
+      .filter((t) => !filter?.from || utcDay(t) >= filter.from)
+      .filter((t) => !filter?.to || utcDay(t) <= filter.to)
       .sort((a, b) => a.scheduledAt.getTime() - b.scheduledAt.getTime());
   }
 
