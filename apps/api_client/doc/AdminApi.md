@@ -342,7 +342,7 @@ Name | Type | Description  | Notes
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **adminDriversIdCredentialsResetPinPost**
-> AdminDriversIdCredentialsResetPinPost200Response adminDriversIdCredentialsResetPinPost(id)
+> AdminDriversIdCredentialsPost201Response adminDriversIdCredentialsResetPinPost(id)
 
 Reset a driver's PIN and revoke their sessions
 
@@ -371,7 +371,7 @@ Name | Type | Description  | Notes
 
 ### Return type
 
-[**AdminDriversIdCredentialsResetPinPost200Response**](AdminDriversIdCredentialsResetPinPost200Response.md)
+[**AdminDriversIdCredentialsPost201Response**](AdminDriversIdCredentialsPost201Response.md)
 
 ### Authorization
 

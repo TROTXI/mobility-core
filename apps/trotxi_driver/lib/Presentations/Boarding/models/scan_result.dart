@@ -10,8 +10,19 @@ enum BoardingOutcome {
   /// Boarded, ride debited.
   ok,
 
-  /// Not a genuine pass, or the wrong code.
+  /// Not a genuine QR pass.
   invalid,
+
+  /// Typed with nobody selected, and no seat on this run holds that code
+  /// (#241). Distinct from [invalid] because the instruction differs: a forged
+  /// QR is a rider problem, a code nobody holds is usually four characters
+  /// misheard across a noisy door.
+  codeNotFound,
+
+  /// Typed against a rider already picked off the manifest, and it is not
+  /// their code. Distinct again: the driver knows who they mean, so the useful
+  /// next step is to re-read the code rather than to go looking for a person.
+  codeMismatch,
 
   /// A real pass, but past its short life. The rider refreshes and shows again.
   expired,
@@ -27,6 +38,11 @@ enum BoardingOutcome {
 
   /// This driver is not the one the run is assigned to.
   forbidden,
+
+  /// Two riders on this run hold the same code (#241). Vanishingly unlikely,
+  /// and refused rather than guessed: picking one would spend the wrong
+  /// rider's ride and leave the right one at the door.
+  ambiguous,
 
   /// Could not reach the server.
   offline,
@@ -71,15 +87,24 @@ class BoardingResult {
       outcome == BoardingOutcome.offline ||
       outcome == BoardingOutcome.failed;
 
+  /// Whether the driver should go and find the person on the manifest instead.
+  bool get needsManifest =>
+      outcome == BoardingOutcome.ambiguous ||
+      outcome == BoardingOutcome.codeNotFound ||
+      outcome == BoardingOutcome.noReservation;
+
   /// The headline the driver reads across a vehicle.
   String get title => switch (outcome) {
     BoardingOutcome.ok => 'Boarded',
     BoardingOutcome.invalid => 'Pass not accepted',
+    BoardingOutcome.codeNotFound => 'Code not recognised',
+    BoardingOutcome.codeMismatch => 'Not their code',
     BoardingOutcome.expired => 'Pass expired',
     BoardingOutcome.reused => 'Already scanned',
     BoardingOutcome.alreadyBoarded => 'Already boarded',
     BoardingOutcome.noReservation => 'No reservation found',
     BoardingOutcome.forbidden => 'Not your run',
+    BoardingOutcome.ambiguous => 'Two riders, one code',
     BoardingOutcome.offline => 'No connection',
     BoardingOutcome.sessionExpired => 'Signed out',
     BoardingOutcome.failed => 'Could not board',
@@ -90,6 +115,11 @@ class BoardingResult {
     BoardingOutcome.ok => 'Ride counted. Wave them on.',
     BoardingOutcome.invalid =>
       'This is not a valid pass. Check the manifest and board them by code instead.',
+    BoardingOutcome.codeNotFound =>
+      'Nobody on this run has that code. Ask them to read it again — or find '
+          'them on the manifest and board them from there.',
+    BoardingOutcome.codeMismatch =>
+      'That is not this rider’s code. Ask them to read it again.',
     BoardingOutcome.expired =>
       'Passes rotate every minute. Ask the rider to refresh and show it again.',
     BoardingOutcome.reused =>
@@ -100,6 +130,9 @@ class BoardingResult {
       'This rider has no confirmed seat on this run. Check the manifest.',
     BoardingOutcome.forbidden =>
       'This run is assigned to another driver, so you cannot board its riders.',
+    BoardingOutcome.ambiguous =>
+      'Two seats on this run hold that code, so we will not guess which. Find '
+          'the rider on the manifest and board them there.',
     BoardingOutcome.offline =>
       'Boarding needs a connection. Try again once you have signal.',
     BoardingOutcome.sessionExpired =>

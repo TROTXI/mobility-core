@@ -15,6 +15,8 @@ import 'package:trotxi_api_client/src/model/boarding_manifest_get200_response.da
 import 'package:trotxi_api_client/src/model/boarding_no_show_post200_response.dart';
 import 'package:trotxi_api_client/src/model/boarding_scan_post200_response.dart';
 import 'package:trotxi_api_client/src/model/boarding_scan_post_request.dart';
+import 'package:trotxi_api_client/src/model/boarding_verify_code_post200_response.dart';
+import 'package:trotxi_api_client/src/model/boarding_verify_code_post_request.dart';
 import 'package:trotxi_api_client/src/model/boarding_verify_pin_post200_response.dart';
 import 'package:trotxi_api_client/src/model/boarding_verify_pin_post_request.dart';
 import 'package:trotxi_api_client/src/model/me_get401_response.dart';
@@ -406,6 +408,107 @@ class BoardingApi {
     }
 
     return Response<BoardingScanPost200Response>(
+      data: _responseData,
+      headers: _response.headers,
+      isRedirect: _response.isRedirect,
+      requestOptions: _response.requestOptions,
+      redirects: _response.redirects,
+      statusCode: _response.statusCode,
+      statusMessage: _response.statusMessage,
+      extra: _response.extra,
+    );
+  }
+
+  /// Board whoever holds this code on this run (assigned driver only)
+  /// Searches the run’s open seats for the code rather than checking one named seat. Safe because the caller is already the assigned driver, who can board any rider on their manifest with no code at all (POST /boarding/board). Two seats holding one code is refused rather than guessed.
+  ///
+  /// Parameters:
+  /// * [boardingVerifyCodePostRequest] 
+  /// * [cancelToken] - A [CancelToken] that can be used to cancel the operation
+  /// * [headers] - Can be used to add additional headers to the request
+  /// * [extras] - Can be used to add flags to the request
+  /// * [validateStatus] - A [ValidateStatus] callback that can be used to determine request success based on the HTTP status of the response
+  /// * [onSendProgress] - A [ProgressCallback] that can be used to get the send progress
+  /// * [onReceiveProgress] - A [ProgressCallback] that can be used to get the receive progress
+  ///
+  /// Returns a [Future] containing a [Response] with a [BoardingVerifyCodePost200Response] as data
+  /// Throws [DioException] if API call or serialization fails
+  Future<Response<BoardingVerifyCodePost200Response>> boardingVerifyCodePost({ 
+    required BoardingVerifyCodePostRequest boardingVerifyCodePostRequest,
+    CancelToken? cancelToken,
+    Map<String, dynamic>? headers,
+    Map<String, dynamic>? extra,
+    ValidateStatus? validateStatus,
+    ProgressCallback? onSendProgress,
+    ProgressCallback? onReceiveProgress,
+  }) async {
+    final _path = r'/boarding/verify-code';
+    final _options = Options(
+      method: r'POST',
+      headers: <String, dynamic>{
+        ...?headers,
+      },
+      extra: <String, dynamic>{
+        'secure': <Map<String, String>>[
+          {
+            'type': 'http',
+            'scheme': 'bearer',
+            'name': 'bearerAuth',
+          },
+        ],
+        ...?extra,
+      },
+      contentType: 'application/json',
+      validateStatus: validateStatus,
+    );
+
+    dynamic _bodyData;
+
+    try {
+      const _type = FullType(BoardingVerifyCodePostRequest);
+      _bodyData = _serializers.serialize(boardingVerifyCodePostRequest, specifiedType: _type);
+
+    } catch(error, stackTrace) {
+      throw DioException(
+         requestOptions: _options.compose(
+          _dio.options,
+          _path,
+        ),
+        type: DioExceptionType.unknown,
+        error: error,
+        stackTrace: stackTrace,
+      );
+    }
+
+    final _response = await _dio.request<Object>(
+      _path,
+      data: _bodyData,
+      options: _options,
+      cancelToken: cancelToken,
+      onSendProgress: onSendProgress,
+      onReceiveProgress: onReceiveProgress,
+    );
+
+    BoardingVerifyCodePost200Response? _responseData;
+
+    try {
+      final rawResponse = _response.data;
+      _responseData = rawResponse == null ? null : _serializers.deserialize(
+        rawResponse,
+        specifiedType: const FullType(BoardingVerifyCodePost200Response),
+      ) as BoardingVerifyCodePost200Response;
+
+    } catch (error, stackTrace) {
+      throw DioException(
+        requestOptions: _response.requestOptions,
+        response: _response,
+        type: DioExceptionType.unknown,
+        error: error,
+        stackTrace: stackTrace,
+      );
+    }
+
+    return Response<BoardingVerifyCodePost200Response>(
       data: _responseData,
       headers: _response.headers,
       isRedirect: _response.isRedirect,

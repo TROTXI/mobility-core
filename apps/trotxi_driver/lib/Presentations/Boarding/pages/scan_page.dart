@@ -185,7 +185,7 @@ class _ScanPageState extends State<ScanPage> {
       MaterialPageRoute<void>(
         builder: (_) => ChangeNotifierProvider.value(
           value: run,
-          child: const BoardByCodePage(),
+          child: BoardByCodePage(runId: widget.runId),
         ),
       ),
     );

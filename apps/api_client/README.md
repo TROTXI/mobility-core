@@ -121,6 +121,7 @@ Class | Method | HTTP request | Description
 [*BoardingApi*](doc/BoardingApi.md) | [**boardingManifestGet**](doc/BoardingApi.md#boardingmanifestget) | **GET** /boarding/manifest | A trip&#39;s manifest — confirmed riders with name + photo (assigned driver only)
 [*BoardingApi*](doc/BoardingApi.md) | [**boardingNoShowPost**](doc/BoardingApi.md#boardingnoshowpost) | **POST** /boarding/no-show | Mark one rider as not having turned up (assigned driver only)
 [*BoardingApi*](doc/BoardingApi.md) | [**boardingScanPost**](doc/BoardingApi.md#boardingscanpost) | **POST** /boarding/scan | Verify a scanned rider pass (driver only) and record the scan
+[*BoardingApi*](doc/BoardingApi.md) | [**boardingVerifyCodePost**](doc/BoardingApi.md#boardingverifycodepost) | **POST** /boarding/verify-code | Board whoever holds this code on this run (assigned driver only)
 [*BoardingApi*](doc/BoardingApi.md) | [**boardingVerifyPinPost**](doc/BoardingApi.md#boardingverifypinpost) | **POST** /boarding/verify-pin | Board a rider via their daily boarding code (driver only)
 [*BoardingApi*](doc/BoardingApi.md) | [**mePassGet**](doc/BoardingApi.md#mepassget) | **GET** /me/pass | Issue the rider a short-lived boarding pass (render as a QR)
 [*FlagsApi*](doc/FlagsApi.md) | [**flagsGet**](doc/FlagsApi.md#flagsget) | **GET** /flags | Feature flags, minimum supported app version, basemap and operations contact
@@ -165,7 +166,6 @@ Class | Method | HTTP request | Description
  - [AdminDriversGet200ResponseInner](doc/AdminDriversGet200ResponseInner.md)
  - [AdminDriversIdCredentialsPatchRequest](doc/AdminDriversIdCredentialsPatchRequest.md)
  - [AdminDriversIdCredentialsPost201Response](doc/AdminDriversIdCredentialsPost201Response.md)
- - [AdminDriversIdCredentialsResetPinPost200Response](doc/AdminDriversIdCredentialsResetPinPost200Response.md)
  - [AdminDriversIdPatchRequest](doc/AdminDriversIdPatchRequest.md)
  - [AdminDriversPostRequest](doc/AdminDriversPostRequest.md)
  - [AdminExpireSubscriptionsPost200Response](doc/AdminExpireSubscriptionsPost200Response.md)
@@ -219,6 +219,8 @@ Class | Method | HTTP request | Description
  - [BoardingNoShowPost200Response](doc/BoardingNoShowPost200Response.md)
  - [BoardingScanPost200Response](doc/BoardingScanPost200Response.md)
  - [BoardingScanPostRequest](doc/BoardingScanPostRequest.md)
+ - [BoardingVerifyCodePost200Response](doc/BoardingVerifyCodePost200Response.md)
+ - [BoardingVerifyCodePostRequest](doc/BoardingVerifyCodePostRequest.md)
  - [BoardingVerifyPinPost200Response](doc/BoardingVerifyPinPost200Response.md)
  - [BoardingVerifyPinPostRequest](doc/BoardingVerifyPinPostRequest.md)
  - [FlagsGet200Response](doc/FlagsGet200Response.md)

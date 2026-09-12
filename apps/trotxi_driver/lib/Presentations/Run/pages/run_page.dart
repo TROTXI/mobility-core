@@ -250,7 +250,7 @@ class _RunPageState extends State<RunPage> {
               Expanded(
                 child: OutlinedButton.icon(
                   onPressed: () =>
-                      _open(context, controller, const BoardByCodePage()),
+                      _open(context, controller, BoardByCodePage(runId: run.id)),
                   icon: const Icon(Icons.dialpad),
                   label: const Text('By code'),
                 ),

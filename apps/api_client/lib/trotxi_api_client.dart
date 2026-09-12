@@ -32,7 +32,6 @@ export 'package:trotxi_api_client/src/model/admin_driver_requests_id_patch_reque
 export 'package:trotxi_api_client/src/model/admin_drivers_get200_response_inner.dart';
 export 'package:trotxi_api_client/src/model/admin_drivers_id_credentials_patch_request.dart';
 export 'package:trotxi_api_client/src/model/admin_drivers_id_credentials_post201_response.dart';
-export 'package:trotxi_api_client/src/model/admin_drivers_id_credentials_reset_pin_post200_response.dart';
 export 'package:trotxi_api_client/src/model/admin_drivers_id_patch_request.dart';
 export 'package:trotxi_api_client/src/model/admin_drivers_post_request.dart';
 export 'package:trotxi_api_client/src/model/admin_expire_subscriptions_post200_response.dart';
@@ -86,6 +85,8 @@ export 'package:trotxi_api_client/src/model/boarding_manifest_get200_response_ri
 export 'package:trotxi_api_client/src/model/boarding_no_show_post200_response.dart';
 export 'package:trotxi_api_client/src/model/boarding_scan_post200_response.dart';
 export 'package:trotxi_api_client/src/model/boarding_scan_post_request.dart';
+export 'package:trotxi_api_client/src/model/boarding_verify_code_post200_response.dart';
+export 'package:trotxi_api_client/src/model/boarding_verify_code_post_request.dart';
 export 'package:trotxi_api_client/src/model/boarding_verify_pin_post200_response.dart';
 export 'package:trotxi_api_client/src/model/boarding_verify_pin_post_request.dart';
 export 'package:trotxi_api_client/src/model/flags_get200_response.dart';

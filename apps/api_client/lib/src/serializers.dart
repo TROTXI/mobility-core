@@ -23,7 +23,6 @@ import 'package:trotxi_api_client/src/model/admin_driver_requests_id_patch_reque
 import 'package:trotxi_api_client/src/model/admin_drivers_get200_response_inner.dart';
 import 'package:trotxi_api_client/src/model/admin_drivers_id_credentials_patch_request.dart';
 import 'package:trotxi_api_client/src/model/admin_drivers_id_credentials_post201_response.dart';
-import 'package:trotxi_api_client/src/model/admin_drivers_id_credentials_reset_pin_post200_response.dart';
 import 'package:trotxi_api_client/src/model/admin_drivers_id_patch_request.dart';
 import 'package:trotxi_api_client/src/model/admin_drivers_post_request.dart';
 import 'package:trotxi_api_client/src/model/admin_expire_subscriptions_post200_response.dart';
@@ -77,6 +76,8 @@ import 'package:trotxi_api_client/src/model/boarding_manifest_get200_response_ri
 import 'package:trotxi_api_client/src/model/boarding_no_show_post200_response.dart';
 import 'package:trotxi_api_client/src/model/boarding_scan_post200_response.dart';
 import 'package:trotxi_api_client/src/model/boarding_scan_post_request.dart';
+import 'package:trotxi_api_client/src/model/boarding_verify_code_post200_response.dart';
+import 'package:trotxi_api_client/src/model/boarding_verify_code_post_request.dart';
 import 'package:trotxi_api_client/src/model/boarding_verify_pin_post200_response.dart';
 import 'package:trotxi_api_client/src/model/boarding_verify_pin_post_request.dart';
 import 'package:trotxi_api_client/src/model/flags_get200_response.dart';
@@ -146,7 +147,6 @@ part 'serializers.g.dart';
   AdminDriversGet200ResponseInner,
   AdminDriversIdCredentialsPatchRequest,
   AdminDriversIdCredentialsPost201Response,
-  AdminDriversIdCredentialsResetPinPost200Response,
   AdminDriversIdPatchRequest,
   AdminDriversPostRequest,
   AdminExpireSubscriptionsPost200Response,
@@ -200,6 +200,8 @@ part 'serializers.g.dart';
   BoardingNoShowPost200Response,
   BoardingScanPost200Response,
   BoardingScanPostRequest,
+  BoardingVerifyCodePost200Response,
+  BoardingVerifyCodePostRequest,
   BoardingVerifyPinPost200Response,
   BoardingVerifyPinPostRequest,
   FlagsGet200Response,

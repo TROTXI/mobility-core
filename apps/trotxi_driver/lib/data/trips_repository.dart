@@ -475,6 +475,49 @@ class TripsRepository {
     }
   }
 
+  /// Board whoever holds this code on this run (#241).
+  ///
+  /// No rider is named first, which is the point: a driver at a door takes the
+  /// code they were just read and acts on it. The server searches the run's
+  /// open seats.
+  ///
+  /// @param runId - the run being boarded.
+  /// @param code - the four-character code as typed.
+  /// @returns the outcome, with the rider when the code named one.
+  Future<BoardingResult> boardByCodeOnRun({
+    required String runId,
+    required String code,
+  }) async {
+    try {
+      final response = await _client.getBoardingApi().boardingVerifyCodePost(
+        boardingVerifyCodePostRequest: BoardingVerifyCodePostRequest(
+          (b) => b
+            ..tripId = runId
+            ..code = code,
+        ),
+      );
+      final data = response.data;
+      if (data == null) {
+        return const BoardingResult(outcome: BoardingOutcome.failed);
+      }
+      return BoardingResult(
+        outcome: switch (data.reason.name) {
+          'ok' => BoardingOutcome.ok,
+          'alreadyBoarded' || 'already_boarded' => BoardingOutcome.alreadyBoarded,
+          'ambiguous' => BoardingOutcome.ambiguous,
+          // Four characters nobody on this run holds, which at a door is
+          // almost always a mishearing rather than a forgery.
+          'invalid' => BoardingOutcome.codeNotFound,
+          _ => BoardingOutcome.failed,
+        },
+        riderId: data.riderId,
+        deducted: data.deducted,
+      );
+    } on DioException catch (err) {
+      return _boardingFailure(err);
+    }
+  }
+
   /// Board a rider by the daily code they read out.
   ///
   /// @param reservationId - the seat from the manifest.
@@ -501,7 +544,9 @@ class TripsRepository {
           'ok' => BoardingOutcome.ok,
           'already_boarded' => BoardingOutcome.alreadyBoarded,
           'not_found' => BoardingOutcome.noReservation,
-          _ => BoardingOutcome.invalid,
+          // The driver already knows who they mean, so this is "wrong code for
+          // this person", not "unknown pass".
+          _ => BoardingOutcome.codeMismatch,
         },
         riderId: data.riderId,
         deducted: data.deducted,

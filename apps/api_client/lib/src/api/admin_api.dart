@@ -19,7 +19,6 @@ import 'package:trotxi_api_client/src/model/admin_driver_requests_id_patch_reque
 import 'package:trotxi_api_client/src/model/admin_drivers_get200_response_inner.dart';
 import 'package:trotxi_api_client/src/model/admin_drivers_id_credentials_patch_request.dart';
 import 'package:trotxi_api_client/src/model/admin_drivers_id_credentials_post201_response.dart';
-import 'package:trotxi_api_client/src/model/admin_drivers_id_credentials_reset_pin_post200_response.dart';
 import 'package:trotxi_api_client/src/model/admin_drivers_id_patch_request.dart';
 import 'package:trotxi_api_client/src/model/admin_drivers_post_request.dart';
 import 'package:trotxi_api_client/src/model/admin_expire_subscriptions_post200_response.dart';
@@ -708,9 +707,9 @@ class AdminApi {
   /// * [onSendProgress] - A [ProgressCallback] that can be used to get the send progress
   /// * [onReceiveProgress] - A [ProgressCallback] that can be used to get the receive progress
   ///
-  /// Returns a [Future] containing a [Response] with a [AdminDriversIdCredentialsResetPinPost200Response] as data
+  /// Returns a [Future] containing a [Response] with a [AdminDriversIdCredentialsPost201Response] as data
   /// Throws [DioException] if API call or serialization fails
-  Future<Response<AdminDriversIdCredentialsResetPinPost200Response>> adminDriversIdCredentialsResetPinPost({ 
+  Future<Response<AdminDriversIdCredentialsPost201Response>> adminDriversIdCredentialsResetPinPost({ 
     required String id,
     CancelToken? cancelToken,
     Map<String, dynamic>? headers,
@@ -746,14 +745,14 @@ class AdminApi {
       onReceiveProgress: onReceiveProgress,
     );
 
-    AdminDriversIdCredentialsResetPinPost200Response? _responseData;
+    AdminDriversIdCredentialsPost201Response? _responseData;
 
     try {
       final rawResponse = _response.data;
       _responseData = rawResponse == null ? null : _serializers.deserialize(
         rawResponse,
-        specifiedType: const FullType(AdminDriversIdCredentialsResetPinPost200Response),
-      ) as AdminDriversIdCredentialsResetPinPost200Response;
+        specifiedType: const FullType(AdminDriversIdCredentialsPost201Response),
+      ) as AdminDriversIdCredentialsPost201Response;
 
     } catch (error, stackTrace) {
       throw DioException(
@@ -765,7 +764,7 @@ class AdminApi {
       );
     }
 
-    return Response<AdminDriversIdCredentialsResetPinPost200Response>(
+    return Response<AdminDriversIdCredentialsPost201Response>(
       data: _responseData,
       headers: _response.headers,
       isRedirect: _response.isRedirect,

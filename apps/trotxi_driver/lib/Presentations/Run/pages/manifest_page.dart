@@ -468,7 +468,10 @@ class _RiderSheetState extends State<_RiderSheet> {
         MaterialPageRoute<void>(
           builder: (_) => ChangeNotifierProvider.value(
             value: controller,
-            child: BoardByCodePage(preselected: widget.rider),
+            child: BoardByCodePage(
+              runId: controller.detail.valueOrNull!.run.id,
+              preselected: widget.rider,
+            ),
           ),
         ),
       );
