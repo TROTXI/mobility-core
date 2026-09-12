@@ -355,7 +355,14 @@ class _RunPageState extends State<RunPage> {
 
               if (run.isActive) ...[
                 const SizedBox(height: AppSpacing.space16),
-                _LocationNotice(block: _positionBlock, colors: colors),
+                // The file's GPS & Connectivity component, whose whole rule is
+                // "never imply live accuracy when GPS is weak, queued offline
+                // or disabled". The earlier build had one line that said
+                // "sharing" whatever was actually happening underneath.
+                GpsIndicator(
+                  state: _gpsState(_positionBlock),
+                  detail: _gpsDetail(_positionBlock),
+                ),
               ],
             ],
           ),
@@ -431,6 +438,30 @@ class _RunPageState extends State<RunPage> {
     RunStatus.completed => 'Completed',
     RunStatus.cancelled => 'Cancelled',
     RunStatus.scheduled => 'Scheduled',
+  };
+
+  /// Which of the file's four telemetry states the run is in.
+  ///
+  /// The app has no weak-signal or queued-fix reporting yet, so only two of the
+  /// four are reachable. They are mapped rather than collapsed because a driver
+  /// reading "location is turned off" needs a different thing from one reading
+  /// "sharing live", and the component draws both honestly.
+  ///
+  /// @param block - why publishing is not running, when it is not.
+  /// @returns the state to draw.
+  static GpsState _gpsState(PositionBlock? block) =>
+      block == null ? GpsState.live : GpsState.disabled;
+
+  /// The second line under the state.
+  ///
+  /// @param block - why publishing is not running, when it is not.
+  /// @returns what to say about it.
+  static String _gpsDetail(PositionBlock? block) => switch (block) {
+    null => 'Riders can see the bus approaching',
+    PositionBlock.servicesOff => 'Location is off for the whole device',
+    PositionBlock.deniedForever => 'Turn it on in device settings',
+    PositionBlock.denied => 'Access was declined',
+    PositionBlock.notRequested => 'Not asked for yet',
   };
 
   /// The one word inside the chip.
@@ -616,58 +647,6 @@ class _PrimaryAction extends StatelessWidget {
               child: CircularProgressIndicator(strokeWidth: 2),
             )
           : Text(run.isActive ? 'End trip' : 'Start trip'),
-    );
-  }
-}
-
-class _LocationNotice extends StatelessWidget {
-  const _LocationNotice({required this.block, required this.colors});
-
-  final PositionBlock? block;
-  final AppColors colors;
-
-  @override
-  Widget build(BuildContext context) {
-    final (tone, message) = switch (block) {
-      null => (
-        colors.live,
-        'Sharing your location with riders while this trip runs.',
-      ),
-      PositionBlock.servicesOff => (
-        colors.warning,
-        'Location is switched off on this device, so riders cannot see the bus.',
-      ),
-      PositionBlock.deniedForever => (
-        colors.warning,
-        'Location access is off for Trotxi Driver. Turn it on in device settings '
-            'so riders can see the bus approaching.',
-      ),
-      _ => (
-        colors.warning,
-        'Location access was declined, so riders cannot see the bus approaching.',
-      ),
-    };
-
-    return Padding(
-      padding: const EdgeInsets.only(bottom: AppSpacing.space12),
-      child: Row(
-        children: [
-          Icon(
-            block == null ? Icons.location_on : Icons.location_off,
-            size: 18,
-            color: tone,
-          ),
-          const SizedBox(width: AppSpacing.space8),
-          Expanded(
-            child: Text(
-              message,
-              style: AppTypography.caption.copyWith(
-                color: colors.textSecondary,
-              ),
-            ),
-          ),
-        ],
-      ),
     );
   }
 }
