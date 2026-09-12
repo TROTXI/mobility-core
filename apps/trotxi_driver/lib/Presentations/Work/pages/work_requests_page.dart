@@ -555,7 +555,7 @@ class _RouteChangeRequestPageState extends State<RouteChangeRequestPage> {
     try {
       await work.requestRouteChange(
         routeId: _selected!.id,
-        fromDate: _from == null ? null : CorridorTime.day(_from!),
+        fromDate: _from == null ? null : CorridorTime.calendarDay(_from!),
         note: _note.text,
       );
       if (!mounted) return;
@@ -706,8 +706,8 @@ class _LeaveRequestPageState extends State<LeaveRequestPage> {
     final messenger = ScaffoldMessenger.of(context);
     try {
       await work.requestLeave(
-        fromDate: CorridorTime.day(_from!),
-        toDate: CorridorTime.day(_to!),
+        fromDate: CorridorTime.calendarDay(_from!),
+        toDate: CorridorTime.calendarDay(_to!),
         note: _note.text,
       );
       if (!mounted) return;

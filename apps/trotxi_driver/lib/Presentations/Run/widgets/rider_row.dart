@@ -74,9 +74,14 @@ class RiderRow extends StatelessWidget {
   /// code instead of the face.
   static String _subtitle(ManifestRider rider) {
     final when = rider.direction == 'evening' ? 'Evening' : 'Morning';
-    if (rider.boarded) return '$when · boarded';
-    if (rider.avatarUrl == null) return '$when · no photo';
-    return '$when · reserved';
+    // Standby is worth saying before anything else on an unboarded row: the
+    // seat was filled from the pool rather than by the rider confirming, so a
+    // driver expecting a familiar face gets told why they will not see one.
+    final how = rider.isStandby ? '$when · standby' : when;
+    if (rider.boarded) return '$how · boarded';
+    if (rider.noShow) return '$how · marked no-show';
+    if (rider.avatarUrl == null) return '$how · no photo';
+    return '$how · reserved';
   }
 }
 
@@ -94,7 +99,12 @@ class _ActionPill extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final boarded = rider.boarded;
-    final background = boarded ? colors.success : colors.action;
+    // A no-show still offers BOARD: the mark is reversible on purpose, because
+    // a rider who catches up at the next stop should not be stuck for it, and
+    // the shared ledger key means boarding them costs nothing extra.
+    final background = boarded
+        ? colors.success
+        : (rider.noShow ? colors.warning : colors.action);
     final label = boarded ? 'BOARDED' : 'BOARD';
 
     final pill = Container(

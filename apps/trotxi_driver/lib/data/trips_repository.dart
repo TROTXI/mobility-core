@@ -21,6 +21,8 @@ class DriverRun {
     required this.status,
     this.vehicleId,
     this.vehicleRegistration,
+    this.currentStopSeq,
+    this.assignmentChangedAt,
   });
 
   final String id;
@@ -35,9 +37,33 @@ class DriverRun {
   /// worse than showing none.
   final String? vehicleRegistration;
 
+  /// Which stop the driver has reported reaching (#230), as a route sequence
+  /// number. Null before the first arrival, which is the honest answer — the
+  /// API deliberately does not guess one from GPS.
+  final int? currentStopSeq;
+
+  /// When operations last moved this run: driver, vehicle or departure time
+  /// (#233). Null on a run nobody has touched.
+  ///
+  /// The Schedule marks a run CHANGED from this rather than from the push that
+  /// announced it, so a phone that was switched off at 04:00 still finds out.
+  final DateTime? assignmentChangedAt;
+
   bool get isActive => status == RunStatus.active;
   bool get isFinished =>
       status == RunStatus.completed || status == RunStatus.cancelled;
+
+  /// Whether operations has moved this run recently enough to be worth
+  /// flagging.
+  ///
+  /// Bounded rather than "ever changed": a run reassigned three weeks ago is
+  /// simply the roster now, and a badge that never clears is one a driver stops
+  /// reading — which would cost them the one that matters.
+  bool get wasRecentlyChanged {
+    final changed = assignmentChangedAt;
+    if (changed == null) return false;
+    return DateTime.now().difference(changed) < const Duration(days: 7);
+  }
 }
 
 /// A rider on a run's manifest.
@@ -49,6 +75,8 @@ class ManifestRider {
     required this.avatarUrl,
     required this.boarded,
     required this.direction,
+    required this.source,
+    required this.noShow,
   });
 
   final String reservationId;
@@ -63,6 +91,19 @@ class ManifestRider {
   /// `morning` or `evening`. The manifest splits on it, and the Today card
   /// shows the morning share.
   final String direction;
+
+  /// How the seat was taken: `confirmation`, `default` or `standby` (#230).
+  /// The Today card breaks a run down as "12 morning · 6 standby", which was
+  /// unanswerable while this was stored but never returned.
+  final String source;
+
+  /// Whether a driver has marked this rider as not having turned up (#227).
+  /// They stay on the manifest: a mark made by mistake has to be findable, and
+  /// a rider who catches up at the next stop is still boardable.
+  final bool noShow;
+
+  /// Filled from the standby pool rather than the rider's own confirmation.
+  bool get isStandby => source == 'standby';
 }
 
 /// What a finished run did.
@@ -93,6 +134,39 @@ class RunSummary {
       : completedAt!.difference(startedAt!);
 }
 
+/// What `GET /trips/:id` adds beyond the list (#230).
+///
+/// Named after the endpoint rather than the screen: `RunDetail` in
+/// `run_controller.dart` is the composed view a screen renders, and this is the
+/// raw extra the API returns.
+///
+/// Two numbers the run screen could not previously get: the van's seat ceiling,
+/// and how many stops the corridor has. Both arrive together because they come
+/// from the same request.
+class TripDetail {
+  const TripDetail({
+    required this.stopCount,
+    this.capacity,
+    this.vehicleRegistration,
+    this.currentStopSeq,
+  });
+
+  /// Stops on the corridor — the "of 11" in the driver's stop counter. Zero
+  /// when no stops are attached to the route yet.
+  final int stopCount;
+
+  /// Seats on the van.
+  ///
+  /// Null for anyone who is not this run's assigned driver, which is how the
+  /// API scopes it: a rider reading the same endpoint still gets null, because
+  /// the seat count was never rider-facing. Null here therefore means "not
+  /// ours to show", and the screen falls back to counting confirmed riders.
+  final int? capacity;
+
+  final String? vehicleRegistration;
+  final int? currentStopSeq;
+}
+
 /// The driver's runs, their manifests, and the lifecycle transitions.
 class TripsRepository {
   TripsRepository({required this._client});
@@ -105,11 +179,22 @@ class TripsRepository {
 
   /// The signed-in driver's assigned runs.
   ///
-  /// @param date - optional `YYYY-MM-DD` filter; omitted returns all assigned.
+  /// Takes one day or an inclusive range, never both. The range is what makes
+  /// the month calendar a single request rather than thirty-one (#231); both
+  /// forms filter on the UTC calendar day, which is why every caller sends
+  /// corridor time.
+  ///
+  /// @param date - optional `YYYY-MM-DD` filter for a single day.
+  /// @param from - optional inclusive range start (`YYYY-MM-DD`).
+  /// @param to - optional inclusive range end; required with [from].
   /// @returns the runs, soonest first.
-  Future<List<DriverRun>> myRuns({String? date}) async {
+  Future<List<DriverRun>> myRuns({String? date, String? from, String? to}) async {
     try {
-      final response = await _client.getMobilityApi().meTripsGet(date: date);
+      final response = await _client.getMobilityApi().meTripsGet(
+        date: date,
+        from: from,
+        to: to,
+      );
       final trips = response.data?.trips.toList() ?? [];
 
       // Resolved once per unseen corridor, in parallel: a driver with a morning
@@ -128,6 +213,8 @@ class TripsRepository {
                   scheduledAt: t.scheduledAt,
                   status: _statusOf(t.status.name),
                   vehicleId: t.vehicleId,
+                  currentStopSeq: t.currentStopSeq,
+                  assignmentChangedAt: t.assignmentChangedAt,
                 ),
               )
               .toList()
@@ -170,6 +257,10 @@ class TripsRepository {
               avatarUrl: r.avatarUrl,
               boarded: r.boarded,
               direction: r.direction.name,
+              // `source_` with the underscore: the generator renames a field
+              // that would otherwise collide in the built_value output.
+              source: r.source_.name,
+              noShow: r.noShow,
             ),
           )
           .toList();
@@ -215,6 +306,136 @@ class TripsRepository {
       return (response.data?.stops.toList() ?? []).map((s) => s.name).toList();
     } on DioException catch (err) {
       throw _unwrap(err);
+    }
+  }
+
+  /// The extra detail one run carries: seat ceiling and stop count (#230).
+  ///
+  /// @param runId - the run.
+  /// @returns the detail.
+  Future<TripDetail> detail(String runId) async {
+    try {
+      final response = await _client.getMobilityApi().tripsIdGet(id: runId);
+      final data = response.data;
+      if (data == null) {
+        throw const ApiException(200, 'The run returned nothing.');
+      }
+      return TripDetail(
+        stopCount: data.stopCount,
+        capacity: data.vehicle?.capacity,
+        vehicleRegistration: data.vehicle?.registration,
+        currentStopSeq: data.currentStopSeq,
+      );
+    } on DioException catch (err) {
+      throw _unwrap(err);
+    }
+  }
+
+  /// Report reaching a stop (#230).
+  ///
+  /// Driver-advanced rather than derived from GPS, and not monotonic: a driver
+  /// who taps one stop too far can tap back, because a counter stuck wrong for
+  /// the rest of a run is worse than one that can be corrected.
+  ///
+  /// @param runId - the run.
+  /// @param seq - the stop reached, as a route sequence number.
+  /// @returns the run with its progress advanced.
+  Future<DriverRun> arriveAtStop(String runId, int seq) async {
+    try {
+      final response = await _client.getMobilityApi().tripsIdArrivePost(
+        id: runId,
+        tripsIdArrivePostRequest: TripsIdArrivePostRequest((b) => b.seq = seq),
+      );
+      final trip = response.data;
+      if (trip == null) {
+        throw const ApiException(200, 'The run returned nothing.');
+      }
+      await _cacheRouteName(trip.routeId);
+      return DriverRun(
+        id: trip.id,
+        routeId: trip.routeId,
+        routeName: _routeNames[trip.routeId] ?? 'Route',
+        scheduledAt: trip.scheduledAt,
+        status: _statusOf(trip.status.name),
+        vehicleId: trip.vehicleId,
+        currentStopSeq: trip.currentStopSeq,
+        assignmentChangedAt: trip.assignmentChangedAt,
+      );
+    } on DioException catch (err) {
+      throw _unwrap(err);
+    }
+  }
+
+  /// Board a rider the driver has identified from the manifest photo (#227).
+  ///
+  /// No code is asked for, which is the whole point: the photo pass exists for
+  /// the case where a code will not scan or the rider cannot produce one, and
+  /// demanding one here would defeat the fallback it is.
+  ///
+  /// @param reservationId - the seat from the manifest.
+  /// @returns the outcome.
+  Future<BoardingResult> boardFromManifest(String reservationId) async {
+    try {
+      final response = await _client.getBoardingApi().boardingBoardPost(
+        boardingBoardPostRequest: BoardingBoardPostRequest(
+          (b) => b.reservationId = reservationId,
+        ),
+      );
+      final data = response.data;
+      if (data == null) {
+        return const BoardingResult(outcome: BoardingOutcome.failed);
+      }
+      return BoardingResult(
+        outcome: switch (data.reason.name) {
+          'ok' => BoardingOutcome.ok,
+          'alreadyBoarded' || 'already_boarded' => BoardingOutcome.alreadyBoarded,
+          // The seat was declined, released or never confirmed, so it is not a
+          // seat. Reads as "no reservation" because that is what it means to a
+          // driver holding a queue.
+          'notBoardable' || 'not_boardable' => BoardingOutcome.noReservation,
+          'notFound' || 'not_found' => BoardingOutcome.noReservation,
+          _ => BoardingOutcome.failed,
+        },
+        riderId: data.riderId,
+        deducted: data.deducted,
+      );
+    } on DioException catch (err) {
+      return _boardingFailure(err);
+    }
+  }
+
+  /// Mark one rider as not having turned up (#227).
+  ///
+  /// Final for the seat and debited now, because the driver at the stop knows
+  /// and the cutoff sweep hours later does not. Reversible by boarding them
+  /// afterwards, which costs the rider nothing extra — both paths share the
+  /// same ledger key.
+  ///
+  /// @param reservationId - the seat from the manifest.
+  /// @returns the outcome.
+  Future<NoShowResult> markNoShow(String reservationId) async {
+    try {
+      // Both endpoints take the same one-field body, so the generator folded
+      // them onto a single request type.
+      final response = await _client.getBoardingApi().boardingNoShowPost(
+        boardingBoardPostRequest: BoardingBoardPostRequest(
+          (b) => b.reservationId = reservationId,
+        ),
+      );
+      final reason = response.data?.reason.name ?? '';
+      return switch (reason) {
+        'ok' => NoShowResult.marked,
+        'alreadyNoShow' || 'already_no_show' => NoShowResult.marked,
+        'alreadyBoarded' || 'already_boarded' => NoShowResult.alreadyBoarded,
+        _ => NoShowResult.failed,
+      };
+    } on DioException catch (err) {
+      final inner = err.error;
+      if (inner is OfflineException) return NoShowResult.offline;
+      if (inner is ApiException && inner.statusCode == 403) {
+        return NoShowResult.forbidden;
+      }
+      return NoShowResult.failed;
     }
   }
 
@@ -340,6 +561,8 @@ class TripsRepository {
         scheduledAt: trip.scheduledAt,
         status: _statusOf(trip.status.name),
         vehicleId: trip.vehicleId,
+        currentStopSeq: trip.currentStopSeq,
+        assignmentChangedAt: trip.assignmentChangedAt,
       );
     } on DioException catch (err) {
       throw _unwrap(err);

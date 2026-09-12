@@ -53,6 +53,7 @@ class RunHeadline {
   const RunHeadline({
     required this.riders,
     required this.morning,
+    required this.standby,
     required this.stops,
   });
 
@@ -60,10 +61,14 @@ class RunHeadline {
   final int riders;
 
   /// How many of them are travelling this morning, which is the split the
-  /// frame shows. Standby is absent on purpose: reservations carry a `standby`
-  /// source but the manifest does not expose it, so the number would be a
-  /// guess dressed as a breakdown.
+  /// frame shows.
   final int morning;
+
+  /// Seats filled from the standby pool — the "· 6 standby" the Today card
+  /// shows (#230). Real now that the manifest returns `source`; it used to be
+  /// omitted rather than guessed.
+  final int standby;
+
   final int stops;
 }
 
@@ -183,6 +188,7 @@ class TodayController extends ChangeNotifier {
       return RunHeadline(
         riders: riders.length,
         morning: riders.where((r) => r.direction == 'morning').length,
+        standby: riders.where((r) => r.isStandby).length,
         stops: (results[1] as List<String>).length,
       );
     } on TrotxiException {

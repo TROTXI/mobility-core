@@ -51,9 +51,33 @@ class NextRunCard extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                '${CorridorTime.hhmm(run.scheduledAt)}  ${run.routeName}',
-                style: AppTypography.heading3.copyWith(color: onFill),
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      '${CorridorTime.hhmm(run.scheduledAt)}  ${run.routeName}',
+                      style: AppTypography.heading3.copyWith(color: onFill),
+                    ),
+                  ),
+                  // Operations moved this run (#233). Read from the trip rather
+                  // than from the push that announced it, so a phone that was
+                  // off at 04:00 still finds out.
+                  if (run.wasRecentlyChanged)
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: AppSpacing.space8,
+                        vertical: AppSpacing.space4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: onFill.withValues(alpha: 0.2),
+                        borderRadius: AppRadii.circular(AppRadii.full),
+                      ),
+                      child: Text(
+                        'CHANGED',
+                        style: AppTypography.caption.copyWith(color: onFill),
+                      ),
+                    ),
+                ],
               ),
               const SizedBox(height: AppSpacing.space16),
               _StatusStrip(
@@ -66,11 +90,15 @@ class NextRunCard extends StatelessWidget {
               if (headline != null) ...[
                 const SizedBox(height: AppSpacing.space12),
                 Text(
-                  // Only what the API can actually answer. The frame also shows
-                  // a standby count; reservations carry the source but the
-                  // manifest does not expose it, so printing one would be a
-                  // guess dressed as a breakdown.
-                  '${headline!.stops} stops · ${headline!.morning} morning',
+                  // The frame's full breakdown, standby included now that the
+                  // manifest returns each seat's source (#230). Dropped from
+                  // the line when it is zero rather than printed as "0
+                  // standby", which reads like a fault rather than a quiet day.
+                  [
+                    '${headline!.stops} stops',
+                    '${headline!.morning} morning',
+                    if (headline!.standby > 0) '${headline!.standby} standby',
+                  ].join(' · '),
                   style: AppTypography.bodySmall.copyWith(
                     color: onFill.withValues(alpha: 0.85),
                   ),

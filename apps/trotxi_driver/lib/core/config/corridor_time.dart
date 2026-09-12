@@ -28,10 +28,32 @@ abstract final class CorridorTime {
   ///
   /// @param at - the instant.
   /// @returns the corridor's day.
-  static String day(DateTime at) {
-    final utc = at.toUtc();
-    return '${utc.year.toString().padLeft(4, '0')}-'
-        '${utc.month.toString().padLeft(2, '0')}-'
-        '${utc.day.toString().padLeft(2, '0')}';
-  }
+  static String day(DateTime at) => _format(at.toUtc());
+
+  /// A date the driver picked off a calendar, as `YYYY-MM-DD`.
+  ///
+  /// Deliberately does NOT convert. A calendar cell or a date picker hands back
+  /// a local midnight, and the year, month and day on it ARE the answer — the
+  /// driver pointed at them. Running [day] over one would convert an instant
+  /// nobody meant: east of UTC, local midnight on the 24th is 22:00 on the
+  /// 23rd, and a leave request for Christmas Eve would be filed for the day
+  /// before.
+  ///
+  /// The two are separate functions rather than one because the difference is
+  /// invisible in Accra, where the app runs, and only shows up on a developer's
+  /// machine somewhere else — which is precisely how this class of mistake got
+  /// into the app the first time.
+  ///
+  /// @param picked - a date chosen on a calendar.
+  /// @returns that date.
+  static String calendarDay(DateTime picked) => _format(picked);
+
+  /// Format year, month and day with no conversion of any kind.
+  ///
+  /// @param at - the date to read the fields off.
+  /// @returns `YYYY-MM-DD`.
+  static String _format(DateTime at) =>
+      '${at.year.toString().padLeft(4, '0')}-'
+      '${at.month.toString().padLeft(2, '0')}-'
+      '${at.day.toString().padLeft(2, '0')}';
 }

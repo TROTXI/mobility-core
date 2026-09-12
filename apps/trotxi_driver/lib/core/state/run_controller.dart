@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:trotxi_client/trotxi_client.dart';
 import 'package:trotxi_driver/core/state/loadable.dart';
+import 'package:trotxi_driver/Presentations/Boarding/models/scan_result.dart';
 import 'package:trotxi_driver/data/trips_repository.dart';
 
 /// Everything one run's screen needs, loaded together.
@@ -9,6 +10,7 @@ class RunDetail {
     required this.run,
     required this.riders,
     required this.stops,
+    this.capacity,
   });
 
   final DriverRun run;
@@ -17,17 +19,50 @@ class RunDetail {
   /// The corridor's stops in order, for the "stop N of M" counter.
   final List<String> stops;
 
+  /// The van's seat ceiling (#230), or null when this run has no vehicle
+  /// assigned yet. Reachable now that `GET /trips/:id` serves it to the trip's
+  /// own assigned driver; it used to live only behind the admin API.
+  final int? capacity;
+
   int get boarded => riders.where((r) => r.boarded).length;
 
-  /// Confirmed seats, which is what the counter is against.
-  ///
-  /// NOT the vehicle's capacity. Capacity lives on `vehicles` and is only
-  /// exposed through the admin API, so a driver's token cannot read it. Against
-  /// confirmed riders the number is still the one that matters at the kerb:
-  /// how many of the people who said they were coming are aboard.
+  /// Confirmed seats: how many of the people who said they were coming there
+  /// are to board.
   int get expected => riders.length;
 
-  List<ManifestRider> get waiting => riders.where((r) => !r.boarded).toList();
+  /// What the boarding counter counts against.
+  ///
+  /// The seat ceiling when the API gives one, and confirmed riders otherwise.
+  /// The fallback is not a lesser answer — a run with no vehicle assigned has
+  /// no ceiling to show, and "4 of 12 confirmed" is still the number that
+  /// matters at a kerb.
+  int get ceiling => capacity ?? riders.length;
+
+  /// Whether [ceiling] is the van's real capacity rather than the fallback, so
+  /// the screen can label it honestly instead of calling confirmed riders a
+  /// seat count.
+  bool get hasCapacity => capacity != null;
+
+  /// Riders still to board. A no-show is not waiting — the driver has already
+  /// said they did not turn up — but stays on the manifest so the mark can be
+  /// undone.
+  List<ManifestRider> get waiting =>
+      riders.where((r) => !r.boarded && !r.noShow).toList();
+
+  /// Seats filled from the standby pool (#230), the "· 6 standby" half of the
+  /// Today breakdown.
+  int get standby => riders.where((r) => r.isStandby).length;
+
+  /// How far along the corridor the driver has reported being (#230).
+  int? get currentStopSeq => run.currentStopSeq;
+
+  /// The stop the driver last reported reaching, or null before the first
+  /// arrival.
+  String? get currentStopName {
+    final seq = run.currentStopSeq;
+    if (seq == null || seq < 1 || seq > stops.length) return null;
+    return stops[seq - 1];
+  }
 }
 
 /// One run's detail (prototype frames 19 to 24), and its manifest.
@@ -60,7 +95,12 @@ class RunController extends ChangeNotifier {
     try {
       final riders = await _trips.manifest(_run.id);
       _detail = Loadable.data(
-        RunDetail(run: current.run, riders: riders, stops: current.stops),
+        RunDetail(
+          run: current.run,
+          riders: riders,
+          stops: current.stops,
+          capacity: current.capacity,
+        ),
       );
     } on TrotxiException catch (err) {
       _detail = Loadable.failure(err.message, previous: current);
@@ -73,6 +113,56 @@ class RunController extends ChangeNotifier {
 
   /// End this run.
   Future<void> complete() => _transition(() => _trips.complete(_run.id));
+
+  /// Report reaching a stop (#230).
+  ///
+  /// Optimistic in neither direction: the counter moves only once the server
+  /// has taken it, because a driver who saw "Stop 4" and then saw it snap back
+  /// would stop trusting the number.
+  ///
+  /// @param seq - the stop reached, as a route sequence number.
+  Future<void> arriveAtStop(int seq) async {
+    final current = _detail.valueOrNull;
+    try {
+      _run = await _trips.arriveAtStop(_run.id, seq);
+      if (current != null) {
+        _detail = Loadable.data(
+          RunDetail(
+            run: _run,
+            riders: current.riders,
+            stops: current.stops,
+            capacity: current.capacity,
+          ),
+        );
+      }
+    } on TrotxiException catch (err) {
+      _detail = Loadable.failure(err.message, previous: current);
+    }
+    notifyListeners();
+  }
+
+  /// Board a rider straight off the manifest (#227), then refresh it.
+  ///
+  /// @param reservationId - the seat the driver tapped.
+  /// @returns the outcome, for the screen to report.
+  Future<BoardingResult> boardFromManifest(String reservationId) async {
+    final result = await _trips.boardFromManifest(reservationId);
+    if (result.isAccepted ||
+        result.outcome == BoardingOutcome.alreadyBoarded) {
+      await refreshManifest();
+    }
+    return result;
+  }
+
+  /// Mark a rider as not having turned up (#227), then refresh the manifest.
+  ///
+  /// @param reservationId - the seat the driver tapped.
+  /// @returns the outcome, for the screen to report.
+  Future<NoShowResult> markNoShow(String reservationId) async {
+    final result = await _trips.markNoShow(reservationId);
+    if (result == NoShowResult.marked) await refreshManifest();
+    return result;
+  }
 
   Future<void> _transition(Future<DriverRun> Function() action) async {
     _transitioning = true;
@@ -91,17 +181,18 @@ class RunController extends ChangeNotifier {
 
   Future<void> _fetch() async {
     try {
-      // In parallel: the manifest and the stop list are independent, and a
-      // driver waiting at a stop should not pay for them in series.
-      final results = await Future.wait([
-        _trips.manifest(_run.id),
-        _trips.stopsFor(_run.routeId),
-      ]);
+      // In parallel: the manifest, the stop list and the run's own detail are
+      // independent, and a driver waiting at a stop should not pay for them in
+      // series.
+      final riders = _trips.manifest(_run.id);
+      final stops = _trips.stopsFor(_run.routeId);
+      final detail = _trips.detail(_run.id);
       _detail = Loadable.data(
         RunDetail(
           run: _run,
-          riders: results[0] as List<ManifestRider>,
-          stops: results[1] as List<String>,
+          riders: await riders,
+          stops: await stops,
+          capacity: (await detail).capacity,
         ),
       );
     } on OfflineException {

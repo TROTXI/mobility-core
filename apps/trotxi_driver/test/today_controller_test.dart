@@ -34,7 +34,11 @@ class _StubTrips implements TripsRepository {
   final completed = <String>[];
 
   @override
-  Future<List<DriverRun>> myRuns({String? date}) async {
+  Future<List<DriverRun>> myRuns({
+    String? date,
+    String? from,
+    String? to,
+  }) async {
     lastDate = date;
     if (failWith != null) throw failWith!;
     return runs;
@@ -74,13 +78,19 @@ class _StubTrips implements TripsRepository {
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
-ManifestRider _rider({bool boarded = false, String direction = 'morning'}) => ManifestRider(
+ManifestRider _rider({
+  bool boarded = false,
+  String direction = 'morning',
+  String source = 'confirmation',
+}) => ManifestRider(
   reservationId: 'r',
   userId: 'u',
   name: 'Ama Owusu',
   avatarUrl: null,
   boarded: boarded,
   direction: direction,
+  source: source,
+  noShow: false,
 );
 
 void main() {

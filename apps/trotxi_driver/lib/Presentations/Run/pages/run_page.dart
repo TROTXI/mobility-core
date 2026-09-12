@@ -166,20 +166,27 @@ class _RunPageState extends State<RunPage> {
         Row(
           children: [
             Expanded(
+              // Against the van's seat ceiling when the API gives one (#230),
+              // and confirmed riders when it does not — a run with no vehicle
+              // assigned has no ceiling to show. The label says which, so the
+              // number is never read as something it is not.
               child: BoardingCounter(
-                label: 'Boarded',
+                label: data.hasCapacity ? 'Boarded / seats' : 'Boarded',
                 value: data.boarded,
-                of: data.expected,
-                tone: data.boarded == data.expected && data.expected > 0
+                of: data.ceiling,
+                tone: data.boarded >= data.ceiling && data.ceiling > 0
                     ? colors.success
                     : null,
               ),
             ),
             const SizedBox(width: AppSpacing.space12),
             Expanded(
+              // Zero until the driver reports an arrival (#230). The API does
+              // not guess from GPS and neither does this: "Stop 1" before
+              // anyone has said so would be a number the screen invented.
               child: BoardingCounter(
                 label: 'Stops',
-                value: data.stops.isEmpty ? 0 : 1,
+                value: data.currentStopSeq ?? 0,
                 of: data.stops.length,
               ),
             ),
@@ -233,9 +240,26 @@ class _RunPageState extends State<RunPage> {
         ),
 
         const SizedBox(height: AppSpacing.space32),
-        Text(
-          'STOPS',
-          style: AppTypography.caption.copyWith(color: colors.textSecondary),
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                'STOPS',
+                style: AppTypography.caption.copyWith(
+                  color: colors.textSecondary,
+                ),
+              ),
+            ),
+            if (run.isActive && data.stops.isNotEmpty)
+              Text(
+                data.currentStopName == null
+                    ? 'Tap a stop when you reach it'
+                    : 'At ${data.currentStopName}',
+                style: AppTypography.caption.copyWith(
+                  color: colors.textSecondary,
+                ),
+              ),
+          ],
         ),
         const SizedBox(height: AppSpacing.space8),
         if (data.stops.isEmpty)
@@ -247,38 +271,122 @@ class _RunPageState extends State<RunPage> {
           )
         else
           for (final (index, stop) in data.stops.indexed)
-            Padding(
-              padding: const EdgeInsets.only(bottom: AppSpacing.space8),
-              child: Row(
-                children: [
-                  Container(
-                    width: 24,
-                    height: 24,
-                    alignment: Alignment.center,
-                    decoration: BoxDecoration(
-                      color: colors.surfaceSelected,
-                      borderRadius: AppRadii.circular(AppRadii.full),
-                    ),
-                    child: Text(
-                      '${index + 1}',
-                      style: AppTypography.caption.copyWith(
-                        color: colors.textPrimary,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: AppSpacing.space12),
-                  Expanded(
-                    child: Text(
-                      stop,
-                      style: AppTypography.body.copyWith(
-                        color: colors.textPrimary,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
+            _StopRow(
+              seq: index + 1,
+              name: stop,
+              // Passed rather than "done": the driver said they reached stop 4,
+              // which means 1 to 3 are behind them.
+              passed:
+                  data.currentStopSeq != null &&
+                  index + 1 < data.currentStopSeq!,
+              current: data.currentStopSeq == index + 1,
+              // Only on a run that is under way. Reporting arrivals on a trip
+              // nobody has started would record progress along a route the van
+              // is not on.
+              onArrive: run.isActive
+                  ? () => _arrive(context, controller, index + 1)
+                  : null,
+              colors: colors,
             ),
+        const SizedBox(height: AppSpacing.space24),
       ],
+    );
+  }
+
+  /// Report reaching a stop (#230).
+  ///
+  /// @param context - for the failure message.
+  /// @param controller - the run.
+  /// @param seq - the stop reached.
+  Future<void> _arrive(
+    BuildContext context,
+    RunController controller,
+    int seq,
+  ) async {
+    final messenger = ScaffoldMessenger.of(context);
+    await controller.arriveAtStop(seq);
+    final detail = controller.detail;
+    if (detail is Failure<RunDetail>) {
+      messenger.showSnackBar(SnackBar(content: Text(detail.message)));
+    }
+  }
+}
+
+/// One stop on the corridor, and the control that advances the counter.
+///
+/// Tappable on an active run, because the API takes any stop on the route
+/// rather than only the next one: a driver who missed a tap two stops back
+/// should be able to put the counter right instead of living with it wrong.
+class _StopRow extends StatelessWidget {
+  const _StopRow({
+    required this.seq,
+    required this.name,
+    required this.passed,
+    required this.current,
+    required this.onArrive,
+    required this.colors,
+  });
+
+  final int seq;
+  final String name;
+  final bool passed;
+  final bool current;
+  final VoidCallback? onArrive;
+  final AppColors colors;
+
+  @override
+  Widget build(BuildContext context) {
+    final tone = current
+        ? colors.action
+        : (passed ? colors.success : colors.surfaceSelected);
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppSpacing.space8),
+      child: InkWell(
+        onTap: onArrive,
+        borderRadius: AppRadii.circular(AppRadii.md),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: AppSpacing.space4),
+          child: Row(
+            children: [
+              Container(
+                width: 24,
+                height: 24,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: tone,
+                  borderRadius: AppRadii.circular(AppRadii.full),
+                ),
+                child: passed
+                    ? Icon(Icons.check, size: 14, color: colors.onAction)
+                    : Text(
+                        '$seq',
+                        style: AppTypography.caption.copyWith(
+                          color: current
+                              ? colors.onAction
+                              : colors.textPrimary,
+                        ),
+                      ),
+              ),
+              const SizedBox(width: AppSpacing.space12),
+              Expanded(
+                child: Text(
+                  name,
+                  style: AppTypography.body.copyWith(
+                    color: colors.textPrimary,
+                    fontWeight: current ? FontWeight.w600 : null,
+                  ),
+                ),
+              ),
+              if (onArrive != null && !current)
+                Text(
+                  passed ? 'Back to here' : 'Arrived',
+                  style: AppTypography.caption.copyWith(color: colors.action),
+                ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

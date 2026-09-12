@@ -110,3 +110,37 @@ class BoardingResult {
           'board by code if it keeps failing.',
   };
 }
+
+/// What marking a rider a no-show came back as (#227).
+///
+/// Deliberately not folded into [BoardingOutcome]. The two actions sit side by
+/// side on the same manifest row and mean opposite things, and a shared enum
+/// would let a boarding message surface on a no-show — at a door, with a queue,
+/// that is the kind of mix-up that strands a paying rider.
+enum NoShowResult {
+  /// Recorded. Idempotent: marking twice reports this both times.
+  marked,
+
+  /// The rider is already aboard, so there is nothing to mark. Refused rather
+  /// than reversed — someone verified onto the vehicle is on it.
+  alreadyBoarded,
+
+  /// This driver is not the one the run is assigned to.
+  forbidden,
+
+  /// Could not reach the server.
+  offline,
+
+  /// Something else went wrong.
+  failed;
+
+  /// What the driver reads.
+  String get message => switch (this) {
+    NoShowResult.marked => 'Marked as a no-show.',
+    NoShowResult.alreadyBoarded =>
+      'This rider is already aboard, so they cannot be a no-show.',
+    NoShowResult.forbidden => 'This run is assigned to another driver.',
+    NoShowResult.offline => 'No connection. Try again once you have signal.',
+    NoShowResult.failed => 'Could not mark that. Try again.',
+  };
+}
