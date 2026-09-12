@@ -113,6 +113,11 @@ class NextStopCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: colors.surfaceStrong,
         borderRadius: AppRadii.circular(AppRadii.lg),
+        // The stroke is what separates this card from the stat tiles above it
+        // in DARK, where the file gives both the same fill (#0E1B28) and relies
+        // on the border alone. In light the heavier fill already does the work
+        // and the edge is just a gentle one.
+        border: Border.all(color: colors.border),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
