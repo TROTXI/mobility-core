@@ -10,6 +10,8 @@ Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
 **flags** | [**BuiltList&lt;FlagsGet200ResponseFlagsInner&gt;**](FlagsGet200ResponseFlagsInner.md) |  | 
 **minSupportedVersion** | [**FlagsGet200ResponseMinSupportedVersion**](FlagsGet200ResponseMinSupportedVersion.md) |  | 
+**mapTiles** | [**FlagsGet200ResponseMapTiles**](FlagsGet200ResponseMapTiles.md) |  | 
+**operations** | [**FlagsGet200ResponseOperations**](FlagsGet200ResponseOperations.md) |  | 
 
 [[Back to Model list]](../README.md#documentation-for-models) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to README]](../README.md)
 

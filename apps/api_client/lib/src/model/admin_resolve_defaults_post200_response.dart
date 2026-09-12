@@ -12,10 +12,14 @@ part 'admin_resolve_defaults_post200_response.g.dart';
 ///
 /// Properties:
 /// * [defaulted] 
+/// * [skippedFull] 
 @BuiltValue()
 abstract class AdminResolveDefaultsPost200Response implements Built<AdminResolveDefaultsPost200Response, AdminResolveDefaultsPost200ResponseBuilder> {
   @BuiltValueField(wireName: r'defaulted')
   int get defaulted;
+
+  @BuiltValueField(wireName: r'skippedFull')
+  int get skippedFull;
 
   AdminResolveDefaultsPost200Response._();
 
@@ -43,6 +47,11 @@ class _$AdminResolveDefaultsPost200ResponseSerializer implements PrimitiveSerial
     yield r'defaulted';
     yield serializers.serialize(
       object.defaulted,
+      specifiedType: const FullType(int),
+    );
+    yield r'skippedFull';
+    yield serializers.serialize(
+      object.skippedFull,
       specifiedType: const FullType(int),
     );
   }
@@ -74,6 +83,13 @@ class _$AdminResolveDefaultsPost200ResponseSerializer implements PrimitiveSerial
             specifiedType: const FullType(int),
           ) as int;
           result.defaulted = valueDes;
+          break;
+        case r'skippedFull':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType(int),
+          ) as int;
+          result.skippedFull = valueDes;
           break;
         default:
           unhandled.add(key);

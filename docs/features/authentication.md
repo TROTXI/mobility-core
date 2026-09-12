@@ -198,13 +198,13 @@ leaves the old sessions alive has not evicted whoever prompted it.
 
 #### Ops credential lifecycle (admin)
 
-| Endpoint                                        | Does                                                                     |
-| ----------------------------------------------- | ------------------------------------------------------------------------ |
-| `POST /admin/drivers/:id/credentials`           | Issues a code and one-time PIN, and creates + links the driver's account |
-| `POST /admin/drivers/:id/credentials/reset-pin` | New one-time PIN, forces a change, revokes sessions                      |
-| `PATCH /admin/drivers/:id/credentials`          | `{ status?, unlock? }` — suspend, reinstate, or clear a lockout          |
+| Endpoint                                        | Does                                                                         |
+| ----------------------------------------------- | ---------------------------------------------------------------------------- |
+| `POST /admin/drivers/:id/credentials`           | Issues a code and one-time PIN, and creates + links the driver's account     |
+| `POST /admin/drivers/:id/credentials/reset-pin` | New one-time PIN (returned with the code), forces a change, revokes sessions |
+| `PATCH /admin/drivers/:id/credentials`          | `{ status?, unlock? }` — suspend, reinstate, or clear a lockout              |
 
-The PIN is returned **once** on issue and reset. It is stored only as a keyed
+The reset returns the driver code alongside the new PIN, because operations is reading both down a phone line to someone who has lost their slip. The PIN is returned **once** on issue and reset. It is stored only as a keyed
 hash, so a driver who loses it needs a reset, not a lookup. There is no
 self-service reset because `drivers.phone` is nullable and there is therefore no
 verified channel to send one to, which is why the sign-in screen's recovery path

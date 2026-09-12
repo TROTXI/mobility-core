@@ -6,6 +6,7 @@
 import 'package:built_collection/built_collection.dart';
 import 'package:trotxi_api_client/src/model/trips_id_position_get200_response_position.dart';
 import 'package:trotxi_api_client/src/model/trips_id_position_get200_response_eta_to_stops_inner.dart';
+import 'package:trotxi_api_client/src/model/trips_id_position_get200_response_rider_stop.dart';
 import 'package:built_value/built_value.dart';
 import 'package:built_value/serializer.dart';
 
@@ -17,6 +18,7 @@ part 'trips_id_position_get200_response.g.dart';
 /// * [tripId] 
 /// * [position] 
 /// * [etaToStops] 
+/// * [riderStop] 
 @BuiltValue()
 abstract class TripsIdPositionGet200Response implements Built<TripsIdPositionGet200Response, TripsIdPositionGet200ResponseBuilder> {
   @BuiltValueField(wireName: r'tripId')
@@ -27,6 +29,9 @@ abstract class TripsIdPositionGet200Response implements Built<TripsIdPositionGet
 
   @BuiltValueField(wireName: r'etaToStops')
   BuiltList<TripsIdPositionGet200ResponseEtaToStopsInner> get etaToStops;
+
+  @BuiltValueField(wireName: r'riderStop')
+  TripsIdPositionGet200ResponseRiderStop? get riderStop;
 
   TripsIdPositionGet200Response._();
 
@@ -65,6 +70,11 @@ class _$TripsIdPositionGet200ResponseSerializer implements PrimitiveSerializer<T
     yield serializers.serialize(
       object.etaToStops,
       specifiedType: const FullType(BuiltList, [FullType(TripsIdPositionGet200ResponseEtaToStopsInner)]),
+    );
+    yield r'riderStop';
+    yield object.riderStop == null ? null : serializers.serialize(
+      object.riderStop,
+      specifiedType: const FullType.nullable(TripsIdPositionGet200ResponseRiderStop),
     );
   }
 
@@ -109,6 +119,14 @@ class _$TripsIdPositionGet200ResponseSerializer implements PrimitiveSerializer<T
             specifiedType: const FullType(BuiltList, [FullType(TripsIdPositionGet200ResponseEtaToStopsInner)]),
           ) as BuiltList<TripsIdPositionGet200ResponseEtaToStopsInner>;
           result.etaToStops.replace(valueDes);
+          break;
+        case r'riderStop':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType.nullable(TripsIdPositionGet200ResponseRiderStop),
+          ) as TripsIdPositionGet200ResponseRiderStop?;
+          if (valueDes == null) continue;
+          result.riderStop.replace(valueDes);
           break;
         default:
           unhandled.add(key);

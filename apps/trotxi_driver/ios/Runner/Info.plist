@@ -4,6 +4,17 @@
 <dict>
 	<key>CADisableMinimumFrameDurationOnPhone</key>
 	<true/>
+	<!-- Camera: scanning a rider's QR boarding pass (#20). The string is what
+	     iOS shows in the permission prompt, so it says what the camera is FOR
+	     rather than that the app would like access. -->
+	<key>NSCameraUsageDescription</key>
+	<string>Trotxi Driver uses the camera to scan rider boarding passes.</string>
+	<!-- Location while in use only. The app publishes the vehicle's position so
+	     riders can see the bus approaching, and it does that while the driver has
+	     a run open. Always-on would be asking for a driver's whereabouts off
+	     shift, which is not something this app needs or should hold. -->
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Trotxi Driver shares your vehicle's location with riders while a trip is running, so they can see the bus approaching.</string>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>

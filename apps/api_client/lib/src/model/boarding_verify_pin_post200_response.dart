@@ -26,7 +26,7 @@ abstract class BoardingVerifyPinPost200Response implements Built<BoardingVerifyP
 
   @BuiltValueField(wireName: r'reason')
   BoardingVerifyPinPost200ResponseReasonEnum get reason;
-  // enum reasonEnum {  ok,  invalid,  not_found,  already_boarded,  };
+  // enum reasonEnum {  ok,  invalid,  not_found,  already_boarded,  forbidden,  };
 
   @BuiltValueField(wireName: r'deducted')
   bool get deducted;
@@ -165,6 +165,8 @@ class BoardingVerifyPinPost200ResponseReasonEnum extends EnumClass {
   static const BoardingVerifyPinPost200ResponseReasonEnum notFound = _$boardingVerifyPinPost200ResponseReasonEnum_notFound;
   @BuiltValueEnumConst(wireName: r'already_boarded')
   static const BoardingVerifyPinPost200ResponseReasonEnum alreadyBoarded = _$boardingVerifyPinPost200ResponseReasonEnum_alreadyBoarded;
+  @BuiltValueEnumConst(wireName: r'forbidden')
+  static const BoardingVerifyPinPost200ResponseReasonEnum forbidden = _$boardingVerifyPinPost200ResponseReasonEnum_forbidden;
 
   static Serializer<BoardingVerifyPinPost200ResponseReasonEnum> get serializer => _$boardingVerifyPinPost200ResponseReasonEnumSerializer;
 

@@ -10,17 +10,30 @@ All URIs are relative to *http://localhost*
 Method | HTTP request | Description
 ------------- | ------------- | -------------
 [**adminAskDispatchPost**](AdminApi.md#adminaskdispatchpost) | **POST** /admin/ask-dispatch | Prompt a day&#39;s route subscribers to confirm (seed pending + push)
-[**adminConvertCreditsPost**](AdminApi.md#adminconvertcreditspost) | **POST** /admin/convert-credits | Month-end: convert every active rider&#39;s unused rides to Ride Credits
+[**adminConvertCreditsPost**](AdminApi.md#adminconvertcreditspost) | **POST** /admin/convert-credits | Month-end: convert unused rides to Ride Credits for ENDED periods
+[**adminDriverRequestsGet**](AdminApi.md#admindriverrequestsget) | **GET** /admin/driver-requests | Driver route-change and leave requests, newest first
+[**adminDriverRequestsIdPatch**](AdminApi.md#admindriverrequestsidpatch) | **PATCH** /admin/driver-requests/{id} | Approve or decline a driver request
 [**adminDriversGet**](AdminApi.md#admindriversget) | **GET** /admin/drivers | List all drivers
+[**adminDriversIdCredentialsPatch**](AdminApi.md#admindriversidcredentialspatch) | **PATCH** /admin/drivers/{id}/credentials | Suspend, reinstate, or unlock a driver credential
+[**adminDriversIdCredentialsPost**](AdminApi.md#admindriversidcredentialspost) | **POST** /admin/drivers/{id}/credentials | Issue a driver code and one-time PIN
+[**adminDriversIdCredentialsResetPinPost**](AdminApi.md#admindriversidcredentialsresetpinpost) | **POST** /admin/drivers/{id}/credentials/reset-pin | Reset a driver&#39;s PIN and revoke their sessions
 [**adminDriversIdPatch**](AdminApi.md#admindriversidpatch) | **PATCH** /admin/drivers/{id} | Update a driver
 [**adminDriversPost**](AdminApi.md#admindriverspost) | **POST** /admin/drivers | Create a driver
+[**adminExpireSubscriptionsPost**](AdminApi.md#adminexpiresubscriptionspost) | **POST** /admin/expire-subscriptions | Expire subscriptions whose billing period has ended
 [**adminFlagsGet**](AdminApi.md#adminflagsget) | **GET** /admin/flags | List all feature flags
 [**adminFlagsKeyPut**](AdminApi.md#adminflagskeyput) | **PUT** /admin/flags/{key} | Create or update a feature flag
+[**adminIncidentsGet**](AdminApi.md#adminincidentsget) | **GET** /admin/incidents | Driver incident reports, newest first
+[**adminIncidentsIdPatch**](AdminApi.md#adminincidentsidpatch) | **PATCH** /admin/incidents/{id} | Acknowledge or resolve a driver incident report
+[**adminLearnRoutesPost**](AdminApi.md#adminlearnroutespost) | **POST** /admin/learn-routes | Derive route geometry + segment speeds from completed trips&#39; GPS traces
 [**adminMinVersionsGet**](AdminApi.md#adminminversionsget) | **GET** /admin/min-versions | List the minimum supported app version per platform
 [**adminMinVersionsPlatformPut**](AdminApi.md#adminminversionsplatformput) | **PUT** /admin/min-versions/{platform} | Set the minimum supported app version for a platform
+[**adminPlanPricingGet**](AdminApi.md#adminplanpricingget) | **GET** /admin/plan-pricing | The pricing levers for every plan
+[**adminPlanPricingPlanPatch**](AdminApi.md#adminplanpricingplanpatch) | **PATCH** /admin/plan-pricing/{plan} | Update a plan’s multiplier, take rate, ride count or credit value
 [**adminResolveDefaultsPost**](AdminApi.md#adminresolvedefaultspost) | **POST** /admin/resolve-defaults | Cutoff default-yes: flip still-pending reservations to reserved
 [**adminResolveNoShowsPost**](AdminApi.md#adminresolvenoshowspost) | **POST** /admin/resolve-no-shows | Cutoff: deduct confirmed-but-unboarded seats as no-shows
 [**adminRoutesGet**](AdminApi.md#adminroutesget) | **GET** /admin/routes | List all routes
+[**adminRoutesIdFarePut**](AdminApi.md#adminroutesidfareput) | **PUT** /admin/routes/{id}/fare | Set a corridor&#39;s fare (closes the previous one)
+[**adminRoutesIdFaresGet**](AdminApi.md#adminroutesidfaresget) | **GET** /admin/routes/{id}/fares | A corridor&#39;s fare history, newest first
 [**adminRoutesIdPatch**](AdminApi.md#adminroutesidpatch) | **PATCH** /admin/routes/{id} | Update a route
 [**adminRoutesIdStopsPost**](AdminApi.md#adminroutesidstopspost) | **POST** /admin/routes/{id}/stops | Attach a stop to a route at a sequence position
 [**adminRoutesPost**](AdminApi.md#adminroutespost) | **POST** /admin/routes | Create a route
@@ -81,7 +94,9 @@ Name | Type | Description  | Notes
 # **adminConvertCreditsPost**
 > AdminConvertCreditsPost200Response adminConvertCreditsPost()
 
-Month-end: convert every active rider's unused rides to Ride Credits
+Month-end: convert unused rides to Ride Credits for ENDED periods
+
+Only subscriptions whose billing period has ended are converted — not every active rider. Keyed per period (#162), so this is safe to run repeatedly within a period and converts normally in the next one. Before #162 it was keyed on the subscription id and could only ever fire once in its lifetime, which is why it was excluded from the cron schedule.
 
 ### Example
 ```dart
@@ -115,6 +130,92 @@ This endpoint does not need any parameter.
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
+# **adminDriverRequestsGet**
+> AdminDriverRequestsGet200Response adminDriverRequestsGet(status)
+
+Driver route-change and leave requests, newest first
+
+### Example
+```dart
+import 'package:trotxi_api_client/api.dart';
+
+final api = TrotxiApiClient().getAdminApi();
+final String status = status_example; // String | 
+
+try {
+    final response = api.adminDriverRequestsGet(status);
+    print(response);
+} on DioException catch (e) {
+    print('Exception when calling AdminApi->adminDriverRequestsGet: $e\n');
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **status** | **String**|  | [optional] 
+
+### Return type
+
+[**AdminDriverRequestsGet200Response**](AdminDriverRequestsGet200Response.md)
+
+### Authorization
+
+[bearerAuth](../README.md#bearerAuth)
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
+ - **Accept**: application/json
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
+# **adminDriverRequestsIdPatch**
+> AdminDriverRequestsGet200ResponseRequestsInner adminDriverRequestsIdPatch(id, adminDriverRequestsIdPatchRequest)
+
+Approve or decline a driver request
+
+Records the decision only. Approving a route change does not reassign the driver — do that at PUT /admin/trips/:id/assignment, which checks capacity.
+
+### Example
+```dart
+import 'package:trotxi_api_client/api.dart';
+
+final api = TrotxiApiClient().getAdminApi();
+final String id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
+final AdminDriverRequestsIdPatchRequest adminDriverRequestsIdPatchRequest = ; // AdminDriverRequestsIdPatchRequest | 
+
+try {
+    final response = api.adminDriverRequestsIdPatch(id, adminDriverRequestsIdPatchRequest);
+    print(response);
+} on DioException catch (e) {
+    print('Exception when calling AdminApi->adminDriverRequestsIdPatch: $e\n');
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **id** | **String**|  | 
+ **adminDriverRequestsIdPatchRequest** | [**AdminDriverRequestsIdPatchRequest**](AdminDriverRequestsIdPatchRequest.md)|  | 
+
+### Return type
+
+[**AdminDriverRequestsGet200ResponseRequestsInner**](AdminDriverRequestsGet200ResponseRequestsInner.md)
+
+### Authorization
+
+[bearerAuth](../README.md#bearerAuth)
+
+### HTTP request headers
+
+ - **Content-Type**: application/json
+ - **Accept**: application/json
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
 # **adminDriversGet**
 > BuiltList<AdminDriversGet200ResponseInner> adminDriversGet()
 
@@ -140,6 +241,137 @@ This endpoint does not need any parameter.
 ### Return type
 
 [**BuiltList&lt;AdminDriversGet200ResponseInner&gt;**](AdminDriversGet200ResponseInner.md)
+
+### Authorization
+
+[bearerAuth](../README.md#bearerAuth)
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
+ - **Accept**: application/json
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
+# **adminDriversIdCredentialsPatch**
+> String adminDriversIdCredentialsPatch(id, adminDriversIdCredentialsPatchRequest)
+
+Suspend, reinstate, or unlock a driver credential
+
+Suspending revokes live sessions: the point is to stop someone driving now, not whenever their access token happens to expire.
+
+### Example
+```dart
+import 'package:trotxi_api_client/api.dart';
+
+final api = TrotxiApiClient().getAdminApi();
+final String id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
+final AdminDriversIdCredentialsPatchRequest adminDriversIdCredentialsPatchRequest = ; // AdminDriversIdCredentialsPatchRequest | 
+
+try {
+    final response = api.adminDriversIdCredentialsPatch(id, adminDriversIdCredentialsPatchRequest);
+    print(response);
+} on DioException catch (e) {
+    print('Exception when calling AdminApi->adminDriversIdCredentialsPatch: $e\n');
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **id** | **String**|  | 
+ **adminDriversIdCredentialsPatchRequest** | [**AdminDriversIdCredentialsPatchRequest**](AdminDriversIdCredentialsPatchRequest.md)|  | 
+
+### Return type
+
+**String**
+
+### Authorization
+
+[bearerAuth](../README.md#bearerAuth)
+
+### HTTP request headers
+
+ - **Content-Type**: application/json
+ - **Accept**: application/json
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
+# **adminDriversIdCredentialsPost**
+> AdminDriversIdCredentialsPost201Response adminDriversIdCredentialsPost(id)
+
+Issue a driver code and one-time PIN
+
+Returns the PIN ONCE. It is stored only as a keyed hash and cannot be read back; a driver who loses it needs a reset, not a lookup. Also creates and links the driver's auth account if they do not have one yet.
+
+### Example
+```dart
+import 'package:trotxi_api_client/api.dart';
+
+final api = TrotxiApiClient().getAdminApi();
+final String id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
+
+try {
+    final response = api.adminDriversIdCredentialsPost(id);
+    print(response);
+} on DioException catch (e) {
+    print('Exception when calling AdminApi->adminDriversIdCredentialsPost: $e\n');
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **id** | **String**|  | 
+
+### Return type
+
+[**AdminDriversIdCredentialsPost201Response**](AdminDriversIdCredentialsPost201Response.md)
+
+### Authorization
+
+[bearerAuth](../README.md#bearerAuth)
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
+ - **Accept**: application/json
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
+# **adminDriversIdCredentialsResetPinPost**
+> AdminDriversIdCredentialsPost201Response adminDriversIdCredentialsResetPinPost(id)
+
+Reset a driver's PIN and revoke their sessions
+
+The recovery path the sign-in screen points at. There is no self-service reset because a driver phone number is optional, so there is no verified channel to send one to.
+
+### Example
+```dart
+import 'package:trotxi_api_client/api.dart';
+
+final api = TrotxiApiClient().getAdminApi();
+final String id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
+
+try {
+    final response = api.adminDriversIdCredentialsResetPinPost(id);
+    print(response);
+} on DioException catch (e) {
+    print('Exception when calling AdminApi->adminDriversIdCredentialsResetPinPost: $e\n');
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **id** | **String**|  | 
+
+### Return type
+
+[**AdminDriversIdCredentialsPost201Response**](AdminDriversIdCredentialsPost201Response.md)
 
 ### Authorization
 
@@ -236,6 +468,45 @@ Name | Type | Description  | Notes
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
+# **adminExpireSubscriptionsPost**
+> AdminExpireSubscriptionsPost200Response adminExpireSubscriptionsPost()
+
+Expire subscriptions whose billing period has ended
+
+Nothing did this before #162: `status` could be `expired` but no job set it, so a lapsed subscription stayed `active` forever — and the one-active-per-user index meant that stale row blocked the rider from subscribing again. Deliberately does not auto-renew: charging without the rider initiating it needs a stored mandate we do not have (#128).
+
+### Example
+```dart
+import 'package:trotxi_api_client/api.dart';
+
+final api = TrotxiApiClient().getAdminApi();
+
+try {
+    final response = api.adminExpireSubscriptionsPost();
+    print(response);
+} on DioException catch (e) {
+    print('Exception when calling AdminApi->adminExpireSubscriptionsPost: $e\n');
+}
+```
+
+### Parameters
+This endpoint does not need any parameter.
+
+### Return type
+
+[**AdminExpireSubscriptionsPost200Response**](AdminExpireSubscriptionsPost200Response.md)
+
+### Authorization
+
+[bearerAuth](../README.md#bearerAuth)
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
+ - **Accept**: application/json
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
 # **adminFlagsGet**
 > BuiltList<AdminFlagsGet200ResponseInner> adminFlagsGet()
 
@@ -316,6 +587,133 @@ Name | Type | Description  | Notes
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
+# **adminIncidentsGet**
+> AdminIncidentsGet200Response adminIncidentsGet(status)
+
+Driver incident reports, newest first
+
+### Example
+```dart
+import 'package:trotxi_api_client/api.dart';
+
+final api = TrotxiApiClient().getAdminApi();
+final String status = status_example; // String | 
+
+try {
+    final response = api.adminIncidentsGet(status);
+    print(response);
+} on DioException catch (e) {
+    print('Exception when calling AdminApi->adminIncidentsGet: $e\n');
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **status** | **String**|  | [optional] 
+
+### Return type
+
+[**AdminIncidentsGet200Response**](AdminIncidentsGet200Response.md)
+
+### Authorization
+
+[bearerAuth](../README.md#bearerAuth)
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
+ - **Accept**: application/json
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
+# **adminIncidentsIdPatch**
+> AdminIncidentsGet200ResponseIncidentsInner adminIncidentsIdPatch(id, adminIncidentsIdPatchRequest)
+
+Acknowledge or resolve a driver incident report
+
+### Example
+```dart
+import 'package:trotxi_api_client/api.dart';
+
+final api = TrotxiApiClient().getAdminApi();
+final String id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
+final AdminIncidentsIdPatchRequest adminIncidentsIdPatchRequest = ; // AdminIncidentsIdPatchRequest | 
+
+try {
+    final response = api.adminIncidentsIdPatch(id, adminIncidentsIdPatchRequest);
+    print(response);
+} on DioException catch (e) {
+    print('Exception when calling AdminApi->adminIncidentsIdPatch: $e\n');
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **id** | **String**|  | 
+ **adminIncidentsIdPatchRequest** | [**AdminIncidentsIdPatchRequest**](AdminIncidentsIdPatchRequest.md)|  | 
+
+### Return type
+
+[**AdminIncidentsGet200ResponseIncidentsInner**](AdminIncidentsGet200ResponseIncidentsInner.md)
+
+### Authorization
+
+[bearerAuth](../README.md#bearerAuth)
+
+### HTTP request headers
+
+ - **Content-Type**: application/json
+ - **Accept**: application/json
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
+# **adminLearnRoutesPost**
+> AdminLearnRoutesPost200Response adminLearnRoutesPost(adminLearnRoutesPostRequest)
+
+Derive route geometry + segment speeds from completed trips' GPS traces
+
+Reads back the traces of recent completed runs and writes the corridor’s real road-following path and its observed per-segment speeds. Safe to re-run: geometry is overwritten and speeds are replaced per direction, so repeated passes converge.
+
+### Example
+```dart
+import 'package:trotxi_api_client/api.dart';
+
+final api = TrotxiApiClient().getAdminApi();
+final AdminLearnRoutesPostRequest adminLearnRoutesPostRequest = ; // AdminLearnRoutesPostRequest | 
+
+try {
+    final response = api.adminLearnRoutesPost(adminLearnRoutesPostRequest);
+    print(response);
+} on DioException catch (e) {
+    print('Exception when calling AdminApi->adminLearnRoutesPost: $e\n');
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **adminLearnRoutesPostRequest** | [**AdminLearnRoutesPostRequest**](AdminLearnRoutesPostRequest.md)|  | 
+
+### Return type
+
+[**AdminLearnRoutesPost200Response**](AdminLearnRoutesPost200Response.md)
+
+### Authorization
+
+[bearerAuth](../README.md#bearerAuth)
+
+### HTTP request headers
+
+ - **Content-Type**: application/json
+ - **Accept**: application/json
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
 # **adminMinVersionsGet**
 > BuiltList<AdminMinVersionsGet200ResponseInner> adminMinVersionsGet()
 
@@ -384,6 +782,88 @@ Name | Type | Description  | Notes
 ### Return type
 
 [**AdminMinVersionsGet200ResponseInner**](AdminMinVersionsGet200ResponseInner.md)
+
+### Authorization
+
+[bearerAuth](../README.md#bearerAuth)
+
+### HTTP request headers
+
+ - **Content-Type**: application/json
+ - **Accept**: application/json
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
+# **adminPlanPricingGet**
+> AdminPlanPricingGet200Response adminPlanPricingGet()
+
+The pricing levers for every plan
+
+### Example
+```dart
+import 'package:trotxi_api_client/api.dart';
+
+final api = TrotxiApiClient().getAdminApi();
+
+try {
+    final response = api.adminPlanPricingGet();
+    print(response);
+} on DioException catch (e) {
+    print('Exception when calling AdminApi->adminPlanPricingGet: $e\n');
+}
+```
+
+### Parameters
+This endpoint does not need any parameter.
+
+### Return type
+
+[**AdminPlanPricingGet200Response**](AdminPlanPricingGet200Response.md)
+
+### Authorization
+
+[bearerAuth](../README.md#bearerAuth)
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
+ - **Accept**: application/json
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
+# **adminPlanPricingPlanPatch**
+> AdminPlanPricingGet200ResponsePlansInner adminPlanPricingPlanPatch(plan, adminPlanPricingPlanPatchRequest)
+
+Update a plan’s multiplier, take rate, ride count or credit value
+
+Rates are basis points: 10000 = 1.0. priceMultiplierBp is what the rider pays relative to spot (10000 = parity); takeRateBp is our share of the fare. Changes apply to new subscriptions and renewals, never to an active period.
+
+### Example
+```dart
+import 'package:trotxi_api_client/api.dart';
+
+final api = TrotxiApiClient().getAdminApi();
+final String plan = plan_example; // String | 
+final AdminPlanPricingPlanPatchRequest adminPlanPricingPlanPatchRequest = ; // AdminPlanPricingPlanPatchRequest | 
+
+try {
+    final response = api.adminPlanPricingPlanPatch(plan, adminPlanPricingPlanPatchRequest);
+    print(response);
+} on DioException catch (e) {
+    print('Exception when calling AdminApi->adminPlanPricingPlanPatch: $e\n');
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **plan** | **String**|  | 
+ **adminPlanPricingPlanPatchRequest** | [**AdminPlanPricingPlanPatchRequest**](AdminPlanPricingPlanPatchRequest.md)|  | 
+
+### Return type
+
+[**AdminPlanPricingGet200ResponsePlansInner**](AdminPlanPricingGet200ResponsePlansInner.md)
 
 ### Authorization
 
@@ -503,6 +983,94 @@ This endpoint does not need any parameter.
 ### Return type
 
 [**BuiltList&lt;RoutesGet200ResponseInner&gt;**](RoutesGet200ResponseInner.md)
+
+### Authorization
+
+[bearerAuth](../README.md#bearerAuth)
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
+ - **Accept**: application/json
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
+# **adminRoutesIdFarePut**
+> AdminRoutesIdFaresGet200ResponseFaresInner adminRoutesIdFarePut(id, adminRoutesIdFarePutRequest)
+
+Set a corridor's fare (closes the previous one)
+
+Records a new fare and closes the one it replaces rather than overwriting it. Every plan price on this corridor recomputes from it; existing subscriptions keep the price they were sold at until renewal.
+
+### Example
+```dart
+import 'package:trotxi_api_client/api.dart';
+
+final api = TrotxiApiClient().getAdminApi();
+final String id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
+final AdminRoutesIdFarePutRequest adminRoutesIdFarePutRequest = ; // AdminRoutesIdFarePutRequest | 
+
+try {
+    final response = api.adminRoutesIdFarePut(id, adminRoutesIdFarePutRequest);
+    print(response);
+} on DioException catch (e) {
+    print('Exception when calling AdminApi->adminRoutesIdFarePut: $e\n');
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **id** | **String**|  | 
+ **adminRoutesIdFarePutRequest** | [**AdminRoutesIdFarePutRequest**](AdminRoutesIdFarePutRequest.md)|  | 
+
+### Return type
+
+[**AdminRoutesIdFaresGet200ResponseFaresInner**](AdminRoutesIdFaresGet200ResponseFaresInner.md)
+
+### Authorization
+
+[bearerAuth](../README.md#bearerAuth)
+
+### HTTP request headers
+
+ - **Content-Type**: application/json
+ - **Accept**: application/json
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
+# **adminRoutesIdFaresGet**
+> AdminRoutesIdFaresGet200Response adminRoutesIdFaresGet(id)
+
+A corridor's fare history, newest first
+
+The audit trail behind every price. Fares are effective-dated because government and the transport unions set them, so a subscription sold in August has to stay explainable in October.
+
+### Example
+```dart
+import 'package:trotxi_api_client/api.dart';
+
+final api = TrotxiApiClient().getAdminApi();
+final String id = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
+
+try {
+    final response = api.adminRoutesIdFaresGet(id);
+    print(response);
+} on DioException catch (e) {
+    print('Exception when calling AdminApi->adminRoutesIdFaresGet: $e\n');
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **id** | **String**|  | 
+
+### Return type
+
+[**AdminRoutesIdFaresGet200Response**](AdminRoutesIdFaresGet200Response.md)
 
 ### Authorization
 

@@ -1,10 +1,18 @@
 // Daily boarding code (ADR-0014, E4 layer 2). A rider gets a short code when
-// they confirm; the driver types it against the manifest to board offline.
-// Four characters is still low entropy, so the protection stays layered: it's
-// verified only for a specific reservation the driver already sees on the
-// manifest, the verify endpoint is driver-gated + rate limited, and the stored
-// value is a KEYED hash (HMAC-SHA256 with the server secret) so a DB leak
-// doesn't reveal it.
+// they confirm; the driver types it to board offline.
+//
+// Four characters is low entropy, so the protection is layered: the verify
+// endpoints are gated to the run's ASSIGNED driver, budgeted against repeated
+// wrong guesses, and the stored value is a KEYED hash (HMAC-SHA256 with the
+// server secret) so a database leak reveals nothing usable.
+//
+// It used to say the code was "verified only for a specific reservation the
+// driver already sees on the manifest". That stopped being true in #241, which
+// searches the code across the run so a driver at a door does not have to find
+// a name first — and it stopped being load-bearing in #227, which lets the
+// assigned driver board any rider on their manifest with no code at all. The
+// code proves the RIDER is who they say. It was never what stood between a
+// driver and their own manifest.
 
 import { createHmac, randomInt, timingSafeEqual } from 'node:crypto';
 

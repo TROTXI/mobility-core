@@ -58,6 +58,9 @@ const MeReservationsGet200ResponseReservationsInnerStatusEnum
     _$meReservationsGet200ResponseReservationsInnerStatusEnum_operatorCancelled =
     const MeReservationsGet200ResponseReservationsInnerStatusEnum._(
         'operatorCancelled');
+const MeReservationsGet200ResponseReservationsInnerStatusEnum
+    _$meReservationsGet200ResponseReservationsInnerStatusEnum_unseated =
+    const MeReservationsGet200ResponseReservationsInnerStatusEnum._('unseated');
 
 MeReservationsGet200ResponseReservationsInnerStatusEnum
     _$meReservationsGet200ResponseReservationsInnerStatusEnumValueOf(
@@ -77,6 +80,8 @@ MeReservationsGet200ResponseReservationsInnerStatusEnum
       return _$meReservationsGet200ResponseReservationsInnerStatusEnum_released;
     case 'operatorCancelled':
       return _$meReservationsGet200ResponseReservationsInnerStatusEnum_operatorCancelled;
+    case 'unseated':
+      return _$meReservationsGet200ResponseReservationsInnerStatusEnum_unseated;
     default:
       throw ArgumentError(name);
   }
@@ -92,6 +97,7 @@ final BuiltSet<MeReservationsGet200ResponseReservationsInnerStatusEnum>
   _$meReservationsGet200ResponseReservationsInnerStatusEnum_noShow,
   _$meReservationsGet200ResponseReservationsInnerStatusEnum_released,
   _$meReservationsGet200ResponseReservationsInnerStatusEnum_operatorCancelled,
+  _$meReservationsGet200ResponseReservationsInnerStatusEnum_unseated,
 ]);
 
 const MeReservationsGet200ResponseReservationsInnerSource_Enum
@@ -186,6 +192,7 @@ class _$MeReservationsGet200ResponseReservationsInnerStatusEnumSerializer
     'noShow': 'no_show',
     'released': 'released',
     'operatorCancelled': 'operator_cancelled',
+    'unseated': 'unseated',
   };
   static const Map<Object, String> _fromWire = const <Object, String>{
     'pending': 'pending',
@@ -195,6 +202,7 @@ class _$MeReservationsGet200ResponseReservationsInnerStatusEnumSerializer
     'no_show': 'noShow',
     'released': 'released',
     'operator_cancelled': 'operatorCancelled',
+    'unseated': 'unseated',
   };
 
   @override
@@ -263,6 +271,10 @@ class _$MeReservationsGet200ResponseReservationsInner
   @override
   final String? tripId;
   @override
+  final String? pickupStopId;
+  @override
+  final String? dropoffStopId;
+  @override
   final String travelDate;
   @override
   final MeReservationsGet200ResponseReservationsInnerDirectionEnum direction;
@@ -282,6 +294,8 @@ class _$MeReservationsGet200ResponseReservationsInner
   _$MeReservationsGet200ResponseReservationsInner._(
       {required this.id,
       this.tripId,
+      this.pickupStopId,
+      this.dropoffStopId,
       required this.travelDate,
       required this.direction,
       required this.status,
@@ -304,6 +318,8 @@ class _$MeReservationsGet200ResponseReservationsInner
     return other is MeReservationsGet200ResponseReservationsInner &&
         id == other.id &&
         tripId == other.tripId &&
+        pickupStopId == other.pickupStopId &&
+        dropoffStopId == other.dropoffStopId &&
         travelDate == other.travelDate &&
         direction == other.direction &&
         status == other.status &&
@@ -316,6 +332,8 @@ class _$MeReservationsGet200ResponseReservationsInner
     var _$hash = 0;
     _$hash = $jc(_$hash, id.hashCode);
     _$hash = $jc(_$hash, tripId.hashCode);
+    _$hash = $jc(_$hash, pickupStopId.hashCode);
+    _$hash = $jc(_$hash, dropoffStopId.hashCode);
     _$hash = $jc(_$hash, travelDate.hashCode);
     _$hash = $jc(_$hash, direction.hashCode);
     _$hash = $jc(_$hash, status.hashCode);
@@ -331,6 +349,8 @@ class _$MeReservationsGet200ResponseReservationsInner
             r'MeReservationsGet200ResponseReservationsInner')
           ..add('id', id)
           ..add('tripId', tripId)
+          ..add('pickupStopId', pickupStopId)
+          ..add('dropoffStopId', dropoffStopId)
           ..add('travelDate', travelDate)
           ..add('direction', direction)
           ..add('status', status)
@@ -353,6 +373,15 @@ class MeReservationsGet200ResponseReservationsInnerBuilder
   String? _tripId;
   String? get tripId => _$this._tripId;
   set tripId(String? tripId) => _$this._tripId = tripId;
+
+  String? _pickupStopId;
+  String? get pickupStopId => _$this._pickupStopId;
+  set pickupStopId(String? pickupStopId) => _$this._pickupStopId = pickupStopId;
+
+  String? _dropoffStopId;
+  String? get dropoffStopId => _$this._dropoffStopId;
+  set dropoffStopId(String? dropoffStopId) =>
+      _$this._dropoffStopId = dropoffStopId;
 
   String? _travelDate;
   String? get travelDate => _$this._travelDate;
@@ -392,6 +421,8 @@ class MeReservationsGet200ResponseReservationsInnerBuilder
     if ($v != null) {
       _id = $v.id;
       _tripId = $v.tripId;
+      _pickupStopId = $v.pickupStopId;
+      _dropoffStopId = $v.dropoffStopId;
       _travelDate = $v.travelDate;
       _direction = $v.direction;
       _status = $v.status;
@@ -423,6 +454,8 @@ class MeReservationsGet200ResponseReservationsInnerBuilder
           id: BuiltValueNullFieldError.checkNotNull(
               id, r'MeReservationsGet200ResponseReservationsInner', 'id'),
           tripId: tripId,
+          pickupStopId: pickupStopId,
+          dropoffStopId: dropoffStopId,
           travelDate: BuiltValueNullFieldError.checkNotNull(travelDate,
               r'MeReservationsGet200ResponseReservationsInner', 'travelDate'),
           direction: BuiltValueNullFieldError.checkNotNull(direction,

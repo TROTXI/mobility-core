@@ -13,6 +13,8 @@ part 'admin_vehicles_id_patch_request.g.dart';
 /// Properties:
 /// * [registration] 
 /// * [label] 
+/// * [make] 
+/// * [colour] 
 /// * [capacity] 
 @BuiltValue()
 abstract class AdminVehiclesIdPatchRequest implements Built<AdminVehiclesIdPatchRequest, AdminVehiclesIdPatchRequestBuilder> {
@@ -21,6 +23,12 @@ abstract class AdminVehiclesIdPatchRequest implements Built<AdminVehiclesIdPatch
 
   @BuiltValueField(wireName: r'label')
   String? get label;
+
+  @BuiltValueField(wireName: r'make')
+  String? get make;
+
+  @BuiltValueField(wireName: r'colour')
+  String? get colour;
 
   @BuiltValueField(wireName: r'capacity')
   int? get capacity;
@@ -59,6 +67,20 @@ class _$AdminVehiclesIdPatchRequestSerializer implements PrimitiveSerializer<Adm
       yield r'label';
       yield serializers.serialize(
         object.label,
+        specifiedType: const FullType.nullable(String),
+      );
+    }
+    if (object.make != null) {
+      yield r'make';
+      yield serializers.serialize(
+        object.make,
+        specifiedType: const FullType.nullable(String),
+      );
+    }
+    if (object.colour != null) {
+      yield r'colour';
+      yield serializers.serialize(
+        object.colour,
         specifiedType: const FullType.nullable(String),
       );
     }
@@ -106,6 +128,22 @@ class _$AdminVehiclesIdPatchRequestSerializer implements PrimitiveSerializer<Adm
           ) as String?;
           if (valueDes == null) continue;
           result.label = valueDes;
+          break;
+        case r'make':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType.nullable(String),
+          ) as String?;
+          if (valueDes == null) continue;
+          result.make = valueDes;
+          break;
+        case r'colour':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType.nullable(String),
+          ) as String?;
+          if (valueDes == null) continue;
+          result.colour = valueDes;
           break;
         case r'capacity':
           final valueDes = serializers.deserialize(

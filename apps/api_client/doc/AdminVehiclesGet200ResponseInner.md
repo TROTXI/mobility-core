@@ -11,6 +11,8 @@ Name | Type | Description | Notes
 **id** | **String** |  | 
 **registration** | **String** |  | 
 **label** | **String** |  | 
+**make** | **String** |  | 
+**colour** | **String** |  | 
 **capacity** | **int** |  | 
 **createdAt** | [**DateTime**](DateTime.md) |  | 
 

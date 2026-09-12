@@ -72,6 +72,28 @@ export interface BoardRiderResult {
   deducted: boolean;
 }
 
+/** A driver typing a code with nobody picked first (#241). */
+export interface VerifyCodeInput {
+  /** The run being boarded. The code is only searched within it. */
+  tripId: string;
+  /** The code the rider read out, any case. */
+  code: string;
+  /** The driver performing it. */
+  actedBy: string;
+}
+
+/** The outcome of boarding by code alone. */
+export interface VerifyCodeResult {
+  riderId: string | null;
+  /**
+   * `ambiguous` means two riders on this run hold the same code. Vanishingly
+   * unlikely, and refused rather than guessed: picking one would spend the
+   * wrong rider's ride.
+   */
+  reason: 'ok' | 'invalid' | 'already_boarded' | 'ambiguous' | 'forbidden' | 'not_found';
+  deducted: boolean;
+}
+
 /** The outcome of marking one rider a no-show. */
 export interface MarkNoShowResult {
   riderId: string | null;
@@ -103,6 +125,19 @@ const MAX_PIN_ATTEMPTS = 10;
 
 /** How long that attempt budget lasts, in seconds. */
 const PIN_ATTEMPT_WINDOW_SECONDS = 15 * 60;
+
+/**
+ * The same budget for the code-only path, where one attempt is checked against
+ * every open seat on the run rather than one.
+ *
+ * Higher, because a driver boarding fifteen riders in a row will legitimately
+ * mistype more than ten times across a whole run, and the ceiling is not what
+ * makes this safe. What makes it safe is that the caller is already the run's
+ * assigned driver — and an assigned driver can board any rider on their
+ * manifest with no code at all (see boardRider). The code proves the RIDER is
+ * who they say; it was never what stood between a driver and the manifest.
+ */
+const MAX_TRIP_CODE_ATTEMPTS = 30;
 
 /** Collaborators for {@link BoardingService}, injected at app wiring. */
 export interface BoardingServiceDeps {
@@ -264,6 +299,92 @@ export class BoardingService {
     }
     await this.recordScan(reservation.userId, input.scannedBy, reservation.tripId, 'ok', 'pin');
     return { valid: true, riderId: reservation.userId, reason: 'ok', deducted };
+  }
+
+  /**
+   * Board whoever holds this code on this run (#241) — no rider picked first.
+   *
+   * The original design made the driver select a seat off the manifest and
+   * only then type the code, so four characters were never a key to the whole
+   * run. That reasoning stopped holding when boardRider landed in #227: the
+   * assigned driver can already board any rider on their manifest with no code
+   * whatsoever, so searching the code across the run gives away nothing that
+   * was not already given.
+   *
+   * What it buys is the door. A driver with a queue should be able to take a
+   * code and act on it, not hunt for a name first, and "find the person, then
+   * type the thing they just said" is two steps where the design has one.
+   *
+   * @param input - the run, the presented code, and the driver.
+   * @returns who boarded, or why nobody did.
+   */
+  async verifyCodeOnTrip(input: VerifyCodeInput): Promise<VerifyCodeResult> {
+    if (!this.deps.reservations) {
+      return { riderId: null, reason: 'not_found', deducted: false };
+    }
+    if (!(await this.isAssignedDriver(input.actedBy, input.tripId))) {
+      return { riderId: null, reason: 'forbidden', deducted: false };
+    }
+    if (!(await this.withinTripCodeBudget(input.tripId, input.actedBy))) {
+      return { riderId: null, reason: 'invalid', deducted: false };
+    }
+
+    const reservations = await this.deps.reservations.listForTrip(input.tripId);
+    // The seats a code can name. A declined or unseated row is not a seat, and
+    // must not be reachable by typing four characters any more than by tapping.
+    const candidates = reservations.filter((r) =>
+      MANIFEST_ACTIONABLE.includes(r.status as (typeof MANIFEST_ACTIONABLE)[number]),
+    );
+    const matches = candidates.filter((r) => checkPin(input.code, r.pinHash, this.deps.secret));
+
+    if (matches.length === 0) {
+      await this.recordScan(null, input.actedBy, input.tripId, 'invalid', 'pin');
+      return { riderId: null, reason: 'invalid', deducted: false };
+    }
+    if (matches.length > 1) {
+      // Two seats, one code. Refused rather than resolved by picking the first:
+      // the wrong rider would be charged and the right one would still be stood
+      // at the door.
+      await this.recordScan(null, input.actedBy, input.tripId, 'invalid', 'pin');
+      return { riderId: null, reason: 'ambiguous', deducted: false };
+    }
+
+    const reservation = matches[0]!;
+    if (reservation.status === 'boarded') {
+      await this.recordScan(reservation.userId, input.actedBy, input.tripId, 'reused', 'pin');
+      return { riderId: reservation.userId, reason: 'already_boarded', deducted: false };
+    }
+
+    let deducted = false;
+    try {
+      deducted = await this.boardAndDebit(reservation);
+    } catch (err) {
+      console.error('boarding: code ride deduction failed (allowed to board anyway)', err);
+    }
+    await this.recordScan(reservation.userId, input.actedBy, input.tripId, 'ok', 'pin');
+    return { riderId: reservation.userId, reason: 'ok', deducted };
+  }
+
+  /**
+   * Count this attempt against the run's budget of wrong codes.
+   *
+   * Fails OPEN like the rest of this file: a KV outage must not strand a bus.
+   *
+   * @param tripId - the run being boarded.
+   * @param userId - the driver doing the boarding.
+   * @returns whether the attempt is still within budget.
+   */
+  private async withinTripCodeBudget(tripId: string, userId: string): Promise<boolean> {
+    try {
+      const attempts = await this.deps.kv.increment(
+        `code:attempts:${tripId}:${userId}`,
+        PIN_ATTEMPT_WINDOW_SECONDS,
+      );
+      return attempts <= MAX_TRIP_CODE_ATTEMPTS;
+    } catch (err) {
+      console.warn('boarding: trip code budget unavailable; allowing attempt', err);
+      return true;
+    }
   }
 
   /**

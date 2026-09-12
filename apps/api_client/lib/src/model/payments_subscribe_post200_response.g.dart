@@ -12,13 +12,23 @@ class _$PaymentsSubscribePost200Response
   final String authorizationUrl;
   @override
   final String reference;
+  @override
+  final int pricePesewas;
+  @override
+  final int appliedCreditPesewas;
+  @override
+  final int chargePesewas;
 
   factory _$PaymentsSubscribePost200Response(
           [void Function(PaymentsSubscribePost200ResponseBuilder)? updates]) =>
       (PaymentsSubscribePost200ResponseBuilder()..update(updates))._build();
 
   _$PaymentsSubscribePost200Response._(
-      {required this.authorizationUrl, required this.reference})
+      {required this.authorizationUrl,
+      required this.reference,
+      required this.pricePesewas,
+      required this.appliedCreditPesewas,
+      required this.chargePesewas})
       : super._();
   @override
   PaymentsSubscribePost200Response rebuild(
@@ -34,7 +44,10 @@ class _$PaymentsSubscribePost200Response
     if (identical(other, this)) return true;
     return other is PaymentsSubscribePost200Response &&
         authorizationUrl == other.authorizationUrl &&
-        reference == other.reference;
+        reference == other.reference &&
+        pricePesewas == other.pricePesewas &&
+        appliedCreditPesewas == other.appliedCreditPesewas &&
+        chargePesewas == other.chargePesewas;
   }
 
   @override
@@ -42,6 +55,9 @@ class _$PaymentsSubscribePost200Response
     var _$hash = 0;
     _$hash = $jc(_$hash, authorizationUrl.hashCode);
     _$hash = $jc(_$hash, reference.hashCode);
+    _$hash = $jc(_$hash, pricePesewas.hashCode);
+    _$hash = $jc(_$hash, appliedCreditPesewas.hashCode);
+    _$hash = $jc(_$hash, chargePesewas.hashCode);
     _$hash = $jf(_$hash);
     return _$hash;
   }
@@ -50,7 +66,10 @@ class _$PaymentsSubscribePost200Response
   String toString() {
     return (newBuiltValueToStringHelper(r'PaymentsSubscribePost200Response')
           ..add('authorizationUrl', authorizationUrl)
-          ..add('reference', reference))
+          ..add('reference', reference)
+          ..add('pricePesewas', pricePesewas)
+          ..add('appliedCreditPesewas', appliedCreditPesewas)
+          ..add('chargePesewas', chargePesewas))
         .toString();
   }
 }
@@ -70,6 +89,20 @@ class PaymentsSubscribePost200ResponseBuilder
   String? get reference => _$this._reference;
   set reference(String? reference) => _$this._reference = reference;
 
+  int? _pricePesewas;
+  int? get pricePesewas => _$this._pricePesewas;
+  set pricePesewas(int? pricePesewas) => _$this._pricePesewas = pricePesewas;
+
+  int? _appliedCreditPesewas;
+  int? get appliedCreditPesewas => _$this._appliedCreditPesewas;
+  set appliedCreditPesewas(int? appliedCreditPesewas) =>
+      _$this._appliedCreditPesewas = appliedCreditPesewas;
+
+  int? _chargePesewas;
+  int? get chargePesewas => _$this._chargePesewas;
+  set chargePesewas(int? chargePesewas) =>
+      _$this._chargePesewas = chargePesewas;
+
   PaymentsSubscribePost200ResponseBuilder() {
     PaymentsSubscribePost200Response._defaults(this);
   }
@@ -79,6 +112,9 @@ class PaymentsSubscribePost200ResponseBuilder
     if ($v != null) {
       _authorizationUrl = $v.authorizationUrl;
       _reference = $v.reference;
+      _pricePesewas = $v.pricePesewas;
+      _appliedCreditPesewas = $v.appliedCreditPesewas;
+      _chargePesewas = $v.chargePesewas;
       _$v = null;
     }
     return this;
@@ -106,6 +142,14 @@ class PaymentsSubscribePost200ResponseBuilder
               'authorizationUrl'),
           reference: BuiltValueNullFieldError.checkNotNull(
               reference, r'PaymentsSubscribePost200Response', 'reference'),
+          pricePesewas: BuiltValueNullFieldError.checkNotNull(pricePesewas,
+              r'PaymentsSubscribePost200Response', 'pricePesewas'),
+          appliedCreditPesewas: BuiltValueNullFieldError.checkNotNull(
+              appliedCreditPesewas,
+              r'PaymentsSubscribePost200Response',
+              'appliedCreditPesewas'),
+          chargePesewas: BuiltValueNullFieldError.checkNotNull(chargePesewas,
+              r'PaymentsSubscribePost200Response', 'chargePesewas'),
         );
     replace(_$result);
     return _$result;

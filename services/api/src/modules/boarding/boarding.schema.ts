@@ -93,6 +93,26 @@ export const boardRiderResponseSchema = z.object({
   deducted: z.boolean(),
 });
 
+/**
+ * A code typed with nobody picked first (#241) — the door flow.
+ *
+ * Looser than the generator's alphabet for the same reason `verifyPinBodySchema`
+ * is: codes issued before the alphanumeric switch are four digits, including
+ * the `0` and `1` the new alphabet omits, and rejecting those at the edge would
+ * strand a rider holding one. The HMAC comparison is the real gate.
+ */
+export const verifyCodeBodySchema = z.object({
+  tripId: z.string().uuid(),
+  code: z.string().regex(/^[0-9A-Za-z]{4}$/, 'expected a 4-character boarding code'),
+});
+
+export const verifyCodeResponseSchema = z.object({
+  /** Who boarded. Null when no seat on this run holds that code. */
+  riderId: z.string().uuid().nullable(),
+  reason: z.enum(['ok', 'invalid', 'already_boarded', 'ambiguous', 'forbidden', 'not_found']),
+  deducted: z.boolean(),
+});
+
 /** One rider the driver says did not turn up at their stop (#227). */
 export const markNoShowBodySchema = z.object({
   reservationId: z.string().uuid(),

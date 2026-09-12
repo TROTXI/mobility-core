@@ -38,7 +38,11 @@ export const issuedCredentialSchema = z.object({
   pin: z.string(),
 });
 
-export const resetPinResponseSchema = z.object({ pin: z.string() });
+export const resetPinResponseSchema = z.object({
+  /** Unchanged by a reset, but returned so ops can read the driver both halves. */
+  driverCode: z.string(),
+  pin: z.string(),
+});
 
 export const credentialPatchBodySchema = z
   .object({

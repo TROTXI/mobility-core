@@ -33,9 +33,45 @@ final BuiltSet<BoardingManifestGet200ResponseRidersInnerDirectionEnum>
   _$boardingManifestGet200ResponseRidersInnerDirectionEnum_evening,
 ]);
 
+const BoardingManifestGet200ResponseRidersInnerSource_Enum
+    _$boardingManifestGet200ResponseRidersInnerSourceEnum_confirmation =
+    const BoardingManifestGet200ResponseRidersInnerSource_Enum._(
+        'confirmation');
+const BoardingManifestGet200ResponseRidersInnerSource_Enum
+    _$boardingManifestGet200ResponseRidersInnerSourceEnum_default_ =
+    const BoardingManifestGet200ResponseRidersInnerSource_Enum._('default_');
+const BoardingManifestGet200ResponseRidersInnerSource_Enum
+    _$boardingManifestGet200ResponseRidersInnerSourceEnum_standby =
+    const BoardingManifestGet200ResponseRidersInnerSource_Enum._('standby');
+
+BoardingManifestGet200ResponseRidersInnerSource_Enum
+    _$boardingManifestGet200ResponseRidersInnerSourceEnumValueOf(String name) {
+  switch (name) {
+    case 'confirmation':
+      return _$boardingManifestGet200ResponseRidersInnerSourceEnum_confirmation;
+    case 'default_':
+      return _$boardingManifestGet200ResponseRidersInnerSourceEnum_default_;
+    case 'standby':
+      return _$boardingManifestGet200ResponseRidersInnerSourceEnum_standby;
+    default:
+      throw ArgumentError(name);
+  }
+}
+
+final BuiltSet<BoardingManifestGet200ResponseRidersInnerSource_Enum>
+    _$boardingManifestGet200ResponseRidersInnerSourceEnumValues = BuiltSet<
+        BoardingManifestGet200ResponseRidersInnerSource_Enum>(const <BoardingManifestGet200ResponseRidersInnerSource_Enum>[
+  _$boardingManifestGet200ResponseRidersInnerSourceEnum_confirmation,
+  _$boardingManifestGet200ResponseRidersInnerSourceEnum_default_,
+  _$boardingManifestGet200ResponseRidersInnerSourceEnum_standby,
+]);
+
 Serializer<BoardingManifestGet200ResponseRidersInnerDirectionEnum>
     _$boardingManifestGet200ResponseRidersInnerDirectionEnumSerializer =
     _$BoardingManifestGet200ResponseRidersInnerDirectionEnumSerializer();
+Serializer<BoardingManifestGet200ResponseRidersInnerSource_Enum>
+    _$boardingManifestGet200ResponseRidersInnerSourceEnumSerializer =
+    _$BoardingManifestGet200ResponseRidersInnerSource_EnumSerializer();
 
 class _$BoardingManifestGet200ResponseRidersInnerDirectionEnumSerializer
     implements
@@ -72,6 +108,43 @@ class _$BoardingManifestGet200ResponseRidersInnerDirectionEnumSerializer
           _fromWire[serialized] ?? (serialized is String ? serialized : ''));
 }
 
+class _$BoardingManifestGet200ResponseRidersInnerSource_EnumSerializer
+    implements
+        PrimitiveSerializer<
+            BoardingManifestGet200ResponseRidersInnerSource_Enum> {
+  static const Map<String, Object> _toWire = const <String, Object>{
+    'confirmation': 'confirmation',
+    'default_': 'default',
+    'standby': 'standby',
+  };
+  static const Map<Object, String> _fromWire = const <Object, String>{
+    'confirmation': 'confirmation',
+    'default': 'default_',
+    'standby': 'standby',
+  };
+
+  @override
+  final Iterable<Type> types = const <Type>[
+    BoardingManifestGet200ResponseRidersInnerSource_Enum
+  ];
+  @override
+  final String wireName =
+      'BoardingManifestGet200ResponseRidersInnerSource_Enum';
+
+  @override
+  Object serialize(Serializers serializers,
+          BoardingManifestGet200ResponseRidersInnerSource_Enum object,
+          {FullType specifiedType = FullType.unspecified}) =>
+      _toWire[object.name] ?? object.name;
+
+  @override
+  BoardingManifestGet200ResponseRidersInnerSource_Enum deserialize(
+          Serializers serializers, Object serialized,
+          {FullType specifiedType = FullType.unspecified}) =>
+      BoardingManifestGet200ResponseRidersInnerSource_Enum.valueOf(
+          _fromWire[serialized] ?? (serialized is String ? serialized : ''));
+}
+
 class _$BoardingManifestGet200ResponseRidersInner
     extends BoardingManifestGet200ResponseRidersInner {
   @override
@@ -86,6 +159,10 @@ class _$BoardingManifestGet200ResponseRidersInner
   final BoardingManifestGet200ResponseRidersInnerDirectionEnum direction;
   @override
   final bool boarded;
+  @override
+  final BoardingManifestGet200ResponseRidersInnerSource_Enum source_;
+  @override
+  final bool noShow;
 
   factory _$BoardingManifestGet200ResponseRidersInner(
           [void Function(BoardingManifestGet200ResponseRidersInnerBuilder)?
@@ -99,7 +176,9 @@ class _$BoardingManifestGet200ResponseRidersInner
       this.name,
       this.avatarUrl,
       required this.direction,
-      required this.boarded})
+      required this.boarded,
+      required this.source_,
+      required this.noShow})
       : super._();
   @override
   BoardingManifestGet200ResponseRidersInner rebuild(
@@ -120,7 +199,9 @@ class _$BoardingManifestGet200ResponseRidersInner
         name == other.name &&
         avatarUrl == other.avatarUrl &&
         direction == other.direction &&
-        boarded == other.boarded;
+        boarded == other.boarded &&
+        source_ == other.source_ &&
+        noShow == other.noShow;
   }
 
   @override
@@ -132,6 +213,8 @@ class _$BoardingManifestGet200ResponseRidersInner
     _$hash = $jc(_$hash, avatarUrl.hashCode);
     _$hash = $jc(_$hash, direction.hashCode);
     _$hash = $jc(_$hash, boarded.hashCode);
+    _$hash = $jc(_$hash, source_.hashCode);
+    _$hash = $jc(_$hash, noShow.hashCode);
     _$hash = $jf(_$hash);
     return _$hash;
   }
@@ -145,7 +228,9 @@ class _$BoardingManifestGet200ResponseRidersInner
           ..add('name', name)
           ..add('avatarUrl', avatarUrl)
           ..add('direction', direction)
-          ..add('boarded', boarded))
+          ..add('boarded', boarded)
+          ..add('source_', source_)
+          ..add('noShow', noShow))
         .toString();
   }
 }
@@ -184,6 +269,16 @@ class BoardingManifestGet200ResponseRidersInnerBuilder
   bool? get boarded => _$this._boarded;
   set boarded(bool? boarded) => _$this._boarded = boarded;
 
+  BoardingManifestGet200ResponseRidersInnerSource_Enum? _source_;
+  BoardingManifestGet200ResponseRidersInnerSource_Enum? get source_ =>
+      _$this._source_;
+  set source_(BoardingManifestGet200ResponseRidersInnerSource_Enum? source_) =>
+      _$this._source_ = source_;
+
+  bool? _noShow;
+  bool? get noShow => _$this._noShow;
+  set noShow(bool? noShow) => _$this._noShow = noShow;
+
   BoardingManifestGet200ResponseRidersInnerBuilder() {
     BoardingManifestGet200ResponseRidersInner._defaults(this);
   }
@@ -197,6 +292,8 @@ class BoardingManifestGet200ResponseRidersInnerBuilder
       _avatarUrl = $v.avatarUrl;
       _direction = $v.direction;
       _boarded = $v.boarded;
+      _source_ = $v.source_;
+      _noShow = $v.noShow;
       _$v = null;
     }
     return this;
@@ -230,6 +327,10 @@ class BoardingManifestGet200ResponseRidersInnerBuilder
               r'BoardingManifestGet200ResponseRidersInner', 'direction'),
           boarded: BuiltValueNullFieldError.checkNotNull(
               boarded, r'BoardingManifestGet200ResponseRidersInner', 'boarded'),
+          source_: BuiltValueNullFieldError.checkNotNull(
+              source_, r'BoardingManifestGet200ResponseRidersInner', 'source_'),
+          noShow: BuiltValueNullFieldError.checkNotNull(
+              noShow, r'BoardingManifestGet200ResponseRidersInner', 'noShow'),
         );
     replace(_$result);
     return _$result;

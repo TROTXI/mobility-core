@@ -14,6 +14,8 @@ Name | Type | Description | Notes
 **avatarUrl** | **String** |  | 
 **direction** | **String** |  | 
 **boarded** | **bool** |  | 
+**source_** | **String** |  | 
+**noShow** | **bool** |  | 
 
 [[Back to Model list]](../README.md#documentation-for-models) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to README]](../README.md)
 

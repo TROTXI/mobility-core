@@ -13,6 +13,7 @@ part 'admin_routes_post_request.g.dart';
 /// Properties:
 /// * [name] 
 /// * [description] 
+/// * [acceptsRequests] 
 @BuiltValue()
 abstract class AdminRoutesPostRequest implements Built<AdminRoutesPostRequest, AdminRoutesPostRequestBuilder> {
   @BuiltValueField(wireName: r'name')
@@ -20,6 +21,9 @@ abstract class AdminRoutesPostRequest implements Built<AdminRoutesPostRequest, A
 
   @BuiltValueField(wireName: r'description')
   String? get description;
+
+  @BuiltValueField(wireName: r'acceptsRequests')
+  bool? get acceptsRequests;
 
   AdminRoutesPostRequest._();
 
@@ -54,6 +58,13 @@ class _$AdminRoutesPostRequestSerializer implements PrimitiveSerializer<AdminRou
       yield serializers.serialize(
         object.description,
         specifiedType: const FullType.nullable(String),
+      );
+    }
+    if (object.acceptsRequests != null) {
+      yield r'acceptsRequests';
+      yield serializers.serialize(
+        object.acceptsRequests,
+        specifiedType: const FullType(bool),
       );
     }
   }
@@ -93,6 +104,13 @@ class _$AdminRoutesPostRequestSerializer implements PrimitiveSerializer<AdminRou
           ) as String?;
           if (valueDes == null) continue;
           result.description = valueDes;
+          break;
+        case r'acceptsRequests':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType(bool),
+          ) as bool;
+          result.acceptsRequests = valueDes;
           break;
         default:
           unhandled.add(key);

@@ -72,13 +72,21 @@ class _$PaymentsSubscribePostRequest extends PaymentsSubscribePostRequest {
   @override
   final PaymentsSubscribePostRequestPlanEnum plan;
   @override
-  final String? routeId;
+  final String routeId;
+  @override
+  final String? pickupStopId;
+  @override
+  final String? dropoffStopId;
 
   factory _$PaymentsSubscribePostRequest(
           [void Function(PaymentsSubscribePostRequestBuilder)? updates]) =>
       (PaymentsSubscribePostRequestBuilder()..update(updates))._build();
 
-  _$PaymentsSubscribePostRequest._({required this.plan, this.routeId})
+  _$PaymentsSubscribePostRequest._(
+      {required this.plan,
+      required this.routeId,
+      this.pickupStopId,
+      this.dropoffStopId})
       : super._();
   @override
   PaymentsSubscribePostRequest rebuild(
@@ -94,7 +102,9 @@ class _$PaymentsSubscribePostRequest extends PaymentsSubscribePostRequest {
     if (identical(other, this)) return true;
     return other is PaymentsSubscribePostRequest &&
         plan == other.plan &&
-        routeId == other.routeId;
+        routeId == other.routeId &&
+        pickupStopId == other.pickupStopId &&
+        dropoffStopId == other.dropoffStopId;
   }
 
   @override
@@ -102,6 +112,8 @@ class _$PaymentsSubscribePostRequest extends PaymentsSubscribePostRequest {
     var _$hash = 0;
     _$hash = $jc(_$hash, plan.hashCode);
     _$hash = $jc(_$hash, routeId.hashCode);
+    _$hash = $jc(_$hash, pickupStopId.hashCode);
+    _$hash = $jc(_$hash, dropoffStopId.hashCode);
     _$hash = $jf(_$hash);
     return _$hash;
   }
@@ -110,7 +122,9 @@ class _$PaymentsSubscribePostRequest extends PaymentsSubscribePostRequest {
   String toString() {
     return (newBuiltValueToStringHelper(r'PaymentsSubscribePostRequest')
           ..add('plan', plan)
-          ..add('routeId', routeId))
+          ..add('routeId', routeId)
+          ..add('pickupStopId', pickupStopId)
+          ..add('dropoffStopId', dropoffStopId))
         .toString();
   }
 }
@@ -129,6 +143,15 @@ class PaymentsSubscribePostRequestBuilder
   String? get routeId => _$this._routeId;
   set routeId(String? routeId) => _$this._routeId = routeId;
 
+  String? _pickupStopId;
+  String? get pickupStopId => _$this._pickupStopId;
+  set pickupStopId(String? pickupStopId) => _$this._pickupStopId = pickupStopId;
+
+  String? _dropoffStopId;
+  String? get dropoffStopId => _$this._dropoffStopId;
+  set dropoffStopId(String? dropoffStopId) =>
+      _$this._dropoffStopId = dropoffStopId;
+
   PaymentsSubscribePostRequestBuilder() {
     PaymentsSubscribePostRequest._defaults(this);
   }
@@ -138,6 +161,8 @@ class PaymentsSubscribePostRequestBuilder
     if ($v != null) {
       _plan = $v.plan;
       _routeId = $v.routeId;
+      _pickupStopId = $v.pickupStopId;
+      _dropoffStopId = $v.dropoffStopId;
       _$v = null;
     }
     return this;
@@ -161,7 +186,10 @@ class PaymentsSubscribePostRequestBuilder
         _$PaymentsSubscribePostRequest._(
           plan: BuiltValueNullFieldError.checkNotNull(
               plan, r'PaymentsSubscribePostRequest', 'plan'),
-          routeId: routeId,
+          routeId: BuiltValueNullFieldError.checkNotNull(
+              routeId, r'PaymentsSubscribePostRequest', 'routeId'),
+          pickupStopId: pickupStopId,
+          dropoffStopId: dropoffStopId,
         );
     replace(_$result);
     return _$result;

@@ -11,12 +11,16 @@ class _$AdminRoutesIdPatchRequest extends AdminRoutesIdPatchRequest {
   final String? name;
   @override
   final String? description;
+  @override
+  final bool? acceptsRequests;
 
   factory _$AdminRoutesIdPatchRequest(
           [void Function(AdminRoutesIdPatchRequestBuilder)? updates]) =>
       (AdminRoutesIdPatchRequestBuilder()..update(updates))._build();
 
-  _$AdminRoutesIdPatchRequest._({this.name, this.description}) : super._();
+  _$AdminRoutesIdPatchRequest._(
+      {this.name, this.description, this.acceptsRequests})
+      : super._();
   @override
   AdminRoutesIdPatchRequest rebuild(
           void Function(AdminRoutesIdPatchRequestBuilder) updates) =>
@@ -31,7 +35,8 @@ class _$AdminRoutesIdPatchRequest extends AdminRoutesIdPatchRequest {
     if (identical(other, this)) return true;
     return other is AdminRoutesIdPatchRequest &&
         name == other.name &&
-        description == other.description;
+        description == other.description &&
+        acceptsRequests == other.acceptsRequests;
   }
 
   @override
@@ -39,6 +44,7 @@ class _$AdminRoutesIdPatchRequest extends AdminRoutesIdPatchRequest {
     var _$hash = 0;
     _$hash = $jc(_$hash, name.hashCode);
     _$hash = $jc(_$hash, description.hashCode);
+    _$hash = $jc(_$hash, acceptsRequests.hashCode);
     _$hash = $jf(_$hash);
     return _$hash;
   }
@@ -47,7 +53,8 @@ class _$AdminRoutesIdPatchRequest extends AdminRoutesIdPatchRequest {
   String toString() {
     return (newBuiltValueToStringHelper(r'AdminRoutesIdPatchRequest')
           ..add('name', name)
-          ..add('description', description))
+          ..add('description', description)
+          ..add('acceptsRequests', acceptsRequests))
         .toString();
   }
 }
@@ -65,6 +72,11 @@ class AdminRoutesIdPatchRequestBuilder
   String? get description => _$this._description;
   set description(String? description) => _$this._description = description;
 
+  bool? _acceptsRequests;
+  bool? get acceptsRequests => _$this._acceptsRequests;
+  set acceptsRequests(bool? acceptsRequests) =>
+      _$this._acceptsRequests = acceptsRequests;
+
   AdminRoutesIdPatchRequestBuilder() {
     AdminRoutesIdPatchRequest._defaults(this);
   }
@@ -74,6 +86,7 @@ class AdminRoutesIdPatchRequestBuilder
     if ($v != null) {
       _name = $v.name;
       _description = $v.description;
+      _acceptsRequests = $v.acceptsRequests;
       _$v = null;
     }
     return this;
@@ -97,6 +110,7 @@ class AdminRoutesIdPatchRequestBuilder
         _$AdminRoutesIdPatchRequest._(
           name: name,
           description: description,
+          acceptsRequests: acceptsRequests,
         );
     replace(_$result);
     return _$result;

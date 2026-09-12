@@ -62,7 +62,8 @@ class DefaultFirebaseOptions {
     messagingSenderId: '431341307838',
     projectId: 'trotxi-501218',
     storageBucket: 'trotxi-501218.firebasestorage.app',
-    androidClientId: '431341307838-856vjsg6a8mbukis3vvogvld2bskimsn.apps.googleusercontent.com',
+    androidClientId:
+        '431341307838-856vjsg6a8mbukis3vvogvld2bskimsn.apps.googleusercontent.com',
     iosBundleId: 'com.trotxi.trotxiDriver',
   );
 }

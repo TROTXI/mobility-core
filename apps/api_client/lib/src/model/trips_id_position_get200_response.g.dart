@@ -13,13 +13,18 @@ class _$TripsIdPositionGet200Response extends TripsIdPositionGet200Response {
   final TripsIdPositionGet200ResponsePosition position;
   @override
   final BuiltList<TripsIdPositionGet200ResponseEtaToStopsInner> etaToStops;
+  @override
+  final TripsIdPositionGet200ResponseRiderStop? riderStop;
 
   factory _$TripsIdPositionGet200Response(
           [void Function(TripsIdPositionGet200ResponseBuilder)? updates]) =>
       (TripsIdPositionGet200ResponseBuilder()..update(updates))._build();
 
   _$TripsIdPositionGet200Response._(
-      {required this.tripId, required this.position, required this.etaToStops})
+      {required this.tripId,
+      required this.position,
+      required this.etaToStops,
+      this.riderStop})
       : super._();
   @override
   TripsIdPositionGet200Response rebuild(
@@ -36,7 +41,8 @@ class _$TripsIdPositionGet200Response extends TripsIdPositionGet200Response {
     return other is TripsIdPositionGet200Response &&
         tripId == other.tripId &&
         position == other.position &&
-        etaToStops == other.etaToStops;
+        etaToStops == other.etaToStops &&
+        riderStop == other.riderStop;
   }
 
   @override
@@ -45,6 +51,7 @@ class _$TripsIdPositionGet200Response extends TripsIdPositionGet200Response {
     _$hash = $jc(_$hash, tripId.hashCode);
     _$hash = $jc(_$hash, position.hashCode);
     _$hash = $jc(_$hash, etaToStops.hashCode);
+    _$hash = $jc(_$hash, riderStop.hashCode);
     _$hash = $jf(_$hash);
     return _$hash;
   }
@@ -54,7 +61,8 @@ class _$TripsIdPositionGet200Response extends TripsIdPositionGet200Response {
     return (newBuiltValueToStringHelper(r'TripsIdPositionGet200Response')
           ..add('tripId', tripId)
           ..add('position', position)
-          ..add('etaToStops', etaToStops))
+          ..add('etaToStops', etaToStops)
+          ..add('riderStop', riderStop))
         .toString();
   }
 }
@@ -84,6 +92,12 @@ class TripsIdPositionGet200ResponseBuilder
               etaToStops) =>
       _$this._etaToStops = etaToStops;
 
+  TripsIdPositionGet200ResponseRiderStopBuilder? _riderStop;
+  TripsIdPositionGet200ResponseRiderStopBuilder get riderStop =>
+      _$this._riderStop ??= TripsIdPositionGet200ResponseRiderStopBuilder();
+  set riderStop(TripsIdPositionGet200ResponseRiderStopBuilder? riderStop) =>
+      _$this._riderStop = riderStop;
+
   TripsIdPositionGet200ResponseBuilder() {
     TripsIdPositionGet200Response._defaults(this);
   }
@@ -94,6 +108,7 @@ class TripsIdPositionGet200ResponseBuilder
       _tripId = $v.tripId;
       _position = $v.position.toBuilder();
       _etaToStops = $v.etaToStops.toBuilder();
+      _riderStop = $v.riderStop?.toBuilder();
       _$v = null;
     }
     return this;
@@ -121,6 +136,7 @@ class TripsIdPositionGet200ResponseBuilder
                 tripId, r'TripsIdPositionGet200Response', 'tripId'),
             position: position.build(),
             etaToStops: etaToStops.build(),
+            riderStop: _riderStop?.build(),
           );
     } catch (_) {
       late String _$failedField;
@@ -129,6 +145,8 @@ class TripsIdPositionGet200ResponseBuilder
         position.build();
         _$failedField = 'etaToStops';
         etaToStops.build();
+        _$failedField = 'riderStop';
+        _riderStop?.build();
       } catch (e) {
         throw BuiltValueNestedFieldError(
             r'TripsIdPositionGet200Response', _$failedField, e.toString());

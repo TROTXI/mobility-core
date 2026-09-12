@@ -4,14 +4,17 @@
 
 import 'dart:async';
 
+import 'package:built_value/json_object.dart';
 import 'package:built_value/serializer.dart';
 import 'package:dio/dio.dart';
 
+import 'package:trotxi_api_client/src/model/me_get401_response.dart';
 import 'package:trotxi_api_client/src/model/payments_subscribe_post200_response.dart';
 import 'package:trotxi_api_client/src/model/payments_subscribe_post_request.dart';
 import 'package:trotxi_api_client/src/model/webhooks_paystack_post200_response.dart';
 
 class PaymentsApi {
+
   final Dio _dio;
 
   final Serializers _serializers;
@@ -19,10 +22,10 @@ class PaymentsApi {
   const PaymentsApi(this._dio, this._serializers);
 
   /// Start a Paystack checkout for the platform membership fee
-  ///
+  /// 
   ///
   /// Parameters:
-  /// * [paymentsSubscribePostRequest]
+  /// * [paymentsSubscribePostRequest] 
   /// * [cancelToken] - A [CancelToken] that can be used to cancel the operation
   /// * [headers] - Can be used to add additional headers to the request
   /// * [extras] - Can be used to add flags to the request
@@ -32,7 +35,7 @@ class PaymentsApi {
   ///
   /// Returns a [Future] containing a [Response] with a [PaymentsSubscribePost200Response] as data
   /// Throws [DioException] if API call or serialization fails
-  Future<Response<PaymentsSubscribePost200Response>> paymentsSubscribePost({
+  Future<Response<PaymentsSubscribePost200Response>> paymentsSubscribePost({ 
     required PaymentsSubscribePostRequest paymentsSubscribePostRequest,
     CancelToken? cancelToken,
     Map<String, dynamic>? headers,
@@ -65,11 +68,11 @@ class PaymentsApi {
 
     try {
       const _type = FullType(PaymentsSubscribePostRequest);
-      _bodyData = _serializers.serialize(paymentsSubscribePostRequest,
-          specifiedType: _type);
-    } catch (error, stackTrace) {
+      _bodyData = _serializers.serialize(paymentsSubscribePostRequest, specifiedType: _type);
+
+    } catch(error, stackTrace) {
       throw DioException(
-        requestOptions: _options.compose(
+         requestOptions: _options.compose(
           _dio.options,
           _path,
         ),
@@ -92,12 +95,11 @@ class PaymentsApi {
 
     try {
       final rawResponse = _response.data;
-      _responseData = rawResponse == null
-          ? null
-          : _serializers.deserialize(
-              rawResponse,
-              specifiedType: const FullType(PaymentsSubscribePost200Response),
-            ) as PaymentsSubscribePost200Response;
+      _responseData = rawResponse == null ? null : _serializers.deserialize(
+        rawResponse,
+        specifiedType: const FullType(PaymentsSubscribePost200Response),
+      ) as PaymentsSubscribePost200Response;
+
     } catch (error, stackTrace) {
       throw DioException(
         requestOptions: _response.requestOptions,
@@ -121,7 +123,7 @@ class PaymentsApi {
   }
 
   /// Paystack payment webhook (signature-verified)
-  ///
+  /// 
   ///
   /// Parameters:
   /// * [cancelToken] - A [CancelToken] that can be used to cancel the operation
@@ -133,7 +135,7 @@ class PaymentsApi {
   ///
   /// Returns a [Future] containing a [Response] with a [WebhooksPaystackPost200Response] as data
   /// Throws [DioException] if API call or serialization fails
-  Future<Response<WebhooksPaystackPost200Response>> webhooksPaystackPost({
+  Future<Response<WebhooksPaystackPost200Response>> webhooksPaystackPost({ 
     CancelToken? cancelToken,
     Map<String, dynamic>? headers,
     Map<String, dynamic>? extra,
@@ -166,12 +168,11 @@ class PaymentsApi {
 
     try {
       final rawResponse = _response.data;
-      _responseData = rawResponse == null
-          ? null
-          : _serializers.deserialize(
-              rawResponse,
-              specifiedType: const FullType(WebhooksPaystackPost200Response),
-            ) as WebhooksPaystackPost200Response;
+      _responseData = rawResponse == null ? null : _serializers.deserialize(
+        rawResponse,
+        specifiedType: const FullType(WebhooksPaystackPost200Response),
+      ) as WebhooksPaystackPost200Response;
+
     } catch (error, stackTrace) {
       throw DioException(
         requestOptions: _response.requestOptions,
@@ -193,4 +194,5 @@ class PaymentsApi {
       extra: _response.extra,
     );
   }
+
 }

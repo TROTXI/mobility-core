@@ -9,13 +9,13 @@ All URIs are relative to *http://localhost*
 
 Method | HTTP request | Description
 ------------- | ------------- | -------------
-[**flagsGet**](FlagsApi.md#flagsget) | **GET** /flags | Feature flags + minimum supported app version (fetched on launch)
+[**flagsGet**](FlagsApi.md#flagsget) | **GET** /flags | Feature flags, minimum supported app version, basemap and operations contact
 
 
 # **flagsGet**
 > FlagsGet200Response flagsGet()
 
-Feature flags + minimum supported app version (fetched on launch)
+Feature flags, minimum supported app version, basemap and operations contact
 
 ### Example
 ```dart

@@ -13,6 +13,7 @@ part 'admin_routes_id_patch_request.g.dart';
 /// Properties:
 /// * [name] 
 /// * [description] 
+/// * [acceptsRequests] 
 @BuiltValue()
 abstract class AdminRoutesIdPatchRequest implements Built<AdminRoutesIdPatchRequest, AdminRoutesIdPatchRequestBuilder> {
   @BuiltValueField(wireName: r'name')
@@ -20,6 +21,9 @@ abstract class AdminRoutesIdPatchRequest implements Built<AdminRoutesIdPatchRequ
 
   @BuiltValueField(wireName: r'description')
   String? get description;
+
+  @BuiltValueField(wireName: r'acceptsRequests')
+  bool? get acceptsRequests;
 
   AdminRoutesIdPatchRequest._();
 
@@ -56,6 +60,13 @@ class _$AdminRoutesIdPatchRequestSerializer implements PrimitiveSerializer<Admin
       yield serializers.serialize(
         object.description,
         specifiedType: const FullType.nullable(String),
+      );
+    }
+    if (object.acceptsRequests != null) {
+      yield r'acceptsRequests';
+      yield serializers.serialize(
+        object.acceptsRequests,
+        specifiedType: const FullType(bool),
       );
     }
   }
@@ -95,6 +106,13 @@ class _$AdminRoutesIdPatchRequestSerializer implements PrimitiveSerializer<Admin
           ) as String?;
           if (valueDes == null) continue;
           result.description = valueDes;
+          break;
+        case r'acceptsRequests':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType(bool),
+          ) as bool;
+          result.acceptsRequests = valueDes;
           break;
         default:
           unhandled.add(key);

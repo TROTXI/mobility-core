@@ -4,4 +4,14 @@
          to allow setting breakpoints, to provide hot reload, etc.
     -->
     <uses-permission android:name="android.permission.INTERNET"/>
+
+    <!-- Cleartext HTTP, for a local API during development only.
+         Android 9 blocks it by default, so an emulator pointed at
+         http://10.0.2.2:3000 fails with a connection error that looks like the
+         server is down when it is the platform refusing the scheme.
+
+         DEBUG MANIFEST ONLY. The release build keeps the default, so shipped
+         builds still refuse cleartext and staging/production are HTTPS anyway.
+    -->
+    <application android:usesCleartextTraffic="true" />
 </manifest>

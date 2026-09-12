@@ -11,13 +11,20 @@ class _$FlagsGet200Response extends FlagsGet200Response {
   final BuiltList<FlagsGet200ResponseFlagsInner> flags;
   @override
   final FlagsGet200ResponseMinSupportedVersion minSupportedVersion;
+  @override
+  final FlagsGet200ResponseMapTiles mapTiles;
+  @override
+  final FlagsGet200ResponseOperations operations;
 
   factory _$FlagsGet200Response(
           [void Function(FlagsGet200ResponseBuilder)? updates]) =>
       (FlagsGet200ResponseBuilder()..update(updates))._build();
 
   _$FlagsGet200Response._(
-      {required this.flags, required this.minSupportedVersion})
+      {required this.flags,
+      required this.minSupportedVersion,
+      required this.mapTiles,
+      required this.operations})
       : super._();
   @override
   FlagsGet200Response rebuild(
@@ -33,7 +40,9 @@ class _$FlagsGet200Response extends FlagsGet200Response {
     if (identical(other, this)) return true;
     return other is FlagsGet200Response &&
         flags == other.flags &&
-        minSupportedVersion == other.minSupportedVersion;
+        minSupportedVersion == other.minSupportedVersion &&
+        mapTiles == other.mapTiles &&
+        operations == other.operations;
   }
 
   @override
@@ -41,6 +50,8 @@ class _$FlagsGet200Response extends FlagsGet200Response {
     var _$hash = 0;
     _$hash = $jc(_$hash, flags.hashCode);
     _$hash = $jc(_$hash, minSupportedVersion.hashCode);
+    _$hash = $jc(_$hash, mapTiles.hashCode);
+    _$hash = $jc(_$hash, operations.hashCode);
     _$hash = $jf(_$hash);
     return _$hash;
   }
@@ -49,7 +60,9 @@ class _$FlagsGet200Response extends FlagsGet200Response {
   String toString() {
     return (newBuiltValueToStringHelper(r'FlagsGet200Response')
           ..add('flags', flags)
-          ..add('minSupportedVersion', minSupportedVersion))
+          ..add('minSupportedVersion', minSupportedVersion)
+          ..add('mapTiles', mapTiles)
+          ..add('operations', operations))
         .toString();
   }
 }
@@ -72,6 +85,18 @@ class FlagsGet200ResponseBuilder
           FlagsGet200ResponseMinSupportedVersionBuilder? minSupportedVersion) =>
       _$this._minSupportedVersion = minSupportedVersion;
 
+  FlagsGet200ResponseMapTilesBuilder? _mapTiles;
+  FlagsGet200ResponseMapTilesBuilder get mapTiles =>
+      _$this._mapTiles ??= FlagsGet200ResponseMapTilesBuilder();
+  set mapTiles(FlagsGet200ResponseMapTilesBuilder? mapTiles) =>
+      _$this._mapTiles = mapTiles;
+
+  FlagsGet200ResponseOperationsBuilder? _operations;
+  FlagsGet200ResponseOperationsBuilder get operations =>
+      _$this._operations ??= FlagsGet200ResponseOperationsBuilder();
+  set operations(FlagsGet200ResponseOperationsBuilder? operations) =>
+      _$this._operations = operations;
+
   FlagsGet200ResponseBuilder() {
     FlagsGet200Response._defaults(this);
   }
@@ -81,6 +106,8 @@ class FlagsGet200ResponseBuilder
     if ($v != null) {
       _flags = $v.flags.toBuilder();
       _minSupportedVersion = $v.minSupportedVersion.toBuilder();
+      _mapTiles = $v.mapTiles.toBuilder();
+      _operations = $v.operations.toBuilder();
       _$v = null;
     }
     return this;
@@ -106,6 +133,8 @@ class FlagsGet200ResponseBuilder
           _$FlagsGet200Response._(
             flags: flags.build(),
             minSupportedVersion: minSupportedVersion.build(),
+            mapTiles: mapTiles.build(),
+            operations: operations.build(),
           );
     } catch (_) {
       late String _$failedField;
@@ -114,6 +143,10 @@ class FlagsGet200ResponseBuilder
         flags.build();
         _$failedField = 'minSupportedVersion';
         minSupportedVersion.build();
+        _$failedField = 'mapTiles';
+        mapTiles.build();
+        _$failedField = 'operations';
+        operations.build();
       } catch (e) {
         throw BuiltValueNestedFieldError(
             r'FlagsGet200Response', _$failedField, e.toString());

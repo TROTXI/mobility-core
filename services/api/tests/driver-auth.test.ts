@@ -258,7 +258,9 @@ describe('ops credential lifecycle', () => {
     const userId = (await ctx.drivers.findById(ctx.driver.id))!.userId!;
     expect(await ctx.sessions.listActiveForUser(userId)).toHaveLength(1);
 
-    const { pin } = await ctx.driverAuth.resetPin(ctx.driver.id);
+    const { driverCode, pin } = await ctx.driverAuth.resetPin(ctx.driver.id);
+    // Ops reads both halves down a phone line, so a reset returns both.
+    expect(driverCode).toBe(ctx.issued.driverCode);
 
     expect(await ctx.sessions.listActiveForUser(userId)).toHaveLength(0);
     expect(
