@@ -22,11 +22,14 @@ console.log(`::add-mask::${key}`);
 await appendFile(process.env.GITHUB_ENV, `PAYSTACK_SECRET_KEY=${key}\n`);
 console.log('Staging Paystack environment: test');
 
-for (const [name, fallback] of [
-  ['JWT_SECRET', null],
-  ['JWT_ISSUER', 'trotxi'],
-  ['JWT_AUDIENCE', 'trotxi-api'],
-]) {
+// Read the signing key only for the phase that creates a commuter checkout.
+for (const [name, fallback] of process.env.SMOKE_PHASE === 'setup'
+  ? [
+      ['JWT_SECRET', null],
+      ['JWT_ISSUER', 'trotxi'],
+      ['JWT_AUDIENCE', 'trotxi-api'],
+    ]
+  : []) {
   const res = await fetch(`https://api.render.com/v1/services/${serviceId}/env-vars/${name}`, {
     headers: { Authorization: `Bearer ${renderKey}` },
     signal: AbortSignal.timeout(15000),
