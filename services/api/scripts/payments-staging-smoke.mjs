@@ -2,7 +2,7 @@
 // test payment details between phases. Preserve labelled fixture records for
 // review. Expiry simulation changes timestamps on this fixture's period only.
 import assert from 'node:assert/strict';
-import { createHmac } from 'node:crypto';
+import { createHash, createHmac } from 'node:crypto';
 import { setTimeout as delay } from 'node:timers/promises';
 import { Pool } from 'pg';
 import { SignJWT } from 'jose';
@@ -105,6 +105,13 @@ async function verifyAndReplay(payment) {
     },
   });
   const signature = createHmac('sha512', secret).update(replay).digest('hex');
+  const replayHash = createHash('sha256').update(replay).digest('hex');
+  const inbox = await pool.query(
+    `SELECT status, count(*)::int AS events FROM payment_webhook_events
+     WHERE reference=$1 AND payload_sha256<>$2 GROUP BY status`,
+    [payment.reference, replayHash],
+  );
+  console.log('PROVIDER_INBOX_BEFORE_REPLAY', JSON.stringify(inbox.rows));
   const responses = await Promise.all(
     [1, 2].map(() =>
       fetch(`${base}/webhooks/paystack`, {
@@ -217,6 +224,12 @@ try {
   } else if (process.env.SMOKE_PHASE === 'finish') {
     const payments = await fixturePayments();
     assert.equal(payments.length, 2);
+    const firstEvents = await pool.query(
+      `SELECT status, count(*)::int AS events FROM payment_webhook_events
+       WHERE reference=$1 GROUP BY status`,
+      [payments[0].reference],
+    );
+    console.log('FIRST_PAYMENT_INBOX_TOTAL', JSON.stringify(firstEvents.rows));
     const second = await verifyAndReplay(payments[1]);
     assert.equal(second.subscription_id, payments[0].subscription_id);
     assert.notEqual(second.subscription_period_id, payments[0].subscription_period_id);
