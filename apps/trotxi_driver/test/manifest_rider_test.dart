@@ -34,8 +34,14 @@ void main() {
     test('uses the van’s seat ceiling when the API gives one', () {
       final detail = RunDetail(
         run: _run(),
-        riders: [_rider(), _rider(id: 'r2', boarded: true)],
-        stops: const ['A', 'B'],
+        riders: [
+          _rider(),
+          _rider(id: 'r2', boarded: true),
+        ],
+        stops: const [
+          DriverStop(seq: 0, name: 'A'),
+          DriverStop(seq: 1, name: 'B'),
+        ],
         capacity: 15,
       );
 
@@ -48,8 +54,14 @@ void main() {
       // "1 of 2 confirmed" is still the number that matters at a kerb.
       final detail = RunDetail(
         run: _run(),
-        riders: [_rider(), _rider(id: 'r2', boarded: true)],
-        stops: const ['A', 'B'],
+        riders: [
+          _rider(),
+          _rider(id: 'r2', boarded: true),
+        ],
+        stops: const [
+          DriverStop(seq: 0, name: 'A'),
+          DriverStop(seq: 1, name: 'B'),
+        ],
       );
 
       expect(detail.ceiling, 2);
@@ -66,7 +78,7 @@ void main() {
           _rider(id: 'r2', boarded: true),
           _rider(id: 'r3', noShow: true),
         ],
-        stops: const ['A'],
+        stops: const [DriverStop(seq: 0, name: 'A')],
       );
 
       expect(detail.riders, hasLength(3));
@@ -84,7 +96,7 @@ void main() {
           _rider(id: 'r2', source: 'standby'),
           _rider(id: 'r3', source: 'default'),
         ],
-        stops: const ['A'],
+        stops: const [DriverStop(seq: 0, name: 'A')],
       );
 
       expect(detail.standby, 1);
@@ -96,7 +108,11 @@ void main() {
       final detail = RunDetail(
         run: _run(),
         riders: const [],
-        stops: const ['Circle', 'Nima', 'Madina'],
+        stops: const [
+          DriverStop(seq: 0, name: 'Circle'),
+          DriverStop(seq: 2, name: 'Nima'),
+          DriverStop(seq: 7, name: 'Madina'),
+        ],
       );
 
       // Null rather than 1. The API does not guess from GPS, and neither does
@@ -109,10 +125,15 @@ void main() {
       final detail = RunDetail(
         run: _run(currentStopSeq: 2),
         riders: const [],
-        stops: const ['Circle', 'Nima', 'Madina'],
+        stops: const [
+          DriverStop(seq: 0, name: 'Circle'),
+          DriverStop(seq: 2, name: 'Nima'),
+          DriverStop(seq: 7, name: 'Madina'),
+        ],
       );
 
       expect(detail.currentStopName, 'Nima');
+      expect(detail.currentStopNumber, 2);
     });
 
     test('survives a seq outside the stop list', () {
@@ -121,11 +142,37 @@ void main() {
       final detail = RunDetail(
         run: _run(currentStopSeq: 9),
         riders: const [],
-        stops: const ['Circle', 'Nima'],
+        stops: const [
+          DriverStop(seq: 0, name: 'Circle'),
+          DriverStop(seq: 2, name: 'Nima'),
+        ],
       );
 
       expect(detail.currentStopName, isNull);
+      expect(detail.currentStopNumber, isNull);
     });
+    for (final firstSeq in [0, 1, 10]) {
+      test('first and last stops use real sequence starting at $firstSeq', () {
+        final stops = [
+          DriverStop(seq: firstSeq, name: 'Circle'),
+          DriverStop(seq: firstSeq + 5, name: 'Madina'),
+        ];
+        final first = RunDetail(
+          run: _run(currentStopSeq: firstSeq),
+          riders: const [],
+          stops: stops,
+        );
+        final last = RunDetail(
+          run: _run(currentStopSeq: firstSeq + 5),
+          riders: const [],
+          stops: stops,
+        );
+        expect(first.currentStopName, 'Circle');
+        expect(first.currentStopNumber, 1);
+        expect(last.currentStopName, 'Madina');
+        expect(last.currentStopNumber, 2);
+      });
+    }
   });
 
   group('the CHANGED badge (#233)', () {

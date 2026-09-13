@@ -13,6 +13,8 @@ import 'package:trotxi_driver/Presentations/Shell/pages/driver_shell.dart';
 import 'package:trotxi_driver/core/state/config_controller.dart';
 import 'package:trotxi_driver/core/state/session_controller.dart';
 import 'package:trotxi_driver/core/state/today_controller.dart';
+import 'package:trotxi_driver/core/state/driver_location_controller.dart';
+import 'package:trotxi_driver/data/position_publisher.dart';
 import 'package:trotxi_driver/data/config_repository.dart';
 import 'package:trotxi_driver/data/driver_auth_repository.dart';
 import 'package:trotxi_driver/data/incidents_repository.dart';
@@ -72,7 +74,17 @@ class _TrotxiDriverAppState extends State<TrotxiDriverApp> {
     client: widget.client,
     tokenStore: TokenStorage.instance,
   );
-  late final TripsRepository _trips = TripsRepository(client: widget.client);
+  late final TripsRepository _trips = TripsRepository(
+    client: widget.client,
+    beginLifecycleChange: () => _location.captureRunObserver(),
+  );
+  late final PositionPublisher _positions = PositionPublisher(
+    client: widget.client,
+  );
+  late final DriverLocationController _location = DriverLocationController(
+    trips: _trips,
+    publisher: _positions,
+  );
   late final ConfigRepository _config = ConfigRepository(client: widget.client);
   late final IncidentsRepository _incidents = IncidentsRepository(
     client: widget.client,
@@ -90,11 +102,19 @@ class _TrotxiDriverAppState extends State<TrotxiDriverApp> {
     // (#235). Automatic clearing requires a refresh endpoint 401, not a
     // timeout/server error or a failed retry after a successful refresh.
     TokenStorage.instance.onCleared = _session.onSessionRevoked;
+    _session.addListener(_syncLocationSession);
+    _syncLocationSession();
   }
+
+  void _syncLocationSession() =>
+      _location.setSessionReady(_session.stage == SessionStage.ready);
 
   @override
   void dispose() {
     TokenStorage.instance.onCleared = null;
+    _session.removeListener(_syncLocationSession);
+    _location.dispose();
+    _positions.dispose();
     super.dispose();
   }
 
@@ -105,9 +125,9 @@ class _TrotxiDriverAppState extends State<TrotxiDriverApp> {
     // down every screen that happens to sit between the two.
     return MultiProvider(
       providers: [
-        // The raw client, for the position publisher, which is created per run
-        // screen rather than held app-wide.
+        // One publisher follows the signed-in active trip across all screens.
         Provider<TrotxiApiClient>.value(value: widget.client),
+        ChangeNotifierProvider<PositionPublisher>.value(value: _positions),
         Provider<DriverAuthRepository>.value(value: _auth),
         Provider<TripsRepository>.value(value: _trips),
         Provider<ConfigRepository>.value(value: _config),

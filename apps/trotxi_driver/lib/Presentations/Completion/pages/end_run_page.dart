@@ -7,6 +7,7 @@ import 'package:trotxi_driver/core/config/theme/app_radii.dart';
 import 'package:trotxi_driver/core/config/theme/app_spacing.dart';
 import 'package:trotxi_driver/core/config/theme/app_typography.dart';
 import 'package:trotxi_driver/core/state/run_controller.dart';
+import 'package:trotxi_driver/core/state/loadable.dart';
 
 /// Ending a run (prototype frames 45 and 46).
 ///
@@ -45,9 +46,22 @@ class _EndRunPageState extends State<EndRunPage> {
     if (!_ready || _ending) return;
     setState(() => _ending = true);
     final controller = context.read<RunController>();
-    await controller.complete();
+    final completed = await controller.complete();
     if (!mounted) return;
     setState(() => _ending = false);
+    if (!completed) {
+      final detail = controller.detail;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            detail is Failure<RunDetail>
+                ? detail.message
+                : 'Trip not completed. Try again.',
+          ),
+        ),
+      );
+      return;
+    }
 
     // Straight to the summary: the driver has just finished and the next thing
     // they want is what the run did, not the screen they started from.
@@ -147,7 +161,7 @@ class _EndRunPageState extends State<EndRunPage> {
                       value: data.currentStopName == null
                           ? 'None reported'
                           : '${data.currentStopName} · '
-                                '${data.currentStopSeq} of ${data.stops.length}',
+                                '${data.currentStopNumber} of ${data.stops.length}',
                     ),
                     _Row(
                       label: 'Passengers',
@@ -158,10 +172,6 @@ class _EndRunPageState extends State<EndRunPage> {
                     _Row(
                       label: 'Vehicle',
                       value: data.vehicleRegistration ?? 'Not assigned',
-                    ),
-                    _Row(
-                      label: 'Location',
-                      value: 'Final position will be saved',
                     ),
                   ],
                 ),
@@ -313,7 +323,7 @@ class _EndRunPageState extends State<EndRunPage> {
   /// @returns the line under the title.
   static String _where(RunDetail? data) {
     if (data == null) return 'Review before closing the run';
-    final seq = data.currentStopSeq;
+    final seq = data.currentStopNumber;
     final name = data.currentStopName;
     if (name == null) return 'No arrival reported on this run yet';
     final last = seq == data.stops.length;

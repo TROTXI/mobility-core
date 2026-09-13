@@ -34,7 +34,10 @@ class _Trips implements TripsRepository {
   @override
   Future<List<ManifestRider>> manifest(String runId) async => [];
   @override
-  Future<List<String>> stopsFor(String routeId) async => ['Madina', 'Circle'];
+  Future<List<DriverStop>> stopsFor(String routeId) async => [
+    DriverStop(seq: 0, name: 'Madina'),
+    DriverStop(seq: 1, name: 'Circle'),
+  ];
   @override
   Future<TripDetail> detail(String runId) async =>
       const TripDetail(stopCount: 2);

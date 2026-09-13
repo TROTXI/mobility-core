@@ -141,7 +141,7 @@ class _Accepted extends StatelessWidget {
             data?.currentStopName == null
                 ? 'Boarded on ${run.routeName}'
                 : 'Boarded at ${data!.currentStopName} · Stop '
-                      '${data!.currentStopSeq} of ${data!.stops.length}',
+                      '${data!.currentStopNumber} of ${data!.stops.length}',
             style: AppTypography.tileCaption.copyWith(
               fontSize: 12,
               color: colors.textSecondary,

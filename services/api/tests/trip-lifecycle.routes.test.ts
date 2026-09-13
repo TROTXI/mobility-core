@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { buildApp } from '../src/app';
 import { InMemoryTripRepository } from '../src/modules/mobility/trip.repository';
 import { InMemoryDriverRepository } from '../src/modules/mobility/driver.repository';
+import { InMemoryRouteStopRepository } from '../src/modules/mobility/route-stop.repository';
 import { InMemoryReservationRepository } from '../src/modules/reservations/reservation.repository';
 import { InMemoryScanEventRepository } from '../src/modules/boarding/scan-event.repository';
 import { createJwtService, type AuthConfig } from '../src/modules/auth/jwt';
@@ -22,6 +23,7 @@ async function setup() {
   const drivers = new InMemoryDriverRepository();
   const reservations = new InMemoryReservationRepository();
   const scanEvents = new InMemoryScanEventRepository();
+  const routeStops = new InMemoryRouteStopRepository();
 
   const me = await drivers.create({ fullName: 'Kwame Boateng', userId: MINE });
   await drivers.create({ fullName: 'Yaw Asare', userId: THEIRS });
@@ -31,8 +33,8 @@ async function setup() {
     assignedDriverId: me.id,
   });
 
-  const app = await buildApp({ auth, trips, drivers, reservations, scanEvents });
-  return { app, trip, trips };
+  const app = await buildApp({ auth, trips, drivers, reservations, scanEvents, routeStops });
+  return { app, trip, trips, routeStops };
 }
 
 const asDriver = async (userId: string) => ({
@@ -40,6 +42,50 @@ const asDriver = async (userId: string) => ({
 });
 
 describe('driver lifecycle over HTTP (#163)', () => {
+  it('accepts zero-based and gapped arrival sequences, but only on the assigned route', async () => {
+    const { app, trip, routeStops } = await setup();
+    try {
+      for (const seq of [0, 2, 7]) {
+        await routeStops.create({ routeId: trip.routeId, stopId: crypto.randomUUID(), seq });
+      }
+      const headers = await asDriver(MINE);
+      await app.inject({ method: 'POST', url: `/trips/${trip.id}/start`, headers });
+      for (const seq of [0, 2, 7, 0]) {
+        const response = await app.inject({
+          method: 'POST',
+          url: `/trips/${trip.id}/arrive`,
+          headers,
+          payload: { seq },
+        });
+        expect(response.statusCode).toBe(200);
+        expect(response.json().currentStopSeq).toBe(seq);
+      }
+      const missing = await app.inject({
+        method: 'POST',
+        url: `/trips/${trip.id}/arrive`,
+        headers,
+        payload: { seq: 3 },
+      });
+      expect(missing.statusCode).toBe(404);
+      const negative = await app.inject({
+        method: 'POST',
+        url: `/trips/${trip.id}/arrive`,
+        headers,
+        payload: { seq: -1 },
+      });
+      expect(negative.statusCode).toBe(400);
+      const forbidden = await app.inject({
+        method: 'POST',
+        url: `/trips/${trip.id}/arrive`,
+        headers: await asDriver(THEIRS),
+        payload: { seq: 0 },
+      });
+      expect(forbidden.statusCode).toBe(403);
+    } finally {
+      await app.close();
+    }
+  });
+
   it('starts and completes a run', async () => {
     const { app, trip } = await setup();
     const headers = await asDriver(MINE);

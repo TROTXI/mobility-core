@@ -120,7 +120,11 @@ class TripSummary extends StatelessWidget {
 
           Row(
             children: [
-              _Stat(value: '${data.stops.length} stops', label: 'Route', ink: ink),
+              _Stat(
+                value: '${data.stops.length} stops',
+                label: 'Route',
+                ink: ink,
+              ),
               _Stat(
                 value: '${data.expected - data.standby} booked',
                 label: 'Confirmed',
@@ -157,7 +161,11 @@ class TripSummary extends StatelessWidget {
     }
     if (minutes > 0) return 'DEPARTS IN $minutes MIN';
     if (minutes == 0) return 'DUE NOW';
-    return '${-minutes} MIN BEHIND SCHEDULE';
+    final late = -minutes;
+    if (late < 60) return '$late MIN BEHIND SCHEDULE';
+    final hours = late ~/ 60;
+    final rest = late % 60;
+    return '${hours}H ${rest.toString().padLeft(2, '0')}MIN BEHIND SCHEDULE';
   }
 }
 

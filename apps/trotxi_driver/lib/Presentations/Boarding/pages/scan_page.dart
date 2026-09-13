@@ -235,7 +235,7 @@ class _ScanPageState extends State<ScanPage> {
   /// @returns the line under the title.
   static String _whereabouts(RunDetail data) {
     final total = data.stops.length;
-    final seq = data.currentStopSeq;
+    final seq = data.currentStopNumber;
     if (seq == null || data.currentStopName == null) {
       return total == 0
           ? data.run.routeName
