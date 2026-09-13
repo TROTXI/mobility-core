@@ -13,7 +13,7 @@
 //   JWT_SECRET=<secret> API_BASE_URL=https://... pnpm --filter @trotxi/api seed:staging
 
 import { createJwtService, type AuthConfig } from '../src/modules/auth/jwt';
-import { paystackSignature } from '../src/modules/payments/paystack.client';
+import { seedPaymentWebhook } from './seed-payment';
 
 /* eslint-disable @typescript-eslint/no-explicit-any -- this script consumes the
    deployed API's JSON responses, which are untyped at this boundary; narrowing
@@ -184,7 +184,7 @@ async function issueDriverCredential(driver: any): Promise<void> {
     console.log('  NB: this driver already had a credential, so the PIN was RESET.');
     console.log('      Any session signed in on the old one has been revoked.');
   }
-  console.log('  First sign-in forces a PIN change, which is the flow to test.');
+  console.log('  Sign in with this operator-issued PIN; recovery goes through operations.');
   console.log('');
 }
 
@@ -217,9 +217,6 @@ const RIDER_NAMES = [
   'Kofi Anum Quartey',
   'Naa Dedei Lartey',
 ];
-
-/** The fake Paystack client's shared secret (paystack.client.ts). */
-const FAKE_PAYSTACK_SECRET = 'fake-paystack-secret';
 
 /**
  * Put confirmed riders on a run, so the manifest and boarding have something
@@ -301,24 +298,17 @@ async function seedRiders(
         console.log('riders: skipped — payments are not configured on this environment.');
         return confirmed;
       }
-      // 409 means this rider already has an active membership from a previous
-      // run of the seed, which is fine: they can still confirm a seat.
-      if (checkout.status < 300) {
-        const { reference, chargePesewas } = must('checkout', checkout);
+      // Only this specific conflict permits reusing a membership. An unresolved
+      // checkout or unpriced corridor must not masquerade as a paid rider.
+      if (!(checkout.status === 409 && checkout.json?.error === 'already_subscribed')) {
+        const payment = must('checkout', checkout);
 
         // 3. Settle it. Amount and currency have to match the checkout exactly
         //    or the webhook refuses to grant anything (#221).
-        const payload = JSON.stringify({
-          event: 'charge.success',
-          data: { reference, status: 'success', amount: chargePesewas, currency: 'GHS' },
-        });
+        const webhookRequest = seedPaymentWebhook(payment);
         const webhook = await fetch(`${BASE}/webhooks/paystack`, {
           method: 'POST',
-          headers: {
-            'content-type': 'application/json',
-            'x-paystack-signature': paystackSignature(payload, FAKE_PAYSTACK_SECRET),
-          },
-          body: payload,
+          ...webhookRequest,
         });
         if (webhook.status === 401) {
           console.log(
@@ -327,6 +317,18 @@ async function seedRiders(
           );
           return confirmed;
         }
+        if (!webhook.ok) throw new Error(`Seed settlement failed (HTTP ${webhook.status})`);
+        // A webhook receipt acknowledges the inbox, not completed fulfilment.
+        let ready = false;
+        for (let attempt = 0; attempt < 10; attempt++) {
+          const rides = must('read seeded rides', await apiAs(token, 'GET', '/me/rides'));
+          if (rides.renewsAt && rides.remainingRides > 0) {
+            ready = true;
+            break;
+          }
+          await new Promise((resolve) => setTimeout(resolve, 500));
+        }
+        if (!ready) throw new Error('Seed settlement accepted but membership was not fulfilled');
       }
 
       // 4. Confirm the seat.

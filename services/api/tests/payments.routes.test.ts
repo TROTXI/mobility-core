@@ -8,6 +8,7 @@ import { PaymentsService } from '../src/modules/payments/payments.service';
 import { InMemorySubscriptionRepository } from '../src/modules/subscriptions/subscription.repository';
 import { InMemoryEntitlementLedgerRepository } from '../src/modules/entitlements/entitlement-ledger.repository';
 import { createJwtService, type AuthConfig } from '../src/modules/auth/jwt';
+import { seedPaymentWebhook } from '../scripts/seed-payment';
 
 const auth: AuthConfig = {
   secret: 'test-secret-at-least-32-characters-long-0000',
@@ -157,6 +158,38 @@ describe('POST /payments/subscribe', () => {
 });
 
 describe('POST /webhooks/paystack', () => {
+  it('fulfils the development seed payload once, including a replay', async () => {
+    const { build, subscriptions, entitlements } = appWithPayments();
+    const app = await build;
+    try {
+      const token = await jwt.signAccessToken({ userId: 'seed-contract', role: 'commuter' });
+      const checkout = await app.inject({
+        method: 'POST',
+        url: '/payments/subscribe',
+        headers: bearer(token),
+        payload: { plan: 'monthly', routeId: ROUTE },
+      });
+      expect(checkout.statusCode).toBe(200);
+      const webhook = seedPaymentWebhook(checkout.json());
+      for (let replay = 0; replay < 2; replay++) {
+        expect(
+          (
+            await app.inject({
+              method: 'POST',
+              url: '/webhooks/paystack',
+              headers: webhook.headers,
+              payload: webhook.body,
+            })
+          ).statusCode,
+        ).toBe(200);
+      }
+      await expect.poll(() => subscriptions.findActiveByUser('seed-contract')).not.toBeNull();
+      await expect.poll(() => entitlements.remainingRides('seed-contract')).toBe(44);
+    } finally {
+      await app.close();
+    }
+  });
+
   it('subscription: a signed charge.success activates the membership', async () => {
     const { build, subscriptions } = appWithPayments();
     const app = await build;
