@@ -180,6 +180,30 @@ services:
       #   - key: OPERATIONS_HOURS
       #     value: 05:00-22:00 daily
 
+  # ---- Payment recovery cron — READY, NOT YET FUNDED ----
+  # One job handles all money-lifecycle recovery in dependency order: durable
+  # webhook inbox, Paystack Verify for stale unresolved payments, then atomic
+  # period close. The close step skips periods with pending/reserved seats, so
+  # it cannot convert rides before boarding/no-show settlement.
+  #
+  # Render bills cron jobs while they run and applies a $1/month minimum per
+  # cron service. Uncomment only after that recurring cost is approved. Until
+  # then, POST /admin/payments/maintenance is the identical manual trigger.
+  # - type: cron
+  #   name: trotxi-payments-maintenance-staging
+  #   runtime: docker
+  #   repo: https://github.com/TROTXI/mobility-core
+  #   branch: main
+  #   dockerfilePath: services/api/Dockerfile
+  #   dockerContext: .
+  #   plan: starter
+  #   region: frankfurt
+  #   autoDeploy: false
+  #   schedule: '15 * * * *' # hourly UTC; webhooks still process immediately
+  #   dockerCommand: node dist/cron/payments-maintenance-cron.js
+  #   envVars:
+  #     - fromGroup: trotxi-cron-staging
+
   # ---- Ask-dispatch cron jobs (E3) — COMMENTED OUT, see below ----
   #
   # Render has NO FREE TIER for cron jobs: they bill per minute of runtime with

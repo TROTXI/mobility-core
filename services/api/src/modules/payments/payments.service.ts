@@ -627,6 +627,35 @@ export class PaymentsService {
     return result;
   }
 
+  /**
+   * One idempotent recovery pass for the scheduled payment worker.
+   *
+   * Inbox work runs first so fresh provider facts win; Verify then recovers
+   * missing callbacks; period close runs last and refuses unsettled seats.
+   *
+   * @param now - clock used for reconciliation cutoff and due-period selection.
+   * @returns outcome counters for each independently idempotent maintenance stage.
+   */
+  async runMaintenance(now: Date = new Date()): Promise<{
+    webhooks: { processed: number; failed: number };
+    reconciliation: {
+      considered: number;
+      fulfilled: number;
+      failed: number;
+      unresolved: number;
+      errors: number;
+    };
+    periods: PeriodCloseResult;
+  }> {
+    const webhooks = await this.processWebhookInbox(100);
+    const reconciliation = await this.reconcileUnresolved(
+      new Date(now.getTime() - 60 * 60 * 1_000),
+      100,
+    );
+    const periods = await this.closeEndedPeriods(now);
+    return { webhooks, reconciliation, periods };
+  }
+
   private async processWebhookEvent(event: PaystackWebhookEvent, eventKey: string): Promise<void> {
     const refund = refundFromEvent(event, eventKey);
     if (refund) {

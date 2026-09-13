@@ -404,6 +404,24 @@ describe('PaymentsService.handleWebhook', () => {
 });
 
 describe('PaymentsService reconciliation', () => {
+  it('runs inbox, Verify recovery and period close in dependency order', async () => {
+    const { service, paystack, payments } = await priced();
+    const checkout = await service.initializeSubscription('u1', 'monthly', ROUTE);
+    paystack.setTransaction(checkout.reference, {
+      status: 'success',
+      paidAt: new Date(),
+      channel: 'mobile_money',
+      feesPesewas: 100,
+    });
+
+    const result = await service.runMaintenance(new Date(Date.now() + 2 * 60 * 60 * 1_000));
+
+    expect(result.webhooks).toEqual({ processed: 0, failed: 0 });
+    expect(result.reconciliation).toMatchObject({ considered: 1, fulfilled: 1, errors: 0 });
+    expect(result.periods).toMatchObject({ considered: 0, closed: 0, blocked: 0 });
+    expect((await payments.findByReference(checkout.reference))?.status).toBe('fulfilled');
+  });
+
   it('fulfills a successful payment whose webhook never arrived', async () => {
     const { service, paystack, payments, subscriptions, entitlements } = await priced();
     const checkout = await service.initializeSubscription('u1', 'monthly', ROUTE);

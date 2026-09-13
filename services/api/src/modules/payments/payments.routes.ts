@@ -191,7 +191,56 @@ export async function paymentRoutes(
     },
     async (_request, reply) => {
       if (!opts.paymentsService) return reply.code(503).send(UNAVAILABLE);
-      return opts.paymentsService.reconcileUnresolved();
+      try {
+        return await opts.paymentsService.reconcileUnresolved();
+      } catch (error) {
+        if (error instanceof PaymentsNotConfiguredError) return reply.code(503).send(UNAVAILABLE);
+        throw error;
+      }
+    },
+  );
+
+  r.post(
+    '/admin/payments/maintenance',
+    {
+      schema: {
+        tags: ['admin', 'payments'],
+        summary: 'Run webhook recovery, payment reconciliation, and safe period close',
+        security: [{ bearerAuth: [] }],
+        response: {
+          200: z.object({
+            webhooks: z.object({ processed: z.number().int(), failed: z.number().int() }),
+            reconciliation: z.object({
+              considered: z.number().int(),
+              fulfilled: z.number().int(),
+              failed: z.number().int(),
+              unresolved: z.number().int(),
+              errors: z.number().int(),
+            }),
+            periods: z.object({
+              considered: z.number().int(),
+              closed: z.number().int(),
+              blocked: z.number().int(),
+              riders: z.number().int(),
+              ridesConverted: z.number().int(),
+              creditPesewas: z.number().int(),
+            }),
+          }),
+          401: errorResponseSchema,
+          403: errorResponseSchema,
+          503: errorResponseSchema,
+        },
+      },
+      preHandler: adminOnly,
+    },
+    async (_request, reply) => {
+      if (!opts.paymentsService) return reply.code(503).send(UNAVAILABLE);
+      try {
+        return await opts.paymentsService.runMaintenance();
+      } catch (error) {
+        if (error instanceof PaymentsNotConfiguredError) return reply.code(503).send(UNAVAILABLE);
+        throw error;
+      }
     },
   );
 }

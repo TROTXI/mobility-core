@@ -2,82 +2,113 @@
 
 **Owner:** Godfred Awuku · **Last verified:** 2026-09-12
 
-**Status:** Fare-derived checkout, credit netting, Paystack activation and
-period expiry are live. The filename is retained for stable links; there is no
-prepaid wallet or top-up API in the current product.
+**Status:** Fare-derived checkout, transactional Ride Credit holds, durable
+Paystack processing, renewal, reconciliation, refund/dispute accounting and
+atomic period close are implemented. Staging uses a Paystack test key. The
+filename is retained for stable links; there is no prepaid wallet or top-up API.
 
 ## Current model
 
-A rider buys a ride entitlement for one corridor and billing period. The
-checkout price is derived rather than typed into a plan table:
+A rider buys one route-bound entitlement period:
 
 ```text
 price = corridor fare × rides per period × price multiplier
-Paystack charge = price − applied Ride Credit
+Paystack charge = price − reserved Ride Credit
 ```
 
-Money is integer pesewas. Multipliers and the operator take rate are integer
-basis points (`10000 = 1.0`). The current plan keys are `monthly` and `annual`;
-the strategy document's standard/premium/corporate/student tier taxonomy has
-not been implemented.
+Money is integer pesewas and rates are integer basis points. Fares are
+effective-dated per route. Checkout freezes the fare, price, ride count,
+conversion rate, route/stops and applied credit; later configuration changes do
+not rewrite a sold period.
 
-Fares are effective-dated per route. Plan levers are ops-editable:
-`ridesPerPeriod`, `priceMultiplierBp`, `takeRateBp` and
-`creditPesewasPerRide`. Checkout snapshots the fare, price, rides, credit rate,
-stops and applied credit so later configuration changes cannot rewrite what was
-sold.
+The current plan keys are `monthly` and `annual`. Automatic recurring charges
+are not implemented because Trotxi does not hold a reusable payment mandate;
+renewal is a rider-initiated checkout that advances the existing subscription.
 
-## Rider and webhook API
+## State and transaction boundaries
 
-| Endpoint                   | Auth           | Behaviour                                                                                              |
-| -------------------------- | -------------- | ------------------------------------------------------------------------------------------------------ |
-| `POST /payments/subscribe` | bearer         | Validate route/stops, derive price, net credit, create pending payment and initialize Paystack         |
-| `POST /webhooks/paystack`  | HMAC signature | Validate settlement, activate subscription, allocate rides, debit applied credit and mark payment paid |
+```text
+checkout: pending + credit hold
+provider success: pending → processing → fulfilled
+provider terminal Verify result: pending|processing → failed + hold released
+full processed refund: fulfilled|disputed → refunded + period reversed
+dispute: fulfilled → disputed; current period/subscription frozen
+```
 
-`POST /payments/subscribe` accepts a plan, `routeId` and optional pickup/drop-off
-stop IDs. A corridor without a fare in force returns `409 not_priced`; stops not
-on the corridor return `400`.
+One PostgreSQL transaction owns subscription activation/reactivation, immutable
+period creation, credit capture, ride allocation, provider metadata and final
+fulfilment. Per-rider advisory locks serialize checkout and lifecycle changes.
+A second unresolved checkout is rejected and an active or disputed membership
+cannot be bypassed with another purchase.
 
-The webhook verifies HMAC-SHA512 over the raw request body. A
-`charge.success` event grants value only when its reference, status, amount and
-currency agree with the stored payment. Each effect is independently
-idempotent, so Paystack retries converge after partial failure.
+## Rider, webhook and recovery API
 
-## Admin pricing and period API
+| Endpoint                                | Auth           | Behaviour                                                                      |
+| --------------------------------------- | -------------- | ------------------------------------------------------------------------------ |
+| `POST /payments/subscribe`              | bearer         | Validate/price, reserve credit, create pending payment and initialize Paystack |
+| `POST /webhooks/paystack`               | HMAC signature | Verify raw body, durably enqueue, acknowledge, then process asynchronously     |
+| `POST /admin/payments/process-webhooks` | admin          | Drain retryable/stale inbox work                                               |
+| `POST /admin/payments/reconcile`        | admin          | Verify stale pending/processing references directly with Paystack              |
+| `POST /admin/payments/maintenance`      | admin          | Inbox → Verify → safe period close, in dependency order                        |
 
-| Endpoint                           | Purpose                                                  |
-| ---------------------------------- | -------------------------------------------------------- |
-| `GET /admin/routes/:id/fares`      | Effective-dated fare history                             |
-| `PUT /admin/routes/:id/fare`       | Close the previous fare and create the new one           |
-| `GET /admin/plan-pricing`          | Current levers for monthly and annual plans              |
-| `PATCH /admin/plan-pricing/:plan`  | Update multiplier, take rate, ride count or credit value |
-| `POST /admin/expire-subscriptions` | Mark active subscriptions whose period ended as expired  |
+`charge.success` grants value only when provider reference, status, amount,
+currency, environment, transaction id and paid time pass the strict adapter
+contract. The public webhook has no shared-IP rate-limit bucket: Paystack bursts
+are absorbed by the durable, SHA-256-deduplicated inbox and competing workers
+claim rows with `FOR UPDATE SKIP LOCKED`.
 
-The expiry sweep does not auto-renew. Recurring charging needs a stored payment
-mandate, which the system does not yet have.
+Paystack references use only provider-supported characters. HTTP calls have
+timeouts and initialization verifies Paystack echoed the reference. Verify is
+the recovery path when a success webhook does not arrive.
 
-## Credit netting
+## Refunds and disputes
 
-At checkout, available Ride Credit can reduce the price, but the Paystack
-charge never drops below `MIN_CHARGE_PESEWAS` (currently 100). Unused credit
-remains in the ledger. Applied credit is debited only after a valid successful
-payment webhook.
+Refund status notifications are recorded, but rider value changes only after
+`refund.processed`. Partial refunds update the audit total without silently
+cancelling the period. Once processed refunds equal the payment's cash amount,
+the transaction atomically:
+
+- revokes only rides still unconsumed in that purchased period;
+- restores Ride Credit captured for the reversed purchase;
+- marks the period `reversed`, the payment `refunded`, and the current
+  subscription `expired`.
+
+`charge.dispute.create` and reminders freeze the exact purchased period and
+suspend the current membership. A `declined` resolution restores service. A
+merchant-accepted resolution stays frozen until Paystack's authoritative
+processed-refund event arrives; resolution alone is not treated as proof that
+cash moved.
+
+## Period close
+
+`POST /admin/close-subscription-periods` is the canonical operation. Both legacy
+admin paths delegate to it. For each immutable period it converts only that
+period's remaining rides at that period's frozen rate, retires those rides, then
+closes the period and expires the membership in one transaction.
+
+A period with `pending` or `reserved` seats is reported as `blocked`; closing it
+before boarding/no-show settlement would let a later ride debit occur after its
+value had already become credit.
+
+The compiled `payments-maintenance-cron` runs inbox recovery, Verify and close
+hourly. Its Render declaration is ready but commented because Render applies a
+minimum monthly charge per cron service. Until approved, operators call the
+maintenance endpoint manually.
 
 ## Deferred
 
-- Automatic renewal and stored mandates.
-- Nightly Paystack reconciliation, automated refunds and circuit breaking.
-- Standby single-journey checkout.
-- Fare bands from ADR-0015; current pricing is per corridor.
-- Credit conversion still uses the app-wired fallback rate instead of the
-  subscription's stored rate snapshot.
-- Final commercial values. The database is ops-editable but seeded values remain
+- Automatic provider-initiated renewal and stored mandates.
+- Automated evidence upload or merchant decisions for disputes.
+- Standby single-journey checkout and operator payouts.
+- Fare bands and final commercial values; current values remain ops-editable
   placeholders until approved.
 
 ## Code and data
 
 - `services/api/src/modules/payments/`
 - `services/api/src/modules/subscriptions/`
-- migrations `027` through `031`
+- `services/api/src/cron/payments-maintenance-cron.ts`
+- `services/api/scripts/payments-audit.sql` (read-only rollout/reconciliation audit)
+- migrations `027`–`031` and `039`
 - [ADR-0014](../adr/0014-hybrid-subscription-model.md) and
   [ADR-0015](../adr/0015-fare-derived-pricing.md)

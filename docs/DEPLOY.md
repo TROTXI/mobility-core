@@ -132,9 +132,15 @@ hand in the meantime:
 POST /admin/ask-dispatch       { travelDate, direction }
 POST /admin/resolve-defaults   { travelDate, direction }
 POST /admin/resolve-no-shows   { travelDate, direction }
+POST /admin/payments/maintenance
 ```
 
-To enable: uncomment, change every `plan: free` to `plan: starter`, apply.
+The payment maintenance job is already declared with `plan: starter` and runs
+the webhook inbox, Verify reconciliation and safe period close in that order.
+The six daily-loop jobs still show `plan: free` inside their commented examples.
+To enable any job: uncomment it, use a supported paid cron plan, and apply the
+blueprint. Each cron service has its own $1/month minimum; merging the YAML alone
+does not create or update it.
 
 ### Blueprint changes need an apply
 

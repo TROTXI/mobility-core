@@ -209,3 +209,33 @@ describe('POST /webhooks/paystack', () => {
     expect(res.statusCode).toBe(503);
   });
 });
+
+describe('POST /admin/payments/maintenance', () => {
+  it('is admin-only and returns all maintenance stage counters', async () => {
+    const app = await appWithPayments().build;
+    const commuter = await jwt.signAccessToken({ userId: 'rider-1', role: 'commuter' });
+    const admin = await jwt.signAccessToken({ userId: 'ops-1', role: 'admin' });
+
+    expect(
+      (
+        await app.inject({
+          method: 'POST',
+          url: '/admin/payments/maintenance',
+          headers: bearer(commuter),
+        })
+      ).statusCode,
+    ).toBe(403);
+
+    const response = await app.inject({
+      method: 'POST',
+      url: '/admin/payments/maintenance',
+      headers: bearer(admin),
+    });
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toMatchObject({
+      webhooks: { processed: 0, failed: 0 },
+      reconciliation: { considered: 0, errors: 0 },
+      periods: { considered: 0, closed: 0, blocked: 0 },
+    });
+  });
+});

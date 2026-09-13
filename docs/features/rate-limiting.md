@@ -13,7 +13,9 @@ the KV abstraction. Development/tests use memory; production uses Redis when
 - Pre-auth credential routes use IP buckets, normally 10 requests/minute.
 - Authenticated routes use user-ID buckets and the configurable default.
 - Public database-backed routes use IP buckets.
-- The Paystack webhook uses a larger dedicated IP budget.
+- The Paystack webhook is not rate-limited by source IP. Paystack retries and
+  bursts share a small provider address set, so an IP bucket could discard valid
+  money events; signature verification and the durable inbox are its controls.
 
 Every response includes limit/remaining headers. Exceeding the budget returns
 `429` with `Retry-After`.
