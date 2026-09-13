@@ -117,6 +117,7 @@ Until approved, operators call the maintenance endpoint manually.
 
 ## Code and data
 
+- [Manual staging verification runbook](../payments-staging-verification.md)
 - `services/api/src/modules/payments/`
 - `services/api/src/modules/subscriptions/`
 - `services/api/src/cron/payments-maintenance-cron.ts`
