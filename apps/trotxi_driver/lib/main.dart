@@ -87,8 +87,8 @@ class _TrotxiDriverAppState extends State<TrotxiDriverApp> {
   void initState() {
     super.initState();
     // A session revoked server-side now returns the app to sign-in on its own
-    // (#235). The store is cleared only after a refresh has genuinely failed,
-    // so this reacts to a proven 401 and never to a bad connection.
+    // (#235). Automatic clearing requires a refresh endpoint 401, not a
+    // timeout/server error or a failed retry after a successful refresh.
     TokenStorage.instance.onCleared = _session.onSessionRevoked;
   }
 
