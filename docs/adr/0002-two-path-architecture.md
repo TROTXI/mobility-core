@@ -26,3 +26,11 @@ serves positions over HTTP polling behind the same client-facing contract.
   pilot operations to one.
 - The client contract for positions must be designed now so the engine swap is
   invisible later.
+
+## Current implementation — 2026-09-12
+
+The transactional side is a single Fastify modular monolith backed by
+PostgreSQL/PostGIS. The pilot position contract is live over driver HTTP writes
+and rider HTTP polling, with Redis/KV caching and durable GPS history. Completed
+runs already feed batch geometry and segment-speed learning inside the API. The
+dedicated EMQX/Go/WebSocket telemetry runtime remains deferred.

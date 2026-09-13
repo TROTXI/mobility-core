@@ -52,5 +52,7 @@ vars needed are `OTEL_EXPORTER_OTLP_ENDPOINT` + `OTEL_EXPORTER_OTLP_HEADERS`).
 The protobuf exporter is used (Grafana's default); `protobufjs`'s build script is
 skipped (works from prebuilt dist). The `/metrics` endpoint + `METRICS_TOKEN`
 remain as a local/debug **pull** path, not the production shipping mechanism.
-Pending: Phase 4 (SLO dashboards + alerts) and Phase 3 (mobile RUM, FE lane). See
-`docs/design/observability.md` §13 for the operating guide.
+The dashboard and alert definitions are committed under `ops/grafana`; import
+and production notification wiring remain. Firebase Crashlytics and Performance
+are now integrated in both Flutter apps, subject to valid release-project
+configuration. See `docs/design/observability.md` for the operating guide.

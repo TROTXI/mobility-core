@@ -21,3 +21,10 @@ links back.
 - PRs that make architectural choices must include an ADR (enforced in review).
 - The ADR log doubles as onboarding material: read them in order and you know
   why the system looks the way it does.
+
+## Current practice — 2026-09-12
+
+Accepted decision text remains historical. A later ADR supersedes it; a dated
+implementation note may clarify what has shipped without rewriting the original
+context. [`README.md`](README.md) is the current decision map, while feature
+docs and generated OpenAPI describe present behaviour.

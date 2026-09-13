@@ -1,6 +1,11 @@
 # Observability & performance design
 
-**Owner:** Godfred Awuku · **Date:** 2026-06-28 · **Status:** ✅ **backend live on staging** — Phases 0–2 (metrics + traces + logs → Grafana Cloud, correlated). Pending: Phase 4 (SLO dashboards/alerts) + Phase 3 (mobile RUM, FE lane). Tooling **decided: free-tier only**. (#28)
+**Owner:** Godfred Awuku · **Date:** 2026-06-28 · **Last verified:** 2026-09-12
+
+**Status:** Backend metrics, traces and logs are live on staging. Firebase
+Crashlytics and Performance are wired in both Flutter apps. Dashboard and alert
+definitions are committed; importing them into Grafana and wiring the production
+notification channel remain operational tasks. Tooling remains free-tier only.
 
 How we measure and protect the **latency, memory, responsiveness, and
 reliability** of every part of Trotxi — the Fastify API, its dependencies
@@ -132,7 +137,8 @@ Owned by the FE devs (adomfosugit + team), to this design.
   app-start time, screen rendering (slow & frozen frames = jank), and **HTTP
   request traces from the device** (the real latency a user feels, network
   included — which server-side metrics can't see).
-- **Custom traces** for the flows that matter: sign-in, top-up checkout, board.
+- **Custom traces** for the flows that matter: sign-in, subscription checkout,
+  boarding and active-run operations.
 - **Memory:** Android vitals (Play Console) + Firebase for low-memory/OOM; iOS
   via Xcode Organizer.
 
@@ -266,12 +272,13 @@ A money app — telemetry must not become a leak:
 | **0 — Foundation** ✅                        | pino structured logs, `/healthz` + `/readyz`, `request_id` + `trace_id`/`span_id` correlation                                                                                                                                                                                                      | clean, correlatable logs                                         |
 | **1 — Backend metrics** ✅                   | `/metrics` endpoint (`prom-client`, local) **+ metrics pushed via OTLP** (HTTP RED + Node runtime: event loop, GC, heap) — no scraper/agent needed. **Remaining:** dashboards + 2–3 alerts (error rate, p95, memory)                                                                               | latency + memory + reliability visible (satisfies #28's RED ask) |
 | **2 — Tracing + logs** ✅                    | OTel SDK + auto-instrumentation (HTTP/Fastify/pg/ioredis/pino) → traces, metrics **and** logs pushed via OTLP (gated by `OTEL_EXPORTER_OTLP_ENDPOINT`); pino logs carry `trace_id`/`span_id` (logs ↔ traces correlate). **Remaining (polish):** sampling tuning (head sample, keep 100% of errors) | debug slow requests end-to-end; pivot trace ↔ logs               |
-| **3 — Mobile RUM** ⬜ _(FE lane)_            | Firebase Crashlytics + Performance in both apps; custom traces (sign-in, top-up, board); crash-free SLO                                                                                                                                                                                            | responsiveness + reliability from real devices                   |
+| **3 — Mobile RUM** ✅ _wired in both apps_   | Firebase Crashlytics + Performance interceptors in commuter and driver apps; release telemetry still depends on valid Firebase project configuration                                                                                                                                               | responsiveness + reliability from real devices                   |
 | **4 — SLOs & alerting** 🟡 _defined as code_ | dashboard + alert rules committed in [`ops/grafana/`](../../ops/grafana/README.md) (RED + runtime, SLO thresholds); **remaining:** import into Grafana + wire the notification channel                                                                                                             | budget-driven, low-noise alerting                                |
 
 Phases 0–2 are **live on staging** (verified: `/readyz` traces show the parent
-request + `pg` child spans; metrics + logs flowing). Next: **Phase 4** (build the
-SLO dashboards + alerts on the data now arriving) and **Phase 3** (mobile, FE lane).
+request + `pg` child spans; metrics + logs flowing). Phase 3 is implemented in
+both app codebases. Next: import the Phase 4 dashboard/alert definitions, connect
+the notification channel and verify mobile release data in the Firebase projects.
 
 ---
 

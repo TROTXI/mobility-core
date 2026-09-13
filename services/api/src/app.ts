@@ -270,7 +270,8 @@ export async function buildApp(deps: AppDeps = {}): Promise<FastifyInstance> {
     openapi: {
       info: {
         title: 'Trotxi API',
-        description: 'Transactional API — auth, subscriptions, tokens, mobility.',
+        description:
+          'Transactional API — auth, subscriptions, ride entitlements, payments, mobility and operations.',
         version: '0.1.0',
       },
       tags: [

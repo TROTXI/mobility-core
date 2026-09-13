@@ -1,127 +1,52 @@
 # Rate limiting
 
-**Owner:** Godfred Awuku · **Last updated:** 2026-06-28
+**Owner:** Godfred Awuku · **Last verified:** 2026-09-12
 
-**Status:** ✅ live (#23).
+**Status:** Live.
 
-A reusable guard that caps how often a client can hit a route — protecting
-credential and abuse-prone endpoints from brute force, scraping, and basic DoS.
-Fixed-window counting, backed by the KV store. Deep design: `strategy/security.md
-§8`; storage: [ADR-0010](../adr/0010-kv-redis.md).
+The Fastify `app.rateLimit()` pre-handler implements fixed-window counters over
+the KV abstraction. Development/tests use memory; production uses Redis when
+`REDIS_URL` is configured.
 
----
+## Buckets
 
-## Concepts
+- Pre-auth credential routes use IP buckets, normally 10 requests/minute.
+- Authenticated routes use user-ID buckets and the configurable default.
+- Public database-backed routes use IP buckets.
+- The Paystack webhook uses a larger dedicated IP budget.
 
-- **Fixed window.** A counter per `(route, subject)` with a TTL set **once**, on
-  the first hit — the window doesn't slide. Built on `KvStore.increment`.
-- **Subject = IP or user.** `by: 'ip'` (default) buckets per client IP — used for
-  pre-auth endpoints. `by: 'user'` buckets per authenticated user — used for
-  logged-in abuse. `by: 'user'` falls back to IP if there's no principal, so the
-  limit is never silently skipped.
-- **Fails open.** If the KV store is unavailable the request is **allowed** (a
-  cache outage must not take the API down) — logged as a warning.
-- **Backing store.** In-memory in dev/tests, Redis in prod ([ADR-0010](../adr/0010-kv-redis.md)).
+Every response includes limit/remaining headers. Exceeding the budget returns
+`429` with `Retry-After`.
 
----
+## Proxy requirement
 
-## Usage
+On Render, `request.ip` is meaningful only when `TRUST_PROXY` trusts the private
+load-balancer ranges. The production value is
+`loopback, linklocal, uniquelocal`. Numeric hop counts are rejected at startup
+because Fastify 5.12 treats them as fail-closed and would collapse users onto the
+load balancer's address.
 
-`app.rateLimit(options)` is a preHandler factory (decorator on the Fastify
-instance):
+## Failure posture
 
-```ts
-// per IP (e.g. a public or pre-auth endpoint)
-app.post('/auth/google', { preHandler: [app.rateLimit({ max: 10, windowSeconds: 60 })] }, h);
+The generic rate limiter and boarding attempt budgets fail open if KV is down;
+an outage must be visible in telemetry but must not take the API or vehicle door
+down. Driver credential lockout is different: it lives durably in PostgreSQL and
+fails closed.
 
-// per user (compose AFTER authenticate)
-app.get(
-  '/me',
-  { preHandler: [app.authenticate, app.rateLimit({ max: 100, windowSeconds: 60, by: 'user' })] },
-  h,
-);
-```
-
-| Option          | Default | Meaning                        |
-| --------------- | ------- | ------------------------------ |
-| `max`           | —       | requests allowed per window    |
-| `windowSeconds` | —       | window length                  |
-| `by`            | `'ip'`  | bucket key: `'ip'` or `'user'` |
-
-## Response
-
-- Under the limit → the route runs, with headers:
-  - `X-RateLimit-Limit` — the cap
-  - `X-RateLimit-Remaining` — remaining in the window
-- Over the limit → **429** with `Retry-After: <windowSeconds>` and body
-  `{ "error": "rate_limited", "message": "Too many requests. Try again later." }`.
-
-Clients should honour `Retry-After` and back off.
-
-## Where it's applied today
-
-| Endpoint(s)                                                         | Limit                                            |
-| ------------------------------------------------------------------- | ------------------------------------------------ |
-| `POST /auth/google`, `/auth/apple`, `/auth/refresh`, `/auth/logout` | **10/min per IP** (strict, credential endpoints) |
-| `GET /me`, `GET /me/balance`, `POST /payments/*`                    | default, **per user**                            |
-| `POST /webhooks/paystack`                                           | 60/min per IP                                    |
-| `GET /flags`, `GET /routes`, `GET /routes/:id`, `.../geometry`      | default, **per IP** (public but database-backed) |
+Rate limiting is never authorization. Protected routes still authenticate,
+enforce roles and perform ownership/assignment checks.
 
 ## Configuration
 
-| Env var                     | Default                            | Notes                                                              |
-| --------------------------- | ---------------------------------- | ------------------------------------------------------------------ |
-| `RATE_LIMIT_MAX`            | `100`                              | default per-window cap (the value passed to per-user route limits) |
-| `RATE_LIMIT_WINDOW_SECONDS` | `60`                               | default window                                                     |
-| `TRUST_PROXY`               | `loopback, linklocal, uniquelocal` | which peers may set `X-Forwarded-For` (see below)                  |
+| Variable                    | Default                         | Purpose                                          |
+| --------------------------- | ------------------------------- | ------------------------------------------------ |
+| `RATE_LIMIT_MAX`            | `100`                           | General requests per window                      |
+| `RATE_LIMIT_WINDOW_SECONDS` | `60`                            | Window length                                    |
+| `TRUST_PROXY`               | private/loopback list on Render | Trusted proxy addresses                          |
+| `REDIS_URL`                 | unset                           | Select Redis instead of the in-memory KV adapter |
 
-Auth/webhook endpoints use their own stricter inline limits (above); the env
-defaults drive the general per-user limits.
+## Code
 
-## Security notes
-
-- **Per-IP for pre-auth** (login/refresh) is the brute-force guard; **per-user**
-  protects authenticated abuse.
-- **`TRUST_PROXY` is what makes "per IP" mean anything.** Render fronts the
-  service with a load balancer, so without it `request.ip` is that balancer on
-  every request and all per-IP limits collapse into a single global bucket: the
-  eleventh sign-in in a minute anywhere in the country gets a 429, while a real
-  attacker is never isolated.
-- **It is an address list, not a hop count, and not `true`.** The balancer
-  reaches us from inside Render's private network, so trusting private peers
-  trusts it and nothing else; a client connecting directly is public, untrusted,
-  and cannot forge a header to pick its own bucket. Fastify 5.12 made a numeric
-  `trustProxy` **fail closed** (GHSA X-Forwarded-\* spoofing: a count cannot
-  validate the immediate peer), so `TRUST_PROXY=1` silently trusts nobody and
-  undoes the whole thing. `loadEnv` refuses a numeric value at boot rather than
-  let that go unnoticed.
-- **Fail-open is a deliberate trade-off** — availability over strictness. A
-  determined attacker who can take down Redis could bypass limits; acceptable for
-  the pilot, revisit if it becomes a vector.
-- It is **not** a substitute for auth or ownership checks — it only throttles.
-
-## Local development & testing
-
-Works with zero infra (in-memory KV). To see it trigger, hit a tightly-limited
-route repeatedly:
-
-```bash
-# /auth/refresh is 10/min per IP — the 11th call in a minute returns 429
-for i in $(seq 1 11); do
-  curl -s -o /dev/null -w "%{http_code}\n" -XPOST localhost:3000/auth/refresh \
-    -H 'content-type: application/json' -d '{"refreshToken":"x"}'
-done
-# → 401 ×10 (bad token, but allowed), then 429
-```
-
-## Where the code lives
-
-```
-services/api/src/modules/ratelimit/ratelimit.plugin.ts   # app.rateLimit(...)
-```
-
-## Related
-
-- [ADR-0010 — KV/Redis](../adr/0010-kv-redis.md) (the backing store)
-- `strategy/security.md §8 (rate limiting & abuse)`
-- Issue #23
+- `services/api/src/modules/ratelimit/ratelimit.plugin.ts`
+- `services/api/src/kv/`
+- [ADR-0010](../adr/0010-kv-redis.md)

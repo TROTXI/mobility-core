@@ -1,152 +1,75 @@
-# Boarding — QR passes & scan verification
+# Boarding verification
 
-**Owner:** Godfred Awuku · **Last updated:** 2026-07-08
+**Owner:** Godfred Awuku · **Last verified:** 2026-09-12
 
-**Status:** 🟢 All three verification layers live (#20, E4): **QR scan**,
-**driver manifest** (photo pass), and **daily PIN** — any one boards the rider's
-confirmed reservation and **debits one ride** (ADR-0014). The **confirmed-yes
-no-show** deduction (cutoff cron) and the **assigned-driver-only manifest**
-(#129) are now built too — see below.
+**Status:** QR, trip-wide code entry, reservation-targeted PIN, photo-manifest
+boarding, driver-marked no-shows and cutoff no-shows are live.
 
-Lets a driver confirm a rider is boarding with a **genuine, unforged, unexpired
-pass**, and logs every scan for audit. Rationale: #20.
+## Verification paths
 
----
+Any of the three rider proofs can complete boarding:
 
-## Concepts
+1. QR pass: a signed HS256 JWT for audience `trotxi-pass`, approximately 60
+   seconds old and single-use by `jti`.
+2. Daily code: a four-character code stored only as keyed HMAC. The driver can
+   enter it directly for the run or against a selected reservation.
+3. Photo manifest: the assigned driver identifies the rider from name and a
+   short-lived signed avatar URL, then boards the reservation directly.
 
-- **Pass** — a **short-lived signed token** (JWT, HS256, audience `trotxi-pass`,
-  ~60s) the rider's app renders as a **QR**. The short TTL means the QR **rotates**,
-  and each pass carries a unique `jti` making it **single-use**: the first valid
-  scan consumes it (KV `increment`), so a shared screenshot dies on the second
-  scan, not just at the TTL. Signed with the server key but a distinct audience,
-  so a pass can't be used as an access token (or vice-versa). Verification allows
-  5s clock tolerance (drift across instances).
-- **Integrity → boarding** — verifying a pass proves it's a **real pass for
-  rider X**; a valid scan then **boards the rider's confirmed reservation for
-  today** and debits **1 ride** from their entitlement (E1 ledger). The debit is
-  **idempotent per reservation** (`board:<reservationId>`), and `findBoardable`
-  skips already-boarded seats — so re-scanning a rider (even with a freshly
-  rotated QR) never double-charges. A valid pass with **no confirmed reservation**
-  boards nothing (`deducted: false`) — walk-up/standby is E6.
-- **Scan event** — every verification is one **append-only** audit row
-  (`scan_events`): rider, driver, trip, result, method. `rider_id` is null for an
-  invalid/forged pass (unattributable).
-
----
+All successful paths converge on the same operation: mark the reservation
+boarded and append `-1` ride with `idempotency_key = board:<reservation-id>`.
 
 ## API
 
-#### `GET /me/pass`
+| Endpoint                         | Role            | Purpose                                                               |
+| -------------------------------- | --------------- | --------------------------------------------------------------------- |
+| `GET /me/pass`                   | rider           | Issue a rotating QR pass                                              |
+| `POST /boarding/scan`            | driver          | Verify QR integrity/single-use and board the rider's open reservation |
+| `POST /boarding/verify-code`     | assigned driver | Find the one actionable seat on a run with this code and board it     |
+| `POST /boarding/verify-pin`      | assigned driver | Verify a code against a known reservation and board it                |
+| `GET /boarding/manifest?tripId=` | assigned driver | Confirmed riders with status, source, name and signed photo           |
+| `POST /boarding/board`           | assigned driver | Board a rider identified from the photo manifest                      |
+| `POST /boarding/no-show`         | assigned driver | Mark one confirmed rider absent and consume the ride                  |
+| `POST /admin/resolve-no-shows`   | admin           | Convert all still-reserved seats at cutoff to no-shows                |
 
-Issue the caller's rotating boarding pass.
+The trip-wide code path refuses ambiguous matches instead of charging the first
+rider found. Old numeric four-digit codes remain accepted; newly generated
+codes use an ambiguity-resistant alphanumeric alphabet.
 
-- **Auth:** `Bearer`. **Rate limit:** per user.
-- **200:** `{ "pass": "<token>", "expiresInSeconds": 60 }` — render `pass` as a QR; refresh before it lapses.
+The QR endpoint is still role-gated rather than assignment-gated and resolves
+the rider's earliest boardable reservation for the current UTC day. Code, PIN
+and photo paths target a specific trip/reservation and enforce assignment. This
+is the current contract, not the desired end state.
 
-#### `POST /boarding/scan`
+## Authorization and attempt limits
 
-Verify a scanned pass (drivers only) and record the scan.
+PIN/code/photo actions require the caller to be the trip's assigned driver, not
+merely to hold the driver role. Wrong attempts are budgeted in KV: per
+reservation for targeted PIN entry and per trip/driver for the door flow.
 
-- **Auth:** `Bearer` + **role `driver`** (else **403**). **Rate limit:** per user.
-- **Body:** `{ "pass": "<scanned token>", "tripId?": "<uuid>" }`
-- **200:** `{ "valid": true|false, "riderId": "<uuid>|null", "reason": "ok"|"invalid"|"expired"|"reused", "deducted": true|false }`
-  (`reused` = the pass was already consumed; `deducted` = a confirmed reservation
-  was boarded and a ride debited. `riderId` is still returned so the driver sees
-  who presented it.)
+## Failure posture
 
-#### `GET /boarding/manifest?tripId=<uuid>`
+Boarding prioritizes getting a verified rider onto the vehicle:
 
-The trip's confirmed riders (driver only) — the photo pass.
+- KV failure allows the attempt and logs the missing single-use/guess budget.
+- Scan-audit failure is logged without reversing boarding.
+- A QR-path deduction failure does not reject the rider; reconciliation must
+  identify the audit gap.
 
-- **Auth:** `Bearer` + **role `driver`**. **Rate limit:** per user.
-- **200:** `{ "tripId", "riders": [ { reservationId, userId, name, avatarUrl, direction, boarded } ] }`
-  — `avatarUrl` is a short-lived signed URL (null when no photo); only
-  `reserved`/`boarded` seats appear. **400** bad tripId · **403** · **503**
+This availability posture is deliberately narrower than authentication or
+payment processing, which fail closed.
 
-#### `POST /boarding/verify-pin`
+## Idempotency and corrections
 
-Board a rider by their daily boarding code (driver only) — verification layer 2.
+- QR, code, photo and no-show use the same `board:<reservation-id>` key.
+- Repeated boarding returns `already_boarded` without another deduction.
+- A driver can board a rider after marking them no-show; the shared key prevents
+  a second charge.
+- Declined, released, unseated and operator-cancelled rows are not boardable.
 
-- **Auth:** `Bearer` + **role `driver`**, and the caller must be the driver the
-  reservation's trip is **assigned to** — the same rule as the manifest and GPS
-  reporting (#25). **Rate limit:** per user, plus a per-reservation budget of
-  wrong codes.
-- **Body:** `{ "reservationId": "<uuid>", "pin": "B7K9" }`
-- **200:** `{ "valid", "riderId", "reason": "ok"|"invalid"|"not_found"|"already_boarded", "deducted" }`
-  — `ok` boards + debits; `already_boarded` is the idempotent no-op. **400** bad PIN ·
-  **403** not this driver's run
+## Code
 
----
-
-## Data
-
-`scan_events(id, rider_id, scanned_by, trip_id, result, method, created_at)` —
-`result` ∈ `valid|invalid|expired|reused`, `method` ∈ `qr|photo|pin`. `trip_id`
-has no FK yet (trips are #18). The daily PIN is stored on `reservations`
-(`daily_pin_hash`, a keyed HMAC — never plaintext).
-
-## Security notes
-
-- **Rotating, signed, single-use passes** — forgery needs the server key; the
-  short TTL rotates the QR; the `jti` consume-on-scan kills screenshot sharing
-  within the window.
-- **Audience separation** — a `trotxi-api` access token fails pass verification and
-  vice-versa (tested).
-- **Full audit** — every scan (including failures and reuses) is recorded.
-- **Availability over strictness** — the KV single-use check and the audit write
-  both **fail open** (log loudly, never block boarding). Same posture as the rate
-  limiter; when the money work lands, the token debit becomes the transactional
-  anchor and this decision is revisited.
-- **Input hygiene** — the scanned pass is capped at 512 chars before it reaches
-  `jwtVerify`; the scan route throttles **before** the role check so non-driver
-  tokens can't hammer unthrottled 403s.
-- **Assigned-driver authz on PIN boarding** — a `driver` role alone is not enough
-  to board a seat by code. Without this the four-character code was the only
-  thing between any driver account and any rider on any trip in the fleet, which
-  is not what a code that short is for.
-- **Bounded guessing** — 30⁴ is 810,000 codes, which is only a real number if you
-  cannot try thousands an hour against a code that stays valid all day. Wrong
-  guesses are budgeted per reservation (10 per 15 minutes); the budget fails
-  open, so a KV outage costs the ceiling rather than the boarding.
-
-## Next (Hybrid Subscription Model — ADR-0014, boarding v2 / epic E4)
-
-The commercial model is decided
-([ADR-0014](../adr/0014-hybrid-subscription-model.md)): boarding is **three
-verification layers**, and any one consumes **1 ride from the subscription
-entitlement**. **Done (this + prior slices):** QR scan + deduction, the driver
-**manifest** (photo pass, assigned-driver-gated), the **daily PIN**, and the
-**no-show** cutoff deduction. Still to come:
-
-- ✅ **QR scan** — `POST /boarding/scan` (deducts).
-- ✅ **Driver manifest** — `GET /boarding/manifest?tripId=` (name + signed photo).
-- ✅ **Daily PIN** — `POST /boarding/verify-pin` (boards + deducts, idempotent).
-- ✅ **Confirmed-yes no-show** — `POST /admin/resolve-no-shows` (admin cutoff
-  cron): every still-`reserved` seat that wasn't boarded is deducted and marked
-  `no_show`. Deducts on the **same idempotency key as boarding**
-  (`board:<reservationId>`) so a late board and the no-show sweep can't both
-  charge; operator cancellation never deducts.
-- ✅ **Manifest → assigned driver only** (#129) — a trip's manifest is restricted
-  to its assigned driver (`drivers.findByUserId` + `trip.assignedDriverId`).
-- **Per-rider pickup point** on the manifest — needs a rider↔stop link.
-- Direction/trip resolution: a QR scan still boards the rider's **earliest open
-  leg for the day** (morning before evening); the PIN + manifest target a
-  specific reservation. When trips carry the run's direction, the scan converges.
-
-## Where the code lives
-
-```
-services/api/src/modules/boarding/
-  pass.ts                    # sign/verify the short-lived pass (jose)
-  scan-event.repository.ts(.pg) # append-only scan audit
-  boarding.service.ts        # issuePass + verifyScan (records the scan)
-  boarding.routes.ts         # GET /me/pass, POST /boarding/scan
-  boarding.schema.ts
-services/api/src/db/migrations/010_scan_events.sql
-```
-
-## Related
-
-- [authentication.md](authentication.md) (the same JWT/HS256 machinery, different audience)
-- `strategy/system-design.md §4.3` (boarding requires membership + balance)
+- `services/api/src/modules/boarding/`
+- `services/api/src/modules/reservations/pin.ts`
+- migrations `010`, `016_reservation_pin` and `017`
+- [ADR-0014](../adr/0014-hybrid-subscription-model.md)

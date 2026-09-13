@@ -1,179 +1,83 @@
-# Payments (the money system)
+# Payments, pricing and subscription periods
 
-**Owner:** Godfred Awuku · **Last updated:** 2026-07-05
+**Owner:** Godfred Awuku · **Last verified:** 2026-09-12
 
-**Status:** 🔄 **MODEL PIVOTED** (2026-07-04). Product adopted the **Hybrid
-Subscription Model** ([ADR-0014](../adr/0014-hybrid-subscription-model.md);
-engineering plan in `strategy/docs/hybrid-subscription-model.md`): a subscription
-buys a **ride entitlement**, unused rides become **Ride Credits** against the
-next renewal, and there is **no prepaid wallet**.
+**Status:** Fare-derived checkout, credit netting, Paystack activation and
+period expiry are live. The filename is retained for stable links; there is no
+prepaid wallet or top-up API in the current product.
 
-The old wallet/top-up flow has been **removed from the code** (clean-slate
-sweep): `POST /payments/topup`, `GET /me/balance`, and the entire ledger module
-are deleted. What remains — and what epic **E1** builds on — is
-`POST /payments/subscribe` + the Paystack webhook that activates a membership.
-The `token_ledger` table stays in migration history and is **dropped by
-migration `021`** (E7, #106); the **append-only-ledger pattern** it established
-returns in E1 as the entitlement and credit ledgers.
+## Current model
 
----
+A rider buys a ride entitlement for one corridor and billing period. The
+checkout price is derived rather than typed into a plan table:
 
-## What exists today
-
-`POST /payments/subscribe` starts a Paystack checkout for the platform
-membership fee; the signature-verified webhook activates the subscription on
-`charge.success`. Amounts are stored and transported in **pesewas** (1 GHS = 100
-pesewas), matching Paystack. Deep design: `strategy/system-design.md §4` +
-`security.md §7`.
-
-**Deferred (with the money epics, not before):** nightly Paystack
-reconciliation, circuit-breaker around the aggregator, refunds. **Production
-posture:** without `PAYSTACK_SECRET_KEY`, payment routes return **503** and
-staging stays up; go-live steps wait for E1.
-
----
-
-## Concepts
-
-- **Payment = state machine** `pending → paid|failed`, **never mutated once
-  `paid`**. `reference` is unique (ours and Paystack's) and dedupes webhooks.
-- **Server-authoritative amounts** — the membership fee comes from the server,
-  never from the client.
-- **Money unit: pesewas (minor units).** Every amount is an integer in pesewas —
-  `1 GHS = 100 pesewas`. Never floats. The app converts to/from GHS at the
-  display edge.
-
----
-
-## Payments (Paystack)
-
-`payments(id, user_id, reference unique, purpose, plan, amount, currency, status,
-created_at, updated_at)`. `purpose` is `subscription` (the `topup` value remains
-in the DB CHECK for legacy staging rows, which the webhook ignores); `plan`
-(`monthly` | `annual`) is set for subscriptions.
-
-### Flow
-
-```
-client (app)                          API                         Paystack
-  ├─POST /payments/subscribe──────────▶│ create pending payment
-  │                                     ├──initialize transaction──▶│
-  │◀──{ authorizationUrl, reference }───┤◀──authorization_url────────┤
-  │                                     │
-  │  (user pays in Paystack checkout)   │                            │
-  │                                     │◀───POST /webhooks/paystack─┤ charge.success
-  │                                     │  verify HMAC-SHA512 sig
-  │                                     │  purpose=subscription → activate
-  │                                     │  mark payment paid
-  │                                     ├──200 { received: true }────▶│
+```text
+price = corridor fare × rides per period × price multiplier
+Paystack charge = price − applied Ride Credit
 ```
 
-### API
+Money is integer pesewas. Multipliers and the operator take rate are integer
+basis points (`10000 = 1.0`). The current plan keys are `monthly` and `annual`;
+the strategy document's standard/premium/corporate/student tier taxonomy has
+not been implemented.
 
-#### `POST /payments/subscribe`
+Fares are effective-dated per route. Plan levers are ops-editable:
+`ridesPerPeriod`, `priceMultiplierBp`, `takeRateBp` and
+`creditPesewasPerRide`. Checkout snapshots the fare, price, rides, credit rate,
+stops and applied credit so later configuration changes cannot rewrite what was
+sold.
 
-Start a checkout for the platform **membership fee**.
+## Rider and webhook API
 
-- **Auth:** `Bearer`. **Rate limit:** per user.
-- **Body:** `{ "plan": "monthly" | "annual" }`
-- **200:** `{ "authorizationUrl": "https://checkout.paystack.com/...", "reference": "trotxi_..." }`
-- **401** · **429** · **503** payments not configured
+| Endpoint                   | Auth           | Behaviour                                                                                              |
+| -------------------------- | -------------- | ------------------------------------------------------------------------------------------------------ |
+| `POST /payments/subscribe` | bearer         | Validate route/stops, derive price, net credit, create pending payment and initialize Paystack         |
+| `POST /webhooks/paystack`  | HMAC signature | Validate settlement, activate subscription, allocate rides, debit applied credit and mark payment paid |
 
-#### `POST /webhooks/paystack`
+`POST /payments/subscribe` accepts a plan, `routeId` and optional pickup/drop-off
+stop IDs. A corridor without a fare in force returns `409 not_priced`; stops not
+on the corridor return `400`.
 
-Paystack's payment confirmation. **Public**, but signature-verified.
+The webhook verifies HMAC-SHA512 over the raw request body. A
+`charge.success` event grants value only when its reference, status, amount and
+currency agree with the stored payment. Each effect is independently
+idempotent, so Paystack retries converge after partial failure.
 
-- **Header:** `x-paystack-signature` — HMAC-SHA512 of the **raw** body, keyed by
-  the secret key. **Mandatory**.
-- **200:** `{ "received": true }` (also for ignored/duplicate events — idempotent)
-- **401** bad/missing signature · **503** not configured
-- On `charge.success` for a subscription payment: activates the subscription,
-  but **only if the settlement matches the checkout**. The signature proves
-  Paystack sent the event; it does not prove the rider paid what we asked for, so
-  `data.status`, `data.amount` and `data.currency` are each compared against the
-  stored payment before anything is granted. A mismatch marks the payment
-  `failed` and grants nothing. Fields Paystack omits are not treated as
-  failures, so a payload change cannot silently stop every activation.
+## Admin pricing and period API
 
-### Idempotency & fail-safe
+| Endpoint                           | Purpose                                                  |
+| ---------------------------------- | -------------------------------------------------------- |
+| `GET /admin/routes/:id/fares`      | Effective-dated fare history                             |
+| `PUT /admin/routes/:id/fare`       | Close the previous fare and create the new one           |
+| `GET /admin/plan-pricing`          | Current levers for monthly and annual plans              |
+| `PATCH /admin/plan-pricing/:plan`  | Update multiplier, take rate, ride count or credit value |
+| `POST /admin/expire-subscriptions` | Mark active subscriptions whose period ended as expired  |
 
-Per `system-design §4.2` ("idempotent webhooks"), the webhook is **not** one big
-transaction — each step is independently idempotent, so a retried/partial webhook
-converges: subscription activation is guarded by the one-active-per-user index
-(no double activate), and `markPaid` only does `pending → paid`. Paystack retries
-delivery; a **nightly reconciliation** (future) backstops the rest. We never
-mutate a `paid` payment.
+The expiry sweep does not auto-renew. Recurring charging needs a stored payment
+mandate, which the system does not yet have.
 
-### Configuration
+## Credit netting
 
-| Env var               | Default | Notes                                                                                                                                                                                            |
-| --------------------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `PAYSTACK_SECRET_KEY` | unset   | the `sk_...` **secret** key — for API calls **and** webhook signature verification. A real secret → Render dashboard only, never committed. Unset → dev fake client (non-prod) / **503** (prod). |
+At checkout, available Ride Credit can reduce the price, but the Paystack
+charge never drops below `MIN_CHARGE_PESEWAS` (currently 100). Unused credit
+remains in the ledger. Applied credit is debited only after a valid successful
+payment webhook.
 
-Server-side, `SUBSCRIPTION_FEES_PESEWAS` (in `payments.service.ts`) holds the
-membership fee per plan in pesewas — **placeholders**, replaced by the `plans`
-table in epic E1.
+## Deferred
 
-> The `sk_...` secret key is the **backend's**. The mobile app uses the
-> **`pk_...` public** key in the Paystack SDK.
+- Automatic renewal and stored mandates.
+- Nightly Paystack reconciliation, automated refunds and circuit breaking.
+- Standby single-journey checkout.
+- Fare bands from ADR-0015; current pricing is per corridor.
+- Credit conversion still uses the app-wired fallback rate instead of the
+  subscription's stored rate snapshot.
+- Final commercial values. The database is ops-editable but seeded values remain
+  placeholders until approved.
 
----
+## Code and data
 
-## Security notes
-
-- **Verify the webhook signature** — non-negotiable. We compute HMAC-SHA512 over
-  the **raw** request bytes (via `fastify-raw-body`); a re-serialized JSON would
-  not match. Without it, anyone could POST a fake "payment succeeded".
-- **No lost payment** — state machine + idempotent webhook + (future)
-  reconciliation; a `paid` row is immutable.
-- **Server-authoritative amounts** — never trust a client-reported price.
-- **Degrade safe** — if Paystack is down, only new subscriptions block.
-
-## Local development & testing
-
-No keys needed — a **fake Paystack client** is wired when `PAYSTACK_SECRET_KEY`
-is unset (non-production). It returns a stub checkout URL and signs/verifies
-webhooks with a known dev secret (`fake-paystack-secret`):
-
-```bash
-B=http://localhost:3000
-AT=...   # an access token (see authentication.md)
-
-# start a subscription checkout
-REF=$(curl -s $B/payments/subscribe -H "authorization: Bearer $AT" \
-  -H 'content-type: application/json' -d '{"plan":"monthly"}' | jq -r .reference)
-
-# simulate the webhook (sign the exact body with the dev secret)
-BODY="{\"event\":\"charge.success\",\"data\":{\"reference\":\"$REF\"}}"
-SIG=$(node -e "const c=require('crypto');process.stdout.write(c.createHmac('sha512','fake-paystack-secret').update(process.argv[1]).digest('hex'))" "$BODY")
-curl -s $B/webhooks/paystack -H 'content-type: application/json' \
-  -H "x-paystack-signature: $SIG" -d "$BODY"   # → { "received": true }, subscription now active
-```
-
-## Going live (production)
-
-1. Set `PAYSTACK_SECRET_KEY` (the `sk_live_...`) in the Render dashboard.
-2. Register the webhook URL in the Paystack dashboard → `https://…/webhooks/paystack`.
-3. Set the real membership fees (superseded by the `plans` table in E1).
-
-## Where the code lives
-
-```
-services/api/src/modules/payments/
-  payment.repository.ts(.pg)    # payment state machine (purpose, pending→paid)
-  paystack.client.ts           # PaystackClient interface + signature helper + Fake
-  paystack.client.live.ts      # real HTTP client (excluded from unit coverage)
-  payments.service.ts          # initializeSubscription / handleWebhook
-  payments.routes.ts           # /payments/subscribe, /webhooks/paystack
-  payments.schema.ts
-services/api/src/db/migrations/
-  007_payments.sql · 008_payment_purpose.sql
-  # 006_token_ledger.sql retained (history); table dropped by 021_drop_token_ledger.sql (E7)
-```
-
-## Related
-
-- [ADR-0014 — Hybrid Subscription Model](../adr/0014-hybrid-subscription-model.md) (supersedes the wallet model)
-- [ADR-0011 — append-only token ledger](../adr/0011-token-ledger.md) (the pattern, reused in E1)
-- [ADR-0009 — repository pattern](../adr/0009-repository-pattern.md)
-- `strategy/docs/hybrid-subscription-model.md` (epics E1–E7) · `system-design.md §4` · `security.md §7`
+- `services/api/src/modules/payments/`
+- `services/api/src/modules/subscriptions/`
+- migrations `027` through `031`
+- [ADR-0014](../adr/0014-hybrid-subscription-model.md) and
+  [ADR-0015](../adr/0015-fare-derived-pricing.md)

@@ -1,46 +1,54 @@
 # Feature documentation
 
-**Owner:** Godfred Awuku · **Last updated:** 2026-06-28
+**Owner:** Godfred Awuku · **Current-state review:** 2026-09-12
 
-Living, per-feature documentation for `mobility-core` — what each feature does,
-its API contract, how it works, how to configure it, and its security/edge-case
-notes. Aimed at backend engineers building on a feature and frontend engineers
-consuming it.
+This directory documents the behaviour that exists on the current
+`mobility-core` branch. The generated OpenAPI document at `GET /docs/json` is
+the source of truth for HTTP shapes; the TypeScript implementation is the
+source of truth when prose and code disagree. Update the relevant feature doc
+in the same PR as a behavioural change.
 
-These docs describe **behaviour and contracts**; the **why** behind a decision
-lives in an [ADR](../adr/), and the deep design lives in the private `strategy`
-repo (`system-design.md`, `security.md`). Each doc links to both.
+The private `strategy` repository explains product intent. ADRs explain durable
+technical decisions. These feature docs explain the system operators and app
+developers can use today.
 
-> A feature doc is the source of truth for _how to use_ a feature. When code and
-> a doc disagree, the code wins — fix the doc in the same PR.
+## Current feature map
 
-## Index
+| Area                                                | Document                                                 | Current state                                                   |
+| --------------------------------------------------- | -------------------------------------------------------- | --------------------------------------------------------------- |
+| Social, session and driver authentication           | [authentication.md](authentication.md)                   | Live; Apple backend complete, production credentials pending    |
+| Profile, avatars and account erasure                | [profile-avatars.md](profile-avatars.md)                 | Live                                                            |
+| Fare-derived pricing, Paystack checkout and renewal | [payments-and-wallet.md](payments-and-wallet.md)         | Live; auto-renew and reconciliation deferred                    |
+| Ride entitlements and Ride Credits                  | [entitlements.md](entitlements.md)                       | Live, including conversion and credit netting                   |
+| Daily confirmation and capacity                     | [reservations.md](reservations.md)                       | Live; standby allocation deferred                               |
+| Boarding by QR, code or photo                       | [boarding.md](boarding.md)                               | Live                                                            |
+| Routes, stops, trips and route learning             | [mobility.md](mobility.md)                               | Live                                                            |
+| Pilot GPS reporting and ETA                         | [live-positions.md](live-positions.md)                   | Live over HTTP polling                                          |
+| Self-hosted basemap                                 | [basemap.md](basemap.md)                                 | Assets/API live; driver integrated, other clients incomplete    |
+| Driver incidents and work requests                  | [driver-operations.md](driver-operations.md)             | Live                                                            |
+| Feature flags, force-update and operations contact  | [feature-flags.md](feature-flags.md)                     | Live                                                            |
+| Rate limiting                                       | [rate-limiting.md](rate-limiting.md)                     | Live                                                            |
+| Observability                                       | [../design/observability.md](../design/observability.md) | Backend and both mobile SDKs live; Grafana import/alerts remain |
 
-| Feature                                                                  | Doc                                              | Status                                 |
-| ------------------------------------------------------------------------ | ------------------------------------------------ | -------------------------------------- |
-| Authentication — access tokens, route guard, sign-in/refresh/logout      | [authentication.md](authentication.md)           | ✅ live                                |
-| Profile & avatars — `PATCH /me`, avatar upload → R2 (photo pass) (#24)   | [profile-avatars.md](profile-avatars.md)         | ✅ live                                |
-| Payments — Paystack subscribe + webhook, credit-netted (#128)            | [payments-and-wallet.md](payments-and-wallet.md) | ✅ live (fare-derived pricing, #103)   |
-| Ride entitlements & credits — allocation, month-end conversion, netting  | [entitlements.md](entitlements.md)               | ✅ E1 + E5 (conversion #162, net #128) |
-| Daily ride confirmation — confirm/decline, ask-dispatch, capacity (#161) | [reservations.md](reservations.md)               | ✅ E3 live (crons unfunded, #126)      |
-| Mobility — routes, stops, trips, ETAs, derived geometry                  | [mobility.md](mobility.md)                       | ✅ live                                |
-| Rate limiting (#23)                                                      | [rate-limiting.md](rate-limiting.md)             | ✅ live                                |
-| Boarding — QR scan + manifest + PIN, all deduct (#20, E4)                | [boarding.md](boarding.md)                       | 🟢 3-layer verification live           |
-| Observability & performance (#28)                                        | [design](../design/observability.md)             | ✅ backend live (metrics/traces/logs)  |
-| Feature flags + force-update — `GET /flags` + admin ops (#27)            | [feature-flags.md](feature-flags.md)             | ✅ live (home-grown, PostHog later)    |
-| Basemap: self-hosted tiles, styles, glyphs, served via `/flags` (#178)   | [basemap.md](basemap.md)                         | ✅ live (clients: #180, #170)          |
+## Cross-cutting conventions
 
-## Conventions for a feature doc
+- Routes validate with Zod and publish the same schemas through OpenAPI.
+- Protected routes authenticate first, rate-limit second, then enforce role and
+  relationship rules.
+- Domain rules live in services; persistence lives behind repository interfaces.
+- Production uses PostgreSQL/PostGIS, Redis-compatible KV and configured external
+  adapters. Tests and zero-infrastructure development use in-memory adapters.
+- Monetary values use integer pesewas; rates use basis points.
+- Financial and boarding writes are append-only or idempotent where retries can
+  occur.
+- Optional integrations fail narrowly: an unwired feature returns `503` without
+  preventing the rest of the API from starting.
 
-One doc per feature (roughly one `services/api/src/modules/*` area). Each should
-cover, in this order:
+## Deferred by design
 
-1. **Overview** — what it is, in two or three sentences, and its status.
-2. **Concepts / model** — the key ideas a reader must hold.
-3. **API** — every endpoint: method, path, auth, request, responses + status codes.
-4. **How it works** — the flow (a diagram when it helps).
-5. **Configuration** — env vars and their effect.
-6. **Security** — what protects it and what to watch for.
-7. **Local development & testing** — how to run/exercise it with zero infra.
-8. **Where the code lives** — the files.
-9. **Related** — ADRs and design-doc sections.
+- Standby-seat offer cascade and instant single-journey payment.
+- Automatic recurring charges and stored payment mandates.
+- Nightly Paystack reconciliation and refund automation.
+- MQTT/EMQX/Go/WebSocket telemetry path; HTTP polling remains the pilot path.
+- SMS/OTP fallback.
+- Production Render service/database and paid scheduled jobs.

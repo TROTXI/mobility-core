@@ -4,6 +4,7 @@
 
 import type { FastifyInstance } from 'fastify';
 import type { ZodTypeProvider } from 'fastify-type-provider-zod';
+import { z } from 'zod';
 import { errorResponseSchema } from '../../lib/schemas';
 import type { RateLimitConfig } from '../ratelimit/ratelimit.plugin';
 import { userResponseSchema } from '../users/user.schema';
@@ -88,6 +89,7 @@ export async function authRoutes(
         response: {
           200: sessionListResponseSchema,
           401: errorResponseSchema,
+          429: errorResponseSchema,
         },
       },
       preHandler: [app.authenticate, app.rateLimit({ ...opts.rateLimit, by: 'user' })],
@@ -114,6 +116,11 @@ export async function authRoutes(
         summary: 'Revoke one of your sessions (log out that device)',
         security: [{ bearerAuth: [] }],
         params: sessionIdParamsSchema,
+        response: {
+          204: z.null(),
+          401: errorResponseSchema,
+          429: errorResponseSchema,
+        },
       },
       preHandler: [app.authenticate, app.rateLimit({ ...opts.rateLimit, by: 'user' })],
     },
@@ -121,7 +128,7 @@ export async function authRoutes(
       if (opts.authService) {
         await opts.authService.revokeSession(request.user!.id, request.params.id);
       }
-      return reply.code(204).send();
+      return reply.code(204).send(null);
     },
   );
 
@@ -239,6 +246,10 @@ export async function authRoutes(
         tags: ['auth'],
         summary: 'Revoke a refresh token (idempotent)',
         body: logoutBodySchema,
+        response: {
+          204: z.null(),
+          429: errorResponseSchema,
+        },
       },
       // The one credential endpoint that had no limit. It takes an untrusted
       // token and hits the session store on every call, so it is a free way to
@@ -249,7 +260,7 @@ export async function authRoutes(
       if (opts.authService) {
         await opts.authService.logout(request.body.refreshToken);
       }
-      return reply.code(204).send();
+      return reply.code(204).send(null);
     },
   );
 }
