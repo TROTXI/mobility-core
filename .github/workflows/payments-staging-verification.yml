@@ -1,0 +1,41 @@
+name: Payments staging verification
+
+on:
+  push:
+    branches: [codex/payments-staging-verification]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: payments-staging-verification
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment: staging
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Load only the staging test credentials
+        run: node services/api/scripts/load-staging-payment-env.mjs
+        env:
+          RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+          RENDER_STAGING_SERVICE_ID: ${{ vars.RENDER_STAGING_SERVICE_ID }}
+      - name: Read-only staging payments audit
+        run: psql "$DATABASE_URL" -X --set ON_ERROR_STOP=1 --file services/api/scripts/payments-audit.sql
+        env:
+          DATABASE_URL: ${{ secrets.STAGING_DATABASE_URL }}
+          PGSSLMODE: require
+          PGOPTIONS: -c default_transaction_read_only=on -c statement_timeout=30000
+      - name: Paystack sandbox adapter contract
+        run: pnpm --filter @trotxi/api exec vitest run tests/paystack.sandbox.test.ts --testTimeout=30000
+        env:
+          RUN_PAYSTACK_SANDBOX: '1'
