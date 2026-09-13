@@ -85,9 +85,37 @@ an iOS simulator/local-API check, not physical-device certification.
   physical-device coverage remain outstanding.
 - Verify map tiles with an explicitly configured environment. Local Map
   unavailable is expected and is not evidence of a staging map failure.
-- Fix the staging-seed script's outdated synthetic Paystack success payload in
-  a separate fixture-focused change. Temporary loopback seeding used the strict
-  adapter's required provider facts; production payment behaviour was not tested.
+- The seed payload follow-up is recorded below; production payment behaviour
+  was not tested.
 
 Do not close the broader driver, map or offline issues based on this partial
 simulator pass.
+
+## Post-merge verification and seed follow-up
+
+Main `a2c7b03` (PR #260) deployed to staging successfully. The
+[deployment run](https://github.com/TROTXI/mobility-core/actions/runs/34788178124)
+applied `042_zero_based_trip_progress.sql` at 2026-09-13 22:55:36 UTC, waited
+for Render to report live, and passed `/healthz` and `/readyz`. Render's
+dashboard independently identifies `a2c7b03` as the live commit. The deployed
+OpenAPI document reports a minimum arrival sequence of zero.
+
+An authenticated fresh-trip arrival has **not** been verified on staging.
+Render login worked, but this free instance has no shell/SSH or one-off jobs;
+no local staging API credentials were available. No staging fixture or
+historical trip was modified in this follow-up.
+
+The development rider seed now includes the strict settlement fields and
+signs the exact body. It refuses synthetic settlement for a non-fake checkout
+URL, distinguishes `already_subscribed` from other checkout failures, checks
+webhook HTTP failures, and waits for membership fulfilment before reserving.
+Its sign-in instructions no longer advertise the removed forced PIN screen.
+
+Verification used a separate loopback API on port 3090 with in-memory stores:
+the actual seed created two confirmed riders, and rerunning reused the fleet,
+trips and memberships without resetting the driver PIN. A fresh trip started,
+accepted sequences 0, 1 and 4, rejected 999 with 404 and -1 with 400, retained
+sequence 4 on readback, and completed. This is real HTTP verification of current
+code, not simulator UI or Postgres persistence evidence. The 20 targeted tests
+include the actual webhook handler granting 44 rides once across a replay,
+fake-checkout guards, required provider facts and exact-body signature checks.
