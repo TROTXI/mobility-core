@@ -18,7 +18,7 @@ class RunDetail {
   final List<ManifestRider> riders;
 
   /// The corridor's stops in order, for the "stop N of M" counter.
-  final List<String> stops;
+  final List<DriverStop> stops;
 
   /// The van's seat ceiling (#230), or null when this run has no vehicle
   /// assigned yet. Reachable now that `GET /trips/:id` serves it to the trip's
@@ -62,12 +62,17 @@ class RunDetail {
   /// How far along the corridor the driver has reported being (#230).
   int? get currentStopSeq => run.currentStopSeq;
 
+  /// Display position in the ordered route, independent of server numbering.
+  int? get currentStopNumber {
+    final index = stops.indexWhere((stop) => stop.seq == currentStopSeq);
+    return index < 0 ? null : index + 1;
+  }
+
   /// The stop the driver last reported reaching, or null before the first
   /// arrival.
   String? get currentStopName {
-    final seq = run.currentStopSeq;
-    if (seq == null || seq < 1 || seq > stops.length) return null;
-    return stops[seq - 1];
+    final number = currentStopNumber;
+    return number == null ? null : stops[number - 1].name;
   }
 }
 
@@ -116,10 +121,10 @@ class RunController extends ChangeNotifier {
   }
 
   /// Start this run.
-  Future<void> start() => _transition(() => _trips.start(_run.id));
+  Future<bool> start() => _transition(() => _trips.start(_run.id));
 
   /// End this run.
-  Future<void> complete() => _transition(() => _trips.complete(_run.id));
+  Future<bool> complete() => _transition(() => _trips.complete(_run.id));
 
   /// Report reaching a stop (#230).
   ///
@@ -155,8 +160,7 @@ class RunController extends ChangeNotifier {
   /// @returns the outcome, for the screen to report.
   Future<BoardingResult> boardFromManifest(String reservationId) async {
     final result = await _trips.boardFromManifest(reservationId);
-    if (result.isAccepted ||
-        result.outcome == BoardingOutcome.alreadyBoarded) {
+    if (result.isAccepted || result.outcome == BoardingOutcome.alreadyBoarded) {
       await refreshManifest();
     }
     return result;
@@ -172,15 +176,31 @@ class RunController extends ChangeNotifier {
     return result;
   }
 
-  Future<void> _transition(Future<DriverRun> Function() action) async {
+  Future<bool> _transition(Future<DriverRun> Function() action) async {
     _transitioning = true;
     notifyListeners();
     try {
       _run = await action();
+      final previous = _detail.valueOrNull;
+      if (previous != null) {
+        // Preserve the accepted lifecycle response even if the subsequent
+        // manifest/detail refresh fails. Do not leave a completed run active.
+        _detail = Loadable.data(
+          RunDetail(
+            run: _run,
+            riders: previous.riders,
+            stops: previous.stops,
+            capacity: previous.capacity,
+            vehicleRegistration: previous.vehicleRegistration,
+          ),
+        );
+      }
       await _fetch();
+      return true;
     } on TrotxiException catch (err) {
       _detail = Loadable.failure(err.message, previous: _detail.valueOrNull);
       notifyListeners();
+      return false;
     } finally {
       _transitioning = false;
       notifyListeners();

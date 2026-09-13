@@ -106,6 +106,15 @@ class ManifestRider {
   bool get isStandby => source == 'standby';
 }
 
+/// A corridor stop retaining the sequence understood by the API.
+class DriverStop {
+  const DriverStop({required this.seq, required this.name});
+
+  /// Server sequence, not the one-based ordinal displayed to the driver.
+  final int seq;
+  final String name;
+}
+
 /// What a finished run did.
 class RunSummary {
   const RunSummary({
@@ -113,6 +122,7 @@ class RunSummary {
     required this.notBoarded,
     required this.byQr,
     required this.byPin,
+    required this.byPhoto,
     required this.stopCount,
     this.startedAt,
     this.completedAt,
@@ -125,6 +135,7 @@ class RunSummary {
   final int notBoarded;
   final int byQr;
   final int byPin;
+  final int byPhoto;
   final int stopCount;
   final DateTime? startedAt;
   final DateTime? completedAt;
@@ -169,9 +180,13 @@ class TripDetail {
 
 /// The driver's runs, their manifests, and the lifecycle transitions.
 class TripsRepository {
-  TripsRepository({required this._client});
+  TripsRepository({required this._client, this.beginLifecycleChange});
 
   final TrotxiApiClient _client;
+
+  /// Capture the current session before a request. A delayed response must not
+  /// start location sharing after a different driver has signed in.
+  final void Function(DriverRun) Function()? beginLifecycleChange;
 
   /// Corridor names by route id. A depot runs a handful of corridors and they
   /// do not change mid-shift, so one lookup each is plenty.
@@ -188,7 +203,11 @@ class TripsRepository {
   /// @param from - optional inclusive range start (`YYYY-MM-DD`).
   /// @param to - optional inclusive range end; required with [from].
   /// @returns the runs, soonest first.
-  Future<List<DriverRun>> myRuns({String? date, String? from, String? to}) async {
+  Future<List<DriverRun>> myRuns({
+    String? date,
+    String? from,
+    String? to,
+  }) async {
     try {
       final response = await _client.getMobilityApi().meTripsGet(
         date: date,
@@ -287,6 +306,7 @@ class TripsRepository {
         notBoarded: data.notBoarded,
         byQr: data.byMethod.qr,
         byPin: data.byMethod.pin,
+        byPhoto: data.byMethod.photo,
         stopCount: data.stopCount,
         startedAt: data.startedAt,
         completedAt: data.completedAt,
@@ -300,10 +320,13 @@ class TripsRepository {
   ///
   /// @param routeId - the corridor.
   /// @returns the stop names in sequence.
-  Future<List<String>> stopsFor(String routeId) async {
+  Future<List<DriverStop>> stopsFor(String routeId) async {
     try {
       final response = await _client.getMobilityApi().routesIdGet(id: routeId);
-      return (response.data?.stops.toList() ?? []).map((s) => s.name).toList();
+      return (response.data?.stops.toList() ?? [])
+          .map((s) => DriverStop(seq: s.seq, name: s.name))
+          .toList()
+        ..sort((a, b) => a.seq.compareTo(b.seq));
     } on DioException catch (err) {
       throw _unwrap(err);
     }
@@ -388,7 +411,8 @@ class TripsRepository {
       return BoardingResult(
         outcome: switch (data.reason.name) {
           'ok' => BoardingOutcome.ok,
-          'alreadyBoarded' || 'already_boarded' => BoardingOutcome.alreadyBoarded,
+          'alreadyBoarded' ||
+          'already_boarded' => BoardingOutcome.alreadyBoarded,
           // The seat was declined, released or never confirmed, so it is not a
           // seat. Reads as "no reservation" because that is what it means to a
           // driver holding a queue.
@@ -503,7 +527,8 @@ class TripsRepository {
       return BoardingResult(
         outcome: switch (data.reason.name) {
           'ok' => BoardingOutcome.ok,
-          'alreadyBoarded' || 'already_boarded' => BoardingOutcome.alreadyBoarded,
+          'alreadyBoarded' ||
+          'already_boarded' => BoardingOutcome.alreadyBoarded,
           'ambiguous' => BoardingOutcome.ambiguous,
           // Four characters nobody on this run holds, which at a door is
           // almost always a mishearing rather than a forgery.
@@ -589,6 +614,7 @@ class TripsRepository {
   /// @param start - true to start, false to complete.
   /// @returns the run in its new state.
   Future<DriverRun> _transition(String runId, {required bool start}) async {
+    final reportChange = beginLifecycleChange?.call();
     try {
       final api = _client.getMobilityApi();
       final response = start
@@ -598,8 +624,7 @@ class TripsRepository {
       if (trip == null) {
         throw const ApiException(200, 'The run returned nothing.');
       }
-      await _cacheRouteName(trip.routeId);
-      return DriverRun(
+      final run = DriverRun(
         id: trip.id,
         routeId: trip.routeId,
         routeName: _routeNames[trip.routeId] ?? 'Route',
@@ -608,6 +633,18 @@ class TripsRepository {
         vehicleId: trip.vehicleId,
         currentStopSeq: trip.currentStopSeq,
         assignmentChangedAt: trip.assignmentChangedAt,
+      );
+      reportChange?.call(run);
+      await _cacheRouteName(trip.routeId);
+      return DriverRun(
+        id: run.id,
+        routeId: run.routeId,
+        routeName: _routeNames[run.routeId] ?? run.routeName,
+        scheduledAt: run.scheduledAt,
+        status: run.status,
+        vehicleId: run.vehicleId,
+        currentStopSeq: run.currentStopSeq,
+        assignmentChangedAt: run.assignmentChangedAt,
       );
     } on DioException catch (err) {
       throw _unwrap(err);

@@ -9,7 +9,11 @@ import 'package:trotxi_driver/core/state/loadable.dart';
 import 'package:trotxi_driver/core/state/today_controller.dart';
 import 'package:trotxi_driver/data/trips_repository.dart';
 
-DriverRun _run(String id, {RunStatus status = RunStatus.scheduled, int hour = 6}) {
+DriverRun _run(
+  String id, {
+  RunStatus status = RunStatus.scheduled,
+  int hour = 6,
+}) {
   final now = DateTime.now();
   return DriverRun(
     id: id,
@@ -28,7 +32,7 @@ class _StubTrips implements TripsRepository {
   int manifestCalls = 0;
   int stopsCalls = 0;
   List<ManifestRider> riders = const [];
-  List<String> stops = const [];
+  List<DriverStop> stops = const [];
   Object? failWith;
   final started = <String>[];
   final completed = <String>[];
@@ -69,7 +73,7 @@ class _StubTrips implements TripsRepository {
   }
 
   @override
-  Future<List<String>> stopsFor(String routeId) async {
+  Future<List<DriverStop>> stopsFor(String routeId) async {
     stopsCalls++;
     return stops;
   }
@@ -103,17 +107,20 @@ void main() {
     expect(board.isDayDone, isFalse);
   });
 
-  test('a day of finished runs is "all done", not "nothing assigned"', () async {
-    final controller = TodayController(
-      trips: _StubTrips([_run('t1', status: RunStatus.completed)]),
-    );
-    await controller.load();
+  test(
+    'a day of finished runs is "all done", not "nothing assigned"',
+    () async {
+      final controller = TodayController(
+        trips: _StubTrips([_run('t1', status: RunStatus.completed)]),
+      );
+      await controller.load();
 
-    final board = controller.board.valueOrNull!;
-    expect(board.isDayDone, isTrue);
-    expect(board.isEmpty, isFalse);
-    expect(board.completed, hasLength(1));
-  });
+      final board = controller.board.valueOrNull!;
+      expect(board.isDayDone, isTrue);
+      expect(board.isEmpty, isFalse);
+      expect(board.completed, hasLength(1));
+    },
+  );
 
   test('the soonest scheduled run is next, the rest are later', () async {
     final controller = TodayController(
@@ -193,20 +200,23 @@ void main() {
     expect(controller.busyRunId, isNull);
   });
 
-  test('asks for the UTC day, because that is what the API filters on', () async {
-    // A local date silently returns nothing whenever the device is not on UTC,
-    // and it looks exactly like "no trips assigned" rather than like a bug.
-    // Ghana is UTC, so in the field these are the same day anyway.
-    final trips = _StubTrips([]);
-    final controller = TodayController(
-      trips: trips,
-      // 23:30 in a UTC-7 zone, which is already the NEXT day in UTC.
-      now: () => DateTime.utc(2026, 9, 10, 6, 30).toLocal(),
-    );
-    await controller.load();
+  test(
+    'asks for the UTC day, because that is what the API filters on',
+    () async {
+      // A local date silently returns nothing whenever the device is not on UTC,
+      // and it looks exactly like "no trips assigned" rather than like a bug.
+      // Ghana is UTC, so in the field these are the same day anyway.
+      final trips = _StubTrips([]);
+      final controller = TodayController(
+        trips: trips,
+        // 23:30 in a UTC-7 zone, which is already the NEXT day in UTC.
+        now: () => DateTime.utc(2026, 9, 10, 6, 30).toLocal(),
+      );
+      await controller.load();
 
-    expect(trips.lastDate, '2026-09-10');
-  });
+      expect(trips.lastDate, '2026-09-10');
+    },
+  );
 
   test('run times render in the corridor clock, not the device clock', () async {
     // Runs are grouped by UTC day by the API. Rendering in device-local time
@@ -227,12 +237,17 @@ void main() {
     // The card shows riders and stops, which cost a manifest and a route read
     // each. Doing that for every run would mean four round trips to render a
     // screen where three of the cards are one line of text.
-    final trips = _StubTrips([
-      _run('morning', hour: 6),
-      _run('evening', hour: 17),
-      _run('night', hour: 21),
-    ])..riders = [_rider(), _rider(direction: 'evening')]
-      ..stops = ['Circle', 'Madina'];
+    final trips =
+        _StubTrips([
+            _run('morning', hour: 6),
+            _run('evening', hour: 17),
+            _run('night', hour: 21),
+          ])
+          ..riders = [_rider(), _rider(direction: 'evening')]
+          ..stops = [
+            DriverStop(seq: 0, name: 'Circle'),
+            DriverStop(seq: 1, name: 'Madina'),
+          ];
     final controller = TodayController(trips: trips);
 
     await controller.load();

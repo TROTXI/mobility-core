@@ -40,15 +40,28 @@ location settings, and restricted permissions explain the device-policy limit.
 Profile → Check camera & location opens the same checks without starting a trip.
 
 The checks make no network requests, open no camera and start no GPS stream.
-The existing position publisher starts when the active run screen is open and
-stops when that screen is disposed or the run ends; it no longer prompts for
-permission as a side effect. Cancelling during a native check cannot start a
-late stream. This PR does not add background tracking or an offline location
-queue. Permission success is not proof of a GPS fix or successful server delivery.
+One session-scoped position publisher follows the active trip across Today,
+Trip, Scan, Manifest and pushed screens. Successful start/completion responses
+update it immediately; a foreground roster refresh every 30 seconds also
+discovers restored trips, cancellations and assignment changes, without a date
+filter that would hide overnight trips. Stale roster/lifecycle responses cannot
+undo a newer transition or start tracking for a different session.
+
+Sharing stops on trip completion, sign-out and app inactivity/backgrounding. It
+resumes for the active trip in the foreground, checking existing permissions
+without prompting. Cancelling during a native check cannot start a late stream.
+No background permission, foreground service or durable offline queue is added.
+
+The live indicator requires an API receipt for the uploaded coordinates and
+trip. Permission alone, waiting for a fix, a failed upload and a stale fix do not
+read live. A fix expires two minutes after native capture (not two minutes after
+a delayed upload); older native fixes are not uploaded as current positions.
+Requests are serialized with at most one newer fix held in memory. Failure is
+shown as unconfirmed, never as queued; the next native fix can recover sharing.
 
 The layout uses the page-06 Figma readiness/denial structure and existing theme
 tokens, with camera optional per product decision. Notification setup, GPS/network
-health indicators, splash/onboarding and full offline queueing remain separate.
+accuracy classification, splash/onboarding and durable offline queueing remain separate.
 
 ## Incident reporting
 

@@ -189,7 +189,7 @@ class TodayController extends ChangeNotifier {
         riders: riders.length,
         morning: riders.where((r) => r.direction == 'morning').length,
         standby: riders.where((r) => r.isStandby).length,
-        stops: (results[1] as List<String>).length,
+        stops: (results[1] as List<DriverStop>).length,
       );
     } on TrotxiException {
       return null;

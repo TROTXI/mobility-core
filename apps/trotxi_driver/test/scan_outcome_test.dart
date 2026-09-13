@@ -27,8 +27,17 @@ RunDetail _detail() => RunDetail(
     status: RunStatus.active,
     currentStopSeq: 3,
   ),
-  riders: [_rider('u1'), _rider('u2', name: 'Ama Owusu'), _rider('u3')],
-  stops: const ['Madina', 'Shiashie', 'Circle', 'Kaneshie'],
+  riders: [
+    _rider('u1'),
+    _rider('u2', name: 'Ama Owusu'),
+    _rider('u3'),
+  ],
+  stops: const [
+    DriverStop(seq: 1, name: 'Madina'),
+    DriverStop(seq: 2, name: 'Shiashie'),
+    DriverStop(seq: 3, name: 'Circle'),
+    DriverStop(seq: 4, name: 'Kaneshie'),
+  ],
 );
 
 Future<void> _pump(WidgetTester tester, BoardingResult result) {
