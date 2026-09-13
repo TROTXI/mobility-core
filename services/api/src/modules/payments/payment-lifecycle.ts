@@ -315,7 +315,28 @@ export class InMemoryPaymentLifecycle implements PaymentLifecycle {
         refundedPesewas: refunded,
         ...(refunded === payment.amount ? { status: 'refunded' as const } : {}),
       });
-      if (refunded !== payment.amount || !payment.subscriptionPeriodId) return true;
+      if (refunded !== payment.amount) {
+        const disputes = [...this.disputes.values()].filter(
+          (item) => item.reference === payment.reference,
+        );
+        const accepted = disputes
+          .filter((item) => item.status === 'resolved' && item.resolution === 'merchant-accepted')
+          .reduce((sum, item) => sum + item.amountPesewas, 0);
+        if (
+          accepted > 0 &&
+          refunded >= accepted &&
+          disputes.every((item) => item.status === 'resolved' && item.resolution !== null)
+        ) {
+          this.disputedUsers.delete(payment.userId);
+          const period = payment.subscriptionPeriodId
+            ? this.periods.get(payment.subscriptionPeriodId)
+            : null;
+          if (period?.status === 'frozen') period.status = 'open';
+          await this.deps.payments.updateLifecycle(payment.reference, { status: 'fulfilled' });
+        }
+        return true;
+      }
+      if (!payment.subscriptionPeriodId) return true;
       const period = this.periods.get(payment.subscriptionPeriodId);
       if (!period || period.status === 'reversed') return true;
       const remaining = Math.max(

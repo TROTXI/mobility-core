@@ -76,8 +76,9 @@ the transaction atomically:
 `charge.dispute.create` and reminders freeze the exact purchased period and
 suspend the current membership. A `declined` resolution restores service. A
 merchant-accepted resolution stays frozen until Paystack's authoritative
-processed-refund event arrives; resolution alone is not treated as proof that
-cash moved.
+processed-refund event covers the accepted amount, then service resumes for a
+partial refund or reverses for a full refund. Resolution alone is not treated as
+proof that cash moved.
 
 ## Period close
 

@@ -563,6 +563,51 @@ describe('PaymentsService refund and dispute webhooks', () => {
       AlreadySubscribedError,
     );
   });
+
+  it('restores a period after an accepted partial dispute refund is processed', async () => {
+    const { service, payments, entitlements } = await priced();
+    const checkout = await service.initializeSubscription('u1', 'monthly', ROUTE);
+    const charge = chargeSuccess(checkout.reference);
+    await service.handleWebhook(charge.body, charge.signature);
+    const resolved = signedEvent({
+      event: 'charge.dispute.resolve',
+      data: {
+        id: 992,
+        status: 'resolved',
+        resolution: 'merchant-accepted',
+        refund_amount: 1_000,
+        currency: 'GHS',
+        domain: 'test',
+        transaction: {
+          reference: checkout.reference,
+          amount: checkout.chargePesewas,
+          currency: 'GHS',
+          domain: 'test',
+        },
+      },
+    });
+    await service.handleWebhook(resolved.body, resolved.signature);
+    expect((await payments.findByReference(checkout.reference))?.status).toBe('disputed');
+
+    const refund = signedEvent({
+      event: 'refund.processed',
+      data: {
+        status: 'processed',
+        transaction_reference: checkout.reference,
+        refund_reference: 'refund-dispute-partial',
+        amount: '1000',
+        currency: 'GHS',
+        domain: 'test',
+      },
+    });
+    await service.handleWebhook(refund.body, refund.signature);
+
+    expect(await payments.findByReference(checkout.reference)).toMatchObject({
+      status: 'fulfilled',
+      refundedPesewas: 1_000,
+    });
+    expect(await entitlements.remainingRides('u1')).toBe(RIDES);
+  });
 });
 
 describe('credit-netted checkout (#128)', () => {

@@ -43,7 +43,7 @@ full cash reversal revokes unconsumed period rides, restores captured Ride
 Credit and reverses the current purchased period. A dispute freezes the period
 and subscription so another checkout cannot bypass it. An explicit declined
 resolution restores service; an accepted dispute waits for the processed refund
-notification.
+notification and resumes service after a processed partial settlement.
 
 Run recovery in this order: inbox, Verify, period close. The operation is
 idempotent and exposed as one admin endpoint and one compiled cron entrypoint.
