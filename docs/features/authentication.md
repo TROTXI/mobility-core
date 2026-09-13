@@ -1,6 +1,6 @@
 # Authentication and sessions
 
-**Owner:** Godfred Awuku · **Last verified:** 2026-09-12
+**Owner:** Godfred Awuku · **Last verified:** 2026-09-13
 
 **Status:** Social auth, rotating sessions and driver credentials are live.
 Google is configured on staging. Apple verification, code exchange and account
@@ -60,6 +60,21 @@ A wrong code and wrong PIN deliberately produce the same `401`. Five failed
 attempts create a durable 15-minute lock (`423` with `Retry-After`). Suspension
 returns `403` and revokes live sessions. `rememberDevice=false` uses the
 shift-length refresh lifetime; `true` uses the normal refresh lifetime.
+
+### Driver-app sign-in and recovery
+
+The app follows sign-in → account confirmation → Today. It does not force a
+self-service PIN change after sign-in. Recovery stays under **Can't sign in?**:
+check the driver code, ask the operator for a replacement PIN, or contact
+operations for a locked or incorrectly linked account. This is the product
+decision confirmed on 2026-09-13 against the Authentication / Recovery design.
+
+The API's `mustChangePin` response field and `POST /auth/driver/pin` remain for
+compatibility, but the current app does not use the flag as an entry gate or
+expose the self-service change screen. Operator-issued PINs remain usable until
+reset; an operations reset still revokes sessions. PIN verification, lockout,
+suspension and session protections are unchanged. The design's four-digit copy
+is not the current API contract: existing driver PINs remain six digits.
 
 ## Configuration
 

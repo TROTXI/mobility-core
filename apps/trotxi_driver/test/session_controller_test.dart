@@ -33,23 +33,26 @@ class _StubAuth implements DriverAuthRepository {
 }
 
 void main() {
-  test('a stored token opens the app and then fills in who it belongs to', () async {
-    // Order matters: the stage is decided first so a slow depot connection
-    // cannot hold a driver on a splash screen.
-    final auth = _StubAuth(
-      driver: const DriverSession(
-        driverId: 'u1',
-        fullName: 'Kwame Boateng',
-        mustChangePin: false,
-      ),
-    );
-    final controller = SessionController(auth: auth);
+  test(
+    'a stored token opens the app and then fills in who it belongs to',
+    () async {
+      // Order matters: the stage is decided first so a slow depot connection
+      // cannot hold a driver on a splash screen.
+      final auth = _StubAuth(
+        driver: const DriverSession(
+          driverId: 'u1',
+          fullName: 'Kwame Boateng',
+          mustChangePin: false,
+        ),
+      );
+      final controller = SessionController(auth: auth);
 
-    await controller.restore();
+      await controller.restore();
 
-    expect(controller.stage, SessionStage.ready);
-    expect(controller.session?.fullName, 'Kwame Boateng');
-  });
+      expect(controller.stage, SessionStage.ready);
+      expect(controller.session?.fullName, 'Kwame Boateng');
+    },
+  );
 
   test('no stored token means sign-in, and asks nobody who they are', () async {
     final auth = _StubAuth(stored: false);
@@ -73,58 +76,74 @@ void main() {
     expect(controller.session, isNull);
   });
 
-  test('signing out clears the session and reports busy while it runs', () async {
-    final auth = _StubAuth(
-      driver: const DriverSession(driverId: 'u1', fullName: 'Kwame', mustChangePin: false),
-    );
-    final controller = SessionController(auth: auth);
-    await controller.restore();
-
-    final pending = controller.signOut();
-    expect(controller.isBusy, isTrue);
-    await pending;
-
-    expect(controller.isBusy, isFalse);
-    expect(controller.session, isNull);
-    expect(controller.stage, SessionStage.signedOut);
-  });
-
-  test('a forced PIN change is only asked for when the sign-in says so', () async {
-    final controller = SessionController(auth: _StubAuth());
-
-    controller.onSignedIn(
-      const DriverSession(driverId: 'd1', fullName: 'Kwame', mustChangePin: true),
-    );
-    expect(controller.stage, SessionStage.confirming);
-    controller.confirm();
-    expect(controller.stage, SessionStage.mustChangePin);
-
-    controller.onPinChanged();
-    expect(controller.stage, SessionStage.ready);
-  });
-
-  test('a session revoked server-side returns the app to sign-in (#235)', () async {
-    // An operations PIN reset revokes sessions. Before this the app stayed in
-    // the shell, the header fell back to "Driver", every call failed quietly,
-    // and nothing told the driver to sign in again.
-    final controller = SessionController(
-      auth: _StubAuth(
+  test(
+    'signing out clears the session and reports busy while it runs',
+    () async {
+      final auth = _StubAuth(
         driver: const DriverSession(
-          driverId: 'd1',
-          fullName: 'Kofi Anum Quartey',
+          driverId: 'u1',
+          fullName: 'Kwame',
           mustChangePin: false,
         ),
-      ),
+      );
+      final controller = SessionController(auth: auth);
+      await controller.restore();
+
+      final pending = controller.signOut();
+      expect(controller.isBusy, isTrue);
+      await pending;
+
+      expect(controller.isBusy, isFalse);
+      expect(controller.session, isNull);
+      expect(controller.stage, SessionStage.signedOut);
+    },
+  );
+
+  for (final operatorIssued in [true, false]) {
+    test(
+      'account confirmation opens the app with operator-issued=$operatorIssued',
+      () {
+        final controller = SessionController(auth: _StubAuth());
+        controller.onSignedIn(
+          DriverSession(
+            driverId: 'd1',
+            fullName: 'Kwame',
+            mustChangePin: operatorIssued,
+          ),
+        );
+        expect(controller.stage, SessionStage.confirming);
+        controller.confirm();
+        expect(controller.stage, SessionStage.ready);
+        expect(controller.session?.fullName, 'Kwame');
+      },
     );
-    await controller.restore();
-    expect(controller.stage, SessionStage.ready);
-    expect(controller.session, isNotNull);
+  }
 
-    controller.onSessionRevoked();
+  test(
+    'a session revoked server-side returns the app to sign-in (#235)',
+    () async {
+      // An operations PIN reset revokes sessions. Before this the app stayed in
+      // the shell, the header fell back to "Driver", every call failed quietly,
+      // and nothing told the driver to sign in again.
+      final controller = SessionController(
+        auth: _StubAuth(
+          driver: const DriverSession(
+            driverId: 'd1',
+            fullName: 'Kofi Anum Quartey',
+            mustChangePin: false,
+          ),
+        ),
+      );
+      await controller.restore();
+      expect(controller.stage, SessionStage.ready);
+      expect(controller.session, isNotNull);
 
-    expect(controller.stage, SessionStage.signedOut);
-    expect(controller.session, isNull);
-  });
+      controller.onSessionRevoked();
+
+      expect(controller.stage, SessionStage.signedOut);
+      expect(controller.session, isNull);
+    },
+  );
 
   test('a revocation while already signed out changes nothing', () async {
     // Signing out clears tokens too, so the same callback arrives on the

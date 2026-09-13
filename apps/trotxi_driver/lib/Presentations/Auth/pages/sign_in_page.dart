@@ -19,12 +19,11 @@ import 'package:trotxi_driver/data/driver_auth_repository.dart';
 /// which is why "Can't sign in?" leads to a page that tells the driver who to
 /// call rather than to a reset form.
 ///
-/// Two deliberate departures from the file, both because the file is wrong
-/// rather than because this was easier:
+/// Two existing differences from the design remain:
 ///
 /// The PIN is SIX digits. `driver-auth.schema.ts` rejects anything else, and
-/// the frames label it "4-digit" because they are describing the four-character
-/// boarding code, which is a different secret belonging to riders.
+/// the frames label it "4-digit". Changing that contract requires a separate
+/// credential decision; it is not part of removing forced PIN setup.
 ///
 /// The field is called "Driver code", not "Driver ID". The placeholder the file
 /// itself draws is `TRX-DR-0248`, which is what operations prints on a slip and
@@ -38,8 +37,8 @@ class SignInPage extends StatefulWidget {
 
   final DriverAuthRepository auth;
 
-  /// Called once a session exists. The caller decides where to go, since a
-  /// driver still on the PIN operations issued has to change it first.
+  /// Called once a session exists. The caller shows account confirmation
+  /// before opening the driver's assigned runs.
   final ValueChanged<DriverSession> onSignedIn;
 
   @override
@@ -203,7 +202,9 @@ class _SignInPageState extends State<SignInPage> {
                 // that particular value contradicts the format this app's own
                 // recovery page teaches ("starts with DR-, four characters
                 // after it"). An instruction cannot be mistaken for an entry.
-                decoration: const InputDecoration(hintText: 'Enter driver code'),
+                decoration: const InputDecoration(
+                  hintText: 'Enter driver code',
+                ),
                 inputFormatters: [
                   FilteringTextInputFormatter.allow(RegExp('[A-Za-z0-9-]')),
                   LengthLimitingTextInputFormatter(12),
@@ -316,7 +317,8 @@ class _SignInPageState extends State<SignInPage> {
 
               const DriverNote(
                 title: 'Need access?',
-                body: 'Ask your operator to link your driver account before '
+                body:
+                    'Ask your operator to link your driver account before '
                     'signing in.',
               ),
               const SizedBox(height: AppSpacing.space20),
@@ -324,9 +326,7 @@ class _SignInPageState extends State<SignInPage> {
               Text(
                 'Your PIN is encrypted and is never shown to operations.',
                 textAlign: TextAlign.center,
-                style: AppTypography.footnote.copyWith(
-                  color: colors.textMuted,
-                ),
+                style: AppTypography.footnote.copyWith(color: colors.textMuted),
               ),
             ],
           ),
@@ -405,9 +405,7 @@ class _FailureNotice extends StatelessWidget {
           const SizedBox(height: AppSpacing.space2),
           Text(
             detail,
-            style: AppTypography.footnote.copyWith(
-              color: colors.textSecondary,
-            ),
+            style: AppTypography.footnote.copyWith(color: colors.textSecondary),
           ),
         ],
       ),

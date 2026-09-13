@@ -12,8 +12,9 @@ class DriverSession {
   final String driverId;
   final String fullName;
 
-  /// True while the driver is still on the PIN operations issued. The flow
-  /// sends them to change it before anything else.
+  /// Legacy API metadata indicating an operator-issued PIN. Retained for
+  /// compatibility; the app uses operator-managed recovery and does not gate
+  /// entry on this flag.
   final bool mustChangePin;
 }
 
@@ -60,8 +61,8 @@ class DriverAuthRepository {
         // inventing one here would be a lie waiting to be used.
         driverId: user.id,
         fullName: user.displayName,
-        // A restored session is by definition past the forced change: the
-        // driver could not have reached this state without clearing it.
+        // /me does not return this legacy credential flag. It is not an
+        // admission check in the operator-managed recovery flow.
         mustChangePin: false,
       );
     } on DioException {
