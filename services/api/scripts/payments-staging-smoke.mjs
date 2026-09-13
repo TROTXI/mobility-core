@@ -12,9 +12,16 @@ const secret = process.env.PAYSTACK_SECRET_KEY;
 assert.equal(base, 'https://trotxi-api-staging.onrender.com');
 assert.ok(secret?.startsWith('sk_test_'), 'Only sandbox payments are permitted');
 assert.ok(process.env.JWT_SECRET, 'Staging signing configuration required');
-const userId = '26a7363c-0a96-4ce5-9db2-ef42ab34c746';
-const routeId = '87217b45-71a9-497f-b72e-38c6c8dd7a6b';
-const label = 'Payment verification fixture 2026-09-13';
+const naturalDelivery = process.env.SMOKE_PHASE?.startsWith('natural-');
+const userId = naturalDelivery
+  ? 'd9afdce5-19c6-4933-82c7-c9f58d104e6f'
+  : '26a7363c-0a96-4ce5-9db2-ef42ab34c746';
+const routeId = naturalDelivery
+  ? '5bd8eafa-dc09-4872-86e0-a591438dd5d1'
+  : '87217b45-71a9-497f-b72e-38c6c8dd7a6b';
+const label = naturalDelivery
+  ? 'Natural webhook verification fixture 2026-09-13'
+  : 'Payment verification fixture 2026-09-13';
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: { rejectUnauthorized: false },
@@ -146,7 +153,7 @@ async function verifyAndReplay(payment) {
 }
 
 try {
-  if (process.env.SMOKE_PHASE === 'setup') {
+  if (['setup', 'natural-setup'].includes(process.env.SMOKE_PHASE)) {
     const existing = await pool.query('SELECT id FROM users WHERE id=$1', [userId]);
     assert.equal(existing.rowCount, 0, 'Fixture already exists; do not initialize it again');
     const client = await pool.connect();
@@ -155,7 +162,9 @@ try {
       await client.query('INSERT INTO users (id, display_name, email) VALUES ($1,$2,$3)', [
         userId,
         label,
-        'payments-staging-smoke@example.com',
+        naturalDelivery
+          ? 'payments-webhook-smoke@example.com'
+          : 'payments-staging-smoke@example.com',
       ]);
       await client.query('INSERT INTO routes (id, name, description) VALUES ($1,$2,$3)', [
         routeId,
@@ -174,6 +183,63 @@ try {
       client.release();
     }
     await subscriptionCheckout();
+  } else if (process.env.SMOKE_PHASE === 'natural-check') {
+    // This phase never posts or replays a webhook and never invokes reconciliation.
+    // The only fulfilment source for this fresh fixture must be Paystack delivery.
+    const payments = await fixturePayments();
+    assert.equal(payments.length, 1);
+    let payment = payments[0];
+    for (let i = 0; i < 30 && payment.status !== 'fulfilled'; i++) {
+      await delay(1000);
+      [payment] = await fixturePayments();
+    }
+    assert.equal(payment.status, 'fulfilled', 'Automatic provider webhook must fulfil payment');
+    assert.equal(payment.provider_domain, 'test');
+    const response = await fetch(
+      `https://api.paystack.co/transaction/verify/${encodeURIComponent(payment.reference)}`,
+      { headers: { authorization: `Bearer ${secret}` }, signal: AbortSignal.timeout(15000) },
+    );
+    assert.equal(response.status, 200);
+    const { data } = await response.json();
+    assert.equal(data.domain, 'test');
+    assert.equal(data.status, 'success');
+    assert.equal(data.reference, payment.reference);
+    assert.equal(data.amount, payment.amount);
+    assert.equal(data.currency, 'GHS');
+    const inbox = await pool.query(
+      'SELECT status, count(*)::int AS events FROM payment_webhook_events WHERE reference=$1 GROUP BY status',
+      [payment.reference],
+    );
+    assert.ok(inbox.rows.some((row) => row.status === 'processed' && row.events >= 1));
+    assert.ok(inbox.rows.every((row) => row.status === 'processed'));
+    const allocations = await pool.query(
+      `SELECT count(*)::int AS count, sum(delta_rides)::int AS rides FROM entitlement_ledger
+       WHERE user_id=$1 AND ref_type='payment' AND ref_id=$2 AND reason='allocation'`,
+      [userId, payment.reference],
+    );
+    assert.equal(allocations.rows[0].count, 1);
+    assert.equal(allocations.rows[0].rides, payment.rides_granted);
+    const periods = await pool.query(
+      'SELECT status FROM subscription_periods WHERE id=$1 AND payment_id=$2',
+      [payment.subscription_period_id, payment.id],
+    );
+    assert.equal(periods.rows[0]?.status, 'open');
+    console.log(
+      'PASS automatic Paystack delivery: fulfilled with exactly one allocation; no manual replay or reconciliation',
+    );
+    console.log(
+      'NATURAL_DELIVERY_EVIDENCE',
+      JSON.stringify({
+        userId,
+        routeId,
+        reference: payment.reference,
+        status: payment.status,
+        subscriptionId: payment.subscription_id,
+        periodId: payment.subscription_period_id,
+        inbox: inbox.rows,
+        allocations: allocations.rows[0],
+      }),
+    );
   } else if (process.env.SMOKE_PHASE === 'close-renew') {
     const payments = await fixturePayments();
     assert.equal(payments.length, 1);

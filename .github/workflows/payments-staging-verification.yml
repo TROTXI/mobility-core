@@ -44,7 +44,7 @@ jobs:
         env:
           DATABASE_URL: ${{ secrets.STAGING_DATABASE_URL }}
           API_BASE_URL: ${{ vars.STAGING_URL }}
-          SMOKE_PHASE: finish
+          SMOKE_PHASE: natural-setup
       - name: Read-only audit after completed lifecycle
         run: psql "$DATABASE_URL" -X --set ON_ERROR_STOP=1 --file services/api/scripts/payments-audit.sql
         env:
