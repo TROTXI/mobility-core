@@ -12,9 +12,6 @@ enum SessionStage {
   /// Signed in, waiting for the driver to confirm the account is theirs.
   confirming,
 
-  /// Signed in, but still on the PIN operations issued.
-  mustChangePin,
-
   /// Through. Show the app.
   ready,
 }
@@ -92,17 +89,11 @@ class SessionController extends ChangeNotifier {
     _set(SessionStage.confirming);
   }
 
-  /// The driver confirmed the account is theirs.
+  /// The driver confirmed the account is theirs. PIN recovery is managed by
+  /// operations through "Can't sign in?", not a forced self-service screen.
   void confirm() {
-    _set(
-      (_session?.mustChangePin ?? false)
-          ? SessionStage.mustChangePin
-          : SessionStage.ready,
-    );
+    _set(SessionStage.ready);
   }
-
-  /// The forced PIN change is done.
-  void onPinChanged() => _set(SessionStage.ready);
 
   /// Discard the session, whether from "Not my account", an explicit sign-out,
   /// or a token the server has stopped honouring.

@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:trotxi_driver/Presentations/Auth/pages/change_pin_page.dart';
 import 'package:trotxi_driver/Presentations/Auth/pages/confirm_account_page.dart';
 import 'package:trotxi_driver/Presentations/Auth/pages/sign_in_page.dart';
 import 'package:trotxi_driver/core/config/theme/app_colors.dart';
@@ -51,11 +50,6 @@ class _AuthGateState extends State<AuthGate> {
         auth: auth,
         onConfirmed: session.confirm,
         onRejected: session.signOut,
-      ),
-      SessionStage.mustChangePin => ChangePinPage(
-        auth: auth,
-        isForced: true,
-        onChanged: session.onPinChanged,
       ),
       SessionStage.ready => widget.home(context),
     };
