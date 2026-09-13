@@ -21,3 +21,21 @@ if (typeof key !== 'string' || !key.startsWith('sk_test_') || /[\r\n]/.test(key)
 console.log(`::add-mask::${key}`);
 await appendFile(process.env.GITHUB_ENV, `PAYSTACK_SECRET_KEY=${key}\n`);
 console.log('Staging Paystack environment: test');
+
+for (const [name, fallback] of [
+  ['JWT_SECRET', null],
+  ['JWT_ISSUER', 'trotxi'],
+  ['JWT_AUDIENCE', 'trotxi-api'],
+]) {
+  const res = await fetch(`https://api.render.com/v1/services/${serviceId}/env-vars/${name}`, {
+    headers: { Authorization: `Bearer ${renderKey}` },
+    signal: AbortSignal.timeout(15000),
+  });
+  const body = res.ok ? await res.json() : null;
+  const value = body?.value ?? body?.envVar?.value ?? (res.status === 404 ? fallback : null);
+  if (typeof value !== 'string' || !value || /[\r\n]/.test(value)) {
+    throw new Error(`Missing staging ${name}: HTTP ${res.status}`);
+  }
+  if (name === 'JWT_SECRET') console.log(`::add-mask::${value}`);
+  await appendFile(process.env.GITHUB_ENV, `${name}=${value}\n`);
+}

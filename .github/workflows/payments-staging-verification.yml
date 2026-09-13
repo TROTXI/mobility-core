@@ -39,3 +39,9 @@ jobs:
         run: pnpm --filter @trotxi/api exec vitest run tests/paystack.sandbox.test.ts --testTimeout=30000
         env:
           RUN_PAYSTACK_SANDBOX: '1'
+      - name: Staging payment lifecycle smoke
+        run: node services/api/scripts/payments-staging-smoke.mjs
+        env:
+          DATABASE_URL: ${{ secrets.STAGING_DATABASE_URL }}
+          API_BASE_URL: ${{ vars.STAGING_URL }}
+          SMOKE_PHASE: setup
