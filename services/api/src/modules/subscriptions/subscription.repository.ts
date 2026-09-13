@@ -1,5 +1,5 @@
 export type SubscriptionPlan = 'monthly' | 'annual';
-export type SubscriptionStatus = 'active' | 'cancelled' | 'expired';
+export type SubscriptionStatus = 'active' | 'suspended' | 'cancelled' | 'expired';
 
 /** A user's platform membership. */
 export interface Subscription {

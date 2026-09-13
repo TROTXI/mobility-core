@@ -7,6 +7,9 @@ import {
   type FulfillmentResult,
   type PaymentLifecycle,
   type PeriodCloseResult,
+  PeriodCloseBlockedError,
+  type ProviderDispute,
+  type ProviderRefund,
   type SettledCharge,
   type SubscriptionCheckoutInput,
   UnscopedSubscriptionPeriodError,
@@ -23,7 +26,7 @@ interface PeriodLockRow {
   id: string;
   subscription_id: string;
   user_id: string;
-  status: 'open' | 'closed' | 'reversed';
+  status: 'open' | 'frozen' | 'closed' | 'reversed';
   credit_pesewas_per_ride: number | null;
 }
 
@@ -55,7 +58,7 @@ export class PgPaymentLifecycle implements PaymentLifecycle {
       const { rows: activeRows } = await client.query<SubscriptionLockRow>(
         `SELECT id, period_end, current_period_id
            FROM subscriptions
-          WHERE user_id = $1 AND status = 'active'
+          WHERE user_id = $1 AND status IN ('active', 'suspended')
           LIMIT 1
           FOR UPDATE`,
         [input.userId],
@@ -71,7 +74,12 @@ export class PgPaymentLifecycle implements PaymentLifecycle {
             `Subscription ${active.id} has no current period accounting row`,
           );
         }
-        await this.closeOne(client, active.current_period_id);
+        const close = await this.closeOne(client, active.current_period_id);
+        if (close.blocked) {
+          throw new PeriodCloseBlockedError(
+            'The ended period still has reservations awaiting boarding or no-show settlement',
+          );
+        }
         subscriptionId = active.id;
       } else {
         const { rows: renewable } = await client.query<{ id: string }>(
@@ -388,6 +396,263 @@ export class PgPaymentLifecycle implements PaymentLifecycle {
     }
   }
 
+  async recordRefund(refund: ProviderRefund): Promise<boolean> {
+    const client = await this.pool.connect();
+    try {
+      await client.query('BEGIN');
+      const { rows } = await client.query<PaymentRow>(
+        `SELECT * FROM payments WHERE reference = $1 FOR UPDATE`,
+        [refund.reference],
+      );
+      const payment = rows[0] ? toPayment(rows[0]) : null;
+      if (!payment) {
+        await client.query('ROLLBACK');
+        return false;
+      }
+      await this.lockUser(client, payment.userId);
+      if (
+        refund.amountPesewas <= 0 ||
+        refund.amountPesewas > payment.amount ||
+        refund.currency.toUpperCase() !== payment.currency.toUpperCase() ||
+        (payment.providerDomain !== null && payment.providerDomain !== refund.providerDomain)
+      ) {
+        await client.query('ROLLBACK');
+        return false;
+      }
+      if (refund.status === 'processed' && !refund.refundReference) {
+        throw new Error('Processed Paystack refund has no refund_reference');
+      }
+      const refundKey = refund.refundReference ?? `event:${refund.eventKey}`;
+      await client.query(
+        `INSERT INTO payment_refunds (
+           payment_id, provider_refund_reference, amount_pesewas, status, payload, processed_at
+         ) VALUES ($1, $2, $3, $4, $5::jsonb,
+                   CASE WHEN $4 = 'processed' THEN now() ELSE NULL END)
+         ON CONFLICT (payment_id, provider_refund_reference) DO UPDATE
+           SET amount_pesewas = CASE
+                 WHEN payment_refunds.status = 'processed' THEN payment_refunds.amount_pesewas
+                 ELSE EXCLUDED.amount_pesewas
+               END,
+               status = CASE
+                 WHEN payment_refunds.status = 'processed' THEN payment_refunds.status
+                 ELSE EXCLUDED.status
+               END,
+               payload = EXCLUDED.payload,
+               processed_at = CASE
+                 WHEN EXCLUDED.status = 'processed' THEN COALESCE(payment_refunds.processed_at, now())
+                 ELSE payment_refunds.processed_at
+               END,
+               updated_at = now()`,
+        [
+          payment.id,
+          refundKey,
+          refund.amountPesewas,
+          refund.status,
+          JSON.stringify(refund.payload),
+        ],
+      );
+      const { rows: totals } = await client.query<{ refunded: string }>(
+        `SELECT COALESCE(SUM(amount_pesewas), 0)::text AS refunded
+           FROM payment_refunds
+          WHERE payment_id = $1 AND status = 'processed'`,
+        [payment.id],
+      );
+      const refunded = Number(totals[0]!.refunded);
+      if (refunded > payment.amount) throw new Error('Processed refunds exceed the cash payment');
+      await client.query(
+        `UPDATE payments
+            SET refunded_pesewas = $2,
+                status = CASE WHEN $2 = amount THEN 'refunded' ELSE status END,
+                updated_at = now()
+          WHERE id = $1`,
+        [payment.id, refunded],
+      );
+
+      if (refunded === payment.amount && payment.subscriptionPeriodId) {
+        const { rows: periods } = await client.query<PeriodLockRow>(
+          `SELECT p.id, p.subscription_id, s.user_id, p.status, p.credit_pesewas_per_ride
+             FROM subscription_periods p
+             JOIN subscriptions s ON s.id = p.subscription_id
+            WHERE p.id = $1
+            FOR UPDATE OF p, s`,
+          [payment.subscriptionPeriodId],
+        );
+        const period = periods[0];
+        if (period && period.status !== 'reversed') {
+          const { rows: balances } = await client.query<{ rides: number }>(
+            `SELECT COALESCE(SUM(delta_rides), 0)::int AS rides
+               FROM entitlement_ledger WHERE subscription_period_id = $1`,
+            [period.id],
+          );
+          const remaining = Math.max(0, balances[0]!.rides);
+          if (remaining > 0) {
+            await client.query(
+              `INSERT INTO entitlement_ledger (
+                 user_id, delta_rides, reason, ref_type, ref_id, idempotency_key,
+                 subscription_period_id
+               ) VALUES ($1, $2, 'refund', 'payment', $3, $4, $5)
+               ON CONFLICT (idempotency_key) DO NOTHING`,
+              [
+                payment.userId,
+                -remaining,
+                payment.reference,
+                `refund-rides:${payment.reference}`,
+                period.id,
+              ],
+            );
+          }
+          if (payment.appliedCreditPesewas > 0) {
+            await client.query(
+              `INSERT INTO credit_ledger (
+                 user_id, delta_pesewas, reason, ref_type, ref_id, idempotency_key
+               ) VALUES ($1, $2, 'refund', 'payment', $3, $4)
+               ON CONFLICT (idempotency_key) DO NOTHING`,
+              [
+                payment.userId,
+                payment.appliedCreditPesewas,
+                payment.reference,
+                `refund-credit:${payment.reference}`,
+              ],
+            );
+          }
+          await client.query(
+            `UPDATE subscription_periods
+                SET status = 'reversed', closed_at = COALESCE(closed_at, now())
+              WHERE id = $1`,
+            [period.id],
+          );
+          await client.query(
+            `UPDATE subscriptions SET status = 'expired'
+              WHERE id = $1 AND current_period_id = $2
+                AND status IN ('active', 'suspended')`,
+            [period.subscription_id, period.id],
+          );
+        }
+      }
+      await client.query('COMMIT');
+      return true;
+    } catch (err) {
+      await client.query('ROLLBACK');
+      throw err;
+    } finally {
+      client.release();
+    }
+  }
+
+  async recordDispute(dispute: ProviderDispute): Promise<boolean> {
+    const client = await this.pool.connect();
+    try {
+      await client.query('BEGIN');
+      const { rows } = await client.query<PaymentRow>(
+        `SELECT * FROM payments WHERE reference = $1 FOR UPDATE`,
+        [dispute.reference],
+      );
+      const payment = rows[0] ? toPayment(rows[0]) : null;
+      if (!payment) {
+        await client.query('ROLLBACK');
+        return false;
+      }
+      await this.lockUser(client, payment.userId);
+      if (
+        dispute.amountPesewas <= 0 ||
+        dispute.amountPesewas > payment.amount ||
+        dispute.currency.toUpperCase() !== payment.currency.toUpperCase() ||
+        (payment.providerDomain !== null && payment.providerDomain !== dispute.providerDomain)
+      ) {
+        await client.query('ROLLBACK');
+        return false;
+      }
+      const { rows: disputeRows } = await client.query<{
+        status: 'created' | 'reminded' | 'resolved';
+        resolution: string | null;
+      }>(
+        `INSERT INTO payment_disputes (
+           payment_id, provider_dispute_id, amount_pesewas, status, resolution,
+           payload, resolved_at
+         ) VALUES ($1, $2::bigint, $3, $4, $5, $6::jsonb,
+                   CASE WHEN $4 = 'resolved' THEN now() ELSE NULL END)
+         ON CONFLICT (provider_dispute_id) DO UPDATE
+           SET amount_pesewas = CASE
+                 WHEN payment_disputes.status = 'resolved' THEN payment_disputes.amount_pesewas
+                 ELSE EXCLUDED.amount_pesewas
+               END,
+               status = CASE
+                 WHEN payment_disputes.status = 'resolved' THEN payment_disputes.status
+                 ELSE EXCLUDED.status
+               END,
+               resolution = CASE
+                 WHEN payment_disputes.status = 'resolved' THEN payment_disputes.resolution
+                 ELSE EXCLUDED.resolution
+               END,
+               payload = CASE
+                 WHEN payment_disputes.status = 'resolved' THEN payment_disputes.payload
+                 ELSE EXCLUDED.payload
+               END,
+               resolved_at = CASE
+                 WHEN EXCLUDED.status = 'resolved' THEN COALESCE(payment_disputes.resolved_at, now())
+                 ELSE payment_disputes.resolved_at
+               END,
+               updated_at = now()
+         RETURNING status, resolution`,
+        [
+          payment.id,
+          dispute.providerDisputeId,
+          dispute.amountPesewas,
+          dispute.status,
+          dispute.resolution,
+          JSON.stringify(dispute.payload),
+        ],
+      );
+
+      const effective = disputeRows[0]!;
+      const restore = effective.status === 'resolved' && effective.resolution === 'declined';
+      if (restore) {
+        await client.query(
+          `UPDATE payments SET status = 'fulfilled', updated_at = now()
+            WHERE id = $1 AND status = 'disputed'`,
+          [payment.id],
+        );
+        if (payment.subscriptionPeriodId) {
+          await client.query(
+            `UPDATE subscription_periods SET status = 'open'
+              WHERE id = $1 AND status = 'frozen'`,
+            [payment.subscriptionPeriodId],
+          );
+          await client.query(
+            `UPDATE subscriptions SET status = 'active'
+              WHERE id = $1 AND current_period_id = $2 AND status = 'suspended'`,
+            [payment.subscriptionId, payment.subscriptionPeriodId],
+          );
+        }
+      } else {
+        await client.query(
+          `UPDATE payments SET status = 'disputed', updated_at = now()
+            WHERE id = $1 AND status IN ('paid', 'fulfilled', 'disputed')`,
+          [payment.id],
+        );
+        if (payment.subscriptionPeriodId) {
+          await client.query(
+            `UPDATE subscription_periods SET status = 'frozen'
+              WHERE id = $1 AND status = 'open'`,
+            [payment.subscriptionPeriodId],
+          );
+          await client.query(
+            `UPDATE subscriptions SET status = 'suspended'
+              WHERE id = $1 AND current_period_id = $2 AND status = 'active'`,
+            [payment.subscriptionId, payment.subscriptionPeriodId],
+          );
+        }
+      }
+      await client.query('COMMIT');
+      return true;
+    } catch (err) {
+      await client.query('ROLLBACK');
+      throw err;
+    } finally {
+      client.release();
+    }
+  }
+
   async closeEndedPeriods(now: Date = new Date()): Promise<PeriodCloseResult> {
     const { rows: due } = await this.pool.query<{
       period_id: string;
@@ -403,6 +668,7 @@ export class PgPaymentLifecycle implements PaymentLifecycle {
     const totals: PeriodCloseResult = {
       considered: due.length,
       closed: 0,
+      blocked: 0,
       riders: 0,
       ridesConverted: 0,
       creditPesewas: 0,
@@ -419,6 +685,8 @@ export class PgPaymentLifecycle implements PaymentLifecycle {
           if (result.rides > 0) totals.riders++;
           totals.ridesConverted += result.rides;
           totals.creditPesewas += result.credit;
+        } else if (result.blocked) {
+          totals.blocked++;
         }
       } catch (err) {
         await client.query('ROLLBACK');
@@ -433,7 +701,7 @@ export class PgPaymentLifecycle implements PaymentLifecycle {
   private async closeOne(
     client: PoolClient,
     periodId: string,
-  ): Promise<{ closed: boolean; rides: number; credit: number }> {
+  ): Promise<{ closed: boolean; blocked: boolean; rides: number; credit: number }> {
     const { rows } = await client.query<PeriodLockRow>(
       `SELECT p.id, p.subscription_id, s.user_id, p.status, p.credit_pesewas_per_ride
          FROM subscription_periods p
@@ -444,7 +712,16 @@ export class PgPaymentLifecycle implements PaymentLifecycle {
     );
     const period = rows[0];
     if (!period) throw new UnscopedSubscriptionPeriodError(`Period ${periodId} does not exist`);
-    if (period.status !== 'open') return { closed: false, rides: 0, credit: 0 };
+    if (period.status !== 'open') return { closed: false, blocked: false, rides: 0, credit: 0 };
+    const { rows: unsettledRows } = await client.query<{ count: string }>(
+      `SELECT COUNT(*)::text AS count
+         FROM reservations
+        WHERE subscription_period_id = $1 AND status IN ('pending', 'reserved')`,
+      [period.id],
+    );
+    if (Number(unsettledRows[0]!.count) > 0) {
+      return { closed: false, blocked: true, rides: 0, credit: 0 };
+    }
     const { rows: balances } = await client.query<{ rides: number }>(
       `SELECT COALESCE(SUM(delta_rides), 0)::int AS rides
          FROM entitlement_ledger
@@ -487,7 +764,7 @@ export class PgPaymentLifecycle implements PaymentLifecycle {
         WHERE id = $1 AND current_period_id = $2 AND status = 'active'`,
       [period.subscription_id, period.id],
     );
-    return { closed: true, rides: remaining, credit };
+    return { closed: true, blocked: false, rides: remaining, credit };
   }
 
   private async lockUser(client: PoolClient, userId: string): Promise<void> {

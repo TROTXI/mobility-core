@@ -6,7 +6,8 @@
 // Postgres in *.pg.ts.
 
 /** Why a credit row exists. */
-export type CreditReason = 'month_end_conversion' | 'compensation' | 'loyalty' | 'renewal_applied';
+export type CreditReason =
+  'month_end_conversion' | 'compensation' | 'loyalty' | 'renewal_applied' | 'refund';
 
 /** A single append to the credit ledger. */
 export interface CreditEntry {

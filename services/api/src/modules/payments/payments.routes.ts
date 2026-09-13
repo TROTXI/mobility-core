@@ -21,6 +21,7 @@ import {
   InvalidStopsError,
   InvalidWebhookError,
   NotPricedError,
+  PeriodSettlementPendingError,
   PaymentsNotConfiguredError,
   type PaymentsService,
 } from './payments.service';
@@ -83,6 +84,9 @@ export async function paymentRoutes(
         }
         if (err instanceof CheckoutInProgressError) {
           return reply.code(409).send({ error: 'checkout_in_progress', message: err.message });
+        }
+        if (err instanceof PeriodSettlementPendingError) {
+          return reply.code(409).send({ error: 'period_settlement_pending', message: err.message });
         }
         // 409, not 500: the request is well-formed, the corridor simply has no
         // fare set yet. Deliberately not falling back to a default — charging a

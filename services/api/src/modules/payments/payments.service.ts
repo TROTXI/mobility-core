@@ -31,6 +31,9 @@ import {
   InMemoryPaymentLifecycle,
   type PaymentLifecycle,
   type PeriodCloseResult,
+  PeriodCloseBlockedError,
+  type ProviderDispute,
+  type ProviderRefund,
   type SettledCharge,
 } from './payment-lifecycle';
 import {
@@ -75,6 +78,9 @@ export class CheckoutInProgressError extends Error {
     this.name = 'CheckoutInProgressError';
   }
 }
+
+/** An ended period still has a seat awaiting boarding/no-show settlement. */
+export class PeriodSettlementPendingError extends Error {}
 
 /**
  * Fallback ride count for payments created before #103, whose rows carry no
@@ -160,7 +166,7 @@ interface PaystackWebhookEvent {
     /** Paystack's own verdict on the charge. Only `success` grants anything. */
     status?: string;
     /** What was actually collected, in pesewas. Compared to what we asked for. */
-    amount?: number;
+    amount?: number | string;
     /** ISO 4217 code Paystack settled in. */
     currency?: string;
     domain?: string;
@@ -170,6 +176,97 @@ interface PaystackWebhookEvent {
     /** Present on mobile-money charges; the handset that approved the debit. */
     customer?: { phone?: string | null };
     authorization?: { mobile_money_number?: string | null };
+    /** Refund notifications use these flat references and string amounts. */
+    transaction_reference?: string;
+    refund_reference?: string | null;
+    /** Disputes embed the original transaction and expose the contested amount. */
+    transaction?: {
+      id?: number | string;
+      reference?: string;
+      amount?: number;
+      currency?: string;
+      domain?: string;
+    };
+    refund_amount?: number;
+    resolution?: string | null;
+  };
+}
+
+function refundFromEvent(event: PaystackWebhookEvent, eventKey: string): ProviderRefund | null {
+  const eventName = event.event ?? '';
+  if (!eventName.startsWith('refund.')) return null;
+  const status = eventName.slice('refund.'.length).replace('-', '_');
+  if (!['pending', 'processing', 'needs_attention', 'failed', 'processed'].includes(status)) {
+    return null;
+  }
+  const data = event.data;
+  const amount = typeof data?.amount === 'string' ? Number(data.amount) : data?.amount;
+  const payloadStatus = data?.status?.replace('-', '_');
+  if (
+    !data ||
+    payloadStatus !== status ||
+    typeof data.transaction_reference !== 'string' ||
+    typeof amount !== 'number' ||
+    !Number.isSafeInteger(amount) ||
+    amount <= 0 ||
+    typeof data.currency !== 'string' ||
+    (data.domain !== 'test' && data.domain !== 'live') ||
+    (data.refund_reference !== null &&
+      data.refund_reference !== undefined &&
+      typeof data.refund_reference !== 'string')
+  ) {
+    return null;
+  }
+  return {
+    eventKey,
+    reference: data.transaction_reference,
+    refundReference: data.refund_reference ?? null,
+    amountPesewas: amount,
+    currency: data.currency,
+    providerDomain: data.domain,
+    status: status as ProviderRefund['status'],
+    payload: event,
+  };
+}
+
+function disputeFromEvent(event: PaystackWebhookEvent): ProviderDispute | null {
+  const eventName = event.event ?? '';
+  const status =
+    eventName === 'charge.dispute.create'
+      ? 'created'
+      : eventName === 'charge.dispute.remind'
+        ? 'reminded'
+        : eventName === 'charge.dispute.resolve'
+          ? 'resolved'
+          : null;
+  if (!status) return null;
+  const data = event.data;
+  const reference = data?.transaction?.reference ?? data?.transaction_reference;
+  const rawAmount = data?.refund_amount ?? data?.amount ?? data?.transaction?.amount;
+  const amount = typeof rawAmount === 'string' ? Number(rawAmount) : rawAmount;
+  const currency = data?.currency ?? data?.transaction?.currency;
+  const domain = data?.domain ?? data?.transaction?.domain;
+  if (
+    !data ||
+    !/^\d+$/.test(String(data.id ?? '')) ||
+    typeof reference !== 'string' ||
+    typeof amount !== 'number' ||
+    !Number.isSafeInteger(amount) ||
+    amount <= 0 ||
+    typeof currency !== 'string' ||
+    (domain !== 'test' && domain !== 'live')
+  ) {
+    return null;
+  }
+  return {
+    reference,
+    providerDisputeId: String(data.id),
+    amountPesewas: amount,
+    currency,
+    providerDomain: domain,
+    status,
+    resolution: typeof data.resolution === 'string' ? data.resolution : null,
+    payload: event,
   };
 }
 
@@ -371,6 +468,9 @@ export class PaymentsService {
       if (err instanceof ActiveSubscriptionPaymentError) {
         throw new AlreadySubscribedError(err.message);
       }
+      if (err instanceof PeriodCloseBlockedError) {
+        throw new PeriodSettlementPendingError(err.message);
+      }
       throw err;
     }
     const result = await this.deps.paystack.initializeTransaction({
@@ -450,7 +550,7 @@ export class PaymentsService {
     let failed = 0;
     for (const item of events) {
       try {
-        await this.processWebhookEvent(item.payload as PaystackWebhookEvent);
+        await this.processWebhookEvent(item.payload as PaystackWebhookEvent, item.payloadSha256);
         await this.webhooks.markProcessed(item.id);
         processed++;
       } catch (err) {
@@ -527,7 +627,17 @@ export class PaymentsService {
     return result;
   }
 
-  private async processWebhookEvent(event: PaystackWebhookEvent): Promise<void> {
+  private async processWebhookEvent(event: PaystackWebhookEvent, eventKey: string): Promise<void> {
+    const refund = refundFromEvent(event, eventKey);
+    if (refund) {
+      await this.lifecycle.recordRefund(refund);
+      return;
+    }
+    const dispute = disputeFromEvent(event);
+    if (dispute) {
+      await this.lifecycle.recordDispute(dispute);
+      return;
+    }
     if (event.event !== 'charge.success') return;
     const reference = event.data?.reference;
     if (!reference) return;
