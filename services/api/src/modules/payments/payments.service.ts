@@ -21,10 +21,15 @@ import type {
 } from '../subscriptions/subscription.repository';
 import type { UserRepository } from '../users/user.repository';
 import { periodFor } from '../subscriptions/period';
-import { derivePrice, netCharge, type DerivedPrice } from './pricing';
+import { derivePrice, MIN_CHARGE_PESEWAS, netCharge, type DerivedPrice } from './pricing';
 import type { RouteStopRepository } from '../mobility/route-stop.repository';
 import type { PricingRepository } from './pricing.repository';
-import type { NewPayment, Payment, PaymentRepository } from './payment.repository';
+import {
+  PendingSubscriptionPaymentError,
+  type NewPayment,
+  type Payment,
+  type PaymentRepository,
+} from './payment.repository';
 import type { PaystackClient } from './paystack.client';
 
 /**
@@ -53,6 +58,17 @@ export class InvalidWebhookError extends Error {}
  * malformed choice rather than a server problem.
  */
 export class InvalidStopsError extends Error {}
+
+/** Thrown when the rider already has an active membership. Routes map it to 409. */
+export class AlreadySubscribedError extends Error {}
+
+/** Thrown when a previous checkout has not settled yet. Routes map it to 409. */
+export class CheckoutInProgressError extends Error {
+  constructor(readonly reference: string) {
+    super(`Subscription checkout ${reference} is still pending`);
+    this.name = 'CheckoutInProgressError';
+  }
+}
 
 /**
  * Fallback ride count for payments created before #103, whose rows carry no
@@ -98,8 +114,8 @@ function isUniqueViolation(err: unknown): boolean {
  *
  * Amount is compared exactly rather than as a floor: Paystack settles in
  * pesewas, we charge in pesewas, and an overpayment is as much a sign of a
- * mismatched reference as a shortfall is. Fields Paystack omits are not treated
- * as failures, so a payload shape change cannot silently stop every activation.
+ * mismatched reference as a shortfall is. All settlement fields are required:
+ * a signed but incomplete payload is not proof that the expected charge settled.
  *
  * @param payment - the pending payment the reference resolved to.
  * @param event - the signature-verified webhook payload.
@@ -108,15 +124,13 @@ function isUniqueViolation(err: unknown): boolean {
 function chargeMatches(payment: Payment, event: PaystackWebhookEvent): boolean {
   const data = event.data;
   if (!data) return false;
-  if (data.status !== undefined && data.status !== 'success') return false;
-  if (data.amount !== undefined && data.amount !== payment.amount) return false;
-  if (
-    data.currency !== undefined &&
-    data.currency.toUpperCase() !== payment.currency.toUpperCase()
-  ) {
-    return false;
-  }
-  return true;
+  return (
+    data.status === 'success' &&
+    Number.isSafeInteger(data.amount) &&
+    data.amount === payment.amount &&
+    typeof data.currency === 'string' &&
+    data.currency.toUpperCase() === payment.currency.toUpperCase()
+  );
 }
 
 /** The subset of Paystack's webhook payload we read. */
@@ -180,6 +194,9 @@ export class PaymentsService {
     routeId: string,
     stops: { pickupStopId?: string; dropoffStopId?: string } = {},
   ): Promise<CheckoutResult> {
+    if (await this.deps.subscriptions.findActiveByUser(userId)) {
+      throw new AlreadySubscribedError('An active subscription already exists');
+    }
     await this.assertStopsOnRoute(routeId, stops);
     const price = await this.priceFor(plan, routeId);
     const balance = this.deps.credits ? await this.deps.credits.balancePesewas(userId) : 0;
@@ -266,7 +283,13 @@ export class PaymentsService {
     ]);
     if (!fare) throw new NotPricedError(`No fare set for route ${routeId}`);
     if (!pricing) throw new NotPricedError(`No pricing configured for plan ${plan}`);
-    return derivePrice(fare.farePesewas, pricing);
+    const derived = derivePrice(fare.farePesewas, pricing);
+    if (derived.pricePesewas < MIN_CHARGE_PESEWAS) {
+      throw new NotPricedError(
+        `Configured price is below the ${MIN_CHARGE_PESEWAS} pesewa payment minimum`,
+      );
+    }
+    return derived;
   }
 
   /**
@@ -283,8 +306,15 @@ export class PaymentsService {
     if (!this.deps.paystack) {
       throw new PaymentsNotConfiguredError('Payments are not configured');
     }
-    const reference = `trotxi_${crypto.randomUUID()}`;
-    await this.deps.payments.create({ ...input, reference });
+    const reference = `trotxi-${crypto.randomUUID()}`;
+    try {
+      await this.deps.payments.create({ ...input, reference });
+    } catch (err) {
+      if (err instanceof PendingSubscriptionPaymentError) {
+        throw new CheckoutInProgressError(err.reference);
+      }
+      throw err;
+    }
     const result = await this.deps.paystack.initializeTransaction({
       // The rider's verified address when we hold one (#182), so Paystack's
       // receipt reaches a real inbox. The synthesised address is the fallback
@@ -334,12 +364,17 @@ export class PaymentsService {
     const payment = await this.deps.payments.findByReference(reference);
     if (!payment) return; // unknown reference — not ours
 
+    // A settled row is terminal. In particular, a late success event must not
+    // fulfil a row that an earlier path already declared failed.
+    if (payment.status !== 'pending') return;
+
     // The signature proves Paystack sent this. It does not prove the rider paid
     // what we asked for. `charge.success` is emitted for the transaction, so a
     // short or foreign-currency collection would otherwise activate a full
     // period and allocate a full month of rides against it.
     if (!chargeMatches(payment, event)) {
-      await this.deps.payments.markFailed(reference);
+      // A webhook mismatch is evidence to investigate, not proof of failure.
+      // Keep the row pending so Verify/reconciliation can recover it safely.
       return;
     }
 

@@ -43,7 +43,10 @@ function appWithPayments() {
 }
 
 async function webhookFor(app: Awaited<ReturnType<typeof buildApp>>, reference: string) {
-  const body = JSON.stringify({ event: 'charge.success', data: { reference } });
+  const body = JSON.stringify({
+    event: 'charge.success',
+    data: { reference, status: 'success', amount: FARE * 44, currency: 'GHS' },
+  });
   return app.inject({
     method: 'POST',
     url: '/webhooks/paystack',
@@ -81,6 +84,38 @@ describe('POST /payments/subscribe', () => {
     expect(res.statusCode).toBe(200);
     expect(res.json().authorizationUrl).toBeTruthy();
     expect(res.json().reference).toBeTruthy();
+  });
+
+  it('returns 409 while an earlier checkout is unresolved', async () => {
+    const app = await appWithPayments().build;
+    const token = await jwt.signAccessToken({ userId: 'rider-pending', role: 'commuter' });
+    const request = {
+      method: 'POST' as const,
+      url: '/payments/subscribe',
+      headers: bearer(token),
+      payload: { plan: 'monthly', routeId: ROUTE },
+    };
+    expect((await app.inject(request)).statusCode).toBe(200);
+    const duplicate = await app.inject(request);
+    expect(duplicate.statusCode).toBe(409);
+    expect(duplicate.json()).toMatchObject({ error: 'checkout_in_progress' });
+  });
+
+  it('returns 409 when the rider already has an active subscription', async () => {
+    const app = await appWithPayments().build;
+    const token = await jwt.signAccessToken({ userId: 'rider-active', role: 'commuter' });
+    const request = {
+      method: 'POST' as const,
+      url: '/payments/subscribe',
+      headers: bearer(token),
+      payload: { plan: 'monthly', routeId: ROUTE },
+    };
+    const checkout = (await app.inject(request)).json();
+    await webhookFor(app, checkout.reference);
+
+    const duplicate = await app.inject(request);
+    expect(duplicate.statusCode).toBe(409);
+    expect(duplicate.json()).toMatchObject({ error: 'already_subscribed' });
   });
 
   it('returns 503 when payments are not configured', async () => {

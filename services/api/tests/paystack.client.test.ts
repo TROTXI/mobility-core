@@ -1,9 +1,12 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   FakePaystackClient,
   paystackSignature,
   verifySignature,
 } from '../src/modules/payments/paystack.client';
+import { PaystackHttpClient } from '../src/modules/payments/paystack.client.live';
+
+afterEach(() => vi.unstubAllGlobals());
 
 describe('paystack signatures', () => {
   it('paystackSignature is a deterministic HMAC-SHA512 hex digest', () => {
@@ -40,5 +43,45 @@ describe('FakePaystackClient', () => {
     const body = '{"a":1}';
     expect(client.verifyWebhookSignature(body, paystackSignature(body, 'sek'))).toBe(true);
     expect(client.verifyWebhookSignature(body, 'nope')).toBe(false);
+  });
+
+  it('rejects non-positive/fractional amounts and unsupported references', async () => {
+    const client = new FakePaystackClient();
+    await expect(
+      client.initializeTransaction({ email: 'a@b.com', amountPesewas: 0, reference: 'ref-1' }),
+    ).rejects.toThrow(/positive integer/);
+    await expect(
+      client.initializeTransaction({
+        email: 'a@b.com',
+        amountPesewas: 100.5,
+        reference: 'ref-1',
+      }),
+    ).rejects.toThrow(/positive integer/);
+    await expect(
+      client.initializeTransaction({ email: 'a@b.com', amountPesewas: 100, reference: 'ref_bad' }),
+    ).rejects.toThrow(/unsupported characters/);
+  });
+});
+
+describe('PaystackHttpClient', () => {
+  it('rejects a response that echoes a different reference', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () =>
+        Response.json({
+          status: true,
+          data: { authorization_url: 'https://checkout.paystack.com/x', reference: 'other-ref' },
+        }),
+      ),
+    );
+    const client = new PaystackHttpClient('sk_test_example');
+
+    await expect(
+      client.initializeTransaction({
+        email: 'a@b.com',
+        amountPesewas: 100,
+        reference: 'expected-ref',
+      }),
+    ).rejects.toThrow(/different reference/);
   });
 });

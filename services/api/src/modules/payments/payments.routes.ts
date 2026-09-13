@@ -15,6 +15,8 @@ import {
   webhookResponseSchema,
 } from './payments.schema';
 import {
+  AlreadySubscribedError,
+  CheckoutInProgressError,
   InvalidStopsError,
   InvalidWebhookError,
   NotPricedError,
@@ -77,6 +79,12 @@ export async function paymentRoutes(
         // wrong way round. Their choice is wrong, not our state.
         if (err instanceof InvalidStopsError) {
           return reply.code(400).send({ error: 'invalid_stops', message: err.message });
+        }
+        if (err instanceof AlreadySubscribedError) {
+          return reply.code(409).send({ error: 'already_subscribed', message: err.message });
+        }
+        if (err instanceof CheckoutInProgressError) {
+          return reply.code(409).send({ error: 'checkout_in_progress', message: err.message });
         }
         // 409, not 500: the request is well-formed, the corridor simply has no
         // fare set yet. Deliberately not falling back to a default — charging a

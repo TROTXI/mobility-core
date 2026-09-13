@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { InMemoryPaymentRepository } from '../src/modules/payments/payment.repository';
 import { FakePaystackClient, paystackSignature } from '../src/modules/payments/paystack.client';
 import {
+  AlreadySubscribedError,
+  CheckoutInProgressError,
   InvalidStopsError,
   InvalidWebhookError,
   NotPricedError,
@@ -52,8 +54,14 @@ async function priced(subscriptions?: SubscriptionRepository) {
   return ctx;
 }
 
-function chargeSuccess(reference: string): { body: string; signature: string } {
-  const body = JSON.stringify({ event: 'charge.success', data: { reference } });
+function chargeSuccess(
+  reference: string,
+  amountPesewas = FARE * RIDES,
+): { body: string; signature: string } {
+  const body = JSON.stringify({
+    event: 'charge.success',
+    data: { reference, status: 'success', amount: amountPesewas, currency: 'GHS' },
+  });
   return { body, signature: paystackSignature(body, FAKE_SECRET) };
 }
 
@@ -102,6 +110,41 @@ describe('PaymentsService.initializeSubscription', () => {
       farePesewas: FARE,
       creditPesewasPerRide: 45,
     });
+  });
+
+  it('uses a Paystack-safe reference', async () => {
+    const { service } = await priced();
+    const { reference } = await service.initializeSubscription('u1', 'monthly', ROUTE);
+    expect(reference).toMatch(/^[A-Za-z0-9.=-]+$/);
+    expect(reference).not.toContain('_');
+  });
+
+  it('rejects a second unresolved checkout for the same rider', async () => {
+    const { service } = await priced();
+    const first = await service.initializeSubscription('u1', 'monthly', ROUTE);
+    await expect(service.initializeSubscription('u1', 'monthly', ROUTE)).rejects.toMatchObject({
+      constructor: CheckoutInProgressError,
+      reference: first.reference,
+    });
+  });
+
+  it('rejects checkout while the rider already has an active subscription', async () => {
+    const { service } = await priced();
+    const checkout = await service.initializeSubscription('u1', 'monthly', ROUTE);
+    const { body, signature } = chargeSuccess(checkout.reference);
+    await service.handleWebhook(body, signature);
+
+    await expect(service.initializeSubscription('u1', 'monthly', ROUTE)).rejects.toBeInstanceOf(
+      AlreadySubscribedError,
+    );
+  });
+
+  it('rejects a configured price below the Paystack charge minimum', async () => {
+    const { service, pricing } = make();
+    await pricing.setFare(ROUTE, 1);
+    await expect(service.initializeSubscription('u1', 'monthly', ROUTE)).rejects.toBeInstanceOf(
+      NotPricedError,
+    );
   });
 
   it('refuses to price a corridor with no fare rather than inventing one', async () => {
@@ -198,7 +241,7 @@ describe('PaymentsService.handleWebhook', () => {
 
     expect(await subscriptions.findActiveByUser('u1')).toBeNull();
     expect(await entitlements.remainingRides('u1')).toBe(0);
-    expect((await payments.findByReference(reference))?.status).toBe('failed');
+    expect((await payments.findByReference(reference))?.status).toBe('pending');
   });
 
   it('grants nothing when Paystack settled in another currency', async () => {
@@ -243,6 +286,31 @@ describe('PaymentsService.handleWebhook', () => {
 
     expect(await subscriptions.findActiveByUser('u1')).not.toBeNull();
     expect((await payments.findByReference(reference))?.status).toBe('paid');
+  });
+
+  it('fails closed when a signed success omits settlement fields', async () => {
+    const { service, subscriptions, entitlements, payments } = await priced();
+    const { reference } = await service.initializeSubscription('u1', 'monthly', ROUTE);
+    const body = JSON.stringify({ event: 'charge.success', data: { reference } });
+
+    await service.handleWebhook(body, paystackSignature(body, FAKE_SECRET));
+
+    expect(await subscriptions.findActiveByUser('u1')).toBeNull();
+    expect(await entitlements.remainingRides('u1')).toBe(0);
+    expect((await payments.findByReference(reference))?.status).toBe('pending');
+  });
+
+  it('never fulfils a payment whose state is already failed', async () => {
+    const { service, subscriptions, entitlements, payments } = await priced();
+    const { reference } = await service.initializeSubscription('u1', 'monthly', ROUTE);
+    await payments.markFailed(reference);
+    const { body, signature } = chargeSuccess(reference);
+
+    await service.handleWebhook(body, signature);
+
+    expect(await subscriptions.findActiveByUser('u1')).toBeNull();
+    expect(await entitlements.remainingRides('u1')).toBe(0);
+    expect((await payments.findByReference(reference))?.status).toBe('failed');
   });
 
   it('ignores non charge.success events and unknown references', async () => {
@@ -332,9 +400,13 @@ describe('credit-netted checkout (#128)', () => {
   it('debits the ledger on charge.success', async () => {
     const { service, credits } = await priced();
     await grant(credits, 'u1', 5_000);
-    const { reference } = await service.initializeSubscription('u1', 'monthly', ROUTE);
+    const { reference, chargePesewas } = await service.initializeSubscription(
+      'u1',
+      'monthly',
+      ROUTE,
+    );
 
-    const { body, signature } = chargeSuccess(reference);
+    const { body, signature } = chargeSuccess(reference, chargePesewas);
     await service.handleWebhook(body, signature);
 
     expect(await credits.balancePesewas('u1')).toBe(0);
@@ -343,9 +415,13 @@ describe('credit-netted checkout (#128)', () => {
   it('a replayed webhook does not debit twice', async () => {
     const { service, credits } = await priced();
     await grant(credits, 'u1', 5_000);
-    const { reference } = await service.initializeSubscription('u1', 'monthly', ROUTE);
+    const { reference, chargePesewas } = await service.initializeSubscription(
+      'u1',
+      'monthly',
+      ROUTE,
+    );
 
-    const { body, signature } = chargeSuccess(reference);
+    const { body, signature } = chargeSuccess(reference, chargePesewas);
     await service.handleWebhook(body, signature);
     await service.handleWebhook(body, signature);
 
@@ -372,27 +448,20 @@ describe('credit-netted checkout (#128)', () => {
     expect(checkout.chargePesewas).toBe(MIN_CHARGE_PESEWAS);
     expect(checkout.appliedCreditPesewas).toBe(price - MIN_CHARGE_PESEWAS);
 
-    const { body, signature } = chargeSuccess(checkout.reference);
+    const { body, signature } = chargeSuccess(checkout.reference, checkout.chargePesewas);
     await service.handleWebhook(body, signature);
     expect(await credits.balancePesewas('u1')).toBe(price + 10_000 - checkout.appliedCreditPesewas);
   });
 
-  it('clamps the debit to the balance when two checkouts raced the same credit', async () => {
+  it('prevents two checkouts from spending the same credit', async () => {
     const { service, credits } = await priced();
     await grant(credits, 'u1', 5_000);
 
-    // Both opened before either settled, so both were netted against 5000.
-    const first = await service.initializeSubscription('u1', 'monthly', ROUTE);
-    const second = await service.initializeSubscription('u1', 'monthly', ROUTE);
-    expect(second.appliedCreditPesewas).toBe(5_000);
-
-    for (const ref of [first.reference, second.reference]) {
-      const { body, signature } = chargeSuccess(ref);
-      await service.handleWebhook(body, signature);
-    }
-
-    // The second debit is clamped rather than driving the ledger negative.
-    expect(await credits.balancePesewas('u1')).toBe(0);
+    await service.initializeSubscription('u1', 'monthly', ROUTE);
+    await expect(service.initializeSubscription('u1', 'monthly', ROUTE)).rejects.toBeInstanceOf(
+      CheckoutInProgressError,
+    );
+    expect(await credits.balancePesewas('u1')).toBe(5_000);
   });
 });
 
@@ -499,7 +568,7 @@ describe('subscription price records cash plus credit (#128 follow-up)', () => {
     const checkout = await service.initializeSubscription('u1', 'monthly', ROUTE);
     expect(checkout.chargePesewas).toBe(FARE * RIDES - 5_000); // cash is netted
 
-    const { body, signature } = chargeSuccess(checkout.reference);
+    const { body, signature } = chargeSuccess(checkout.reference, checkout.chargePesewas);
     await service.handleWebhook(body, signature);
 
     // ...but the period was still worth the full price. Recording only the cash

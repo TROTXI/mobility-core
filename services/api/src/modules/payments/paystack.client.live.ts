@@ -2,7 +2,7 @@
 // the *.pg / *.redis / *.google adapters) — exercised against Paystack's sandbox.
 
 import type { PaystackClient, PaystackInitParams, PaystackInitResult } from './paystack.client';
-import { verifySignature } from './paystack.client';
+import { assertValidPaystackInit, verifySignature } from './paystack.client';
 
 const PAYSTACK_API = 'https://api.paystack.co';
 
@@ -15,6 +15,7 @@ export class PaystackHttpClient implements PaystackClient {
   constructor(private readonly secretKey: string) {}
 
   async initializeTransaction(params: PaystackInitParams): Promise<PaystackInitResult> {
+    assertValidPaystackInit(params);
     const res = await fetch(`${PAYSTACK_API}/transaction/initialize`, {
       method: 'POST',
       headers: {
@@ -27,6 +28,7 @@ export class PaystackHttpClient implements PaystackClient {
         reference: params.reference,
         currency: 'GHS',
       }),
+      signal: AbortSignal.timeout(10_000),
     });
     if (!res.ok) {
       throw new Error(`Paystack initialize failed: ${res.status}`);
@@ -34,6 +36,9 @@ export class PaystackHttpClient implements PaystackClient {
     const json = (await res.json()) as InitializeResponse;
     if (!json.status || !json.data) {
       throw new Error('Paystack initialize returned no data');
+    }
+    if (json.data.reference !== params.reference) {
+      throw new Error('Paystack initialize returned a different reference');
     }
     return { authorizationUrl: json.data.authorization_url, reference: json.data.reference };
   }
