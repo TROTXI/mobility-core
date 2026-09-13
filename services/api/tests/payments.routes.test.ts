@@ -45,7 +45,17 @@ function appWithPayments() {
 async function webhookFor(app: Awaited<ReturnType<typeof buildApp>>, reference: string) {
   const body = JSON.stringify({
     event: 'charge.success',
-    data: { reference, status: 'success', amount: FARE * 44, currency: 'GHS' },
+    data: {
+      id: 123456,
+      reference,
+      status: 'success',
+      amount: FARE * 44,
+      currency: 'GHS',
+      domain: 'test',
+      channel: 'mobile_money',
+      fees: 100,
+      paid_at: new Date().toISOString(),
+    },
   });
   return app.inject({
     method: 'POST',

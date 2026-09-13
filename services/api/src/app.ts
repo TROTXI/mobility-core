@@ -358,6 +358,7 @@ export async function buildApp(deps: AppDeps = {}): Promise<FastifyInstance> {
   // Credit conversion (E5): the month-end job. Only wired when a subscription
   // store is available (the route 503s otherwise), since it iterates active subs.
   await app.register(creditRoutes, {
+    periodCloser: deps.paymentsService,
     creditService: deps.subscriptions
       ? new CreditService({
           entitlements,
@@ -443,6 +444,7 @@ export async function buildApp(deps: AppDeps = {}): Promise<FastifyInstance> {
     rateLimit: deps.rateLimit ?? DEFAULT_RATE_LIMIT,
   });
   await app.register(renewalRoutes, {
+    periodCloser: deps.paymentsService,
     renewal: deps.subscriptions
       ? new RenewalService({ subscriptions: deps.subscriptions })
       : undefined,

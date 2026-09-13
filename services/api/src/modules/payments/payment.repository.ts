@@ -5,7 +5,8 @@
 import type { SubscriptionPlan } from '../subscriptions/subscription.repository';
 
 /** Lifecycle of a payment; only `pending` may transition (never mutate `paid`). */
-export type PaymentStatus = 'pending' | 'paid' | 'failed';
+export type PaymentStatus =
+  'pending' | 'processing' | 'paid' | 'fulfilled' | 'failed' | 'refunded' | 'disputed';
 
 /** Why the payment exists: a platform membership fee, or a wallet top-up. */
 export type PaymentPurpose = 'subscription' | 'topup';
@@ -42,6 +43,21 @@ export interface Payment {
   currency: string;
   /** Current lifecycle state. */
   status: PaymentStatus;
+  /** Membership this payment renews/created; null until known. */
+  subscriptionId: string | null;
+  /** Exact billing period purchased; set atomically at fulfilment. */
+  subscriptionPeriodId: string | null;
+  /** Paystack transaction id, used by Verify and reconciliation. */
+  providerTransactionId: string | null;
+  /** Paystack environment (`test` | `live`). */
+  providerDomain: 'test' | 'live' | null;
+  /** Provider payment channel, e.g. mobile_money or card. */
+  channel: string | null;
+  /** Provider fee in pesewas. */
+  feesPesewas: number | null;
+  paidAt: Date | null;
+  fulfilledAt: Date | null;
+  refundedPesewas: number;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -68,6 +84,22 @@ export interface NewPayment {
   farePesewas?: number | null;
   /** Ride Credit value per unused ride, frozen at checkout. */
   creditPesewasPerRide?: number | null;
+  /** Existing subscription being renewed; null for first purchase. */
+  subscriptionId?: string | null;
+}
+
+/** Lifecycle metadata written by the atomic fulfilment adapter. */
+export interface PaymentLifecyclePatch {
+  status?: PaymentStatus;
+  subscriptionId?: string | null;
+  subscriptionPeriodId?: string | null;
+  providerTransactionId?: string | null;
+  providerDomain?: 'test' | 'live' | null;
+  channel?: string | null;
+  feesPesewas?: number | null;
+  paidAt?: Date | null;
+  fulfilledAt?: Date | null;
+  refundedPesewas?: number;
 }
 
 /**
@@ -116,6 +148,8 @@ export interface PaymentRepository {
    * @param reference - the payment to mark failed.
    */
   markFailed(reference: string): Promise<void>;
+  /** In-memory lifecycle support; the PostgreSQL unit of work writes directly. */
+  updateLifecycle(reference: string, patch: PaymentLifecyclePatch): Promise<Payment | null>;
 }
 
 /** In-memory {@link PaymentRepository} for dev and unit tests (no database). */
@@ -149,6 +183,15 @@ export class InMemoryPaymentRepository implements PaymentRepository {
       farePesewas: input.farePesewas ?? null,
       creditPesewasPerRide: input.creditPesewasPerRide ?? null,
       status: 'pending',
+      subscriptionId: input.subscriptionId ?? null,
+      subscriptionPeriodId: null,
+      providerTransactionId: null,
+      providerDomain: null,
+      channel: null,
+      feesPesewas: null,
+      paidAt: null,
+      fulfilledAt: null,
+      refundedPesewas: 0,
       createdAt: now,
       updatedAt: now,
     };
@@ -174,5 +217,12 @@ export class InMemoryPaymentRepository implements PaymentRepository {
       payment.status = 'failed';
       payment.updatedAt = new Date();
     }
+  }
+
+  async updateLifecycle(reference: string, patch: PaymentLifecyclePatch): Promise<Payment | null> {
+    const payment = this.byReference.get(reference);
+    if (!payment) return null;
+    Object.assign(payment, patch, { updatedAt: new Date() });
+    return payment;
   }
 }

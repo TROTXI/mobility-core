@@ -60,7 +60,17 @@ function chargeSuccess(
 ): { body: string; signature: string } {
   const body = JSON.stringify({
     event: 'charge.success',
-    data: { reference, status: 'success', amount: amountPesewas, currency: 'GHS' },
+    data: {
+      id: 123456,
+      reference,
+      status: 'success',
+      amount: amountPesewas,
+      currency: 'GHS',
+      domain: 'test',
+      channel: 'mobile_money',
+      fees: 100,
+      paid_at: new Date().toISOString(),
+    },
   });
   return { body, signature: paystackSignature(body, FAKE_SECRET) };
 }
@@ -76,7 +86,21 @@ function chargeSuccessWith(
   reference: string,
   data: Record<string, unknown>,
 ): { body: string; signature: string } {
-  const body = JSON.stringify({ event: 'charge.success', data: { reference, ...data } });
+  const body = JSON.stringify({
+    event: 'charge.success',
+    data: {
+      id: 123456,
+      reference,
+      status: 'success',
+      amount: FARE * RIDES,
+      currency: 'GHS',
+      domain: 'test',
+      channel: 'mobile_money',
+      fees: 100,
+      paid_at: new Date().toISOString(),
+      ...data,
+    },
+  });
   return { body, signature: paystackSignature(body, FAKE_SECRET) };
 }
 
@@ -199,7 +223,7 @@ describe('PaymentsService.handleWebhook', () => {
 
     expect(await subscriptions.findActiveByUser('u1')).not.toBeNull();
     expect(await entitlements.remainingRides('u1')).toBe(RIDES);
-    expect((await payments.findByReference(reference))?.status).toBe('paid');
+    expect((await payments.findByReference(reference))?.status).toBe('fulfilled');
   });
 
   it('pins the paid route onto the activated subscription (E3 rider↔route)', async () => {
@@ -285,7 +309,7 @@ describe('PaymentsService.handleWebhook', () => {
     await service.handleWebhook(body, signature);
 
     expect(await subscriptions.findActiveByUser('u1')).not.toBeNull();
-    expect((await payments.findByReference(reference))?.status).toBe('paid');
+    expect((await payments.findByReference(reference))?.status).toBe('fulfilled');
   });
 
   it('fails closed when a signed success omits settlement fields', async () => {
@@ -325,7 +349,7 @@ describe('PaymentsService.handleWebhook', () => {
     expect(await subscriptions.findActiveByUser('u1')).toBeNull();
   });
 
-  it('treats a unique-violation on activation as already-active', async () => {
+  it('does not treat an unrelated activation conflict as fulfilled', async () => {
     const subscriptions: SubscriptionRepository = {
       findActiveByUser: async () => null,
       findActiveByRoute: async () => [],
@@ -339,7 +363,7 @@ describe('PaymentsService.handleWebhook', () => {
     const { service } = await priced(subscriptions);
     const { reference } = await service.initializeSubscription('u1', 'monthly', ROUTE);
     const { body, signature } = chargeSuccess(reference);
-    await expect(service.handleWebhook(body, signature)).resolves.toBeUndefined();
+    await expect(service.handleWebhook(body, signature)).rejects.toThrow('dup');
   });
 
   it('propagates non-unique errors from activation', async () => {

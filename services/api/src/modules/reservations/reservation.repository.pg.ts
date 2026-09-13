@@ -16,6 +16,7 @@ interface ReservationRow {
   trip_id: string | null;
   pickup_stop_id: string | null;
   dropoff_stop_id: string | null;
+  subscription_period_id: string | null;
   travel_date: string; // pg returns DATE as 'YYYY-MM-DD'
   direction: ReservationDirection;
   status: ReservationStatus;
@@ -33,6 +34,7 @@ function toReservation(row: ReservationRow): Reservation {
     tripId: row.trip_id,
     pickupStopId: row.pickup_stop_id,
     dropoffStopId: row.dropoff_stop_id,
+    subscriptionPeriodId: row.subscription_period_id,
     travelDate: row.travel_date,
     direction: row.direction,
     status: row.status,
@@ -50,13 +52,16 @@ export class PgReservationRepository implements ReservationRepository {
   async respond(input: ReservationResponse): Promise<Reservation> {
     const status: ReservationStatus = input.travelling ? 'reserved' : 'declined';
     const { rows } = await this.pool.query<ReservationRow>(
-      `INSERT INTO reservations (user_id, trip_id, travel_date, direction, status, source, daily_pin_hash, confirmed_at)
-       VALUES ($1, $2, $3, $4, $5, 'confirmation', $6, now())
+      `INSERT INTO reservations (user_id, trip_id, travel_date, direction, status, source,
+                                 daily_pin_hash, confirmed_at, subscription_period_id)
+       VALUES ($1, $2, $3, $4, $5, 'confirmation', $6, now(), $7)
        ON CONFLICT (user_id, travel_date, direction)
        DO UPDATE SET trip_id = COALESCE(EXCLUDED.trip_id, reservations.trip_id),
                      status = EXCLUDED.status,
                      source = 'confirmation',
                      daily_pin_hash = EXCLUDED.daily_pin_hash,
+                     subscription_period_id = COALESCE(EXCLUDED.subscription_period_id,
+                                                       reservations.subscription_period_id),
                      confirmed_at = now(),
                      updated_at = now()
        RETURNING *`,
@@ -67,6 +72,7 @@ export class PgReservationRepository implements ReservationRepository {
         input.direction,
         status,
         input.pinHash ?? null,
+        input.subscriptionPeriodId ?? null,
       ],
     );
     return toReservation(rows[0]!);
@@ -75,8 +81,8 @@ export class PgReservationRepository implements ReservationRepository {
   async createPending(input: PendingReservation): Promise<Reservation> {
     const { rows } = await this.pool.query<ReservationRow>(
       `INSERT INTO reservations (user_id, trip_id, travel_date, direction, status, source,
-                                 pickup_stop_id, dropoff_stop_id)
-       VALUES ($1, $2, $3, $4, 'pending', 'confirmation', $5, $6)
+                                 pickup_stop_id, dropoff_stop_id, subscription_period_id)
+       VALUES ($1, $2, $3, $4, 'pending', 'confirmation', $5, $6, $7)
        ON CONFLICT (user_id, travel_date, direction) DO UPDATE SET updated_at = reservations.updated_at
        RETURNING *`,
       [
@@ -86,6 +92,7 @@ export class PgReservationRepository implements ReservationRepository {
         input.direction,
         input.pickupStopId ?? null,
         input.dropoffStopId ?? null,
+        input.subscriptionPeriodId ?? null,
       ],
     );
     return toReservation(rows[0]!);
@@ -131,17 +138,27 @@ export class PgReservationRepository implements ReservationRepository {
       }
 
       const { rows } = await client.query<ReservationRow>(
-        `INSERT INTO reservations (user_id, trip_id, travel_date, direction, status, source, daily_pin_hash, confirmed_at)
-         VALUES ($1, $2, $3, $4, 'reserved', 'confirmation', $5, now())
+        `INSERT INTO reservations (user_id, trip_id, travel_date, direction, status, source,
+                                   daily_pin_hash, confirmed_at, subscription_period_id)
+         VALUES ($1, $2, $3, $4, 'reserved', 'confirmation', $5, now(), $6)
          ON CONFLICT (user_id, travel_date, direction)
          DO UPDATE SET trip_id = COALESCE(EXCLUDED.trip_id, reservations.trip_id),
                        status = EXCLUDED.status,
                        source = 'confirmation',
                        daily_pin_hash = EXCLUDED.daily_pin_hash,
+                       subscription_period_id = COALESCE(EXCLUDED.subscription_period_id,
+                                                         reservations.subscription_period_id),
                        confirmed_at = now(),
                        updated_at = now()
          RETURNING *`,
-        [input.userId, input.tripId, input.travelDate, input.direction, input.pinHash ?? null],
+        [
+          input.userId,
+          input.tripId,
+          input.travelDate,
+          input.direction,
+          input.pinHash ?? null,
+          input.subscriptionPeriodId ?? null,
+        ],
       );
       await client.query('COMMIT');
       return toReservation(rows[0]!);

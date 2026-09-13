@@ -491,6 +491,7 @@ export class BoardingService {
         refType: 'reservation',
         refId: reservation.id,
         idempotencyKey: `board:${reservation.id}`,
+        subscriptionPeriodId: reservation.subscriptionPeriodId ?? null,
       });
       deducted = true;
     }
@@ -557,6 +558,7 @@ export class BoardingService {
       refType: 'reservation',
       refId: reservation.id,
       idempotencyKey: `board:${reservation.id}`,
+      subscriptionPeriodId: reservation.subscriptionPeriodId ?? null,
     });
     return true;
   }
@@ -588,6 +590,7 @@ export class BoardingService {
         refType: 'reservation',
         refId: r.id,
         idempotencyKey: `board:${r.id}`,
+        subscriptionPeriodId: r.subscriptionPeriodId ?? null,
       });
       await this.deps.reservations.markNoShow(r.id);
     }

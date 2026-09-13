@@ -39,6 +39,8 @@ export interface Reservation {
   pickupStopId: string | null;
   /** Where the rider alights (#204). */
   dropoffStopId: string | null;
+  /** Billing period that funded this seat. */
+  subscriptionPeriodId?: string | null;
   /** The travel day as `YYYY-MM-DD`. */
   travelDate: string;
   direction: ReservationDirection;
@@ -63,6 +65,7 @@ export interface ReservationResponse {
   travelling: boolean;
   /** Keyed PIN hash to store on confirm (null when declining). */
   pinHash?: string | null;
+  subscriptionPeriodId?: string | null;
 }
 
 /** Seed of a `pending` reservation (the ask-dispatch creates these; #18). */
@@ -74,6 +77,7 @@ export interface PendingReservation {
   /** Copied from the rider's subscription when the row is seeded (#204). */
   pickupStopId?: string | null;
   dropoffStopId?: string | null;
+  subscriptionPeriodId?: string | null;
 }
 
 /** Persistence for daily reservations (Postgres in prod, in-memory in dev/tests). */
@@ -237,6 +241,8 @@ export class InMemoryReservationRepository implements ReservationRepository {
         pinHash: input.pinHash ?? null,
         confirmedAt: now,
         updatedAt: now,
+        subscriptionPeriodId:
+          input.subscriptionPeriodId ?? this.rows[i]!.subscriptionPeriodId ?? null,
       };
       this.rows[i] = updated;
       return updated;
@@ -247,6 +253,7 @@ export class InMemoryReservationRepository implements ReservationRepository {
       tripId: input.tripId ?? null,
       pickupStopId: null,
       dropoffStopId: null,
+      subscriptionPeriodId: input.subscriptionPeriodId ?? null,
       travelDate: input.travelDate,
       direction: input.direction,
       status,
@@ -270,6 +277,7 @@ export class InMemoryReservationRepository implements ReservationRepository {
       tripId: input.tripId ?? null,
       pickupStopId: input.pickupStopId ?? null,
       dropoffStopId: input.dropoffStopId ?? null,
+      subscriptionPeriodId: input.subscriptionPeriodId ?? null,
       travelDate: input.travelDate,
       direction: input.direction,
       status: 'pending',
