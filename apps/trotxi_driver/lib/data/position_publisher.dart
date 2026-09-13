@@ -35,32 +35,42 @@ class PositionPublisher {
   final TrotxiApiClient _client;
   StreamSubscription<Position>? _subscription;
   String? _runId;
+  int _generation = 0;
 
   /// The run currently being published for, or null when idle.
   String? get runId => _runId;
   bool get isPublishing => _subscription != null;
 
-  /// Ask for location and start publishing for a run.
+  /// Start publishing only with existing location access. Permission prompts
+  /// belong to device readiness, not a side effect of opening an active run.
   ///
   /// @param runId - the run to attach fixes to.
   /// @returns null once publishing, or why it could not start.
   Future<PositionBlock?> start(String runId) async {
-    if (!await Geolocator.isLocationServiceEnabled()) {
+    final generation = ++_generation;
+    final previous = _subscription;
+    _subscription = null;
+    _runId = null;
+    await previous?.cancel();
+    if (generation != _generation) return PositionBlock.notRequested;
+    final servicesEnabled = await Geolocator.isLocationServiceEnabled();
+    if (generation != _generation) return PositionBlock.notRequested;
+    if (!servicesEnabled) {
       return PositionBlock.servicesOff;
     }
 
-    var permission = await Geolocator.checkPermission();
-    if (permission == LocationPermission.denied) {
-      permission = await Geolocator.requestPermission();
-    }
+    final permission = await Geolocator.checkPermission();
+    // Leaving the run while a native check is pending must not start a stream
+    // after dispose has already stopped this publisher.
+    if (generation != _generation) return PositionBlock.notRequested;
     if (permission == LocationPermission.deniedForever) {
       return PositionBlock.deniedForever;
     }
-    if (permission == LocationPermission.denied) {
+    if (permission != LocationPermission.always &&
+        permission != LocationPermission.whileInUse) {
       return PositionBlock.denied;
     }
 
-    await stop();
     _runId = runId;
     _subscription =
         Geolocator.getPositionStream(
@@ -82,9 +92,11 @@ class PositionPublisher {
 
   /// Stop publishing.
   Future<void> stop() async {
-    await _subscription?.cancel();
+    _generation++;
+    final subscription = _subscription;
     _subscription = null;
     _runId = null;
+    await subscription?.cancel();
   }
 
   Future<void> _publish(Position position) async {

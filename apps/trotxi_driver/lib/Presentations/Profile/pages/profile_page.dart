@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:trotxi_driver/Presentations/Readiness/pages/device_readiness_page.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:provider/provider.dart';
 import 'package:trotxi_driver/core/config/theme/app_colors.dart';
@@ -145,11 +146,15 @@ class _ProfilePageState extends State<ProfilePage> {
                 ListTile(
                   title: Text(
                     'Schedule',
-                    style: AppTypography.body.copyWith(color: colors.textPrimary),
+                    style: AppTypography.body.copyWith(
+                      color: colors.textPrimary,
+                    ),
                   ),
                   subtitle: Text(
                     'Assigned trips by date',
-                    style: AppTypography.caption.copyWith(color: colors.textSecondary),
+                    style: AppTypography.caption.copyWith(
+                      color: colors.textSecondary,
+                    ),
                   ),
                   trailing: const Icon(Icons.chevron_right),
                   onTap: () => Navigator.of(context).push(
@@ -164,11 +169,15 @@ class _ProfilePageState extends State<ProfilePage> {
                 ListTile(
                   title: Text(
                     'Work & requests',
-                    style: AppTypography.body.copyWith(color: colors.textPrimary),
+                    style: AppTypography.body.copyWith(
+                      color: colors.textPrimary,
+                    ),
                   ),
                   subtitle: Text(
                     'Routes, changes and leave',
-                    style: AppTypography.caption.copyWith(color: colors.textSecondary),
+                    style: AppTypography.caption.copyWith(
+                      color: colors.textSecondary,
+                    ),
                   ),
                   trailing: const Icon(Icons.chevron_right),
                   onTap: () => Navigator.of(context).push(
@@ -187,7 +196,9 @@ class _ProfilePageState extends State<ProfilePage> {
                   ),
                   subtitle: Text(
                     'Report a problem or call operations',
-                    style: AppTypography.caption.copyWith(color: colors.textSecondary),
+                    style: AppTypography.caption.copyWith(
+                      color: colors.textSecondary,
+                    ),
                   ),
                   trailing: const Icon(Icons.chevron_right),
                   onTap: () => Navigator.of(context).push(
@@ -228,8 +239,13 @@ class _ProfilePageState extends State<ProfilePage> {
           ),
           const SizedBox(height: AppSpacing.space12),
           OutlinedButton(
-            onPressed: Geolocator.openAppSettings,
-            child: const Text('Open device settings'),
+            onPressed: () async {
+              await Navigator.of(context).push<void>(
+                MaterialPageRoute(builder: (_) => const DeviceReadinessPage()),
+              );
+              if (mounted) await _readDeviceState();
+            },
+            child: const Text('Check camera & location'),
           ),
           const SizedBox(height: AppSpacing.space32),
 

@@ -6,6 +6,9 @@
          map shows the bus against a stop, and a few hundred metres of error
          puts it on the wrong side of an interchange. -->
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <!-- Android 12+ requests fine and coarse together, allowing the driver to
+         choose approximate access. Permission alone does not prove a GPS fix. -->
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <!-- The camera is required for boarding, but a tablet without one should
          still be able to board by code, so it is not made a hard requirement
          at install time. -->
