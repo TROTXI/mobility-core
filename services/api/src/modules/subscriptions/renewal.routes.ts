@@ -79,6 +79,7 @@ export async function renewalRoutes(
           200: z.object({
             considered: z.number().int(),
             closed: z.number().int(),
+            blocked: z.number().int(),
             riders: z.number().int(),
             ridesConverted: z.number().int(),
             creditPesewas: z.number().int(),

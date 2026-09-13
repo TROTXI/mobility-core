@@ -105,6 +105,11 @@ function chargeSuccessWith(
   return { body, signature: paystackSignature(body, FAKE_SECRET) };
 }
 
+function signedEvent(event: Record<string, unknown>): { body: string; signature: string } {
+  const body = JSON.stringify(event);
+  return { body, signature: paystackSignature(body, FAKE_SECRET) };
+}
+
 describe('PaymentsService.initializeSubscription', () => {
   it('derives the price from the corridor fare rather than a constant', async () => {
     const { service, payments } = await priced();
@@ -444,6 +449,101 @@ describe('PaymentsService reconciliation', () => {
 
     expect(result).toMatchObject({ considered: 1, unresolved: 1, errors: 0 });
     expect((await payments.findByReference(checkout.reference))?.status).toBe('pending');
+  });
+});
+
+describe('PaymentsService refund and dispute webhooks', () => {
+  it('records a partial processed refund without cancelling the purchased period', async () => {
+    const { service, payments, subscriptions, entitlements } = await priced();
+    const checkout = await service.initializeSubscription('u1', 'monthly', ROUTE);
+    const charge = chargeSuccess(checkout.reference);
+    await service.handleWebhook(charge.body, charge.signature);
+    const refund = signedEvent({
+      event: 'refund.processed',
+      data: {
+        status: 'processed',
+        transaction_reference: checkout.reference,
+        refund_reference: 'refund-partial-1',
+        amount: '1000',
+        currency: 'GHS',
+        domain: 'test',
+      },
+    });
+
+    await service.handleWebhook(refund.body, refund.signature);
+
+    expect(await payments.findByReference(checkout.reference)).toMatchObject({
+      status: 'fulfilled',
+      refundedPesewas: 1_000,
+    });
+    expect(await subscriptions.findActiveByUser('u1')).not.toBeNull();
+    expect(await entitlements.remainingRides('u1')).toBe(RIDES);
+  });
+
+  it('reverses unconsumed rides and restores applied Ride Credit after a full cash refund', async () => {
+    const { service, payments, subscriptions, entitlements, credits } = await priced();
+    await credits.record({
+      userId: 'u1',
+      deltaPesewas: 5_000,
+      reason: 'loyalty',
+      idempotencyKey: 'refund-seed',
+    });
+    const checkout = await service.initializeSubscription('u1', 'monthly', ROUTE);
+    const charge = chargeSuccess(checkout.reference, checkout.chargePesewas);
+    await service.handleWebhook(charge.body, charge.signature);
+    const refund = signedEvent({
+      event: 'refund.processed',
+      data: {
+        status: 'processed',
+        transaction_reference: checkout.reference,
+        refund_reference: 'refund-full-1',
+        amount: String(checkout.chargePesewas),
+        currency: 'GHS',
+        domain: 'test',
+      },
+    });
+
+    await service.handleWebhook(refund.body, refund.signature);
+    await service.handleWebhook(refund.body, refund.signature);
+
+    expect(await payments.findByReference(checkout.reference)).toMatchObject({
+      status: 'refunded',
+      refundedPesewas: checkout.chargePesewas,
+    });
+    expect(await subscriptions.findActiveByUser('u1')).toBeNull();
+    expect(await entitlements.remainingRides('u1')).toBe(0);
+    expect(await credits.balancePesewas('u1')).toBe(5_000);
+  });
+
+  it('freezes a disputed payment and does not treat resolution as a refund', async () => {
+    const { service, payments, entitlements } = await priced();
+    const checkout = await service.initializeSubscription('u1', 'monthly', ROUTE);
+    const charge = chargeSuccess(checkout.reference);
+    await service.handleWebhook(charge.body, charge.signature);
+    const disputed = signedEvent({
+      event: 'charge.dispute.create',
+      data: {
+        id: 991,
+        status: 'awaiting-merchant-feedback',
+        refund_amount: checkout.chargePesewas,
+        currency: 'GHS',
+        domain: 'test',
+        transaction: {
+          reference: checkout.reference,
+          amount: checkout.chargePesewas,
+          currency: 'GHS',
+          domain: 'test',
+        },
+      },
+    });
+
+    await service.handleWebhook(disputed.body, disputed.signature);
+
+    expect((await payments.findByReference(checkout.reference))?.status).toBe('disputed');
+    expect(await entitlements.remainingRides('u1')).toBe(RIDES);
+    await expect(service.initializeSubscription('u1', 'monthly', ROUTE)).rejects.toBeInstanceOf(
+      AlreadySubscribedError,
+    );
   });
 });
 

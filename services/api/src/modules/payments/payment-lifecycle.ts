@@ -15,6 +15,9 @@ export class ActiveSubscriptionPaymentError extends Error {}
 /** An old period without an accounting boundary must be reconciled by hand. */
 export class UnscopedSubscriptionPeriodError extends Error {}
 
+/** Period close waits until every funded reservation has a terminal outcome. */
+export class PeriodCloseBlockedError extends Error {}
+
 /** Frozen checkout facts plus the full price that credit may offset. */
 export interface SubscriptionCheckoutInput extends Omit<
   NewPayment,
@@ -39,12 +42,39 @@ export interface SettledCharge {
   paidAt: Date;
 }
 
+export type RefundStatus = 'pending' | 'processing' | 'needs_attention' | 'failed' | 'processed';
+
+/** Signature-verified Paystack refund facts. */
+export interface ProviderRefund {
+  eventKey: string;
+  reference: string;
+  refundReference: string | null;
+  amountPesewas: number;
+  currency: string;
+  providerDomain: 'test' | 'live';
+  status: RefundStatus;
+  payload: unknown;
+}
+
+/** Signature-verified Paystack dispute facts. */
+export interface ProviderDispute {
+  reference: string;
+  providerDisputeId: string;
+  amountPesewas: number;
+  currency: string;
+  providerDomain: 'test' | 'live';
+  status: 'created' | 'reminded' | 'resolved';
+  resolution: string | null;
+  payload: unknown;
+}
+
 export type FulfillmentResult = 'fulfilled' | 'already_fulfilled' | 'not_pending' | 'mismatch';
 
 /** Aggregate accounting result for a due-period sweep. */
 export interface PeriodCloseResult {
   considered: number;
   closed: number;
+  blocked: number;
   riders: number;
   ridesConverted: number;
   creditPesewas: number;
@@ -58,6 +88,10 @@ export interface PaymentLifecycle {
   fulfillSubscriptionCharge(charge: SettledCharge): Promise<FulfillmentResult>;
   /** Atomically release a hold and terminally fail an unresolved payment. */
   failPendingPayment(reference: string, code: string, message: string): Promise<boolean>;
+  /** Record refund progress; reverse unconsumed value only once cash is processed. */
+  recordRefund(refund: ProviderRefund): Promise<boolean>;
+  /** Freeze, remind, or resolve a provider dispute without guessing a cash reversal. */
+  recordDispute(dispute: ProviderDispute): Promise<boolean>;
   /** Atomically convert and close every period due at the supplied instant. */
   closeEndedPeriods(now?: Date): Promise<PeriodCloseResult>;
 }
@@ -69,7 +103,7 @@ interface InMemoryPeriod {
   start: Date;
   end: Date;
   creditPesewasPerRide: number;
-  status: 'open' | 'closed';
+  status: 'open' | 'frozen' | 'closed' | 'reversed';
 }
 
 interface InMemoryPaymentLifecycleDeps {
@@ -90,12 +124,18 @@ export class InMemoryPaymentLifecycle implements PaymentLifecycle {
   private readonly heldCredit = new Map<string, { userId: string; amount: number }>();
   private readonly periods = new Map<string, InMemoryPeriod>();
   private readonly renewableByUser = new Map<string, string>();
+  private readonly disputedUsers = new Set<string>();
+  private readonly refunds = new Map<string, ProviderRefund>();
+  private readonly disputes = new Map<string, ProviderDispute>();
   private readonly tails = new Map<string, Promise<void>>();
 
   constructor(private readonly deps: InMemoryPaymentLifecycleDeps) {}
 
   async createSubscriptionCheckout(input: SubscriptionCheckoutInput): Promise<Payment> {
     return this.withUserLock(input.userId, async () => {
+      if (this.disputedUsers.has(input.userId)) {
+        throw new ActiveSubscriptionPaymentError('A disputed subscription is still unresolved');
+      }
       const now = input.now ?? new Date();
       let renewableSubscriptionId = this.renewableByUser.get(input.userId) ?? null;
       const active = await this.deps.subscriptions.findActiveByUser(input.userId);
@@ -252,11 +292,97 @@ export class InMemoryPaymentLifecycle implements PaymentLifecycle {
     });
   }
 
+  async recordRefund(refund: ProviderRefund): Promise<boolean> {
+    const payment = await this.deps.payments.findByReference(refund.reference);
+    if (!payment || payment.currency.toUpperCase() !== refund.currency.toUpperCase()) return false;
+    if (refund.amountPesewas <= 0 || refund.amountPesewas > payment.amount) return false;
+    const key = refund.refundReference ?? `event:${refund.eventKey}`;
+    const prior = this.refunds.get(key);
+    if (prior?.status === 'processed') return true;
+    this.refunds.set(key, refund);
+    if (refund.status !== 'processed' || !refund.refundReference) return true;
+
+    return this.withUserLock(payment.userId, async () => {
+      const processed = [...this.refunds.values()].filter(
+        (item) =>
+          item.reference === refund.reference &&
+          item.status === 'processed' &&
+          item.refundReference !== null,
+      );
+      const refunded = processed.reduce((sum, item) => sum + item.amountPesewas, 0);
+      if (refunded > payment.amount) throw new Error('Processed refunds exceed the cash payment');
+      await this.deps.payments.updateLifecycle(payment.reference, {
+        refundedPesewas: refunded,
+        ...(refunded === payment.amount ? { status: 'refunded' as const } : {}),
+      });
+      if (refunded !== payment.amount || !payment.subscriptionPeriodId) return true;
+      const period = this.periods.get(payment.subscriptionPeriodId);
+      if (!period || period.status === 'reversed') return true;
+      const remaining = Math.max(
+        0,
+        await this.deps.entitlements.remainingRidesForPeriod(payment.subscriptionPeriodId),
+      );
+      if (remaining > 0) {
+        await this.deps.entitlements.record({
+          userId: payment.userId,
+          deltaRides: -remaining,
+          reason: 'refund',
+          refType: 'payment',
+          refId: payment.reference,
+          idempotencyKey: `refund-rides:${payment.reference}`,
+          subscriptionPeriodId: payment.subscriptionPeriodId,
+        });
+      }
+      if (payment.appliedCreditPesewas > 0) {
+        await this.deps.credits.record({
+          userId: payment.userId,
+          deltaPesewas: payment.appliedCreditPesewas,
+          reason: 'refund',
+          refType: 'payment',
+          refId: payment.reference,
+          idempotencyKey: `refund-credit:${payment.reference}`,
+        });
+      }
+      period.status = 'reversed';
+      if (payment.subscriptionId) {
+        await this.deps.subscriptions.rollPeriod(payment.subscriptionId, { status: 'expired' });
+      }
+      this.disputedUsers.delete(payment.userId);
+      return true;
+    });
+  }
+
+  async recordDispute(dispute: ProviderDispute): Promise<boolean> {
+    const payment = await this.deps.payments.findByReference(dispute.reference);
+    if (!payment || payment.currency.toUpperCase() !== dispute.currency.toUpperCase()) return false;
+    if (dispute.amountPesewas <= 0 || dispute.amountPesewas > payment.amount) return false;
+    const prior = this.disputes.get(dispute.providerDisputeId);
+    const effective = prior?.status === 'resolved' ? prior : dispute;
+    this.disputes.set(dispute.providerDisputeId, effective);
+    if (effective.status === 'resolved' && effective.resolution === 'declined') {
+      this.disputedUsers.delete(payment.userId);
+      const period = payment.subscriptionPeriodId
+        ? this.periods.get(payment.subscriptionPeriodId)
+        : null;
+      if (period?.status === 'frozen') period.status = 'open';
+      await this.deps.payments.updateLifecycle(payment.reference, { status: 'fulfilled' });
+      return true;
+    }
+    this.disputedUsers.add(payment.userId);
+    const period = payment.subscriptionPeriodId
+      ? this.periods.get(payment.subscriptionPeriodId)
+      : null;
+    if (period?.status === 'open') period.status = 'frozen';
+    await this.deps.payments.updateLifecycle(payment.reference, { status: 'disputed' });
+    return true;
+  }
+
   async closeEndedPeriods(now: Date = new Date()): Promise<PeriodCloseResult> {
     const due = await this.deps.subscriptions.findEndedPeriods(now);
     const totals: PeriodCloseResult = {
       considered: due.length,
       closed: 0,
+      blocked: 0,
       riders: 0,
       ridesConverted: 0,
       creditPesewas: 0,
