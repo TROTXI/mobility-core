@@ -404,6 +404,24 @@ describe('PaymentsService.handleWebhook', () => {
 });
 
 describe('PaymentsService reconciliation', () => {
+  it('runs inbox, Verify recovery and period close in dependency order', async () => {
+    const { service, paystack, payments } = await priced();
+    const checkout = await service.initializeSubscription('u1', 'monthly', ROUTE);
+    paystack.setTransaction(checkout.reference, {
+      status: 'success',
+      paidAt: new Date(),
+      channel: 'mobile_money',
+      feesPesewas: 100,
+    });
+
+    const result = await service.runMaintenance(new Date(Date.now() + 2 * 60 * 60 * 1_000));
+
+    expect(result.webhooks).toEqual({ processed: 0, failed: 0 });
+    expect(result.reconciliation).toMatchObject({ considered: 1, fulfilled: 1, errors: 0 });
+    expect(result.periods).toMatchObject({ considered: 0, closed: 0, blocked: 0 });
+    expect((await payments.findByReference(checkout.reference))?.status).toBe('fulfilled');
+  });
+
   it('fulfills a successful payment whose webhook never arrived', async () => {
     const { service, paystack, payments, subscriptions, entitlements } = await priced();
     const checkout = await service.initializeSubscription('u1', 'monthly', ROUTE);
@@ -437,6 +455,25 @@ describe('PaymentsService reconciliation', () => {
     expect(result).toMatchObject({ considered: 1, failed: 1, errors: 0 });
     expect((await payments.findByReference(failed.reference))?.status).toBe('failed');
 
+    const retry = await service.initializeSubscription('u1', 'monthly', ROUTE);
+    expect(retry.appliedCreditPesewas).toBe(5_000);
+  });
+
+  it('fails a stale checkout Paystack never created and releases its credit hold', async () => {
+    const { service, paystack, payments, credits } = await priced();
+    await credits.record({
+      userId: 'u1',
+      deltaPesewas: 5_000,
+      reason: 'loyalty',
+      idempotencyKey: 'missing-provider-credit',
+    });
+    const missing = await service.initializeSubscription('u1', 'monthly', ROUTE);
+    paystack.removeTransaction(missing.reference);
+
+    const result = await service.reconcileUnresolved(new Date(Date.now() + 1_000));
+
+    expect(result).toMatchObject({ considered: 1, failed: 1, errors: 0 });
+    expect((await payments.findByReference(missing.reference))?.status).toBe('failed');
     const retry = await service.initializeSubscription('u1', 'monthly', ROUTE);
     expect(retry.appliedCreditPesewas).toBe(5_000);
   });
@@ -544,6 +581,51 @@ describe('PaymentsService refund and dispute webhooks', () => {
     await expect(service.initializeSubscription('u1', 'monthly', ROUTE)).rejects.toBeInstanceOf(
       AlreadySubscribedError,
     );
+  });
+
+  it('restores a period after an accepted partial dispute refund is processed', async () => {
+    const { service, payments, entitlements } = await priced();
+    const checkout = await service.initializeSubscription('u1', 'monthly', ROUTE);
+    const charge = chargeSuccess(checkout.reference);
+    await service.handleWebhook(charge.body, charge.signature);
+    const resolved = signedEvent({
+      event: 'charge.dispute.resolve',
+      data: {
+        id: 992,
+        status: 'resolved',
+        resolution: 'merchant-accepted',
+        refund_amount: 1_000,
+        currency: 'GHS',
+        domain: 'test',
+        transaction: {
+          reference: checkout.reference,
+          amount: checkout.chargePesewas,
+          currency: 'GHS',
+          domain: 'test',
+        },
+      },
+    });
+    await service.handleWebhook(resolved.body, resolved.signature);
+    expect((await payments.findByReference(checkout.reference))?.status).toBe('disputed');
+
+    const refund = signedEvent({
+      event: 'refund.processed',
+      data: {
+        status: 'processed',
+        transaction_reference: checkout.reference,
+        refund_reference: 'refund-dispute-partial',
+        amount: '1000',
+        currency: 'GHS',
+        domain: 'test',
+      },
+    });
+    await service.handleWebhook(refund.body, refund.signature);
+
+    expect(await payments.findByReference(checkout.reference)).toMatchObject({
+      status: 'fulfilled',
+      refundedPesewas: 1_000,
+    });
+    expect(await entitlements.remainingRides('u1')).toBe(RIDES);
   });
 });
 

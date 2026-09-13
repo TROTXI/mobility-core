@@ -62,3 +62,22 @@ standard/premium/corporate/student taxonomy is not implemented. Standby KYC,
 seat-offer cascade, single-journey payment, automatic renewal mandates,
 corporate billing and payout execution remain deferred. The operator take rate
 is now configurable, but commercial values still require approval.
+
+### Payment lifecycle amendment — 2026-09-12
+
+Each successful payment now owns an immutable `subscription_periods` row. Ride
+allocations, reservations, boarding/no-show debits and period conversion carry
+that period id. Renewal reactivates the same subscription with a new period
+instead of attempting to create a second active row.
+
+Ride Credit is held transactionally at checkout and captured only inside the
+successful fulfilment transaction. Period conversion and expiry are one atomic
+operation, use the sold period's frozen conversion rate, and wait for all funded
+reservations to settle. The two legacy admin triggers delegate to that same
+operation.
+
+Paystack delivery is a durable inbox plus independent Verify reconciliation.
+Refunds change entitlement only at `refund.processed`; disputes freeze the
+purchased period until explicitly declined or followed by an authoritative
+refund. These are accounting state transitions, not best-effort webhook side
+effects.

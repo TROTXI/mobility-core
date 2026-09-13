@@ -16,7 +16,7 @@ changing the original rationale. Current HTTP behaviour lives in
 | [0002](0002-two-path-architecture.md)               | Separate transactional and telemetry paths | Accepted; HTTP position path live, dedicated telemetry path deferred          |
 | [0003](0003-typescript-fastify-api.md)              | TypeScript/Fastify API                     | Accepted; Node 24, Fastify 5 and strict TypeScript live                       |
 | [0004](0004-flutter-mobile.md)                      | Flutter mobile clients                     | Accepted; commuter and driver apps plus shared client/map packages exist      |
-| [0005](0005-postgres-postgis.md)                    | PostgreSQL/PostGIS system of record        | Accepted; schema is at migration 038                                          |
+| [0005](0005-postgres-postgis.md)                    | PostgreSQL/PostGIS system of record        | Accepted; schema is at migration 039                                          |
 | [0006](0006-mqtt-emqx-go-telemetry.md)              | MQTT/EMQX/Go telemetry                     | Accepted architecture, implementation deferred                                |
 | [0007](0007-jwt-auth-guard.md)                      | JWT access tokens and route guards         | Accepted; social and driver session flows now build on it                     |
 | [0008](0008-zod-openapi-contract.md)                | Zod drives validation and OpenAPI          | Accepted; generated Dart client consumes the contract                         |
@@ -28,6 +28,7 @@ changing the original rationale. Current HTTP behaviour lives in
 | [0014](0014-hybrid-subscription-model.md)           | Subscription entitlements and Ride Credits | Accepted; core live, standby deferred                                         |
 | [0015](0015-fare-derived-pricing.md)                | Derive price from corridor fare            | Accepted and implemented; fare bands deferred                                 |
 | [0016](0016-flutter-app-state.md)                   | Provider-scoped ChangeNotifier controllers | Accepted and implemented in driver app; commuter adoption remains incremental |
+| [0017](0017-transactional-payment-lifecycle.md)     | Transactional payments and provider inbox  | Accepted and implemented; paid scheduler awaits approval                      |
 
 ## Current architecture baseline
 

@@ -2,58 +2,62 @@
 
 **Owner:** Godfred Awuku · **Last verified:** 2026-09-12
 
-**Status:** Allocation, deduction, period-end conversion, balance reporting and
-renewal credit netting are live.
+**Status:** Period-scoped allocation, boarding/no-show deduction, atomic
+period-end conversion, balance reporting, checkout holds and renewal capture
+are implemented.
 
 ## Ledgers
 
 The Hybrid Subscription Model uses two append-only ledgers:
 
 - Entitlement ledger in ride counts. Allocation is positive; boarding,
-  no-show and conversion are negative; returns/refunds are positive.
-- Credit ledger in pesewas. Period conversion and compensation are positive;
-  renewal application is negative.
+  no-show, conversion and refund revocation are negative.
+- Ride Credit ledger in pesewas. Period conversion, compensation, loyalty and
+  refund restoration are positive; renewal capture is negative.
 
 Balances are sums of immutable entries. Every write has a unique idempotency
-key; no mutable balance column is authoritative.
+key. New entitlement mutations carry `subscription_period_id`, so one period
+cannot consume or convert another period's rides.
+
+`credit_holds` is deliberately not a balance ledger. Checkout reserves available
+credit there, success captures the exact hold into the ledger, and terminal
+failure releases it. A rider lock prevents concurrent checkouts from promising
+the same credit twice.
 
 ## API
 
-| Endpoint                      | Role                | Behaviour                                                                 |
-| ----------------------------- | ------------------- | ------------------------------------------------------------------------- |
-| `GET /me/rides`               | authenticated rider | Return `remainingRides`, `ridesPerPeriod`, `creditPesewas` and `renewsAt` |
-| `POST /admin/convert-credits` | admin               | Convert unused rides for subscriptions whose period has ended             |
+| Endpoint                                 | Role                | Behaviour                                                     |
+| ---------------------------------------- | ------------------- | ------------------------------------------------------------- |
+| `GET /me/rides`                          | authenticated rider | Current ride and Ride Credit balances plus renewal time       |
+| `POST /admin/close-subscription-periods` | admin               | Canonical atomic conversion and close                         |
+| `POST /admin/convert-credits`            | admin               | Legacy alias to the canonical close in production wiring      |
+| `POST /admin/expire-subscriptions`       | admin               | Legacy alias to the same canonical close in production wiring |
 
 ## Lifecycle
 
-1. A verified Paystack webhook activates a subscription and appends the ride
-   allocation using `alloc:<payment-reference>`.
-2. Boarding or a confirmed no-show appends `-1` ride using
-   `board:<reservation-id>`.
-3. After a billing period ends, conversion appends Ride Credit using a key based
-   on the subscription and period, then retires the remaining rides.
-4. The next checkout snapshots available credit and, after payment succeeds,
-   appends a `renewal_applied` debit.
+1. Fulfilment creates an immutable period and appends
+   `alloc:<payment-reference>` within the same transaction.
+2. Boarding/no-show appends `-1` against the reservation's funding period.
+3. Once the period ended and all its seats are terminal, close computes that
+   period's ledger sum and applies its frozen `creditPesewasPerRide`.
+4. The same transaction grants `close-credit:<period-id>`, retires rides with
+   `close-rides:<period-id>`, closes the period and expires the membership.
+5. Rider-initiated renewal reserves that balance, reuses the subscription, and
+   creates the next immutable period after Paystack success.
 
-Credit conversion writes the credit first and retires rides second. If the job
-stops between them, replaying the same period key converges without losing value.
+This replaces the former two-job expiry/conversion ordering hazard and the
+global rider balance calculation that could convert old rides at a later
+period's rate.
 
-The subscription stores a snapshotted `creditPesewasPerRide`, but the current
-`CreditService` does not read it: app wiring still supplies the legacy default
-(45 pesewas) to the batch converter. Connecting conversion to each
-subscription's snapshot is a known correctness gap before real renewals.
+## Deferred
 
-## Not implemented
-
-- Automatic renewal initiation.
+- Provider-initiated automatic renewal.
 - Standby ride purchases.
 - Operator settlement ledger and payout execution.
-- Per-subscription conversion rate; the stored snapshot is not yet consumed by
-  `CreditService`.
 
 ## Code
 
 - `services/api/src/modules/entitlements/`
-- `services/api/src/modules/payments/payments.service.ts`
-- `services/api/src/modules/subscriptions/`
-- migrations `011`, `012`, `020`, `027`, `029` and `030`
+- `services/api/src/modules/payments/payment-lifecycle.ts`
+- `services/api/src/modules/payments/payment-lifecycle.pg.ts`
+- migration `039`

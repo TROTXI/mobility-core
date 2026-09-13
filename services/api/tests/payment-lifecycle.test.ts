@@ -153,4 +153,20 @@ describe('atomic subscription payment lifecycle', () => {
       ),
     ).rejects.toBeInstanceOf(ActiveSubscriptionPaymentError);
   });
+
+  it('bounds each period-close maintenance batch', async () => {
+    const { lifecycle } = make();
+    const paidAt = new Date('2026-01-01T00:00:00.000Z');
+    for (const userId of ['rider-1', 'rider-2']) {
+      const reference = `ref-${userId}`;
+      await lifecycle.createSubscriptionCheckout(checkout(reference, { userId, now: paidAt }));
+      await lifecycle.fulfillSubscriptionCharge(settled(reference, paidAt));
+    }
+
+    const first = await lifecycle.closeEndedPeriods(new Date('2026-02-02T00:00:00.000Z'), 1);
+    const second = await lifecycle.closeEndedPeriods(new Date('2026-02-02T00:00:00.000Z'), 1);
+
+    expect(first).toMatchObject({ considered: 1, closed: 1 });
+    expect(second).toMatchObject({ considered: 1, closed: 1 });
+  });
 });

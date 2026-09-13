@@ -528,6 +528,41 @@ export class PgPaymentLifecycle implements PaymentLifecycle {
             [period.subscription_id, period.id],
           );
         }
+      } else if (refund.status === 'processed' && payment.subscriptionPeriodId) {
+        const { rows: disputeTotals } = await client.query<{
+          unresolved: string;
+          accepted_pesewas: string;
+        }>(
+          `SELECT
+             COUNT(*) FILTER (
+               WHERE status <> 'resolved' OR resolution IS NULL
+             )::text AS unresolved,
+             COALESCE(SUM(amount_pesewas) FILTER (
+               WHERE status = 'resolved' AND resolution = 'merchant-accepted'
+             ), 0)::text AS accepted_pesewas
+           FROM payment_disputes
+          WHERE payment_id = $1`,
+          [payment.id],
+        );
+        const disputes = disputeTotals[0]!;
+        const accepted = Number(disputes.accepted_pesewas);
+        if (Number(disputes.unresolved) === 0 && accepted > 0 && refunded >= accepted) {
+          await client.query(
+            `UPDATE payments SET status = 'fulfilled', updated_at = now()
+              WHERE id = $1 AND status = 'disputed'`,
+            [payment.id],
+          );
+          await client.query(
+            `UPDATE subscription_periods SET status = 'open'
+              WHERE id = $1 AND status = 'frozen'`,
+            [payment.subscriptionPeriodId],
+          );
+          await client.query(
+            `UPDATE subscriptions SET status = 'active'
+              WHERE id = $1 AND current_period_id = $2 AND status = 'suspended'`,
+            [payment.subscriptionId, payment.subscriptionPeriodId],
+          );
+        }
       }
       await client.query('COMMIT');
       return true;
@@ -653,7 +688,8 @@ export class PgPaymentLifecycle implements PaymentLifecycle {
     }
   }
 
-  async closeEndedPeriods(now: Date = new Date()): Promise<PeriodCloseResult> {
+  async closeEndedPeriods(now: Date = new Date(), limit = 100): Promise<PeriodCloseResult> {
+    const boundedLimit = Math.max(0, Math.floor(limit));
     const { rows: due } = await this.pool.query<{
       period_id: string;
       user_id: string;
@@ -662,8 +698,13 @@ export class PgPaymentLifecycle implements PaymentLifecycle {
          FROM subscription_periods p
          JOIN subscriptions s ON s.id = p.subscription_id
         WHERE p.status = 'open' AND p.period_end <= $1 AND s.status = 'active'
-        ORDER BY p.period_end`,
-      [now],
+        ORDER BY EXISTS (
+          SELECT 1 FROM reservations r
+           WHERE r.subscription_period_id = p.id
+             AND r.status IN ('pending', 'reserved')
+        ), p.period_end
+        LIMIT $2`,
+      [now, boundedLimit],
     );
     const totals: PeriodCloseResult = {
       considered: due.length,

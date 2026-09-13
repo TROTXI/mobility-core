@@ -25,7 +25,7 @@ import {
   type Payment,
   type PaymentRepository,
 } from './payment.repository';
-import type { PaystackClient } from './paystack.client';
+import { PaystackTransactionNotFoundError, type PaystackClient } from './paystack.client';
 import {
   ActiveSubscriptionPaymentError,
   InMemoryPaymentLifecycle,
@@ -310,10 +310,11 @@ export class PaymentsService {
    * Close every due period through the same atomic accounting boundary.
    *
    * @param now - instant used to select ended periods.
+   * @param limit - maximum periods to inspect in one request.
    * @returns aggregate conversion and closure totals.
    */
-  async closeEndedPeriods(now: Date = new Date()): Promise<PeriodCloseResult> {
-    return this.lifecycle.closeEndedPeriods(now);
+  async closeEndedPeriods(now: Date = new Date(), limit = 100): Promise<PeriodCloseResult> {
+    return this.lifecycle.closeEndedPeriods(now, limit);
   }
 
   /**
@@ -620,11 +621,52 @@ export class PaymentsService {
         } else {
           result.unresolved++;
         }
-      } catch {
-        result.errors++;
+      } catch (error) {
+        if (error instanceof PaystackTransactionNotFoundError) {
+          if (
+            await this.lifecycle.failPendingPayment(
+              payment.reference,
+              'provider_not_found',
+              'Paystack Verify found no transaction for this stale reference',
+            )
+          ) {
+            result.failed++;
+          }
+        } else {
+          result.errors++;
+        }
       }
     }
     return result;
+  }
+
+  /**
+   * One idempotent recovery pass for the scheduled payment worker.
+   *
+   * Inbox work runs first so fresh provider facts win; Verify then recovers
+   * missing callbacks; period close runs last and refuses unsettled seats.
+   *
+   * @param now - clock used for reconciliation cutoff and due-period selection.
+   * @returns outcome counters for each independently idempotent maintenance stage.
+   */
+  async runMaintenance(now: Date = new Date()): Promise<{
+    webhooks: { processed: number; failed: number };
+    reconciliation: {
+      considered: number;
+      fulfilled: number;
+      failed: number;
+      unresolved: number;
+      errors: number;
+    };
+    periods: PeriodCloseResult;
+  }> {
+    const webhooks = await this.processWebhookInbox(100);
+    const reconciliation = await this.reconcileUnresolved(
+      new Date(now.getTime() - 60 * 60 * 1_000),
+      100,
+    );
+    const periods = await this.closeEndedPeriods(now, 100);
+    return { webhooks, reconciliation, periods };
   }
 
   private async processWebhookEvent(event: PaystackWebhookEvent, eventKey: string): Promise<void> {

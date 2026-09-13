@@ -92,8 +92,8 @@ export interface PaymentLifecycle {
   recordRefund(refund: ProviderRefund): Promise<boolean>;
   /** Freeze, remind, or resolve a provider dispute without guessing a cash reversal. */
   recordDispute(dispute: ProviderDispute): Promise<boolean>;
-  /** Atomically convert and close every period due at the supplied instant. */
-  closeEndedPeriods(now?: Date): Promise<PeriodCloseResult>;
+  /** Atomically convert and close a bounded batch of periods due at the supplied instant. */
+  closeEndedPeriods(now?: Date, limit?: number): Promise<PeriodCloseResult>;
 }
 
 interface InMemoryPeriod {
@@ -315,7 +315,28 @@ export class InMemoryPaymentLifecycle implements PaymentLifecycle {
         refundedPesewas: refunded,
         ...(refunded === payment.amount ? { status: 'refunded' as const } : {}),
       });
-      if (refunded !== payment.amount || !payment.subscriptionPeriodId) return true;
+      if (refunded !== payment.amount) {
+        const disputes = [...this.disputes.values()].filter(
+          (item) => item.reference === payment.reference,
+        );
+        const accepted = disputes
+          .filter((item) => item.status === 'resolved' && item.resolution === 'merchant-accepted')
+          .reduce((sum, item) => sum + item.amountPesewas, 0);
+        if (
+          accepted > 0 &&
+          refunded >= accepted &&
+          disputes.every((item) => item.status === 'resolved' && item.resolution !== null)
+        ) {
+          this.disputedUsers.delete(payment.userId);
+          const period = payment.subscriptionPeriodId
+            ? this.periods.get(payment.subscriptionPeriodId)
+            : null;
+          if (period?.status === 'frozen') period.status = 'open';
+          await this.deps.payments.updateLifecycle(payment.reference, { status: 'fulfilled' });
+        }
+        return true;
+      }
+      if (!payment.subscriptionPeriodId) return true;
       const period = this.periods.get(payment.subscriptionPeriodId);
       if (!period || period.status === 'reversed') return true;
       const remaining = Math.max(
@@ -377,8 +398,9 @@ export class InMemoryPaymentLifecycle implements PaymentLifecycle {
     return true;
   }
 
-  async closeEndedPeriods(now: Date = new Date()): Promise<PeriodCloseResult> {
-    const due = await this.deps.subscriptions.findEndedPeriods(now);
+  async closeEndedPeriods(now: Date = new Date(), limit = 100): Promise<PeriodCloseResult> {
+    const boundedLimit = Math.max(0, Math.floor(limit));
+    const due = (await this.deps.subscriptions.findEndedPeriods(now)).slice(0, boundedLimit);
     const totals: PeriodCloseResult = {
       considered: due.length,
       closed: 0,
