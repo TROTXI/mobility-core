@@ -46,7 +46,8 @@ resolution restores service; an accepted dispute waits for the processed refund
 notification and resumes service after a processed partial settlement.
 
 Run recovery in this order: inbox, Verify, period close. The operation is
-idempotent and exposed as one admin endpoint and one compiled cron entrypoint.
+idempotent, caps each stage at 100 records per invocation, and is exposed as one
+admin endpoint and one compiled cron entrypoint.
 
 ## Consequences
 

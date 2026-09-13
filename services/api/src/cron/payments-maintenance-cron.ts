@@ -24,6 +24,7 @@ async function main(): Promise<void> {
   const response = await fetch(url, {
     method: 'POST',
     headers: { authorization: `Bearer ${token}` },
+    signal: AbortSignal.timeout(30_000),
   });
   const body = await response.text();
   if (!response.ok) {

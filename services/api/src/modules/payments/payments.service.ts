@@ -310,10 +310,11 @@ export class PaymentsService {
    * Close every due period through the same atomic accounting boundary.
    *
    * @param now - instant used to select ended periods.
+   * @param limit - maximum periods to inspect in one request.
    * @returns aggregate conversion and closure totals.
    */
-  async closeEndedPeriods(now: Date = new Date()): Promise<PeriodCloseResult> {
-    return this.lifecycle.closeEndedPeriods(now);
+  async closeEndedPeriods(now: Date = new Date(), limit = 100): Promise<PeriodCloseResult> {
+    return this.lifecycle.closeEndedPeriods(now, limit);
   }
 
   /**
@@ -664,7 +665,7 @@ export class PaymentsService {
       new Date(now.getTime() - 60 * 60 * 1_000),
       100,
     );
-    const periods = await this.closeEndedPeriods(now);
+    const periods = await this.closeEndedPeriods(now, 100);
     return { webhooks, reconciliation, periods };
   }
 

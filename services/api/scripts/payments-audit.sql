@@ -7,7 +7,43 @@ FROM payments
 GROUP BY status
 ORDER BY status;
 
-\echo '== 1. Settled subscription payments without exactly one allocation =='
+\echo '== 1a. Legacy duplicate-checkout or broken-renewal candidates =='
+-- Before immutable period links, two settled references for one rider could
+-- each allocate rides while only one subscription snapshot existed. Restrict
+-- this detector to unscoped historical rows: one subscription row is reused by
+-- valid renewals now, so comparing all-time payment and subscription counts
+-- would create a false positive after every legitimate renewal.
+WITH legacy_settlement AS (
+  SELECT p.user_id,
+         count(DISTINCT p.reference) AS settled_payments,
+         count(e.id) FILTER (WHERE e.id IS NOT NULL) AS allocations,
+         COALESCE(sum(e.delta_rides), 0) AS rides_allocated
+  FROM payments p
+  LEFT JOIN entitlement_ledger e
+    ON e.ref_type = 'payment'
+   AND e.ref_id = p.reference
+   AND e.reason = 'allocation'
+  WHERE p.purpose = 'subscription'
+    AND p.status IN ('paid', 'fulfilled')
+    AND p.subscription_period_id IS NULL
+  GROUP BY p.user_id
+), subscription_snapshot AS (
+  SELECT user_id, count(*) AS subscription_rows,
+         COALESCE(sum(rides_granted), 0) AS rides_in_snapshots
+  FROM subscriptions
+  GROUP BY user_id
+)
+SELECT l.user_id, l.settled_payments,
+       COALESCE(s.subscription_rows, 0) AS subscription_rows,
+       l.allocations, l.rides_allocated,
+       COALESCE(s.rides_in_snapshots, 0) AS rides_in_snapshots
+FROM legacy_settlement l
+LEFT JOIN subscription_snapshot s ON s.user_id = l.user_id
+WHERE l.settled_payments > 1
+   OR l.rides_allocated > COALESCE(s.rides_in_snapshots, 0)
+ORDER BY l.settled_payments DESC, l.user_id;
+
+\echo '== 1b. Settled subscription references without exactly one allocation =='
 SELECT p.reference, p.user_id, p.status, count(e.id) AS allocations,
        COALESCE(sum(e.delta_rides), 0) AS rides_allocated
 FROM payments p
@@ -52,7 +88,7 @@ SELECT p.reference, p.user_id, p.subscription_id, p.subscription_period_id
 FROM payments p
 LEFT JOIN subscription_periods sp ON sp.id = p.subscription_period_id
 WHERE p.purpose = 'subscription'
-  AND p.status IN ('fulfilled', 'refunded', 'disputed')
+  AND p.status IN ('paid', 'fulfilled', 'refunded', 'disputed')
   AND (p.subscription_id IS NULL OR p.subscription_period_id IS NULL OR sp.id IS NULL);
 
 \echo '== 5. Closed periods whose conversion does not match the frozen snapshot =='

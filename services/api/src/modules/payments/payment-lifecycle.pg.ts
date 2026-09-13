@@ -688,7 +688,8 @@ export class PgPaymentLifecycle implements PaymentLifecycle {
     }
   }
 
-  async closeEndedPeriods(now: Date = new Date()): Promise<PeriodCloseResult> {
+  async closeEndedPeriods(now: Date = new Date(), limit = 100): Promise<PeriodCloseResult> {
+    const boundedLimit = Math.max(0, Math.floor(limit));
     const { rows: due } = await this.pool.query<{
       period_id: string;
       user_id: string;
@@ -697,8 +698,13 @@ export class PgPaymentLifecycle implements PaymentLifecycle {
          FROM subscription_periods p
          JOIN subscriptions s ON s.id = p.subscription_id
         WHERE p.status = 'open' AND p.period_end <= $1 AND s.status = 'active'
-        ORDER BY p.period_end`,
-      [now],
+        ORDER BY EXISTS (
+          SELECT 1 FROM reservations r
+           WHERE r.subscription_period_id = p.id
+             AND r.status IN ('pending', 'reserved')
+        ), p.period_end
+        LIMIT $2`,
+      [now, boundedLimit],
     );
     const totals: PeriodCloseResult = {
       considered: due.length,

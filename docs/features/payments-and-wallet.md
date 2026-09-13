@@ -102,9 +102,10 @@ before boarding/no-show settlement would let a later ride debit occur after its
 value had already become credit.
 
 The compiled `payments-maintenance-cron` runs inbox recovery, Verify and close
-hourly. Its Render declaration is ready but commented because Render applies a
-minimum monthly charge per cron service. Until approved, operators call the
-maintenance endpoint manually.
+hourly. Each stage processes at most 100 records per invocation, keeping the
+admin request bounded and safely resumable. Its Render declaration is ready but
+commented because Render applies a minimum monthly charge per cron service.
+Until approved, operators call the maintenance endpoint manually.
 
 ## Deferred
 

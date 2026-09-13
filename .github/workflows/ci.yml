@@ -141,6 +141,9 @@ jobs:
       - run: pnpm --filter @trotxi/api run migrate
       # Idempotency: a second run must be a clean no-op.
       - run: pnpm --filter @trotxi/api run migrate
+      # The payment unit of work relies on real row/advisory locks. These races
+      # cannot be proven by the single-process in-memory adapter.
+      - run: pnpm --filter @trotxi/api exec vitest run tests/payment-lifecycle.pg.test.ts
 
   e2e:
     name: E2E (Playwright)

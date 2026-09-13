@@ -92,8 +92,8 @@ export interface PaymentLifecycle {
   recordRefund(refund: ProviderRefund): Promise<boolean>;
   /** Freeze, remind, or resolve a provider dispute without guessing a cash reversal. */
   recordDispute(dispute: ProviderDispute): Promise<boolean>;
-  /** Atomically convert and close every period due at the supplied instant. */
-  closeEndedPeriods(now?: Date): Promise<PeriodCloseResult>;
+  /** Atomically convert and close a bounded batch of periods due at the supplied instant. */
+  closeEndedPeriods(now?: Date, limit?: number): Promise<PeriodCloseResult>;
 }
 
 interface InMemoryPeriod {
@@ -398,8 +398,9 @@ export class InMemoryPaymentLifecycle implements PaymentLifecycle {
     return true;
   }
 
-  async closeEndedPeriods(now: Date = new Date()): Promise<PeriodCloseResult> {
-    const due = await this.deps.subscriptions.findEndedPeriods(now);
+  async closeEndedPeriods(now: Date = new Date(), limit = 100): Promise<PeriodCloseResult> {
+    const boundedLimit = Math.max(0, Math.floor(limit));
+    const due = (await this.deps.subscriptions.findEndedPeriods(now)).slice(0, boundedLimit);
     const totals: PeriodCloseResult = {
       considered: due.length,
       closed: 0,
