@@ -180,7 +180,7 @@ function spanDays(from: string, to: string): number {
  */
 export const arriveBodySchema = z.object({
   /** The `seq` of the stop reached, as returned by `GET /routes/:id`. */
-  seq: z.number().int().min(1),
+  seq: z.number().int().min(0),
 });
 
 export const tripListResponseSchema = z.object({
