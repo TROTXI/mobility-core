@@ -130,15 +130,6 @@ CREATE INDEX IF NOT EXISTS idx_entitlement_ledger_period
   ON entitlement_ledger (subscription_period_id)
   WHERE subscription_period_id IS NOT NULL;
 
--- Reservations keep the period that funded the seat. A boarding/no-show can be
--- processed after renewal, and must still debit the period in which it occurred.
-ALTER TABLE reservations
-  ADD COLUMN IF NOT EXISTS subscription_period_id uuid
-    REFERENCES subscription_periods (id) ON DELETE SET NULL;
-CREATE INDEX IF NOT EXISTS idx_reservations_subscription_period
-  ON reservations (subscription_period_id)
-  WHERE subscription_period_id IS NOT NULL;
-
 -- Credit is reserved at checkout and captured only on successful fulfilment.
 -- Active holds reduce available balance but do not mutate the append-only
 -- ledger, so abandoning or failing a checkout cannot burn rider value.
