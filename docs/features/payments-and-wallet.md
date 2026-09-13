@@ -60,6 +60,9 @@ claim rows with `FOR UPDATE SKIP LOCKED`.
 Paystack references use only provider-supported characters. HTTP calls have
 timeouts and initialization verifies Paystack echoed the reference. Verify is
 the recovery path when a success webhook does not arrive.
+For a stale checkout that Verify cannot find, reconciliation marks the payment
+failed and releases its Ride Credit hold; transient provider/network failures
+remain retryable errors.
 
 The live adapter contract has an opt-in sandbox test that rejects live keys:
 

@@ -57,6 +57,9 @@ export interface PaystackClient {
   verifyWebhookSignature(rawBody: string, signature: string | undefined): boolean;
 }
 
+/** Verify could not find the reference in Paystack's environment. */
+export class PaystackTransactionNotFoundError extends Error {}
+
 /** Paystack accepts only alphanumerics plus `-`, `.`, and `=` in references. */
 export const PAYSTACK_REFERENCE_PATTERN = /^[A-Za-z0-9.=-]+$/;
 
@@ -143,8 +146,21 @@ export class FakePaystackClient implements PaystackClient {
 
   async verifyTransaction(reference: string): Promise<PaystackTransaction> {
     const transaction = this.transactions.get(reference);
-    if (!transaction) throw new Error(`Fake Paystack transaction ${reference} not found`);
+    if (!transaction) {
+      throw new PaystackTransactionNotFoundError(
+        `Fake Paystack transaction ${reference} not found`,
+      );
+    }
     return { ...transaction };
+  }
+
+  /**
+   * Simulate an initialization that never reached Paystack.
+   *
+   * @param reference - initialized fake reference to remove.
+   */
+  removeTransaction(reference: string): void {
+    this.transactions.delete(reference);
   }
 
   /**

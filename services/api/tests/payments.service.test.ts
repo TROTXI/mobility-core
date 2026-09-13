@@ -459,6 +459,25 @@ describe('PaymentsService reconciliation', () => {
     expect(retry.appliedCreditPesewas).toBe(5_000);
   });
 
+  it('fails a stale checkout Paystack never created and releases its credit hold', async () => {
+    const { service, paystack, payments, credits } = await priced();
+    await credits.record({
+      userId: 'u1',
+      deltaPesewas: 5_000,
+      reason: 'loyalty',
+      idempotencyKey: 'missing-provider-credit',
+    });
+    const missing = await service.initializeSubscription('u1', 'monthly', ROUTE);
+    paystack.removeTransaction(missing.reference);
+
+    const result = await service.reconcileUnresolved(new Date(Date.now() + 1_000));
+
+    expect(result).toMatchObject({ considered: 1, failed: 1, errors: 0 });
+    expect((await payments.findByReference(missing.reference))?.status).toBe('failed');
+    const retry = await service.initializeSubscription('u1', 'monthly', ROUTE);
+    expect(retry.appliedCreditPesewas).toBe(5_000);
+  });
+
   it('leaves an ongoing provider transaction unresolved', async () => {
     const { service, payments } = await priced();
     const checkout = await service.initializeSubscription('u1', 'monthly', ROUTE);

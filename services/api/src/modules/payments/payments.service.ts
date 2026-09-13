@@ -25,7 +25,7 @@ import {
   type Payment,
   type PaymentRepository,
 } from './payment.repository';
-import type { PaystackClient } from './paystack.client';
+import { PaystackTransactionNotFoundError, type PaystackClient } from './paystack.client';
 import {
   ActiveSubscriptionPaymentError,
   InMemoryPaymentLifecycle,
@@ -620,8 +620,20 @@ export class PaymentsService {
         } else {
           result.unresolved++;
         }
-      } catch {
-        result.errors++;
+      } catch (error) {
+        if (error instanceof PaystackTransactionNotFoundError) {
+          if (
+            await this.lifecycle.failPendingPayment(
+              payment.reference,
+              'provider_not_found',
+              'Paystack Verify found no transaction for this stale reference',
+            )
+          ) {
+            result.failed++;
+          }
+        } else {
+          result.errors++;
+        }
       }
     }
     return result;

@@ -8,6 +8,7 @@ import type {
   PaystackTransaction,
 } from './paystack.client';
 import { assertValidPaystackInit, verifySignature } from './paystack.client';
+import { PaystackTransactionNotFoundError } from './paystack.client';
 
 const PAYSTACK_API = 'https://api.paystack.co';
 
@@ -68,6 +69,9 @@ export class PaystackHttpClient implements PaystackClient {
       headers: { Authorization: `Bearer ${this.secretKey}` },
       signal: AbortSignal.timeout(10_000),
     });
+    if (res.status === 404) {
+      throw new PaystackTransactionNotFoundError(`Paystack has no transaction ${reference}`);
+    }
     if (!res.ok) throw new Error(`Paystack verify failed: ${res.status}`);
     const json = (await res.json()) as VerifyResponse;
     const data = json.data;
