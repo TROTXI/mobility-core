@@ -61,6 +61,13 @@ Paystack references use only provider-supported characters. HTTP calls have
 timeouts and initialization verifies Paystack echoed the reference. Verify is
 the recovery path when a success webhook does not arrive.
 
+The live adapter contract has an opt-in sandbox test that rejects live keys:
+
+```bash
+RUN_PAYSTACK_SANDBOX=1 PAYSTACK_SECRET_KEY=sk_test_... \
+  pnpm --filter @trotxi/api exec vitest run tests/paystack.sandbox.test.ts
+```
+
 ## Refunds and disputes
 
 Refund status notifications are recorded, but rider value changes only after
