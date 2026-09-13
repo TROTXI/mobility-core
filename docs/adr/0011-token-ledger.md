@@ -84,4 +84,4 @@ of this ADR are superseded — subscriptions now carry a **ride entitlement**, a
 unused value becomes **Ride Credits** against the next renewal; there is no
 prepaid wallet. The **append-only ledger pattern this ADR established stands**
 and is reused twice (entitlement ledger in ride counts; credit ledger in
-pesewas). `token_ledger`/top-ups are legacy pending retirement (E7).
+pesewas). `token_ledger` and the top-up endpoints were retired by migration 021.

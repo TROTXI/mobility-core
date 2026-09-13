@@ -42,12 +42,23 @@ derived-balance pattern as ADR-0011.
   (plus PIN + manifest/photo); FCM device tokens (#84) power the confirmation
   notifications; Paystack module extends (variable renewals, `standby_fare`);
   pesewas storage and idempotency discipline are unchanged.
-- **To retire (E7):** `POST /payments/topup` and the wallet balance semantics of
-  `GET /me/balance` — after entitlements land. Staging-only data; no migration
-  of real funds needed.
-- **Build phases** E1–E7 and the data-model sketch live in
-  `strategy/docs/hybrid-subscription-model.md`; critical path is
-  trips/capacity (#18) → daily confirmation → boarding v2.
-- **Still open (product):** operator/fleet-partner revenue share %, tier
-  pricing, per-ride credit value, corporate billing, standby KYC scope — none
-  block E1–E4.
+- **Retired (E7 complete):** `POST /payments/topup`, `GET /me/balance` and the
+  `token_ledger` table no longer exist.
+- **Core phases shipped:** ride/credit ledgers, daily confirmation, capacity,
+  boarding, credit conversion, fare-derived pricing and credit-netted checkout.
+- **Still open:** approved commercial values, tier taxonomy, corporate billing,
+  standby KYC/offer flow, recurring mandates and payout execution.
+
+## Current implementation — 2026-09-12
+
+The core model is live: effective-dated corridor fares, ops-editable plan
+levers, checkout snapshots, billing periods, ride allocation, capacity-aware
+confirmation, QR/code/photo boarding, no-show deduction, period-end conversion
+and credit-netted renewal checkout. Pickup/drop-off stops are snapshotted onto
+payments, subscriptions and reservations.
+
+The current plan keys remain `monthly` and `annual`; the proposed
+standard/premium/corporate/student taxonomy is not implemented. Standby KYC,
+seat-offer cascade, single-journey payment, automatic renewal mandates,
+corporate billing and payout execution remain deferred. The operator take rate
+is now configurable, but commercial values still require approval.

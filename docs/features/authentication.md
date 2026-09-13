@@ -1,379 +1,93 @@
-# Authentication
-
-**Owner:** Godfred Awuku · **Last updated:** 2026-06-28
-
-**Status:** ✅ live (slices 1 + 2). Apple sign-in and OTP fallback are deferred.
-
-How Trotxi proves _who_ is calling and decides _what_ they may do. It has two
-layers:
-
-1. **Access tokens + a route guard** — short-lived JWTs verified statelessly on
-   every request (slice 1).
-2. **Sign-in / refresh / logout** — social sign-in (Google) that issues those
-   tokens, plus rotating refresh tokens for long-lived sessions (slice 2,
-   orchestrated by `AuthService`).
-
-Design rationale: [ADR-0007](../adr/0007-jwt-auth-guard.md); deep design in
-`strategy/security.md §3–4`.
-
----
-
-## Concepts
-
-- **Access token** — a signed JWT the client sends on every request. Short-lived
-  (15 min) and **stateless**: the server verifies the signature, no DB hit.
-- **Refresh token** — a long-lived, opaque random token used only to get a new
-  access token. Stored **hashed** in `sessions`, **rotated** on each use, and
-  **revocable** (logout). The raw token is shown to the client exactly once.
-- **Principal** — `request.user = { id, role }`, set by the guard after a valid
-  access token.
-- **RBAC** — authorization is by the `role` claim (`commuter` | `driver` |
-  `admin`). Ownership/relationship checks (e.g. "is this _your_ trip?") are done
-  **per-route**, not by the guard.
-- **Provider identity** — a `(provider, providerId)` pair (`auth_identity`) links
-  a Google account to one Trotxi user. A returning user maps to the same account.
-
----
-
-## Part 1 — Access tokens & the route guard
-
-### Token format
-
-Signed JWT, **HS256**. Claims:
-
-| Claim         | Meaning                                 |
-| ------------- | --------------------------------------- |
-| `sub`         | the user id                             |
-| `role`        | `commuter` \| `driver` \| `admin`       |
-| `iss` / `aud` | `trotxi` / `trotxi-api` (verified)      |
-| `iat` / `exp` | issued-at / expiry (default **15 min**) |
-
-The client sends it as `Authorization: Bearer <token>`. Verification also
-**validates the decoded payload** (zod) — a structurally valid token with an
-unknown role or missing subject is rejected.
-
-### The guard (decorators on the Fastify instance)
-
-| Decorator                   | Effect                                                                                                         |
-| --------------------------- | -------------------------------------------------------------------------------------------------------------- |
-| `app.authenticate`          | preHandler — **401** if the bearer token is missing/malformed/expired/invalid; on success sets `request.user`. |
-| `app.requireRole(...roles)` | preHandler factory — **403** if `request.user.role` isn't in `roles`. Compose **after** `authenticate`.        |
-| `app.jwt`                   | the token service (`signAccessToken` / `verifyAccessToken`) — used by the sign-in routes.                      |
-
-### Protecting a route
-
-```ts
-// must be logged in
-app.get('/account', { preHandler: app.authenticate }, async (req) => getAccount(req.user!.id));
-
-// must be an admin
-app.post('/admin/routes', { preHandler: [app.authenticate, app.requireRole('admin')] }, handler);
-
-// per-route ownership (the guard does NOT do this for you)
-app.get('/trips/:id', { preHandler: app.authenticate }, async (req, reply) => {
-  const trip = await trips.findById(req.params.id);
-  if (trip?.driverId !== req.user!.id) return reply.code(403).send();
-  return trip;
-});
-```
-
-`GET /me` is the worked example in `auth.routes.ts`.
-
-### Configuration (Part 1)
-
-| Env var                       | Default                 | Notes                                                                                                     |
-| ----------------------------- | ----------------------- | --------------------------------------------------------------------------------------------------------- |
-| `JWT_SECRET`                  | dev-only fallback       | **Required in production** (min 32 chars); the API refuses to boot without it. `openssl rand -base64 48`. |
-| `JWT_ACCESS_TTL`              | `15m`                   | access-token lifetime                                                                                     |
-| `JWT_ISSUER` / `JWT_AUDIENCE` | `trotxi` / `trotxi-api` |                                                                                                           |
-
----
-
-## Part 2 — Sign-in, refresh & logout (`AuthService`)
-
-`AuthService` is the first service-layer service: routes are thin, it owns the
-orchestration (verify → find-or-create user → session → tokens).
-
-### Flow
-
-```
-client (app)                         API
-  │  Google ID token                  │
-  ├──POST /auth/google───────────────▶│ verify ID token (Google JWKS, aud)
-  │                                    │ find-or-create user + auth_identity
-  │                                    │ create session (refresh token, hashed)
-  │                                    │ sign access token
-  │◀──{ user, accessToken, refreshToken }
-  │                                    │
-  │  ...15 min later, access expires   │
-  ├──POST /auth/refresh───────────────▶│ look up session by hash → rotate
-  │◀──{ accessToken, refreshToken }    │   (old refresh token is now dead)
-  │                                    │
-  ├──POST /auth/logout────────────────▶│ revoke the session
-  │◀──204                              │
-```
-
-### API
-
-#### `POST /auth/google`
-
-Sign in (or sign up on first use) with a Google ID token.
-
-- **Auth:** none. **Rate limit:** 10/min per IP.
-- **Body:** `{ "idToken": "<google ID token>" }`
-- **200:** `{ "user": { id, displayName, phone, avatarUrl, role, createdAt }, "accessToken": "...", "refreshToken": "..." }`
-- **401** invalid token · **429** rate-limited · **503** sign-in not configured
-
-#### `POST /auth/apple`
-
-Sign in (or sign up on first use) with an Apple ID token. Same shape as
-`/auth/google`, because it is the same flow with a different verifier.
-
-- **Auth:** none. **Rate limit:** 10/min per IP.
-- **Body:** `{ "idToken": "<apple ID token>", "fullName?": "Ama Serwaa", "nonce?": "<raw nonce>", "authorizationCode?": "<one-time code>" }`
-- **200:** identical to `/auth/google`
-- **401** invalid token · **429** rate-limited · **503** Apple sign-in not configured
-
-`fullName` matters more than it looks. Apple returns the user's name **once**, on
-the first authorization only, and it is not in the ID token at all. If the client
-does not send it on that first call it is gone permanently, and the rider shows up
-as "New User" on every driver manifest from then on. It is client-supplied rather
-than a signed claim, so the server only uses it when creating the account. It can
-never rename an existing user.
-
-`nonce` is the raw value the client hashed into the authorization request. If the
-ID token carries a `nonce` claim, the request **must** send the value it came
-from or sign-in is refused. That is deliberate: comparing only when both sides
-happened to supply a value made replay protection opt-in for the attacker, since
-anyone holding an intercepted token could simply omit the field. A token Apple
-minted without a nonce is unaffected, and is still verified for signature,
-issuer, audience and expiry.
-
-`authorizationCode` is Apple's one-time code, sent on first authorization. The
-server trades it for a refresh token and stores that against the identity, for
-one purpose: `DELETE /me` has to revoke our access at Apple, and revoking needs a
-token that verifying an ID token never produces. Apple requires this of any app
-offering both Sign in with Apple and account deletion, and checks it at review.
-Omit the code and sign-in still works; only revocation is lost. The exchange is
-best effort, so Apple's token endpoint being down delays nothing at the login
-screen.
-
-#### `POST /auth/driver` (#223)
-
-Sign in with an ops-issued **driver code** and a **6-digit PIN**. Drivers are
-issued by an operator rather than self-registering, so social sign-in answers
-nothing here: there is no promise a driver holds a Google account, and ops has to
-be able to hand out credentials at a depot and revoke them the same afternoon.
-
-- **Auth:** none. **Rate limit:** 10/min per IP.
-- **Body:** `{ "driverCode": "DR-B7K9", "pin": "482913", "rememberDevice?": false }`
-- **200:** `{ accessToken, refreshToken, user, driver: { id, fullName }, mustChangePin }`
-- **401** bad code or PIN · **403** suspended · **423** locked (with `Retry-After`) ·
-  **429** · **503** not configured
-
-A wrong code and a wrong PIN answer the **same** 401. Telling them apart would
-enumerate which codes exist, and a driver code is written on depot whiteboards and
-read down phone lines. It is an identifier; the PIN is the credential.
-
-`rememberDevice` picks the refresh lifetime and nothing else. Omitted or false
-gives `DRIVER_SHIFT_TTL_HOURS` (12h) so a shared depot handset does not stay
-signed in past the shift that used it; true gives the usual
-`JWT_REFRESH_TTL_DAYS`.
-
-`mustChangePin` is true while the driver is still on the PIN ops issued, and the
-app sends them straight to the change screen.
-
-The access token is an ordinary one carrying `role: 'driver'`, so every existing
-driver check (`requireRole('driver')`, the assigned-driver rules on the manifest
-and GPS reporting) works unchanged. This is what finally populates the
-`drivers.user_id` that migration `015` left nullable "until driver sign-in lands".
-
-#### `POST /auth/driver/pin`
-
-Replace the PIN. Revokes every other session on the account: a rotation that
-leaves the old sessions alive has not evicted whoever prompted it.
-
-- **Auth:** `Bearer` + role `driver`. **Body:** `{ currentPin, newPin }` → **204**
-- **400** the new PIN is a repeat or a run of digits · **401** current PIN wrong
-
-#### Ops credential lifecycle (admin)
-
-| Endpoint                                        | Does                                                                         |
-| ----------------------------------------------- | ---------------------------------------------------------------------------- |
-| `POST /admin/drivers/:id/credentials`           | Issues a code and one-time PIN, and creates + links the driver's account     |
-| `POST /admin/drivers/:id/credentials/reset-pin` | New one-time PIN (returned with the code), forces a change, revokes sessions |
-| `PATCH /admin/drivers/:id/credentials`          | `{ status?, unlock? }` — suspend, reinstate, or clear a lockout              |
-
-The reset returns the driver code alongside the new PIN, because operations is reading both down a phone line to someone who has lost their slip. The PIN is returned **once** on issue and reset. It is stored only as a keyed
-hash, so a driver who loses it needs a reset, not a lookup. There is no
-self-service reset because `drivers.phone` is nullable and there is therefore no
-verified channel to send one to, which is why the sign-in screen's recovery path
-ends at "call operations".
-
-**Security.** The PIN is HMAC-SHA256 under the server key and compared with
-`timingSafeEqual`, the same construction the daily boarding code uses, with the
-input domain-separated so a value from one table cannot verify against the other.
-Five wrong PINs lock the credential for 15 minutes. That counter lives in
-Postgres rather than the KV store on purpose: the boarding-code budget fails
-**open** because a rider must never be stranded at the kerb, but a credential
-check has to fail **closed**, and a counter in a cache can be cleared by flushing
-it. Keeping it in Postgres also avoids putting the depot's 05:40 behind a second
-piece of infrastructure.
-
-#### `POST /auth/refresh`
-
-Exchange a refresh token for a new pair (**rotates** — the old refresh token is invalidated).
-
-- **Auth:** none (the refresh token is the credential). **Rate limit:** 10/min per IP.
-- **Body:** `{ "refreshToken": "..." }`
-- **200:** `{ "accessToken": "...", "refreshToken": "..." }`
-- **401** invalid/expired/revoked · **503** not configured
-
-#### `POST /auth/logout`
-
-Revoke a refresh token. Idempotent.
-
-- **Rate limit:** 10/min per IP, like the other credential endpoints. It takes an
-  untrusted token and hits the session store on every call, so unmetered it was a
-  way to make the database work without ever authenticating.
-- **Body:** `{ "refreshToken": "..." }` → **204** (always, even for an unknown token).
-
-#### `GET /me`
-
-The authenticated user.
-
-- **Auth:** `Bearer` access token. **Rate limit:** per user.
-- **200:** the user · **401** no/invalid token · **404** user not found.
-
-#### `GET /me/sessions` · `DELETE /me/sessions/:id` (#84)
-
-Active-device management. List returns id + created/expires (never the token
-hash); delete revokes one session ("log out that device") and only your own.
-
-- **Auth:** `Bearer`. **Rate limit:** per user.
-- `GET` **200:** `{ "sessions": [{ id, createdAt, expiresAt }] }`
-- `DELETE` **204** (idempotent; a session you don't own is a no-op) · **400** non-uuid id
-
-#### `POST /me/devices` (#84)
-
-Register this device's **FCM push token** (foundation for notifications).
-
-- **Auth:** `Bearer`. **Rate limit:** per user.
-- **Body:** `{ "fcmToken": "...", "platform": "android" | "ios" | "web" }`
-- **200:** `{ "registered": true }`. Re-registering a token re-points it (one token, one owner).
-
-### Refresh tokens & sessions
-
-- A refresh token is `randomBytes(32)`; only its **SHA-256 hash** is stored
-  (`sessions.refresh_token_hash`) — a DB leak exposes no usable tokens.
-- **Rotation:** `/auth/refresh` revokes the presented session and issues a new
-  one (`rotated_from` links them). Reusing a rotated token → 401.
-- **Reuse detection (#83):** replaying an already-**rotated** (consumed) token is
-  treated as theft — **every session for that user is revoked**, forcing re-auth
-  everywhere. A token revoked by _logout_ (no descendant) is just a 401 and does
-  not trigger this.
-- **Revocation:** logout sets `revoked_at`.
-
-### The verifiers (how Google and Apple are wired)
-
-`AuthService` holds one `IdTokenVerifier` per provider, each selected
-independently at startup. That independence is the point: Apple's credentials
-come from a different lane and arrive later, and a missing `APPLE_CLIENT_ID` must
-never take working Google sign-in down with it.
-
-| Condition                | Verifier                                                                 | That provider's route           |
-| ------------------------ | ------------------------------------------------------------------------ | ------------------------------- |
-| provider's client id set | **Google/AppleIdTokenVerifier** (jose JWKS; signature, issuer, audience) | real sign-in                    |
-| unset, non-production    | **FakeIdTokenVerifier**                                                  | dev/test (see below)            |
-| unset, production        | none                                                                     | **503** (keeps staging booting) |
-
-Apple differs from Google in three ways worth knowing before debugging it:
-
-- **No name in the token.** See `POST /auth/apple` above.
-- **Two audiences.** Native iOS sign-in presents the app's bundle id; the
-  Android and web flow presents the Services ID. `APPLE_CLIENT_ID` is therefore
-  comma-separated, and an app shipping on both platforms needs both listed.
-- **Booleans arrive as strings.** Apple sends `email_verified` and
-  `is_private_email` as either `true` or `"true"` depending on the flow, so the
-  verifier accepts both. Parsing them strictly rejects real sign-ins.
-
-A `@privaterelay.appleid.com` address is stored like any other. It is a real,
-deliverable address that forwards to the rider, and discarding it would make them
-uncontactable for the sake of tidiness.
-
-### Configuration (Part 2)
-
-| Env var                | Default | Notes                                                                                                                                         |
-| ---------------------- | ------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
-| `GOOGLE_CLIENT_ID`     | unset   | the Google **"Web"** OAuth client ID = the token audience. **Public, not a secret.** No client _secret_ needed (we only verify the ID token). |
-| `APPLE_CLIENT_ID`      | unset   | Apple audiences, **comma-separated**: the iOS bundle id and the Services ID. **Public, not a secret.** Unset → `/auth/apple` returns 503.     |
-| `APPLE_TEAM_ID`        | unset   | Apple Developer team id. Public. Needed only for the code exchange and revocation.                                                            |
-| `APPLE_KEY_ID`         | unset   | Key ID of the Sign in with Apple `.p8`. Public.                                                                                               |
-| `APPLE_PRIVATE_KEY`    | unset   | The `.p8` key itself, PKCS#8 PEM. **A real secret** — Render dashboard only, never the blueprint. Unset → no exchange and no revocation.      |
-| `JWT_REFRESH_TTL_DAYS` | `30`    | refresh-token lifetime                                                                                                                        |
-
-> The mobile apps additionally need **Android + iOS** OAuth client IDs in the
-> same Google project; the backend only needs the Web client ID.
-
----
-
-## Rate limiting
-
-`/auth/google`, `/auth/apple` and `/auth/refresh` are capped at **10 requests/min per IP** (the
-credential-endpoint brute-force guard). `/me` is limited per user. Over the
-limit → **429** with a `Retry-After` header. Backed by the KV store (in-memory
-in dev, Redis in prod); it **fails open** if the store is down.
-
-## Security notes
-
-- **Access tokens can't be revoked before they expire** — hence the short TTL.
-  Real "sign out" is the refresh/session layer (logout).
-- **Role changes are eventually consistent** — a promotion/demotion takes effect
-  on the next refresh, not instantly. Destructive actions should re-check
-  server-side.
-- **HS256** (shared secret) is correct while one service both signs and verifies.
-  Splitting issuer/verifier later → move to RS256/EdDSA (would supersede ADR-0007).
-- **Client storage:** keep the refresh token in secure storage (Keychain /
-  Keystore), not plain prefs.
-
-## Local development & testing
-
-No Google setup needed in dev — the **fake verifier** is wired when
-`GOOGLE_CLIENT_ID` is unset (non-production). The `idToken` is just a JSON blob
-of claims:
-
-```bash
-# sign in
-curl -s localhost:3000/auth/google -H 'content-type: application/json' \
-  -d '{ "idToken": "{\"sub\":\"g-1\",\"name\":\"Ama\"}" }'
-# → { user, accessToken, refreshToken }
-
-# call a protected route with the accessToken (NOT the idToken)
-curl localhost:3000/me -H "authorization: Bearer <accessToken>"
-```
-
-In Swagger (`/docs`): call `POST /auth/google`, copy the `accessToken` from the
-response, click **Authorize**, paste just that token.
-
-## Where the code lives
-
-```
-services/api/src/modules/auth/
-  jwt.ts                     # token sign/verify service (HS256)
-  auth.plugin.ts             # app.authenticate / app.requireRole / request.user
-  id-token-verifier.ts       # IdTokenVerifier interface + FakeIdTokenVerifier
-  id-token-verifier.google.ts# GoogleIdTokenVerifier (JWKS; excluded from unit coverage)
-  session.repository.ts(.pg) # refresh-token sessions (hashed, rotate, revoke)
-  auth-identity.repository.*  # provider identity → user link
-  auth.service.ts            # AuthService: signIn / refresh / logout
-  auth.routes.ts             # /me, /auth/google, /auth/refresh, /auth/logout
-  auth.schema.ts             # request/response zod schemas
-  tokens.ts                  # refresh-token generation + hashing
-```
-
-## Related
-
-- [ADR-0007 — JWT access tokens & guard](../adr/0007-jwt-auth-guard.md)
-- [ADR-0008 — zod + OpenAPI contract](../adr/0008-zod-openapi-contract.md)
-- [ADR-0009 — repository pattern](../adr/0009-repository-pattern.md)
-- `strategy/security.md §3 (authentication), §4 (authorization)`
+# Authentication and sessions
+
+**Owner:** Godfred Awuku · **Last verified:** 2026-09-12
+
+**Status:** Social auth, rotating sessions and driver credentials are live.
+Google is configured on staging. Apple verification, code exchange and account
+revocation are implemented; production use still needs the Apple Developer IDs
+and signing key. SMS/OTP remains deferred.
+
+## Model
+
+- Access tokens are HS256 JWTs with `sub`, `role`, `iss`, `aud`, `iat` and
+  `exp`; the default lifetime is 15 minutes.
+- Refresh tokens are opaque random values. Only SHA-256 hashes are stored in
+  `sessions`; every refresh rotates the token.
+- Reusing a refresh token that was consumed by rotation revokes all sessions
+  for the user. Reusing a token revoked by logout simply returns `401`.
+- Roles are `commuter`, `driver` and `admin`. Role checks do not replace
+  relationship checks such as “is this the assigned driver?”
+- Social identities are `(provider, providerId)` links. Driver credentials are
+  first-party credentials in their own table, not `auth_identity` rows.
+
+## Social and session API
+
+| Endpoint                  | Auth              | Current behaviour                                                                               |
+| ------------------------- | ----------------- | ----------------------------------------------------------------------------------------------- |
+| `POST /auth/google`       | public, 10/min/IP | Verify Google ID token; find or create the user; return user and token pair                     |
+| `POST /auth/apple`        | public, 10/min/IP | Same flow for Apple; accepts first-use `fullName`, raw `nonce` and optional `authorizationCode` |
+| `POST /auth/refresh`      | public, 10/min/IP | Rotate a valid refresh token and return a new pair                                              |
+| `POST /auth/logout`       | public, 10/min/IP | Revoke the supplied refresh token; idempotent `204`                                             |
+| `GET /me`                 | bearer            | Return the current user with a signed avatar URL                                                |
+| `GET /me/sessions`        | bearer            | List active session IDs and timestamps, never token hashes                                      |
+| `DELETE /me/sessions/:id` | bearer            | Revoke one session owned by the caller; idempotent `204`                                        |
+| `POST /me/devices`        | bearer            | Register or transfer the caller's FCM device token                                              |
+
+Apple-specific rules:
+
+- Apple returns a person's name only on the first authorization. The client must
+  send `fullName` then; it is ignored for an existing account.
+- If the ID token contains a nonce claim, the request must provide the raw nonce
+  that produced it.
+- `authorizationCode` is exchanged best-effort for a provider refresh token so
+  `DELETE /me` can revoke Apple access during account erasure.
+- `APPLE_CLIENT_ID` accepts a comma-separated native bundle ID and Services ID.
+
+## Driver credential API
+
+Drivers do not self-register. Operations issues a readable driver code and a
+six-digit PIN; only an HMAC-SHA256 value is stored.
+
+| Endpoint                                        | Role              | Current behaviour                                       |
+| ----------------------------------------------- | ----------------- | ------------------------------------------------------- |
+| `POST /auth/driver`                             | public, 10/min/IP | Sign in with code/PIN; return driver and token pair     |
+| `POST /auth/driver/pin`                         | driver            | Change PIN and revoke every other session               |
+| `POST /admin/drivers/:id/credentials`           | admin             | Create/link driver user and return one-time credentials |
+| `POST /admin/drivers/:id/credentials/reset-pin` | admin             | Return a new one-time PIN and revoke sessions           |
+| `PATCH /admin/drivers/:id/credentials`          | admin             | Suspend, reinstate or unlock the credential             |
+
+A wrong code and wrong PIN deliberately produce the same `401`. Five failed
+attempts create a durable 15-minute lock (`423` with `Retry-After`). Suspension
+returns `403` and revokes live sessions. `rememberDevice=false` uses the
+shift-length refresh lifetime; `true` uses the normal refresh lifetime.
+
+## Configuration
+
+| Variable                                             | Purpose                                         |
+| ---------------------------------------------------- | ----------------------------------------------- |
+| `JWT_SECRET`                                         | Required in production, minimum 32 characters   |
+| `JWT_ACCESS_TTL`                                     | Access-token lifetime, default `15m`            |
+| `JWT_REFRESH_TTL_DAYS`                               | Normal refresh lifetime, default 30 days        |
+| `DRIVER_SHIFT_TTL_HOURS`                             | Non-remembered driver session, default 12 hours |
+| `GOOGLE_CLIENT_ID`                                   | Google Web OAuth audience                       |
+| `APPLE_CLIENT_ID`                                    | Accepted Apple audiences                        |
+| `APPLE_TEAM_ID`, `APPLE_KEY_ID`, `APPLE_PRIVATE_KEY` | Apple code exchange and revocation              |
+
+When a social provider ID is absent in production its route returns `503`; in
+development the corresponding fake verifier keeps the system zero-infrastructure.
+
+## Security invariants
+
+- Authentication fails closed in production when the signing secret is absent.
+- Driver lockouts live in PostgreSQL, not the fail-open cache.
+- Both mobile apps keep the access/refresh pair in Keychain/Keystore-backed
+  secure storage; the access token remains short-lived.
+- Destructive or trip-specific operations perform server-side relationship
+  checks even after JWT role validation.
+
+## Code
+
+- `services/api/src/modules/auth/`
+- `apps/trotxi_client/lib/trotxi_client.dart`
+- migrations `022`, `026`, `034` and `035`
+- [ADR-0007](../adr/0007-jwt-auth-guard.md)

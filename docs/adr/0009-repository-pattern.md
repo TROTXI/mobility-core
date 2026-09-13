@@ -38,3 +38,10 @@ Postgres, unset → in-memory). Conventions:
 - As business rules grow, logic belongs in a **service layer above the
   repositories** (routes → services → repositories), not in the adapters.
 - The KV/cache layer mirrors this same shape — see ADR-0010.
+
+## Current implementation — 2026-09-12
+
+The pattern now covers all domain stores through migrations 001–038. Several
+in-memory adapters deliberately mirror important PostgreSQL conflicts so
+zero-infrastructure tests exercise the same route behaviour, but PostgreSQL
+constraints remain authoritative.

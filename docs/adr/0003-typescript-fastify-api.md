@@ -38,3 +38,9 @@ The runtime is now **Node.js 24** (current Active LTS), not 22 as written above 
 reflected in `package.json` `engines`, `.nvmrc`, the Dockerfile, and CI. The
 TypeScript + Fastify + zod decision is unchanged; only the Node version moved.
 (Amendment note rather than a superseding ADR, since the decision itself stands.)
+
+## Current implementation — 2026-09-12
+
+The API runs Node.js 24, Fastify 5, strict TypeScript and Zod. It remains one
+modular service; route learning is batch work in this service, while the
+latency-critical future telemetry processor remains outside its scope.
