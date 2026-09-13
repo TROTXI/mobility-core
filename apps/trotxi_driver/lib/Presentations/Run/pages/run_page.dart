@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:trotxi_driver/Presentations/Readiness/pages/device_readiness_page.dart';
 import 'package:trotxi_driver/core/config/corridor_time.dart';
 import 'package:provider/provider.dart';
 import 'package:trotxi_client/trotxi_client.dart';
@@ -190,6 +191,9 @@ class _RunPageState extends State<RunPage> {
     return RefreshIndicator(
       onRefresh: () async {
         await controller.load();
+        if (!mounted) return;
+        await _syncPublishing();
+        if (!mounted) return;
         await _loadFix();
       },
       child: detail.isInitialLoad
@@ -269,12 +273,11 @@ class _RunPageState extends State<RunPage> {
           const SizedBox(height: AppSpacing.space12),
           ReadinessCard(data: data),
           const SizedBox(height: AppSpacing.space12),
-          // Page 08 carries the same indicator as the active screen. Location
-          // is a readiness fact before departure, and finding out it is off
-          // after pulling away costs the run its trace.
-          GpsIndicator(
-            state: _gpsState(_positionBlock),
-            detail: _gpsDetail(_positionBlock),
+          Text(
+            'Location is checked before starting. Sharing begins with the trip.',
+            style: AppTypography.bodySmall.copyWith(
+              color: colors.textSecondary,
+            ),
           ),
         ] else ...[
           // The Active Trip Hero (Components / Active Trip Hero): one dominant
@@ -865,7 +868,7 @@ class _PrimaryAction extends StatelessWidget {
       onPressed: busy
           ? null
           : () async {
-              // Ending goes through the confirmation flow; starting does not.
+              // Ending goes through confirmation; starting reviews device access.
               // Completing is the one irreversible action here, and a stray tap
               // at the kerb should not close a run with riders still aboard.
               if (run.isActive) {
@@ -878,6 +881,12 @@ class _PrimaryAction extends StatelessWidget {
                   ),
                 );
               } else {
+                final acknowledged = await Navigator.of(context).push<bool>(
+                  MaterialPageRoute(
+                    builder: (_) => const DeviceReadinessPage(beforeTrip: true),
+                  ),
+                );
+                if (acknowledged != true || !context.mounted) return;
                 await controller.start();
               }
               await onChanged();

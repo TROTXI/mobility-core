@@ -51,6 +51,7 @@ dependencies:
   intl: ^0.20.3
   mobile_scanner: ^7.4.1
   geolocator: ^14.0.3
+  permission_handler: ^12.0.3
   # Dialling operations (#234). The recovery screen, incident support and the
   # emergency control all end in a phone call, and there is no in-app substitute
   # for one — a driver at a roadside needs a person, not a queue.

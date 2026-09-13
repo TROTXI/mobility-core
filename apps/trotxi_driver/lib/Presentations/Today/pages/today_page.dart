@@ -65,7 +65,10 @@ class _TodayPageState extends State<TodayPage> {
           MaterialPageRoute<void>(
             builder: (_) => ChangeNotifierProvider(
               create: (_) => RunController(trips: trips, run: run),
-              child: RunPage(run: run),
+              child: Scaffold(
+                appBar: AppBar(title: const Text('Trip')),
+                body: SafeArea(child: RunPage(run: run)),
+              ),
             ),
           ),
         )
@@ -154,9 +157,15 @@ class _TodayPageState extends State<TodayPage> {
               run: (data.active ?? data.next)!,
               headline: data.headline,
               isBusy: controller.busyRunId == (data.active ?? data.next)!.id,
-              onPrimary: () => data.active != null
-                  ? controller.complete(data.active!.id)
-                  : controller.start(data.next!.id),
+              // Starting belongs to pre-trip, including required location
+              // checks and the publisher. Do not bypass it from the Today card.
+              onPrimary: () {
+                if (data.active != null) {
+                  controller.complete(data.active!.id);
+                } else {
+                  _openRun(context, data.next!);
+                }
+              },
               onTap: () => _openRun(context, (data.active ?? data.next)!),
             ),
             const SizedBox(height: AppSpacing.space24),
