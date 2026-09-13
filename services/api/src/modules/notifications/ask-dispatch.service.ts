@@ -72,6 +72,7 @@ export class AskDispatchService {
           // not rewrite where yesterday's van was meant to meet them.
           pickupStopId: sub.pickupStopId,
           dropoffStopId: sub.dropoffStopId,
+          subscriptionPeriodId: sub.currentPeriodId,
         });
         await this.deps.notifier.send({
           userId: sub.userId,

@@ -7,6 +7,7 @@
 import type { FastifyInstance } from 'fastify';
 import fastifyRawBody from 'fastify-raw-body';
 import type { ZodTypeProvider } from 'fastify-type-provider-zod';
+import { z } from 'zod';
 import { errorResponseSchema } from '../../lib/schemas';
 import type { RateLimitConfig } from '../ratelimit/ratelimit.plugin';
 import {
@@ -23,9 +24,6 @@ import {
   PaymentsNotConfiguredError,
   type PaymentsService,
 } from './payments.service';
-
-// Webhooks come from Paystack's IPs, not users — a generous per-IP cap is enough.
-const WEBHOOK_RATE_LIMIT = { max: 60, windowSeconds: 60 } as const;
 
 /**
  * Register the payment routes: `POST /payments/subscribe` and
@@ -110,17 +108,21 @@ export async function paymentRoutes(
           503: errorResponseSchema,
         },
       },
-      preHandler: [app.rateLimit({ ...WEBHOOK_RATE_LIMIT, by: 'ip' })],
     },
     async (request, reply) => {
       if (!opts.paymentsService) return reply.code(503).send(UNAVAILABLE);
       const rawBody = typeof request.rawBody === 'string' ? request.rawBody : '';
       const signature = request.headers['x-paystack-signature'];
       try {
-        await opts.paymentsService.handleWebhook(
+        await opts.paymentsService.acceptWebhook(
           rawBody,
           typeof signature === 'string' ? signature : undefined,
         );
+        setImmediate(() => {
+          void opts.paymentsService!.processWebhookInbox().catch((error) => {
+            request.log.error({ error }, 'payment webhook inbox processing failed');
+          });
+        });
         return { received: true };
       } catch (err) {
         if (err instanceof InvalidWebhookError) {
@@ -131,6 +133,61 @@ export async function paymentRoutes(
         if (err instanceof PaymentsNotConfiguredError) return reply.code(503).send(UNAVAILABLE);
         throw err;
       }
+    },
+  );
+
+  const adminOnly = [
+    app.authenticate,
+    app.rateLimit({ ...opts.rateLimit, by: 'user' }),
+    app.requireRole('admin'),
+  ];
+  r.post(
+    '/admin/payments/process-webhooks',
+    {
+      schema: {
+        tags: ['admin', 'payments'],
+        summary: 'Process durable Paystack webhook events',
+        security: [{ bearerAuth: [] }],
+        response: {
+          200: z.object({ processed: z.number().int(), failed: z.number().int() }),
+          401: errorResponseSchema,
+          403: errorResponseSchema,
+          503: errorResponseSchema,
+        },
+      },
+      preHandler: adminOnly,
+    },
+    async (_request, reply) => {
+      if (!opts.paymentsService) return reply.code(503).send(UNAVAILABLE);
+      return opts.paymentsService.processWebhookInbox(100);
+    },
+  );
+
+  r.post(
+    '/admin/payments/reconcile',
+    {
+      schema: {
+        tags: ['admin', 'payments'],
+        summary: 'Verify unresolved payments directly with Paystack',
+        security: [{ bearerAuth: [] }],
+        response: {
+          200: z.object({
+            considered: z.number().int(),
+            fulfilled: z.number().int(),
+            failed: z.number().int(),
+            unresolved: z.number().int(),
+            errors: z.number().int(),
+          }),
+          401: errorResponseSchema,
+          403: errorResponseSchema,
+          503: errorResponseSchema,
+        },
+      },
+      preHandler: adminOnly,
+    },
+    async (_request, reply) => {
+      if (!opts.paymentsService) return reply.code(503).send(UNAVAILABLE);
+      return opts.paymentsService.reconcileUnresolved();
     },
   );
 }

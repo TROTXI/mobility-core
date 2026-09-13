@@ -28,6 +28,8 @@ export interface EntitlementEntry {
   refId?: string | null;
   /** Unique key making the write exactly-once — a retry with the same key is a no-op. */
   idempotencyKey: string;
+  /** Billing period that funded/consumed these rides; null only for legacy rows. */
+  subscriptionPeriodId?: string | null;
 }
 
 /** Append-only ride-entitlement ledger (Postgres in prod, in-memory in dev/tests). */
@@ -45,6 +47,8 @@ export interface EntitlementLedgerRepository {
    * @returns remaining rides (0 when the ledger is empty).
    */
   remainingRides(userId: string): Promise<number>;
+  /** Sum only mutations attributed to one immutable billing period. */
+  remainingRidesForPeriod(subscriptionPeriodId: string): Promise<number>;
 }
 
 /** In-memory {@link EntitlementLedgerRepository} for dev and unit tests. */
@@ -62,5 +66,11 @@ export class InMemoryEntitlementLedgerRepository implements EntitlementLedgerRep
     return this.entries
       .filter((e) => e.userId === userId)
       .reduce((sum, e) => sum + e.deltaRides, 0);
+  }
+
+  async remainingRidesForPeriod(subscriptionPeriodId: string): Promise<number> {
+    return this.entries
+      .filter((entry) => entry.subscriptionPeriodId === subscriptionPeriodId)
+      .reduce((sum, entry) => sum + entry.deltaRides, 0);
   }
 }

@@ -45,7 +45,17 @@ function appWithPayments() {
 async function webhookFor(app: Awaited<ReturnType<typeof buildApp>>, reference: string) {
   const body = JSON.stringify({
     event: 'charge.success',
-    data: { reference, status: 'success', amount: FARE * 44, currency: 'GHS' },
+    data: {
+      id: 123456,
+      reference,
+      status: 'success',
+      amount: FARE * 44,
+      currency: 'GHS',
+      domain: 'test',
+      channel: 'mobile_money',
+      fees: 100,
+      paid_at: new Date().toISOString(),
+    },
   });
   return app.inject({
     method: 'POST',
@@ -161,6 +171,10 @@ describe('POST /webhooks/paystack', () => {
     ).json();
 
     expect((await webhookFor(app, reference)).statusCode).toBe(200);
+    for (let attempt = 0; attempt < 20; attempt++) {
+      if (await subscriptions.findActiveByUser('rider-2')) break;
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    }
     expect(await subscriptions.findActiveByUser('rider-2')).not.toBeNull();
 
     // …and the rider now has their allocated rides via GET /me/rides.

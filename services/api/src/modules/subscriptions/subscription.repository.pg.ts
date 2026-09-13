@@ -21,6 +21,7 @@ interface SubscriptionRow {
   credit_pesewas_per_ride: number | null;
   period_start: Date | null;
   period_end: Date | null;
+  current_period_id: string | null;
   created_at: Date;
 }
 
@@ -39,6 +40,7 @@ function toSubscription(row: SubscriptionRow): Subscription {
     creditPesewasPerRide: row.credit_pesewas_per_ride,
     periodStart: row.period_start,
     periodEnd: row.period_end,
+    currentPeriodId: row.current_period_id,
     createdAt: row.created_at,
   };
 }
@@ -121,6 +123,37 @@ export class PgSubscriptionRepository implements SubscriptionRepository {
             `UPDATE subscriptions SET period_start = $2, period_end = $3 WHERE id = $1 RETURNING *`,
             [id, patch.periodStart, patch.periodEnd],
           );
+    return rows[0] ? toSubscription(rows[0]) : null;
+  }
+
+  async activatePeriod(
+    id: string,
+    input: NewSubscription & { currentPeriodId: string },
+  ): Promise<Subscription | null> {
+    const { rows } = await this.pool.query<SubscriptionRow>(
+      `UPDATE subscriptions
+          SET plan = $2, status = 'active', route_id = $3,
+              pickup_stop_id = $4, dropoff_stop_id = $5,
+              price_pesewas = $6, rides_granted = $7, fare_pesewas = $8,
+              credit_pesewas_per_ride = $9, period_start = $10,
+              period_end = $11, current_period_id = $12
+        WHERE id = $1
+        RETURNING *`,
+      [
+        id,
+        input.plan,
+        input.routeId ?? null,
+        input.pickupStopId ?? null,
+        input.dropoffStopId ?? null,
+        input.pricePesewas ?? null,
+        input.ridesGranted ?? null,
+        input.farePesewas ?? null,
+        input.creditPesewasPerRide ?? null,
+        input.periodStart ?? null,
+        input.periodEnd ?? null,
+        input.currentPeriodId,
+      ],
+    );
     return rows[0] ? toSubscription(rows[0]) : null;
   }
 }

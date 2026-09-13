@@ -45,6 +45,22 @@ describe('FakePaystackClient', () => {
     expect(client.verifyWebhookSignature(body, 'nope')).toBe(false);
   });
 
+  it('exposes provider state for reconciliation', async () => {
+    const client = new FakePaystackClient();
+    await client.initializeTransaction({
+      email: 'a@b.com',
+      amountPesewas: 25_000,
+      reference: 'ref-verify',
+    });
+    client.setTransaction('ref-verify', { status: 'success', paidAt: new Date(0) });
+    await expect(client.verifyTransaction('ref-verify')).resolves.toMatchObject({
+      reference: 'ref-verify',
+      status: 'success',
+      amountPesewas: 25_000,
+      providerDomain: 'test',
+    });
+  });
+
   it('rejects non-positive/fractional amounts and unsupported references', async () => {
     const client = new FakePaystackClient();
     await expect(
@@ -83,5 +99,35 @@ describe('PaystackHttpClient', () => {
         reference: 'expected-ref',
       }),
     ).rejects.toThrow(/different reference/);
+  });
+
+  it('normalizes a verified transaction', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () =>
+        Response.json({
+          status: true,
+          data: {
+            id: 987654,
+            reference: 'expected-ref',
+            status: 'success',
+            amount: 25_000,
+            currency: 'GHS',
+            domain: 'test',
+            channel: 'mobile_money',
+            fees: 100,
+            paid_at: '2026-01-01T00:00:00.000Z',
+          },
+        }),
+      ),
+    );
+    const client = new PaystackHttpClient('sk_test_example');
+
+    await expect(client.verifyTransaction('expected-ref')).resolves.toMatchObject({
+      providerTransactionId: '987654',
+      amountPesewas: 25_000,
+      providerDomain: 'test',
+      paidAt: new Date('2026-01-01T00:00:00.000Z'),
+    });
   });
 });

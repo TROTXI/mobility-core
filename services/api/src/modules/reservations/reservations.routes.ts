@@ -196,6 +196,9 @@ export async function reservationRoutes(
         direction: request.body.direction,
         travelling: request.body.travelling,
         pinHash: pin ? hashPin(pin, opts.secret) : null,
+        subscriptionPeriodId: request.body.travelling
+          ? (await opts.subscriptions?.findActiveByUser(request.user!.id))?.currentPeriodId
+          : undefined,
       };
 
       const capacity = request.body.travelling

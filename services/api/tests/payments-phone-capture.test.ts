@@ -33,10 +33,15 @@ function chargeSuccess(reference: string, phone?: string, customerPhone?: string
   const body = JSON.stringify({
     event: 'charge.success',
     data: {
+      id: 123456,
       reference,
       status: 'success',
       amount: FARE * 44,
       currency: 'GHS',
+      domain: 'test',
+      channel: 'mobile_money',
+      fees: 100,
+      paid_at: new Date().toISOString(),
       ...(phone ? { authorization: { mobile_money_number: phone } } : {}),
       ...(customerPhone ? { customer: { phone: customerPhone } } : {}),
     },
@@ -101,7 +106,7 @@ describe('phone capture on charge.success (#182)', () => {
 
     await expect(service.handleWebhook(body, signature)).resolves.toBeUndefined();
     expect(await subscriptions.findActiveByUser(user.id)).not.toBeNull();
-    expect((await payments.findByReference(reference))?.status).toBe('paid');
+    expect((await payments.findByReference(reference))?.status).toBe('fulfilled');
   });
 
   it('ignores an unusable number rather than storing a guess', async () => {

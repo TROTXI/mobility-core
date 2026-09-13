@@ -33,18 +33,19 @@ function make(subscriptions: SubscriptionRepository = new InMemorySubscriptionRe
   const pricing = new InMemoryPricingRepository();
   const credits = new InMemoryCreditLedgerRepository();
   const routeStops = new InMemoryRouteStopRepository();
+  const paystack = new FakePaystackClient(FAKE_SECRET);
   const service = new PaymentsService({
     payments,
     subscriptions,
     entitlements,
     credits,
-    paystack: new FakePaystackClient(FAKE_SECRET),
+    paystack,
     users: new InMemoryUserRepository(),
     pricing,
     routeStops,
     ridesPerPeriod: RIDES,
   });
-  return { payments, subscriptions, entitlements, credits, pricing, routeStops, service };
+  return { payments, subscriptions, entitlements, credits, pricing, routeStops, paystack, service };
 }
 
 /** A priced corridor: without a fare in force there is no price to charge. */
@@ -60,7 +61,17 @@ function chargeSuccess(
 ): { body: string; signature: string } {
   const body = JSON.stringify({
     event: 'charge.success',
-    data: { reference, status: 'success', amount: amountPesewas, currency: 'GHS' },
+    data: {
+      id: 123456,
+      reference,
+      status: 'success',
+      amount: amountPesewas,
+      currency: 'GHS',
+      domain: 'test',
+      channel: 'mobile_money',
+      fees: 100,
+      paid_at: new Date().toISOString(),
+    },
   });
   return { body, signature: paystackSignature(body, FAKE_SECRET) };
 }
@@ -76,7 +87,21 @@ function chargeSuccessWith(
   reference: string,
   data: Record<string, unknown>,
 ): { body: string; signature: string } {
-  const body = JSON.stringify({ event: 'charge.success', data: { reference, ...data } });
+  const body = JSON.stringify({
+    event: 'charge.success',
+    data: {
+      id: 123456,
+      reference,
+      status: 'success',
+      amount: FARE * RIDES,
+      currency: 'GHS',
+      domain: 'test',
+      channel: 'mobile_money',
+      fees: 100,
+      paid_at: new Date().toISOString(),
+      ...data,
+    },
+  });
   return { body, signature: paystackSignature(body, FAKE_SECRET) };
 }
 
@@ -190,6 +215,17 @@ describe('PaymentsService.handleWebhook', () => {
     await expect(service.handleWebhook('{}', 'bad')).rejects.toBeInstanceOf(InvalidWebhookError);
   });
 
+  it('durably deduplicates the same webhook before processing', async () => {
+    const { service } = await priced();
+    const { reference } = await service.initializeSubscription('u1', 'monthly', ROUTE);
+    const { body, signature } = chargeSuccess(reference);
+
+    await service.acceptWebhook(body, signature);
+    await service.acceptWebhook(body, signature);
+    expect(await service.processWebhookInbox()).toEqual({ processed: 1, failed: 0 });
+    expect(await service.processWebhookInbox()).toEqual({ processed: 0, failed: 0 });
+  });
+
   it('subscription paid: activates the subscription, allocates rides, marks paid', async () => {
     const { service, subscriptions, payments, entitlements } = await priced();
     const { reference } = await service.initializeSubscription('u1', 'monthly', ROUTE);
@@ -199,7 +235,7 @@ describe('PaymentsService.handleWebhook', () => {
 
     expect(await subscriptions.findActiveByUser('u1')).not.toBeNull();
     expect(await entitlements.remainingRides('u1')).toBe(RIDES);
-    expect((await payments.findByReference(reference))?.status).toBe('paid');
+    expect((await payments.findByReference(reference))?.status).toBe('fulfilled');
   });
 
   it('pins the paid route onto the activated subscription (E3 rider↔route)', async () => {
@@ -285,7 +321,7 @@ describe('PaymentsService.handleWebhook', () => {
     await service.handleWebhook(body, signature);
 
     expect(await subscriptions.findActiveByUser('u1')).not.toBeNull();
-    expect((await payments.findByReference(reference))?.status).toBe('paid');
+    expect((await payments.findByReference(reference))?.status).toBe('fulfilled');
   });
 
   it('fails closed when a signed success omits settlement fields', async () => {
@@ -325,7 +361,7 @@ describe('PaymentsService.handleWebhook', () => {
     expect(await subscriptions.findActiveByUser('u1')).toBeNull();
   });
 
-  it('treats a unique-violation on activation as already-active', async () => {
+  it('does not treat an unrelated activation conflict as fulfilled', async () => {
     const subscriptions: SubscriptionRepository = {
       findActiveByUser: async () => null,
       findActiveByRoute: async () => [],
@@ -340,9 +376,10 @@ describe('PaymentsService.handleWebhook', () => {
     const { reference } = await service.initializeSubscription('u1', 'monthly', ROUTE);
     const { body, signature } = chargeSuccess(reference);
     await expect(service.handleWebhook(body, signature)).resolves.toBeUndefined();
+    expect((await service.processWebhookInbox()).failed).toBe(1);
   });
 
-  it('propagates non-unique errors from activation', async () => {
+  it('records non-unique activation failures for a durable retry', async () => {
     const subscriptions: SubscriptionRepository = {
       findActiveByUser: async () => null,
       findActiveByRoute: async () => [],
@@ -356,7 +393,57 @@ describe('PaymentsService.handleWebhook', () => {
     const { service } = await priced(subscriptions);
     const { reference } = await service.initializeSubscription('u1', 'monthly', ROUTE);
     const { body, signature } = chargeSuccess(reference);
-    await expect(service.handleWebhook(body, signature)).rejects.toThrow('db down');
+    await expect(service.handleWebhook(body, signature)).resolves.toBeUndefined();
+    expect((await service.processWebhookInbox()).failed).toBe(1);
+  });
+});
+
+describe('PaymentsService reconciliation', () => {
+  it('fulfills a successful payment whose webhook never arrived', async () => {
+    const { service, paystack, payments, subscriptions, entitlements } = await priced();
+    const checkout = await service.initializeSubscription('u1', 'monthly', ROUTE);
+    paystack.setTransaction(checkout.reference, {
+      status: 'success',
+      paidAt: new Date(),
+      channel: 'mobile_money',
+      feesPesewas: 100,
+    });
+
+    const result = await service.reconcileUnresolved(new Date(Date.now() + 1_000));
+
+    expect(result).toMatchObject({ considered: 1, fulfilled: 1, errors: 0 });
+    expect((await payments.findByReference(checkout.reference))?.status).toBe('fulfilled');
+    expect(await subscriptions.findActiveByUser('u1')).not.toBeNull();
+    expect(await entitlements.remainingRides('u1')).toBe(RIDES);
+  });
+
+  it('releases held credit after Verify reports a terminal failure', async () => {
+    const { service, paystack, payments, credits } = await priced();
+    await credits.record({
+      userId: 'u1',
+      deltaPesewas: 5_000,
+      reason: 'loyalty',
+      idempotencyKey: 'reconcile-credit',
+    });
+    const failed = await service.initializeSubscription('u1', 'monthly', ROUTE);
+    paystack.setTransaction(failed.reference, { status: 'abandoned' });
+
+    const result = await service.reconcileUnresolved(new Date(Date.now() + 1_000));
+    expect(result).toMatchObject({ considered: 1, failed: 1, errors: 0 });
+    expect((await payments.findByReference(failed.reference))?.status).toBe('failed');
+
+    const retry = await service.initializeSubscription('u1', 'monthly', ROUTE);
+    expect(retry.appliedCreditPesewas).toBe(5_000);
+  });
+
+  it('leaves an ongoing provider transaction unresolved', async () => {
+    const { service, payments } = await priced();
+    const checkout = await service.initializeSubscription('u1', 'monthly', ROUTE);
+
+    const result = await service.reconcileUnresolved(new Date(Date.now() + 1_000));
+
+    expect(result).toMatchObject({ considered: 1, unresolved: 1, errors: 0 });
+    expect((await payments.findByReference(checkout.reference))?.status).toBe('pending');
   });
 });
 

@@ -119,6 +119,10 @@ import { PgPaymentRepository } from './modules/payments/payment.repository.pg';
 import { FakePaystackClient, type PaystackClient } from './modules/payments/paystack.client';
 import { PaystackHttpClient } from './modules/payments/paystack.client.live';
 import { PaymentsService, PLACEHOLDER_RIDES_PER_PERIOD } from './modules/payments/payments.service';
+import { InMemoryPaymentLifecycle } from './modules/payments/payment-lifecycle';
+import { PgPaymentLifecycle } from './modules/payments/payment-lifecycle.pg';
+import { InMemoryPaymentWebhookRepository } from './modules/payments/payment-webhook.repository';
+import { PgPaymentWebhookRepository } from './modules/payments/payment-webhook.repository.pg';
 import {
   InMemoryEntitlementLedgerRepository,
   type EntitlementLedgerRepository,
@@ -394,6 +398,10 @@ async function main(): Promise<void> {
     pricing,
     routeStops,
     ridesPerPeriod: PLACEHOLDER_RIDES_PER_PERIOD,
+    lifecycle: pool
+      ? new PgPaymentLifecycle(pool)
+      : new InMemoryPaymentLifecycle({ payments, subscriptions, entitlements, credits }),
+    webhooks: pool ? new PgPaymentWebhookRepository(pool) : new InMemoryPaymentWebhookRepository(),
   });
 
   // Push notifications (E3): real FCM when the service account is set, else the

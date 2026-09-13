@@ -8,6 +8,7 @@ import type { ZodTypeProvider } from 'fastify-type-provider-zod';
 import { errorResponseSchema } from '../../lib/schemas';
 import type { RateLimitConfig } from '../ratelimit/ratelimit.plugin';
 import type { CreditService } from './credit.service';
+import type { PaymentsService } from '../payments/payments.service';
 import { convertCreditsResponseSchema } from './credit.schema';
 
 /**
@@ -16,11 +17,16 @@ import { convertCreditsResponseSchema } from './credit.schema';
  * @param app - the Fastify instance to register on.
  * @param opts - route dependencies.
  * @param opts.creditService - the credit service (503 when unwired).
+ * @param opts.periodCloser - atomic close path used by the real server.
  * @param opts.rateLimit - rate-limit config (per user).
  */
 export async function creditRoutes(
   app: FastifyInstance,
-  opts: { creditService?: CreditService; rateLimit: RateLimitConfig },
+  opts: {
+    creditService?: CreditService;
+    periodCloser?: Pick<PaymentsService, 'closeEndedPeriods'>;
+    rateLimit: RateLimitConfig;
+  },
 ): Promise<void> {
   const r = app.withTypeProvider<ZodTypeProvider>();
   const UNAVAILABLE = { error: 'unavailable', message: 'Credit conversion is not configured' };
@@ -53,6 +59,14 @@ export async function creditRoutes(
       preHandler: adminOnly,
     },
     async (_request, reply) => {
+      if (opts.periodCloser) {
+        const result = await opts.periodCloser.closeEndedPeriods();
+        return {
+          riders: result.riders,
+          ridesConverted: result.ridesConverted,
+          creditPesewas: result.creditPesewas,
+        };
+      }
       if (!opts.creditService) return reply.code(503).send(UNAVAILABLE);
       return opts.creditService.convertAllActive();
     },

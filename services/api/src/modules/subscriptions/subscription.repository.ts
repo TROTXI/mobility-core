@@ -25,6 +25,8 @@ export interface Subscription {
   periodStart: Date | null;
   /** End of the current period, EXCLUSIVE — drives renewal and expiry. */
   periodEnd: Date | null;
+  /** Immutable snapshot row for the current period. */
+  currentPeriodId: string | null;
   createdAt: Date;
 }
 
@@ -97,6 +99,11 @@ export interface SubscriptionRepository {
     id: string,
     patch: { periodStart: Date; periodEnd: Date } | { status: 'expired' },
   ): Promise<Subscription | null>;
+  /** Update/reactivate the subscription with an atomically created period snapshot. */
+  activatePeriod?(
+    id: string,
+    input: NewSubscription & { currentPeriodId: string },
+  ): Promise<Subscription | null>;
 }
 
 /** In-memory {@link SubscriptionRepository} for dev and unit tests. */
@@ -124,6 +131,7 @@ export class InMemorySubscriptionRepository implements SubscriptionRepository {
       creditPesewasPerRide: input.creditPesewasPerRide ?? null,
       periodStart: input.periodStart ?? null,
       periodEnd: input.periodEnd ?? null,
+      currentPeriodId: null,
       createdAt: new Date(),
     };
     this.subscriptions.set(subscription.id, subscription);
@@ -162,6 +170,31 @@ export class InMemorySubscriptionRepository implements SubscriptionRepository {
     const existing = this.subscriptions.get(id);
     if (!existing) return null;
     const updated: Subscription = { ...existing, ...patch };
+    this.subscriptions.set(id, updated);
+    return updated;
+  }
+
+  async activatePeriod(
+    id: string,
+    input: NewSubscription & { currentPeriodId: string },
+  ): Promise<Subscription | null> {
+    const existing = this.subscriptions.get(id);
+    if (!existing) return null;
+    const updated: Subscription = {
+      ...existing,
+      plan: input.plan,
+      status: 'active',
+      routeId: input.routeId ?? null,
+      pickupStopId: input.pickupStopId ?? null,
+      dropoffStopId: input.dropoffStopId ?? null,
+      pricePesewas: input.pricePesewas ?? null,
+      ridesGranted: input.ridesGranted ?? null,
+      farePesewas: input.farePesewas ?? null,
+      creditPesewasPerRide: input.creditPesewasPerRide ?? null,
+      periodStart: input.periodStart ?? null,
+      periodEnd: input.periodEnd ?? null,
+      currentPeriodId: input.currentPeriodId,
+    };
     this.subscriptions.set(id, updated);
     return updated;
   }

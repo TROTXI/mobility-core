@@ -2,17 +2,13 @@
 // process the charge.success webhook that activates it. Money is in PESEWAS
 // (integers, never floats), matching Paystack.
 //
-// Checkouts are netted against the rider's Ride Credit balance (#128): the
-// applied amount is frozen on the payment at initiation, and the ledger is
-// debited on charge.success — never at checkout, or an abandoned checkout would
-// burn credit the rider never spent.
-//
-// Deliberately not one DB transaction (system-design §4.2 "idempotent
-// webhooks"): each step is individually idempotent — the one-active-per-user
-// index guards activation, markPaid only does pending→paid — so a retried or
-// partial webhook converges.
+// Checkouts reserve Ride Credit without spending it. Settlement, membership,
+// period history, credit capture, ride allocation, and payment fulfilment share
+// one lifecycle transaction, so a crash cannot leave half of the value posted.
 
+import { createHash } from 'node:crypto';
 import { normaliseGhanaPhone } from '../../lib/phone';
+import { InMemoryCreditLedgerRepository } from '../entitlements/credit-ledger.repository';
 import type { CreditLedgerRepository } from '../entitlements/credit-ledger.repository';
 import type { EntitlementLedgerRepository } from '../entitlements/entitlement-ledger.repository';
 import type {
@@ -20,8 +16,7 @@ import type {
   SubscriptionRepository,
 } from '../subscriptions/subscription.repository';
 import type { UserRepository } from '../users/user.repository';
-import { periodFor } from '../subscriptions/period';
-import { derivePrice, MIN_CHARGE_PESEWAS, netCharge, type DerivedPrice } from './pricing';
+import { derivePrice, MIN_CHARGE_PESEWAS, type DerivedPrice } from './pricing';
 import type { RouteStopRepository } from '../mobility/route-stop.repository';
 import type { PricingRepository } from './pricing.repository';
 import {
@@ -31,6 +26,17 @@ import {
   type PaymentRepository,
 } from './payment.repository';
 import type { PaystackClient } from './paystack.client';
+import {
+  ActiveSubscriptionPaymentError,
+  InMemoryPaymentLifecycle,
+  type PaymentLifecycle,
+  type PeriodCloseResult,
+  type SettledCharge,
+} from './payment-lifecycle';
+import {
+  InMemoryPaymentWebhookRepository,
+  type PaymentWebhookRepository,
+} from './payment-webhook.repository';
 
 /**
  * Thrown when a payments operation is attempted but no Paystack client is wired
@@ -97,16 +103,10 @@ export interface PaymentsServiceDeps {
   routeStops?: RouteStopRepository;
   /** Rides allocated per activated period (placeholder until E1b tiers). */
   ridesPerPeriod: number;
-}
-
-/**
- * True when a pg error is a unique-constraint violation (SQLSTATE 23505).
- *
- * @param err - the caught error (unknown shape).
- * @returns whether it is a Postgres unique-violation.
- */
-function isUniqueViolation(err: unknown): boolean {
-  return (err as { code?: string }).code === '23505';
+  /** Atomic checkout/fulfilment/period-close boundary. */
+  lifecycle?: PaymentLifecycle;
+  /** Durable provider-event inbox. */
+  webhooks?: PaymentWebhookRepository;
 }
 
 /**
@@ -117,26 +117,45 @@ function isUniqueViolation(err: unknown): boolean {
  * mismatched reference as a shortfall is. All settlement fields are required:
  * a signed but incomplete payload is not proof that the expected charge settled.
  *
- * @param payment - the pending payment the reference resolved to.
  * @param event - the signature-verified webhook payload.
- * @returns whether the charge may grant what the payment bought.
+ * @returns normalized provider facts, or null when required evidence is absent.
  */
-function chargeMatches(payment: Payment, event: PaystackWebhookEvent): boolean {
+function settledCharge(event: PaystackWebhookEvent): SettledCharge | null {
   const data = event.data;
-  if (!data) return false;
-  return (
-    data.status === 'success' &&
-    Number.isSafeInteger(data.amount) &&
-    data.amount === payment.amount &&
-    typeof data.currency === 'string' &&
-    data.currency.toUpperCase() === payment.currency.toUpperCase()
-  );
+  if (!data) return null;
+  const providerTransactionId = String(data.id ?? '');
+  const paidAt = new Date(data.paid_at ?? '');
+  if (
+    data.status !== 'success' ||
+    typeof data.reference !== 'string' ||
+    typeof data.amount !== 'number' ||
+    !Number.isSafeInteger(data.amount) ||
+    typeof data.currency !== 'string' ||
+    !/^\d+$/.test(providerTransactionId) ||
+    (data.domain !== 'test' && data.domain !== 'live') ||
+    Number.isNaN(paidAt.getTime()) ||
+    (data.fees !== undefined && data.fees !== null && !Number.isSafeInteger(data.fees))
+  ) {
+    return null;
+  }
+  return {
+    reference: data.reference,
+    status: 'success',
+    amountPesewas: data.amount,
+    currency: data.currency,
+    providerTransactionId,
+    providerDomain: data.domain,
+    channel: typeof data.channel === 'string' ? data.channel : null,
+    feesPesewas: data.fees ?? null,
+    paidAt,
+  };
 }
 
 /** The subset of Paystack's webhook payload we read. */
 interface PaystackWebhookEvent {
   event?: string;
   data?: {
+    id?: number | string;
     reference?: string;
     /** Paystack's own verdict on the charge. Only `success` grants anything. */
     status?: string;
@@ -144,6 +163,10 @@ interface PaystackWebhookEvent {
     amount?: number;
     /** ISO 4217 code Paystack settled in. */
     currency?: string;
+    domain?: string;
+    channel?: string | null;
+    fees?: number | null;
+    paid_at?: string;
     /** Present on mobile-money charges; the handset that approved the debit. */
     customer?: { phone?: string | null };
     authorization?: { mobile_money_number?: string | null };
@@ -170,8 +193,31 @@ export interface CheckoutResult {
  * confirms it. See the file header for the idempotency model.
  */
 export class PaymentsService {
+  private readonly lifecycle: PaymentLifecycle;
+  private readonly webhooks: PaymentWebhookRepository;
+
   /** @param deps - repositories, the Paystack client, and the fee table. */
-  constructor(private readonly deps: PaymentsServiceDeps) {}
+  constructor(private readonly deps: PaymentsServiceDeps) {
+    this.lifecycle =
+      deps.lifecycle ??
+      new InMemoryPaymentLifecycle({
+        payments: deps.payments,
+        subscriptions: deps.subscriptions,
+        entitlements: deps.entitlements,
+        credits: deps.credits ?? new InMemoryCreditLedgerRepository(),
+      });
+    this.webhooks = deps.webhooks ?? new InMemoryPaymentWebhookRepository();
+  }
+
+  /**
+   * Close every due period through the same atomic accounting boundary.
+   *
+   * @param now - instant used to select ended periods.
+   * @returns aggregate conversion and closure totals.
+   */
+  async closeEndedPeriods(now: Date = new Date()): Promise<PeriodCloseResult> {
+    return this.lifecycle.closeEndedPeriods(now);
+  }
 
   /**
    * Start a Paystack checkout for the platform membership fee. Records a
@@ -194,30 +240,32 @@ export class PaymentsService {
     routeId: string,
     stops: { pickupStopId?: string; dropoffStopId?: string } = {},
   ): Promise<CheckoutResult> {
-    if (await this.deps.subscriptions.findActiveByUser(userId)) {
-      throw new AlreadySubscribedError('An active subscription already exists');
-    }
     await this.assertStopsOnRoute(routeId, stops);
     const price = await this.priceFor(plan, routeId);
-    const balance = this.deps.credits ? await this.deps.credits.balancePesewas(userId) : 0;
-    const { appliedCreditPesewas, chargePesewas } = netCharge(price.pricePesewas, balance);
-    const checkout = await this.startCheckout({
-      userId,
-      purpose: 'subscription',
-      plan,
-      routeId,
-      amount: chargePesewas,
-      appliedCreditPesewas,
-      currency: 'GHS',
-      // Frozen here, not at activation: a fare moving between checkout and
-      // charge.success would grant rides priced against a fare never paid.
-      ridesGranted: price.ridesGranted,
-      farePesewas: price.farePesewas,
-      creditPesewasPerRide: price.creditPesewasPerRide,
-      pickupStopId: stops.pickupStopId ?? null,
-      dropoffStopId: stops.dropoffStopId ?? null,
-    });
-    return { ...checkout, pricePesewas: price.pricePesewas, appliedCreditPesewas, chargePesewas };
+    const checkout = await this.startCheckout(
+      {
+        userId,
+        purpose: 'subscription',
+        plan,
+        routeId,
+        currency: 'GHS',
+        // Frozen here, not at activation: a fare moving between checkout and
+        // charge.success would grant rides priced against a fare never paid.
+        ridesGranted: price.ridesGranted,
+        farePesewas: price.farePesewas,
+        creditPesewasPerRide: price.creditPesewasPerRide,
+        pickupStopId: stops.pickupStopId ?? null,
+        dropoffStopId: stops.dropoffStopId ?? null,
+      },
+      price.pricePesewas,
+    );
+    return {
+      authorizationUrl: checkout.authorizationUrl,
+      reference: checkout.payment.reference,
+      pricePesewas: price.pricePesewas,
+      appliedCreditPesewas: checkout.payment.appliedCreditPesewas,
+      chargePesewas: checkout.payment.amount,
+    };
   }
 
   /**
@@ -297,21 +345,31 @@ export class PaymentsService {
    * transaction for it.
    *
    * @param input - the new payment minus its `reference` (generated here).
+   * @param pricePesewas - full price before a transactional credit hold.
    * @returns the checkout URL and the generated reference.
    * @throws PaymentsNotConfiguredError when no Paystack client is wired.
    */
   private async startCheckout(
-    input: Omit<NewPayment, 'reference'>,
-  ): Promise<Pick<CheckoutResult, 'authorizationUrl' | 'reference'>> {
+    input: Omit<NewPayment, 'reference' | 'amount' | 'appliedCreditPesewas'>,
+    pricePesewas: number,
+  ): Promise<{ authorizationUrl: string; payment: Payment }> {
     if (!this.deps.paystack) {
       throw new PaymentsNotConfiguredError('Payments are not configured');
     }
     const reference = `trotxi-${crypto.randomUUID()}`;
+    let payment: Payment;
     try {
-      await this.deps.payments.create({ ...input, reference });
+      payment = await this.lifecycle.createSubscriptionCheckout({
+        ...input,
+        reference,
+        pricePesewas,
+      });
     } catch (err) {
       if (err instanceof PendingSubscriptionPaymentError) {
         throw new CheckoutInProgressError(err.reference);
+      }
+      if (err instanceof ActiveSubscriptionPaymentError) {
+        throw new AlreadySubscribedError(err.message);
       }
       throw err;
     }
@@ -321,10 +379,10 @@ export class PaymentsService {
       // for accounts predating email capture: Paystack needs a stable customer
       // key, and an unroutable one beats refusing the checkout.
       email: (await this.deps.users.findById(input.userId))?.email ?? this.fallbackEmail(input),
-      amountPesewas: input.amount, // amounts are already stored in pesewas
+      amountPesewas: payment.amount, // amounts are already stored in pesewas
       reference,
     });
-    return { authorizationUrl: result.authorizationUrl, reference };
+    return { authorizationUrl: result.authorizationUrl, payment };
   }
 
   /**
@@ -333,14 +391,16 @@ export class PaymentsService {
    * @param input - the payment being opened.
    * @returns an address derived from the user id.
    */
-  private fallbackEmail(input: Omit<NewPayment, 'reference'>): string {
+  private fallbackEmail(
+    input: Omit<NewPayment, 'reference' | 'amount' | 'appliedCreditPesewas'>,
+  ): string {
     return `${input.userId}@users.trotxi.app`;
   }
 
   /**
    * Verify and process a Paystack webhook. On a valid `charge.success` for a
    * subscription payment, activate the membership. Idempotent and safe to
-   * replay (guarded activation, pending→paid markPaid); unknown references,
+   * replay (one atomic pending→fulfilled transaction); unknown references,
    * non-subscription purposes, and non-`charge.success` events are ignored.
    *
    * @param rawBody - the exact raw request body (required for the HMAC check).
@@ -349,6 +409,17 @@ export class PaymentsService {
    * @throws InvalidWebhookError when the signature doesn't verify.
    */
   async handleWebhook(rawBody: string, signature: string | undefined): Promise<void> {
+    await this.acceptWebhook(rawBody, signature);
+    await this.processWebhookInbox();
+  }
+
+  /**
+   * Verify and durably enqueue a provider webhook before it is acknowledged.
+   *
+   * @param rawBody - exact bytes signed by Paystack.
+   * @param signature - x-paystack-signature header.
+   */
+  async acceptWebhook(rawBody: string, signature: string | undefined): Promise<void> {
     if (!this.deps.paystack) {
       throw new PaymentsNotConfiguredError('Payments are not configured');
     }
@@ -357,69 +428,118 @@ export class PaymentsService {
     }
 
     const event = JSON.parse(rawBody) as PaystackWebhookEvent;
-    if (event.event !== 'charge.success') return; // ignore everything else
-    const reference = event.data?.reference;
-    if (!reference) return;
-
-    const payment = await this.deps.payments.findByReference(reference);
-    if (!payment) return; // unknown reference — not ours
-
-    // A settled row is terminal. In particular, a late success event must not
-    // fulfil a row that an earlier path already declared failed.
-    if (payment.status !== 'pending') return;
-
-    // The signature proves Paystack sent this. It does not prove the rider paid
-    // what we asked for. `charge.success` is emitted for the transaction, so a
-    // short or foreign-currency collection would otherwise activate a full
-    // period and allocate a full month of rides against it.
-    if (!chargeMatches(payment, event)) {
-      // A webhook mismatch is evidence to investigate, not proof of failure.
-      // Keep the row pending so Verify/reconciliation can recover it safely.
-      return;
-    }
-
-    if (payment.purpose === 'subscription' && payment.plan) {
-      // Debit BEFORE activating: a crash between the two leaves the rider
-      // without the subscription their retry will grant, rather than with a
-      // subscription they never paid the credit half of.
-      await this.applyCredit(payment.userId, reference, payment.appliedCreditPesewas);
-      // Membership fee paid — activate the subscription (pinned to the paid
-      // route) and allocate the period's rides. Both idempotent → replay-safe.
-      await this.activateSubscription(payment.userId, payment.plan, payment.routeId, payment);
-      await this.allocateEntitlement(payment.userId, reference, payment.ridesGranted);
-    }
-
-    // The charge itself verifies the handset — no OTP needed. Best effort: a
-    // non-200 here would cost us the activation above on Paystack's retry.
-    await this.capturePayerPhone(payment.userId, event);
-    // Legacy 'topup' payments (pre-ADR-0014 staging data) are ignored.
-
-    await this.deps.payments.markPaid(reference);
+    await this.webhooks.enqueue({
+      payloadSha256: createHash('sha256').update(rawBody).digest('hex'),
+      eventType: typeof event.event === 'string' ? event.event : 'unknown',
+      reference: typeof event.data?.reference === 'string' ? event.data.reference : null,
+      rawBody,
+      payload: event,
+    });
   }
 
   /**
-   * Allocate the period's ride entitlement for a paid subscription. Keyed by the
-   * payment reference, so a re-delivered webhook never double-allocates.
+   * Claim and process durable provider events; safe for concurrent workers.
    *
-   * @param userId - the subscriber.
-   * @param reference - the payment reference (the allocation's idempotency key).
-   * @param ridesGranted - the count frozen at checkout; null for pre-#103 rows.
+   * @param limit - maximum work items to claim.
+   * @returns processed/failed counts for observability.
    */
-  private async allocateEntitlement(
-    userId: string,
-    reference: string,
-    ridesGranted: number | null,
-  ): Promise<void> {
-    await this.deps.entitlements.record({
-      userId,
-      // The count fixed at checkout. Pre-#103 payments have none; those fall
-      // back to the configured default so replaying an old webhook still works.
-      deltaRides: ridesGranted ?? this.deps.ridesPerPeriod,
-      reason: 'allocation',
-      refType: 'payment',
-      refId: reference,
-      idempotencyKey: `alloc:${reference}`,
-    });
+  async processWebhookInbox(limit = 25): Promise<{ processed: number; failed: number }> {
+    const staleBefore = new Date(Date.now() - 5 * 60 * 1_000);
+    const events = await this.webhooks.claimBatch(limit, staleBefore);
+    let processed = 0;
+    let failed = 0;
+    for (const item of events) {
+      try {
+        await this.processWebhookEvent(item.payload as PaystackWebhookEvent);
+        await this.webhooks.markProcessed(item.id);
+        processed++;
+      } catch (err) {
+        await this.webhooks.markFailed(
+          item.id,
+          err instanceof Error ? err.message : 'Unknown webhook processing error',
+        );
+        failed++;
+      }
+    }
+    return { processed, failed };
+  }
+
+  /**
+   * Verify stale unresolved rows directly with Paystack.
+   *
+   * @param cutoff - only payments created at/before this instant.
+   * @param limit - maximum rows to verify in one run.
+   * @returns reconciliation outcome counts.
+   */
+  async reconcileUnresolved(
+    cutoff: Date = new Date(Date.now() - 60 * 60 * 1_000),
+    limit = 100,
+  ): Promise<{
+    considered: number;
+    fulfilled: number;
+    failed: number;
+    unresolved: number;
+    errors: number;
+  }> {
+    if (!this.deps.paystack) throw new PaymentsNotConfiguredError('Payments are not configured');
+    const payments = await this.deps.payments.listUnresolvedBefore(cutoff, limit);
+    const result = {
+      considered: payments.length,
+      fulfilled: 0,
+      failed: 0,
+      unresolved: 0,
+      errors: 0,
+    };
+    for (const payment of payments) {
+      try {
+        const transaction = await this.deps.paystack.verifyTransaction(payment.reference);
+        if (transaction.status === 'success' && transaction.paidAt) {
+          const fulfilled = await this.lifecycle.fulfillSubscriptionCharge({
+            reference: transaction.reference,
+            status: 'success',
+            amountPesewas: transaction.amountPesewas,
+            currency: transaction.currency,
+            providerTransactionId: transaction.providerTransactionId,
+            providerDomain: transaction.providerDomain,
+            channel: transaction.channel,
+            feesPesewas: transaction.feesPesewas,
+            paidAt: transaction.paidAt,
+          });
+          if (fulfilled === 'fulfilled' || fulfilled === 'already_fulfilled') result.fulfilled++;
+          else result.unresolved++;
+        } else if (['failed', 'abandoned', 'reversed'].includes(transaction.status)) {
+          if (
+            await this.lifecycle.failPendingPayment(
+              payment.reference,
+              transaction.status,
+              `Paystack Verify returned ${transaction.status}`,
+            )
+          ) {
+            result.failed++;
+          }
+        } else {
+          result.unresolved++;
+        }
+      } catch {
+        result.errors++;
+      }
+    }
+    return result;
+  }
+
+  private async processWebhookEvent(event: PaystackWebhookEvent): Promise<void> {
+    if (event.event !== 'charge.success') return;
+    const reference = event.data?.reference;
+    if (!reference) return;
+
+    const charge = settledCharge(event);
+    if (!charge || charge.reference !== reference) return;
+    const payment = await this.deps.payments.findByReference(reference);
+    if (!payment) return;
+    const result = await this.lifecycle.fulfillSubscriptionCharge(charge);
+    if (result === 'fulfilled') {
+      await this.capturePayerPhone(payment.userId, event);
+    }
   }
 
   /**
@@ -440,83 +560,6 @@ export class PaymentsService {
     } catch {
       // Already held by another account, or the row vanished. Neither is worth
       // failing a paid subscription over.
-    }
-  }
-
-  /**
-   * Debit the Ride Credit this checkout was netted against.
-   *
-   * Clamped to the balance actually on the ledger. Two checkouts opened before
-   * either settles are both netted against the same balance, so the second
-   * would otherwise drive it negative — spending credit that no longer exists.
-   * The clamp caps that at the balance; the rider keeps the discount already
-   * charged, which is the cheaper side of the error to be on.
-   *
-   * @param userId - the rider.
-   * @param reference - the payment reference; also the idempotency key.
-   * @param appliedCreditPesewas - what was netted off at checkout.
-   */
-  private async applyCredit(
-    userId: string,
-    reference: string,
-    appliedCreditPesewas: number,
-  ): Promise<void> {
-    if (!this.deps.credits || appliedCreditPesewas <= 0) return;
-    const balance = await this.deps.credits.balancePesewas(userId);
-    const debit = Math.min(appliedCreditPesewas, balance);
-    if (debit <= 0) return;
-    await this.deps.credits.record({
-      userId,
-      deltaPesewas: -debit,
-      reason: 'renewal_applied',
-      refType: 'payment',
-      refId: reference,
-      idempotencyKey: `renewal:${reference}`,
-    });
-  }
-
-  /**
-   * Create the user's active subscription, treating the one-active-per-user
-   * unique-violation as success (so a replayed webhook is a no-op).
-   *
-   * @param userId - the subscriber.
-   * @param plan - the membership tier to activate.
-   * @param routeId - the rider's pinned route/corridor (E3).
-   * @param payment - the paid payment, carrying the checkout-time snapshot.
-   */
-  private async activateSubscription(
-    userId: string,
-    plan: SubscriptionPlan,
-    routeId: string | null,
-    payment: Payment,
-  ): Promise<void> {
-    try {
-      const period = periodFor(plan, new Date());
-      await this.deps.subscriptions.create({
-        userId,
-        plan,
-        routeId,
-        // Where they board and alight, chosen at checkout (#204).
-        pickupStopId: payment.pickupStopId,
-        dropoffStopId: payment.dropoffStopId,
-        // The billing window this payment buys (#162).
-        periodStart: period.start,
-        periodEnd: period.end,
-        // From the payment, so a fare change cannot move what this rider owes
-        // (ADR-0015 §3). New prices apply at renewal.
-        //
-        // Cash charged PLUS credit applied: since #128 `amount` is only the
-        // cash half, and recording that alone would understate the period's
-        // price by whatever credit was spent, making revenue look worse than
-        // it was.
-        pricePesewas: payment.amount + payment.appliedCreditPesewas,
-        ridesGranted: payment.ridesGranted,
-        farePesewas: payment.farePesewas,
-        creditPesewasPerRide: payment.creditPesewasPerRide,
-      });
-    } catch (err) {
-      // one-active-per-user index fired — already activated, treat as done.
-      if (!isUniqueViolation(err)) throw err;
     }
   }
 }

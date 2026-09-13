@@ -3,8 +3,9 @@ name: CI
 on:
   push:
     branches: [main]
+  # Branch filters apply to the PR base. Run stacked PRs too, not only PRs that
+  # already target main, so each layer receives the same merge gate.
   pull_request:
-    branches: [main]
 
 permissions:
   contents: read
