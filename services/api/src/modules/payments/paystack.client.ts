@@ -42,6 +42,24 @@ export interface PaystackClient {
   verifyWebhookSignature(rawBody: string, signature: string | undefined): boolean;
 }
 
+/** Paystack accepts only alphanumerics plus `-`, `.`, and `=` in references. */
+export const PAYSTACK_REFERENCE_PATTERN = /^[A-Za-z0-9.=-]+$/;
+
+/**
+ * Validate the contract at the adapter boundary so fakes and live HTTP fail in
+ * the same way.
+ *
+ * @param params - checkout inputs to validate before any provider call.
+ */
+export function assertValidPaystackInit(params: PaystackInitParams): void {
+  if (!Number.isSafeInteger(params.amountPesewas) || params.amountPesewas <= 0) {
+    throw new TypeError('Paystack amount must be a positive integer number of pesewas');
+  }
+  if (!PAYSTACK_REFERENCE_PATTERN.test(params.reference)) {
+    throw new TypeError('Paystack reference contains unsupported characters');
+  }
+}
+
 /**
  * Compute Paystack's webhook signature: HMAC-SHA512 of the raw body, hex-encoded.
  *
@@ -89,6 +107,7 @@ export class FakePaystackClient implements PaystackClient {
    * @returns a fake `authorizationUrl` derived from the reference.
    */
   async initializeTransaction(params: PaystackInitParams): Promise<PaystackInitResult> {
+    assertValidPaystackInit(params);
     return {
       authorizationUrl: `https://checkout.paystack.test/${params.reference}`,
       reference: params.reference,

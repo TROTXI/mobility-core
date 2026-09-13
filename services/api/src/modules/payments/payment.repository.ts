@@ -70,10 +70,27 @@ export interface NewPayment {
   creditPesewasPerRide?: number | null;
 }
 
+/**
+ * Raised when a rider already has an unresolved subscription checkout.
+ *
+ * A second pending payment can reserve the same Ride Credit and later grant a
+ * second entitlement. Repositories enforce this at the serialization boundary,
+ * not as a racy service-level read.
+ */
+export class PendingSubscriptionPaymentError extends Error {
+  constructor(readonly reference: string) {
+    super(`Subscription checkout ${reference} is still pending`);
+    this.name = 'PendingSubscriptionPaymentError';
+  }
+}
+
 /** Persistence for payments. Backed by Postgres in prod, in-memory in dev/tests. */
 export interface PaymentRepository {
   /**
    * Insert a new payment in `pending` state.
+   *
+   * For subscription payments, this must atomically reject creation when the
+   * same user already has a pending subscription payment.
    *
    * @param input - the payment to create (reference must be unique).
    * @returns the persisted payment, including its generated id and timestamps.
@@ -106,6 +123,15 @@ export class InMemoryPaymentRepository implements PaymentRepository {
   private readonly byReference = new Map<string, Payment>();
 
   async create(input: NewPayment): Promise<Payment> {
+    if (input.purpose === 'subscription') {
+      const pending = [...this.byReference.values()].find(
+        (payment) =>
+          payment.userId === input.userId &&
+          payment.purpose === 'subscription' &&
+          payment.status === 'pending',
+      );
+      if (pending) throw new PendingSubscriptionPaymentError(pending.reference);
+    }
     const now = new Date();
     const payment: Payment = {
       id: crypto.randomUUID(),

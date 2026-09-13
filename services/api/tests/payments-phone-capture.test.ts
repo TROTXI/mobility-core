@@ -34,6 +34,9 @@ function chargeSuccess(reference: string, phone?: string, customerPhone?: string
     event: 'charge.success',
     data: {
       reference,
+      status: 'success',
+      amount: FARE * 44,
+      currency: 'GHS',
       ...(phone ? { authorization: { mobile_money_number: phone } } : {}),
       ...(customerPhone ? { customer: { phone: customerPhone } } : {}),
     },

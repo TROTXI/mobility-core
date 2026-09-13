@@ -1,4 +1,4 @@
-import type { Pool } from 'pg';
+import type { Pool, PoolClient } from 'pg';
 import type { SubscriptionPlan } from '../subscriptions/subscription.repository';
 import type {
   NewPayment,
@@ -7,6 +7,7 @@ import type {
   PaymentRepository,
   PaymentStatus,
 } from './payment.repository';
+import { PendingSubscriptionPaymentError } from './payment.repository';
 
 interface PaymentRow {
   id: string;
@@ -54,7 +55,36 @@ export class PgPaymentRepository implements PaymentRepository {
   constructor(private readonly pool: Pool) {}
 
   async create(input: NewPayment): Promise<Payment> {
-    const { rows } = await this.pool.query<PaymentRow>(
+    if (input.purpose !== 'subscription') return this.insert(this.pool, input);
+
+    const client = await this.pool.connect();
+    try {
+      await client.query('BEGIN');
+      // Serialize checkout creation per rider without introducing a permanent
+      // uniqueness constraint that would reject historical staging rows.
+      await client.query(`SELECT pg_advisory_xact_lock(hashtextextended($1, 0))`, [input.userId]);
+      const { rows: pending } = await client.query<{ reference: string }>(
+        `SELECT reference
+           FROM payments
+          WHERE user_id = $1 AND purpose = 'subscription' AND status = 'pending'
+          LIMIT 1`,
+        [input.userId],
+      );
+      if (pending[0]) throw new PendingSubscriptionPaymentError(pending[0].reference);
+
+      const payment = await this.insert(client, input);
+      await client.query('COMMIT');
+      return payment;
+    } catch (err) {
+      await client.query('ROLLBACK');
+      throw err;
+    } finally {
+      client.release();
+    }
+  }
+
+  private async insert(client: Pick<Pool, 'query'> | Pick<PoolClient, 'query'>, input: NewPayment) {
+    const { rows } = await client.query<PaymentRow>(
       `INSERT INTO payments (user_id, reference, purpose, plan, route_id, amount, currency,
                              rides_granted, fare_pesewas, credit_pesewas_per_ride,
                              applied_credit_pesewas, pickup_stop_id, dropoff_stop_id)
