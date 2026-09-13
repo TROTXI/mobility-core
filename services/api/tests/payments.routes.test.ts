@@ -171,6 +171,10 @@ describe('POST /webhooks/paystack', () => {
     ).json();
 
     expect((await webhookFor(app, reference)).statusCode).toBe(200);
+    for (let attempt = 0; attempt < 20; attempt++) {
+      if (await subscriptions.findActiveByUser('rider-2')) break;
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    }
     expect(await subscriptions.findActiveByUser('rider-2')).not.toBeNull();
 
     // …and the rider now has their allocated rides via GET /me/rides.

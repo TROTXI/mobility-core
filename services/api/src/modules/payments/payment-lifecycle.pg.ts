@@ -352,6 +352,42 @@ export class PgPaymentLifecycle implements PaymentLifecycle {
     }
   }
 
+  async failPendingPayment(reference: string, code: string, message: string): Promise<boolean> {
+    const client = await this.pool.connect();
+    try {
+      await client.query('BEGIN');
+      const { rows } = await client.query<{ id: string; user_id: string; status: string }>(
+        `SELECT id, user_id, status FROM payments WHERE reference = $1 FOR UPDATE`,
+        [reference],
+      );
+      const payment = rows[0];
+      if (!payment || !['pending', 'processing'].includes(payment.status)) {
+        await client.query('ROLLBACK');
+        return false;
+      }
+      await this.lockUser(client, payment.user_id);
+      await client.query(
+        `UPDATE credit_holds
+            SET status = 'released', released_at = now()
+          WHERE payment_id = $1 AND status = 'held'`,
+        [payment.id],
+      );
+      await client.query(
+        `UPDATE payments
+            SET status = 'failed', failure_code = $2, failure_message = $3, updated_at = now()
+          WHERE id = $1`,
+        [payment.id, code, message.slice(0, 2_000)],
+      );
+      await client.query('COMMIT');
+      return true;
+    } catch (err) {
+      await client.query('ROLLBACK');
+      throw err;
+    } finally {
+      client.release();
+    }
+  }
+
   async closeEndedPeriods(now: Date = new Date()): Promise<PeriodCloseResult> {
     const { rows: due } = await this.pool.query<{
       period_id: string;
