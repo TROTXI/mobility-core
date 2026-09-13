@@ -135,6 +135,8 @@ export interface PaymentRepository {
    * @returns the payment, or null if no payment has that reference.
    */
   findByReference(reference: string): Promise<Payment | null>;
+  /** Unresolved rows old enough for independent provider verification. */
+  listUnresolvedBefore(cutoff: Date, limit: number): Promise<Payment[]>;
   /**
    * Transition `pending → paid`. No-op if already paid (never mutate a paid row).
    *
@@ -201,6 +203,17 @@ export class InMemoryPaymentRepository implements PaymentRepository {
 
   async findByReference(reference: string): Promise<Payment | null> {
     return this.byReference.get(reference) ?? null;
+  }
+
+  async listUnresolvedBefore(cutoff: Date, limit: number): Promise<Payment[]> {
+    return [...this.byReference.values()]
+      .filter(
+        (payment) =>
+          (payment.status === 'pending' || payment.status === 'processing') &&
+          payment.createdAt.getTime() <= cutoff.getTime(),
+      )
+      .sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime())
+      .slice(0, Math.max(0, limit));
   }
 
   async markPaid(reference: string): Promise<void> {

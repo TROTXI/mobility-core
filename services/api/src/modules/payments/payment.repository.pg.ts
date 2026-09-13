@@ -138,6 +138,17 @@ export class PgPaymentRepository implements PaymentRepository {
     return rows[0] ? toPayment(rows[0]) : null;
   }
 
+  async listUnresolvedBefore(cutoff: Date, limit: number): Promise<Payment[]> {
+    const { rows } = await this.pool.query<PaymentRow>(
+      `SELECT * FROM payments
+        WHERE status IN ('pending', 'processing') AND created_at <= $1
+        ORDER BY created_at
+        LIMIT $2`,
+      [cutoff, Math.max(0, limit)],
+    );
+    return rows.map(toPayment);
+  }
+
   async markPaid(reference: string): Promise<void> {
     // Only pending → paid; a paid row is never mutated again.
     await this.pool.query(

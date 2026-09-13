@@ -56,6 +56,8 @@ export interface PaymentLifecycle {
   createSubscriptionCheckout(input: SubscriptionCheckoutInput): Promise<Payment>;
   /** Atomically turn a verified provider charge into membership value. */
   fulfillSubscriptionCharge(charge: SettledCharge): Promise<FulfillmentResult>;
+  /** Atomically release a hold and terminally fail an unresolved payment. */
+  failPendingPayment(reference: string, code: string, message: string): Promise<boolean>;
   /** Atomically convert and close every period due at the supplied instant. */
   closeEndedPeriods(now?: Date): Promise<PeriodCloseResult>;
 }
@@ -234,6 +236,19 @@ export class InMemoryPaymentLifecycle implements PaymentLifecycle {
       });
       this.renewableByUser.delete(payment.userId);
       return 'fulfilled';
+    });
+  }
+
+  async failPendingPayment(reference: string, _code: string, _message: string): Promise<boolean> {
+    const found = await this.deps.payments.findByReference(reference);
+    if (!found) return false;
+    return this.withUserLock(found.userId, async () => {
+      const payment = await this.deps.payments.findByReference(reference);
+      if (!payment || (payment.status !== 'pending' && payment.status !== 'processing'))
+        return false;
+      this.heldCredit.delete(reference);
+      await this.deps.payments.updateLifecycle(reference, { status: 'failed' });
+      return true;
     });
   }
 

@@ -33,18 +33,19 @@ function make(subscriptions: SubscriptionRepository = new InMemorySubscriptionRe
   const pricing = new InMemoryPricingRepository();
   const credits = new InMemoryCreditLedgerRepository();
   const routeStops = new InMemoryRouteStopRepository();
+  const paystack = new FakePaystackClient(FAKE_SECRET);
   const service = new PaymentsService({
     payments,
     subscriptions,
     entitlements,
     credits,
-    paystack: new FakePaystackClient(FAKE_SECRET),
+    paystack,
     users: new InMemoryUserRepository(),
     pricing,
     routeStops,
     ridesPerPeriod: RIDES,
   });
-  return { payments, subscriptions, entitlements, credits, pricing, routeStops, service };
+  return { payments, subscriptions, entitlements, credits, pricing, routeStops, paystack, service };
 }
 
 /** A priced corridor: without a fare in force there is no price to charge. */
@@ -214,6 +215,17 @@ describe('PaymentsService.handleWebhook', () => {
     await expect(service.handleWebhook('{}', 'bad')).rejects.toBeInstanceOf(InvalidWebhookError);
   });
 
+  it('durably deduplicates the same webhook before processing', async () => {
+    const { service } = await priced();
+    const { reference } = await service.initializeSubscription('u1', 'monthly', ROUTE);
+    const { body, signature } = chargeSuccess(reference);
+
+    await service.acceptWebhook(body, signature);
+    await service.acceptWebhook(body, signature);
+    expect(await service.processWebhookInbox()).toEqual({ processed: 1, failed: 0 });
+    expect(await service.processWebhookInbox()).toEqual({ processed: 0, failed: 0 });
+  });
+
   it('subscription paid: activates the subscription, allocates rides, marks paid', async () => {
     const { service, subscriptions, payments, entitlements } = await priced();
     const { reference } = await service.initializeSubscription('u1', 'monthly', ROUTE);
@@ -363,10 +375,11 @@ describe('PaymentsService.handleWebhook', () => {
     const { service } = await priced(subscriptions);
     const { reference } = await service.initializeSubscription('u1', 'monthly', ROUTE);
     const { body, signature } = chargeSuccess(reference);
-    await expect(service.handleWebhook(body, signature)).rejects.toThrow('dup');
+    await expect(service.handleWebhook(body, signature)).resolves.toBeUndefined();
+    expect((await service.processWebhookInbox()).failed).toBe(1);
   });
 
-  it('propagates non-unique errors from activation', async () => {
+  it('records non-unique activation failures for a durable retry', async () => {
     const subscriptions: SubscriptionRepository = {
       findActiveByUser: async () => null,
       findActiveByRoute: async () => [],
@@ -380,7 +393,57 @@ describe('PaymentsService.handleWebhook', () => {
     const { service } = await priced(subscriptions);
     const { reference } = await service.initializeSubscription('u1', 'monthly', ROUTE);
     const { body, signature } = chargeSuccess(reference);
-    await expect(service.handleWebhook(body, signature)).rejects.toThrow('db down');
+    await expect(service.handleWebhook(body, signature)).resolves.toBeUndefined();
+    expect((await service.processWebhookInbox()).failed).toBe(1);
+  });
+});
+
+describe('PaymentsService reconciliation', () => {
+  it('fulfills a successful payment whose webhook never arrived', async () => {
+    const { service, paystack, payments, subscriptions, entitlements } = await priced();
+    const checkout = await service.initializeSubscription('u1', 'monthly', ROUTE);
+    paystack.setTransaction(checkout.reference, {
+      status: 'success',
+      paidAt: new Date(),
+      channel: 'mobile_money',
+      feesPesewas: 100,
+    });
+
+    const result = await service.reconcileUnresolved(new Date(Date.now() + 1_000));
+
+    expect(result).toMatchObject({ considered: 1, fulfilled: 1, errors: 0 });
+    expect((await payments.findByReference(checkout.reference))?.status).toBe('fulfilled');
+    expect(await subscriptions.findActiveByUser('u1')).not.toBeNull();
+    expect(await entitlements.remainingRides('u1')).toBe(RIDES);
+  });
+
+  it('releases held credit after Verify reports a terminal failure', async () => {
+    const { service, paystack, payments, credits } = await priced();
+    await credits.record({
+      userId: 'u1',
+      deltaPesewas: 5_000,
+      reason: 'loyalty',
+      idempotencyKey: 'reconcile-credit',
+    });
+    const failed = await service.initializeSubscription('u1', 'monthly', ROUTE);
+    paystack.setTransaction(failed.reference, { status: 'abandoned' });
+
+    const result = await service.reconcileUnresolved(new Date(Date.now() + 1_000));
+    expect(result).toMatchObject({ considered: 1, failed: 1, errors: 0 });
+    expect((await payments.findByReference(failed.reference))?.status).toBe('failed');
+
+    const retry = await service.initializeSubscription('u1', 'monthly', ROUTE);
+    expect(retry.appliedCreditPesewas).toBe(5_000);
+  });
+
+  it('leaves an ongoing provider transaction unresolved', async () => {
+    const { service, payments } = await priced();
+    const checkout = await service.initializeSubscription('u1', 'monthly', ROUTE);
+
+    const result = await service.reconcileUnresolved(new Date(Date.now() + 1_000));
+
+    expect(result).toMatchObject({ considered: 1, unresolved: 1, errors: 0 });
+    expect((await payments.findByReference(checkout.reference))?.status).toBe('pending');
   });
 });
 

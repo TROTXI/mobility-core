@@ -6,6 +6,7 @@
 // period history, credit capture, ride allocation, and payment fulfilment share
 // one lifecycle transaction, so a crash cannot leave half of the value posted.
 
+import { createHash } from 'node:crypto';
 import { normaliseGhanaPhone } from '../../lib/phone';
 import { InMemoryCreditLedgerRepository } from '../entitlements/credit-ledger.repository';
 import type { CreditLedgerRepository } from '../entitlements/credit-ledger.repository';
@@ -32,6 +33,10 @@ import {
   type PeriodCloseResult,
   type SettledCharge,
 } from './payment-lifecycle';
+import {
+  InMemoryPaymentWebhookRepository,
+  type PaymentWebhookRepository,
+} from './payment-webhook.repository';
 
 /**
  * Thrown when a payments operation is attempted but no Paystack client is wired
@@ -100,6 +105,8 @@ export interface PaymentsServiceDeps {
   ridesPerPeriod: number;
   /** Atomic checkout/fulfilment/period-close boundary. */
   lifecycle?: PaymentLifecycle;
+  /** Durable provider-event inbox. */
+  webhooks?: PaymentWebhookRepository;
 }
 
 /**
@@ -187,6 +194,7 @@ export interface CheckoutResult {
  */
 export class PaymentsService {
   private readonly lifecycle: PaymentLifecycle;
+  private readonly webhooks: PaymentWebhookRepository;
 
   /** @param deps - repositories, the Paystack client, and the fee table. */
   constructor(private readonly deps: PaymentsServiceDeps) {
@@ -198,6 +206,7 @@ export class PaymentsService {
         entitlements: deps.entitlements,
         credits: deps.credits ?? new InMemoryCreditLedgerRepository(),
       });
+    this.webhooks = deps.webhooks ?? new InMemoryPaymentWebhookRepository();
   }
 
   /**
@@ -400,6 +409,17 @@ export class PaymentsService {
    * @throws InvalidWebhookError when the signature doesn't verify.
    */
   async handleWebhook(rawBody: string, signature: string | undefined): Promise<void> {
+    await this.acceptWebhook(rawBody, signature);
+    await this.processWebhookInbox();
+  }
+
+  /**
+   * Verify and durably enqueue a provider webhook before it is acknowledged.
+   *
+   * @param rawBody - exact bytes signed by Paystack.
+   * @param signature - x-paystack-signature header.
+   */
+  async acceptWebhook(rawBody: string, signature: string | undefined): Promise<void> {
     if (!this.deps.paystack) {
       throw new PaymentsNotConfiguredError('Payments are not configured');
     }
@@ -408,7 +428,107 @@ export class PaymentsService {
     }
 
     const event = JSON.parse(rawBody) as PaystackWebhookEvent;
-    if (event.event !== 'charge.success') return; // ignore everything else
+    await this.webhooks.enqueue({
+      payloadSha256: createHash('sha256').update(rawBody).digest('hex'),
+      eventType: typeof event.event === 'string' ? event.event : 'unknown',
+      reference: typeof event.data?.reference === 'string' ? event.data.reference : null,
+      rawBody,
+      payload: event,
+    });
+  }
+
+  /**
+   * Claim and process durable provider events; safe for concurrent workers.
+   *
+   * @param limit - maximum work items to claim.
+   * @returns processed/failed counts for observability.
+   */
+  async processWebhookInbox(limit = 25): Promise<{ processed: number; failed: number }> {
+    const staleBefore = new Date(Date.now() - 5 * 60 * 1_000);
+    const events = await this.webhooks.claimBatch(limit, staleBefore);
+    let processed = 0;
+    let failed = 0;
+    for (const item of events) {
+      try {
+        await this.processWebhookEvent(item.payload as PaystackWebhookEvent);
+        await this.webhooks.markProcessed(item.id);
+        processed++;
+      } catch (err) {
+        await this.webhooks.markFailed(
+          item.id,
+          err instanceof Error ? err.message : 'Unknown webhook processing error',
+        );
+        failed++;
+      }
+    }
+    return { processed, failed };
+  }
+
+  /**
+   * Verify stale unresolved rows directly with Paystack.
+   *
+   * @param cutoff - only payments created at/before this instant.
+   * @param limit - maximum rows to verify in one run.
+   * @returns reconciliation outcome counts.
+   */
+  async reconcileUnresolved(
+    cutoff: Date = new Date(Date.now() - 60 * 60 * 1_000),
+    limit = 100,
+  ): Promise<{
+    considered: number;
+    fulfilled: number;
+    failed: number;
+    unresolved: number;
+    errors: number;
+  }> {
+    if (!this.deps.paystack) throw new PaymentsNotConfiguredError('Payments are not configured');
+    const payments = await this.deps.payments.listUnresolvedBefore(cutoff, limit);
+    const result = {
+      considered: payments.length,
+      fulfilled: 0,
+      failed: 0,
+      unresolved: 0,
+      errors: 0,
+    };
+    for (const payment of payments) {
+      try {
+        const transaction = await this.deps.paystack.verifyTransaction(payment.reference);
+        if (transaction.status === 'success' && transaction.paidAt) {
+          const fulfilled = await this.lifecycle.fulfillSubscriptionCharge({
+            reference: transaction.reference,
+            status: 'success',
+            amountPesewas: transaction.amountPesewas,
+            currency: transaction.currency,
+            providerTransactionId: transaction.providerTransactionId,
+            providerDomain: transaction.providerDomain,
+            channel: transaction.channel,
+            feesPesewas: transaction.feesPesewas,
+            paidAt: transaction.paidAt,
+          });
+          if (fulfilled === 'fulfilled' || fulfilled === 'already_fulfilled') result.fulfilled++;
+          else result.unresolved++;
+        } else if (['failed', 'abandoned', 'reversed'].includes(transaction.status)) {
+          if (
+            await this.lifecycle.failPendingPayment(
+              payment.reference,
+              transaction.status,
+              `Paystack Verify returned ${transaction.status}`,
+            )
+          ) {
+            result.failed++;
+          }
+        } else {
+          result.unresolved++;
+        }
+      } catch {
+        result.errors++;
+      }
+    }
+    return result;
+  }
+
+  private async processWebhookEvent(event: PaystackWebhookEvent): Promise<void> {
+    if (event.event !== 'charge.success') return;
     const reference = event.data?.reference;
     if (!reference) return;
 

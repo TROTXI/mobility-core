@@ -23,6 +23,19 @@ export interface PaystackInitResult {
   reference: string;
 }
 
+/** Provider transaction facts returned by Paystack Verify. */
+export interface PaystackTransaction {
+  reference: string;
+  status: string;
+  amountPesewas: number;
+  currency: string;
+  providerTransactionId: string;
+  providerDomain: 'test' | 'live';
+  channel: string | null;
+  feesPesewas: number | null;
+  paidAt: Date | null;
+}
+
 /** The slice of Paystack we depend on; swap the impl (real/fake) per environment. */
 export interface PaystackClient {
   /**
@@ -32,6 +45,8 @@ export interface PaystackClient {
    * @returns the hosted `authorizationUrl` and the reference.
    */
   initializeTransaction(params: PaystackInitParams): Promise<PaystackInitResult>;
+  /** Independently read the provider's current transaction state. */
+  verifyTransaction(reference: string): Promise<PaystackTransaction>;
   /**
    * Verify a webhook's HMAC signature against the raw body.
    *
@@ -97,6 +112,7 @@ export function verifySignature(
  * sign a payload. Never wired in production (see server.ts).
  */
 export class FakePaystackClient implements PaystackClient {
+  private readonly transactions = new Map<string, PaystackTransaction>();
   /** @param secret - the shared secret tests sign payloads with. */
   constructor(private readonly secret = 'fake-paystack-secret') {}
 
@@ -108,10 +124,39 @@ export class FakePaystackClient implements PaystackClient {
    */
   async initializeTransaction(params: PaystackInitParams): Promise<PaystackInitResult> {
     assertValidPaystackInit(params);
+    this.transactions.set(params.reference, {
+      reference: params.reference,
+      status: 'ongoing',
+      amountPesewas: params.amountPesewas,
+      currency: 'GHS',
+      providerTransactionId: String(this.transactions.size + 1),
+      providerDomain: 'test',
+      channel: null,
+      feesPesewas: null,
+      paidAt: null,
+    });
     return {
       authorizationUrl: `https://checkout.paystack.test/${params.reference}`,
       reference: params.reference,
     };
+  }
+
+  async verifyTransaction(reference: string): Promise<PaystackTransaction> {
+    const transaction = this.transactions.get(reference);
+    if (!transaction) throw new Error(`Fake Paystack transaction ${reference} not found`);
+    return { ...transaction };
+  }
+
+  /**
+   * Set a fake provider outcome for reconciliation tests.
+   *
+   * @param reference - initialized fake transaction.
+   * @param patch - provider fields to replace.
+   */
+  setTransaction(reference: string, patch: Partial<PaystackTransaction>): void {
+    const existing = this.transactions.get(reference);
+    if (!existing) throw new Error(`Fake Paystack transaction ${reference} not found`);
+    this.transactions.set(reference, { ...existing, ...patch, reference });
   }
 
   /**
