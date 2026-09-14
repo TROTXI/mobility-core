@@ -21,6 +21,13 @@ describe('InMemorySubscriptionRepository', () => {
     expect(found?.plan).toBe('monthly' as const);
   });
 
+  it('finds the current rider-facing subscription', async () => {
+    const repo = new InMemorySubscriptionRepository();
+    const created = await repo.create({ userId: 'user-1', plan: 'monthly' as const });
+
+    expect(await repo.findCurrentByUser('user-1')).toEqual({ ...created, paused: false });
+  });
+
   it('returns null when the user has no active subscription', async () => {
     const repo = new InMemorySubscriptionRepository();
     expect(await repo.findActiveByUser('user-1')).toBeNull();

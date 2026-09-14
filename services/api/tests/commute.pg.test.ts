@@ -164,6 +164,12 @@ suite('commute workflow on real Postgres', () => {
     await decision(request.id, 'waitlist');
     await decision(request.id, 'pause');
     expect(await subs.findActiveByUser(f.user)).toBeNull();
+    expect(await subs.findCurrentByUser(f.user)).toMatchObject({
+      id: f.sub,
+      routeId: f.old,
+      status: 'active',
+      paused: true,
+    });
     expect((await subs.findActiveByRoute(f.old)).some((s) => s.id === f.sub)).toBe(false);
     expect((await subs.findEndedPeriods(new Date('2099-01-01'))).some((s) => s.id === f.sub)).toBe(
       false,
@@ -214,6 +220,11 @@ suite('commute workflow on real Postgres', () => {
       ).rows[0]?.rides,
     ).toBe(35);
     expect(await subs.findActiveByUser(f.user)).not.toBeNull();
+    expect(await subs.findCurrentByUser(f.user)).toMatchObject({
+      id: f.sub,
+      status: 'active',
+      paused: false,
+    });
   });
   it('applies once, cancels future old bookings, preserves period pricing and enforces new route/time', async () => {
     const f = await fixture(),

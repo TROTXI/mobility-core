@@ -1,5 +1,6 @@
 import type { Pool } from 'pg';
 import type {
+  CurrentSubscription,
   NewSubscription,
   Subscription,
   SubscriptionRepository,
@@ -23,6 +24,10 @@ interface SubscriptionRow {
   period_end: Date | null;
   current_period_id: string | null;
   created_at: Date;
+}
+
+interface CurrentSubscriptionRow extends SubscriptionRow {
+  paused: boolean;
 }
 
 function toSubscription(row: SubscriptionRow): Subscription {
@@ -81,6 +86,25 @@ export class PgSubscriptionRepository implements SubscriptionRepository {
       [userId],
     );
     return rows[0] ? toSubscription(rows[0]) : null;
+  }
+
+  /** Current rider-facing membership, including suspended and voluntarily paused states. */
+  async findCurrentByUser(userId: string): Promise<CurrentSubscription | null> {
+    const { rows } = await this.pool.query<CurrentSubscriptionRow>(
+      `SELECT s.*,
+              EXISTS (
+                SELECT 1 FROM subscription_pauses p
+                 WHERE p.subscription_id = s.id AND p.resumed_at IS NULL
+              ) AS paused
+         FROM subscriptions s
+        WHERE s.user_id = $1 AND s.status IN ('active', 'suspended')
+        LIMIT 1`,
+      [userId],
+    );
+    if (!rows[0]) return null;
+    const subscription = toSubscription(rows[0]);
+    if (subscription.status !== 'active' && subscription.status !== 'suspended') return null;
+    return { ...subscription, status: subscription.status, paused: rows[0].paused };
   }
 
   /** Active subscriptions pinned to a route (E3 ask-dispatch targets). */

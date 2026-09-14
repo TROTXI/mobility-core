@@ -29,9 +29,15 @@ the same credit twice.
 | Endpoint                                 | Role                | Behaviour                                                     |
 | ---------------------------------------- | ------------------- | ------------------------------------------------------------- |
 | `GET /me/rides`                          | authenticated rider | Current ride and Ride Credit balances plus renewal time       |
+| `GET /me/subscription`                   | authenticated rider | Current membership, pinned route and next renewal date        |
 | `POST /admin/close-subscription-periods` | admin               | Canonical atomic conversion and close                         |
 | `POST /admin/convert-credits`            | admin               | Legacy alias to the canonical close in production wiring      |
 | `POST /admin/expire-subscriptions`       | admin               | Legacy alias to the same canonical close in production wiring |
+
+`GET /me/subscription` keeps service status and voluntary pause state separate:
+a membership can be both `suspended` and `paused`. Its `renewsAt` is null while
+paused because the final date is calculated when the rider resumes. Expired and
+cancelled rows are historical, not current, and return `subscribed: false`.
 
 ## Lifecycle
 
