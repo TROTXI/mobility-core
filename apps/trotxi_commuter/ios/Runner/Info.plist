@@ -16,6 +16,25 @@
 	<string>6.0</string>
 	<key>CFBundleName</key>
 	<string>trotxi_commuter</string>
+	<!-- Registered iOS OAuth client for com.trotxi.trotxiCommuter.
+	     Source: Firebase's existing other_platform_oauth_client registration.
+	     Keep both client IDs here: without a runtime clientId or a
+	     GoogleService-Info.plist, the plugin ignores Dart's serverClientId. -->
+	<key>GIDClientID</key>
+	<string>431341307838-5enbgcoc0o5k9a93ojo1i31uhh31nuqs.apps.googleusercontent.com</string>
+	<key>GIDServerClientID</key>
+	<string>431341307838-pc4m046v2lj18ssfnfl1g52fl5g1cg4q.apps.googleusercontent.com</string>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>com.googleusercontent.apps.431341307838-5enbgcoc0o5k9a93ojo1i31uhh31nuqs</string>
+			</array>
+		</dict>
+	</array>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
