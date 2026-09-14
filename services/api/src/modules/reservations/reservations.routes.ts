@@ -84,6 +84,15 @@ export async function reservationRoutes(
   },
 ): Promise<void> {
   const r = app.withTypeProvider<ZodTypeProvider>();
+  r.setErrorHandler((error, _request, reply) => {
+    if (error instanceof Error && 'code' in error && error.code === 'P0001') {
+      return reply.code(409).send({
+        error: 'commute_changed',
+        message: 'Your commute or subscription changed. Refresh before booking.',
+      });
+    }
+    throw error;
+  });
   const UNAVAILABLE = { error: 'unavailable', message: 'Reservations are not configured' };
 
   /**

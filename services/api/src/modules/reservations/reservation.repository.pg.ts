@@ -83,7 +83,19 @@ export class PgReservationRepository implements ReservationRepository {
       `INSERT INTO reservations (user_id, trip_id, travel_date, direction, status, source,
                                  pickup_stop_id, dropoff_stop_id, subscription_period_id)
        VALUES ($1, $2, $3, $4, 'pending', 'confirmation', $5, $6, $7)
-       ON CONFLICT (user_id, travel_date, direction) DO UPDATE SET updated_at = reservations.updated_at
+       ON CONFLICT (user_id, travel_date, direction) DO UPDATE
+       SET (trip_id,status,source,daily_pin_hash,confirmed_at,updated_at) = (
+         SELECT CASE WHEN reassign THEN EXCLUDED.trip_id ELSE reservations.trip_id END,
+                CASE WHEN reassign THEN 'pending' ELSE reservations.status END,
+                CASE WHEN reassign THEN 'confirmation' ELSE reservations.source END,
+                CASE WHEN reassign THEN NULL ELSE reservations.daily_pin_hash END,
+                CASE WHEN reassign THEN NULL ELSE reservations.confirmed_at END,
+                CASE WHEN reassign THEN now() ELSE reservations.updated_at END
+         FROM (SELECT reservations.status='operator_cancelled'
+           AND EXCLUDED.trip_id IS DISTINCT FROM reservations.trip_id
+           AND EXISTS (SELECT 1 FROM commute_requests q WHERE q.user_id=reservations.user_id
+             AND q.status='applied' AND q.updated_at>=reservations.updated_at) AS reassign) eligibility
+       )
        RETURNING *`,
       [
         input.userId,
@@ -117,6 +129,8 @@ export class PgReservationRepository implements ReservationRepository {
     const client = await this.pool.connect();
     try {
       await client.query('BEGIN');
+      // Same lock order as commute changes: rider, then trip/booking rows.
+      await client.query('SELECT pg_advisory_xact_lock(hashtextextended($1,0))', [input.userId]);
 
       // Lock the trip row for the duration. This is what makes the count and
       // the write atomic: the 18:00 push lands a corridor's riders within the

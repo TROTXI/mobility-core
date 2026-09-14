@@ -345,6 +345,7 @@ class ErrorInterceptor extends Interceptor {
           response.statusCode ?? 0,
           response.statusMessage ?? 'Unknown error',
         ),
+        response: response,
       ),
     );
   }

@@ -32,6 +32,9 @@ changing the original rationale. Current HTTP behaviour lives in
 
 ## Current architecture baseline
 
+New on this branch: [0018 — Ops-reviewed commute changes](0018-ops-reviewed-commute-changes.md).
+The rider/API implementation leaves the ops console with its owning team.
+
 - The Fastify API is a modular monolith: routes → services → repositories.
 - PostgreSQL/PostGIS is authoritative. Redis/KV is best-effort cache and abuse
   control, never financial truth.

@@ -76,17 +76,25 @@ export class PgSubscriptionRepository implements SubscriptionRepository {
   /** Returns the active subscription for the given user, or null if none exists. A unique index guarantees at most one active subscription per user. */
   async findActiveByUser(userId: string): Promise<Subscription | null> {
     const { rows } = await this.pool.query<SubscriptionRow>(
-      `SELECT * FROM subscriptions WHERE user_id = $1 AND status = 'active' LIMIT 1`,
+      `SELECT * FROM subscriptions s WHERE user_id = $1 AND status = 'active'
+       AND NOT EXISTS (SELECT 1 FROM subscription_pauses p WHERE p.subscription_id=s.id AND p.resumed_at IS NULL) LIMIT 1`,
       [userId],
     );
     return rows[0] ? toSubscription(rows[0]) : null;
   }
 
   /** Active subscriptions pinned to a route (E3 ask-dispatch targets). */
-  async findActiveByRoute(routeId: string): Promise<Subscription[]> {
+  async findActiveByRoute(routeId: string, scheduledAt?: Date): Promise<Subscription[]> {
     const { rows } = await this.pool.query<SubscriptionRow>(
-      `SELECT * FROM subscriptions WHERE route_id = $1 AND status = 'active'`,
-      [routeId],
+      `SELECT * FROM subscriptions s WHERE route_id = $1 AND status = 'active'
+       AND NOT EXISTS (SELECT 1 FROM subscription_pauses p WHERE p.subscription_id=s.id AND p.resumed_at IS NULL)
+       AND ($2::timestamptz IS NULL OR NOT EXISTS (
+         SELECT 1 FROM commute_slots c WHERE c.subscription_id=s.id AND c.status='allocated'
+         AND to_char($2::timestamptz AT TIME ZONE 'Africa/Accra','HH24:MI') <>
+           CASE WHEN EXTRACT(HOUR FROM $2::timestamptz AT TIME ZONE 'Africa/Accra') < 12
+             THEN c.morning_departure ELSE c.evening_return END
+       ))`,
+      [routeId, scheduledAt ?? null],
     );
     return rows.map(toSubscription);
   }
@@ -94,15 +102,17 @@ export class PgSubscriptionRepository implements SubscriptionRepository {
   /** Every active subscription (E5 month-end credit conversion iterates these). */
   async findAllActive(): Promise<Subscription[]> {
     const { rows } = await this.pool.query<SubscriptionRow>(
-      `SELECT * FROM subscriptions WHERE status = 'active'`,
+      `SELECT * FROM subscriptions s WHERE status = 'active'
+       AND NOT EXISTS (SELECT 1 FROM subscription_pauses p WHERE p.subscription_id=s.id AND p.resumed_at IS NULL)`,
     );
     return rows.map(toSubscription);
   }
 
   async findEndedPeriods(now: Date): Promise<Subscription[]> {
     const { rows } = await this.pool.query<SubscriptionRow>(
-      `SELECT * FROM subscriptions
+      `SELECT * FROM subscriptions s
         WHERE status = 'active' AND period_end IS NOT NULL AND period_end <= $1
+        AND NOT EXISTS (SELECT 1 FROM subscription_pauses p WHERE p.subscription_id=s.id AND p.resumed_at IS NULL)
         ORDER BY period_end ASC`,
       [now],
     );
