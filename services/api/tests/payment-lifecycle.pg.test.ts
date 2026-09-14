@@ -309,6 +309,226 @@ describeWithPostgres('Postgres payment lifecycle', () => {
     });
   });
 
+  it('fulfils a normal renewal once and advances to a second immutable period', async () => {
+    const userId = await createRider();
+    const firstReference = `normal-first-${userId}`;
+    const renewalReference = `normal-renewal-${userId}`;
+    const firstPaidAt = new Date('2026-01-01T00:00:00.000Z');
+    const renewalPaidAt = new Date('2026-02-02T00:00:00.000Z');
+    const lifecycle = new PgPaymentLifecycle(pool);
+    await lifecycle.createSubscriptionCheckout(checkout(userId, firstReference, firstPaidAt));
+    expect(await lifecycle.fulfillSubscriptionCharge(settled(firstReference, firstPaidAt))).toBe(
+      'fulfilled',
+    );
+
+    const renewal = await lifecycle.createSubscriptionCheckout(
+      checkout(userId, renewalReference, renewalPaidAt),
+    );
+    expect(renewal.subscriptionId).toBeTruthy();
+    expect(renewal.appliedCreditPesewas).toBe(44 * 45);
+    const renewalCharge = settled(renewalReference, renewalPaidAt, renewal.amount);
+    expect(await lifecycle.fulfillSubscriptionCharge(renewalCharge)).toBe('fulfilled');
+    expect(await lifecycle.fulfillSubscriptionCharge(renewalCharge)).toBe('already_fulfilled');
+
+    const { rows } = await pool.query<{
+      periods: number;
+      open_periods: number;
+      closed_periods: number;
+      linked_payments: number;
+      distinct_period_links: number;
+      subscription_status: string;
+      current_points_to_open: boolean;
+      allocations: number;
+      conversions: number;
+    }>(
+      `SELECT
+         (SELECT count(*)::int FROM subscription_periods sp
+           JOIN subscriptions s ON s.id = sp.subscription_id
+          WHERE s.user_id = $1) AS periods,
+         (SELECT count(*)::int FROM subscription_periods sp
+           JOIN subscriptions s ON s.id = sp.subscription_id
+          WHERE s.user_id = $1 AND sp.status = 'open') AS open_periods,
+         (SELECT count(*)::int FROM subscription_periods sp
+           JOIN subscriptions s ON s.id = sp.subscription_id
+          WHERE s.user_id = $1 AND sp.status = 'closed') AS closed_periods,
+         (SELECT count(*)::int FROM payments
+          WHERE user_id = $1 AND status = 'fulfilled'
+            AND subscription_period_id IS NOT NULL) AS linked_payments,
+         (SELECT count(DISTINCT subscription_period_id)::int FROM payments
+          WHERE user_id = $1 AND status = 'fulfilled') AS distinct_period_links,
+         (SELECT status FROM subscriptions WHERE user_id = $1) AS subscription_status,
+         EXISTS (
+           SELECT 1 FROM subscriptions s
+           JOIN subscription_periods current_period ON current_period.id = s.current_period_id
+          WHERE s.user_id = $1 AND current_period.status = 'open'
+         ) AS current_points_to_open,
+         (SELECT count(*)::int FROM entitlement_ledger
+          WHERE user_id = $1 AND reason = 'allocation') AS allocations,
+         (SELECT count(*)::int FROM credit_ledger
+          WHERE user_id = $1 AND reason = 'month_end_conversion') AS conversions`,
+      [userId],
+    );
+    expect(rows[0]).toEqual({
+      periods: 2,
+      open_periods: 1,
+      closed_periods: 1,
+      linked_payments: 2,
+      distinct_period_links: 2,
+      subscription_status: 'active',
+      current_points_to_open: true,
+      allocations: 2,
+      conversions: 1,
+    });
+  });
+
+  it('closes one period once when two close workers race', async () => {
+    const userId = await createRider();
+    const reference = `concurrent-close-${userId}`;
+    const paidAt = new Date('2026-01-01T00:00:00.000Z');
+    const afterPeriod = new Date('2026-02-02T00:00:00.000Z');
+    const lifecycle = new PgPaymentLifecycle(pool);
+    await lifecycle.createSubscriptionCheckout(checkout(userId, reference, paidAt));
+    expect(await lifecycle.fulfillSubscriptionCharge(settled(reference, paidAt))).toBe('fulfilled');
+
+    await Promise.all([
+      lifecycle.closeEndedPeriods(afterPeriod, 100),
+      lifecycle.closeEndedPeriods(afterPeriod, 100),
+    ]);
+
+    const { rows } = await pool.query<{
+      period_status: string;
+      conversions: number;
+      converted_rides: number;
+      conversion_credit: number;
+    }>(
+      `SELECT sp.status AS period_status,
+              (SELECT count(*)::int FROM credit_ledger
+                WHERE user_id = $1 AND reason = 'month_end_conversion') AS conversions,
+              (SELECT COALESCE(-sum(delta_rides), 0)::int FROM entitlement_ledger
+                WHERE user_id = $1 AND reason = 'converted') AS converted_rides,
+              (SELECT COALESCE(sum(delta_pesewas), 0)::int FROM credit_ledger
+                WHERE user_id = $1 AND reason = 'month_end_conversion') AS conversion_credit
+         FROM payments p
+         JOIN subscription_periods sp ON sp.id = p.subscription_period_id
+        WHERE p.reference = $2`,
+      [userId, reference],
+    );
+    expect(rows[0]).toEqual({
+      period_status: 'closed',
+      conversions: 1,
+      converted_rides: 44,
+      conversion_credit: 44 * 45,
+    });
+  });
+
+  it('closes exactly at period end and mints no credit when no rides remain', async () => {
+    const userId = await createRider();
+    const reference = `zero-rides-${userId}`;
+    const paidAt = new Date('2026-01-01T00:00:00.000Z');
+    const lifecycle = new PgPaymentLifecycle(pool);
+    await lifecycle.createSubscriptionCheckout(checkout(userId, reference, paidAt));
+    expect(await lifecycle.fulfillSubscriptionCharge(settled(reference, paidAt))).toBe('fulfilled');
+    const payment = await new PgPaymentRepository(pool).findByReference(reference);
+    expect(payment?.subscriptionPeriodId).toBeTruthy();
+    const { rows: periods } = await pool.query<{ period_end: Date }>(
+      `SELECT period_end FROM subscription_periods WHERE id = $1`,
+      [payment!.subscriptionPeriodId],
+    );
+    const periodEnd = periods[0]!.period_end;
+    await pool.query(
+      `INSERT INTO entitlement_ledger (
+         user_id, delta_rides, reason, ref_type, ref_id, idempotency_key,
+         subscription_period_id
+       ) VALUES ($1, -44, 'boarding', 'test', $2, $2, $3)`,
+      [userId, `consume-${userId}`, payment!.subscriptionPeriodId],
+    );
+
+    await lifecycle.closeEndedPeriods(new Date(periodEnd.getTime() - 1), 100);
+    let state = await pool.query<{ status: string }>(
+      `SELECT status FROM subscription_periods WHERE id = $1`,
+      [payment!.subscriptionPeriodId],
+    );
+    expect(state.rows[0]?.status).toBe('open');
+
+    await lifecycle.closeEndedPeriods(periodEnd, 100);
+    state = await pool.query(`SELECT status FROM subscription_periods WHERE id = $1`, [
+      payment!.subscriptionPeriodId,
+    ]);
+    expect(state.rows[0]?.status).toBe('closed');
+    const { rows } = await pool.query<{
+      credit_entries: number;
+      converted_entries: number;
+      rides_converted: number;
+      credit_granted: number;
+    }>(
+      `SELECT
+         (SELECT count(*)::int FROM credit_ledger
+           WHERE user_id = $1 AND reason = 'month_end_conversion') AS credit_entries,
+         (SELECT count(*)::int FROM entitlement_ledger
+           WHERE user_id = $1 AND reason = 'converted') AS converted_entries,
+         rides_converted,
+         credit_granted_pesewas AS credit_granted
+       FROM subscription_periods WHERE id = $2`,
+      [userId, payment!.subscriptionPeriodId],
+    );
+    expect(rows[0]).toEqual({
+      credit_entries: 0,
+      converted_entries: 0,
+      rides_converted: 0,
+      credit_granted: 0,
+    });
+  });
+
+  it('rolls back every close mutation when conversion cannot be priced', async () => {
+    const userId = await createRider();
+    const reference = `rollback-close-${userId}`;
+    const paidAt = new Date('2026-01-01T00:00:00.000Z');
+    const afterPeriod = new Date('2026-02-02T00:00:00.000Z');
+    const lifecycle = new PgPaymentLifecycle(pool);
+    await lifecycle.createSubscriptionCheckout(checkout(userId, reference, paidAt));
+    expect(await lifecycle.fulfillSubscriptionCharge(settled(reference, paidAt))).toBe('fulfilled');
+    const payment = await new PgPaymentRepository(pool).findByReference(reference);
+    expect(payment?.subscriptionPeriodId).toBeTruthy();
+    await pool.query(
+      `UPDATE subscription_periods SET credit_pesewas_per_ride = NULL WHERE id = $1`,
+      [payment!.subscriptionPeriodId],
+    );
+
+    await expect(lifecycle.closeEndedPeriods(afterPeriod, 100)).rejects.toThrow(
+      'has rides but no frozen conversion rate',
+    );
+
+    const { rows } = await pool.query<{
+      period_status: string;
+      subscription_status: string;
+      credit_entries: number;
+      converted_entries: number;
+    }>(
+      `SELECT sp.status AS period_status, s.status AS subscription_status,
+              (SELECT count(*)::int FROM credit_ledger
+                WHERE user_id = $1 AND reason = 'month_end_conversion') AS credit_entries,
+              (SELECT count(*)::int FROM entitlement_ledger
+                WHERE user_id = $1 AND reason = 'converted') AS converted_entries
+         FROM subscription_periods sp
+         JOIN subscriptions s ON s.id = sp.subscription_id
+        WHERE sp.id = $2`,
+      [userId, payment!.subscriptionPeriodId],
+    );
+    expect(rows[0]).toEqual({
+      period_status: 'open',
+      subscription_status: 'active',
+      credit_entries: 0,
+      converted_entries: 0,
+    });
+
+    // Restore the fixture so this intentionally broken period cannot poison a
+    // later close worker sharing the same test database.
+    await pool.query(`UPDATE subscription_periods SET credit_pesewas_per_ride = 45 WHERE id = $1`, [
+      payment!.subscriptionPeriodId,
+    ]);
+    await lifecycle.closeEndedPeriods(afterPeriod, 100);
+  });
+
   it('keeps an ended period open while a funded reservation is unsettled', async () => {
     const userId = await createRider();
     const reference = `blocked-${userId}`;
