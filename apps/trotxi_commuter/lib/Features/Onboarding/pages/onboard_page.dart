@@ -1,5 +1,4 @@
 import 'package:dio/dio.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_sign_in/google_sign_in.dart';
@@ -69,7 +68,11 @@ class _OnBoardPageState extends State<OnBoardPage> {
       if (!mounted) return;
       _navigateToHome();
     } on DioException catch (e) {
-      debugPrint('Backend authentication failed: ${e.message}');
+      // Log categories only: Dio request/response objects can contain tokens.
+      debugPrint(
+        'Backend authentication failed: category=${e.error.runtimeType}, '
+        'transport=${e.type.name}, status=${e.response?.statusCode}',
+      );
       _showError('Unable to sign in. Please try again.');
     } catch (e) {
       debugPrint('Google Sign-In failed: $e');
@@ -104,9 +107,7 @@ class _OnBoardPageState extends State<OnBoardPage> {
     );
 
     final data = response.data;
-    if (kDebugMode) {
-      debugPrint('Backend authentication response: $data');
-    }
+    // Never log AuthResult: it contains access and refresh credentials.
 
     return (accessToken: data!.accessToken, refreshToken: data.refreshToken);
   }
