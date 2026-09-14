@@ -273,7 +273,39 @@ describe('POST /admin/payments/maintenance', () => {
     expect(response.json()).toMatchObject({
       webhooks: { processed: 0, failed: 0 },
       reconciliation: { considered: 0, errors: 0 },
-      periods: { considered: 0, closed: 0, blocked: 0 },
+      periods: { considered: 0, closed: 0, blocked: 0, failed: 0, failures: [] },
+    });
+  });
+
+  it('returns sanitized period failures while completing the maintenance request', async () => {
+    const { build, subscriptions } = appWithPayments();
+    const malformed = await subscriptions.create({
+      userId: 'rider-malformed-period',
+      plan: 'monthly',
+      periodStart: new Date('2000-01-01T00:00:00.000Z'),
+      periodEnd: new Date('2000-02-01T00:00:00.000Z'),
+    });
+    const app = await build;
+    const admin = await jwt.signAccessToken({ userId: 'ops-1', role: 'admin' });
+
+    const response = await app.inject({
+      method: 'POST',
+      url: '/admin/payments/maintenance',
+      headers: bearer(admin),
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json().periods).toMatchObject({
+      considered: 1,
+      closed: 0,
+      blocked: 0,
+      failed: 1,
+      failures: [
+        {
+          periodId: `subscription:${malformed.id}`,
+          reason: 'missing_period_accounting',
+        },
+      ],
     });
   });
 });

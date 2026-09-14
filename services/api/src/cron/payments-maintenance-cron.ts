@@ -3,6 +3,7 @@
 // reservations have reached a terminal outcome.
 
 import { createJwtService, type AuthConfig } from '../modules/auth/jwt';
+import { assertMaintenancePeriodCloseSucceeded } from './payments-maintenance-result';
 
 async function main(): Promise<void> {
   const secret = process.env.JWT_SECRET;
@@ -31,6 +32,7 @@ async function main(): Promise<void> {
     throw new Error(`payment maintenance -> HTTP ${response.status}: ${body}`);
   }
   console.log(`payment maintenance -> ${response.status} ${body}`);
+  assertMaintenancePeriodCloseSucceeded(body);
 }
 
 main().catch((error: unknown) => {

@@ -507,50 +507,81 @@ describeWithPostgres('Postgres payment lifecycle', () => {
     });
   });
 
-  it('rolls back every close mutation when conversion cannot be priced', async () => {
+  it('rolls back a malformed period and continues closing later valid periods', async () => {
     const userId = await createRider();
     const reference = `rollback-close-${userId}`;
     const paidAt = new Date('2026-01-01T00:00:00.000Z');
-    const afterPeriod = new Date('2026-02-02T00:00:00.000Z');
+    const validUserId = await createRider();
+    const validReference = `valid-after-broken-${validUserId}`;
+    const validPaidAt = new Date('2026-01-02T00:00:00.000Z');
+    const afterPeriod = new Date('2026-02-03T00:00:00.000Z');
     const lifecycle = new PgPaymentLifecycle(pool);
     await lifecycle.createSubscriptionCheckout(checkout(userId, reference, paidAt));
     expect(await lifecycle.fulfillSubscriptionCharge(settled(reference, paidAt))).toBe('fulfilled');
+    await lifecycle.createSubscriptionCheckout(checkout(validUserId, validReference, validPaidAt));
+    expect(await lifecycle.fulfillSubscriptionCharge(settled(validReference, validPaidAt))).toBe(
+      'fulfilled',
+    );
     const payment = await new PgPaymentRepository(pool).findByReference(reference);
+    const validPayment = await new PgPaymentRepository(pool).findByReference(validReference);
     expect(payment?.subscriptionPeriodId).toBeTruthy();
+    expect(validPayment?.subscriptionPeriodId).toBeTruthy();
     await pool.query(
       `UPDATE subscription_periods SET credit_pesewas_per_ride = NULL WHERE id = $1`,
       [payment!.subscriptionPeriodId],
     );
 
-    await expect(lifecycle.closeEndedPeriods(afterPeriod, 100)).rejects.toThrow(
-      'has rides but no frozen conversion rate',
-    );
+    const close = await lifecycle.closeEndedPeriods(afterPeriod, 100);
+
+    expect(close).toMatchObject({ considered: 2, closed: 1, blocked: 0, failed: 1 });
+    expect(close.failures).toEqual([
+      { periodId: payment!.subscriptionPeriodId, reason: 'missing_conversion_rate' },
+    ]);
 
     const { rows } = await pool.query<{
+      period_id: string;
       period_status: string;
       subscription_status: string;
       credit_entries: number;
       converted_entries: number;
+      rides_converted: number | null;
+      credit_granted: number | null;
     }>(
-      `SELECT sp.status AS period_status, s.status AS subscription_status,
-              (SELECT count(*)::int FROM credit_ledger
-                WHERE user_id = $1 AND reason = 'month_end_conversion') AS credit_entries,
-              (SELECT count(*)::int FROM entitlement_ledger
-                WHERE user_id = $1 AND reason = 'converted') AS converted_entries
+      `SELECT sp.id AS period_id, sp.status AS period_status,
+              s.status AS subscription_status,
+              (SELECT count(*)::int FROM credit_ledger c
+                WHERE c.ref_id = sp.id::text AND c.reason = 'month_end_conversion') AS credit_entries,
+              (SELECT count(*)::int FROM entitlement_ledger e
+                WHERE e.subscription_period_id = sp.id AND e.reason = 'converted') AS converted_entries,
+              sp.rides_converted, sp.credit_granted_pesewas AS credit_granted
          FROM subscription_periods sp
          JOIN subscriptions s ON s.id = sp.subscription_id
-        WHERE sp.id = $2`,
-      [userId, payment!.subscriptionPeriodId],
+        WHERE sp.id = ANY($1::uuid[])`,
+      [[payment!.subscriptionPeriodId, validPayment!.subscriptionPeriodId]],
     );
-    expect(rows[0]).toEqual({
+    const malformed = rows.find((row) => row.period_id === payment!.subscriptionPeriodId);
+    const valid = rows.find((row) => row.period_id === validPayment!.subscriptionPeriodId);
+    expect(malformed).toEqual({
+      period_id: payment!.subscriptionPeriodId,
       period_status: 'open',
       subscription_status: 'active',
       credit_entries: 0,
       converted_entries: 0,
+      rides_converted: null,
+      credit_granted: null,
+    });
+    expect(valid).toEqual({
+      period_id: validPayment!.subscriptionPeriodId,
+      period_status: 'closed',
+      subscription_status: 'expired',
+      credit_entries: 1,
+      converted_entries: 1,
+      rides_converted: 44,
+      credit_granted: 44 * 45,
     });
 
-    // Restore the fixture so this intentionally broken period cannot poison a
-    // later close worker sharing the same test database.
+    // Restore and close the deliberately malformed fixture so it cannot add a
+    // known failure to later sweeps sharing this test database.
     await pool.query(`UPDATE subscription_periods SET credit_pesewas_per_ride = 45 WHERE id = $1`, [
       payment!.subscriptionPeriodId,
     ]);

@@ -12,8 +12,22 @@ import { MIN_CHARGE_PESEWAS } from './pricing';
 /** Checkout is refused while a paid period is still active. */
 export class ActiveSubscriptionPaymentError extends Error {}
 
+export type PeriodCloseFailureReason =
+  'missing_period_accounting' | 'period_not_found' | 'missing_conversion_rate' | 'unexpected_error';
+
 /** An old period without an accounting boundary must be reconciled by hand. */
-export class UnscopedSubscriptionPeriodError extends Error {}
+export class UnscopedSubscriptionPeriodError extends Error {
+  constructor(
+    message: string,
+    readonly reason: Exclude<
+      PeriodCloseFailureReason,
+      'unexpected_error'
+    > = 'missing_period_accounting',
+  ) {
+    super(message);
+    this.name = 'UnscopedSubscriptionPeriodError';
+  }
+}
 
 /** Period close waits until every funded reservation has a terminal outcome. */
 export class PeriodCloseBlockedError extends Error {}
@@ -75,6 +89,9 @@ export interface PeriodCloseResult {
   considered: number;
   closed: number;
   blocked: number;
+  failed: number;
+  /** Stable accounting identifiers and bounded reason codes; never rider data or raw errors. */
+  failures: Array<{ periodId: string; reason: PeriodCloseFailureReason }>;
   riders: number;
   ridesConverted: number;
   creditPesewas: number;
@@ -542,18 +559,29 @@ export class InMemoryPaymentLifecycle implements PaymentLifecycle {
       considered: due.length,
       closed: 0,
       blocked: 0,
+      failed: 0,
+      failures: [],
       riders: 0,
       ridesConverted: 0,
       creditPesewas: 0,
     };
     for (const subscription of due) {
-      await this.withUserLock(subscription.userId, async () => {
-        const result = await this.closeOne(subscription);
-        totals.closed++;
-        if (result.rides > 0) totals.riders++;
-        totals.ridesConverted += result.rides;
-        totals.creditPesewas += result.credit;
-      });
+      try {
+        await this.withUserLock(subscription.userId, async () => {
+          const result = await this.closeOne(subscription);
+          totals.closed++;
+          if (result.rides > 0) totals.riders++;
+          totals.ridesConverted += result.rides;
+          totals.creditPesewas += result.credit;
+        });
+      } catch (error) {
+        totals.failed++;
+        totals.failures.push({
+          periodId: subscription.currentPeriodId ?? `subscription:${subscription.id}`,
+          reason:
+            error instanceof UnscopedSubscriptionPeriodError ? error.reason : 'unexpected_error',
+        });
+      }
     }
     return totals;
   }
@@ -568,6 +596,7 @@ export class InMemoryPaymentLifecycle implements PaymentLifecycle {
     if (!period) {
       throw new UnscopedSubscriptionPeriodError(
         `Subscription period ${subscription.currentPeriodId} is not loaded`,
+        'period_not_found',
       );
     }
     if (period.status === 'closed') return { rides: 0, credit: 0 };

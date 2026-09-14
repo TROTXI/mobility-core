@@ -57,3 +57,24 @@ export const operationsReviewSchema = z.object({
   createdAt: z.date(),
   updatedAt: z.date(),
 });
+
+export const periodCloseFailureSchema = z.object({
+  periodId: z.string(),
+  reason: z.enum([
+    'missing_period_accounting',
+    'period_not_found',
+    'missing_conversion_rate',
+    'unexpected_error',
+  ]),
+});
+
+export const periodCloseResultSchema = z.object({
+  considered: z.number().int(),
+  closed: z.number().int(),
+  blocked: z.number().int(),
+  failed: z.number().int(),
+  failures: z.array(periodCloseFailureSchema),
+  riders: z.number().int(),
+  ridesConverted: z.number().int(),
+  creditPesewas: z.number().int(),
+});

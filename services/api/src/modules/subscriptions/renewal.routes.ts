@@ -10,6 +10,7 @@ import { errorResponseSchema } from '../../lib/schemas';
 import type { RateLimitConfig } from '../ratelimit/ratelimit.plugin';
 import type { RenewalService } from './renewal.service';
 import type { PaymentsService } from '../payments/payments.service';
+import { periodCloseFailureSchema, periodCloseResultSchema } from '../payments/payments.schema';
 
 /**
  * Register `POST /admin/expire-subscriptions`.
@@ -44,7 +45,12 @@ export async function renewalRoutes(
           'needs a stored mandate we do not have (#128).',
         security: [{ bearerAuth: [] }],
         response: {
-          200: z.object({ expired: z.number().int(), considered: z.number().int() }),
+          200: z.object({
+            expired: z.number().int(),
+            considered: z.number().int(),
+            failed: z.number().int(),
+            failures: z.array(periodCloseFailureSchema),
+          }),
           401: errorResponseSchema,
           403: errorResponseSchema,
           503: errorResponseSchema,
@@ -59,12 +65,18 @@ export async function renewalRoutes(
     async (_request, reply) => {
       if (opts.periodCloser) {
         const result = await opts.periodCloser.closeEndedPeriods();
-        return { expired: result.closed, considered: result.considered };
+        return {
+          expired: result.closed,
+          considered: result.considered,
+          failed: result.failed,
+          failures: result.failures,
+        };
       }
       if (!opts.renewal) {
         return reply.code(503).send({ error: 'unavailable', message: 'Renewal is not configured' });
       }
-      return opts.renewal.sweep();
+      const result = await opts.renewal.sweep();
+      return { ...result, failed: 0, failures: [] };
     },
   );
 
@@ -76,14 +88,7 @@ export async function renewalRoutes(
         summary: 'Atomically close ended periods, convert rides, and expire memberships',
         security: [{ bearerAuth: [] }],
         response: {
-          200: z.object({
-            considered: z.number().int(),
-            closed: z.number().int(),
-            blocked: z.number().int(),
-            riders: z.number().int(),
-            ridesConverted: z.number().int(),
-            creditPesewas: z.number().int(),
-          }),
+          200: periodCloseResultSchema,
           401: errorResponseSchema,
           403: errorResponseSchema,
           503: errorResponseSchema,
