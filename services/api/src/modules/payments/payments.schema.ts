@@ -59,7 +59,9 @@ export const operationsReviewSchema = z.object({
 });
 
 export const periodCloseFailureSchema = z.object({
-  periodId: z.string(),
+  periodId: z
+    .string()
+    .describe('Opaque stable accounting identifier; clients must not assume UUID format'),
   reason: z.enum([
     'missing_period_accounting',
     'period_not_found',

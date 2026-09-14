@@ -71,6 +71,8 @@ export async function creditRoutes(
       }
       if (!opts.creditService) return reply.code(503).send(UNAVAILABLE);
       const result = await opts.creditService.convertAllActive();
+      // This legacy all-or-nothing service throws on failure; the zero values
+      // keep its response compatible with the atomic close result contract.
       return { ...result, failed: 0, failures: [] };
     },
   );

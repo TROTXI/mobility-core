@@ -933,6 +933,12 @@ export class PgPaymentLifecycle implements PaymentLifecycle {
         }
       } catch (err) {
         await client.query('ROLLBACK');
+        // Keep raw diagnostics server-side. HTTP callers receive only the
+        // bounded reason below, while Render logs retain the underlying cause.
+        console.error('subscription period close failed', {
+          periodId: item.period_id,
+          error: err,
+        });
         totals.failed++;
         totals.failures.push({
           periodId: item.period_id,

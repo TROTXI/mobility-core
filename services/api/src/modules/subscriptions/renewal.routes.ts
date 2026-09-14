@@ -76,6 +76,8 @@ export async function renewalRoutes(
         return reply.code(503).send({ error: 'unavailable', message: 'Renewal is not configured' });
       }
       const result = await opts.renewal.sweep();
+      // The pre-atomic compatibility service throws on its first error; it
+      // cannot produce partial failures, so these are compatibility fields.
       return { ...result, failed: 0, failures: [] };
     },
   );
