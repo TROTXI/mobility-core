@@ -22,14 +22,18 @@ void main() {
   late LocationPermission permission;
   Completer<int>? pending;
 
-  Future<void> fix({DateTime? timestamp, double latitude = 5.57}) async {
+  Future<void> fix({
+    DateTime? timestamp,
+    double latitude = 5.57,
+    double accuracy = 5,
+  }) async {
     await messenger.handlePlatformMessage(
       updates.name,
       const StandardMethodCodec().encodeSuccessEnvelope({
         'latitude': latitude,
         'longitude': -0.21,
         'timestamp': (timestamp ?? DateTime.now()).millisecondsSinceEpoch,
-        'accuracy': 5.0,
+        'accuracy': accuracy,
         'altitude': 0.0,
         'heading': 0.0,
         'speed': 0.0,
@@ -120,6 +124,19 @@ void main() {
       accept(options, handler);
       await reaches(publisher, PositionSharing.live);
       expect(publisher.lastAcknowledgedAt, isNotNull);
+    },
+  );
+
+  test(
+    'an acknowledged imprecise fix reports weak GPS with its accuracy',
+    () async {
+      final publisher = PositionPublisher(client: client(accept));
+      addTearDown(publisher.dispose);
+      await publisher.start('trip-1');
+      await fix(accuracy: 65);
+      await reaches(publisher, PositionSharing.weak);
+      expect(publisher.lastAcknowledgedAt, isNotNull);
+      expect(publisher.lastAccuracyMeters, 65);
     },
   );
 
@@ -258,6 +275,23 @@ void main() {
     expect(publisher.runId, isNull);
     expect(calls.last, 'cancel');
   });
+
+  test(
+    'retry replaces the native stream instead of becoming a no-op',
+    () async {
+      final publisher = PositionPublisher(client: _UnusedClient());
+      addTearDown(publisher.dispose);
+      await publisher.start('trip-1');
+      expect(calls.where((call) => call == 'listen').length, 1);
+
+      await publisher.retry();
+
+      expect(calls.where((call) => call == 'cancel').length, 1);
+      expect(calls.where((call) => call == 'listen').length, 2);
+      expect(publisher.runId, 'trip-1');
+      expect(publisher.state, PositionSharing.waiting);
+    },
+  );
 
   test('denial never prompts or opens a stream', () async {
     permission = LocationPermission.denied;

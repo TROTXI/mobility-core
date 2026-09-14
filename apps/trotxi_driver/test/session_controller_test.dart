@@ -101,7 +101,7 @@ void main() {
 
   for (final operatorIssued in [true, false]) {
     test(
-      'account confirmation opens the app with operator-issued=$operatorIssued',
+      'account confirmation acknowledges linking before opening the app, operator-issued=$operatorIssued',
       () {
         final controller = SessionController(auth: _StubAuth());
         controller.onSignedIn(
@@ -113,6 +113,10 @@ void main() {
         );
         expect(controller.stage, SessionStage.confirming);
         controller.confirm();
+        expect(controller.stage, SessionStage.linked);
+        controller.completeLinking();
+        expect(controller.stage, SessionStage.readiness);
+        controller.completeReadiness();
         expect(controller.stage, SessionStage.ready);
         expect(controller.session?.fullName, 'Kwame');
       },

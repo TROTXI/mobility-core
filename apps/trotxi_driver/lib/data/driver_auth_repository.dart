@@ -7,10 +7,17 @@ class DriverSession {
     required this.driverId,
     required this.fullName,
     required this.mustChangePin,
+    this.driverCode,
   });
 
   final String driverId;
   final String fullName;
+
+  /// The operator-facing code that was authenticated for this session.
+  ///
+  /// `/me` does not currently return it, so restored sessions leave this null
+  /// rather than showing the internal user UUID as if it were a driver code.
+  final String? driverCode;
 
   /// Legacy API metadata indicating an operator-issued PIN. Retained for
   /// compatibility; the app uses operator-managed recovery and does not gate
@@ -113,6 +120,10 @@ class DriverAuthRepository {
         driverId: data.driver.id,
         fullName: data.driver.fullName,
         mustChangePin: data.mustChangePin,
+        // The API accepted this exact identity. Normalising only presentation
+        // makes it suitable for confirmation without pretending the response
+        // included operator/depot metadata that it does not expose.
+        driverCode: driverCode.trim().toUpperCase(),
       );
     } on DioException catch (err) {
       throw _unwrap(err);

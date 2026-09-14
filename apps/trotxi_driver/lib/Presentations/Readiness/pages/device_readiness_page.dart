@@ -14,10 +14,12 @@ class DeviceReadinessPage extends StatefulWidget {
   const DeviceReadinessPage({
     super.key,
     this.beforeTrip = false,
+    this.onContinue,
     this.service = const NativeDeviceReadinessService(),
   });
 
   final bool beforeTrip;
+  final VoidCallback? onContinue;
   final DeviceReadinessService service;
 
   @override
@@ -98,8 +100,11 @@ class _DeviceReadinessPageState extends State<DeviceReadinessPage>
     if (_busy) return;
     // Revalidate on the action, not only when the screen was opened/resumed.
     await _perform();
-    if (mounted && _state?.canStartTrip == true) {
+    if (!mounted) return;
+    if (widget.beforeTrip && _state?.canStartTrip == true) {
       Navigator.of(context).pop(true);
+    } else if (!widget.beforeTrip) {
+      widget.onContinue?.call();
     }
   }
 
@@ -131,130 +136,145 @@ class _DeviceReadinessPageState extends State<DeviceReadinessPage>
         ],
       ),
       body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(AppSpacing.space20),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Center(
-                child: Container(
-                  width: 84,
-                  height: 84,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: tone.withValues(alpha: 0.1),
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 720),
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(AppSpacing.space20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 84,
+                      height: 84,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: tone.withValues(alpha: 0.1),
+                      ),
+                      alignment: Alignment.center,
+                      child: ExcludeSemantics(
+                        child: ready
+                            ? Icon(Icons.check_rounded, color: tone, size: 42)
+                            : Text(
+                                state == null ? '…' : '!',
+                                style: AppTypography.heading1.copyWith(
+                                  color: tone,
+                                ),
+                              ),
+                      ),
+                    ),
                   ),
-                  alignment: Alignment.center,
-                  child: ExcludeSemantics(
-                    child: ready
-                        ? Icon(Icons.check_rounded, color: tone, size: 42)
-                        : Text(
-                            state == null ? '…' : '!',
-                            style: AppTypography.heading1.copyWith(color: tone),
-                          ),
-                  ),
-                ),
-              ),
-              const SizedBox(height: AppSpacing.space20),
-              Text(
-                state == null
-                    ? 'Check this device'
-                    : ready
-                    ? 'Location enabled'
-                    : 'Location is required',
-                textAlign: TextAlign.center,
-                style: AppTypography.screenTitle,
-              ),
-              const SizedBox(height: AppSpacing.space8),
-              Text(
-                ready
-                    ? 'Location access is enabled for this trip. Check camera access before riders arrive.'
-                    : 'Trips cannot start until location access is allowed and device location is on.',
-                textAlign: TextAlign.center,
-                style: AppTypography.screenContext.copyWith(
-                  color: colors.textSecondary,
-                ),
-              ),
-              const SizedBox(height: AppSpacing.space20),
-              if (_busy) ...[
-                const LinearProgressIndicator(
-                  semanticsLabel: 'Checking device permissions',
-                ),
-                const SizedBox(height: AppSpacing.space16),
-              ],
-              if (_error != null) ...[
-                Text(
-                  _error!,
-                  style: AppTypography.bodySmall.copyWith(color: colors.danger),
-                ),
-                const SizedBox(height: AppSpacing.space16),
-              ],
-              _permissionCard(
-                'Location access',
-                state?.location,
-                state?.location == PermissionStatus.permanentlyDenied
-                    ? 'In app settings, choose Location and allow access while using the app. Return here to check again.'
-                    : 'Share the bus location while a trip is open. Only while-in-use access is requested.',
-                DevicePermission.location,
-              ),
-              const SizedBox(height: AppSpacing.space12),
-              _card(
-                title: 'Location services',
-                status: state == null
-                    ? 'Not checked'
-                    : state.locationServices
-                    ? 'On'
-                    : 'Off',
-                detail:
-                    'Device location must also be on for riders to see the bus approaching.',
-                ready: state?.locationServices ?? false,
-                action: state != null && !state.locationServices
-                    ? OutlinedButton(
-                        onPressed: _busy
-                            ? null
-                            : () => _settings(location: true),
-                        child: const Text('Turn on location services'),
-                      )
-                    : null,
-              ),
-              const SizedBox(height: AppSpacing.space12),
-              _permissionCard(
-                'Camera (optional)',
-                state?.camera,
-                'Scan rider boarding passes. Without camera access, use Board by code.',
-                DevicePermission.camera,
-              ),
-              const SizedBox(height: AppSpacing.space16),
-              Text(
-                'These checks work offline. Permission access does not confirm camera hardware, GPS signal or connectivity. '
-                'No tracking starts on this screen.',
-                style: AppTypography.caption.copyWith(
-                  color: colors.textSecondary,
-                ),
-              ),
-              TextButton(
-                onPressed: _busy ? null : _refresh,
-                child: const Text('Check again'),
-              ),
-              if (widget.beforeTrip) ...[
-                if (!ready)
+                  const SizedBox(height: AppSpacing.space20),
                   Text(
-                    'Trips stay locked until location is enabled. Camera access is optional.',
-                    style: AppTypography.bodySmall.copyWith(
+                    state == null
+                        ? 'Check this device'
+                        : ready
+                        ? 'Location enabled'
+                        : 'Location is required',
+                    textAlign: TextAlign.center,
+                    style: AppTypography.screenTitle,
+                  ),
+                  const SizedBox(height: AppSpacing.space8),
+                  Text(
+                    ready
+                        ? 'Location access is enabled for this trip. Check camera access before riders arrive.'
+                        : 'Trips cannot start until location access is allowed and device location is on.',
+                    textAlign: TextAlign.center,
+                    style: AppTypography.screenContext.copyWith(
                       color: colors.textSecondary,
                     ),
                   ),
-                const SizedBox(height: AppSpacing.space12),
-                ElevatedButton(
-                  onPressed: _busy || !ready ? null : _continue,
-                  child: Text(
-                    state?.camera.isGranted == true || !ready
-                        ? 'Start trip'
-                        : 'Start with code boarding',
+                  const SizedBox(height: AppSpacing.space20),
+                  if (_busy) ...[
+                    const LinearProgressIndicator(
+                      semanticsLabel: 'Checking device permissions',
+                    ),
+                    const SizedBox(height: AppSpacing.space16),
+                  ],
+                  if (_error != null) ...[
+                    Text(
+                      _error!,
+                      style: AppTypography.bodySmall.copyWith(
+                        color: colors.danger,
+                      ),
+                    ),
+                    const SizedBox(height: AppSpacing.space16),
+                  ],
+                  _permissionCard(
+                    'Location access',
+                    state?.location,
+                    state?.location == PermissionStatus.permanentlyDenied
+                        ? 'In app settings, choose Location and allow access while using the app. Return here to check again.'
+                        : 'Share the bus location while a trip is open. Only while-in-use access is requested.',
+                    DevicePermission.location,
                   ),
-                ),
-              ],
-            ],
+                  const SizedBox(height: AppSpacing.space12),
+                  _card(
+                    title: 'Location services',
+                    status: state == null
+                        ? 'Not checked'
+                        : state.locationServices
+                        ? 'On'
+                        : 'Off',
+                    detail:
+                        'Device location must also be on for riders to see the bus approaching.',
+                    ready: state?.locationServices ?? false,
+                    action: state != null && !state.locationServices
+                        ? OutlinedButton(
+                            onPressed: _busy
+                                ? null
+                                : () => _settings(location: true),
+                            child: const Text('Turn on location services'),
+                          )
+                        : null,
+                  ),
+                  const SizedBox(height: AppSpacing.space12),
+                  _permissionCard(
+                    'Camera (optional)',
+                    state?.camera,
+                    'Scan rider boarding passes. Without camera access, use Board by code.',
+                    DevicePermission.camera,
+                  ),
+                  const SizedBox(height: AppSpacing.space16),
+                  Text(
+                    'These checks work offline. Permission access does not confirm camera hardware, GPS signal or connectivity. '
+                    'No tracking starts on this screen.',
+                    style: AppTypography.caption.copyWith(
+                      color: colors.textSecondary,
+                    ),
+                  ),
+                  TextButton(
+                    onPressed: _busy ? null : _refresh,
+                    child: const Text('Check again'),
+                  ),
+                  if (widget.beforeTrip) ...[
+                    if (!ready)
+                      Text(
+                        'Trips stay locked until location is enabled. Camera access is optional.',
+                        style: AppTypography.bodySmall.copyWith(
+                          color: colors.textSecondary,
+                        ),
+                      ),
+                    const SizedBox(height: AppSpacing.space12),
+                    ElevatedButton(
+                      onPressed: _busy || !ready ? null : _continue,
+                      child: Text(
+                        state?.camera.isGranted == true || !ready
+                            ? 'Start trip'
+                            : 'Start with code boarding',
+                      ),
+                    ),
+                  ] else if (widget.onContinue != null) ...[
+                    const SizedBox(height: AppSpacing.space12),
+                    FilledButton(
+                      onPressed: _busy ? null : _continue,
+                      child: const Text('Continue to today'),
+                    ),
+                  ],
+                ],
+              ),
+            ),
           ),
         ),
       ),

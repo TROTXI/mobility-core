@@ -76,7 +76,17 @@ class _DriverShellState extends State<DriverShell> {
         child: Column(
           children: [
             DriverHeader(vehicleRegistration: leading?.vehicleRegistration),
-            Expanded(child: _body(leading)),
+            Expanded(
+              child: Center(
+                child: ConstrainedBox(
+                  // Page 21 gives mount and tablet surfaces a deliberate
+                  // working width. Without this, list rows and map controls
+                  // drift to opposite edges of a 12-inch display.
+                  constraints: const BoxConstraints(maxWidth: 1080),
+                  child: _body(leading),
+                ),
+              ),
+            ),
           ],
         ),
       ),

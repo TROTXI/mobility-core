@@ -23,7 +23,16 @@ enum PositionBlock {
   unavailable,
 }
 
-enum PositionSharing { idle, checking, waiting, live, stale, failed, blocked }
+enum PositionSharing {
+  idle,
+  checking,
+  waiting,
+  live,
+  weak,
+  stale,
+  failed,
+  blocked,
+}
 
 /// Publishes the active trip's position while the app is in the foreground.
 ///
@@ -34,11 +43,16 @@ class PositionPublisher extends ChangeNotifier {
     required this._client,
     DateTime Function()? now,
     this.freshFor = const Duration(minutes: 2),
+    this.weakAccuracyMeters = 50,
   }) : _now = now ?? DateTime.now;
 
   final TrotxiApiClient _client;
   final DateTime Function() _now;
   final Duration freshFor;
+
+  /// Accuracy worse than this is acknowledged but not described as precise.
+  /// The page-14 reference shows a ±65m weak fix; 50m keeps that state honest.
+  final double weakAccuracyMeters;
   StreamSubscription<Position>? _subscription;
   String? _runId;
   int _generation = 0;
@@ -51,10 +65,12 @@ class PositionPublisher extends ChangeNotifier {
   PositionSharing _state = PositionSharing.idle;
   PositionBlock? _block;
   DateTime? _lastAcknowledgedAt;
+  double? _lastAccuracyMeters;
 
   PositionSharing get state => _state;
   PositionBlock? get block => _block;
   DateTime? get lastAcknowledgedAt => _lastAcknowledgedAt;
+  double? get lastAccuracyMeters => _lastAccuracyMeters;
 
   /// The run currently being published for, or null when idle.
   String? get runId => _runId;
@@ -81,6 +97,7 @@ class PositionPublisher extends ChangeNotifier {
     _pending = null;
     _uploading = false;
     _lastAcknowledgedAt = null;
+    _lastAccuracyMeters = null;
     _block = null;
     _set(PositionSharing.checking);
     try {
@@ -155,8 +172,21 @@ class PositionPublisher extends ChangeNotifier {
     _uploading = false;
     _block = null;
     _lastAcknowledgedAt = null;
+    _lastAccuracyMeters = null;
     _set(PositionSharing.idle);
     await subscription?.cancel();
+  }
+
+  /// Re-run device checks and replace the current native stream for this run.
+  ///
+  /// Calling [start] for the same active stream is deliberately idempotent, so
+  /// the page-14 retry action needs an explicit restart rather than a button
+  /// that appears to work while doing nothing.
+  Future<PositionBlock?> retry() async {
+    final runId = _runId;
+    if (runId == null) return PositionBlock.notRequested;
+    await stop();
+    return start(runId);
   }
 
   PositionBlock _blocked(PositionBlock block) {
@@ -211,7 +241,12 @@ class PositionPublisher extends ChangeNotifier {
             _set(PositionSharing.stale);
           } else {
             _lastAcknowledgedAt = _now();
-            _set(PositionSharing.live);
+            _lastAccuracyMeters = position.accuracy;
+            _set(
+              position.accuracy > weakAccuracyMeters
+                  ? PositionSharing.weak
+                  : PositionSharing.live,
+            );
             _expiry = Timer(remaining, () {
               if (generation == _generation) _set(PositionSharing.stale);
             });

@@ -152,183 +152,198 @@ class _SignInPageState extends State<SignInPage> {
 
     return Scaffold(
       body: SafeArea(
-        child: AutofillGroup(
-          child: ListView(
-            padding: const EdgeInsets.fromLTRB(
-              AppSpacing.space20,
-              AppSpacing.space32,
-              AppSpacing.space20,
-              AppSpacing.space32,
-            ),
-            children: [
-              const Center(child: TrotxiWordmark()),
-              const SizedBox(height: AppSpacing.space40),
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 560),
+            child: AutofillGroup(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(
+                  AppSpacing.space20,
+                  AppSpacing.space32,
+                  AppSpacing.space20,
+                  AppSpacing.space32,
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    const Center(child: TrotxiWordmark()),
+                    const SizedBox(height: AppSpacing.space40),
 
-              Text(
-                inlineError ? 'Check your PIN' : 'Sign in',
-                textAlign: TextAlign.center,
-                style: AppTypography.screenTitle.copyWith(
-                  color: colors.textPrimary,
-                ),
-              ),
-              const SizedBox(height: AppSpacing.space4),
-              Text(
-                inlineError
-                    ? 'The PIN did not match this driver account.'
-                    : 'Use the driver code and PIN provided by your operator.',
-                textAlign: TextAlign.center,
-                style: AppTypography.screenContext.copyWith(
-                  color: colors.textSecondary,
-                ),
-              ),
-              const SizedBox(height: AppSpacing.space40),
-
-              _FieldLabel('Driver code'),
-              const SizedBox(height: AppSpacing.space8),
-              TextField(
-                controller: _codeController,
-                enabled: editable,
-                textCapitalization: TextCapitalization.characters,
-                autocorrect: false,
-                style: AppTypography.fieldText.copyWith(
-                  fontWeight: FontWeight.w500,
-                  color: colors.textPrimary,
-                ),
-                // The server normalises case and the DR- prefix, so anything the
-                // driver reads off a slip of paper is accepted as typed.
-                //
-                // The file draws `TRX-DR-0248` here. Not copied: a placeholder
-                // shaped like a real value reads as one already filled in, and
-                // that particular value contradicts the format this app's own
-                // recovery page teaches ("starts with DR-, four characters
-                // after it"). An instruction cannot be mistaken for an entry.
-                decoration: const InputDecoration(
-                  hintText: 'Enter driver code',
-                ),
-                inputFormatters: [
-                  FilteringTextInputFormatter.allow(RegExp('[A-Za-z0-9-]')),
-                  LengthLimitingTextInputFormatter(12),
-                ],
-              ),
-              const SizedBox(height: AppSpacing.space24),
-
-              _FieldLabel('$_pinDigits-digit PIN'),
-              const SizedBox(height: AppSpacing.space8),
-              TextField(
-                controller: _pinController,
-                enabled: editable,
-                obscureText: !_pinVisible,
-                keyboardType: TextInputType.number,
-                autocorrect: false,
-                enableSuggestions: false,
-                onSubmitted: (_) => _submit(),
-                style: AppTypography.fieldText.copyWith(
-                  fontWeight: FontWeight.w500,
-                  color: colors.textPrimary,
-                  letterSpacing: _pinVisible ? 2 : 4,
-                ),
-                inputFormatters: [
-                  FilteringTextInputFormatter.digitsOnly,
-                  LengthLimitingTextInputFormatter(_pinDigits),
-                ],
-                decoration: InputDecoration(
-                  hintText: '\u2022' * _pinDigits,
-                  enabledBorder: _state.highlightsPin ? pinBorder : null,
-                  focusedBorder: _state.highlightsPin ? pinBorder : null,
-                  // Held rather than toggled would be better on a phone in one
-                  // hand, but a driver checking a PIN they mistyped needs it to
-                  // stay visible while they read it off the slip again.
-                  suffixIcon: IconButton(
-                    onPressed: editable
-                        ? () => setState(() => _pinVisible = !_pinVisible)
-                        : null,
-                    icon: Icon(
-                      _pinVisible
-                          ? Icons.visibility_off_outlined
-                          : Icons.visibility_outlined,
-                      size: 20,
-                      color: colors.textSecondary,
+                    Text(
+                      inlineError ? 'Check your PIN' : 'Sign in',
+                      textAlign: TextAlign.center,
+                      style: AppTypography.screenTitle.copyWith(
+                        color: colors.textPrimary,
+                      ),
                     ),
-                    tooltip: _pinVisible ? 'Hide PIN' : 'Show PIN',
-                  ),
-                ),
-              ),
+                    const SizedBox(height: AppSpacing.space4),
+                    Text(
+                      inlineError
+                          ? 'The PIN did not match this driver account.'
+                          : 'Use the driver code and PIN provided by your operator.',
+                      textAlign: TextAlign.center,
+                      style: AppTypography.screenContext.copyWith(
+                        color: colors.textSecondary,
+                      ),
+                    ),
+                    const SizedBox(height: AppSpacing.space40),
 
-              if (inlineError) ...[
-                const SizedBox(height: AppSpacing.space4),
-                Text(
-                  'PIN not recognised. Check the $_pinDigits digits, or ask '
-                  'operations for a new PIN.',
-                  style: AppTypography.footnote.copyWith(color: colors.danger),
-                ),
-              ],
-              if (showCard) ...[
-                const SizedBox(height: AppSpacing.space8),
-                _FailureNotice(state: _state),
-              ],
-
-              const SizedBox(height: AppSpacing.space12),
-              _RememberDeviceToggle(
-                value: _rememberDevice,
-                onChanged: (value) => setState(() => _rememberDevice = value),
-              ),
-              const SizedBox(height: AppSpacing.space24),
-
-              FilledButton(
-                onPressed: _canSubmit ? _submit : null,
-                style: FilledButton.styleFrom(
-                  minimumSize: const Size.fromHeight(56),
-                  backgroundColor: colors.action,
-                  foregroundColor: colors.onAction,
-                  textStyle: AppTypography.actionLabel,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: AppRadii.circular(AppRadii.pill),
-                  ),
-                ),
-                child: _state.isSubmitting
-                    ? SizedBox(
-                        height: 20,
-                        width: 20,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: colors.onAction,
+                    _FieldLabel('Driver code'),
+                    const SizedBox(height: AppSpacing.space8),
+                    TextField(
+                      controller: _codeController,
+                      enabled: editable,
+                      textCapitalization: TextCapitalization.characters,
+                      autocorrect: false,
+                      style: AppTypography.fieldText.copyWith(
+                        fontWeight: FontWeight.w500,
+                        color: colors.textPrimary,
+                      ),
+                      // The server normalises case and the DR- prefix, so anything the
+                      // driver reads off a slip of paper is accepted as typed.
+                      //
+                      // The file draws `TRX-DR-0248` here. Not copied: a placeholder
+                      // shaped like a real value reads as one already filled in, and
+                      // that particular value contradicts the format this app's own
+                      // recovery page teaches ("starts with DR-, four characters
+                      // after it"). An instruction cannot be mistaken for an entry.
+                      decoration: const InputDecoration(
+                        hintText: 'Enter driver code',
+                      ),
+                      inputFormatters: [
+                        FilteringTextInputFormatter.allow(
+                          RegExp('[A-Za-z0-9-]'),
                         ),
-                      )
-                    : Text(inlineError ? 'Try again' : 'Sign in'),
-              ),
-              const SizedBox(height: AppSpacing.space16),
+                        LengthLimitingTextInputFormatter(12),
+                      ],
+                    ),
+                    const SizedBox(height: AppSpacing.space24),
 
-              Center(
-                child: TextButton(
-                  onPressed: () => Navigator.of(context).push(
-                    MaterialPageRoute<void>(
-                      builder: (_) => const CantSignInPage(),
+                    _FieldLabel('$_pinDigits-digit PIN'),
+                    const SizedBox(height: AppSpacing.space8),
+                    TextField(
+                      controller: _pinController,
+                      enabled: editable,
+                      obscureText: !_pinVisible,
+                      keyboardType: TextInputType.number,
+                      autocorrect: false,
+                      enableSuggestions: false,
+                      onSubmitted: (_) => _submit(),
+                      style: AppTypography.fieldText.copyWith(
+                        fontWeight: FontWeight.w500,
+                        color: colors.textPrimary,
+                        letterSpacing: _pinVisible ? 2 : 4,
+                      ),
+                      inputFormatters: [
+                        FilteringTextInputFormatter.digitsOnly,
+                        LengthLimitingTextInputFormatter(_pinDigits),
+                      ],
+                      decoration: InputDecoration(
+                        hintText: '\u2022' * _pinDigits,
+                        enabledBorder: _state.highlightsPin ? pinBorder : null,
+                        focusedBorder: _state.highlightsPin ? pinBorder : null,
+                        // Held rather than toggled would be better on a phone in one
+                        // hand, but a driver checking a PIN they mistyped needs it to
+                        // stay visible while they read it off the slip again.
+                        suffixIcon: IconButton(
+                          onPressed: editable
+                              ? () => setState(() => _pinVisible = !_pinVisible)
+                              : null,
+                          icon: Icon(
+                            _pinVisible
+                                ? Icons.visibility_off_outlined
+                                : Icons.visibility_outlined,
+                            size: 20,
+                            color: colors.textSecondary,
+                          ),
+                          tooltip: _pinVisible ? 'Hide PIN' : 'Show PIN',
+                        ),
+                      ),
                     ),
-                  ),
-                  child: Text(
-                    "Can't sign in?",
-                    style: AppTypography.fieldLabel.copyWith(
-                      color: colors.textPrimary,
+
+                    if (inlineError) ...[
+                      const SizedBox(height: AppSpacing.space4),
+                      Text(
+                        'PIN not recognised. Check the $_pinDigits digits, or ask '
+                        'operations for a new PIN.',
+                        style: AppTypography.footnote.copyWith(
+                          color: colors.danger,
+                        ),
+                      ),
+                    ],
+                    if (showCard) ...[
+                      const SizedBox(height: AppSpacing.space8),
+                      _FailureNotice(state: _state),
+                    ],
+
+                    const SizedBox(height: AppSpacing.space12),
+                    _RememberDeviceToggle(
+                      value: _rememberDevice,
+                      onChanged: (value) =>
+                          setState(() => _rememberDevice = value),
                     ),
-                  ),
+                    const SizedBox(height: AppSpacing.space24),
+
+                    FilledButton(
+                      onPressed: _canSubmit ? _submit : null,
+                      style: FilledButton.styleFrom(
+                        minimumSize: const Size.fromHeight(56),
+                        backgroundColor: colors.action,
+                        foregroundColor: colors.onAction,
+                        textStyle: AppTypography.actionLabel,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: AppRadii.circular(AppRadii.pill),
+                        ),
+                      ),
+                      child: _state.isSubmitting
+                          ? SizedBox(
+                              height: 20,
+                              width: 20,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: colors.onAction,
+                              ),
+                            )
+                          : Text(inlineError ? 'Try again' : 'Sign in'),
+                    ),
+                    const SizedBox(height: AppSpacing.space16),
+
+                    Center(
+                      child: TextButton(
+                        onPressed: () => Navigator.of(context).push(
+                          MaterialPageRoute<void>(
+                            builder: (_) => const CantSignInPage(),
+                          ),
+                        ),
+                        child: Text(
+                          "Can't sign in?",
+                          style: AppTypography.fieldLabel.copyWith(
+                            color: colors.textPrimary,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: AppSpacing.space16),
+
+                    const DriverNote(
+                      title: 'Need access?',
+                      body:
+                          'Ask your operator to link your driver account before '
+                          'signing in.',
+                    ),
+                    const SizedBox(height: AppSpacing.space20),
+
+                    Text(
+                      'Your PIN is encrypted and is never shown to operations.',
+                      textAlign: TextAlign.center,
+                      style: AppTypography.footnote.copyWith(
+                        color: colors.textMuted,
+                      ),
+                    ),
+                  ],
                 ),
               ),
-              const SizedBox(height: AppSpacing.space16),
-
-              const DriverNote(
-                title: 'Need access?',
-                body:
-                    'Ask your operator to link your driver account before '
-                    'signing in.',
-              ),
-              const SizedBox(height: AppSpacing.space20),
-
-              Text(
-                'Your PIN is encrypted and is never shown to operations.',
-                textAlign: TextAlign.center,
-                style: AppTypography.footnote.copyWith(color: colors.textMuted),
-              ),
-            ],
+            ),
           ),
         ),
       ),

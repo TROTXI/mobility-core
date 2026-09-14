@@ -12,6 +12,12 @@ enum SessionStage {
   /// Signed in, waiting for the driver to confirm the account is theirs.
   confirming,
 
+  /// Identity confirmed; acknowledge that this device is now linked.
+  linked,
+
+  /// Device linked; review trip permissions without starting any tracking.
+  readiness,
+
   /// Through. Show the app.
   ready,
 }
@@ -92,6 +98,17 @@ class SessionController extends ChangeNotifier {
   /// The driver confirmed the account is theirs. PIN recovery is managed by
   /// operations through "Can't sign in?", not a forced self-service screen.
   void confirm() {
+    _set(SessionStage.linked);
+  }
+
+  /// Finish the link acknowledgement and review device readiness.
+  void completeLinking() {
+    _set(SessionStage.readiness);
+  }
+
+  /// Finish the non-blocking readiness review and open assigned work.
+  /// Location is enforced again at the actual trip-start boundary.
+  void completeReadiness() {
     _set(SessionStage.ready);
   }
 

@@ -27,7 +27,11 @@ class _StubAuth implements DriverAuthRepository {
     lastDriverCode = driverCode;
     return onSignIn?.call() ??
         Future.value(
-          const DriverSession(driverId: 'd1', fullName: 'Kwame Asare', mustChangePin: false),
+          const DriverSession(
+            driverId: 'd1',
+            fullName: 'Kwame Asare',
+            mustChangePin: false,
+          ),
         );
   }
 
@@ -35,7 +39,10 @@ class _StubAuth implements DriverAuthRepository {
   String? lastDriverCode;
 
   @override
-  Future<void> changePin({required String currentPin, required String newPin}) async {}
+  Future<void> changePin({
+    required String currentPin,
+    required String newPin,
+  }) async {}
 
   @override
   Future<bool> hasStoredSession() async => false;
@@ -47,7 +54,11 @@ class _StubAuth implements DriverAuthRepository {
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
-Future<void> _pump(WidgetTester tester, _StubAuth auth, {ValueChanged<DriverSession>? onIn}) {
+Future<void> _pump(
+  WidgetTester tester,
+  _StubAuth auth, {
+  ValueChanged<DriverSession>? onIn,
+}) {
   return tester.pumpWidget(
     MaterialApp(
       theme: AppTheme.lightTheme,
@@ -77,7 +88,9 @@ void main() {
     expect(received?.fullName, 'Kwame Asare');
   });
 
-  testWidgets('submits on the sixth digit without a button press', (tester) async {
+  testWidgets('submits on the sixth digit without a button press', (
+    tester,
+  ) async {
     // A driver typing a PIN one-handed at a depot gate should not then have to
     // find a button.
     final auth = _StubAuth();
@@ -87,7 +100,9 @@ void main() {
     expect(auth.signInCalls, 1);
   });
 
-  testWidgets('sends the code as typed, leaving normalising to the server', (tester) async {
+  testWidgets('sends the code as typed, leaving normalising to the server', (
+    tester,
+  ) async {
     final auth = _StubAuth();
     await _pump(tester, auth);
     await _fillForm(tester, code: 'dr-b7k9');
@@ -114,7 +129,10 @@ void main() {
 
     expect(find.text('Check your PIN'), findsOneWidget);
     // Still editable: this is a failure the driver can fix.
-    expect(tester.widget<TextField>(find.byType(TextField).first).enabled, isTrue);
+    expect(
+      tester.widget<TextField>(find.byType(TextField).first).enabled,
+      isTrue,
+    );
   });
 
   testWidgets('a lock says how long and stops accepting input', (tester) async {
@@ -129,7 +147,10 @@ void main() {
     expect(find.text('Too many attempts'), findsOneWidget);
     expect(find.textContaining('15 minutes'), findsOneWidget);
     // Retrying cannot help, so the form closes rather than inviting more guesses.
-    expect(tester.widget<TextField>(find.byType(TextField).first).enabled, isFalse);
+    expect(
+      tester.widget<TextField>(find.byType(TextField).first).enabled,
+      isFalse,
+    );
   });
 
   testWidgets('a suspension is not offered as retryable', (tester) async {
@@ -141,13 +162,20 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Account suspended'), findsOneWidget);
-    expect(tester.widget<TextField>(find.byType(TextField).first).enabled, isFalse);
+    expect(
+      tester.widget<TextField>(find.byType(TextField).first).enabled,
+      isFalse,
+    );
   });
 
-  testWidgets('being offline says so instead of blaming the PIN', (tester) async {
+  testWidgets('being offline says so instead of blaming the PIN', (
+    tester,
+  ) async {
     // The likeliest reason sign-in fails at a depot is signal, and "check your
     // PIN" would send a driver hunting for a problem that is not theirs.
-    final auth = _StubAuth(onSignIn: () => Future.error(const OfflineException()));
+    final auth = _StubAuth(
+      onSignIn: () => Future.error(const OfflineException()),
+    );
     await _pump(tester, auth);
     await _fillForm(tester);
     await tester.pumpAndSettle();
@@ -155,7 +183,9 @@ void main() {
     expect(find.text('No connection'), findsOneWidget);
   });
 
-  testWidgets('editing clears a wrong-PIN message but not a lock', (tester) async {
+  testWidgets('editing clears a wrong-PIN message but not a lock', (
+    tester,
+  ) async {
     final auth = _StubAuth(
       onSignIn: () => Future.error(const InvalidCredentialsException()),
     );
@@ -189,6 +219,11 @@ void main() {
     // Six, because that is what the API accepts. The frames label the field
     // "4-digit", which describes the rider's boarding code, not this.
     expect(find.textContaining('Check the 6 digits'), findsOneWidget);
+    await tester.scrollUntilVisible(
+      find.text("Can't sign in?"),
+      300,
+      scrollable: find.byType(Scrollable).last,
+    );
     expect(find.text("Can't sign in?"), findsOneWidget);
     expect(find.text('Try again'), findsOneWidget);
   });
