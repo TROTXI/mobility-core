@@ -335,6 +335,9 @@ describeWithPostgres('Postgres payment lifecycle', () => {
       open_periods: number;
       closed_periods: number;
       linked_payments: number;
+      distinct_period_links: number;
+      subscription_status: string;
+      current_points_to_open: boolean;
       allocations: number;
       conversions: number;
     }>(
@@ -351,6 +354,14 @@ describeWithPostgres('Postgres payment lifecycle', () => {
          (SELECT count(*)::int FROM payments
           WHERE user_id = $1 AND status = 'fulfilled'
             AND subscription_period_id IS NOT NULL) AS linked_payments,
+         (SELECT count(DISTINCT subscription_period_id)::int FROM payments
+          WHERE user_id = $1 AND status = 'fulfilled') AS distinct_period_links,
+         (SELECT status FROM subscriptions WHERE user_id = $1) AS subscription_status,
+         EXISTS (
+           SELECT 1 FROM subscriptions s
+           JOIN subscription_periods current_period ON current_period.id = s.current_period_id
+          WHERE s.user_id = $1 AND current_period.status = 'open'
+         ) AS current_points_to_open,
          (SELECT count(*)::int FROM entitlement_ledger
           WHERE user_id = $1 AND reason = 'allocation') AS allocations,
          (SELECT count(*)::int FROM credit_ledger
@@ -362,6 +373,9 @@ describeWithPostgres('Postgres payment lifecycle', () => {
       open_periods: 1,
       closed_periods: 1,
       linked_payments: 2,
+      distinct_period_links: 2,
+      subscription_status: 'active',
+      current_points_to_open: true,
       allocations: 2,
       conversions: 1,
     });
