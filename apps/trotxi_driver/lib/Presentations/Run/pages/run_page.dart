@@ -6,6 +6,7 @@ import 'package:trotxi_driver/Presentations/Boarding/pages/board_by_code_page.da
 import 'package:trotxi_driver/Presentations/Boarding/pages/scan_page.dart';
 import 'package:trotxi_driver/Presentations/Completion/pages/end_run_page.dart';
 import 'package:trotxi_driver/Presentations/Run/pages/manifest_page.dart';
+import 'package:trotxi_driver/Presentations/Run/pages/location_connectivity_page.dart';
 import 'package:trotxi_driver/Presentations/Run/widgets/pre_trip.dart';
 import 'package:trotxi_driver/Presentations/Run/widgets/run_map.dart';
 import 'package:trotxi_driver/core/widgets/driver_chip.dart';
@@ -464,9 +465,21 @@ class _RunPageState extends State<RunPage> {
                   // or disabled". The earlier build had one line that said
                   // "sharing" whatever was actually happening underneath.
                   Consumer<PositionPublisher>(
-                    builder: (_, positions, _) => GpsIndicator(
-                      state: _gpsState(positions),
-                      detail: _gpsDetail(positions),
+                    builder: (_, positions, _) => Semantics(
+                      button: true,
+                      label: 'Open location and connectivity details',
+                      child: InkWell(
+                        borderRadius: AppRadii.circular(AppRadii.indicator),
+                        onTap: () => Navigator.of(context).push(
+                          MaterialPageRoute<void>(
+                            builder: (_) => LocationConnectivityPage(run: run),
+                          ),
+                        ),
+                        child: GpsIndicator(
+                          state: _gpsState(positions),
+                          detail: _gpsDetail(positions),
+                        ),
+                      ),
                     ),
                   ),
                 ],
@@ -600,6 +613,7 @@ class _RunPageState extends State<RunPage> {
   static GpsState _gpsState(PositionPublisher positions) =>
       switch (positions.state) {
         PositionSharing.live => GpsState.live,
+        PositionSharing.weak => GpsState.weak,
         PositionSharing.checking || PositionSharing.waiting => GpsState.waiting,
         PositionSharing.stale => GpsState.stale,
         PositionSharing.failed => GpsState.failed,
@@ -610,25 +624,28 @@ class _RunPageState extends State<RunPage> {
   ///
   /// @param positions - the publisher's current state and any permission block.
   /// @returns what to say about it.
-  static String _gpsDetail(PositionPublisher positions) =>
-      switch (positions.state) {
-        PositionSharing.live => 'A recent position was received by the API',
-        PositionSharing.checking => 'Checking location access',
-        PositionSharing.waiting => 'Waiting for the first confirmed position',
-        PositionSharing.stale =>
-          'No recent position confirmed. Riders may see an older location',
-        PositionSharing.failed =>
-          'Update not confirmed. Retrying with the next location',
-        PositionSharing.idle => 'No position is being shared',
-        PositionSharing.blocked => switch (positions.block) {
-          PositionBlock.servicesOff => 'Location is off for the whole device',
-          PositionBlock.deniedForever => 'Turn it on in device settings',
-          PositionBlock.denied => 'Access was declined',
-          PositionBlock.notRequested => 'Not asked for yet',
-          PositionBlock.unavailable ||
-          null => 'Location could not be checked. Try again',
-        },
-      };
+  static String _gpsDetail(
+    PositionPublisher positions,
+  ) => switch (positions.state) {
+    PositionSharing.live => 'A recent position was received by the API',
+    PositionSharing.weak =>
+      'API received an approximate fix${positions.lastAccuracyMeters == null ? '' : ' · ±${positions.lastAccuracyMeters!.round()}m'}',
+    PositionSharing.checking => 'Checking location access',
+    PositionSharing.waiting => 'Waiting for the first confirmed position',
+    PositionSharing.stale =>
+      'No recent position confirmed. Riders may see an older location',
+    PositionSharing.failed =>
+      'Update not confirmed. Retrying with the next location',
+    PositionSharing.idle => 'No position is being shared',
+    PositionSharing.blocked => switch (positions.block) {
+      PositionBlock.servicesOff => 'Location is off for the whole device',
+      PositionBlock.deniedForever => 'Turn it on in device settings',
+      PositionBlock.denied => 'Access was declined',
+      PositionBlock.notRequested => 'Not asked for yet',
+      PositionBlock.unavailable ||
+      null => 'Location could not be checked. Try again',
+    },
+  };
 
   /// The one word inside the chip.
   ///

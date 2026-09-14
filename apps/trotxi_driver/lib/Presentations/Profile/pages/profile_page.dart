@@ -53,169 +53,127 @@ class _ProfilePageState extends State<ProfilePage> {
     final session = context.watch<SessionController>();
     final theme = context.watch<AppThemeController>();
     final driver = session.session;
-
-    return RefreshIndicator(
-      onRefresh: _readDeviceState,
-      child: ListView(
-        padding: const EdgeInsets.all(AppSpacing.space20),
+    final identity = Container(
+      padding: const EdgeInsets.all(AppSpacing.space20),
+      decoration: BoxDecoration(
+        color: colors.surface,
+        borderRadius: AppRadii.circular(AppRadii.lg),
+        border: Border.all(color: colors.border),
+      ),
+      child: Row(
         children: [
           Container(
-            padding: const EdgeInsets.all(AppSpacing.space20),
+            width: 56,
+            height: 56,
+            alignment: Alignment.center,
             decoration: BoxDecoration(
-              color: colors.surface,
-              borderRadius: AppRadii.circular(AppRadii.lg),
-              border: Border.all(color: colors.border),
+              color: colors.surfaceSelected,
+              borderRadius: AppRadii.circular(AppRadii.full),
             ),
-            child: Row(
-              children: [
-                Container(
-                  width: 56,
-                  height: 56,
-                  alignment: Alignment.center,
-                  decoration: BoxDecoration(
-                    color: colors.surfaceSelected,
-                    borderRadius: AppRadii.circular(AppRadii.full),
-                  ),
-                  child: Text(
-                    _initials(driver?.fullName ?? '?'),
-                    style: AppTypography.title.copyWith(
-                      color: colors.textPrimary,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: AppSpacing.space16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        driver?.fullName ?? 'Driver',
-                        style: AppTypography.title.copyWith(
-                          color: colors.textPrimary,
-                        ),
-                      ),
-                      Text(
-                        'Driver',
-                        style: AppTypography.bodySmall.copyWith(
-                          color: colors.textSecondary,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
+            child: Text(
+              _initials(driver?.fullName ?? '?'),
+              style: AppTypography.title.copyWith(color: colors.textPrimary),
             ),
           ),
-          const SizedBox(height: AppSpacing.space24),
-
-          _SectionLabel(text: 'Appearance', colors: colors),
-          _Card(
-            colors: colors,
-            // RadioGroup owns the selection now; per-tile groupValue and
-            // onChanged were deprecated after Flutter 3.32.
-            child: RadioGroup<ThemeMode>(
-              groupValue: theme.themeMode,
-              onChanged: (next) => theme.setThemeMode(next ?? ThemeMode.system),
-              child: Column(
-                children: [
-                  for (final mode in ThemeMode.values)
-                    RadioListTile<ThemeMode>(
-                      value: mode,
-                      title: Text(
-                        switch (mode) {
-                          ThemeMode.system => 'Match device',
-                          ThemeMode.light => 'Light',
-                          ThemeMode.dark => 'Dark',
-                        },
-                        style: AppTypography.body.copyWith(
-                          color: colors.textPrimary,
-                        ),
-                      ),
-                    ),
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(height: AppSpacing.space24),
-
-          _SectionLabel(text: 'Work', colors: colors),
-          _Card(
-            colors: colors,
+          const SizedBox(width: AppSpacing.space16),
+          Expanded(
             child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                ListTile(
-                  title: Text(
-                    'Schedule',
-                    style: AppTypography.body.copyWith(
-                      color: colors.textPrimary,
-                    ),
-                  ),
-                  subtitle: Text(
-                    'Assigned trips by date',
-                    style: AppTypography.caption.copyWith(
-                      color: colors.textSecondary,
-                    ),
-                  ),
-                  trailing: const Icon(Icons.chevron_right),
-                  onTap: () => Navigator.of(context).push(
-                    MaterialPageRoute<void>(
-                      builder: (_) => Scaffold(
-                        appBar: AppBar(title: const Text('Schedule')),
-                        body: const SafeArea(child: SchedulePage()),
-                      ),
-                    ),
+                Text(
+                  driver?.fullName ?? 'Driver',
+                  style: AppTypography.title.copyWith(
+                    color: colors.textPrimary,
                   ),
                 ),
-                ListTile(
-                  title: Text(
-                    'Work & requests',
-                    style: AppTypography.body.copyWith(
-                      color: colors.textPrimary,
-                    ),
-                  ),
-                  subtitle: Text(
-                    'Routes, changes and leave',
-                    style: AppTypography.caption.copyWith(
-                      color: colors.textSecondary,
-                    ),
-                  ),
-                  trailing: const Icon(Icons.chevron_right),
-                  onTap: () => Navigator.of(context).push(
-                    MaterialPageRoute<void>(
-                      builder: (_) => Scaffold(
-                        appBar: AppBar(title: const Text('Work & Requests')),
-                        body: const SafeArea(child: WorkRequestsPage()),
-                      ),
-                    ),
-                  ),
-                ),
-                ListTile(
-                  title: Text(
-                    'Incident & support',
-                    style: AppTypography.body.copyWith(color: colors.danger),
-                  ),
-                  subtitle: Text(
-                    'Report a problem or call operations',
-                    style: AppTypography.caption.copyWith(
-                      color: colors.textSecondary,
-                    ),
-                  ),
-                  trailing: const Icon(Icons.chevron_right),
-                  onTap: () => Navigator.of(context).push(
-                    MaterialPageRoute<void>(
-                      builder: (_) => Scaffold(
-                        appBar: AppBar(title: const Text('Incident & support')),
-                        body: const SafeArea(child: IncidentSupportPage()),
-                      ),
-                    ),
+                Text(
+                  driver?.driverCode == null
+                      ? 'Driver'
+                      : 'Driver · ${driver!.driverCode}',
+                  style: AppTypography.bodySmall.copyWith(
+                    color: colors.textSecondary,
                   ),
                 ),
               ],
             ),
           ),
-          const SizedBox(height: AppSpacing.space24),
+        ],
+      ),
+    );
 
-          _SectionLabel(text: 'Device & permissions', colors: colors),
+    final appearance = _ProfileSection(
+      label: 'Appearance',
+      colors: colors,
+      child: _Card(
+        colors: colors,
+        child: RadioGroup<ThemeMode>(
+          groupValue: theme.themeMode,
+          onChanged: (next) => theme.setThemeMode(next ?? ThemeMode.system),
+          child: Column(
+            children: [
+              for (final mode in ThemeMode.values)
+                RadioListTile<ThemeMode>(
+                  value: mode,
+                  title: Text(
+                    switch (mode) {
+                      ThemeMode.system => 'Match device',
+                      ThemeMode.light => 'Light',
+                      ThemeMode.dark => 'Dark',
+                    },
+                    style: AppTypography.body.copyWith(
+                      color: colors.textPrimary,
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+
+    final work = _ProfileSection(
+      label: 'Work',
+      colors: colors,
+      child: _Card(
+        colors: colors,
+        child: Column(
+          children: [
+            _destination(
+              context,
+              title: 'Schedule',
+              subtitle: 'Assigned trips by date',
+              pageTitle: 'Schedule',
+              page: const SchedulePage(),
+              colors: colors,
+            ),
+            _destination(
+              context,
+              title: 'Work & requests',
+              subtitle: 'Routes, changes and leave',
+              pageTitle: 'Work & Requests',
+              page: const WorkRequestsPage(),
+              colors: colors,
+            ),
+            _destination(
+              context,
+              title: 'Incident & support',
+              subtitle: 'Report a problem or call operations',
+              pageTitle: 'Incident & support',
+              page: const IncidentSupportPage(),
+              colors: colors,
+              danger: true,
+            ),
+          ],
+        ),
+      ),
+    );
+
+    final device = _ProfileSection(
+      label: 'Device & permissions',
+      colors: colors,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
           _Card(
             colors: colors,
             child: Column(
@@ -247,26 +205,120 @@ class _ProfilePageState extends State<ProfilePage> {
             },
             child: const Text('Check camera & location'),
           ),
-          const SizedBox(height: AppSpacing.space32),
-
-          ElevatedButton(
-            onPressed: session.isBusy
-                ? null
-                : () => _confirmSignOut(context, session),
-            style: ElevatedButton.styleFrom(backgroundColor: colors.danger),
-            child: const Text('Sign out'),
-          ),
-          const SizedBox(height: AppSpacing.space8),
-          Text(
-            'Signing out on a shared vehicle phone is what stops the next '
-            'driver boarding riders as you.',
-            textAlign: TextAlign.center,
-            style: AppTypography.caption.copyWith(color: colors.textSecondary),
-          ),
         ],
       ),
     );
+
+    final signOut = Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        ElevatedButton(
+          onPressed: session.isBusy
+              ? null
+              : () => _confirmSignOut(context, session),
+          style: ElevatedButton.styleFrom(backgroundColor: colors.danger),
+          child: const Text('Sign out'),
+        ),
+        const SizedBox(height: AppSpacing.space8),
+        Text(
+          'Signing out on a shared vehicle phone is what stops the next driver boarding riders as you.',
+          textAlign: TextAlign.center,
+          style: AppTypography.caption.copyWith(color: colors.textSecondary),
+        ),
+      ],
+    );
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final wide = constraints.maxWidth >= 900;
+        final content = wide
+            ? Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: Column(
+                      children: [
+                        identity,
+                        const SizedBox(height: AppSpacing.space24),
+                        device,
+                        const SizedBox(height: AppSpacing.space32),
+                        signOut,
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: AppSpacing.space32),
+                  Expanded(
+                    child: Column(
+                      children: [
+                        work,
+                        const SizedBox(height: AppSpacing.space24),
+                        appearance,
+                      ],
+                    ),
+                  ),
+                ],
+              )
+            : Column(
+                children: [
+                  identity,
+                  const SizedBox(height: AppSpacing.space24),
+                  appearance,
+                  const SizedBox(height: AppSpacing.space24),
+                  work,
+                  const SizedBox(height: AppSpacing.space24),
+                  device,
+                  const SizedBox(height: AppSpacing.space32),
+                  signOut,
+                ],
+              );
+        return RefreshIndicator(
+          onRefresh: _readDeviceState,
+          child: ListView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.all(AppSpacing.space20),
+            children: [
+              Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 1080),
+                  child: content,
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
   }
+
+  Widget _destination(
+    BuildContext context, {
+    required String title,
+    required String subtitle,
+    required String pageTitle,
+    required Widget page,
+    required AppColors colors,
+    bool danger = false,
+  }) => ListTile(
+    title: Text(
+      title,
+      style: AppTypography.body.copyWith(
+        color: danger ? colors.danger : colors.textPrimary,
+      ),
+    ),
+    subtitle: Text(
+      subtitle,
+      style: AppTypography.caption.copyWith(color: colors.textSecondary),
+    ),
+    trailing: const Icon(Icons.chevron_right),
+    onTap: () => Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => Scaffold(
+          appBar: AppBar(title: Text(pageTitle)),
+          body: SafeArea(child: page),
+        ),
+      ),
+    ),
+  );
 
   bool get _locationGranted =>
       _locationPermission == LocationPermission.always ||
@@ -333,6 +385,27 @@ class _SectionLabel extends StatelessWidget {
       text.toUpperCase(),
       style: AppTypography.caption.copyWith(color: colors.textSecondary),
     ),
+  );
+}
+
+class _ProfileSection extends StatelessWidget {
+  const _ProfileSection({
+    required this.label,
+    required this.colors,
+    required this.child,
+  });
+
+  final String label;
+  final AppColors colors;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) => Column(
+    crossAxisAlignment: CrossAxisAlignment.stretch,
+    children: [
+      _SectionLabel(text: label, colors: colors),
+      child,
+    ],
   );
 }
 
