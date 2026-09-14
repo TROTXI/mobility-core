@@ -17,9 +17,13 @@ const jwt = createJwtService(auth);
 const bearer = (token: string) => ({ authorization: `Bearer ${token}` });
 
 class PausedSubscriptionRepository extends InMemorySubscriptionRepository {
+  constructor(private readonly currentStatus: CurrentSubscription['status'] = 'active') {
+    super();
+  }
+
   override async findCurrentByUser(userId: string): Promise<CurrentSubscription | null> {
     const current = await super.findCurrentByUser(userId);
-    return current ? { ...current, paused: true } : null;
+    return current ? { ...current, status: this.currentStatus, paused: true } : null;
   }
 }
 
@@ -77,6 +81,7 @@ describe('GET /me/subscription', () => {
         id: created.id,
         plan: 'monthly',
         status: 'active',
+        paused: false,
         routeId,
         pickupStopId,
         dropoffStopId,
@@ -108,7 +113,34 @@ describe('GET /me/subscription', () => {
     expect(response.statusCode).toBe(200);
     expect(response.json()).toMatchObject({
       subscribed: true,
-      subscription: { status: 'paused', routeId, renewsAt: null },
+      subscription: { status: 'active', paused: true, routeId, renewsAt: null },
+    });
+  });
+
+  it('represents a suspended subscription and an open pause independently', async () => {
+    const subscriptions = new PausedSubscriptionRepository('suspended');
+    await subscriptions.create({
+      userId: 'rider-suspended-paused',
+      plan: 'monthly',
+      routeId: randomUUID(),
+      periodEnd: new Date('2026-10-01T00:00:00.000Z'),
+    });
+    const app = await buildApp({ auth, subscriptions });
+    const token = await jwt.signAccessToken({
+      userId: 'rider-suspended-paused',
+      role: 'commuter',
+    });
+
+    const response = await app.inject({
+      method: 'GET',
+      url: '/me/subscription',
+      headers: bearer(token),
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toMatchObject({
+      subscribed: true,
+      subscription: { status: 'suspended', paused: true, renewsAt: null },
     });
   });
 });

@@ -34,6 +34,11 @@ the same credit twice.
 | `POST /admin/convert-credits`            | admin               | Legacy alias to the canonical close in production wiring      |
 | `POST /admin/expire-subscriptions`       | admin               | Legacy alias to the same canonical close in production wiring |
 
+`GET /me/subscription` keeps service status and voluntary pause state separate:
+a membership can be both `suspended` and `paused`. Its `renewsAt` is null while
+paused because the final date is calculated when the rider resumes. Expired and
+cancelled rows are historical, not current, and return `subscribed: false`.
+
 ## Lifecycle
 
 1. Fulfilment creates an immutable period and appends

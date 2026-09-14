@@ -50,7 +50,8 @@ export async function subscriptionRoutes(
         subscription: {
           id: current.id,
           plan: current.plan,
-          status: current.paused ? ('paused' as const) : current.status,
+          status: current.status,
+          paused: current.paused,
           routeId: current.routeId,
           pickupStopId: current.pickupStopId,
           dropoffStopId: current.dropoffStopId,

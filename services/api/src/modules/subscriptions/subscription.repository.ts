@@ -164,6 +164,8 @@ export class InMemorySubscriptionRepository implements SubscriptionRepository {
   }
 
   async findCurrentByUser(userId: string): Promise<CurrentSubscription | null> {
+    // This adapter has no pause store. Postgres derives this flag from
+    // subscription_pauses; route tests inject the paused state explicitly.
     for (const subscription of this.subscriptions.values()) {
       if (
         subscription.userId === userId &&
