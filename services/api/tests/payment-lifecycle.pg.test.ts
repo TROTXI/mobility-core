@@ -4,9 +4,12 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { PgCreditLedgerRepository } from '../src/modules/entitlements/credit-ledger.repository.pg';
 import { PgEntitlementLedgerRepository } from '../src/modules/entitlements/entitlement-ledger.repository.pg';
 import { PgPaymentLifecycle } from '../src/modules/payments/payment-lifecycle.pg';
-import type {
-  SettledCharge,
-  SubscriptionCheckoutInput,
+import {
+  PeriodCloseBlockedError,
+  type ProviderDispute,
+  type ProviderRefund,
+  type SettledCharge,
+  type SubscriptionCheckoutInput,
 } from '../src/modules/payments/payment-lifecycle';
 import { PgPaymentRepository } from '../src/modules/payments/payment.repository.pg';
 import { PgPaymentWebhookRepository } from '../src/modules/payments/payment-webhook.repository.pg';
@@ -21,6 +24,11 @@ const describeWithPostgres = databaseUrl ? describe : describe.skip;
 const pool = new Pool({ connectionString: databaseUrl ?? 'postgres://postgres.invalid/test' });
 const createdUserIds: string[] = [];
 let transactionSequence = 0n;
+
+function nextProviderId(): string {
+  transactionSequence += 1n;
+  return String(BigInt(Date.now()) * 1_000n + transactionSequence);
+}
 
 async function createRider(): Promise<string> {
   const id = randomUUID();
@@ -49,13 +57,12 @@ function checkout(userId: string, reference: string, now = new Date()): Subscrip
 }
 
 function settled(reference: string, paidAt: Date, amountPesewas = 26_400): SettledCharge {
-  transactionSequence += 1n;
   return {
     reference,
     status: 'success',
     amountPesewas,
     currency: 'GHS',
-    providerTransactionId: String(BigInt(Date.now()) * 1_000n + transactionSequence),
+    providerTransactionId: nextProviderId(),
     providerDomain: 'test',
     channel: 'mobile_money',
     feesPesewas: 100,
@@ -63,7 +70,22 @@ function settled(reference: string, paidAt: Date, amountPesewas = 26_400): Settl
   };
 }
 
-describeWithPostgres('Postgres payment lifecycle concurrency', () => {
+function paymentService(paystack: FakePaystackClient): PaymentsService {
+  return new PaymentsService({
+    payments: new PgPaymentRepository(pool),
+    subscriptions: new PgSubscriptionRepository(pool),
+    entitlements: new PgEntitlementLedgerRepository(pool),
+    credits: new PgCreditLedgerRepository(pool),
+    paystack,
+    users: new PgUserRepository(pool),
+    pricing: new PgPricingRepository(pool),
+    ridesPerPeriod: 44,
+    lifecycle: new PgPaymentLifecycle(pool),
+    webhooks: new PgPaymentWebhookRepository(pool),
+  });
+}
+
+describeWithPostgres('Postgres payment lifecycle', () => {
   beforeAll(async () => {
     const { rows } = await pool.query<{ name: string }>(
       `SELECT name FROM _migrations
@@ -98,7 +120,13 @@ describeWithPostgres('Postgres payment lifecycle concurrency', () => {
         );
         await client.query(
           `DELETE FROM payment_webhook_events
-            WHERE reference IN (SELECT reference FROM payments WHERE user_id = ANY($1::uuid[]))`,
+            WHERE reference IN (SELECT reference FROM payments WHERE user_id = ANY($1::uuid[]))
+               OR payload->'data'->>'transaction_reference' IN (
+                    SELECT reference FROM payments WHERE user_id = ANY($1::uuid[])
+                  )
+               OR payload->'data'->'transaction'->>'reference' IN (
+                    SELECT reference FROM payments WHERE user_id = ANY($1::uuid[])
+                  )`,
           [createdUserIds],
         );
         await client.query(
@@ -194,18 +222,7 @@ describeWithPostgres('Postgres payment lifecycle concurrency', () => {
     const paystack = new FakePaystackClient(secret);
     const payments = new PgPaymentRepository(pool);
     const subscriptions = new PgSubscriptionRepository(pool);
-    const service = new PaymentsService({
-      payments,
-      subscriptions,
-      entitlements: new PgEntitlementLedgerRepository(pool),
-      credits: new PgCreditLedgerRepository(pool),
-      paystack,
-      users: new PgUserRepository(pool),
-      pricing: new PgPricingRepository(pool),
-      ridesPerPeriod: 44,
-      lifecycle,
-      webhooks: new PgPaymentWebhookRepository(pool),
-    });
+    const service = paymentService(paystack);
     const charge = settled(reference, new Date('2099-01-01T00:00:00.000Z'));
     const rawBody = JSON.stringify({
       event: 'charge.success',
@@ -290,5 +307,225 @@ describeWithPostgres('Postgres payment lifecycle concurrency', () => {
       converted_rides: 44,
       renewal_payments: 1,
     });
+  });
+
+  it('keeps an ended period open while a funded reservation is unsettled', async () => {
+    const userId = await createRider();
+    const reference = `blocked-${userId}`;
+    const paidAt = new Date('2026-01-01T00:00:00.000Z');
+    const afterPeriod = new Date('2026-02-02T00:00:00.000Z');
+    const lifecycle = new PgPaymentLifecycle(pool);
+    await lifecycle.createSubscriptionCheckout(checkout(userId, reference, paidAt));
+    expect(await lifecycle.fulfillSubscriptionCharge(settled(reference, paidAt))).toBe('fulfilled');
+    const payment = await new PgPaymentRepository(pool).findByReference(reference);
+    expect(payment?.subscriptionPeriodId).toBeTruthy();
+    await pool.query(
+      `INSERT INTO reservations (
+         user_id, travel_date, direction, status, source, subscription_period_id
+       ) VALUES ($1, '2026-01-31', 'morning', 'reserved', 'confirmation', $2)`,
+      [userId, payment!.subscriptionPeriodId],
+    );
+
+    const close = await lifecycle.closeEndedPeriods(afterPeriod, 100);
+
+    expect(close.blocked).toBeGreaterThanOrEqual(1);
+    const { rows } = await pool.query<{
+      period_status: string;
+      subscription_status: string;
+      conversions: number;
+    }>(
+      `SELECT p.status AS period_status,
+              s.status AS subscription_status,
+              (SELECT count(*)::int FROM credit_ledger
+                WHERE user_id = $1 AND reason = 'month_end_conversion') AS conversions
+         FROM subscription_periods p
+         JOIN subscriptions s ON s.id = p.subscription_id
+        WHERE p.id = $2`,
+      [userId, payment!.subscriptionPeriodId],
+    );
+    expect(rows[0]).toEqual({
+      period_status: 'open',
+      subscription_status: 'active',
+      conversions: 0,
+    });
+    await expect(
+      lifecycle.createSubscriptionCheckout(
+        checkout(userId, `renew-blocked-${userId}`, afterPeriod),
+      ),
+    ).rejects.toBeInstanceOf(PeriodCloseBlockedError);
+  });
+
+  it('reconciles a successful provider charge when its webhook never arrived', async () => {
+    const userId = await createRider();
+    const reference = `reconcile-${userId}`;
+    const paidAt = new Date('2026-03-01T00:00:00.000Z');
+    const lifecycle = new PgPaymentLifecycle(pool);
+    const payment = await lifecycle.createSubscriptionCheckout(checkout(userId, reference, paidAt));
+    await pool.query(`UPDATE payments SET created_at = $2 WHERE reference = $1`, [
+      reference,
+      new Date('2025-01-01T00:00:00.000Z'),
+    ]);
+    const secret = `secret-${userId}`;
+    const paystack = new FakePaystackClient(secret);
+    await paystack.initializeTransaction({
+      email: `${userId}@users.trotxi.app`,
+      amountPesewas: payment.amount,
+      reference,
+    });
+    paystack.setTransaction(reference, {
+      status: 'success',
+      providerTransactionId: nextProviderId(),
+      channel: 'mobile_money',
+      feesPesewas: 100,
+      paidAt,
+    });
+    const service = paymentService(paystack);
+
+    const result = await service.reconcileUnresolved(new Date('2025-01-02T00:00:00.000Z'));
+
+    expect(result).toMatchObject({ considered: 1, fulfilled: 1, failed: 0, errors: 0 });
+    expect((await new PgPaymentRepository(pool).findByReference(reference))?.status).toBe(
+      'fulfilled',
+    );
+    const { rows } = await pool.query<{ allocations: number; periods: number }>(
+      `SELECT
+         (SELECT count(*)::int FROM entitlement_ledger
+           WHERE user_id = $1 AND reason = 'allocation') AS allocations,
+         (SELECT count(*)::int FROM subscription_periods sp
+           JOIN subscriptions s ON s.id = sp.subscription_id
+          WHERE s.user_id = $1) AS periods`,
+      [userId],
+    );
+    expect(rows[0]).toEqual({ allocations: 1, periods: 1 });
+  });
+
+  it('applies a full refund once and restores captured Ride Credit', async () => {
+    const userId = await createRider();
+    const reference = `refund-${userId}`;
+    const paidAt = new Date('2026-04-01T00:00:00.000Z');
+    const lifecycle = new PgPaymentLifecycle(pool);
+    await pool.query(
+      `INSERT INTO credit_ledger (
+         user_id, delta_pesewas, reason, ref_type, ref_id, idempotency_key
+       ) VALUES ($1, 1000, 'compensation', 'test', $2, $2)`,
+      [userId, `refund-credit-${userId}`],
+    );
+    const payment = await lifecycle.createSubscriptionCheckout(checkout(userId, reference, paidAt));
+    expect(payment.appliedCreditPesewas).toBe(1_000);
+    expect(
+      await lifecycle.fulfillSubscriptionCharge(settled(reference, paidAt, payment.amount)),
+    ).toBe('fulfilled');
+    const refund: ProviderRefund = {
+      eventKey: `refund-event-${userId}`,
+      reference,
+      refundReference: `refund-provider-${userId}`,
+      amountPesewas: payment.amount,
+      currency: 'GHS',
+      providerDomain: 'test',
+      status: 'processed',
+      payload: { test: true },
+    };
+
+    await Promise.all([lifecycle.recordRefund(refund), lifecycle.recordRefund(refund)]);
+
+    expect((await new PgPaymentRepository(pool).findByReference(reference))?.status).toBe(
+      'refunded',
+    );
+    const { rows } = await pool.query<{
+      rides: number;
+      credit: number;
+      refunds: number;
+      period_status: string;
+      subscription_status: string;
+    }>(
+      `SELECT
+         (SELECT COALESCE(sum(delta_rides), 0)::int FROM entitlement_ledger
+           WHERE user_id = $1) AS rides,
+         (SELECT COALESCE(sum(delta_pesewas), 0)::int FROM credit_ledger
+           WHERE user_id = $1) AS credit,
+         (SELECT count(*)::int FROM payment_refunds r
+           JOIN payments p ON p.id = r.payment_id WHERE p.reference = $2) AS refunds,
+         sp.status AS period_status,
+         s.status AS subscription_status
+       FROM payments p
+       JOIN subscription_periods sp ON sp.id = p.subscription_period_id
+       JOIN subscriptions s ON s.id = p.subscription_id
+       WHERE p.reference = $2`,
+      [userId, reference],
+    );
+    expect(rows[0]).toEqual({
+      rides: 0,
+      credit: 1_000,
+      refunds: 1,
+      period_status: 'reversed',
+      subscription_status: 'expired',
+    });
+  });
+
+  it('freezes a disputed period and restores it after a declined resolution', async () => {
+    const userId = await createRider();
+    const reference = `dispute-${userId}`;
+    const paidAt = new Date('2026-05-01T00:00:00.000Z');
+    const lifecycle = new PgPaymentLifecycle(pool);
+    const payment = await lifecycle.createSubscriptionCheckout(checkout(userId, reference, paidAt));
+    expect(await lifecycle.fulfillSubscriptionCharge(settled(reference, paidAt))).toBe('fulfilled');
+    const created: ProviderDispute = {
+      reference,
+      providerDisputeId: nextProviderId(),
+      amountPesewas: payment.amount,
+      currency: 'GHS',
+      providerDomain: 'test',
+      status: 'created',
+      resolution: null,
+      payload: { test: true },
+    };
+    const resolved: ProviderDispute = {
+      ...created,
+      status: 'resolved',
+      resolution: 'declined',
+    };
+
+    expect(await lifecycle.recordDispute(created)).toBe(true);
+    let states = await pool.query<{
+      payment_status: string;
+      period_status: string;
+      subscription_status: string;
+    }>(
+      `SELECT p.status AS payment_status, sp.status AS period_status,
+              s.status AS subscription_status
+         FROM payments p
+         JOIN subscription_periods sp ON sp.id = p.subscription_period_id
+         JOIN subscriptions s ON s.id = p.subscription_id
+        WHERE p.reference = $1`,
+      [reference],
+    );
+    expect(states.rows[0]).toEqual({
+      payment_status: 'disputed',
+      period_status: 'frozen',
+      subscription_status: 'suspended',
+    });
+
+    expect(await lifecycle.recordDispute(resolved)).toBe(true);
+    expect(await lifecycle.recordDispute(resolved)).toBe(true);
+    states = await pool.query(
+      `SELECT p.status AS payment_status, sp.status AS period_status,
+              s.status AS subscription_status
+         FROM payments p
+         JOIN subscription_periods sp ON sp.id = p.subscription_period_id
+         JOIN subscriptions s ON s.id = p.subscription_id
+        WHERE p.reference = $1`,
+      [reference],
+    );
+    expect(states.rows[0]).toEqual({
+      payment_status: 'fulfilled',
+      period_status: 'open',
+      subscription_status: 'active',
+    });
+    const { rows } = await pool.query<{ disputes: number }>(
+      `SELECT count(*)::int AS disputes FROM payment_disputes d
+        JOIN payments p ON p.id = d.payment_id WHERE p.reference = $1`,
+      [reference],
+    );
+    expect(rows[0]?.disputes).toBe(1);
   });
 });
