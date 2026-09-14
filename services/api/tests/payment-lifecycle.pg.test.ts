@@ -361,6 +361,9 @@ describeWithPostgres('Postgres payment lifecycle', () => {
     const paidAt = new Date('2026-03-01T00:00:00.000Z');
     const lifecycle = new PgPaymentLifecycle(pool);
     const payment = await lifecycle.createSubscriptionCheckout(checkout(userId, reference, paidAt));
+    // Reconciliation scans every unresolved payment. Backdate only this row so
+    // the exact count stays isolated from the other Postgres files running in
+    // parallel against the same CI database.
     await pool.query(`UPDATE payments SET created_at = $2 WHERE reference = $1`, [
       reference,
       new Date('2025-01-01T00:00:00.000Z'),
@@ -527,5 +530,81 @@ describeWithPostgres('Postgres payment lifecycle', () => {
       [reference],
     );
     expect(rows[0]?.disputes).toBe(1);
+  });
+
+  it('restores a merchant-accepted dispute after its partial refund is processed', async () => {
+    const userId = await createRider();
+    const reference = `accepted-dispute-${userId}`;
+    const paidAt = new Date('2026-06-01T00:00:00.000Z');
+    const lifecycle = new PgPaymentLifecycle(pool);
+    await lifecycle.createSubscriptionCheckout(checkout(userId, reference, paidAt));
+    expect(await lifecycle.fulfillSubscriptionCharge(settled(reference, paidAt))).toBe('fulfilled');
+    const acceptedAmountPesewas = 1_000;
+    const dispute: ProviderDispute = {
+      reference,
+      providerDisputeId: nextProviderId(),
+      amountPesewas: acceptedAmountPesewas,
+      currency: 'GHS',
+      providerDomain: 'test',
+      status: 'resolved',
+      resolution: 'merchant-accepted',
+      payload: { test: true },
+    };
+    const refund: ProviderRefund = {
+      eventKey: `accepted-refund-event-${userId}`,
+      reference,
+      refundReference: `accepted-refund-provider-${userId}`,
+      amountPesewas: acceptedAmountPesewas,
+      currency: 'GHS',
+      providerDomain: 'test',
+      status: 'processed',
+      payload: { test: true },
+    };
+
+    expect(await lifecycle.recordDispute(dispute)).toBe(true);
+    let states = await pool.query<{
+      payment_status: string;
+      refunded_pesewas: number;
+      period_status: string;
+      subscription_status: string;
+      rides: number;
+    }>(
+      `SELECT p.status AS payment_status, p.refunded_pesewas,
+              sp.status AS period_status, s.status AS subscription_status,
+              (SELECT COALESCE(sum(delta_rides), 0)::int FROM entitlement_ledger
+                WHERE subscription_period_id = sp.id) AS rides
+         FROM payments p
+         JOIN subscription_periods sp ON sp.id = p.subscription_period_id
+         JOIN subscriptions s ON s.id = p.subscription_id
+        WHERE p.reference = $1`,
+      [reference],
+    );
+    expect(states.rows[0]).toEqual({
+      payment_status: 'disputed',
+      refunded_pesewas: 0,
+      period_status: 'frozen',
+      subscription_status: 'suspended',
+      rides: 44,
+    });
+
+    expect(await lifecycle.recordRefund(refund)).toBe(true);
+    states = await pool.query(
+      `SELECT p.status AS payment_status, p.refunded_pesewas,
+              sp.status AS period_status, s.status AS subscription_status,
+              (SELECT COALESCE(sum(delta_rides), 0)::int FROM entitlement_ledger
+                WHERE subscription_period_id = sp.id) AS rides
+         FROM payments p
+         JOIN subscription_periods sp ON sp.id = p.subscription_period_id
+         JOIN subscriptions s ON s.id = p.subscription_id
+        WHERE p.reference = $1`,
+      [reference],
+    );
+    expect(states.rows[0]).toEqual({
+      payment_status: 'fulfilled',
+      refunded_pesewas: acceptedAmountPesewas,
+      period_status: 'open',
+      subscription_status: 'active',
+      rides: 44,
+    });
   });
 });
