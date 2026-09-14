@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:provider/provider.dart';
@@ -17,9 +19,21 @@ import 'package:trotxi_driver/data/trips_repository.dart';
 /// driver is holding a phone at arm's length with a queue behind them, and a
 /// message that fades after four seconds is a message that gets missed.
 class ScanPage extends StatefulWidget {
-  const ScanPage({super.key, required this.runId});
+  const ScanPage({
+    super.key,
+    required this.runId,
+    @visibleForTesting this.scannerBuilder,
+  });
 
   final String runId;
+
+  /// A deterministic scanner seam for the application's QR-handling contract.
+  /// Production always uses [MobileScanner]; tests supply a view that emits a
+  /// decoded value so the repository call, result panel and manifest refresh
+  /// do not depend on camera hardware.
+  @visibleForTesting
+  final Widget Function(BuildContext context, ValueChanged<String> onCode)?
+  scannerBuilder;
 
   @override
   State<ScanPage> createState() => _ScanPageState();
@@ -43,6 +57,12 @@ class _ScanPageState extends State<ScanPage> {
     final code = capture.barcodes.firstOrNull?.rawValue;
     if (code == null || code.isEmpty) return;
 
+    await _handleCode(code);
+  }
+
+  Future<void> _handleCode(String code) async {
+    if (_busy || _result != null || code.isEmpty) return;
+
     setState(() => _busy = true);
 
     // Both read BEFORE any await. Reaching for an inherited widget after an
@@ -51,7 +71,7 @@ class _ScanPageState extends State<ScanPage> {
     final trips = context.read<TripsRepository>();
     final run = context.read<RunController>();
 
-    await _scanner.stop();
+    if (widget.scannerBuilder == null) await _scanner.stop();
     final outcome = await trips.scan(pass: code, runId: widget.runId);
 
     // Only a boarding that actually happened needs the manifest re-read.
@@ -65,7 +85,7 @@ class _ScanPageState extends State<ScanPage> {
 
   Future<void> _scanAgain() async {
     setState(() => _result = null);
-    await _scanner.start();
+    if (widget.scannerBuilder == null) await _scanner.start();
   }
 
   @override
@@ -245,6 +265,10 @@ class _ScanPageState extends State<ScanPage> {
   }
 
   Widget _viewfinder(BuildContext context, AppColors colors, Color tone) {
+    final injected = widget.scannerBuilder;
+    if (injected != null) {
+      return injected(context, (code) => unawaited(_handleCode(code)));
+    }
     return ClipRRect(
       borderRadius: AppRadii.circular(AppRadii.xl),
       child: Container(

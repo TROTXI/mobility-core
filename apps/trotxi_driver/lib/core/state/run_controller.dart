@@ -83,6 +83,13 @@ class RunController extends ChangeNotifier {
   final TripsRepository _trips;
   DriverRun _run;
 
+  /// The latest lifecycle state accepted from the API.
+  ///
+  /// The shell uses this to enable or disable run-scoped navigation without
+  /// waiting for the independently cached Today board to refresh. A start or
+  /// completion response is authoritative for this run immediately.
+  DriverRun get currentRun => _run;
+
   Loadable<RunDetail> _detail = const Loadable.idle();
   Loadable<RunDetail> get detail => _detail;
 

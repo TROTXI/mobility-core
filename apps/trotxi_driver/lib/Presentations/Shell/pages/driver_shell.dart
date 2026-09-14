@@ -34,21 +34,39 @@ class _DriverShellState extends State<DriverShell> {
   RunController? _run;
   String? _runId;
 
+  void _onRunChanged() {
+    if (mounted) setState(() {});
+  }
+
+  void _disposeRun() {
+    _run?.removeListener(_onRunChanged);
+    _run?.dispose();
+    _run = null;
+    _runId = null;
+  }
+
   /// Build or reuse the controller for whichever run is active.
   ///
   /// @param run - the active run, or null when none is.
   /// @returns the controller, or null when there is nothing to show.
   RunController? _controllerFor(DriverRun? run) {
     if (run == null) {
-      _run?.dispose();
-      _run = null;
-      _runId = null;
+      _disposeRun();
       return null;
     }
     if (_runId != run.id) {
-      _run?.dispose();
-      _run = RunController(trips: context.read<TripsRepository>(), run: run)
-        ..load();
+      _disposeRun();
+      final controller = RunController(
+        trips: context.read<TripsRepository>(),
+        run: run,
+      );
+      // load() notifies synchronously before its first await. Start it before
+      // subscribing so creating the controller during build cannot schedule a
+      // setState inside that same build; later results and lifecycle changes
+      // still rebuild the shell.
+      controller.load();
+      controller.addListener(_onRunChanged);
+      _run = controller;
       _runId = run.id;
     }
     return _run;
@@ -56,7 +74,7 @@ class _DriverShellState extends State<DriverShell> {
 
   @override
   void dispose() {
-    _run?.dispose();
+    _disposeRun();
     super.dispose();
   }
 
@@ -67,7 +85,12 @@ class _DriverShellState extends State<DriverShell> {
     // Trip and Manifest follow whichever run the day leads with, started or
     // not. Scan needs one actually under way.
     final leading = board?.active ?? board?.next;
-    final isRunning = board?.active != null;
+    // RunController owns the latest accepted start/complete response. Today is
+    // a separate cached roster and can still say "scheduled" for a frame (or
+    // until its next refresh), which previously left Scan disabled after the
+    // driver had successfully started the trip.
+    final observed = _runId == leading?.id ? _run?.currentRun : null;
+    final isRunning = observed?.isActive ?? (board?.active != null);
 
     return Scaffold(
       backgroundColor: colors.page,
