@@ -50,6 +50,7 @@ cannot be bypassed with another purchase.
 | `POST /admin/payments/process-webhooks` | admin          | Drain retryable/stale inbox work                                               |
 | `POST /admin/payments/reconcile`        | admin          | Verify stale pending/processing references directly with Paystack              |
 | `POST /admin/payments/maintenance`      | admin          | Inbox → Verify → safe period close, in dependency order                        |
+| `GET /admin/payments/reviews`           | admin          | Unresolved refunds, disputes and consumed-value reversals                      |
 
 `charge.success` grants value only when provider reference, status, amount,
 currency, environment, transaction id and paid time pass the strict adapter
@@ -82,6 +83,18 @@ the transaction atomically:
 - restores Ride Credit captured for the reversed purchase;
 - marks the period `reversed`, the payment `refunded`, and the current
   subscription `expired`.
+
+If some purchased rides were already consumed, only the remaining rides are
+reversed. The entitlement ledger never goes negative. A durable operations
+review records the consumed ride count and its proportional gross-price value
+in pesewas; repeated or out-of-order provider events cannot regress the stored
+refund/dispute state or duplicate that review.
+
+If the period had already closed, month-end conversion debits are not mistaken
+for boarding. Conversion credit still available to the rider is clawed back
+through the append-only credit ledger. Any conversion credit already spent or
+reserved is added to the operations-review debt instead of driving the balance
+negative.
 
 `charge.dispute.create` and reminders freeze the exact purchased period and
 suspend the current membership. A `declined` resolution restores service. A
@@ -122,6 +135,6 @@ Until approved, operators call the maintenance endpoint manually.
 - `services/api/src/modules/subscriptions/`
 - `services/api/src/cron/payments-maintenance-cron.ts`
 - `services/api/scripts/payments-audit.sql` (read-only rollout/reconciliation audit)
-- migrations `027`–`031` and `039`
+- migrations `027`–`031`, `039`–`041`, and `044`
 - [ADR-0014](../adr/0014-hybrid-subscription-model.md) and
   [ADR-0015](../adr/0015-fare-derived-pricing.md)

@@ -40,7 +40,12 @@ function appWithPayments() {
   });
   // Share the entitlements instance with the app so GET /me/rides sees the
   // rides the webhook allocates.
-  return { subscriptions, entitlements, build: buildApp({ auth, paymentsService, entitlements }) };
+  return {
+    subscriptions,
+    entitlements,
+    paymentsService,
+    build: buildApp({ auth, paymentsService, entitlements }),
+  };
 }
 
 async function webhookFor(app: Awaited<ReturnType<typeof buildApp>>, reference: string) {
@@ -270,5 +275,31 @@ describe('POST /admin/payments/maintenance', () => {
       reconciliation: { considered: 0, errors: 0 },
       periods: { considered: 0, closed: 0, blocked: 0 },
     });
+  });
+});
+
+describe('GET /admin/payments/reviews', () => {
+  it('is admin-only and exposes the operations read model', async () => {
+    const app = await appWithPayments().build;
+    const commuter = await jwt.signAccessToken({ userId: 'rider-1', role: 'commuter' });
+    const admin = await jwt.signAccessToken({ userId: 'ops-1', role: 'admin' });
+
+    expect(
+      (
+        await app.inject({
+          method: 'GET',
+          url: '/admin/payments/reviews',
+          headers: bearer(commuter),
+        })
+      ).statusCode,
+    ).toBe(403);
+
+    const response = await app.inject({
+      method: 'GET',
+      url: '/admin/payments/reviews?limit=10',
+      headers: bearer(admin),
+    });
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toEqual({ items: [] });
   });
 });

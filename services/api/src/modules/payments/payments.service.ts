@@ -30,6 +30,7 @@ import {
   ActiveSubscriptionPaymentError,
   InMemoryPaymentLifecycle,
   type PaymentLifecycle,
+  type PaymentOperationsReview,
   type PeriodCloseResult,
   PeriodCloseBlockedError,
   type ProviderDispute,
@@ -315,6 +316,16 @@ export class PaymentsService {
    */
   async closeEndedPeriods(now: Date = new Date(), limit = 100): Promise<PeriodCloseResult> {
     return this.lifecycle.closeEndedPeriods(now, limit);
+  }
+
+  /**
+   * Return unresolved refund, dispute, and consumed-value accounting items.
+   *
+   * @param limit - maximum review items to return.
+   * @returns newest unresolved operations items first.
+   */
+  async listOperationsReviews(limit = 100): Promise<PaymentOperationsReview[]> {
+    return this.lifecycle.listOperationsReviews(limit);
   }
 
   /**

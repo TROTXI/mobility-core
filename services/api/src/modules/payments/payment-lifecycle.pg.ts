@@ -6,6 +6,7 @@ import {
   ActiveSubscriptionPaymentError,
   type FulfillmentResult,
   type PaymentLifecycle,
+  type PaymentOperationsReview,
   type PeriodCloseResult,
   PeriodCloseBlockedError,
   type ProviderDispute,
@@ -28,6 +29,7 @@ interface PeriodLockRow {
   user_id: string;
   status: 'open' | 'frozen' | 'closed' | 'reversed';
   credit_pesewas_per_ride: number | null;
+  credit_granted_pesewas: number | null;
 }
 
 /** PostgreSQL transaction boundary for every financial state change. */
@@ -124,10 +126,10 @@ export class PgPaymentLifecycle implements PaymentLifecycle {
 
       const { rows } = await client.query<PaymentRow>(
         `INSERT INTO payments (
-           user_id, reference, purpose, plan, route_id, amount, currency,
+           user_id, reference, purpose, plan, route_id, amount, gross_amount_pesewas, currency,
            rides_granted, fare_pesewas, credit_pesewas_per_ride,
            applied_credit_pesewas, pickup_stop_id, dropoff_stop_id, subscription_id
-         ) VALUES ($1, $2, 'subscription', $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+         ) VALUES ($1, $2, 'subscription', $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
          RETURNING *`,
         [
           input.userId,
@@ -135,6 +137,7 @@ export class PgPaymentLifecycle implements PaymentLifecycle {
           input.plan,
           input.routeId ?? null,
           input.pricePesewas - appliedCreditPesewas,
+          input.pricePesewas,
           input.currency,
           input.ridesGranted ?? null,
           input.farePesewas ?? null,
@@ -438,14 +441,38 @@ export class PgPaymentLifecycle implements PaymentLifecycle {
                    CASE WHEN $4 = 'processed' THEN now() ELSE NULL END)
          ON CONFLICT (payment_id, provider_refund_reference) DO UPDATE
            SET amount_pesewas = CASE
-                 WHEN payment_refunds.status = 'processed' THEN payment_refunds.amount_pesewas
-                 ELSE EXCLUDED.amount_pesewas
+                 WHEN CASE payment_refunds.status
+                        WHEN 'pending' THEN 0 WHEN 'processing' THEN 1
+                        WHEN 'needs_attention' THEN 2 WHEN 'failed' THEN 3 ELSE 4
+                      END >=
+                      CASE EXCLUDED.status
+                        WHEN 'pending' THEN 0 WHEN 'processing' THEN 1
+                        WHEN 'needs_attention' THEN 2 WHEN 'failed' THEN 3 ELSE 4
+                      END
+                 THEN payment_refunds.amount_pesewas ELSE EXCLUDED.amount_pesewas
                END,
                status = CASE
-                 WHEN payment_refunds.status = 'processed' THEN payment_refunds.status
-                 ELSE EXCLUDED.status
+                 WHEN CASE payment_refunds.status
+                        WHEN 'pending' THEN 0 WHEN 'processing' THEN 1
+                        WHEN 'needs_attention' THEN 2 WHEN 'failed' THEN 3 ELSE 4
+                      END >=
+                      CASE EXCLUDED.status
+                        WHEN 'pending' THEN 0 WHEN 'processing' THEN 1
+                        WHEN 'needs_attention' THEN 2 WHEN 'failed' THEN 3 ELSE 4
+                      END
+                 THEN payment_refunds.status ELSE EXCLUDED.status
                END,
-               payload = EXCLUDED.payload,
+               payload = CASE
+                 WHEN CASE payment_refunds.status
+                        WHEN 'pending' THEN 0 WHEN 'processing' THEN 1
+                        WHEN 'needs_attention' THEN 2 WHEN 'failed' THEN 3 ELSE 4
+                      END >=
+                      CASE EXCLUDED.status
+                        WHEN 'pending' THEN 0 WHEN 'processing' THEN 1
+                        WHEN 'needs_attention' THEN 2 WHEN 'failed' THEN 3 ELSE 4
+                      END
+                 THEN payment_refunds.payload ELSE EXCLUDED.payload
+               END,
                processed_at = CASE
                  WHEN EXCLUDED.status = 'processed' THEN COALESCE(payment_refunds.processed_at, now())
                  ELSE payment_refunds.processed_at
@@ -478,7 +505,8 @@ export class PgPaymentLifecycle implements PaymentLifecycle {
 
       if (refunded === payment.amount && payment.subscriptionPeriodId) {
         const { rows: periods } = await client.query<PeriodLockRow>(
-          `SELECT p.id, p.subscription_id, s.user_id, p.status, p.credit_pesewas_per_ride
+          `SELECT p.id, p.subscription_id, s.user_id, p.status,
+                  p.credit_pesewas_per_ride, p.credit_granted_pesewas
              FROM subscription_periods p
              JOIN subscriptions s ON s.id = p.subscription_id
             WHERE p.id = $1
@@ -487,12 +515,82 @@ export class PgPaymentLifecycle implements PaymentLifecycle {
         );
         const period = periods[0];
         if (period && period.status !== 'reversed') {
-          const { rows: balances } = await client.query<{ rides: number }>(
-            `SELECT COALESCE(SUM(delta_rides), 0)::int AS rides
+          const { rows: balances } = await client.query<{
+            remaining: number;
+            consumed: number;
+          }>(
+            `SELECT COALESCE(SUM(delta_rides), 0)::int AS remaining,
+                    GREATEST(0,
+                      -COALESCE(SUM(delta_rides) FILTER (
+                        WHERE reason IN ('boarding', 'no_show')
+                      ), 0)
+                      -COALESCE(SUM(delta_rides) FILTER (
+                        WHERE reason = 'returned'
+                      ), 0)
+                    )::int AS consumed
                FROM entitlement_ledger WHERE subscription_period_id = $1`,
             [period.id],
           );
-          const remaining = Math.max(0, balances[0]!.rides);
+          const remaining = Math.max(0, balances[0]!.remaining);
+          const granted = Math.max(0, payment.ridesGranted ?? 0);
+          const consumed = balances[0]!.consumed;
+          const conversionCredit = Math.max(0, period.credit_granted_pesewas ?? 0);
+          const { rows: creditRows } = await client.query<{
+            ledger_pesewas: string;
+            held_pesewas: string;
+          }>(
+            `SELECT
+               COALESCE((SELECT SUM(delta_pesewas) FROM credit_ledger
+                          WHERE user_id = $1), 0)::text AS ledger_pesewas,
+               COALESCE((SELECT SUM(amount_pesewas) FROM credit_holds
+                          WHERE user_id = $1 AND status = 'held'), 0)::text AS held_pesewas`,
+            [payment.userId],
+          );
+          const availableCredit = Math.max(
+            0,
+            Number(creditRows[0]!.ledger_pesewas) - Number(creditRows[0]!.held_pesewas),
+          );
+          const recoveredConversionCredit = Math.min(conversionCredit, availableCredit);
+          const unrecoveredConversionCredit = conversionCredit - recoveredConversionCredit;
+          if (recoveredConversionCredit > 0) {
+            await client.query(
+              `INSERT INTO credit_ledger (
+                 user_id, delta_pesewas, reason, ref_type, ref_id, idempotency_key
+               ) VALUES ($1, $2, 'refund', 'payment', $3, $4)
+               ON CONFLICT (idempotency_key) DO NOTHING`,
+              [
+                payment.userId,
+                -recoveredConversionCredit,
+                payment.reference,
+                `refund-conversion-credit:${payment.reference}`,
+              ],
+            );
+          }
+          if (consumed > 0 || unrecoveredConversionCredit > 0) {
+            const rideDebtPesewas =
+              consumed > 0
+                ? Math.max(
+                    1,
+                    granted > 0
+                      ? Math.round((payment.grossAmountPesewas * consumed) / granted)
+                      : payment.grossAmountPesewas,
+                  )
+                : 0;
+            const estimatedDebtPesewas = rideDebtPesewas + unrecoveredConversionCredit;
+            await client.query(
+              `INSERT INTO payment_reversal_reviews (
+                 payment_id, subscription_period_id, reason, consumed_rides,
+                 unrecovered_credit_pesewas, estimated_debt_pesewas
+               ) VALUES ($1, $2, 'consumed_value_after_refund', $3, $4, $5)
+               ON CONFLICT (payment_id, reason) DO UPDATE
+                 SET consumed_rides = EXCLUDED.consumed_rides,
+                     unrecovered_credit_pesewas = EXCLUDED.unrecovered_credit_pesewas,
+                     estimated_debt_pesewas = EXCLUDED.estimated_debt_pesewas,
+                     updated_at = now()
+               WHERE payment_reversal_reviews.status = 'open'`,
+              [payment.id, period.id, consumed, unrecoveredConversionCredit, estimatedDebtPesewas],
+            );
+          }
           if (remaining > 0) {
             await client.query(
               `INSERT INTO entitlement_ledger (
@@ -623,20 +721,40 @@ export class PgPaymentLifecycle implements PaymentLifecycle {
                    CASE WHEN $4 = 'resolved' THEN now() ELSE NULL END)
          ON CONFLICT (provider_dispute_id) DO UPDATE
            SET amount_pesewas = CASE
-                 WHEN payment_disputes.status = 'resolved' THEN payment_disputes.amount_pesewas
-                 ELSE EXCLUDED.amount_pesewas
+                 WHEN CASE payment_disputes.status
+                        WHEN 'created' THEN 0 WHEN 'reminded' THEN 1 ELSE 2
+                      END >=
+                      CASE EXCLUDED.status
+                        WHEN 'created' THEN 0 WHEN 'reminded' THEN 1 ELSE 2
+                      END
+                 THEN payment_disputes.amount_pesewas ELSE EXCLUDED.amount_pesewas
                END,
                status = CASE
-                 WHEN payment_disputes.status = 'resolved' THEN payment_disputes.status
-                 ELSE EXCLUDED.status
+                 WHEN CASE payment_disputes.status
+                        WHEN 'created' THEN 0 WHEN 'reminded' THEN 1 ELSE 2
+                      END >=
+                      CASE EXCLUDED.status
+                        WHEN 'created' THEN 0 WHEN 'reminded' THEN 1 ELSE 2
+                      END
+                 THEN payment_disputes.status ELSE EXCLUDED.status
                END,
                resolution = CASE
-                 WHEN payment_disputes.status = 'resolved' THEN payment_disputes.resolution
-                 ELSE EXCLUDED.resolution
+                 WHEN CASE payment_disputes.status
+                        WHEN 'created' THEN 0 WHEN 'reminded' THEN 1 ELSE 2
+                      END >=
+                      CASE EXCLUDED.status
+                        WHEN 'created' THEN 0 WHEN 'reminded' THEN 1 ELSE 2
+                      END
+                 THEN payment_disputes.resolution ELSE EXCLUDED.resolution
                END,
                payload = CASE
-                 WHEN payment_disputes.status = 'resolved' THEN payment_disputes.payload
-                 ELSE EXCLUDED.payload
+                 WHEN CASE payment_disputes.status
+                        WHEN 'created' THEN 0 WHEN 'reminded' THEN 1 ELSE 2
+                      END >=
+                      CASE EXCLUDED.status
+                        WHEN 'created' THEN 0 WHEN 'reminded' THEN 1 ELSE 2
+                      END
+                 THEN payment_disputes.payload ELSE EXCLUDED.payload
                END,
                resolved_at = CASE
                  WHEN EXCLUDED.status = 'resolved' THEN COALESCE(payment_disputes.resolved_at, now())
@@ -703,6 +821,72 @@ export class PgPaymentLifecycle implements PaymentLifecycle {
     }
   }
 
+  async listOperationsReviews(limit = 100): Promise<PaymentOperationsReview[]> {
+    const { rows } = await this.pool.query<{
+      id: string;
+      kind: PaymentOperationsReview['kind'];
+      payment_reference: string;
+      user_id: string;
+      payment_status: string;
+      status: string;
+      amount_pesewas: number;
+      resolution: string | null;
+      consumed_rides: number | null;
+      unrecovered_credit_pesewas: number | null;
+      estimated_debt_pesewas: number | null;
+      created_at: Date;
+      updated_at: Date;
+    }>(
+      `SELECT * FROM (
+         SELECT 'refund:' || r.id::text AS id, 'refund'::text AS kind,
+                p.reference AS payment_reference, p.user_id, p.status AS payment_status,
+                r.status, r.amount_pesewas, NULL::text AS resolution,
+                NULL::integer AS consumed_rides, NULL::integer AS unrecovered_credit_pesewas,
+                NULL::integer AS estimated_debt_pesewas,
+                r.created_at, r.updated_at
+           FROM payment_refunds r JOIN payments p ON p.id = r.payment_id
+          WHERE r.status <> 'processed'
+         UNION ALL
+         SELECT 'dispute:' || d.id::text, 'dispute', p.reference, p.user_id, p.status,
+                d.status, d.amount_pesewas, d.resolution, NULL::integer, NULL::integer,
+                NULL::integer,
+                d.created_at, d.updated_at
+           FROM payment_disputes d JOIN payments p ON p.id = d.payment_id
+          WHERE d.status <> 'resolved' OR d.resolution IS NULL
+             OR (d.resolution = 'merchant-accepted' AND
+                 COALESCE((SELECT SUM(r.amount_pesewas) FROM payment_refunds r
+                            WHERE r.payment_id = d.payment_id AND r.status = 'processed'), 0)
+                   < d.amount_pesewas)
+             OR d.resolution NOT IN ('declined', 'merchant-accepted')
+         UNION ALL
+         SELECT 'manual:' || m.id::text, 'manual_review', p.reference, p.user_id, p.status,
+                m.status, m.estimated_debt_pesewas, NULL::text, m.consumed_rides,
+                m.unrecovered_credit_pesewas, m.estimated_debt_pesewas,
+                m.created_at, m.updated_at
+           FROM payment_reversal_reviews m JOIN payments p ON p.id = m.payment_id
+          WHERE m.status = 'open'
+       ) reviews
+       ORDER BY updated_at DESC
+       LIMIT $1`,
+      [Math.max(0, Math.floor(limit))],
+    );
+    return rows.map((row) => ({
+      id: row.id,
+      kind: row.kind,
+      paymentReference: row.payment_reference,
+      userId: row.user_id,
+      paymentStatus: row.payment_status,
+      status: row.status,
+      amountPesewas: row.amount_pesewas,
+      resolution: row.resolution,
+      consumedRides: row.consumed_rides,
+      unrecoveredCreditPesewas: row.unrecovered_credit_pesewas,
+      estimatedDebtPesewas: row.estimated_debt_pesewas,
+      createdAt: row.created_at,
+      updatedAt: row.updated_at,
+    }));
+  }
+
   async closeEndedPeriods(now: Date = new Date(), limit = 100): Promise<PeriodCloseResult> {
     const boundedLimit = Math.max(0, Math.floor(limit));
     const { rows: due } = await this.pool.query<{
@@ -760,7 +944,8 @@ export class PgPaymentLifecycle implements PaymentLifecycle {
     periodId: string,
   ): Promise<{ closed: boolean; blocked: boolean; rides: number; credit: number }> {
     const { rows } = await client.query<PeriodLockRow>(
-      `SELECT p.id, p.subscription_id, s.user_id, p.status, p.credit_pesewas_per_ride
+      `SELECT p.id, p.subscription_id, s.user_id, p.status,
+              p.credit_pesewas_per_ride, p.credit_granted_pesewas
          FROM subscription_periods p
          JOIN subscriptions s ON s.id = p.subscription_id
         WHERE p.id = $1

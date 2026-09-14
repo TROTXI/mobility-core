@@ -1,11 +1,16 @@
 -- Payment lifecycle audit. Read only: no statement mutates data.
--- Run after migration 039 on staging, then production before live launch.
+-- Run after migration 044 on staging, then production before live launch.
 
 \echo '== 0. Payment totals =='
 SELECT status, count(*) AS payments, sum(amount) AS cash_pesewas
 FROM payments
 GROUP BY status
 ORDER BY status;
+
+\echo '== 0b. Gross, cash and Ride Credit snapshots disagree =='
+SELECT reference, gross_amount_pesewas, amount AS cash_pesewas, applied_credit_pesewas
+FROM payments
+WHERE gross_amount_pesewas <> amount + applied_credit_pesewas;
 
 \echo '== 1a. Legacy duplicate-checkout or broken-renewal candidates =='
 -- Before immutable period links, two settled references for one rider could
@@ -142,3 +147,11 @@ LEFT JOIN payment_disputes d ON d.payment_id = p.id
 WHERE rf.id IS NOT NULL OR d.id IS NOT NULL
 GROUP BY p.id
 ORDER BY p.updated_at DESC;
+
+\echo '== 10. Open consumed-value reversals requiring operations review =='
+SELECT r.id, p.reference, p.user_id, r.consumed_rides,
+       r.unrecovered_credit_pesewas, r.estimated_debt_pesewas, r.created_at
+FROM payment_reversal_reviews r
+JOIN payments p ON p.id = r.payment_id
+WHERE r.status = 'open'
+ORDER BY r.updated_at DESC;

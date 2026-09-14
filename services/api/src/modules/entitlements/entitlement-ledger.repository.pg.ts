@@ -42,4 +42,17 @@ export class PgEntitlementLedgerRepository implements EntitlementLedgerRepositor
     );
     return rows[0]!.rides;
   }
+
+  async consumedRidesForPeriod(subscriptionPeriodId: string): Promise<number> {
+    const { rows } = await this.pool.query<{ rides: number }>(
+      `SELECT GREATEST(0,
+         -COALESCE(SUM(delta_rides) FILTER (WHERE reason IN ('boarding', 'no_show')), 0)
+         -COALESCE(SUM(delta_rides) FILTER (WHERE reason = 'returned'), 0)
+       )::int AS rides
+         FROM entitlement_ledger
+        WHERE subscription_period_id = $1`,
+      [subscriptionPeriodId],
+    );
+    return rows[0]!.rides;
+  }
 }

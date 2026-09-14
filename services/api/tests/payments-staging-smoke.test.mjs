@@ -50,6 +50,8 @@ describe('automatic-delivery assertions', () => {
     purpose: 'subscription',
     currency: 'GHS',
     amount: 26400,
+    gross_amount_pesewas: 26400,
+    applied_credit_pesewas: 0,
     rides_granted: 44,
   };
   const provider = {

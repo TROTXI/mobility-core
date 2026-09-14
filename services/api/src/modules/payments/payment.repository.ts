@@ -37,6 +37,8 @@ export interface Payment {
   creditPesewasPerRide: number | null;
   /** Amount CHARGED in pesewas, already net of `appliedCreditPesewas`. */
   amount: number;
+  /** Full checkout price in pesewas, before Ride Credit. */
+  grossAmountPesewas: number;
   /** Ride Credit netted off this checkout, frozen at initiation (#128). */
   appliedCreditPesewas: number;
   /** ISO 4217 currency code (currently always `GHS`). */
@@ -179,6 +181,7 @@ export class InMemoryPaymentRepository implements PaymentRepository {
       pickupStopId: input.pickupStopId ?? null,
       dropoffStopId: input.dropoffStopId ?? null,
       amount: input.amount,
+      grossAmountPesewas: input.amount + (input.appliedCreditPesewas ?? 0),
       appliedCreditPesewas: input.appliedCreditPesewas ?? 0,
       currency: input.currency,
       ridesGranted: input.ridesGranted ?? null,
