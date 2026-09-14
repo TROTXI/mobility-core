@@ -13,6 +13,7 @@ import { InMemoryKvStore, type KvStore } from './kv/kv.store';
 import { FakeObjectStore, type ObjectStore } from './storage/object-store';
 import { RenewalService } from './modules/subscriptions/renewal.service';
 import { renewalRoutes } from './modules/subscriptions/renewal.routes';
+import { subscriptionRoutes } from './modules/subscriptions/subscription.routes';
 import type { PricingRepository } from './modules/payments/pricing.repository';
 import { pricingRoutes } from './modules/payments/pricing.routes';
 import type { AccountDeletionService } from './modules/users/account-deletion.service';
@@ -358,6 +359,10 @@ export async function buildApp(deps: AppDeps = {}): Promise<FastifyInstance> {
     credits,
     rateLimit: deps.rateLimit ?? DEFAULT_RATE_LIMIT,
     subscriptions: deps.subscriptions,
+  });
+  await app.register(subscriptionRoutes, {
+    subscriptions: deps.subscriptions,
+    rateLimit: deps.rateLimit ?? DEFAULT_RATE_LIMIT,
   });
   // Credit conversion (E5): the month-end job. Only wired when a subscription
   // store is available (the route 503s otherwise), since it iterates active subs.

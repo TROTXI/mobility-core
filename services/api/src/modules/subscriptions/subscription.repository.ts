@@ -30,6 +30,13 @@ export interface Subscription {
   createdAt: Date;
 }
 
+/** The rider's current membership, including an open voluntary pause. */
+export type CurrentSubscription = Omit<Subscription, 'status'> & {
+  status: Extract<SubscriptionStatus, 'active' | 'suspended'>;
+  /** True while the billing period is paused and its eventual end is not yet known. */
+  paused: boolean;
+};
+
 /** Fields needed to create a subscription. */
 export interface NewSubscription {
   /** Where the rider boards (#204). */
@@ -64,6 +71,14 @@ export interface SubscriptionRepository {
    * @returns the active subscription, or null.
    */
   findActiveByUser(userId: string): Promise<Subscription | null>;
+  /**
+   * Find the rider's current membership for account-facing UI.
+   *
+   * Unlike {@link findActiveByUser}, this includes suspended subscriptions and
+   * active subscriptions with an open pause. Those states must remain visible
+   * to the rider even though they cannot currently consume service.
+   */
+  findCurrentByUser(userId: string): Promise<CurrentSubscription | null>;
   /**
    * Active subscriptions pinned to a route — who the ask-dispatch prompts for
    * that route's trips (E3).
@@ -143,6 +158,18 @@ export class InMemorySubscriptionRepository implements SubscriptionRepository {
     for (const subscription of this.subscriptions.values()) {
       if (subscription.userId === userId && subscription.status === 'active') {
         return subscription;
+      }
+    }
+    return null;
+  }
+
+  async findCurrentByUser(userId: string): Promise<CurrentSubscription | null> {
+    for (const subscription of this.subscriptions.values()) {
+      if (
+        subscription.userId === userId &&
+        (subscription.status === 'active' || subscription.status === 'suspended')
+      ) {
+        return { ...subscription, status: subscription.status, paused: false };
       }
     }
     return null;

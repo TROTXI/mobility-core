@@ -77,6 +77,7 @@ describe('atomic subscription payment lifecycle', () => {
     const base = new InMemorySubscriptionRepository();
     const subscriptions: SubscriptionRepository = {
       findActiveByUser: base.findActiveByUser.bind(base),
+      findCurrentByUser: base.findCurrentByUser.bind(base),
       findActiveByRoute: base.findActiveByRoute.bind(base),
       findAllActive: base.findAllActive.bind(base),
       findEndedPeriods: base.findEndedPeriods.bind(base),
