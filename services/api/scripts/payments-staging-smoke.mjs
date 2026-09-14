@@ -39,6 +39,11 @@ export function assertDelivery(payment, provider, allocations, events, period) {
   assert.equal(payment.currency, 'GHS');
   assert.ok(Number.isSafeInteger(payment.rides_granted) && payment.rides_granted > 0);
   assert.ok(Number.isSafeInteger(payment.amount) && payment.amount > 0);
+  assert.equal(
+    payment.gross_amount_pesewas,
+    payment.amount + payment.applied_credit_pesewas,
+    'Gross price must equal cash plus Ride Credit',
+  );
   assert.equal(payment.provider_domain, 'test');
   assert.equal(provider.domain, 'test');
   assert.equal(provider.status, 'success');

@@ -20,6 +20,7 @@ export interface PaymentRow {
   pickup_stop_id: string | null;
   dropoff_stop_id: string | null;
   amount: number;
+  gross_amount_pesewas: number;
   applied_credit_pesewas: number;
   rides_granted: number | null;
   fare_pesewas: number | null;
@@ -50,6 +51,7 @@ export function toPayment(row: PaymentRow): Payment {
     pickupStopId: row.pickup_stop_id,
     dropoffStopId: row.dropoff_stop_id,
     amount: row.amount,
+    grossAmountPesewas: row.gross_amount_pesewas,
     appliedCreditPesewas: row.applied_credit_pesewas,
     ridesGranted: row.rides_granted,
     farePesewas: row.fare_pesewas,
@@ -104,11 +106,12 @@ export class PgPaymentRepository implements PaymentRepository {
 
   private async insert(client: Pick<Pool, 'query'> | Pick<PoolClient, 'query'>, input: NewPayment) {
     const { rows } = await client.query<PaymentRow>(
-      `INSERT INTO payments (user_id, reference, purpose, plan, route_id, amount, currency,
+      `INSERT INTO payments (user_id, reference, purpose, plan, route_id, amount,
+                             gross_amount_pesewas, currency,
                              rides_granted, fare_pesewas, credit_pesewas_per_ride,
                              applied_credit_pesewas, pickup_stop_id, dropoff_stop_id,
                              subscription_id)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
        RETURNING *`,
       [
         input.userId,
@@ -117,6 +120,7 @@ export class PgPaymentRepository implements PaymentRepository {
         input.plan,
         input.routeId ?? null,
         input.amount,
+        input.amount + (input.appliedCreditPesewas ?? 0),
         input.currency,
         input.ridesGranted ?? null,
         input.farePesewas ?? null,

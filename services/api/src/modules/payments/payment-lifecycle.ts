@@ -80,6 +80,23 @@ export interface PeriodCloseResult {
   creditPesewas: number;
 }
 
+/** One unresolved provider or accounting item for operations review. */
+export interface PaymentOperationsReview {
+  id: string;
+  kind: 'refund' | 'dispute' | 'manual_review';
+  paymentReference: string;
+  userId: string;
+  paymentStatus: string;
+  status: string;
+  amountPesewas: number;
+  resolution: string | null;
+  consumedRides: number | null;
+  unrecoveredCreditPesewas: number | null;
+  estimatedDebtPesewas: number | null;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
 /** Atomic money lifecycle boundary (PostgreSQL implementation in the sibling adapter). */
 export interface PaymentLifecycle {
   /** Atomically close any ended period, reserve credit, and create the payment. */
@@ -92,6 +109,8 @@ export interface PaymentLifecycle {
   recordRefund(refund: ProviderRefund): Promise<boolean>;
   /** Freeze, remind, or resolve a provider dispute without guessing a cash reversal. */
   recordDispute(dispute: ProviderDispute): Promise<boolean>;
+  /** Read unresolved provider and consumed-value items for operations. */
+  listOperationsReviews(limit?: number): Promise<PaymentOperationsReview[]>;
   /** Atomically convert and close a bounded batch of periods due at the supplied instant. */
   closeEndedPeriods(now?: Date, limit?: number): Promise<PeriodCloseResult>;
 }
@@ -103,6 +122,7 @@ interface InMemoryPeriod {
   start: Date;
   end: Date;
   creditPesewasPerRide: number;
+  creditGrantedPesewas: number;
   status: 'open' | 'frozen' | 'closed' | 'reversed';
 }
 
@@ -127,6 +147,7 @@ export class InMemoryPaymentLifecycle implements PaymentLifecycle {
   private readonly disputedUsers = new Set<string>();
   private readonly refunds = new Map<string, ProviderRefund>();
   private readonly disputes = new Map<string, ProviderDispute>();
+  private readonly manualReviews = new Map<string, PaymentOperationsReview>();
   private readonly tails = new Map<string, Promise<void>>();
 
   constructor(private readonly deps: InMemoryPaymentLifecycleDeps) {}
@@ -241,6 +262,7 @@ export class InMemoryPaymentLifecycle implements PaymentLifecycle {
         start: period.start,
         end: period.end,
         creditPesewasPerRide: payment.creditPesewasPerRide ?? 0,
+        creditGrantedPesewas: 0,
         status: 'open',
       });
       if (hold) {
@@ -298,9 +320,16 @@ export class InMemoryPaymentLifecycle implements PaymentLifecycle {
     if (refund.amountPesewas <= 0 || refund.amountPesewas > payment.amount) return false;
     const key = refund.refundReference ?? `event:${refund.eventKey}`;
     const prior = this.refunds.get(key);
-    if (prior?.status === 'processed') return true;
-    this.refunds.set(key, refund);
-    if (refund.status !== 'processed' || !refund.refundReference) return true;
+    const rank: Record<RefundStatus, number> = {
+      pending: 0,
+      processing: 1,
+      needs_attention: 2,
+      failed: 3,
+      processed: 4,
+    };
+    const effective = prior && rank[prior.status] >= rank[refund.status] ? prior : refund;
+    this.refunds.set(key, effective);
+    if (effective.status !== 'processed' || !effective.refundReference) return true;
 
     return this.withUserLock(payment.userId, async () => {
       const processed = [...this.refunds.values()].filter(
@@ -343,6 +372,57 @@ export class InMemoryPaymentLifecycle implements PaymentLifecycle {
         0,
         await this.deps.entitlements.remainingRidesForPeriod(payment.subscriptionPeriodId),
       );
+      const granted = Math.max(0, payment.ridesGranted ?? 0);
+      const consumed = await this.deps.entitlements.consumedRidesForPeriod(
+        payment.subscriptionPeriodId,
+      );
+      const held = [...this.heldCredit.values()]
+        .filter((hold) => hold.userId === payment.userId)
+        .reduce((sum, hold) => sum + hold.amount, 0);
+      const availableCredit = Math.max(
+        0,
+        (await this.deps.credits.balancePesewas(payment.userId)) - held,
+      );
+      const recoveredConversionCredit = Math.min(period.creditGrantedPesewas, availableCredit);
+      const unrecoveredConversionCredit = period.creditGrantedPesewas - recoveredConversionCredit;
+      if (recoveredConversionCredit > 0) {
+        await this.deps.credits.record({
+          userId: payment.userId,
+          deltaPesewas: -recoveredConversionCredit,
+          reason: 'refund',
+          refType: 'payment',
+          refId: payment.reference,
+          idempotencyKey: `refund-conversion-credit:${payment.reference}`,
+        });
+      }
+      if (consumed > 0 || unrecoveredConversionCredit > 0) {
+        const now = new Date();
+        const rideDebtPesewas =
+          consumed > 0
+            ? Math.max(
+                1,
+                granted > 0
+                  ? Math.round((payment.grossAmountPesewas * consumed) / granted)
+                  : payment.grossAmountPesewas,
+              )
+            : 0;
+        const estimatedDebtPesewas = rideDebtPesewas + unrecoveredConversionCredit;
+        this.manualReviews.set(payment.id, {
+          id: `manual:${payment.id}`,
+          kind: 'manual_review',
+          paymentReference: payment.reference,
+          userId: payment.userId,
+          paymentStatus: 'refunded',
+          status: 'open',
+          amountPesewas: estimatedDebtPesewas,
+          resolution: null,
+          consumedRides: consumed,
+          unrecoveredCreditPesewas: unrecoveredConversionCredit,
+          estimatedDebtPesewas,
+          createdAt: this.manualReviews.get(payment.id)?.createdAt ?? now,
+          updatedAt: now,
+        });
+      }
       if (remaining > 0) {
         await this.deps.entitlements.record({
           userId: payment.userId,
@@ -378,7 +458,8 @@ export class InMemoryPaymentLifecycle implements PaymentLifecycle {
     if (!payment || payment.currency.toUpperCase() !== dispute.currency.toUpperCase()) return false;
     if (dispute.amountPesewas <= 0 || dispute.amountPesewas > payment.amount) return false;
     const prior = this.disputes.get(dispute.providerDisputeId);
-    const effective = prior?.status === 'resolved' ? prior : dispute;
+    const rank = { created: 0, reminded: 1, resolved: 2 } as const;
+    const effective = prior && rank[prior.status] >= rank[dispute.status] ? prior : dispute;
     this.disputes.set(dispute.providerDisputeId, effective);
     if (effective.status === 'resolved' && effective.resolution === 'declined') {
       this.disputedUsers.delete(payment.userId);
@@ -396,6 +477,62 @@ export class InMemoryPaymentLifecycle implements PaymentLifecycle {
     if (period?.status === 'open') period.status = 'frozen';
     await this.deps.payments.updateLifecycle(payment.reference, { status: 'disputed' });
     return true;
+  }
+
+  async listOperationsReviews(limit = 100): Promise<PaymentOperationsReview[]> {
+    const reviews: PaymentOperationsReview[] = [...this.manualReviews.values()];
+    for (const [id, refund] of this.refunds) {
+      if (refund.status === 'processed') continue;
+      const payment = await this.deps.payments.findByReference(refund.reference);
+      if (!payment) continue;
+      reviews.push({
+        id: `refund:${id}`,
+        kind: 'refund',
+        paymentReference: payment.reference,
+        userId: payment.userId,
+        paymentStatus: payment.status,
+        status: refund.status,
+        amountPesewas: refund.amountPesewas,
+        resolution: null,
+        consumedRides: null,
+        unrecoveredCreditPesewas: null,
+        estimatedDebtPesewas: null,
+        createdAt: payment.createdAt,
+        updatedAt: payment.updatedAt,
+      });
+    }
+    for (const [id, dispute] of this.disputes) {
+      const refunded = [...this.refunds.values()]
+        .filter((item) => item.reference === dispute.reference && item.status === 'processed')
+        .reduce((sum, item) => sum + item.amountPesewas, 0);
+      if (
+        dispute.status === 'resolved' &&
+        (dispute.resolution === 'declined' ||
+          (dispute.resolution === 'merchant-accepted' && refunded >= dispute.amountPesewas))
+      ) {
+        continue;
+      }
+      const payment = await this.deps.payments.findByReference(dispute.reference);
+      if (!payment) continue;
+      reviews.push({
+        id: `dispute:${id}`,
+        kind: 'dispute',
+        paymentReference: payment.reference,
+        userId: payment.userId,
+        paymentStatus: payment.status,
+        status: dispute.status,
+        amountPesewas: dispute.amountPesewas,
+        resolution: dispute.resolution,
+        consumedRides: null,
+        unrecoveredCreditPesewas: null,
+        estimatedDebtPesewas: null,
+        createdAt: payment.createdAt,
+        updatedAt: payment.updatedAt,
+      });
+    }
+    return reviews
+      .sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime())
+      .slice(0, Math.max(0, Math.floor(limit)));
   }
 
   async closeEndedPeriods(now: Date = new Date(), limit = 100): Promise<PeriodCloseResult> {
@@ -436,6 +573,7 @@ export class InMemoryPaymentLifecycle implements PaymentLifecycle {
     if (period.status === 'closed') return { rides: 0, credit: 0 };
     const remaining = Math.max(0, await this.deps.entitlements.remainingRidesForPeriod(period.id));
     const credit = remaining * period.creditPesewasPerRide;
+    period.creditGrantedPesewas = credit;
     if (remaining > 0) {
       await this.deps.credits.record({
         userId: subscription.userId,

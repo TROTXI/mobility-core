@@ -37,3 +37,23 @@ export const checkoutResponseSchema = z.object({
 export const webhookResponseSchema = z.object({
   received: z.boolean(),
 });
+
+export const operationsReviewQuerySchema = z.object({
+  limit: z.coerce.number().int().min(1).max(500).default(100),
+});
+
+export const operationsReviewSchema = z.object({
+  id: z.string(),
+  kind: z.enum(['refund', 'dispute', 'manual_review']),
+  paymentReference: z.string(),
+  userId: z.string(),
+  paymentStatus: z.string(),
+  status: z.string(),
+  amountPesewas: z.number().int(),
+  resolution: z.string().nullable(),
+  consumedRides: z.number().int().nullable(),
+  unrecoveredCreditPesewas: z.number().int().nullable(),
+  estimatedDebtPesewas: z.number().int().nullable(),
+  createdAt: z.date(),
+  updatedAt: z.date(),
+});

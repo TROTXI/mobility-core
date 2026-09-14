@@ -92,7 +92,8 @@ describeWithPostgres('Postgres payment lifecycle', () => {
         WHERE name IN (
           '039_payment_lifecycle.sql',
           '040_reservation_period_accounting.sql',
-          '041_payment_refunds_disputes.sql'
+          '041_payment_refunds_disputes.sql',
+          '044_payment_reconciliation_reversals.sql'
         )
         ORDER BY name`,
     );
@@ -100,6 +101,7 @@ describeWithPostgres('Postgres payment lifecycle', () => {
       '039_payment_lifecycle.sql',
       '040_reservation_period_accounting.sql',
       '041_payment_refunds_disputes.sql',
+      '044_payment_reconciliation_reversals.sql',
     ]);
   });
 
@@ -108,6 +110,11 @@ describeWithPostgres('Postgres payment lifecycle', () => {
       const client = await pool.connect();
       try {
         await client.query('BEGIN');
+        await client.query(
+          `DELETE FROM payment_reversal_reviews
+            WHERE payment_id IN (SELECT id FROM payments WHERE user_id = ANY($1::uuid[]))`,
+          [createdUserIds],
+        );
         await client.query(
           `DELETE FROM payment_refunds
             WHERE payment_id IN (SELECT id FROM payments WHERE user_id = ANY($1::uuid[]))`,
@@ -181,6 +188,27 @@ describeWithPostgres('Postgres payment lifecycle', () => {
       }
     }
     await pool.end();
+  });
+
+  it('documents every payment money snapshot as pesewas', async () => {
+    const moneyColumns = [
+      'amount',
+      'gross_amount_pesewas',
+      'applied_credit_pesewas',
+      'fare_pesewas',
+      'credit_pesewas_per_ride',
+      'fees_pesewas',
+      'refunded_pesewas',
+    ];
+    const { rows } = await pool.query<{ name: string; comment: string | null }>(
+      `SELECT attname AS name, col_description(attrelid, attnum) AS comment
+         FROM pg_attribute
+        WHERE attrelid = 'payments'::regclass AND attname = ANY($1::text[])
+        ORDER BY attname`,
+      [moneyColumns],
+    );
+    expect(rows).toHaveLength(moneyColumns.length);
+    expect(rows.every((row) => row.comment?.toLowerCase().includes('pesewas'))).toBe(true);
   });
 
   it('lets only one concurrent checkout reserve a rider credit balance', async () => {
@@ -826,5 +854,163 @@ describeWithPostgres('Postgres payment lifecycle', () => {
       subscription_status: 'active',
       rides: 44,
     });
+  });
+
+  it('records consumed-value debt and keeps entitlement non-negative on full refund', async () => {
+    const userId = await createRider();
+    const reference = `consumed-refund-${userId}`;
+    const paidAt = new Date('2026-07-01T00:00:00.000Z');
+    const lifecycle = new PgPaymentLifecycle(pool);
+    const payment = await lifecycle.createSubscriptionCheckout(checkout(userId, reference, paidAt));
+    expect(payment.grossAmountPesewas).toBe(26_400);
+    expect(await lifecycle.fulfillSubscriptionCharge(settled(reference, paidAt))).toBe('fulfilled');
+    const fulfilled = (await new PgPaymentRepository(pool).findByReference(reference))!;
+    await pool.query(
+      `INSERT INTO entitlement_ledger (
+         user_id, delta_rides, reason, ref_type, ref_id, idempotency_key,
+         subscription_period_id
+       ) VALUES ($1, -10, 'boarding', 'test', $2, $2, $3)`,
+      [userId, `consumed-${userId}`, fulfilled.subscriptionPeriodId],
+    );
+
+    expect(
+      await lifecycle.recordRefund({
+        eventKey: `consumed-refund-event-${userId}`,
+        reference,
+        refundReference: `consumed-refund-provider-${userId}`,
+        amountPesewas: payment.amount,
+        currency: 'GHS',
+        providerDomain: 'test',
+        status: 'processed',
+        payload: { test: true },
+      }),
+    ).toBe(true);
+
+    const { rows } = await pool.query<{
+      rides: number;
+      consumed_rides: number;
+      unrecovered_credit_pesewas: number;
+      estimated_debt_pesewas: number;
+      reviews: number;
+    }>(
+      `SELECT
+         (SELECT COALESCE(sum(delta_rides), 0)::int FROM entitlement_ledger
+           WHERE subscription_period_id = p.subscription_period_id) AS rides,
+         r.consumed_rides, r.unrecovered_credit_pesewas, r.estimated_debt_pesewas,
+         (SELECT count(*)::int FROM payment_reversal_reviews WHERE payment_id = p.id) AS reviews
+       FROM payments p JOIN payment_reversal_reviews r ON r.payment_id = p.id
+       WHERE p.reference = $1`,
+      [reference],
+    );
+    expect(rows[0]).toEqual({
+      rides: 0,
+      consumed_rides: 10,
+      unrecovered_credit_pesewas: 0,
+      estimated_debt_pesewas: 6_000,
+      reviews: 1,
+    });
+    expect(await lifecycle.listOperationsReviews()).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          kind: 'manual_review',
+          paymentReference: reference,
+          amountPesewas: 6_000,
+          consumedRides: 10,
+          unrecoveredCreditPesewas: 0,
+          estimatedDebtPesewas: 6_000,
+        }),
+      ]),
+    );
+  });
+
+  it('excludes month-end conversion from consumption and claws its credit back on refund', async () => {
+    const userId = await createRider();
+    const reference = `closed-refund-${userId}`;
+    const paidAt = new Date('2026-01-01T00:00:00.000Z');
+    const lifecycle = new PgPaymentLifecycle(pool);
+    const payment = await lifecycle.createSubscriptionCheckout(checkout(userId, reference, paidAt));
+    await lifecycle.fulfillSubscriptionCharge(settled(reference, paidAt));
+    await lifecycle.closeEndedPeriods(new Date('2026-02-02T00:00:00.000Z'));
+
+    expect(
+      await lifecycle.recordRefund({
+        eventKey: `closed-refund-event-${userId}`,
+        reference,
+        refundReference: `closed-refund-provider-${userId}`,
+        amountPesewas: payment.amount,
+        currency: 'GHS',
+        providerDomain: 'test',
+        status: 'processed',
+        payload: { test: true },
+      }),
+    ).toBe(true);
+
+    const { rows } = await pool.query<{
+      rides: number;
+      credit: number;
+      reviews: number;
+      period_status: string;
+    }>(
+      `SELECT
+         (SELECT COALESCE(sum(delta_rides), 0)::int FROM entitlement_ledger
+           WHERE subscription_period_id = p.subscription_period_id) AS rides,
+         (SELECT COALESCE(sum(delta_pesewas), 0)::int FROM credit_ledger
+           WHERE user_id = p.user_id) AS credit,
+         (SELECT count(*)::int FROM payment_reversal_reviews WHERE payment_id = p.id) AS reviews,
+         sp.status AS period_status
+       FROM payments p JOIN subscription_periods sp ON sp.id = p.subscription_period_id
+       WHERE p.reference = $1`,
+      [reference],
+    );
+    expect(rows[0]).toEqual({ rides: 0, credit: 0, reviews: 0, period_status: 'reversed' });
+  });
+
+  it('keeps refund and dispute state monotonic under out-of-order delivery', async () => {
+    const userId = await createRider();
+    const reference = `out-of-order-${userId}`;
+    const paidAt = new Date('2026-08-01T00:00:00.000Z');
+    const lifecycle = new PgPaymentLifecycle(pool);
+    const payment = await lifecycle.createSubscriptionCheckout(checkout(userId, reference, paidAt));
+    await lifecycle.fulfillSubscriptionCharge(settled(reference, paidAt));
+    const refund: ProviderRefund = {
+      eventKey: `refund-failed-${userId}`,
+      reference,
+      refundReference: `refund-monotonic-${userId}`,
+      amountPesewas: 1_000,
+      currency: 'GHS',
+      providerDomain: 'test',
+      status: 'failed',
+      payload: { state: 'failed' },
+    };
+    await lifecycle.recordRefund(refund);
+    await lifecycle.recordRefund({
+      ...refund,
+      eventKey: `refund-old-${userId}`,
+      status: 'pending',
+    });
+    const dispute: ProviderDispute = {
+      reference,
+      providerDisputeId: nextProviderId(),
+      amountPesewas: 1_000,
+      currency: 'GHS',
+      providerDomain: 'test',
+      status: 'reminded',
+      resolution: null,
+      payload: { state: 'reminded' },
+    };
+    await lifecycle.recordDispute(dispute);
+    await lifecycle.recordDispute({ ...dispute, status: 'created' });
+
+    expect(await lifecycle.listOperationsReviews()).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ kind: 'refund', paymentReference: reference, status: 'failed' }),
+        expect.objectContaining({
+          kind: 'dispute',
+          paymentReference: reference,
+          status: 'reminded',
+        }),
+      ]),
+    );
+    expect(payment.amount).toBe(26_400);
   });
 });

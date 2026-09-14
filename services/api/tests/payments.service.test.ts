@@ -124,6 +124,7 @@ describe('PaymentsService.initializeSubscription', () => {
       plan: 'monthly',
       // fare x rides x parity = 600 x 44 = GHS 264, not the old flat GHS 20.
       amount: FARE * RIDES,
+      grossAmountPesewas: FARE * RIDES,
       status: 'pending',
     });
   });
@@ -487,6 +488,57 @@ describe('PaymentsService reconciliation', () => {
     expect(result).toMatchObject({ considered: 1, unresolved: 1, errors: 0 });
     expect((await payments.findByReference(checkout.reference))?.status).toBe('pending');
   });
+
+  it('keeps a timed-out Verify payment recoverable and fulfils it on retry', async () => {
+    const { service, paystack, payments } = await priced();
+    const checkout = await service.initializeSubscription('u1', 'monthly', ROUTE);
+    paystack.setTransaction(checkout.reference, { status: 'success', paidAt: new Date() });
+    const verify = paystack.verifyTransaction.bind(paystack);
+    paystack.verifyTransaction = async () => {
+      throw new Error('provider timeout');
+    };
+
+    expect(await service.reconcileUnresolved(new Date(Date.now() + 1_000))).toMatchObject({
+      considered: 1,
+      errors: 1,
+      fulfilled: 0,
+    });
+    expect((await payments.findByReference(checkout.reference))?.status).toBe('pending');
+
+    paystack.verifyTransaction = verify;
+    expect(await service.reconcileUnresolved(new Date(Date.now() + 1_000))).toMatchObject({
+      considered: 1,
+      errors: 0,
+      fulfilled: 1,
+    });
+    expect((await payments.findByReference(checkout.reference))?.status).toBe('fulfilled');
+  });
+
+  it('recovers a checkout whose provider initialization failed before creation', async () => {
+    const { service, paystack, payments, credits } = await priced();
+    await credits.record({
+      userId: 'u1',
+      deltaPesewas: 5_000,
+      reason: 'loyalty',
+      idempotencyKey: 'init-failure-credit',
+    });
+    paystack.initializeTransaction = async () => {
+      throw new Error('provider initialization failed');
+    };
+
+    await expect(service.initializeSubscription('u1', 'monthly', ROUTE)).rejects.toThrow(
+      'provider initialization failed',
+    );
+    const pending = (await payments.listUnresolvedBefore(new Date(Date.now() + 1_000), 10))[0]!;
+    expect(pending.status).toBe('pending');
+
+    expect(await service.reconcileUnresolved(new Date(Date.now() + 1_000))).toMatchObject({
+      considered: 1,
+      failed: 1,
+      errors: 0,
+    });
+    expect((await payments.findByReference(pending.reference))?.status).toBe('failed');
+  });
 });
 
 describe('PaymentsService refund and dispute webhooks', () => {
@@ -550,6 +602,152 @@ describe('PaymentsService refund and dispute webhooks', () => {
     expect(await subscriptions.findActiveByUser('u1')).toBeNull();
     expect(await entitlements.remainingRides('u1')).toBe(0);
     expect(await credits.balancePesewas('u1')).toBe(5_000);
+  });
+
+  it('records consumed value for manual review without making rides negative', async () => {
+    const { service, payments, entitlements } = await priced();
+    const checkout = await service.initializeSubscription('u1', 'monthly', ROUTE);
+    const charge = chargeSuccess(checkout.reference);
+    await service.handleWebhook(charge.body, charge.signature);
+    const payment = (await payments.findByReference(checkout.reference))!;
+    await entitlements.record({
+      userId: 'u1',
+      deltaRides: -10,
+      reason: 'boarding',
+      refType: 'test',
+      refId: 'consumed-before-refund',
+      idempotencyKey: 'consumed-before-refund',
+      subscriptionPeriodId: payment.subscriptionPeriodId,
+    });
+    const refund = signedEvent({
+      event: 'refund.processed',
+      data: {
+        status: 'processed',
+        transaction_reference: checkout.reference,
+        refund_reference: 'refund-consumed',
+        amount: String(checkout.chargePesewas),
+        currency: 'GHS',
+        domain: 'test',
+      },
+    });
+
+    await service.handleWebhook(refund.body, refund.signature);
+
+    expect(await entitlements.remainingRidesForPeriod(payment.subscriptionPeriodId!)).toBe(0);
+    expect(await service.listOperationsReviews()).toEqual([
+      expect.objectContaining({
+        kind: 'manual_review',
+        paymentReference: checkout.reference,
+        amountPesewas: 6_000,
+        consumedRides: 10,
+        unrecoveredCreditPesewas: 0,
+        estimatedDebtPesewas: 6_000,
+        status: 'open',
+      }),
+    ]);
+  });
+
+  it('does not call converted rides consumed and claws back available month-end credit', async () => {
+    const { service, payments, entitlements, credits } = await priced();
+    const checkout = await service.initializeSubscription('u1', 'monthly', ROUTE);
+    const charge = chargeSuccess(checkout.reference);
+    await service.handleWebhook(charge.body, charge.signature);
+    const payment = (await payments.findByReference(checkout.reference))!;
+    await service.closeEndedPeriods(new Date(Date.now() + 32 * 24 * 60 * 60 * 1_000));
+    expect(await credits.balancePesewas('u1')).toBe(44 * 45);
+
+    const refund = signedEvent({
+      event: 'refund.processed',
+      data: {
+        status: 'processed',
+        transaction_reference: checkout.reference,
+        refund_reference: 'refund-after-close',
+        amount: String(checkout.chargePesewas),
+        currency: 'GHS',
+        domain: 'test',
+      },
+    });
+    await service.handleWebhook(refund.body, refund.signature);
+
+    expect(await entitlements.remainingRidesForPeriod(payment.subscriptionPeriodId!)).toBe(0);
+    expect(await credits.balancePesewas('u1')).toBe(0);
+    expect(await service.listOperationsReviews()).toEqual([]);
+  });
+
+  it('reports spent month-end credit as debt without inventing consumed rides', async () => {
+    const { service, payments, credits } = await priced();
+    const checkout = await service.initializeSubscription('u1', 'monthly', ROUTE);
+    const charge = chargeSuccess(checkout.reference);
+    await service.handleWebhook(charge.body, charge.signature);
+    await service.closeEndedPeriods(new Date(Date.now() + 32 * 24 * 60 * 60 * 1_000));
+    await credits.record({
+      userId: 'u1',
+      deltaPesewas: -(44 * 45),
+      reason: 'renewal_applied',
+      refType: 'test',
+      refId: 'spent-conversion-credit',
+      idempotencyKey: 'spent-conversion-credit',
+    });
+    const payment = (await payments.findByReference(checkout.reference))!;
+    const refund = signedEvent({
+      event: 'refund.processed',
+      data: {
+        status: 'processed',
+        transaction_reference: checkout.reference,
+        refund_reference: 'refund-after-spent-credit',
+        amount: String(checkout.chargePesewas),
+        currency: 'GHS',
+        domain: 'test',
+      },
+    });
+    await service.handleWebhook(refund.body, refund.signature);
+
+    expect(await credits.balancePesewas('u1')).toBe(0);
+    expect(await service.listOperationsReviews()).toEqual([
+      expect.objectContaining({
+        id: `manual:${payment.id}`,
+        amountPesewas: 44 * 45,
+        consumedRides: 0,
+        unrecoveredCreditPesewas: 44 * 45,
+        estimatedDebtPesewas: 44 * 45,
+      }),
+    ]);
+  });
+
+  it('does not regress refund or dispute state when events arrive out of order', async () => {
+    const { service } = await priced();
+    const checkout = await service.initializeSubscription('u1', 'monthly', ROUTE);
+    const charge = chargeSuccess(checkout.reference);
+    await service.handleWebhook(charge.body, charge.signature);
+    const refundData = {
+      transaction_reference: checkout.reference,
+      refund_reference: 'refund-out-of-order',
+      amount: '1000',
+      currency: 'GHS',
+      domain: 'test',
+    };
+    for (const status of ['failed', 'processing'] as const) {
+      const event = signedEvent({ event: `refund.${status}`, data: { ...refundData, status } });
+      await service.handleWebhook(event.body, event.signature);
+    }
+    const disputeData = {
+      id: 998,
+      refund_amount: 1_000,
+      currency: 'GHS',
+      domain: 'test',
+      transaction: { reference: checkout.reference },
+    };
+    for (const eventName of ['charge.dispute.remind', 'charge.dispute.create']) {
+      const event = signedEvent({ event: eventName, data: disputeData });
+      await service.handleWebhook(event.body, event.signature);
+    }
+
+    expect(await service.listOperationsReviews()).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ kind: 'refund', status: 'failed' }),
+        expect.objectContaining({ kind: 'dispute', status: 'reminded' }),
+      ]),
+    );
   });
 
   it('freezes a disputed payment and does not treat resolution as a refund', async () => {

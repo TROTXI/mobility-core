@@ -49,6 +49,8 @@ export interface EntitlementLedgerRepository {
   remainingRides(userId: string): Promise<number>;
   /** Sum only mutations attributed to one immutable billing period. */
   remainingRidesForPeriod(subscriptionPeriodId: string): Promise<number>;
+  /** Rides actually consumed in a period; conversion debits are excluded. */
+  consumedRidesForPeriod(subscriptionPeriodId: string): Promise<number>;
 }
 
 /** In-memory {@link EntitlementLedgerRepository} for dev and unit tests. */
@@ -72,5 +74,22 @@ export class InMemoryEntitlementLedgerRepository implements EntitlementLedgerRep
     return this.entries
       .filter((entry) => entry.subscriptionPeriodId === subscriptionPeriodId)
       .reduce((sum, entry) => sum + entry.deltaRides, 0);
+  }
+
+  async consumedRidesForPeriod(subscriptionPeriodId: string): Promise<number> {
+    const consumed = this.entries
+      .filter(
+        (entry) =>
+          entry.subscriptionPeriodId === subscriptionPeriodId &&
+          (entry.reason === 'boarding' || entry.reason === 'no_show'),
+      )
+      .reduce((sum, entry) => sum - entry.deltaRides, 0);
+    const returned = this.entries
+      .filter(
+        (entry) =>
+          entry.subscriptionPeriodId === subscriptionPeriodId && entry.reason === 'returned',
+      )
+      .reduce((sum, entry) => sum + entry.deltaRides, 0);
+    return Math.max(0, consumed - returned);
   }
 }

@@ -12,6 +12,8 @@ import { errorResponseSchema } from '../../lib/schemas';
 import type { RateLimitConfig } from '../ratelimit/ratelimit.plugin';
 import {
   checkoutResponseSchema,
+  operationsReviewQuerySchema,
+  operationsReviewSchema,
   subscribeBodySchema,
   webhookResponseSchema,
 } from './payments.schema';
@@ -145,6 +147,29 @@ export async function paymentRoutes(
     app.rateLimit({ ...opts.rateLimit, by: 'user' }),
     app.requireRole('admin'),
   ];
+  r.get(
+    '/admin/payments/reviews',
+    {
+      schema: {
+        tags: ['admin', 'payments'],
+        summary: 'List unresolved refunds, disputes, and consumed-value reversals',
+        security: [{ bearerAuth: [] }],
+        querystring: operationsReviewQuerySchema,
+        response: {
+          200: z.object({ items: z.array(operationsReviewSchema) }),
+          401: errorResponseSchema,
+          403: errorResponseSchema,
+          503: errorResponseSchema,
+        },
+      },
+      preHandler: adminOnly,
+    },
+    async (request, reply) => {
+      if (!opts.paymentsService) return reply.code(503).send(UNAVAILABLE);
+      return { items: await opts.paymentsService.listOperationsReviews(request.query.limit) };
+    },
+  );
+
   r.post(
     '/admin/payments/process-webhooks',
     {
