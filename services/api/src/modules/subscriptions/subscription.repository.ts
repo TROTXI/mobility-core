@@ -69,9 +69,10 @@ export interface SubscriptionRepository {
    * that route's trips (E3).
    *
    * @param routeId - the route/corridor.
+   * @param scheduledAt - optional departure; allocated transfer slots must match it.
    * @returns the active subscriptions on that route.
    */
-  findActiveByRoute(routeId: string): Promise<Subscription[]>;
+  findActiveByRoute(routeId: string, scheduledAt?: Date): Promise<Subscription[]>;
   /**
    * Every active subscription — the month-end credit conversion job iterates
    * these to convert each rider's unused rides (E5).

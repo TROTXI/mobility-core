@@ -71,6 +71,8 @@ import {
 } from './modules/work/driver-request.repository';
 import { WorkRequestService } from './modules/work/work-request.service';
 import { workRoutes } from './modules/work/work.routes';
+import { commuteRoutes } from './modules/commute/commute.routes';
+import type { PgCommuteService } from './modules/commute/commute.service.pg';
 import { paymentRoutes } from './modules/payments/payments.routes';
 import type { PaymentsService } from './modules/payments/payments.service';
 import { authPlugin } from './modules/auth/auth.plugin';
@@ -120,6 +122,8 @@ export interface AppDeps {
   accountDeletion?: AccountDeletionService;
   /** Selected by DATABASE_URL (in-memory vs Postgres). Consumed by routes/services. */
   subscriptions?: SubscriptionRepository;
+  /** Durable rider requests, capacity claims and pause/transfer operations. */
+  commuteService?: PgCommuteService;
   /** Selected by DATABASE_URL (in-memory vs Postgres). Mobility domain. */
   routes?: RouteRepository;
   stops?: StopRepository;
@@ -488,6 +492,10 @@ export async function buildApp(deps: AppDeps = {}): Promise<FastifyInstance> {
     rateLimit: deps.rateLimit ?? DEFAULT_RATE_LIMIT,
   });
   const driverRequests = deps.driverRequests ?? new InMemoryDriverRequestRepository();
+  await app.register(commuteRoutes, {
+    service: deps.commuteService,
+    rateLimit: deps.rateLimit ?? DEFAULT_RATE_LIMIT,
+  });
   await app.register(workRoutes, {
     workRequests:
       deps.drivers && deps.routes

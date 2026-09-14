@@ -119,6 +119,7 @@ import { PgPaymentRepository } from './modules/payments/payment.repository.pg';
 import { FakePaystackClient, type PaystackClient } from './modules/payments/paystack.client';
 import { PaystackHttpClient } from './modules/payments/paystack.client.live';
 import { PaymentsService, PLACEHOLDER_RIDES_PER_PERIOD } from './modules/payments/payments.service';
+import { PgCommuteService } from './modules/commute/commute.service.pg';
 import { InMemoryPaymentLifecycle } from './modules/payments/payment-lifecycle';
 import { PgPaymentLifecycle } from './modules/payments/payment-lifecycle.pg';
 import { InMemoryPaymentWebhookRepository } from './modules/payments/payment-webhook.repository';
@@ -489,6 +490,7 @@ async function main(): Promise<void> {
     driverIncidents,
     driverRequests,
     segmentSpeeds,
+    commuteService: pool ? new PgCommuteService(pool) : undefined,
     routeLearning,
     pricing,
     scanEvents,

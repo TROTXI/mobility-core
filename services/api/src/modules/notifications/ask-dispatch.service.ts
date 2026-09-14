@@ -61,19 +61,26 @@ export class AskDispatchService {
     const label = direction === 'morning' ? 'tomorrow morning' : 'this evening';
     let asked = 0;
     for (const trip of trips) {
-      const subs = await this.deps.subscriptions.findActiveByRoute(trip.routeId);
+      const subs = await this.deps.subscriptions.findActiveByRoute(trip.routeId, trip.scheduledAt);
       for (const sub of subs) {
-        await this.deps.reservations.createPending({
-          userId: sub.userId,
-          tripId: trip.id,
-          travelDate,
-          direction,
-          // Frozen per travel day (#204): editing the subscription later must
-          // not rewrite where yesterday's van was meant to meet them.
-          pickupStopId: sub.pickupStopId,
-          dropoffStopId: sub.dropoffStopId,
-          subscriptionPeriodId: sub.currentPeriodId,
-        });
+        try {
+          await this.deps.reservations.createPending({
+            userId: sub.userId,
+            tripId: trip.id,
+            travelDate,
+            direction,
+            // Frozen per travel day (#204): editing the subscription later must
+            // not rewrite where yesterday's van was meant to meet them.
+            pickupStopId: sub.pickupStopId,
+            dropoffStopId: sub.dropoffStopId,
+            subscriptionPeriodId: sub.currentPeriodId,
+          });
+        } catch (error) {
+          // A pause/transfer can win after subscriber lookup. Never send a
+          // travelling prompt when the guarded reservation was not created.
+          if (error instanceof Error && 'code' in error && error.code === 'P0001') continue;
+          throw error;
+        }
         await this.deps.notifier.send({
           userId: sub.userId,
           title: `Travelling ${label}?`,

@@ -55,6 +55,14 @@ export class PgPaymentLifecycle implements PaymentLifecycle {
       if (unresolved[0]) throw new PendingSubscriptionPaymentError(unresolved[0].reference);
 
       const now = input.now ?? new Date();
+      const paused = await client.query(
+        `SELECT 1 FROM subscription_pauses p JOIN subscriptions s ON s.id=p.subscription_id WHERE s.user_id=$1 AND p.resumed_at IS NULL`,
+        [input.userId],
+      );
+      if (paused.rowCount)
+        throw new ActiveSubscriptionPaymentError(
+          'Resume the paused subscription before starting another checkout',
+        );
       const { rows: activeRows } = await client.query<SubscriptionLockRow>(
         `SELECT id, period_end, current_period_id
            FROM subscriptions
@@ -527,6 +535,13 @@ export class PgPaymentLifecycle implements PaymentLifecycle {
                 AND status IN ('active', 'suspended')`,
             [period.subscription_id, period.id],
           );
+          // A refunded period has no paid time left to preserve. End its
+          // commute pause too, without manufacturing an extension or credit.
+          await client.query(
+            `UPDATE subscription_pauses SET resumed_at=now()
+            WHERE period_id=$1 AND resumed_at IS NULL`,
+            [period.id],
+          );
         }
       } else if (refund.status === 'processed' && payment.subscriptionPeriodId) {
         const { rows: disputeTotals } = await client.query<{
@@ -698,6 +713,7 @@ export class PgPaymentLifecycle implements PaymentLifecycle {
          FROM subscription_periods p
          JOIN subscriptions s ON s.id = p.subscription_id
         WHERE p.status = 'open' AND p.period_end <= $1 AND s.status = 'active'
+          AND NOT EXISTS (SELECT 1 FROM subscription_pauses pause WHERE pause.subscription_id=s.id AND pause.resumed_at IS NULL)
         ORDER BY EXISTS (
           SELECT 1 FROM reservations r
            WHERE r.subscription_period_id = p.id
@@ -754,6 +770,11 @@ export class PgPaymentLifecycle implements PaymentLifecycle {
     const period = rows[0];
     if (!period) throw new UnscopedSubscriptionPeriodError(`Period ${periodId} does not exist`);
     if (period.status !== 'open') return { closed: false, blocked: false, rides: 0, credit: 0 };
+    const paused = await client.query(
+      `SELECT 1 FROM subscription_pauses WHERE subscription_id=$1 AND resumed_at IS NULL`,
+      [period.subscription_id],
+    );
+    if (paused.rowCount) return { closed: false, blocked: true, rides: 0, credit: 0 };
     const { rows: unsettledRows } = await client.query<{ count: string }>(
       `SELECT COUNT(*)::text AS count
          FROM reservations

@@ -14,6 +14,10 @@ developers can use today.
 
 ## Current feature map
 
+The rider-request/API implementation for [commute changes](commute-change-requests.md)
+is documented separately for handoff to the ops team; it does not implement
+their console.
+
 | Area                                                 | Document                                                 | Current state                                                   |
 | ---------------------------------------------------- | -------------------------------------------------------- | --------------------------------------------------------------- |
 | Social, session and driver authentication            | [authentication.md](authentication.md)                   | Live; Apple backend complete, production credentials pending    |

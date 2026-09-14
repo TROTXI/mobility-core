@@ -3,32 +3,28 @@ import 'package:trotxi_client/trotxi_client.dart';
 import 'package:trotxi_commuter/core/config/layout/responsive_layout.dart';
 import 'package:trotxi_commuter/core/config/theme/app_colors.dart';
 import 'package:trotxi_commuter/core/config/theme/app_typography.dart';
+import 'package:trotxi_commuter/core/repositories/commute_repository.dart';
 
-/// A commuter's chosen default route + pickup/destination stops on it.
-/// Held only in this page's local state for now — there's no backend
-/// endpoint yet to persist a saved commute preference.
+/// The requested route and its ordered stops; approval changes the membership.
 class CommuteRouteSelection {
   const CommuteRouteSelection({
     required this.routeId,
     required this.routeName,
     required this.pickupStopName,
     required this.destinationStopName,
+    required this.pickupStopId,
+    required this.destinationStopId,
   });
 
   final String routeId;
   final String routeName;
   final String pickupStopName;
   final String destinationStopName;
+  final String pickupStopId;
+  final String destinationStopId;
 }
 
-/// Full-page "Commute preferences" editor, pushed from ProfileTab's
-/// "Commute preferences" row.
-///
-/// The default route is picked from the real `/routes` + `/routes/{id}`
-/// endpoints (route list, then its ordered stops). Commute times and the
-/// "Quiet ride" toggle are local-only preferences for now — there's no
-/// `/me/...` endpoint yet to save any of this, so "Save preferences" just
-/// confirms locally rather than persisting anything server-side.
+/// Requests ops review rather than silently editing a paid commute.
 class CommutePreferencesPage extends StatefulWidget {
   const CommutePreferencesPage({super.key, required this.client});
 
@@ -42,7 +38,79 @@ class _CommutePreferencesPageState extends State<CommutePreferencesPage> {
   CommuteRouteSelection? _routeSelection;
   TimeOfDay _morningDeparture = const TimeOfDay(hour: 6, minute: 30);
   TimeOfDay _eveningReturn = const TimeOfDay(hour: 17, minute: 30);
-  bool _quietRide = false;
+  bool _pauseIfWaitlisted = false;
+  bool _busy = false;
+  bool _loading = true;
+  String? _error;
+  List<CommuteRequest> _requests = [];
+  DateTime _requestedDate = DateTime.now();
+  final _note = TextEditingController();
+  late final _repository = CommuteRepository(widget.client);
+  bool get _hasOpen => _requests.any((request) => request.isOpen);
+
+  @override
+  void initState() {
+    super.initState();
+    _refresh();
+  }
+
+  @override
+  void dispose() {
+    _note.dispose();
+    super.dispose();
+  }
+
+  Future<void> _refresh() async {
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+    try {
+      final requests = await _repository.list();
+      if (mounted) setState(() => _requests = requests);
+    } catch (error) {
+      if (mounted) setState(() => _error = commuteError(error));
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  String _date(DateTime date) =>
+      '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+  String _time(TimeOfDay time) =>
+      '${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}';
+
+  Future<void> _withdraw(CommuteRequest request) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Withdraw commute request?'),
+        content: const Text(
+          'Your current commute stays unchanged. Any held transfer slot will be released.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Keep request'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Withdraw'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+    setState(() => _busy = true);
+    try {
+      await _repository.withdraw(request.id);
+      await _refresh();
+    } catch (error) {
+      if (mounted) setState(() => _error = commuteError(error));
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
 
   Future<void> _onChangeRoute() async {
     final selection = await Navigator.of(context).push<CommuteRouteSelection>(
@@ -72,13 +140,45 @@ class _CommutePreferencesPageState extends State<CommutePreferencesPage> {
     setState(() => _eveningReturn = picked);
   }
 
-  void _onSavePreferences() {
-    // TODO: submit these preferences via widget.client once there's a
-    // backend endpoint for commute preferences — held locally for now.
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Preferences saved on this device.')),
-    );
-    Navigator.of(context).pop();
+  Future<void> _onSavePreferences() async {
+    final route = _routeSelection;
+    if (_busy || _hasOpen || route == null) return;
+    if (_morningDeparture.hour >= 12 || _eveningReturn.hour < 12) {
+      setState(
+        () => _error =
+            'Choose a morning departure before noon and a return after noon.',
+      );
+      return;
+    }
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+    try {
+      await _repository.submit({
+        'routeId': route.routeId,
+        'pickupStopId': route.pickupStopId,
+        'dropoffStopId': route.destinationStopId,
+        'morningDeparture': _time(_morningDeparture),
+        'eveningReturn': _time(_eveningReturn),
+        'requestedDate': _date(_requestedDate),
+        'pauseIfWaitlisted': _pauseIfWaitlisted,
+        'note': _note.text.trim(),
+      });
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Request sent to operations. Your commute has not changed yet.',
+          ),
+        ),
+      );
+      await _refresh();
+    } catch (error) {
+      if (mounted) setState(() => _error = commuteError(error));
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
   }
 
   @override
@@ -113,46 +213,132 @@ class _CommutePreferencesPageState extends State<CommutePreferencesPage> {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   _buildHeader(context),
-                  const SizedBox(height: 24),
-                  _buildSectionTitle(context, 'Default route'),
-                  const SizedBox(height: 12),
-                  _buildRouteCard(context),
-                  const SizedBox(height: 28),
-                  _buildSectionTitle(context, 'Preferred commute times'),
-                  const SizedBox(height: 12),
-                  _buildTimesCard(context),
-                  const SizedBox(height: 28),
-                  _buildSectionTitle(context, 'Ride preferences'),
-                  const SizedBox(height: 12),
-                  _RidePreferenceTile(
-                    title: 'Quiet ride',
-                    subtitle: 'Reduce non-essential notifications during trip',
-                    value: _quietRide,
-                    onChanged: (value) => setState(() => _quietRide = value),
+                  TextButton(
+                    onPressed: _busy || _loading ? null : _refresh,
+                    child: const Text('Refresh requests'),
                   ),
-                  const SizedBox(height: 28),
-                  SizedBox(
-                    width: double.infinity,
-                    child: Material(
-                      color: colors.actionPrimaryDefault,
-                      borderRadius: BorderRadius.circular(30),
-                      child: InkWell(
+                  if (_loading) const LinearProgressIndicator(),
+                  if (_error != null) Text(_error!, semanticsLabel: _error),
+                  for (final request in _requests)
+                    Card(
+                      child: Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text('${request.routeName} — ${request.status}'),
+                            Text('Requested: ${request.requestedDate}'),
+                            if (request.effectiveDate != null)
+                              Text(
+                                'Effective date: ${request.effectiveDate}. Operations applies the change when ready.',
+                              ),
+                            if (request.decisionNote != null)
+                              Text(request.decisionNote!),
+                            if (request.paused)
+                              const Text(
+                                'Subscription paused. Rides and remaining paid time are preserved. Contact operations to resume before withdrawing.',
+                              ),
+                            if (request.isOpen && !request.paused)
+                              TextButton(
+                                onPressed: _busy
+                                    ? null
+                                    : () => _withdraw(request),
+                                child: const Text('Withdraw request'),
+                              ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  if (_hasOpen)
+                    const Text(
+                      'Your request is with operations. Refresh here for the decision; your current route stays assigned until the change is applied.',
+                    ),
+                  if (!_hasOpen) ...[
+                    const SizedBox(height: 24),
+                    _buildSectionTitle(context, 'Requested route'),
+                    const SizedBox(height: 12),
+                    _buildRouteCard(context),
+                    const SizedBox(height: 28),
+                    _buildSectionTitle(context, 'Preferred commute times'),
+                    const SizedBox(height: 12),
+                    _buildTimesCard(context),
+                    const SizedBox(height: 28),
+                    _buildSectionTitle(
+                      context,
+                      'When should the change start?',
+                    ),
+                    const SizedBox(height: 12),
+                    OutlinedButton(
+                      onPressed: _busy
+                          ? null
+                          : () async {
+                              final now = DateTime.now();
+                              final picked = await showDatePicker(
+                                context: context,
+                                initialDate: _requestedDate.isBefore(now)
+                                    ? now
+                                    : _requestedDate,
+                                firstDate: now,
+                                lastDate: DateTime(
+                                  now.year + 1,
+                                  now.month,
+                                  now.day,
+                                ),
+                              );
+                              if (picked != null && mounted) {
+                                setState(() => _requestedDate = picked);
+                              }
+                            },
+                      child: Text(_date(_requestedDate)),
+                    ),
+                    _RidePreferenceTile(
+                      title: 'Allow a pause if waitlisted',
+                      subtitle:
+                          'Operations may pause my subscription while I wait. I cannot book rides while paused; unused rides and paid time are preserved.',
+                      value: _pauseIfWaitlisted,
+                      onChanged: (value) =>
+                          setState(() => _pauseIfWaitlisted = value),
+                    ),
+                    TextField(
+                      controller: _note,
+                      maxLength: 1000,
+                      maxLines: 3,
+                      decoration: const InputDecoration(
+                        labelText: 'Note for operations (optional)',
+                      ),
+                    ),
+                    const SizedBox(height: 28),
+                    SizedBox(
+                      width: double.infinity,
+                      child: Material(
+                        color: colors.actionPrimaryDefault,
                         borderRadius: BorderRadius.circular(30),
-                        onTap: _onSavePreferences,
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          child: Center(
-                            child: Text(
-                              'Save preferences',
-                              style: AppTypography.buttonAction.copyWith(
-                                color: colors.actionOnPrimary,
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(30),
+                          onTap:
+                              _busy ||
+                                  _loading ||
+                                  _error != null ||
+                                  _routeSelection == null
+                              ? null
+                              : _onSavePreferences,
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                            child: Center(
+                              child: Text(
+                                _busy
+                                    ? 'Sending…'
+                                    : 'Send request to operations',
+                                style: AppTypography.buttonAction.copyWith(
+                                  color: colors.actionOnPrimary,
+                                ),
                               ),
                             ),
                           ),
                         ),
                       ),
                     ),
-                  ),
+                  ],
                 ],
               ),
             ),
@@ -186,15 +372,17 @@ class _CommutePreferencesPageState extends State<CommutePreferencesPage> {
               ),
             ),
             const SizedBox(width: 12),
-            Text(
-              'Commute preferences',
-              style: AppTypography.title.copyWith(color: colors.textPrimary),
+            Expanded(
+              child: Text(
+                'Commute preferences',
+                style: AppTypography.title.copyWith(color: colors.textPrimary),
+              ),
             ),
           ],
         ),
         const SizedBox(height: 12),
         Text(
-          'Set defaults for your regular work journey.',
+          'Moving or changing your commute? Request a new route and times. Operations checks availability before changing your subscription.',
           style: AppTypography.caption.copyWith(color: colors.textSecondary),
         ),
       ],
@@ -523,6 +711,8 @@ class _RoutePickerPageState extends State<_RoutePickerPage> {
         routeName: route.name,
         pickupStopName: pickup.name,
         destinationStopName: stop.name,
+        pickupStopId: pickup.id,
+        destinationStopId: stop.id,
       ),
     );
   }
@@ -668,8 +858,8 @@ class _RoutePickerPageState extends State<_RoutePickerPage> {
   }) {
     final colors = context.appColors;
     final stops = excludeStopId == null
-        ? _stops
-        : _stops.where((s) => s.id != excludeStopId).toList();
+        ? _stops.where((s) => s.seq < _stops.last.seq).toList()
+        : _stops.where((s) => s.seq > _pickupStop!.seq).toList();
     if (stops.isEmpty) {
       return Center(
         child: Text(
