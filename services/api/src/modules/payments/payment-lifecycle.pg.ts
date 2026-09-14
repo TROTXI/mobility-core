@@ -910,6 +910,8 @@ export class PgPaymentLifecycle implements PaymentLifecycle {
       considered: due.length,
       closed: 0,
       blocked: 0,
+      failed: 0,
+      failures: [],
       riders: 0,
       ridesConverted: 0,
       creditPesewas: 0,
@@ -931,7 +933,17 @@ export class PgPaymentLifecycle implements PaymentLifecycle {
         }
       } catch (err) {
         await client.query('ROLLBACK');
-        throw err;
+        // Keep raw diagnostics server-side. HTTP callers receive only the
+        // bounded reason below, while Render logs retain the underlying cause.
+        console.error('subscription period close failed', {
+          periodId: item.period_id,
+          error: err,
+        });
+        totals.failed++;
+        totals.failures.push({
+          periodId: item.period_id,
+          reason: err instanceof UnscopedSubscriptionPeriodError ? err.reason : 'unexpected_error',
+        });
       } finally {
         client.release();
       }
@@ -953,7 +965,11 @@ export class PgPaymentLifecycle implements PaymentLifecycle {
       [periodId],
     );
     const period = rows[0];
-    if (!period) throw new UnscopedSubscriptionPeriodError(`Period ${periodId} does not exist`);
+    if (!period)
+      throw new UnscopedSubscriptionPeriodError(
+        `Period ${periodId} does not exist`,
+        'period_not_found',
+      );
     if (period.status !== 'open') return { closed: false, blocked: false, rides: 0, credit: 0 };
     const paused = await client.query(
       `SELECT 1 FROM subscription_pauses WHERE subscription_id=$1 AND resumed_at IS NULL`,
@@ -979,6 +995,7 @@ export class PgPaymentLifecycle implements PaymentLifecycle {
     if (remaining > 0 && period.credit_pesewas_per_ride === null) {
       throw new UnscopedSubscriptionPeriodError(
         `Period ${period.id} has rides but no frozen conversion rate`,
+        'missing_conversion_rate',
       );
     }
     const credit = remaining * (period.credit_pesewas_per_ride ?? 0);

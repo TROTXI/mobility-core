@@ -181,7 +181,13 @@ describe('POST /admin/convert-credits', () => {
       url: '/admin/convert-credits',
       headers: bearer(admin),
     });
-    expect(res.json()).toEqual({ riders: 1, ridesConverted: 12, creditPesewas: 12 * PER_RIDE });
+    expect(res.json()).toEqual({
+      riders: 1,
+      ridesConverted: 12,
+      creditPesewas: 12 * PER_RIDE,
+      failed: 0,
+      failures: [],
+    });
     expect(await credits.balancePesewas('ama')).toBe(12 * PER_RIDE);
   });
 });

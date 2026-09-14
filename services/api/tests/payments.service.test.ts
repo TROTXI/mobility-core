@@ -421,7 +421,13 @@ describe('PaymentsService reconciliation', () => {
 
     expect(result.webhooks).toEqual({ processed: 0, failed: 0 });
     expect(result.reconciliation).toMatchObject({ considered: 1, fulfilled: 1, errors: 0 });
-    expect(result.periods).toMatchObject({ considered: 0, closed: 0, blocked: 0 });
+    expect(result.periods).toMatchObject({
+      considered: 0,
+      closed: 0,
+      blocked: 0,
+      failed: 0,
+      failures: [],
+    });
     expect((await payments.findByReference(checkout.reference))?.status).toBe('fulfilled');
   });
 

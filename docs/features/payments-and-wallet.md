@@ -114,6 +114,12 @@ A period with `pending` or `reserved` seats is reported as `blocked`; closing it
 before boarding/no-show settlement would let a later ride debit occur after its
 value had already become credit.
 
+Each period has its own transaction and failure boundary. A malformed period is
+rolled back and returned under `failures` with only its stable period ID and a
+bounded reason code; later periods in the batch still close. The maintenance
+cron treats any isolated failure as a failed run after logging those identifiers
+so operators can reconcile them without exposing rider data.
+
 The compiled `payments-maintenance-cron` runs inbox recovery, Verify and close
 hourly. Each stage processes at most 100 records per invocation, keeping the
 admin request bounded and safely resumable. Its Render declaration is ready but

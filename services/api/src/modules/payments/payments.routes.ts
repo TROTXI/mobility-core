@@ -14,6 +14,7 @@ import {
   checkoutResponseSchema,
   operationsReviewQuerySchema,
   operationsReviewSchema,
+  periodCloseResultSchema,
   subscribeBodySchema,
   webhookResponseSchema,
 } from './payments.schema';
@@ -242,14 +243,7 @@ export async function paymentRoutes(
               unresolved: z.number().int(),
               errors: z.number().int(),
             }),
-            periods: z.object({
-              considered: z.number().int(),
-              closed: z.number().int(),
-              blocked: z.number().int(),
-              riders: z.number().int(),
-              ridesConverted: z.number().int(),
-              creditPesewas: z.number().int(),
-            }),
+            periods: periodCloseResultSchema,
           }),
           401: errorResponseSchema,
           403: errorResponseSchema,
