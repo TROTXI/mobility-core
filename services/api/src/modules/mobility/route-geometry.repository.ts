@@ -15,6 +15,8 @@ export interface RouteGeometry {
   /** How many completed runs the path was derived from. */
   runCount: number;
   updatedAt: Date;
+  /** Metres along the learned path to each `route_stops.seq`. */
+  stopDistances: Map<number, number>;
 }
 
 /** What to persist after deriving a route's geometry. */
@@ -64,6 +66,7 @@ export class InMemoryRouteGeometryRepository implements RouteGeometryRepository 
       source: input.source,
       runCount: input.runCount,
       updatedAt: new Date(),
+      stopDistances: new Map(input.stopDistances),
     });
     this.stopDistances.set(input.routeId, new Map(input.stopDistances));
   }

@@ -121,4 +121,46 @@ export class PgTripRepository implements TripRepository {
     );
     return rows[0] ? toTrip(rows[0]) : null;
   }
+
+  async updateIfStatus(id: string, expected: TripStatus, patch: TripUpdate): Promise<Trip | null> {
+    // Write only fields present in the patch. Reading the whole row and writing
+    // it back would let a concurrent progress or assignment update be replaced
+    // with values from the stale read, even though the status transition itself
+    // remained atomic.
+    const columns: ReadonlyArray<readonly [keyof TripUpdate, string]> = [
+      ['status', 'status'],
+      ['scheduledAt', 'scheduled_at'],
+      ['vehicleId', 'vehicle_id'],
+      ['assignedDriverId', 'assigned_driver_id'],
+      ['startedAt', 'started_at'],
+      ['completedAt', 'completed_at'],
+      ['currentStopSeq', 'current_stop_seq'],
+      ['assignmentChangedAt', 'assignment_changed_at'],
+    ];
+    const params: unknown[] = [id, expected];
+    const assignments: string[] = [];
+    for (const [key, column] of columns) {
+      const value = patch[key];
+      if (value === undefined) continue;
+      params.push(value);
+      assignments.push(`${column} = $${params.length}`);
+    }
+
+    if (assignments.length === 0) {
+      const { rows } = await this.pool.query<TripRow>(
+        'SELECT * FROM trips WHERE id = $1 AND status = $2',
+        params,
+      );
+      return rows[0] ? toTrip(rows[0]) : null;
+    }
+
+    const { rows } = await this.pool.query<TripRow>(
+      `UPDATE trips
+          SET ${assignments.join(', ')}
+        WHERE id = $1 AND status = $2
+        RETURNING *`,
+      params,
+    );
+    return rows[0] ? toTrip(rows[0]) : null;
+  }
 }

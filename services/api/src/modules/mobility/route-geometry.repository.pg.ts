@@ -22,6 +22,7 @@ interface RouteGeometryRow {
   geometry_source: string | null;
   geometry_run_count: number;
   geometry_updated_at: Date | null;
+  stop_distances: Record<string, number> | null;
 }
 
 /**
@@ -44,7 +45,11 @@ export class PgRouteGeometryRepository implements RouteGeometryRepository {
               ST_AsGeoJSON(geometry::geometry) AS geojson,
               geometry_source,
               geometry_run_count,
-              geometry_updated_at
+              geometry_updated_at,
+              (SELECT jsonb_object_agg(rs.seq::text, rs.distance_m)
+                 FROM route_stops rs
+                WHERE rs.route_id = routes.id
+                  AND rs.distance_m IS NOT NULL) AS stop_distances
          FROM routes
         WHERE id = $1`,
       [routeId],
@@ -57,6 +62,9 @@ export class PgRouteGeometryRepository implements RouteGeometryRepository {
       source: row.geometry_source ?? 'traces',
       runCount: row.geometry_run_count,
       updatedAt: row.geometry_updated_at ?? new Date(),
+      stopDistances: new Map(
+        Object.entries(row.stop_distances ?? {}).map(([seq, distance]) => [Number(seq), distance]),
+      ),
     };
   }
 

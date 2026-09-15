@@ -448,6 +448,7 @@ export async function buildApp(deps: AppDeps = {}): Promise<FastifyInstance> {
     stops: deps.stops,
     tripPositions: deps.tripPositions ?? new InMemoryTripPositionRepository(),
     segmentSpeeds: deps.segmentSpeeds,
+    routeGeometry: deps.routeGeometry,
     reservations,
     kv,
     rateLimit: deps.rateLimit ?? DEFAULT_RATE_LIMIT,

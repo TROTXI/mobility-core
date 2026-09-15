@@ -17,6 +17,7 @@ import type { DriverRepository } from './driver.repository';
 import { directionOf } from './direction';
 import { computeEtas, type RouteStopPoint } from './eta';
 import type { SegmentSpeedRepository } from './segment-speed.repository';
+import type { RouteGeometryRepository } from './route-geometry.repository';
 import {
   livePositionResponseSchema,
   recordedPositionResponseSchema,
@@ -25,7 +26,11 @@ import {
 import type { RouteStopRepository } from './route-stop.repository';
 import type { ReservationRepository } from '../reservations/reservation.repository';
 import type { StopRepository } from './stop.repository';
-import type { TripPositionRepository } from './trip-position.repository';
+import {
+  InactiveTripPositionError,
+  type TripPosition,
+  type TripPositionRepository,
+} from './trip-position.repository';
 import type { TripRepository } from './trip.repository';
 
 /** Latest fix as cached in the KV store (recordedAt is an ISO string over JSON). */
@@ -37,6 +42,8 @@ interface CachedFix {
 
 /** How long the KV store keeps a trip's latest fix (refreshed on every report). */
 const POSITION_CACHE_TTL_SECONDS = 300;
+/** Device clocks beyond this allowance are rejected instead of moving a bus into the future. */
+export const MAX_POSITION_FUTURE_SKEW_MS = 2 * 60 * 1000;
 const cacheKey = (tripId: string): string => `trip:position:${tripId}`;
 
 /**
@@ -51,6 +58,7 @@ const cacheKey = (tripId: string): string => `trip:position:${tripId}`;
  * @param opts.stops - stop coordinates (for ETA).
  * @param opts.tripPositions - durable fix store (source of truth).
  * @param opts.segmentSpeeds - observed segment speeds (#181); absent -> cold-start speed.
+ * @param opts.routeGeometry - learned road-following route shape (#287).
  * @param opts.kv - latest-fix cache (Redis when available).
  * @param opts.rateLimit - per-user rate-limit config.
  */
@@ -64,6 +72,7 @@ export async function positionRoutes(
     tripPositions?: TripPositionRepository;
     /** Observed segment speeds (#181). Absent -> ETAs use the cold-start speed. */
     segmentSpeeds?: SegmentSpeedRepository;
+    routeGeometry?: RouteGeometryRepository;
     /** Reservations, to resolve the caller's own pickup stop (#204). */
     reservations?: ReservationRepository;
     kv: KvStore;
@@ -89,6 +98,7 @@ export async function positionRoutes(
           401: errorResponseSchema,
           403: errorResponseSchema,
           404: errorResponseSchema,
+          409: errorResponseSchema,
           429: errorResponseSchema,
           503: errorResponseSchema,
         },
@@ -117,17 +127,54 @@ export async function positionRoutes(
           .send({ error: 'forbidden', message: 'Not the assigned driver for this trip' });
       }
 
-      const fix = await opts.tripPositions.record({
-        tripId: trip.id,
-        latitude: request.body.latitude,
-        longitude: request.body.longitude,
-      });
+      if (trip.status !== 'active') {
+        return reply.code(409).send({
+          error: 'trip_not_active',
+          message: 'Positions can only be reported while the trip is active',
+        });
+      }
 
-      // Write-through: warm the latest-fix cache riders read from.
+      const recordedAt = request.body.recordedAt ? new Date(request.body.recordedAt) : undefined;
+      const now = new Date();
+      if (recordedAt && recordedAt.getTime() > now.getTime() + MAX_POSITION_FUTURE_SKEW_MS) {
+        return reply.code(409).send({
+          error: 'invalid_capture_time',
+          message: 'Position capture time is too far in the future',
+        });
+      }
+      if (recordedAt && trip.startedAt && recordedAt < trip.startedAt) {
+        return reply.code(409).send({
+          error: 'invalid_capture_time',
+          message: 'Position was captured before the trip started',
+        });
+      }
+
+      let fix: TripPosition;
+      try {
+        fix = await opts.tripPositions.record({
+          tripId: trip.id,
+          latitude: request.body.latitude,
+          longitude: request.body.longitude,
+          ...(recordedAt ? { recordedAt } : {}),
+          ...(request.body.clientFixId ? { clientFixId: request.body.clientFixId } : {}),
+        });
+      } catch (error) {
+        if (error instanceof InactiveTripPositionError) {
+          return reply.code(409).send({
+            error: 'trip_not_active',
+            message: 'Positions can only be reported while the trip is active',
+          });
+        }
+        throw error;
+      }
+
+      // A queued replay may be older than a fix already stored. Cache the
+      // durable latest row, never blindly replace it with the replayed row.
+      const latest = (await opts.tripPositions.findLatest(trip.id)) ?? fix;
       const cached: CachedFix = {
-        latitude: fix.latitude,
-        longitude: fix.longitude,
-        recordedAt: fix.recordedAt.toISOString(),
+        latitude: latest.latitude,
+        longitude: latest.longitude,
+        recordedAt: latest.recordedAt.toISOString(),
       };
       await opts.kv.set(cacheKey(trip.id), JSON.stringify(cached), POSITION_CACHE_TTL_SECONDS);
 
@@ -154,6 +201,7 @@ export async function positionRoutes(
           200: livePositionResponseSchema,
           401: errorResponseSchema,
           404: errorResponseSchema,
+          409: errorResponseSchema,
           429: errorResponseSchema,
           503: errorResponseSchema,
         },
@@ -166,6 +214,12 @@ export async function positionRoutes(
       }
       const trip = await opts.trips.findById(request.params.id);
       if (!trip) return reply.code(404).send(notFound('Trip not found'));
+      if (trip.status !== 'active') {
+        return reply.code(409).send({
+          error: 'trip_not_active',
+          message: 'Live position is only available while the trip is active',
+        });
+      }
 
       const position = await latestFix(opts.kv, opts.tripPositions, trip.id);
       if (!position) return reply.code(404).send(notFound('No live position for this trip'));
@@ -196,8 +250,11 @@ export async function positionRoutes(
       const speeds = opts.segmentSpeeds
         ? await opts.segmentSpeeds.findByRoute(trip.routeId, directionOf(trip.scheduledAt))
         : undefined;
+      const geometry = opts.routeGeometry
+        ? await opts.routeGeometry.findByRoute(trip.routeId)
+        : undefined;
 
-      const etaToStops = computeEtas(position, stopPoints, speeds);
+      const etaToStops = computeEtas(position, stopPoints, speeds, geometry ?? undefined);
 
       // Which of those stops is the caller's. Absent reservations store, no
       // reservation on this trip, or no stop recorded all mean null rather

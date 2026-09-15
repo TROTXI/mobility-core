@@ -8,6 +8,7 @@ import { InMemoryRouteRepository } from '../src/modules/mobility/route.repositor
 import { InMemoryStopRepository } from '../src/modules/mobility/stop.repository';
 import { InMemoryTripPositionRepository } from '../src/modules/mobility/trip-position.repository';
 import { InMemoryTripRepository } from '../src/modules/mobility/trip.repository';
+import { InMemoryRouteGeometryRepository } from '../src/modules/mobility/route-geometry.repository';
 import { InMemoryReservationRepository } from '../src/modules/reservations/reservation.repository';
 
 const auth: AuthConfig = {
@@ -34,6 +35,7 @@ async function seed() {
   const drivers = new InMemoryDriverRepository();
   const tripPositions = new InMemoryTripPositionRepository();
   const reservations = new InMemoryReservationRepository();
+  const routeGeometry = new InMemoryRouteGeometryRepository();
   const kv = new InMemoryKvStore();
 
   const route = await routes.create({ name: 'Circle → Kaneshie', description: null });
@@ -51,6 +53,7 @@ async function seed() {
     status: 'active',
     scheduledAt: new Date('2026-07-08T06:00:00Z'),
   });
+  await trips.update(trip.id, { startedAt: new Date('2026-07-08T06:00:00Z') });
 
   const app = await buildApp({
     auth,
@@ -61,16 +64,28 @@ async function seed() {
     drivers,
     tripPositions,
     reservations,
+    routeGeometry,
     kv,
   });
-  return { app, trips, drivers, tripPositions, reservations, trip, driver, stops: [s1, s2, s3] };
+  return {
+    app,
+    trips,
+    drivers,
+    tripPositions,
+    reservations,
+    routeGeometry,
+    route,
+    trip,
+    driver,
+    stops: [s1, s2, s3],
+  };
 }
 
 const report = async (
   app: Awaited<ReturnType<typeof buildApp>>,
   tripId: string,
   token: string,
-  body: Record<string, number> = { latitude: 0, longitude: 0 },
+  body: Record<string, unknown> = { latitude: 0, longitude: 0 },
 ) =>
   app.inject({
     method: 'POST',
@@ -147,6 +162,54 @@ describe('POST /trips/:id/position (report a fix)', () => {
     const res = await report(app, UNKNOWN_TRIP, await access(DRIVER_USER, 'driver'));
     expect(res.statusCode).toBe(503);
   });
+
+  it.each(['scheduled', 'completed', 'cancelled'] as const)(
+    'rejects a %s trip without persisting a fix',
+    async (status) => {
+      const { app, trip, trips, tripPositions } = await seed();
+      await trips.update(trip.id, { status });
+      const res = await report(app, trip.id, await access(DRIVER_USER, 'driver'));
+      expect(res.statusCode).toBe(409);
+      expect(res.json()).toMatchObject({ error: 'trip_not_active' });
+      expect(await tripPositions.findLatest(trip.id)).toBeNull();
+    },
+  );
+
+  it('stores device capture time and deduplicates a replayed client fix', async () => {
+    const { app, trip, tripPositions } = await seed();
+    const token = await access(DRIVER_USER, 'driver');
+    const body = {
+      latitude: 0.005,
+      longitude: 0.001,
+      recordedAt: '2026-07-08T06:01:00.000Z',
+      clientFixId: '11111111-1111-4111-8111-111111111111',
+    };
+    const first = await report(app, trip.id, token, body);
+    const replay = await report(app, trip.id, token, { ...body, latitude: 9 });
+
+    expect(first.statusCode).toBe(200);
+    expect(replay.statusCode).toBe(200);
+    expect(replay.json()).toEqual(first.json());
+    expect(await tripPositions.findAllForTrip(trip.id)).toHaveLength(1);
+    expect((await tripPositions.findLatest(trip.id))!.recordedAt.toISOString()).toBe(
+      body.recordedAt,
+    );
+  });
+
+  it('rejects pre-start and future capture timestamps without writing', async () => {
+    const { app, trip, tripPositions } = await seed();
+    const token = await access(DRIVER_USER, 'driver');
+    for (const recordedAt of ['2026-07-08T05:59:59.000Z', '2999-01-01T00:00:00.000Z']) {
+      const res = await report(app, trip.id, token, {
+        latitude: 0,
+        longitude: 0,
+        recordedAt,
+      });
+      expect(res.statusCode).toBe(409);
+      expect(res.json()).toMatchObject({ error: 'invalid_capture_time' });
+    }
+    expect(await tripPositions.findAllForTrip(trip.id)).toEqual([]);
+  });
 });
 
 describe('GET /trips/:id/position (latest position + ETA)', () => {
@@ -222,6 +285,51 @@ describe('GET /trips/:id/position (latest position + ETA)', () => {
       headers: bearer(await access('rider-1')),
     });
     expect(res.statusCode).toBe(503);
+  });
+
+  it('does not expose a cached fix after a trip completes', async () => {
+    const { app, trip, trips } = await seed();
+    await report(app, trip.id, await access(DRIVER_USER, 'driver'));
+    await trips.update(trip.id, { status: 'completed', completedAt: new Date() });
+
+    const res = await app.inject({
+      method: 'GET',
+      url: `/trips/${trip.id}/position`,
+      headers: bearer(await access('rider-1')),
+    });
+    expect(res.statusCode).toBe(409);
+    expect(res.json()).toMatchObject({ error: 'trip_not_active' });
+  });
+
+  it('computes ETA on the learned route geometry', async () => {
+    const { app, trip, route, routeGeometry } = await seed();
+    const oneHop = 1112;
+    await routeGeometry.save({
+      routeId: route.id,
+      points: [
+        { latitude: 0, longitude: 0 },
+        { latitude: 0, longitude: 0.01 },
+        { latitude: 0.01, longitude: 0.01 },
+        { latitude: 0.01, longitude: 0 },
+        { latitude: 0.02, longitude: 0 },
+      ],
+      source: 'traces',
+      runCount: 3,
+      stopDistances: new Map([
+        [1, 0],
+        [2, 3 * oneHop],
+        [3, 4 * oneHop],
+      ]),
+    });
+    await report(app, trip.id, await access(DRIVER_USER, 'driver'));
+
+    const res = await app.inject({
+      method: 'GET',
+      url: `/trips/${trip.id}/position`,
+      headers: bearer(await access('rider-1')),
+    });
+    expect(res.statusCode).toBe(200);
+    expect(res.json().etaToStops[0].distanceMeters).toBeGreaterThan(3_000);
   });
 });
 

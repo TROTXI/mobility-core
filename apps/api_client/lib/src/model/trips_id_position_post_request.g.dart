@@ -11,13 +11,20 @@ class _$TripsIdPositionPostRequest extends TripsIdPositionPostRequest {
   final num latitude;
   @override
   final num longitude;
+  @override
+  final DateTime? recordedAt;
+  @override
+  final String? clientFixId;
 
   factory _$TripsIdPositionPostRequest(
           [void Function(TripsIdPositionPostRequestBuilder)? updates]) =>
       (TripsIdPositionPostRequestBuilder()..update(updates))._build();
 
   _$TripsIdPositionPostRequest._(
-      {required this.latitude, required this.longitude})
+      {required this.latitude,
+      required this.longitude,
+      this.recordedAt,
+      this.clientFixId})
       : super._();
   @override
   TripsIdPositionPostRequest rebuild(
@@ -33,7 +40,9 @@ class _$TripsIdPositionPostRequest extends TripsIdPositionPostRequest {
     if (identical(other, this)) return true;
     return other is TripsIdPositionPostRequest &&
         latitude == other.latitude &&
-        longitude == other.longitude;
+        longitude == other.longitude &&
+        recordedAt == other.recordedAt &&
+        clientFixId == other.clientFixId;
   }
 
   @override
@@ -41,6 +50,8 @@ class _$TripsIdPositionPostRequest extends TripsIdPositionPostRequest {
     var _$hash = 0;
     _$hash = $jc(_$hash, latitude.hashCode);
     _$hash = $jc(_$hash, longitude.hashCode);
+    _$hash = $jc(_$hash, recordedAt.hashCode);
+    _$hash = $jc(_$hash, clientFixId.hashCode);
     _$hash = $jf(_$hash);
     return _$hash;
   }
@@ -49,7 +60,9 @@ class _$TripsIdPositionPostRequest extends TripsIdPositionPostRequest {
   String toString() {
     return (newBuiltValueToStringHelper(r'TripsIdPositionPostRequest')
           ..add('latitude', latitude)
-          ..add('longitude', longitude))
+          ..add('longitude', longitude)
+          ..add('recordedAt', recordedAt)
+          ..add('clientFixId', clientFixId))
         .toString();
   }
 }
@@ -67,6 +80,14 @@ class TripsIdPositionPostRequestBuilder
   num? get longitude => _$this._longitude;
   set longitude(num? longitude) => _$this._longitude = longitude;
 
+  DateTime? _recordedAt;
+  DateTime? get recordedAt => _$this._recordedAt;
+  set recordedAt(DateTime? recordedAt) => _$this._recordedAt = recordedAt;
+
+  String? _clientFixId;
+  String? get clientFixId => _$this._clientFixId;
+  set clientFixId(String? clientFixId) => _$this._clientFixId = clientFixId;
+
   TripsIdPositionPostRequestBuilder() {
     TripsIdPositionPostRequest._defaults(this);
   }
@@ -76,6 +97,8 @@ class TripsIdPositionPostRequestBuilder
     if ($v != null) {
       _latitude = $v.latitude;
       _longitude = $v.longitude;
+      _recordedAt = $v.recordedAt;
+      _clientFixId = $v.clientFixId;
       _$v = null;
     }
     return this;
@@ -101,6 +124,8 @@ class TripsIdPositionPostRequestBuilder
               latitude, r'TripsIdPositionPostRequest', 'latitude'),
           longitude: BuiltValueNullFieldError.checkNotNull(
               longitude, r'TripsIdPositionPostRequest', 'longitude'),
+          recordedAt: recordedAt,
+          clientFixId: clientFixId,
         );
     replace(_$result);
     return _$result;

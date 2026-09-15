@@ -9,6 +9,7 @@ import type {
   TripPosition,
   TripPositionRepository,
 } from './trip-position.repository';
+import { InactiveTripPositionError } from './trip-position.repository';
 
 interface TripPositionRow {
   id: string;
@@ -16,6 +17,8 @@ interface TripPositionRow {
   latitude: number;
   longitude: number;
   recorded_at: Date;
+  received_at: Date;
+  client_fix_id: string | null;
 }
 
 function toTripPosition(row: TripPositionRow): TripPosition {
@@ -25,6 +28,8 @@ function toTripPosition(row: TripPositionRow): TripPosition {
     latitude: row.latitude,
     longitude: row.longitude,
     recordedAt: row.recorded_at,
+    receivedAt: row.received_at,
+    clientFixId: row.client_fix_id,
   };
 }
 
@@ -33,24 +38,36 @@ export class PgTripPositionRepository implements TripPositionRepository {
 
   async record(input: NewTripPosition): Promise<TripPosition> {
     const { rows } = await this.pool.query<TripPositionRow>(
-      `INSERT INTO trip_positions (trip_id, location)
-       VALUES ($1, ST_SetSRID(ST_MakePoint($2, $3), 4326)::geography)
-       RETURNING id, trip_id, recorded_at,
+      `INSERT INTO trip_positions (trip_id, location, recorded_at, client_fix_id)
+       SELECT $1, ST_SetSRID(ST_MakePoint($2, $3), 4326)::geography,
+              COALESCE($4, now()), $5
+         FROM trips
+        WHERE id = $1 AND status = 'active'
+       ON CONFLICT (trip_id, client_fix_id) DO UPDATE
+         SET client_fix_id = EXCLUDED.client_fix_id
+       RETURNING id, trip_id, recorded_at, received_at, client_fix_id,
          ST_Y(location::geometry) AS latitude,
          ST_X(location::geometry) AS longitude`,
-      [input.tripId, input.longitude, input.latitude],
+      [
+        input.tripId,
+        input.longitude,
+        input.latitude,
+        input.recordedAt ?? null,
+        input.clientFixId ?? null,
+      ],
     );
+    if (!rows[0]) throw new InactiveTripPositionError();
     return toTripPosition(rows[0]!);
   }
 
   async findLatest(tripId: string): Promise<TripPosition | null> {
     const { rows } = await this.pool.query<TripPositionRow>(
-      `SELECT id, trip_id, recorded_at,
+      `SELECT id, trip_id, recorded_at, received_at, client_fix_id,
          ST_Y(location::geometry) AS latitude,
          ST_X(location::geometry) AS longitude
        FROM trip_positions
        WHERE trip_id = $1
-       ORDER BY recorded_at DESC
+       ORDER BY recorded_at DESC, received_at DESC, id DESC
        LIMIT 1`,
       [tripId],
     );
@@ -62,10 +79,10 @@ export class PgTripPositionRepository implements TripPositionRepository {
       `SELECT id, trip_id,
               ST_Y(location::geometry) AS latitude,
               ST_X(location::geometry) AS longitude,
-              recorded_at
+              recorded_at, received_at, client_fix_id
          FROM trip_positions
         WHERE trip_id = $1
-        ORDER BY recorded_at ASC`,
+        ORDER BY recorded_at ASC, received_at ASC, id ASC`,
       [tripId],
     );
     return rows.map(toTripPosition);

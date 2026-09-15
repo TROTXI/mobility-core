@@ -107,6 +107,31 @@ describe('driver lifecycle over HTTP (#163)', () => {
     expect(done.json().status).toBe('completed');
   });
 
+  it('only accepts arrivals while the run is active', async () => {
+    const { app, trip, trips, routeStops } = await setup();
+    await routeStops.create({ routeId: trip.routeId, stopId: crypto.randomUUID(), seq: 0 });
+    const headers = await asDriver(MINE);
+
+    const beforeStart = await app.inject({
+      method: 'POST',
+      url: `/trips/${trip.id}/arrive`,
+      headers,
+      payload: { seq: 0 },
+    });
+    expect(beforeStart.statusCode).toBe(409);
+    expect((await trips.findById(trip.id))?.currentStopSeq).toBeNull();
+
+    await app.inject({ method: 'POST', url: `/trips/${trip.id}/start`, headers });
+    await app.inject({ method: 'POST', url: `/trips/${trip.id}/complete`, headers });
+    const afterComplete = await app.inject({
+      method: 'POST',
+      url: `/trips/${trip.id}/arrive`,
+      headers,
+      payload: { seq: 0 },
+    });
+    expect(afterComplete.statusCode).toBe(409);
+  });
+
   it('lists only my runs', async () => {
     const { app } = await setup();
     const res = await app.inject({

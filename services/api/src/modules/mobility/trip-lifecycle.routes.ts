@@ -79,13 +79,19 @@ function refusal(reason: LifecycleRefusal): {
  * @returns the HTTP status and body.
  */
 function arrivalRefusal(reason: ArrivalRefusal): {
-  code: 403 | 404;
+  code: 403 | 404 | 409;
   body: { error: string; message: string };
 } {
   if (reason === 'no_such_stop') {
     return {
       code: 404,
       body: { error: 'not_found', message: 'No stop with that seq on this route' },
+    };
+  }
+  if (reason === 'illegal_transition') {
+    return {
+      code: 409,
+      body: { error: 'illegal_transition', message: 'A trip must be active to report a stop' },
     };
   }
   return accessRefusal(reason);
@@ -222,6 +228,7 @@ export async function tripLifecycleRoutes(
           401: errorResponseSchema,
           403: errorResponseSchema,
           404: errorResponseSchema,
+          409: errorResponseSchema,
           503: errorResponseSchema,
         },
       },

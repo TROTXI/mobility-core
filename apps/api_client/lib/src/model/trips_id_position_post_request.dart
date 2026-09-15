@@ -13,6 +13,8 @@ part 'trips_id_position_post_request.g.dart';
 /// Properties:
 /// * [latitude] 
 /// * [longitude] 
+/// * [recordedAt]
+/// * [clientFixId]
 @BuiltValue()
 abstract class TripsIdPositionPostRequest implements Built<TripsIdPositionPostRequest, TripsIdPositionPostRequestBuilder> {
   @BuiltValueField(wireName: r'latitude')
@@ -20,6 +22,12 @@ abstract class TripsIdPositionPostRequest implements Built<TripsIdPositionPostRe
 
   @BuiltValueField(wireName: r'longitude')
   num get longitude;
+
+  @BuiltValueField(wireName: r'recordedAt')
+  DateTime? get recordedAt;
+
+  @BuiltValueField(wireName: r'clientFixId')
+  String? get clientFixId;
 
   TripsIdPositionPostRequest._();
 
@@ -54,6 +62,20 @@ class _$TripsIdPositionPostRequestSerializer implements PrimitiveSerializer<Trip
       object.longitude,
       specifiedType: const FullType(num),
     );
+    if (object.recordedAt != null) {
+      yield r'recordedAt';
+      yield serializers.serialize(
+        object.recordedAt,
+        specifiedType: const FullType(DateTime),
+      );
+    }
+    if (object.clientFixId != null) {
+      yield r'clientFixId';
+      yield serializers.serialize(
+        object.clientFixId,
+        specifiedType: const FullType(String),
+      );
+    }
   }
 
   @override
@@ -91,6 +113,20 @@ class _$TripsIdPositionPostRequestSerializer implements PrimitiveSerializer<Trip
           ) as num;
           result.longitude = valueDes;
           break;
+        case r'recordedAt':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType(DateTime),
+          ) as DateTime;
+          result.recordedAt = valueDes;
+          break;
+        case r'clientFixId':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType(String),
+          ) as String;
+          result.clientFixId = valueDes;
+          break;
         default:
           unhandled.add(key);
           unhandled.add(value);
@@ -119,4 +155,3 @@ class _$TripsIdPositionPostRequestSerializer implements PrimitiveSerializer<Trip
     return result.build();
   }
 }
-

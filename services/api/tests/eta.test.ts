@@ -92,4 +92,25 @@ describe('computeEtas', () => {
     expect(offRoute.map((e) => e.seq)).toEqual([2, 3, 4]);
     expect(offRoute[0]!.distanceMeters).toBeCloseTo(onRoute[0]!.distanceMeters, -1);
   });
+
+  it('uses learned road geometry rather than the straight chord between stops', () => {
+    const stops = [stopAt(1, 0), { ...stopAt(2, 0), longitude: 0.02 }];
+    const road = [
+      { latitude: 0, longitude: 0 },
+      { latitude: 0.01, longitude: 0 },
+      { latitude: 0.01, longitude: 0.02 },
+      { latitude: 0, longitude: 0.02 },
+    ];
+    const learned = computeEtas({ latitude: 0, longitude: 0 }, stops, undefined, {
+      points: road,
+      stopDistances: new Map([
+        [1, 0],
+        [2, 4 * METRES_PER_HOP],
+      ]),
+    });
+    const chord = computeEtas({ latitude: 0, longitude: 0 }, stops);
+
+    expect(learned[0]!.distanceMeters).toBeGreaterThan(chord[0]!.distanceMeters * 1.9);
+    expect(learned[0]!.etaSeconds).toBeGreaterThan(chord[0]!.etaSeconds * 1.9);
+  });
 });
