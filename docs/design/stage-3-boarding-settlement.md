@@ -79,8 +79,8 @@ These local Postgres tests are not a claim that stage 3 or cutover is complete.
 
 ## Verification for review
 
-The combined replacement suite passes 210 Postgres tests with none skipped,
-including 25 boarding cases. The unit suite passes 23 tests and the design
+The combined replacement suite passes 211 Postgres tests with none skipped,
+including 26 boarding cases. The unit suite passes 23 tests and the design
 contract suite passes 21. Typecheck, build, formatting and artifact regeneration
 also pass. These are local results; GitHub checks remain a separate gate.
 
@@ -102,3 +102,11 @@ Concurrency cases wait for blocked database sessions before releasing the lock;
 the established test session adapter; BRD-U02 separately exercises the real app
 composition's unauthenticated refusal. This is not yet the full two-database
 preservation comparison or a physical-device boarding walkthrough.
+
+The initial CodeQL run flagged client-selected QR verification. The resolver
+dispatch now explicitly separates the three supported evidence methods from
+mandatory session/driver authorization. Strict variant validation also applies
+to direct service callers: QR cannot smuggle a photo reservation field and a
+photo decision cannot carry an unchecked token. BRD-27 covers malformed/mixed
+variants and foreign-driver refusal for each legitimate variant. There is no
+CodeQL suppression or lowered gate threshold.

@@ -15,6 +15,7 @@ export const boardingOperations = [
 ] as const;
 export type BoardingOperation = (typeof boardingOperations)[number];
 type Method = 'qr' | 'code' | 'photo' | 'no_show';
+type Evidence = { rid: string; jti?: string; proofUser?: string };
 export interface BoardingOptions {
   pool: Pool;
   authorizeSession: (c: PoolClient, actor: Actor) => Promise<void>;
@@ -243,6 +244,20 @@ export class BoardingService {
     const method: Method = op === 'boardRider' ? (normalized.kind as Method) : 'no_show';
     if (op === 'boardRider' && !['qr', 'code', 'photo'].includes(method))
       fail(400, 'invalid_request', 'Invalid boarding method.');
+    if (op === 'boardRider') {
+      const fields: Partial<Record<Method, string>> = {
+        qr: 'token',
+        code: 'code',
+        photo: 'reservationId',
+      };
+      const field = fields[method];
+      if (
+        !field ||
+        typeof normalized[field] !== 'string' ||
+        Object.keys(normalized).some((key) => key !== 'kind' && key !== field)
+      )
+        fail(400, 'invalid_request', 'Supply exactly one boarding verification method.');
+    }
     const kh = this.proofs.digest(`command:${actor.userId}:${op}:${target}:${key}`);
     const ih = this.proofs.digest(
       canonical({ input: normalized, reservationId: reservationId ? id(reservationId) : null }),
@@ -288,39 +303,45 @@ export class BoardingService {
         jti: string | undefined,
         proofUser: string | undefined;
       if (!receipt && op === 'boardRider') {
-        if (method === 'qr') {
-          const proof = await this.proofs.verify(String(normalized.token), this.now());
-          if (proof.tripId !== target)
-            fail(409, 'invalid_boarding_proof', 'The pass belongs to another trip.');
-          rid = proof.reservationId;
-          jti = proof.jti;
-          proofUser = proof.userId;
-        } else if (method === 'photo') rid = id(String(normalized.reservationId));
-        else {
-          if (!/^[A-Z2-9]{4}$/.test(String(normalized.code)))
-            fail(400, 'invalid_request', 'Invalid boarding code.');
-          const rows = (
-            await c.query(
-              "SELECT id FROM app.reservations WHERE trip_id=$1 AND status IN ('reserved','boarded','no_show') ORDER BY id LIMIT 501",
-              [target],
-            )
-          ).rows;
-          if (rows.length > 500)
-            fail(409, 'manifest_too_large', 'The trip exceeds its supported size.');
-          const matches = rows.filter((r) =>
-            timingSafeEqual(
-              Buffer.from(this.proofs.code(r.id, target)),
-              Buffer.from(String(normalized.code)),
-            ),
-          );
-          if (matches.length !== 1)
-            fail(
-              409,
-              'invalid_boarding_proof',
-              'The code is invalid or ambiguous; use another verification method.',
+        // This is evidence selection, never session/driver authorization: both
+        // were mandatory above and ownership is checked again under the lock.
+        // Each validated variant has its own resolver; a photo confirmation is
+        // the assigned driver's explicit decision, not an unchecked QR token.
+        const resolvers: Record<'qr' | 'code' | 'photo', () => Promise<Evidence>> = {
+          qr: async () => {
+            const proof = await this.proofs.verify(String(normalized.token), this.now());
+            if (proof.tripId !== target)
+              fail(409, 'invalid_boarding_proof', 'The pass belongs to another trip.');
+            return { rid: proof.reservationId, jti: proof.jti, proofUser: proof.userId };
+          },
+          photo: async () => ({ rid: id(String(normalized.reservationId)) }),
+          code: async () => {
+            if (!/^[A-Z2-9]{4}$/.test(String(normalized.code)))
+              fail(400, 'invalid_request', 'Invalid boarding code.');
+            const rows = (
+              await c.query(
+                "SELECT id FROM app.reservations WHERE trip_id=$1 AND status IN ('reserved','boarded','no_show') ORDER BY id LIMIT 501",
+                [target],
+              )
+            ).rows;
+            if (rows.length > 500)
+              fail(409, 'manifest_too_large', 'The trip exceeds its supported size.');
+            const matches = rows.filter((r) =>
+              timingSafeEqual(
+                Buffer.from(this.proofs.code(r.id, target)),
+                Buffer.from(String(normalized.code)),
+              ),
             );
-          rid = matches[0].id;
-        }
+            if (matches.length !== 1)
+              fail(
+                409,
+                'invalid_boarding_proof',
+                'The code is invalid or ambiguous; use another verification method.',
+              );
+            return { rid: matches[0].id };
+          },
+        };
+        ({ rid, jti, proofUser } = await resolvers[method as 'qr' | 'code' | 'photo']());
       }
       if (!rid) fail(404, 'not_found', 'Resource not found.');
       const { r, trip, period } = await this.funded(c, rid, target, driver);

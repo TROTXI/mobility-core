@@ -801,3 +801,28 @@ test('BRD-26: a source plus attendance without its debit cannot commit', async (
   }
   assert.deepEqual(await f.counts(), { charges: 0, debits: 0, commands: 0, qr: 0, events: 0 });
 });
+test('BRD-27: proof variants cannot be mixed or renamed to skip validation, over HTTP or direct service calls', async (t) => {
+  const f = await seat(t),
+    p = await f.pass(f.reservation.id);
+  const malformed: Body[] = [
+    { kind: 'qr', reservationId: f.reservation.id },
+    { kind: 'qr', token: p.qrToken, reservationId: f.reservation.id },
+    { kind: 'photo', reservationId: f.reservation.id, token: 'invalid' },
+    { kind: 'code', code: p.boardingCode, token: 'invalid' },
+    { kind: 'unverified', reservationId: f.reservation.id },
+  ];
+  for (const body of malformed) {
+    await f.board(f.run.id, body, 400);
+    await assert.rejects(
+      f.boarding.command(f.actors.driver!, 'boardRider', f.run.id, body, randomUUID()),
+      (err: any) => err.status === 400,
+    );
+  }
+  const valid: Body[] = [
+    { kind: 'qr', token: p.qrToken },
+    { kind: 'code', code: p.boardingCode },
+    { kind: 'photo', reservationId: f.reservation.id },
+  ];
+  for (const body of valid) await f.board(f.run.id, body, 404, 'foreign');
+  assert.deepEqual(await f.counts(), { charges: 0, debits: 0, commands: 0, qr: 0, events: 0 });
+});
