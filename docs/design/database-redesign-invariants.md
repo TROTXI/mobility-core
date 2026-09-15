@@ -11,8 +11,9 @@ test run, a staging audit, or confirmation that any database is empty.
 Preserve business behavior while allowing tables, columns, repositories and API
 representations to change. The first completed inventory below covers all 16
 tests in `services/api/tests/payment-lifecycle.pg.test.ts`. It is the payment
-acceptance baseline, not yet a complete inventory of transport, identity,
-boarding and commute behavior.
+acceptance baseline. The companion [non-payment inventory](stage-1-invariants.md)
+now records transport, identity, boarding and commute scenario groups and gaps;
+neither inventory claims exhaustive runtime proof.
 
 An existing assertion is evidence of current behavior, not automatic approval
 of a permanent product rule. Any intentional behavior change must identify the
@@ -297,11 +298,11 @@ rewriting expected results merely to match the new implementation cannot.
 
 ## Remaining invariant inventory before the full target schema is approved
 
-The next inventory must trace commute submission/approval/pause/resume and slot
-contention, reservation/boarding settlement, identity/access rules, and trip/GPS
-behavior to their tests and accepted product requirements. It must distinguish
-existing guarantees from gaps such as route-version history and live-position
-authorization.
+The [stage-1 non-payment inventory](stage-1-invariants.md) now traces commute,
+boarding, identity, transport and ops scenarios to exact baseline tests, with
+evidence limits and target-only gaps. The [review package](stage-1-review.md)
+maps model boundaries to these rules. Approval and full-schema candidate tests
+remain required; a generated reference table does not prove implementation.
 
 For every proposed entity, name the existing feature or approved requirement it
 serves and the invariants it enforces. Membership, billing, commute changes,

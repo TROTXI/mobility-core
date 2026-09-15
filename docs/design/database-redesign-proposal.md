@@ -4,8 +4,10 @@ Status: design draft, not implemented or approved DDL.
 
 Baseline: `43cdae0`, including merged geospatial PR #292.
 Acceptance starting point: [behavioral invariants](database-redesign-invariants.md).
-The payment inventory is complete for its 16 named Postgres tests; the other
-domains still require their scenario-to-test inventory before schema approval.
+The [stage-1 review package](stage-1-review.md) now includes the 16 payment tests,
+50 non-payment scenario groups, complete endpoint mapping and executable target
+contracts. Review approval is still required; these artifacts are not runtime
+implementation or a newly passing differential harness.
 
 ## Decision
 
@@ -239,8 +241,9 @@ rebuildable. Require a stable client fix ID and enforce uniqueness on
 `(trip_id, client_fix_id)`; the replacement model needs no nullable legacy IDs.
 
 Raw driver GPS retention is 30 days from server receipt, approved by the product
-owner in place of the earlier 180-day decision. The purpose is route/ETA learning
-and recent operational diagnosis; validate this starting window during the pilot,
+owner in place of the earlier 180-day decision. The confirmed purpose is route/ETA
+learning; operational diagnosis remains a proposed purpose, not a separately
+confirmed justification. Validate this starting window during the pilot,
 especially for infrequent routes. It is not a statutory minimum or a claim that
 learning convergence has been measured. Publish eligible learned geometry/speed
 results within that window; learning failure must not silently extend retention.
@@ -258,6 +261,12 @@ cleanup, plus tests for the 30-day boundary, holds and deletion after release.
 Server receipt determines retention independently of the device clock used for
 learning/freshness. This is a design requirement, not implemented deletion or
 authorization to erase records now.
+
+The concrete [stage-1 access/GPS decision](stage-1-access-and-gps.md) proposes
+indexed bounded deletion, exact logical expiry, scoped held evidence, a measured
+load gate and a partitioned alternative. It also specifies capture skew and
+freshness defaults for review. Neither partitioning nor a purge job is deployed
+by these documents.
 
 The commuter app renders the R2 basemap, route geometry, selected stops and bus
 position. No commuter GPS collection is introduced. The approved direction is
@@ -369,28 +378,34 @@ automated onboarding block; the gate is an explicit operational responsibility.
   on screens. Prioritize reviewable contracts and examples so both can integrate
   directly with the replacement API. Do not treat screen ownership as confirmed
   capacity for all mobile integration, or assign unresolved work to Senanu.
-  Confirm integration owners and capacity before committing a cutover date.
-- Raw driver GPS retention: 30 days from server receipt, approved by Godfred. Clock-skew policy is
-  still open; align retention implementation with the privacy/data-handling work.
-- Remaining stage 1 work has a two-working-day planning timebox, not a delivery
-  promise or an assumption of continuous agent execution. At that checkpoint,
-  report completed evidence, unresolved decisions and actual consumer capacity;
-  estimate stages 2–6 from the resulting task breakdown before committing dates.
+  Godfred has directed that frontend/ops availability is not a blocker to stage 1
+  or backend/harness work. Verify consumer readiness during rehearsal, without
+  assuming their capacity or assigning unconfirmed work.
+- Raw driver GPS retention: 30 days from server receipt, approved by Godfred.
+  Clock-skew and enforcement proposals are now in the stage-1 package, awaiting
+  review; align implementation with the privacy/data-handling work.
+- Stage 1's two-working-day timebox was a planning checkpoint, not a delivery
+  promise. The review package now records completed evidence, proposed decisions
+  and a backend task breakdown/effort range. It does not commit a cutover date or
+  assume consumer capacity.
 
-Stage 1 exit checklist (keep PR #293 in draft until reviewed):
+Stage 1 technical-delivery checklist (keep PR #293 in draft until reviewed):
 
-- [ ] Concise scenario-to-test inventory for commute, boarding, identity and
+- [x] Concise scenario-to-test inventory for commute, boarding, identity and
       transport, separating preserved behavior from new requirements.
-- [ ] Complete local OpenAPI endpoint inventory with consumer and
+- [x] Complete local OpenAPI endpoint inventory with consumer and
       keep/replace/retire decisions; no code generation from drifting staging.
-- [ ] Detailed target contracts and authorization matrix, including the three
-      accepted policy directions below and explicit target-only tests.
+- [x] Detailed draft target contracts and authorization matrix, including the
+      accepted directions and identified target-only runtime tests. Contract
+      validation tests exist; replacement runtime tests belong to stages 2–3.
 - [x] Product decision on raw driver GPS retention: 30 days from server receipt,
       with narrowly scoped, documented incident holds.
-- [ ] Clock-skew policy, retention enforcement details and concrete contract
-      limits for idempotency and offline manifests.
-- [ ] Named consumer owners, implementation task breakdown and capacity-based
-      estimate; confirm the prelaunch tripwire still holds.
+- [x] Proposed clock-skew/retention enforcement design and concrete draft
+      idempotency/offline-manifest limits submitted for review.
+- [x] Backend owner and implementation breakdown/initial effort range recorded
+      in stage-1-review.md; frontend coordination is not a backend blocker.
+- [ ] Product/reviewer approval of the proposed engineering defaults, and
+      recheck of the prelaunch tripwire before starting the next stage.
 - [ ] Review of the completed schema/API design before replacement implementation.
 
 ## Rollout, abort and recovery

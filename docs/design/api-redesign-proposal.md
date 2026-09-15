@@ -1,8 +1,15 @@
 # Proposed API contracts and endpoint redesign
 
-Status: draft for review; no routes, schemas or generated clients changed.
+Status: stage-1 review draft; no deployed routes, runtime schemas or app clients changed.
 Baseline: `43cdae0`, merged PR #292. This is part of the
 [database redesign](database-redesign-proposal.md), not a later cosmetic rename.
+
+The executable review contract is now
+[target.openapi.json](contracts/target.openapi.json), generated from the
+[Zod source](contracts/target-contract.mjs). It takes precedence over this
+overview's representative tables. The [complete mapping](stage-1-endpoints.md)
+covers every current documented operation; [access/GPS decisions](stage-1-access-and-gps.md)
+define cross-field/transaction rules which schema validation cannot prove.
 
 ## Goals and constraints
 
@@ -14,8 +21,8 @@ Baseline: `43cdae0`, merged PR #292. This is part of the
   adapters, dual writes or deprecation window. Update all consumers together.
 - Keep provider ingress stable while mobile-facing contracts migrate.
 - Deliver actual OpenAPI schemas and generated-client tests before implementing
-  each new domain. The tables and examples here are a proposed contract catalog,
-  not a complete executable OpenAPI specification.
+  each new domain. The executable draft now supplies named schemas and exact
+  methods; review approval and runtime implementation are separate gates.
 
 ## Contract conventions
 
@@ -23,6 +30,11 @@ Baseline: `43cdae0`, merged PR #292. This is part of the
 
 Use `/v1` as the first explicitly versioned client/ops API. Existing routes are
 unversioned legacy contracts, not an earlier `/v1` implementation.
+
+Keep unauthenticated `/flags` bootstrap outside `/v1`; it must remain reachable
+by an unsupported client. One supported API version is the default, not a
+promise of parallel versions. A separate replacement development database or
+contract fixtures can support integration; a URL prefix does not isolate models.
 
 | Namespace                 | Audience and scope                                                                                             |
 | ------------------------- | -------------------------------------------------------------------------------------------------------------- |
@@ -177,36 +189,47 @@ Identifiers are illustrative placeholders in these examples.
     "membership": { "id": "membership-example", "lifecycle": "open" },
     "access": { "canReserve": true, "blocks": [] },
     "coverage": {
-      "periodId": "period-example",
+      "id": "period-example",
       "startsAt": "2026-09-01T00:00:00Z",
       "endsAt": "2026-10-01T00:00:00Z",
-      "endStatus": "fixed",
+      "state": "open",
+      "paused": false,
       "renewalMode": "manual"
     },
-    "lastCoverage": null,
+    "lastCoverageEndedAt": null,
     "entitlements": {
       "remainingRides": 24,
+      "credit": { "amountMinor": 1980, "currency": "GHS" },
       "availableCredit": { "amountMinor": 1980, "currency": "GHS" },
       "heldCredit": { "amountMinor": 0, "currency": "GHS" }
     },
     "commute": {
-      "assignmentId": "assignment-example",
-      "route": { "id": "route-example", "name": "Adenta – Circle" },
+      "id": "assignment-example",
+      "routeId": "route-example",
+      "routeName": "Adenta – Circle",
+      "effectiveFrom": "2026-09-01",
+      "effectiveTo": null,
       "legs": [
         {
-          "serviceWindow": "morning",
+          "direction": "outbound",
+          "scheduleId": "outbound-schedule-example",
           "patternVersionId": "outbound-version-example",
           "pickupOccurrenceId": "outbound-pickup-example",
           "dropoffOccurrenceId": "outbound-dropoff-example",
-          "departureTime": "06:30",
+          "localDeparture": "06:30",
+          "pickupName": "Adenta",
+          "dropoffName": "Circle",
           "timeZone": "Africa/Accra"
         },
         {
-          "serviceWindow": "evening",
+          "direction": "return",
+          "scheduleId": "return-schedule-example",
           "patternVersionId": "return-version-example",
           "pickupOccurrenceId": "return-pickup-example",
           "dropoffOccurrenceId": "return-dropoff-example",
-          "departureTime": "17:30",
+          "localDeparture": "17:30",
+          "pickupName": "Circle",
+          "dropoffName": "Adenta",
           "timeZone": "Africa/Accra"
         }
       ]
@@ -216,7 +239,7 @@ Identifiers are illustrative placeholders in these examples.
 ```
 
 An open membership alone does not prove paid eligibility. A lapsed response has
-no current coverage and an explicit last-coverage summary; a never-subscribed
+no current coverage and an explicit last-coverage end; a never-subscribed
 response has no membership or last coverage. A paused and disputed rider receives
 both safe block reasons. The read schema must enumerate all these cases.
 `canReserve` summarizes membership eligibility, not a guarantee of seats on every
@@ -254,7 +277,7 @@ remain authoritative provider-processing paths.
 | `GET /v1/route-geometries/{id}`                    | Immutable geometry revision with its matching stop-distance data                                                 |
 | `GET /v1/trips`, `GET /v1/trips/{id}`              | Bounded discoverable trip summaries with explicit direction/window; no passenger list or driver personal profile |
 | `GET /v1/trips/{id}/live`                          | Authorized position, freshness, ETA and relevant rider pickup in one response                                    |
-| `GET /v1/config`                                   | Typed mobile configuration, minimum versions and basemap metadata                                                |
+| `GET /flags`                                       | Stable unversioned bootstrap, per-app/platform minimum builds and basemap metadata                               |
 
 The driver uses separate trip/manifest schemas below. The rider trip summary
 includes enough route/vehicle/stop display data to avoid fetching internal fleet
@@ -276,19 +299,17 @@ an explicit ops decision. Test these as target rules, not assumed baseline behav
     "patternVersionId": "outbound-version-example",
     "geometryId": "geometry-example",
     "position": {
-      "latitude": 5.6037,
-      "longitude": -0.187,
+      "location": { "latitude": 5.6037, "longitude": -0.187 },
       "capturedAt": "2026-09-14T06:45:00Z",
       "receivedAt": "2026-09-14T06:45:02Z",
-      "ageSeconds": 4,
-      "freshness": "fresh"
+      "ageSeconds": 4
     },
-    "etaToStops": [
+    "etas": [
       {
         "stopOccurrenceId": "outbound-dropoff-example",
-        "etaSeconds": 360,
+        "durationSeconds": 360,
         "distanceMeters": 1800,
-        "basis": "observed_segments"
+        "basis": "observed"
       }
     ],
     "riderPickupOccurrenceId": "outbound-pickup-example",
@@ -297,7 +318,7 @@ an explicit ops decision. Test these as target rules, not assumed baseline behav
 }
 ```
 
-Document `live`, `stale`, `awaiting_fix` and `inactive` as distinct read states.
+Document `live`, `stale`, `awaiting_fix`, `not_started` and `ended` as distinct read states.
 Authorized inactive/no-fix reads return 200 with no live position, not misleading
 zero coordinates or an unexplained 404. This is an intentional change from the
 legacy active-trip-only read behavior. Mutation attempts on an inactive trip
@@ -345,27 +366,27 @@ acknowledgement small and separate it from the rider live-map response.
 
 ## Ops and system endpoints
 
-| Endpoint family under `/v1/ops`                                                                   | Operations                                                                                                |
-| ------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
-| `/routes`, `/stops`, `/vehicles`, `/drivers`                                                      | List/create and PATCH allowed draft/profile fields; explicit archive operations for historical parents    |
-| `/route-patterns/{id}/versions`                                                                   | Create/read draft versions; publish with validation; published stop definitions cannot be edited in place |
-| `/service-schedules`                                                                              | Manage versioned recurring service definitions                                                            |
-| `/trips`, `/trips/{id}/assignment`                                                                | Create/read scheduled runs and assign/reschedule with version checks                                      |
-| `/commute-requests`, `/commute-requests/{id}/events`                                              | Scoped queue and full ops decision history                                                                |
-| `/commute-requests/{id}/decisions`                                                                | Append a typed waitlist/pause/resume/approve/apply/reject/cancel decision; return resulting state         |
-| `/commute-slots`, `/commute-slots/{id}/retire`                                                    | Manage verified transfer quota                                                                            |
-| `/purchases`, `/purchases/{id}`, `/payment-reviews`                                               | Reconciliation evidence and pending ops reviews; no arbitrary paid-state PATCH                            |
-| `/incidents`, `/driver-requests`                                                                  | Queues and permitted decisions with actor/time/reason                                                     |
-| `/drivers/{id}/credentials`                                                                       | Issue/suspend credentials; explicit PIN reset operation                                                   |
-| `/users/{id}/role`                                                                                | Privileged role administration with actor audit                                                           |
-| `/routes/{id}/fares`, `/plan-pricing`                                                             | Effective-dated fares and plan configuration with currency/units                                          |
-| `/flags`, `/min-versions`                                                                         | Typed operational configuration                                                                           |
-| `/maintenance/payments`                                                                           | Bounded inbox → Verify → safe period close, returning stage totals and sanitized failures                 |
-| `/maintenance/reservation-dispatch`, `/maintenance/reservation-defaults`, `/maintenance/no-shows` | Existing bounded operational jobs                                                                         |
-| `/maintenance/route-learning`                                                                     | Publish compatible geometry/distances/speeds and report outcomes                                          |
+| Endpoint family under `/v1/ops`                                                           | Operations                                                                                                |
+| ----------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
+| `/routes`, `/stops`, `/vehicles`, `/drivers`                                              | List/create and PATCH allowed draft/profile fields; explicit archive operations for historical parents    |
+| `/route-patterns/{id}/versions`                                                           | Create/read draft versions; publish with validation; published stop definitions cannot be edited in place |
+| `/service-schedules`                                                                      | Manage versioned recurring service definitions                                                            |
+| `/trips`, `/trips/{id}/assignment`                                                        | Create/read scheduled runs and assign/reschedule with version checks                                      |
+| `/commute-requests`, `/commute-requests/{id}/events`                                      | Scoped queue and full ops decision history                                                                |
+| `/commute-requests/{id}/decisions`                                                        | Append a typed waitlist/pause/resume/approve/apply/reject/cancel decision; return resulting state         |
+| `/commute-slots`, `/commute-slots/{id}/retire`                                            | Manage verified transfer quota                                                                            |
+| `/purchases`, `/purchases/{id}`, `/payments/reviews`                                      | Reconciliation evidence and pending ops reviews; no arbitrary paid-state PATCH                            |
+| `/incidents`, `/driver-requests`                                                          | Queues and permitted decisions with actor/time/reason                                                     |
+| `/drivers/{id}/credentials`                                                               | Issue/suspend credentials; explicit PIN reset operation                                                   |
+| `/users/{id}/role`                                                                        | Privileged role administration with actor audit                                                           |
+| `/routes/{id}/fares`, `/plan-pricing`                                                     | Effective-dated fares and plan configuration with currency/units                                          |
+| `/flags`, `/min-versions`                                                                 | Typed operational configuration                                                                           |
+| `/maintenance/payments`                                                                   | Bounded inbox → Verify → safe period close, returning stage totals and sanitized failures                 |
+| `/maintenance/ask-dispatch`, `/maintenance/reservation-defaults`, `/maintenance/no-shows` | Existing bounded operational jobs                                                                         |
+| `/maintenance/route-learning`                                                             | Publish compatible geometry/distances/speeds and report outcomes                                          |
 
-This family table still needs exact method/operation schemas in the OpenAPI
-inventory; it is not permission for unrestricted CRUD. Published versions,
+Exact methods and schemas now live in the executable OpenAPI; the family table
+is not permission for unrestricted CRUD. Published versions,
 payments and ledgers require specific domain operations. No new refund-initiation,
 dispute-provider submission or automated collection endpoint is implied.
 
