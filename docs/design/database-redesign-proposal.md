@@ -90,8 +90,10 @@ possible, and use composite ownership constraints wherever reservations,
 attempts or other records also carry a rider or membership identifier. Reject
 cross-rider links in direct Postgres tests of the replacement schema.
 
-The current policy remains one unresolved purchase per rider and no checkout
-that bypasses a current paid or disputed membership. Multiple attempt records
+Keep one unresolved purchase per rider and no checkout that bypasses current
+paid coverage or a block applicable to the purchase. A historical dispute alone
+does not impose an account-wide block under the approved direction below.
+Multiple attempt records
 represent sequential retries after a terminal outcome, not permission to start
 parallel collections. An uncertain initialization/Verify result stays unresolved.
 Unexpected late success is reconciled explicitly, never used to silently grant
@@ -164,7 +166,9 @@ to compatible patterns/segments and invalidate or recompute incompatible ones.
 
 Assignments and schedules retain their applicable version information. A pattern
 revision that removes a rider's stop needs an explicit reassignment decision;
-silently substituting another stop is not a valid migration strategy.
+silently substituting another stop is not a valid migration strategy. Preserve
+operated-trip history. Move affected future journeys to the new version only
+after explicit reassignment, including scheduled-but-unstarted trips.
 
 ## 5. Reservations, boarding and accounting
 
@@ -215,8 +219,10 @@ facts for the API. Clearing one dispute clears only its own block, and never
 reopens a reversed/expired period or overrides a different pause/block.
 
 Handling an old purchase must not blindly rewrite the current purchase's state.
-Whether an unresolved historical dispute should also impose an account-wide
-restriction is a product decision; keep that question explicit in schema review.
+The approved default is a period-scoped historical dispute. An account-wide
+restriction requires an explicit, attributable ops decision, not an automatic
+side effect of receiving an old dispute. Specify that decision's permissions,
+reason, audit and release behavior before implementing the exception.
 
 ## 7. Driver GPS and map delivery
 
@@ -237,9 +243,11 @@ Retention duration and deletion scheduling remain explicit decisions; archive
 protection must not mean keeping raw driver locations indefinitely.
 
 The commuter app renders the R2 basemap, route geometry, selected stops and bus
-position. No commuter GPS collection is introduced. Proposed read policy is
-eligible membership on the relevant corridor, plus assigned-driver/admin access;
-confirm paused/disputed and pre-booking visibility before enabling it. A UUID
+position. No commuter GPS collection is introduced. The approved direction is
+public route/stops mapping, with live driver position limited to eligible riders
+on the relevant corridor and authorized staff (including the assigned driver).
+Stage 1 must spell out the eligibility matrix for paused, disputed, lapsed and
+pre-booking states; broad agreement does not replace authorization tests. A UUID
 alone does not authorize access.
 
 ## 8. Database-enforced and transaction-enforced rules
@@ -324,6 +332,45 @@ that the target model removes or build a legacy-support program. Keep the old
 implementation only in Git and disposable test infrastructure. This design
 does not itself authorize erasing any database.
 
+### Prelaunch tripwire
+
+Zero real users is a cutover precondition, not just a scheduling assumption.
+Before onboarding even one real rider, accepting real payments or retaining
+non-disposable rider data during this project, stop and reassess the replacement
+strategy. Do not proceed with fixture reset/reseed or assume that extending the
+schedule is sufficient. The backend owner must approve a revised data-preservation
+and cutover plan before those activities begin. Recheck this gate at each stage
+exit and immediately before staging cutover. This document does not create an
+automated onboarding block; the gate is an explicit operational responsibility.
+
+### Ownership and planning checkpoint
+
+- Backend owner/product approver: Godfred. Approves scope, business rules and
+  cutover; Codex implements and verifies the backend/harness work under review.
+- Mobile integration: owner and capacity must be confirmed with the team. Do not
+  assume Kojo's availability or assign unresolved work to Senanu. Ops-consumer
+  readiness likewise needs a named team owner before a cutover date is committed.
+- GPS retention and clock-skew policy: team decision, coordinated by Godfred and
+  aligned with the privacy/data-handling work; no numeric defaults approved here.
+- Remaining stage 1 work has a two-working-day planning timebox, not a delivery
+  promise or an assumption of continuous agent execution. At that checkpoint,
+  report completed evidence, unresolved decisions and actual consumer capacity;
+  estimate stages 2–6 from the resulting task breakdown before committing dates.
+
+Stage 1 exit checklist (keep PR #293 in draft until reviewed):
+
+- [ ] Concise scenario-to-test inventory for commute, boarding, identity and
+      transport, separating preserved behavior from new requirements.
+- [ ] Complete local OpenAPI endpoint inventory with consumer and
+      keep/replace/retire decisions; no code generation from drifting staging.
+- [ ] Detailed target contracts and authorization matrix, including the three
+      accepted policy directions below and explicit target-only tests.
+- [ ] Team decision on GPS retention/skew and concrete contract limits for
+      idempotency and offline manifests.
+- [ ] Named consumer owners, implementation task breakdown and capacity-based
+      estimate; confirm the prelaunch tripwire still holds.
+- [ ] Review of the completed schema/API design before replacement implementation.
+
 ## Rollout, abort and recovery
 
 ### Deployment contract
@@ -379,13 +426,20 @@ including a payment awaiting provider delivery and a trip/commute in progress.
 A snapshot restore does not undo provider events; reconciliation is required
 after any restore or reset of provider-connected fixtures.
 
-## Decisions to settle in review
+## Policy directions approved by the product owner
 
-1. Is an old unresolved dispute period-scoped or an account-wide service block?
-2. Who may see live bus positions before booking, while paused, or while disputed?
-3. How should an approved route version change affect existing recurring riders
-   whose stop disappears, and existing scheduled-but-unstarted trips?
-4. What is the driver-trace retention period and acceptable clock-skew behavior?
+Recorded 2026-09-14; approval of direction is not implementation or final schema
+approval. Changes to baseline behavior require labelled target-only scenarios.
+
+1. Historical disputes default to the affected purchased period. Account-wide
+   restrictions require an explicit ops decision.
+2. Route/stops mapping is public; live driver position is restricted to eligible
+   riders and authorized staff. Complete the state-by-state eligibility matrix
+   during stage 1, rather than treating any authenticated account as eligible.
+3. Operated trips retain their history. Removed stops require explicit
+   reassignment before affected future journeys move to a new route version.
+4. GPS retention duration and acceptable clock skew go to the team; neither a
+   numeric policy nor its implementation is approved yet.
 
 Do not invent new answers for existing unresolved pricing questions: different
 fare transfers remain blocked for review, entitlement counts and commercial

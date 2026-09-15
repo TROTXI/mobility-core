@@ -260,11 +260,13 @@ The driver uses separate trip/manifest schemas below. The rider trip summary
 includes enough route/vehicle/stop display data to avoid fetching internal fleet
 records. Geometry remains independently cacheable and identified by version.
 
-Live reads check authorization before looking up cached location data. Proposed
-visibility is eligible corridor membership, plus the assigned driver and admin;
-paused/disputed/pre-booking behavior remains a named policy question in the
-database proposal. No successful live response is allowed merely because the
-caller knows a trip UUID. Do not enable this contract until that policy is settled.
+Live reads check authorization before looking up cached location data. Approved
+direction: public route/stops mapping, but live position only for eligible riders
+on the relevant corridor and authorized staff, including the assigned driver.
+The detailed paused/disputed/lapsed/pre-booking matrix remains a stage 1 contract
+deliverable. No successful live response follows merely from knowing a trip UUID.
+Historical disputes default to their affected period; an account-wide block needs
+an explicit ops decision. Test these as target rules, not assumed baseline behavior.
 
 ```json
 {
@@ -450,8 +452,12 @@ contracts from the first stage, not at the end.
 ## Review status and remaining contract decisions
 
 This draft deliberately changes API shapes and some HTTP outcomes. It does not
-declare those changes implemented. The four policy questions in the database
-proposal remain open; they affect live-read authorization, historical disputes,
-route version transitions and GPS freshness. Retention periods for idempotency
-results and offline manifests also need concrete limits in the executable
-contract. Pricing, entitlement counts and automatic renewal policy are unchanged.
+declare those changes implemented. The product owner approved period-scoped
+historical disputes by default, restricted live-position access with a public
+route/stops map, and explicit reassignment for removed stops while preserving
+operated history. Detailed authorization/ops contracts still need review. GPS
+retention/skew remains a team decision. Retention periods for idempotency results
+and offline manifests also need concrete limits in the executable contract.
+Pricing, entitlement counts and automatic renewal policy are unchanged. Follow
+the ownership checkpoint and prelaunch tripwire in the database proposal; keep
+the review PR in draft until stage 1 is complete and reviewed.
