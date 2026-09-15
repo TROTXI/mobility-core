@@ -40,6 +40,20 @@ describe('computeEtas with observed segment speeds (#181)', () => {
     expect(observed.etaSeconds).toBeGreaterThan(baseline.etaSeconds * 1.9);
   });
 
+  it('keys observed speeds by route stop sequence rather than array position', () => {
+    const assumedMs = (ASSUMED_SPEED_KPH * 1000) / 3600;
+    const oneBasedStops = STOPS.map((stop) => ({ ...stop, seq: stop.seq + 1 }));
+    const speeds = new Map<number, SegmentSpeed>([
+      [1, { fromSeq: 1, metresPerSecond: assumedMs / 2, sampleCount: 10 }],
+    ]);
+
+    const baseline = computeEtas(AT_START, oneBasedStops)[0]!;
+    const observed = computeEtas(AT_START, oneBasedStops, speeds)[0]!;
+
+    expect(observed.seq).toBe(2);
+    expect(observed.etaSeconds).toBeGreaterThan(baseline.etaSeconds * 1.9);
+  });
+
   it('ignores a median built from too few runs', () => {
     const speeds = new Map<number, SegmentSpeed>([
       [
