@@ -839,6 +839,9 @@ named(
   }),
 );
 named('WebhookAck', obj({ received: z.literal(true) }));
+// decideIncident requires If-Match and getOpsIncident is not offered, so the
+// ops row carries its own edit token: a collection ETag cannot supply a
+// per-row precondition value.
 named(
   'OpsIncident',
   schemas.Incident.extend({
@@ -846,13 +849,20 @@ named(
     handledBy: id.nullable(),
     handledAt: instant.nullable(),
     version,
+    editToken: text(128),
   }),
 );
 named(
   'OpsCommuteRequest',
   schemas.CommuteRequest.extend({ riderId: id, slotId: id.nullable(), decidedBy: id.nullable() }),
 );
-named('OpsWorkRequest', schemas.WorkRequest.extend({ driverId: id, decidedBy: id.nullable() }));
+// The decide operations require If-Match and the single-resource reads are
+// deferred, so the ops rows must carry their own edit token: a collection
+// ETag cannot supply a per-row precondition value.
+named(
+  'OpsWorkRequest',
+  schemas.WorkRequest.extend({ driverId: id, decidedBy: id.nullable(), editToken: text(128) }),
+);
 named(
   'OpsPurchase',
   schemas.Purchase.extend({

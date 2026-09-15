@@ -19709,6 +19709,11 @@
             "type": "integer",
             "minimum": 0,
             "maximum": 9007199254740991
+          },
+          "editToken": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
           }
         },
         "required": [
@@ -19724,7 +19729,8 @@
           "driverId",
           "handledBy",
           "handledAt",
-          "version"
+          "version",
+          "editToken"
         ],
         "additionalProperties": false
       },
@@ -19851,6 +19857,11 @@
             "type": "string",
             "minLength": 1,
             "maxLength": 128
+          },
+          "editToken": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
           }
         },
         "required": [
@@ -19862,7 +19873,8 @@
           "updatedAt",
           "version",
           "driverId",
-          "decidedBy"
+          "decidedBy",
+          "editToken"
         ],
         "additionalProperties": false
       },

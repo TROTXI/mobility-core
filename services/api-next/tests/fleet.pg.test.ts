@@ -50,21 +50,27 @@ async function setup() {
   db.pathname = `/${name}`;
   const owner = new pg.Pool({ connectionString: db.href, max: 5, connectionTimeoutMillis: 3000 });
   await migrate(owner, migrations);
-  const users = { admin: randomUUID(), driver: randomUUID(), rider: randomUUID() };
+  const users = {
+    admin: randomUUID(),
+    driver: randomUUID(),
+    other: randomUUID(),
+    rider: randomUUID(),
+  };
   await owner.query(
     'CREATE TABLE app.test_fleet_sessions(user_id uuid PRIMARY KEY, active boolean NOT NULL DEFAULT true)',
   );
   for (const [label, id] of Object.entries(users)) {
     await owner.query('INSERT INTO app.users(id,role) VALUES ($1,$2)', [
       id,
-      label === 'rider' ? 'commuter' : label === 'driver' ? 'driver' : 'admin',
+      label === 'rider' ? 'commuter' : label === 'admin' ? 'admin' : 'driver',
     ]);
     await owner.query('INSERT INTO app.test_fleet_sessions(user_id) VALUES ($1)', [id]);
   }
-  await owner.query('INSERT INTO app.drivers(user_id,name) VALUES ($1,$2)', [
-    users.driver,
-    'Kojo Mensah',
-  ]);
+  for (const [label, name] of [
+    ['driver', 'Kojo Mensah'],
+    ['other', 'Ama Boateng'],
+  ] as const)
+    await owner.query('INSERT INTO app.drivers(user_id,name) VALUES ($1,$2)', [users[label], name]);
   await admin.query(`CREATE ROLE "${role}" LOGIN PASSWORD 'runtime-test-only'`);
   roles.push(role);
   await grantRuntime(owner, role);
@@ -104,15 +110,25 @@ async function setup() {
     method: 'GET' | 'POST' | 'PATCH',
     path: string,
     body?: unknown,
-    options: { token?: string; key?: string; who?: keyof typeof users; anonymous?: boolean } = {},
+    options: {
+      token?: string;
+      key?: string;
+      who?: keyof typeof users;
+      anonymous?: boolean;
+      /** Send ops client metadata regardless of who is calling. */
+      opsClient?: boolean;
+    } = {},
   ) {
     return app.inject({
       method,
       url: path,
       headers: {
         ...(options.anonymous ? {} : { authorization: `Bearer ${options.who ?? 'admin'}` }),
-        'x-trotxi-client': 'ops',
-        'x-trotxi-build': '2',
+        // Driver endpoints enforce a per-app build floor, so the driver app's
+        // metadata travels with driver calls rather than the ops console's.
+        ...((options.who === 'driver' || options.who === 'other') && !options.opsClient
+          ? { 'x-trotxi-client': 'driver', 'x-trotxi-build': '2', 'x-trotxi-platform': 'android' }
+          : { 'x-trotxi-client': 'ops', 'x-trotxi-build': '2' }),
         ...(method !== 'GET' ? { 'idempotency-key': options.key ?? randomUUID() } : {}),
         ...(options.token ? { 'if-match': options.token } : {}),
         ...(body === undefined ? {} : { 'content-type': 'application/json' }),
@@ -130,6 +146,15 @@ async function setup() {
   });
   const vehicle = async (plate: string, extra: Record<string, unknown> = {}) =>
     expectStatus(await request('POST', '/v1/ops/vehicles', body(plate, extra)), 201);
+  const driverOf = async (label: keyof typeof users) =>
+    (await owner.query('SELECT id FROM app.drivers WHERE user_id=$1', [users[label]])).rows[0].id;
+  const route = async (open: boolean) =>
+    (
+      await owner.query(
+        'INSERT INTO app.routes(name,accepts_driver_requests) VALUES ($1,$2) RETURNING id',
+        [`Corridor ${randomUUID().slice(0, 8)}`, open],
+      )
+    ).rows[0].id;
   return {
     owner,
     runtime,
@@ -137,6 +162,8 @@ async function setup() {
     request,
     body,
     vehicle,
+    driverOf,
+    route,
     close: async () => {
       await app.close();
       await runtime.end();
@@ -400,9 +427,20 @@ test('FLT-05 fleet commands are receipt-backed events the runtime role cannot re
 
 test('FLT-06 fleet operations are admin-only and require a live session', () =>
   withCase(async (c) => {
+    // Ops client metadata with a non-ops identity: the refusal is about the
+    // role, and client metadata is validated before authorization.
     for (const who of ['driver', 'rider'] as const) {
-      expectStatus(await c.request('POST', '/v1/ops/vehicles', c.body('GT 1111-20'), { who }), 403);
-      expectStatus(await c.request('GET', '/v1/ops/vehicles', undefined, { who }), 403);
+      expectStatus(
+        await c.request('POST', '/v1/ops/vehicles', c.body('GT 1111-20'), {
+          who,
+          opsClient: true,
+        }),
+        403,
+      );
+      expectStatus(
+        await c.request('GET', '/v1/ops/vehicles', undefined, { who, opsClient: true }),
+        403,
+      );
     }
     expectStatus(
       await c.request('POST', '/v1/ops/vehicles', c.body('GT 1111-20'), { anonymous: true }),
@@ -465,4 +503,320 @@ test('FLT-07 incident and request tables enforce their shape before any endpoint
       request('kind,route_id,status', ['route_change', route.id, 'approved']),
       /driver_request_decision_is_attributable/,
     );
+  }));
+
+test('FLT-08 a yard incident needs no trip; a run the driver does not hold is refused', () =>
+  withCase(async (c) => {
+    const yard = expectStatus(
+      await c.request(
+        'POST',
+        '/v1/driver/incidents',
+        { category: 'vehicle', note: 'Brake warning light in the yard' },
+        { who: 'driver' },
+      ),
+      201,
+    );
+    assert.partialDeepStrictEqual(yard, {
+      tripId: null,
+      vehicleId: null,
+      category: 'vehicle',
+      status: 'open',
+      resolution: null,
+      location: null,
+    });
+    // A trip belonging to nobody here is refused rather than silently attached.
+    expectStatus(
+      await c.request(
+        'POST',
+        '/v1/driver/incidents',
+        { category: 'collision', tripId: randomUUID() },
+        { who: 'driver' },
+      ),
+      409,
+    );
+    const mine = expectStatus(
+      await c.request('GET', '/v1/driver/incidents', undefined, { who: 'driver' }),
+      200,
+    );
+    assert.equal(mine.length, 1);
+    // Another driver's list never contains it, and ops sees it with its owner.
+    assert.deepEqual(
+      expectStatus(
+        await c.request('GET', '/v1/driver/incidents', undefined, { who: 'other' }),
+        200,
+      ),
+      [],
+    );
+    const ops = expectStatus(await c.request('GET', '/v1/ops/incidents'), 200);
+    assert.equal(ops.length, 1);
+    assert.equal(ops[0].driverId, await c.driverOf('driver'));
+  }));
+
+test('FLT-09 an incident decision is attributable, advances its token, and cannot be repeated', () =>
+  withCase(async (c) => {
+    const reported = expectStatus(
+      await c.request(
+        'POST',
+        '/v1/driver/incidents',
+        { category: 'route_blocked', location: { latitude: 5.6, longitude: -0.2 } },
+        { who: 'driver' },
+      ),
+      201,
+    );
+    const queued = expectStatus(await c.request('GET', '/v1/ops/incidents?status=open'), 200);
+    assert.equal(queued[0].id, reported.id);
+
+    expectStatus(
+      await c.request('POST', `/v1/ops/incidents/${reported.id}/decisions`, {
+        status: 'resolved',
+        resolution: 'Towed and reopened the corridor',
+      }),
+      428,
+    );
+    const decided = expectStatus(
+      await c.request(
+        'POST',
+        `/v1/ops/incidents/${reported.id}/decisions`,
+        { status: 'resolved', resolution: 'Towed and reopened the corridor' },
+        { token: queued[0].editToken },
+      ),
+      200,
+    );
+    assert.partialDeepStrictEqual(decided, {
+      status: 'resolved',
+      resolution: 'Towed and reopened the corridor',
+      handledBy: c.users.admin,
+    });
+    assert.notEqual(decided.version, queued[0].version);
+    assert.notEqual(decided.editToken, queued[0].editToken);
+    // The now-stale token must be refused rather than silently accepted, which
+    // is what a frozen version column would have produced.
+    expectStatus(
+      await c.request(
+        'POST',
+        `/v1/ops/incidents/${reported.id}/decisions`,
+        { status: 'acknowledged', resolution: 'Second look' },
+        { token: queued[0].editToken },
+      ),
+      412,
+    );
+    expectStatus(
+      await c.request(
+        'POST',
+        `/v1/ops/incidents/${reported.id}/decisions`,
+        { status: 'acknowledged', resolution: 'Second look' },
+        { token: decided.editToken },
+      ),
+      409,
+    );
+  }));
+
+test('FLT-10 a route change may only name a corridor ops opened, and only one ask stays open', () =>
+  withCase(async (c) => {
+    const closed = await c.route(false),
+      open = await c.route(true);
+    expectStatus(
+      await c.request(
+        'POST',
+        '/v1/driver/requests',
+        { kind: 'route_change', routeId: closed },
+        { who: 'driver' },
+      ),
+      409,
+    );
+    const asked = expectStatus(
+      await c.request(
+        'POST',
+        '/v1/driver/requests',
+        { kind: 'route_change', routeId: open, note: 'Closer to home' },
+        { who: 'driver' },
+      ),
+      201,
+    );
+    assert.partialDeepStrictEqual(asked, { status: 'pending', decisionNote: null });
+    // An absent date omits its key: the variants are a closed oneOf whose
+    // dates are not nullable, so null would match neither.
+    assert.deepEqual(asked.request, {
+      kind: 'route_change',
+      routeId: open,
+      note: 'Closer to home',
+    });
+    // A second open ask from one driver is a decision problem, not a feature.
+    expectStatus(
+      await c.request(
+        'POST',
+        '/v1/driver/requests',
+        { kind: 'leave', fromDate: '2026-10-01', toDate: '2026-10-03' },
+        { who: 'driver' },
+      ),
+      409,
+    );
+    // Available routes show only what ops opened, never the closed corridor.
+    const available = expectStatus(
+      await c.request('GET', '/v1/driver/available-routes', undefined, { who: 'driver' }),
+      200,
+    );
+    assert.deepEqual(
+      available.map((r: { id: string }) => r.id),
+      [open],
+    );
+  }));
+
+test('FLT-11 approving a request records agreement and never reassigns a trip or vehicle', () =>
+  withCase(async (c) => {
+    const open = await c.route(true);
+    const asked = expectStatus(
+      await c.request(
+        'POST',
+        '/v1/driver/requests',
+        { kind: 'route_change', routeId: open },
+        { who: 'driver' },
+      ),
+      201,
+    );
+    const before = await c.owner.query(
+      'SELECT id,assigned_driver_id,vehicle_id,version FROM app.trips ORDER BY id',
+    );
+    const queue = expectStatus(
+      await c.request('GET', '/v1/ops/driver-requests?status=pending'),
+      200,
+    );
+    const approved = expectStatus(
+      await c.request(
+        'POST',
+        `/v1/ops/driver-requests/${asked.id}/decisions`,
+        { status: 'approved', decisionNote: 'Starts next roster' },
+        { token: queue[0].editToken },
+      ),
+      200,
+    );
+    assert.partialDeepStrictEqual(approved, {
+      status: 'approved',
+      decisionNote: 'Starts next roster',
+      decidedBy: c.users.admin,
+    });
+    // The whole point of a separate request record: agreeing to it writes
+    // nothing to the assignment path.
+    assert.deepEqual(
+      (
+        await c.owner.query(
+          'SELECT id,assigned_driver_id,vehicle_id,version FROM app.trips ORDER BY id',
+        )
+      ).rows,
+      before.rows,
+      'approving a request must not move a driver or a bus',
+    );
+    // A decided request is terminal for the driver too.
+    expectStatus(
+      await c.request('POST', `/v1/driver/requests/${asked.id}/withdraw`, undefined, {
+        who: 'driver',
+      }),
+      409,
+    );
+  }));
+
+test('FLT-12 driver records are owned: another driver cannot read, withdraw or decide them', () =>
+  withCase(async (c) => {
+    const open = await c.route(true);
+    const asked = expectStatus(
+      await c.request(
+        'POST',
+        '/v1/driver/requests',
+        { kind: 'route_change', routeId: open },
+        { who: 'driver' },
+      ),
+      201,
+    );
+    // A foreign record is not found rather than forbidden: ownership is part of
+    // the lookup, so existence never leaks.
+    expectStatus(
+      await c.request('POST', `/v1/driver/requests/${asked.id}/withdraw`, undefined, {
+        who: 'other',
+      }),
+      404,
+    );
+    assert.deepEqual(
+      expectStatus(await c.request('GET', '/v1/driver/requests', undefined, { who: 'other' }), 200),
+      [],
+    );
+    // Ops decisions are admin-only; a driver cannot decide their own ask.
+    expectStatus(
+      await c.request(
+        'POST',
+        `/v1/ops/driver-requests/${asked.id}/decisions`,
+        { status: 'approved', decisionNote: 'Self-approved' },
+        { who: 'driver', opsClient: true, token: '"request:x:1"' },
+      ),
+      403,
+    );
+    expectStatus(
+      await c.request('GET', '/v1/ops/driver-requests', undefined, {
+        who: 'driver',
+        opsClient: true,
+      }),
+      403,
+    );
+    // A revoked session fails before any of it.
+    await c.owner.query('UPDATE app.test_fleet_sessions SET active=false WHERE user_id=$1', [
+      c.users.driver,
+    ]);
+    expectStatus(
+      await c.request('POST', `/v1/driver/requests/${asked.id}/withdraw`, undefined, {
+        who: 'driver',
+      }),
+      401,
+    );
+    const still = await c.owner.query('SELECT status FROM app.driver_requests WHERE id=$1', [
+      asked.id,
+    ]);
+    assert.equal(still.rows[0].status, 'pending');
+  }));
+
+test('FLT-13 driver command retries replay one record and are audited against their receipt', () =>
+  withCase(async (c) => {
+    const key = randomUUID();
+    const first = expectStatus(
+      await c.request(
+        'POST',
+        '/v1/driver/incidents',
+        { category: 'passenger_safety', note: 'Door forced at speed' },
+        { who: 'driver', key },
+      ),
+      201,
+    );
+    const replay = expectStatus(
+      await c.request(
+        'POST',
+        '/v1/driver/incidents',
+        { category: 'passenger_safety', note: 'Door forced at speed' },
+        { who: 'driver', key },
+      ),
+      201,
+    );
+    assert.equal(replay.id, first.id);
+    assert.equal(
+      (await c.owner.query('SELECT count(*)::int n FROM app.driver_incidents')).rows[0].n,
+      1,
+    );
+    // Same key, different report is a conflict rather than a second incident.
+    expectStatus(
+      await c.request(
+        'POST',
+        '/v1/driver/incidents',
+        { category: 'collision', note: 'Different report' },
+        { who: 'driver', key },
+      ),
+      409,
+    );
+    const audit = (
+      await c.owner.query(
+        `SELECT e.operation,e.actor_user_id,t.operation AS receipt
+        FROM app.fleet_events e JOIN app.transport_commands t ON t.id=e.command_id
+        WHERE e.incident_id=$1`,
+        [first.id],
+      )
+    ).rows;
+    assert.deepEqual(audit, [
+      { operation: 'reportIncident', actor_user_id: c.users.driver, receipt: 'reportIncident' },
+    ]);
   }));

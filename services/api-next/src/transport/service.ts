@@ -10,7 +10,7 @@ import {
   catalogId,
 } from './catalog.js';
 import type { CatalogCommand, CatalogRead } from './catalog.js';
-import { Fleet, fleetCommands, fleetReads } from './fleet.js';
+import { Fleet, fleetCommands, fleetReads, driverFleetOperations } from './fleet.js';
 import type { FleetCommand, FleetRead, FleetLocked } from './fleet.js';
 
 export type Command =
@@ -97,7 +97,8 @@ function state(t: TripRow): Body {
   };
 }
 const driverOperation = (operation: string) =>
-  ['startTrip', 'completeTrip', 'recordArrival', 'listDriverTrips'].includes(operation);
+  ['startTrip', 'completeTrip', 'recordArrival', 'listDriverTrips'].includes(operation) ||
+  (driverFleetOperations as readonly string[]).includes(operation);
 const commands = new Set([
   ...catalogCommands,
   ...fleetCommands,
@@ -251,7 +252,7 @@ export class TransportService {
         ? await this.catalog.lock(client, operation as CatalogCommand, target, childId)
         : null;
       const fleetLocked: FleetLocked | null = fleet
-        ? await this.fleet.lock(client, operation as FleetCommand, target)
+        ? await this.fleet.lock(client, operation as FleetCommand, target, driverId)
         : null;
       const trip =
         catalog || fleet || target === 'collection'
@@ -301,6 +302,7 @@ export class TransportService {
           target,
           body,
           commandId,
+          driverId,
         );
       else if (locked)
         result = await this.catalog.execute(
@@ -672,7 +674,7 @@ export class TransportService {
     return this.transaction(async (client) => {
       const driverId = await this.authorize(client, actor, operation);
       if ((fleetReads as readonly string[]).includes(operation))
-        return this.fleet.read(client, operation as FleetRead, actor, query);
+        return this.fleet.read(client, operation as FleetRead, actor, query, driverId);
       const now = new Date();
       const schedules = operation === 'listSchedules';
       const limit = query.limit === undefined ? 50 : Number(query.limit);
