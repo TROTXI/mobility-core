@@ -251,8 +251,8 @@ blanket default privileges that silently grant access to future sensitive tables
 
 ## Evidence and limits
 
-The Postgres job runs **96 tests**: 29 storage, 20 transport command, 15 catalog,
-17 auth and 15 driver HTTP/transaction tests, none skipped. Catalog tests cover full HTTP setup, visibility,
+The Postgres job runs **97 tests**: 29 storage, 20 transport command, 15 catalog,
+17 auth and 16 driver HTTP/transaction tests, none skipped. Catalog tests cover full HTTP setup, visibility,
 snapshot preservation, publication rollback, three observed database races,
 parent/child replay scope, revocation, row edit tokens, microsecond pagination,
 runtime audit privileges and a 6,000-point geometry above the default body limit.

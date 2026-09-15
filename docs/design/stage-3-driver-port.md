@@ -96,7 +96,7 @@ change to NULL with all other columns unchanged. Event actor/driver ownership
 has a deferred composite FK to its command. This is receipt attribution, not a
 claim that arbitrary SQL mutations are guaranteed to emit an event.
 
-The new 15 Postgres scenarios use disposable databases, narrow runtime logins,
+The new 16 Postgres scenarios use disposable databases, narrow runtime logins,
 real locally signed JWTs, HTTP provisioning and observed lock contention.
 DRV-02 proves one first-issued credential under real contention; DRV-05 injects
 an event failure and checks PIN/session/key rollback; DRV-13 races sign-in/reset.
@@ -104,6 +104,12 @@ DRV-14 uses explicit owner-only trip assignment facts because the real booking
 coordinator is still absent; it does not claim assignment/booking delivery.
 DRV-15 tests deferred actor attribution at commit. Crypto tests check wrong
 scope/key rejection and keyed PIN input digests.
+
+Review follow-up 009 adds a database-enforced 1–128-character target bound,
+matching transport receipts without editing checksummed migration 008.
+DRV-16 inserts through the runtime role and proves empty/129-character rejection
+by the named CHECK constraint, accepts lengths 1/128 and checks rejected rows
+did not persist.
 
 ## Still required
 

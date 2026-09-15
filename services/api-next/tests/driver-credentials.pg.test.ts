@@ -792,6 +792,45 @@ test('DRV-14: open trip blocks archive and trip history blocks account transfer'
   );
 });
 
+test('DRV-16: database enforces driver receipt target bounds including both valid boundaries', async (t) => {
+  const f = await fixture(t),
+    driver = await f.create();
+  const source = (
+    await f.owner.query(
+      "SELECT id FROM app.driver_commands WHERE driver_id=$1 AND operation='createDriver'",
+      [driver.id],
+    )
+  ).rows[0].id;
+  // Insert receipt fixtures through the narrow runtime role: validation must
+  // come from PostgreSQL, not routed UUID validation or an application check.
+  const insert = (target: string) =>
+    f.runtime.query(
+      `INSERT INTO app.driver_commands
+    (id,actor_user_id,driver_id,operation,target,key_hash,input_hash,response_status,
+     response_body,response_headers,secret_ciphertext,pin_version,created_at,replay_expires_at)
+    SELECT $1,actor_user_id,driver_id,operation,$2::text,$3,input_hash,response_status,
+     response_body,response_headers,secret_ciphertext,pin_version,created_at,replay_expires_at
+    FROM app.driver_commands WHERE id=$4 RETURNING target`,
+      [randomUUID(), target, hashToken(randomUUID()), source],
+    );
+  for (const target of ['', 'x'.repeat(129)]) {
+    await assert.rejects(insert(target), (error) => {
+      const e = error as { code?: string; constraint?: string };
+      return e.code === '23514' && e.constraint === 'driver_commands_target_length';
+    });
+  }
+  assert.equal(
+    (await f.owner.query('SELECT count(*)::int AS n FROM app.driver_commands')).rows[0].n,
+    1,
+  );
+  for (const target of ['x', 'x'.repeat(128)])
+    assert.equal((await insert(target)).rows[0].target, target);
+  assert.equal(
+    (await f.owner.query('SELECT count(*)::int AS n FROM app.driver_commands')).rows[0].n,
+    3,
+  );
+});
+
 test('DRV-15: event attribution FK is deferred and rejects another actor; lists paginate with per-resource tokens', async (t) => {
   const f = await fixture(t),
     one = await f.create(),
