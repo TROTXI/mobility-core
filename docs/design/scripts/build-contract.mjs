@@ -2,6 +2,7 @@ import { readFile } from 'node:fs/promises';
 import { writeArtifact } from './artifact-io.mjs';
 import { z } from '../../../services/api/node_modules/zod/index.js';
 import { registry, operations, schemas, exampleCases } from '../contracts/target-contract.mjs';
+import { operationScope } from '../contracts/operation-scope.mjs';
 
 const dir = new URL('../contracts/', import.meta.url);
 const baseline = JSON.parse(await readFile(new URL('baseline.operations.json', dir), 'utf8'));
@@ -355,6 +356,24 @@ for (const [path, item] of Object.entries(baseline.paths))
     });
   }
 inventory.sort((a, b) => a.current.localeCompare(b.current));
+const predecessors = new Set(inventory.map((r) => r.target));
+const additions = operations.filter(
+  (o) => !predecessors.has(`${o.method.toUpperCase()} ${o.path}`),
+);
+if (
+  additions.length !== operationScope.length ||
+  new Set(operationScope.map((s) => s.operationId)).size !== operationScope.length
+)
+  throw new Error('Every predecessor-free operation needs exactly one scope decision');
+for (const o of additions) {
+  const scope = operationScope.find((s) => s.operationId === o.operationId);
+  if (!scope) throw new Error(`Missing operation requirement: ${o.operationId}`);
+  Object.assign(spec.paths[o.path][o.method], {
+    'x-delivery-stage': scope.delivery,
+    'x-requirement': scope.requirement,
+    'x-existing-endpoint-assessment': scope.existingEndpointAssessment,
+  });
+}
 for (const sample of exampleCases) schemas[sample.schema].parse(sample.value);
 // Ensure every reference resolves, operation ID is unique and no schema is missing.
 const ids = new Set();
@@ -375,6 +394,15 @@ function checkRefs(value) {
   for (const v of Object.values(value)) checkRefs(v);
 }
 checkRefs(spec);
+await writeArtifact(
+  new URL('../stage-2-operation-scope.md', import.meta.url),
+  `# Operation scope after stage-1 review\n\nGenerated from contracts/operation-scope.mjs. ${additions.length} target operations have no direct baseline mapping: ${operationScope.filter((s) => s.delivery === 'cutover').length} are required for cutover and ${operationScope.filter((s) => s.delivery === 'deferred').length} are deferred proposals. The full 132-operation OpenAPI remains a design catalog, **not** a commitment to implement every operation in stage 3. Deferred entries are marked x-delivery-stage: deferred; do not implement or generate a launch client dependency on them. No deployed endpoints change here. An entity or accounting rule remains required even when its optional history UI is deferred.\n\nFor deferred detail GETs, versioned list rows must supply the same per-resource edit token required by If-Match; collection ETags cannot substitute. Review that consumer contract during implementation.\n\n| Operation | Delivery | Requirement | Existing endpoint assessment |\n| --- | --- | --- | --- |\n${additions
+    .map((o) => {
+      const s = operationScope.find((s) => s.operationId === o.operationId);
+      return `| \`${o.method.toUpperCase()} ${o.path}\` | ${s.delivery} | ${s.requirement} | ${s.existingEndpointAssessment} |`;
+    })
+    .join('\n')}\n`,
+);
 await writeArtifact(new URL('target.openapi.json', dir), spec);
 await writeArtifact(new URL('examples.json', dir), exampleCases);
 await writeArtifact(new URL('endpoint-inventory.json', dir), inventory);

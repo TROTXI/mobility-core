@@ -17,6 +17,52 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
+  redesign-harness:
+    name: Redesign baseline harness (Postgres)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgis/postgis:16-3.4
+        env:
+          POSTGRES_USER: harness
+          POSTGRES_PASSWORD: harness-ci-only
+          POSTGRES_DB: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U harness -d postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    env:
+      HARNESS_ADMIN_DATABASE_URL: postgres://harness:harness-ci-only@127.0.0.1:5432/postgres
+      HARNESS_ALLOW_CREATE_DATABASES: '1'
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: node --test tools/redesign-harness/harness.test.mjs
+      - name: Prepare immutable source and locked dependencies
+        run: node tools/redesign-harness/prepare.mjs
+      - name: Original suite, fixed expectations, contention and negative controls
+        run: node --import ./.harness-artifacts/baseline/services/api/node_modules/tsx/dist/loader.mjs tools/redesign-harness/run.mjs --mode=baseline
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: redesign-harness-evidence
+          path: |
+            .harness-artifacts/latest-report.json
+            .harness-artifacts/run-*/**/*.json
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 14
+
   design-contracts:
     name: Redesign contract (design only)
     runs-on: ubuntu-latest
@@ -36,7 +82,7 @@ jobs:
           node docs/design/scripts/build-invariants.mjs
           node docs/design/scripts/build-contract.mjs
           node --test docs/design/scripts/contract.test.mjs
-          git diff --exit-code -- docs/design/contracts/target.openapi.json docs/design/contracts/examples.json docs/design/contracts/endpoint-inventory.json docs/design/stage-1-invariants.md docs/design/stage-1-endpoints.md
+          git diff --exit-code -- docs/design/contracts/target.openapi.json docs/design/contracts/examples.json docs/design/contracts/endpoint-inventory.json docs/design/stage-1-invariants.md docs/design/stage-1-endpoints.md docs/design/stage-2-operation-scope.md
 
   format:
     name: Format (Prettier)

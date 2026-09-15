@@ -1,6 +1,12 @@
 # Database redesign: differential verification harness
 
-Status: implementation design for stage 2. The harness is not built yet.
+Status: stage-2 baseline implementation is available for review in
+[`tools/redesign-harness`](../../tools/redesign-harness/README.md).
+The original 16-test suite, PAY-01–16 harness, four recovery cases and two
+persisted-state negative controls have run against disposable Postgres.
+No candidate business adapter or replacement schema exists yet. The sections
+below remain the acceptance design; the implementation runbook states current
+coverage and candidate-extension limits explicitly.
 
 Related: [invariants](database-redesign-invariants.md) and
 [schema/rollout proposal](database-redesign-proposal.md).
