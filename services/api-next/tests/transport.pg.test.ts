@@ -268,7 +268,10 @@ test('MIG-01 clean install records hashes, rerun is no-op, historical drift fail
     // and ten financial foundation tables from 011 (asserted by name below).
     // 012 adds evidence, collections, refunds, disputes, access blocks,
     // reversals, reviews and review command receipts.
-    assert.equal(tables.rows[0].n, 45);
+    // 013 adds selections/legs, slots/requests/assignments, pauses,
+    // restrictions, reservations and membership receipts/events.
+    // One durable ask-intent table makes notification delivery separately auditable.
+    assert.equal(tables.rows[0].n, 56);
     assert.deepEqual(
       (
         await pool.query(

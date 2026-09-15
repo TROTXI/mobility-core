@@ -192,6 +192,11 @@ this remains category B/C evidence, not a two-database transport preservation ru
 
 ## Remaining slices / stage exit
 
+013's commute/reservation implementation and its explicit delivery/boarding
+boundaries are recorded in [stage-3-commute-reservations.md](stage-3-commute-reservations.md).
+It supplies real transactional membership coordinators and 16 more reviewed
+operations; it does not enable a deployment, notification worker or boarding.
+
 Continue with real identity/booking adapters and
 baseline/candidate transport observers,
 then the membership/accounting candidate and cross-domain commute/boarding.
