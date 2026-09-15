@@ -16393,6 +16393,10 @@
             "minLength": 1,
             "maxLength": 128
           },
+          "serviceWindow": {
+            "type": "string",
+            "enum": ["morning", "evening"]
+          },
           "localDeparture": {
             "type": "string",
             "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$"
@@ -16439,6 +16443,7 @@
         "required": [
           "id",
           "patternVersionId",
+          "serviceWindow",
           "localDeparture",
           "timeZone",
           "weekdays",
@@ -16457,6 +16462,10 @@
             "type": "string",
             "minLength": 1,
             "maxLength": 128
+          },
+          "serviceWindow": {
+            "type": "string",
+            "enum": ["morning", "evening"]
           },
           "localDeparture": {
             "type": "string",
@@ -16490,6 +16499,7 @@
         },
         "required": [
           "patternVersionId",
+          "serviceWindow",
           "localDeparture",
           "timeZone",
           "weekdays",

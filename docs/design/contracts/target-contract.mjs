@@ -200,6 +200,7 @@ named(
   obj({
     id,
     patternVersionId: id,
+    serviceWindow: z.enum(['morning', 'evening']),
     localDeparture: time,
     timeZone: z.literal('Africa/Accra'),
     weekdays: z.array(z.int().min(1).max(7)),
@@ -212,6 +213,7 @@ named(
   'ScheduleInput',
   obj({
     patternVersionId: id,
+    serviceWindow: z.enum(['morning', 'evening']),
     localDeparture: time,
     timeZone: z.literal('Africa/Accra'),
     weekdays: z.array(z.int().min(1).max(7)).min(1).max(7),

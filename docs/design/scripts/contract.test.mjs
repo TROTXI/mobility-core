@@ -67,6 +67,26 @@ test('operation IDs, method/path pairs and references are unique/resolved', () =
   for (const name of Object.keys(spec.components.schemas))
     assert.doesNotThrow(() => validate(name), name);
 });
+test('schedule service window is explicit, required and independent of departure time', () => {
+  const input = {
+    patternVersionId: 'version-1',
+    serviceWindow: 'morning',
+    localDeparture: '15:00',
+    timeZone: 'Africa/Accra',
+    weekdays: [1, 2, 3, 4, 5],
+    effectiveFrom: '2026-09-15',
+    effectiveTo: null,
+  };
+  assert.equal(schemas.ScheduleInput.safeParse(input).success, true);
+  assert.equal(validate('ScheduleInput')(input), true);
+  const { serviceWindow, ...missing } = input;
+  assert.equal(schemas.ScheduleInput.safeParse(missing).success, false);
+  assert.equal(validate('ScheduleInput')(missing), false);
+  assert.equal(
+    schemas.ScheduleInput.safeParse({ ...input, serviceWindow: 'outbound' }).success,
+    false,
+  );
+});
 test('all examples pass both authoritative Zod and emitted OpenAPI schemas', () => {
   for (const sample of exampleCases) {
     schemas[sample.schema].parse(sample.value);
