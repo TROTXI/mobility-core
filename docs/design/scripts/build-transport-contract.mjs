@@ -5,6 +5,13 @@ const source = JSON.parse(
   await readFile(new URL('../contracts/target.openapi.json', import.meta.url), 'utf8'),
 );
 const selected = new Set([
+  'listOpsDrivers',
+  'createDriver',
+  'updateDriver',
+  'issueDriverCredential',
+  'resetDriverPin',
+  'changeCredentialState',
+  'changeDriverPin',
   'signInGoogle',
   'signInApple',
   'signInDriver',

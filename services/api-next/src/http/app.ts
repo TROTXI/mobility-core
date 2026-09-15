@@ -10,6 +10,8 @@ import { catalogReads, publicCatalogReads } from '../transport/catalog.js';
 import type { CatalogRead } from '../transport/catalog.js';
 import { authOperations, publicAuthOperations, DriverLockedError } from '../auth/service.js';
 import type { AuthService, AuthOperation } from '../auth/service.js';
+import { driverOperations } from '../auth/driver-service.js';
+import type { DriverService, DriverOperation } from '../auth/driver-service.js';
 
 interface Operation {
   operationId: string;
@@ -34,6 +36,7 @@ export interface AppOptions extends Dependencies {
   // Optional only for isolated transport tests. createReplacementApp wires the
   // real service and both access/session adapters as one indivisible dependency.
   auth?: AuthService;
+  drivers?: DriverService;
   authRequestsPerMinute?: number;
 }
 export async function createTransportApp(options: AppOptions) {
@@ -126,7 +129,9 @@ export async function createTransportApp(options: AppOptions) {
       const operation = value as unknown as Operation;
       const name = operation.operationId;
       const authentication = (authOperations as readonly string[]).includes(name);
+      const driverEndpoint = (driverOperations as readonly string[]).includes(name);
       if (authentication && !options.auth) continue;
+      if (driverEndpoint && !options.drivers) continue;
       const publicAuth = (publicAuthOperations as readonly string[]).includes(name);
       const publicRead = (publicCatalogReads as readonly string[]).includes(name);
       const anonymous = publicRead || publicAuth;
@@ -141,7 +146,9 @@ export async function createTransportApp(options: AppOptions) {
         method: method.toUpperCase() as 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE',
         url: path.replaceAll(/\{([^}]+)\}/g, ':$1'),
         ...(name === 'createPatternVersion' ? { bodyLimit: 1048576 } : {}),
-        ...(publicAuth ? { config: { rateLimit: { max: authBudget, timeWindow: 60000 } } } : {}),
+        ...(publicAuth || name === 'changeDriverPin'
+          ? { config: { rateLimit: { max: authBudget, timeWindow: 60000 } } }
+          : {}),
         schema: { ...(input ? { body: rootRef(input) } : {}), response },
         // The plugin's onRequest IP limiter must run before verification.
         // A route-local onRequest auth hook would precede its appended hook.
@@ -199,7 +206,39 @@ export async function createTransportApp(options: AppOptions) {
         handler: async (request, reply) => {
           const actor = actors.get(request)!;
           let result;
-          if (authentication) {
+          if (driverEndpoint) {
+            const query = request.query as Record<string, string | undefined>;
+            const allowed = new Set(
+              operation.parameters.filter((p) => p.in === 'query').map((p) => p.name),
+            );
+            if (
+              Object.entries(query).some(
+                ([k, v]) => !allowed.has(k) || typeof v !== 'string' || v.length > 128,
+              )
+            )
+              fail(400, 'invalid_query', 'Unsupported query parameters.');
+            if (method === 'get') result = await options.drivers!.list(actor, query);
+            else {
+              const key = request.headers['idempotency-key'],
+                ifMatch = request.headers['if-match'];
+              if (typeof key !== 'string' || !key || key.length > 128)
+                fail(
+                  400,
+                  'idempotency_key_required',
+                  'Supply an Idempotency-Key of 1 to 128 characters.',
+                );
+              if (ifMatch !== undefined && (typeof ifMatch !== 'string' || ifMatch.length > 128))
+                fail(400, 'invalid_precondition', 'Invalid If-Match header.');
+              result = await options.drivers!.command(
+                actor,
+                name as Exclude<DriverOperation, 'listOpsDrivers'>,
+                (request.params as { id?: string }).id,
+                (request.body ?? {}) as Body,
+                key,
+                ifMatch,
+              );
+            }
+          } else if (authentication) {
             if (!input && request.body !== undefined)
               fail(400, 'invalid_request', 'This operation has no request body.');
             const query = request.query as Record<string, string | undefined>;

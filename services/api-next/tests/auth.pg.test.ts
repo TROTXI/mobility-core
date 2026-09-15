@@ -142,6 +142,7 @@ async function setup(
     cursorSecret: Buffer.alloc(32, 6),
   });
   const app = await createReplacementApp({
+    credentialReplayKey: Buffer.alloc(32, 9),
     pool: runtime,
     cursorSecret: Buffer.alloc(32, 6),
     identity,

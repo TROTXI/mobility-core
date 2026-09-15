@@ -15,12 +15,30 @@ import {
 } from '../src/auth/driver-pin.js';
 import { AuthService } from '../src/auth/service.js';
 import type { AuthOptions } from '../src/auth/service.js';
+import { credentialReplay } from '../src/auth/secret-replay.js';
 
 const pair = await generateKeyPair('RS256'),
   jwk = await exportJWK(pair.publicKey);
 const keys = createLocalJWKSet({ keys: [{ ...jwk, kid: 'test' }] });
 const google = new GoogleIdTokenVerifier('web-client', keys),
   apple = new AppleIdTokenVerifier(['ios-client', 'web-apple'], keys);
+
+test('DRV-U01: PIN replay ciphertext and input digests are key/context bound', () => {
+  const box = credentialReplay(Buffer.alloc(32, 11)),
+    secret = { data: { code: 'DR-B7K9', pin: '938755' } },
+    cipher = box.seal(secret, 'receipt-one');
+  assert.deepEqual(box.open(cipher, 'receipt-one'), secret);
+  assert.notEqual(box.seal(secret, 'receipt-one'), cipher);
+  assert.throws(() => box.open(cipher, 'receipt-two'));
+  assert.throws(() => credentialReplay(Buffer.alloc(32, 12)).open(cipher, 'receipt-one'));
+  assert.throws(() => box.open('short', 'receipt-one'));
+  assert.throws(() => credentialReplay(Buffer.alloc(1)));
+  assert.throws(() => credentialReplay(undefined as unknown as Buffer), /Dedicated 32-byte/);
+  const input = JSON.stringify({ currentPin: '938755', newPin: '738194' });
+  assert.notEqual(box.digest(input), createHash('sha256').update(input).digest('hex'));
+  assert.notEqual(box.digest(input), credentialReplay(Buffer.alloc(32, 12)).digest(input));
+  assert.equal(box.digest(input), box.digest(input));
+});
 async function token(
   issuer: string,
   audience: string,
