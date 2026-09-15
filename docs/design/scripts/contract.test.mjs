@@ -3,6 +3,7 @@ import { readFile } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import test from 'node:test';
 import { schemas, operations, exampleCases } from '../contracts/target-contract.mjs';
+import { operationScope } from '../contracts/operation-scope.mjs';
 
 const spec = JSON.parse(
   await readFile(new URL('../contracts/target.openapi.json', import.meta.url), 'utf8'),
@@ -44,6 +45,21 @@ test('every current operation maps to an explicitly defined replacement', () => 
     const [method, path] = row.target.split(' ');
     assert.ok(spec.paths[path]?.[method.toLowerCase()], row.current);
   }
+});
+test('all 35 predecessor-free operations have a requirement, scope decision and existing-endpoint assessment', () => {
+  const predecessors = new Set(inventory.map((r) => r.target));
+  const additions = operations.filter(
+    (o) => !predecessors.has(`${o.method.toUpperCase()} ${o.path}`),
+  );
+  assert.equal(additions.length, 35);
+  assert.equal(operationScope.length, 35);
+  for (const o of additions) {
+    const api = spec.paths[o.path][o.method];
+    assert.ok(['cutover', 'deferred'].includes(api['x-delivery-stage']));
+    assert.ok(api['x-requirement']);
+    assert.ok(api['x-existing-endpoint-assessment']);
+  }
+  assert.equal(operationScope.filter((s) => s.delivery === 'deferred').length, 13);
 });
 test('operation IDs, method/path pairs and references are unique/resolved', () => {
   assert.equal(new Set(operations.map((o) => o.operationId)).size, operations.length);

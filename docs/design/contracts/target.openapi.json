@@ -1306,7 +1306,10 @@
         "x-authorization": "self",
         "x-retry": "idempotency_key",
         "x-sensitive": false,
-        "x-implementation-status": "design_only"
+        "x-implementation-status": "design_only",
+        "x-delivery-stage": "deferred",
+        "x-requirement": "No approved standalone avatar-removal UX",
+        "x-existing-endpoint-assessment": "Account erasure already removes the object; that internal obligation does not require a separate HTTP endpoint."
       }
     },
     "/v1/me/sessions": {
@@ -1940,7 +1943,10 @@
         "x-retry": "safe_read",
         "x-sensitive": false,
         "x-list-order": "startsAt DESC, id DESC",
-        "x-implementation-status": "design_only"
+        "x-implementation-status": "design_only",
+        "x-delivery-stage": "deferred",
+        "x-requirement": "No approved billing-history screen",
+        "x-existing-endpoint-assessment": "Membership already distinguishes current, lapsed and never subscribed; history browsing can be added later."
       }
     },
     "/v1/me/billing-periods/{id}": {
@@ -2042,7 +2048,10 @@
         "x-authorization": "rider_own",
         "x-retry": "safe_read",
         "x-sensitive": false,
-        "x-implementation-status": "design_only"
+        "x-implementation-status": "design_only",
+        "x-delivery-stage": "deferred",
+        "x-requirement": "No approved period-detail screen",
+        "x-existing-endpoint-assessment": "Current membership and purchase status cover the existing rider journey."
       }
     },
     "/v1/me/purchases": {
@@ -2178,7 +2187,10 @@
         "x-retry": "safe_read",
         "x-sensitive": false,
         "x-list-order": "createdAt DESC, id DESC",
-        "x-implementation-status": "design_only"
+        "x-implementation-status": "design_only",
+        "x-delivery-stage": "cutover",
+        "x-requirement": "PAY-10: recover unresolved purchases",
+        "x-existing-endpoint-assessment": "A rider restarting the app must discover an unresolved checkout without retaining its generated ID locally."
       },
       "post": {
         "operationId": "createPurchase",
@@ -2394,7 +2406,10 @@
         "x-authorization": "rider_own",
         "x-retry": "safe_read",
         "x-sensitive": false,
-        "x-implementation-status": "design_only"
+        "x-implementation-status": "design_only",
+        "x-delivery-stage": "cutover",
+        "x-requirement": "PAY-03/10: observe asynchronous fulfilment",
+        "x-existing-endpoint-assessment": "Creating a checkout does not prove payment completion; a scoped read exposes authoritative status after callback or reconciliation."
       }
     },
     "/v1/me/commute-requests": {
@@ -2736,7 +2751,10 @@
         "x-authorization": "rider_own",
         "x-retry": "safe_read",
         "x-sensitive": false,
-        "x-implementation-status": "design_only"
+        "x-implementation-status": "design_only",
+        "x-delivery-stage": "deferred",
+        "x-requirement": "COM-01–09 do not require a detail endpoint",
+        "x-existing-endpoint-assessment": "The owned request list already returns each request and status."
       }
     },
     "/v1/me/reservations": {
@@ -2974,7 +2992,10 @@
         "x-authorization": "rider_own",
         "x-retry": "safe_read",
         "x-sensitive": false,
-        "x-implementation-status": "design_only"
+        "x-implementation-status": "design_only",
+        "x-delivery-stage": "deferred",
+        "x-requirement": "No approved standalone reservation-detail journey",
+        "x-existing-endpoint-assessment": "The owned reservation list and decision/pass operations cover the current journey."
       }
     },
     "/v1/me/ride-entries": {
@@ -3110,7 +3131,10 @@
         "x-retry": "safe_read",
         "x-sensitive": false,
         "x-list-order": "createdAt DESC, id DESC",
-        "x-implementation-status": "design_only"
+        "x-implementation-status": "design_only",
+        "x-delivery-stage": "deferred",
+        "x-requirement": "No approved rider ledger-history screen",
+        "x-existing-endpoint-assessment": "Membership balances suffice for the current Pass experience; accounting stays implemented and observable by the harness."
       }
     },
     "/v1/me/credit-entries": {
@@ -3246,7 +3270,10 @@
         "x-retry": "safe_read",
         "x-sensitive": false,
         "x-list-order": "createdAt DESC, id DESC",
-        "x-implementation-status": "design_only"
+        "x-implementation-status": "design_only",
+        "x-delivery-stage": "deferred",
+        "x-requirement": "No approved rider credit-history screen",
+        "x-existing-endpoint-assessment": "Membership and purchase credit amounts cover checkout; a transaction feed can be additive later."
       }
     },
     "/v1/me/commute-assignments": {
@@ -3362,7 +3389,10 @@
         "x-retry": "safe_read",
         "x-sensitive": false,
         "x-list-order": "effectiveFrom DESC, id DESC",
-        "x-implementation-status": "design_only"
+        "x-implementation-status": "design_only",
+        "x-delivery-stage": "deferred",
+        "x-requirement": "No approved assignment-history screen",
+        "x-existing-endpoint-assessment": "Membership exposes the effective commute and the request list exposes requested changes."
       }
     },
     "/v1/me/commute-requests/{id}/withdraw": {
@@ -4008,7 +4038,10 @@
         "x-retry": "safe_read",
         "x-sensitive": false,
         "x-list-order": "createdAt DESC, id DESC",
-        "x-implementation-status": "design_only"
+        "x-implementation-status": "design_only",
+        "x-delivery-stage": "cutover",
+        "x-requirement": "VER-02: explicit directional service selection",
+        "x-existing-endpoint-assessment": "Route identity alone cannot identify an outbound/return departure when purchasing a commute."
       }
     },
     "/v1/route-patterns/{id}": {
@@ -4100,7 +4133,10 @@
         "x-authorization": "public",
         "x-retry": "safe_read",
         "x-sensitive": false,
-        "x-implementation-status": "design_only"
+        "x-implementation-status": "design_only",
+        "x-delivery-stage": "cutover",
+        "x-requirement": "VER-01/02: published directional catalog",
+        "x-existing-endpoint-assessment": "Corridor routes do not identify immutable directional definitions; expose the published version link."
       }
     },
     "/v1/route-patterns/{id}/versions/{versionId}": {
@@ -4202,7 +4238,10 @@
         "x-authorization": "public",
         "x-retry": "safe_read",
         "x-sensitive": false,
-        "x-implementation-status": "design_only"
+        "x-implementation-status": "design_only",
+        "x-delivery-stage": "cutover",
+        "x-requirement": "VER-01: immutable stop occurrences",
+        "x-existing-endpoint-assessment": "A geometry line alone cannot identify ordered pickup/dropoff occurrences, especially repeated stops."
       }
     },
     "/v1/route-geometries/{id}": {
@@ -4910,7 +4949,10 @@
         "x-authorization": "driver_assigned_or_own",
         "x-retry": "safe_read",
         "x-sensitive": false,
-        "x-implementation-status": "design_only"
+        "x-implementation-status": "design_only",
+        "x-delivery-stage": "deferred",
+        "x-requirement": "TRP-01–04 do not require a new detail read",
+        "x-existing-endpoint-assessment": "The scoped driver trip list carries the run state; commands return updated state."
       }
     },
     "/v1/driver/trips/{id}/manifest": {
@@ -6876,7 +6918,10 @@
         "x-authorization": "ops",
         "x-retry": "safe_read",
         "x-sensitive": false,
-        "x-implementation-status": "design_only"
+        "x-implementation-status": "design_only",
+        "x-delivery-stage": "deferred",
+        "x-requirement": "No new requirement beyond existing route CRUD",
+        "x-existing-endpoint-assessment": "The ops list already carries editable fields and row version; an individual GET is convenience."
       },
       "patch": {
         "operationId": "updateRoute",
@@ -7349,7 +7394,10 @@
         "x-authorization": "ops",
         "x-retry": "safe_read",
         "x-sensitive": false,
-        "x-implementation-status": "design_only"
+        "x-implementation-status": "design_only",
+        "x-delivery-stage": "deferred",
+        "x-requirement": "No new requirement beyond existing stop CRUD",
+        "x-existing-endpoint-assessment": "The ops list already carries editable fields and row version."
       },
       "patch": {
         "operationId": "updateStop",
@@ -7822,7 +7870,10 @@
         "x-authorization": "ops",
         "x-retry": "safe_read",
         "x-sensitive": false,
-        "x-implementation-status": "design_only"
+        "x-implementation-status": "design_only",
+        "x-delivery-stage": "deferred",
+        "x-requirement": "No new requirement beyond existing vehicle CRUD",
+        "x-existing-endpoint-assessment": "The ops list already carries editable fields and row version."
       },
       "patch": {
         "operationId": "updateVehicle",
@@ -8295,7 +8346,10 @@
         "x-authorization": "ops",
         "x-retry": "safe_read",
         "x-sensitive": false,
-        "x-implementation-status": "design_only"
+        "x-implementation-status": "design_only",
+        "x-delivery-stage": "deferred",
+        "x-requirement": "No new requirement beyond existing driver CRUD",
+        "x-existing-endpoint-assessment": "The ops list already carries editable fields and row version; credentials use separate authorized commands."
       },
       "patch": {
         "operationId": "updateDriver",
@@ -9126,7 +9180,10 @@
         "x-authorization": "ops",
         "x-retry": "idempotency_key",
         "x-sensitive": false,
-        "x-implementation-status": "design_only"
+        "x-implementation-status": "design_only",
+        "x-delivery-stage": "cutover",
+        "x-requirement": "TRP-01: explicit lifecycle commands",
+        "x-existing-endpoint-assessment": "Functional replacement for status mutation removed from trip PATCH, including dependent reservation settlement."
       }
     },
     "/v1/ops/route-patterns": {
@@ -9242,7 +9299,10 @@
         "x-retry": "safe_read",
         "x-sensitive": false,
         "x-list-order": "createdAt DESC, id DESC",
-        "x-implementation-status": "design_only"
+        "x-implementation-status": "design_only",
+        "x-delivery-stage": "cutover",
+        "x-requirement": "VER-01/02: manage directional definitions",
+        "x-existing-endpoint-assessment": "The old corridor list cannot expose drafts or independent directional patterns."
       },
       "post": {
         "operationId": "createPattern",
@@ -9356,7 +9416,10 @@
         "x-authorization": "ops",
         "x-retry": "idempotency_key",
         "x-sensitive": false,
-        "x-implementation-status": "design_only"
+        "x-implementation-status": "design_only",
+        "x-delivery-stage": "cutover",
+        "x-requirement": "VER-01/02: create explicit route directions",
+        "x-existing-endpoint-assessment": "Legacy route CRUD has only one mutable route definition."
       }
     },
     "/v1/ops/service-schedules": {
@@ -9483,7 +9546,10 @@
         "x-retry": "safe_read",
         "x-sensitive": false,
         "x-list-order": "createdAt DESC, id DESC",
-        "x-implementation-status": "design_only"
+        "x-implementation-status": "design_only",
+        "x-delivery-stage": "cutover",
+        "x-requirement": "VER-02: manage recurring departures",
+        "x-existing-endpoint-assessment": "Legacy trips list individual runs, not reusable explicit-direction schedules."
       },
       "post": {
         "operationId": "createSchedule",
@@ -9597,7 +9663,10 @@
         "x-authorization": "ops",
         "x-retry": "idempotency_key",
         "x-sensitive": false,
-        "x-implementation-status": "design_only"
+        "x-implementation-status": "design_only",
+        "x-delivery-stage": "cutover",
+        "x-requirement": "VER-02: independent outbound/return departures",
+        "x-existing-endpoint-assessment": "Creating a single trip cannot define the schedule selected by a commute leg."
       }
     },
     "/v1/ops/commute-slots": {
@@ -10088,7 +10157,10 @@
         "x-retry": "safe_read",
         "x-sensitive": false,
         "x-list-order": "createdAt DESC, id DESC",
-        "x-implementation-status": "design_only"
+        "x-implementation-status": "design_only",
+        "x-delivery-stage": "cutover",
+        "x-requirement": "VER-01: preserve operated history",
+        "x-existing-endpoint-assessment": "The mutable route-stop list cannot distinguish draft, current and operated definitions."
       }
     },
     "/v1/ops/route-patterns/{id}/versions/{versionId}": {
@@ -10200,7 +10272,10 @@
         "x-authorization": "ops",
         "x-retry": "safe_read",
         "x-sensitive": false,
-        "x-implementation-status": "design_only"
+        "x-implementation-status": "design_only",
+        "x-delivery-stage": "cutover",
+        "x-requirement": "VER-01: review unpublished changes",
+        "x-existing-endpoint-assessment": "Public version reads intentionally exclude drafts; ops must inspect the exact definition before publishing."
       }
     },
     "/v1/ops/route-patterns/{id}/versions/{versionId}/publish": {
@@ -10353,7 +10428,10 @@
         "x-authorization": "ops",
         "x-retry": "idempotency_key",
         "x-sensitive": false,
-        "x-implementation-status": "design_only"
+        "x-implementation-status": "design_only",
+        "x-delivery-stage": "cutover",
+        "x-requirement": "VER-01: immutable publication and reassignment",
+        "x-existing-endpoint-assessment": "A generic stop PATCH cannot enforce the publication/reassignment transaction boundary."
       }
     },
     "/v1/ops/commute-slots/{id}/retire": {
@@ -13233,7 +13311,10 @@
         "x-retry": "safe_read",
         "x-sensitive": false,
         "x-list-order": "createdAt DESC, id DESC",
-        "x-implementation-status": "design_only"
+        "x-implementation-status": "design_only",
+        "x-delivery-stage": "cutover",
+        "x-requirement": "PAY-10: unresolved-payment investigation",
+        "x-existing-endpoint-assessment": "The existing reversal-review list excludes ordinary unresolved purchases; ops needs an authoritative queue."
       }
     },
     "/v1/ops/purchases/{id}": {
@@ -13335,7 +13416,10 @@
         "x-authorization": "ops",
         "x-retry": "safe_read",
         "x-sensitive": false,
-        "x-implementation-status": "design_only"
+        "x-implementation-status": "design_only",
+        "x-delivery-stage": "cutover",
+        "x-requirement": "PAY-10/14: inspect an exact purchase and provider attempts",
+        "x-existing-endpoint-assessment": "A rider status read omits provider evidence; scanning an unbounded queue is not a targeted investigation contract."
       }
     },
     "/v1/ops/payments/reviews/{id}/decisions": {
@@ -13478,7 +13562,10 @@
         "x-authorization": "ops",
         "x-retry": "idempotency_key",
         "x-sensitive": false,
-        "x-implementation-status": "design_only"
+        "x-implementation-status": "design_only",
+        "x-delivery-stage": "cutover",
+        "x-requirement": "PAY-14/15: attributable review resolution",
+        "x-existing-endpoint-assessment": "Existing reviews can be listed but not resolved; this command records a decision without collecting money."
       }
     },
     "/v1/ops/users/{id}/restrictions": {
@@ -13604,7 +13691,10 @@
         "x-authorization": "ops",
         "x-retry": "idempotency_key",
         "x-sensitive": false,
-        "x-implementation-status": "design_only"
+        "x-implementation-status": "design_only",
+        "x-delivery-stage": "cutover",
+        "x-requirement": "API-02: explicit account-wide ops exception",
+        "x-existing-endpoint-assessment": "A historical period dispute must not implicitly restrict unrelated current coverage."
       }
     },
     "/v1/ops/users/{id}/restrictions/{restrictionId}/release": {
@@ -13757,7 +13847,10 @@
         "x-authorization": "ops",
         "x-retry": "idempotency_key",
         "x-sensitive": false,
-        "x-implementation-status": "design_only"
+        "x-implementation-status": "design_only",
+        "x-delivery-stage": "cutover",
+        "x-requirement": "API-02: independently removable access blocks",
+        "x-existing-endpoint-assessment": "Resolving a dispute must not clear an independent ops restriction."
       }
     },
     "/v1/ops/trace-holds": {
@@ -13873,7 +13966,10 @@
         "x-authorization": "ops",
         "x-retry": "idempotency_key",
         "x-sensitive": false,
-        "x-implementation-status": "design_only"
+        "x-implementation-status": "design_only",
+        "x-delivery-stage": "cutover",
+        "x-requirement": "GPS-09: approved narrow incident holds",
+        "x-existing-endpoint-assessment": "Without a scoped hold the ordinary retention job must delete evidence; no broad retention exception is permitted."
       },
       "get": {
         "operationId": "listTraceHolds",
@@ -13987,7 +14083,10 @@
         "x-retry": "safe_read",
         "x-sensitive": false,
         "x-list-order": "createdAt DESC, id DESC",
-        "x-implementation-status": "design_only"
+        "x-implementation-status": "design_only",
+        "x-delivery-stage": "cutover",
+        "x-requirement": "GPS-09: accountable review of exceptions",
+        "x-existing-endpoint-assessment": "A write-only hold cannot be reviewed for owner, scope and expiry."
       }
     },
     "/v1/ops/trace-holds/{id}/release": {
@@ -14130,7 +14229,10 @@
         "x-authorization": "ops",
         "x-retry": "idempotency_key",
         "x-sensitive": false,
-        "x-implementation-status": "design_only"
+        "x-implementation-status": "design_only",
+        "x-delivery-stage": "cutover",
+        "x-requirement": "GPS-09: release retained incident evidence",
+        "x-existing-endpoint-assessment": "An ordinary trip edit cannot authorize or audit evidence release and expired-copy deletion."
       }
     },
     "/v1/ops/maintenance/payments": {
@@ -15030,7 +15132,10 @@
         "x-authorization": "ops_or_scoped_worker",
         "x-retry": "safe_batch",
         "x-sensitive": false,
-        "x-implementation-status": "design_only"
+        "x-implementation-status": "design_only",
+        "x-delivery-stage": "cutover",
+        "x-requirement": "GPS-09: enforce 30-day receipt-time expiry",
+        "x-existing-endpoint-assessment": "No existing bounded maintenance operation enforces raw-trace retention."
       }
     },
     "/webhooks/paystack": {

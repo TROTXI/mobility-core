@@ -4,6 +4,11 @@ Status: technical design ready for review; **not approval to implement or cut ov
 PR #293 remains draft. Baseline runtime source: `43cdae0`. No runtime module,
 migration, deployed configuration, generated app client or database was changed.
 
+Historical stage-1 snapshot: #293 subsequently merged. See the
+[stage-2 implementation review](stage-2-review.md) for the executed baseline gate
+and the [operation scope decisions](stage-2-operation-scope.md) for which proposed
+operations are deferred. The counts/results below describe the stage-1 delivery.
+
 ## Read in this order
 
 1. [Database model](database-redesign-proposal.md): authoritative domain ownership.
