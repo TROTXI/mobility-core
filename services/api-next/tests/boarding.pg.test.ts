@@ -810,6 +810,8 @@ test('BRD-27: proof variants cannot be mixed or renamed to skip validation, over
     { kind: 'photo', reservationId: f.reservation.id, token: 'invalid' },
     { kind: 'code', code: p.boardingCode, token: 'invalid' },
     { kind: 'unverified', reservationId: f.reservation.id },
+    { kind: 'constructor', reservationId: f.reservation.id },
+    { kind: '__proto__', reservationId: f.reservation.id },
   ];
   for (const body of malformed) {
     await f.board(f.run.id, body, 400);

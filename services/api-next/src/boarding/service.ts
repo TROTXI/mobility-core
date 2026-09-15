@@ -307,41 +307,51 @@ export class BoardingService {
         // were mandatory above and ownership is checked again under the lock.
         // Each validated variant has its own resolver; a photo confirmation is
         // the assigned driver's explicit decision, not an unchecked QR token.
-        const resolvers: Record<'qr' | 'code' | 'photo', () => Promise<Evidence>> = {
-          qr: async () => {
-            const proof = await this.proofs.verify(String(normalized.token), this.now());
-            if (proof.tripId !== target)
-              fail(409, 'invalid_boarding_proof', 'The pass belongs to another trip.');
-            return { rid: proof.reservationId, jti: proof.jti, proofUser: proof.userId };
-          },
-          photo: async () => ({ rid: id(String(normalized.reservationId)) }),
-          code: async () => {
-            if (!/^[A-Z2-9]{4}$/.test(String(normalized.code)))
-              fail(400, 'invalid_request', 'Invalid boarding code.');
-            const rows = (
-              await c.query(
-                "SELECT id FROM app.reservations WHERE trip_id=$1 AND status IN ('reserved','boarded','no_show') ORDER BY id LIMIT 501",
-                [target],
-              )
-            ).rows;
-            if (rows.length > 500)
-              fail(409, 'manifest_too_large', 'The trip exceeds its supported size.');
-            const matches = rows.filter((r) =>
-              timingSafeEqual(
-                Buffer.from(this.proofs.code(r.id, target)),
-                Buffer.from(String(normalized.code)),
-              ),
-            );
-            if (matches.length !== 1)
-              fail(
-                409,
-                'invalid_boarding_proof',
-                'The code is invalid or ambiguous; use another verification method.',
+        const resolvers = new Map<Method, () => Promise<Evidence>>([
+          [
+            'qr',
+            async () => {
+              const proof = await this.proofs.verify(String(normalized.token), this.now());
+              if (proof.tripId !== target)
+                fail(409, 'invalid_boarding_proof', 'The pass belongs to another trip.');
+              return { rid: proof.reservationId, jti: proof.jti, proofUser: proof.userId };
+            },
+          ],
+          ['photo', async () => ({ rid: id(String(normalized.reservationId)) })],
+          [
+            'code',
+            async () => {
+              if (!/^[A-Z2-9]{4}$/.test(String(normalized.code)))
+                fail(400, 'invalid_request', 'Invalid boarding code.');
+              const rows = (
+                await c.query(
+                  "SELECT id FROM app.reservations WHERE trip_id=$1 AND status IN ('reserved','boarded','no_show') ORDER BY id LIMIT 501",
+                  [target],
+                )
+              ).rows;
+              if (rows.length > 500)
+                fail(409, 'manifest_too_large', 'The trip exceeds its supported size.');
+              const matches = rows.filter((r) =>
+                timingSafeEqual(
+                  Buffer.from(this.proofs.code(r.id, target)),
+                  Buffer.from(String(normalized.code)),
+                ),
               );
-            return { rid: matches[0].id };
-          },
-        };
-        ({ rid, jti, proofUser } = await resolvers[method as 'qr' | 'code' | 'photo']());
+              if (matches.length !== 1)
+                fail(
+                  409,
+                  'invalid_boarding_proof',
+                  'The code is invalid or ambiguous; use another verification method.',
+                );
+              return { rid: matches[0].id };
+            },
+          ],
+        ]);
+        // Map has no inherited callable properties (unlike a dynamic object
+        // lookup). Even a future caller without the earlier shape check fails.
+        const resolve = resolvers.get(method);
+        if (!resolve) fail(400, 'invalid_request', 'Invalid boarding method.');
+        ({ rid, jti, proofUser } = await resolve());
       }
       if (!rid) fail(404, 'not_found', 'Resource not found.');
       const { r, trip, period } = await this.funded(c, rid, target, driver);
