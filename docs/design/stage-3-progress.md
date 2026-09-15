@@ -145,9 +145,48 @@ claim. State/command tests are not a baseline/candidate comparison: the immutabl
 payment harness and the remaining full transport preservation observers still
 must run before stage exit.
 
+## Third review slice: route catalog and publication APIs
+
+PR #296 merged into the non-deploying integration branch at `3da8064`. Branch
+`codex/stage-3-catalog-publication` builds on it. The HTTP factory now implements
+29 cutover operations (the existing 11 plus 12 ops catalog and six public reads).
+The full catalog setup, publication, schedule and trip creation path no longer
+depends on transport fixtures in its HTTP test. It still depends on test identity
+adapters; there is no listener, deployed endpoint or real reservation coordinator.
+
+Two missing contract details surfaced during implementation and are supplied in
+the authoritative Zod source plus generated OpenAPI/runtime schemas:
+
+- A draft must supply configured `geometry.points` and `stopDistancesMeters` in
+  occurrence order. Otherwise the reviewed complete-geometry publication rule
+  cannot be satisfied without manual SQL. Bounds are 10,000 points, 500 stops,
+  ordered finite distances within the line length, and a 1 MiB request limit.
+  No straight-line route is invented and no new geometry-upload endpoint is added.
+- Catalog lists carry per-resource `editToken` values; version reads also carry
+  revision and effective dates so ops can review the publication it will affect.
+
+Migration `006` adds receipt-linked catalog events and page indexes, leaving
+`001`–`005` unchanged. Publication atomically publishes geometry and version and
+closes the previous overlapping interval. It refuses to orphan existing trips;
+future-version reassignment remains fail-closed until commute/reservation
+coordination is implemented. Corridor archival also refuses open trips. Neither
+behavior is a substitute for the later membership-aware coordination rules.
+
+Public catalog reads use one snapshot, omit drafts/archived corridors, choose
+the current link by effective interval, retain explicit published-history reads
+and enforce client build floors without requiring sign-in. No raw GPS, driver
+or private operational records enter these public projections. No deferred
+operation is promoted into runtime.
+
+Evidence: **64** full-chain Postgres tests, **8** pure/preflight checks, and **27**
+contract/harness checks. CAT-08/09/15 observe blocked distinct PostgreSQL workers
+before releasing publication/publication, publication/trip and same-key draft
+races. The existing transport and pinned payment expectations are unchanged;
+this remains category B/C evidence, not a two-database transport preservation run.
+
 ## Remaining slices / stage exit
 
-Continue with catalog/publication commands, real identity/booking adapters and
+Continue with real identity/booking adapters and
 baseline/candidate transport observers,
 then the membership/accounting candidate and cross-domain commute/boarding.
 Payments may proceed independently once shared identities are fixed, but its

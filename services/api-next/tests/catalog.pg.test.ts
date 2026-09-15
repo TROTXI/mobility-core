@@ -41,7 +41,7 @@ after(async () => {
           {
             kind: 'catalog-http-postgres-not-baseline-comparison',
             identityBoundary:
-              'Only identity/driver/vehicle and revocable opaque test credentials are fixtures; all route, stop, pattern, geometry, schedule and trip creation goes through HTTP.',
+              'Identity and revocable opaque credentials are test adapters. CAT-01 creates all transport/catalog data through HTTP; CAT-12 separately inserts two owner-only route timestamp fixtures to prove microsecond pagination.',
             bookingBoundary:
               'Explicit throwing test coordinator. No real reservation implementation claimed.',
             migrations: migrations.map(({ name, sha256 }) => ({ name, sha256 })),
@@ -58,8 +58,8 @@ after(async () => {
     await admin.end();
   }
 });
-const day = (offset: number) =>
-  new Date(Date.parse(new Date().toISOString().slice(0, 10)) + offset * 86400000).toISOString();
+const baseDay = Date.parse(new Date().toISOString().slice(0, 10));
+const day = (offset: number) => new Date(baseDay + offset * 86400000).toISOString();
 type Response = { statusCode: number; body: string; headers: Record<string, unknown>; json(): any };
 function expectStatus(response: Response, code: number) {
   assert.equal(response.statusCode, code, response.body);
@@ -253,7 +253,6 @@ async function setup() {
   }
 }
 type Case = Awaited<ReturnType<typeof setup>>;
-type Fixture = Awaited<ReturnType<Case['catalog']>>;
 async function withCase(work: (c: Case) => Promise<void>) {
   const c = await setup();
   try {
@@ -352,6 +351,69 @@ test('CAT-01 HTTP creates the entire route -> stops -> loop version -> publicati
       events: 5,
       receipts: 7,
     });
+  }));
+
+test('CAT-14 a configured geometry larger than the default body limit works; oversized drafts are refused', () =>
+  withCase(async (c) => {
+    const f = await c.catalog();
+    const points = Array.from({ length: 6000 }, (_, i) => f.input.geometry.points[i % 3]);
+    const body = { ...f.input, geometry: { ...f.input.geometry, points } };
+    assert.ok(Buffer.byteLength(JSON.stringify(body)) > 65536);
+    const large = expectStatus(
+      await c.request('POST', `/v1/ops/route-patterns/${f.pattern.id}/versions`, body),
+      201,
+    );
+    expectStatus(await c.publish(f, day(-2), large), 200);
+    assert.equal(
+      expectStatus(
+        await c.request('GET', `/v1/route-geometries/${large.geometryId}`, undefined, {
+          public: true,
+        }),
+        200,
+      ).points.length,
+      6000,
+    );
+    const before = await accounting(c);
+    expectStatus(
+      await c.request('POST', `/v1/ops/route-patterns/${f.pattern.id}/versions`, {
+        ...body,
+        geometry: { ...body.geometry, points: Array(10001).fill(points[0]) },
+      }),
+      400,
+    );
+    assert.deepEqual(await accounting(c), before);
+  }));
+
+test('CAT-15 identical concurrent draft retries serialize and commit one geometry, revision, event and receipt', () =>
+  withCase(async (c) => {
+    const f = await c.catalog(),
+      before = await accounting(c),
+      key = randomUUID();
+    const lock = await c.owner.connect();
+    let jobs: Promise<Response>[] = [];
+    try {
+      await lock.query('BEGIN');
+      await lock.query('SELECT 1 FROM app.route_patterns WHERE id=$1 FOR UPDATE', [f.pattern.id]);
+      jobs = [1, 2].map(() =>
+        c.request('POST', `/v1/ops/route-patterns/${f.pattern.id}/versions`, f.input, { key }),
+      );
+      await blocked(c, 2);
+      await lock.query('COMMIT');
+      const responses = await Promise.all(jobs);
+      responses.forEach((r) => expectStatus(r, 201));
+      assert.equal(responses[0]!.body, responses[1]!.body);
+      assert.deepEqual(await accounting(c), {
+        versions: before.versions + 1,
+        geometries: before.geometries + 1,
+        occurrences: before.occurrences + 2,
+        events: before.events + 1,
+        receipts: before.receipts + 1,
+      });
+    } finally {
+      await lock.query('ROLLBACK');
+      lock.release();
+      await Promise.allSettled(jobs);
+    }
   }));
 
 test('CAT-02 edit tokens come from lists; missing/stale tokens and missing targets cause zero writes', () =>
@@ -812,10 +874,7 @@ test('CAT-11 nested publication replay scope includes the version, and retries p
 test('CAT-12 list cursors preserve microseconds and bind actor, resource and parent; archives cannot strand open trips', () =>
   withCase(async (c) => {
     const f = await c.catalog();
-    const r2 = expectStatus(await c.request('POST', '/v1/ops/routes', { name: 'Second' }), 201);
-    await c.owner.query('UPDATE app.routes SET updated_at=updated_at WHERE id=ANY($1::uuid[])', [
-      [f.route.id, r2.id],
-    ]);
+    expectStatus(await c.request('POST', '/v1/ops/routes', { name: 'Second' }), 201);
     // created_at is immutable: seed exact cursor ties on additional owner fixtures.
     await c.owner.query(
       "INSERT INTO app.routes(name,created_at) VALUES ('micro-a','2050-01-01 00:00:00.123456Z'),('micro-b','2050-01-01 00:00:00.123455Z')",
@@ -836,6 +895,31 @@ test('CAT-12 list cursors preserve microseconds and bind actor, resource and par
     expectStatus(await c.request('GET', `/v1/ops/stops?limit=1&cursor=${cursor}`), 400);
     for (const query of ['limit=201', 'limit=-1', 'unknown=yes'])
       expectStatus(await c.request('GET', `/v1/ops/routes?${query}`), 400);
+    expectStatus(
+      await c.request('POST', `/v1/ops/route-patterns/${f.pattern.id}/versions`, f.input),
+      201,
+    );
+    const versionPage = await c.request(
+      'GET',
+      `/v1/ops/route-patterns/${f.pattern.id}/versions?limit=1`,
+    );
+    expectStatus(versionPage, 200);
+    const versionCursor = versionPage.json().page.nextCursor;
+    assert.ok(versionCursor);
+    const otherPattern = expectStatus(
+      await c.request('POST', '/v1/ops/route-patterns', {
+        routeId: f.route.id,
+        direction: 'return',
+      }),
+      201,
+    );
+    expectStatus(
+      await c.request(
+        'GET',
+        `/v1/ops/route-patterns/${otherPattern.id}/versions?limit=1&cursor=${versionCursor}`,
+      ),
+      400,
+    );
     expectStatus(await c.publish(f), 200);
     const schedule = await c.schedule(f.version.id);
     expectStatus(

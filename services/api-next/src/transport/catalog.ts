@@ -43,8 +43,10 @@ const tables = {
 const activeVersion = (alias: string) => `${alias}.state <> 'draft'
   AND ${alias}.effective_from <= transaction_timestamp()
   AND (${alias}.effective_to IS NULL OR ${alias}.effective_to > transaction_timestamp())`;
-const currentRoute = `r.archived_at IS NULL AND EXISTS (SELECT 1 FROM app.route_patterns p
-  JOIN app.route_pattern_versions v ON v.pattern_id=p.id WHERE p.route_id=r.id AND ${activeVersion('v')})`;
+const currentRoute = (
+  alias: 'r' | 'x',
+) => `${alias}.archived_at IS NULL AND EXISTS (SELECT 1 FROM app.route_patterns p
+  JOIN app.route_pattern_versions v ON v.pattern_id=p.id WHERE p.route_id=${alias}.id AND ${activeVersion('v')})`;
 const iso = (date: Date | null) => date?.toISOString() ?? null;
 const editToken = (kind: Kind, row: QueryResultRow) => `"${kind}:${row.id}:${row.version}"`;
 const notFound = () => fail(404, 'not_found', 'Resource not found.');
@@ -527,7 +529,7 @@ export class Catalog {
     }
     if (['listRoutes', 'getRoute', 'listOpsRoutes'].includes(operation)) {
       kind = 'route';
-      where = publicRead ? currentRoute.replaceAll('r.', 'x.') : 'true';
+      where = publicRead ? currentRoute('x') : 'true';
     } else if (operation === 'listOpsStops') kind = 'stop';
     else if (operation === 'listPatterns' || operation === 'getPattern') {
       kind = 'pattern';
@@ -538,7 +540,7 @@ export class Catalog {
       kind = 'schedule';
       if (
         !(
-          await client.query(`SELECT 1 FROM app.routes r WHERE r.id=$1 AND ${currentRoute}`, [
+          await client.query(`SELECT 1 FROM app.routes r WHERE r.id=$1 AND ${currentRoute('r')}`, [
             target,
           ])
         ).rowCount
