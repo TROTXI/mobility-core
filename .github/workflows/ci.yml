@@ -46,13 +46,13 @@ jobs:
           node-version: 24
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - name: Storage integrity, real contention and attribution negative control
+      - name: Storage and HTTP commands, real contention and attribution negative control
         env:
           REPLACEMENT_EVIDENCE_DIR: ${{ github.workspace }}/.harness-artifacts/transport
         run: |
           mkdir -p .harness-artifacts/transport
           cd services/api-next
-          node --import tsx --test --test-reporter=spec --test-reporter-destination=stdout --test-reporter=junit --test-reporter-destination=../../.harness-artifacts/transport/tests.xml tests/transport.pg.test.ts
+          node --import tsx --test --test-reporter=spec --test-reporter-destination=stdout --test-reporter=junit --test-reporter-destination=../../.harness-artifacts/transport/tests.xml tests/transport.pg.test.ts tests/transport-commands.pg.test.ts
       - uses: actions/upload-artifact@v7
         if: always()
         with:
@@ -126,8 +126,9 @@ jobs:
         run: |
           node docs/design/scripts/build-invariants.mjs
           node docs/design/scripts/build-contract.mjs
+          node docs/design/scripts/build-transport-contract.mjs
           node --test docs/design/scripts/contract.test.mjs
-          git diff --exit-code -- docs/design/contracts/target.openapi.json docs/design/contracts/examples.json docs/design/contracts/endpoint-inventory.json docs/design/stage-1-invariants.md docs/design/stage-1-endpoints.md docs/design/stage-2-operation-scope.md
+          git diff --exit-code -- docs/design/contracts/target.openapi.json docs/design/contracts/examples.json docs/design/contracts/endpoint-inventory.json docs/design/stage-1-invariants.md docs/design/stage-1-endpoints.md docs/design/stage-2-operation-scope.md services/api-next/src/http/contract.json
 
   format:
     name: Format (Prettier)

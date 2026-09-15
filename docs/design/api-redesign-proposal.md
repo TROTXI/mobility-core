@@ -408,6 +408,13 @@ different schedule revision; HTTP replay keys do not replace that DB constraint.
 Changing the business date requires an explicit replacement workflow, not an
 unrestricted edit. No new endpoint is introduced by these contract refinements.
 
+Trip list rows include the resource's `editToken`, copied unchanged into
+`If-Match`; clients do not derive it from numeric `version` or a collection
+ETag. Ops trip reads/results use `OpsTrip`, adding current `scheduleId`,
+`assignedDriverId` and `vehicleId` for assignment editing. Driver responses use
+`DriverTrip` without those ops-only references. This fulfills the list-first
+integration requirement without adding the deferred detail GETs.
+
 Maintenance can remain synchronous and bounded: 200 means the requested batch
 completed, with failed/blocked counts explicit. Do not return 202 unless a durable
 job exists and the caller can inspect its status. Cron requests need limited

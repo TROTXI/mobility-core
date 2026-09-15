@@ -472,6 +472,15 @@ named(
     currentStopOccurrenceId: id.nullable(),
     stops: z.array(schemas.StopOccurrence),
     version,
+    editToken: text(128),
+  }),
+);
+named(
+  'OpsTrip',
+  schemas.DriverTrip.extend({
+    scheduleId: id,
+    assignedDriverId: id.nullable(),
+    vehicleId: id.nullable(),
   }),
 );
 named(
@@ -995,11 +1004,11 @@ for (const [path, type, input] of [
   post(`/v1/ops/${path}`, `create${type}`, input, type, { status: 201 });
   edit('patch', `/v1/ops/${path}/{id}`, `update${type}`, `${type}Edit`, type);
 }
-list('/v1/ops/trips', 'listOpsTrips', 'DriverTrip');
-post('/v1/ops/trips', 'createTrip', 'TripInput', 'DriverTrip', { status: 201 });
-edit('patch', '/v1/ops/trips/{id}', 'rescheduleTrip', 'TripEdit', 'DriverTrip');
-edit('put', '/v1/ops/trips/{id}/assignment', 'assignTrip', 'TripAssignment', 'DriverTrip');
-post('/v1/ops/trips/{id}/cancel', 'cancelTrip', 'ReasonInput', 'DriverTrip', { etag: true });
+list('/v1/ops/trips', 'listOpsTrips', 'OpsTrip');
+post('/v1/ops/trips', 'createTrip', 'TripInput', 'OpsTrip', { status: 201 });
+edit('patch', '/v1/ops/trips/{id}', 'rescheduleTrip', 'TripEdit', 'OpsTrip');
+edit('put', '/v1/ops/trips/{id}/assignment', 'assignTrip', 'TripAssignment', 'OpsTrip');
+post('/v1/ops/trips/{id}/cancel', 'cancelTrip', 'ReasonInput', 'OpsTrip', { etag: true });
 for (const [path, name, type, input] of [
   ['route-patterns', 'Pattern', 'Pattern', 'PatternInput'],
   ['service-schedules', 'Schedule', 'Schedule', 'ScheduleInput'],

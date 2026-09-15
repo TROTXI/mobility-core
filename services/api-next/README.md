@@ -1,6 +1,7 @@
-# Replacement backend — stage 3, transport storage foundation
+# Replacement backend — stage 3, transport storage and commands
 
-Not deployed. This package has **no HTTP server or production entry point** yet.
+Not deployed. This package has an **injectable HTTP app factory, not a production
+listener or deploy entry point**. Signature/session adapters must be supplied.
 The running API, its 45 migrations, apps, jobs and staging database are unchanged.
 Review into `codex/backend-replacement`, not `main`. Do not point existing API
 binaries at this schema or point this installer at the existing staging database.
@@ -32,8 +33,9 @@ binaries at this schema or point this installer at the existing staging database
 - Restrictive relationships and no trip deletion, plus append-only event storage.
   A separate runtime role has no application DDL, deletion, truncation or migration access.
 
-These are **14 application tables**, primarily transport and identity references,
-not 14 payment tables. The migration-history table is separate. No membership,
+These are **16 application tables**, primarily transport and identity references,
+including command receipts and schedule audit events, not 16 payment tables.
+The migration-history table is separate. No membership,
 purchase or ledger tables are introduced in this slice.
 
 `002_departure_identity.sql` is append-only; reviewed migration `001` is unchanged.
@@ -56,12 +58,57 @@ for same-identity revision changes.
 
 The target contract requires schedule creation to explicitly choose a **new**
 departure or an **existing** `departureId`. Creating a new identity and its first
-schedule must be atomic in the later command layer. A new revision of an existing
+schedule is atomic in this command layer. A new revision of an existing
 departure reuses that ID; a genuinely additional departure gets a new one.
 Trip creation supplies `scheduleId`, business `serviceDate`, `scheduledAt`, and
 optional `runNumber` (default/only value 1); the command derives `departureId`
 from the schedule. Trip reads expose all three identity fields. Reschedule PATCH
 accepts only `scheduledAt`, never those fields. No new endpoint is introduced.
+
+## Command and HTTP slice
+
+`createTransportApp()` implements 11 existing cutover operations from a generated
+subset of the reviewed OpenAPI. The source is still
+`docs/design/contracts/target-contract.mjs`; `build-transport-contract.mjs` emits
+the runtime subset, and CI regenerates/diffs both artifacts. No deferred detail
+GET is quietly implemented. New contract refinements are `DriverTrip.editToken`
+(copy directly into If-Match) and an `OpsTrip` shape containing schedule/driver/
+vehicle references that driver responses do not expose.
+
+- Ops: create/list schedules; create/list trips; assignment, reschedule, cancel.
+- Driver: list own trips; start, complete, report/correct an occurrence arrival.
+- Booking-affecting ops commands **return 503** without an explicitly installed
+  transactional reservation coordinator. Tests prove its effects roll back with
+  trip/event writes, using a test marker table, **not a real reservation adapter**.
+- Token verification and current-session validation are required injected ports.
+  No unsigned user-ID/role header fallback exists. Tests use opaque verified test
+  credentials and a test-session table; this is authorization evidence, **not**
+  production authentication, refresh, PIN or session revocation delivery.
+- Current user/driver/session checks precede completed replay; caller/operation/
+  target-scoped advisory locks serialize retries across processes. The input hash
+  uses normalized JSON. State, audit event and response receipt commit together.
+  A failed transaction leaves no occupied retry key. A replay's old If-Match is
+  allowed only after authorization and matching input; new stale edits get 412.
+- Receipt replay expires after seven days and expired keys return 409, never
+  re-execute. Restricted physical cleanup/tombstone maintenance is **not yet
+  implemented**; logical expiry is not a claim of seven-day physical deletion.
+  No secret-bearing credential, boarding-code or payment response uses this store.
+- Trip edits cannot change business identity or bypass the existing revision
+  reassignment guard. Start/complete duplicates are harmless without a second
+  state change; backward arrival needs explicit correction and a current token.
+- Cursor pagination scopes in SQL before LIMIT, binds caller/filters/order and
+  preserves PostgreSQL microseconds. Driver rows carry the exact edit token;
+  collection-level ETags are not used as row edit tokens.
+- Explicit build floors reject missing/wrong metadata and unsupported clients
+  before mutation. Metadata does not grant authority. A bounded process-local
+  request budget is included; distributed admission and ingress hardening still
+  belong to deployment wiring. Database pools must set a connection timeout.
+
+Migration `004` adds completed receipts, their actor-linked event references and
+schedule creation events. Earlier migration bytes remain unchanged. Audit/receipt
+history is append-only and the runtime login lacks UPDATE on these tables as
+well as DDL/DELETE/TRUNCATE rights. Only fixed operation/column choices are used
+in dynamic SQL, and request values are parameterized.
 
 ## Run locally
 
@@ -97,7 +144,8 @@ blanket default privileges that silently grant access to future sensitive tables
 
 ## Evidence and limits
 
-The Postgres job runs **29 tests**: migration repeat/drift/rollback/contention,
+The Postgres job runs **45 tests**: 29 storage tests and 16 real HTTP/command tests.
+The storage checks cover migration repeat/drift/rollback/contention,
 identity uniqueness, publication integrity, ownership, history retention,
 direction, timestamps, runtime permissions and a persisted attribution negative
 control, duplicate departure generation under actual contention, midnight delays,
@@ -106,7 +154,7 @@ checks cover direct repointing to incompatible and compatible revisions, plus
 the catalog weekday convention and Sunday/Monday behavior. Tests run
 against the entire migration chain, not a reduced fixture schema (except the
 explicit `001` upgrade-refusal test, which verifies failure without mutation).
-Three pure/preflight tests run in the workspace job. Source and migration hashes,
+Six pure/preflight tests run in the workspace job. Source and migration hashes,
 verified blocking PIDs, cleanup targets and JUnit results are retained as CI
 artifacts. A revision label alone is not represented as a byte-level source pin;
 the metadata records actual source hashes and checks they stay unchanged in-run.
@@ -117,15 +165,16 @@ database and writes a real cross-version progress link. Detection must be an
 assertion at `trip.currentStopVersion`, with the actual wrong/right version IDs;
 a SQL/import/connection error does not count.
 
-This is category B/C **storage-integrity evidence**, not a claim that transport
+This is category B/C **storage and command evidence**, not a claim that transport
 has already replaced the old service or that payment comparison mode has passed.
 The stage-2 baseline and its expectations remain unchanged.
 
 ## Still required within stage 3
 
-1. Transactional transport commands, current-user authorization, operation replay,
-   If-Match, atomic event creation, projections and `/v1` route registration.
-   Direct SQL fixtures here are not an API or authorization implementation.
+1. Production signature/session adapters, bootstrap/deploy wiring, distributed
+   admission and physical receipt expiry; real booking coordination for ops
+   edits. Catalog setup/publication commands remain another transport slice.
+   The 11-operation app factory is not a ready-to-deploy replacement service.
 2. Attributable future-version reassignment coordinated with commute assignments
    and reservations. Until that command exists, version changes on an existing
    trip fail closed; do not disable the guard to publish over affected trips.
