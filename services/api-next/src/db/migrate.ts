@@ -173,6 +173,10 @@ export async function grantRuntime(pool: Pool, role: string): Promise<void> {
       'commute_selections',
       'commute_selection_legs',
       'reservation_prompts',
+      'boarding_commands',
+      'reservation_charges',
+      'boarding_events',
+      'boarding_qr_uses',
     ];
     const tables = await client.query<{ name: string; append_only: boolean; deletable: boolean }>(
       `SELECT c.relname AS name, EXISTS (

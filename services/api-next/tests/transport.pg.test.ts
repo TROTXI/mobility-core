@@ -273,7 +273,8 @@ test('MIG-01 clean install records hashes, rerun is no-op, historical drift fail
     // One durable ask-intent table makes notification delivery separately auditable.
     // 014 adds the trace and its live projection, learned speeds with the
     // samples and per-trip marker behind them, trace holds and gps receipts.
-    assert.equal(tables.rows[0].n, 63);
+    // 015 adds boarding receipts, charges, attendance, QR uses and code budgets.
+    assert.equal(tables.rows[0].n, 68);
     assert.deepEqual(
       (
         await pool.query(

@@ -15,6 +15,8 @@ import type { DriverService, DriverOperation } from '../auth/driver-service.js';
 import type { PaymentRecovery } from '../payments/recovery.js';
 import { membershipOperations } from '../membership/service.js';
 import type { MembershipService, MembershipOperation } from '../membership/service.js';
+import { boardingOperations } from '../boarding/service.js';
+import type { BoardingService } from '../boarding/service.js';
 const paymentOperations = [
   'receivePaystackWebhook',
   'listPaymentReviews',
@@ -53,6 +55,7 @@ export interface AppOptions extends Dependencies {
   // fulfilment coordinators have been explicitly supplied. No silent no-ops.
   payments?: PaymentRecovery;
   membership?: MembershipService;
+  boarding?: BoardingService;
   authRequestsPerMinute?: number;
 }
 export async function createTransportApp(options: AppOptions) {
@@ -146,6 +149,8 @@ export async function createTransportApp(options: AppOptions) {
       const name = operation.operationId;
       const paymentEndpoint = paymentOperations.includes(name);
       const membershipEndpoint = (membershipOperations as readonly string[]).includes(name);
+      const boardingEndpoint = (boardingOperations as readonly string[]).includes(name);
+      if (boardingEndpoint && !options.boarding) continue;
       if (membershipEndpoint && !options.membership) continue;
       if (paymentEndpoint && !options.payments) continue;
       if (name === 'receivePaystackWebhook') {
@@ -210,7 +215,12 @@ export async function createTransportApp(options: AppOptions) {
           if (
             (publicRead || authentication
               ? !['ops', 'driver', 'commuter'].includes(String(client))
-              : client !== (ops ? 'ops' : membershipEndpoint ? 'commuter' : 'driver')) ||
+              : client !==
+                (ops
+                  ? 'ops'
+                  : membershipEndpoint || name === 'issuePass'
+                    ? 'commuter'
+                    : 'driver')) ||
             (name === 'signInDriver' && client !== 'driver') ||
             typeof build !== 'string' ||
             !/^[1-9]\d{0,8}$/.test(build) ||
@@ -251,7 +261,39 @@ export async function createTransportApp(options: AppOptions) {
         handler: async (request, reply) => {
           const actor = actors.get(request)!;
           let result;
-          if (paymentEndpoint) {
+          if (boardingEndpoint) {
+            if (Object.keys(request.query as object).length)
+              fail(400, 'invalid_query', 'Unsupported query parameters.');
+            if (!input && request.body !== undefined)
+              fail(400, 'invalid_request', 'This operation has no request body.');
+            const params = request.params as { id: string; reservationId?: string };
+            if (name === 'issuePass') result = await options.boarding!.issue(actor, params.id);
+            else if (name === 'getManifest' || name === 'getTripSummary')
+              result = await options.boarding!.read(actor, name, params.id);
+            else if (name === 'runNoShows')
+              result = await options.boarding!.maintenance(
+                actor,
+                request.body as {
+                  travelDate: string;
+                  direction: string;
+                  routeId?: string;
+                  limit?: number;
+                },
+              );
+            else {
+              const key = request.headers['idempotency-key'];
+              if (typeof key !== 'string')
+                fail(400, 'invalid_request', 'Supply an Idempotency-Key.');
+              result = await options.boarding!.command(
+                actor,
+                name as 'boardRider' | 'markNoShow',
+                params.id,
+                (request.body ?? {}) as Body,
+                key,
+                params.reservationId,
+              );
+            }
+          } else if (paymentEndpoint) {
             const query = request.query as Record<string, string | undefined>;
             const allowed = new Set(
               operation.parameters.filter((p) => p.in === 'query').map((p) => p.name),

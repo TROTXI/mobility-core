@@ -4,11 +4,18 @@ Stage 2 is approved and merged as PR #294, merge `1a46ad0`. The source/lockfile
 baseline remains pinned to `43cdae0`; it is not advanced to the merge commit.
 Stage 3 is **in progress**, not complete and not ready for a staging cutover.
 
-Latest slice: [existing authentication port](stage-3-auth-port.md), based on PR
-#297's integration merge `8f74dbd`. The composed factory now has 37 reviewed
-operations (29 transport/catalog + eight auth/account/session operations).
-Provider/PIN behavior is reused; persistence and session checks are adapted to
-the replacement model. Ops credentials, erasure and deployment remain pending.
+Current implementation branch: 015 [boarding and settlement](stage-3-boarding-settlement.md),
+based on the integration merge of #309 at `a0e8a76`. Merged 013 supplies commute
+and reservations; merged 014 supplies GPS ingestion, learning and retention.
+015 adds six reviewed boarding operations: the executable contract is now 92
+operations, the contiguous schema is 001–015, and there are 68 app tables.
+Optional route groups still require their real composition dependencies; a
+generated operation count is not a deployed-service or stage-exit claim.
+
+The earlier sections below are historical slice checkpoints, not current totals.
+Stage 3 still needs purchase/pricing HTTP composition, commuter trip/live reads,
+remaining account/privacy/device/configuration operations, deployment/worker
+composition, and the full preservation harness. Stage 4 remains client integration.
 
 ## First review slice: transport storage
 
@@ -197,14 +204,14 @@ boundaries are recorded in [stage-3-commute-reservations.md](stage-3-commute-res
 It supplies real transactional membership coordinators and 16 more reviewed
 operations; it does not enable a deployment, notification worker or boarding.
 
-Continue with real identity/booking adapters and
-baseline/candidate transport observers,
-then the membership/accounting candidate and cross-domain commute/boarding.
-Payments may proceed independently once shared identities are fixed, but its
-16 preserved scenarios and four recovery cases still must pass unchanged except
-for explicitly approved representation/fixture substitutions. GPS provenance,
-retention and learning, auth/privacy, all cutover endpoint handlers and their
-authorization/replay rules remain stage-3 work.
+Identity, credentials, financial/recovery foundations, membership coordinators,
+GPS and the 015 boarding implementation now exist in the replacement package.
+Do not reimplement them from this older checklist. Remaining work is composition,
+the pending endpoint groups named above, and baseline/candidate preservation
+observers. The 16 payment scenarios and four recovery cases still must pass the
+comparison harness with only explicitly approved substitutions. Local domain
+tests alone do not satisfy that gate. Worker scheduling and physical cleanup
+remain prelaunch obligations; no worker is enabled by these PRs.
 
 Stage 4 is consumer integration; stages 5–6 are rehearsal and explicitly approved
 cutover. No staging DB was inspected, modified or declared empty by this local
