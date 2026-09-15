@@ -167,6 +167,7 @@ export async function grantRuntime(pool: Pool, role: string): Promise<void> {
       'payment_reversals',
       'payment_review_commands',
       'gps_events',
+      'trip_positions',
     ];
     const tables = await client.query<{ name: string; append_only: boolean; deletable: boolean }>(
       `SELECT c.relname AS name, EXISTS (

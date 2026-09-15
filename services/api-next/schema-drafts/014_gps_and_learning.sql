@@ -36,6 +36,9 @@ CREATE TABLE app.trip_positions (
   accuracy_meters double precision CHECK (accuracy_meters IS NULL OR
     (accuracy_meters >= 0 AND accuracy_meters < 'Infinity'::float8)),
   location geometry(Point, 4326) NOT NULL,
+  -- Canonical digest of the immutable payload, so a replayed client_fix_id can
+  -- be told apart from a different fix wearing the same identity.
+  payload_digest text NOT NULL CHECK (payload_digest ~ '^[a-f0-9]{64}$'),
   CHECK (ST_X(location) BETWEEN -180 AND 180 AND ST_Y(location) BETWEEN -90 AND 90),
   -- The server never believes a capture from the future, so clamping only ever
   -- pulls one back.
@@ -43,7 +46,13 @@ CREATE TABLE app.trip_positions (
   CHECK (clock_adjusted = (effective_captured_at <> captured_at)),
   UNIQUE (trip_id, client_fix_id)
 );
-CREATE INDEX trip_positions_trace ON app.trip_positions (trip_id, effective_captured_at, id);
+CREATE INDEX trip_positions_trace
+  ON app.trip_positions (trip_id, effective_captured_at, received_at, id);
+-- A fix is written once and never revised. Without this the runtime role could
+-- move received_at, which is the value both the retention deadline and a hold's
+-- receipt interval are measured against: backdate, then delete on time.
+CREATE TRIGGER immutable_trace BEFORE UPDATE ON app.trip_positions
+  FOR EACH ROW EXECUTE FUNCTION app.append_only();
 -- Retention sweeps by server receipt, so this is the index the purge walks.
 CREATE INDEX trip_positions_retention ON app.trip_positions (received_at, id);
 COMMENT ON COLUMN app.trip_positions.captured_at IS
@@ -69,9 +78,19 @@ BEGIN
   IF TG_OP = 'UPDATE' AND NEW.effective_captured_at <= OLD.effective_captured_at THEN
     RAISE EXCEPTION 'live_position_must_advance' USING ERRCODE = '23514';
   END IF;
+  -- The projection carries no facts of its own. Every value it shows is the
+  -- fix's, so it cannot be used to restate a receipt the trace table refuses
+  -- to change.
+  IF NOT EXISTS (SELECT 1 FROM app.trip_positions p
+    WHERE p.id = NEW.position_id AND p.trip_id = NEW.trip_id
+      AND p.effective_captured_at = NEW.effective_captured_at
+      AND p.received_at = NEW.received_at
+      AND ST_OrderingEquals(p.location, NEW.location)) THEN
+    RAISE EXCEPTION 'live_position_must_match_fix' USING ERRCODE = '23514';
+  END IF;
   RETURN NEW;
 END $$;
-CREATE TRIGGER live_position_advances BEFORE UPDATE ON app.trip_live_positions
+CREATE TRIGGER live_position_advances BEFORE INSERT OR UPDATE ON app.trip_live_positions
   FOR EACH ROW EXECUTE FUNCTION app.guard_live_position();
 COMMENT ON TABLE app.trip_live_positions IS
   'Durable latest-fix projection. Redis mirrors this and is rebuildable from it; the database is the source of truth.';

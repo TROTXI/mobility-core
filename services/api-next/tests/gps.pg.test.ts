@@ -131,7 +131,12 @@ async function setup() {
     }) as Promise<Response>;
 
   /** A published pattern version with a scheduled run assigned to one driver. */
-  const trip = async (label: 'driver' | 'other', status = 'active', sameRunAs?: string) => {
+  const trip = async (
+    label: 'driver' | 'other',
+    status = 'active',
+    sameRunAs?: string,
+    startedHoursAgo = 2,
+  ) => {
     // Launch allows one run per departure per service date, so a second trip on
     // the same published version is the same departure on an earlier day.
     if (sameRunAs) {
@@ -161,7 +166,7 @@ async function setup() {
           ],
         )
       ).rows[0].id;
-      return drive(reused, status);
+      return drive(reused, status, startedHoursAgo);
     }
     const route = (
       await owner.query("INSERT INTO app.routes(name) VALUES ('GPS corridor') RETURNING id")
@@ -239,14 +244,15 @@ async function setup() {
         [schedule, version, departure, today, drivers[label]],
       )
     ).rows[0].id;
-    return drive(id, status);
+    return drive(id, status, startedHoursAgo);
   };
   /** Drive a scheduled trip into the state the case needs. */
-  const drive = async (id: string, status: string) => {
+  const drive = async (id: string, status: string, startedHoursAgo = 2) => {
     if (status === 'active')
       await owner.query(
-        "UPDATE app.trips SET status='active',started_at=clock_timestamp() WHERE id=$1",
-        [id],
+        `UPDATE app.trips SET status='active',
+          started_at=clock_timestamp()-make_interval(hours => $2) WHERE id=$1`,
+        [id, startedHoursAgo],
       );
     if (status === 'completed') {
       // The schema refuses scheduled -> completed, so the fixture runs the
@@ -268,19 +274,29 @@ async function setup() {
     tripId: string,
     metres: number,
     at: Date,
-    extra: { accuracy?: number; receivedAt?: Date } = {},
+    extra: { accuracy?: number; receivedAt?: Date; adjusted?: boolean } = {},
   ) =>
     (
       await owner.query(
         `INSERT INTO app.trip_positions
-          (trip_id,client_fix_id,captured_at,effective_captured_at,received_at,accuracy_meters,location)
-        SELECT $1,gen_random_uuid(),$2,$2,$3,$4,
-          ST_LineInterpolatePoint(g.line,LEAST(1,$5::float8/ST_Length(g.line::geography)))
+          (trip_id,client_fix_id,captured_at,effective_captured_at,received_at,accuracy_meters,clock_adjusted,location,payload_digest)
+        SELECT $1,gen_random_uuid(),
+          CASE WHEN $6 THEN $2::timestamptz+interval '60 seconds' ELSE $2::timestamptz END,
+          $2::timestamptz,$3,$4,$6,
+          ST_LineInterpolatePoint(g.line,LEAST(1,$5::float8/ST_Length(g.line::geography))),
+          encode(sha256(gen_random_uuid()::text::bytea),'hex')
         FROM app.trips t
         JOIN app.route_pattern_versions v ON v.id=t.pattern_version_id
         JOIN app.route_geometries g ON g.id=v.geometry_id
         WHERE t.id=$1 RETURNING id`,
-        [tripId, at, extra.receivedAt ?? at, extra.accuracy ?? null, metres],
+        [
+          tripId,
+          at,
+          extra.receivedAt ?? at,
+          extra.accuracy ?? null,
+          metres,
+          extra.adjusted ?? false,
+        ],
       )
     ).rows[0].id;
   const fix = (extra: Record<string, unknown> = {}) => ({
@@ -389,18 +405,14 @@ test('GPS-01 only the assigned driver of an active run may report a position', (
 test('GPS-02 a device clock is preserved but never believed past the accepted skew', () =>
   withCase(async (c) => {
     const trip = await c.trip('driver');
+    // Past the accepted skew the clock is broken, not skewed: nothing it
+    // reports can be placed in time, so the fix is refused rather than guessed.
     const future = new Date(Date.now() + 10 * 60_000).toISOString();
-    const ahead = expectStatus(
+    expectStatus(
       await c.request('POST', `/v1/driver/trips/${trip}/positions`, c.fix({ capturedAt: future }), {
         who: 'driver',
       }),
-      200,
-    );
-    assert.equal(ahead.clockAdjusted, true);
-    assert.equal(ahead.capturedAt, future, 'the device word is preserved exactly');
-    assert.ok(
-      new Date(ahead.effectiveCapturedAt) < new Date(future),
-      'the believed time is pulled back, never pushed forward',
+      409,
     );
     // A small lead is clamped too. Believed, it would freeze the marker until
     // the server clock caught up, and every correctly timed fix in between
@@ -874,4 +886,154 @@ test('GPS-11 concurrent learners take turns rather than overwrite the aggregate'
       blocker.release();
       await Promise.allSettled([sweep]);
     }
+  }));
+
+test('GPS-12 the runtime cannot rewrite the receipt the deletion guard reads', () =>
+  withCase(async (c) => {
+    const trip = await c.trip('driver', 'completed');
+    const fresh = new Date();
+    await c.place(trip, 0, fresh, { receivedAt: fresh });
+    const survives = async (why: string) =>
+      assert.equal(
+        (await c.owner.query('SELECT 1 FROM app.trip_positions WHERE trip_id=$1', [trip])).rowCount,
+        1,
+        why,
+      );
+
+    await assert.rejects(
+      c.runtime.query('DELETE FROM app.trip_positions WHERE trip_id=$1', [trip]),
+      /trace_not_expired/,
+    );
+    // Backdating the receipt would expire the fix on demand, and would also
+    // move it out of any hold interval naming it.
+    await assert.rejects(
+      c.runtime.query(
+        `UPDATE app.trip_positions SET received_at=clock_timestamp()-interval '40 days'
+        WHERE trip_id=$1`,
+        [trip],
+      ),
+      (e: { code?: string }) => e.code === '42501' || /append_only_history/.test(String(e)),
+    );
+    await survives('a receipt the runtime cannot move is a receipt it cannot delete on');
+    // Nor through the projection, which carries no facts of its own.
+    await c.owner.query(
+      `INSERT INTO app.trip_live_positions(trip_id,position_id,effective_captured_at,received_at,location)
+      SELECT trip_id,id,effective_captured_at,received_at,location FROM app.trip_positions WHERE trip_id=$1`,
+      [trip],
+    );
+    await assert.rejects(
+      c.runtime.query(
+        `UPDATE app.trip_live_positions SET received_at=clock_timestamp()-interval '40 days'
+        WHERE trip_id=$1`,
+        [trip],
+      ),
+      /live_position_must_advance/,
+    );
+    // And the version of that write which would satisfy the advance rule still
+    // cannot restate a receipt the trace table refuses to change.
+    await assert.rejects(
+      c.runtime.query(
+        `UPDATE app.trip_live_positions
+        SET received_at=clock_timestamp()-interval '40 days',
+            effective_captured_at=effective_captured_at+interval '1 second'
+        WHERE trip_id=$1`,
+        [trip],
+      ),
+      /live_position_must_match_fix/,
+    );
+    await assert.rejects(
+      c.runtime.query('DELETE FROM app.trip_live_positions WHERE trip_id=$1', [trip]),
+      /trace_not_expired/,
+    );
+    await survives('the fix is still here');
+  }));
+
+test('GPS-13 a crossing joins observations the bus made back to back', () =>
+  withCase(async (c) => {
+    const trip = await c.trip('driver', 'completed');
+    const start = new Date(Date.now() - 3600_000);
+    const at = (seconds: number) => new Date(start.getTime() + seconds * 1000);
+    // Runs on past the boundary, backtracks, then genuinely crosses. The real
+    // crossing is between (500m, 200s) and (1100m, 210s): 208.33s, so 4.8 m/s.
+    // Pairing the nearest fix on each side by distance would join (900m, 90s)
+    // with (1100m, 210s) and invent 6.67 m/s.
+    for (const [metres, seconds] of [
+      [0, 0],
+      [900, 90],
+      [500, 200],
+      [1100, 210],
+    ] as const)
+      await c.place(trip, metres, at(seconds));
+    expectStatus(await c.request('POST', '/v1/ops/maintenance/route-learning', { limit: 50 }), 200);
+    const learned = (await c.owner.query('SELECT metres_per_second FROM app.segment_speeds'))
+      .rows[0];
+    assert.ok(learned, 'the traversal is real and should teach something');
+    assert.ok(
+      Math.abs(learned.metres_per_second - 4.8) < 0.05,
+      `expected 4.8 m/s, got ${learned.metres_per_second}`,
+    );
+  }));
+
+test('GPS-14 a clamped capture times the upload, not the bus, so it teaches nothing', () =>
+  withCase(async (c) => {
+    const trip = await c.trip('driver', 'completed');
+    const start = new Date(Date.now() - 3600_000);
+    for (const [metres, seconds] of [
+      [0, 0],
+      [500, 100],
+      [1200, 240],
+    ] as const)
+      await c.place(trip, metres, new Date(start.getTime() + seconds * 1000), { adjusted: true });
+    assert.partialDeepStrictEqual(
+      expectStatus(
+        await c.request('POST', '/v1/ops/maintenance/route-learning', { limit: 50 }),
+        200,
+      ),
+      { considered: 1, succeeded: 0, blocked: 1, failed: 0 },
+    );
+    assert.equal((await c.owner.query('SELECT 1 FROM app.segment_samples')).rowCount, 0);
+  }));
+
+test('GPS-15 one fix identity means one fix', () =>
+  withCase(async (c) => {
+    const trip = await c.trip('driver');
+    const send = (body: Record<string, unknown>) =>
+      c.request('POST', `/v1/driver/trips/${trip}/positions`, body, { who: 'driver' });
+    const first = c.fix();
+    const original = expectStatus(await send(first), 200);
+    // The same reading uploaded again is the original receipt, not a new fix.
+    const replay = expectStatus(await send(first), 200);
+    assert.equal(replay.clientFixId, original.clientFixId);
+    assert.equal(replay.receivedAt, original.receivedAt);
+    // A different reading wearing that identity is refused, not silently
+    // answered with the old one.
+    expectStatus(await send({ ...first, latitude: 6.7 }), 409);
+    expectStatus(await send({ ...first, accuracyMeters: 12 }), 409);
+    const rows = await c.owner.query(
+      'SELECT ST_Y(location) AS lat FROM app.trip_positions WHERE trip_id=$1',
+      [trip],
+    );
+    assert.equal(rows.rowCount, 1);
+    assert.equal(rows.rows[0].lat, 5.6, 'the stored fix is untouched');
+  }));
+
+test('GPS-16 collection is bounded to the run it belongs to', () =>
+  withCase(async (c) => {
+    const trip = await c.trip('driver');
+    const send = (body: Record<string, unknown>) =>
+      c.request('POST', `/v1/driver/trips/${trip}/positions`, body, { who: 'driver' });
+    expectStatus(await send(c.fix()), 200);
+    // A capture from before the wheels turned belongs to some other interval.
+    expectStatus(
+      await send(c.fix({ capturedAt: new Date(Date.now() - 3 * 3600_000).toISOString() })),
+      409,
+    );
+    // A run left active for over a day is forgotten, not driving.
+    const forgotten = await c.trip('driver', 'active', undefined, 25);
+    expectStatus(
+      await c.request('POST', `/v1/driver/trips/${forgotten}/positions`, c.fix(), {
+        who: 'driver',
+      }),
+      409,
+    );
   }));

@@ -1,7 +1,9 @@
 import type { PoolClient, QueryResultRow } from 'pg';
 import type { Actor, Body, Outcome } from './service.js';
 import { cursorCodec } from './cursor.js';
+import { canonical } from './service.js';
 import { fail } from './errors.js';
+import { createHash } from 'node:crypto';
 
 export const gpsCommands = [
   'recordPosition',
@@ -17,18 +19,25 @@ export type GpsRead = (typeof gpsReads)[number];
 export const driverGpsOperations = ['recordPosition'] as const;
 
 /**
- * A capture ahead of the server is clamped to the server's clock rather than
- * refused: a driver with a wrong phone clock still needs their bus to appear
- * on the rider's map, and refusing the fix would take the bus off it. It is
- * never believed as reported, however small the lead, because a believed
- * future time freezes the marker until the clock catches up to it.
+ * A capture further ahead of the server than this is refused outright: that is
+ * a broken clock, not skew, and nothing it reports can be placed in time. A
+ * smaller lead is kept as the device's word and clamped to the server's clock
+ * for every purpose that orders or ages a fix, because a believed future time
+ * freezes the marker until the clock catches up to it.
  */
+export const MAX_FUTURE_SKEW_MS = 120_000;
 /**
  * How far behind the server a capture may be and still be stored at all. A
  * queue older than this is history, not a live fix, and replaying it must not
  * quietly become today's trace.
  */
 export const MAX_UPLOAD_AGE_MS = 24 * 60 * 60 * 1000;
+/**
+ * How long one run may keep collecting. A trip left active for longer is
+ * forgotten, not driving, and must not go on minting fixes that the retention
+ * clock then has to carry for a further thirty days.
+ */
+export const MAX_COLLECTION_SESSION_MS = 24 * 60 * 60 * 1000;
 /**
  * A fix reported as worse than this cannot be placed on a road, so learning
  * ignores it. The live marker still shows it: a rough position of the bus
@@ -113,6 +122,7 @@ const retentionDeadline = async (client: PoolClient) =>
     )
   ).rows[0].at as Date;
 
+const digest = (value: string) => createHash('sha256').update(value).digest('hex');
 const notFound = () => fail(404, 'not_found', 'Resource not found.');
 const editToken = (row: QueryResultRow) => `"hold:${row.id}:${row.version}"`;
 const iso = (value: Date) => value.toISOString();
@@ -132,10 +142,14 @@ export function gpsId(value: unknown): string {
  * The device's own value is always preserved; this only chooses what orders
  * fixes and decides freshness.
  */
-export function effectiveCapture(capturedAt: Date, now: Date) {
+export function effectiveCapture(
+  capturedAt: Date,
+  now: Date,
+): { at: Date; adjusted: boolean } | 'ahead' | 'stale' {
   const ahead = capturedAt.getTime() - now.getTime();
+  if (ahead > MAX_FUTURE_SKEW_MS) return 'ahead';
   if (ahead > 0) return { at: now, adjusted: true };
-  if (-ahead > MAX_UPLOAD_AGE_MS) return null;
+  if (-ahead > MAX_UPLOAD_AGE_MS) return 'stale';
   return { at: capturedAt, adjusted: false };
 }
 
@@ -207,7 +221,7 @@ export class Gps {
   ): Promise<Outcome> {
     const trip = (
       await client.query(
-        'SELECT id,status FROM app.trips WHERE id=$1 AND assigned_driver_id=$2 FOR SHARE',
+        'SELECT id,status,started_at FROM app.trips WHERE id=$1 AND assigned_driver_id=$2 FOR SHARE',
         [tripId, driverId],
       )
     ).rows[0];
@@ -215,19 +229,44 @@ export class Gps {
     if (trip.status !== 'active')
       fail(409, 'trip_not_active', 'Positions are only accepted while the run is active.');
     const now = (await client.query('SELECT clock_timestamp() AS now')).rows[0].now as Date;
+    // A run left active is forgotten, not driving. Collecting past this would
+    // hand the retention clock another thirty days of fixes to carry.
+    if (now.getTime() - (trip.started_at as Date).getTime() > MAX_COLLECTION_SESSION_MS)
+      fail(
+        409,
+        'collection_session_expired',
+        'This run has been collecting for over a day and needs an operator to close it.',
+      );
     const capturedAt = new Date(String(body.capturedAt));
     if (!Number.isFinite(capturedAt.getTime()))
       fail(400, 'invalid_capture_time', 'Supply a real capture time.');
+    // A capture from before the wheels turned belongs to some other interval.
+    if (capturedAt < (trip.started_at as Date))
+      fail(409, 'capture_before_start', 'This fix predates the start of the run.');
     const effective = effectiveCapture(capturedAt, now);
-    if (!effective)
+    if (effective === 'ahead')
+      fail(409, 'capture_ahead', 'This capture time is too far ahead of the server clock.');
+    if (effective === 'stale')
       fail(409, 'capture_too_old', 'This fix is older than the accepted upload window.');
-    // An offline replay of the same fix is the same row, not a second one.
-    const stored = (
+    // The identity a client replays with is the fix, so the same identity has
+    // to mean the same fix. An offline replay returns the original receipt; a
+    // different reading wearing that identity is refused rather than lost.
+    const payload = digest(
+      canonical([
+        capturedAt.toISOString(),
+        Number(body.latitude),
+        Number(body.longitude),
+        body.accuracyMeters === undefined || body.accuracyMeters === null
+          ? null
+          : Number(body.accuracyMeters),
+      ]),
+    );
+    const inserted = (
       await client.query(
         `INSERT INTO app.trip_positions
-          (trip_id,client_fix_id,captured_at,effective_captured_at,clock_adjusted,accuracy_meters,location)
-        VALUES ($1,$2,$3,$4,$5,$6,ST_SetSRID(ST_MakePoint($7,$8),4326))
-        ON CONFLICT (trip_id,client_fix_id) DO UPDATE SET trip_id=EXCLUDED.trip_id
+          (trip_id,client_fix_id,captured_at,effective_captured_at,clock_adjusted,accuracy_meters,location,payload_digest)
+        VALUES ($1,$2,$3,$4,$5,$6,ST_SetSRID(ST_MakePoint($7,$8),4326),$9)
+        ON CONFLICT (trip_id,client_fix_id) DO NOTHING
         RETURNING *`,
         [
           tripId,
@@ -238,15 +277,30 @@ export class Gps {
           body.accuracyMeters ?? null,
           body.longitude,
           body.latitude,
+          payload,
         ],
       )
     ).rows[0];
+    const stored =
+      inserted ??
+      (
+        await client.query(
+          'SELECT * FROM app.trip_positions WHERE trip_id=$1 AND client_fix_id=$2',
+          [tripId, body.clientFixId],
+        )
+      ).rows[0];
+    if (!inserted && stored.payload_digest !== payload)
+      fail(409, 'fix_payload_conflict', 'That fix identity was already used for a different fix.');
     // Advance the marker only for a strictly newer capture. The trigger refuses
     // a backwards move, so the guard here is the WHERE, not a read-then-write.
+    // Selected straight from the stored row rather than rebuilt from values
+    // that have been through the service: the projection has to be the fix,
+    // to the microsecond, or the guard below rightly refuses it.
     const advanced = await client.query(
       `INSERT INTO app.trip_live_positions
         (trip_id,position_id,effective_captured_at,received_at,location)
-      VALUES ($1,$2,$3,$4,$5)
+      SELECT p.trip_id,p.id,p.effective_captured_at,p.received_at,p.location
+      FROM app.trip_positions p WHERE p.id=$1
       ON CONFLICT (trip_id) DO UPDATE
         SET position_id=EXCLUDED.position_id,
             effective_captured_at=EXCLUDED.effective_captured_at,
@@ -255,7 +309,7 @@ export class Gps {
             updated_at=clock_timestamp()
         WHERE app.trip_live_positions.effective_captured_at<EXCLUDED.effective_captured_at
       RETURNING trip_id`,
-      [tripId, stored.id, stored.effective_captured_at, stored.received_at, stored.location],
+      [stored.id],
     );
     return {
       status: 200,
@@ -422,10 +476,10 @@ export class Gps {
             FROM app.route_geometries g
             WHERE g.id=$2 AND g.pattern_version_id=$3 AND g.state='published'
           ), fixes AS (
-            SELECT p.effective_captured_at AS at,
+            SELECT p.effective_captured_at AS at,p.id,
                    ST_LineLocatePoint(l.line,p.location)*l.length_m AS along_m
             FROM app.trip_positions p CROSS JOIN line l
-            WHERE p.trip_id=$1
+            WHERE p.trip_id=$1 AND NOT p.clock_adjusted
               AND (p.accuracy_meters IS NULL OR p.accuracy_meters<=$4)
           ), bounds AS (
             SELECT s.ordinal AS from_ordinal,d.distance_meters AS from_m,
@@ -439,33 +493,30 @@ export class Gps {
             FROM bounds b
             CROSS JOIN LATERAL (VALUES ('enter',b.from_m),('exit',b.to_m)) AS e(mark,at_m)
             WHERE b.to_m IS NOT NULL AND b.to_m>b.from_m
-          ), bracketed AS (
-            -- The bus is only known to have passed a boundary when the trace
-            -- has a fix on each side of it. A run that joins the segment
-            -- halfway has not traversed it and teaches nothing about it.
-            SELECT e.from_ordinal,e.mark,e.at_m,
-                   lo.at AS lo_at,lo.along_m AS lo_m,hi.at AS hi_at,hi.along_m AS hi_m
-            FROM edges e
-            LEFT JOIN LATERAL (
-              SELECT f.at,f.along_m FROM fixes f WHERE f.along_m<=e.at_m
-              ORDER BY f.along_m DESC,f.at DESC LIMIT 1) lo ON true
-            LEFT JOIN LATERAL (
-              SELECT f.at,f.along_m FROM fixes f WHERE f.along_m>=e.at_m
-              ORDER BY f.along_m ASC,f.at ASC LIMIT 1) hi ON true
+          ), steps AS (
+            SELECT f.at,f.id,f.along_m,
+                   lag(f.at) OVER w AS from_at,lag(f.along_m) OVER w AS from_m
+            FROM fixes f WINDOW w AS (ORDER BY f.at,f.id)
           ), times AS (
-            -- The crossing itself is interpolated between those two fixes, so
-            -- a sparse trace does not credit the bus with ground it was
-            -- already past when the first fix landed.
-            SELECT from_ordinal,mark,
-                   CASE WHEN hi_m>lo_m
-                     THEN lo_at+(hi_at-lo_at)*((at_m-lo_m)/(hi_m-lo_m))
-                     ELSE lo_at END AS at
-            FROM bracketed WHERE lo_at IS NOT NULL AND hi_at IS NOT NULL
+            -- A boundary is crossed between two observations the bus made back
+            -- to back, and the moment is interpolated between them. Picking the
+            -- nearest fix on each side by distance instead would happily pair
+            -- readings from different passes: a trace that runs on, backtracks
+            -- and returns would be credited with a crossing it never made, and
+            -- a sparse trace with ground it was already past.
+            SELECT e.from_ordinal,e.mark,(
+              SELECT CASE WHEN s.along_m>s.from_m
+                       THEN s.from_at+(s.at-s.from_at)*((e.at_m-s.from_m)/(s.along_m-s.from_m))
+                       ELSE s.from_at END
+              FROM steps s
+              WHERE s.from_m IS NOT NULL AND s.from_m<=e.at_m AND s.along_m>=e.at_m
+              ORDER BY s.at,s.id LIMIT 1) AS at
+            FROM edges e
           ), spans AS (
             SELECT b.from_ordinal,b.to_m-b.from_m AS metres,
                    max(t.at) FILTER (WHERE t.mark='enter') AS entered,
                    max(t.at) FILTER (WHERE t.mark='exit') AS left_at
-            FROM bounds b JOIN times t ON t.from_ordinal=b.from_ordinal
+            FROM bounds b JOIN times t ON t.from_ordinal=b.from_ordinal AND t.at IS NOT NULL
             GROUP BY b.from_ordinal,b.from_m,b.to_m
           ), observed AS (
             SELECT s.from_ordinal,
