@@ -18922,6 +18922,11 @@
           "archived": {
             "type": "boolean"
           },
+          "editToken": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
           "createdAt": {
             "type": "string",
             "format": "date-time",
@@ -18946,6 +18951,7 @@
           "capacity",
           "id",
           "archived",
+          "editToken",
           "createdAt",
           "updatedAt",
           "version"
