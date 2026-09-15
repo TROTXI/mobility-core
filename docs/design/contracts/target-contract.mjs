@@ -199,7 +199,9 @@ named(
   'Schedule',
   obj({
     id,
+    departureId: id,
     patternVersionId: id,
+    serviceWindow: z.enum(['morning', 'evening']),
     localDeparture: time,
     timeZone: z.literal('Africa/Accra'),
     weekdays: z.array(z.int().min(1).max(7)),
@@ -211,7 +213,12 @@ named(
 named(
   'ScheduleInput',
   obj({
+    departure: z.discriminatedUnion('kind', [
+      obj({ kind: z.literal('new') }),
+      obj({ kind: z.literal('existing'), departureId: id }),
+    ]),
     patternVersionId: id,
+    serviceWindow: z.enum(['morning', 'evening']),
     localDeparture: time,
     timeZone: z.literal('Africa/Accra'),
     weekdays: z.array(z.int().min(1).max(7)).min(1).max(7),
@@ -446,6 +453,9 @@ named(
   'Trip',
   obj({
     id,
+    departureId: id,
+    serviceDate: date,
+    runNumber: z.literal(1),
     routeId: id,
     patternVersionId: id,
     direction,
@@ -464,7 +474,17 @@ named(
     version,
   }),
 );
-named('TripInput', obj({ scheduleId: id, scheduledAt: instant }));
+named(
+  'TripInput',
+  obj({
+    scheduleId: id,
+    serviceDate: date,
+    // Optional on the wire as well as at runtime; emitted OpenAPI must not
+    // require a property whose omission is deliberately defaulted by Zod.
+    runNumber: z.literal(1).default(1).optional(),
+    scheduledAt: instant,
+  }),
+);
 named('TripEdit', obj({ scheduledAt: instant }));
 named('TripAssignment', obj({ driverId: id.nullable(), vehicleId: id.nullable() }));
 named('ReasonInput', obj({ reason: note }));

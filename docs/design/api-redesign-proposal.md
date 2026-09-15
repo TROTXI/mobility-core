@@ -390,6 +390,24 @@ is not permission for unrestricted CRUD. Published versions,
 payments and ledgers require specific domain operations. No new refund-initiation,
 dispute-provider submission or automated collection endpoint is implied.
 
+Schedule creation explicitly distinguishes `{ departure: { kind: 'new' } }`
+from `{ departure: { kind: 'existing', departureId } }`. A new pattern/schedule
+revision for the same recurring departure must reuse the stable ID; a genuinely
+additional departure creates a new identity and its schedule atomically. Reads
+include `departureId`. The pattern version and departure must belong to the
+same directional pattern, enforced in storage as well as the later command.
+
+Trip creation requires `scheduleId`, stored business `serviceDate` and operational
+`scheduledAt`; `runNumber` defaults to 1 and no other value is allowed at launch.
+The server derives `departureId` from the chosen schedule, and trip reads expose
+the three identity fields. Reschedule PATCH can edit only `scheduledAt`, not
+`departureId`, `serviceDate` or `runNumber`. Midnight delays retain their original
+business date while still satisfying pattern-version eligibility. Duplicate
+departure/date/run creation is a conflict even after cancellation or through a
+different schedule revision; HTTP replay keys do not replace that DB constraint.
+Changing the business date requires an explicit replacement workflow, not an
+unrestricted edit. No new endpoint is introduced by these contract refinements.
+
 Maintenance can remain synchronous and bounded: 200 means the requested batch
 completed, with failed/blocked counts explicit. Do not return 202 unless a durable
 job exists and the caller can inspect its status. Cron requests need limited

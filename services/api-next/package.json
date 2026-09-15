@@ -1,0 +1,27 @@
+{
+  "name": "@trotxi/api-next",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Isolated clean replacement; not connected to staging or the deployed API.",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "build": "tsc -p tsconfig.build.json",
+    "test": "node --import tsx --test tests/migrate.test.ts",
+    "test:coverage": "node --import tsx --test --experimental-test-coverage tests/migrate.test.ts",
+    "test:postgres": "node --import tsx --test tests/transport.pg.test.ts",
+    "migrate": "tsx src/db/cli.ts"
+  },
+  "dependencies": {
+    "pg": "^8.23.0"
+  },
+  "devDependencies": {
+    "@types/node": "^26.5.0",
+    "@types/pg": "^8.23.1",
+    "tsx": "^4.23.13",
+    "typescript": "^6.0.3"
+  }
+}
