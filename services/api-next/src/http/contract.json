@@ -2226,6 +2226,373 @@
         "x-implementation-status": "design_only"
       }
     },
+    "/v1/trips": {
+      "get": {
+        "operationId": "listTrips",
+        "summary": "list Trips",
+        "tags": ["signed_in_catalog"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            },
+            "description": "Opaque cursor bound to caller, sort and filters."
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 200,
+              "default": 50
+            },
+            "description": "Page size. No silent truncation."
+          },
+          {
+            "name": "fromDate",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            },
+            "description": "Africa/Accra day; paired with toDate. Default last/current 7 days; maximum 31 days."
+          },
+          {
+            "name": "toDate",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            },
+            "description": "Inclusive; paired with fromDate."
+          },
+          {
+            "name": "routeId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            },
+            "description": "Filter within caller scope; never expands authorization."
+          },
+          {
+            "name": "X-Trotxi-Client",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": ["commuter", "driver", "ops", "worker"]
+            },
+            "description": "Compatibility metadata only, never grants a role."
+          },
+          {
+            "name": "X-Trotxi-Build",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable."
+          },
+          {
+            "name": "X-Trotxi-Platform",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": ["ios", "android"]
+            },
+            "description": "Required for commuter/driver, absent for ops/worker."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TripPage"
+                }
+              }
+            },
+            "headers": {
+              "ETag": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "Opaque resource version; required on protected edits."
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "426": {
+            "$ref": "#/components/responses/Error426"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error429"
+          },
+          "500": {
+            "$ref": "#/components/responses/Error500"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error503"
+          }
+        },
+        "x-authorization": "signed_in_catalog",
+        "x-retry": "safe_read",
+        "x-sensitive": false,
+        "x-list-order": "scheduledAt ASC, id ASC",
+        "x-implementation-status": "design_only"
+      }
+    },
+    "/v1/trips/{id}": {
+      "get": {
+        "operationId": "getTrip",
+        "summary": "get Trip",
+        "tags": ["signed_in_catalog"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            }
+          },
+          {
+            "name": "X-Trotxi-Client",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": ["commuter", "driver", "ops", "worker"]
+            },
+            "description": "Compatibility metadata only, never grants a role."
+          },
+          {
+            "name": "X-Trotxi-Build",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable."
+          },
+          {
+            "name": "X-Trotxi-Platform",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": ["ios", "android"]
+            },
+            "description": "Required for commuter/driver, absent for ops/worker."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TripResponse"
+                }
+              }
+            },
+            "headers": {
+              "ETag": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "Opaque resource version; required on protected edits."
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "426": {
+            "$ref": "#/components/responses/Error426"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error429"
+          },
+          "500": {
+            "$ref": "#/components/responses/Error500"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error503"
+          }
+        },
+        "x-authorization": "signed_in_catalog",
+        "x-retry": "safe_read",
+        "x-sensitive": false,
+        "x-implementation-status": "design_only"
+      }
+    },
+    "/v1/trips/{id}/live": {
+      "get": {
+        "operationId": "getLiveTrip",
+        "summary": "get Live Trip",
+        "tags": ["live_eligible"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            }
+          },
+          {
+            "name": "X-Trotxi-Client",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": ["commuter", "driver", "ops", "worker"]
+            },
+            "description": "Compatibility metadata only, never grants a role."
+          },
+          {
+            "name": "X-Trotxi-Build",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable."
+          },
+          {
+            "name": "X-Trotxi-Platform",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": ["ios", "android"]
+            },
+            "description": "Required for commuter/driver, absent for ops/worker."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LiveTripResponse"
+                },
+                "examples": {
+                  "awaiting-fix": {
+                    "value": {
+                      "data": {
+                        "tripId": "trip-demo",
+                        "patternVersionId": "pattern-version-demo",
+                        "geometryId": null,
+                        "riderPickupOccurrenceId": null,
+                        "state": "awaiting_fix",
+                        "position": null,
+                        "etas": [],
+                        "serverTime": "2026-09-14T10:00:00Z"
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            "headers": {
+              "ETag": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "Opaque resource version; required on protected edits."
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "426": {
+            "$ref": "#/components/responses/Error426"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error429"
+          },
+          "500": {
+            "$ref": "#/components/responses/Error500"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error503"
+          }
+        },
+        "x-authorization": "live_eligible",
+        "x-retry": "safe_read",
+        "x-sensitive": false,
+        "x-implementation-status": "design_only"
+      }
+    },
     "/v1/driver/trips": {
       "get": {
         "operationId": "listDriverTrips",
@@ -11575,6 +11942,95 @@
         "required": ["data"],
         "additionalProperties": false
       },
+      "LiveTrip": {
+        "type": "object",
+        "properties": {
+          "tripId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "patternVersionId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "geometryId": {
+            "nullable": true,
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "riderPickupOccurrenceId": {
+            "nullable": true,
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "state": {
+            "type": "string",
+            "enum": ["not_started", "awaiting_fix", "live", "stale", "ended"]
+          },
+          "position": {
+            "nullable": true,
+            "type": "object",
+            "properties": {
+              "location": {
+                "$ref": "#/components/schemas/Point"
+              },
+              "capturedAt": {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+              },
+              "receivedAt": {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+              },
+              "ageSeconds": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              }
+            },
+            "required": ["location", "capturedAt", "receivedAt", "ageSeconds"],
+            "additionalProperties": false
+          },
+          "etas": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StopEta"
+            }
+          },
+          "serverTime": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+          }
+        },
+        "required": [
+          "tripId",
+          "patternVersionId",
+          "geometryId",
+          "riderPickupOccurrenceId",
+          "state",
+          "position",
+          "etas",
+          "serverTime"
+        ],
+        "additionalProperties": false
+      },
+      "LiveTripResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/LiveTrip"
+          }
+        },
+        "required": ["data"],
+        "additionalProperties": false
+      },
       "MaintenanceInput": {
         "type": "object",
         "properties": {
@@ -13679,6 +14135,31 @@
         },
         "additionalProperties": false
       },
+      "StopEta": {
+        "type": "object",
+        "properties": {
+          "stopOccurrenceId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "durationSeconds": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "distanceMeters": {
+            "type": "number",
+            "minimum": 0
+          },
+          "basis": {
+            "type": "string",
+            "enum": ["observed", "fallback"]
+          }
+        },
+        "required": ["stopOccurrenceId", "durationSeconds", "distanceMeters", "basis"],
+        "additionalProperties": false
+      },
       "StopInput": {
         "type": "object",
         "properties": {
@@ -13956,6 +14437,72 @@
         "required": ["data"],
         "additionalProperties": false
       },
+      "Trip": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "departureId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "serviceDate": {
+            "type": "string",
+            "format": "date",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+          },
+          "runNumber": {
+            "type": "number",
+            "enum": [1]
+          },
+          "routeId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "patternVersionId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "direction": {
+            "type": "string",
+            "enum": ["outbound", "return"]
+          },
+          "scheduledAt": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["scheduled", "active", "completed", "cancelled"]
+          },
+          "vehicleLabel": {
+            "nullable": true,
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          }
+        },
+        "required": [
+          "id",
+          "departureId",
+          "serviceDate",
+          "runNumber",
+          "routeId",
+          "patternVersionId",
+          "direction",
+          "scheduledAt",
+          "status",
+          "vehicleLabel"
+        ],
+        "additionalProperties": false
+      },
       "TripAssignment": {
         "type": "object",
         "properties": {
@@ -14012,6 +14559,42 @@
           }
         },
         "required": ["scheduleId", "serviceDate", "scheduledAt"],
+        "additionalProperties": false
+      },
+      "TripPage": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Trip"
+            }
+          },
+          "page": {
+            "type": "object",
+            "properties": {
+              "nextCursor": {
+                "nullable": true,
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 128
+              }
+            },
+            "required": ["nextCursor"],
+            "additionalProperties": false
+          }
+        },
+        "required": ["data", "page"],
+        "additionalProperties": false
+      },
+      "TripResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/Trip"
+          }
+        },
+        "required": ["data"],
         "additionalProperties": false
       },
       "Vehicle": {

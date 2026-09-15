@@ -12,6 +12,8 @@ import {
 import type { CatalogCommand, CatalogRead } from './catalog.js';
 import { Fleet, fleetCommands, fleetReads, driverFleetOperations } from './fleet.js';
 import { Gps, gpsCommands, gpsReads, driverGpsOperations } from './gps.js';
+import { Trips, tripReads } from './trips.js';
+import type { TripRead } from './trips.js';
 import type { GpsCommand, GpsRead, GpsLocked } from './gps.js';
 import type { FleetCommand, FleetRead, FleetLocked } from './fleet.js';
 
@@ -121,6 +123,7 @@ export class TransportService {
   private readonly catalog;
   private readonly fleet;
   private readonly gps;
+  private readonly trips;
   constructor(private readonly deps: Dependencies) {
     if (typeof deps.authorizeSession !== 'function')
       throw new Error('A current-session authorization adapter is required');
@@ -128,6 +131,7 @@ export class TransportService {
     this.catalog = new Catalog(deps.cursorSecret);
     this.fleet = new Fleet(deps.cursorSecret);
     this.gps = new Gps(deps.cursorSecret);
+    this.trips = new Trips(deps.cursorSecret);
   }
   private async transaction<T>(
     work: (client: PoolClient) => Promise<T>,
@@ -364,6 +368,26 @@ export class TransportService {
       );
       return result;
     });
+  }
+  /**
+   * Trip reads for a signed-in rider. Not readCatalog: those authorize the ops
+   * role, and these belong to anyone with an account. Each one decides its own
+   * entitlement from current facts rather than from the session's role.
+   */
+  async readTrips(
+    actor: Actor | null,
+    operation: TripRead,
+    params: { id?: string },
+    query: Record<string, string | undefined>,
+  ): Promise<Outcome> {
+    if (!(tripReads as readonly string[]).includes(operation))
+      fail(404, 'not_found', 'Operation not found.');
+    if (!actor) fail(401, 'unauthenticated', 'Sign in to continue.');
+    const caller = { ...actor, userId: resourceId(actor.userId) };
+    return this.transaction(async (client) => {
+      await this.deps.authorizeSession(client, caller);
+      return this.trips.read(client, operation as TripRead, caller, params, query);
+    }, true);
   }
   async readCatalog(
     actor: Actor | null,

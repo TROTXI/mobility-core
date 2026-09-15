@@ -14,6 +14,8 @@ import { driverOperations } from '../auth/driver-service.js';
 import type { DriverService, DriverOperation } from '../auth/driver-service.js';
 import type { PaymentRecovery } from '../payments/recovery.js';
 import { membershipOperations } from '../membership/service.js';
+import { tripReads } from '../transport/trips.js';
+import type { TripRead } from '../transport/trips.js';
 import type { MembershipService, MembershipOperation } from '../membership/service.js';
 const paymentOperations = [
   'receivePaystackWebhook',
@@ -179,6 +181,9 @@ export async function createTransportApp(options: AppOptions) {
       if (driverEndpoint && !options.drivers) continue;
       const publicAuth = (publicAuthOperations as readonly string[]).includes(name);
       const publicRead = (publicCatalogReads as readonly string[]).includes(name);
+      // Trip reads need a session but not a particular app: a rider watching a
+      // bus, a driver checking the board and ops all read the same catalogue.
+      const anyClient = publicRead || (tripReads as readonly string[]).includes(name);
       const anonymous = publicRead || publicAuth;
       const ops = path.startsWith('/v1/ops/');
       const response: Record<string, unknown> = {};
@@ -208,7 +213,7 @@ export async function createTransportApp(options: AppOptions) {
             build = request.headers['x-trotxi-build'],
             platform = request.headers['x-trotxi-platform'];
           if (
-            (publicRead || authentication
+            (anyClient || authentication
               ? !['ops', 'driver', 'commuter'].includes(String(client))
               : client !== (ops ? 'ops' : membershipEndpoint ? 'commuter' : 'driver')) ||
             (name === 'signInDriver' && client !== 'driver') ||
@@ -415,14 +420,21 @@ export async function createTransportApp(options: AppOptions) {
               )
             )
               fail(400, 'invalid_query', 'Unsupported query parameters.');
-            result = (catalogReads as readonly string[]).includes(name)
-              ? await service.readCatalog(
+            result = (tripReads as readonly string[]).includes(name)
+              ? await service.readTrips(
                   actor ?? null,
-                  name as CatalogRead,
-                  request.params as { id?: string; versionId?: string },
+                  name as TripRead,
+                  request.params as { id?: string },
                   query,
                 )
-              : await service.list(actor, name as Read, query);
+              : (catalogReads as readonly string[]).includes(name)
+                ? await service.readCatalog(
+                    actor ?? null,
+                    name as CatalogRead,
+                    request.params as { id?: string; versionId?: string },
+                    query,
+                  )
+                : await service.list(actor, name as Read, query);
           } else {
             if (!input && request.body !== undefined)
               fail(400, 'invalid_request', 'This command has no request body.');

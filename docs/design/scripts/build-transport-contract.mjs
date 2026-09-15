@@ -91,6 +91,9 @@ const selected = new Set([
   'getPatternVersion',
   'getGeometry',
   'listRouteSchedules',
+  'listTrips',
+  'getTrip',
+  'getLiveTrip',
 ]);
 const count = selected.size;
 const paths = {};
