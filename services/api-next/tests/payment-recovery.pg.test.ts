@@ -9,7 +9,8 @@ import { FinancialFoundation } from '../src/payments/foundation.js';
 import { TransportError } from '../src/transport/errors.js';
 import { createTransportApp } from '../src/http/app.js';
 
-const secret = 'sk_test_disposable012';
+// Generated locally; never an account credential or a provider network token.
+const secret = `sk_test_${randomBytes(16).toString('hex')}`;
 async function fixture(
   t: TestContext,
   request: typeof fetch = async () => new Response('', { status: 503 }),
