@@ -8,6 +8,8 @@ import type { Actor, Body, Command, Read, Dependencies } from '../transport/serv
 import { TransportError, fail, mapDatabaseError } from '../transport/errors.js';
 import { catalogReads, publicCatalogReads } from '../transport/catalog.js';
 import type { CatalogRead } from '../transport/catalog.js';
+import { authOperations, publicAuthOperations, DriverLockedError } from '../auth/service.js';
+import type { AuthService, AuthOperation } from '../auth/service.js';
 
 interface Operation {
   operationId: string;
@@ -29,6 +31,10 @@ export interface AppOptions extends Dependencies {
   };
   requestsPerMinute?: number;
   requestsPerIpPerMinute?: number;
+  // Optional only for isolated transport tests. createReplacementApp wires the
+  // real service and both access/session adapters as one indivisible dependency.
+  auth?: AuthService;
+  authRequestsPerMinute?: number;
 }
 export async function createTransportApp(options: AppOptions) {
   if (typeof options.coordinateReservations !== 'function')
@@ -60,6 +66,8 @@ export async function createTransportApp(options: AppOptions) {
   if (!Number.isInteger(budget) || budget < 1) throw new Error('Invalid request budget');
   const ipBudget = options.requestsPerIpPerMinute ?? 600;
   if (!Number.isInteger(ipBudget) || ipBudget < 1) throw new Error('Invalid IP request budget');
+  const authBudget = options.authRequestsPerMinute ?? 10;
+  if (!Number.isInteger(authBudget) || authBudget < 1) throw new Error('Invalid auth budget');
   // Runs before token verification, in addition to the verified-user budget.
   // No trust in forwarded headers; deployment must explicitly configure its
   // ingress/proxy policy before exposing the service behind a shared proxy.
@@ -91,6 +99,8 @@ export async function createTransportApp(options: AppOptions) {
   app.addSchema({ $id: 'transport', definitions: jsonSchema(contract.components.schemas) });
   const rootRef = (schema: Record<string, unknown>) => ({ $ref: reference(String(schema.$ref)) });
   app.setErrorHandler((error, request, reply) => {
+    if (error instanceof DriverLockedError)
+      reply.header('Retry-After', String(error.retryAfterSeconds));
     const typed = error as { validation?: unknown; statusCode?: number };
     let safe: TransportError;
     if (error instanceof TransportError) safe = error;
@@ -115,7 +125,11 @@ export async function createTransportApp(options: AppOptions) {
     for (const [method, value] of Object.entries(methods)) {
       const operation = value as unknown as Operation;
       const name = operation.operationId;
+      const authentication = (authOperations as readonly string[]).includes(name);
+      if (authentication && !options.auth) continue;
+      const publicAuth = (publicAuthOperations as readonly string[]).includes(name);
       const publicRead = (publicCatalogReads as readonly string[]).includes(name);
+      const anonymous = publicRead || publicAuth;
       const ops = path.startsWith('/v1/ops/');
       const response: Record<string, unknown> = {};
       for (const [status, out] of Object.entries(operation.responses)) {
@@ -124,26 +138,28 @@ export async function createTransportApp(options: AppOptions) {
       }
       const input = operation.requestBody?.content['application/json']?.schema;
       app.route({
-        method: method.toUpperCase() as 'GET' | 'POST' | 'PUT' | 'PATCH',
+        method: method.toUpperCase() as 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE',
         url: path.replaceAll(/\{([^}]+)\}/g, ':$1'),
         ...(name === 'createPatternVersion' ? { bodyLimit: 1048576 } : {}),
+        ...(publicAuth ? { config: { rateLimit: { max: authBudget, timeWindow: 60000 } } } : {}),
         schema: { ...(input ? { body: rootRef(input) } : {}), response },
         // The plugin's onRequest IP limiter must run before verification.
         // A route-local onRequest auth hook would precede its appended hook.
         preValidation: async (request, reply) => {
           reply.header('Cache-Control', 'no-store');
           const authorization = request.headers.authorization;
-          if (!publicRead && (!authorization || !/^Bearer [^\s]{1,8192}$/.test(authorization)))
+          if (!anonymous && (!authorization || !/^Bearer [^\s]{1,8192}$/.test(authorization)))
             fail(401, 'unauthenticated', 'Sign in to continue.');
-          const actor = publicRead ? null : await options.verifyAccess(authorization!);
-          if (!publicRead && !actor) fail(401, 'unauthenticated', 'Sign in to continue.');
+          const actor = anonymous ? null : await options.verifyAccess(authorization!);
+          if (!anonymous && !actor) fail(401, 'unauthenticated', 'Sign in to continue.');
           const client = request.headers['x-trotxi-client'],
             build = request.headers['x-trotxi-build'],
             platform = request.headers['x-trotxi-platform'];
           if (
-            (publicRead
+            (publicRead || authentication
               ? !['ops', 'driver', 'commuter'].includes(String(client))
               : client !== (ops ? 'ops' : 'driver')) ||
+            (name === 'signInDriver' && client !== 'driver') ||
             typeof build !== 'string' ||
             !/^[1-9]\d{0,8}$/.test(build) ||
             (client === 'ops'
@@ -183,7 +199,32 @@ export async function createTransportApp(options: AppOptions) {
         handler: async (request, reply) => {
           const actor = actors.get(request)!;
           let result;
-          if (method === 'get') {
+          if (authentication) {
+            if (!input && request.body !== undefined)
+              fail(400, 'invalid_request', 'This operation has no request body.');
+            const query = request.query as Record<string, string | undefined>;
+            const allowed = new Set(
+              operation.parameters.filter((p) => p.in === 'query').map((p) => p.name),
+            );
+            if (
+              Object.entries(query).some(
+                ([key, value]) =>
+                  !allowed.has(key) || typeof value !== 'string' || value.length > 128,
+              )
+            )
+              fail(400, 'invalid_query', 'Unsupported query parameters.');
+            const key = request.headers['idempotency-key'];
+            if (key !== undefined && typeof key !== 'string')
+              fail(400, 'invalid_request', 'Invalid command key.');
+            result = await options.auth!.handle(
+              name as AuthOperation,
+              actor,
+              request.body,
+              query,
+              (request.params as { id?: string }).id,
+              key,
+            );
+          } else if (method === 'get') {
             const query = request.query as Record<string, string | undefined>;
             const allowed = new Set(
               operation.parameters.filter((p) => p.in === 'query').map((p) => p.name),

@@ -4,6 +4,12 @@ Stage 2 is approved and merged as PR #294, merge `1a46ad0`. The source/lockfile
 baseline remains pinned to `43cdae0`; it is not advanced to the merge commit.
 Stage 3 is **in progress**, not complete and not ready for a staging cutover.
 
+Latest slice: [existing authentication port](stage-3-auth-port.md), based on PR
+#297's integration merge `8f74dbd`. The composed factory now has 37 reviewed
+operations (29 transport/catalog + eight auth/account/session operations).
+Provider/PIN behavior is reused; persistence and session checks are adapted to
+the replacement model. Ops credentials, erasure and deployment remain pending.
+
 ## First review slice: transport storage
 
 Integration branch: `codex/backend-replacement`, initially at the stage-2 merge.
