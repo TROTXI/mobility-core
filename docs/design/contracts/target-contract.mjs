@@ -414,6 +414,7 @@ named(
   'CommuteSlot',
   schemas.CommuteSlotInput.extend({
     id,
+    editToken: text(128),
     state: z.enum(['available', 'held', 'assigned', 'retired']),
     ...audit,
   }),
@@ -794,7 +795,15 @@ named('ReviewDecision', obj({ decision: z.enum(['resolved', 'waived']), reason: 
 named('RestrictionInput', obj({ reason: note, reviewAt: instant }));
 named(
   'Restriction',
-  obj({ id, userId: id, reason: note, reviewAt: instant, active: z.boolean(), ...audit }),
+  obj({
+    id,
+    userId: id,
+    reason: note,
+    reviewAt: instant,
+    active: z.boolean(),
+    editToken: text(128),
+    ...audit,
+  }),
 );
 named(
   'TraceHoldInput',
@@ -855,7 +864,12 @@ named(
 );
 named(
   'OpsCommuteRequest',
-  schemas.CommuteRequest.extend({ riderId: id, slotId: id.nullable(), decidedBy: id.nullable() }),
+  schemas.CommuteRequest.extend({
+    riderId: id,
+    slotId: id.nullable(),
+    decidedBy: id.nullable(),
+    editToken: text(128),
+  }),
 );
 // The decide operations require If-Match and the single-resource reads are
 // deferred, so the ops rows must carry their own edit token: a collection

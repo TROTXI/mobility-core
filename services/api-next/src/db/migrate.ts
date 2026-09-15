@@ -142,6 +142,12 @@ export async function grantRuntime(pool: Pool, role: string): Promise<void> {
        app.payment_collections, app.payment_reversals, app.payment_review_commands FROM ${quoted}`,
     );
     await client.query(`GRANT UPDATE (secret_ciphertext) ON app.driver_commands TO ${quoted}`);
+    // Historical-chain tests deliberately stop before 013.
+    const membershipTables = await client.query(
+      "SELECT tablename FROM pg_tables WHERE schemaname='app' AND tablename IN ('membership_commands','membership_events','commute_selections','commute_selection_legs','reservation_prompts')",
+    );
+    for (const row of membershipTables.rows)
+      await client.query(`REVOKE UPDATE ON app."${row.tablename}" FROM ${quoted}`);
     await client.query('COMMIT');
   } catch (error) {
     await client.query('ROLLBACK');

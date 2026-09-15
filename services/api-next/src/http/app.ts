@@ -13,6 +13,8 @@ import type { AuthService, AuthOperation } from '../auth/service.js';
 import { driverOperations } from '../auth/driver-service.js';
 import type { DriverService, DriverOperation } from '../auth/driver-service.js';
 import type { PaymentRecovery } from '../payments/recovery.js';
+import { membershipOperations } from '../membership/service.js';
+import type { MembershipService, MembershipOperation } from '../membership/service.js';
 const paymentOperations = [
   'receivePaystackWebhook',
   'listPaymentReviews',
@@ -50,6 +52,7 @@ export interface AppOptions extends Dependencies {
   // Only expose the group when evidence keys and transactional reversal /
   // fulfilment coordinators have been explicitly supplied. No silent no-ops.
   payments?: PaymentRecovery;
+  membership?: MembershipService;
   authRequestsPerMinute?: number;
 }
 export async function createTransportApp(options: AppOptions) {
@@ -142,6 +145,8 @@ export async function createTransportApp(options: AppOptions) {
       const operation = value as unknown as Operation;
       const name = operation.operationId;
       const paymentEndpoint = paymentOperations.includes(name);
+      const membershipEndpoint = (membershipOperations as readonly string[]).includes(name);
+      if (membershipEndpoint && !options.membership) continue;
       if (paymentEndpoint && !options.payments) continue;
       if (name === 'receivePaystackWebhook') {
         // Encapsulated parser preserves the exact bytes for HMAC. It must not
@@ -205,7 +210,7 @@ export async function createTransportApp(options: AppOptions) {
           if (
             (publicRead || authentication
               ? !['ops', 'driver', 'commuter'].includes(String(client))
-              : client !== (ops ? 'ops' : 'driver')) ||
+              : client !== (ops ? 'ops' : membershipEndpoint ? 'commuter' : 'driver')) ||
             (name === 'signInDriver' && client !== 'driver') ||
             typeof build !== 'string' ||
             !/^[1-9]\d{0,8}$/.test(build) ||
@@ -294,6 +299,53 @@ export async function createTransportApp(options: AppOptions) {
               );
             }
             return reply.send({ data });
+          } else if (membershipEndpoint) {
+            const query = request.query as Record<string, string | undefined>;
+            const allowed = new Set(
+              operation.parameters.filter((p) => p.in === 'query').map((p) => p.name),
+            );
+            if (
+              Object.entries(query).some(
+                ([k, v]) => !allowed.has(k) || typeof v !== 'string' || v.length > 128,
+              )
+            )
+              fail(400, 'invalid_query', 'Unsupported query parameters.');
+            const params = request.params as { id?: string; restrictionId?: string };
+            if (name === 'runAskDispatch' || name === 'runReservationDefaults')
+              result = await options.membership!.maintenance(
+                actor,
+                name,
+                request.body as {
+                  travelDate: string;
+                  direction: string;
+                  limit?: number;
+                  routeId?: string;
+                },
+              );
+            else if (method === 'get')
+              result = await options.membership!.read(
+                actor,
+                name as MembershipOperation,
+                query,
+                params.id,
+              );
+            else {
+              const key = request.headers['idempotency-key'],
+                match = request.headers['if-match'];
+              if (typeof key !== 'string' || (match !== undefined && typeof match !== 'string'))
+                fail(400, 'invalid_request', 'Invalid command headers.');
+              if (!input && request.body !== undefined)
+                fail(400, 'invalid_request', 'This operation has no request body.');
+              result = await options.membership!.command(
+                actor,
+                name as MembershipOperation,
+                params.restrictionId ?? params.id,
+                (request.body ?? {}) as Body,
+                key,
+                match,
+                params.restrictionId ? params.id : undefined,
+              );
+            }
           } else if (driverEndpoint) {
             const query = request.query as Record<string, string | undefined>;
             const allowed = new Set(

@@ -39,6 +39,26 @@ function jsonSchema(value) {
 ajv.addSchema({ $id: 'urn:trotxi:design', components: jsonSchema(spec.components) });
 const validate = (name) => ajv.compile({ $ref: `urn:trotxi:design#/components/schemas/${name}` });
 
+test('commute event history declares pagination only, without its parent status filter', async () => {
+  const runtime = JSON.parse(
+    await readFile(
+      new URL('../../../services/api-next/src/http/contract.json', import.meta.url),
+      'utf8',
+    ),
+  );
+  for (const source of [spec, runtime]) {
+    const operation = source.paths['/v1/ops/commute-requests/{id}/events'].get;
+    assert.deepEqual(
+      operation.parameters.filter((p) => p.in === 'query').map((p) => p.name),
+      ['cursor', 'limit'],
+    );
+    for (const path of ['/v1/me/commute-requests', '/v1/ops/commute-requests'])
+      assert.ok(
+        source.paths[path].get.parameters.some((p) => p.in === 'query' && p.name === 'status'),
+      );
+  }
+});
+
 test('every current operation maps to an explicitly defined replacement', () => {
   assert.equal(inventory.length, 103);
   for (const row of inventory) {
@@ -312,7 +332,7 @@ test('runtime subset implements only selected cutover operations and contains no
       assert.deepEqual(operation, spec.paths[path][method]);
       assert.notEqual(operation['x-delivery-stage'], 'deferred');
     }
-  assert.equal(count, 64);
+  assert.equal(count, 80);
   assert.equal(runtime.paths['/v1/ops/routes/{id}'].get, undefined);
   assert.equal(runtime.paths['/v1/ops/stops/{id}'].get, undefined);
   assert.equal(runtime.paths['/v1/ops/drivers/{id}'].get, undefined);

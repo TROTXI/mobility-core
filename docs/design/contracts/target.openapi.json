@@ -10894,16 +10894,6 @@
             "description": "Page size. No silent truncation."
           },
           {
-            "name": "status",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "string",
-              "maxLength": 50
-            },
-            "description": "Must match the resource state enum; unknown values return 400."
-          },
-          {
             "name": "X-Trotxi-Client",
             "in": "header",
             "required": true,
@@ -17498,6 +17488,11 @@
             "minLength": 1,
             "maxLength": 128
           },
+          "editToken": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
           "state": {
             "type": "string",
             "enum": ["available", "held", "assigned", "retired"]
@@ -17523,6 +17518,7 @@
           "legs",
           "availableFrom",
           "id",
+          "editToken",
           "state",
           "createdAt",
           "updatedAt",
@@ -19390,6 +19386,11 @@
           "active": {
             "type": "boolean"
           },
+          "editToken": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
           "createdAt": {
             "type": "string",
             "format": "date-time",
@@ -19412,6 +19413,7 @@
           "reason",
           "reviewAt",
           "active",
+          "editToken",
           "createdAt",
           "updatedAt",
           "version"
@@ -19808,6 +19810,11 @@
             "type": "string",
             "minLength": 1,
             "maxLength": 128
+          },
+          "editToken": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
           }
         },
         "required": [
@@ -19822,7 +19829,8 @@
           "version",
           "riderId",
           "slotId",
-          "decidedBy"
+          "decidedBy",
+          "editToken"
         ],
         "additionalProperties": false
       },
