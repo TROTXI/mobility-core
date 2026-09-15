@@ -5,6 +5,13 @@ const source = JSON.parse(
   await readFile(new URL('../contracts/target.openapi.json', import.meta.url), 'utf8'),
 );
 const selected = new Set([
+  'receivePaystackWebhook',
+  'listPaymentReviews',
+  'resolvePaymentReview',
+  'runPayments',
+  'runPaymentInbox',
+  'runPaymentReconciliation',
+  'runPeriodClose',
   'listOpsDrivers',
   'createDriver',
   'updateDriver',

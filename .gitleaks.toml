@@ -12,6 +12,10 @@ regexes = [
   '''dev-only-insecure-secret-change-me-[0-9a-f]+''',
   '''test-secret-at-least-32-characters-long-[0-9]+''',
   '''a-totally-different-secret-32-chars-min''',
+  # Historical synthetic fixture in 1eabdb0, payment-recovery.pg.test.ts:12.
+  # Not a Paystack/Stripe account credential. Current tests generate it in memory.
+  # Exact value only: do not exempt payment files or real sk_test_* credentials.
+  '''^sk_test_disposable012$''',
 ]
 # Firebase CLIENT config (google-services.json / firebase_options.dart /
 # GoogleService-Info.plist). The "API key" in these is a PUBLIC project

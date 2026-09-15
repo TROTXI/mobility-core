@@ -1,4 +1,4 @@
-# Replacement backend — stage 3, transport, catalog and authentication
+# Replacement backend — stage 3
 
 Not deployed. This package has an **injectable HTTP app factory, not a production
 listener or deploy entry point**. `createReplacementApp` now composes the real
@@ -6,6 +6,12 @@ signature/session implementation; provider configuration must be supplied.
 The running API, its 45 migrations, apps, jobs and staging database are unchanged.
 Review into `codex/backend-replacement`, not `main`. Do not point existing API
 binaries at this schema or point this installer at the existing staging database.
+
+Current chain: **001–012**, **45 application tables**. The executable contract
+contains **54 operations**, with payment routes exposed only when a configured
+`PaymentRecovery` is supplied. See [payment recovery](../../docs/design/stage-3-payment-recovery.md)
+for the seven new routes, evidence boundaries and remaining 013/015 dependencies.
+This does not enable checkout, workers or provider traffic on staging.
 
 ## Implemented here
 
@@ -34,10 +40,9 @@ binaries at this schema or point this installer at the existing staging database
 - Restrictive relationships and no trip deletion, plus append-only event storage.
   A separate runtime role has no application DDL, deletion, truncation or migration access.
 
-These are **24 application tables**, transport and identity/session/driver-command storage,
-including command receipts, schedule and catalog audit events, not payment tables.
-The migration-history table is separate. No membership,
-purchase or ledger tables are introduced in this slice.
+The initial transport/auth/driver slices comprised **24 application tables**.
+010 added three fleet-operation sources, 011 ten financial sources and 012 eight
+payment-recovery sources. The migration-history table is separate.
 
 `002_departure_identity.sql` is append-only; reviewed migration `001` is unchanged.
 It supports a fresh database or an empty transport installation of `001`. It
@@ -68,8 +73,8 @@ accepts only `scheduledAt`, never those fields. No new endpoint is introduced.
 
 ## Command and HTTP slice
 
-`await createTransportApp()` implements 29 existing cutover operations from a generated
-subset of the reviewed OpenAPI. The source is still
+The original transport/catalog command layer implemented 29 cutover operations;
+later auth/driver/fleet/payment groups bring the executable subset to 54. The source is still
 `docs/design/contracts/target-contract.mjs`; `build-transport-contract.mjs` emits
 the runtime subset, and CI regenerates/diffs both artifacts. No deferred detail
 GET is quietly implemented. New contract refinements are `DriverTrip.editToken`

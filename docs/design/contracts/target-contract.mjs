@@ -782,6 +782,7 @@ named(
   obj({
     id,
     kind: z.enum(['refund', 'dispute', 'manual_review']),
+    editToken: text(128),
     purchaseId: id,
     status: text(50),
     amount: money,

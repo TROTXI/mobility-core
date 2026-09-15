@@ -266,7 +266,9 @@ test('MIG-01 clean install records hashes, rerun is no-op, historical drift fail
     // Seventeen transport/catalog + five auth + two driver command/audit tables,
     // plus driver_incidents, driver_requests and fleet_events from 010,
     // and ten financial foundation tables from 011 (asserted by name below).
-    assert.equal(tables.rows[0].n, 37);
+    // 012 adds evidence, collections, refunds, disputes, access blocks,
+    // reversals, reviews and review command receipts.
+    assert.equal(tables.rows[0].n, 45);
     assert.deepEqual(
       (
         await pool.query(

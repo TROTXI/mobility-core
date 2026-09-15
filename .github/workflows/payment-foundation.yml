@@ -50,7 +50,7 @@ jobs:
           REPLACEMENT_EVIDENCE_DIR: ${{ github.workspace }}/.harness-artifacts/financial-foundation
         run: |
           mkdir -p ../../.harness-artifacts/financial-foundation
-          node --import tsx --test --test-reporter=spec --test-reporter-destination=stdout --test-reporter=junit --test-reporter-destination=../../.harness-artifacts/financial-foundation/tests.xml tests/payment-foundation.pg.test.ts tests/payment-terms.test.ts
+          node --import tsx --test --test-reporter=spec --test-reporter-destination=stdout --test-reporter=junit --test-reporter-destination=../../.harness-artifacts/financial-foundation/tests.xml tests/payment-foundation.pg.test.ts tests/payment-recovery.pg.test.ts tests/payment-terms.test.ts tests/payment-provider.test.ts
       - uses: actions/upload-artifact@v7
         if: always()
         with:
