@@ -12,6 +12,16 @@ import { authOperations, publicAuthOperations, DriverLockedError } from '../auth
 import type { AuthService, AuthOperation } from '../auth/service.js';
 import { driverOperations } from '../auth/driver-service.js';
 import type { DriverService, DriverOperation } from '../auth/driver-service.js';
+import type { PaymentRecovery } from '../payments/recovery.js';
+const paymentOperations = [
+  'receivePaystackWebhook',
+  'listPaymentReviews',
+  'resolvePaymentReview',
+  'runPayments',
+  'runPaymentInbox',
+  'runPaymentReconciliation',
+  'runPeriodClose',
+];
 
 interface Operation {
   operationId: string;
@@ -37,6 +47,9 @@ export interface AppOptions extends Dependencies {
   // real service and both access/session adapters as one indivisible dependency.
   auth?: AuthService;
   drivers?: DriverService;
+  // Only expose the group when evidence keys and transactional reversal /
+  // fulfilment coordinators have been explicitly supplied. No silent no-ops.
+  payments?: PaymentRecovery;
   authRequestsPerMinute?: number;
 }
 export async function createTransportApp(options: AppOptions) {
@@ -128,6 +141,33 @@ export async function createTransportApp(options: AppOptions) {
     for (const [method, value] of Object.entries(methods)) {
       const operation = value as unknown as Operation;
       const name = operation.operationId;
+      const paymentEndpoint = paymentOperations.includes(name);
+      if (paymentEndpoint && !options.payments) continue;
+      if (name === 'receivePaystackWebhook') {
+        // Encapsulated parser preserves the exact bytes for HMAC. It must not
+        // replace normal JSON validation on any rider or ops route.
+        await app.register(async (hook) => {
+          hook.removeContentTypeParser('application/json');
+          hook.addContentTypeParser('application/json', { parseAs: 'buffer' }, (_req, body, done) =>
+            done(null, body),
+          );
+          hook.post(
+            path,
+            {
+              bodyLimit: 1048576,
+              schema: { response: { 200: { $ref: 'transport#/definitions/WebhookAck' } } },
+            },
+            async (request, reply) => {
+              reply.header('Cache-Control', 'no-store');
+              return options.payments!.acceptWebhook(
+                request.body as Buffer,
+                request.headers['x-paystack-signature'],
+              );
+            },
+          );
+        });
+        continue;
+      }
       const authentication = (authOperations as readonly string[]).includes(name);
       const driverEndpoint = (driverOperations as readonly string[]).includes(name);
       if (authentication && !options.auth) continue;
@@ -206,7 +246,55 @@ export async function createTransportApp(options: AppOptions) {
         handler: async (request, reply) => {
           const actor = actors.get(request)!;
           let result;
-          if (driverEndpoint) {
+          if (paymentEndpoint) {
+            const query = request.query as Record<string, string | undefined>;
+            const allowed = new Set(
+              operation.parameters.filter((p) => p.in === 'query').map((p) => p.name),
+            );
+            if (
+              Object.entries(query).some(
+                ([k, v]) => !allowed.has(k) || typeof v !== 'string' || v.length > 128,
+              )
+            )
+              fail(400, 'invalid_query', 'Unsupported query parameters.');
+            let data;
+            if (name === 'listPaymentReviews') {
+              const page = await options.payments!.reviews(
+                actor,
+                query.limit === undefined ? 50 : Number(query.limit),
+                query.cursor,
+              );
+              return reply.send({ data: page.items, page: { nextCursor: page.nextCursor } });
+            } else if (name === 'resolvePaymentReview') {
+              const key = request.headers['idempotency-key'],
+                match = request.headers['if-match'];
+              if (typeof key !== 'string' || (match !== undefined && typeof match !== 'string'))
+                fail(400, 'invalid_request', 'Invalid command headers.');
+              data = await options.payments!.decide(
+                actor,
+                (request.params as { id: string }).id,
+                request.body as { decision: 'resolved' | 'waived'; reason: string },
+                key,
+                match,
+              );
+              reply.header('ETag', data.editToken);
+            } else {
+              const kind = (
+                {
+                  runPaymentInbox: 'inbox',
+                  runPaymentReconciliation: 'reconciliation',
+                  runPeriodClose: 'periods',
+                  runPayments: 'all',
+                } as const
+              )[name as 'runPayments'];
+              data = await options.payments!.maintenance(
+                actor,
+                kind,
+                (request.body as { limit?: number })?.limit ?? 100,
+              );
+            }
+            return reply.send({ data });
+          } else if (driverEndpoint) {
             const query = request.query as Record<string, string | undefined>;
             const allowed = new Set(
               operation.parameters.filter((p) => p.in === 'query').map((p) => p.name),

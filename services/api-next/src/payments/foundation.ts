@@ -289,6 +289,14 @@ export class FinancialFoundation {
   async fulfill(
     s: Settlement,
   ): Promise<'fulfilled' | 'already_fulfilled' | 'not_pending' | 'mismatch'> {
+    return this.tx((c) => this.fulfillInTransaction(c, s));
+  }
+  // Inbox processing owns the transaction: effect and acknowledgement commit
+  // together. No nested transaction, network call or independent pool query.
+  async fulfillInTransaction(
+    c: PoolClient,
+    s: Settlement,
+  ): Promise<'fulfilled' | 'already_fulfilled' | 'not_pending' | 'mismatch'> {
     if (
       s.environment !== this.options.environment ||
       s.currency !== 'GHS' ||
@@ -302,81 +310,79 @@ export class FinancialFoundation {
     } catch {
       return 'mismatch';
     }
-    return this.tx(async (c) => {
-      const peek = (
-        await c.query(
-          "SELECT user_id FROM app.payment_attempts WHERE provider='paystack' AND environment=$1 AND reference=$2",
-          [s.environment, s.reference],
-        )
-      ).rows[0];
-      if (!peek) return 'not_pending';
-      await this.lock(c, peek.user_id);
-      const a = (
-        await c.query(
-          "SELECT * FROM app.payment_attempts WHERE provider='paystack' AND environment=$1 AND reference=$2 FOR UPDATE",
-          [s.environment, s.reference],
-        )
-      ).rows[0];
-      if (a.amount_pesewas !== s.amountPesewas || a.currency !== s.currency) return 'mismatch';
-      const p = (
-        await c.query<PurchaseRow>('SELECT * FROM app.purchases WHERE id=$1 FOR UPDATE', [
-          a.purchase_id,
-        ])
-      ).rows[0]!;
-      if (a.state === 'successful')
-        return a.provider_transaction_id === s.transactionId && p.state === 'fulfilled'
-          ? 'already_fulfilled'
-          : 'mismatch';
-      if (
-        !['pending', 'unknown'].includes(a.state) ||
-        !['awaiting_payment', 'processing'].includes(p.state)
+    const peek = (
+      await c.query(
+        "SELECT user_id FROM app.payment_attempts WHERE provider='paystack' AND environment=$1 AND reference=$2",
+        [s.environment, s.reference],
       )
-        return 'not_pending';
-      if (!this.options.materializeAssignment)
-        fail(503, 'financial_dependencies_unavailable', 'Fulfilment is not configured.');
-      const now = (await c.query('SELECT clock_timestamp() AS now')).rows[0].now as Date;
+    ).rows[0];
+    if (!peek) return 'not_pending';
+    await this.lock(c, peek.user_id);
+    const a = (
       await c.query(
-        "UPDATE app.payment_attempts SET state='successful',provider_transaction_id=$2,paid_at=$3,channel=$4,fees_pesewas=$5 WHERE id=$1",
-        [a.id, s.transactionId, s.paidAt, s.channel, s.feesPesewas],
-      );
-      await c.query("UPDATE app.purchases SET state='fulfilled',updated_at=$2 WHERE id=$1", [
-        p.id,
-        now,
-      ]);
-      const end = billingEnd(p.plan, s.paidAt);
-      const period = (
-        await c.query(
-          `INSERT INTO app.billing_periods(purchase_id,membership_id,user_id,starts_at,original_ends_at,effective_ends_at)
+        "SELECT * FROM app.payment_attempts WHERE provider='paystack' AND environment=$1 AND reference=$2 FOR UPDATE",
+        [s.environment, s.reference],
+      )
+    ).rows[0];
+    if (a.amount_pesewas !== s.amountPesewas || a.currency !== s.currency) return 'mismatch';
+    const p = (
+      await c.query<PurchaseRow>('SELECT * FROM app.purchases WHERE id=$1 FOR UPDATE', [
+        a.purchase_id,
+      ])
+    ).rows[0]!;
+    if (a.state === 'successful')
+      return a.provider_transaction_id === s.transactionId && p.state === 'fulfilled'
+        ? 'already_fulfilled'
+        : 'mismatch';
+    if (
+      !['pending', 'unknown'].includes(a.state) ||
+      !['awaiting_payment', 'processing'].includes(p.state)
+    )
+      return 'not_pending';
+    if (!this.options.materializeAssignment)
+      fail(503, 'financial_dependencies_unavailable', 'Fulfilment is not configured.');
+    const now = (await c.query('SELECT clock_timestamp() AS now')).rows[0].now as Date;
+    await c.query(
+      "UPDATE app.payment_attempts SET state='successful',provider_transaction_id=$2,paid_at=$3,channel=$4,fees_pesewas=$5 WHERE id=$1",
+      [a.id, s.transactionId, s.paidAt, s.channel, s.feesPesewas],
+    );
+    await c.query("UPDATE app.purchases SET state='fulfilled',updated_at=$2 WHERE id=$1", [
+      p.id,
+      now,
+    ]);
+    const end = billingEnd(p.plan, s.paidAt);
+    const period = (
+      await c.query(
+        `INSERT INTO app.billing_periods(purchase_id,membership_id,user_id,starts_at,original_ends_at,effective_ends_at)
     VALUES ($1,$2,$3,$4,$5,$5) RETURNING id`,
-          [p.id, p.membership_id, p.user_id, s.paidAt, end],
-        )
-      ).rows[0];
-      if (p.applied_credit_pesewas > 0) {
-        await this.balances(c, p.user_id);
-        const hold = await c.query(
-          "UPDATE app.credit_holds SET state='captured',settled_at=$2 WHERE purchase_id=$1 AND state='held' RETURNING amount_pesewas",
-          [p.id, now],
-        );
-        if (hold.rowCount !== 1 || hold.rows[0].amount_pesewas !== p.applied_credit_pesewas)
-          fail(409, 'credit_hold_missing', 'Reserved credit requires reconciliation.');
-        await c.query(
-          "INSERT INTO app.credit_entries(user_id,reason,delta_pesewas,purchase_id) VALUES ($1,'purchase_applied',$2,$3)",
-          [p.user_id, -p.applied_credit_pesewas, p.id],
-        );
-      }
-      await c.query(
-        "INSERT INTO app.ride_entries(user_id,period_id,reason,delta_rides) VALUES ($1,$2,'allocation',$3)",
-        [p.user_id, period.id, p.rides_granted],
+        [p.id, p.membership_id, p.user_id, s.paidAt, end],
+      )
+    ).rows[0];
+    if (p.applied_credit_pesewas > 0) {
+      await this.balances(c, p.user_id);
+      const hold = await c.query(
+        "UPDATE app.credit_holds SET state='captured',settled_at=$2 WHERE purchase_id=$1 AND state='held' RETURNING amount_pesewas",
+        [p.id, now],
       );
-      await this.options.materializeAssignment(c, {
-        userId: p.user_id,
-        membershipId: p.membership_id,
-        purchaseId: p.id,
-        periodId: period.id,
-        now: s.paidAt,
-      });
-      return 'fulfilled';
+      if (hold.rowCount !== 1 || hold.rows[0].amount_pesewas !== p.applied_credit_pesewas)
+        fail(409, 'credit_hold_missing', 'Reserved credit requires reconciliation.');
+      await c.query(
+        "INSERT INTO app.credit_entries(user_id,reason,delta_pesewas,purchase_id) VALUES ($1,'purchase_applied',$2,$3)",
+        [p.user_id, -p.applied_credit_pesewas, p.id],
+      );
+    }
+    await c.query(
+      "INSERT INTO app.ride_entries(user_id,period_id,reason,delta_rides) VALUES ($1,$2,'allocation',$3)",
+      [p.user_id, period.id, p.rides_granted],
+    );
+    await this.options.materializeAssignment(c, {
+      userId: p.user_id,
+      membershipId: p.membership_id,
+      purchaseId: p.id,
+      periodId: period.id,
+      now: s.paidAt,
     });
+    return 'fulfilled';
   }
   private async closeOne(c: PoolClient, periodId: string, b: Boundary) {
     if (!this.options.assertPeriodCanClose)
@@ -387,6 +393,15 @@ export class FinancialFoundation {
     if (!period || period.user_id !== b.userId || period.membership_id !== b.membershipId)
       fail(409, 'invalid_period_owner', 'Invalid period.');
     if (period.state !== 'open' || period.effective_ends_at > b.now) return false;
+    if (
+      (
+        await c.query(
+          'SELECT 1 FROM app.payment_access_blocks WHERE period_id=$1 AND released_at IS NULL LIMIT 1',
+          [periodId],
+        )
+      ).rowCount
+    )
+      fail(409, 'period_payment_blocked', 'A payment dispute blocks this period.');
     await this.options.assertPeriodCanClose(c, { ...b, periodId });
     const p = (
       await c.query<PurchaseRow>('SELECT * FROM app.purchases WHERE id=$1', [period.purchase_id])
