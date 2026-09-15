@@ -136,7 +136,9 @@ export async function grantRuntime(pool: Pool, role: string): Promise<void> {
       throw new Error('Runtime role must exist and be independent of the owner/installer');
     await client.query(`GRANT USAGE ON SCHEMA app TO ${quoted}`);
     await client.query(`GRANT SELECT, INSERT, UPDATE ON ALL TABLES IN SCHEMA app TO ${quoted}`);
-    await client.query(`REVOKE UPDATE ON app.trip_events FROM ${quoted}`);
+    await client.query(
+      `REVOKE UPDATE ON app.trip_events, app.schedule_events, app.transport_commands FROM ${quoted}`,
+    );
     await client.query('COMMIT');
   } catch (error) {
     await client.query('ROLLBACK');

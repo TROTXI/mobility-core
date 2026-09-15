@@ -146,6 +146,19 @@ test('all examples pass both authoritative Zod and emitted OpenAPI schemas', () 
     assert.ok(check(sample.value), `${sample.name}: ${JSON.stringify(check.errors)}`);
   }
 });
+test('ops trip responses have assignment references; driver responses expose edit tokens but not ops-only IDs', () => {
+  assert.ok(schemas.DriverTrip.shape.editToken);
+  for (const field of ['scheduleId', 'assignedDriverId', 'vehicleId']) {
+    assert.equal(schemas.DriverTrip.shape[field], undefined);
+    assert.ok(schemas.OpsTrip.shape[field]);
+  }
+  for (const op of operations.filter((o) =>
+    ['listOpsTrips', 'createTrip', 'assignTrip', 'rescheduleTrip', 'cancelTrip'].includes(
+      o.operationId,
+    ),
+  ))
+    assert.equal(op.response, 'OpsTrip');
+});
 test('nullable named objects remain nullable in generated OpenAPI', () => {
   const sample = exampleCases.find((e) => e.name === 'never-subscribed');
   assert.ok(validate(sample.schema)(sample.value));

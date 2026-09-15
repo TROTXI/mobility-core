@@ -95,9 +95,60 @@ the database catalog and records the two-guard interaction. DEP-10 tests both
 the comment and Sunday acceptance/Monday rejection for a Sunday-only schedule.
 Reviewed migrations `001` and `002` remain unchanged.
 
-## Next slices / stage exit
+## Second review slice: transactional transport commands
 
-Continue with transactional transport commands and baseline/candidate observers,
+PR #295 merged into the non-deploying integration branch at `48cdfeb`.
+Branch `codex/stage-3-transport-commands` builds on that merge, not deploying main.
+
+Migration `004` adds transport command receipts and schedule events, with actor
+ownership on command/event references. Eleven reviewed operations have handlers
+through an injectable HTTP factory: schedule create/list, trip create/ops list,
+driver list/start/complete/arrival, and booking-coordinated ops assignment,
+reschedule/cancel. There is no listener, deployment, real auth implementation or
+default permissive booking coordinator. Application creation now refuses an
+absent or non-callable coordinator; the lower-level service retains its isolated
+fail-closed guard. HTTP tests supply explicit failing or marker-writing adapters.
+
+New tests cover actual HTTP plus a restricted Postgres login: state + event +
+receipt atomicity, exact retry replay, changed-payload conflicts, fresh-key
+duplicate transitions, stale If-Match/correction handling, real connection
+contention, audit-write rollback, driver/session isolation, caller-bound cursors,
+ISO dates, current-role checks and build-floor admission. Test session/booking
+adapters are explicitly labelled; no reservation or identity scenario group is
+claimed complete because these test ports pass. The existing 29 storage tests
+remain, plus 20 command tests and eight pure/preflight checks. UUID case folding
+matches database identity in comparisons and retry scopes; the new case test
+was first verified failing at the intended arrival assertion before the fix.
+The official Fastify rate limiter enforces a pre-authentication IP limit as well
+as the verified-user budget. CI's security gate is retained without suppression.
+
+Review migration `005` requires a receipt for non-owner trip-event inserts,
+leaving the existing owner-only fixture/history exception. The invoker-rights
+check uses table ownership, not role-name matching. Tests prove runtime rejection,
+owner fixture allowance, inability to assume the owner or disable the guard,
+and deferred receipt/actor integrity even when the event is inserted first.
+Migrations `001`–`004` are unchanged. This does not enforce an audit event on every
+direct trip UPDATE; that remains an explicit service boundary to revisit before
+another runtime writer is introduced. Missing-trip tests cover all four
+conditional mutations and foreign driver access before precondition checks.
+
+Contract corrections fulfill the stage-2 list-first requirement: driver trip
+rows expose an opaque `editToken`, equal to the returned ETag, and ops uses an
+`OpsTrip` response with schedule/driver/vehicle IDs. Driver output excludes those
+ops references. The runtime schemas are generated from the authoritative design,
+not hand-maintained copies; CI regenerates and diffs them. No new/deferred
+operation is added. These remain prelaunch contracts, not a deployed API change.
+
+Seven-day command replay expiry is enforced on access; physical receipt cleanup
+is still required before deployment. There is no financial/secret-bearing replay
+claim. State/command tests are not a baseline/candidate comparison: the immutable
+payment harness and the remaining full transport preservation observers still
+must run before stage exit.
+
+## Remaining slices / stage exit
+
+Continue with catalog/publication commands, real identity/booking adapters and
+baseline/candidate transport observers,
 then the membership/accounting candidate and cross-domain commute/boarding.
 Payments may proceed independently once shared identities are fixed, but its
 16 preserved scenarios and four recovery cases still must pass unchanged except
