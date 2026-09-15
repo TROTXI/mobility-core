@@ -10,6 +10,8 @@ Integration branch: `codex/backend-replacement`, initially at the stage-2 merge.
 First implementation branch: `codex/stage-3-transport-foundation`.
 The integration branch is not connected to the staging deployment. Its PRs
 receive CI without merging an incomplete replacement onto deploying `main`.
+The security workflow's `main`-only PR filter is removed too: integration PRs
+must run CodeQL, secret scanning and dependency audit, not only ordinary CI.
 
 Read [the replacement package](../../services/api-next/README.md), then its
 [new migration](../../services/api-next/migrations/001_transport_foundation.sql),

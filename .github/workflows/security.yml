@@ -3,8 +3,8 @@ name: Security
 on:
   push:
     branches: [main]
+  # Integration/stacked PRs need the same security gate as PRs targeting main.
   pull_request:
-    branches: [main]
   schedule:
     - cron: '0 6 * * 1' # weekly, Monday 06:00 UTC — catch newly-disclosed issues
 
