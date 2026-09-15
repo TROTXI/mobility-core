@@ -238,14 +238,26 @@ move the live marker backwards; Redis reflects that projection and remains
 rebuildable. Require a stable client fix ID and enforce uniqueness on
 `(trip_id, client_fix_id)`; the replacement model needs no nullable legacy IDs.
 
-Raw driver GPS retention is 180 days, approved by the product owner. Publish
-eligible learned geometry/speed results within that window; learning failure
-must not silently extend raw-trace retention. Stage 1 must specify the retention
-clock, purge cadence, cache/log/backup handling and restore-time cleanup. Server
-receipt time is the proposed retention clock, separate from device capture time
-used for learning and freshness; that detail still requires contract review.
-Do not assume derived data containing identifiable traces is exempt. This is a
-design requirement, not a claim that deletion is already implemented.
+Raw driver GPS retention is 30 days from server receipt, approved by the product
+owner in place of the earlier 180-day decision. The purpose is route/ETA learning
+and recent operational diagnosis; validate this starting window during the pilot,
+especially for infrequent routes. It is not a statutory minimum or a claim that
+learning convergence has been measured. Publish eligible learned geometry/speed
+results within that window; learning failure must not silently extend retention.
+
+Retain specific incident evidence beyond the default only under a documented,
+restricted hold covering the necessary records, with an accountable owner,
+reason and review date. Release the hold when no longer justified and delete
+records already past their default expiry. Do not retain every driver's history
+as a precaution. Longer-lived route geometry and speed aggregates require a
+check that they do not reveal identifiable movements; derived traces are not
+automatically exempt.
+
+Stage 1 must specify purge cadence, cache/log/backup handling and restore-time
+cleanup, plus tests for the 30-day boundary, holds and deletion after release.
+Server receipt determines retention independently of the device clock used for
+learning/freshness. This is a design requirement, not implemented deletion or
+authorization to erase records now.
 
 The commuter app renders the R2 basemap, route geometry, selected stops and bus
 position. No commuter GPS collection is introduced. The approved direction is
@@ -358,7 +370,7 @@ automated onboarding block; the gate is an explicit operational responsibility.
   directly with the replacement API. Do not treat screen ownership as confirmed
   capacity for all mobile integration, or assign unresolved work to Senanu.
   Confirm integration owners and capacity before committing a cutover date.
-- Raw driver GPS retention: 180 days, approved by Godfred. Clock-skew policy is
+- Raw driver GPS retention: 30 days from server receipt, approved by Godfred. Clock-skew policy is
   still open; align retention implementation with the privacy/data-handling work.
 - Remaining stage 1 work has a two-working-day planning timebox, not a delivery
   promise or an assumption of continuous agent execution. At that checkpoint,
@@ -373,7 +385,8 @@ Stage 1 exit checklist (keep PR #293 in draft until reviewed):
       keep/replace/retire decisions; no code generation from drifting staging.
 - [ ] Detailed target contracts and authorization matrix, including the three
       accepted policy directions below and explicit target-only tests.
-- [x] Product decision on raw driver GPS retention: 180 days.
+- [x] Product decision on raw driver GPS retention: 30 days from server receipt,
+      with narrowly scoped, documented incident holds.
 - [ ] Clock-skew policy, retention enforcement details and concrete contract
       limits for idempotency and offline manifests.
 - [ ] Named consumer owners, implementation task breakdown and capacity-based
@@ -447,8 +460,10 @@ approval. Changes to baseline behavior require labelled target-only scenarios.
    during stage 1, rather than treating any authenticated account as eligible.
 3. Operated trips retain their history. Removed stops require explicit
    reassignment before affected future journeys move to a new route version.
-4. Raw driver GPS retention is 180 days. Acceptable clock skew remains open;
-   retention enforcement details and implementation still require review/tests.
+4. Raw driver GPS retention is 30 days from server receipt, superseding 180 days.
+   Specific incident evidence may have a documented, restricted hold with a
+   review date. Acceptable capture-clock skew remains open; retention enforcement
+   details and implementation still require review/tests.
 
 Do not invent new answers for existing unresolved pricing questions: different
 fare transfers remain blocked for review, entitlement counts and commercial

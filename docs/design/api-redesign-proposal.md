@@ -456,7 +456,8 @@ declare those changes implemented. The product owner approved period-scoped
 historical disputes by default, restricted live-position access with a public
 route/stops map, and explicit reassignment for removed stops while preserving
 operated history. Detailed authorization/ops contracts still need review. Raw
-driver GPS retention is approved at 180 days; clock skew and retention enforcement
+driver GPS retention is approved at 30 days from server receipt, with narrowly
+scoped, documented incident holds. Capture-clock skew and retention enforcement
 details remain open. Retention periods for idempotency results
 and offline manifests also need concrete limits in the executable contract.
 Pricing, entitlement counts and automatic renewal policy are unchanged. Follow
