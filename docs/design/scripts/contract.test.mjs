@@ -312,7 +312,7 @@ test('runtime subset implements only selected cutover operations and contains no
       assert.deepEqual(operation, spec.paths[path][method]);
       assert.notEqual(operation['x-delivery-stage'], 'deferred');
     }
-  assert.equal(count, 54);
+  assert.equal(count, 64);
   assert.equal(runtime.paths['/v1/ops/routes/{id}'].get, undefined);
   assert.equal(runtime.paths['/v1/ops/stops/{id}'].get, undefined);
   assert.equal(runtime.paths['/v1/ops/drivers/{id}'].get, undefined);
