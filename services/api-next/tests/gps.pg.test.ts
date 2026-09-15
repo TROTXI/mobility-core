@@ -78,7 +78,13 @@ async function setup() {
   await grantRuntime(owner, role);
   db.username = role;
   db.password = 'runtime-test-only';
-  const runtime = new pg.Pool({ connectionString: db.href, max: 8, connectionTimeoutMillis: 3000 });
+  const applicationName = `gps-${run}-${n}`;
+  const runtime = new pg.Pool({
+    connectionString: db.href,
+    max: 8,
+    connectionTimeoutMillis: 3000,
+    application_name: applicationName,
+  });
   const app = await createTransportApp({
     pool: runtime,
     cursorSecret: Buffer.alloc(32, 7),
@@ -292,11 +298,24 @@ async function setup() {
         [tripId],
       )
     ).rows[0].id;
+  /** A hold recorded while the trace was still fresh, as ops would have. */
+  const holdFor = async (tripId: string, from: Date, to: Date) =>
+    (
+      await owner.query(
+        `INSERT INTO app.trace_holds
+          (incident_id,trip_id,received_from,received_to,reason,review_at,created_by)
+        VALUES ($1,$2,$3,$4,'Collision under investigation',clock_timestamp()+interval '30 days',$5)
+        RETURNING id`,
+        [await incidentFor(tripId), tripId, from, to, users.admin],
+      )
+    ).rows[0].id;
   return {
     owner,
     runtime,
+    applicationName,
     users,
     request,
+    holdFor,
     trip,
     fix,
     place,
@@ -309,6 +328,24 @@ async function setup() {
   };
 }
 type Case = Awaited<ReturnType<typeof setup>>;
+/** Wait for `count` runtime connections to be genuinely blocked on a lock. */
+async function contended(c: Case, count: number) {
+  const deadline = Date.now() + 4000;
+  for (;;) {
+    const rows = (
+      await c.owner.query(
+        `SELECT pid FROM pg_stat_activity
+        WHERE application_name=$1 AND state='active'
+          AND cardinality(pg_blocking_pids(pid))>0`,
+        [c.applicationName],
+      )
+    ).rows;
+    if (rows.length >= count) return rows;
+    if (Date.now() > deadline)
+      throw new Error(`expected ${count} blocked connections, saw ${rows.length}`);
+    await new Promise((resolve) => setTimeout(resolve, 10));
+  }
+}
 async function withCase(work: (c: Case) => Promise<void>) {
   const c = await setup();
   try {
@@ -365,16 +402,24 @@ test('GPS-02 a device clock is preserved but never believed past the accepted sk
       new Date(ahead.effectiveCapturedAt) < new Date(future),
       'the believed time is pulled back, never pushed forward',
     );
-    // A capture inside the allowance is believed as reported.
-    const near = new Date(Date.now() + 30_000).toISOString();
+    // A small lead is clamped too. Believed, it would freeze the marker until
+    // the server clock caught up, and every correctly timed fix in between
+    // would be refused for the live projection.
+    const near = new Date(Date.now() + 110_000).toISOString();
     const ok = expectStatus(
       await c.request('POST', `/v1/driver/trips/${trip}/positions`, c.fix({ capturedAt: near }), {
         who: 'driver',
       }),
       200,
     );
-    assert.equal(ok.clockAdjusted, false);
-    assert.equal(ok.effectiveCapturedAt, ok.capturedAt);
+    assert.equal(ok.clockAdjusted, true);
+    assert.equal(ok.capturedAt, near, 'the device word is still preserved exactly');
+    assert.ok(new Date(ok.effectiveCapturedAt) <= new Date(), 'never believed into the future');
+    const corrected = expectStatus(
+      await c.request('POST', `/v1/driver/trips/${trip}/positions`, c.fix(), { who: 'driver' }),
+      200,
+    );
+    assert.equal(corrected.acceptedForLive, true, 'the next honest fix still moves the marker');
     // A queue older than the upload window is history, not a live fix.
     expectStatus(
       await c.request(
@@ -555,7 +600,8 @@ test('GPS-06 learning turns finished runs into median segment speeds, once each'
     // A fix too coarse to place on a road is ignored. Believed, it would put
     // the bus a kilometre ahead in ten seconds and teach a nonsense speed.
     await c.place(brisk, 1000, new Date(start.getTime() + 10_000), { accuracy: 500 });
-    await c.place(brisk, 1000, new Date(start.getTime() + 200_000), { accuracy: 8 });
+    await c.place(brisk, 500, new Date(start.getTime() + 100_000), { accuracy: 8 });
+    await c.place(brisk, 1200, new Date(start.getTime() + 240_000), { accuracy: 8 });
 
     assert.partialDeepStrictEqual(await learn(), {
       considered: 1,
@@ -577,7 +623,8 @@ test('GPS-06 learning turns finished runs into median segment speeds, once each'
     // published speed is their median rather than the newest word.
     const slow = await c.trip('driver', 'completed', brisk);
     await c.place(slow, 0, start);
-    await c.place(slow, 1000, new Date(start.getTime() + 500_000));
+    await c.place(slow, 500, new Date(start.getTime() + 250_000));
+    await c.place(slow, 1200, new Date(start.getTime() + 600_000));
     assert.partialDeepStrictEqual(await learn(), { considered: 1, succeeded: 1 });
     const both = await speeds(brisk);
     assert.equal(both[0].sample_count, 2);
@@ -598,28 +645,20 @@ test('GPS-06 learning turns finished runs into median segment speeds, once each'
     );
   }));
 
-test('GPS-07 retention redacts past the deadline, keeps exactly what a hold names', () =>
+test('GPS-07 retention deletes expired traces and keeps exactly what a hold names', () =>
   withCase(async (c) => {
-    const purge = async () =>
-      expectStatus(
-        await c.request('POST', '/v1/ops/maintenance/gps-retention', { limit: 50 }),
-        200,
-      );
-    const trace = async (tripId: string) =>
+    const purge = async (limit = 50) =>
+      expectStatus(await c.request('POST', '/v1/ops/maintenance/gps-retention', { limit }), 200);
+    const fixes = async (tripId: string) =>
       (
         await c.owner.query(
-          `SELECT received_at,redacted_at,location IS NULL AS gone FROM app.trip_positions
-          WHERE trip_id=$1 ORDER BY received_at`,
+          'SELECT received_at FROM app.trip_positions WHERE trip_id=$1 ORDER BY received_at',
           [tripId],
         )
-      ).rows;
-    const live = async (tripId: string) =>
-      (
-        await c.owner.query(
-          'SELECT redacted_at,location IS NULL AS gone FROM app.trip_live_positions WHERE trip_id=$1',
-          [tripId],
-        )
-      ).rows[0];
+      ).rows.length;
+    const marker = async (tripId: string) =>
+      (await c.owner.query('SELECT 1 FROM app.trip_live_positions WHERE trip_id=$1', [tripId]))
+        .rowCount;
 
     // The sweep is ops work. A driver holding a valid session cannot start it.
     expectStatus(
@@ -627,47 +666,30 @@ test('GPS-07 retention redacts past the deadline, keeps exactly what a hold name
         'POST',
         '/v1/ops/maintenance/gps-retention',
         { limit: 50 },
-        {
-          who: 'driver',
-          ops: true,
-        },
+        { who: 'driver', ops: true },
       ),
       403,
     );
 
-    const old = await c.trip('driver', 'completed');
     const day = 86_400_000;
-    const stale = [40, 39, 38].map((days) => new Date(Date.now() - days * day)) as [
-      Date,
-      Date,
-      Date,
-    ];
+    const old = await c.trip('driver', 'completed');
     const ids: string[] = [];
-    for (const [index, at] of stale.entries())
+    for (const [index, days] of [40, 39, 38].entries()) {
+      const at = new Date(Date.now() - days * day);
       ids.push(await c.place(old, index * 100, at, { receivedAt: at }));
-    const newest = ids[2]!;
+    }
     await c.owner.query(
       `INSERT INTO app.trip_live_positions(trip_id,position_id,effective_captured_at,received_at,location)
       SELECT trip_id,id,effective_captured_at,received_at,location FROM app.trip_positions WHERE id=$1`,
-      [newest],
+      [ids[2]],
     );
-    // A run inside the window is not the purge's business.
+    // A run inside the window is not the sweep's business.
     const recent = await c.trip('driver', 'completed');
     await c.place(recent, 0, new Date());
 
-    // The hold names the newest fix only, by receipt window and one trip.
-    const incident = await c.incidentFor(old);
-    const held = expectStatus(
-      await c.request('POST', '/v1/ops/trace-holds', {
-        incidentId: incident,
-        tripId: old,
-        reason: 'Collision under investigation',
-        receivedFrom: new Date(stale[2].getTime() - 60_000).toISOString(),
-        receivedTo: new Date(stale[2].getTime() + 60_000).toISOString(),
-        reviewAt: new Date(Date.now() + 30 * day).toISOString(),
-      }),
-      201,
-    );
+    // Recorded while the trace was fresh: the hold names the newest fix only.
+    const newest = new Date(Date.now() - 38 * day);
+    await c.holdFor(old, new Date(newest.getTime() - 60_000), new Date(newest.getTime() + 60_000));
 
     assert.partialDeepStrictEqual(await purge(), {
       considered: 1,
@@ -676,74 +698,180 @@ test('GPS-07 retention redacts past the deadline, keeps exactly what a hold name
       failed: 0,
       failures: [],
     });
-    const after = await trace(old);
-    assert.deepEqual(
-      after.map((r) => r.gone),
-      [true, true, false],
-      'the hold keeps the fixes inside its window and no others',
-    );
-    assert.ok(after[0].redacted_at instanceof Date);
-    // The marker still points at a fix the hold retains, so it survives too.
-    assert.equal((await live(old)).gone, false);
-    assert.equal((await trace(recent))[0].gone, false, 'a trace inside the window is untouched');
+    assert.equal(await fixes(old), 1, 'the hold keeps its own fixes and no others');
+    assert.equal(await marker(old), 1, 'the marker points at a fix the hold retains');
+    assert.equal(await fixes(recent), 1, 'a trace inside the window is untouched');
 
+    const listed = expectStatus(await c.request('GET', '/v1/ops/trace-holds'), 200)[0];
     expectStatus(
       await c.request(
         'POST',
-        `/v1/ops/trace-holds/${held.id}/release`,
-        { reason: 'Closed' },
-        {
-          token: held.editToken,
-        },
+        `/v1/ops/trace-holds/${listed.id}/release`,
+        { reason: 'Investigation closed' },
+        { token: listed.editToken },
       ),
       200,
     );
     assert.partialDeepStrictEqual(await purge(), { considered: 1, succeeded: 1, blocked: 0 });
-    assert.deepEqual(
-      (await trace(old)).map((r) => r.gone),
-      [true, true, true],
-    );
-    assert.equal(
-      (await live(old)).gone,
-      true,
-      'the map cannot outlive the trace it was drawn from',
-    );
-    // Nothing is deleted: the fix, its trip and its timings remain.
-    assert.equal((await trace(old)).length, 3);
+    assert.equal(await fixes(old), 0);
+    assert.equal(await marker(old), 0, 'the marker cannot outlive the trace it was drawn from');
     assert.partialDeepStrictEqual(await purge(), { considered: 0 });
+
+    // The deadline is the schema's, not the sweep's: the runtime role cannot
+    // delete a fix that has not expired even by going straight at the table.
+    await assert.rejects(
+      c.runtime.query('DELETE FROM app.trip_positions WHERE trip_id=$1', [recent]),
+      /trace_not_expired/,
+    );
   }));
 
-test('GPS-08 a run still reporting after its trace was purged gets its marker back', () =>
+test('GPS-08 a hold and the sweep cannot both win: evidence is kept or the hold is refused', () =>
   withCase(async (c) => {
-    const stuck = await c.trip('driver');
-    const long = new Date(Date.now() - 40 * 86_400_000);
-    const first = await c.place(stuck, 0, long, { receivedAt: long });
-    await c.owner.query(
-      `INSERT INTO app.trip_live_positions(trip_id,position_id,effective_captured_at,received_at,location)
-      SELECT trip_id,id,effective_captured_at,received_at,location FROM app.trip_positions WHERE id=$1`,
-      [first],
-    );
-    assert.partialDeepStrictEqual(
-      expectStatus(
-        await c.request('POST', '/v1/ops/maintenance/gps-retention', { limit: 50 }),
-        200,
-      ),
-      { considered: 1, succeeded: 1 },
-    );
-    const redacted = await c.owner.query(
-      'SELECT redacted_at FROM app.trip_live_positions WHERE trip_id=$1',
-      [stuck],
-    );
-    assert.ok(redacted.rows[0].redacted_at instanceof Date);
+    const day = 86_400_000;
+    const trip = await c.trip('driver', 'completed');
+    const at = new Date(Date.now() - 40 * day);
+    for (const metres of [0, 100, 200]) await c.place(trip, metres, at, { receivedAt: at });
 
-    const fresh = expectStatus(
-      await c.request('POST', `/v1/driver/trips/${stuck}/positions`, c.fix(), { who: 'driver' }),
+    const blocker = await c.owner.connect();
+    let sweep: Promise<unknown> | undefined;
+    try {
+      await blocker.query('BEGIN');
+      await blocker.query('SELECT pg_advisory_xact_lock(hashtextextended($1,0))', [
+        `trotxi:gps:trace:${trip}`,
+      ]);
+      sweep = c.request('POST', '/v1/ops/maintenance/gps-retention', { limit: 50 });
+      // The sweep has chosen its batch and is waiting for the trip lock.
+      await contended(c, 1);
+      await blocker.query(
+        `INSERT INTO app.trace_holds
+          (incident_id,trip_id,received_from,received_to,reason,review_at,created_by)
+        VALUES ($1,$2,$3,$4,'Collision under investigation',clock_timestamp()+interval '30 days',$5)`,
+        [
+          await c.incidentFor(trip),
+          trip,
+          new Date(at.getTime() - 60_000),
+          new Date(at.getTime() + 60_000),
+          c.users.admin,
+        ],
+      );
+      await blocker.query('COMMIT');
+      assert.partialDeepStrictEqual(expectStatus((await sweep) as never, 200), {
+        considered: 1,
+        succeeded: 0,
+        blocked: 1,
+      });
+      assert.equal(
+        (await c.owner.query('SELECT 1 FROM app.trip_positions WHERE trip_id=$1', [trip])).rowCount,
+        3,
+        'a hold committed while the sweep was choosing its batch still keeps its evidence',
+      );
+    } finally {
+      await blocker.query('ROLLBACK').catch(() => undefined);
+      blocker.release();
+      await Promise.allSettled([sweep]);
+    }
+
+    // The other half of the protocol: a hold that reaches past the deadline
+    // cannot promise evidence the sweep was already entitled to delete.
+    const stale = expectStatus(
+      await c.request('POST', '/v1/ops/trace-holds', {
+        incidentId: await c.incidentFor(trip),
+        tripId: trip,
+        reason: 'Reported late',
+        receivedFrom: new Date(Date.now() - 45 * day).toISOString(),
+        receivedTo: new Date().toISOString(),
+        reviewAt: new Date(Date.now() + 30 * day).toISOString(),
+      }),
+      409,
+    );
+    assert.equal(stale, undefined);
+  }));
+
+test('GPS-09 a held trip cannot crowd out traces the sweep could have deleted', () =>
+  withCase(async (c) => {
+    const day = 86_400_000;
+    const at = new Date(Date.now() - 40 * day);
+    const remaining = async (tripId: string) =>
+      (await c.owner.query('SELECT 1 FROM app.trip_positions WHERE trip_id=$1', [tripId])).rowCount;
+
+    // Ordered so the held trip is the one the sweep would reach first.
+    const first = await c.trip('driver', 'completed');
+    await c.place(first, 0, at, { receivedAt: at });
+    await c.holdFor(first, new Date(at.getTime() - 60_000), new Date(at.getTime() + 60_000));
+    const second = await c.trip('driver', 'completed');
+    await c.place(second, 0, new Date(at.getTime() + 1000), {
+      receivedAt: new Date(at.getTime() + 1000),
+    });
+
+    const swept = expectStatus(
+      await c.request('POST', '/v1/ops/maintenance/gps-retention', { limit: 1 }),
       200,
     );
-    assert.equal(fresh.acceptedForLive, true);
-    const back = await c.owner.query(
-      'SELECT redacted_at,location IS NULL AS gone FROM app.trip_live_positions WHERE trip_id=$1',
-      [stuck],
+    assert.partialDeepStrictEqual(swept, { considered: 1, succeeded: 1 });
+    assert.equal(await remaining(second), 0, 'one sweep is enough to reach the unheld trace');
+    assert.equal(await remaining(first), 1, 'and the held one is still held');
+  }));
+
+test('GPS-10 a run that joined a segment halfway teaches nothing about it', () =>
+  withCase(async (c) => {
+    const partial = await c.trip('driver', 'completed');
+    const start = new Date(Date.now() - 3600_000);
+    // Only the last hundred metres of a a thousand-metre segment were seen.
+    await c.place(partial, 900, start);
+    await c.place(partial, 1200, new Date(start.getTime() + 300_000));
+    assert.partialDeepStrictEqual(
+      expectStatus(
+        await c.request('POST', '/v1/ops/maintenance/route-learning', { limit: 50 }),
+        200,
+      ),
+      { considered: 1, succeeded: 0, blocked: 1, failed: 0 },
     );
-    assert.deepEqual(back.rows[0], { redacted_at: null, gone: false });
+    assert.equal(
+      (await c.owner.query('SELECT 1 FROM app.segment_samples')).rowCount,
+      0,
+      '100 metres in 100 seconds is not a thousand-metre segment at 10 m/s',
+    );
+  }));
+
+test('GPS-11 concurrent learners take turns rather than overwrite the aggregate', () =>
+  withCase(async (c) => {
+    const trip = await c.trip('driver', 'completed');
+    const start = new Date(Date.now() - 3600_000);
+    await c.place(trip, 0, start);
+    await c.place(trip, 500, new Date(start.getTime() + 100_000));
+    await c.place(trip, 1200, new Date(start.getTime() + 240_000));
+    const version = (
+      await c.owner.query('SELECT pattern_version_id FROM app.trips WHERE id=$1', [trip])
+    ).rows[0].pattern_version_id;
+
+    const blocker = await c.owner.connect();
+    let sweep: Promise<unknown> | undefined;
+    try {
+      await blocker.query('BEGIN');
+      await blocker.query('SELECT pg_advisory_xact_lock(hashtextextended($1,0))', [
+        `trotxi:gps:speeds:${version}:morning`,
+      ]);
+      sweep = c.request('POST', '/v1/ops/maintenance/route-learning', { limit: 50 });
+      // The sweep has written its own sample and is waiting to recompute.
+      await contended(c, 1);
+      await blocker.query(
+        `INSERT INTO app.segment_samples
+          (pattern_version_id,service_window,from_ordinal,metres_per_second,observed_on)
+        VALUES ($1,'morning',0,2,current_date)`,
+        [version],
+      );
+      await blocker.query('COMMIT');
+      expectStatus((await sweep) as never, 200);
+      const published = (
+        await c.owner.query('SELECT * FROM app.segment_speeds WHERE pattern_version_id=$1', [
+          version,
+        ])
+      ).rows[0];
+      assert.equal(published.sample_count, 2, 'the median was taken after the other writer landed');
+      assert.ok(Math.abs(published.metres_per_second - 3.5) < 0.2, published.metres_per_second);
+    } finally {
+      await blocker.query('ROLLBACK').catch(() => undefined);
+      blocker.release();
+      await Promise.allSettled([sweep]);
+    }
   }));

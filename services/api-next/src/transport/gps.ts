@@ -17,24 +17,18 @@ export type GpsRead = (typeof gpsReads)[number];
 export const driverGpsOperations = ['recordPosition'] as const;
 
 /**
- * How far ahead of the server a device clock may be and still be believed.
- * Beyond this the capture is clamped rather than refused: a driver with a
- * wrong phone clock still needs their bus to appear on the rider's map, and
- * refusing the fix would take the bus off it.
+ * A capture ahead of the server is clamped to the server's clock rather than
+ * refused: a driver with a wrong phone clock still needs their bus to appear
+ * on the rider's map, and refusing the fix would take the bus off it. It is
+ * never believed as reported, however small the lead, because a believed
+ * future time freezes the marker until the clock catches up to it.
  */
-export const MAX_FUTURE_SKEW_MS = 120_000;
 /**
  * How far behind the server a capture may be and still be stored at all. A
  * queue older than this is history, not a live fix, and replaying it must not
  * quietly become today's trace.
  */
 export const MAX_UPLOAD_AGE_MS = 24 * 60 * 60 * 1000;
-/**
- * How long a raw trace is kept before the purge redacts it. This is a promise
- * to drivers, not a tuning knob: only an explicit trace hold extends it, and
- * only for the incident and receipt window that hold names.
- */
-export const RETENTION_DAYS = 30;
 /**
  * A fix reported as worse than this cannot be placed on a road, so learning
  * ignores it. The live marker still shows it: a rough position of the bus
@@ -97,6 +91,28 @@ async function perResource(
   }
 }
 
+/**
+ * Hold creation and the retention sweep contend for one lock per trip, so a
+ * hold is either created before the trace it names is deleted or refused
+ * because that trace is already gone.
+ */
+export const traceLockKey = (tripId: string) => `trotxi:gps:trace:${tripId}`;
+/**
+ * Recomputing a published speed reads every recent sample, so two sweeps
+ * touching the same route and window take turns rather than one overwriting
+ * the other's aggregate with a median taken before it committed.
+ */
+export const speedsLockKey = (patternVersionId: string, serviceWindow: string) =>
+  `trotxi:gps:speeds:${patternVersionId}:${serviceWindow}`;
+const lock = (client: PoolClient, key: string) =>
+  client.query('SELECT pg_advisory_xact_lock(hashtextextended($1,0))', [key]);
+const retentionDeadline = async (client: PoolClient) =>
+  (
+    await client.query(
+      'SELECT clock_timestamp() - make_interval(days => app.trace_retention_days()) AS at',
+    )
+  ).rows[0].at as Date;
+
 const notFound = () => fail(404, 'not_found', 'Resource not found.');
 const editToken = (row: QueryResultRow) => `"hold:${row.id}:${row.version}"`;
 const iso = (value: Date) => value.toISOString();
@@ -118,7 +134,7 @@ export function gpsId(value: unknown): string {
  */
 export function effectiveCapture(capturedAt: Date, now: Date) {
   const ahead = capturedAt.getTime() - now.getTime();
-  if (ahead > MAX_FUTURE_SKEW_MS) return { at: now, adjusted: true };
+  if (ahead > 0) return { at: now, adjusted: true };
   if (-ahead > MAX_UPLOAD_AGE_MS) return null;
   return { at: capturedAt, adjusted: false };
 }
@@ -236,10 +252,6 @@ export class Gps {
             effective_captured_at=EXCLUDED.effective_captured_at,
             received_at=EXCLUDED.received_at,
             location=EXCLUDED.location,
-            -- A run still reporting after its old trace was purged gets its
-            -- marker back: there is a fresh location again, so the projection
-            -- is no longer a redaction.
-            redacted_at=NULL,
             updated_at=clock_timestamp()
         WHERE app.trip_live_positions.effective_captured_at<EXCLUDED.effective_captured_at
       RETURNING trip_id`,
@@ -267,6 +279,9 @@ export class Gps {
     body: Body,
     commandId: string,
   ): Promise<Outcome> {
+    // Taken before anything is read, so the deadline below and the sweep's
+    // delete cannot interleave.
+    await lock(client, traceLockKey(String(body.tripId)));
     const incident = (
       await client.query('SELECT trip_id FROM app.driver_incidents WHERE id=$1 FOR SHARE', [
         body.incidentId,
@@ -282,6 +297,15 @@ export class Gps {
       review = new Date(String(body.reviewAt));
     if (![from, to, review].every((d) => Number.isFinite(d.getTime())) || to <= from)
       fail(400, 'invalid_interval', 'Supply an ordered receipt interval and review date.');
+    // A hold that reaches back past the retention deadline is promising
+    // evidence the sweep is already entitled to have deleted. Say so rather
+    // than record a hold over nothing.
+    if (from < (await retentionDeadline(client)))
+      fail(
+        409,
+        'trace_already_expired',
+        'That receipt interval reaches past the retention deadline, so the trace it names may already be gone.',
+      );
     const row = (
       await client.query(
         `INSERT INTO app.trace_holds(incident_id,trip_id,received_from,received_to,reason,review_at,created_by)
@@ -401,7 +425,7 @@ export class Gps {
             SELECT p.effective_captured_at AS at,
                    ST_LineLocatePoint(l.line,p.location)*l.length_m AS along_m
             FROM app.trip_positions p CROSS JOIN line l
-            WHERE p.trip_id=$1 AND p.location IS NOT NULL
+            WHERE p.trip_id=$1
               AND (p.accuracy_meters IS NULL OR p.accuracy_meters<=$4)
           ), bounds AS (
             SELECT s.ordinal AS from_ordinal,d.distance_meters AS from_m,
@@ -410,20 +434,48 @@ export class Gps {
             JOIN app.geometry_stop_distances d
               ON d.stop_occurrence_id=s.id AND d.geometry_id=$2
             WHERE s.pattern_version_id=$3
-          ), crossings AS (
+          ), edges AS (
+            SELECT b.from_ordinal,e.mark,e.at_m
+            FROM bounds b
+            CROSS JOIN LATERAL (VALUES ('enter',b.from_m),('exit',b.to_m)) AS e(mark,at_m)
+            WHERE b.to_m IS NOT NULL AND b.to_m>b.from_m
+          ), bracketed AS (
+            -- The bus is only known to have passed a boundary when the trace
+            -- has a fix on each side of it. A run that joins the segment
+            -- halfway has not traversed it and teaches nothing about it.
+            SELECT e.from_ordinal,e.mark,e.at_m,
+                   lo.at AS lo_at,lo.along_m AS lo_m,hi.at AS hi_at,hi.along_m AS hi_m
+            FROM edges e
+            LEFT JOIN LATERAL (
+              SELECT f.at,f.along_m FROM fixes f WHERE f.along_m<=e.at_m
+              ORDER BY f.along_m DESC,f.at DESC LIMIT 1) lo ON true
+            LEFT JOIN LATERAL (
+              SELECT f.at,f.along_m FROM fixes f WHERE f.along_m>=e.at_m
+              ORDER BY f.along_m ASC,f.at ASC LIMIT 1) hi ON true
+          ), times AS (
+            -- The crossing itself is interpolated between those two fixes, so
+            -- a sparse trace does not credit the bus with ground it was
+            -- already past when the first fix landed.
+            SELECT from_ordinal,mark,
+                   CASE WHEN hi_m>lo_m
+                     THEN lo_at+(hi_at-lo_at)*((at_m-lo_m)/(hi_m-lo_m))
+                     ELSE lo_at END AS at
+            FROM bracketed WHERE lo_at IS NOT NULL AND hi_at IS NOT NULL
+          ), spans AS (
             SELECT b.from_ordinal,b.to_m-b.from_m AS metres,
-                   (SELECT min(f.at) FROM fixes f WHERE f.along_m>=b.from_m) AS entered,
-                   (SELECT min(f.at) FROM fixes f WHERE f.along_m>=b.to_m) AS left_at
-            FROM bounds b WHERE b.to_m IS NOT NULL AND b.to_m>b.from_m
+                   max(t.at) FILTER (WHERE t.mark='enter') AS entered,
+                   max(t.at) FILTER (WHERE t.mark='exit') AS left_at
+            FROM bounds b JOIN times t ON t.from_ordinal=b.from_ordinal
+            GROUP BY b.from_ordinal,b.from_m,b.to_m
           ), observed AS (
-            SELECT c.from_ordinal,
-                   c.metres/EXTRACT(EPOCH FROM (c.left_at-c.entered)) AS mps
-            FROM crossings c
-            WHERE c.entered IS NOT NULL AND c.left_at IS NOT NULL AND c.left_at>c.entered
+            SELECT s.from_ordinal,
+                   s.metres/EXTRACT(EPOCH FROM (s.left_at-s.entered)) AS mps
+            FROM spans s
+            WHERE s.entered IS NOT NULL AND s.left_at IS NOT NULL AND s.left_at>s.entered
           )
           INSERT INTO app.segment_samples
-            (trip_id,pattern_version_id,service_window,from_ordinal,metres_per_second,observed_at)
-          SELECT $1,$3,$5,o.from_ordinal,o.mps,$6 FROM observed o
+            (pattern_version_id,service_window,from_ordinal,metres_per_second,observed_on)
+          SELECT $3,$5,o.from_ordinal,o.mps,$6::date FROM observed o
           WHERE o.mps BETWEEN $7 AND $8
           RETURNING from_ordinal`,
           [
@@ -458,7 +510,11 @@ export class Gps {
         });
         return 'succeeded';
       });
-    for (const { version, window } of recompute.values())
+    // Sorted so two sweeps touching the same pair of routes take the locks in
+    // the same order and cannot deadlock against each other.
+    for (const key of [...recompute.keys()].sort()) {
+      const { version, window } = recompute.get(key)!;
+      await lock(client, speedsLockKey(version, window));
       await client.query(
         `INSERT INTO app.segment_speeds
           (pattern_version_id,service_window,from_ordinal,metres_per_second,sample_count,geometry_id)
@@ -467,7 +523,7 @@ export class Gps {
                count(*),v.geometry_id
         FROM (
           SELECT s.*,row_number() OVER (
-            PARTITION BY s.from_ordinal ORDER BY s.observed_at DESC,s.trip_id DESC) AS recency
+            PARTITION BY s.from_ordinal ORDER BY s.observed_on DESC,s.id DESC) AS recency
           FROM app.segment_samples s
           WHERE s.pattern_version_id=$1 AND s.service_window=$2
         ) r
@@ -481,63 +537,61 @@ export class Gps {
               computed_at=clock_timestamp()`,
         [version, window, SPEED_SAMPLE_WINDOW],
       );
+    }
     return { status: 200, body: { data: result }, headers: {} };
   }
 
   /**
-   * Redact traces past the retention promise.
+   * Delete traces past the retention deadline.
    *
-   * Nothing is deleted: the fix, its trip and its timings stay, the location
-   * goes. An active trace hold keeps the fixes inside its receipt window and
-   * only those, so an incident retains its evidence without retaining the
-   * driver's whole history. A trip that ends the sweep still holding
-   * something counts as blocked, which is how the queue stays visible.
+   * The batch is chosen from fixes that can actually be deleted, and bounded
+   * by fixes rather than by trips, so a trip whose whole trace is held cannot
+   * take a slot from a trip the sweep could have finished. An active hold
+   * keeps the fixes inside the receipt window it names and only those, so an
+   * incident retains its evidence without retaining a driver's whole history.
    */
   private async purge(client: PoolClient, limit: number): Promise<Outcome> {
     const result = started();
-    const deadline = new Date(
-      ((await client.query('SELECT clock_timestamp() AS now')).rows[0].now as Date).getTime() -
-        RETENTION_DAYS * 86_400_000,
-    );
+    const deadline = await retentionDeadline(client);
+    const held = `NOT EXISTS (SELECT 1 FROM app.trace_holds h
+      WHERE h.trip_id=%s.trip_id AND h.state='active'
+        AND %s.received_at>=h.received_from AND %s.received_at<h.received_to)`;
+    const unheld = (alias: string) => held.replaceAll('%s', alias);
     const due = (
       await client.query(
-        `SELECT p.trip_id FROM app.trip_positions p
-        WHERE p.redacted_at IS NULL AND p.received_at<$1
-        GROUP BY p.trip_id ORDER BY p.trip_id LIMIT $2`,
+        `SELECT p.trip_id,array_agg(p.id) AS ids FROM (
+          SELECT q.id,q.trip_id FROM app.trip_positions q
+          WHERE q.received_at<$1 AND ${unheld('q')}
+          ORDER BY q.received_at,q.id LIMIT $2
+        ) p GROUP BY p.trip_id ORDER BY p.trip_id`,
         [deadline, limit],
       )
     ).rows;
     result.considered = due.length;
-    for (const { trip_id: tripId } of due)
+    for (const { trip_id: tripId, ids } of due)
       await perResource(client, result, tripId, async () => {
+        // Hold creation takes this same lock, so a hold committed while the
+        // sweep was choosing its batch is seen by the deletes below rather
+        // than losing the evidence it was created to keep. The predicate is
+        // repeated there because the lock orders the two, and the trigger
+        // underneath refuses the delete outright if either of us is wrong.
+        await lock(client, traceLockKey(tripId));
         await client.query(
-          `UPDATE app.trip_positions p
-          SET location=NULL,redacted_at=clock_timestamp()
-          WHERE p.trip_id=$1 AND p.redacted_at IS NULL AND p.received_at<$2
-            AND NOT EXISTS (
-              SELECT 1 FROM app.trace_holds h
-              WHERE h.trip_id=p.trip_id AND h.state='active'
-                AND p.received_at>=h.received_from AND p.received_at<h.received_to)`,
-          [tripId, deadline],
+          `DELETE FROM app.trip_live_positions lp
+          WHERE lp.trip_id=$1 AND lp.position_id=ANY($2::uuid[]) AND ${unheld('lp')}`,
+          [tripId, ids],
         );
-        // The live marker is redacted exactly when the fix behind it is, so
-        // the rider's map can never outlive the trace it was drawn from.
         await client.query(
-          `UPDATE app.trip_live_positions lp
-          SET location=NULL,redacted_at=clock_timestamp()
-          WHERE lp.trip_id=$1 AND lp.redacted_at IS NULL
-            AND EXISTS (SELECT 1 FROM app.trip_positions p
-              WHERE p.id=lp.position_id AND p.redacted_at IS NOT NULL)`,
-          [tripId],
+          `DELETE FROM app.trip_positions p WHERE p.id=ANY($1::uuid[]) AND ${unheld('p')}`,
+          [ids],
         );
-        const held = (
+        const kept = (
           await client.query(
-            `SELECT 1 FROM app.trip_positions
-            WHERE trip_id=$1 AND redacted_at IS NULL AND received_at<$2 LIMIT 1`,
+            'SELECT 1 FROM app.trip_positions WHERE trip_id=$1 AND received_at<$2 LIMIT 1',
             [tripId, deadline],
           )
         ).rowCount;
-        return held ? 'blocked' : 'succeeded';
+        return kept ? 'blocked' : 'succeeded';
       });
     return { status: 200, body: { data: result }, headers: {} };
   }

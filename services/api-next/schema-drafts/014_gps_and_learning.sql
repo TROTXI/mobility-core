@@ -7,14 +7,19 @@
 -- received_at is the server's, and retention is measured from it so a wrong
 -- device clock can neither extend nor shorten how long a trace is kept.
 --
--- Retention redacts, it never deletes. The runtime role has no DELETE, and
--- that the trace existed is itself a fact worth keeping: the row, its trip and
--- its timings stay, the location does not.
+-- A trace is deleted when it expires, not hidden. The retention promise lives
+-- here rather than in a service constant, because the guard that refuses an
+-- early delete and the sweep that performs it have to agree on one number.
 
 -- Learning carries (trip, pattern version) together, the same way schedules
--- already do, so a sample cannot be attributed to a version the trip never ran.
+-- already do, so a run cannot be attributed to a version it never ran.
 ALTER TABLE app.trips ADD CONSTRAINT trips_pattern_version_identity
   UNIQUE (id, pattern_version_id);
+
+CREATE FUNCTION app.trace_retention_days() RETURNS integer
+  LANGUAGE sql IMMUTABLE PARALLEL SAFE AS $$ SELECT 30 $$;
+COMMENT ON FUNCTION app.trace_retention_days() IS
+  'How long a raw driver trace is kept. A promise to drivers, not a tuning knob: only an active trace hold extends it, and only over the receipt interval that hold names.';
 
 CREATE TABLE app.trip_positions (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -30,26 +35,21 @@ CREATE TABLE app.trip_positions (
   -- place on a road; the live marker still shows them.
   accuracy_meters double precision CHECK (accuracy_meters IS NULL OR
     (accuracy_meters >= 0 AND accuracy_meters < 'Infinity'::float8)),
-  location geometry(Point, 4326),
-  redacted_at timestamptz CHECK (redacted_at IS NULL OR isfinite(redacted_at)),
-  CHECK (location IS NULL
-    OR (ST_X(location) BETWEEN -180 AND 180 AND ST_Y(location) BETWEEN -90 AND 90)),
-  -- Redaction is the only way a location goes missing, and it always leaves a
-  -- date behind, so an absent point can never be read as one never reported.
-  CHECK ((location IS NULL) = (redacted_at IS NOT NULL)),
-  -- Clamping only ever pulls a future capture back, never pushes one forward.
+  location geometry(Point, 4326) NOT NULL,
+  CHECK (ST_X(location) BETWEEN -180 AND 180 AND ST_Y(location) BETWEEN -90 AND 90),
+  -- The server never believes a capture from the future, so clamping only ever
+  -- pulls one back.
   CHECK (effective_captured_at <= captured_at OR NOT clock_adjusted),
   CHECK (clock_adjusted = (effective_captured_at <> captured_at)),
   UNIQUE (trip_id, client_fix_id)
 );
 CREATE INDEX trip_positions_trace ON app.trip_positions (trip_id, effective_captured_at, id);
 -- Retention sweeps by server receipt, so this is the index the purge walks.
-CREATE INDEX trip_positions_retention ON app.trip_positions (received_at, id)
-  WHERE redacted_at IS NULL;
+CREATE INDEX trip_positions_retention ON app.trip_positions (received_at, id);
 COMMENT ON COLUMN app.trip_positions.captured_at IS
   'The driver device''s own clock, preserved as reported and never used for ordering or retention.';
 COMMENT ON COLUMN app.trip_positions.effective_captured_at IS
-  'Capture time clamped to the accepted skew. Orders fixes and decides freshness.';
+  'Capture time clamped to the server clock. Orders fixes and decides freshness.';
 COMMENT ON COLUMN app.trip_positions.received_at IS
   'Server receipt. Retention is measured from this so a wrong device clock cannot extend it.';
 
@@ -60,28 +60,14 @@ CREATE TABLE app.trip_live_positions (
   position_id uuid NOT NULL REFERENCES app.trip_positions(id) ON DELETE RESTRICT,
   effective_captured_at timestamptz NOT NULL,
   received_at timestamptz NOT NULL,
-  location geometry(Point, 4326),
-  redacted_at timestamptz,
-  updated_at timestamptz NOT NULL DEFAULT clock_timestamp(),
-  CHECK ((location IS NULL) = (redacted_at IS NOT NULL))
+  location geometry(Point, 4326) NOT NULL,
+  updated_at timestamptz NOT NULL DEFAULT clock_timestamp()
 );
 
 CREATE FUNCTION app.guard_live_position() RETURNS trigger LANGUAGE plpgsql AS $$
 BEGIN
-  IF TG_OP = 'UPDATE' THEN
-    -- A redaction drops the location and nothing else, so a purge can never be
-    -- used to move the marker. Every other update must be a strictly newer
-    -- fix, so a delayed upload cannot drag it backwards.
-    IF NEW.redacted_at IS NOT NULL AND OLD.redacted_at IS NULL THEN
-      IF NEW.position_id <> OLD.position_id
-        OR NEW.effective_captured_at <> OLD.effective_captured_at THEN
-        RAISE EXCEPTION 'redaction_must_not_move_position' USING ERRCODE = '23514';
-      END IF;
-      RETURN NEW;
-    END IF;
-    IF NEW.effective_captured_at <= OLD.effective_captured_at THEN
-      RAISE EXCEPTION 'live_position_must_advance' USING ERRCODE = '23514';
-    END IF;
+  IF TG_OP = 'UPDATE' AND NEW.effective_captured_at <= OLD.effective_captured_at THEN
+    RAISE EXCEPTION 'live_position_must_advance' USING ERRCODE = '23514';
   END IF;
   RETURN NEW;
 END $$;
@@ -111,7 +97,8 @@ COMMENT ON TABLE app.segment_speeds IS
 
 -- A trip is folded into the learned speeds exactly once. The marker is written
 -- even when the run taught us nothing, so the sweep drains instead of
--- reconsidering the same barren trips on every pass.
+-- reconsidering the same barren trips on every pass. It records that a run was
+-- processed, and nothing about where the bus was or how it drove.
 CREATE TABLE app.trip_learning (
   trip_id uuid PRIMARY KEY REFERENCES app.trips(id) ON DELETE RESTRICT,
   pattern_version_id uuid NOT NULL,
@@ -127,26 +114,21 @@ CREATE TABLE app.trip_learning (
 CREATE TRIGGER trip_learning_append_only BEFORE UPDATE OR DELETE ON app.trip_learning
   FOR EACH ROW EXECUTE FUNCTION app.append_only();
 
--- One observed segment speed per trip, kept so segment_speeds can be
--- recomputed rather than accumulated. A speed is not personal location data,
--- which is why these outlive the trace the purge redacts.
+-- Observed segment speeds, kept so segment_speeds can be recomputed rather
+-- than accumulated. Deliberately not linked to a trip or a driver, and dated
+-- to the day rather than the run: these outlive the trace they came from, so
+-- they must not be a way to reconstruct who drove where and when.
 CREATE TABLE app.segment_samples (
-  -- Deferred: a sample exists only for a run that has been marked learned,
-  -- but the sweep counts the samples before it can write that count.
-  trip_id uuid NOT NULL REFERENCES app.trip_learning(trip_id) ON DELETE RESTRICT
-    DEFERRABLE INITIALLY DEFERRED,
-  pattern_version_id uuid NOT NULL,
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  pattern_version_id uuid NOT NULL REFERENCES app.route_pattern_versions(id) ON DELETE RESTRICT,
   service_window text NOT NULL CHECK (service_window IN ('morning', 'evening')),
   from_ordinal integer NOT NULL CHECK (from_ordinal BETWEEN 0 AND 498),
   metres_per_second double precision NOT NULL
     CHECK (metres_per_second > 0 AND metres_per_second <= 40),
-  observed_at timestamptz NOT NULL CHECK (isfinite(observed_at)),
-  PRIMARY KEY (trip_id, from_ordinal),
-  FOREIGN KEY (trip_id, pattern_version_id)
-    REFERENCES app.trips(id, pattern_version_id) ON DELETE RESTRICT
+  observed_on date NOT NULL CHECK (isfinite(observed_on))
 );
 CREATE INDEX segment_samples_recent
-  ON app.segment_samples (pattern_version_id, service_window, from_ordinal, observed_at DESC);
+  ON app.segment_samples (pattern_version_id, service_window, from_ordinal, observed_on DESC, id DESC);
 CREATE TRIGGER segment_samples_append_only BEFORE UPDATE OR DELETE ON app.segment_samples
   FOR EACH ROW EXECUTE FUNCTION app.append_only();
 
@@ -179,6 +161,31 @@ CREATE INDEX trace_holds_active ON app.trace_holds (trip_id, received_from, rece
 CREATE INDEX trace_holds_queue ON app.trace_holds (created_at DESC, id DESC);
 COMMENT ON TABLE app.trace_holds IS
   'Retains specific incident evidence past the default window. Bounded to one trip and one receipt interval, with an accountable owner, reason and review date. Releasing one does not itself delete anything; the next purge collects whatever is now past its deadline.';
+
+-- Deletion is allowed only where it is owed: past the retention deadline and
+-- outside every active hold. Invoker rights, so a runtime role granted DELETE
+-- on these two tables still cannot destroy a trace early or destroy evidence
+-- someone is holding, and no owner-rights writer is reachable from runtime.
+CREATE FUNCTION app.guard_trace_deletion() RETURNS trigger
+LANGUAGE plpgsql SECURITY INVOKER SET search_path = pg_catalog AS $$
+BEGIN
+  IF OLD.received_at >= clock_timestamp()
+    - make_interval(days => app.trace_retention_days()) THEN
+    RAISE EXCEPTION 'trace_not_expired' USING ERRCODE = '23514';
+  END IF;
+  IF EXISTS (SELECT 1 FROM app.trace_holds h
+    WHERE h.trip_id = OLD.trip_id AND h.state = 'active'
+      AND OLD.received_at >= h.received_from AND OLD.received_at < h.received_to) THEN
+    RAISE EXCEPTION 'trace_under_hold' USING ERRCODE = '23514';
+  END IF;
+  RETURN OLD;
+END $$;
+CREATE TRIGGER expired_traces_only BEFORE DELETE ON app.trip_positions
+  FOR EACH ROW EXECUTE FUNCTION app.guard_trace_deletion();
+CREATE TRIGGER expired_traces_only BEFORE DELETE ON app.trip_live_positions
+  FOR EACH ROW EXECUTE FUNCTION app.guard_trace_deletion();
+COMMENT ON FUNCTION app.guard_trace_deletion() IS
+  'The only tables a runtime role may delete from are the two carrying this trigger, and only for rows past app.trace_retention_days() that no active hold names. grantRuntime reads the trigger to decide where DELETE is granted.';
 
 CREATE TABLE app.gps_events (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),

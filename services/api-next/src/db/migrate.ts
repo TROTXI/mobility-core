@@ -126,8 +126,12 @@ export async function grantRuntime(pool: Pool, role: string): Promise<void> {
       OR has_schema_privilege(r.oid, 'app', 'CREATE')
       OR has_schema_privilege(r.oid, 'public', 'CREATE')
       OR EXISTS (SELECT 1 FROM pg_class c WHERE c.relnamespace = n.oid AND c.relkind = 'r'
-        AND (has_table_privilege(r.oid, c.oid, 'DELETE') OR has_table_privilege(r.oid, c.oid, 'TRUNCATE')
-          OR pg_has_role(r.oid, c.relowner, 'MEMBER'))) AS unsafe
+        AND (has_table_privilege(r.oid, c.oid, 'TRUNCATE')
+          OR pg_has_role(r.oid, c.relowner, 'MEMBER')
+          OR (has_table_privilege(r.oid, c.oid, 'DELETE') AND NOT EXISTS (
+            SELECT 1 FROM pg_trigger g WHERE g.tgrelid = c.oid AND NOT g.tgisinternal
+              AND g.tgfoid = to_regprocedure('app.guard_trace_deletion()')
+              AND (g.tgtype & 8) <> 0)))) AS unsafe
       FROM pg_roles r CROSS JOIN pg_database d CROSS JOIN pg_namespace n
       WHERE r.rolname = $1 AND d.datname = current_database() AND n.nspname = 'app'`,
       [role],
@@ -164,12 +168,16 @@ export async function grantRuntime(pool: Pool, role: string): Promise<void> {
       'payment_review_commands',
       'gps_events',
     ];
-    const tables = await client.query<{ name: string; append_only: boolean }>(
+    const tables = await client.query<{ name: string; append_only: boolean; deletable: boolean }>(
       `SELECT c.relname AS name, EXISTS (
         SELECT 1 FROM pg_trigger g WHERE g.tgrelid = c.oid AND NOT g.tgisinternal
-          AND g.tgfoid = ANY (ARRAY['app.append_only()', 'app.guard_driver_receipt()']::regprocedure[])
+          AND g.tgfoid = ANY (ARRAY[to_regprocedure('app.append_only()'),
+            to_regprocedure('app.guard_driver_receipt()')])
           AND (g.tgtype & 16) <> 0
-      ) AS append_only
+      ) AS append_only, EXISTS (
+        SELECT 1 FROM pg_trigger g WHERE g.tgrelid = c.oid AND NOT g.tgisinternal
+          AND g.tgfoid = to_regprocedure('app.guard_trace_deletion()') AND (g.tgtype & 8) <> 0
+      ) AS deletable
       FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
       WHERE n.nspname = 'app' AND c.relkind = 'r' ORDER BY c.relname`,
     );
@@ -186,6 +194,17 @@ export async function grantRuntime(pool: Pool, role: string): Promise<void> {
       `REVOKE UPDATE ON ${appendOnly.map((name) => `app."${name}"`).join(', ')} FROM ${quoted}`,
     );
     await client.query(`GRANT UPDATE (secret_ciphertext) ON app.driver_commands TO ${quoted}`);
+    // Retention is an obligation, so the runtime needs DELETE somewhere. It is
+    // granted only where the schema declares a deletion guard, and that guard
+    // refuses anything not past its deadline or named by an active hold, so
+    // the privilege cannot reach history it is not owed.
+    const deletable = tables.rows.filter((t) => t.deletable).map((t) => t.name);
+    if (deletable.some((name) => !/^[a-z][a-z0-9_]*$/.test(name)))
+      throw new Error('Unexpected table name in the app schema');
+    if (deletable.length)
+      await client.query(
+        `GRANT DELETE ON ${deletable.map((name) => `app."${name}"`).join(', ')} TO ${quoted}`,
+      );
     await client.query('COMMIT');
   } catch (error) {
     await client.query('ROLLBACK');
