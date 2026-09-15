@@ -14,7 +14,7 @@ concurrency:
 
 jobs:
   financial-foundation:
-    name: Financial foundation (draft Postgres)
+    name: Financial foundation (Postgres)
     runs-on: ubuntu-latest
     timeout-minutes: 10
     services:
@@ -44,7 +44,7 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm --filter @trotxi/api-next typecheck
       - run: pnpm --filter @trotxi/api-next build
-      - name: Draft SQL and domain service, not full payment comparison
+      - name: Contiguous SQL installation and domain service, not full payment comparison
         working-directory: services/api-next
         env:
           REPLACEMENT_EVIDENCE_DIR: ${{ github.workspace }}/.harness-artifacts/financial-foundation
@@ -54,7 +54,7 @@ jobs:
       - uses: actions/upload-artifact@v7
         if: always()
         with:
-          name: financial-foundation-draft-evidence
+          name: financial-foundation-evidence
           path: .harness-artifacts/financial-foundation/
           include-hidden-files: true
           if-no-files-found: error

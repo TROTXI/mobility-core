@@ -1,8 +1,8 @@
 import { test, after } from 'node:test';
 import type { TestContext } from 'node:test';
 import assert from 'node:assert/strict';
-import { randomUUID, randomBytes, createHash } from 'node:crypto';
-import { readFile, mkdir, writeFile } from 'node:fs/promises';
+import { randomUUID, randomBytes } from 'node:crypto';
+import { mkdir, writeFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { resolve } from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
@@ -14,7 +14,6 @@ import type {
   FinancialDependencies,
   Settlement,
 } from '../src/payments/foundation.js';
-import { grantFinancialRuntime } from '../src/payments/financial-grants.js';
 import { priceTerms } from '../src/payments/terms.js';
 import { TransportError } from '../src/transport/errors.js';
 
@@ -32,11 +31,6 @@ if (
   throw new Error('Only loopback disposable postgres admin database is allowed');
 const admin = new pg.Pool({ connectionString: url.href, max: 2 });
 const files = await readMigrations(fileURLToPath(new URL('../migrations/', import.meta.url)));
-const draft = await readFile(
-  new URL('../schema-drafts/011_payment_foundation.sql', import.meta.url),
-  'utf8',
-);
-const draftSha = createHash('sha256').update(draft).digest('hex');
 const run = randomBytes(5).toString('hex'),
   owned: string[] = [],
   roles: string[] = [],
@@ -52,11 +46,10 @@ after(async () => {
         resolve(process.env.REPLACEMENT_EVIDENCE_DIR, 'payment-foundation-metadata.json'),
         JSON.stringify(
           {
-            kind: 'financial-foundation-draft-not-complete-payment-comparison',
+            kind: 'financial-foundation-not-complete-payment-comparison',
             limitation:
-              'Draft 011 applied transactionally after real 001-009; NOT a contiguous 001-011 install or HTTP/provider/commute integration.',
+              'Real contiguous migration chain and financial domain tests; NOT HTTP/provider/commute integration or complete baseline/candidate comparison.',
             migrations: files.map(({ name, sha256 }) => ({ name, sha256 })),
-            draftSha,
             evidence,
             cleanedDatabases: owned,
             cleanedRoles: roles,
@@ -72,7 +65,11 @@ after(async () => {
 });
 const at = new Date('2026-01-01T00:00:00Z'),
   renewAt = new Date('2026-02-02T00:00:00Z');
-async function setup(t: TestContext, overrides: Partial<FinancialDependencies> = {}) {
+async function setup(
+  t: TestContext,
+  overrides: Partial<FinancialDependencies> = {},
+  upgrade = false,
+) {
   const n = ++serial,
     name = `trotxi_harness_${run}_finance_${n}`,
     role = `trotxi_runtime_fin_${run}_${n}`;
@@ -82,19 +79,31 @@ async function setup(t: TestContext, overrides: Partial<FinancialDependencies> =
   db.pathname = '/' + name;
   const owner = new pg.Pool({ connectionString: db.href, max: 5 });
   t.after(() => owner.end());
-  await migrate(owner, files);
-  // Explicit draft application, no placeholder 010 and no changed migration runner.
-  const installer = await owner.connect();
-  try {
-    await installer.query('BEGIN');
-    await installer.query(draft);
-    await installer.query('COMMIT');
-  } catch (e) {
-    await installer.query('ROLLBACK');
-    throw e;
-  } finally {
-    installer.release();
-  }
+  if (upgrade) {
+    await migrate(owner, files.slice(0, 10));
+    const vehicle = (
+      await owner.query(
+        "INSERT INTO app.vehicles(plate,capacity) VALUES ('TEST UPGRADE 010',18) RETURNING *",
+      )
+    ).rows[0];
+    const history = (
+      await owner.query('SELECT name,sha256 FROM public._replacement_migrations ORDER BY name')
+    ).rows;
+    assert.deepEqual(await migrate(owner, files), ['011_payment_foundation.sql']);
+    assert.deepEqual(
+      (await owner.query('SELECT * FROM app.vehicles WHERE id=$1', [vehicle.id])).rows[0],
+      vehicle,
+    );
+    assert.deepEqual(
+      (
+        await owner.query(
+          'SELECT name,sha256 FROM public._replacement_migrations ORDER BY name LIMIT 10',
+        )
+      ).rows,
+      history,
+    );
+    assert.deepEqual(await migrate(owner, files), []);
+  } else await migrate(owner, files);
   const id = async (sql: string, args: unknown[] = []) =>
     (await owner.query(sql + ' RETURNING id', args)).rows[0].id as string;
   const userId = await id("INSERT INTO app.users(role) VALUES ('commuter')"),
@@ -164,7 +173,6 @@ async function setup(t: TestContext, overrides: Partial<FinancialDependencies> =
   await admin.query(`CREATE ROLE "${role}" LOGIN PASSWORD 'runtime-test-only'`);
   roles.push(role);
   await grantRuntime(owner, role);
-  await grantFinancialRuntime(owner, role);
   db.username = role;
   db.password = 'runtime-test-only';
   const applicationName = `finance-${run}-${n}`,
@@ -606,5 +614,129 @@ test('FIN-13: genuinely concurrent identical checkout retries return one purchas
       )
     ).rows[0],
     { purchases: 1, attempts: 1, holds: 1 },
+  );
+});
+
+test('FIN-14: capture without debit fails at commit; exact capture plus debit commits', async (t) => {
+  const f = await setup(t);
+  await f.grant(1000);
+  const purchase = await f.buy(),
+    c = await f.runtime.connect();
+  try {
+    await c.query('BEGIN');
+    const update = await c.query(
+      "UPDATE app.credit_holds SET state='captured',settled_at=clock_timestamp() WHERE purchase_id=$1",
+      [purchase.id],
+    );
+    assert.equal(
+      update.rowCount,
+      1,
+      'intermediate capture must succeed before deferred validation',
+    );
+    await assert.rejects(c.query('COMMIT'), (error) => {
+      const e = error as { code: string; constraint: string };
+      return e.code === '23514' && e.constraint === 'captured_hold_requires_debit';
+    });
+    await c.query('ROLLBACK');
+    assert.deepEqual(await f.service.balance(f.actor), { credit: 1000, held: 1000, available: 0 });
+    assert.equal(
+      (
+        await f.owner.query(
+          "SELECT count(*)::int AS n FROM app.credit_entries WHERE reason='purchase_applied'",
+        )
+      ).rows[0].n,
+      0,
+    );
+
+    await c.query('BEGIN');
+    await c.query(
+      "UPDATE app.credit_holds SET state='captured',settled_at=clock_timestamp() WHERE purchase_id=$1",
+      [purchase.id],
+    );
+    await c.query(
+      "INSERT INTO app.credit_entries(user_id,reason,delta_pesewas,purchase_id) VALUES ($1,'purchase_applied',-1000,$2)",
+      [f.actor.userId, purchase.id],
+    );
+    await c.query('COMMIT');
+    assert.deepEqual(await f.service.balance(f.actor), { credit: 0, held: 0, available: 0 });
+    assert.deepEqual(
+      (
+        await f.owner.query(
+          'SELECT h.state,e.delta_pesewas FROM app.credit_holds h JOIN app.credit_entries e USING(purchase_id) WHERE h.purchase_id=$1',
+          [purchase.id],
+        )
+      ).rows,
+      [{ state: 'captured', delta_pesewas: -1000 }],
+    );
+  } finally {
+    await c.query('ROLLBACK');
+    c.release();
+  }
+});
+
+test('FIN-15: rollback removes capture and debit together; release requires no debit', async (t) => {
+  const f = await setup(t);
+  await f.grant(1000);
+  const purchase = await f.buy(),
+    c = await f.runtime.connect();
+  try {
+    await c.query('BEGIN');
+    await c.query(
+      "UPDATE app.credit_holds SET state='captured',settled_at=clock_timestamp() WHERE purchase_id=$1",
+      [purchase.id],
+    );
+    await assert.rejects(
+      c.query(
+        "INSERT INTO app.credit_entries(user_id,reason,delta_pesewas,purchase_id) VALUES ($1,'purchase_applied',-999,$2)",
+        [f.actor.userId, purchase.id],
+      ),
+      (e) => (e as Error).message === 'credit_source_amount_mismatch',
+    );
+    await c.query('ROLLBACK');
+    await c.query('BEGIN');
+    await c.query(
+      "UPDATE app.credit_holds SET state='captured',settled_at=clock_timestamp() WHERE purchase_id=$1",
+      [purchase.id],
+    );
+    await c.query(
+      "INSERT INTO app.credit_entries(user_id,reason,delta_pesewas,purchase_id) VALUES ($1,'purchase_applied',-1000,$2)",
+      [f.actor.userId, purchase.id],
+    );
+    await c.query('SET CONSTRAINTS ALL IMMEDIATE');
+    await c.query('ROLLBACK');
+    assert.deepEqual(await f.service.balance(f.actor), { credit: 1000, held: 1000, available: 0 });
+    assert.equal(
+      (
+        await f.owner.query(
+          "SELECT count(*)::int AS n FROM app.credit_entries WHERE reason='purchase_applied'",
+        )
+      ).rows[0].n,
+      0,
+    );
+    await c.query(
+      "UPDATE app.credit_holds SET state='released',settled_at=clock_timestamp() WHERE purchase_id=$1",
+      [purchase.id],
+    );
+    assert.deepEqual(await f.service.balance(f.actor), { credit: 1000, held: 0, available: 1000 });
+  } finally {
+    await c.query('ROLLBACK');
+    c.release();
+  }
+});
+
+test('FIN-16: real 010-to-011 upgrade preserves vehicles/history and grants narrow financial access', async (t) => {
+  const f = await setup(t, {}, true);
+  assert.equal(files.length, 11);
+  assert.deepEqual(
+    (await f.owner.query('SELECT name,sha256 FROM public._replacement_migrations ORDER BY name'))
+      .rows,
+    files.map(({ name, sha256 }) => ({ name, sha256 })),
+  );
+  await f.grant(1000);
+  const p = await f.buy();
+  assert.equal(await f.service.fulfill(f.settle(p)), 'fulfilled');
+  await assert.rejects(
+    f.runtime.query('UPDATE app.credit_entries SET delta_pesewas=delta_pesewas'),
+    (e) => (e as { code: string }).code === '42501',
   );
 });

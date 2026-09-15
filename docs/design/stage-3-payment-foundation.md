@@ -1,7 +1,7 @@
-# Stage 3: financial foundation (reserved 011)
+# Stage 3: financial foundation (011)
 
-Status: **draft, domain implementation; not enabled in the replacement app**.
-Base: `ca3dae56fd6cebdb7b2b2e91f7b441908c974c46` on
+Status: **domain implementation and contiguous migration; not enabled in the replacement app**.
+Integration base: merged #306 at `77f00c24c53376230618531f7a85640d73578916` on
 `codex/backend-replacement`. No main/staging deployment or provider calls.
 
 ## Parallel-work boundary
@@ -11,13 +11,13 @@ Codex owns financial foundation **011**, recovery/refunds/disputes **012**,
 commute/pauses/reservations **013**, then boarding/settlement **015**.
 Numbers are reservations, not permission to install a discontinuous chain.
 
-Until 010 lands, `services/api-next/schema-drafts/011_payment_foundation.sql`
-stays outside the installer directory. The tests install the actual 001–009
-chain with the existing checksum runner, then apply this exact draft SQL in a
-transaction. They do not invent 010, insert a fake migration receipt, or loosen
-the runner's contiguous-number rule. The evidence records both migration hashes
-and the draft hash. This PR must remain draft until promotion and integration
-checks below complete.
+010 has merged. The captured-hold/debit hardening was committed separately while
+011 was still a draft (`606b4ba`), then the file was promoted byte-for-byte to
+`services/api-next/migrations/011_payment_foundation.sql` (Git blob
+`1490457331a55218cd36073d5b027bccdeac7e91`). The hardening is an explicit review
+delta, not claimed to have been approved in the earlier review. Tests now use
+the real checksum runner for the complete chain; the special draft installer is
+gone. No applied 001–010 bytes or operation allowlists were rewritten.
 
 ## Implemented domain behavior
 
@@ -36,7 +36,9 @@ checks below complete.
   can fund the next purchase without a conversion/expiry ordering hazard.
 - Credit is held at checkout and captured exactly at fulfilment. The database
   also prevents other credit entries from consuming held value; there is no
-  debit clamp. Net provider charge is at least 100 pesewas.
+  debit clamp. Net provider charge is at least 100 pesewas. A deferred constraint
+  requires every captured hold to have its exact typed debit at commit; release
+  needs no debit. Intermediate capture-before-debit remains valid in a transaction.
 - A matching successful settlement records provider identity and cash facts,
   allocates one period and one ride grant, captures credit and invokes commute
   assignment in one transaction. A callback failure rolls everything back.
@@ -65,16 +67,17 @@ checks below complete.
 Composite FKs enforce rider ownership on attempts, periods, holds and ledger
 sources. Purchase terms and membership identity are immutable. Paid periods
 cannot overlap, successful attempt facts cannot be rewritten, and runtime
-roles cannot update/delete ledger history. These are bounded guarantees: the
-schema does not yet require every source row to have a ledger effect at commit;
+roles cannot update/delete ledger history. Captured holds must have their debit
+at commit. These are bounded guarantees: the schema does not yet require every
+other source row to have a ledger effect at commit;
 the service transaction supplies that completeness. Ops adjustment commands must
 insert the adjustment and effect together, with authorization and audit.
 
 ## What is deliberately not claimed
 
 There are **no new HTTP endpoints** in this slice. The replacement app still
-exposes its existing 44 operations. Neither its routes nor shared contract
-artifacts have been edited, avoiding conflicts with Claude's branch.
+exposes the 47 operations present after #306. The financial changes do not edit
+routes or shared contract artifacts.
 
 `FinancialDependencies` has explicit transaction-client boundaries for live
 session authorization, server pricing, checkout eligibility, period-close
@@ -104,16 +107,17 @@ Still required before enabling purchase endpoints:
 The ledger currently admits only the implemented typed sources. Later refund,
 reservation and boarding migrations must add their concrete source columns,
 ownership FKs and source-specific checks; do not replace these with arbitrary
-`ref_type/ref_id` strings. Runtime grant tightening currently lives in
-`grantFinancialRuntime`; promotion must call it after the normal runtime grants.
+`ref_type/ref_id` strings. Financial grant tightening is integrated into
+`grantRuntime`; there is no separate helper that deployment can forget to call.
 
 ## Verification and promotion
 
 The dedicated financial CI job fails if disposable Postgres configuration is
-missing. Thirteen Postgres scenarios plus two pure arithmetic/calendar tests
+missing. Sixteen financial Postgres scenarios plus two pure arithmetic/calendar tests
 exercise source constraints, real lock contention, duplicate checkout/delivery,
 renewal with changed future pricing, exact end boundary, callback rollback,
-provider mismatch, ownership, immutable terms and held-credit protection.
+provider mismatch, ownership, immutable terms, held-credit protection, deferred
+capture/debit completeness and upgrading a populated 010 fleet without changes.
 The ownership test requires FK error `23503`, not a duplicate-index failure.
 Rollback injection asserts allocation already exists inside the transaction.
 Contention scenarios record blocked backend PIDs before releasing the blocker.
@@ -121,16 +125,17 @@ Contention scenarios record blocked backend PIDs before releasing the blocker.
 This is **partial domain evidence**, not 16-scenario parity or end-to-end payment
 proof. Existing transport/auth/driver gates continue to run separately.
 
-After reviewed 010 merges:
+The promotion gate includes clean installation, real 010-to-011 upgrade, unchanged
+prior migration checksums and fleet rows, idempotent installer replay, and narrow
+runtime grants. The schema inventory is 37 tables: the previous 27 plus the ten
+financial tables listed above (also asserted by name in MIG-01).
 
-1. Rebase onto the integration branch; preserve all applied migration bytes.
-2. Move the reviewed draft into `migrations/011_payment_foundation.sql` and
-   remove the special draft application from the test installer.
-3. Wire financial runtime grants; update schema-inventory assertions deliberately.
-4. Test clean installation and upgrade from 010 with checksums, narrow roles,
-   all existing Postgres tests and the financial tests. Remove draft-only labels
-   only once the evidence actually proves the contiguous installation.
-5. Keep runtime/API composition disabled until the listed dependencies exist.
+Baseline negative controls remain unchanged and run against the pinned baseline
+adapter, even in comparison mode. Replacement SQL rejecting a second allocation
+is separate target integrity evidence, not a relabelled baseline `detected` result.
+The sixteen FIN tests are not substitutes for the sixteen PAY harness scenarios.
+
+Keep runtime/API composition disabled until the listed dependencies exist.
 
 The zero-real-users/no-real-payments/no-retained-non-disposable-data precondition
 still applies. This work does not reset or modify staging data.
