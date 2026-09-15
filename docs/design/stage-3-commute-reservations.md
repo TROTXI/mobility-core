@@ -52,6 +52,20 @@ pause and dispute/account restrictions remain independent access blocks.
   of the same resource; they never repeat the side effect. Explicit expiry is
   seven days. This differs from transport's historical snapshot replay and is
   intentional for erasable rider notes and evolving access state.
+  First execution and replay share the same response builder: creates return
+  201 on both paths and expose the current ETag wherever the resource has an
+  edit token, including after a later resource edit. No response snapshot or
+  additional migration is needed to preserve that HTTP contract.
+- Ops authorization, including session revocation, precedes target-rider
+  lookup. A non-admin receives the same refusal for existing, missing and
+  non-rider targets. Rider commands retain the exclusive own-user lock before
+  session authorization to preserve the financial/auth lock order.
+- Lists implement the declared request-status, slot-route and reservation-date
+  filters. Cursors bind their normalized values (UUID case is immaterial).
+  Reservation dates use inclusive Africa/Accra calendar days, require both
+  endpoints, allow at most 31 days and default to today plus the prior six days.
+  Unknown statuses and invalid ranges/route IDs fail with 400. Lists honor the
+  contract's 200-row maximum rather than imposing a hidden 100-row limit.
 - Bounded dispatch rechecks current eligibility under the rider lock and writes
   one durable prompt intent per reservation. Defaults preserve explicit answers,
   allocate only available seats/rides, and mark overflow `unseated`, never
@@ -99,3 +113,10 @@ response serialization/edit tokens, authorization before replay, cursor scoping,
 exact pause arithmetic, immutable purchase terms, event-write rollback, upgrade,
 erasure, bounds/defaulting, and Paystack signed test-event refund coordination.
 No test credentials are real Paystack account keys or contact live Paystack.
+
+Review regressions COM-18–21 cover declared filters and normalized cursor
+binding, paired/inclusive/default date windows, restriction existence hiding
+including revoked sessions, and all three create operations' replay status and
+current ETag. All four fail at the intended assertion against the original
+implementation. Independently removing only filter binding also makes both
+pagination regressions fail with 200 rather than the required 400.

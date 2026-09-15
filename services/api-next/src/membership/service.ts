@@ -415,6 +415,16 @@ export class MembershipService {
     if (supplied !== token(r))
       fail(412, 'precondition_failed', 'Reload this resource before editing.');
   }
+  private async commandOutcome(c: PoolClient, op: string, resource: string): Promise<Outcome> {
+    // Replay renders current state, not a retained snapshot of erasable notes.
+    // Its HTTP status and current edit token still obey the original contract.
+    const data = await this.render(c, op, resource, ops(op));
+    return {
+      status: op.startsWith('create') ? 201 : 200,
+      body: { data },
+      headers: 'editToken' in data ? { ETag: String(data.editToken) } : {},
+    } as Outcome;
+  }
   async command(
     actor: Actor,
     op: MembershipOperation,
@@ -436,6 +446,11 @@ export class MembershipService {
     const normalized = normalize(input) as Body;
     const scope = target ? id(target) : actor.userId.toLowerCase();
     return this.tx(async (c) => {
+      // Ops may address arbitrary riders: authorize the current session/role
+      // before any target-dependent lookup or 404. Rider commands retain the
+      // exclusive own-user lock before session authorization, avoiding lock
+      // upgrades against checkout, refresh and revocation.
+      if (ops(op)) await this.authorize(c, actor, op);
       // Discover the subject without exposing it, then re-read under rider lock.
       let userId = actor.userId;
       if (op === 'decideCommuteRequest')
@@ -458,7 +473,7 @@ export class MembershipService {
         }
         await this.lockUser(c, userId);
       }
-      await this.authorize(c, actor, op);
+      if (!ops(op)) await this.authorize(c, actor, op);
       if (parentUserId && id(parentUserId) !== userId)
         fail(404, 'not_found', 'Restriction not found.');
       // Foreign rider resources are refused before receipt lookup or If-Match.
@@ -487,11 +502,7 @@ export class MembershipService {
           fail(409, 'idempotency_conflict', 'This key was used for different input.');
         if (Date.now() - old.created_at.getTime() >= 7 * 86400000)
           fail(409, 'idempotency_expired', 'Use a new request key.');
-        return {
-          status: 200,
-          body: { data: await this.render(c, op, old.resource_id, ops(op)) },
-          headers: {},
-        } as Outcome;
+        return this.commandOutcome(c, op, old.resource_id);
       }
       const resource = await this.mutate(c, actor, op, scope, normalized, match);
       const receipt = randomUUID();
@@ -508,12 +519,7 @@ export class MembershipService {
           op === 'decideCommuteRequest' ? String(input.action) : op,
         ],
       );
-      const data = await this.render(c, op, resource, ops(op));
-      return {
-        status: op.startsWith('create') ? 201 : 200,
-        body: { data },
-        headers: 'editToken' in data ? { ETag: String(data.editToken) } : {},
-      } as Outcome;
+      return this.commandOutcome(c, op, resource);
     });
   }
   private async mutate(
@@ -965,7 +971,7 @@ export class MembershipService {
           headers: {},
         } as Outcome;
       const limit = Number(query.limit ?? 50);
-      if (!Number.isInteger(limit) || limit < 1 || limit > 100)
+      if (!Number.isInteger(limit) || limit < 1 || limit > 200)
         fail(400, 'invalid_query', 'Invalid page limit.');
       const table =
         op === 'listCommuteSlots'
@@ -975,7 +981,50 @@ export class MembershipService {
             : op === 'listCommuteEvents'
               ? 'membership_events'
               : 'commute_requests';
-      const context = JSON.stringify([actor.userId, op, target ?? null, 'created_at,id']);
+      const filters: Record<string, string> = {};
+      if (
+        ['listCommuteRequests', 'listOpsCommuteRequests'].includes(op) &&
+        query.status !== undefined
+      ) {
+        if (
+          !['submitted', 'waitlisted', 'approved', 'applied', 'rejected', 'cancelled'].includes(
+            query.status,
+          )
+        )
+          fail(400, 'invalid_query', 'Unknown commute request status.');
+        filters.status = query.status;
+      }
+      if (op === 'listCommuteSlots' && query.routeId !== undefined) {
+        if (!/^[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(query.routeId))
+          fail(400, 'invalid_query', 'Supply a valid route identifier.');
+        filters.routeId = query.routeId.toLowerCase();
+      }
+      if (op === 'listReservations') {
+        if ((query.fromDate === undefined) !== (query.toDate === undefined))
+          fail(400, 'invalid_query', 'Supply both reservation dates.');
+        const today = date(this.now());
+        filters.fromDate = query.fromDate ?? date(new Date(Date.parse(today) - 6 * 86400000));
+        filters.toDate = query.toDate ?? today;
+        const validDate = (value: string) =>
+          /^\d{4}-\d{2}-\d{2}$/.test(value) &&
+          Number.isFinite(Date.parse(value)) &&
+          date(new Date(value)) === value;
+        if (
+          !validDate(filters.fromDate) ||
+          !validDate(filters.toDate) ||
+          filters.fromDate > filters.toDate ||
+          Date.parse(filters.toDate) - Date.parse(filters.fromDate) >= 31 * 86400000
+        )
+          fail(400, 'invalid_query', 'Supply an ordered range of at most 31 calendar days.');
+      }
+      const clock = table === 'membership_events' ? 'occurred_at' : 'created_at';
+      const context = canonical([
+        actor.userId,
+        op,
+        target ? id(target) : null,
+        `${clock},id`,
+        filters,
+      ]);
       const cursor = query.cursor ? this.cursors.decode(query.cursor, context, this.now()) : null;
       let where = 'true';
       const args: unknown[] = [];
@@ -994,7 +1043,18 @@ export class MembershipService {
         where = 'x.user_id=$1';
       } else if (op === 'listOpsCommuteRequests')
         where = 'EXISTS(SELECT 1 FROM app.users u WHERE u.id=x.user_id AND u.deleted_at IS NULL)';
-      const clock = table === 'membership_events' ? 'occurred_at' : 'created_at';
+      if (filters.status !== undefined) {
+        args.push(filters.status);
+        where += ` AND x.status=$${args.length}`;
+      }
+      if (filters.routeId !== undefined) {
+        args.push(filters.routeId);
+        where += ` AND EXISTS(SELECT 1 FROM app.commute_selections s WHERE s.id=x.selection_id AND s.route_id=$${args.length}::uuid)`;
+      }
+      if (filters.fromDate !== undefined) {
+        args.push(filters.fromDate, filters.toDate);
+        where += ` AND x.service_date BETWEEN $${args.length - 1}::date AND $${args.length}::date`;
+      }
       if (cursor) {
         args.push(cursor.time, cursor.id);
         where += ` AND (x.${clock},x.id)<($${args.length - 1}::timestamptz,$${args.length}::uuid)`;

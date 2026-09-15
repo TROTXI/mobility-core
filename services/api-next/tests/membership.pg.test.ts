@@ -15,6 +15,244 @@ import { createTransportApp } from '../src/http/app.js';
 
 const data = (out: Outcome) => (out.body as any).data;
 const code = (wanted: string) => (e: unknown) => e instanceof TransportError && e.code === wanted;
+async function httpFixture(t: TestContext) {
+  const f = await fixture(t);
+  const app = await createTransportApp({
+    pool: f.runtime,
+    cursorSecret: Buffer.alloc(32, 7),
+    authorizeSession: f.dependencies.authorizeSession,
+    coordinateReservations: f.membership.coordinateReservations,
+    membership: f.membership,
+    verifyAccess: async (h) =>
+      h === 'Bearer rider' ? f.actor : h === 'Bearer ops' ? f.admin : null,
+    minimumBuilds: { ops: 1, driver: { ios: 1, android: 1 }, commuter: { ios: 1, android: 1 } },
+  });
+  t.after(() => app.close());
+  const rider = {
+    authorization: 'Bearer rider',
+    'x-trotxi-client': 'commuter',
+    'x-trotxi-build': '1',
+    'x-trotxi-platform': 'android',
+  };
+  const admin = { authorization: 'Bearer ops', 'x-trotxi-client': 'ops', 'x-trotxi-build': '1' };
+  const get = async (url: string, headers: Record<string, string> = rider, status = 200) => {
+    const r = await app.inject({ url, headers });
+    assert.equal(r.statusCode, status, r.body);
+    return r.json();
+  };
+  return { ...f, app, rider, adminHeaders: admin, get };
+}
+
+test('COM-18: HTTP request status and slot route filters narrow results and bind normalized cursors', async (t) => {
+  const f = await httpFixture(t);
+  await f.buy();
+  await f.buy(f.other);
+  const rejected = [];
+  for (let n = 0; n < 2; n++) {
+    const r = await f.request();
+    await f.decide(r.id, { action: 'reject' });
+    rejected.push(r.id);
+  }
+  await f.request();
+  const other = await f.request(f.other);
+  await f.decide(other.id, { action: 'reject' });
+  for (const [path, headers, expected] of [
+    ['/v1/me/commute-requests', f.rider, 2],
+    ['/v1/ops/commute-requests', f.adminHeaders, 3],
+  ] as const) {
+    const all = await f.get(`${path}?status=rejected`, headers);
+    assert.equal(all.data.length, expected);
+    assert.ok(all.data.every((r: any) => r.status === 'rejected'));
+    assert.equal((await f.get(`${path}?status=approved`, headers)).data.length, 0);
+    const first = await f.get(`${path}?status=rejected&limit=1`, headers);
+    assert.ok(first.page.nextCursor);
+    const cursor = encodeURIComponent(first.page.nextCursor);
+    const second = await f.get(`${path}?status=rejected&limit=1&cursor=${cursor}`, headers);
+    assert.notEqual(first.data[0].id, second.data[0].id);
+    assert.equal(second.data[0].status, 'rejected');
+    assert.equal(
+      (await f.get(`${path}?status=submitted&cursor=${cursor}`, headers, 400)).error.code,
+      'invalid_cursor',
+    );
+    await f.get(`${path}?status=made-up`, headers, 400);
+  }
+  const own = await f.get('/v1/me/commute-requests?status=rejected');
+  assert.deepEqual(own.data.map((r: any) => r.id).sort(), rejected.sort());
+  for (let n = 0; n < 3; n++) await f.slot();
+  const unrelated = (
+    await f.owner.query("INSERT INTO app.routes(name) VALUES ('Unrelated') RETURNING id")
+  ).rows[0].id;
+  assert.equal(
+    (await f.get(`/v1/ops/commute-slots?routeId=${unrelated}`, f.adminHeaders)).data.length,
+    0,
+  );
+  const first = await f.get(
+    `/v1/ops/commute-slots?routeId=${f.input.routeId}&limit=1`,
+    f.adminHeaders,
+  );
+  assert.ok(first.page.nextCursor);
+  const cursor = encodeURIComponent(first.page.nextCursor);
+  const second = await f.get(
+    `/v1/ops/commute-slots?routeId=${f.input.routeId.toUpperCase()}&limit=1&cursor=${cursor}`,
+    f.adminHeaders,
+  );
+  assert.equal(second.data[0].routeId, f.input.routeId);
+  assert.notEqual(second.data[0].id, first.data[0].id);
+  assert.equal(
+    (
+      await f.get(
+        `/v1/ops/commute-slots?routeId=${unrelated}&cursor=${cursor}`,
+        f.adminHeaders,
+        400,
+      )
+    ).error.code,
+    'invalid_cursor',
+  );
+  await f.get('/v1/ops/commute-slots?routeId=not-a-uuid', f.adminHeaders, 400);
+  assert.equal((await f.get('/v1/ops/commute-slots?limit=200', f.adminHeaders)).data.length, 3);
+});
+
+test('COM-19: HTTP reservation dates are inclusive, paired, bounded and cursor-bound with a seven-day default', async (t) => {
+  const f = await httpFixture(t);
+  await f.buy();
+  for (const travelDate of ['2026-01-02', '2026-01-03', '2026-01-10']) {
+    await f.trip(1, travelDate);
+    await f.command('decideReservation', {
+      travelDate,
+      direction: 'outbound',
+      decision: 'confirm',
+    });
+  }
+  const path = '/v1/me/reservations';
+  const range = 'fromDate=2026-01-02&toDate=2026-01-03';
+  assert.deepEqual((await f.get(`${path}?${range}`)).data.map((r: any) => r.travelDate).sort(), [
+    '2026-01-02',
+    '2026-01-03',
+  ]);
+  assert.equal((await f.get(`${path}?fromDate=2030-01-01&toDate=2030-01-02`)).data.length, 0);
+  const first = await f.get(`${path}?${range}&limit=1`);
+  assert.ok(first.page.nextCursor);
+  const cursor = encodeURIComponent(first.page.nextCursor);
+  const second = await f.get(`${path}?${range}&cursor=${cursor}`);
+  assert.notEqual(first.data[0].id, second.data[0].id);
+  assert.equal(
+    (await f.get(`${path}?fromDate=2026-01-02&toDate=2026-01-10&cursor=${cursor}`, f.rider, 400))
+      .error.code,
+    'invalid_cursor',
+  );
+  for (const query of [
+    'fromDate=2026-01-02',
+    'toDate=2026-01-02',
+    'fromDate=2026-01-03&toDate=2026-01-02',
+    'fromDate=2026-01-01&toDate=2026-02-01',
+    'fromDate=2026-02-30&toDate=2026-03-01',
+  ])
+    await f.get(`${path}?${query}`, f.rider, 400);
+  assert.equal((await f.get(`${path}?fromDate=2026-01-01&toDate=2026-01-31`)).data.length, 3);
+  f.setNow('2026-01-10T12:00:00Z');
+  assert.deepEqual(
+    (await f.get(path)).data.map((r: any) => r.travelDate),
+    ['2026-01-10'],
+  );
+});
+
+test('COM-20: restriction authorization precedes subject existence and revoked-session disclosure', async (t) => {
+  const f = await httpFixture(t);
+  const targets = [f.actor.userId, randomUUID(), f.admin.userId];
+  const attempt = (target: string, headers: Record<string, string>) =>
+    f.app.inject({
+      method: 'POST',
+      url: `/v1/ops/users/${target}/restrictions`,
+      headers: { ...headers, 'idempotency-key': randomUUID() },
+      payload: { reason: 'Test restriction', reviewAt: '2026-01-05T00:00:00Z' },
+    });
+  for (const target of targets) {
+    const r = await attempt(target, { ...f.adminHeaders, authorization: 'Bearer rider' });
+    assert.equal(r.statusCode, 403, r.body);
+  }
+  await f.owner.query('UPDATE app.test_fin_sessions SET active=false WHERE user_id=$1', [
+    f.actor.userId,
+  ]);
+  for (const target of targets) {
+    const r = await attempt(target, { ...f.adminHeaders, authorization: 'Bearer rider' });
+    assert.equal(r.statusCode, 401, r.body);
+  }
+  for (const target of targets.slice(1)) {
+    const r = await attempt(target, f.adminHeaders);
+    assert.equal(r.statusCode, 404, r.body);
+  }
+  assert.equal(
+    (await f.owner.query('SELECT count(*)::int n FROM app.account_restrictions')).rows[0].n,
+    0,
+  );
+  assert.equal(
+    (await f.owner.query('SELECT count(*)::int n FROM app.membership_commands')).rows[0].n,
+    0,
+  );
+});
+
+test('COM-21: create retries preserve declared 201 and current ETag without repeating mutations', async (t) => {
+  const f = await httpFixture(t);
+  await f.buy();
+  for (const [url, payload, headers, table] of [
+    [
+      '/v1/ops/commute-slots',
+      { routeId: f.input.routeId, legs: f.input.legs, availableFrom: '2026-01-02' },
+      f.adminHeaders,
+      'commute_slots',
+    ],
+    [
+      '/v1/me/commute-requests',
+      {
+        routeId: f.input.routeId,
+        legs: f.input.legs,
+        requestedDate: '2026-01-02',
+        pauseIfWaitlisted: true,
+      },
+      f.rider,
+      'commute_requests',
+    ],
+    [
+      `/v1/ops/users/${f.actor.userId}/restrictions`,
+      { reason: 'Test', reviewAt: '2026-01-05T00:00:00Z' },
+      f.adminHeaders,
+      'account_restrictions',
+    ],
+  ] as const) {
+    const key = randomUUID();
+    const send = () =>
+      f.app.inject({
+        method: 'POST',
+        url,
+        payload,
+        headers: { ...headers, 'idempotency-key': key },
+      });
+    const first = await send();
+    assert.equal(first.statusCode, 201, first.body);
+    const replay = await send();
+    assert.equal(replay.statusCode, 201, replay.body);
+    assert.deepEqual(replay.json(), first.json());
+    assert.equal(replay.headers.etag, first.headers.etag);
+    if (first.json().data.editToken)
+      assert.equal(replay.headers.etag, replay.json().data.editToken);
+    assert.equal((await f.owner.query(`SELECT count(*)::int n FROM app.${table}`)).rows[0].n, 1);
+    if (table === 'commute_slots') {
+      await f.command(
+        'retireCommuteSlot',
+        {},
+        first.json().data.id,
+        first.json().data.editToken,
+        f.admin,
+      );
+      const current = await send();
+      assert.equal(current.statusCode, 201, current.body);
+      assert.equal(current.json().data.state, 'retired');
+      assert.notEqual(current.headers.etag, first.headers.etag);
+      assert.equal(current.headers.etag, current.json().data.editToken);
+    }
+  }
+});
+
 test('COM-17: automatic invalidation records its cause without inventing a rider decision', async (t) => {
   const f = await fixture(t),
     { period } = await f.buy(),
