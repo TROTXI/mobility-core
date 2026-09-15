@@ -60,13 +60,15 @@ CREATE TABLE app.commute_requests (
  slot_id uuid REFERENCES app.commute_slots(id) ON DELETE RESTRICT,
  effective_date date CHECK(isfinite(effective_date)),
  decided_by uuid REFERENCES app.users(id) ON DELETE RESTRICT,
+ invalidation_reason text CHECK(invalidation_reason IN ('period_ended','membership_ended','erasure')),
  created_at timestamptz NOT NULL DEFAULT clock_timestamp(), updated_at timestamptz NOT NULL DEFAULT clock_timestamp(),
  version integer NOT NULL DEFAULT 1 CHECK(version>0),
  FOREIGN KEY(period_id,membership_id,user_id) REFERENCES app.billing_periods(id,membership_id,user_id) ON DELETE RESTRICT,
  UNIQUE(id,period_id,user_id),
  CHECK((status IN ('approved','applied'))=(slot_id IS NOT NULL AND effective_date IS NOT NULL)),
  CHECK(effective_date IS NULL OR effective_date>=requested_date),
- CHECK(status='submitted' OR decided_by IS NOT NULL)
+ CHECK(status='submitted' OR decided_by IS NOT NULL OR (status='cancelled' AND invalidation_reason IS NOT NULL)),
+ CHECK(invalidation_reason IS NULL OR status='cancelled')
 );
 CREATE UNIQUE INDEX one_open_commute_request ON app.commute_requests(user_id) WHERE status IN ('submitted','waitlisted','approved');
 CREATE UNIQUE INDEX one_slot_pending_claim ON app.commute_requests(slot_id) WHERE status='approved';
@@ -225,8 +227,8 @@ END $$;
 CREATE TRIGGER protect_commute_assignment BEFORE INSERT OR UPDATE ON app.commute_assignments FOR EACH ROW EXECUTE FUNCTION app.guard_commute_assignment();
 CREATE FUNCTION app.guard_commute_request() RETURNS trigger LANGUAGE plpgsql AS $$
 BEGIN
- IF (to_jsonb(NEW)-ARRAY['status','slot_id','effective_date','decided_by','note','decision_note','updated_at','version']) IS DISTINCT FROM
- (to_jsonb(OLD)-ARRAY['status','slot_id','effective_date','decided_by','note','decision_note','updated_at','version']) THEN
+ IF (to_jsonb(NEW)-ARRAY['status','slot_id','effective_date','decided_by','invalidation_reason','note','decision_note','updated_at','version']) IS DISTINCT FROM
+ (to_jsonb(OLD)-ARRAY['status','slot_id','effective_date','decided_by','invalidation_reason','note','decision_note','updated_at','version']) THEN
  RAISE EXCEPTION 'request_terms_immutable' USING ERRCODE='23514'; END IF;
  IF OLD.status IN ('applied','cancelled','rejected') AND NEW.status<>OLD.status THEN RAISE EXCEPTION 'request_terminal' USING ERRCODE='23514'; END IF;
  RETURN NEW;
@@ -247,7 +249,7 @@ BEGIN
  WHERE period_id=NEW.id AND ended_at IS NULL;
  UPDATE app.commute_slots SET state='available' WHERE id IN (SELECT r.slot_id FROM app.commute_requests r WHERE r.period_id=NEW.id AND
  (r.status='approved' OR (r.status='applied' AND EXISTS(SELECT 1 FROM app.commute_assignments a WHERE a.request_id=r.id AND a.effective_to IS NULL))));
- UPDATE app.commute_requests SET status='cancelled',slot_id=NULL,effective_date=NULL,decided_by=coalesce(decided_by,user_id),decision_note=NULL
+ UPDATE app.commute_requests SET status='cancelled',slot_id=NULL,effective_date=NULL,invalidation_reason='period_ended',decision_note=NULL
  WHERE period_id=NEW.id AND status IN ('submitted','waitlisted','approved');
  UPDATE app.commute_assignments SET effective_to=greatest(effective_from,(CASE WHEN NEW.state='closed' THEN NEW.effective_ends_at ELSE clock_timestamp() END AT TIME ZONE 'Africa/Accra')::date)
  WHERE period_id=NEW.id AND effective_to IS NULL;
@@ -262,7 +264,7 @@ BEGIN
  UPDATE app.commute_slots SET state='available' WHERE id IN (SELECT r.slot_id FROM app.commute_requests r WHERE r.user_id=subject AND
  (r.status='approved' OR (r.status='applied' AND EXISTS(SELECT 1 FROM app.commute_assignments a WHERE a.request_id=r.id AND a.effective_to IS NULL))));
  UPDATE app.membership_pauses SET ended_at=greatest(started_at,clock_timestamp()),ends_after=ends_before,end_reason='period_ended' WHERE user_id=subject AND ended_at IS NULL;
- UPDATE app.commute_requests SET status='cancelled',slot_id=NULL,effective_date=NULL,decided_by=coalesce(decided_by,user_id) WHERE user_id=subject AND status IN ('submitted','waitlisted','approved');
+ UPDATE app.commute_requests SET status='cancelled',slot_id=NULL,effective_date=NULL,invalidation_reason=CASE WHEN erase_notes THEN 'erasure' ELSE 'membership_ended' END WHERE user_id=subject AND status IN ('submitted','waitlisted','approved');
  UPDATE app.commute_assignments SET effective_to=greatest(effective_from,(clock_timestamp() AT TIME ZONE 'Africa/Accra')::date) WHERE user_id=subject AND effective_to IS NULL;
  UPDATE app.reservations SET status='operator_cancelled' WHERE user_id=subject AND status IN ('pending','reserved','unseated');
  IF erase_notes THEN UPDATE app.commute_requests SET note=NULL,decision_note=NULL WHERE user_id=subject; END IF;

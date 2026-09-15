@@ -15,6 +15,21 @@ import { createTransportApp } from '../src/http/app.js';
 
 const data = (out: Outcome) => (out.body as any).data;
 const code = (wanted: string) => (e: unknown) => e instanceof TransportError && e.code === wanted;
+test('COM-17: automatic invalidation records its cause without inventing a rider decision', async (t) => {
+  const f = await fixture(t),
+    { period } = await f.buy(),
+    r = await f.request();
+  await f.financial.closePeriod(period.id, renewAt);
+  assert.deepEqual(
+    (
+      await f.owner.query(
+        'SELECT status,decided_by,invalidation_reason FROM app.commute_requests WHERE id=$1',
+        [r.id],
+      )
+    ).rows[0],
+    { status: 'cancelled', decided_by: null, invalidation_reason: 'period_ended' },
+  );
+});
 test('COM-16: real 012-to-013 upgrade preserves purchase/ledger and materializes only frozen initial legs', async (t) => {
   const f = await setup(t, {}, false, 12),
     p = await f.buy();

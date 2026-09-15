@@ -44,6 +44,8 @@ pause and dispute/account restrictions remain independent access blocks.
   the same transaction. Historical applied requests cannot release a slot that
   has since been reused. Erasure additionally clears request/decision notes and
   hides the rider from ops queues; financial history is not deleted.
+  Automatic invalidations record a bounded system cause; they do not invent a
+  rider or ops actor for a decision that person never made.
 - Receipt and event commit with the domain mutation. Authorization/ownership
   precede replay. Receipts persist resource identity, digest and actor, **not**
   notes or stale response snapshots. Replays return the current representation
