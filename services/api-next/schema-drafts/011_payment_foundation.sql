@@ -1,6 +1,5 @@
--- Reserved migration 011. Deliberately outside migrations/ until Claude's 010
--- is merged. Tests apply this exact draft transactionally after the real chain;
--- that is foundation evidence, NOT a successful contiguous 001-011 installation.
+-- Financial foundation after 010. No provider or HTTP composition is enabled.
+-- Reviewed draft is promoted byte-for-byte; applied migration history is immutable.
 CREATE TABLE app.memberships (
  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
  user_id uuid NOT NULL UNIQUE REFERENCES app.users(id) ON DELETE RESTRICT,
@@ -269,8 +268,30 @@ CREATE TRIGGER retain_ride_entries BEFORE UPDATE OR DELETE ON app.ride_entries F
 CREATE TRIGGER retain_credit_entries BEFORE UPDATE OR DELETE ON app.credit_entries FOR EACH ROW EXECUTE FUNCTION app.append_only();
 CREATE TRIGGER retain_credit_adjustments BEFORE UPDATE OR DELETE ON app.credit_adjustments FOR EACH ROW EXECUTE FUNCTION app.append_only();
 CREATE TRIGGER retain_period_closures BEFORE UPDATE OR DELETE ON app.period_closures FOR EACH ROW EXECUTE FUNCTION app.append_only();
--- No runtime DDL privilege is added. Reapply narrow grants after integration;
--- financial_grants.ts removes broad UPDATE from these append-only tables.
+-- Capture may precede its debit inside a transaction, but never at commit.
+-- The unique source index already supplies "at most one"; this supplies
+-- "at least one". Immediate source/amount/owner checks and append-only ledger
+-- triggers prevent a matching debit from being rewritten or removed later.
+CREATE FUNCTION app.require_captured_hold_debit() RETURNS trigger
+ LANGUAGE plpgsql SECURITY INVOKER SET search_path = pg_catalog AS $$
+BEGIN
+ IF EXISTS (SELECT 1 FROM app.credit_holds h
+   WHERE h.purchase_id=NEW.purchase_id AND h.state='captured'
+     AND NOT EXISTS (SELECT 1 FROM app.credit_entries e
+       WHERE e.purchase_id=h.purchase_id AND e.user_id=h.user_id
+         AND e.reason='purchase_applied' AND e.delta_pesewas=-h.amount_pesewas)) THEN
+  RAISE EXCEPTION 'captured_hold_requires_matching_debit'
+   USING ERRCODE='23514', CONSTRAINT='captured_hold_requires_debit';
+ END IF;
+ RETURN NULL;
+END $$;
+CREATE CONSTRAINT TRIGGER captured_hold_requires_debit
+ AFTER INSERT OR UPDATE ON app.credit_holds DEFERRABLE INITIALLY DEFERRED
+ FOR EACH ROW WHEN (NEW.state='captured') EXECUTE FUNCTION app.require_captured_hold_debit();
+COMMENT ON FUNCTION app.require_captured_hold_debit() IS
+ 'At commit, captured credit requires its exact typed debit. Released/held credit does not. Does not prove complete purchase fulfilment or require every accounting source to have an effect.';
+-- No runtime DDL privilege is added. grantRuntime removes broad UPDATE from
+-- these append-only tables when provisioning the complete installed schema.
 COMMENT ON COLUMN app.purchases.price_pesewas IS 'Full agreed price in integer pesewas before Ride Credit.';
 COMMENT ON COLUMN app.purchases.applied_credit_pesewas IS 'Agreed Ride Credit contribution in integer pesewas.';
 COMMENT ON COLUMN app.purchases.cash_due_pesewas IS 'Agreed provider collection in integer pesewas; minimum 100.';
