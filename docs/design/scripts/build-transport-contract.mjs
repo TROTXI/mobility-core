@@ -16,7 +16,26 @@ const selected = new Set([
   'rescheduleTrip',
   'assignTrip',
   'cancelTrip',
+  'listOpsRoutes',
+  'createRoute',
+  'updateRoute',
+  'listOpsStops',
+  'createStop',
+  'updateStop',
+  'listPatterns',
+  'createPattern',
+  'createPatternVersion',
+  'listPatternVersions',
+  'getOpsPatternVersion',
+  'publishPatternVersion',
+  'listRoutes',
+  'getRoute',
+  'getPattern',
+  'getPatternVersion',
+  'getGeometry',
+  'listRouteSchedules',
 ]);
+const count = selected.size;
 const paths = {};
 const needed = new Set();
 function references(value) {
@@ -54,4 +73,4 @@ await writeArtifact(
     2,
   ) + '\n',
 );
-console.log(`Emitted 11 reviewed transport operations, ${needed.size} schemas.`);
+console.log(`Emitted ${count} reviewed transport/catalog operations, ${needed.size} schemas.`);

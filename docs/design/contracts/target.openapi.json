@@ -15982,6 +15982,11 @@
           "archived": {
             "type": "boolean"
           },
+          "editToken": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
           "createdAt": {
             "type": "string",
             "format": "date-time",
@@ -16005,6 +16010,7 @@
           "patternIds",
           "acceptsDriverRequests",
           "archived",
+          "editToken",
           "createdAt",
           "updatedAt",
           "version"
@@ -16072,6 +16078,11 @@
           "archived": {
             "type": "boolean"
           },
+          "editToken": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
           "createdAt": {
             "type": "string",
             "format": "date-time",
@@ -16088,7 +16099,16 @@
             "maximum": 9007199254740991
           }
         },
-        "required": ["id", "name", "location", "archived", "createdAt", "updatedAt", "version"],
+        "required": [
+          "id",
+          "name",
+          "location",
+          "archived",
+          "editToken",
+          "createdAt",
+          "updatedAt",
+          "version"
+        ],
         "additionalProperties": false
       },
       "StopInput": {
@@ -16236,9 +16256,26 @@
             "minLength": 1,
             "maxLength": 128
           },
+          "revision": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
           "state": {
             "type": "string",
             "enum": ["draft", "published", "retired"]
+          },
+          "effectiveFrom": {
+            "nullable": true,
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+          },
+          "effectiveTo": {
+            "nullable": true,
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
           },
           "stops": {
             "minItems": 2,
@@ -16249,6 +16286,11 @@
           },
           "geometryId": {
             "nullable": true,
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "editToken": {
             "type": "string",
             "minLength": 1,
             "maxLength": 128
@@ -16272,9 +16314,13 @@
         "required": [
           "id",
           "patternId",
+          "revision",
           "state",
+          "effectiveFrom",
+          "effectiveTo",
           "stops",
           "geometryId",
+          "editToken",
           "createdAt",
           "updatedAt",
           "version"
@@ -16308,9 +16354,33 @@
               "required": ["stopId", "name", "location"],
               "additionalProperties": false
             }
+          },
+          "geometry": {
+            "type": "object",
+            "properties": {
+              "points": {
+                "minItems": 2,
+                "maxItems": 10000,
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/Point"
+                }
+              },
+              "stopDistancesMeters": {
+                "minItems": 2,
+                "maxItems": 500,
+                "type": "array",
+                "items": {
+                  "type": "number",
+                  "minimum": 0
+                }
+              }
+            },
+            "required": ["points", "stopDistancesMeters"],
+            "additionalProperties": false
           }
         },
-        "required": ["stops"],
+        "required": ["stops", "geometry"],
         "additionalProperties": false
       },
       "PublishVersionInput": {

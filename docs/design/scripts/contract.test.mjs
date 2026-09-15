@@ -265,3 +265,54 @@ test('domain cross-field rules are explicitly not claimed as schema-only proof',
     ),
   );
 });
+
+test('catalog drafts require bounded configured geometry; editable lists expose resource tokens', () => {
+  const point = { latitude: 5.6, longitude: -0.2 };
+  const input = {
+    stops: [
+      { stopId: 'one', name: 'Depot', location: point },
+      { stopId: 'one', name: 'Second visit', location: point },
+    ],
+    geometry: {
+      points: [point, { ...point, longitude: -0.21 }, point],
+      stopDistancesMeters: [0, 2200],
+    },
+  };
+  assert.equal(schemas.PatternVersionInput.safeParse(input).success, true);
+  assert.equal(validate('PatternVersionInput')(input), true);
+  for (const bad of [
+    { ...input, geometry: undefined },
+    { ...input, geometry: { ...input.geometry, points: [point] } },
+    { ...input, geometry: { ...input.geometry, stopDistancesMeters: [0, -1] } },
+    { ...input, geometry: { ...input.geometry, points: Array(10001).fill(point) } },
+  ]) {
+    assert.equal(schemas.PatternVersionInput.safeParse(bad).success, false);
+    // Ajv sees JSON, where undefined properties are absent.
+    assert.equal(validate('PatternVersionInput')(JSON.parse(JSON.stringify(bad))), false);
+  }
+  for (const name of ['Route', 'Stop', 'PatternVersion']) {
+    assert.ok(schemas[name].shape.editToken);
+    assert.ok(spec.components.schemas[name].required.includes('editToken'));
+  }
+  for (const field of ['effectiveFrom', 'effectiveTo', 'revision'])
+    assert.ok(schemas.PatternVersion.shape[field]);
+});
+
+test('runtime subset implements only selected cutover operations and contains no deferred detail GET', async () => {
+  const runtime = JSON.parse(
+    await readFile(
+      new URL('../../../services/api-next/src/http/contract.json', import.meta.url),
+      'utf8',
+    ),
+  );
+  let count = 0;
+  for (const [path, methods] of Object.entries(runtime.paths))
+    for (const [method, operation] of Object.entries(methods)) {
+      count++;
+      assert.deepEqual(operation, spec.paths[path][method]);
+      assert.notEqual(operation['x-delivery-stage'], 'deferred');
+    }
+  assert.equal(count, 29);
+  assert.equal(runtime.paths['/v1/ops/routes/{id}'].get, undefined);
+  assert.equal(runtime.paths['/v1/ops/stops/{id}'].get, undefined);
+});

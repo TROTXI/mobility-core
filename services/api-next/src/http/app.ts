@@ -6,6 +6,8 @@ import contract from './contract.json' with { type: 'json' };
 import { TransportService } from '../transport/service.js';
 import type { Actor, Body, Command, Read, Dependencies } from '../transport/service.js';
 import { TransportError, fail, mapDatabaseError } from '../transport/errors.js';
+import { catalogReads, publicCatalogReads } from '../transport/catalog.js';
+import type { CatalogRead } from '../transport/catalog.js';
 
 interface Operation {
   operationId: string;
@@ -20,7 +22,11 @@ export interface AppOptions extends Dependencies {
   // Signature/issuer/audience/expiry verification belongs to identity. No test
   // header fallback and no listener until a real verifier/session adapter lands.
   verifyAccess: (authorization: string) => Promise<Actor | null>;
-  minimumBuilds: { ops: number; driver: { ios: number; android: number } };
+  minimumBuilds: {
+    ops: number;
+    driver: { ios: number; android: number };
+    commuter: { ios: number; android: number };
+  };
   requestsPerMinute?: number;
   requestsPerIpPerMinute?: number;
 }
@@ -32,9 +38,13 @@ export async function createTransportApp(options: AppOptions) {
   const floors = options.minimumBuilds;
   if (
     !floors ||
-    ![floors.ops, floors.driver?.ios, floors.driver?.android].every(
-      (n) => Number.isInteger(n) && n > 0,
-    )
+    ![
+      floors.ops,
+      floors.driver?.ios,
+      floors.driver?.android,
+      floors.commuter?.ios,
+      floors.commuter?.android,
+    ].every((n) => Number.isInteger(n) && n > 0)
   )
     throw new Error('Explicit ops/iOS/Android build floors required');
   const service = new TransportService(options);
@@ -105,6 +115,7 @@ export async function createTransportApp(options: AppOptions) {
     for (const [method, value] of Object.entries(methods)) {
       const operation = value as unknown as Operation;
       const name = operation.operationId;
+      const publicRead = (publicCatalogReads as readonly string[]).includes(name);
       const ops = path.startsWith('/v1/ops/');
       const response: Record<string, unknown> = {};
       for (const [status, out] of Object.entries(operation.responses)) {
@@ -115,33 +126,42 @@ export async function createTransportApp(options: AppOptions) {
       app.route({
         method: method.toUpperCase() as 'GET' | 'POST' | 'PUT' | 'PATCH',
         url: path.replaceAll(/\{([^}]+)\}/g, ':$1'),
+        ...(name === 'createPatternVersion' ? { bodyLimit: 1048576 } : {}),
         schema: { ...(input ? { body: rootRef(input) } : {}), response },
         // The plugin's onRequest IP limiter must run before verification.
         // A route-local onRequest auth hook would precede its appended hook.
         preValidation: async (request, reply) => {
           reply.header('Cache-Control', 'no-store');
           const authorization = request.headers.authorization;
-          if (!authorization || !/^Bearer [^\s]{1,8192}$/.test(authorization))
+          if (!publicRead && (!authorization || !/^Bearer [^\s]{1,8192}$/.test(authorization)))
             fail(401, 'unauthenticated', 'Sign in to continue.');
-          const actor = await options.verifyAccess(authorization);
-          if (!actor) fail(401, 'unauthenticated', 'Sign in to continue.');
+          const actor = publicRead ? null : await options.verifyAccess(authorization!);
+          if (!publicRead && !actor) fail(401, 'unauthenticated', 'Sign in to continue.');
           const client = request.headers['x-trotxi-client'],
             build = request.headers['x-trotxi-build'],
             platform = request.headers['x-trotxi-platform'];
           if (
-            client !== (ops ? 'ops' : 'driver') ||
+            (publicRead
+              ? !['ops', 'driver', 'commuter'].includes(String(client))
+              : client !== (ops ? 'ops' : 'driver')) ||
             typeof build !== 'string' ||
             !/^[1-9]\d{0,8}$/.test(build) ||
-            (ops ? platform !== undefined : !['ios', 'android'].includes(String(platform)))
+            (client === 'ops'
+              ? platform !== undefined
+              : !['ios', 'android'].includes(String(platform)))
           )
             fail(
               400,
               'client_metadata_required',
               'Supply the appropriate client, build and platform metadata.',
             );
-          const floor = ops ? floors.ops : floors.driver[platform as 'ios' | 'android'];
+          const floor =
+            client === 'ops'
+              ? floors.ops
+              : floors[client as 'driver' | 'commuter'][platform as 'ios' | 'android'];
           if (Number(build) < floor)
             fail(426, 'client_upgrade_required', 'Update the application before continuing.');
+          if (!actor) return; // Public catalog remains IP-limited; no identity fallback.
           // Bounded process-local protection only. Distributed admission remains
           // a deployment concern; untrusted metadata never supplies authority.
           const now = Date.now();
@@ -175,7 +195,14 @@ export async function createTransportApp(options: AppOptions) {
               )
             )
               fail(400, 'invalid_query', 'Unsupported query parameters.');
-            result = await service.list(actor, name as Read, query);
+            result = (catalogReads as readonly string[]).includes(name)
+              ? await service.readCatalog(
+                  actor ?? null,
+                  name as CatalogRead,
+                  request.params as { id?: string; versionId?: string },
+                  query,
+                )
+              : await service.list(actor, name as Read, query);
           } else {
             if (!input && request.body !== undefined)
               fail(400, 'invalid_request', 'This command has no request body.');
@@ -197,6 +224,7 @@ export async function createTransportApp(options: AppOptions) {
               (request.body ?? {}) as Body,
               key,
               ifMatch as string | undefined,
+              (request.params as { versionId?: string }).versionId,
             );
           }
           for (const [key, value] of Object.entries(result.headers)) reply.header(key, value);

@@ -17,13 +17,19 @@ export function mapDatabaseError(error: unknown): TransportError {
     return new TransportError(
       409,
       'duplicate_resource',
-      'This departure or command already exists.',
+      'This resource or command already exists.',
     );
   if (e.code === '23503')
     return new TransportError(
       409,
       'invalid_reference',
       'The selected resources do not belong together.',
+    );
+  if (e.code === '23514' && e.message === 'reassignment_required')
+    return new TransportError(
+      409,
+      'reassignment_required',
+      'Existing trips need explicit reassignment before this version can be published.',
     );
   if (e.code === '23514' || e.code === '23P01')
     return new TransportError(

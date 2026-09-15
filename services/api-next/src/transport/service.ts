@@ -2,8 +2,17 @@ import { createHash, randomUUID } from 'node:crypto';
 import type { Pool, PoolClient } from 'pg';
 import { cursorCodec } from './cursor.js';
 import { fail, mapDatabaseError } from './errors.js';
+import {
+  Catalog,
+  catalogCommands,
+  catalogReads,
+  publicCatalogReads,
+  catalogId,
+} from './catalog.js';
+import type { CatalogCommand, CatalogRead } from './catalog.js';
 
 export type Command =
+  | CatalogCommand
   | 'createSchedule'
   | 'createTrip'
   | 'assignTrip'
@@ -87,6 +96,7 @@ function state(t: TripRow): Body {
 const driverOperation = (operation: string) =>
   ['startTrip', 'completeTrip', 'recordArrival', 'listDriverTrips'].includes(operation);
 const commands = new Set([
+  ...catalogCommands,
   'createSchedule',
   'createTrip',
   'assignTrip',
@@ -98,16 +108,21 @@ const commands = new Set([
 ]);
 export class TransportService {
   private readonly cursors;
+  private readonly catalog;
   constructor(private readonly deps: Dependencies) {
     if (typeof deps.authorizeSession !== 'function')
       throw new Error('A current-session authorization adapter is required');
     this.cursors = cursorCodec(deps.cursorSecret);
+    this.catalog = new Catalog(deps.cursorSecret);
   }
-  private async transaction<T>(work: (client: PoolClient) => Promise<T>): Promise<T> {
+  private async transaction<T>(
+    work: (client: PoolClient) => Promise<T>,
+    consistentRead = false,
+  ): Promise<T> {
     let client: PoolClient | undefined;
     try {
       client = await this.deps.pool.connect();
-      await client.query('BEGIN');
+      await client.query(consistentRead ? 'BEGIN ISOLATION LEVEL REPEATABLE READ' : 'BEGIN');
       await client.query("SET LOCAL TIME ZONE 'UTC'");
       await client.query("SET LOCAL lock_timeout='3s'");
       await client.query("SET LOCAL statement_timeout='10s'");
@@ -163,6 +178,8 @@ export class TransportService {
     return row as TripRow;
   }
   private normalize(operation: Command, input: Body): Body {
+    if ((catalogCommands as readonly string[]).includes(operation))
+      return this.catalog.normalize(operation as CatalogCommand, input);
     const body = structuredClone(input);
     // PostgreSQL UUID identity is case-insensitive. Match it in comparisons,
     // input hashes and retry scopes rather than treating spelling as identity.
@@ -198,10 +215,15 @@ export class TransportService {
     input: Body,
     key: string,
     ifMatch?: string,
+    childId?: string,
   ): Promise<Outcome> {
     if (!commands.has(operation)) fail(404, 'not_found', 'Operation not found.');
     actor = { ...actor, userId: resourceId(actor.userId) };
     if (target !== 'collection') target = resourceId(target);
+    if (childId !== undefined) childId = catalogId(childId);
+    const catalog = (catalogCommands as readonly string[]).includes(operation);
+    // Nested version identity is part of the receipt scope, not just its parent.
+    const receiptTarget = childId === undefined ? target : `${target}/${childId}`;
     if (!key || key.length > 128)
       fail(400, 'idempotency_key_required', 'Supply an Idempotency-Key of 1 to 128 characters.');
     const body = this.normalize(operation, input);
@@ -211,17 +233,21 @@ export class TransportService {
       // Fixed lock order: receipt -> session/user/driver -> trip -> references.
       // It is the same for different HTTP workers and application instances.
       await client.query('SELECT pg_advisory_xact_lock(hashtextextended($1,0))', [
-        canonical([actor.userId, operation, target, keyHash]),
+        canonical([actor.userId, operation, receiptTarget, keyHash]),
       ]);
       const driverId = await this.authorize(client, actor, operation);
       // ownedTrip throws 404 for a missing or foreign resource, before replay
       // lookup and before any 428/412 precondition result (for ops and drivers).
-      const trip = target === 'collection' ? null : await this.ownedTrip(client, target, driverId);
+      const locked = catalog
+        ? await this.catalog.lock(client, operation as CatalogCommand, target, childId)
+        : null;
+      const trip =
+        catalog || target === 'collection' ? null : await this.ownedTrip(client, target, driverId);
       const prior = (
         await client.query(
           `SELECT *, replay_expires_at <= clock_timestamp() AS expired
         FROM app.transport_commands WHERE actor_user_id=$1 AND operation=$2 AND target=$3 AND key_hash=$4`,
-          [actor.userId, operation, target, keyHash],
+          [actor.userId, operation, receiptTarget, keyHash],
         )
       ).rows[0];
       if (prior) {
@@ -243,6 +269,7 @@ export class TransportService {
           headers: prior.response_headers,
         };
       }
+      if (locked) this.catalog.precondition(operation as CatalogCommand, locked, ifMatch);
       if (['recordArrival', 'assignTrip', 'rescheduleTrip', 'cancelTrip'].includes(operation)) {
         if (!ifMatch)
           fail(428, 'precondition_required', 'Supply the resource edit token in If-Match.');
@@ -251,7 +278,17 @@ export class TransportService {
       }
       const commandId = randomUUID();
       let result: Outcome;
-      if (operation === 'createSchedule')
+      if (locked)
+        result = await this.catalog.execute(
+          client,
+          actor,
+          operation as CatalogCommand,
+          target,
+          body,
+          commandId,
+          locked,
+        );
+      else if (operation === 'createSchedule')
         result = await this.createSchedule(client, actor, body, commandId);
       else if (operation === 'createTrip')
         result = await this.createTrip(client, actor, body, commandId);
@@ -267,7 +304,7 @@ export class TransportService {
           commandId,
           actor.userId,
           operation,
-          target,
+          receiptTarget,
           keyHash,
           inputHash,
           result.status,
@@ -277,6 +314,25 @@ export class TransportService {
       );
       return result;
     });
+  }
+  async readCatalog(
+    actor: Actor | null,
+    operation: CatalogRead,
+    params: { id?: string; versionId?: string },
+    query: Record<string, string | undefined>,
+  ): Promise<Outcome> {
+    if (!(catalogReads as readonly string[]).includes(operation))
+      fail(404, 'not_found', 'Operation not found.');
+    if (actor) actor = { ...actor, userId: resourceId(actor.userId) };
+    return this.transaction(async (client) => {
+      if (!(publicCatalogReads as readonly string[]).includes(operation)) {
+        if (!actor) fail(401, 'unauthenticated', 'Sign in to continue.');
+        await this.authorize(client, actor, operation);
+      }
+      // One snapshot for a composed page; concurrent publication/archival cannot
+      // leak drafts or mix an old geometry with a new occurrence collection.
+      return this.catalog.read(client, operation, actor, params, query);
+    }, true);
   }
   private async createSchedule(
     client: PoolClient,

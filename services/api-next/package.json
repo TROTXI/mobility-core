@@ -12,7 +12,7 @@
     "build": "tsc -p tsconfig.build.json",
     "test": "node --import tsx --test tests/migrate.test.ts tests/transport.test.ts",
     "test:coverage": "node --import tsx --test --experimental-test-coverage tests/migrate.test.ts tests/transport.test.ts",
-    "test:postgres": "node --import tsx --test tests/transport.pg.test.ts tests/transport-commands.pg.test.ts",
+    "test:postgres": "node --import tsx --test tests/transport.pg.test.ts tests/transport-commands.pg.test.ts tests/catalog.pg.test.ts",
     "migrate": "tsx src/db/cli.ts"
   },
   "dependencies": {

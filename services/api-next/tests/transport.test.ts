@@ -25,7 +25,11 @@ test('application refuses an absent or non-callable coordinator before startup o
           authorizeSession: async () => {
             throw new Error('must not query session');
           },
-          minimumBuilds: { ops: 1, driver: { ios: 1, android: 1 } },
+          minimumBuilds: {
+            ops: 1,
+            driver: { ios: 1, android: 1 },
+            commuter: { ios: 1, android: 1 },
+          },
           // Deliberately bypass TS as a JS/misconfigured bootstrap caller could.
           coordinateReservations,
         } as AppOptions),
@@ -72,7 +76,7 @@ test('HTTP factory compiles reviewed schemas and has no unauthenticated or guess
     authorizeSession: async () => {
       throw new Error('must not query a session without verified access');
     },
-    minimumBuilds: { ops: 1, driver: { ios: 1, android: 1 } },
+    minimumBuilds: { ops: 1, driver: { ios: 1, android: 1 }, commuter: { ios: 1, android: 1 } },
   });
   try {
     await app.ready();
@@ -105,7 +109,7 @@ test('IP admission runs before verification and forged forwarded headers cannot 
     authorizeSession: async () => {
       throw new Error('must not access the database');
     },
-    minimumBuilds: { ops: 1, driver: { ios: 1, android: 1 } },
+    minimumBuilds: { ops: 1, driver: { ios: 1, android: 1 }, commuter: { ios: 1, android: 1 } },
   });
   try {
     const first = await app.inject({
