@@ -146,6 +146,85 @@ async function setup() {
   });
   const vehicle = async (plate: string, extra: Record<string, unknown> = {}) =>
     expectStatus(await request('POST', '/v1/ops/vehicles', body(plate, extra)), 201);
+  const tripFor = async (label: keyof typeof users) => {
+    const driver = (
+      await owner.query('SELECT id FROM app.drivers WHERE user_id=$1', [users[label]])
+    ).rows[0].id;
+    const route = (await owner.query("INSERT INTO app.routes(name) VALUES ('Seeded') RETURNING id"))
+      .rows[0].id;
+    const pattern = (
+      await owner.query(
+        "INSERT INTO app.route_patterns(route_id,direction) VALUES ($1,'outbound') RETURNING id",
+        [route],
+      )
+    ).rows[0].id;
+    const stop = (
+      await owner.query(
+        "INSERT INTO app.stops(name,latitude,longitude) VALUES ('S',5.6,-0.2) RETURNING id",
+      )
+    ).rows[0].id;
+    const version = (
+      await owner.query(
+        'INSERT INTO app.route_pattern_versions(pattern_id,revision) VALUES ($1,1) RETURNING id',
+        [pattern],
+      )
+    ).rows[0].id;
+    const occurrences: string[] = [];
+    for (const ordinal of [0, 1])
+      occurrences.push(
+        (
+          await owner.query(
+            `INSERT INTO app.route_pattern_stops(pattern_version_id,stop_id,ordinal,name,latitude,longitude)
+            VALUES ($1,$2,$3,'S',5.6,-0.2) RETURNING id`,
+            [version, stop, ordinal],
+          )
+        ).rows[0].id,
+      );
+    const geometry = (
+      await owner.query(
+        `INSERT INTO app.route_geometries(pattern_version_id,source,state,line)
+        VALUES ($1,'configured','draft',
+          ST_SetSRID(ST_MakeLine(ARRAY[ST_MakePoint(-0.2,5.6),ST_MakePoint(-0.21,5.61)]),4326))
+        RETURNING id`,
+        [version],
+      )
+    ).rows[0].id;
+    for (const [index, occurrence] of occurrences.entries())
+      await owner.query(
+        `INSERT INTO app.geometry_stop_distances(geometry_id,pattern_version_id,stop_occurrence_id,distance_meters)
+        VALUES ($1,$2,$3,$4)`,
+        [geometry, version, occurrence, index],
+      );
+    await owner.query("UPDATE app.route_geometries SET state='published' WHERE id=$1", [geometry]);
+    await owner.query(
+      `UPDATE app.route_pattern_versions
+      SET geometry_id=$2,state='published',effective_from=clock_timestamp()-interval '1 day'
+      WHERE id=$1`,
+      [version, geometry],
+    );
+    const departure = (
+      await owner.query('INSERT INTO app.service_departures(pattern_id) VALUES ($1) RETURNING id', [
+        pattern,
+      ])
+    ).rows[0].id;
+    const today = new Date().toISOString().slice(0, 10);
+    const schedule = (
+      await owner.query(
+        `INSERT INTO app.service_schedules(pattern_version_id,pattern_id,departure_id,service_window,
+          local_departure,weekdays,effective_from)
+        VALUES ($1,$2,$3,'morning','06:30',ARRAY[1,2,3,4,5,6,7]::smallint[],$4::date) RETURNING id`,
+        [version, pattern, departure, today],
+      )
+    ).rows[0].id;
+    return (
+      await owner.query(
+        `INSERT INTO app.trips(schedule_id,pattern_version_id,departure_id,service_date,
+          scheduled_at,assigned_driver_id,status)
+        VALUES ($1,$2,$3,$4::date,clock_timestamp(),$5,'scheduled') RETURNING id`,
+        [schedule, version, departure, today, driver],
+      )
+    ).rows[0].id;
+  };
   const driverOf = async (label: keyof typeof users) =>
     (await owner.query('SELECT id FROM app.drivers WHERE user_id=$1', [users[label]])).rows[0].id;
   const route = async (open: boolean) =>
@@ -163,6 +242,7 @@ async function setup() {
     body,
     vehicle,
     driverOf,
+    tripFor,
     route,
     close: async () => {
       await app.close();
@@ -524,21 +604,40 @@ test('FLT-08 a yard incident needs no trip; a run the driver does not hold is re
       resolution: null,
       location: null,
     });
-    // A trip belonging to nobody here is refused rather than silently attached.
-    expectStatus(
+    // An existing run assigned to somebody else is refused exactly as a
+    // nonexistent one is, so a report cannot be attached to another driver's
+    // trip and the response does not reveal which case it was.
+    const foreign = await c.tripFor('other');
+    for (const tripId of [randomUUID(), foreign])
+      expectStatus(
+        await c.request(
+          'POST',
+          '/v1/driver/incidents',
+          { category: 'collision', tripId },
+          { who: 'driver' },
+        ),
+        404,
+      );
+    // The driver's own run attaches, and the vehicle is taken from the trip
+    // rather than trusted from the caller.
+    const own = await c.tripFor('driver');
+    const bus = await c.vehicle('GT 7777-20');
+    await c.owner.query('UPDATE app.trips SET vehicle_id=$1 WHERE id=$2', [bus.id, own]);
+    const onTrip = expectStatus(
       await c.request(
         'POST',
         '/v1/driver/incidents',
-        { category: 'collision', tripId: randomUUID() },
+        { category: 'vehicle', tripId: own },
         { who: 'driver' },
       ),
-      409,
+      201,
     );
+    assert.partialDeepStrictEqual(onTrip, { tripId: own, vehicleId: bus.id });
     const mine = expectStatus(
       await c.request('GET', '/v1/driver/incidents', undefined, { who: 'driver' }),
       200,
     );
-    assert.equal(mine.length, 1);
+    assert.equal(mine.length, 2);
     // Another driver's list never contains it, and ops sees it with its owner.
     assert.deepEqual(
       expectStatus(
@@ -548,7 +647,7 @@ test('FLT-08 a yard incident needs no trip; a run the driver does not hold is re
       [],
     );
     const ops = expectStatus(await c.request('GET', '/v1/ops/incidents'), 200);
-    assert.equal(ops.length, 1);
+    assert.equal(ops.length, 2);
     assert.equal(ops[0].driverId, await c.driverOf('driver'));
   }));
 
@@ -665,6 +764,9 @@ test('FLT-10 a route change may only name a corridor ops opened, and only one as
 test('FLT-11 approving a request records agreement and never reassigns a trip or vehicle', () =>
   withCase(async (c) => {
     const open = await c.route(true);
+    // A real assigned run, so the comparison below is over something that could
+    // actually move rather than over an empty table.
+    const trip = await c.tripFor('driver');
     const asked = expectStatus(
       await c.request(
         'POST',
@@ -677,6 +779,8 @@ test('FLT-11 approving a request records agreement and never reassigns a trip or
     const before = await c.owner.query(
       'SELECT id,assigned_driver_id,vehicle_id,version FROM app.trips ORDER BY id',
     );
+    assert.equal(before.rows.length, 1, 'the fixture must seed a trip for this to prove anything');
+    assert.equal(before.rows[0].id, trip);
     const queue = expectStatus(
       await c.request('GET', '/v1/ops/driver-requests?status=pending'),
       200,
@@ -819,4 +923,59 @@ test('FLT-13 driver command retries replay one record and are audited against th
     assert.deepEqual(audit, [
       { operation: 'reportIncident', actor_user_id: c.users.driver, receipt: 'reportIncident' },
     ]);
+  }));
+
+test('FLT-14 a page cursor is bound to its filter and cannot be replayed against another', () =>
+  withCase(async (c) => {
+    // Three reports so that resolving one still leaves two open, and a page of
+    // one therefore has a genuine next cursor to replay.
+    for (const note of ['First', 'Second', 'Third'])
+      expectStatus(
+        await c.request(
+          'POST',
+          '/v1/driver/incidents',
+          { category: 'other', note },
+          { who: 'driver' },
+        ),
+        201,
+      );
+    const all = expectStatus(await c.request('GET', '/v1/ops/incidents'), 200);
+    assert.equal(all.length, 3);
+    // Resolve one so the two filters return genuinely different sets.
+    expectStatus(
+      await c.request(
+        'POST',
+        `/v1/ops/incidents/${all[0].id}/decisions`,
+        { status: 'resolved', resolution: 'Handled' },
+        { token: all[0].editToken },
+      ),
+      200,
+    );
+
+    const firstPage = await c.request('GET', '/v1/ops/incidents?status=open&limit=1');
+    assert.equal(firstPage.statusCode, 200, firstPage.body);
+    const cursor = firstPage.json().page.nextCursor;
+    assert.equal(firstPage.json().data.length, 1);
+    assert.ok(cursor, 'the first page must hand back a cursor for this to test anything');
+    // Same filter: the cursor pages normally.
+    const second = expectStatus(
+      await c.request('GET', `/v1/ops/incidents?status=open&limit=1&cursor=${cursor}`),
+      200,
+    );
+    assert.equal(second.length, 1);
+    assert.notEqual(second[0].id, firstPage.json().data[0].id);
+
+    // Different filter: refused outright. Accepting it would silently hide
+    // matching rows rather than reporting that the page no longer applies.
+    const crossed = await c.request(
+      'GET',
+      `/v1/ops/incidents?status=resolved&limit=1&cursor=${cursor}`,
+    );
+    assert.equal(crossed.statusCode, 400, crossed.body);
+    assert.equal(crossed.json().error.code, 'invalid_cursor');
+    // The resolved filter on its own still returns the resolved report.
+    assert.equal(
+      expectStatus(await c.request('GET', '/v1/ops/incidents?status=resolved'), 200).length,
+      1,
+    );
   }));

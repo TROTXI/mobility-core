@@ -264,7 +264,7 @@ export class Fleet {
           [body.tripId, driverId],
         )
       ).rows[0];
-      if (!trip) fail(409, 'unassigned_trip', 'That run is not assigned to you.');
+      if (!trip) return notFound();
       vehicleId = trip.vehicle_id;
     }
     const point = (body.location ?? null) as Body | null;
@@ -458,7 +458,10 @@ export class Fleet {
       filters.push(`x.status=$${values.length}`);
     }
     const now = (await client.query('SELECT clock_timestamp() AS now')).rows[0].now as Date;
-    const context = `fleet:${operation}:${actor.userId}`;
+    // The signed context binds the normalized filters as well as the caller and
+    // operation. Without the filter a cursor from one query decodes against a
+    // different one and silently hides matching rows instead of being refused.
+    const context = `fleet:${operation}:${actor.userId}:${query.status ?? ''}`;
     const cursor = query.cursor ? this.cursors.decode(query.cursor, context, now) : null;
     values.push(cursor?.time ?? null, cursor?.id ?? null, limit + 1);
     const rows = (
