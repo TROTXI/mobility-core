@@ -238,9 +238,14 @@ move the live marker backwards; Redis reflects that projection and remains
 rebuildable. Require a stable client fix ID and enforce uniqueness on
 `(trip_id, client_fix_id)`; the replacement model needs no nullable legacy IDs.
 
-Publish learned geometry/speed results before eligible raw traces are pruned.
-Retention duration and deletion scheduling remain explicit decisions; archive
-protection must not mean keeping raw driver locations indefinitely.
+Raw driver GPS retention is 180 days, approved by the product owner. Publish
+eligible learned geometry/speed results within that window; learning failure
+must not silently extend raw-trace retention. Stage 1 must specify the retention
+clock, purge cadence, cache/log/backup handling and restore-time cleanup. Server
+receipt time is the proposed retention clock, separate from device capture time
+used for learning and freshness; that detail still requires contract review.
+Do not assume derived data containing identifiable traces is exempt. This is a
+design requirement, not a claim that deletion is already implemented.
 
 The commuter app renders the R2 basemap, route geometry, selected stops and bus
 position. No commuter GPS collection is introduced. The approved direction is
@@ -347,11 +352,14 @@ automated onboarding block; the gate is an explicit operational responsibility.
 
 - Backend owner/product approver: Godfred. Approves scope, business rules and
   cutover; Codex implements and verifies the backend/harness work under review.
-- Mobile integration: owner and capacity must be confirmed with the team. Do not
-  assume Kojo's availability or assign unresolved work to Senanu. Ops-consumer
-  readiness likewise needs a named team owner before a cutover date is committed.
-- GPS retention and clock-skew policy: team decision, coordinated by Godfred and
-  aligned with the privacy/data-handling work; no numeric defaults approved here.
+- Frontend status confirmed by Godfred: Adom is creating screens and waiting for
+  APIs/endpoints. Ops API integration has not started; its team is still working
+  on screens. Prioritize reviewable contracts and examples so both can integrate
+  directly with the replacement API. Do not treat screen ownership as confirmed
+  capacity for all mobile integration, or assign unresolved work to Senanu.
+  Confirm integration owners and capacity before committing a cutover date.
+- Raw driver GPS retention: 180 days, approved by Godfred. Clock-skew policy is
+  still open; align retention implementation with the privacy/data-handling work.
 - Remaining stage 1 work has a two-working-day planning timebox, not a delivery
   promise or an assumption of continuous agent execution. At that checkpoint,
   report completed evidence, unresolved decisions and actual consumer capacity;
@@ -365,8 +373,9 @@ Stage 1 exit checklist (keep PR #293 in draft until reviewed):
       keep/replace/retire decisions; no code generation from drifting staging.
 - [ ] Detailed target contracts and authorization matrix, including the three
       accepted policy directions below and explicit target-only tests.
-- [ ] Team decision on GPS retention/skew and concrete contract limits for
-      idempotency and offline manifests.
+- [x] Product decision on raw driver GPS retention: 180 days.
+- [ ] Clock-skew policy, retention enforcement details and concrete contract
+      limits for idempotency and offline manifests.
 - [ ] Named consumer owners, implementation task breakdown and capacity-based
       estimate; confirm the prelaunch tripwire still holds.
 - [ ] Review of the completed schema/API design before replacement implementation.
@@ -438,8 +447,8 @@ approval. Changes to baseline behavior require labelled target-only scenarios.
    during stage 1, rather than treating any authenticated account as eligible.
 3. Operated trips retain their history. Removed stops require explicit
    reassignment before affected future journeys move to a new route version.
-4. GPS retention duration and acceptable clock skew go to the team; neither a
-   numeric policy nor its implementation is approved yet.
+4. Raw driver GPS retention is 180 days. Acceptable clock skew remains open;
+   retention enforcement details and implementation still require review/tests.
 
 Do not invent new answers for existing unresolved pricing questions: different
 fare transfers remain blocked for review, entitlement counts and commercial

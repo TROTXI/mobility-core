@@ -455,9 +455,16 @@ This draft deliberately changes API shapes and some HTTP outcomes. It does not
 declare those changes implemented. The product owner approved period-scoped
 historical disputes by default, restricted live-position access with a public
 route/stops map, and explicit reassignment for removed stops while preserving
-operated history. Detailed authorization/ops contracts still need review. GPS
-retention/skew remains a team decision. Retention periods for idempotency results
+operated history. Detailed authorization/ops contracts still need review. Raw
+driver GPS retention is approved at 180 days; clock skew and retention enforcement
+details remain open. Retention periods for idempotency results
 and offline manifests also need concrete limits in the executable contract.
 Pricing, entitlement counts and automatic renewal policy are unchanged. Follow
 the ownership checkpoint and prelaunch tripwire in the database proposal; keep
 the review PR in draft until stage 1 is complete and reviewed.
+
+Adom is building screens while waiting for APIs/endpoints; ops is also still at
+the screen-building stage and has not started API integration. Deliver reviewed
+contracts and examples early so these consumers build directly against the new
+API. Confirm integration capacity separately; screen progress is not a delivery
+commitment for both apps or the ops console.
