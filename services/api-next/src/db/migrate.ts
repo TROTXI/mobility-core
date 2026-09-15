@@ -137,7 +137,8 @@ export async function grantRuntime(pool: Pool, role: string): Promise<void> {
     await client.query(`GRANT USAGE ON SCHEMA app TO ${quoted}`);
     await client.query(`GRANT SELECT, INSERT, UPDATE ON ALL TABLES IN SCHEMA app TO ${quoted}`);
     await client.query(
-      `REVOKE UPDATE ON app.trip_events, app.schedule_events, app.catalog_events, app.transport_commands, app.auth_commands, app.driver_commands, app.driver_events, app.fleet_events FROM ${quoted}`,
+      `REVOKE UPDATE ON app.trip_events, app.schedule_events, app.catalog_events, app.transport_commands, app.auth_commands, app.driver_commands, app.driver_events, app.fleet_events,
+       app.purchase_legs, app.credit_entries, app.ride_entries, app.credit_adjustments, app.period_closures FROM ${quoted}`,
     );
     await client.query(`GRANT UPDATE (secret_ciphertext) ON app.driver_commands TO ${quoted}`);
     await client.query('COMMIT');

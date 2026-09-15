@@ -264,8 +264,28 @@ test('MIG-01 clean install records hashes, rerun is no-op, historical drift fail
       "SELECT count(*)::int AS n FROM pg_tables WHERE schemaname='app'",
     );
     // Seventeen transport/catalog + five auth + two driver command/audit tables,
-    // plus driver_incidents, driver_requests and fleet_events from 010.
-    assert.equal(tables.rows[0].n, 27);
+    // plus driver_incidents, driver_requests and fleet_events from 010,
+    // and ten financial foundation tables from 011 (asserted by name below).
+    assert.equal(tables.rows[0].n, 37);
+    assert.deepEqual(
+      (
+        await pool.query(
+          "SELECT tablename FROM pg_tables WHERE schemaname='app' AND tablename IN ('memberships','purchases','purchase_legs','payment_attempts','billing_periods','credit_adjustments','credit_holds','period_closures','ride_entries','credit_entries') ORDER BY tablename",
+        )
+      ).rows.map((r) => r.tablename),
+      [
+        'billing_periods',
+        'credit_adjustments',
+        'credit_entries',
+        'credit_holds',
+        'memberships',
+        'payment_attempts',
+        'period_closures',
+        'purchase_legs',
+        'purchases',
+        'ride_entries',
+      ],
+    );
   }));
 
 test('MIG-02 old/unknown database is refused without changing it', async () => {
