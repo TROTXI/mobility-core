@@ -19497,6 +19497,11 @@
             "type": "string",
             "enum": ["active", "released"]
           },
+          "editToken": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
           "createdAt": {
             "type": "string",
             "format": "date-time",
@@ -19522,6 +19527,7 @@
           "reviewAt",
           "id",
           "state",
+          "editToken",
           "createdAt",
           "updatedAt",
           "version"

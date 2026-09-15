@@ -816,9 +816,16 @@ named(
     reviewAt: instant,
   }),
 );
+// Release requires If-Match and there is no single-hold GET, so the list and
+// the create response are the only places a client can learn the token.
 named(
   'TraceHold',
-  schemas.TraceHoldInput.extend({ id, state: z.enum(['active', 'released']), ...audit }),
+  schemas.TraceHoldInput.extend({
+    id,
+    state: z.enum(['active', 'released']),
+    editToken: text(128),
+    ...audit,
+  }),
 );
 named('MaintenanceInput', obj({ limit: z.int().min(1).max(100).default(100) }));
 named(

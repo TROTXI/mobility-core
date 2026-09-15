@@ -126,8 +126,12 @@ export async function grantRuntime(pool: Pool, role: string): Promise<void> {
       OR has_schema_privilege(r.oid, 'app', 'CREATE')
       OR has_schema_privilege(r.oid, 'public', 'CREATE')
       OR EXISTS (SELECT 1 FROM pg_class c WHERE c.relnamespace = n.oid AND c.relkind = 'r'
-        AND (has_table_privilege(r.oid, c.oid, 'DELETE') OR has_table_privilege(r.oid, c.oid, 'TRUNCATE')
-          OR pg_has_role(r.oid, c.relowner, 'MEMBER'))) AS unsafe
+        AND (has_table_privilege(r.oid, c.oid, 'TRUNCATE')
+          OR pg_has_role(r.oid, c.relowner, 'MEMBER')
+          OR (has_table_privilege(r.oid, c.oid, 'DELETE') AND NOT EXISTS (
+            SELECT 1 FROM pg_trigger g WHERE g.tgrelid = c.oid AND NOT g.tgisinternal
+              AND g.tgfoid = to_regprocedure('app.guard_trace_deletion()')
+              AND (g.tgtype & 8) <> 0)))) AS unsafe
       FROM pg_roles r CROSS JOIN pg_database d CROSS JOIN pg_namespace n
       WHERE r.rolname = $1 AND d.datname = current_database() AND n.nspname = 'app'`,
       [role],
@@ -136,18 +140,77 @@ export async function grantRuntime(pool: Pool, role: string): Promise<void> {
       throw new Error('Runtime role must exist and be independent of the owner/installer');
     await client.query(`GRANT USAGE ON SCHEMA app TO ${quoted}`);
     await client.query(`GRANT SELECT, INSERT, UPDATE ON ALL TABLES IN SCHEMA app TO ${quoted}`);
+    // UPDATE is revoked on every append-only table, and the set is read from
+    // the schema's own triggers rather than kept by hand here: a new event
+    // table cannot ship with UPDATE still granted, and a table from a
+    // migration that has not been installed yet is simply absent instead of
+    // failing the grant. Two guards count: append_only refuses every rewrite,
+    // and guard_driver_receipt refuses all but one-way ciphertext erasure,
+    // which the column grant below re-opens. The list is a floor, not the
+    // source: if one of these exists without that protection, the grant
+    // refuses rather than leaving the runtime able to rewrite history.
+    const required = [
+      'trip_events',
+      'schedule_events',
+      'catalog_events',
+      'transport_commands',
+      'auth_commands',
+      'driver_commands',
+      'driver_events',
+      'fleet_events',
+      'purchase_legs',
+      'credit_entries',
+      'ride_entries',
+      'credit_adjustments',
+      'period_closures',
+      'payment_collections',
+      'payment_reversals',
+      'payment_review_commands',
+      'gps_events',
+      'trip_positions',
+      'membership_commands',
+      'membership_events',
+      'commute_selections',
+      'commute_selection_legs',
+      'reservation_prompts',
+    ];
+    const tables = await client.query<{ name: string; append_only: boolean; deletable: boolean }>(
+      `SELECT c.relname AS name, EXISTS (
+        SELECT 1 FROM pg_trigger g WHERE g.tgrelid = c.oid AND NOT g.tgisinternal
+          AND g.tgfoid = ANY (ARRAY[to_regprocedure('app.append_only()'),
+            to_regprocedure('app.guard_driver_receipt()')])
+          AND (g.tgtype & 16) <> 0
+      ) AS append_only, EXISTS (
+        SELECT 1 FROM pg_trigger g WHERE g.tgrelid = c.oid AND NOT g.tgisinternal
+          AND g.tgfoid = to_regprocedure('app.guard_trace_deletion()') AND (g.tgtype & 8) <> 0
+      ) AS deletable
+      FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
+      WHERE n.nspname = 'app' AND c.relkind = 'r' ORDER BY c.relname`,
+    );
+    // A required table that is simply not installed yet is absent from the
+    // query, so only an installed one without its guard is an error.
+    const unprotected = tables.rows.find((t) => required.includes(t.name) && !t.append_only);
+    if (unprotected)
+      throw new Error(`Append-only table without an UPDATE guard: ${unprotected.name}`);
+    const appendOnly = tables.rows.filter((t) => t.append_only).map((t) => t.name);
+    if (!appendOnly.length) throw new Error('Refusing to grant: no append-only history found');
+    if (appendOnly.some((name) => !/^[a-z][a-z0-9_]*$/.test(name)))
+      throw new Error('Unexpected table name in the app schema');
     await client.query(
-      `REVOKE UPDATE ON app.trip_events, app.schedule_events, app.catalog_events, app.transport_commands, app.auth_commands, app.driver_commands, app.driver_events, app.fleet_events,
-       app.purchase_legs, app.credit_entries, app.ride_entries, app.credit_adjustments, app.period_closures,
-       app.payment_collections, app.payment_reversals, app.payment_review_commands FROM ${quoted}`,
+      `REVOKE UPDATE ON ${appendOnly.map((name) => `app."${name}"`).join(', ')} FROM ${quoted}`,
     );
     await client.query(`GRANT UPDATE (secret_ciphertext) ON app.driver_commands TO ${quoted}`);
-    // Historical-chain tests deliberately stop before 013.
-    const membershipTables = await client.query(
-      "SELECT tablename FROM pg_tables WHERE schemaname='app' AND tablename IN ('membership_commands','membership_events','commute_selections','commute_selection_legs','reservation_prompts')",
-    );
-    for (const row of membershipTables.rows)
-      await client.query(`REVOKE UPDATE ON app."${row.tablename}" FROM ${quoted}`);
+    // Retention is an obligation, so the runtime needs DELETE somewhere. It is
+    // granted only where the schema declares a deletion guard, and that guard
+    // refuses anything not past its deadline or named by an active hold, so
+    // the privilege cannot reach history it is not owed.
+    const deletable = tables.rows.filter((t) => t.deletable).map((t) => t.name);
+    if (deletable.some((name) => !/^[a-z][a-z0-9_]*$/.test(name)))
+      throw new Error('Unexpected table name in the app schema');
+    if (deletable.length)
+      await client.query(
+        `GRANT DELETE ON ${deletable.map((name) => `app."${name}"`).join(', ')} TO ${quoted}`,
+      );
     await client.query('COMMIT');
   } catch (error) {
     await client.query('ROLLBACK');

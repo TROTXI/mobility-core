@@ -11,11 +11,14 @@ import {
 } from './catalog.js';
 import type { CatalogCommand, CatalogRead } from './catalog.js';
 import { Fleet, fleetCommands, fleetReads, driverFleetOperations } from './fleet.js';
+import { Gps, gpsCommands, gpsReads, driverGpsOperations } from './gps.js';
+import type { GpsCommand, GpsRead, GpsLocked } from './gps.js';
 import type { FleetCommand, FleetRead, FleetLocked } from './fleet.js';
 
 export type Command =
   | CatalogCommand
   | FleetCommand
+  | GpsCommand
   | 'createSchedule'
   | 'createTrip'
   | 'assignTrip'
@@ -24,7 +27,7 @@ export type Command =
   | 'startTrip'
   | 'completeTrip'
   | 'recordArrival';
-export type Read = 'listSchedules' | 'listOpsTrips' | 'listDriverTrips' | FleetRead;
+export type Read = 'listSchedules' | 'listOpsTrips' | 'listDriverTrips' | FleetRead | GpsRead;
 type Json = null | boolean | number | string | Json[] | { [key: string]: Json };
 export type Body = Record<string, Json>;
 export interface Outcome {
@@ -98,10 +101,12 @@ function state(t: TripRow): Body {
 }
 const driverOperation = (operation: string) =>
   ['startTrip', 'completeTrip', 'recordArrival', 'listDriverTrips'].includes(operation) ||
-  (driverFleetOperations as readonly string[]).includes(operation);
+  (driverFleetOperations as readonly string[]).includes(operation) ||
+  (driverGpsOperations as readonly string[]).includes(operation);
 const commands = new Set([
   ...catalogCommands,
   ...fleetCommands,
+  ...gpsCommands,
   'createSchedule',
   'createTrip',
   'assignTrip',
@@ -115,12 +120,14 @@ export class TransportService {
   private readonly cursors;
   private readonly catalog;
   private readonly fleet;
+  private readonly gps;
   constructor(private readonly deps: Dependencies) {
     if (typeof deps.authorizeSession !== 'function')
       throw new Error('A current-session authorization adapter is required');
     this.cursors = cursorCodec(deps.cursorSecret);
     this.catalog = new Catalog(deps.cursorSecret);
     this.fleet = new Fleet(deps.cursorSecret);
+    this.gps = new Gps(deps.cursorSecret);
   }
   private async transaction<T>(
     work: (client: PoolClient) => Promise<T>,
@@ -189,6 +196,8 @@ export class TransportService {
       return this.catalog.normalize(operation as CatalogCommand, input);
     if ((fleetCommands as readonly string[]).includes(operation))
       return this.fleet.normalize(operation as FleetCommand, input);
+    if ((gpsCommands as readonly string[]).includes(operation))
+      return this.gps.normalize(operation as GpsCommand, input);
     const body = structuredClone(input);
     // PostgreSQL UUID identity is case-insensitive. Match it in comparisons,
     // input hashes and retry scopes rather than treating spelling as identity.
@@ -232,6 +241,7 @@ export class TransportService {
     if (childId !== undefined) childId = catalogId(childId);
     const catalog = (catalogCommands as readonly string[]).includes(operation);
     const fleet = (fleetCommands as readonly string[]).includes(operation);
+    const gps = (gpsCommands as readonly string[]).includes(operation);
     // Nested version identity is part of the receipt scope, not just its parent.
     const receiptTarget = childId === undefined ? target : `${target}/${childId}`;
     if (!key || key.length > 128)
@@ -254,8 +264,11 @@ export class TransportService {
       const fleetLocked: FleetLocked | null = fleet
         ? await this.fleet.lock(client, operation as FleetCommand, target, driverId)
         : null;
+      const gpsLocked: GpsLocked | null = gps
+        ? await this.gps.lock(client, operation as GpsCommand, target)
+        : null;
       const trip =
-        catalog || fleet || target === 'collection'
+        catalog || fleet || gps || target === 'collection'
           ? null
           : await this.ownedTrip(client, target, driverId);
       const prior = (
@@ -286,6 +299,7 @@ export class TransportService {
       }
       if (locked) this.catalog.precondition(operation as CatalogCommand, locked, ifMatch);
       if (fleetLocked) this.fleet.precondition(operation as FleetCommand, fleetLocked, ifMatch);
+      if (gpsLocked) this.gps.precondition(operation as GpsCommand, gpsLocked, ifMatch);
       if (['recordArrival', 'assignTrip', 'rescheduleTrip', 'cancelTrip'].includes(operation)) {
         if (!ifMatch)
           fail(428, 'precondition_required', 'Supply the resource edit token in If-Match.');
@@ -294,7 +308,17 @@ export class TransportService {
       }
       const commandId = randomUUID();
       let result: Outcome;
-      if (fleet)
+      if (gps)
+        result = await this.gps.execute(
+          client,
+          actor,
+          operation as GpsCommand,
+          target,
+          body,
+          commandId,
+          driverId,
+        );
+      else if (fleet)
         result = await this.fleet.execute(
           client,
           actor,
@@ -675,6 +699,8 @@ export class TransportService {
       const driverId = await this.authorize(client, actor, operation);
       if ((fleetReads as readonly string[]).includes(operation))
         return this.fleet.read(client, operation as FleetRead, actor, query, driverId);
+      if ((gpsReads as readonly string[]).includes(operation))
+        return this.gps.read(client, operation as GpsRead, actor, query);
       const now = new Date();
       const schedules = operation === 'listSchedules';
       const limit = query.limit === undefined ? 50 : Number(query.limit);
