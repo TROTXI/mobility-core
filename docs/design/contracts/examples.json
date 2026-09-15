@@ -1,0 +1,124 @@
+[
+  {
+    "name": "never-subscribed",
+    "schema": "MembershipResponse",
+    "value": {
+      "data": {
+        "membership": null,
+        "coverage": null,
+        "lastCoverageEndedAt": null,
+        "access": {
+          "canReserve": false,
+          "blocks": []
+        },
+        "commute": null,
+        "entitlements": {
+          "remainingRides": 0,
+          "credit": {
+            "amountMinor": 0,
+            "currency": "GHS"
+          },
+          "heldCredit": {
+            "amountMinor": 0,
+            "currency": "GHS"
+          },
+          "availableCredit": {
+            "amountMinor": 0,
+            "currency": "GHS"
+          }
+        }
+      }
+    }
+  },
+  {
+    "name": "awaiting-fix",
+    "schema": "LiveTripResponse",
+    "value": {
+      "data": {
+        "tripId": "trip-demo",
+        "patternVersionId": "pattern-version-demo",
+        "geometryId": null,
+        "riderPickupOccurrenceId": null,
+        "state": "awaiting_fix",
+        "position": null,
+        "etas": [],
+        "serverTime": "2026-09-14T10:00:00Z"
+      }
+    }
+  },
+  {
+    "name": "boarded",
+    "schema": "BoardingResultResponse",
+    "value": {
+      "data": {
+        "reservationId": "reservation-demo",
+        "status": "boarded",
+        "alreadyApplied": false,
+        "chargedRides": 1
+      }
+    }
+  },
+  {
+    "name": "paused-and-disputed",
+    "schema": "MembershipResponse",
+    "value": {
+      "data": {
+        "membership": {
+          "id": "membership-demo",
+          "lifecycle": "open"
+        },
+        "coverage": {
+          "id": "period-demo",
+          "startsAt": "2026-09-01T00:00:00Z",
+          "endsAt": null,
+          "state": "open",
+          "paused": true,
+          "renewalMode": "manual"
+        },
+        "lastCoverageEndedAt": null,
+        "access": {
+          "canReserve": false,
+          "blocks": [
+            {
+              "kind": "paused",
+              "scope": "period",
+              "periodId": "period-demo"
+            },
+            {
+              "kind": "dispute",
+              "scope": "period",
+              "periodId": "period-demo"
+            }
+          ]
+        },
+        "commute": null,
+        "entitlements": {
+          "remainingRides": 20,
+          "credit": {
+            "amountMinor": 0,
+            "currency": "GHS"
+          },
+          "heldCredit": {
+            "amountMinor": 0,
+            "currency": "GHS"
+          },
+          "availableCredit": {
+            "amountMinor": 0,
+            "currency": "GHS"
+          }
+        }
+      }
+    }
+  },
+  {
+    "name": "stale-state",
+    "schema": "ErrorResponse",
+    "value": {
+      "error": {
+        "code": "version_conflict",
+        "message": "Reload this resource before retrying.",
+        "requestId": "request-demo"
+      }
+    }
+  }
+]
