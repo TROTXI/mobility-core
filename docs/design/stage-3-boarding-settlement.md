@@ -110,7 +110,8 @@ to direct service callers: QR cannot smuggle a photo reservation field and a
 photo decision cannot carry an unchecked token. BRD-27 covers malformed/mixed
 variants and foreign-driver refusal for each legitimate variant. There is no
 CodeQL suppression or lowered gate threshold.
-The resolver registry is a closed `Map`, not a dynamic object-method lookup;
+Proof variants use static call sites, not dynamic object/Map function lookup;
 unknown/inherited names cannot resolve to executable handlers. BRD-27 includes
-`constructor` and `__proto__` rejection. Both follow-up changes retain the full
-211-test Postgres result.
+`constructor` and `__proto__` rejection. A closed-map intermediate refactor still
+raised CodeQL's dynamic-call rule, so the final shape uses an explicit switch
+and independently testable proof validators without changing authorization.
