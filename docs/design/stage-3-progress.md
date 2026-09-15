@@ -105,7 +105,9 @@ ownership on command/event references. Eleven reviewed operations have handlers
 through an injectable HTTP factory: schedule create/list, trip create/ops list,
 driver list/start/complete/arrival, and booking-coordinated ops assignment,
 reschedule/cancel. There is no listener, deployment, real auth implementation or
-default permissive booking coordinator. Unwired booking edits return 503.
+default permissive booking coordinator. Application creation now refuses an
+absent or non-callable coordinator; the lower-level service retains its isolated
+fail-closed guard. HTTP tests supply explicit failing or marker-writing adapters.
 
 New tests cover actual HTTP plus a restricted Postgres login: state + event +
 receipt atomicity, exact retry replay, changed-payload conflicts, fresh-key
@@ -114,11 +116,21 @@ contention, audit-write rollback, driver/session isolation, caller-bound cursors
 ISO dates, current-role checks and build-floor admission. Test session/booking
 adapters are explicitly labelled; no reservation or identity scenario group is
 claimed complete because these test ports pass. The existing 29 storage tests
-remain, plus 17 command tests and seven pure/preflight checks. UUID case folding
+remain, plus 20 command tests and eight pure/preflight checks. UUID case folding
 matches database identity in comparisons and retry scopes; the new case test
 was first verified failing at the intended arrival assertion before the fix.
 The official Fastify rate limiter enforces a pre-authentication IP limit as well
 as the verified-user budget. CI's security gate is retained without suppression.
+
+Review migration `005` requires a receipt for non-owner trip-event inserts,
+leaving the existing owner-only fixture/history exception. The invoker-rights
+check uses table ownership, not role-name matching. Tests prove runtime rejection,
+owner fixture allowance, inability to assume the owner or disable the guard,
+and deferred receipt/actor integrity even when the event is inserted first.
+Migrations `001`–`004` are unchanged. This does not enforce an audit event on every
+direct trip UPDATE; that remains an explicit service boundary to revisit before
+another runtime writer is introduced. Missing-trip tests cover all four
+conditional mutations and foreign driver access before precondition checks.
 
 Contract corrections fulfill the stage-2 list-first requirement: driver trip
 rows expose an opaque `editToken`, equal to the returned ETag, and ops uses an

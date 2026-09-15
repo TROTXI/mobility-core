@@ -14,6 +14,9 @@ interface Operation {
   responses: Record<string, { content?: Record<string, { schema: Record<string, unknown> }> }>;
 }
 export interface AppOptions extends Dependencies {
+  // Unlike the independently testable service, the application must not start
+  // with booking-aware mutations exposed but their required adapter absent.
+  coordinateReservations: NonNullable<Dependencies['coordinateReservations']>;
   // Signature/issuer/audience/expiry verification belongs to identity. No test
   // header fallback and no listener until a real verifier/session adapter lands.
   verifyAccess: (authorization: string) => Promise<Actor | null>;
@@ -22,6 +25,8 @@ export interface AppOptions extends Dependencies {
   requestsPerIpPerMinute?: number;
 }
 export async function createTransportApp(options: AppOptions) {
+  if (typeof options.coordinateReservations !== 'function')
+    throw new Error('Transactional reservation coordinator required before application startup');
   if (typeof options.verifyAccess !== 'function')
     throw new Error('Verified access-token adapter required');
   const floors = options.minimumBuilds;

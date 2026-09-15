@@ -4,7 +4,39 @@ import { Pool } from 'pg';
 import { canonical, tripEditToken } from '../src/transport/service.js';
 import { cursorCodec } from '../src/transport/cursor.js';
 import { createTransportApp } from '../src/http/app.js';
+import type { AppOptions } from '../src/http/app.js';
 import { TransportError } from '../src/transport/errors.js';
+
+const rejectBookingChanges = async () => {
+  throw new Error('This pure-test adapter must never perform booking work');
+};
+
+test('application refuses an absent or non-callable coordinator before startup or database work', async () => {
+  const pool = new Pool();
+  try {
+    for (const coordinateReservations of [undefined, null, false, {}]) {
+      await assert.rejects(
+        createTransportApp({
+          pool,
+          cursorSecret: Buffer.alloc(32, 9),
+          verifyAccess: async () => {
+            throw new Error('must not verify access');
+          },
+          authorizeSession: async () => {
+            throw new Error('must not query session');
+          },
+          minimumBuilds: { ops: 1, driver: { ios: 1, android: 1 } },
+          // Deliberately bypass TS as a JS/misconfigured bootstrap caller could.
+          coordinateReservations,
+        } as AppOptions),
+        /^Error: Transactional reservation coordinator required before application startup$/,
+      );
+    }
+    assert.equal(pool.totalCount, 0);
+  } finally {
+    await pool.end();
+  }
+});
 
 test('command normalization is property-order independent but distinguishes changed input', () => {
   assert.equal(
@@ -34,6 +66,7 @@ test('HTTP factory compiles reviewed schemas and has no unauthenticated or guess
   const pool = new Pool();
   const app = await createTransportApp({
     pool,
+    coordinateReservations: rejectBookingChanges,
     cursorSecret: Buffer.alloc(32, 9),
     verifyAccess: async () => null,
     authorizeSession: async () => {
@@ -62,6 +95,7 @@ test('IP admission runs before verification and forged forwarded headers cannot 
   let verified = 0;
   const app = await createTransportApp({
     pool,
+    coordinateReservations: rejectBookingChanges,
     cursorSecret: Buffer.alloc(32, 9),
     requestsPerIpPerMinute: 1,
     verifyAccess: async () => {

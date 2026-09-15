@@ -8,6 +8,8 @@ import { setTimeout as delay } from 'node:timers/promises';
 import pg from 'pg';
 import { createTransportApp } from '../src/http/app.js';
 import { TransportError } from '../src/transport/errors.js';
+import { TransportService } from '../src/transport/service.js';
+import type { Body, Command } from '../src/transport/service.js';
 import { grantRuntime, migrate, readMigrations } from '../src/db/migrate.js';
 
 const value = process.env.HARNESS_ADMIN_DATABASE_URL;
@@ -178,19 +180,20 @@ async function setup(coordinated = false, budget = 1000) {
         if (!session?.active)
           throw new TransportError(401, 'unauthenticated', 'Sign in to continue.');
       },
-      ...(coordinated
-        ? {
-            coordinateReservations: async (
-              client: pg.PoolClient,
-              change: { before: { id: string }; operation: string },
-            ) => {
-              await client.query('INSERT INTO app.test_booking_effects VALUES ($1,$2)', [
-                change.before.id,
-                change.operation,
-              ]);
-            },
-          }
-        : {}),
+      // Explicit test adapters only. Production application creation refuses
+      // an absent adapter; no application option bypasses that requirement.
+      coordinateReservations: async (client, change) => {
+        if (!coordinated)
+          throw new TransportError(
+            503,
+            'reservation_coordinator_unavailable',
+            'Test coordinator unavailable.',
+          );
+        await client.query('INSERT INTO app.test_booking_effects VALUES ($1,$2)', [
+          change.before.id,
+          change.operation,
+        ]);
+      },
     });
     await app.ready();
     const headers = (who: keyof typeof users, ops = false) => ({
@@ -579,7 +582,7 @@ test('CMD-04 current session, account role and assignment authorize every replay
     status(await c.request('driver', 'POST', path, undefined, 'saved'), 401);
     assert.deepEqual(await counts(c), { commands: 1, events: 1, schedules: 0, booking_effects: 0 });
   }));
-test('CMD-05 unwired reservation coordinator fails closed for ops changes with no mutation or receipt', () =>
+test('CMD-05 unavailable test coordinator and direct unwired service both fail without mutation or receipt', () =>
   withCase(async (c) => {
     const { trip } = await c.seedTrip(),
       token = `"trip:${trip}:1"`;
@@ -595,6 +598,39 @@ test('CMD-05 unwired reservation coordinator fails closed for ops changes with n
       const r = await c.request('admin', method, path, input, randomUUID(), token);
       status(r, 503);
       assert.equal(r.json().error.code, 'reservation_coordinator_unavailable');
+    }
+    // Only the lower-level service permits omission for isolated testing.
+    // The HTTP factory now rejects that configuration before it can serve.
+    const unwired = new TransportService({
+      pool: c.runtime,
+      cursorSecret: Buffer.alloc(32, 7),
+      authorizeSession: async (client, actor) => {
+        const session = await client.query(
+          'SELECT active FROM app.test_sessions WHERE user_id=$1 AND session_id=$2 FOR SHARE',
+          [actor.userId, actor.sessionId],
+        );
+        assert.equal(session.rows[0]?.active, true);
+      },
+    });
+    for (const [operation, input] of [
+      ['assignTrip', { driverId: c.otherDriver, vehicleId: c.vehicle }],
+      ['rescheduleTrip', { scheduledAt: '2026-09-15T07:00:00Z' }],
+      ['cancelTrip', { reason: 'Test cancellation' }],
+    ] as [Command, Body][]) {
+      await assert.rejects(
+        unwired.command(
+          { userId: c.users.admin, sessionId: 'session-admin' },
+          operation,
+          trip,
+          input,
+          randomUUID(),
+          token,
+        ),
+        (e: unknown) =>
+          e instanceof TransportError &&
+          e.status === 503 &&
+          e.code === 'reservation_coordinator_unavailable',
+      );
     }
     assert.equal(
       (await c.owner.query('SELECT version FROM app.trips WHERE id=$1', [trip])).rows[0].version,
@@ -912,6 +948,147 @@ test('CMD-14 commands run as a real narrow runtime login, not the schema owner',
     await rejects(c.runtime.query('UPDATE app.transport_commands SET response_status=200'));
     await rejects(c.runtime.query("UPDATE app.schedule_events SET operation='create'"));
     await rejects(c.runtime.query('DELETE FROM app.trips'));
+  }));
+test('CMD-18 only the actual table owner may insert receiptless event fixtures', () =>
+  withCase(async (c) => {
+    const { trip } = await c.seedTrip();
+    const insert = `INSERT INTO app.trip_events(trip_id,actor_user_id,operation,before_state,after_state)
+      VALUES ($1,$2,'create','{}','{}') RETURNING command_id`;
+    const args = [trip, c.users.admin];
+    assert.equal((await c.owner.query(insert, args)).rows[0].command_id, null);
+    const receiptRequired = (error: unknown) => {
+      assert.equal((error as { code: string }).code, '23514');
+      assert.match((error as Error).message, /^trip_event_receipt_required$/);
+      return true;
+    };
+    await assert.rejects(c.runtime.query(insert, args), receiptRequired);
+    await assert.rejects(
+      c.runtime.query(
+        `INSERT INTO app.trip_events
+      (trip_id,actor_user_id,operation,before_state,after_state,command_id)
+      VALUES ($1,$2,'create','{}','{}',NULL)`,
+        args,
+      ),
+      receiptRequired,
+    );
+    const ownerRole = (await c.owner.query('SELECT current_user AS name')).rows[0].name;
+    const denied = (error: unknown) => (error as { code: string }).code === '42501';
+    await assert.rejects(
+      c.runtime.query("SELECT set_config('role',$1,false)", [ownerRole]),
+      denied,
+    );
+    await assert.rejects(
+      c.runtime.query('ALTER TABLE app.trip_events DISABLE TRIGGER require_trip_event_receipt'),
+      denied,
+    );
+    const guard = (
+      await c.owner.query(`SELECT prosecdef,proconfig FROM pg_proc
+      WHERE oid='app.require_trip_event_receipt()'::regprocedure`)
+    ).rows[0];
+    assert.deepEqual(guard, { prosecdef: false, proconfig: ['search_path=pg_catalog'] });
+    // Ordinary commands still work as the same restricted runtime login.
+    status(await c.request('driver', 'POST', `/v1/driver/trips/${trip}/start`), 200);
+    assert.deepEqual(await counts(c), { commands: 1, events: 2, schedules: 0, booking_effects: 0 });
+  }));
+test('CMD-19 receipt and event actors must match at commit, while event-before-receipt remains valid', () =>
+  withCase(async (c) => {
+    const { trip } = await c.seedTrip();
+    const eventSql = `INSERT INTO app.trip_events
+      (trip_id,actor_user_id,command_id,operation,before_state,after_state)
+      VALUES ($1,$2,$3,'create','{}','{}') RETURNING id`;
+    const client = await c.runtime.connect();
+    try {
+      for (const kind of ['missing', 'wrong-actor', 'matching']) {
+        const command = randomUUID();
+        await client.query('BEGIN');
+        try {
+          // A non-null reference permits the INSERT; the FK validates at COMMIT.
+          assert.equal((await client.query(eventSql, [trip, c.users.admin, command])).rowCount, 1);
+          if (kind !== 'missing')
+            await client.query(
+              `INSERT INTO app.transport_commands
+            (id,actor_user_id,operation,target,key_hash,input_hash,response_status,response_body,response_headers,replay_expires_at)
+            VALUES ($1,$2,'createTrip','collection',$3,$4,201,'{}','{}',clock_timestamp()+interval '7 days')`,
+              [
+                command,
+                kind === 'wrong-actor' ? c.users.otherAdmin : c.users.admin,
+                randomBytes(32).toString('hex'),
+                randomBytes(32).toString('hex'),
+              ],
+            );
+          if (kind === 'matching') await client.query('COMMIT');
+          else {
+            await assert.rejects(client.query('COMMIT'), (error: unknown) => {
+              assert.equal((error as { code: string }).code, '23503');
+              assert.equal(
+                (error as { constraint: string }).constraint,
+                'trip_event_command_actor',
+              );
+              return true;
+            });
+            assert.deepEqual(await counts(c), {
+              commands: 0,
+              events: 0,
+              schedules: 0,
+              booking_effects: 0,
+            });
+          }
+        } finally {
+          await client.query('ROLLBACK');
+        }
+      }
+    } finally {
+      client.release();
+    }
+    // Owner exception is only for NULL: supplied references still obey the FK.
+    await assert.rejects(
+      c.owner.query(eventSql, [trip, c.users.admin, randomUUID()]),
+      (e: unknown) => (e as { code: string }).code === '23503',
+    );
+    assert.deepEqual(await counts(c), { commands: 1, events: 1, schedules: 0, booking_effects: 0 });
+  }));
+test('CMD-20 all four conditional mutations return 404 before absent or stale If-Match', () =>
+  withCase(async (c) => {
+    const { trip } = await c.seedTrip();
+    const before = (await c.owner.query('SELECT * FROM app.trips WHERE id=$1', [trip])).rows;
+    for (const token of [undefined, '"stale"']) {
+      const missing = randomUUID();
+      for (const [who, method, path, input] of [
+        [
+          'driver',
+          'POST',
+          `/v1/driver/trips/${missing}/arrivals`,
+          { stopOccurrenceId: c.stops[0] },
+        ],
+        [
+          'admin',
+          'PUT',
+          `/v1/ops/trips/${missing}/assignment`,
+          { driverId: c.driver, vehicleId: c.vehicle },
+        ],
+        ['admin', 'PATCH', `/v1/ops/trips/${missing}`, { scheduledAt: '2026-09-15T07:00:00Z' }],
+        ['admin', 'POST', `/v1/ops/trips/${missing}/cancel`, { reason: 'Missing trip' }],
+      ] as const) {
+        const reply = await c.request(who, method, path, input, randomUUID(), token);
+        status(reply, 404);
+        assert.equal(reply.json().error.code, 'not_found');
+      }
+      const foreign = await c.request(
+        'other',
+        'POST',
+        `/v1/driver/trips/${trip}/arrivals`,
+        { stopOccurrenceId: c.stops[0] },
+        randomUUID(),
+        token,
+      );
+      status(foreign, 404);
+      assert.equal(foreign.json().error.code, 'not_found');
+    }
+    assert.deepEqual(
+      (await c.owner.query('SELECT * FROM app.trips WHERE id=$1', [trip])).rows,
+      before,
+    );
+    assert.deepEqual(await counts(c), { commands: 0, events: 0, schedules: 0, booking_effects: 0 });
   }));
 test('CMD-15 compatibility metadata never grants authority; unsupported builds fail before writes', () =>
   withCase(async (c) => {

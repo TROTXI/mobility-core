@@ -77,9 +77,11 @@ vehicle references that driver responses do not expose.
 
 - Ops: create/list schedules; create/list trips; assignment, reschedule, cancel.
 - Driver: list own trips; start, complete, report/correct an occurrence arrival.
-- Booking-affecting ops commands **return 503** without an explicitly installed
-  transactional reservation coordinator. Tests prove its effects roll back with
-  trip/event writes, using a test marker table, **not a real reservation adapter**.
+- Application creation **refuses an absent or non-callable transactional
+  reservation coordinator**, before building the HTTP app. There is no bypass
+  option. Tests supply explicit failing or transaction-marker adapters, **not a
+  real reservation adapter**. The independently testable service still fails
+  closed on omission; a wired adapter can also reject work without any commit.
 - Token verification and current-session validation are required injected ports.
   No unsigned user-ID/role header fallback exists. Tests use opaque verified test
   credentials and a test-session table; this is authorization evidence, **not**
@@ -111,6 +113,20 @@ schedule creation events. Earlier migration bytes remain unchanged. Audit/receip
 history is append-only and the runtime login lacks UPDATE on these tables as
 well as DDL/DELETE/TRUNCATE rights. Only fixed operation/column choices are used
 in dynamic SQL, and request values are parameterized.
+
+Review migration `005` requires `trip_events.command_id` on every non-owner
+insert. Its invoker-rights trigger checks actual table ownership, not a role-name
+prefix. Only the table owner retains the fixture/history exception; the runtime
+cannot assume that role or disable the trigger. Non-null references still obey
+the deferred receipt/actor FK for all writers, including the owner. Migrations
+`001` through `004` remain byte-identical.
+
+**Audit boundary decision:** this guard enforces receipt-backed event inserts,
+not an event for every direct SQL trip mutation. Command-layer state/event/receipt
+atomicity remains service-enforced and rollback-tested. No per-trip cross-table
+constraint trigger is added here. Before introducing another runtime trip writer,
+review which mutations require audit and how an event is matched to that exact
+mutation; merely finding an old event for a trip would not prove it was audited.
 
 ## Run locally
 
@@ -146,7 +162,10 @@ blanket default privileges that silently grant access to future sensitive tables
 
 ## Evidence and limits
 
-The Postgres job runs **46 tests**: 29 storage tests and 17 real HTTP/command tests.
+The Postgres job runs **49 tests**: 29 storage tests and 20 real HTTP/command tests.
+Review regressions cover receiptless runtime rejection, owner-only fixtures,
+deferred receipt existence/actor validation and all four conditional mutations'
+404-before-428/412 behavior (including foreign driver trips).
 UUID spelling is normalized before scope/hash/comparison; a regression test
 reproduces the uppercase-occurrence rejection before the fix, then proves replay
 across uppercase/lowercase path and body IDs after it.
@@ -159,7 +178,8 @@ checks cover direct repointing to incompatible and compatible revisions, plus
 the catalog weekday convention and Sunday/Monday behavior. Tests run
 against the entire migration chain, not a reduced fixture schema (except the
 explicit `001` upgrade-refusal test, which verifies failure without mutation).
-Seven pure/preflight tests run in the workspace job, including a pre-auth limit
+Eight pure/preflight tests run in the workspace job, including startup refusal
+with a missing/malformed coordinator before any DB connection and a pre-auth limit
 test that asserts the rejected request never reaches verification and cannot
 bypass the limit with a forged forwarded address. Source and migration hashes,
 verified blocking PIDs, cleanup targets and JUnit results are retained as CI

@@ -214,6 +214,8 @@ export class TransportService {
         canonical([actor.userId, operation, target, keyHash]),
       ]);
       const driverId = await this.authorize(client, actor, operation);
+      // ownedTrip throws 404 for a missing or foreign resource, before replay
+      // lookup and before any 428/412 precondition result (for ops and drivers).
       const trip = target === 'collection' ? null : await this.ownedTrip(client, target, driverId);
       const prior = (
         await client.query(

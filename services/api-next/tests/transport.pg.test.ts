@@ -1045,8 +1045,15 @@ test('runtime role cannot mutate event history, delete/truncate tables or instal
     try {
       await client.query(`SET ROLE "${role}"`);
       await client.query(
-        `INSERT INTO app.trip_events(trip_id,actor_user_id,operation,before_state,after_state)
-      VALUES ($1,$2,'start','{}','{}')`,
+        // Runtime fixtures now obey the same receipt requirement as commands;
+        // do not switch this insert to the owner and weaken the privilege test.
+        `WITH receipt AS (
+          INSERT INTO app.transport_commands
+            (id,actor_user_id,operation,target,key_hash,input_hash,response_status,response_body,response_headers,replay_expires_at)
+          VALUES (gen_random_uuid(),$2,'startTrip',$1::text,repeat('a',64),repeat('b',64),200,'{}','{}',clock_timestamp()+interval '7 days')
+          RETURNING id
+        ) INSERT INTO app.trip_events(trip_id,actor_user_id,command_id,operation,before_state,after_state)
+        SELECT $1::uuid,$2,receipt.id,'start','{}','{}' FROM receipt`,
         [t.tripId, f.user],
       );
       await rejects(client.query("UPDATE app.trip_events SET reason='tamper'"), '42501');
