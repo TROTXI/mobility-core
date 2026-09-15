@@ -5,6 +5,14 @@ const source = JSON.parse(
   await readFile(new URL('../contracts/target.openapi.json', import.meta.url), 'utf8'),
 );
 const selected = new Set([
+  'signInGoogle',
+  'signInApple',
+  'signInDriver',
+  'refreshSession',
+  'logoutSession',
+  'getAccount',
+  'listSessions',
+  'revokeSession',
   'createSchedule',
   'listSchedules',
   'createTrip',
@@ -73,4 +81,4 @@ await writeArtifact(
     2,
   ) + '\n',
 );
-console.log(`Emitted ${count} reviewed transport/catalog operations, ${needed.size} schemas.`);
+console.log(`Emitted ${count} reviewed replacement operations, ${needed.size} schemas.`);

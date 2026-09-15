@@ -1,7 +1,8 @@
-# Replacement backend — stage 3, transport commands and route catalog
+# Replacement backend — stage 3, transport, catalog and authentication
 
 Not deployed. This package has an **injectable HTTP app factory, not a production
-listener or deploy entry point**. Signature/session adapters must be supplied.
+listener or deploy entry point**. `createReplacementApp` now composes the real
+signature/session implementation; provider configuration must be supplied.
 The running API, its 45 migrations, apps, jobs and staging database are unchanged.
 Review into `codex/backend-replacement`, not `main`. Do not point existing API
 binaries at this schema or point this installer at the existing staging database.
@@ -33,7 +34,7 @@ binaries at this schema or point this installer at the existing staging database
 - Restrictive relationships and no trip deletion, plus append-only event storage.
   A separate runtime role has no application DDL, deletion, truncation or migration access.
 
-These are **17 application tables**, primarily transport and identity references,
+These are **22 application tables**, transport and identity/session storage,
 including command receipts, schedule and catalog audit events, not payment tables.
 The migration-history table is separate. No membership,
 purchase or ledger tables are introduced in this slice.
@@ -135,8 +136,9 @@ mutation; merely finding an old event for a trip would not prove it was audited.
 The executable setup flow is create route → create physical stops → create
 outbound/return pattern → create draft version with configured geometry → publish
 → create service schedule → create trip. CAT-01 exercises it through HTTP without
-inserting any transport/catalog fixtures. Identity and sessions are still explicit
-test adapters, and trip booking coordination still requires its real adapter.
+inserting any transport/catalog fixtures. CAT tests still use explicitly labelled
+identity fixtures. The authentication slice separately exercises real signed-token/
+session integration; trip booking coordination still requires its real adapter.
 
 | Boundary             | Implemented operations                                                                                              |
 | -------------------- | ------------------------------------------------------------------------------------------------------------------- |
@@ -191,6 +193,20 @@ Build/platform metadata is required even without authentication; the app factory
 now requires explicit commuter floors alongside driver and ops floors. Public
 reads are IP-limited and never use an unverified identity header as authority.
 
+## Authentication port
+
+Eight more reviewed operations bring the composed factory to **37 operations**:
+`POST /v1/auth/{google,apple,driver,refresh,logout}`, `GET /v1/me`,
+`GET /v1/me/sessions`, and `DELETE /v1/me/sessions/{id}`. The transport-only
+factory remains independently testable with explicit identity adapters; the
+composed factory cannot substitute header claims for signature/session checks.
+
+Read [the auth port decisions and evidence](../../docs/design/stage-3-auth-port.md).
+Migration `007` adds provider identities, stable device sessions, hash-only
+refresh generations, existing-format driver credentials and fixed-204 revocation
+receipts. `001`–`006` are unchanged. Provider/PIN primitives are ported from the
+existing implementation, not invented replacement authentication rules.
+
 ## Run locally
 
 Use Node 24 and the repository's pinned pnpm. The tests create uniquely named
@@ -225,8 +241,8 @@ blanket default privileges that silently grant access to future sensitive tables
 
 ## Evidence and limits
 
-The Postgres job runs **64 tests**: 29 storage, 20 transport command and 15 catalog
-HTTP tests, none skipped. Catalog tests cover full HTTP setup, visibility,
+The Postgres job runs **81 tests**: 29 storage, 20 transport command, 15 catalog
+and 17 auth HTTP/transaction tests, none skipped. Catalog tests cover full HTTP setup, visibility,
 snapshot preservation, publication rollback, three observed database races,
 parent/child replay scope, revocation, row edit tokens, microsecond pagination,
 runtime audit privileges and a 6,000-point geometry above the default body limit.
@@ -245,7 +261,7 @@ checks cover direct repointing to incompatible and compatible revisions, plus
 the catalog weekday convention and Sunday/Monday behavior. Tests run
 against the entire migration chain, not a reduced fixture schema (except the
 explicit `001` upgrade-refusal test, which verifies failure without mutation).
-Eight pure/preflight tests run in the workspace job, including startup refusal
+Fourteen pure/preflight tests run in the workspace job, including startup refusal
 with a missing/malformed coordinator before any DB connection and a pre-auth limit
 test that asserts the rejected request never reaches verification and cannot
 bypass the limit with a forged forwarded address. Source and migration hashes,
@@ -265,9 +281,9 @@ The stage-2 baseline and its expectations remain unchanged.
 
 ## Still required within stage 3
 
-1. Production signature/session adapters, bootstrap/deploy wiring, distributed
+1. Provider secret configuration, bootstrap/deploy wiring, distributed
    admission and physical receipt expiry; real booking coordination for ops
-   edits. The 29-operation app factory is not a ready-to-deploy replacement service.
+   edits. The 37-operation app factory is not a ready-to-deploy replacement service.
 2. Attributable future-version reassignment coordinated with commute assignments
    and reservations. Until that command exists, version changes on an existing
    trip fail closed; do not disable the guard to publish over affected trips.
@@ -277,8 +293,10 @@ The stage-2 baseline and its expectations remain unchanged.
 4. Membership, purchases, attempts, periods, typed accounting, payment candidate
    adapter and all preserved PAY/REC scenarios; approved target-only ownership
    rules and the PAY-08 fixture substitution.
-5. Commute/boarding, identity/erasure, GPS ingestion/projection/retention/learning,
+5. Commute/boarding, ops credential provisioning/reset, self PIN change and
+   identity/erasure, GPS ingestion/projection/retention/learning,
    remaining cutover operations and full cross-domain tests.
 
-No allocation, charging, ETA algorithm, raw-GPS retention job, auth endpoint,
-consumer upgrade or staging cutover is delivered by this foundation.
+No allocation, charging, ETA algorithm, raw-GPS retention job, consumer upgrade
+or staging cutover is delivered by these slices. Auth endpoints exist in the
+factory but have not replaced or changed any deployed endpoint.
