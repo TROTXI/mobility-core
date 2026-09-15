@@ -208,11 +208,14 @@ export const driverResponseSchema = z.object({
   createdAt: z.date(),
 });
 
-// A GPS fix reported by a trip's assigned driver (#25). recordedAt is assigned by
-// the server, so the body carries only coordinates; ranges match WGS84 lat/lng.
+// A GPS fix reported by a trip's assigned driver (#25, #289). New clients carry
+// capture time and a stable id for offline replay; both remain optional so an
+// already-shipped client continues to work.
 export const reportPositionBodySchema = z.object({
   latitude: z.number().min(-90).max(90),
   longitude: z.number().min(-180).max(180),
+  recordedAt: z.string().datetime().optional(),
+  clientFixId: z.string().uuid().optional(),
 });
 
 // Acknowledgement returned to the driver after a fix is recorded — the stored

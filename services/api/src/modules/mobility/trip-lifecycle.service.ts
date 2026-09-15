@@ -20,7 +20,7 @@ import type { Trip, TripRepository, TripStatus } from './trip.repository';
 export type AccessRefusal = 'not_found' | 'not_assigned_driver';
 export type LifecycleRefusal = AccessRefusal | 'illegal_transition';
 /** Reporting an arrival adds one more way to be wrong: a stop off the route. */
-export type ArrivalRefusal = AccessRefusal | 'no_such_stop';
+export type ArrivalRefusal = AccessRefusal | 'no_such_stop' | 'illegal_transition';
 
 /** Either the updated trip, or why not. */
 export type LifecycleResult = { ok: true; trip: Trip } | { ok: false; reason: LifecycleRefusal };
@@ -141,6 +141,9 @@ export class TripLifecycleService {
   async arrive(tripId: string, userId: string, seq: number): Promise<ArrivalResult> {
     const guard = await this.authorize(tripId, userId);
     if (!guard.ok) return guard;
+    if (guard.trip.status !== 'active') {
+      return { ok: false, reason: 'illegal_transition' };
+    }
 
     const stops = this.deps.routeStops
       ? await this.deps.routeStops.findByRoute(guard.trip.routeId)
@@ -149,8 +152,10 @@ export class TripLifecycleService {
       return { ok: false, reason: 'no_such_stop' };
     }
 
-    const updated = await this.deps.trips.update(tripId, { currentStopSeq: seq });
-    return updated ? { ok: true, trip: updated } : { ok: false, reason: 'not_found' };
+    const updated = await this.deps.trips.updateIfStatus(tripId, 'active', {
+      currentStopSeq: seq,
+    });
+    return updated ? { ok: true, trip: updated } : { ok: false, reason: 'illegal_transition' };
   }
 
   /**

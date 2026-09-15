@@ -143,7 +143,7 @@ jobs:
       - run: pnpm --filter @trotxi/api run migrate
       # The payment unit of work relies on real row/advisory locks. These races
       # cannot be proven by the single-process in-memory adapter.
-      - run: pnpm --filter @trotxi/api exec vitest run tests/payment-lifecycle.pg.test.ts tests/trip-progress.pg.test.ts tests/commute.pg.test.ts
+      - run: pnpm --filter @trotxi/api exec vitest run tests/payment-lifecycle.pg.test.ts tests/trip-progress.pg.test.ts tests/trip-position.pg.test.ts tests/commute.pg.test.ts
 
   e2e:
     name: E2E (Playwright)

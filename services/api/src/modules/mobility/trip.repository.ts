@@ -114,6 +114,8 @@ export interface TripRepository {
    * @returns the updated trip, or null if not found.
    */
   update(id: string, patch: TripUpdate): Promise<Trip | null>;
+  /** Apply a patch only while the row is still in the expected lifecycle state. */
+  updateIfStatus(id: string, expected: TripStatus, patch: TripUpdate): Promise<Trip | null>;
 }
 
 /**
@@ -169,6 +171,14 @@ export class InMemoryTripRepository implements TripRepository {
   async update(id: string, patch: TripUpdate): Promise<Trip | null> {
     const existing = this.trips.get(id);
     if (!existing) return null;
+    const updated = applyPatch(existing, patch);
+    this.trips.set(id, updated);
+    return updated;
+  }
+
+  async updateIfStatus(id: string, expected: TripStatus, patch: TripUpdate): Promise<Trip | null> {
+    const existing = this.trips.get(id);
+    if (!existing || existing.status !== expected) return null;
     const updated = applyPatch(existing, patch);
     this.trips.set(id, updated);
     return updated;

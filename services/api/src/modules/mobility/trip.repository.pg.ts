@@ -121,4 +121,31 @@ export class PgTripRepository implements TripRepository {
     );
     return rows[0] ? toTrip(rows[0]) : null;
   }
+
+  async updateIfStatus(id: string, expected: TripStatus, patch: TripUpdate): Promise<Trip | null> {
+    const existing = await this.findById(id);
+    if (!existing || existing.status !== expected) return null;
+    const next = applyPatch(existing, patch);
+    const { rows } = await this.pool.query<TripRow>(
+      `UPDATE trips
+          SET status = $3, scheduled_at = $4, vehicle_id = $5, assigned_driver_id = $6,
+              started_at = $7, completed_at = $8, current_stop_seq = $9,
+              assignment_changed_at = $10
+        WHERE id = $1 AND status = $2
+        RETURNING *`,
+      [
+        id,
+        expected,
+        next.status,
+        next.scheduledAt,
+        next.vehicleId,
+        next.assignedDriverId,
+        next.startedAt,
+        next.completedAt,
+        next.currentStopSeq,
+        next.assignmentChangedAt,
+      ],
+    );
+    return rows[0] ? toTrip(rows[0]) : null;
+  }
 }

@@ -45,6 +45,12 @@ export interface SegmentSpeed {
   sampleCount: number;
 }
 
+/** Learned road-following path and the distance of each stop along it. */
+export interface EtaRouteGeometry {
+  points: readonly LatLng[];
+  stopDistances: ReadonlyMap<number, number>;
+}
+
 /**
  * Below this many observations a median is noise, not signal — one unusual run
  * would swing the ETA. Segments under it keep the cold-start speed.
@@ -99,8 +105,9 @@ function toPlane(p: LatLng, cosLatRef: number): { x: number; y: number } {
  *
  * @param position - the vehicle's latest fix.
  * @param stops - the route's stops in seq order (as returned by the route-stop repo).
- * @param speeds - observed median speeds by segment index (#181). Omit, or leave
+ * @param speeds - observed median speeds by starting stop seq (#181). Omit, or leave
  *   a segment out, to charge that stretch the cold-start speed.
+ * @param geometry - learned road-following path. Falls back to stop chords until learned.
  * @returns upcoming stops in order, each with remaining distance + ETA seconds.
  *   Empty when there are fewer than two stops or the vehicle is past the last stop.
  */
@@ -108,60 +115,43 @@ export function computeEtas(
   position: LatLng,
   stops: RouteStopPoint[],
   speeds?: Map<number, SegmentSpeed>,
+  geometry?: EtaRouteGeometry,
 ): StopEta[] {
   // Need at least one segment to define "progress along the route".
   if (stops.length < 2) return [];
 
-  // Cumulative haversine distance to each stop (cumulative[0] = 0).
-  const segLen: number[] = [];
-  const cumulative: number[] = [0];
-  for (let i = 0; i < stops.length - 1; i++) {
-    const len = haversineMeters(stops[i]!, stops[i + 1]!);
-    segLen.push(len);
-    cumulative.push(cumulative[i]! + len);
-  }
+  const usesLearnedGeometry = Boolean(geometry && geometry.points.length >= 2);
+  const path: readonly LatLng[] = usesLearnedGeometry ? geometry!.points : stops;
+  const pathMetrics = cumulativeDistances(path);
 
-  // Project the position onto the nearest segment. cosLatRef anchors the planar
-  // approximation at the vehicle's latitude, where the relevant segments sit.
-  const cosLatRef = Math.cos(toRad(position.latitude));
-  const p = toPlane(position, cosLatRef);
-  let bestSeg = 0;
-  let bestTRaw = 0;
-  let bestDist = Infinity;
-  for (let i = 0; i < segLen.length; i++) {
-    const a = toPlane(stops[i]!, cosLatRef);
-    const b = toPlane(stops[i + 1]!, cosLatRef);
-    const abx = b.x - a.x;
-    const aby = b.y - a.y;
-    const abLenSq = abx * abx + aby * aby;
-    // Degenerate (coincident) stops: treat as the segment start.
-    const tRaw = abLenSq === 0 ? 0 : ((p.x - a.x) * abx + (p.y - a.y) * aby) / abLenSq;
-    const tClamped = Math.max(0, Math.min(1, tRaw));
-    const projX = a.x + tClamped * abx;
-    const projY = a.y + tClamped * aby;
-    const dist = Math.hypot(p.x - projX, p.y - projY);
-    if (dist < bestDist) {
-      bestDist = dist;
-      bestSeg = i;
-      bestTRaw = tRaw;
-    }
-  }
+  // The vehicle is projected onto the learned path when it exists. Before the
+  // first and after the last point we preserve extrapolation: riders can see an
+  // approaching vehicle and a finished route has no upcoming stops.
+  const travelled = distanceAlongPath(position, path, pathMetrics, true);
 
-  // Distance travelled along the route to the projection point. Allow the vehicle
-  // to sit before the first stop (bestTRaw < 0) or past the last (bestTRaw > 1) so
-  // a rider at the origin still sees the bus approaching, and a finished trip
-  // yields no upcoming stops. Interior segments clamp to [0, 1].
-  const lastSeg = segLen.length - 1;
-  let tEff = Math.max(0, Math.min(1, bestTRaw));
-  if (bestSeg === 0 && bestTRaw < 0) tEff = bestTRaw;
-  if (bestSeg === lastSeg && bestTRaw > 1) tEff = bestTRaw;
-  const travelled = cumulative[bestSeg]! + tEff * segLen[bestSeg]!;
+  // Route learning persists authoritative stop distances. If an older learned
+  // row has none, derive them from the same path rather than reverting ETA to
+  // straight stop chords. Enforce monotonicity defensively for loop-like roads.
+  const storedDistances = usesLearnedGeometry
+    ? stops.map((stop) => geometry!.stopDistances.get(stop.seq))
+    : [];
+  const hasAllStoredDistances =
+    storedDistances.length === stops.length &&
+    storedDistances.every((distance) => distance !== undefined && Number.isFinite(distance));
+  const stopDistances = hasAllStoredDistances
+    ? (storedDistances as number[])
+    : usesLearnedGeometry
+      ? stops.map((stop) => distanceAlongPath(stop, path, pathMetrics, false))
+      : cumulativeDistances(stops).cumulative;
+  for (let index = 1; index < stopDistances.length; index++) {
+    stopDistances[index] = Math.max(stopDistances[index]!, stopDistances[index - 1]!);
+  }
 
   // Speed per segment: the observed median where we have enough runs, the
   // cold-start constant everywhere else. Building the lookup once keeps the
   // per-stop loop linear.
   const speedForSegment = (index: number): number => {
-    const observed = speeds?.get(index);
+    const observed = speeds?.get(stops[index]!.seq);
     if (observed && observed.sampleCount >= MIN_SAMPLES_FOR_OBSERVED_SPEED) {
       return observed.metresPerSecond;
     }
@@ -170,7 +160,8 @@ export function computeEtas(
 
   const etas: StopEta[] = [];
   for (let j = 0; j < stops.length; j++) {
-    const remaining = cumulative[j]! - travelled;
+    const targetDistance = stopDistances[j]!;
+    const remaining = targetDistance - travelled;
     if (remaining <= REACHED_EPS_M) continue; // reached or behind → not upcoming
 
     // Walk the segments between the vehicle and this stop, charging each its own
@@ -178,10 +169,22 @@ export function computeEtas(
     // number is the whole point: a run is fast on the highway and slow through
     // the junction, and an average of the two is wrong for both.
     let seconds = 0;
-    for (let seg = bestSeg; seg < j; seg++) {
-      const segmentRemaining = seg === bestSeg ? cumulative[seg + 1]! - travelled : segLen[seg]!;
-      if (segmentRemaining <= 0) continue;
-      seconds += segmentRemaining / speedForSegment(seg);
+    let cursor = travelled;
+
+    // Approach to the first stop uses the first route segment's speed.
+    if (cursor < stopDistances[0]!) {
+      const approachEnd = Math.min(targetDistance, stopDistances[0]!);
+      seconds += (approachEnd - cursor) / speedForSegment(0);
+      cursor = approachEnd;
+    }
+
+    for (let seg = 0; seg < j; seg++) {
+      const segmentStart = stopDistances[seg]!;
+      const segmentEnd = stopDistances[seg + 1]!;
+      const overlapStart = Math.max(cursor, segmentStart);
+      const overlapEnd = Math.min(targetDistance, segmentEnd);
+      if (overlapEnd <= overlapStart) continue;
+      seconds += (overlapEnd - overlapStart) / speedForSegment(seg);
     }
 
     etas.push({
@@ -193,4 +196,74 @@ export function computeEtas(
     });
   }
   return etas;
+}
+
+/**
+ * Segment lengths and cumulative distances for a polyline.
+ *
+ * @param path - ordered points in the route path.
+ * @returns each segment length and the cumulative distance at every point.
+ */
+function cumulativeDistances(path: readonly LatLng[]): {
+  segmentLengths: number[];
+  cumulative: number[];
+} {
+  const segmentLengths: number[] = [];
+  const cumulative = [0];
+  for (let index = 0; index < path.length - 1; index++) {
+    const length = haversineMeters(path[index]!, path[index + 1]!);
+    segmentLengths.push(length);
+    cumulative.push(cumulative[index]! + length);
+  }
+  return { segmentLengths, cumulative };
+}
+
+/**
+ * Project a point onto a path and return metres travelled along that path.
+ *
+ * @param point - vehicle or stop to project.
+ * @param path - ordered route path.
+ * @param metrics - precomputed lengths for the path.
+ * @param extendEndpoints - whether positions beyond the first/last point extrapolate.
+ * @returns metres from the path origin to the projection.
+ */
+function distanceAlongPath(
+  point: LatLng,
+  path: readonly LatLng[],
+  metrics: ReturnType<typeof cumulativeDistances>,
+  extendEndpoints: boolean,
+): number {
+  const cosLatRef = Math.cos(toRad(point.latitude));
+  const p = toPlane(point, cosLatRef);
+  let bestSegment = 0;
+  let bestRawFraction = 0;
+  let bestDistance = Infinity;
+
+  for (let index = 0; index < metrics.segmentLengths.length; index++) {
+    const a = toPlane(path[index]!, cosLatRef);
+    const b = toPlane(path[index + 1]!, cosLatRef);
+    const abx = b.x - a.x;
+    const aby = b.y - a.y;
+    const lengthSquared = abx * abx + aby * aby;
+    const rawFraction =
+      lengthSquared === 0 ? 0 : ((p.x - a.x) * abx + (p.y - a.y) * aby) / lengthSquared;
+    const fraction = Math.max(0, Math.min(1, rawFraction));
+    const distance = Math.hypot(p.x - (a.x + fraction * abx), p.y - (a.y + fraction * aby));
+    if (distance < bestDistance) {
+      bestDistance = distance;
+      bestSegment = index;
+      bestRawFraction = rawFraction;
+    }
+  }
+
+  let effectiveFraction = Math.max(0, Math.min(1, bestRawFraction));
+  if (extendEndpoints && bestSegment === 0 && bestRawFraction < 0) {
+    effectiveFraction = bestRawFraction;
+  }
+  if (extendEndpoints && bestSegment === metrics.segmentLengths.length - 1 && bestRawFraction > 1) {
+    effectiveFraction = bestRawFraction;
+  }
+  return (
+    metrics.cumulative[bestSegment]! + effectiveFraction * metrics.segmentLengths[bestSegment]!
+  );
 }

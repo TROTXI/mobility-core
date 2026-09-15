@@ -5,20 +5,29 @@
 // the latest fix (see positions.routes.ts). Two implementations: InMemory for
 // dev/tests, Postgres (trip-position.repository.pg.ts) for real runs.
 
-/** One reported GPS fix for a trip. recordedAt is server-assigned at record time. */
+/** One reported GPS fix for a trip. */
 export interface TripPosition {
   id: string;
   tripId: string;
   latitude: number;
   longitude: number;
+  /** When the driver device captured the fix. */
   recordedAt: Date;
+  /** When the API/store received the fix. */
+  receivedAt: Date;
+  /** Stable client id used to deduplicate an offline replay. */
+  clientFixId: string | null;
 }
 
-/** Fields needed to record a {@link TripPosition}. recordedAt is set by the store. */
+/** Fields needed to record a {@link TripPosition}. */
 export interface NewTripPosition {
   tripId: string;
   latitude: number;
   longitude: number;
+  /** Omit for legacy clients; the store then uses receipt time. */
+  recordedAt?: Date;
+  /** Omit for legacy clients; supplied by queue-capable clients. */
+  clientFixId?: string;
 }
 
 /** Persistence for trip position fixes (Postgres in prod, in-memory in dev/tests). */
@@ -50,17 +59,35 @@ export interface TripPositionRepository {
   findAllForTrip(tripId: string): Promise<TripPosition[]>;
 }
 
+/** The trip stopped being active between route authorization and the insert. */
+export class InactiveTripPositionError extends Error {
+  constructor() {
+    super('Trip is not active');
+    this.name = 'InactiveTripPositionError';
+  }
+}
+
 /** In-memory {@link TripPositionRepository} for dev and unit tests. */
 export class InMemoryTripPositionRepository implements TripPositionRepository {
   private readonly positions: TripPosition[] = [];
 
   async record(input: NewTripPosition): Promise<TripPosition> {
+    if (input.clientFixId) {
+      const existing = this.positions.find(
+        (position) =>
+          position.tripId === input.tripId && position.clientFixId === input.clientFixId,
+      );
+      if (existing) return existing;
+    }
+    const receivedAt = new Date();
     const position: TripPosition = {
       id: crypto.randomUUID(),
       tripId: input.tripId,
       latitude: input.latitude,
       longitude: input.longitude,
-      recordedAt: new Date(),
+      recordedAt: input.recordedAt ?? receivedAt,
+      receivedAt,
+      clientFixId: input.clientFixId ?? null,
     };
     this.positions.push(position);
     return position;
@@ -72,13 +99,24 @@ export class InMemoryTripPositionRepository implements TripPositionRepository {
     let latest: TripPosition | null = null;
     for (const p of this.positions) {
       if (p.tripId !== tripId) continue;
-      if (!latest || p.recordedAt.getTime() >= latest.recordedAt.getTime()) latest = p;
+      if (
+        !latest ||
+        p.recordedAt.getTime() > latest.recordedAt.getTime() ||
+        (p.recordedAt.getTime() === latest.recordedAt.getTime() &&
+          p.receivedAt.getTime() >= latest.receivedAt.getTime())
+      ) {
+        latest = p;
+      }
     }
     return latest;
   }
   async findAllForTrip(tripId: string): Promise<TripPosition[]> {
     return this.positions
       .filter((p) => p.tripId === tripId)
-      .sort((a, b) => a.recordedAt.getTime() - b.recordedAt.getTime());
+      .sort(
+        (a, b) =>
+          a.recordedAt.getTime() - b.recordedAt.getTime() ||
+          a.receivedAt.getTime() - b.receivedAt.getTime(),
+      );
   }
 }

@@ -43,6 +43,13 @@ describe('app', () => {
     const spec = res.json();
     expect(spec.openapi).toBeTruthy();
     expect(Object.keys(spec.paths)).toContain('/healthz');
+    expect(
+      spec.paths['/trips/{id}/position'].post.requestBody.content['application/json'].schema
+        .properties,
+    ).toMatchObject({
+      recordedAt: { type: 'string', format: 'date-time' },
+      clientFixId: { type: 'string', format: 'uuid' },
+    });
   });
 
   it('returns version info with name, version and commit', async () => {

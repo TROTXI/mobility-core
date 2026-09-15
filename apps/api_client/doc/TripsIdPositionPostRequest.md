@@ -10,7 +10,8 @@ Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
 **latitude** | **num** |  | 
 **longitude** | **num** |  | 
+**recordedAt** | [**DateTime**](DateTime.md) |  | [optional]
+**clientFixId** | **String** |  | [optional]
 
 [[Back to Model list]](../README.md#documentation-for-models) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to README]](../README.md)
-
 

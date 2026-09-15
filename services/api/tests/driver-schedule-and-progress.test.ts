@@ -190,6 +190,11 @@ describe('stop progress (#230)', () => {
   it('advances when the driver reports an arrival', async () => {
     const ctx = await setup();
     const trip = await scheduleRun(ctx, '2026-10-01T06:30:00.000Z');
+    await ctx.app.inject({
+      method: 'POST',
+      url: `/trips/${trip.id}/start`,
+      headers: await asDriver(MINE),
+    });
 
     const arrived = await ctx.app.inject({
       method: 'POST',
@@ -205,6 +210,11 @@ describe('stop progress (#230)', () => {
   it('lets a driver tap back after overshooting', async () => {
     const ctx = await setup();
     const trip = await scheduleRun(ctx, '2026-10-01T06:30:00.000Z');
+    await ctx.app.inject({
+      method: 'POST',
+      url: `/trips/${trip.id}/start`,
+      headers: await asDriver(MINE),
+    });
     const arrive = async (seq: number) =>
       ctx.app.inject({
         method: 'POST',
@@ -221,6 +231,11 @@ describe('stop progress (#230)', () => {
   it('refuses a stop that is not on the route', async () => {
     const ctx = await setup();
     const trip = await scheduleRun(ctx, '2026-10-01T06:30:00.000Z');
+    await ctx.app.inject({
+      method: 'POST',
+      url: `/trips/${trip.id}/start`,
+      headers: await asDriver(MINE),
+    });
 
     const res = await ctx.app.inject({
       method: 'POST',
