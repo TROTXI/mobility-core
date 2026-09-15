@@ -15,6 +15,27 @@ import { createTransportApp } from '../src/http/app.js';
 
 const data = (out: Outcome) => (out.body as any).data;
 const code = (wanted: string) => (e: unknown) => e instanceof TransportError && e.code === wanted;
+test('COM-22: commute event history rejects the parent collection status filter', async (t) => {
+  const f = await httpFixture(t);
+  await f.buy();
+  const request = await f.request();
+  await f.decide(request.id, { action: 'waitlist' });
+  const path = `/v1/ops/commute-requests/${request.id}/events`;
+  const events = await f.get(path, f.adminHeaders);
+  assert.equal(events.data.length, 2);
+  assert.deepEqual(events.data.map((e: any) => e.action).sort(), [
+    'createCommuteRequest',
+    'waitlist',
+  ]);
+  await f.get(`${path}?status=submitted`, f.adminHeaders, 400);
+  const first = await f.get(`${path}?limit=1`, f.adminHeaders);
+  assert.ok(first.page.nextCursor);
+  const second = await f.get(
+    `${path}?limit=1&cursor=${encodeURIComponent(first.page.nextCursor)}`,
+    f.adminHeaders,
+  );
+  assert.notEqual(first.data[0].id, second.data[0].id);
+});
 async function httpFixture(t: TestContext) {
   const f = await fixture(t);
   const app = await createTransportApp({

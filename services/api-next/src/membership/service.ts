@@ -446,11 +446,12 @@ export class MembershipService {
     const normalized = normalize(input) as Body;
     const scope = target ? id(target) : actor.userId.toLowerCase();
     return this.tx(async (c) => {
-      // Ops may address arbitrary riders: authorize the current session/role
-      // before any target-dependent lookup or 404. Rider commands retain the
-      // exclusive own-user lock before session authorization, avoiding lock
-      // upgrades against checkout, refresh and revocation.
-      if (ops(op)) await this.authorize(c, actor, op);
+      // Every command authorizes exactly once before target discovery. Rider
+      // commands first lock only their authenticated own user, preserving the
+      // financial/auth lock order without conditioning authorization on a
+      // caller-supplied target or whether its database row exists.
+      if (!ops(op)) await this.lockUser(c, actor.userId);
+      await this.authorize(c, actor, op);
       // Discover the subject without exposing it, then re-read under rider lock.
       let userId = actor.userId;
       if (op === 'decideCommuteRequest')
@@ -462,18 +463,13 @@ export class MembershipService {
           await c.query('SELECT user_id FROM app.account_restrictions WHERE id=$1', [scope])
         ).rows[0]?.user_id;
       if (
-        !ops(op) ||
         ['decideCommuteRequest', 'createAccountRestriction', 'releaseAccountRestriction'].includes(
           op,
         )
       ) {
-        if (!userId) {
-          await this.authorize(c, actor, op);
-          fail(404, 'not_found', 'Resource not found.');
-        }
+        if (!userId) fail(404, 'not_found', 'Resource not found.');
         await this.lockUser(c, userId);
       }
-      if (!ops(op)) await this.authorize(c, actor, op);
       if (parentUserId && id(parentUserId) !== userId)
         fail(404, 'not_found', 'Restriction not found.');
       // Foreign rider resources are refused before receipt lookup or If-Match.

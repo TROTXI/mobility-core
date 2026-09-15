@@ -150,7 +150,9 @@ for (const o of operations) {
     parameters.push(
       query('routeId', str, 'Filter within caller scope; never expands authorization.'),
     );
-  if (o.list && /incidents|requests|reviews/.test(o.path))
+  // A status filter belongs to the resource collection, not nested event
+  // history merely because its parent path contains "requests".
+  if (o.list && /(?:incidents|requests|reviews)$/.test(o.path))
     parameters.push(
       query(
         'status',

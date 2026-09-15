@@ -7326,16 +7326,6 @@
             "description": "Page size. No silent truncation."
           },
           {
-            "name": "status",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "string",
-              "maxLength": 50
-            },
-            "description": "Must match the resource state enum; unknown values return 400."
-          },
-          {
             "name": "X-Trotxi-Client",
             "in": "header",
             "required": true,

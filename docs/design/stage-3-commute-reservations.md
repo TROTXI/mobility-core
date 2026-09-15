@@ -56,8 +56,9 @@ pause and dispute/account restrictions remain independent access blocks.
   201 on both paths and expose the current ETag wherever the resource has an
   edit token, including after a later resource edit. No response snapshot or
   additional migration is needed to preserve that HTTP contract.
-- Ops authorization, including session revocation, precedes target-rider
-  lookup. A non-admin receives the same refusal for existing, missing and
+- Command authorization is unconditional and precedes target-rider lookup;
+  it does not depend on the supplied UUID or whether a target row exists.
+  A non-admin receives the same refusal for existing, missing and
   non-rider targets. Rider commands retain the exclusive own-user lock before
   session authorization to preserve the financial/auth lock order.
 - Lists implement the declared request-status, slot-route and reservation-date
@@ -66,6 +67,9 @@ pause and dispute/account restrictions remain independent access blocks.
   endpoints, allow at most 31 days and default to today plus the prior six days.
   Unknown statuses and invalid ranges/route IDs fail with 400. Lists honor the
   contract's 200-row maximum rather than imposing a hidden 100-row limit.
+  Commute event history declares pagination only: its parent request-status
+  filter is not inherited, and supplying it returns 400. Contract generation
+  and COM-22 both pin this distinction.
 - Bounded dispatch rechecks current eligibility under the rider lock and writes
   one durable prompt intent per reservation. Defaults preserve explicit answers,
   allocate only available seats/rides, and mark overflow `unseated`, never
