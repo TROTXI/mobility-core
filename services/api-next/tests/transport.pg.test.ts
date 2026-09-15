@@ -274,10 +274,8 @@ test('MIG-02 old/unknown database is refused without changing it', async () => {
 
 test('MIG-03 failed DDL rolls back its objects and migration record; retry works', () =>
   withDb(async (pool) => {
-    const next = migration(
-      '003_failure.sql',
-      'CREATE TABLE app.failed_example(id integer); SELECT 1/0;',
-    );
+    const nextName = `${String(files.length + 1).padStart(3, '0')}_failure.sql`;
+    const next = migration(nextName, 'CREATE TABLE app.failed_example(id integer); SELECT 1/0;');
     await rejects(migrate(pool, [...files, next]), '22012');
     assert.equal(
       (await pool.query("SELECT to_regclass('app.failed_example') AS t")).rows[0].t,
@@ -287,8 +285,8 @@ test('MIG-03 failed DDL rolls back its objects and migration record; retry works
       (await pool.query('SELECT count(*)::int AS n FROM public._replacement_migrations')).rows[0].n,
       files.length,
     );
-    const fixed = migration('003_failure.sql', 'CREATE TABLE app.failed_example(id integer);');
-    assert.deepEqual(await migrate(pool, [...files, fixed]), ['003_failure.sql']);
+    const fixed = migration(nextName, 'CREATE TABLE app.failed_example(id integer);');
+    assert.deepEqual(await migrate(pool, [...files, fixed]), [nextName]);
     await assert.rejects(migrate(pool, files), /Applied replacement migration differs/);
   }));
 
@@ -628,6 +626,91 @@ test('DEP-08 schedule operating days apply to business date, while operational v
       (await pool.query('SELECT service_date::text,scheduled_at FROM app.trips')).rows,
       [{ service_date: '2026-09-18', scheduled_at: new Date('2026-09-19T00:15:00Z') }],
     );
+  }));
+
+test('DEP-09 direct schedule repointing is rejected even within the same departure and pattern version', () =>
+  withDb(async (pool) => {
+    const f = await fixture(pool);
+    await publish(pool, f);
+    const original = await schedule(pool, f);
+    const tripId = await createRun(pool, f, original, '2026-09-14', '2026-09-14T06:30:00Z');
+    const before = (await pool.query('SELECT * FROM app.trips WHERE id=$1', [tripId])).rows;
+    // A Monday run, with targets that all satisfy the composite ownership FK.
+    // Include a date-compatible revision: this is a reassignment guard, not a
+    // policy that silently allows changing schedules when weekdays happen to fit.
+    const revisions = [
+      { label: 'Tuesday only', weekdays: [2], from: '2026-01-01', to: null },
+      { label: 'not yet effective', weekdays: [1], from: '2026-09-15', to: null },
+      { label: 'no longer effective', weekdays: [1], from: '2026-01-01', to: '2026-09-13' },
+      { label: 'date-compatible revision', weekdays: [1], from: '2026-01-01', to: null },
+    ];
+    for (const revision of revisions) {
+      const target = await id(
+        pool,
+        `INSERT INTO app.service_schedules
+        (pattern_version_id,pattern_id,departure_id,service_window,local_departure,weekdays,effective_from,effective_to)
+        VALUES ($1,$2,$3,'morning','07:00',$4,$5,$6)`,
+        [f.version, f.pattern, original.departure, revision.weekdays, revision.from, revision.to],
+      );
+      assert.deepEqual(
+        (
+          await pool.query(
+            `SELECT pattern_version_id,departure_id
+        FROM app.service_schedules WHERE id=$1`,
+            [target],
+          )
+        ).rows,
+        [{ pattern_version_id: f.version, departure_id: original.departure }],
+        revision.label,
+      );
+      await rejects(
+        pool.query('UPDATE app.trips SET schedule_id=$2 WHERE id=$1', [tripId, target]),
+        '23514',
+        /^explicit_reassignment_required$/,
+      );
+      // Prove no partial write, including version/updated_at, for every target.
+      assert.deepEqual(
+        (await pool.query('SELECT * FROM app.trips WHERE id=$1', [tripId])).rows,
+        before,
+        revision.label,
+      );
+    }
+  }));
+
+test('DEP-10 ISO weekdays are documented in the catalog and Sunday is 7, never JavaScript 0', () =>
+  withDb(async (pool) => {
+    const description = (
+      await pool.query(`SELECT col_description(attrelid,attnum) AS value
+      FROM pg_attribute WHERE attrelid='app.service_schedules'::regclass AND attname='weekdays'`)
+    ).rows[0].value;
+    assert.equal(
+      description,
+      'ISO weekdays: 1 = Monday, 2 = Tuesday, 3 = Wednesday, 4 = Thursday, 5 = Friday, 6 = Saturday, 7 = Sunday. Not JavaScript getDay() (0 = Sunday). Evaluated against stored service_date, not date(scheduled_at).',
+    );
+    const f = await fixture(pool);
+    await publish(pool, f);
+    const original = await schedule(pool, f);
+    const sunday = await id(
+      pool,
+      `INSERT INTO app.service_schedules
+      (pattern_version_id,pattern_id,departure_id,service_window,local_departure,weekdays,effective_from)
+      VALUES ($1,$2,$3,'morning','06:30',ARRAY[7]::smallint[],'2026-01-01')`,
+      [f.version, f.pattern, original.departure],
+    );
+    const selected = { schedule: sunday, departure: original.departure };
+    const tripId = await createRun(pool, f, selected, '2026-09-20', '2026-09-20T06:30:00Z');
+    await rejects(
+      createRun(pool, f, selected, '2026-09-21', '2026-09-21T06:30:00Z'),
+      '23514',
+      /^service_date_not_in_schedule$/,
+    );
+    assert.equal(
+      (await pool.query('SELECT app.valid_weekdays(ARRAY[0]::smallint[]) AS valid')).rows[0].valid,
+      false,
+    );
+    assert.deepEqual((await pool.query('SELECT id,service_date::text FROM app.trips')).rows, [
+      { id: tripId, service_date: '2026-09-20' },
+    ]);
   }));
 
 test('ID target: linked driver is unique while multiple unlinked drivers are allowed', () =>

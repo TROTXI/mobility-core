@@ -43,6 +43,17 @@ revisions represent the same departure or discarding fixtures. A populated
 experimental database requires an explicit mapping/migration decision outside
 this installer; no staging reset or automatic backfill is included.
 
+Documentation-only `003_schedule_conventions.sql` leaves `001` and `002`
+unchanged. Schedule weekdays are ISO: **1 = Monday through 7 = Sunday**, not
+JavaScript's Sunday-zero convention, and use the stored business service date.
+Direct `schedule_id` changes already fail in `001`'s `guard_trip()` with
+`explicit_reassignment_required`, including a revision of the same departure
+and pattern version. Both trip triggers apply; the INSERT-only eligibility
+branch in `guard_trip_identity()` is not a bypass. The later reassignment command
+must revalidate date/weekday eligibility and reservation consequences before
+any deliberate relaxation. This does not impose a new cancel-and-replace policy
+for same-identity revision changes.
+
 The target contract requires schedule creation to explicitly choose a **new**
 departure or an **existing** `departureId`. Creating a new identity and its first
 schedule must be atomic in the later command layer. A new revision of an existing
@@ -86,11 +97,13 @@ blanket default privileges that silently grant access to future sensitive tables
 
 ## Evidence and limits
 
-The Postgres job runs **27 tests**: migration repeat/drift/rollback/contention,
+The Postgres job runs **29 tests**: migration repeat/drift/rollback/contention,
 identity uniqueness, publication integrity, ownership, history retention,
 direction, timestamps, runtime permissions and a persisted attribution negative
 control, duplicate departure generation under actual contention, midnight delays,
-cancellation, cross-revision identity and schedule/departure ownership. Tests run
+cancellation, cross-revision identity and schedule/departure ownership. Additional
+checks cover direct repointing to incompatible and compatible revisions, plus
+the catalog weekday convention and Sunday/Monday behavior. Tests run
 against the entire migration chain, not a reduced fixture schema (except the
 explicit `001` upgrade-refusal test, which verifies failure without mutation).
 Three pure/preflight tests run in the workspace job. Source and migration hashes,

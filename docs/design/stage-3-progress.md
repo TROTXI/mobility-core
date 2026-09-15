@@ -77,6 +77,24 @@ must create a new departure plus schedule atomically and reuse the existing
 identity when revising that departure. These storage tests do not claim that
 the command handlers or trip generator have been implemented.
 
+## Schedule-repointing review clarification
+
+Departure review follow-up: `guard_trip_identity()` is not the only UPDATE
+guard. `protect_trip` also invokes `guard_trip()` from `001`, rejecting any
+schedule or pattern-version change with `explicit_reassignment_required`.
+DEP-09 attempts to repoint a Monday trip within the **same departure and pattern
+version** at Tuesday-only, not-yet-effective, ended and compatible schedule
+revisions. Every attempt must raise that exact error and leave the full trip row
+unchanged. No behavioral fix or new cancel-and-replace product rule is needed.
+The eventual attributable reassignment command is still **stage 3** work and
+must revalidate the stored business date against the selected revision and
+handle reservation consequences; stage 4 is consumer integration.
+
+Documentation-only migration `003` names ISO weekdays (Monday 1, Sunday 7) in
+the database catalog and records the two-guard interaction. DEP-10 tests both
+the comment and Sunday acceptance/Monday rejection for a Sunday-only schedule.
+Reviewed migrations `001` and `002` remain unchanged.
+
 ## Next slices / stage exit
 
 Continue with transactional transport commands and baseline/candidate observers,
