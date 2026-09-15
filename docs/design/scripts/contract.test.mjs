@@ -312,10 +312,13 @@ test('runtime subset implements only selected cutover operations and contains no
       assert.deepEqual(operation, spec.paths[path][method]);
       assert.notEqual(operation['x-delivery-stage'], 'deferred');
     }
-  assert.equal(count, 44);
+  assert.equal(count, 47);
   assert.equal(runtime.paths['/v1/ops/routes/{id}'].get, undefined);
   assert.equal(runtime.paths['/v1/ops/stops/{id}'].get, undefined);
   assert.equal(runtime.paths['/v1/ops/drivers/{id}'].get, undefined);
+  // Single-resource vehicle reads stay deferred: the ops list carries the row
+  // version, so a detail GET adds surface without answering a requirement.
+  assert.equal(runtime.paths['/v1/ops/vehicles/{id}'].get, undefined);
   assert.equal(schemas.CredentialIssue.safeParse({}).success, true);
   assert.equal(schemas.CredentialIssue.safeParse({ code: 'DR-B7K9' }).success, true);
   assert.ok(runtime.paths['/v1/auth/driver/pin'].post.responses['423']);

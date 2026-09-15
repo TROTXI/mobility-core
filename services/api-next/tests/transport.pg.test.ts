@@ -139,7 +139,7 @@ async function fixture(
   ]);
   const vehicle = await id(
     pool,
-    "INSERT INTO app.vehicles(label,capacity) VALUES ('Test bus', 16)",
+    "INSERT INTO app.vehicles(plate,label,capacity) VALUES ('GT '||upper(substr(md5(random()::text),1,4))||'-20','Test bus', 16)",
   );
   const route =
     existing?.route ?? (await id(pool, "INSERT INTO app.routes(name) VALUES ('Test corridor')"));
