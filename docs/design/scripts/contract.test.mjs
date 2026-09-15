@@ -69,6 +69,7 @@ test('operation IDs, method/path pairs and references are unique/resolved', () =
 });
 test('schedule service window is explicit, required and independent of departure time', () => {
   const input = {
+    departure: { kind: 'new' },
     patternVersionId: 'version-1',
     serviceWindow: 'morning',
     localDeparture: '15:00',
@@ -86,6 +87,57 @@ test('schedule service window is explicit, required and independent of departure
     schemas.ScheduleInput.safeParse({ ...input, serviceWindow: 'outbound' }).success,
     false,
   );
+});
+test('schedule creation explicitly distinguishes a new departure from another revision', () => {
+  const base = {
+    patternVersionId: 'version-2',
+    serviceWindow: 'evening',
+    localDeparture: '23:30',
+    timeZone: 'Africa/Accra',
+    weekdays: [1, 2, 3, 4, 5],
+    effectiveFrom: '2026-09-15',
+    effectiveTo: null,
+  };
+  for (const departure of [{ kind: 'new' }, { kind: 'existing', departureId: 'departure-1' }]) {
+    assert.equal(schemas.ScheduleInput.safeParse({ ...base, departure }).success, true);
+    assert.equal(validate('ScheduleInput')({ ...base, departure }), true);
+  }
+  for (const input of [
+    base,
+    { ...base, departure: { kind: 'existing' } },
+    { ...base, departure: { kind: 'new', departureId: 'ignored' } },
+  ]) {
+    assert.equal(schemas.ScheduleInput.safeParse(input).success, false);
+    assert.equal(validate('ScheduleInput')(input), false);
+  }
+});
+test('trip business date is explicit and immutable through reschedule; launch only permits run 1', () => {
+  const input = {
+    scheduleId: 'revision-1',
+    serviceDate: '2026-09-15',
+    scheduledAt: '2026-09-16T00:15:00Z',
+  };
+  assert.equal(schemas.TripInput.parse(input).runNumber, 1);
+  assert.equal(validate('TripInput')(input), true);
+  for (const invalid of [
+    { ...input, serviceDate: undefined },
+    { ...input, serviceDate: '2026-02-30' },
+    { ...input, runNumber: 2 },
+  ]) {
+    assert.equal(schemas.TripInput.safeParse(invalid).success, false);
+    assert.equal(validate('TripInput')(invalid), false);
+  }
+  const edit = { scheduledAt: '2026-09-16T00:15:00Z' };
+  assert.equal(schemas.TripEdit.safeParse(edit).success, true);
+  assert.equal(validate('TripEdit')(edit), true);
+  for (const extra of [
+    { serviceDate: '2026-09-16' },
+    { departureId: 'another' },
+    { runNumber: 2 },
+  ]) {
+    assert.equal(schemas.TripEdit.safeParse({ ...edit, ...extra }).success, false);
+    assert.equal(validate('TripEdit')({ ...edit, ...extra }), false);
+  }
 });
 test('all examples pass both authoritative Zod and emitted OpenAPI schemas', () => {
   for (const sample of exampleCases) {

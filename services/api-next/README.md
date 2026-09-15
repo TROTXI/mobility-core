@@ -19,14 +19,38 @@ binaries at this schema or point this installer at the existing staging database
   new revision, not mutation of the old polyline.
 - Immutable service schedule revisions carrying an **explicit service window**.
   Neither direction nor service window is inferred from a rescheduled departure.
+- Stable `service_departures` identities shared across schedule/pattern revisions,
+  with composite ownership constraints. A trip is unique by
+  `(departure_id, service_date, run_number)`, including cancelled trips. Launch
+  permits only run 1. Rescheduling cannot free an identity for a generator retry.
+- `service_date` is a stored, immutable business attribute, not the calendar date
+  of `scheduled_at`. A 23:30 service delayed to next-day 00:15 retains its date.
+  `scheduled_at` remains operational and must fit the selected pattern version;
+  this does not authorize a delay across an ineligible version boundary.
 - Trips tied to an exact schedule/version and a matching progress occurrence.
   Coherent transition timestamps and no rewriting operated-trip assignments.
 - Restrictive relationships and no trip deletion, plus append-only event storage.
   A separate runtime role has no application DDL, deletion, truncation or migration access.
 
-These are **13 application tables**, primarily transport and identity references,
-not 13 payment tables. The migration-history table is separate. No membership,
+These are **14 application tables**, primarily transport and identity references,
+not 14 payment tables. The migration-history table is separate. No membership,
 purchase or ledger tables are introduced in this slice.
+
+`002_departure_identity.sql` is append-only; reviewed migration `001` is unchanged.
+It supports a fresh database or an empty transport installation of `001`. It
+refuses existing experimental schedules/trips rather than guessing which
+revisions represent the same departure or discarding fixtures. A populated
+experimental database requires an explicit mapping/migration decision outside
+this installer; no staging reset or automatic backfill is included.
+
+The target contract requires schedule creation to explicitly choose a **new**
+departure or an **existing** `departureId`. Creating a new identity and its first
+schedule must be atomic in the later command layer. A new revision of an existing
+departure reuses that ID; a genuinely additional departure gets a new one.
+Trip creation supplies `scheduleId`, business `serviceDate`, `scheduledAt`, and
+optional `runNumber` (default/only value 1); the command derives `departureId`
+from the schedule. Trip reads expose all three identity fields. Reschedule PATCH
+accepts only `scheduledAt`, never those fields. No new endpoint is introduced.
 
 ## Run locally
 
@@ -62,10 +86,13 @@ blanket default privileges that silently grant access to future sensitive tables
 
 ## Evidence and limits
 
-The Postgres job runs **18 tests**: migration repeat/drift/rollback/contention,
+The Postgres job runs **27 tests**: migration repeat/drift/rollback/contention,
 identity uniqueness, publication integrity, ownership, history retention,
 direction, timestamps, runtime permissions and a persisted attribution negative
-control. Tests run against the entire new migration, not a reduced fixture schema.
+control, duplicate departure generation under actual contention, midnight delays,
+cancellation, cross-revision identity and schedule/departure ownership. Tests run
+against the entire migration chain, not a reduced fixture schema (except the
+explicit `001` upgrade-refusal test, which verifies failure without mutation).
 Three pure/preflight tests run in the workspace job. Source and migration hashes,
 verified blocking PIDs, cleanup targets and JUnit results are retained as CI
 artifacts. A revision label alone is not represented as a byte-level source pin;

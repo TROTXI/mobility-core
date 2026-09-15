@@ -18,6 +18,10 @@ Read [the replacement package](../../services/api-next/README.md), then its
 [installer](../../services/api-next/src/db/migrate.ts) and
 [real Postgres tests](../../services/api-next/tests/transport.pg.test.ts).
 
+Review follow-up adds [migration 002](../../services/api-next/migrations/002_departure_identity.sql)
+without changing the reviewed bytes/checksum of `001`. A populated experimental
+schedule/trip database is refused without mutation; no identity backfill is guessed.
+
 | Requirement               | Evidence in this slice                                                                                       | Not yet claimed                                                      |
 | ------------------------- | ------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------- |
 | Clean migration baseline  | Hash inventory, two serialized installers, repeat no-op, drift refusal, rollback, old-model refusal          | Rehearsed staging reset/cutover                                      |
@@ -40,6 +44,38 @@ and clock time. `Schedule` and `ScheduleInput` omitted it. Both now require
 `serviceWindow: morning | evening`, with a Zod/OpenAPI regression test. The
 generated spec changes with its source; no deployed endpoint/client is changed.
 This is fulfilling VER-02, not introducing a new departure inference or product.
+
+## Approved departure identity follow-up
+
+`service_departures` is stable within a directional pattern; schedule revisions
+carry their own pattern version, clock time and operating dates. Composite FKs
+prevent a schedule from pairing a departure with another pattern's revision,
+and prevent a trip from borrowing a different departure's schedule.
+
+The persisted natural key is `(departure_id, service_date, run_number)`. All
+statuses, including cancelled, occupy it; launch enforces `run_number = 1`.
+`service_date` is a stored business attribute and immutable, **not** a date
+derived from `scheduled_at`. A 23:30 service delayed to next-day 00:15 keeps its
+identity. A different business date requires an explicit replacement workflow,
+not PATCH. `scheduled_at` still drives operational timing and pattern-version
+eligibility; no existing history/eligibility guard is weakened.
+
+Direct Postgres checks now cover duplicate insertion, actual concurrent
+generation, same-day reschedule, midnight delay, cancellation, and publication
+of a second pattern version followed by an attempted duplicate on the same
+business date. The latter uses eligible timestamps in **both** revisions and
+requires the named identity unique constraint to reject it. Schedule weekday
+checks use the business date, not the delayed timestamp's calendar day.
+
+The target `ScheduleInput` requires an explicit `departure` choice (`new` or
+`existing` with its ID). Schedule reads include `departureId`. Trip creation
+requires `serviceDate`, accepts only run 1, and derives the departure from its
+schedule; trip reads expose the identity. `TripEdit` still accepts only
+`scheduledAt`. Generated OpenAPI and contract checks change together; there are
+no additional endpoints or deployed client changes. The future command layer
+must create a new departure plus schedule atomically and reuse the existing
+identity when revising that departure. These storage tests do not claim that
+the command handlers or trip generator have been implemented.
 
 ## Next slices / stage exit
 

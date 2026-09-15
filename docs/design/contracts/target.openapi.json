@@ -16388,6 +16388,11 @@
             "minLength": 1,
             "maxLength": 128
           },
+          "departureId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
           "patternVersionId": {
             "type": "string",
             "minLength": 1,
@@ -16442,6 +16447,7 @@
         },
         "required": [
           "id",
+          "departureId",
           "patternVersionId",
           "serviceWindow",
           "localDeparture",
@@ -16458,6 +16464,37 @@
       "ScheduleInput": {
         "type": "object",
         "properties": {
+          "departure": {
+            "oneOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "type": "string",
+                    "enum": ["new"]
+                  }
+                },
+                "required": ["kind"],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "type": "string",
+                    "enum": ["existing"]
+                  },
+                  "departureId": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 128
+                  }
+                },
+                "required": ["kind", "departureId"],
+                "additionalProperties": false
+              }
+            ]
+          },
           "patternVersionId": {
             "type": "string",
             "minLength": 1,
@@ -16498,6 +16535,7 @@
           }
         },
         "required": [
+          "departure",
           "patternVersionId",
           "serviceWindow",
           "localDeparture",
@@ -17607,6 +17645,20 @@
             "minLength": 1,
             "maxLength": 128
           },
+          "departureId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "serviceDate": {
+            "type": "string",
+            "format": "date",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+          },
+          "runNumber": {
+            "type": "number",
+            "enum": [1]
+          },
           "routeId": {
             "type": "string",
             "minLength": 1,
@@ -17639,6 +17691,9 @@
         },
         "required": [
           "id",
+          "departureId",
+          "serviceDate",
+          "runNumber",
           "routeId",
           "patternVersionId",
           "direction",
@@ -17655,6 +17710,20 @@
             "type": "string",
             "minLength": 1,
             "maxLength": 128
+          },
+          "departureId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "serviceDate": {
+            "type": "string",
+            "format": "date",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+          },
+          "runNumber": {
+            "type": "number",
+            "enum": [1]
           },
           "routeId": {
             "type": "string",
@@ -17717,6 +17786,9 @@
         },
         "required": [
           "id",
+          "departureId",
+          "serviceDate",
+          "runNumber",
           "routeId",
           "patternVersionId",
           "direction",
@@ -17739,13 +17811,23 @@
             "minLength": 1,
             "maxLength": 128
           },
+          "serviceDate": {
+            "type": "string",
+            "format": "date",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+          },
+          "runNumber": {
+            "default": 1,
+            "type": "number",
+            "enum": [1]
+          },
           "scheduledAt": {
             "type": "string",
             "format": "date-time",
             "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
           }
         },
-        "required": ["scheduleId", "scheduledAt"],
+        "required": ["scheduleId", "serviceDate", "scheduledAt"],
         "additionalProperties": false
       },
       "TripEdit": {

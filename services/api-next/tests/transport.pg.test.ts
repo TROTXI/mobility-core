@@ -128,7 +128,11 @@ async function id(
 
 // Full replacement migration, never a reduced CREATE TABLE fixture. Raw SQL is
 // intentional for category B/C checks: rejecting at HTTP is insufficient.
-async function fixture(pool: pg.Pool, direction = 'outbound') {
+async function fixture(
+  pool: pg.Pool,
+  direction = 'outbound',
+  existing?: { route: string; pattern: string; revision: number },
+) {
   const user = await id(pool, "INSERT INTO app.users(role) VALUES ('driver')");
   const driver = await id(pool, "INSERT INTO app.drivers(user_id,name) VALUES ($1,'Test driver')", [
     user,
@@ -137,16 +141,18 @@ async function fixture(pool: pg.Pool, direction = 'outbound') {
     pool,
     "INSERT INTO app.vehicles(label,capacity) VALUES ('Test bus', 16)",
   );
-  const route = await id(pool, "INSERT INTO app.routes(name) VALUES ('Test corridor')");
-  const pattern = await id(
-    pool,
-    'INSERT INTO app.route_patterns(route_id,direction) VALUES ($1,$2)',
-    [route, direction],
-  );
+  const route =
+    existing?.route ?? (await id(pool, "INSERT INTO app.routes(name) VALUES ('Test corridor')"));
+  const pattern =
+    existing?.pattern ??
+    (await id(pool, 'INSERT INTO app.route_patterns(route_id,direction) VALUES ($1,$2)', [
+      route,
+      direction,
+    ]));
   const version = await id(
     pool,
-    'INSERT INTO app.route_pattern_versions(pattern_id,revision) VALUES ($1,1)',
-    [pattern],
+    'INSERT INTO app.route_pattern_versions(pattern_id,revision) VALUES ($1,$2)',
+    [pattern, existing?.revision ?? 1],
   );
   const stop = await id(
     pool,
@@ -179,27 +185,59 @@ async function fixture(pool: pg.Pool, direction = 'outbound') {
   return { user, driver, vehicle, route, pattern, version, stop, occurrences, geometry };
 }
 type Fixture = Awaited<ReturnType<typeof fixture>>;
-async function publish(pool: pg.Pool | pg.PoolClient, f: Fixture) {
+async function publish(pool: pg.Pool | pg.PoolClient, f: Fixture, from = '2026-01-01T00:00:00Z') {
   await pool.query("UPDATE app.route_geometries SET state='published' WHERE id=$1", [f.geometry]);
   await pool.query(
-    "UPDATE app.route_pattern_versions SET state='published',geometry_id=$2,effective_from='2026-01-01' WHERE id=$1",
-    [f.version, f.geometry],
+    "UPDATE app.route_pattern_versions SET state='published',geometry_id=$2,effective_from=$3 WHERE id=$1",
+    [f.version, f.geometry, from],
   );
 }
-async function trip(pool: pg.Pool, f: Fixture) {
+async function schedule(pool: pg.Pool, f: Fixture, departure?: string) {
+  departure ??= await id(pool, 'INSERT INTO app.service_departures(pattern_id) VALUES ($1)', [
+    f.pattern,
+  ]);
   const schedule = await id(
     pool,
-    `INSERT INTO app.service_schedules(pattern_version_id,service_window,local_departure,weekdays,effective_from)
-    VALUES ($1,'morning','06:30',ARRAY[1,2,3,4,5]::smallint[],'2026-01-01')`,
-    [f.version],
+    `INSERT INTO app.service_schedules(pattern_version_id,service_window,local_departure,weekdays,effective_from,departure_id,pattern_id)
+    VALUES ($1,'morning','06:30',ARRAY[1,2,3,4,5]::smallint[],'2026-01-01',$2,$3)`,
+    [f.version, departure, f.pattern],
   );
+  return { schedule, departure };
+}
+async function trip(pool: pg.Pool, f: Fixture) {
+  const { schedule: scheduleId, departure } = await schedule(pool, f);
   const tripId = await id(
     pool,
-    `INSERT INTO app.trips(schedule_id,pattern_version_id,scheduled_at,assigned_driver_id,vehicle_id)
-    VALUES ($1,$2,'2026-09-15 06:30Z',$3,$4)`,
-    [schedule, f.version, f.driver, f.vehicle],
+    `INSERT INTO app.trips(schedule_id,pattern_version_id,scheduled_at,assigned_driver_id,vehicle_id,departure_id,service_date)
+    VALUES ($1,$2,'2026-09-15 06:30Z',$3,$4,$5,'2026-09-15')`,
+    [scheduleId, f.version, f.driver, f.vehicle, departure],
   );
-  return { schedule, tripId };
+  return { schedule: scheduleId, departure, tripId };
+}
+
+function createRun(
+  pool: pg.Pool | pg.PoolClient,
+  f: Fixture,
+  s: { schedule: string; departure: string },
+  serviceDate = '2026-09-15',
+  scheduledAt = '2026-09-15T06:30:00Z',
+  runNumber = 1,
+) {
+  return id(
+    pool,
+    `INSERT INTO app.trips(schedule_id,pattern_version_id,departure_id,
+    service_date,scheduled_at,run_number) VALUES ($1,$2,$3,$4,$5,$6)`,
+    [s.schedule, f.version, s.departure, serviceDate, scheduledAt, runNumber],
+  );
+}
+
+async function duplicateRun(query: Promise<unknown>) {
+  await assert.rejects(query, (error: unknown) => {
+    const e = error as { code: string; constraint: string };
+    assert.equal(e.code, '23505');
+    assert.equal(e.constraint, 'trip_departure_occurrence');
+    return true;
+  });
 }
 
 test('MIG-01 clean install records hashes, rerun is no-op, historical drift fails', () =>
@@ -215,7 +253,7 @@ test('MIG-01 clean install records hashes, rerun is no-op, historical drift fail
     const tables = await pool.query(
       "SELECT count(*)::int AS n FROM pg_tables WHERE schemaname='app'",
     );
-    assert.equal(tables.rows[0].n, 13);
+    assert.equal(tables.rows[0].n, 14);
   }));
 
 test('MIG-02 old/unknown database is refused without changing it', async () => {
@@ -237,7 +275,7 @@ test('MIG-02 old/unknown database is refused without changing it', async () => {
 test('MIG-03 failed DDL rolls back its objects and migration record; retry works', () =>
   withDb(async (pool) => {
     const next = migration(
-      '002_failure.sql',
+      '003_failure.sql',
       'CREATE TABLE app.failed_example(id integer); SELECT 1/0;',
     );
     await rejects(migrate(pool, [...files, next]), '22012');
@@ -247,10 +285,10 @@ test('MIG-03 failed DDL rolls back its objects and migration record; retry works
     );
     assert.equal(
       (await pool.query('SELECT count(*)::int AS n FROM public._replacement_migrations')).rows[0].n,
-      1,
+      files.length,
     );
-    const fixed = migration('002_failure.sql', 'CREATE TABLE app.failed_example(id integer);');
-    assert.deepEqual(await migrate(pool, [...files, fixed]), ['002_failure.sql']);
+    const fixed = migration('003_failure.sql', 'CREATE TABLE app.failed_example(id integer);');
+    assert.deepEqual(await migrate(pool, [...files, fixed]), ['003_failure.sql']);
     await assert.rejects(migrate(pool, files), /Applied replacement migration differs/);
   }));
 
@@ -286,7 +324,10 @@ test('MIG-04 concurrent installers wait on the same lock and install once', asyn
     await blocker.query(
       "SELECT pg_advisory_unlock(hashtextextended('trotxi:replacement:migrations',0))",
     );
-    assert.deepEqual((await Promise.all([first, second])).map((r) => r.length).sort(), [0, 1]);
+    assert.deepEqual((await Promise.all([first, second])).map((r) => r.length).sort(), [
+      0,
+      files.length,
+    ]);
   } finally {
     await blocker.query('SELECT pg_advisory_unlock_all()');
     await Promise.allSettled([first, second].filter((p): p is Promise<string[]> => !!p));
@@ -294,6 +335,300 @@ test('MIG-04 concurrent installers wait on the same lock and install once', asyn
     await pool.end();
   }
 });
+
+test('MIG-05 departure migration preserves 001 and refuses ambiguous populated schedules without mutation', async () => {
+  const foundation = files[0];
+  assert.ok(foundation);
+  assert.equal(
+    foundation.sha256,
+    'ebb63118163775f18e0295b8a1186476545a69bdf557f04ef54294d46a5437eb',
+  );
+  const pool = await database();
+  try {
+    await migrate(pool, files.slice(0, 1));
+    const f = await fixture(pool);
+    await publish(pool, f);
+    const legacy = await id(
+      pool,
+      `INSERT INTO app.service_schedules(pattern_version_id,
+      service_window,local_departure,weekdays,effective_from)
+      VALUES ($1,'morning','06:30',ARRAY[1,2,3,4,5]::smallint[],'2026-01-01')`,
+      [f.version],
+    );
+    const before = (await pool.query('SELECT * FROM app.service_schedules')).rows;
+    await rejects(migrate(pool, files), '23514', /departure_identity_requires_empty_transport/);
+    assert.deepEqual((await pool.query('SELECT * FROM app.service_schedules')).rows, before);
+    assert.equal(before[0].id, legacy);
+    assert.deepEqual(
+      (await pool.query('SELECT name,sha256 FROM public._replacement_migrations ORDER BY name'))
+        .rows,
+      [{ name: foundation.name, sha256: foundation.sha256 }],
+    );
+    assert.equal(
+      (await pool.query("SELECT to_regclass('app.service_departures') AS t")).rows[0].t,
+      null,
+    );
+  } finally {
+    await pool.end();
+  }
+});
+
+test('DEP-01 identity rejects duplicate runs and launch run 2, not distinct departures or business dates', () =>
+  withDb(async (pool) => {
+    const f = await fixture(pool);
+    await publish(pool, f);
+    const s = await schedule(pool, f);
+    const first = await createRun(pool, f, s);
+    await duplicateRun(createRun(pool, f, s));
+    await rejects(
+      createRun(pool, f, s, '2026-09-15', '2026-09-15T06:30:00Z', 2),
+      '23514',
+      /one_bus_per_departure_at_launch/,
+    );
+    const tomorrow = await createRun(pool, f, s, '2026-09-16', '2026-09-16T06:30:00Z');
+    const another = await createRun(pool, f, await schedule(pool, f));
+    const rows = (
+      await pool.query(`SELECT id,departure_id,service_date::text,run_number
+      FROM app.trips ORDER BY service_date,id`)
+    ).rows;
+    assert.equal(rows.length, 3);
+    assert.equal(new Set([first, tomorrow, another]).size, 3);
+    assert.deepEqual(
+      rows.find((row) => row.id === first),
+      {
+        id: first,
+        departure_id: s.departure,
+        service_date: '2026-09-15',
+        run_number: 1,
+      },
+    );
+  }));
+
+test('DEP-02 rescheduling cannot free the original departure identity for a generator retry', () =>
+  withDb(async (pool) => {
+    const f = await fixture(pool);
+    await publish(pool, f);
+    const t = await trip(pool, f);
+    await pool.query("UPDATE app.trips SET scheduled_at='2026-09-15 07:00Z' WHERE id=$1", [
+      t.tripId,
+    ]);
+    await duplicateRun(createRun(pool, f, t));
+    assert.deepEqual(
+      (
+        await pool.query(`SELECT id,departure_id,service_date::text,run_number,scheduled_at
+      FROM app.trips`)
+      ).rows,
+      [
+        {
+          id: t.tripId,
+          departure_id: t.departure,
+          service_date: '2026-09-15',
+          run_number: 1,
+          scheduled_at: new Date('2026-09-15T07:00:00Z'),
+        },
+      ],
+    );
+  }));
+
+test('DEP-03 midnight delay retains the stored business date and refuses edits to identity', () =>
+  withDb(async (pool) => {
+    const f = await fixture(pool);
+    await publish(pool, f);
+    const s = await schedule(pool, f);
+    const tripId = await createRun(pool, f, s, '2026-09-15', '2026-09-15T23:30:00Z');
+    await pool.query("UPDATE app.trips SET scheduled_at='2026-09-16 00:15Z' WHERE id=$1", [tripId]);
+    await rejects(
+      pool.query("UPDATE app.trips SET service_date='2026-09-16' WHERE id=$1", [tripId]),
+      '23514',
+      /immutable_departure_occurrence/,
+    );
+    await rejects(
+      pool.query('UPDATE app.trips SET run_number=2 WHERE id=$1', [tripId]),
+      '23514',
+      /immutable_departure_occurrence/,
+    );
+    const other = await schedule(pool, f);
+    await rejects(
+      pool.query('UPDATE app.trips SET departure_id=$2 WHERE id=$1', [tripId, other.departure]),
+      '23514',
+      /immutable_departure_occurrence/,
+    );
+    await duplicateRun(createRun(pool, f, s, '2026-09-15', '2026-09-16T00:15:00Z'));
+    assert.deepEqual(
+      (
+        await pool.query(`SELECT id,service_date::text,
+      (scheduled_at AT TIME ZONE 'Africa/Accra')::date::text AS operational_date FROM app.trips`)
+      ).rows,
+      [{ id: tripId, service_date: '2026-09-15', operational_date: '2026-09-16' }],
+    );
+    // Insertion after a delay was already known must not derive the date either.
+    await createRun(pool, f, other, '2026-09-15', '2026-09-16T00:15:00Z');
+  }));
+
+test('DEP-04 cancellation retains identity and cannot be resurrected by regeneration', () =>
+  withDb(async (pool) => {
+    const f = await fixture(pool);
+    await publish(pool, f);
+    const t = await trip(pool, f);
+    await pool.query("UPDATE app.trips SET status='cancelled' WHERE id=$1", [t.tripId]);
+    await duplicateRun(createRun(pool, f, t));
+    await rejects(
+      pool.query("UPDATE app.trips SET status='scheduled' WHERE id=$1", [t.tripId]),
+      '23514',
+      /immutable_terminal_trip/,
+    );
+    assert.deepEqual((await pool.query('SELECT id,status FROM app.trips')).rows, [
+      { id: t.tripId, status: 'cancelled' },
+    ]);
+  }));
+
+test('DEP-05 concurrent generators actually contend and persist exactly one departure occurrence', () =>
+  withDb(async (pool) => {
+    const f = await fixture(pool);
+    await publish(pool, f);
+    const s = await schedule(pool, f);
+    const first = await pool.connect();
+    const second = await pool.connect();
+    let pending: Promise<void> | undefined;
+    try {
+      await first.query('BEGIN');
+      const tripId = await createRun(first, f, s);
+      const firstPid = (await first.query('SELECT pg_backend_pid() AS pid')).rows[0].pid;
+      const secondPid = (await second.query('SELECT pg_backend_pid() AS pid')).rows[0].pid;
+      assert.notEqual(firstPid, secondPid);
+      pending = duplicateRun(createRun(second, f, s));
+      let contended = false;
+      const deadline = Date.now() + 5000;
+      while (Date.now() < deadline) {
+        if (
+          (
+            await pool.query('SELECT $1 = ANY(pg_blocking_pids($2)) AS blocked', [
+              firstPid,
+              secondPid,
+            ])
+          ).rows[0].blocked
+        ) {
+          contended = true;
+          break;
+        }
+        await delay(10);
+      }
+      assert.equal(contended, true, 'generator connections must demonstrably contend');
+      evidence.push({ race: 'departure-generation', blockerPid: firstPid, waiterPid: secondPid });
+      await first.query('COMMIT');
+      await pending;
+      assert.deepEqual((await pool.query('SELECT id,departure_id FROM app.trips')).rows, [
+        { id: tripId, departure_id: s.departure },
+      ]);
+    } finally {
+      await first.query('ROLLBACK');
+      // Drain before releasing clients even when an assertion failed.
+      if (pending) await Promise.allSettled([pending]);
+      first.release();
+      second.release();
+    }
+  }));
+
+test('DEP-06 a new published pattern revision cannot duplicate an existing departure on its business date', () =>
+  withDb(async (pool) => {
+    const a = await fixture(pool);
+    await publish(pool, a);
+    const t = await trip(pool, a);
+    const b = await fixture(pool, 'outbound', { route: a.route, pattern: a.pattern, revision: 2 });
+    // Both operational timestamps below are eligible for their respective
+    // revisions. The rejection must be identity, not unavailable version.
+    await pool.query(
+      "UPDATE app.route_pattern_versions SET state='retired',effective_to='2026-09-15 12:00Z' WHERE id=$1",
+      [a.version],
+    );
+    await publish(pool, b, '2026-09-15T12:00:00Z');
+    const revised = await schedule(pool, b, t.departure);
+    assert.notEqual(revised.schedule, t.schedule);
+    await duplicateRun(createRun(pool, b, revised, '2026-09-15', '2026-09-15T15:30:00Z'));
+    const next = await createRun(pool, b, revised, '2026-09-16', '2026-09-16T06:30:00Z');
+    assert.deepEqual(
+      (
+        await pool.query(`SELECT id,schedule_id,pattern_version_id,departure_id,service_date::text
+      FROM app.trips ORDER BY service_date`)
+      ).rows,
+      [
+        {
+          id: t.tripId,
+          schedule_id: t.schedule,
+          pattern_version_id: a.version,
+          departure_id: t.departure,
+          service_date: '2026-09-15',
+        },
+        {
+          id: next,
+          schedule_id: revised.schedule,
+          pattern_version_id: b.version,
+          departure_id: t.departure,
+          service_date: '2026-09-16',
+        },
+      ],
+    );
+  }));
+
+test('DEP-07 composite ownership rejects cross-pattern schedules and cross-departure trips', () =>
+  withDb(async (pool) => {
+    const a = await fixture(pool);
+    const b = await fixture(pool);
+    await publish(pool, a);
+    await publish(pool, b);
+    const s = await schedule(pool, a);
+    await rejects(schedule(pool, b, s.departure), '23503', /schedule_departure_owner/);
+    await rejects(
+      pool.query(
+        `INSERT INTO app.service_schedules(pattern_version_id,pattern_id,departure_id,
+      service_window,local_departure,weekdays,effective_from)
+      VALUES ($1,$2,$3,'morning','06:30',ARRAY[1,2,3,4,5]::smallint[],'2026-01-01')`,
+        [b.version, a.pattern, s.departure],
+      ),
+      '23503',
+      /schedule_pattern_version_owner/,
+    );
+    const other = await schedule(pool, a);
+    await rejects(
+      createRun(pool, a, { schedule: s.schedule, departure: other.departure }),
+      '23503',
+      /trip_schedule_departure_owner/,
+    );
+    await rejects(
+      pool.query('UPDATE app.service_departures SET pattern_id=$2 WHERE id=$1', [
+        s.departure,
+        b.pattern,
+      ]),
+    );
+    assert.equal((await pool.query('SELECT count(*)::int AS n FROM app.trips')).rows[0].n, 0);
+  }));
+
+test('DEP-08 schedule operating days apply to business date, while operational version eligibility still applies', () =>
+  withDb(async (pool) => {
+    const f = await fixture(pool);
+    await publish(pool, f);
+    const s = await schedule(pool, f);
+    await rejects(
+      createRun(pool, f, s, '2026-09-19', '2026-09-18T23:30:00Z'),
+      '23514',
+      /service_date_not_in_schedule/,
+    );
+    await rejects(createRun(pool, f, s, '2025-12-31'), '23514', /service_date_not_in_schedule/);
+    const tripId = await createRun(pool, f, s, '2026-09-18', '2026-09-19T00:15:00Z');
+    await pool.query(
+      "UPDATE app.route_pattern_versions SET state='retired',effective_to='2026-10-01' WHERE id=$1",
+      [f.version],
+    );
+    await rejects(
+      pool.query("UPDATE app.trips SET scheduled_at='2026-10-01 00:15Z' WHERE id=$1", [tripId]),
+      '23514',
+      /unavailable_pattern_version/,
+    );
+    assert.deepEqual(
+      (await pool.query('SELECT service_date::text,scheduled_at FROM app.trips')).rows,
+      [{ service_date: '2026-09-18', scheduled_at: new Date('2026-09-19T00:15:00Z') }],
+    );
+  }));
 
 test('ID target: linked driver is unique while multiple unlinked drivers are allowed', () =>
   withDb(async (pool) => {
@@ -498,9 +833,9 @@ test('VER-01 trip schedule and current occurrence must belong to its exact versi
     const u = await trip(pool, b);
     await rejects(
       pool.query(
-        `INSERT INTO app.trips(schedule_id,pattern_version_id,scheduled_at)
-    VALUES ($1,$2,'2026-09-15 06:30Z')`,
-        [u.schedule, a.version],
+        `INSERT INTO app.trips(schedule_id,pattern_version_id,scheduled_at,departure_id,service_date)
+    VALUES ($1,$2,'2026-09-16 06:30Z',$3,'2026-09-16')`,
+        [u.schedule, a.version, u.departure],
       ),
       '23503',
     );
@@ -602,9 +937,9 @@ test('storage rejects invalid weekdays and unversioned mutable schedules', () =>
     const t = await trip(pool, f);
     await rejects(
       pool.query(
-        `INSERT INTO app.service_schedules(pattern_version_id,service_window,local_departure,weekdays,effective_from)
-    VALUES ($1,'morning','06:30',ARRAY[1,1]::smallint[],'2026-01-01')`,
-        [f.version],
+        `INSERT INTO app.service_schedules(pattern_version_id,service_window,local_departure,weekdays,effective_from,departure_id,pattern_id)
+    VALUES ($1,'morning','06:30',ARRAY[1,1]::smallint[],'2026-01-01',$2,$3)`,
+        [f.version, t.departure, f.pattern],
       ),
     );
     await rejects(

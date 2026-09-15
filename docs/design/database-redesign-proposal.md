@@ -144,6 +144,7 @@ one-way product or more daily rides.
 | `route_geometries`        | Immutable learned/manual geometry revision, source and the pattern version it describes                    |
 | `geometry_stop_distances` | Distance of each stop occurrence along that geometry revision                                              |
 | `segment_speeds`          | Learned speed/sample count for a segment of a pattern version and service window, with geometry provenance |
+| `service_departures`      | Stable recurring departure identity within a directional pattern, shared by schedule revisions             |
 | `trips`                   | Exact pattern version, explicit service window, schedule, vehicle, driver and actual run lifecycle         |
 | `trip_assignment_events`  | Assignment/reschedule actor, time and before/after values                                                  |
 
@@ -151,6 +152,21 @@ Travel direction belongs to the pattern. Morning/evening describes the service
 window. Moving a departure across noon must not change the direction or the
 rider's intended journey. Commercial fares remain corridor-based unless a
 separate pricing decision changes them.
+
+Departure identity is independent of the schedule revision and editable
+operational time. Trips are unique by `(departure_id, service_date, run_number)`;
+launch allows only run 1. Cancellation retains this identity, preventing a
+generator retry from silently resurrecting a departure. Schedule and trip
+ownership are enforced with composite foreign keys, including across published
+pattern revisions. Creating a genuinely additional departure is an explicit
+operation, not an implicit consequence of publishing a schedule revision.
+
+`service_date` is a stored, immutable business attribute, not the calendar date
+of `scheduled_at`. A delay from 23:30 to next-day 00:15 keeps its original service
+date and trip ID. Operational `scheduled_at` remains editable before operation,
+subject to version eligibility; changing the business date requires an explicit
+replacement workflow with reservation consequences. Reservations and traces
+continue to reference the stable trip UUID.
 
 Published stop order is immutable. Editing a path or stop arrangement publishes
 a new version; completed trips retain their old version. Reference a stop
