@@ -72,7 +72,7 @@ const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{1
 function resourceId(value: Json | undefined): string {
   if (typeof value !== 'string' || !uuidPattern.test(value))
     fail(404, 'not_found', 'Resource not found.');
-  return value;
+  return value.toLowerCase();
 }
 function state(t: TripRow): Body {
   return {
@@ -164,6 +164,20 @@ export class TransportService {
   }
   private normalize(operation: Command, input: Body): Body {
     const body = structuredClone(input);
+    // PostgreSQL UUID identity is case-insensitive. Match it in comparisons,
+    // input hashes and retry scopes rather than treating spelling as identity.
+    for (const field of [
+      'patternVersionId',
+      'scheduleId',
+      'stopOccurrenceId',
+      'driverId',
+      'vehicleId',
+    ])
+      if (body[field] !== undefined && body[field] !== null) body[field] = resourceId(body[field]);
+    if (operation === 'createSchedule' && (body.departure as Body).kind === 'existing') {
+      const departure = body.departure as Body;
+      departure.departureId = resourceId(departure.departureId);
+    }
     if (operation === 'createTrip') body.runNumber ??= 1;
     if (operation === 'recordArrival') body.correction ??= false;
     if (operation === 'createSchedule') {
@@ -186,6 +200,8 @@ export class TransportService {
     ifMatch?: string,
   ): Promise<Outcome> {
     if (!commands.has(operation)) fail(404, 'not_found', 'Operation not found.');
+    actor = { ...actor, userId: resourceId(actor.userId) };
+    if (target !== 'collection') target = resourceId(target);
     if (!key || key.length > 128)
       fail(400, 'idempotency_key_required', 'Supply an Idempotency-Key of 1 to 128 characters.');
     const body = this.normalize(operation, input);
@@ -570,6 +586,7 @@ export class TransportService {
     operation: Read,
     query: Record<string, string | undefined>,
   ): Promise<Outcome> {
+    actor = { ...actor, userId: resourceId(actor.userId) };
     return this.transaction(async (client) => {
       const driverId = await this.authorize(client, actor, operation);
       const now = new Date();

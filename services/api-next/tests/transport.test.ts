@@ -32,7 +32,7 @@ test('cursor fits the contract, preserves PostgreSQL microseconds, and binds own
 });
 test('HTTP factory compiles reviewed schemas and has no unauthenticated or guessed-header fallback', async () => {
   const pool = new Pool();
-  const app = createTransportApp({
+  const app = await createTransportApp({
     pool,
     cursorSecret: Buffer.alloc(32, 9),
     verifyAccess: async () => null,
@@ -51,6 +51,44 @@ test('HTTP factory compiles reviewed schemas and has no unauthenticated or guess
     assert.equal(response.statusCode, 401);
     assert.equal(response.json().error.code, 'unauthenticated');
     assert.equal(response.headers['cache-control'], 'no-store');
+  } finally {
+    await app.close();
+    await pool.end();
+  }
+});
+
+test('IP admission runs before verification and forged forwarded headers cannot evade it', async () => {
+  const pool = new Pool();
+  let verified = 0;
+  const app = await createTransportApp({
+    pool,
+    cursorSecret: Buffer.alloc(32, 9),
+    requestsPerIpPerMinute: 1,
+    verifyAccess: async () => {
+      verified++;
+      return null;
+    },
+    authorizeSession: async () => {
+      throw new Error('must not access the database');
+    },
+    minimumBuilds: { ops: 1, driver: { ios: 1, android: 1 } },
+  });
+  try {
+    const first = await app.inject({
+      method: 'GET',
+      url: '/v1/driver/trips',
+      headers: { authorization: 'Bearer invalid-one' },
+    });
+    assert.equal(first.statusCode, 401);
+    const second = await app.inject({
+      method: 'GET',
+      url: '/v1/ops/trips',
+      headers: { authorization: 'Bearer invalid-two', 'x-forwarded-for': '192.0.2.3' },
+    });
+    assert.equal(second.statusCode, 429);
+    assert.equal(second.json().error.code, 'rate_limited');
+    assert.ok(Number(second.headers['retry-after']) > 0);
+    assert.equal(verified, 1);
   } finally {
     await app.close();
     await pool.end();

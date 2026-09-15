@@ -67,7 +67,7 @@ accepts only `scheduledAt`, never those fields. No new endpoint is introduced.
 
 ## Command and HTTP slice
 
-`createTransportApp()` implements 11 existing cutover operations from a generated
+`await createTransportApp()` implements 11 existing cutover operations from a generated
 subset of the reviewed OpenAPI. The source is still
 `docs/design/contracts/target-contract.mjs`; `build-transport-contract.mjs` emits
 the runtime subset, and CI regenerates/diffs both artifacts. No deferred detail
@@ -100,9 +100,11 @@ vehicle references that driver responses do not expose.
   preserves PostgreSQL microseconds. Driver rows carry the exact edit token;
   collection-level ETags are not used as row edit tokens.
 - Explicit build floors reject missing/wrong metadata and unsupported clients
-  before mutation. Metadata does not grant authority. A bounded process-local
-  request budget is included; distributed admission and ingress hardening still
-  belong to deployment wiring. Database pools must set a connection timeout.
+  before mutation. Metadata does not grant authority. The official Fastify
+  rate-limit plugin applies a bounded process-local IP budget **before token
+  verification**, alongside the verified-user budget before database work.
+  Forwarded headers are not trusted; deployment must configure its known proxy
+  boundary and distributed admission. Database pools must set a connection timeout.
 
 Migration `004` adds completed receipts, their actor-linked event references and
 schedule creation events. Earlier migration bytes remain unchanged. Audit/receipt
@@ -144,7 +146,10 @@ blanket default privileges that silently grant access to future sensitive tables
 
 ## Evidence and limits
 
-The Postgres job runs **45 tests**: 29 storage tests and 16 real HTTP/command tests.
+The Postgres job runs **46 tests**: 29 storage tests and 17 real HTTP/command tests.
+UUID spelling is normalized before scope/hash/comparison; a regression test
+reproduces the uppercase-occurrence rejection before the fix, then proves replay
+across uppercase/lowercase path and body IDs after it.
 The storage checks cover migration repeat/drift/rollback/contention,
 identity uniqueness, publication integrity, ownership, history retention,
 direction, timestamps, runtime permissions and a persisted attribution negative
@@ -154,7 +159,9 @@ checks cover direct repointing to incompatible and compatible revisions, plus
 the catalog weekday convention and Sunday/Monday behavior. Tests run
 against the entire migration chain, not a reduced fixture schema (except the
 explicit `001` upgrade-refusal test, which verifies failure without mutation).
-Six pure/preflight tests run in the workspace job. Source and migration hashes,
+Seven pure/preflight tests run in the workspace job, including a pre-auth limit
+test that asserts the rejected request never reaches verification and cannot
+bypass the limit with a forged forwarded address. Source and migration hashes,
 verified blocking PIDs, cleanup targets and JUnit results are retained as CI
 artifacts. A revision label alone is not represented as a byte-level source pin;
 the metadata records actual source hashes and checks they stay unchanged in-run.

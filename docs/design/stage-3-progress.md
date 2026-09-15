@@ -114,7 +114,11 @@ contention, audit-write rollback, driver/session isolation, caller-bound cursors
 ISO dates, current-role checks and build-floor admission. Test session/booking
 adapters are explicitly labelled; no reservation or identity scenario group is
 claimed complete because these test ports pass. The existing 29 storage tests
-remain, plus 16 command tests and six pure/preflight checks.
+remain, plus 17 command tests and seven pure/preflight checks. UUID case folding
+matches database identity in comparisons and retry scopes; the new case test
+was first verified failing at the intended arrival assertion before the fix.
+The official Fastify rate limiter enforces a pre-authentication IP limit as well
+as the verified-user budget. CI's security gate is retained without suppression.
 
 Contract corrections fulfill the stage-2 list-first requirement: driver trip
 rows expose an opaque `editToken`, equal to the returned ETag, and ops uses an

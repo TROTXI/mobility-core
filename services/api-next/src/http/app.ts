@@ -1,4 +1,5 @@
 import Fastify from 'fastify';
+import rateLimit from '@fastify/rate-limit';
 import type { FastifyRequest } from 'fastify';
 import { randomUUID } from 'node:crypto';
 import contract from './contract.json' with { type: 'json' };
@@ -18,8 +19,9 @@ export interface AppOptions extends Dependencies {
   verifyAccess: (authorization: string) => Promise<Actor | null>;
   minimumBuilds: { ops: number; driver: { ios: number; android: number } };
   requestsPerMinute?: number;
+  requestsPerIpPerMinute?: number;
 }
-export function createTransportApp(options: AppOptions) {
+export async function createTransportApp(options: AppOptions) {
   if (typeof options.verifyAccess !== 'function')
     throw new Error('Verified access-token adapter required');
   const floors = options.minimumBuilds;
@@ -41,6 +43,21 @@ export function createTransportApp(options: AppOptions) {
   const actors = new WeakMap<FastifyRequest, Actor>();
   const budget = options.requestsPerMinute ?? 120;
   if (!Number.isInteger(budget) || budget < 1) throw new Error('Invalid request budget');
+  const ipBudget = options.requestsPerIpPerMinute ?? 600;
+  if (!Number.isInteger(ipBudget) || ipBudget < 1) throw new Error('Invalid IP request budget');
+  // Runs before token verification, in addition to the verified-user budget.
+  // No trust in forwarded headers; deployment must explicitly configure its
+  // ingress/proxy policy before exposing the service behind a shared proxy.
+  await app.register(rateLimit, {
+    global: true,
+    hook: 'onRequest',
+    max: ipBudget,
+    timeWindow: 60000,
+    cache: 10000,
+    skipOnError: false,
+    errorResponseBuilder: () =>
+      new TransportError(429, 'rate_limited', 'Please wait before trying again.'),
+  });
   const counters = new Map<string, { count: number; until: number }>();
   // OpenAPI components are not a JSON-Schema keyword. Adapt only reference
   // locations, retaining strict validation and every reviewed field rule.
@@ -94,7 +111,9 @@ export function createTransportApp(options: AppOptions) {
         method: method.toUpperCase() as 'GET' | 'POST' | 'PUT' | 'PATCH',
         url: path.replaceAll(/\{([^}]+)\}/g, ':$1'),
         schema: { ...(input ? { body: rootRef(input) } : {}), response },
-        onRequest: async (request, reply) => {
+        // The plugin's onRequest IP limiter must run before verification.
+        // A route-local onRequest auth hook would precede its appended hook.
+        preValidation: async (request, reply) => {
           reply.header('Cache-Control', 'no-store');
           const authorization = request.headers.authorization;
           if (!authorization || !/^Bearer [^\s]{1,8192}$/.test(authorization))

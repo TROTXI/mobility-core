@@ -159,7 +159,7 @@ async function setup(coordinated = false, budget = 1000) {
       connectionTimeoutMillis: 3000,
       application_name: `commands-${run}-${n}`,
     });
-    const app = createTransportApp({
+    const app = await createTransportApp({
       pool: runtime,
       cursorSecret: Buffer.alloc(32, 7),
       requestsPerMinute: budget,
@@ -432,6 +432,33 @@ test('CMD-02 assigned driver lifecycle is coherent and fresh-key duplicate start
     );
     assert.ok(!('assignedDriverId' in start.json().data));
     assert.deepEqual(await counts(c), { commands: 4, events: 2, schedules: 0, booking_effects: 0 });
+  }));
+test('CMD-17 UUID case does not change occurrence identity or the command replay scope', () =>
+  withCase(async (c) => {
+    const { trip } = await c.seedTrip();
+    const start = await c.request('driver', 'POST', `/v1/driver/trips/${trip}/start`);
+    status(start, 200);
+    const first = await c.request(
+      'driver',
+      'POST',
+      `/v1/driver/trips/${trip.toUpperCase()}/arrivals`,
+      { stopOccurrenceId: c.stops[0]!.toUpperCase() },
+      'case-invariant',
+      start.headers.etag as string,
+    );
+    status(first, 200);
+    const replay = await c.request(
+      'driver',
+      'POST',
+      `/v1/driver/trips/${trip}/arrivals`,
+      { stopOccurrenceId: c.stops[0] },
+      'case-invariant',
+      start.headers.etag as string,
+    );
+    status(replay, 200);
+    assert.deepEqual(replay.json(), first.json());
+    assert.equal(first.json().data.currentStopOccurrenceId, c.stops[0]);
+    assert.deepEqual(await counts(c), { commands: 2, events: 2, schedules: 0, booking_effects: 0 });
   }));
 test('CMD-03 occurrence identity, explicit backward correction, stale-token refusal and replay before If-Match', () =>
   withCase(async (c) => {
