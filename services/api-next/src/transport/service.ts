@@ -10,9 +10,12 @@ import {
   catalogId,
 } from './catalog.js';
 import type { CatalogCommand, CatalogRead } from './catalog.js';
+import { Fleet, fleetCommands, fleetReads } from './fleet.js';
+import type { FleetCommand, FleetRead, FleetLocked } from './fleet.js';
 
 export type Command =
   | CatalogCommand
+  | FleetCommand
   | 'createSchedule'
   | 'createTrip'
   | 'assignTrip'
@@ -21,7 +24,7 @@ export type Command =
   | 'startTrip'
   | 'completeTrip'
   | 'recordArrival';
-export type Read = 'listSchedules' | 'listOpsTrips' | 'listDriverTrips';
+export type Read = 'listSchedules' | 'listOpsTrips' | 'listDriverTrips' | FleetRead;
 type Json = null | boolean | number | string | Json[] | { [key: string]: Json };
 export type Body = Record<string, Json>;
 export interface Outcome {
@@ -97,6 +100,7 @@ const driverOperation = (operation: string) =>
   ['startTrip', 'completeTrip', 'recordArrival', 'listDriverTrips'].includes(operation);
 const commands = new Set([
   ...catalogCommands,
+  ...fleetCommands,
   'createSchedule',
   'createTrip',
   'assignTrip',
@@ -109,11 +113,13 @@ const commands = new Set([
 export class TransportService {
   private readonly cursors;
   private readonly catalog;
+  private readonly fleet;
   constructor(private readonly deps: Dependencies) {
     if (typeof deps.authorizeSession !== 'function')
       throw new Error('A current-session authorization adapter is required');
     this.cursors = cursorCodec(deps.cursorSecret);
     this.catalog = new Catalog(deps.cursorSecret);
+    this.fleet = new Fleet(deps.cursorSecret);
   }
   private async transaction<T>(
     work: (client: PoolClient) => Promise<T>,
@@ -180,6 +186,8 @@ export class TransportService {
   private normalize(operation: Command, input: Body): Body {
     if ((catalogCommands as readonly string[]).includes(operation))
       return this.catalog.normalize(operation as CatalogCommand, input);
+    if ((fleetCommands as readonly string[]).includes(operation))
+      return this.fleet.normalize(operation as FleetCommand, input);
     const body = structuredClone(input);
     // PostgreSQL UUID identity is case-insensitive. Match it in comparisons,
     // input hashes and retry scopes rather than treating spelling as identity.
@@ -222,6 +230,7 @@ export class TransportService {
     if (target !== 'collection') target = resourceId(target);
     if (childId !== undefined) childId = catalogId(childId);
     const catalog = (catalogCommands as readonly string[]).includes(operation);
+    const fleet = (fleetCommands as readonly string[]).includes(operation);
     // Nested version identity is part of the receipt scope, not just its parent.
     const receiptTarget = childId === undefined ? target : `${target}/${childId}`;
     if (!key || key.length > 128)
@@ -241,8 +250,13 @@ export class TransportService {
       const locked = catalog
         ? await this.catalog.lock(client, operation as CatalogCommand, target, childId)
         : null;
+      const fleetLocked: FleetLocked | null = fleet
+        ? await this.fleet.lock(client, operation as FleetCommand, target)
+        : null;
       const trip =
-        catalog || target === 'collection' ? null : await this.ownedTrip(client, target, driverId);
+        catalog || fleet || target === 'collection'
+          ? null
+          : await this.ownedTrip(client, target, driverId);
       const prior = (
         await client.query(
           `SELECT *, replay_expires_at <= clock_timestamp() AS expired
@@ -270,6 +284,7 @@ export class TransportService {
         };
       }
       if (locked) this.catalog.precondition(operation as CatalogCommand, locked, ifMatch);
+      if (fleetLocked) this.fleet.precondition(operation as FleetCommand, fleetLocked, ifMatch);
       if (['recordArrival', 'assignTrip', 'rescheduleTrip', 'cancelTrip'].includes(operation)) {
         if (!ifMatch)
           fail(428, 'precondition_required', 'Supply the resource edit token in If-Match.');
@@ -278,7 +293,16 @@ export class TransportService {
       }
       const commandId = randomUUID();
       let result: Outcome;
-      if (locked)
+      if (fleet)
+        result = await this.fleet.execute(
+          client,
+          actor,
+          operation as FleetCommand,
+          target,
+          body,
+          commandId,
+        );
+      else if (locked)
         result = await this.catalog.execute(
           client,
           actor,
@@ -647,6 +671,8 @@ export class TransportService {
     actor = { ...actor, userId: resourceId(actor.userId) };
     return this.transaction(async (client) => {
       const driverId = await this.authorize(client, actor, operation);
+      if ((fleetReads as readonly string[]).includes(operation))
+        return this.fleet.read(client, operation as FleetRead, actor, query);
       const now = new Date();
       const schedules = operation === 'listSchedules';
       const limit = query.limit === undefined ? 50 : Number(query.limit);

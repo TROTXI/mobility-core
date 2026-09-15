@@ -104,7 +104,7 @@ async function setup(coordinated = false, budget = 1000) {
     );
     const vehicle = await id(
       owner,
-      "INSERT INTO app.vehicles(label,capacity) VALUES ('Fixture bus',16)",
+      "INSERT INTO app.vehicles(plate,label,capacity) VALUES ('GT '||upper(substr(md5(random()::text),1,4))||'-20','Fixture bus',16)",
     );
     const route = await id(owner, "INSERT INTO app.routes(name) VALUES ('Fixture corridor')");
     const pattern = await id(

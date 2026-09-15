@@ -702,7 +702,14 @@ named(
     capacity: z.int().min(1).max(500),
   }),
 );
-named('Vehicle', schemas.VehicleInput.extend({ id, archived: z.boolean(), ...audit }));
+// Route and Stop expose editToken because their single-resource GETs are
+// deferred and a collection ETag cannot supply a per-row If-Match value.
+// getOpsVehicle is deferred for the same reason, so Vehicle needs it too:
+// without it an ops client can only edit a bus it just created.
+named(
+  'Vehicle',
+  schemas.VehicleInput.extend({ id, archived: z.boolean(), editToken: text(128), ...audit }),
+);
 named(
   'VehicleEdit',
   obj({
