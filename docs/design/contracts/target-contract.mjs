@@ -134,6 +134,7 @@ named(
     patternIds: z.array(id),
     acceptsDriverRequests: z.boolean(),
     archived: z.boolean(),
+    editToken: text(128),
     ...audit,
   }),
 );
@@ -154,7 +155,10 @@ named(
     archived: z.boolean().optional(),
   }),
 );
-named('Stop', obj({ id, name: text(), location: point, archived: z.boolean(), ...audit }));
+named(
+  'Stop',
+  obj({ id, name: text(), location: point, archived: z.boolean(), editToken: text(128), ...audit }),
+);
 named('StopInput', obj({ name: text(), location: point }));
 named(
   'StopEdit',
@@ -168,9 +172,13 @@ named(
   obj({
     id,
     patternId: id,
+    revision: z.int().min(1),
     state: z.enum(['draft', 'published', 'retired']),
+    effectiveFrom: instant.nullable(),
+    effectiveTo: instant.nullable(),
     stops: z.array(schemas.StopOccurrence).min(2),
     geometryId: id.nullable(),
+    editToken: text(128),
     ...audit,
   }),
 );
@@ -181,6 +189,13 @@ named(
       .array(obj({ stopId: id, name: text(), location: point }))
       .min(2)
       .max(500),
+    // Configured road geometry, not straight lines guessed between stops. The
+    // positional distance array maps to the request's ordered stop occurrences,
+    // whose UUIDs do not exist until this atomic command succeeds.
+    geometry: obj({
+      points: z.array(point).min(2).max(10000),
+      stopDistancesMeters: z.array(z.number().nonnegative()).min(2).max(500),
+    }),
   }),
 );
 named('PublishVersionInput', obj({ reason: note, effectiveFrom: instant }));

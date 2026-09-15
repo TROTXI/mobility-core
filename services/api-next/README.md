@@ -1,4 +1,4 @@
-# Replacement backend — stage 3, transport storage and commands
+# Replacement backend — stage 3, transport commands and route catalog
 
 Not deployed. This package has an **injectable HTTP app factory, not a production
 listener or deploy entry point**. Signature/session adapters must be supplied.
@@ -33,8 +33,8 @@ binaries at this schema or point this installer at the existing staging database
 - Restrictive relationships and no trip deletion, plus append-only event storage.
   A separate runtime role has no application DDL, deletion, truncation or migration access.
 
-These are **16 application tables**, primarily transport and identity references,
-including command receipts and schedule audit events, not 16 payment tables.
+These are **17 application tables**, primarily transport and identity references,
+including command receipts, schedule and catalog audit events, not payment tables.
 The migration-history table is separate. No membership,
 purchase or ledger tables are introduced in this slice.
 
@@ -67,7 +67,7 @@ accepts only `scheduledAt`, never those fields. No new endpoint is introduced.
 
 ## Command and HTTP slice
 
-`await createTransportApp()` implements 11 existing cutover operations from a generated
+`await createTransportApp()` implements 29 existing cutover operations from a generated
 subset of the reviewed OpenAPI. The source is still
 `docs/design/contracts/target-contract.mjs`; `build-transport-contract.mjs` emits
 the runtime subset, and CI regenerates/diffs both artifacts. No deferred detail
@@ -77,6 +77,8 @@ vehicle references that driver responses do not expose.
 
 - Ops: create/list schedules; create/list trips; assignment, reschedule, cancel.
 - Driver: list own trips; start, complete, report/correct an occurrence arrival.
+- Catalog: 12 ops and six public operations described below. Deferred detail
+  GETs are still absent; mutations return their result and lists supply edit tokens.
 - Application creation **refuses an absent or non-callable transactional
   reservation coordinator**, before building the HTTP app. There is no bypass
   option. Tests supply explicit failing or transaction-marker adapters, **not a
@@ -128,6 +130,67 @@ constraint trigger is added here. Before introducing another runtime trip writer
 review which mutations require audit and how an event is matched to that exact
 mutation; merely finding an old event for a trip would not prove it was audited.
 
+## Route setup and publication
+
+The executable setup flow is create route → create physical stops → create
+outbound/return pattern → create draft version with configured geometry → publish
+→ create service schedule → create trip. CAT-01 exercises it through HTTP without
+inserting any transport/catalog fixtures. Identity and sessions are still explicit
+test adapters, and trip booking coordination still requires its real adapter.
+
+| Boundary             | Implemented operations                                                                                              |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| Ops routes and stops | List, create, PATCH editable fields (including the reviewed `archived` flag); no DELETE                             |
+| Ops patterns         | List and create; route and direction cannot be changed                                                              |
+| Ops versions         | Create draft, list, read a nested version, publish                                                                  |
+| Public catalog       | List/read current routes, read current patterns, read published/retired versions and geometry, list route schedules |
+
+`PatternVersionInput.geometry` supplies **configured road geometry**, not a path
+guessed from straight lines between stops. It contains `points` (2–10,000 lat/lon
+points) and `stopDistancesMeters` (one finite, nondecreasing distance for each
+input occurrence, inside the line's geodesic length plus the existing 1 m tolerance).
+The distance array uses request order because occurrence UUIDs do not exist yet.
+Creation is one transaction for the version, 2–500 occurrences, draft geometry,
+distances, audit event and receipt. This does not prove that a configured line
+follows real roads or that manually supplied distance/location pairs are accurate;
+ops reviews that configuration. GPS learning and traversal-aware projection remain
+separate work. Only this bounded input gets a 1 MiB body limit; other operations
+keep the existing 64 KiB limit.
+
+Drafts are complete review candidates, not editable published definitions. To
+correct one, create another draft through the existing endpoint; no unreviewed
+draft PATCH or geometry-upload endpoint is added. Physical-stop edits never
+rewrite occurrence snapshots. An unavailable physical stop prevents a new draft
+or publication, without rewriting existing published history.
+
+Publication locks the pattern and at most the target/latest published version,
+then the route and referenced stops. It publishes geometry/distances and version
+together, closing an overlapping previous interval atomically. Publication must
+follow existing effective starts; it cannot rewrite later scheduled publications.
+The deferred trip guard refuses any closure that would orphan a non-cancelled
+trip (`409 reassignment_required`). No trip is implicitly moved or cancelled.
+Archiving a corridor similarly refuses while it has scheduled/active trips.
+Future commute/reservation writes must join this coordination boundary before
+those domains are enabled; this is not evidence of membership-aware archival.
+
+`Route`, `Stop` and `PatternVersion` expose `editToken`. Copy it to `If-Match`,
+never construct it from a collection ETag. Missing/foreign nested resources are
+404 before 428/412. Publication replay scopes include **both** pattern and version
+IDs. Audit rows link receipts/actors with a deferred FK; a publication audit also
+records the previous effective interval. `006_catalog_commands.sql` leaves
+`001`–`005` unchanged; the runtime login cannot update catalog history.
+
+Public reads expose no drafts, archived corridors, users, drivers, trip positions
+or audit data. Current route/pattern discovery uses effective intervals at database
+transaction time (not simply `state='published'`, since a future retirement can
+still be today's version). Explicit published/retired version links remain readable
+on unarchived corridors, including future published versions needed by schedules.
+Public route schedules exclude ended schedules/versions. Each composed read uses
+one database snapshot, with bounded cursor pagination and no shared caching.
+Build/platform metadata is required even without authentication; the app factory
+now requires explicit commuter floors alongside driver and ops floors. Public
+reads are IP-limited and never use an unverified identity header as authority.
+
 ## Run locally
 
 Use Node 24 and the repository's pinned pnpm. The tests create uniquely named
@@ -162,7 +225,11 @@ blanket default privileges that silently grant access to future sensitive tables
 
 ## Evidence and limits
 
-The Postgres job runs **49 tests**: 29 storage tests and 20 real HTTP/command tests.
+The Postgres job runs **64 tests**: 29 storage, 20 transport command and 15 catalog
+HTTP tests, none skipped. Catalog tests cover full HTTP setup, visibility,
+snapshot preservation, publication rollback, three observed database races,
+parent/child replay scope, revocation, row edit tokens, microsecond pagination,
+runtime audit privileges and a 6,000-point geometry above the default body limit.
 Review regressions cover receiptless runtime rejection, owner-only fixtures,
 deferred receipt existence/actor validation and all four conditional mutations'
 404-before-428/412 behavior (including foreign driver trips).
@@ -200,8 +267,7 @@ The stage-2 baseline and its expectations remain unchanged.
 
 1. Production signature/session adapters, bootstrap/deploy wiring, distributed
    admission and physical receipt expiry; real booking coordination for ops
-   edits. Catalog setup/publication commands remain another transport slice.
-   The 11-operation app factory is not a ready-to-deploy replacement service.
+   edits. The 29-operation app factory is not a ready-to-deploy replacement service.
 2. Attributable future-version reassignment coordinated with commute assignments
    and reservations. Until that command exists, version changes on an existing
    trip fail closed; do not disable the guard to publish over affected trips.

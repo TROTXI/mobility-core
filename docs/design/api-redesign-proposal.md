@@ -390,6 +390,21 @@ is not permission for unrestricted CRUD. Published versions,
 payments and ledgers require specific domain operations. No new refund-initiation,
 dispute-provider submission or automated collection endpoint is implied.
 
+Stage-3 catalog implementation refines the existing draft-version input with a
+required configured geometry: `points` and `stopDistancesMeters`, the latter
+matching input stop order before occurrence IDs are allocated. No new endpoint
+is introduced. Creation saves the complete draft atomically; publication freezes
+it and closes a prior overlapping interval only if existing trips stay eligible.
+Unreassigned trips cause a 409, not an implicit move. Published stop snapshots
+do not follow later physical-stop edits. Draft corrections use another draft;
+an in-place draft-edit endpoint remains outside this slice.
+
+Route/stop/version list rows carry `editToken`; version reads include `revision`,
+`effectiveFrom` and `effectiveTo`. Public current links are selected by effective
+interval, while direct published/retired version reads preserve historic links
+on unarchived corridors. Drafts and archived corridors remain ops-only. These
+are replacement contract changes, not changes to deployed clients or endpoints.
+
 Schedule creation explicitly distinguishes `{ departure: { kind: 'new' } }`
 from `{ departure: { kind: 'existing', departureId } }`. A new pattern/schedule
 revision for the same recurring departure must reuse the stable ID; a genuinely

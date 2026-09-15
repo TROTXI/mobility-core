@@ -165,7 +165,7 @@ async function setup(coordinated = false, budget = 1000) {
       pool: runtime,
       cursorSecret: Buffer.alloc(32, 7),
       requestsPerMinute: budget,
-      minimumBuilds: { ops: 2, driver: { ios: 2, android: 2 } },
+      minimumBuilds: { ops: 2, driver: { ios: 2, android: 2 }, commuter: { ios: 2, android: 2 } },
       verifyAccess: async (authorization) => {
         const label = authorization.replace(/^Bearer /, '') as keyof typeof users;
         return users[label] ? { userId: users[label], sessionId: `session-${label}` } : null;
