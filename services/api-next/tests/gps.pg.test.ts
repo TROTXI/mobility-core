@@ -1,6 +1,5 @@
 import { test, after } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFile } from 'node:fs/promises';
 import { randomBytes, randomUUID } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import pg from 'pg';
@@ -20,12 +19,6 @@ if (
   throw new Error('Only an explicitly disposable loopback postgres admin database is allowed');
 const admin = new pg.Pool({ connectionString: url.href, max: 2, connectionTimeoutMillis: 3000 });
 const migrations = await readMigrations(fileURLToPath(new URL('../migrations/', import.meta.url)));
-// 014 waits outside the installer until 013 lands, so the suite applies the
-// reviewed chain and then the draft, exactly as it will run once renamed.
-const draft = await readFile(
-  fileURLToPath(new URL('../schema-drafts/014_gps_and_learning.sql', import.meta.url)),
-  'utf8',
-);
 const run = randomBytes(5).toString('hex'),
   owned: string[] = [],
   roles: string[] = [];
@@ -55,7 +48,6 @@ async function setup() {
   db.pathname = `/${name}`;
   const owner = new pg.Pool({ connectionString: db.href, max: 5, connectionTimeoutMillis: 3000 });
   await migrate(owner, migrations);
-  await owner.query(draft);
   const users = { admin: randomUUID(), driver: randomUUID(), other: randomUUID() };
   await owner.query('CREATE TABLE app.test_gps_sessions(user_id uuid PRIMARY KEY)');
   for (const [label, id] of Object.entries(users)) {

@@ -168,6 +168,11 @@ export async function grantRuntime(pool: Pool, role: string): Promise<void> {
       'payment_review_commands',
       'gps_events',
       'trip_positions',
+      'membership_commands',
+      'membership_events',
+      'commute_selections',
+      'commute_selection_legs',
+      'reservation_prompts',
     ];
     const tables = await client.query<{ name: string; append_only: boolean; deletable: boolean }>(
       `SELECT c.relname AS name, EXISTS (

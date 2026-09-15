@@ -71,6 +71,7 @@ export async function setup(
   t: TestContext,
   overrides: Partial<FinancialDependencies> = {},
   upgrade = false,
+  through = files.length,
 ) {
   const n = ++serial,
     name = `trotxi_harness_${run}_finance_${n}`,
@@ -106,7 +107,7 @@ export async function setup(
     );
     await migrate(owner, files);
     assert.deepEqual(await migrate(owner, files), []);
-  } else await migrate(owner, files);
+  } else await migrate(owner, files.slice(0, through));
   const id = async (sql: string, args: unknown[] = []) =>
     (await owner.query(sql + ' RETURNING id', args)).rows[0].id as string;
   const userId = await id("INSERT INTO app.users(role) VALUES ('commuter')"),
