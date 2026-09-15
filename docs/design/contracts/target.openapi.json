@@ -710,6 +710,9 @@
           "409": {
             "$ref": "#/components/responses/Error409"
           },
+          "423": {
+            "$ref": "#/components/responses/Error423"
+          },
           "426": {
             "$ref": "#/components/responses/Error426"
           },
@@ -18778,6 +18781,11 @@
           "archived": {
             "type": "boolean"
           },
+          "editToken": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
           "createdAt": {
             "type": "string",
             "format": "date-time",
@@ -18801,6 +18809,7 @@
           "licenseNumber",
           "userId",
           "archived",
+          "editToken",
           "createdAt",
           "updatedAt",
           "version"
@@ -19004,7 +19013,6 @@
             "maxLength": 32
           }
         },
-        "required": ["code"],
         "additionalProperties": false
       },
       "CredentialSecret": {

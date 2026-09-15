@@ -290,7 +290,7 @@ test('catalog drafts require bounded configured geometry; editable lists expose 
     // Ajv sees JSON, where undefined properties are absent.
     assert.equal(validate('PatternVersionInput')(JSON.parse(JSON.stringify(bad))), false);
   }
-  for (const name of ['Route', 'Stop', 'PatternVersion']) {
+  for (const name of ['Route', 'Stop', 'PatternVersion', 'Driver']) {
     assert.ok(schemas[name].shape.editToken);
     assert.ok(spec.components.schemas[name].required.includes('editToken'));
   }
@@ -312,7 +312,11 @@ test('runtime subset implements only selected cutover operations and contains no
       assert.deepEqual(operation, spec.paths[path][method]);
       assert.notEqual(operation['x-delivery-stage'], 'deferred');
     }
-  assert.equal(count, 37);
+  assert.equal(count, 44);
   assert.equal(runtime.paths['/v1/ops/routes/{id}'].get, undefined);
   assert.equal(runtime.paths['/v1/ops/stops/{id}'].get, undefined);
+  assert.equal(runtime.paths['/v1/ops/drivers/{id}'].get, undefined);
+  assert.equal(schemas.CredentialIssue.safeParse({}).success, true);
+  assert.equal(schemas.CredentialIssue.safeParse({ code: 'DR-B7K9' }).success, true);
+  assert.ok(runtime.paths['/v1/auth/driver/pin'].post.responses['423']);
 });

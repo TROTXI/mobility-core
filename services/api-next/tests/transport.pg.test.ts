@@ -253,8 +253,8 @@ test('MIG-01 clean install records hashes, rerun is no-op, historical drift fail
     const tables = await pool.query(
       "SELECT count(*)::int AS n FROM pg_tables WHERE schemaname='app'",
     );
-    // Seventeen transport/catalog tables plus five identity/session tables in 007.
-    assert.equal(tables.rows[0].n, 22);
+    // Seventeen transport/catalog + five auth + two driver command/audit tables.
+    assert.equal(tables.rows[0].n, 24);
   }));
 
 test('MIG-02 old/unknown database is refused without changing it', async () => {

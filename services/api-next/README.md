@@ -34,7 +34,7 @@ binaries at this schema or point this installer at the existing staging database
 - Restrictive relationships and no trip deletion, plus append-only event storage.
   A separate runtime role has no application DDL, deletion, truncation or migration access.
 
-These are **22 application tables**, transport and identity/session storage,
+These are **24 application tables**, transport and identity/session/driver-command storage,
 including command receipts, schedule and catalog audit events, not payment tables.
 The migration-history table is separate. No membership,
 purchase or ledger tables are introduced in this slice.
@@ -207,6 +207,16 @@ refresh generations, existing-format driver credentials and fixed-204 revocation
 receipts. `001`–`006` are unchanged. Provider/PIN primitives are ported from the
 existing implementation, not invented replacement authentication rules.
 
+## Driver credential port
+
+Seven additional reviewed operations bring the composed factory to **44**:
+driver list/create/edit, credential issue/reset/status actions and self PIN
+change. Read [the driver port decisions and evidence](../../docs/design/stage-3-driver-port.md).
+Migration 008 leaves 001–007 unchanged. Credential issue provisions the principal
+atomically; reset/suspension/PIN change revoke sessions transactionally. A separate
+32-byte credential replay key is now required at composition. No driver screen
+or staging change is included, and no booking coordinator is faked for deployment.
+
 ## Run locally
 
 Use Node 24 and the repository's pinned pnpm. The tests create uniquely named
@@ -241,8 +251,8 @@ blanket default privileges that silently grant access to future sensitive tables
 
 ## Evidence and limits
 
-The Postgres job runs **81 tests**: 29 storage, 20 transport command, 15 catalog
-and 17 auth HTTP/transaction tests, none skipped. Catalog tests cover full HTTP setup, visibility,
+The Postgres job runs **96 tests**: 29 storage, 20 transport command, 15 catalog,
+17 auth and 15 driver HTTP/transaction tests, none skipped. Catalog tests cover full HTTP setup, visibility,
 snapshot preservation, publication rollback, three observed database races,
 parent/child replay scope, revocation, row edit tokens, microsecond pagination,
 runtime audit privileges and a 6,000-point geometry above the default body limit.
@@ -261,7 +271,7 @@ checks cover direct repointing to incompatible and compatible revisions, plus
 the catalog weekday convention and Sunday/Monday behavior. Tests run
 against the entire migration chain, not a reduced fixture schema (except the
 explicit `001` upgrade-refusal test, which verifies failure without mutation).
-Fourteen pure/preflight tests run in the workspace job, including startup refusal
+Fifteen pure/preflight tests run in the workspace job, including startup refusal
 with a missing/malformed coordinator before any DB connection and a pre-auth limit
 test that asserts the rejected request never reaches verification and cannot
 bypass the limit with a forged forwarded address. Source and migration hashes,
@@ -283,7 +293,7 @@ The stage-2 baseline and its expectations remain unchanged.
 
 1. Provider secret configuration, bootstrap/deploy wiring, distributed
    admission and physical receipt expiry; real booking coordination for ops
-   edits. The 37-operation app factory is not a ready-to-deploy replacement service.
+   edits. The 44-operation app factory is not a ready-to-deploy replacement service.
 2. Attributable future-version reassignment coordinated with commute assignments
    and reservations. Until that command exists, version changes on an existing
    trip fail closed; do not disable the guard to publish over affected trips.
@@ -293,8 +303,7 @@ The stage-2 baseline and its expectations remain unchanged.
 4. Membership, purchases, attempts, periods, typed accounting, payment candidate
    adapter and all preserved PAY/REC scenarios; approved target-only ownership
    rules and the PAY-08 fixture substitution.
-5. Commute/boarding, ops credential provisioning/reset, self PIN change and
-   identity/erasure, GPS ingestion/projection/retention/learning,
+5. Commute/boarding, remaining identity/erasure, GPS ingestion/projection/retention/learning,
    remaining cutover operations and full cross-domain tests.
 
 No allocation, charging, ETA algorithm, raw-GPS retention job, consumer upgrade

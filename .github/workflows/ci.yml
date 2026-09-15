@@ -52,7 +52,7 @@ jobs:
         run: |
           mkdir -p .harness-artifacts/transport
           cd services/api-next
-          node --import tsx --test --test-reporter=spec --test-reporter-destination=stdout --test-reporter=junit --test-reporter-destination=../../.harness-artifacts/transport/tests.xml tests/transport.pg.test.ts tests/transport-commands.pg.test.ts tests/catalog.pg.test.ts tests/auth.pg.test.ts
+          node --import tsx --test --test-reporter=spec --test-reporter-destination=stdout --test-reporter=junit --test-reporter-destination=../../.harness-artifacts/transport/tests.xml tests/transport.pg.test.ts tests/transport-commands.pg.test.ts tests/catalog.pg.test.ts tests/auth.pg.test.ts tests/driver-credentials.pg.test.ts
       - uses: actions/upload-artifact@v7
         if: always()
         with:

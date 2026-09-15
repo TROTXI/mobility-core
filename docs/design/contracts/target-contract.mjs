@@ -678,6 +678,7 @@ named(
     licenseNumber: text().nullable(),
     userId: id.nullable(),
     archived: z.boolean(),
+    editToken: text(128),
     ...audit,
   }),
 );
@@ -714,7 +715,8 @@ named(
   }),
 );
 named('RoleEdit', obj({ role, reason: note }));
-named('CredentialIssue', obj({ code: text(32) }));
+// Preserve existing ops-generated codes when omitted; an explicit code is optional.
+named('CredentialIssue', obj({ code: text(32).optional() }));
 named('CredentialSecret', obj({ code: text(32), pin: z.string().regex(/^\d{6}$/) }));
 named('CredentialAction', obj({ action: z.enum(['suspend', 'activate', 'unlock']), reason: note }));
 named('FareInput', obj({ amount: money, effectiveFrom: instant, note: note.optional() }));
