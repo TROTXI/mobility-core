@@ -136,10 +136,54 @@ export async function grantRuntime(pool: Pool, role: string): Promise<void> {
       throw new Error('Runtime role must exist and be independent of the owner/installer');
     await client.query(`GRANT USAGE ON SCHEMA app TO ${quoted}`);
     await client.query(`GRANT SELECT, INSERT, UPDATE ON ALL TABLES IN SCHEMA app TO ${quoted}`);
+    // UPDATE is revoked on every append-only table, and the set is read from
+    // the schema's own triggers rather than kept by hand here: a new event
+    // table cannot ship with UPDATE still granted, and a table from a
+    // migration that has not been installed yet is simply absent instead of
+    // failing the grant. Two guards count: append_only refuses every rewrite,
+    // and guard_driver_receipt refuses all but one-way ciphertext erasure,
+    // which the column grant below re-opens. The list is a floor, not the
+    // source: if one of these exists without that protection, the grant
+    // refuses rather than leaving the runtime able to rewrite history.
+    const required = [
+      'trip_events',
+      'schedule_events',
+      'catalog_events',
+      'transport_commands',
+      'auth_commands',
+      'driver_commands',
+      'driver_events',
+      'fleet_events',
+      'purchase_legs',
+      'credit_entries',
+      'ride_entries',
+      'credit_adjustments',
+      'period_closures',
+      'payment_collections',
+      'payment_reversals',
+      'payment_review_commands',
+      'gps_events',
+    ];
+    const tables = await client.query<{ name: string; append_only: boolean }>(
+      `SELECT c.relname AS name, EXISTS (
+        SELECT 1 FROM pg_trigger g WHERE g.tgrelid = c.oid AND NOT g.tgisinternal
+          AND g.tgfoid = ANY (ARRAY['app.append_only()', 'app.guard_driver_receipt()']::regprocedure[])
+          AND (g.tgtype & 16) <> 0
+      ) AS append_only
+      FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
+      WHERE n.nspname = 'app' AND c.relkind = 'r' ORDER BY c.relname`,
+    );
+    // A required table that is simply not installed yet is absent from the
+    // query, so only an installed one without its guard is an error.
+    const unprotected = tables.rows.find((t) => required.includes(t.name) && !t.append_only);
+    if (unprotected)
+      throw new Error(`Append-only table without an UPDATE guard: ${unprotected.name}`);
+    const appendOnly = tables.rows.filter((t) => t.append_only).map((t) => t.name);
+    if (!appendOnly.length) throw new Error('Refusing to grant: no append-only history found');
+    if (appendOnly.some((name) => !/^[a-z][a-z0-9_]*$/.test(name)))
+      throw new Error('Unexpected table name in the app schema');
     await client.query(
-      `REVOKE UPDATE ON app.trip_events, app.schedule_events, app.catalog_events, app.transport_commands, app.auth_commands, app.driver_commands, app.driver_events, app.fleet_events,
-       app.purchase_legs, app.credit_entries, app.ride_entries, app.credit_adjustments, app.period_closures,
-       app.payment_collections, app.payment_reversals, app.payment_review_commands FROM ${quoted}`,
+      `REVOKE UPDATE ON ${appendOnly.map((name) => `app."${name}"`).join(', ')} FROM ${quoted}`,
     );
     await client.query(`GRANT UPDATE (secret_ciphertext) ON app.driver_commands TO ${quoted}`);
     await client.query('COMMIT');
