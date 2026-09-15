@@ -137,9 +137,19 @@ async function fixture(
   const driver = await id(pool, "INSERT INTO app.drivers(user_id,name) VALUES ($1,'Test driver')", [
     user,
   ]);
+  // MIG-05 deliberately stops the chain early, so this fixture runs against
+  // schemas both before and after 010 added a required plate. Adapt to the
+  // schema in front of it rather than relaxing the column or the chain check.
+  const platedFleet = (
+    await pool.query(
+      "SELECT 1 FROM information_schema.columns WHERE table_schema='app' AND table_name='vehicles' AND column_name='plate'",
+    )
+  ).rowCount;
   const vehicle = await id(
     pool,
-    "INSERT INTO app.vehicles(plate,label,capacity) VALUES ('GT '||upper(substr(md5(random()::text),1,4))||'-20','Test bus', 16)",
+    platedFleet
+      ? "INSERT INTO app.vehicles(plate,label,capacity) VALUES ('GT '||upper(substr(md5(random()::text),1,4))||'-20','Test bus', 16)"
+      : "INSERT INTO app.vehicles(label,capacity) VALUES ('Test bus', 16)",
   );
   const route =
     existing?.route ?? (await id(pool, "INSERT INTO app.routes(name) VALUES ('Test corridor')"));
@@ -253,8 +263,9 @@ test('MIG-01 clean install records hashes, rerun is no-op, historical drift fail
     const tables = await pool.query(
       "SELECT count(*)::int AS n FROM pg_tables WHERE schemaname='app'",
     );
-    // Seventeen transport/catalog + five auth + two driver command/audit tables.
-    assert.equal(tables.rows[0].n, 24);
+    // Seventeen transport/catalog + five auth + two driver command/audit tables,
+    // plus driver_incidents, driver_requests and fleet_events from 010.
+    assert.equal(tables.rows[0].n, 27);
   }));
 
 test('MIG-02 old/unknown database is refused without changing it', async () => {

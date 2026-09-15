@@ -343,7 +343,7 @@ test('FLT-04 a vehicle carrying a scheduled run cannot be archived and leaves no
       { token: bus.editToken },
     );
     assert.equal(blocked.statusCode, 409, blocked.body);
-    assert.equal(blocked.json().error, 'vehicle_has_open_trips');
+    assert.equal(blocked.json().error.code, 'vehicle_has_open_trips');
     const row = (
       await c.owner.query('SELECT archived_at,capacity,version FROM app.vehicles WHERE id=$1', [
         bus.id,
