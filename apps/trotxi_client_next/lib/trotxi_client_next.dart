@@ -146,6 +146,18 @@ abstract class TokenStore {
   Future<void> clearTokens();
 }
 
+/// Replacement app stores implement compare-and-write inside their storage
+/// queue. A separate read then write can otherwise clobber a newer login that
+/// arrives while the secure-storage read is completing.
+abstract class ConditionalTokenStore implements TokenStore {
+  Future<bool> saveTokensIfRefreshMatches({
+    required String expectedRefreshToken,
+    required String accessToken,
+    required String refreshToken,
+  });
+  Future<bool> clearTokensIfRefreshMatches(String expectedRefreshToken);
+}
+
 /// 1. AuthInterceptor: Handles Bearer injection & Automatic 401 Token Refresh
 class AuthInterceptor extends Interceptor {
   final Dio _dio;
@@ -204,10 +216,8 @@ class AuthInterceptor extends Interceptor {
           payload = null;
         }
       }
-      if (payload is Map &&
-          payload['refreshToken'] != null &&
-          await _tokenStore.getRefreshToken() == payload['refreshToken']) {
-        await _tokenStore.clearTokens();
+      if (payload is Map && payload['refreshToken'] is String) {
+        await _clearIfCurrent(payload['refreshToken'] as String);
       }
       return handler.next(err);
     }
@@ -321,9 +331,8 @@ class AuthInterceptor extends Interceptor {
       } on DioException catch (error) {
         // One clear per shared refresh, only on authoritative rejection. Do not
         // clear a newer login that replaced this credential while we waited.
-        if (error.response?.statusCode == 401 &&
-            await _tokenStore.getRefreshToken() == refreshToken) {
-          await _tokenStore.clearTokens();
+        if (error.response?.statusCode == 401) {
+          await _clearIfCurrent(refreshToken);
         }
         rethrow;
       }
@@ -339,14 +348,23 @@ class AuthInterceptor extends Interceptor {
         throw StateError('Refresh response missing tokens');
       }
 
-      if (await _tokenStore.getRefreshToken() != refreshToken) {
-        throw StateError('Session changed while refreshing');
+      final store = _tokenStore;
+      if (store is ConditionalTokenStore) {
+        final saved = await store.saveTokensIfRefreshMatches(
+          expectedRefreshToken: refreshToken,
+          accessToken: newAccessToken,
+          refreshToken: newRefreshToken,
+        );
+        if (!saved) throw StateError('Session changed while refreshing');
+      } else {
+        if (await store.getRefreshToken() != refreshToken) {
+          throw StateError('Session changed while refreshing');
+        }
+        await store.saveTokens(
+          accessToken: newAccessToken,
+          refreshToken: newRefreshToken,
+        );
       }
-      // Store new credentials
-      await _tokenStore.saveTokens(
-        accessToken: newAccessToken,
-        refreshToken: newRefreshToken,
-      );
       _rotatedFrom = previousAccessToken;
       _rotatedTo = newAccessToken;
 
@@ -356,6 +374,15 @@ class AuthInterceptor extends Interceptor {
       // failure), so the *next* distinct expiry event starts fresh
       // instead of reusing a completed/failed Future.
       _refreshFuture = null;
+    }
+  }
+
+  Future<void> _clearIfCurrent(String refreshToken) async {
+    final store = _tokenStore;
+    if (store is ConditionalTokenStore) {
+      await store.clearTokensIfRefreshMatches(refreshToken);
+    } else if (await store.getRefreshToken() == refreshToken) {
+      await store.clearTokens();
     }
   }
 }

@@ -24,6 +24,49 @@ Local verification: **44 shared-client tests passed**, `flutter analyze --no-pub
 reported no issues. Metadata assertions run outside the transport adapter so a
 test assertion cannot be wrapped as an expected offline failure.
 
+## Driver session boundary (implemented, not yet wired into the app)
+
+`apps/trotxi_client_next/lib/driver_session_client.dart` uses the generated
+replacement sign-in, account, logout and PIN-change operations. It deliberately
+does not accept the old flat sign-in payload or substitute an account ID for a
+fleet driver ID. An account-only restore leaves fleet ID, driver code and the
+credential-change flag unknown. Offline/upgrade errors are not swallowed as a
+signed-out result. PIN changes require a caller-owned retry key; PIN values are
+not persisted or derived into that key.
+
+`ScopedTokenStore` supplies the secure-storage implementation for the eventual
+composition root, shared by all its repositories and HTTP clients:
+
+- One record holds both tokens, namespaced by app, replacement generation,
+  canonical backend URL and an explicit database realm. No old unscoped token
+  is read/imported, and neither build upgrades nor URL spelling changes reset
+  a session. A disposable database reset must choose a new realm.
+- The refresh interceptor uses conditional rotation and clearing inside the
+  store's serialization boundary. A separate asynchronous read then write is
+  not sufficient when a new login can arrive between them.
+- Local logout removes credentials before network I/O; its detached public
+  request cannot refresh or clear the next login. Failure reports no remote
+  acknowledgement. A corrupt record can still be explicitly discarded.
+- Generation and attempt guards cover delayed sign-in/account responses,
+  including logout/new sign-in **during** a pending storage write. Storage
+  failures do not poison the queue or falsely announce successful clearing.
+
+Verification: **81 shared-client tests passed**, including 37 new session/store
+cases; `flutter analyze --no-pub` clean. Tests exercise actual generated
+serializers and the factory's interceptor chain with controlled HTTP/storage
+boundaries. They do **not** prove native keychain/keystore behavior on a device
+or sign-in against the replacement server. The existing Flutter CI matrix
+already runs the whole `trotxi_client_next` suite, so these files are not a
+separate, unregistered test command.
+
+Repository reconnaissance for the next driver slice is complete. Preserve the
+replacement identities rather than translating requests back to legacy shapes:
+trip-owned stop occurrences (not a route-wide integer), service date/direction,
+per-row edit tokens, cursor pages, position fix IDs/capture time/acceptance, and
+reservation IDs in boarding results. Manifest reads no longer disclose a rider
+user ID or the old source/morning-evening labels; UI mappings must not invent
+those fields. Route geometry is available through the version's geometry ID.
+
 ## Remaining implementation sequence
 
 1. **Driver app, as one coherent replacement build:** isolate stored sessions
@@ -43,7 +86,8 @@ test assertion cannot be wrapped as an expected offline failure.
    TEST payment and automatic delivery/reconciliation, private-object erasure,
    minimum-version enforcement, and the full-size retention/load gate.
 
-Neither app has switched API contracts in this foundation change. The current
-token-storage keys are still the old unscoped keys; session isolation remains
-mandatory app work, not something this document or header interceptor enforces.
+Neither app has switched API contracts yet. Their composition roots still use
+the old unscoped token stores. The new scoped store/session client is implemented
+and tested but not wired into those roots; that wiring must land together with
+the coherent repository migration, not as a mixed old/new app build.
 No emulator account, backend secret, deployment or database reset is changed.
