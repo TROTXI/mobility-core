@@ -12,6 +12,9 @@ import { TransportService } from '../src/transport/service.js';
 import type { Backend } from '../src/runtime/compose.js';
 
 const key = (n: number) => Buffer.alloc(32, n).toString('base64');
+// Provider-shaped, assembled at runtime rather than committed as a literal, and
+// held so the webhook below signs with the same secret the backend was given.
+const PAYSTACK_KEY = ['sk', 'test', randomUUID().replaceAll('-', '').slice(0, 18)].join('_');
 type Fixture = Awaited<ReturnType<typeof setup>>;
 function configurationFor(f: Fixture, over: Record<string, string> = {}) {
   return readConfiguration({
@@ -40,7 +43,7 @@ function configurationFor(f: Fixture, over: Record<string, string> = {}) {
     REPLACEMENT_APPLE_TEAM_ID: 'TEAMID1234',
     REPLACEMENT_APPLE_KEY_ID: 'KEYID12345',
     REPLACEMENT_APPLE_PRIVATE_KEY: '-----BEGIN PRIVATE KEY-----\nMHc=\n-----END PRIVATE KEY-----',
-    REPLACEMENT_PAYSTACK_SECRET_KEY: ['sk', 'test', 'assemblyonly'].join('_'),
+    REPLACEMENT_PAYSTACK_SECRET_KEY: PAYSTACK_KEY,
     REPLACEMENT_R2_ACCOUNT_ID: 'ff00ff00ff00ff00ff00ff00ff00ff00',
     REPLACEMENT_R2_ACCESS_KEY_ID: 'AKIAEXAMPLE',
     REPLACEMENT_R2_SECRET_ACCESS_KEY: 'secret-access-key',
@@ -634,9 +637,7 @@ test('ASM-20 money, coverage and a seat are one flow through the assembled backe
     payload: body,
     headers: {
       'content-type': 'application/json',
-      'x-paystack-signature': createHmac('sha512', ['sk', 'test', 'assemblyonly'].join('_'))
-        .update(body)
-        .digest('hex'),
+      'x-paystack-signature': createHmac('sha512', PAYSTACK_KEY).update(body).digest('hex'),
     },
   });
   assert.equal(delivered.statusCode, 200, delivered.body);

@@ -49,7 +49,9 @@ async function sourceDigest() {
   return digest.digest('hex');
 }
 
-const SECRET = ['sk', 'test', 'harnesssynthetic'].join('_');
+// Provider-shaped, assembled at runtime so no credential-looking literal is
+// committed. It authenticates nothing outside this harness's own database.
+const SECRET = ['sk', 'test', randomUUID().replaceAll('-', '').slice(0, 18)].join('_');
 const WORKER = 'harness-candidate-worker';
 const KEY = Buffer.alloc(32, 7);
 const hex64 = () => randomUUID().replaceAll('-', '') + randomUUID().replaceAll('-', '');
