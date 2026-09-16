@@ -114,6 +114,16 @@ const selected = new Set([
   'getAvatar',
   'uploadAvatar',
   'registerDevice',
+  'getRoot',
+  'getHealth',
+  'getReadiness',
+  'getBuild',
+  'getBootstrap',
+  'listFlags',
+  'setFlag',
+  'listMinimumVersions',
+  'setMinimumVersion',
+  'changeRole',
 ]);
 const count = selected.size;
 const paths = {};
