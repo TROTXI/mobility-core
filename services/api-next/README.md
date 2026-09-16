@@ -9,7 +9,10 @@ existing API binaries at this schema or point this installer at the existing
 staging database.
 
 Current implementation: **001–018**, **119 operations** in the executable
-contract, which is the full reviewed cutover surface. The thirteen deferred
+contract, which is the full reviewed cutover surface, and the preservation
+harness passes against the pinned baseline in compare mode. Read
+[the stage-3 completion report](../../docs/design/stage-3-completion.md) for the
+operation and invariant mapping, the preservation result, and the gaps. The thirteen deferred
 operations remain deferred and are not implemented. Route groups still require
 their configured dependencies, and the deployable composition supplies all of
 them: it refuses to start rather than serving a reviewed operation without the
@@ -361,7 +364,7 @@ This is category B/C **storage and command evidence**, not a claim that transpor
 has already replaced the old service or that payment comparison mode has passed.
 The stage-2 baseline and its expectations remain unchanged.
 
-## Still required within stage 3
+## Still required before a cutover
 
 1. The full preservation harness against the pinned baseline and this candidate:
    PAY-01 to PAY-16 and the mapped non-payment scenario groups, with documented
