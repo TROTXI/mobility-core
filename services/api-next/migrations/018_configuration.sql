@@ -20,6 +20,7 @@ COMMENT ON COLUMN app.users.version IS
   'Optimistic concurrency for the ops role change. The approved contract has no ops account read, so a caller who has not seen the account can only supply If-Match: *.';
 
 CREATE TABLE app.minimum_versions (
+  id uuid NOT NULL DEFAULT gen_random_uuid() UNIQUE,
   app text NOT NULL CHECK (app IN ('commuter', 'driver')),
   platform text NOT NULL CHECK (platform IN ('ios', 'android')),
   min_supported_build integer NOT NULL CHECK (min_supported_build BETWEEN 1 AND 999999999),
@@ -35,7 +36,8 @@ COMMENT ON TABLE app.minimum_versions IS
   'Read by admission on every request. An app and platform with no row falls back to the floor the deployment was composed with, so a fresh database still refuses an ancient build.';
 CREATE FUNCTION app.touch_minimum_version() RETURNS trigger LANGUAGE plpgsql AS $$
 BEGIN
-  IF NEW.app <> OLD.app OR NEW.platform <> OLD.platform OR NEW.created_at <> OLD.created_at THEN
+  IF NEW.app <> OLD.app OR NEW.platform <> OLD.platform OR NEW.id <> OLD.id
+    OR NEW.created_at <> OLD.created_at THEN
     RAISE EXCEPTION 'immutable_identity' USING ERRCODE = '23514';
   END IF;
   NEW.version := OLD.version + 1;
@@ -46,7 +48,9 @@ CREATE TRIGGER bump_minimum_version BEFORE UPDATE ON app.minimum_versions
   FOR EACH ROW EXECUTE FUNCTION app.touch_minimum_version();
 
 CREATE TABLE app.feature_flags (
-  key text PRIMARY KEY CHECK (key ~ '^[a-z][a-z0-9_.-]{0,199}$'),
+  id uuid NOT NULL DEFAULT gen_random_uuid() UNIQUE,
+  -- 128 characters, which is what the reviewed contract declares.
+  key text PRIMARY KEY CHECK (key ~ '^[a-z][a-z0-9_.-]{0,127}$'),
   enabled boolean NOT NULL,
   -- A percentage, not a count: the same rider gets the same answer every time,
   -- decided by hashing them with the key rather than by a coin toss per call.
@@ -58,7 +62,7 @@ CREATE TABLE app.feature_flags (
 );
 CREATE FUNCTION app.touch_feature_flag() RETURNS trigger LANGUAGE plpgsql AS $$
 BEGIN
-  IF NEW.key <> OLD.key OR NEW.created_at <> OLD.created_at THEN
+  IF NEW.key <> OLD.key OR NEW.id <> OLD.id OR NEW.created_at <> OLD.created_at THEN
     RAISE EXCEPTION 'immutable_identity' USING ERRCODE = '23514';
   END IF;
   NEW.version := OLD.version + 1;
@@ -75,6 +79,10 @@ CREATE TABLE app.config_commands (
   target text NOT NULL CHECK (length(target) BETWEEN 1 AND 200),
   key_hash text NOT NULL CHECK (key_hash ~ '^[a-f0-9]{64}$'),
   input_hash text NOT NULL CHECK (input_hash ~ '^[a-f0-9]{64}$'),
+  -- What this command answered, so a replay says what it did rather than what
+  -- somebody else has done to the resource since.
+  response_body text NOT NULL CHECK (length(response_body) BETWEEN 2 AND 8192),
+  response_etag text CHECK (response_etag IS NULL OR length(response_etag) BETWEEN 1 AND 200),
   created_at timestamptz NOT NULL DEFAULT clock_timestamp(),
   UNIQUE (actor_user_id, operation, target, key_hash),
   UNIQUE (id, actor_user_id)

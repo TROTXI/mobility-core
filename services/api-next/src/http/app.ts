@@ -93,6 +93,7 @@ export async function createTransportApp(options: AppOptions) {
     throw new Error('Explicit ops/iOS/Android build floors required');
   const service = new TransportService(options);
   const app = Fastify({
+    maxParamLength: 256,
     logger: false,
     bodyLimit: 65536,
     trustProxy: false,
@@ -408,8 +409,18 @@ export async function createTransportApp(options: AppOptions) {
                       ? await options.config!.readiness()
                       : await options.config!.bootstrap();
           } else if (configEndpoint) {
+            const query = request.query as Record<string, string | undefined>;
+            const allowed = new Set(
+              operation.parameters.filter((p) => p.in === 'query').map((p) => p.name),
+            );
+            if (
+              Object.entries(query).some(
+                ([k, v]) => !allowed.has(k) || typeof v !== 'string' || v.length > 128,
+              )
+            )
+              fail(400, 'invalid_query', 'Unsupported query parameters.');
             if (method === 'get')
-              result = await options.config!.read(actor!, name as ConfigOperation);
+              result = await options.config!.read(actor!, name as ConfigOperation, query);
             else {
               const key = request.headers['idempotency-key'],
                 match = request.headers['if-match'];

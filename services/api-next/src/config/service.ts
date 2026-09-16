@@ -3,6 +3,7 @@ import type { Pool, PoolClient } from 'pg';
 import { fail } from '../transport/errors.js';
 import { canonical } from '../transport/service.js';
 import type { Actor, Body, Outcome } from '../transport/service.js';
+import { cursorCodec } from '../transport/cursor.js';
 
 export const configOperations = [
   'listFlags',
@@ -43,6 +44,7 @@ export interface ConfigOptions {
   pool: Pool;
   authorizeSession: (client: PoolClient, actor: Actor) => Promise<void>;
   build: BuildIdentity;
+  cursorSecret: Buffer;
   mapTiles: MapTiles;
   support?: SupportContacts;
   /** Used only where the database has no row for an app and platform. */
@@ -51,6 +53,8 @@ export interface ConfigOptions {
     commuter: { ios: number; android: number };
   };
   docsUrl?: string;
+  /** How long an admitted build floor may be reused. Zero reads every time. */
+  floorCacheMs?: number;
   now?: () => Date;
 }
 
@@ -60,6 +64,7 @@ const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const roles = ['commuter', 'driver', 'admin'];
 const apps = ['commuter', 'driver'];
 const platforms = ['ios', 'android'];
+const flagKey = /^[a-z][a-z0-9_.-]{0,127}$/;
 const flagToken = (r: Row) => `"flag:${r.key}:${r.version}"`;
 const versionToken = (r: Row) => `"minversion:${r.app}:${r.platform}:${r.version}"`;
 const userToken = (r: Row) => `"user:${r.id}:${r.version}"`;
@@ -69,7 +74,10 @@ const userToken = (r: Row) => `"user:${r.id}:${r.version}"`;
  * changed a role.
  */
 export class ConfigService {
+  private readonly floors = new Map<string, { build: number; until: number }>();
+  private readonly cursors;
   constructor(private readonly options: ConfigOptions) {
+    this.cursors = cursorCodec(options.cursorSecret);
     const floors = options.fallbackBuilds;
     if (
       !floors ||
@@ -122,13 +130,21 @@ export class ConfigService {
    * database still refuses an ancient build rather than admitting everything.
    */
   async minimumBuild(app: 'commuter' | 'driver', platform: 'ios' | 'android'): Promise<number> {
-    const row = await this.tx((c) =>
-      c.query('SELECT min_supported_build FROM app.minimum_versions WHERE app=$1 AND platform=$2', [
-        app,
-        platform,
-      ]),
+    const slot = `${app}:${platform}`;
+    const cached = this.floors.get(slot);
+    const now = this.now().getTime();
+    if (cached && cached.until > now) return cached.build;
+    // One statement, no transaction: this runs before every admitted request,
+    // and the value it reads changes about as often as an app ships. The
+    // window is short enough that raising a floor takes effect immediately
+    // enough to matter, and the read is eventually consistent either way.
+    const row = await this.options.pool.query(
+      'SELECT min_supported_build FROM app.minimum_versions WHERE app=$1 AND platform=$2',
+      [app, platform],
     );
-    return row.rows[0]?.min_supported_build ?? this.options.fallbackBuilds[app][platform];
+    const build = row.rows[0]?.min_supported_build ?? this.options.fallbackBuilds[app][platform];
+    this.floors.set(slot, { build, until: now + (this.options.floorCacheMs ?? 0) });
+    return build;
   }
 
   /**
@@ -198,11 +214,9 @@ export class ConfigService {
   async readiness(): Promise<Outcome> {
     try {
       // The runtime role cannot read the migration table by design, so
-      // readiness asks what it can: a round trip, and the schema present.
-      const row = await this.tx((c) =>
-        c.query("SELECT to_regclass('app.users') IS NOT NULL AS ready"),
-      );
-      if (!row.rows[0]?.ready) throw new Error('schema_absent');
+      // readiness asks what it can. A catalog lookup would answer even for a
+      // role with no privileges at all, so this actually reads a row.
+      await this.tx((c) => c.query('SELECT 1 FROM app.users LIMIT 1'));
       return { status: 200, body: { status: 'ok' }, headers: {} } as Outcome;
     } catch {
       return { status: 503, body: { status: 'unavailable' }, headers: {} } as Outcome;
@@ -229,21 +243,46 @@ export class ConfigService {
     };
   }
 
-  async read(actor: Actor, operation: ConfigOperation): Promise<Outcome> {
+  async read(
+    actor: Actor,
+    operation: ConfigOperation,
+    query: Record<string, string | undefined> = {},
+  ): Promise<Outcome> {
     return this.tx(async (c) => {
       await this.authorize(c, actor);
-      if (operation === 'listFlags') {
-        const rows = (await c.query('SELECT * FROM app.feature_flags ORDER BY key')).rows;
-        return {
-          status: 200,
-          body: { data: rows.map((r) => this.flagView(r)), page: { nextCursor: null } },
-          headers: {},
-        } as Outcome;
-      }
-      const rows = (await c.query('SELECT * FROM app.minimum_versions ORDER BY app,platform')).rows;
+      const limit = query.limit === undefined ? 50 : Number(query.limit);
+      if (
+        !Number.isInteger(limit) ||
+        limit < 1 ||
+        limit > 200 ||
+        (query.limit !== undefined && !/^[1-9]\d*$/.test(query.limit))
+      )
+        fail(400, 'invalid_query', 'Invalid page size.');
+      const flags = operation === 'listFlags';
+      const context = canonical(['config', operation, 'created_at,id']);
+      const cursor = query.cursor ? this.cursors.decode(query.cursor, context, this.now()) : null;
+      const rows = (
+        await c.query(
+          `SELECT *,to_char(created_at AT TIME ZONE 'UTC','YYYY-MM-DD"T"HH24:MI:SS.US"Z"') AS cursor_time
+          FROM ${flags ? 'app.feature_flags' : 'app.minimum_versions'}
+          WHERE ($1::timestamptz IS NULL OR (created_at,id)>($1::timestamptz,$2::uuid))
+          ORDER BY created_at,id LIMIT $3`,
+          [cursor?.time ?? null, cursor?.id ?? null, limit + 1],
+        )
+      ).rows;
+      const page = rows.slice(0, limit);
+      const last = page[page.length - 1];
       return {
         status: 200,
-        body: { data: rows.map((r) => this.versionView(r)), page: { nextCursor: null } },
+        body: {
+          data: page.map((r) => (flags ? this.flagView(r) : this.versionView(r))),
+          page: {
+            nextCursor:
+              rows.length > limit && last
+                ? this.cursors.encode(last.cursor_time, last.id, context, this.now())
+                : null,
+          },
+        },
         headers: {},
       } as Outcome;
     });
@@ -257,20 +296,34 @@ export class ConfigService {
     key: string,
     ifMatch?: string,
   ): Promise<Outcome> {
-    if (typeof key !== 'string' || !key.length || key.length > 128)
-      fail(400, 'idempotency_key_required', 'Supply an Idempotency-Key of 1 to 128 characters.');
-    if (!ifMatch) fail(428, 'precondition_required', 'Supply the resource edit token in If-Match.');
-    const target =
-      operation === 'setFlag'
-        ? String(params.key ?? '')
-        : operation === 'setMinimumVersion'
-          ? `${params.app}:${params.platform}`
-          : String(params.id ?? '');
-    if (!target || target.length > 200) fail(404, 'not_found', 'Resource not found.');
-    const keyHash = digest(`${actor.userId}:${operation}:${target}:${key}`);
-    const inputHash = digest(canonical(input));
     return this.tx(async (c) => {
+      // Whether this caller may configure anything is decided before the shape
+      // of what they sent: a rider fumbling a header should be told they are
+      // not an administrator, not which header they got wrong.
       await this.authorize(c, actor);
+      if (typeof key !== 'string' || !key.length || key.length > 128)
+        fail(400, 'idempotency_key_required', 'Supply an Idempotency-Key of 1 to 128 characters.');
+      if (!ifMatch)
+        fail(428, 'precondition_required', 'Supply the resource edit token in If-Match.');
+      // Every identifier is checked here, before it reaches a query: a key
+      // carrying a null byte is a bad request, not a database error.
+      if (operation === 'setFlag' && !flagKey.test(String(params.key ?? '')))
+        fail(404, 'not_found', 'Resource not found.');
+      if (
+        operation === 'setMinimumVersion' &&
+        (!apps.includes(String(params.app)) || !platforms.includes(String(params.platform)))
+      )
+        fail(404, 'not_found', 'Resource not found.');
+      if (operation === 'changeRole' && !uuid.test(String(params.id ?? '')))
+        fail(404, 'not_found', 'Resource not found.');
+      const target =
+        operation === 'setFlag'
+          ? String(params.key)
+          : operation === 'setMinimumVersion'
+            ? `${params.app}:${params.platform}`
+            : String(params.id);
+      const keyHash = digest(`${actor.userId}:${operation}:${target}:${key}`);
+      const inputHash = digest(canonical(input));
       await c.query('SELECT pg_advisory_xact_lock(hashtextextended($1,0))', [`config:${keyHash}`]);
       const prior = (
         await c.query(
@@ -283,7 +336,14 @@ export class ConfigService {
           fail(409, 'idempotency_conflict', 'This key was already used for different input.');
         if (this.now().getTime() - prior.created_at.getTime() >= 7 * 86400000)
           fail(409, 'idempotency_expired', 'This replay window has expired.');
-        return this.render(c, operation, target);
+        // What this command did, not what somebody else has done since. A
+        // live re-read would hand one administrator another's change as their
+        // own outcome, with a token they never earned.
+        return {
+          status: 200,
+          body: JSON.parse(prior.response_body),
+          headers: prior.response_etag ? { ETag: prior.response_etag } : {},
+        } as Outcome;
       }
       const change =
         operation === 'setFlag'
@@ -291,17 +351,27 @@ export class ConfigService {
           : operation === 'setMinimumVersion'
             ? await this.writeVersion(c, params, input, ifMatch)
             : await this.writeRole(c, target, input, ifMatch);
+      const outcome = await this.render(c, operation, target);
       const receipt = (
         await c.query(
-          'INSERT INTO app.config_commands(actor_user_id,operation,target,key_hash,input_hash) VALUES ($1,$2,$3,$4,$5) RETURNING id',
-          [actor.userId, operation, target, keyHash, inputHash],
+          `INSERT INTO app.config_commands(actor_user_id,operation,target,key_hash,input_hash,response_body,response_etag)
+          VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING id`,
+          [
+            actor.userId,
+            operation,
+            target,
+            keyHash,
+            inputHash,
+            JSON.stringify(outcome.body),
+            (outcome.headers as Record<string, string>).ETag ?? null,
+          ],
         )
       ).rows[0].id;
       await c.query(
         'INSERT INTO app.config_events(command_id,actor_user_id,action,target,reason,before_state,after_state) VALUES ($1,$2,$3,$4,$5,$6,$7)',
         [receipt, actor.userId, operation, target, change.reason, change.before, change.after],
       );
-      return this.render(c, operation, target);
+      return outcome;
     });
   }
 
@@ -339,7 +409,10 @@ export class ConfigService {
         data: {
           id: row.id,
           displayName: row.display_name || 'New user',
-          phone: row.phone ?? null,
+          // The approved contract has no ops account read and this operation
+          // is not being made into one: ops changes a role, it does not learn
+          // a rider's phone number by asking to.
+          phone: null,
           avatarUrl: null,
           role: row.role,
           createdAt: (row.created_at as Date).toISOString(),
@@ -372,6 +445,11 @@ export class ConfigService {
       percentage > 100
     )
       fail(400, 'invalid_request', 'Supply a rollout percentage between 0 and 100.');
+    // A row that does not exist yet cannot be locked by reading it, so every
+    // concurrent caller would be told it is creating the flag and the last
+    // write would quietly win. The lock is on the flag, not on the key of the
+    // command, because it is the flag two callers are contending for.
+    await c.query('SELECT pg_advisory_xact_lock(hashtextextended($1,0))', [`flag:${key}`]);
     const existing = (
       await c.query('SELECT * FROM app.feature_flags WHERE key=$1 FOR UPDATE', [key])
     ).rows[0];
@@ -404,8 +482,6 @@ export class ConfigService {
   ) {
     const app = String(params.app),
       platform = String(params.platform);
-    if (!apps.includes(app) || !platforms.includes(platform))
-      fail(404, 'not_found', 'Resource not found.');
     const build = input.minSupportedBuild;
     const storeUrl = String(input.storeUrl ?? '');
     if (!Number.isSafeInteger(build) || (build as number) < 1 || (build as number) > 999999999)
@@ -413,6 +489,12 @@ export class ConfigService {
     if (input.apiMajor !== 1) fail(400, 'invalid_request', 'Only API major 1 is supported.');
     if (!/^https:\/\/\S{1,470}$/.test(storeUrl))
       fail(400, 'invalid_request', 'Supply the store URL for this application.');
+    // As above: the floor two administrators are racing for is the resource,
+    // and a floor silently reverting to the loser's value is how an old build
+    // gets admitted again.
+    await c.query('SELECT pg_advisory_xact_lock(hashtextextended($1,0))', [
+      `minversion:${app}:${platform}`,
+    ]);
     const existing = (
       await c.query('SELECT * FROM app.minimum_versions WHERE app=$1 AND platform=$2 FOR UPDATE', [
         app,
@@ -440,7 +522,6 @@ export class ConfigService {
   }
 
   private async writeRole(c: PoolClient, id: string, input: Body, ifMatch: string) {
-    if (!uuid.test(id)) fail(404, 'not_found', 'Resource not found.');
     const role = String(input.role);
     const reason = typeof input.reason === 'string' ? input.reason.trim() : '';
     if (!roles.includes(role)) fail(400, 'invalid_request', 'Supply a supported role.');
@@ -453,6 +534,20 @@ export class ConfigService {
     // The one wildcard the service accepts, and only because nothing in the
     // approved contract lets ops read an account to learn its token first.
     if (ifMatch !== '*') this.precondition(ifMatch, userToken(user));
+    // Authorization refuses a driver with no driver record, so promoting
+    // somebody into that role without one locks them out of everything
+    // instead of giving them a job.
+    if (
+      role === 'driver' &&
+      user.role !== 'driver' &&
+      !(
+        await c.query(
+          'SELECT 1 FROM app.drivers WHERE user_id=$1 AND archived_at IS NULL FOR SHARE',
+          [id],
+        )
+      ).rowCount
+    )
+      fail(409, 'driver_record_required', 'Create the driver record before granting this role.');
     const before = { id: user.id, role: user.role };
     if (user.role !== role) await c.query('UPDATE app.users SET role=$2 WHERE id=$1', [id, role]);
     return { reason, before, after: { id: user.id, role } };

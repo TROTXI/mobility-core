@@ -22,6 +22,7 @@ async function fixture(t: TestContext) {
     pool: f.runtime,
     authorizeSession: f.dependencies.authorizeSession,
     build: { service: 'trotxi-api-next', version: '0.0.0-test', commit: 'abcdef0' },
+    cursorSecret: Buffer.alloc(32, 17),
     mapTiles: {
       url: 'https://tiles.example/{z}/{x}/{y}.png',
       styleUrl: 'https://tiles.example/style.json',
@@ -295,6 +296,9 @@ test('CFG-06 a role change is attributable and never strands the service without
     400,
     'a role change states its reason',
   );
+  // The record comes first: a driver role with no driver record is a role
+  // authorization refuses, which locks the account out of everything.
+  await f.owner.query("INSERT INTO app.drivers(user_id,name) VALUES ($1,'Ama')", [f.actor.userId]);
   const promoted = expectStatus(
     await f.call('PATCH', `/v1/ops/users/${f.actor.userId}/role`, {
       payload: { role: 'driver', reason: 'Joined the fleet' },
@@ -340,6 +344,7 @@ test('CFG-07 readiness fails closed when the database is gone', async (t) => {
     } as never,
     authorizeSession: f.dependencies.authorizeSession,
     build: { service: 's', version: 'v', commit: 'c' },
+    cursorSecret: Buffer.alloc(32, 17),
     mapTiles: { url: null, styleUrl: null, darkStyleUrl: null, attribution: 'none' },
     fallbackBuilds: { driver: { ios: 1, android: 1 }, commuter: { ios: 1, android: 1 } },
   });
@@ -347,4 +352,135 @@ test('CFG-07 readiness fails closed when the database is gone', async (t) => {
   assert.equal(out.status, 503);
   assert.deepEqual(out.body, { status: 'unavailable' });
   assert.equal(broken.health().status, 200, 'liveness still answers for the process');
+});
+
+test('CFG-08 two administrators creating the same floor do not both win', async (t) => {
+  const f = await fixture(t);
+  const builds = [500, 400, 300, 200, 100, 2];
+  const outcomes = await Promise.all(
+    builds.map((minSupportedBuild) =>
+      f.call('PUT', '/v1/ops/min-versions/commuter/android', {
+        payload: { minSupportedBuild, apiMajor: 1, storeUrl: 'https://play.example/app' },
+        match: '*',
+      }),
+    ),
+  );
+  const created = outcomes.filter((r) => r.statusCode === 200);
+  assert.equal(created.length, 1, outcomes.map((r) => r.statusCode).join(','));
+  assert.equal(
+    outcomes.filter((r) => r.statusCode === 412).length,
+    builds.length - 1,
+    'a floor that exists cannot be created again',
+  );
+  const stored = (
+    await f.owner.query('SELECT min_supported_build,version FROM app.minimum_versions')
+  ).rows[0];
+  assert.equal(stored.version, 1, 'one write, not six');
+  assert.equal(stored.min_supported_build, expectStatus(created[0]!, 200).minSupportedBuild);
+  const events = (await f.owner.query('SELECT before_state FROM app.config_events')).rows;
+  assert.equal(events.length, 1, 'and one of them is recorded, not six claiming nothing was there');
+});
+
+test('CFG-09 a replay answers with what that command did', async (t) => {
+  const f = await fixture(t);
+  const key = randomUUID();
+  const payload = { enabled: false, rolloutPercentage: 25, description: 'mine' };
+  const mine = expectStatus(
+    await f.call('PUT', '/v1/ops/flags/p.q', { payload, match: '*', key }),
+    200,
+  );
+  // Somebody else moves it on.
+  const current = expectStatus(await f.call('GET', '/v1/ops/flags'), 200)[0];
+  expectStatus(
+    await f.call('PUT', '/v1/ops/flags/p.q', {
+      payload: { enabled: true, rolloutPercentage: 99, description: 'theirs' },
+      match: `"flag:p.q:${current.version}"`,
+    }),
+    200,
+  );
+  const replay = expectStatus(
+    await f.call('PUT', '/v1/ops/flags/p.q', { payload, match: '*', key }),
+    200,
+  );
+  assert.deepEqual(replay, mine, "not another administrator's change wearing this command's name");
+});
+
+test('CFG-10 a role nobody can use is not granted, and ops learns no phone number', async (t) => {
+  const f = await fixture(t);
+  await f.owner.query("UPDATE app.users SET phone='+233241234567' WHERE id=$1", [f.actor.userId]);
+  const refused = await f.call('PATCH', `/v1/ops/users/${f.actor.userId}/role`, {
+    payload: { role: 'driver', reason: 'No record yet' },
+    match: '*',
+  });
+  assert.equal(refused.statusCode, 409, refused.body);
+  assert.equal(refused.json().error.code, 'driver_record_required');
+
+  await f.owner.query("INSERT INTO app.drivers(user_id,name) VALUES ($1,'Kwesi')", [
+    f.actor.userId,
+  ]);
+  const granted = expectStatus(
+    await f.call('PATCH', `/v1/ops/users/${f.actor.userId}/role`, {
+      payload: { role: 'driver', reason: 'Record created' },
+      match: '*',
+    }),
+    200,
+  );
+  assert.equal(granted.role, 'driver');
+  assert.equal(granted.phone, null, 'a role change is not an account read');
+});
+
+test('CFG-11 the ops lists honour what they declare', async (t) => {
+  const f = await fixture(t);
+  for (const key of ['a.one', 'b.two', 'c.three'])
+    expectStatus(
+      await f.call('PUT', `/v1/ops/flags/${key}`, {
+        payload: { enabled: true, rolloutPercentage: 100, description: key },
+        match: '*',
+      }),
+      200,
+    );
+  const page = await f.call('GET', '/v1/ops/flags?limit=2');
+  const first = expectStatus(page, 200);
+  assert.equal(first.length, 2);
+  const cursor = page.json().page.nextCursor;
+  assert.ok(cursor, 'three flags do not fit a page of two');
+  assert.equal(
+    expectStatus(
+      await f.call('GET', `/v1/ops/flags?limit=2&cursor=${encodeURIComponent(cursor)}`),
+      200,
+    ).length,
+    1,
+  );
+  assert.equal((await f.call('GET', '/v1/ops/flags?bogus=1')).statusCode, 400);
+  assert.equal((await f.call('GET', '/v1/ops/flags?limit=0')).statusCode, 400);
+  // A key the contract allows is reachable, and one it does not is refused.
+  const long = 'a' + '.b'.repeat(60);
+  assert.equal(long.length, 121);
+  expectStatus(
+    await f.call('PUT', `/v1/ops/flags/${long}`, {
+      payload: { enabled: false, rolloutPercentage: 0, description: 'long' },
+      match: '*',
+    }),
+    200,
+  );
+  assert.equal(
+    (
+      await f.call('PUT', '/v1/ops/flags/abc%00def', {
+        payload: { enabled: false, rolloutPercentage: 0, description: 'null byte' },
+        match: '*',
+      })
+    ).statusCode,
+    404,
+  );
+});
+
+test('CFG-12 a rider is told they are not an administrator, whatever else they got wrong', async (t) => {
+  const f = await fixture(t);
+  const refused = await f.call('PUT', '/v1/ops/flags/x.y', {
+    who: 'rider',
+    client: 'ops',
+    payload: { enabled: true, rolloutPercentage: 0, description: 'nope' },
+  });
+  assert.equal(refused.statusCode, 403, refused.body);
+  assert.equal((await f.owner.query('SELECT count(*)::int n FROM app.config_events')).rows[0].n, 0);
 });
