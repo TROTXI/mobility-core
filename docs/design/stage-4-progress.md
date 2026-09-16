@@ -306,14 +306,67 @@ transport/storage/browser boundaries and do not claim
 a hosted TEST payment, native secure-storage behavior or automatic webhook
 delivery against the replacement service.
 
+## Commuter departures and bus tracking
+
+Branch: `codex/stage-4-commuter-map`, following merged #321. The Trips tab is
+now a service-day departure catalogue, not a placeholder. Reads follow every
+cursor with the same explicit date bounds; operational departure time is shown
+separately from service date so a delay past midnight does not change identity.
+All displayed times are Ghana time. Catalogue visibility is not a seat booking
+or live-position entitlement.
+
+- A selected trip opens server-authorized tracking. Every refresh reads live
+  access before using static geometry/stops; there is no cached live response
+  fallback. A refusal or failed refresh removes the displayed position and
+  predictions. A 404 does not disclose whether the trip exists or why access
+  was withdrawn. The backend remains responsible for the eligibility matrix.
+- Foreground tracking refreshes five seconds after a completed request, with
+  no overlapping refreshes, error backoff and automatic Retry-After handling.
+  Backgrounding clears the view and stops timers. An in-flight response cannot
+  restart the read chain or redraw; resume reauthorizes. Ended runs stop polling.
+- Freshness uses server age plus monotonic elapsed time, conservatively including
+  request latency. It does not trust the commuter device clock. The marker is
+  labelled stale after 30 seconds and predictions disappear past 120 seconds
+  even without a further response. A missing/reached pickup is not replaced by
+  the first upcoming stop or an invented zero-minute arrival. Observed/fallback
+  estimates and geometry provenance stay explicit.
+- Geometry is the ID in the authorized response and must belong to the operated
+  pattern version. Stop details resolve that exact version, not the latest
+  publication. Repeated physical stops keep distinct occurrence identities.
+  If the public catalogue cannot resolve an older/future pattern, stop details
+  are unavailable rather than guessed; geometry/live information can still
+  be shown when independently available. No route line is synthesized and no
+  ETA/distance is calculated from the basemap in the app.
+- The commuter now reuses `trotxi_map` (MapLibre) with bootstrap-configured
+  light/dark styles and attribution, including the existing Ghana/R2 style
+  deployment. There is no embedded tile host, provider key or map download.
+  Missing map configuration does not hide textual trip information/ETAs.
+  Native annotations are serialized and redrawn after style reloads.
+- Only the driver's server-provided position is used. MapLibre's device-location
+  layer stays disabled. Android explicitly removes its transitive coarse/fine/
+  background location permissions; the rebuilt merged manifest contains none.
+  The built iOS app has no location usage-description key. No rider GPS sensor,
+  location prompt or position submission was added.
+
+Verification: **164 shared-client, 35 commuter and 188 driver tests pass**;
+shared/commuter analyzers are clean. Android debug and iOS simulator builds pass.
+Thirteen new shared cases and eight app cases cover pagination, identity,
+loop pickups, stale-data boundaries, denied/offline access, missing basemap,
+pause/resume, late responses and location-permission guards. Temporarily weakening
+the 120-second expiry and geometry-version guard independently fails the expected
+assertion; both guards are restored. Widget map tests exercise the no-basemap
+path, not native drawing or R2/network behavior. Neither builds nor controlled
+transport tests replace the pending authorized server/device map walkthrough.
+This uses existing Flutter components and the shared map, not a claim of a
+newly verified Figma layout.
+
 ## Remaining implementation sequence
 
 1. **Driver walkthrough:** the coherent migration above is implemented. Verify
    actual replacement sign-in, secure storage, trip lifecycle, boarding, GPS
    receipt/live reads, upgrade admission and session changes on both platforms.
-2. **Commuter remaining features:** actual trip catalogue/live map with
-   authorized freshness-aware reads; native avatar
-   selection/upload and device registration/notification handling. Native Apple
+2. **Commuter remaining features:** native avatar selection/upload and device
+   registration/notification handling. Native Apple
    sign-in is not wired (the button says so). Resolve the catalogue limitation
    above. Then verify both platforms against the isolated replacement server.
 3. **Canonical client and release checks:** remove unused legacy package copies

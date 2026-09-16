@@ -359,6 +359,46 @@ class CommuterDataClient {
               extra: extra)))
           .data;
 
+  Future<List<Trip>> trips(
+          {required Date from, required Date to, String? routeId}) =>
+      _pages(
+          (cursor, extra) => client.getSignedInCatalogApi().listTrips(
+              xTrotxiClient: metadata.app,
+              xTrotxiBuild: metadata.build,
+              fromDate: from,
+              toDate: to,
+              routeId: routeId,
+              limit: 200,
+              cursor: cursor,
+              extra: extra),
+          (page) => page.data,
+          (page) => page.page.nextCursor);
+
+  Future<Route> route(String id) async =>
+      (await _read((extra) => client.getPublicApi().getRoute(
+              id: id,
+              xTrotxiClient: metadata.app,
+              xTrotxiBuild: metadata.build,
+              extra: extra)))
+          .data;
+
+  Future<Geometry> geometry(String id) async =>
+      (await _read((extra) => client.getPublicApi().getGeometry(
+              id: id,
+              xTrotxiClient: metadata.app,
+              xTrotxiBuild: metadata.build,
+              extra: extra)))
+          .data;
+
+  /// Never substitute a cached location for a fresh authorization decision.
+  Future<LiveTrip> liveTrip(String id) async =>
+      (await _read((extra) => client.getLiveEligibleApi().getLiveTrip(
+              id: id,
+              xTrotxiClient: metadata.app,
+              xTrotxiBuild: metadata.build,
+              extra: extra)))
+          .data;
+
   Future<Trip> trip(String id) async =>
       (await _read((extra) => client.getSignedInCatalogApi().getTrip(
               id: id,
