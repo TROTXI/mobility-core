@@ -11,6 +11,18 @@ const spec = JSON.parse(
 const inventory = JSON.parse(
   await readFile(new URL('../contracts/endpoint-inventory.json', import.meta.url), 'utf8'),
 );
+test('purchase discovery documents all history, not the trip seven-day default', () => {
+  for (const path of ['/v1/me/purchases', '/v1/ops/purchases']) {
+    const parameters = spec.paths[path].get.parameters;
+    const from = parameters.find((p) => p.name === 'fromDate').description;
+    assert.match(from, /all purchase history/);
+    assert.doesNotMatch(from, /maximum 31|last\/current 7/);
+  }
+  assert.match(
+    spec.paths['/v1/trips'].get.parameters.find((p) => p.name === 'fromDate').description,
+    /maximum 31/,
+  );
+});
 // Resolve the validator already installed by Fastify, without changing dependencies.
 const require = createRequire(import.meta.url);
 const fastifyRequire = createRequire(require.resolve('../../../services/api/node_modules/fastify'));

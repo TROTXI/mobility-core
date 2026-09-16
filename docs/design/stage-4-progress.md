@@ -255,14 +255,64 @@ version reads; an unresolvable schedule fails visibly, never guesses a revision.
 Future-only patterns omitted from the route's current pattern list need a
 contract-backed resolution path before promising those departures in the picker.
 
+## Commuter Paystack checkout and durable recovery
+
+Branch: `codex/stage-4-checkout`, following merged #320. Wallet opens the
+purchase/recovery screen. A new purchase reuses the explicit two-leg commute
+picker, requires a plan, and takes separate consent to apply Ride Credit.
+Preparing checkout creates the server purchase/hold without charging. The
+rider reviews the authoritative price, credit and cash due before opening
+Paystack's hosted checkout in the platform browser. There is no client price
+formula, embedded payment form or provider secret.
+
+- A random retry key and exact input are persisted **before** the first POST.
+  Recovery storage is scoped to app, backend/database realm and account, using
+  the same secure-storage boundary as sessions. Two controllers serialize on
+  that account's journal. Restart and uncertain delivery reuse the same key and
+  body; an expired key is never silently replaced.
+- Recovery follows all purchase pages without date filters, including old
+  pending purchases after reinstall or on another device. Local recovery data
+  is not necessary to discover a server purchase. The existing API already
+  supports this; its inaccurate generic seven-day/31-day date-filter description
+  has been corrected in source and regenerated artifacts, not its behavior.
+- A committed purchase with no provider URL retains the saved request so an
+  explicit retry can recover initialization. A purchase with no local retry
+  record and no usable URL needs operations; the API has no rider cancellation
+  command. The screen explains this restriction before preparation.
+- Only a current, payable server purchase with an unexpired HTTPS link on the
+  exact `checkout.paystack.com` host offers the browser action. Opening re-reads
+  the purchase and refuses changed amounts. Returning from the browser merely
+  refreshes authoritative state: neither a redirect nor successful collection
+  alone announces fulfilment. The user can explicitly refresh while processing.
+- Logout retains the account-scoped retry journal for later recovery, but old
+  controllers cannot write or send requests as the next account. Acknowledged
+  account erasure drains pending journal writes and removes that account's
+  recovery record. Local cleanup failure is reported as local, not as a refusal
+  of server erasure. No hosted URL or card data is persisted in the journal.
+
+This follows Paystack's [hosted checkout flow](https://paystack.com/docs/payments/accept-payments/)
+and [server verification requirement](https://paystack.com/docs/payments/verify-payments/).
+TEST versus live mode belongs to the backend credential; the common checkout
+hostname is not proof of TEST mode. No provider secret is bundled with the app.
+
+Verification: **151 shared-client, 27 commuter and 188 driver tests pass**.
+The 13 new coordinator tests and five widget cases cover restart recovery,
+uncertain delivery, account isolation, storage failure, overlapping controllers,
+erasure/write ordering, old server purchases, processing versus fulfilment,
+browser failure, changed amounts and unsafe links. Contract checks now number
+22; both analyzers are clean. Commuter Android debug and iOS simulator builds
+succeed with the explicit local replacement URL/realm. These tests use controlled
+transport/storage/browser boundaries and do not claim
+a hosted TEST payment, native secure-storage behavior or automatic webhook
+delivery against the replacement service.
+
 ## Remaining implementation sequence
 
 1. **Driver walkthrough:** the coherent migration above is implemented. Verify
    actual replacement sign-in, secure storage, trip lifecycle, boarding, GPS
    receipt/live reads, upgrade admission and session changes on both platforms.
-2. **Commuter remaining features:** hosted Paystack TEST checkout and restart-safe
-   pending-purchase recovery beyond the labelled recent-history window; actual
-   trip catalogue/live map with authorized freshness-aware reads; native avatar
+2. **Commuter remaining features:** actual trip catalogue/live map with
+   authorized freshness-aware reads; native avatar
    selection/upload and device registration/notification handling. Native Apple
    sign-in is not wired (the button says so). Resolve the catalogue limitation
    above. Then verify both platforms against the isolated replacement server.

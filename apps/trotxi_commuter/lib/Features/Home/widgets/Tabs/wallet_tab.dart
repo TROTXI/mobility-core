@@ -4,6 +4,7 @@ import 'package:trotxi_client_next/trotxi_client_next.dart' as wire;
 import 'package:trotxi_commuter/core/api/commuter_api.dart';
 import 'package:trotxi_commuter/core/config/theme/app_colors.dart';
 import 'package:trotxi_commuter/core/config/theme/app_typography.dart';
+import 'checkout_page.dart';
 
 class WalletTab extends StatefulWidget {
   const WalletTab({super.key, required this.client});
@@ -78,6 +79,17 @@ class _WalletTabState extends State<WalletTab> {
                     ),
                   ),
                   const SizedBox(height: 20),
+                  FilledButton(
+                    onPressed: () async {
+                      await Navigator.of(context).push<void>(
+                        MaterialPageRoute(
+                          builder: (_) => CheckoutPage(client: widget.client),
+                        ),
+                      );
+                      if (mounted) await _load();
+                    },
+                    child: const Text('Purchase or recover payment'),
+                  ),
                   if (_loading)
                     const Center(child: CircularProgressIndicator())
                   else if (_error != null) ...[

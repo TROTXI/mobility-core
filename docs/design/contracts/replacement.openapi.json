@@ -1763,7 +1763,7 @@
               "type": "string",
               "format": "date"
             },
-            "description": "Africa/Accra day; paired with toDate. Default last/current 7 days; maximum 31 days."
+            "description": "Optional inclusive Africa/Accra purchase-creation day. With no date filters, returns all purchase history, including unresolved purchases. No default recency cutoff."
           },
           {
             "name": "toDate",
@@ -1773,7 +1773,7 @@
               "type": "string",
               "format": "date"
             },
-            "description": "Inclusive; paired with fromDate."
+            "description": "Optional inclusive purchase-creation day; if both bounds are supplied, toDate must not precede fromDate."
           },
           {
             "name": "X-Trotxi-Client",
@@ -11740,7 +11740,7 @@
               "type": "string",
               "format": "date"
             },
-            "description": "Africa/Accra day; paired with toDate. Default last/current 7 days; maximum 31 days."
+            "description": "Optional inclusive Africa/Accra purchase-creation day. With no date filters, returns all purchase history, including unresolved purchases. No default recency cutoff."
           },
           {
             "name": "toDate",
@@ -11750,7 +11750,7 @@
               "type": "string",
               "format": "date"
             },
-            "description": "Inclusive; paired with fromDate."
+            "description": "Optional inclusive purchase-creation day; if both bounds are supplied, toDate must not precede fromDate."
           },
           {
             "name": "X-Trotxi-Client",
