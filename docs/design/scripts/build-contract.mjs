@@ -18,6 +18,21 @@ function normalize(value) {
   if (value.nullable && value.allOf?.length === 1 && converted[value.allOf[0].$ref]) {
     return { ...normalize(converted[value.allOf[0].$ref]), nullable: true };
   }
+  // Zod calls every number a number, so a literal whole number arrives as
+  // `type: number`. A run number and an API major version are integers, and
+  // saying so is both more accurate and what a client generator needs: a
+  // numeric enum it believes is fractional produces a client that will not
+  // compile.
+  if (value.type === 'number' && Array.isArray(value.enum) && value.enum.every(Number.isInteger))
+    return { ...normalize({ ...value, type: undefined }), type: 'integer' };
+  // A default beside an enum of exactly one value tells a reader nothing the
+  // enum has not already told them, and a client generator handed both emits a
+  // constructor that does not compile. The Zod schema keeps its default, which
+  // is what actually supplies the value; only the published shape drops it.
+  if (Array.isArray(value.enum) && value.enum.length === 1 && value.default === value.enum[0]) {
+    const { default: _redundant, ...rest } = value;
+    return normalize(rest);
+  }
   return Object.fromEntries(
     Object.entries(value).map(([k, v]) => [
       k,
