@@ -299,7 +299,12 @@ test('COM-16: real 012-to-013 upgrade preserves purchase/ledger and materializes
   await migrate(f.owner, files);
   await grantRuntime(f.owner, f.role);
   assert.deepEqual((await f.owner.query('SELECT * FROM app.purchases')).rows, before);
-  assert.deepEqual((await f.owner.query('SELECT * FROM app.ride_entries')).rows, ledger);
+  // 015 adds nullable reservation attribution; every pre-existing ledger value
+  // remains identical and allocations must not acquire a reservation source.
+  assert.deepEqual(
+    (await f.owner.query('SELECT * FROM app.ride_entries')).rows,
+    ledger.map((row) => ({ ...row, reservation_id: null })),
+  );
   const assignment = (await f.owner.query('SELECT * FROM app.commute_assignments')).rows[0];
   assert.equal(assignment.purchase_id, p.id);
   assert.equal(assignment.user_id, f.actor.userId);

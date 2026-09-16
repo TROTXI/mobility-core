@@ -5,6 +5,12 @@ const source = JSON.parse(
   await readFile(new URL('../contracts/target.openapi.json', import.meta.url), 'utf8'),
 );
 const selected = new Set([
+  'issuePass',
+  'getManifest',
+  'getTripSummary',
+  'boardRider',
+  'markNoShow',
+  'runNoShows',
   'runAskDispatch',
   'runReservationDefaults',
   'getMembership',
