@@ -54,7 +54,9 @@ void main() {
     (tester) async {
       await pump(tester);
       f.storage.failDelete = true;
-      f.reply = (_) => jsonResponse(null, 204);
+      f.reply = (o) => o.method == 'GET'
+          ? jsonResponse({'data': account()})
+          : jsonResponse(null, 204);
       await tester.runAsync(() async {
         await openDelete(tester);
         await tester.tap(find.widgetWithText(TextButton, 'Delete account'));
@@ -65,8 +67,10 @@ void main() {
         }
       });
       await tester.pumpAndSettle();
-      expect(f.requests.single.method, 'DELETE');
-      expect(f.requests.single.path, '/v1/me');
+      expect(
+        f.requests.where((r) => r.method == 'DELETE').single.path,
+        '/v1/me',
+      );
       expect(find.textContaining('server accepted erasure'), findsOneWidget);
       expect(await tester.runAsync(f.store.getAccessToken), 'access-Ama');
       await finish(tester);

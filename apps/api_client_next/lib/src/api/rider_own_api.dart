@@ -750,8 +750,8 @@ class RiderOwnApi {
   /// * [xTrotxiBuild] - Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
   /// * [cursor] - Opaque cursor bound to caller, sort and filters.
   /// * [limit] - Page size. No silent truncation.
-  /// * [fromDate] - Africa/Accra day; paired with toDate. Default last/current 7 days; maximum 31 days.
-  /// * [toDate] - Inclusive; paired with fromDate.
+  /// * [fromDate] - Optional inclusive Africa/Accra purchase-creation day. With no date filters, returns all purchase history, including unresolved purchases. No default recency cutoff.
+  /// * [toDate] - Optional inclusive purchase-creation day; if both bounds are supplied, toDate must not precede fromDate.
   /// * [xTrotxiPlatform] - Required for commuter/driver, absent for ops/worker.
   /// * [cancelToken] - A [CancelToken] that can be used to cancel the operation
   /// * [headers] - Can be used to add additional headers to the request

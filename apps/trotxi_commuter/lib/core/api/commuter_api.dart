@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:trotxi_client_next/commuter_data_client.dart';
+import 'package:trotxi_client_next/commuter_checkout.dart';
 import 'package:trotxi_client_next/commuter_session_client.dart';
 import 'package:trotxi_client_next/scoped_token_store.dart';
 import 'package:trotxi_client_next/trotxi_client_next.dart' as wire;
@@ -113,6 +114,37 @@ class CommuterApi extends CommuterDataClient {
   }
 
   Future<bool> signOut() => auth.signOut();
+
+  @override
+  Future<void> eraseAccount() async {
+    final generation = sessionGeneration;
+    final id = currentAccount?.id ?? (await account()).id;
+    ensureSession(generation);
+    Object? localFailure;
+    try {
+      await super.eraseAccount();
+    } on wire.ApiException catch (e) {
+      if (e.code != 'erasure_accepted_local_clear_failed') rethrow;
+      localFailure = e;
+    }
+    try {
+      await CommuterCheckout.clearErasedAccount(this, id);
+    } catch (_) {
+      const error = wire.ApiException(
+        0,
+        'The server accepted erasure, but this device could not remove its checkout recovery data. Contact support.',
+        code: 'erasure_accepted_local_cleanup_failed',
+      );
+      if (!_closed &&
+          currentAccount == null &&
+          store.generation == generation + 1) {
+        startupError = error;
+        stage.value = CommuterStage.failed;
+      }
+      throw error;
+    }
+    if (localFailure != null) throw localFailure;
+  }
 
   @override
   void dispose() {

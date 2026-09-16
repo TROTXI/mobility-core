@@ -285,18 +285,32 @@ class CommuterDataClient {
           (page) => page.data,
           (page) => page.page.nextCursor);
 
-  Future<List<Purchase>> purchases({required Date from, required Date to}) =>
-      _pages(
-          (cursor, extra) => client.getRiderOwnApi().listPurchases(
-              xTrotxiClient: metadata.app,
-              xTrotxiBuild: metadata.build,
-              fromDate: from,
-              toDate: to,
-              limit: 200,
-              cursor: cursor,
-              extra: extra),
-          (page) => page.data,
-          (page) => page.page.nextCursor);
+  /// Both omitted means all purchase history, including unresolved attempts
+  /// older than a display window. The purchase service has no default cutoff.
+  Future<List<Purchase>> purchases({Date? from, Date? to}) => _pages(
+      (cursor, extra) => client.getRiderOwnApi().listPurchases(
+          xTrotxiClient: metadata.app,
+          xTrotxiBuild: metadata.build,
+          fromDate: from,
+          toDate: to,
+          limit: 200,
+          cursor: cursor,
+          extra: extra),
+      (page) => page.data,
+      (page) => page.page.nextCursor);
+
+  /// The caller must persist this key BEFORE sending; never auto-generate a
+  /// new key when the result is uncertain or a provider URL is not yet ready.
+  Future<Purchase> createPurchase(PurchaseInput input,
+          {required String key}) async =>
+      (await _read((extra) => client.getRiderOwnApi().createPurchase(
+                idempotencyKey: key,
+                xTrotxiClient: metadata.app,
+                xTrotxiBuild: metadata.build,
+                purchaseInput: input,
+                extra: extra,
+              )))
+          .data;
 
   Future<Purchase> purchase(String id) async =>
       (await _read((extra) => client.getRiderOwnApi().getPurchase(
