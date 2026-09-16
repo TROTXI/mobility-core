@@ -117,17 +117,19 @@ void main() {
     // synthetic response. ErrorInterceptor intentionally exposes only a safe
     // app error, which otherwise hides why this fixture failed in CI.
     Object? transportCause;
+    StackTrace? transportStack;
     client.dio.interceptors.insert(
         client.dio.interceptors.indexWhere((i) => i is ErrorInterceptor),
         InterceptorsWrapper(onError: (error, handler) {
           transportCause = error.error;
+          transportStack = error.stackTrace;
           handler.next(error);
         }));
     final DriverIdentity driver;
     try {
       driver = await signIn();
     } catch (error) {
-      fail('Synthetic sign-in failed: $error; transport cause: $transportCause');
+      fail('Synthetic sign-in failed: $error; transport cause: $transportCause\n$transportStack');
     }
     expect(requests.single.path, '/v1/auth/driver');
     expect(bodyOf(requests.single),
