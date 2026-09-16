@@ -90,14 +90,9 @@ class NextRunCard extends StatelessWidget {
               if (headline != null) ...[
                 const SizedBox(height: AppSpacing.space12),
                 Text(
-                  // The frame's full breakdown, standby included now that the
-                  // manifest returns each seat's source (#230). Dropped from
-                  // the line when it is zero rather than printed as "0
-                  // standby", which reads like a fault rather than a quiet day.
                   [
                     '${headline!.stops} stops',
-                    '${headline!.morning} morning',
-                    if (headline!.standby > 0) '${headline!.standby} standby',
+                    '${headline!.riders} confirmed',
                   ].join(' · '),
                   style: AppTypography.bodySmall.copyWith(
                     color: onFill.withValues(alpha: 0.85),

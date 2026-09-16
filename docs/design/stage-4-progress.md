@@ -18,13 +18,14 @@ Branch: `codex/stage-4-client-foundation`.
   Social sign-in failures no longer tell a commuter to check a driver PIN or
   assume every 403 means driver suspension.
 - A 426 upgrade response never refreshes or deletes the session. This is client
-  transport coverage, **not an implemented app-level upgrade screen**.
+  transport coverage; the driver now also wires the blocking app-level state
+  described below. The commuter has not yet moved.
 
 Local verification: **44 shared-client tests passed**, `flutter analyze --no-pub`
 reported no issues. Metadata assertions run outside the transport adapter so a
 test assertion cannot be wrapped as an expected offline failure.
 
-## Driver session boundary (implemented, not yet wired into the app)
+## Driver session boundary (wired into the driver app)
 
 `apps/trotxi_client_next/lib/driver_session_client.dart` uses the generated
 replacement sign-in, account, logout and PIN-change operations. It deliberately
@@ -34,7 +35,7 @@ credential-change flag unknown. Offline/upgrade errors are not swallowed as a
 signed-out result. PIN changes require a caller-owned retry key; PIN values are
 not persisted or derived into that key.
 
-`ScopedTokenStore` supplies the secure-storage implementation for the eventual
+`ScopedTokenStore` supplies the secure-storage implementation for the driver
 composition root, shared by all its repositories and HTTP clients:
 
 - One record holds both tokens, namespaced by app, replacement generation,
@@ -59,21 +60,74 @@ or sign-in against the replacement server. The existing Flutter CI matrix
 already runs the whole `trotxi_client_next` suite, so these files are not a
 separate, unregistered test command.
 
-Repository reconnaissance for the next driver slice is complete. Preserve the
-replacement identities rather than translating requests back to legacy shapes:
-trip-owned stop occurrences (not a route-wide integer), service date/direction,
-per-row edit tokens, cursor pages, position fix IDs/capture time/acceptance, and
-reservation IDs in boarding results. Manifest reads no longer disclose a rider
-user ID or the old source/morning-evening labels; UI mappings must not invent
-those fields. Route geometry is available through the version's geometry ID.
+## Driver application migration
+
+The driver composition root now uses only the replacement client and scoped
+storage. Startup requires `API_BASE_URL` and `API_SESSION_REALM`; the platform
+and build metadata come from the installed package, not a test constant. No
+deployed-API fallback or old-token import is present.
+
+- Sign-in, account restore, local-first logout and configuration use replacement
+  shapes. Storage failure is visible and retryable rather than silently erasing
+  a session. Late responses cannot restore the previous driver's identity.
+- An explicit 426, including from refresh, or an applicable bootstrap build
+  floor blocks the navigator and stops GPS publishing. Back cannot dismiss it.
+  Clearing the session removes pushed screens from the previous driver.
+- Assigned trips follow every cursor with the original filters. The agenda
+  groups by stored service date, including midnight delays. Arrivals carry
+  trip-owned occurrence IDs and the edit token the driver actually viewed;
+  stale writes are not automatically retried with a new token. Backward arrival
+  correction requires explicit confirmation.
+- Manifest and boarding use reservation identities, QR/code/photo proofs and
+  replacement no-show/summary responses. Run-wide code results identify the
+  boarded seat; a previously selected rider is not assumed to be that person.
+- GPS submissions carry fix IDs, capture timestamps and accuracy, and only a
+  matching receipt accepted for live projection confirms live sharing. Existing
+  foreground-only collection and readiness permission gates remain.
+- Maps use the assigned trip's pattern version and occurrence identities,
+  never the newest route revision. Live reads preserve observed/fallback basis
+  and server freshness; predictions disappear locally after 120 seconds. This
+  does not add continuous map polling or prove live delivery on a device.
+- Incident and work-request repositories send the reviewed unions and dates.
+  Uncertain command delivery retains a random retry key within the session.
+  There is no durable offline command queue; after restart, reload authoritative
+  state rather than assuming the previous command was never received.
+
+Contract limits remain visible: vehicle labels are not asserted to be plates;
+capacity, reservation-source breakdowns and assignment-change timestamps are
+not served, so this app does not manufacture them. No new backend fields or
+Figma layouts were introduced for these gaps.
+
+Verification at this checkpoint: **188 driver tests and 81 shared-client tests
+passed**, both analyzers report no issues, and Android debug/iOS simulator
+builds succeed. Tests use real generated serializers with controlled
+transport/storage; they do not replace the pending replacement-server and
+native-device walkthrough. The two final regressions cover stored service-day
+grouping across midnight and assigned-trip refresh without a public archived
+route lookup. Boarding refusals preserve eligibility/funding messages rather
+than claiming an existing reservation is absent.
+
+Local build configuration (requires a separately running replacement server):
+
+```sh
+# Android emulator
+flutter build apk --debug --target-platform android-x64 \
+  --dart-define=API_BASE_URL=http://10.0.2.2:3001 \
+  --dart-define=API_SESSION_REALM=local-replacement-stage4
+# iOS simulator
+flutter build ios --simulator --debug \
+  --dart-define=API_BASE_URL=http://127.0.0.1:3001 \
+  --dart-define=API_SESSION_REALM=local-replacement-stage4
+```
+
+Use a new realm after replacing the disposable database. Simulator compilation
+is not device sign-off, store compliance, or a staging cutover.
 
 ## Remaining implementation sequence
 
-1. **Driver app, as one coherent replacement build:** isolate stored sessions
-   by backend generation/environment; attach actual app build/platform; port
-   sign-in/session/config, trips/occurrences, GPS receipts, manifest/boarding,
-   incidents and work requests. Wire a blocking upgrade state without inventing
-   unrelated screen designs. Keep existing domain/widget regression behavior.
+1. **Driver walkthrough:** the coherent migration above is implemented. Verify
+   actual replacement sign-in, secure storage, trip lifecycle, boarding, GPS
+   receipt/live reads, upgrade admission and session changes on both platforms.
 2. **Commuter app:** same session/build isolation, then account/paged reads,
    explicit outbound/return schedule/version/stop-occurrence selection,
    purchases and pending-payment recovery, membership/pause/commute requests,
@@ -86,8 +140,7 @@ those fields. Route geometry is available through the version's geometry ID.
    TEST payment and automatic delivery/reconciliation, private-object erasure,
    minimum-version enforcement, and the full-size retention/load gate.
 
-Neither app has switched API contracts yet. Their composition roots still use
-the old unscoped token stores. The new scoped store/session client is implemented
-and tested but not wired into those roots; that wiring must land together with
-the coherent repository migration, not as a mixed old/new app build.
+The driver has switched on this branch only. The commuter still uses the old
+contract and unscoped store; it must move coherently before cutover. Neither
+the driver builds nor this document switch traffic to the replacement backend.
 No emulator account, backend secret, deployment or database reset is changed.

@@ -1,5 +1,5 @@
-import 'package:dio/dio.dart';
-import 'package:trotxi_client/trotxi_client.dart';
+import 'package:trotxi_client_next/trotxi_client_next.dart' as wire;
+import 'package:trotxi_driver/core/api/driver_api.dart';
 
 /// The five categories the design names, kept literally because they exist to
 /// route a report to whoever can act on it.
@@ -60,22 +60,8 @@ class DriverIncident {
 
 /// Filing incident reports, and reading operations' answers (#226).
 class IncidentsRepository {
-  IncidentsRepository({required this._client});
-
-  final TrotxiApiClient _client;
-
-  /// File a report.
-  ///
-  /// The vehicle is NOT sent: the server resolves it from the trip. A report is
-  /// evidence, and the field operations most needs to trust should not be the
-  /// one this app could get wrong.
-  ///
-  /// @param category - the chosen category.
-  /// @param tripId - the run it happened on; null for a yard report.
-  /// @param note - what the driver typed, if anything.
-  /// @param lat - current or last-known latitude, if the device had one.
-  /// @param lng - the matching longitude.
-  /// @returns the filed report.
+  IncidentsRepository({required this.client});
+  final DriverApi client;
   Future<DriverIncident> file({
     required IncidentCategory category,
     String? tripId,
@@ -83,105 +69,43 @@ class IncidentsRepository {
     double? lat,
     double? lng,
   }) async {
-    try {
-      final response = await _client.getIncidentsApi().meIncidentsPost(
-        meIncidentsPostRequest: MeIncidentsPostRequest(
-          (b) {
-            b.category = _wire(category);
-            if (tripId != null) b.tripId = tripId;
-            if (note != null && note.trim().isNotEmpty) b.note = note.trim();
-            if (lat != null) b.lat = lat;
-            if (lng != null) b.lng = lng;
-          },
-        ),
+    if ((lat == null) != (lng == null)) {
+      throw const ApiException(
+        400,
+        'A report location needs both coordinates.',
       );
-      final data = response.data;
-      if (data == null) {
-        throw const ApiException(201, 'The report was sent but returned nothing.');
-      }
-      return DriverIncident(
-        id: data.id,
-        category: _categoryOf(data.category.name),
-        status: _statusOf(data.status.name),
-        occurredAt: data.occurredAt,
-        note: data.note,
-        resolution: data.resolution,
-        tripId: data.tripId,
-      );
-    } on DioException catch (err) {
-      throw _unwrap(err);
     }
+    final response = await client.post(
+      '/v1/driver/incidents',
+      wire.IncidentResponse.serializer,
+      body: {
+        'category': switch (category) {
+          IncidentCategory.passengerSafety => 'passenger_safety',
+          IncidentCategory.routeBlocked => 'route_blocked',
+          _ => category.name,
+        },
+        'tripId': ?tripId,
+        if (note != null && note.trim().isNotEmpty) 'note': note.trim(),
+        if (lat != null && lng != null)
+          'location': {'latitude': lat, 'longitude': lng},
+      },
+    );
+    return _view(response.data);
   }
 
-  /// The driver's own reports, newest first.
-  ///
-  /// @returns their reports.
-  Future<List<DriverIncident>> mine() async {
-    try {
-      final response = await _client.getIncidentsApi().meIncidentsGet();
-      return (response.data?.incidents.toList() ?? [])
-          .map(
-            (i) => DriverIncident(
-              id: i.id,
-              category: _categoryOf(i.category.name),
-              status: _statusOf(i.status.name),
-              occurredAt: i.occurredAt,
-              note: i.note,
-              resolution: i.resolution,
-              tripId: i.tripId,
-            ),
-          )
-          .toList();
-    } on DioException catch (err) {
-      throw _unwrap(err);
-    }
-  }
-
-  /// Map the app's category onto the wire enum.
-  ///
-  /// @param category - the chosen category.
-  /// @returns the generated client's enum value.
-  static MeIncidentsPostRequestCategoryEnum _wire(IncidentCategory category) =>
-      switch (category) {
-        IncidentCategory.vehicle => MeIncidentsPostRequestCategoryEnum.vehicle,
-        IncidentCategory.collision =>
-          MeIncidentsPostRequestCategoryEnum.collision,
-        IncidentCategory.passengerSafety =>
-          MeIncidentsPostRequestCategoryEnum.passengerSafety,
-        IncidentCategory.routeBlocked =>
-          MeIncidentsPostRequestCategoryEnum.routeBlocked,
-        IncidentCategory.other => MeIncidentsPostRequestCategoryEnum.other,
-      };
-
-  /// Map the wire category back, defaulting rather than dropping a report off
-  /// the list for a value this build does not know.
-  ///
-  /// @param raw - the category string from the API.
-  /// @returns the category.
-  static IncidentCategory _categoryOf(String raw) => switch (raw) {
-    'vehicle' => IncidentCategory.vehicle,
-    'collision' => IncidentCategory.collision,
-    'passengerSafety' || 'passenger_safety' => IncidentCategory.passengerSafety,
-    'routeBlocked' || 'route_blocked' => IncidentCategory.routeBlocked,
-    _ => IncidentCategory.other,
-  };
-
-  /// Map the wire status back.
-  ///
-  /// @param raw - the status string from the API.
-  /// @returns the status.
-  static IncidentStatus _statusOf(String raw) => switch (raw) {
-    'acknowledged' => IncidentStatus.acknowledged,
-    'resolved' => IncidentStatus.resolved,
-    _ => IncidentStatus.open,
-  };
-
-  /// Recover the typed exception the interceptors attached.
-  ///
-  /// @param err - the caught Dio exception.
-  /// @returns the exception to surface.
-  Object _unwrap(DioException err) {
-    final inner = err.error;
-    return inner is TrotxiException ? inner : err;
-  }
+  Future<List<DriverIncident>> mine() async => (await client.pages(
+    '/v1/driver/incidents',
+    wire.IncidentPage.serializer,
+    (p) => p.data.toList(),
+    (p) => p.page.nextCursor,
+  )).map(_view).toList();
+  DriverIncident _view(wire.Incident incident) => DriverIncident(
+    id: incident.id,
+    category: IncidentCategory.values.byName(incident.category.name),
+    status: IncidentStatus.values.byName(incident.status.name),
+    occurredAt: incident.createdAt,
+    tripId: incident.tripId,
+    note: incident.note,
+    resolution: incident.resolution,
+  );
 }

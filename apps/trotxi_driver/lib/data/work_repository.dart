@@ -1,5 +1,5 @@
-import 'package:dio/dio.dart';
-import 'package:trotxi_client/trotxi_client.dart';
+import 'package:trotxi_client_next/trotxi_client_next.dart' as wire;
+import 'package:trotxi_driver/core/api/driver_api.dart';
 
 /// What a driver is asking operations for.
 enum RequestKind {
@@ -16,7 +16,10 @@ enum RequestKind {
 /// looking at it has to understand that nothing about their roster has moved.
 enum RequestStatus {
   pending('Waiting', 'Operations has not answered yet.'),
-  approved('Approved', 'Operations agreed. Your roster changes only when they publish it.'),
+  approved(
+    'Approved',
+    'Operations agreed. Your roster changes only when they publish it.',
+  ),
   declined('Declined', 'Operations said no.'),
   withdrawn('Withdrawn', 'You took this back.');
 
@@ -81,181 +84,81 @@ class WorkRequest {
 /// either: a request is a proposal, and operations still has to publish the
 /// change separately. The screens say so to drivers for the same reason.
 class WorkRepository {
-  WorkRepository({required this._client});
+  WorkRepository({required this.client});
+  final DriverApi client;
 
-  final TrotxiApiClient _client;
-
-  /// Route names by id, filled from [openRoutes] so the request list can show a
-  /// corridor rather than a uuid.
-  final Map<String, String> _routeNames = {};
-
-  /// Corridors operations will accept reassignment requests for.
-  ///
-  /// @returns the open routes.
   Future<List<OpenRoute>> openRoutes() async {
-    try {
-      final response = await _client.getWorkApi().meWorkRoutesGet();
-      final routes = (response.data?.routes.toList() ?? [])
-          .map(
-            (r) => OpenRoute(
-              id: r.id,
-              name: r.name,
-              description: r.description,
-            ),
-          )
-          .toList();
-      for (final route in routes) {
-        _routeNames[route.id] = route.name;
-      }
-      return routes;
-    } on DioException catch (err) {
-      throw _unwrap(err);
+    final routes = await client.pages(
+      '/v1/driver/available-routes',
+      wire.RoutePage.serializer,
+      (p) => p.data.toList(),
+      (p) => p.page.nextCursor,
+    );
+    for (final route in routes) {
+      client.routeNames[route.id] = route.name;
     }
+    return routes
+        .map(
+          (r) => OpenRoute(id: r.id, name: r.name, description: r.description),
+        )
+        .toList();
   }
 
-  /// Ask to be moved to another corridor.
-  ///
-  /// @param routeId - the corridor asked for.
-  /// @param fromDate - when it should take effect (`YYYY-MM-DD`), if given.
-  /// @param note - why.
-  /// @returns the stored request, pending.
   Future<WorkRequest> requestRouteChange({
     required String routeId,
     String? fromDate,
     String? note,
-  }) async {
-    return _submit(
-      MeWorkRequestsPostRequest(
-        (b) => b.oneOf = OneOf2<
-            MeWorkRequestsPostRequestOneOf,
-            MeWorkRequestsPostRequestOneOf1>(
-          typeIndex: 0,
-          value: MeWorkRequestsPostRequestOneOf(
-            (r) {
-              r.kind = MeWorkRequestsPostRequestOneOfKindEnum.routeChange;
-              r.routeId = routeId;
-              if (fromDate != null) r.fromDate = fromDate;
-              if (note != null && note.trim().isNotEmpty) r.note = note.trim();
-            },
-          ),
-        ),
-      ),
-    );
-  }
-
-  /// Ask for days off.
-  ///
-  /// @param fromDate - the first day (`YYYY-MM-DD`).
-  /// @param toDate - the last day (`YYYY-MM-DD`).
-  /// @param note - coverage information, which is free text until there is a
-  ///   roster to point at.
-  /// @returns the stored request, pending.
+  }) => _submit({
+    'kind': 'route_change',
+    'routeId': routeId,
+    'fromDate': ?fromDate,
+    if (note != null && note.trim().isNotEmpty) 'note': note.trim(),
+  });
   Future<WorkRequest> requestLeave({
     required String fromDate,
     required String toDate,
     String? note,
-  }) async {
-    return _submit(
-      MeWorkRequestsPostRequest(
-        (b) => b.oneOf = OneOf2<
-            MeWorkRequestsPostRequestOneOf,
-            MeWorkRequestsPostRequestOneOf1>(
-          typeIndex: 1,
-          value: MeWorkRequestsPostRequestOneOf1(
-            (r) {
-              r.kind = MeWorkRequestsPostRequestOneOf1KindEnum.leave;
-              r.fromDate = fromDate;
-              r.toDate = toDate;
-              if (note != null && note.trim().isNotEmpty) r.note = note.trim();
-            },
-          ),
-        ),
-      ),
-    );
-  }
+  }) => _submit({
+    'kind': 'leave',
+    'fromDate': fromDate,
+    'toDate': toDate,
+    if (note != null && note.trim().isNotEmpty) 'note': note.trim(),
+  });
+  Future<WorkRequest> _submit(Map<String, dynamic> body) async => _view(
+    (await client.post(
+      '/v1/driver/requests',
+      wire.WorkRequestResponse.serializer,
+      body: body,
+    )).data,
+  );
+  Future<List<WorkRequest>> mine() async => (await client.pages(
+    '/v1/driver/requests',
+    wire.WorkRequestPage.serializer,
+    (p) => p.data.toList(),
+    (p) => p.page.nextCursor,
+  )).map(_view).toList();
+  Future<WorkRequest> withdraw(String id) async => _view(
+    (await client.post(
+      '/v1/driver/requests/${Uri.encodeComponent(id)}/withdraw',
+      wire.WorkRequestResponse.serializer,
+    )).data,
+  );
 
-  /// The driver's own requests, newest first.
-  ///
-  /// @returns their requests.
-  Future<List<WorkRequest>> mine() async {
-    try {
-      final response = await _client.getWorkApi().meWorkRequestsGet();
-      return (response.data?.requests.toList() ?? []).map(_toRequest).toList();
-    } on DioException catch (err) {
-      throw _unwrap(err);
-    }
-  }
-
-  /// Take back a request operations has not answered.
-  ///
-  /// @param id - the request to withdraw.
-  /// @returns the withdrawn request.
-  Future<WorkRequest> withdraw(String id) async {
-    try {
-      final response = await _client.getWorkApi().meWorkRequestsIdWithdrawPost(
-        id: id,
-      );
-      final data = response.data;
-      if (data == null) {
-        throw const ApiException(200, 'The request returned nothing.');
-      }
-      return _toRequest(data);
-    } on DioException catch (err) {
-      throw _unwrap(err);
-    }
-  }
-
-  /// Shared submit path for both kinds.
-  ///
-  /// @param body - the built request body.
-  /// @returns the stored request.
-  Future<WorkRequest> _submit(MeWorkRequestsPostRequest body) async {
-    try {
-      final response = await _client.getWorkApi().meWorkRequestsPost(
-        meWorkRequestsPostRequest: body,
-      );
-      final data = response.data;
-      if (data == null) {
-        throw const ApiException(201, 'The request was sent but returned nothing.');
-      }
-      return _toRequest(data);
-    } on DioException catch (err) {
-      throw _unwrap(err);
-    }
-  }
-
-  /// Map a wire request onto the app's shape, resolving the corridor name from
-  /// whatever the open-route list has already told us.
-  ///
-  /// @param r - the wire request.
-  /// @returns the request.
-  WorkRequest _toRequest(MeWorkRequestsGet200ResponseRequestsInner r) {
+  WorkRequest _view(wire.WorkRequest r) {
+    final value = r.request.oneOf.value;
+    final route = value is wire.WorkRequestInputOneOf ? value : null;
+    final leave = value is wire.WorkRequestInputOneOf1 ? value : null;
     return WorkRequest(
       id: r.id,
-      kind: r.kind.name == 'leave' ? RequestKind.leave : RequestKind.routeChange,
-      status: switch (r.status.name) {
-        'approved' => RequestStatus.approved,
-        'declined' => RequestStatus.declined,
-        'withdrawn' => RequestStatus.withdrawn,
-        _ => RequestStatus.pending,
-      },
+      kind: leave != null ? RequestKind.leave : RequestKind.routeChange,
+      status: RequestStatus.values.byName(r.status.name),
       createdAt: r.createdAt,
-      routeId: r.routeId,
-      routeName: r.routeId == null ? null : _routeNames[r.routeId],
-      fromDate: r.fromDate,
-      toDate: r.toDate,
-      note: r.note,
+      routeId: route?.routeId,
+      routeName: client.routeNames[route?.routeId],
+      fromDate: (route?.fromDate ?? leave?.fromDate)?.toString(),
+      toDate: leave?.toDate.toString(),
+      note: route?.note ?? leave?.note,
       decisionNote: r.decisionNote,
-      decidedAt: r.decidedAt,
     );
-  }
-
-  /// Recover the typed exception the interceptors attached.
-  ///
-  /// @param err - the caught Dio exception.
-  /// @returns the exception to surface.
-  Object _unwrap(DioException err) {
-    final inner = err.error;
-    return inner is TrotxiException ? inner : err;
   }
 }

@@ -38,6 +38,7 @@ class _Auth implements DriverAuthRepository {
 
   @override
   Future<void> changePin({
+    required String idempotencyKey,
     required String currentPin,
     required String newPin,
   }) async {

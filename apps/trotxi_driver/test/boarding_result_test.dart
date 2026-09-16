@@ -32,7 +32,8 @@ void main() {
         outcome: BoardingOutcome.sessionExpired,
       );
       expect(result.detail, contains('Sign in again'));
-      expect(result.detail, contains('pass is fine'));
+      expect(result.detail, contains('check their pass again'));
+      expect(result.detail, isNot(contains('pass is fine')));
       expect(result.isAccepted, isFalse);
     },
   );
@@ -55,7 +56,7 @@ void main() {
 
     expect(
       const BoardingResult(outcome: BoardingOutcome.invalid).isRetryable,
-      isFalse,
+      isTrue,
     );
     expect(
       const BoardingResult(outcome: BoardingOutcome.reused).isRetryable,

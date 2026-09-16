@@ -2,8 +2,9 @@
 // assigned and everything finished look alike in a naive build and read
 // completely differently to a driver at the start of a shift.
 
+import 'dart:async';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:trotxi_client/trotxi_client.dart';
+import 'package:trotxi_driver/core/api/driver_api.dart';
 import 'package:trotxi_driver/core/config/corridor_time.dart';
 import 'package:trotxi_driver/core/state/loadable.dart';
 import 'package:trotxi_driver/core/state/today_controller.dart';
@@ -34,6 +35,7 @@ class _StubTrips implements TripsRepository {
   List<ManifestRider> riders = const [];
   List<DriverStop> stops = const [];
   Object? failWith;
+  Future<List<DriverRun>>? pendingRuns;
   final started = <String>[];
   final completed = <String>[];
 
@@ -45,7 +47,7 @@ class _StubTrips implements TripsRepository {
   }) async {
     lastDate = date;
     if (failWith != null) throw failWith!;
-    return runs;
+    return pendingRuns == null ? runs : await pendingRuns!;
   }
 
   @override
@@ -88,7 +90,6 @@ ManifestRider _rider({
   String source = 'confirmation',
 }) => ManifestRider(
   reservationId: 'r',
-  userId: 'u',
   name: 'Ama Owusu',
   avatarUrl: null,
   boarded: boarded,
@@ -98,6 +99,20 @@ ManifestRider _rider({
 );
 
 void main() {
+  test(
+    'reset invalidates an in-flight board load from the previous identity',
+    () async {
+      final delayed = Completer<List<DriverRun>>();
+      final trips = _StubTrips([])..pendingRuns = delayed.future;
+      final controller = TodayController(trips: trips);
+      final loading = controller.load();
+      controller.reset();
+      delayed.complete([_run('previous-driver-trip')]);
+      await loading;
+      expect(controller.board.valueOrNull, isNull);
+      controller.dispose();
+    },
+  );
   test('an empty day is "nothing assigned", not "all done"', () async {
     final controller = TodayController(trips: _StubTrips([]));
     await controller.load();

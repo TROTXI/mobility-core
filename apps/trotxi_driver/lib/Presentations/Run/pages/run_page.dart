@@ -67,7 +67,7 @@ class _RunPageState extends State<RunPage> {
     if (run == null || !run.isActive) return;
     final maps = context.read<RouteMapRepository>();
     final fix = await maps.vehicleOn(run.id);
-    final shape = await maps.shapeFor(run.routeId);
+    final shape = await maps.shapeFor(run.id);
     if (mounted) {
       setState(() {
         _fix = fix;
@@ -717,7 +717,31 @@ class _RunPageState extends State<RunPage> {
     int seq,
   ) async {
     final messenger = ScaffoldMessenger.of(context);
-    await controller.arriveAtStop(seq);
+    final previous = controller.currentRun.currentStopSeq;
+    final correction = previous != null && seq < previous;
+    if (correction) {
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Correct the last arrival?'),
+          content: const Text(
+            'This moves recorded progress back to an earlier stop. Continue only to correct a mistaken arrival.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('Correct arrival'),
+            ),
+          ],
+        ),
+      );
+      if (confirmed != true || !mounted) return;
+    }
+    await controller.arriveAtStop(seq, correction: correction);
     final detail = controller.detail;
     if (detail is Failure<RunDetail>) {
       messenger.showSnackBar(SnackBar(content: Text(detail.message)));

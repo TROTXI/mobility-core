@@ -1,5 +1,5 @@
 import 'package:flutter/foundation.dart';
-import 'package:trotxi_client/trotxi_client.dart';
+import 'package:trotxi_driver/core/api/driver_api.dart';
 import 'package:trotxi_driver/core/config/corridor_time.dart';
 import 'package:trotxi_driver/core/state/loadable.dart';
 import 'package:trotxi_driver/data/trips_repository.dart';
@@ -84,6 +84,14 @@ class TodayController extends ChangeNotifier {
 
   Loadable<TodayBoard> _board = const Loadable.idle();
   Loadable<TodayBoard> get board => _board;
+  int _revision = 0;
+  int _fetchId = 0;
+  void reset() {
+    _revision++;
+    _busyRunId = null;
+    _board = const Loadable.idle();
+    notifyListeners();
+  }
 
   /// The run currently being started or ended, so only that card shows a
   /// spinner rather than the whole screen going blank under the driver.
@@ -120,22 +128,30 @@ class TodayController extends ChangeNotifier {
   /// @param runId - the run being changed.
   /// @param action - the transition to run.
   Future<void> _act(String runId, Future<DriverRun> Function() action) async {
+    final revision = _revision;
     _busyRunId = runId;
     notifyListeners();
     try {
       await action();
+      if (revision != _revision) return;
       await _fetch();
     } on TrotxiException catch (err) {
+      if (revision != _revision) return;
       _board = Loadable.failure(err.message, previous: _board.valueOrNull);
       notifyListeners();
     } finally {
-      _busyRunId = null;
-      notifyListeners();
+      if (revision == _revision) {
+        _busyRunId = null;
+        notifyListeners();
+      }
     }
   }
 
   /// Fetch and arrange the day.
   Future<void> _fetch() async {
+    final revision = _revision;
+    final fetchId = ++_fetchId;
+    Loadable<TodayBoard> next;
     try {
       final today = _todayString(_now());
       final runs = await _trips.myRuns(date: today);
@@ -147,7 +163,7 @@ class TodayController extends ChangeNotifier {
       final completed = runs.where((r) => r.isFinished).toList();
 
       final leading = active ?? upcoming.firstOrNull;
-      _board = Loadable.data(
+      next = Loadable.data(
         TodayBoard(
           headline: leading == null ? null : await _headlineFor(leading),
           active: active,
@@ -160,14 +176,22 @@ class TodayController extends ChangeNotifier {
         ),
       );
     } on OfflineException {
-      _board = Loadable.failure(
+      next = Loadable.failure(
         'You are offline. Showing what was last loaded.',
         previous: _board.valueOrNull,
       );
     } on TrotxiException catch (err) {
-      _board = Loadable.failure(err.message, previous: _board.valueOrNull);
+      next = Loadable.failure(err.message, previous: _board.valueOrNull);
     }
+    if (revision != _revision || fetchId != _fetchId) return;
+    _board = next;
     notifyListeners();
+  }
+
+  @override
+  void dispose() {
+    _revision++;
+    super.dispose();
   }
 
   /// Riders and stops for the run the board leads with.
@@ -182,7 +206,7 @@ class TodayController extends ChangeNotifier {
     try {
       final results = await Future.wait([
         _trips.manifest(run.id),
-        _trips.stopsFor(run.routeId),
+        _trips.stopsFor(run.id),
       ]);
       final riders = results[0] as List<ManifestRider>;
       return RunHeadline(

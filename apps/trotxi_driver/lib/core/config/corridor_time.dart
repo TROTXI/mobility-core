@@ -2,9 +2,8 @@ import 'package:intl/intl.dart';
 
 /// Formats run times in the corridor's own clock.
 ///
-/// Deliberately NOT the device's local time. `GET /me/trips?date=` groups runs
-/// by their UTC calendar day, so rendering in device-local time lets one day's
-/// runs straddle two local days: on a UTC-7 machine the 06:30 run shows as
+/// Deliberately NOT the device's local time. Rendering in device-local time
+/// lets one day's runs straddle two local days: on a UTC-7 machine the 06:30 run shows as
 /// 23:30 and sorts ahead of the 17:30 one, which reads as scrambled ordering
 /// rather than as a timezone.
 ///
@@ -23,8 +22,8 @@ abstract final class CorridorTime {
 
   /// The corridor's calendar day for an instant, as `YYYY-MM-DD`.
   ///
-  /// Matches what the API filters on, so what is asked for and what is shown
-  /// agree.
+  /// This is not a trip's business service date: a midnight delay may differ
+  /// from that stored attribute. Schedule grouping uses the stored date.
   ///
   /// @param at - the instant.
   /// @returns the corridor's day.
@@ -32,8 +31,8 @@ abstract final class CorridorTime {
 
   /// Today, in the corridor's clock, as a date with no time on it.
   ///
-  /// What "today" means to this app is the UTC calendar day, because that is
-  /// the day `/me/trips` groups runs by. On a device west of UTC in the evening
+  /// What "today" means to this app is the corridor's current calendar day.
+  /// On a device west of UTC in the evening
   /// the corridor has already rolled over, so the local date and the corridor
   /// date are different days — and a screen that fetches one and labels it with
   /// the other tells the driver their Friday runs are on Thursday.

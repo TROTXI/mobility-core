@@ -1,5 +1,5 @@
 import 'package:flutter/foundation.dart';
-import 'package:trotxi_client/trotxi_client.dart';
+import 'package:trotxi_driver/core/api/driver_api.dart';
 import 'package:trotxi_driver/core/state/loadable.dart';
 import 'package:trotxi_driver/Presentations/Boarding/models/scan_result.dart';
 import 'package:trotxi_driver/data/trips_repository.dart';
@@ -20,14 +20,11 @@ class RunDetail {
   /// The corridor's stops in order, for the "stop N of M" counter.
   final List<DriverStop> stops;
 
-  /// The van's seat ceiling (#230), or null when this run has no vehicle
-  /// assigned yet. Reachable now that `GET /trips/:id` serves it to the trip's
-  /// own assigned driver; it used to live only behind the admin API.
+  /// Unknown in the replacement driver contract. The counter uses confirmed
+  /// riders instead and labels that fallback, never a guessed vehicle capacity.
   final int? capacity;
 
-  /// The plate, from `GET /trips/:id`. The hero's second line reads
-  /// "GT 4821-22 · ACTIVE RUN"; null until a vehicle is assigned, and the line
-  /// drops the plate rather than inventing one.
+  /// The assigned vehicle's display label; not necessarily a plate.
   final String? vehicleRegistration;
 
   int get boarded => riders.where((r) => r.boarded).length;
@@ -140,10 +137,15 @@ class RunController extends ChangeNotifier {
   /// would stop trusting the number.
   ///
   /// @param seq - the stop reached, as a route sequence number.
-  Future<void> arriveAtStop(int seq) async {
+  Future<void> arriveAtStop(int seq, {bool correction = false}) async {
     final current = _detail.valueOrNull;
     try {
-      _run = await _trips.arriveAtStop(_run.id, seq);
+      _run = await _trips.arriveAtStop(
+        _run.id,
+        seq,
+        editToken: _run.editToken,
+        correction: correction,
+      );
       if (current != null) {
         _detail = Loadable.data(
           RunDetail(
@@ -219,15 +221,18 @@ class RunController extends ChangeNotifier {
       // In parallel: the manifest, the stop list and the run's own detail are
       // independent, and a driver waiting at a stop should not pay for them in
       // series.
-      final riders = _trips.manifest(_run.id);
-      final stops = _trips.stopsFor(_run.routeId);
-      final detail = _trips.detail(_run.id);
-      final facts = await detail;
+      final results = await Future.wait<Object>([
+        _trips.manifest(_run.id),
+        _trips.stopsFor(_run.id),
+        _trips.detail(_run.id),
+      ]);
+      final facts = results[2] as TripDetail;
+      _run = facts.run ?? _run;
       _detail = Loadable.data(
         RunDetail(
           run: _run,
-          riders: await riders,
-          stops: await stops,
+          riders: results[0] as List<ManifestRider>,
+          stops: results[1] as List<DriverStop>,
           capacity: facts.capacity,
           vehicleRegistration: facts.vehicleRegistration,
         ),

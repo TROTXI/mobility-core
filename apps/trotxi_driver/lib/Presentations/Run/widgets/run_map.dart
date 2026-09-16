@@ -61,7 +61,7 @@ class _RunMapState extends State<RunMap> {
   /// Fetch the corridor and, on a live run, where the bus is.
   Future<void> _load() async {
     final maps = context.read<RouteMapRepository>();
-    final shape = await maps.shapeFor(widget.routeId);
+    final shape = await maps.shapeFor(widget.runId);
     final vehicle = widget.isActive ? await maps.vehicleOn(widget.runId) : null;
     if (!mounted) return;
     setState(() {

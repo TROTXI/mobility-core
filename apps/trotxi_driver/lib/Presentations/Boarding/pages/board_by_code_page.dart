@@ -21,25 +21,19 @@ import 'package:trotxi_driver/data/trips_repository.dart';
 /// already the assigned driver, who can board anyone on their manifest with no
 /// code at all.
 ///
-/// [preselected] keeps the old order for the one place it belongs: the manifest
-/// detail sheet, where the driver has already identified the person and just
-/// wants the code as confirmation.
+/// Codes identify a reservation across the run; they do not confirm a
+/// preselected passenger. Only the returned reservation supplies the name.
 class BoardByCodePage extends StatefulWidget {
-  const BoardByCodePage({super.key, required this.runId, this.preselected});
+  const BoardByCodePage({super.key, required this.runId});
 
   /// The run being boarded.
   final String runId;
-
-  /// A rider already identified on the manifest. Null is the normal case.
-  final ManifestRider? preselected;
 
   @override
   State<BoardByCodePage> createState() => _BoardByCodePageState();
 }
 
 class _BoardByCodePageState extends State<BoardByCodePage> {
-  late final ManifestRider? _rider = widget.preselected;
-
   /// What has been keyed so far. A plain string rather than a controller: the
   /// keypad owns input now, so there is no text field to drive.
   String _code = '';
@@ -60,16 +54,10 @@ class _BoardByCodePageState extends State<BoardByCodePage> {
 
     final trips = context.read<TripsRepository>();
     final run = context.read<RunController>();
-    final rider = _rider;
-
-    // Two paths on purpose. With a rider already named, the code confirms that
-    // person; without one, it names them. The second is the door flow.
-    final outcome = rider == null
-        ? await trips.boardByCodeOnRun(runId: widget.runId, code: _code)
-        : await trips.boardByCode(
-            reservationId: rider.reservationId,
-            code: _code,
-          );
+    final outcome = await trips.boardByCodeOnRun(
+      runId: widget.runId,
+      code: _code,
+    );
 
     if (outcome.isAccepted ||
         outcome.outcome == BoardingOutcome.alreadyBoarded) {
@@ -79,7 +67,7 @@ class _BoardByCodePageState extends State<BoardByCodePage> {
 
     setState(() {
       _result = outcome;
-      _boardedName = _nameFor(run, outcome.riderId) ?? rider?.name;
+      _boardedName = _nameFor(run, outcome.reservationId);
       _busy = false;
       // Cleared on success so the next rider can be keyed straight away, and
       // kept on failure so a driver can correct one character rather than
@@ -94,13 +82,13 @@ class _BoardByCodePageState extends State<BoardByCodePage> {
   /// and an extra round trip at a door buys nothing.
   ///
   /// @param run - the run controller holding the manifest.
-  /// @param riderId - the id the server returned, if any.
+  /// @param reservationId - the id the server returned, if any.
   /// @returns their name, or null when the manifest cannot place them.
-  static String? _nameFor(RunController run, String? riderId) {
-    if (riderId == null) return null;
+  static String? _nameFor(RunController run, String? reservationId) {
+    if (reservationId == null) return null;
     final riders = run.detail.valueOrNull?.riders ?? const <ManifestRider>[];
     for (final rider in riders) {
-      if (rider.userId == riderId) return rider.name;
+      if (rider.reservationId == reservationId) return rider.name;
     }
     return null;
   }
@@ -117,21 +105,18 @@ class _BoardByCodePageState extends State<BoardByCodePage> {
 
   Widget _body(BuildContext context, AppColors colors) {
     final result = _result;
-    final rider = _rider;
 
     return ListView(
       padding: const EdgeInsets.all(AppSpacing.space20),
       children: [
         Text(
-          rider?.name ?? 'Board by code',
+          'Board by code',
           style: AppTypography.heading3.copyWith(color: colors.textPrimary),
         ),
         const SizedBox(height: AppSpacing.space4),
         Text(
-          rider == null
-              ? 'Four characters, read out by the rider. You do not need to find '
-                    'them on the manifest first.'
-              : 'Morning · reserved',
+          'Four characters, read out by the rider. The code identifies their '
+          'reservation on this run.',
           style: AppTypography.bodySmall.copyWith(color: colors.textSecondary),
         ),
         const SizedBox(height: AppSpacing.space20),

@@ -126,13 +126,8 @@ class TripSummary extends StatelessWidget {
                 ink: ink,
               ),
               _Stat(
-                value: '${data.expected - data.standby} booked',
+                value: '${data.expected} booked',
                 label: 'Confirmed',
-                ink: ink,
-              ),
-              _Stat(
-                value: '${data.standby} standby',
-                label: 'Waitlist',
                 ink: ink,
               ),
             ],

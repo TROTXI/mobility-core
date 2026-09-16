@@ -7,9 +7,33 @@ StopEta _eta({double metres = 1200, double seconds = 240}) => StopEta(
   name: 'Shiashie',
   distanceMeters: metres,
   etaSeconds: seconds,
+  basis: 'observed',
 );
 
 void main() {
+  test('fallback estimates are explicitly labelled', () {
+    expect(
+      const StopEta(
+        seq: 0,
+        name: 'Stop',
+        distanceMeters: 50,
+        etaSeconds: 90,
+      ).summary,
+      contains('(fallback)'),
+    );
+  });
+
+  test('predictions expire locally even when no new response arrives', () {
+    final fix = VehicleFix(
+      position: const LatLng(5.6, -0.2),
+      recordedAt: DateTime.now(),
+      receivedLocallyAt: DateTime.now().subtract(const Duration(seconds: 2)),
+      ageAtReceipt: const Duration(seconds: 119),
+      etas: [_eta()],
+    );
+    expect(fix.etas, isEmpty);
+    expect(fix.position.latitude, 5.6);
+  });
   test('reads as the file sets it', () {
     expect(_eta().summary, '1.2 km · ~4 min');
   });

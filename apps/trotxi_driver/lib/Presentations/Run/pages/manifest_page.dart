@@ -326,7 +326,7 @@ class _RiderSheetState extends State<_RiderSheet> {
             Text(
               [
                 'No. ${widget.position} of ${widget.total}',
-                rider.direction == 'evening' ? 'Evening' : 'Morning',
+                rider.directionLabel,
                 if (rider.isStandby) 'standby seat',
                 if (rider.boarded) 'boarded',
                 if (rider.noShow) 'marked no-show',
@@ -362,7 +362,7 @@ class _RiderSheetState extends State<_RiderSheet> {
                 width: double.infinity,
                 child: OutlinedButton(
                   onPressed: _busy ? null : _boardByCode,
-                  child: const Text('Board by code instead'),
+                  child: const Text('Open run code boarding'),
                 ),
               ),
               if (!rider.noShow) ...[
@@ -461,7 +461,6 @@ class _RiderSheetState extends State<_RiderSheet> {
             value: controller,
             child: BoardByCodePage(
               runId: controller.detail.valueOrNull!.run.id,
-              preselected: widget.rider,
             ),
           ),
         ),

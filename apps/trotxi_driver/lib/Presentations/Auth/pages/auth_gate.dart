@@ -69,7 +69,9 @@ class _AuthGateState extends State<AuthGate> {
 
     // An existing signed-in installation is not a first launch merely because
     // this version introduced the marker.
-    if (completed || session.stage == SessionStage.ready) {
+    if (completed ||
+        session.stage == SessionStage.ready ||
+        session.stage == SessionStage.storageFailed) {
       setState(() => _firstLaunch = _FirstLaunchStage.complete);
       return;
     }
@@ -114,6 +116,28 @@ class _AuthGateState extends State<AuthGate> {
 
     return switch (session.stage) {
       SessionStage.restoring => const DriverLaunchSplash(),
+      SessionStage.storageFailed => Scaffold(
+        body: SafeArea(
+          child: Center(
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text(
+                    'Unable to read your saved session. Unlock this device and try again.',
+                  ),
+                  const SizedBox(height: 16),
+                  FilledButton(
+                    onPressed: session.restore,
+                    child: const Text('Try again'),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
       SessionStage.signedOut => SignInPage(
         auth: auth,
         onSignedIn: session.onSignedIn,
