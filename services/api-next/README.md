@@ -7,10 +7,13 @@ The running API, its 45 migrations, apps, jobs and staging database are unchange
 Review into `codex/backend-replacement`, not `main`. Do not point existing API
 binaries at this schema or point this installer at the existing staging database.
 
-Current chain: **001–012**, **45 application tables**. The executable contract
-contains **54 operations**, with payment routes exposed only when a configured
-`PaymentRecovery` is supplied. See [payment recovery](../../docs/design/stage-3-payment-recovery.md)
-for the seven new routes, evidence boundaries and remaining 013/015 dependencies.
+Current implementation: **001–015**, **68 application tables**, **92 operations**
+in the executable contract. Route groups require their configured dependencies:
+payment recovery, membership and boarding are not silently replaced by stubs.
+See [boarding/settlement](../../docs/design/stage-3-boarding-settlement.md) and
+[the current checkpoint](../../docs/design/stage-3-progress.md) for evidence and
+remaining work. Historical counts and slice descriptions below record earlier
+checkpoints; they are not current totals or a claim of complete deployment wiring.
 This does not enable checkout, workers or provider traffic on staging.
 
 ## Implemented here
@@ -38,7 +41,8 @@ This does not enable checkout, workers or provider traffic on staging.
 - Trips tied to an exact schedule/version and a matching progress occurrence.
   Coherent transition timestamps and no rewriting operated-trip assignments.
 - Restrictive relationships and no trip deletion, plus append-only event storage.
-  A separate runtime role has no application DDL, deletion, truncation or migration access.
+  A separate runtime role has no application DDL, truncation or migration access.
+  014 permits DELETE only on the two guarded raw-trace tables for retention.
 
 The initial transport/auth/driver slices comprised **24 application tables**.
 010 added three fleet-operation sources, 011 ten financial sources and 012 eight
