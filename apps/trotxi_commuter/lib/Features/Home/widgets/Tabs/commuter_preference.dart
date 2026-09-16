@@ -1,34 +1,17 @@
 import 'package:flutter/material.dart';
-import 'package:trotxi_client/trotxi_client.dart';
+import 'package:trotxi_client_next/trotxi_client_next.dart' as wire;
+import 'commute_picker.dart';
+import 'package:trotxi_commuter/core/api/commuter_api.dart';
 import 'package:trotxi_commuter/core/config/layout/responsive_layout.dart';
 import 'package:trotxi_commuter/core/config/theme/app_colors.dart';
 import 'package:trotxi_commuter/core/config/theme/app_typography.dart';
 import 'package:trotxi_commuter/core/repositories/commute_repository.dart';
 
-/// The requested route and its ordered stops; approval changes the membership.
-class CommuteRouteSelection {
-  const CommuteRouteSelection({
-    required this.routeId,
-    required this.routeName,
-    required this.pickupStopName,
-    required this.destinationStopName,
-    required this.pickupStopId,
-    required this.destinationStopId,
-  });
-
-  final String routeId;
-  final String routeName;
-  final String pickupStopName;
-  final String destinationStopName;
-  final String pickupStopId;
-  final String destinationStopId;
-}
-
 /// Requests ops review rather than silently editing a paid commute.
 class CommutePreferencesPage extends StatefulWidget {
   const CommutePreferencesPage({super.key, required this.client});
 
-  final TrotxiApiClient client;
+  final CommuterApi client;
 
   @override
   State<CommutePreferencesPage> createState() => _CommutePreferencesPageState();
@@ -36,14 +19,12 @@ class CommutePreferencesPage extends StatefulWidget {
 
 class _CommutePreferencesPageState extends State<CommutePreferencesPage> {
   CommuteRouteSelection? _routeSelection;
-  TimeOfDay _morningDeparture = const TimeOfDay(hour: 6, minute: 30);
-  TimeOfDay _eveningReturn = const TimeOfDay(hour: 17, minute: 30);
   bool _pauseIfWaitlisted = false;
   bool _busy = false;
   bool _loading = true;
   String? _error;
   List<CommuteRequest> _requests = [];
-  DateTime _requestedDate = DateTime.now();
+  DateTime _requestedDate = DateTime.now().toUtc();
   final _note = TextEditingController();
   late final _repository = CommuteRepository(widget.client);
   bool get _hasOpen => _requests.any((request) => request.isOpen);
@@ -77,10 +58,9 @@ class _CommutePreferencesPageState extends State<CommutePreferencesPage> {
 
   String _date(DateTime date) =>
       '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
-  String _time(TimeOfDay time) =>
-      '${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}';
 
   Future<void> _withdraw(CommuteRequest request) async {
+    final generation = widget.client.sessionGeneration;
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -100,7 +80,11 @@ class _CommutePreferencesPageState extends State<CommutePreferencesPage> {
         ],
       ),
     );
-    if (confirmed != true || !mounted) return;
+    if (confirmed != true ||
+        !mounted ||
+        generation != widget.client.sessionGeneration) {
+      return;
+    }
     setState(() => _busy = true);
     try {
       await _repository.withdraw(request.id);
@@ -115,56 +99,32 @@ class _CommutePreferencesPageState extends State<CommutePreferencesPage> {
   Future<void> _onChangeRoute() async {
     final selection = await Navigator.of(context).push<CommuteRouteSelection>(
       MaterialPageRoute(
-        builder: (context) => _RoutePickerPage(client: widget.client),
+        builder: (context) => CommutePickerPage(client: widget.client),
       ),
     );
     if (selection == null || !mounted) return;
     setState(() => _routeSelection = selection);
   }
 
-  Future<void> _pickMorningDeparture() async {
-    final picked = await showTimePicker(
-      context: context,
-      initialTime: _morningDeparture,
-    );
-    if (picked == null || !mounted) return;
-    setState(() => _morningDeparture = picked);
-  }
-
-  Future<void> _pickEveningReturn() async {
-    final picked = await showTimePicker(
-      context: context,
-      initialTime: _eveningReturn,
-    );
-    if (picked == null || !mounted) return;
-    setState(() => _eveningReturn = picked);
-  }
-
   Future<void> _onSavePreferences() async {
     final route = _routeSelection;
     if (_busy || _hasOpen || route == null) return;
-    if (_morningDeparture.hour >= 12 || _eveningReturn.hour < 12) {
-      setState(
-        () => _error =
-            'Choose a morning departure before noon and a return after noon.',
-      );
-      return;
-    }
     setState(() {
       _busy = true;
       _error = null;
     });
     try {
-      await _repository.submit({
-        'routeId': route.routeId,
-        'pickupStopId': route.pickupStopId,
-        'dropoffStopId': route.destinationStopId,
-        'morningDeparture': _time(_morningDeparture),
-        'eveningReturn': _time(_eveningReturn),
-        'requestedDate': _date(_requestedDate),
-        'pauseIfWaitlisted': _pauseIfWaitlisted,
-        'note': _note.text.trim(),
-      });
+      await _repository.submit(
+        route.request(
+          wire.Date(
+            _requestedDate.year,
+            _requestedDate.month,
+            _requestedDate.day,
+          ),
+          _pauseIfWaitlisted,
+          _note.text.trim(),
+        ),
+      );
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -259,7 +219,10 @@ class _CommutePreferencesPageState extends State<CommutePreferencesPage> {
                     const SizedBox(height: 12),
                     _buildRouteCard(context),
                     const SizedBox(height: 28),
-                    _buildSectionTitle(context, 'Preferred commute times'),
+                    _buildSectionTitle(
+                      context,
+                      'Scheduled departures · Africa/Accra',
+                    ),
                     const SizedBox(height: 12),
                     _buildTimesCard(context),
                     const SizedBox(height: 28),
@@ -272,7 +235,7 @@ class _CommutePreferencesPageState extends State<CommutePreferencesPage> {
                       onPressed: _busy
                           ? null
                           : () async {
-                              final now = DateTime.now();
+                              final now = DateTime.now().toUtc();
                               final picked = await showDatePicker(
                                 context: context,
                                 initialDate: _requestedDate.isBefore(now)
@@ -460,15 +423,19 @@ class _CommutePreferencesPageState extends State<CommutePreferencesPage> {
       child: Column(
         children: [
           _TimeRow(
-            label: 'Morning departure',
-            time: _morningDeparture,
-            onTap: _pickMorningDeparture,
+            label: 'Outbound departure',
+            time:
+                _routeSelection?.outbound.choice.schedule.localDeparture ??
+                'Choose departure',
+            onTap: _onChangeRoute,
           ),
           Divider(height: 1, color: colors.borderSubtle, indent: 16),
           _TimeRow(
-            label: 'Evening return',
-            time: _eveningReturn,
-            onTap: _pickEveningReturn,
+            label: 'Return departure',
+            time:
+                _routeSelection?.returning.choice.schedule.localDeparture ??
+                'Choose departure',
+            onTap: _onChangeRoute,
           ),
         ],
       ),
@@ -508,8 +475,7 @@ class _RouteEndpoint extends StatelessWidget {
   }
 }
 
-/// A tappable row showing a commute time — opens the native time-picker
-/// modal to change it.
+/// A selected scheduled departure; changing it reopens the schedule picker.
 class _TimeRow extends StatelessWidget {
   const _TimeRow({
     required this.label,
@@ -518,7 +484,7 @@ class _TimeRow extends StatelessWidget {
   });
 
   final String label;
-  final TimeOfDay time;
+  final String time;
   final VoidCallback onTap;
 
   @override
@@ -539,7 +505,7 @@ class _TimeRow extends StatelessWidget {
               ),
             ),
             Text(
-              time.format(context),
+              time,
               style: AppTypography.label.copyWith(color: colors.textPrimary),
             ),
             const SizedBox(width: 4),
@@ -614,325 +580,3 @@ class _RidePreferenceTile extends StatelessWidget {
 }
 
 // ---------------------------------------------------------------------
-// Route + stop picker — real data from GET /routes and GET /routes/{id}
-// ---------------------------------------------------------------------
-
-enum _PickerStep { route, pickup, destination }
-
-class _RoutePickerPage extends StatefulWidget {
-  const _RoutePickerPage({required this.client});
-
-  final TrotxiApiClient client;
-
-  @override
-  State<_RoutePickerPage> createState() => _RoutePickerPageState();
-}
-
-class _RoutePickerPageState extends State<_RoutePickerPage> {
-  _PickerStep _step = _PickerStep.route;
-  bool _loading = true;
-  Object? _error;
-
-  List<RoutesGet200ResponseInner> _routes = const [];
-  RoutesGet200ResponseInner? _selectedRoute;
-  List<RoutesIdGet200ResponseStopsInner> _stops = const [];
-  RoutesIdGet200ResponseStopsInner? _pickupStop;
-
-  @override
-  void initState() {
-    super.initState();
-    _loadRoutes();
-  }
-
-  Future<void> _loadRoutes() async {
-    setState(() {
-      _loading = true;
-      _error = null;
-    });
-    try {
-      final response = await widget.client.getMobilityApi().routesGet();
-      if (!mounted) return;
-      setState(() {
-        _routes = response.data?.toList() ?? const [];
-        _loading = false;
-      });
-    } catch (e) {
-      if (!mounted) return;
-      setState(() {
-        _error = e;
-        _loading = false;
-      });
-      debugPrint('Error loading routes: $e');
-    }
-  }
-
-  Future<void> _selectRoute(RoutesGet200ResponseInner route) async {
-    setState(() {
-      _loading = true;
-      _error = null;
-      _selectedRoute = route;
-    });
-    try {
-      final response = await widget.client.getMobilityApi().routesIdGet(
-        id: route.id,
-      );
-      if (!mounted) return;
-      final stops = (response.data?.stops.toList() ?? [])
-        ..sort((a, b) => a.seq.compareTo(b.seq));
-      setState(() {
-        _stops = stops;
-        _loading = false;
-        _step = _PickerStep.pickup;
-      });
-    } catch (e) {
-      if (!mounted) return;
-      setState(() {
-        _error = e;
-        _loading = false;
-      });
-      debugPrint('Error loading stops for route ${route.id}: $e');
-    }
-  }
-
-  void _selectPickup(RoutesIdGet200ResponseStopsInner stop) {
-    setState(() {
-      _pickupStop = stop;
-      _step = _PickerStep.destination;
-    });
-  }
-
-  void _selectDestination(RoutesIdGet200ResponseStopsInner stop) {
-    final route = _selectedRoute;
-    final pickup = _pickupStop;
-    if (route == null || pickup == null) return;
-    Navigator.of(context).pop(
-      CommuteRouteSelection(
-        routeId: route.id,
-        routeName: route.name,
-        pickupStopName: pickup.name,
-        destinationStopName: stop.name,
-        pickupStopId: pickup.id,
-        destinationStopId: stop.id,
-      ),
-    );
-  }
-
-  void _handleBack() {
-    switch (_step) {
-      case _PickerStep.route:
-        Navigator.of(context).pop();
-      case _PickerStep.pickup:
-        setState(() => _step = _PickerStep.route);
-      case _PickerStep.destination:
-        setState(() => _step = _PickerStep.pickup);
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = context.appColors;
-    final title = switch (_step) {
-      _PickerStep.route => 'Choose a route',
-      _PickerStep.pickup => 'Choose pickup stop',
-      _PickerStep.destination => 'Choose destination stop',
-    };
-
-    return Scaffold(
-      backgroundColor: colors.backgroundDefault,
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Row(
-                children: [
-                  Semantics(
-                    button: true,
-                    label: 'Back',
-                    child: InkWell(
-                      onTap: _handleBack,
-                      borderRadius: BorderRadius.circular(20),
-                      child: Padding(
-                        padding: const EdgeInsets.all(4),
-                        child: Icon(
-                          Icons.arrow_back_ios_new_rounded,
-                          size: 20,
-                          color: colors.textPrimary,
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                      title,
-                      style: AppTypography.title.copyWith(
-                        color: colors.textPrimary,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              Expanded(child: _buildBody(context)),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildBody(BuildContext context) {
-    final colors = context.appColors;
-    if (_loading) {
-      return Center(
-        child: CircularProgressIndicator(color: colors.actionPrimaryDefault),
-      );
-    }
-    if (_error != null) {
-      final selectedRoute = _selectedRoute;
-      return Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              "Couldn't load routes",
-              style: AppTypography.label.copyWith(color: colors.textSecondary),
-            ),
-            const SizedBox(height: 8),
-            TextButton(
-              onPressed: _step == _PickerStep.route || selectedRoute == null
-                  ? _loadRoutes
-                  : () => _selectRoute(selectedRoute),
-              child: const Text('Try again'),
-            ),
-          ],
-        ),
-      );
-    }
-
-    return switch (_step) {
-      _PickerStep.route => _buildRouteList(context),
-      _PickerStep.pickup => _buildStopList(
-        context,
-        onTap: _selectPickup,
-        excludeStopId: null,
-      ),
-      _PickerStep.destination => _buildStopList(
-        context,
-        onTap: _selectDestination,
-        excludeStopId: _pickupStop?.id,
-      ),
-    };
-  }
-
-  Widget _buildRouteList(BuildContext context) {
-    final colors = context.appColors;
-    if (_routes.isEmpty) {
-      return Center(
-        child: Text(
-          'No routes available yet.',
-          style: AppTypography.bodySmall.copyWith(color: colors.textSecondary),
-        ),
-      );
-    }
-    return ListView.separated(
-      itemCount: _routes.length,
-      separatorBuilder: (context, index) => const SizedBox(height: 8),
-      itemBuilder: (context, index) {
-        final route = _routes[index];
-        return _PickerTile(
-          title: route.name,
-          subtitle: route.description,
-          onTap: () => _selectRoute(route),
-        );
-      },
-    );
-  }
-
-  Widget _buildStopList(
-    BuildContext context, {
-    required ValueChanged<RoutesIdGet200ResponseStopsInner> onTap,
-    required String? excludeStopId,
-  }) {
-    final colors = context.appColors;
-    final stops = excludeStopId == null
-        ? _stops.where((s) => s.seq < _stops.last.seq).toList()
-        : _stops.where((s) => s.seq > _pickupStop!.seq).toList();
-    if (stops.isEmpty) {
-      return Center(
-        child: Text(
-          'No stops available on this route.',
-          style: AppTypography.bodySmall.copyWith(color: colors.textSecondary),
-        ),
-      );
-    }
-    return ListView.separated(
-      itemCount: stops.length,
-      separatorBuilder: (context, index) => const SizedBox(height: 8),
-      itemBuilder: (context, index) {
-        final stop = stops[index];
-        return _PickerTile(title: stop.name, onTap: () => onTap(stop));
-      },
-    );
-  }
-}
-
-class _PickerTile extends StatelessWidget {
-  const _PickerTile({required this.title, this.subtitle, required this.onTap});
-
-  final String title;
-  final String? subtitle;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = context.appColors;
-    final hasSubtitle = subtitle != null && subtitle!.trim().isNotEmpty;
-    return Container(
-      clipBehavior: Clip.antiAlias,
-      decoration: BoxDecoration(
-        color: colors.surfaceElevated,
-        border: Border.all(color: colors.borderSubtle),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: onTap,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        title,
-                        style: AppTypography.label.copyWith(
-                          color: colors.textPrimary,
-                        ),
-                      ),
-                      if (hasSubtitle) ...[
-                        const SizedBox(height: 2),
-                        Text(
-                          subtitle!,
-                          style: AppTypography.caption.copyWith(
-                            color: colors.textSecondary,
-                          ),
-                        ),
-                      ],
-                    ],
-                  ),
-                ),
-                Icon(Icons.chevron_right_rounded, color: colors.iconSubtle),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}

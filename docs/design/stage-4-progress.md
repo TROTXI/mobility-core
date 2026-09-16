@@ -19,7 +19,7 @@ Branch: `codex/stage-4-client-foundation`.
   assume every 403 means driver suspension.
 - A 426 upgrade response never refreshes or deletes the session. This is client
   transport coverage; the driver now also wires the blocking app-level state
-  described below. The commuter has not yet moved.
+  described below. Both app roots now wire the blocking state.
 
 Local verification: **44 shared-client tests passed**, `flutter analyze --no-pub`
 reported no issues. Metadata assertions run outside the transport adapter so a
@@ -123,15 +123,149 @@ flutter build ios --simulator --debug \
 Use a new realm after replacing the disposable database. Simulator compilation
 is not device sign-off, store compliance, or a staging cutover.
 
+## Commuter session foundation (not wired into the app yet)
+
+Work continues on `codex/stage-4-commuter`. `CommuterSessionClient` now exchanges
+Google and Apple provider credentials through the generated replacement
+operations, accepts only a commuter account, restores account identity, and
+performs local-first logout with independent remote acknowledgement. Provider
+proofs are transient and never written into session storage.
+
+The attempt starts before opening the native provider prompt: logout while that
+prompt is open prevents even a late token exchange. Tests also cover backend
+responses and OS writes arriving after logout/new sign-in, failed storage,
+wrong roles, old response envelopes, offline restore, authoritative refresh
+rejection and remote logout failure. **19 new tests; 100 shared tests pass;
+shared analyzer clean.** This is not native Google/Apple SDK or device evidence.
+
+The commuter app intentionally still uses its existing client until the rest
+of its repositories and screens can move coherently. In particular:
+
+- `home_page_provider.dart` currently selects a reservation by device-local
+  morning/evening. Replacement selection must use explicit service day,
+  direction, reservation and trip identities, with full pagination.
+- `commuter_preference.dart` currently selects physical stops and times. It
+  needs schedule/version/occurrence selection for both commute legs, not a
+  mechanical field rename. Request history must use the new envelopes/statuses.
+- `pass_tab.dart` currently requests an unscoped pass with a relative TTL. The
+  replacement pass is reservation-scoped and expiry must come from its contract.
+- `wallet_tab.dart` contains a sample Visa card, sample credit activity and a
+  local auto-renew toggle. These are not backend capabilities or real account
+  facts: remove the samples from the integrated account view rather than
+  presenting them as the rider's payment method/history/settings.
+- Profile, sessions and erasure still call old endpoints. Account updates,
+  session revocation, erasure acknowledgement and external-resource completion
+  must remain distinct; clearing local tokens is not proof of completed erasure.
+
+The existing iOS Google configuration fix stays intact. No commuter location
+permission/collection is introduced, and Apple SDK/store setup is not claimed
+complete merely because the server token exchange can be tested.
+
+## Commuter data and selection checkpoint
+
+`CommuterDataClient` now uses the generated replacement operations for account,
+membership, purchases, reservations, request history, route/schedule/version
+catalogue and trip reads; commands cover commute submission/withdrawal,
+reservation decisions and reservation-scoped passes. This is a tested data
+boundary, **not yet the commuter app's composition root or screen wiring**.
+
+- All paginated reads follow every cursor with unchanged filters. Reservations
+  and purchases require explicit date bounds rather than adopting the backend's
+  default window. Repeated cursors fail, never return a partial successful list.
+- A generation check rejects late responses, cross-session pagination and
+  requests queued during logout. Disposal leaves admission installed until
+  in-flight requests settle. Already queued commands cannot leave as the next
+  rider; the app root must also remove old screens on a session change.
+- Random command keys survive uncertain delivery and invalid success payloads
+  within the session. They are not stored on disk or derived from personal data.
+  A changed intent or local identity gets a new key. A pass for the wrong
+  reservation is refused while retaining the key for a safe retry.
+- Generated membership models preserve simultaneous pause/dispute access blocks,
+  manual renewal, nullable coverage dates, and monetary credit in minor units
+  separately from ride counts. Unresolved purchases remain unresolved: the
+  client does not infer fulfilment from a checkout or fabricate payment facts.
+- `CommuteLegChoice` validates the selected route/pattern/version/schedule chain
+  and downstream stop occurrences, including repeat visits to one physical
+  stop. It uses the schedule's version, not the newest published revision.
+  `buildCommuteRequest` requires explicit outbound/return legs with different
+  service windows and defaults pause consent to false. These client checks do
+  not replace server checks on availability, publication, price or approval.
+
+Verification: **28 new tests; 128 shared-client tests pass; analyzer clean**.
+Tests use generated serializers and the factory's real interceptor chain with
+controlled HTTP. The existing CI matrix runs both new test files as part of the
+whole shared-client suite. No emulator, native provider or replacement-server
+walkthrough is claimed by this checkpoint. Screen migration and the catalogue
+orchestration that presents these leg choices remain next.
+
+## Commuter application migration (existing wired flows)
+
+Branch: `codex/stage-4-commuter`, based on integration `b56fde4` (merged #319).
+The commuter composition root now uses only the replacement client and scoped
+storage, with explicit `API_BASE_URL` and `API_SESSION_REALM`. Installed package
+build/platform metadata replaces test constants. The existing iOS Google client
+configuration is unchanged. No old tokens are imported and no deployed-API
+fallback exists.
+
+- Google sign-in starts the guarded attempt before opening the native prompt.
+  Account restore waits for the server rather than routing on token presence.
+  Offline restore offers retry without clearing credentials. Logout and local
+  identity changes replace the navigator and provider container. Bootstrap
+  minimum builds and 426 responses block pushed routes as well as the home page.
+- Home reservations use an explicit outbound/return choice and Accra service
+  dates, not the phone's clock to guess direction. Confirmation/decline uses the
+  replacement decision command; no client-generated ETA is displayed.
+- Commute requests select an actual outbound departure, its version-owned pickup
+  and dropoff occurrences, then a return departure in a different service window.
+  Repeat visits to a physical stop remain separate choices. Schedule versions,
+  including eligible retired versions, are used instead of `publishedVersionId`.
+  Arbitrary time pickers are gone. Waitlist/pause consent remains explicit and
+  off by default; history and withdrawal use the replacement status vocabulary.
+- Passes require an explicitly chosen reservation. QR payload, expiry and code
+  come from that reservation's response, never a sample PIN. Selection changes,
+  expiry and backgrounding remove old proofs; late responses cannot replace a
+  newer selection. Refresh is foreground-only and uncertain retries retain keys.
+- Wallet reads actual membership, credit/held/available monetary balances and
+  rides separately. Simultaneous pause/dispute blocks remain visible. It labels
+  manual renewal and its 90-day purchase window honestly; individual purchase
+  reads can refresh unresolved results. Sample card/activity and the unsupported
+  auto-charge switch were removed. This is **not checkout creation**.
+- Profile update, paged sessions, revocation and account erasure use replacement
+  commands. Confirmation dialogs cannot act on the next rider. Only an exact
+  server acknowledgement clears the matching local identity; a newer login is
+  preserved. An acknowledged erasure followed by keystore failure is explicitly
+  distinguished from server refusal. The UI states that private-object cleanup
+  may finish later and accounting records are retained; 204 is not proof that
+  external erasure has completed. Biometric lock/photo-upload placeholders do
+  not pretend to enable an unimplemented feature.
+
+Verification: **138 shared-client, 22 commuter and 188 driver tests**, analyzers,
+Android debug and iOS simulator compilation. Root/session tests keep the real
+interceptor and serialized store boundaries; focused picker/pass/widget tests
+use controlled HTTP and remove authentication only to isolate widget timing.
+No native Google session, real keystore, replacement-server walkthrough, hosted
+Paystack checkout, or device security sign-off is claimed. Native builds target
+the local URLs/realm shown above, not staging. Android warns about existing
+Firebase plugins and `package_info_plus` using Kotlin Gradle Plugin; compilation
+succeeds, but a future Flutter toolchain upgrade needs re-verification.
+
+Catalogue limitation: a schedule exposes its version ID but not parent pattern
+ID. The picker resolves it through the route's listed patterns and scoped
+version reads; an unresolvable schedule fails visibly, never guesses a revision.
+Future-only patterns omitted from the route's current pattern list need a
+contract-backed resolution path before promising those departures in the picker.
+
 ## Remaining implementation sequence
 
 1. **Driver walkthrough:** the coherent migration above is implemented. Verify
    actual replacement sign-in, secure storage, trip lifecycle, boarding, GPS
    receipt/live reads, upgrade admission and session changes on both platforms.
-2. **Commuter app:** same session/build isolation, then account/paged reads,
-   explicit outbound/return schedule/version/stop-occurrence selection,
-   purchases and pending-payment recovery, membership/pause/commute requests,
-   reservations/pass/live map and account/device/avatar/erasure flows.
+2. **Commuter remaining features:** hosted Paystack TEST checkout and restart-safe
+   pending-purchase recovery beyond the labelled recent-history window; actual
+   trip catalogue/live map with authorized freshness-aware reads; native avatar
+   selection/upload and device registration/notification handling. Native Apple
+   sign-in is not wired (the button says so). Resolve the catalogue limitation
+   above. Then verify both platforms against the isolated replacement server.
 3. **Canonical client and release checks:** remove unused legacy package copies
    once both apps have moved, regenerate from the reviewed contract, and verify
    both app suites and builds. Do not mix old and replacement sessions/data to
@@ -140,7 +274,7 @@ is not device sign-off, store compliance, or a staging cutover.
    TEST payment and automatic delivery/reconciliation, private-object erasure,
    minimum-version enforcement, and the full-size retention/load gate.
 
-The driver has switched on this branch only. The commuter still uses the old
-contract and unscoped store; it must move coherently before cutover. Neither
-the driver builds nor this document switch traffic to the replacement backend.
+Both apps now use replacement contracts on their Stage 4 branches. This is not
+completion of every commuter feature or authorization to cut over. Neither
+the builds nor this document switch traffic to the replacement backend.
 No emulator account, backend secret, deployment or database reset is changed.

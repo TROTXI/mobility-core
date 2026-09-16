@@ -233,6 +233,41 @@ void main() {
     expect(await store.getAccessToken(), isNull);
   });
 
+  test('late erasure acknowledgement cannot clear a queued replacement login',
+      () async {
+    await store.saveTokens(accessToken: 'old', refreshToken: 'old-r');
+    final generation = store.generation;
+    storage.writeGate = Completer<void>();
+    storage.writeEntered = Completer<void>();
+    final login = store.saveTokens(accessToken: 'new', refreshToken: 'new-r');
+    await storage.writeEntered!.future;
+    final clear = store.clearTokensIfGenerationMatches(generation);
+    storage.writeGate!.complete();
+    await login;
+    expect(await clear, isFalse);
+    expect(await store.getAccessToken(), 'new');
+    expect(storage.deletes, isEmpty);
+  });
+
+  test(
+      'conditional clear reports OS failure without changing generation or notifying',
+      () async {
+    await store.saveTokens(accessToken: 'a', refreshToken: 'r');
+    final generation = store.generation;
+    var notified = 0;
+    store.onCleared = () => notified++;
+    storage.failDelete = true;
+    await expectLater(
+        store.clearTokensIfGenerationMatches(generation), throwsStateError);
+    expect(store.generation, generation);
+    expect(notified, 0);
+    expect(await store.getAccessToken(), 'a');
+    storage.failDelete = false;
+    expect(await store.clearTokensIfGenerationMatches(generation), isTrue);
+    expect(notified, 1);
+    expect(await store.getAccessToken(), isNull);
+  });
+
   test('empty token cannot replace a valid pair', () async {
     await store.saveTokens(accessToken: 'a', refreshToken: 'r');
     await expectLater(store.saveTokens(accessToken: '', refreshToken: 'r2'),

@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:trotxi_client/trotxi_client.dart';
+import 'package:trotxi_commuter/core/api/commuter_api.dart';
 import 'package:trotxi_commuter/core/config/theme/app_colors.dart';
 import 'package:trotxi_commuter/core/config/theme/app_vectors.dart';
 
 class Navbar extends StatelessWidget implements PreferredSizeWidget {
-  final MeGet200Response userData;
+  final Account userData;
   final String userName;
 
   const Navbar({super.key, required this.userData, required this.userName});

@@ -2,9 +2,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_sign_in/google_sign_in.dart';
-import 'package:trotxi_client/trotxi_client.dart';
-import 'package:trotxi_commuter/Features/Home/pages/home_page.dart';
-import 'package:trotxi_commuter/core/Tokens/token_storage.dart';
+import 'package:trotxi_commuter/core/api/commuter_api.dart';
 import 'package:trotxi_commuter/core/config/theme/app_colors.dart';
 import 'package:trotxi_commuter/core/config/theme/app_spacing.dart';
 import 'package:trotxi_commuter/core/config/theme/app_typography.dart';
@@ -14,7 +12,7 @@ import 'package:trotxi_commuter/Features/Onboarding/widgets/app_button.dart';
 class OnBoardPage extends StatefulWidget {
   const OnBoardPage({super.key, required this.client});
 
-  final TrotxiApiClient client;
+  final CommuterApi client;
 
   @override
   State<OnBoardPage> createState() => _OnBoardPageState();
@@ -25,7 +23,6 @@ class _OnBoardPageState extends State<OnBoardPage> {
       '431341307838-pc4m046v2lj18ssfnfl1g52fl5g1cg4q.apps.googleusercontent.com';
 
   final GoogleSignIn _googleSignIn = GoogleSignIn.instance;
-  late final AuthApi _authApi;
 
   bool _isGoogleSignInInitialized = false;
   bool _isSigningIn = false;
@@ -33,12 +30,11 @@ class _OnBoardPageState extends State<OnBoardPage> {
   @override
   void initState() {
     super.initState();
-    _authApi = widget.client.getAuthApi();
     _initializeGoogleSignIn();
   }
 
   // ---------------------------------------------------------------------
-  // Auth logic (unchanged from the original implementation)
+  // Provider proof is exchanged through the session-scoped replacement client.
   // ---------------------------------------------------------------------
 
   Future<void> _initializeGoogleSignIn() async {
@@ -47,7 +43,7 @@ class _OnBoardPageState extends State<OnBoardPage> {
       _isGoogleSignInInitialized = true;
       if (mounted) setState(() {});
     } catch (e) {
-      debugPrint('Google Sign-In initialization failed: $e');
+      debugPrint('Google Sign-In initialization failed: ${e.runtimeType}');
     }
   }
 
@@ -57,16 +53,8 @@ class _OnBoardPageState extends State<OnBoardPage> {
     setState(() => _isSigningIn = true);
 
     try {
-      final idToken = await _authenticateWithGoogle();
-      final tokens = await _exchangeGoogleToken(idToken);
-
-      await TokenStorage.instance.saveTokens(
-        accessToken: tokens.accessToken,
-        refreshToken: tokens.refreshToken,
-      );
-
-      if (!mounted) return;
-      _navigateToHome();
+      await widget.client.signInGoogle(_authenticateWithGoogle);
+      // The root replaces the navigator when the account changes.
     } on DioException catch (e) {
       // Log categories only: Dio request/response objects can contain tokens.
       debugPrint(
@@ -74,8 +62,10 @@ class _OnBoardPageState extends State<OnBoardPage> {
         'transport=${e.type.name}, status=${e.response?.statusCode}',
       );
       _showError('Unable to sign in. Please try again.');
+    } on TrotxiException catch (e) {
+      _showError(e.message);
     } catch (e) {
-      debugPrint('Google Sign-In failed: $e');
+      debugPrint('Google Sign-In failed: ${e.runtimeType}');
       _showError('Unable to sign in with Google. Please try again.');
     } finally {
       if (mounted) setState(() => _isSigningIn = false);
@@ -95,25 +85,10 @@ class _OnBoardPageState extends State<OnBoardPage> {
     return idToken;
   }
 
-  Future<({String accessToken, String refreshToken})> _exchangeGoogleToken(
-    String idToken,
-  ) async {
-    final request = AuthGooglePostRequest(
-      (builder) => builder..idToken = idToken,
-    );
-
-    final response = await _authApi.authGooglePost(
-      authGooglePostRequest: request,
-    );
-
-    final data = response.data;
-    // Never log AuthResult: it contains access and refresh credentials.
-
-    return (accessToken: data!.accessToken, refreshToken: data.refreshToken);
-  }
-
   Future<void> _signInWithApple() async {
-    debugPrint('Pending Implementation: Apple Sign-In is not yet implemented.');
+    _showError(
+      'Apple sign-in is not available in this test build. Use Google.',
+    );
   }
 
   // void _continueWithPhone() {
@@ -127,13 +102,6 @@ class _OnBoardPageState extends State<OnBoardPage> {
   // void _goToCreateAccount() {
   //   debugPrint('Pending Implementation: Create account is not yet implemented.');
   // }
-
-  void _navigateToHome() {
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(builder: (context) => HomePage(client: widget.client)),
-    );
-  }
 
   void _showError(String message) {
     if (!mounted) return;

@@ -30,8 +30,9 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  trotxi_client:
-    path: ../trotxi_client
+  trotxi_client_next:
+    path: ../trotxi_client_next
+  package_info_plus: ^8.3.1
   dio: '^5.7.0'
 
   # The following adds the Cupertino Icons font to your application.
