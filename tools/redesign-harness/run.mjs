@@ -17,6 +17,7 @@ import {
   dbIdentifier,
 } from './support.mjs';
 import { scenarios, supplemental, negativeControls, candidateSubstitutions } from './catalog.mjs';
+import { verifyCandidate } from './candidate-source.mjs';
 import {
   assertExpected,
   assertInventory,
@@ -42,6 +43,7 @@ assertInventory(scenarios.map((s) => s.id));
 let candidate;
 let candidateMigrations;
 let candidateRevision;
+let candidateIdentity;
 if (mode === 'compare') {
   for (const flag of ['--candidate-adapter', '--candidate-migrations', '--candidate-commit'])
     if (!args.get(flag))
@@ -56,6 +58,13 @@ if (mode === 'compare') {
   )
     .toString()
     .trim();
+  if (
+    resolve(args.get('--candidate-adapter')) !==
+      resolve(ROOT, 'tools/redesign-harness/candidate-adapter.mjs') ||
+    resolve(args.get('--candidate-migrations')) !== resolve(ROOT, 'services/api-next/migrations')
+  )
+    throw new Error('Candidate adapter and migrations must be the verified replacement inputs');
+  candidateIdentity = await verifyCandidate(candidateRevision);
   candidate = await import(pathToFileURL(resolve(args.get('--candidate-adapter'))));
   if (typeof candidate.createAdapter !== 'function')
     throw new Error('Candidate must export createAdapter');
@@ -91,6 +100,7 @@ const report = {
   ),
   baseline: baselineIdentity,
   candidateRevision: candidateRevision ?? null,
+  candidateIdentity: candidateIdentity ?? null,
   originalSuite: null,
   requiredScenarios: scenarios.map((s) => s.id),
   requiredSupplemental: supplemental.map((s) => s.id),
@@ -370,9 +380,11 @@ try {
         ),
       );
   }
-  // The candidate is the working tree, not a verified export, so the least the
-  // report can do is say what it ran and refuse a tree that changed partway.
+  // Re-read bytes independently, rather than comparing a cached import-time hash.
   if (candidate) {
+    const verified = await verifyCandidate(candidateRevision);
+    if (verified.sourceSha256 !== candidateIdentity.sourceSha256)
+      throw new Error('Candidate source changed during the run');
     const digests = new Set(
       [...report.scenarios.map((s) => s.candidate), ...report.candidateSupplemental]
         .filter(Boolean)

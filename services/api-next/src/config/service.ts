@@ -334,7 +334,10 @@ export class ConfigService {
       if (prior) {
         if (prior.input_hash !== inputHash)
           fail(409, 'idempotency_conflict', 'This key was already used for different input.');
-        if (this.now().getTime() - prior.created_at.getTime() >= 7 * 86400000)
+        if (
+          prior.response_body === null ||
+          this.now().getTime() - prior.created_at.getTime() >= 7 * 86400000
+        )
           fail(409, 'idempotency_expired', 'This replay window has expired.');
         // What this command did, not what somebody else has done since. A
         // live re-read would hand one administrator another's change as their

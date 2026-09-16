@@ -1,6 +1,8 @@
 import { randomUUID } from 'node:crypto';
 import { purgeExpiredDriverSecrets } from '../auth/driver-service.js';
 import type { Backend } from './compose.js';
+import { jobFailed } from './job-outcome.js';
+import { purgeExpiredCommandPayloads } from './receipt-retention.js';
 
 export const JOBS = [
   'payments',
@@ -19,11 +21,24 @@ export interface JobRequest {
   travelDate?: string;
   direction?: 'outbound' | 'return';
   limit?: number;
+  maxBatches?: number;
+  maxRunMs?: number;
 }
 export interface JobResult {
   job: Job;
   status: number;
   body: unknown;
+  receiptPayloadsCleared?: number;
+  retention?: {
+    expiredFixes: number;
+    heldFixes: number;
+    deletableFixes: number;
+    oldestDeletableAt: string | null;
+    overdueSeconds: number;
+    batches: number;
+    elapsedMs: number;
+    budgetExhausted: boolean;
+  };
 }
 
 const SERVICE_DAY: Record<string, string> = {
@@ -111,28 +126,96 @@ export async function runJob(backend: Backend, request: JobRequest): Promise<Job
         status: 200,
         body: { cleared: await purgeExpiredDriverSecrets(backend.pool, limit) },
       };
-    if (request.job === 'erasures')
-      return { job: request.job, status: 200, body: await backend.account.retryErasures(limit) };
+    if (request.job === 'erasures') {
+      const receiptPayloadsCleared =
+        (await backend.account.purgeExpiredReceipts(limit)) +
+        (await purgeExpiredCommandPayloads(backend.pool, limit));
+      return {
+        job: request.job,
+        status: 200,
+        body: await backend.account.retryErasures(limit),
+        receiptPayloadsCleared,
+      };
+    }
     if (request.job === 'admission')
       return {
         job: request.job,
         status: 200,
         body: { cleared: await backend.admission.sweep(limit * 10) },
       };
-    const response = await backend.app.inject({
-      method: 'POST',
-      url: day ?? BATCH[request.job]!,
-      payload: day
-        ? { travelDate: request.travelDate, direction: request.direction, limit }
-        : { limit },
-      headers: {
-        authorization: `Bearer ${session.token}`,
-        'idempotency-key': randomUUID(),
-        'x-trotxi-client': 'worker',
-        'x-trotxi-build': '1',
+    const maxBatches = request.job === 'gps-retention' ? (request.maxBatches ?? 1000) : 1;
+    const maxRunMs = request.maxRunMs ?? 45000;
+    if (
+      !Number.isInteger(maxBatches) ||
+      maxBatches < 1 ||
+      maxBatches > 10000 ||
+      !Number.isInteger(maxRunMs) ||
+      maxRunMs < 1 ||
+      maxRunMs > 60000
+    )
+      throw new Error('Invalid maintenance drain budget');
+    const started = Date.now();
+    let batches = 0;
+    const totals = {
+      considered: 0,
+      succeeded: 0,
+      blocked: 0,
+      failed: 0,
+      failures: [] as { resourceId: string; reason: string }[],
+    };
+    let result: JobResult;
+    do {
+      const response = await backend.app.inject({
+        method: 'POST',
+        url: day ?? BATCH[request.job]!,
+        payload: day
+          ? { travelDate: request.travelDate, direction: request.direction, limit }
+          : { limit },
+        headers: {
+          authorization: `Bearer ${session.token}`,
+          'idempotency-key': randomUUID(),
+          'x-trotxi-client': 'worker',
+          'x-trotxi-build': '1',
+        },
+      });
+      result = { job: request.job, status: response.statusCode, body: response.json() };
+      batches++;
+      const failed = jobFailed(result); // Contract drift fails even when HTTP is 200.
+      if (request.job !== 'gps-retention' || response.statusCode !== 200) return result;
+      const data = (result.body as { data: typeof totals }).data;
+      for (const name of ['considered', 'succeeded', 'blocked', 'failed'] as const)
+        totals[name] += data[name];
+      totals.failures.push(...data.failures);
+      if (failed || data.considered === 0) break;
+      // Each request commits independently. A transaction never spans the drain.
+    } while (batches < maxBatches && Date.now() - started < maxRunMs);
+    const metrics = (
+      await backend.pool.query(`WITH expired AS (
+      SELECT p.received_at,EXISTS(SELECT 1 FROM app.trace_holds h WHERE h.trip_id=p.trip_id AND h.state='active'
+        AND p.received_at>=h.received_from AND p.received_at<h.received_to) AS held
+      FROM app.trip_positions p WHERE p.received_at<clock_timestamp()-make_interval(days=>app.trace_retention_days()))
+      SELECT count(*)::text AS expired,count(*) FILTER(WHERE held)::text AS held,
+        count(*) FILTER(WHERE NOT held)::text AS deletable,min(received_at) FILTER(WHERE NOT held) AS oldest,
+        greatest(0,extract(epoch FROM (clock_timestamp()-make_interval(days=>app.trace_retention_days())-
+          min(received_at) FILTER(WHERE NOT held))))::double precision AS overdue FROM expired`)
+    ).rows[0];
+    return {
+      job: request.job,
+      status: 200,
+      body: { data: totals },
+      retention: {
+        expiredFixes: Number(metrics.expired),
+        heldFixes: Number(metrics.held),
+        deletableFixes: Number(metrics.deletable),
+        oldestDeletableAt: metrics.oldest?.toISOString() ?? null,
+        overdueSeconds: Number(metrics.overdue),
+        batches,
+        elapsedMs: Date.now() - started,
+        budgetExhausted:
+          Number(metrics.deletable) > 0 &&
+          (batches >= maxBatches || Date.now() - started >= maxRunMs),
       },
-    });
-    return { job: request.job, status: response.statusCode, body: response.json() };
+    };
   } finally {
     await session.release();
   }

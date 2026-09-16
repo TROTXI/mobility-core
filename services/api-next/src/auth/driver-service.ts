@@ -268,7 +268,10 @@ export class DriverService {
             existing.response_headers,
           );
         }
-        if (existing.replay_expires_at <= now)
+        if (
+          existing.replay_expires_at <= now ||
+          (existing.response_status !== 204 && existing.response_body === null)
+        )
           fail(409, 'idempotency_expired', 'Use a new command key.');
         return success(
           existing.response_status,

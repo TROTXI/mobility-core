@@ -9,15 +9,19 @@ inventory](stage-1-invariants.md), which decided what behaviour must survive.
 ## What is claimed
 
 The replacement in `services/api-next` implements **all 119 reviewed cutover
-operations**, on a contiguous migration chain `001`–`018`, and passes the
-preservation harness against the pinned baseline in compare mode.
+operations**. The merged `636239d` baseline has migrations `001`–`019` and a
+passing comparison artifact. Exit-review corrections add migration `020` and
+strengthen the gate; the baseline artifact alone does not approve those changes.
+See [the exit audit](stage-exit-audit-636239d.md) for findings and acceptance criteria.
+The [exit-fix record](stage-exit-fixes.md) tracks migrations 020–021 and fresh
+verification separately; this historical completion report is not cutover approval.
 
 ## What is not claimed
 
 Nothing is deployed. The blueprint entries are commented out, no schedule is
 enabled, no staging database has been touched and no deployed endpoint has
-changed. The service will not start at all until Apple provisioning exists, and
-it refuses to start rather than run without it. Passing this gate is evidence
+changed. Google-only composition works without Apple provisioning; selecting
+Apple requires its complete configuration. Passing this gate is evidence
 for a cutover decision; it is not the cutover, and it is not a claim that the
 replacement has handled a real rider.
 
@@ -132,8 +136,9 @@ One compare-mode run, against the pinned baseline at `43cdae0`:
   backends in flight with at least one blocked on a lock. Rewriting the
   contention helper as a sequential loop makes all four fail.
 
-The replacement's own suites: 32 pure checks and 267 real-Postgres checks,
-none skipped.
+At `636239d`, the replacement's own suites contained 33 pure checks and 271
+real-Postgres checks, none skipped. Follow-up tests must be rerun at the reviewed
+fix head rather than treating these historical counts as current proof.
 
 Running the harness against the replacement found two defects in it, both
 fixed: period close reported a period blocked by unsettled funded service as
@@ -170,12 +175,12 @@ dispute facts have only been seen as synthetic evidence.
    erasure retry run under the operations account but write no receipt. There
    is no command store for them and no reviewed operation; adding one is a
    contract and schema decision.
-3. **Distributed admission.** The per-user budget is process-local. More than
-   one instance needs a shared one.
+3. **Distributed admission — delivered.** Migration 019 and the deployable
+   composition use shared Postgres admission; ASM-22 tests two instances.
 4. **Physical receipt expiry** for the command stores other than driver
    credentials. Logical expiry already refuses replay; deletion is not claimed.
-5. **Apple provisioning.** The Services ID, team id and `.p8` do not exist. The
-   service refuses to start without them.
+5. **Apple provisioning.** Required before enabling Apple sign-in, not before
+   running the Google-only staging backend.
 6. **`deleteAvatar`** remains deferred, as above.
 7. **Live provider traffic.** Exercised in test mode on 2026-09-16 via
    `services/api-next/scripts/paystack-test-mode.ts`, six checks passing: the

@@ -531,8 +531,8 @@ export const candidateSubstitutions = [
     replaces: 'PAY-08',
     gate: 'payment',
     reason:
-      "The baseline nulls the period's conversion rate. The replacement freezes that rate NOT NULL on the purchase, the purchase's terms are immutable by trigger, and a period carries no copy of them, so a missing or malformed rate is unrepresentable three ways over. The one unconvertible period this schema does permit is a half-written close: a closure row against a period that is still open. The property under test is unchanged - one bad period fails in isolation, its own effects roll back, and the batch still closes the next one - and the failure is reported in the implementation's own words rather than a word invented to make the two agree.",
-    title: 'An unconvertible period fails alone; the next one still closes',
+      "The baseline nulls the period's conversion rate. The replacement freezes a required rate on immutable purchase terms, so that malformed state is rejected directly. Separately an AFTER INSERT trigger observes the closure and converted ride entry before throwing. A nontransactional sequence witnesses that the write actually happened. The resulting close must leave no closure or ledger effects, keep its period open, and allow the next period to close. No production constraint is weakened to accommodate the fixture.",
+    title: 'A failure after conversion writes rolls back fully; the next period closes',
     steps: [
       ...paid(),
       rider('riderB'),
@@ -541,12 +541,14 @@ export const candidateSubstitutions = [
       action('malformRate', { purchase: 'first' }),
       close(),
       check('isolated-failure', {
+        invalidRateRejected: true,
+        closeWriteObserved: true,
         result: {
           considered: 2,
           closed: 1,
           blocked: 0,
           failed: 1,
-          failures: [{ purchase: 'first', reason: 'duplicate_resource' }],
+          failures: [{ purchase: 'first', reason: 'unexpected_error' }],
         },
         riders: {
           riderA: { membership: 'active', credit: 0, rides: 44 },
@@ -555,7 +557,16 @@ export const candidateSubstitutions = [
         purchases: {
           // The rolled-back close left no conversion behind: no credit was
           // granted and no ride was converted, which is what isolation means.
-          first: { period: { status: 'open', rides: 44, conversionEffects: 0, convertedRides: 0 } },
+          first: {
+            period: {
+              status: 'open',
+              rides: 44,
+              closeRides: null,
+              closeCredit: null,
+              conversionEffects: 0,
+              convertedRides: 0,
+            },
+          },
           valid: {
             period: { status: 'closed', closeRides: 44, closeCredit: 1980, conversionEffects: 1 },
           },

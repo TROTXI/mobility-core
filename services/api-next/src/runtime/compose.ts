@@ -184,8 +184,8 @@ export async function composeBackend(config: RuntimeConfig): Promise<Backend> {
           reach: {
             removeAvatarObject: (key) => avatars.remove(key),
             revokeProviderGrant: async ({ provider, subject, tokenCiphertext }) => {
-              // Google issues no revocable grant on this path, so there is
-              // nothing here that could succeed and nothing to pretend about.
+              // Account erasure records ID-token-only identities as terminal
+              // not-applicable tasks. Only a real Apple grant reaches this port.
               if (provider !== 'apple' || !appleTokens)
                 throw new Error('provider_revocation_unsupported');
               if (!tokenCiphertext) throw new Error('no_stored_grant');

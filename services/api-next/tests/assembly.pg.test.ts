@@ -8,6 +8,7 @@ import contract from '../src/http/contract.json' with { type: 'json' };
 import { readConfiguration } from '../src/runtime/config.js';
 import { assertRuntimeRole, composeBackend } from '../src/runtime/compose.js';
 import { runJob } from '../src/runtime/maintenance.js';
+import { jobFailed } from '../src/runtime/job-outcome.js';
 import { TransportService } from '../src/transport/service.js';
 import type { Backend } from '../src/runtime/compose.js';
 
@@ -16,6 +17,38 @@ const key = (n: number) => Buffer.alloc(32, n).toString('base64');
 // held so the webhook below signs with the same secret the backend was given.
 const PAYSTACK_KEY = ['sk', 'test', randomUUID().replaceAll('-', '').slice(0, 18)].join('_');
 type Fixture = Awaited<ReturnType<typeof setup>>;
+
+test('ASM-23 retention drains multiple bounded transactions and reports overdue backlog when budget stops it', async (t) => {
+  const { f, backend } = await assembled(t);
+  const trip = (
+    await f.owner.query(
+      `INSERT INTO app.trips(schedule_id,pattern_version_id,departure_id,service_date,scheduled_at,status)
+    SELECT id,pattern_version_id,departure_id,current_date,clock_timestamp(),'scheduled'
+    FROM app.service_schedules WHERE id=$1 RETURNING id`,
+      [f.input.legs[0]!.scheduleId],
+    )
+  ).rows[0].id;
+  const seed = () =>
+    f.owner.query(
+      `INSERT INTO app.trip_positions(trip_id,client_fix_id,captured_at,effective_captured_at,received_at,location,payload_digest)
+    SELECT $1,gen_random_uuid(),statement_timestamp()-interval '40 days',statement_timestamp()-interval '40 days',statement_timestamp()-interval '40 days',
+      ST_SetSRID(ST_MakePoint(-0.2,5.6),4326),repeat('a',64) FROM generate_series(1,5)`,
+      [trip],
+    );
+  await seed();
+  const limited = await runJob(backend, { job: 'gps-retention', limit: 2, maxBatches: 1 });
+  assert.equal(limited.retention?.deletableFixes, 3);
+  assert.equal(limited.retention?.budgetExhausted, true);
+  assert.equal(jobFailed(limited), true, 'overdue deletion must reach the scheduler');
+  const drained = await runJob(backend, { job: 'gps-retention', limit: 2, maxBatches: 10 });
+  assert.equal(drained.retention?.deletableFixes, 0);
+  assert.equal(drained.retention?.batches, 3);
+  assert.equal(jobFailed(drained), false);
+  assert.equal(
+    (await f.owner.query('SELECT count(*)::int n FROM app.trip_positions')).rows[0].n,
+    0,
+  );
+});
 function configurationFor(f: Fixture, over: Record<string, string> = {}) {
   return readConfiguration({
     REPLACEMENT_RUNTIME_DATABASE_URL: f.runtimeUrl,
@@ -282,7 +315,7 @@ test('ASM-15 outstanding erasure work is retried and never reported as finished'
     [user, `google:${randomUUID()}:subject-1`],
   );
   const first = await runJob(backend, { job: 'erasures', limit: 10 });
-  assert.deepEqual(first.body, { considered: 2, completed: 0 });
+  assert.deepEqual(first.body, { considered: 2, completed: 0, failed: 2 });
   const rows = (
     await f.owner.query(
       'SELECT kind,state,attempts,completed_at,last_failure FROM app.erasure_tasks WHERE user_id=$1 ORDER BY kind',
@@ -301,6 +334,7 @@ test('ASM-15 outstanding erasure work is retried and never reported as finished'
   assert.deepEqual((await runJob(backend, { job: 'erasures' })).body, {
     considered: 2,
     completed: 0,
+    failed: 2,
   });
   assert.equal(
     (

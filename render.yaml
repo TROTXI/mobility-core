@@ -554,7 +554,7 @@ services:
   # The whole-batch jobs take no arguments:
   #
   #   worker admission         */5 * * * *  clear request budgets whose window closed
-  #   worker gps-retention     0 1 * * *    delete raw traces past their window
+  #   worker gps-retention     */5 * * * *  drain bounded batches; alert on >1h deletion lag
   #   worker driver-secrets    */15 * * * * physically clear expired PIN ciphertext
   #   worker erasures          10 * * * *   retry erasure's external half
   #   worker payments          15 * * * *   inbox, reconciliation, period close

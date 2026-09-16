@@ -1,6 +1,10 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { spawnSync } from 'node:child_process';
+import { spawnSync, execFileSync } from 'node:child_process';
+import { mkdtemp, mkdir, writeFile, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { resolve } from 'node:path';
+import { verifyCandidate } from './candidate-source.mjs';
 import { scenarios, supplemental, negativeControls, candidateSubstitutions } from './catalog.mjs';
 import {
   assertExpected,
@@ -10,6 +14,53 @@ import {
   compareCheckpoints,
 } from './assertions.mjs';
 import { adminUrl, dbIdentifier } from './support.mjs';
+
+test('candidate verification binds revision bytes and independently detects later source changes', async (t) => {
+  const root = await mkdtemp(resolve(tmpdir(), 'trotxi-candidate-pin-'));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  for (const path of [
+    'services/api-next/src',
+    'services/api-next/migrations',
+    'tools/redesign-harness',
+  ])
+    await mkdir(resolve(root, path), { recursive: true });
+  const file = resolve(root, 'services/api-next/src/example.ts');
+  await writeFile(file, 'export const value=1;\n');
+  const git = (...args) =>
+    execFileSync('git', args, { cwd: root, stdio: ['ignore', 'pipe', 'pipe'] })
+      .toString()
+      .trim();
+  git('init', '-q');
+  git('add', '.');
+  git(
+    '-c',
+    'user.name=Harness fixture',
+    '-c',
+    'user.email=fixture@example.invalid',
+    'commit',
+    '-qm',
+    'first',
+  );
+  const first = git('rev-parse', 'HEAD');
+  const initial = await verifyCandidate(first, root);
+  await writeFile(file, 'export const value=2;\n');
+  await assert.rejects(verifyCandidate(first, root), /differs from declared revision/);
+  git('add', '.');
+  git(
+    '-c',
+    'user.name=Harness fixture',
+    '-c',
+    'user.email=fixture@example.invalid',
+    'commit',
+    '-qm',
+    'second',
+  );
+  const second = git('rev-parse', 'HEAD');
+  await assert.rejects(verifyCandidate(first, root), /differs from declared revision/);
+  assert.notEqual((await verifyCandidate(second, root)).sourceSha256, initial.sourceSha256);
+  await writeFile(resolve(root, 'services/api-next/src/untracked.ts'), 'export const hidden=true;');
+  await assert.rejects(verifyCandidate(second, root), /Untracked candidate source/);
+});
 
 test('the required scenario inventory cannot shrink or silently skip', () => {
   assertInventory(scenarios.map((s) => s.id));

@@ -1,4 +1,11 @@
-import { createHash, createCipheriv, randomBytes, randomUUID } from 'node:crypto';
+import {
+  createHash,
+  createCipheriv,
+  createDecipheriv,
+  hkdfSync,
+  randomBytes,
+  randomUUID,
+} from 'node:crypto';
 import type { Pool, PoolClient } from 'pg';
 import { fail } from '../transport/errors.js';
 import type { Actor, Body, Outcome } from '../transport/service.js';
@@ -16,6 +23,8 @@ export type AccountOperation = (typeof accountOperations)[number];
 export interface AvatarStore {
   put(request: {
     userId: string;
+    /** Allocated durably before the first external write; the store must use it. */
+    objectKey: string;
     bytes: Buffer;
     contentType: string;
   }): Promise<{ objectKey: string }>;
@@ -86,8 +95,8 @@ export class AccountService {
   private get maxAvatarBytes() {
     return this.options.maxAvatarBytes ?? 2 * 1024 * 1024;
   }
-  private async tx<T>(work: (c: PoolClient) => Promise<T>): Promise<T> {
-    const c = await this.options.pool.connect();
+  private async tx<T>(work: (c: PoolClient) => Promise<T>, existing?: PoolClient): Promise<T> {
+    const c = existing ?? (await this.options.pool.connect());
     try {
       await c.query('BEGIN');
       await c.query("SET LOCAL TIME ZONE 'UTC'");
@@ -100,7 +109,7 @@ export class AccountService {
       await c.query('ROLLBACK').catch(() => undefined);
       throw error;
     } finally {
-      c.release();
+      if (!existing) c.release();
     }
   }
   /** The account lock, taken before the session check, as auth does. */
@@ -121,6 +130,32 @@ export class AccountService {
     return Buffer.concat([iv, cipher.getAuthTag(), payload]);
   }
 
+  private box(value: unknown, context: string): Buffer {
+    const key = Buffer.from(
+      hkdfSync('sha256', this.options.deviceKey, '', 'account-recovery-v1', 32),
+    );
+    const iv = randomBytes(12),
+      cipher = createCipheriv('aes-256-gcm', key, iv);
+    cipher.setAAD(Buffer.from(context));
+    return Buffer.concat([
+      iv,
+      cipher.update(JSON.stringify(value)),
+      cipher.final(),
+      cipher.getAuthTag(),
+    ]);
+  }
+  private unbox(value: Buffer, context: string): any {
+    const key = Buffer.from(
+      hkdfSync('sha256', this.options.deviceKey, '', 'account-recovery-v1', 32),
+    );
+    const cipher = createDecipheriv('aes-256-gcm', key, value.subarray(0, 12));
+    cipher.setAAD(Buffer.from(context));
+    cipher.setAuthTag(value.subarray(-16));
+    return JSON.parse(
+      Buffer.concat([cipher.update(value.subarray(12, -16)), cipher.final()]).toString(),
+    );
+  }
+
   async handle(
     actor: Actor,
     operation: AccountOperation,
@@ -138,9 +173,8 @@ export class AccountService {
   }
 
   /**
-   * The receipt for one command. Renaming and registering are naturally
-   * repeatable, so this exists for the one that is not: an upload writes an
-   * object, and a client that retries after a timeout must not write a second.
+   * A replay never mutates current state, even if another command has run since.
+   * Expired keys remain tombstones; clearing payloads must not enable execution.
    */
   private async receipt(
     c: PoolClient,
@@ -148,7 +182,7 @@ export class AccountService {
     operation: AccountOperation,
     key: string,
     input: string,
-  ): Promise<{ replay: string | null } | null> {
+  ): Promise<{ replay: string | null; outcome: Outcome | null } | null> {
     const prior = (
       await c.query(
         'SELECT * FROM app.account_commands WHERE actor_user_id=$1 AND operation=$2 AND key_hash=$3',
@@ -158,7 +192,16 @@ export class AccountService {
     if (!prior) return null;
     if (prior.input_hash !== digest(input))
       fail(409, 'idempotency_conflict', 'This key was already used for different input.');
-    return { replay: prior.result };
+    if (prior.expires_at <= this.now()) fail(409, 'idempotency_expired', 'Use a new request key.');
+    return {
+      replay: prior.result,
+      outcome: prior.response_ciphertext
+        ? this.unbox(
+            prior.response_ciphertext,
+            `receipt:${actor.userId}:${operation}:${digest(key)}`,
+          )
+        : null,
+    };
   }
   private async record(
     c: PoolClient,
@@ -167,10 +210,18 @@ export class AccountService {
     key: string,
     input: string,
     result: string | null,
+    outcome?: Outcome,
   ) {
     await c.query(
-      'INSERT INTO app.account_commands(actor_user_id,operation,key_hash,input_hash,result) VALUES ($1,$2,$3,$4,$5) ON CONFLICT DO NOTHING',
-      [actor.userId, operation, digest(key), digest(input), result],
+      'INSERT INTO app.account_commands(actor_user_id,operation,key_hash,input_hash,result,response_ciphertext) VALUES ($1,$2,$3,$4,$5,$6)',
+      [
+        actor.userId,
+        operation,
+        digest(key),
+        digest(input),
+        result,
+        outcome ? this.box(outcome, `receipt:${actor.userId}:${operation}:${digest(key)}`) : null,
+      ],
     );
   }
 
@@ -180,19 +231,24 @@ export class AccountService {
       fail(400, 'invalid_request', 'Supply a display name of 1 to 100 characters.');
     return this.tx(async (c) => {
       const user = await this.owner(c, actor);
-      await this.receipt(c, actor, 'updateAccount', key, name);
+      const prior = await this.receipt(c, actor, 'updateAccount', key, name);
+      if (prior) {
+        if (!prior.outcome) fail(409, 'idempotency_expired', 'Use a new request key.');
+        return prior.outcome;
+      }
       const row = (
         await c.query('UPDATE app.users SET display_name=$2 WHERE id=$1 RETURNING *', [
           user.id,
           name,
         ])
       ).rows[0];
-      await this.record(c, actor, 'updateAccount', key, name, null);
-      return {
+      const outcome = {
         status: 200,
         body: { data: await this.view(row) },
         headers: {},
       } as Outcome;
+      await this.record(c, actor, 'updateAccount', key, name, null, outcome);
+      return outcome;
     });
   }
 
@@ -227,7 +283,11 @@ export class AccountService {
       fail(400, 'invalid_request', 'Supply a supported device platform.');
     return this.tx(async (c) => {
       const user = await this.owner(c, actor);
-      await this.receipt(c, actor, 'registerDevice', key, `${platform}:${token}`);
+      const prior = await this.receipt(c, actor, 'registerDevice', key, `${platform}:${token}`);
+      if (prior) {
+        if (!prior.outcome) fail(409, 'idempotency_expired', 'Use a new request key.');
+        return prior.outcome;
+      }
       const fingerprint = digest(token);
       const sealed = this.seal(token);
       const row = (
@@ -241,8 +301,7 @@ export class AccountService {
           [user.id, platform, fingerprint, sealed],
         )
       ).rows[0];
-      await this.record(c, actor, 'registerDevice', key, `${platform}:${token}`, row.id);
-      return {
+      const outcome = {
         status: 200,
         body: {
           data: {
@@ -253,6 +312,8 @@ export class AccountService {
         },
         headers: {},
       } as Outcome;
+      await this.record(c, actor, 'registerDevice', key, `${platform}:${token}`, row.id, outcome);
+      return outcome;
     });
   }
 
@@ -275,10 +336,7 @@ export class AccountService {
     });
   }
 
-  /**
-   * The object is written before the account points at it, so a failed store
-   * leaves an unreferenced object rather than an account referring to nothing.
-   */
+  /** Reserve cleanup before PUT. A crash may lose the response, never the key. */
   private async upload(
     actor: Actor,
     bytes: Buffer,
@@ -301,33 +359,102 @@ export class AccountService {
     if (!looksLike(type, bytes))
       fail(415, 'unsupported_media_type', 'That file is not the type it claims.');
     const fingerprint = digest(bytes);
-    // A retry after a timeout must not write a second object into the store.
-    const seen = await this.tx(async (c) => {
-      await this.owner(c, actor);
-      return this.receipt(c, actor, 'uploadAvatar', key, `${type}:${fingerprint}`);
-    });
-    if (seen) return this.avatar(actor);
-    const owner = await this.tx((c) => this.owner(c, actor));
-    const stored = await this.options.avatars.put({
-      userId: owner.id,
-      bytes,
-      contentType: type,
-    });
-    await this.tx(async (c) => {
-      const user = await this.owner(c, actor);
-      const displaced = user.avatar_object_key as string | null;
-      await c.query('UPDATE app.users SET avatar_object_key=$2 WHERE id=$1', [
-        user.id,
-        stored.objectKey,
-      ]);
-      await this.record(c, actor, 'uploadAvatar', key, `${type}:${fingerprint}`, stored.objectKey);
-      // The picture this one replaced is still in the store and still theirs.
-      if (displaced && displaced !== stored.objectKey)
+    const input = `${type}:${fingerprint}`;
+    // Session lock spans network I/O, not a transaction. Cleanup takes the same
+    // lock before claiming an abandoned intent. Process death releases it.
+    const lock = await this.options.pool.connect();
+    const lockKey = `avatar:${id(actor.userId)}:${digest(key)}`;
+    let task: Row | undefined;
+    let putFinished = false;
+    try {
+      await lock.query("SET lock_timeout='3s'");
+      await lock.query('SELECT pg_advisory_lock(hashtextextended($1,0))', [lockKey]);
+      const prepared = await this.tx(async (c) => {
+        await this.owner(c, actor);
+        const prior = await this.receipt(c, actor, 'uploadAvatar', key, input);
+        if (prior) return null;
+        const existing = (
+          await c.query(
+            'SELECT * FROM app.erasure_tasks WHERE user_id=$1 AND command_key_hash=$2 FOR UPDATE',
+            [actor.userId, digest(key)],
+          )
+        ).rows[0];
+        if (existing) {
+          if (existing.input_hash !== digest(input))
+            fail(409, 'idempotency_conflict', 'This key was used for another image.');
+          // Once recovery claimed a failed upload, the same key can never PUT again.
+          if (
+            existing.state !== 'uploading' ||
+            existing.claim_id ||
+            existing.available_at <= this.now()
+          )
+            fail(409, 'idempotency_expired', 'Retry this upload with a new key.');
+          return existing;
+        }
+        const extension = type === 'image/jpeg' ? 'jpg' : type === 'image/png' ? 'png' : 'webp';
+        const objectKey = `avatars/${actor.userId}/${randomUUID()}.${extension}`;
+        return (
+          await c.query(
+            `INSERT INTO app.erasure_tasks(user_id,kind,reference,state,command_key_hash,input_hash,available_at)
+          VALUES ($1,'avatar_object',$2,'uploading',$3,$4,clock_timestamp()+interval '5 minutes') RETURNING *`,
+            [actor.userId, objectKey, digest(key), digest(input)],
+          )
+        ).rows[0];
+      }, lock);
+      if (!prepared) return this.avatar(actor);
+      task = prepared;
+      const stored = await this.options.avatars.put({
+        userId: actor.userId,
+        objectKey: prepared.reference,
+        bytes,
+        contentType: type,
+      });
+      putFinished = true;
+      if (stored.objectKey !== prepared.reference)
+        throw new Error('avatar_store_changed_reserved_key');
+      await this.tx(async (c) => {
+        const user = await this.owner(c, actor);
+        const displaced = user.avatar_object_key as string | null;
+        await c.query('UPDATE app.users SET avatar_object_key=$2 WHERE id=$1', [
+          user.id,
+          stored.objectKey,
+        ]);
+        await this.record(c, actor, 'uploadAvatar', key, input, stored.objectKey);
         await c.query(
-          'INSERT INTO app.erasure_tasks(user_id,kind,reference) VALUES ($1,$2,$3) ON CONFLICT DO NOTHING',
-          [user.id, 'avatar_object', displaced],
+          `UPDATE app.erasure_tasks SET state='cancelled',reference=id::text,
+          disposition='attached',completed_at=clock_timestamp() WHERE id=$1 AND state='uploading'`,
+          [prepared.id],
         );
-    });
+        if (displaced && displaced !== stored.objectKey)
+          await c.query(
+            `INSERT INTO app.erasure_tasks(user_id,kind,reference) VALUES ($1,'avatar_object',$2) ON CONFLICT DO NOTHING`,
+            [user.id, displaced],
+          );
+      }, lock);
+    } catch (error) {
+      if (task)
+        await this.tx(
+          (c) =>
+            c.query(
+              `UPDATE app.erasure_tasks SET state='pending',
+        available_at=CASE WHEN $2 THEN clock_timestamp() ELSE available_at END
+        WHERE id=$1 AND state='uploading'`,
+              [task!.id, putFinished],
+            ),
+          lock,
+        );
+      throw error;
+    } finally {
+      // A connection whose unlock fails must not return a session lock to the pool.
+      let broken = false;
+      try {
+        await lock.query('SELECT pg_advisory_unlock(hashtextextended($1,0))', [lockKey]);
+        await lock.query('RESET lock_timeout');
+      } catch {
+        broken = true;
+      }
+      lock.release(broken);
+    }
     await this.retryErasures(10);
     // The contract answers an upload with the private URL, not the account.
     return this.avatar(actor);
@@ -345,6 +472,24 @@ export class AccountService {
    */
   private async erase(actor: Actor, key: string): Promise<Outcome> {
     const outstanding = await this.tx(async (c) => {
+      await c.query('SELECT id FROM app.users WHERE id=$1 FOR UPDATE', [id(actor.userId)]);
+      // verifyAccess already checked signature, issuer, audience and expiry.
+      // This exception is bound to the original deletion session AND exact key;
+      // it grants no refresh or access to any other operation.
+      const erased = (
+        await c.query(
+          `SELECT e.session_id FROM app.account_erasures e
+        JOIN app.users u ON u.id=e.user_id WHERE e.user_id=$1 AND u.deleted_at IS NOT NULL`,
+          [id(actor.userId)],
+        )
+      ).rows[0];
+      if (erased) {
+        if (erased.session_id !== id(actor.sessionId))
+          fail(401, 'unauthenticated', 'Sign in to continue.');
+        const prior = await this.receipt(c, actor, 'eraseAccount', key, actor.userId);
+        if (!prior) fail(401, 'unauthenticated', 'Sign in to continue.');
+        return false;
+      }
       const user = await this.owner(c, actor);
       await this.receipt(c, actor, 'eraseAccount', key, user.id);
       const sessions = await c.query(
@@ -371,10 +516,10 @@ export class AccountService {
       // The subject goes now, so signing in again is a new account. The token
       // stays only until the grant it opens has actually been revoked.
       for (const identity of identities)
-        await c.query('UPDATE app.auth_identities SET subject=$2 WHERE id=$1', [
-          identity.id,
-          `erased:${randomUUID()}`,
-        ]);
+        await c.query(
+          'UPDATE app.auth_identities SET subject=$2,provider_token_ciphertext=NULL WHERE id=$1',
+          [identity.id, `erased:${randomUUID()}`],
+        );
       const objectKey = user.avatar_object_key as string | null;
       // 013's trigger fires on this transition and clears slots, pauses,
       // requests, assignments, reservations and rider notes.
@@ -394,13 +539,36 @@ export class AccountService {
           identities.length,
         ],
       );
-      const tasks: { kind: string; reference: string }[] = [];
-      for (const identity of identities)
-        tasks.push({
-          kind: 'provider_revocation',
-          reference: `${identity.provider}:${identity.id}:${identity.subject}`,
-        });
-      if (objectKey) tasks.push({ kind: 'avatar_object', reference: objectKey });
+      for (const identity of identities) {
+        const taskId = randomUUID();
+        // Google sign-in supplies an ID token, not an OAuth refresh grant.
+        const applicable = identity.provider === 'apple' && !!identity.provider_token_ciphertext;
+        await c.query(
+          `INSERT INTO app.erasure_tasks(id,user_id,kind,reference,payload_ciphertext,state,completed_at,disposition)
+          VALUES ($1::uuid,$2,'provider_revocation',$1::text,$3,$4,CASE WHEN $4='done' THEN clock_timestamp() END,$5)`,
+          [
+            taskId,
+            user.id,
+            applicable
+              ? this.box(
+                  {
+                    provider: identity.provider,
+                    subject: identity.subject,
+                    tokenCiphertext: identity.provider_token_ciphertext,
+                  },
+                  `task:${taskId}`,
+                )
+              : null,
+            applicable ? 'pending' : 'done',
+            applicable ? null : 'not_applicable',
+          ],
+        );
+      }
+      if (objectKey)
+        await c.query(
+          `INSERT INTO app.erasure_tasks(user_id,kind,reference) VALUES ($1,'avatar_object',$2) ON CONFLICT DO NOTHING`,
+          [user.id, objectKey],
+        );
       // A driver's own record carries a name, a phone number and a licence.
       // Closing the account closes that too, or erasure is only half done.
       await c.query(
@@ -409,41 +577,43 @@ export class AccountService {
         [user.id],
       );
       await this.record(c, actor, 'eraseAccount', key, user.id, null);
-      for (const task of tasks)
-        await c.query(
-          'INSERT INTO app.erasure_tasks(user_id,kind,reference) VALUES ($1,$2,$3) ON CONFLICT DO NOTHING',
-          [user.id, task.kind, task.reference],
-        );
-      return { userId: user.id as string, tasks };
+      await c.query(
+        `UPDATE app.driver_commands SET response_body=NULL,secret_ciphertext=NULL
+        WHERE driver_id IN (SELECT id FROM app.drivers WHERE user_id=$1)
+        AND (response_body IS NOT NULL OR secret_ciphertext IS NOT NULL)`,
+        [user.id],
+      );
+      await c.query(
+        'UPDATE app.account_commands SET result=NULL,response_ciphertext=NULL WHERE actor_user_id=$1 AND (result IS NOT NULL OR response_ciphertext IS NOT NULL)',
+        [user.id],
+      );
+      return true;
     });
     // Attempted once here so an ordinary erasure finishes now. A failure is
     // already recorded, and the maintenance worker owns the retry.
-    for (const task of outstanding.tasks) {
-      await this.tx((c) =>
-        c.query(
-          `UPDATE app.erasure_tasks SET attempts=least(attempts+1,1000)
-          WHERE user_id=$1 AND kind=$2 AND reference=$3 AND state<>'done'`,
-          [outstanding.userId, task.kind, task.reference],
-        ),
-      );
-      await this.attempt(outstanding.userId, task);
-    }
+    if (outstanding) await this.retryErasures(50, actor.userId);
     return { status: 204, body: null, headers: {} } as Outcome;
   }
 
-  private async attempt(userId: string, task: { kind: string; reference: string }) {
+  private async attempt(task: Row) {
     const reach = this.options.reach;
     const settle = async (state: 'done' | 'unavailable', failure: string | null) => {
-      // The attempt was counted when the task was claimed, so a task that has
-      // exhausted its budget can still be recorded as done rather than
-      // repeating the work forever while reporting it never happened.
       const done = await this.tx((c) =>
         c.query(
-          `UPDATE app.erasure_tasks
-          SET state=$4,last_failure=$5,
-              completed_at=CASE WHEN $4='done' THEN clock_timestamp() ELSE NULL END
-          WHERE user_id=$1 AND kind=$2 AND reference=$3 AND state<>'done'`,
-          [userId, task.kind, task.reference, state, failure],
+          `UPDATE app.erasure_tasks SET state=$3,last_failure=$4,
+            reference=CASE WHEN $3='done' THEN id::text ELSE reference END,
+            payload_ciphertext=CASE WHEN $3='done' THEN NULL ELSE payload_ciphertext END,
+            disposition=CASE WHEN $3='done' THEN $5 ELSE NULL END,
+            completed_at=CASE WHEN $3='done' THEN clock_timestamp() ELSE NULL END,
+            claim_id=NULL,lease_until=NULL
+          WHERE id=$1 AND claim_id=$2 AND state NOT IN ('done','cancelled')`,
+          [
+            task.id,
+            task.claim_id,
+            state,
+            failure,
+            task.kind === 'avatar_object' ? 'removed' : 'revoked',
+          ],
         ),
       );
       return (done.rowCount ?? 0) > 0 && state === 'done';
@@ -454,24 +624,8 @@ export class AccountService {
         await reach.removeAvatarObject(task.reference);
       } else {
         if (!reach?.revokeProviderGrant) return settle('unavailable', 'no_provider_reach');
-        const [provider, identityId, ...rest] = task.reference.split(':');
-        const sealed = await this.tx((c) =>
-          c.query('SELECT provider_token_ciphertext FROM app.auth_identities WHERE id=$1', [
-            identityId,
-          ]),
-        );
-        await reach.revokeProviderGrant({
-          provider: provider!,
-          subject: rest.join(':'),
-          tokenCiphertext: sealed.rows[0]?.provider_token_ciphertext ?? null,
-        });
-        // Kept only until the grant is actually revoked, because revoking it
-        // is what the token is still here for.
-        await this.tx((c) =>
-          c.query('UPDATE app.auth_identities SET provider_token_ciphertext=NULL WHERE id=$1', [
-            identityId,
-          ]),
-        ).catch(() => undefined);
+        if (!task.payload_ciphertext) return settle('unavailable', 'missing_provider_payload');
+        await reach.revokeProviderGrant(this.unbox(task.payload_ciphertext, `task:${task.id}`));
       }
       return settle('done', null);
     } catch (error) {
@@ -480,38 +634,62 @@ export class AccountService {
   }
 
   /** Retry what erasure could not finish. Bounded, and never invents success. */
-  async retryErasures(limit = 50): Promise<{ considered: number; completed: number }> {
+  async retryErasures(
+    limit = 50,
+    userId?: string,
+  ): Promise<{ considered: number; completed: number; failed: number }> {
     let completed = 0,
-      considered = 0;
+      considered = 0,
+      failed = 0;
     const handled = new Set<string>();
     for (let taken = 0; taken < Math.max(1, Math.min(limit, 100)); taken++) {
-      // One task at a time, claimed under a row lock that another worker skips,
-      // so two sweeps never both call the provider for the same grant.
-      // One pass is one attempt each, so a task this sweep has already tried
-      // is not a candidate again. Claiming and counting the attempt happen
-      // together, under a row lock another worker skips.
+      // Persist the lease before network I/O. SKIP LOCKED alone stops protecting
+      // the task as soon as this transaction commits. Expired leases recover a
+      // dead worker, while claim_id prevents its late completion stealing a claim.
       const claimed = await this.tx(async (c) => {
         const row = (
           await c.query(
-            `SELECT user_id,kind,reference FROM app.erasure_tasks
-            WHERE state<>'done' AND NOT (reference = ANY($1::text[]))
+            `SELECT * FROM app.erasure_tasks
+            WHERE state NOT IN ('done','cancelled') AND NOT (id = ANY($1::uuid[]))
+              AND ($2::uuid IS NULL OR user_id=$2) AND available_at<=clock_timestamp()
+              AND (lease_until IS NULL OR lease_until<=clock_timestamp())
+              AND (command_key_hash IS NULL OR pg_try_advisory_xact_lock(hashtextextended('avatar:'||user_id::text||':'||command_key_hash,0)))
             ORDER BY attempts,created_at,id LIMIT 1 FOR UPDATE SKIP LOCKED`,
-            [[...handled]],
+            [[...handled], userId ?? null],
           )
         ).rows[0];
         if (!row) return null;
-        await c.query(
-          `UPDATE app.erasure_tasks SET attempts=least(attempts+1,1000)
-          WHERE user_id=$1 AND kind=$2 AND reference=$3 AND state<>'done'`,
-          [row.user_id, row.kind, row.reference],
-        );
-        return row;
+        return (
+          await c.query(
+            `UPDATE app.erasure_tasks SET state='pending',attempts=least(attempts+1,1000),claim_id=$2,
+            lease_until=clock_timestamp()+interval '5 minutes' WHERE id=$1 RETURNING *`,
+            [row.id, randomUUID()],
+          )
+        ).rows[0];
       });
       if (!claimed) break;
-      handled.add(claimed.reference);
+      handled.add(claimed.id);
       considered += 1;
-      if (await this.attempt(claimed.user_id, claimed)) completed += 1;
+      if (await this.attempt(claimed)) completed += 1;
+      else failed += 1;
     }
-    return { considered, completed };
+    return { considered, completed, failed };
+  }
+
+  /** Scrub expired response bodies; key tombstones continue refusing reexecution. */
+  async purgeExpiredReceipts(limit = 100): Promise<number> {
+    return this.tx(
+      async (c) =>
+        (
+          await c.query(
+            `WITH expired AS (
+      SELECT id FROM app.account_commands WHERE expires_at<=clock_timestamp()
+        AND (result IS NOT NULL OR response_ciphertext IS NOT NULL)
+      ORDER BY expires_at,id LIMIT $1 FOR UPDATE SKIP LOCKED)
+      UPDATE app.account_commands SET result=NULL,response_ciphertext=NULL WHERE id IN (SELECT id FROM expired)`,
+            [Math.max(1, Math.min(limit, 1000))],
+          )
+        ).rowCount ?? 0,
+    );
   }
 }

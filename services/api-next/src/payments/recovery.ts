@@ -777,6 +777,8 @@ export class PaymentRecovery {
       if (old) {
         if (old.input_hash !== input)
           fail(409, 'idempotency_conflict', 'This key was used for different input.');
+        if (old.response_body === null || Date.now() - old.created_at.getTime() >= 7 * 86400000)
+          fail(409, 'idempotency_expired', 'Use a new request key.');
         return old.response_body;
       }
       if (!ifMatch) fail(428, 'precondition_required', 'An edit token is required.');

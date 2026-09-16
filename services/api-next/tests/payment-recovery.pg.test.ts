@@ -8,6 +8,7 @@ import { PaystackEvidence } from '../src/payments/provider.js';
 import { FinancialFoundation } from '../src/payments/foundation.js';
 import { TransportError } from '../src/transport/errors.js';
 import { createTransportApp } from '../src/http/app.js';
+import { purgeExpiredCommandPayloads } from '../src/runtime/receipt-retention.js';
 
 // Generated locally; never an account credential or a provider network token.
 const secret = `sk_test_${randomBytes(16).toString('hex')}`;
@@ -444,6 +445,41 @@ test('REC-13: review decisions are replayable and attributable, but never provid
     1,
   );
   assert.equal((await f.owner.query('SELECT * FROM app.payment_review_commands')).rowCount, 1);
+  const clock = t.mock.method(Date, 'now', () => new Date('2100-01-01').getTime());
+  await assert.rejects(
+    f.recovery.decide(f.admin, review.id, decision, key, review.editToken),
+    (e: any) => e.code === 'idempotency_expired',
+  );
+  clock.mock.restore();
+  await f.owner
+    .query(`INSERT INTO app.payment_review_commands(actor_user_id,review_id,key_hash,input_hash,decision,reason,response_body,created_at)
+    SELECT actor_user_id,review_id,repeat('e',64),input_hash,decision,reason,response_body,clock_timestamp()-interval '8 days' FROM app.payment_review_commands`);
+  const retained = (
+    await f.owner.query(
+      'SELECT id,decision,reason,review_id FROM app.payment_review_commands ORDER BY id',
+    )
+  ).rows;
+  assert.equal(await purgeExpiredCommandPayloads(f.runtime), 1);
+  assert.deepEqual(
+    (
+      await f.owner.query(
+        'SELECT id,decision,reason,review_id FROM app.payment_review_commands ORDER BY id',
+      )
+    ).rows,
+    retained,
+  );
+  assert.equal(
+    (
+      await f.owner.query(
+        'SELECT count(*)::int n FROM app.payment_review_commands WHERE response_body IS NULL',
+      )
+    ).rows[0].n,
+    1,
+  );
+  await assert.rejects(
+    f.runtime.query("UPDATE app.payment_review_commands SET decision='resolved'"),
+    /permission denied/,
+  );
   await f.owner.query("UPDATE app.users SET role='commuter' WHERE id=$1", [f.adminId]);
   await assert.rejects(
     f.recovery.decide(f.admin, review.id, decision, key, review.editToken),
