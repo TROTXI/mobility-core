@@ -7,19 +7,19 @@ See `stage-4-progress.md` for implementation and verification status.
 
 ## What exists now
 
-| Package                   | Contract                                 | Used by              |
-| ------------------------- | ---------------------------------------- | -------------------- |
-| `apps/api_client`         | The deployed API, generated from staging | `trotxi_client`      |
-| `apps/trotxi_client`      | Hand-written layer over it               | Neither migrated app |
-| `apps/api_client_next`    | **The replacement**, 119 operations      | `trotxi_client_next` |
-| `apps/trotxi_client_next` | Hand-written layer over that             | Both migrated apps   |
+| Package              | Contract                                   | Used by            |
+| -------------------- | ------------------------------------------ | ------------------ |
+| `apps/api_client`    | **The replacement**, 119 operations        | `trotxi_client`    |
+| `apps/trotxi_client` | Shared session, transport and domain layer | Both migrated apps |
 
-The `_next` pair remains until the canonical-package cleanup checkpoint.
-Move each app as a coherent build: never mix sessions or
-resource identities across contracts while moving screens. Remove the unused
-legacy pair and settle canonical names once both apps have moved. Regenerate with
-`pnpm run codegen:replacement`, then `dart run build_runner build` inside the
-package, because the generated models are `built_value`.
+The temporary `_next` packages and the unused legacy clients have been removed.
+Git retains the old implementation; no staging database or service is removed.
+Never mix sessions or resource identities across backend generations.
+Both `pnpm run codegen` and `pnpm run codegen:replacement` generate the canonical
+SDK from the checked-in replacement specification, never the deployed legacy API.
+Then run `dart run build_runner build` inside `apps/api_client`, because its
+models are `built_value`. The package rename does not change secure-storage
+namespaces or import old tokens.
 
 The published contract is `docs/design/contracts/replacement.openapi.json`:
 OpenAPI 3.0.3, exactly the implemented surface. The thirteen deferred operations
@@ -72,7 +72,7 @@ price, fare, credit and refund.
 { "error": { "code": "reservation_capacity", "message": "…", "requestId": "…" } }
 ```
 
-`trotxi_client_next` reads `error.message` rather than the HTTP status line, and
+`trotxi_client` reads `error.message` rather than the HTTP status line, and
 maps **426** to `UpgradeRequiredException` — an outcome the old contract had no
 equivalent for.
 
@@ -138,15 +138,17 @@ select the replacement database, migrator, narrow runtime role and service, then
 verify the provider webhook points at that service. Do not reuse old database
 credentials merely because the URL paths match.
 
-## Sequence that works
+## Completion boundary
 
-1. Migrate in an isolated replacement app build using `trotxi_client_next` and
-   `ClientMetadata`. Do not mix old and replacement identities/data within one
-   signed-in session while moving screens.
-2. Move its reads. They are renames plus the page envelope.
-3. Move its creations, checking for 201 and reading `error.message`.
-4. Leave the commute request until the schedule-selection step exists.
+Both apps' existing flows now use this client, including explicit departure and
+stop-occurrence selection. Schedules and all trip views expose `patternId` as
+well as `patternVersionId`; resolve those exact owners rather than searching
+`Route.patternIds`, which is a current-time projection. Public pattern reads
+allow published future/retired owners on unarchived corridors, never draft-only
+patterns. A pattern's `publishedVersionId` may therefore be null.
 
-There is no adapter and no deprecation window on the server side, but there is
-no rush on the client side either: the replacement is not deployed, and the two
-client packages coexist until an app has finished moving.
+There is no adapter and no deprecation window. App migration is implemented,
+but actual replacement-server/native-provider walkthroughs and coordinated
+deployment still gate cutover. New avatar selection/upload, push notification
+integration and native Apple sign-in are frontend follow-ups, not regressions
+from the old commuter app. See `stage-4-completion.md` for the scoped handoff.

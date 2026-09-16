@@ -10,6 +10,7 @@ import 'replacement_fixture.dart';
 Map<String, Object?> tripRow(String id) => {
   'id': id,
   'departureId': 'departure',
+  'patternId': 'outbound',
   'serviceDate': '2026-09-16',
   'runNumber': 1,
   'routeId': 'route',

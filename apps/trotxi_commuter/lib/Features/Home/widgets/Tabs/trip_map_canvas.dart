@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:trotxi_client_next/commuter_trip_tracking.dart';
+import 'package:trotxi_client/commuter_trip_tracking.dart';
 import 'package:trotxi_map/trotxi_map.dart';
 
 /// Only server coordinates are drawn. Shared map disables device location.

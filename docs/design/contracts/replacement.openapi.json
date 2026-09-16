@@ -15164,6 +15164,11 @@
             "minLength": 1,
             "maxLength": 128
           },
+          "patternId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
           "patternVersionId": {
             "type": "string",
             "minLength": 1,
@@ -15229,6 +15234,7 @@
           "serviceDate",
           "runNumber",
           "routeId",
+          "patternId",
           "patternVersionId",
           "direction",
           "scheduledAt",
@@ -16742,6 +16748,11 @@
             "minLength": 1,
             "maxLength": 128
           },
+          "patternId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
           "patternVersionId": {
             "type": "string",
             "minLength": 1,
@@ -16824,6 +16835,7 @@
           "serviceDate",
           "runNumber",
           "routeId",
+          "patternId",
           "patternVersionId",
           "direction",
           "scheduledAt",
@@ -18312,6 +18324,11 @@
             "minLength": 1,
             "maxLength": 128
           },
+          "patternId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
           "patternVersionId": {
             "type": "string",
             "minLength": 1,
@@ -18367,6 +18384,7 @@
         "required": [
           "id",
           "departureId",
+          "patternId",
           "patternVersionId",
           "serviceWindow",
           "localDeparture",
@@ -18981,6 +18999,11 @@
             "minLength": 1,
             "maxLength": 128
           },
+          "patternId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
           "patternVersionId": {
             "type": "string",
             "minLength": 1,
@@ -19012,6 +19035,7 @@
           "serviceDate",
           "runNumber",
           "routeId",
+          "patternId",
           "patternVersionId",
           "direction",
           "scheduledAt",

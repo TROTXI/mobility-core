@@ -20,6 +20,7 @@ TripsRepository _repository(
   Map<String, Object?> trip() => {
     'id': 'trip-1',
     'departureId': 'departure-1',
+    'patternId': 'pattern-out',
     'serviceDate': '2026-09-13',
     'runNumber': 1,
     'routeId': 'route-1',

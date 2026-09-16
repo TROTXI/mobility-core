@@ -1,4 +1,4 @@
-import 'package:trotxi_client_next/trotxi_client_next.dart' as wire;
+import 'package:trotxi_client/trotxi_client.dart' as wire;
 import 'package:trotxi_driver/core/api/driver_api.dart';
 import 'package:trotxi_map/trotxi_map.dart';
 
@@ -180,40 +180,31 @@ class RouteMapRepository {
           ..sort((a, b) => a.seq.compareTo(b.seq));
     wire.Geometry? geometry;
     try {
-      final route = (await client.get(
-        '/v1/routes/${Uri.encodeComponent(trip.routeId)}',
-        wire.RouteResponse.serializer,
+      // Assigned history may operate a pattern absent from today's catalogue.
+      // Resolve the immutable version through the trip's explicit owner.
+      final patternId = trip.patternId;
+      final version = (await client.get(
+        '/v1/route-patterns/${Uri.encodeComponent(patternId)}/versions/${Uri.encodeComponent(trip.patternVersionId)}',
+        wire.PatternVersionResponse.serializer,
       )).data;
-      for (final patternId in route.patternIds) {
-        final pattern = (await client.get(
-          '/v1/route-patterns/${Uri.encodeComponent(patternId)}',
-          wire.PatternResponse.serializer,
+      if (version.id != trip.patternVersionId ||
+          version.patternId != patternId) {
+        throw const ApiException(
+          502,
+          'The route version did not match this run.',
+        );
+      }
+      if (version.geometryId != null) {
+        geometry = (await client.get(
+          '/v1/route-geometries/${Uri.encodeComponent(version.geometryId!)}',
+          wire.GeometryResponse.serializer,
         )).data;
-        if (pattern.direction.name != trip.direction.name) continue;
-        final version = (await client.get(
-          '/v1/route-patterns/${Uri.encodeComponent(patternId)}/versions/${Uri.encodeComponent(trip.patternVersionId)}',
-          wire.PatternVersionResponse.serializer,
-        )).data;
-        if (version.id != trip.patternVersionId ||
-            version.patternId != patternId) {
+        if (geometry.patternVersionId != trip.patternVersionId) {
           throw const ApiException(
             502,
-            'The route version did not match this run.',
+            'The route geometry did not match this run.',
           );
         }
-        if (version.geometryId != null) {
-          geometry = (await client.get(
-            '/v1/route-geometries/${Uri.encodeComponent(version.geometryId!)}',
-            wire.GeometryResponse.serializer,
-          )).data;
-          if (geometry.patternVersionId != trip.patternVersionId) {
-            throw const ApiException(
-              502,
-              'The route geometry did not match this run.',
-            );
-          }
-        }
-        break;
       }
     } on TrotxiException {
       // Known trip stops remain drawable during a geometry/network failure.

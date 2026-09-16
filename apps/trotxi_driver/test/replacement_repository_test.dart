@@ -3,7 +3,7 @@ import 'dart:convert';
 import 'dart:typed_data';
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:trotxi_client_next/trotxi_client_next.dart' as wire;
+import 'package:trotxi_client/trotxi_client.dart' as wire;
 import 'package:trotxi_driver/core/api/driver_api.dart';
 import 'package:trotxi_driver/data/trips_repository.dart';
 import 'package:trotxi_driver/data/route_map_repository.dart';
@@ -28,6 +28,7 @@ Map<String, Object?> trip({
 }) => {
   'id': id,
   'departureId': 'departure-1',
+  'patternId': direction == 'outbound' ? 'pattern-out' : 'pattern-return',
   'serviceDate': '2026-09-13',
   'runNumber': 1,
   'routeId': 'route-1',
@@ -454,7 +455,14 @@ void main() {
     'route geometry is pinned to the assigned version, not the newest published revision',
     () async {
       final adapter = Adapter((o) {
-        if (o.path == '/v1/routes/route-1') return (200, {'data': route()});
+        if (o.path == '/v1/routes/route-1') {
+          return (
+            404,
+            {
+              'error': {'code': 'not_found', 'message': 'Not current'},
+            },
+          );
+        }
         if (o.path == '/v1/route-patterns/pattern-out') {
           return (
             200,
@@ -524,6 +532,10 @@ void main() {
         isFalse,
       );
       expect(shape.stops.map((s) => s.id), ['trip-1-first', 'trip-1-repeat']);
+      expect(
+        adapter.requests.any((r) => r.path == '/v1/routes/route-1'),
+        isFalse,
+      );
     },
   );
 

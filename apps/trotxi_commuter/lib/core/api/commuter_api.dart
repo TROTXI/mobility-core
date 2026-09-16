@@ -1,12 +1,12 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
-import 'package:trotxi_client_next/commuter_data_client.dart';
-import 'package:trotxi_client_next/commuter_checkout.dart';
-import 'package:trotxi_client_next/commuter_session_client.dart';
-import 'package:trotxi_client_next/scoped_token_store.dart';
-import 'package:trotxi_client_next/trotxi_client_next.dart' as wire;
+import 'package:trotxi_client/commuter_data_client.dart';
+import 'package:trotxi_client/commuter_checkout.dart';
+import 'package:trotxi_client/commuter_session_client.dart';
+import 'package:trotxi_client/scoped_token_store.dart';
+import 'package:trotxi_client/trotxi_client.dart' as wire;
 
-export 'package:trotxi_client_next/trotxi_client_next.dart'
+export 'package:trotxi_client/trotxi_client.dart'
     show
         Account,
         Session,
@@ -22,13 +22,13 @@ enum CommuterStage { loading, signedOut, ready, failed }
 /// The root replaces its navigator AND provider container on session change.
 class CommuterApi extends CommuterDataClient {
   factory CommuterApi({
-    required wire.TrotxiApiClientNext client,
+    required wire.TrotxiApiClient client,
     required ScopedTokenStore store,
     required wire.ClientMetadata metadata,
   }) => CommuterApi._(client, store, metadata, ValueNotifier(false));
 
   CommuterApi._(
-    wire.TrotxiApiClientNext transport,
+    wire.TrotxiApiClient transport,
     ScopedTokenStore tokens,
     wire.ClientMetadata metadata,
     this.upgradeRequired,

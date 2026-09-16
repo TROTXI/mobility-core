@@ -215,6 +215,7 @@ named(
   obj({
     id,
     departureId: id,
+    patternId: id,
     patternVersionId: id,
     serviceWindow: z.enum(['morning', 'evening']),
     localDeparture: time,
@@ -473,6 +474,7 @@ named(
     serviceDate: date,
     runNumber: z.literal(1),
     routeId: id,
+    patternId: id,
     patternVersionId: id,
     direction,
     scheduledAt: instant,

@@ -1,7 +1,7 @@
 import 'dart:async';
 
 import 'package:dio/dio.dart';
-import 'package:trotxi_client_next/trotxi_client_next.dart' as wire;
+import 'package:trotxi_client/trotxi_client.dart' as wire;
 import 'package:uuid/uuid.dart';
 import 'package:flutter/foundation.dart';
 import 'package:geolocator/geolocator.dart';

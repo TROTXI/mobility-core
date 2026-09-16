@@ -327,6 +327,7 @@ test('CAT-01 HTTP creates the entire route -> stops -> loop version -> publicati
       f.version.stops.map((s: { id: string }) => s.id),
     );
     const schedule = await c.schedule(f.version.id);
+    assert.equal(schedule.patternId, f.pattern.id);
     assert.equal(
       expectStatus(
         await c.request('GET', `/v1/routes/${f.route.id}/schedules`, undefined, { public: true }),
@@ -343,6 +344,7 @@ test('CAT-01 HTTP creates the entire route -> stops -> loop version -> publicati
       201,
     );
     assert.equal(trip.patternVersionId, f.version.id);
+    assert.equal(trip.patternId, f.pattern.id);
     assert.deepEqual(trip.stops, f.version.stops);
     assert.deepEqual(await accounting(c), {
       versions: 1,
@@ -351,6 +353,87 @@ test('CAT-01 HTTP creates the entire route -> stops -> loop version -> publicati
       events: 5,
       receipts: 7,
     });
+  }));
+
+test('CAT-16 schedules and trips resolve published future owners absent from current route links', () =>
+  withCase(async (c) => {
+    const f = await c.catalog();
+    expectStatus(await c.publish(f), 200);
+    const pattern = expectStatus(
+      await c.request('POST', '/v1/ops/route-patterns', {
+        routeId: f.route.id,
+        direction: 'return',
+      }),
+      201,
+    );
+    const version = expectStatus(
+      await c.request('POST', `/v1/ops/route-patterns/${pattern.id}/versions`, f.input),
+      201,
+    );
+    // Draft ownership must not leak through the new direct lookup.
+    expectStatus(
+      await c.request('GET', `/v1/route-patterns/${pattern.id}`, undefined, { public: true }),
+      404,
+    );
+    expectStatus(await c.publish({ ...f, pattern, version }, day(5)), 200);
+    const route = expectStatus(
+      await c.request('GET', `/v1/routes/${f.route.id}`, undefined, { public: true }),
+      200,
+    );
+    assert.ok(
+      !route.patternIds.includes(pattern.id),
+      'fixture must be absent from current projection',
+    );
+    const created = await c.schedule(version.id);
+    const schedules = expectStatus(
+      await c.request('GET', `/v1/routes/${f.route.id}/schedules`, undefined, { public: true }),
+      200,
+    );
+    const schedule = schedules.find((s: { id: string }) => s.id === created.id);
+    assert.equal(schedule.patternId, pattern.id);
+    const owner = expectStatus(
+      await c.request('GET', `/v1/route-patterns/${schedule.patternId}`, undefined, {
+        public: true,
+      }),
+      200,
+    );
+    assert.equal(owner.routeId, route.id);
+    assert.equal(owner.publishedVersionId, null);
+    const resolved = expectStatus(
+      await c.request(
+        'GET',
+        `/v1/route-patterns/${schedule.patternId}/versions/${schedule.patternVersionId}`,
+        undefined,
+        { public: true },
+      ),
+      200,
+    );
+    assert.equal(resolved.id, version.id);
+    const trip = expectStatus(
+      await c.request('POST', '/v1/ops/trips', {
+        scheduleId: schedule.id,
+        serviceDate: day(6).slice(0, 10),
+        scheduledAt: day(6),
+      }),
+      201,
+    );
+    assert.equal(trip.patternId, pattern.id);
+    assert.equal(
+      expectStatus(await c.request('GET', `/v1/trips/${trip.id}`), 200).patternId,
+      pattern.id,
+    );
+    // Retiring the only revision does not erase its historical identity either.
+    await c.owner.query(
+      "UPDATE app.route_pattern_versions SET state='retired',effective_to=$2 WHERE id=$1",
+      [f.version.id, day(-1)],
+    );
+    assert.equal(
+      expectStatus(
+        await c.request('GET', `/v1/route-patterns/${f.pattern.id}`, undefined, { public: true }),
+        200,
+      ).publishedVersionId,
+      null,
+    );
   }));
 
 test('CAT-14 a configured geometry larger than the default body limit works; oversized drafts are refused', () =>
