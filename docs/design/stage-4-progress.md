@@ -161,6 +161,43 @@ The existing iOS Google configuration fix stays intact. No commuter location
 permission/collection is introduced, and Apple SDK/store setup is not claimed
 complete merely because the server token exchange can be tested.
 
+## Commuter data and selection checkpoint
+
+`CommuterDataClient` now uses the generated replacement operations for account,
+membership, purchases, reservations, request history, route/schedule/version
+catalogue and trip reads; commands cover commute submission/withdrawal,
+reservation decisions and reservation-scoped passes. This is a tested data
+boundary, **not yet the commuter app's composition root or screen wiring**.
+
+- All paginated reads follow every cursor with unchanged filters. Reservations
+  and purchases require explicit date bounds rather than adopting the backend's
+  default window. Repeated cursors fail, never return a partial successful list.
+- A generation check rejects late responses, cross-session pagination and
+  requests queued during logout. Disposal leaves admission installed until
+  in-flight requests settle. Already queued commands cannot leave as the next
+  rider; the app root must also remove old screens on a session change.
+- Random command keys survive uncertain delivery and invalid success payloads
+  within the session. They are not stored on disk or derived from personal data.
+  A changed intent or local identity gets a new key. A pass for the wrong
+  reservation is refused while retaining the key for a safe retry.
+- Generated membership models preserve simultaneous pause/dispute access blocks,
+  manual renewal, nullable coverage dates, and monetary credit in minor units
+  separately from ride counts. Unresolved purchases remain unresolved: the
+  client does not infer fulfilment from a checkout or fabricate payment facts.
+- `CommuteLegChoice` validates the selected route/pattern/version/schedule chain
+  and downstream stop occurrences, including repeat visits to one physical
+  stop. It uses the schedule's version, not the newest published revision.
+  `buildCommuteRequest` requires explicit outbound/return legs with different
+  service windows and defaults pause consent to false. These client checks do
+  not replace server checks on availability, publication, price or approval.
+
+Verification: **28 new tests; 128 shared-client tests pass; analyzer clean**.
+Tests use generated serializers and the factory's real interceptor chain with
+controlled HTTP. The existing CI matrix runs both new test files as part of the
+whole shared-client suite. No emulator, native provider or replacement-server
+walkthrough is claimed by this checkpoint. Screen migration and the catalogue
+orchestration that presents these leg choices remain next.
+
 ## Remaining implementation sequence
 
 1. **Driver walkthrough:** the coherent migration above is implemented. Verify
