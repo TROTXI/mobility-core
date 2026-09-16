@@ -11,7 +11,7 @@ New frontend features excluded in `stage-4-completion.md` stay out of scope.
 - Existing database: `trotxi-db-staging`, `dpg-d8sugvv7f7vs73bifff0-a`,
   PostgreSQL 18, Basic-256mb, **1 GB storage**, 9.38% used at inspection.
 - Paystack's existing staging key was inspected: **TEST**. No value is recorded
-  here. No provider transaction was performed as part of that inspection.
+  here. The subsequent unpaid provider probe is recorded below separately.
 - No replacement Render service exists in the observed workspace. The existing
   deployment workflow still runs the legacy installer. Do not point it at a
   replacement database or merge to `main` and assume this selects api-next.
@@ -21,6 +21,10 @@ Select/approve an isolated target and sufficient capacity first; compute and
 storage are separate decisions. No upgrade, reset or new paid service has been
 approved or performed by this rehearsal. Measure actual row/index/WAL usage
 before selecting headroom; a smaller local test is not the full-size gate.
+Godfred confirmed this is the team's disposable staging environment and that
+production will use a larger database. Functional rehearsal does not require
+a staging upgrade. Full-scale capacity evidence remains a pre-production gate,
+not a completed check or a reason to allocate a larger staging plan now.
 
 Rehearsal branch checks: **285 Postgres, 36 unit and 24 contract checks pass**,
 none skipped; replacement typecheck and formatting pass. The first Docker build
@@ -31,6 +35,30 @@ tagged `trotxi-replacement-rehearsal:stage5-working`. This is build evidence,
 not a successful provider-configured server startup. A network-disabled,
 read-only container ran the compiled installer inventory: all **21 migration
 hashes match the reviewed source**, byte for byte.
+
+## Real provider probe results, 2026-09-16
+
+The user downloaded the Render environment export. It was moved to the agreed
+temporary path and restricted to owner read/write (`0600`). Preflight confirmed
+TEST Paystack credentials and the required R2 settings without database access.
+
+- Paystack: **6/6 checks passed**. The real provider accepted initialization and
+  returned an HTTPS checkout on `checkout.paystack.com`. Verify returned a TEST
+  non-success for the unpaid reference `probe-121fbcbe1a14cd699eec53ad`.
+  That unpaid TEST checkout remains at Paystack; no cash was taken. The other
+  checks include the explicitly local signature/tamper/unsigned checks and
+  must not be counted as observed automatic delivery.
+- R2: **4/4 checks passed**. One random probe object was uploaded; its signed
+  read returned the identical 71-byte image, the expired signature returned
+  **403**, and the fresh signed read after deletion returned **404**. Only that
+  probe object was deleted. This validates the real object-store adapter, not
+  the account-erasure worker's end-to-end behavior.
+- Neither probe connected to a database, changed Paystack settings or changed
+  the deployed API. Credentials and signed URLs are not included in this record.
+
+Automatic webhook delivery, hosted payment completion, reconciliation and
+native app walkthrough remain separate pending gates. A provider initialization
+success is not a paid or fulfilled purchase.
 
 ## Provider rehearsal: no database access
 
@@ -63,16 +91,16 @@ environment and the separate live opt-in; it is not authorized here.
 
 ## Stage 5 evidence still required
 
-| Gate                        | Required evidence                                                                                                                                              | Current status                           |
-| --------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------- |
-| Exact deploy artifact       | Docker build, migration hashes, config preflight, narrow-role readiness                                                                                        | In progress                              |
-| Android and iOS             | Both apps against assembled replacement: native sign-in, restored secure session, minimum-version refusal, boarding, driver-only GPS receipt and map rendering | Not run this rehearsal                   |
-| Paystack initialization     | Real TEST initialize/verify via replacement adapter                                                                                                            | Waiting on private local credential file |
-| Automatic Paystack delivery | Hosted paid TEST checkout; reference-correlated provider-origin inbox receipt and exactly one fulfilment; no signed replay used as proof                       | Not run                                  |
-| Reconciliation              | Separate unresolved TEST purchase recovered through Verify; no fabricated success                                                                              | Not run                                  |
-| R2 and erasure              | Probe reads/expiry/delete, then account erasure worker removes that account's object with durable completion                                                   | Not run                                  |
-| Capacity                    | 12.96M fixes on approved intended tier; latency, drain rate, backlog recovery, locks, WAL/storage/vacuum                                                       | Blocked on capacity/target approval      |
-| Recovery                    | Rehearsal before external writes and a distinct after-external-writes scenario                                                                                 | Not run                                  |
+| Gate                        | Required evidence                                                                                                                                              | Current status                                              |
+| --------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------- |
+| Exact deploy artifact       | Docker build, migration hashes, config preflight, narrow-role readiness                                                                                        | In progress                                                 |
+| Android and iOS             | Both apps against assembled replacement: native sign-in, restored secure session, minimum-version refusal, boarding, driver-only GPS receipt and map rendering | Not run this rehearsal                                      |
+| Paystack initialization     | Real TEST initialize/verify via replacement adapter                                                                                                            | Passed: unpaid TEST probe; local checks separately labelled |
+| Automatic Paystack delivery | Hosted paid TEST checkout; reference-correlated provider-origin inbox receipt and exactly one fulfilment; no signed replay used as proof                       | Not run                                                     |
+| Reconciliation              | Separate unresolved TEST purchase recovered through Verify; no fabricated success                                                                              | Not run                                                     |
+| R2 and erasure              | Probe reads/expiry/delete, then account erasure worker removes that account's object with durable completion                                                   | R2 probe passed 4/4; erasure flow pending                   |
+| Capacity                    | 12.96M fixes on approved intended tier; latency, drain rate, backlog recovery, locks, WAL/storage/vacuum                                                       | Pre-production gate; no staging upgrade requested           |
+| Recovery                    | Rehearsal before external writes and a distinct after-external-writes scenario                                                                                 | Not run                                                     |
 
 Keep raw provider payloads, tokens, signed object URLs and GPS out of committed
 evidence. Record commit, image digest, migration hashes, test counts, sanitized
