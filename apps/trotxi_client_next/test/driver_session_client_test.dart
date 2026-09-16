@@ -113,7 +113,22 @@ void main() {
   test(
       'generated driver sign-in sends the new shape and persists before returning',
       () async {
-    final driver = await signIn();
+    // Preserve the cause when a platform's transport/JSON decoder rejects a
+    // synthetic response. ErrorInterceptor intentionally exposes only a safe
+    // app error, which otherwise hides why this fixture failed in CI.
+    Object? transportCause;
+    client.dio.interceptors.insert(
+        client.dio.interceptors.indexWhere((i) => i is ErrorInterceptor),
+        InterceptorsWrapper(onError: (error, handler) {
+          transportCause = error.error;
+          handler.next(error);
+        }));
+    final DriverIdentity driver;
+    try {
+      driver = await signIn();
+    } catch (error) {
+      fail('Synthetic sign-in failed: $error; transport cause: $transportCause');
+    }
     expect(requests.single.path, '/v1/auth/driver');
     expect(bodyOf(requests.single),
         {'code': 'dr-test', 'pin': '938751', 'ownDevice': false});
