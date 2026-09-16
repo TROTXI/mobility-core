@@ -16,6 +16,8 @@ import type { DriverService, DriverOperation } from '../auth/driver-service.js';
 import type { PaymentRecovery } from '../payments/recovery.js';
 import { membershipOperations } from '../membership/service.js';
 import { tripReads } from '../transport/trips.js';
+import { configOperations, publicConfigOperations } from '../config/service.js';
+import type { ConfigService, ConfigOperation } from '../config/service.js';
 import { pricingOperations } from '../payments/pricing.js';
 import type { Pricing, PricingOperation } from '../payments/pricing.js';
 import { accountOperations } from '../account/service.js';
@@ -66,6 +68,7 @@ export interface AppOptions extends Dependencies {
   membership?: MembershipService;
   pricing?: Pricing;
   account?: AccountService;
+  config?: ConfigService;
   maxAvatarBytes?: number;
   purchases?: Purchases;
   boarding?: BoardingService;
@@ -182,6 +185,9 @@ export async function createTransportApp(options: AppOptions) {
       const pricingEndpoint = (pricingOperations as readonly string[]).includes(name);
       const purchaseEndpoint = (purchaseOperations as readonly string[]).includes(name);
       const accountEndpoint = (accountOperations as readonly string[]).includes(name);
+      const configEndpoint = (configOperations as readonly string[]).includes(name);
+      const publicConfig = (publicConfigOperations as readonly string[]).includes(name);
+      if ((configEndpoint || publicConfig) && !options.config) continue;
       if (accountEndpoint && !options.account) continue;
       if (boardingEndpoint && !options.boarding) continue;
       if (pricingEndpoint && !options.pricing) continue;
@@ -222,7 +228,7 @@ export async function createTransportApp(options: AppOptions) {
       // Trip reads need a session but not a particular app: a rider watching a
       // bus, a driver checking the board and ops all read the same catalogue.
       const anyClient = publicRead || (tripReads as readonly string[]).includes(name);
-      const anonymous = publicRead || publicAuth;
+      const anonymous = publicRead || publicAuth || publicConfig;
       const ops = path.startsWith('/v1/ops/');
       const response: Record<string, unknown> = {};
       for (const [status, out] of Object.entries(operation.responses)) {
@@ -247,6 +253,9 @@ export async function createTransportApp(options: AppOptions) {
             fail(401, 'unauthenticated', 'Sign in to continue.');
           const actor = anonymous ? null : await options.verifyAccess(authorization!);
           if (!anonymous && !actor) fail(401, 'unauthenticated', 'Sign in to continue.');
+          // A liveness probe or a start-up fetch carries no application
+          // metadata, and the contract declares none for them.
+          if (publicConfig) return;
           const client = request.headers['x-trotxi-client'],
             build = request.headers['x-trotxi-build'],
             platform = request.headers['x-trotxi-platform'];
@@ -277,7 +286,12 @@ export async function createTransportApp(options: AppOptions) {
           const floor =
             client === 'ops'
               ? floors.ops
-              : floors[client as 'driver' | 'commuter'][platform as 'ios' | 'android'];
+              : options.config
+                ? await options.config.minimumBuild(
+                    client as 'driver' | 'commuter',
+                    platform as 'ios' | 'android',
+                  )
+                : floors[client as 'driver' | 'commuter'][platform as 'ios' | 'android'];
           if (Number(build) < floor)
             fail(426, 'client_upgrade_required', 'Update the application before continuing.');
           if (!actor) return; // Public catalog remains IP-limited; no identity fallback.
@@ -382,6 +396,40 @@ export async function createTransportApp(options: AppOptions) {
               );
             }
             return reply.send({ data });
+          } else if (publicConfig) {
+            result =
+              name === 'getRoot'
+                ? options.config!.root()
+                : name === 'getBuild'
+                  ? options.config!.build()
+                  : name === 'getHealth'
+                    ? options.config!.health()
+                    : name === 'getReadiness'
+                      ? await options.config!.readiness()
+                      : await options.config!.bootstrap();
+          } else if (configEndpoint) {
+            if (method === 'get')
+              result = await options.config!.read(actor!, name as ConfigOperation);
+            else {
+              const key = request.headers['idempotency-key'],
+                match = request.headers['if-match'];
+              if (typeof key !== 'string' || key.length < 1 || key.length > 128)
+                fail(
+                  400,
+                  'idempotency_key_required',
+                  'Supply an Idempotency-Key of 1 to 128 characters.',
+                );
+              if (match !== undefined && (typeof match !== 'string' || match.length > 128))
+                fail(400, 'invalid_precondition', 'Invalid If-Match header.');
+              result = await options.config!.command(
+                actor!,
+                name as ConfigOperation,
+                request.params as { key?: string; app?: string; platform?: string; id?: string },
+                (request.body ?? {}) as Body,
+                key,
+                match as string | undefined,
+              );
+            }
           } else if (accountEndpoint) {
             if (name === 'uploadAvatar') {
               const body = request.body as { file?: { toBuffer?: () => Promise<Buffer> } };
