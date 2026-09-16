@@ -164,9 +164,15 @@ declared substitution rather than a green tick.
 5. **Apple provisioning.** The Services ID, team id and `.p8` do not exist. The
    service refuses to start without them.
 6. **`deleteAvatar`** remains deferred, as above.
-7. **Live provider traffic.** Paystack initialize, verify and webhook signing
-   are implemented and unit-tested against synthetic evidence. Nothing here has
-   been exercised against Paystack's sandbox from this service.
+7. **Live provider traffic.** Exercised in test mode on 2026-09-16 via
+   `services/api-next/scripts/paystack-test-mode.ts`, six checks passing: the
+   key's environment matches what the adapter believes, a checkout opens on
+   `checkout.paystack.com` under the reference we sent, an unpaid transaction
+   reads back as a **failure** fact rather than a settlement, and Paystack's
+   webhook signature verifies while a body altered by one byte and an unsigned
+   body are both refused. What is still unexercised is a transaction somebody
+   actually pays: settlement, refund and dispute facts have only been seen as
+   synthetic evidence.
 
 ## Before a cutover
 

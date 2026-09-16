@@ -387,9 +387,10 @@ The stage-2 baseline and its expectations remain unchanged.
 2. An Apple Developer account, if Apple sign-in is wanted. The deployment runs
    without one: `REPLACEMENT_AUTH_PROVIDERS=google` is a complete deployment and
    `signInApple` simply has no route. Adding one is four variables and one word.
-3. A Paystack exercise in test mode. Initialize, verify and webhook signing are
-   implemented and tested against synthetic evidence; this service has not yet
-   spoken to Paystack.
+3. A paid transaction. Test mode is exercised (`scripts/paystack-test-mode.ts`,
+   six checks passing against a real `sk_test_` key: environment, initialize,
+   verify, and three signature cases). Settlement, refund and dispute facts have
+   still only been seen as synthetic evidence, because nobody has paid one.
 
 ### On future-version reassignment
 
