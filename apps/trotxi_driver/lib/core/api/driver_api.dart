@@ -109,6 +109,7 @@ class DriverApi {
     Map<String, dynamic>? query,
   }) async {
     final generation = _sync();
+    final Object? data;
     try {
       final response = await dio.get<Object?>(
         path,
@@ -116,10 +117,13 @@ class DriverApi {
         options: Options(extra: {'driver.sessionGeneration': generation}),
       );
       _check(generation);
-      return _decode(serializer, response.data);
+      data = response.data;
     } on DioException catch (error) {
       throw unwrap(error);
     }
+    // Decode outside the transport catch. T is generic, so newer analyzers
+    // otherwise treat its return inside try as a potentially unawaited Future.
+    return _decode(serializer, data);
   }
 
   /// Preserve a command's key across uncertain delivery in this session.
