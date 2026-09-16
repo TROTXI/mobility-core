@@ -175,6 +175,80 @@ class CommuterDataClient {
               extra: extra)))
           .data;
 
+  Future<Account> updateAccount(String displayName) async => (await _command(
+          'updateAccount',
+          displayName,
+          (key, extra) => client.getSelfApi().updateAccount(
+              idempotencyKey: key,
+              xTrotxiClient: metadata.app,
+              xTrotxiBuild: metadata.build,
+              profileUpdate: ProfileUpdate((b) => b.displayName = displayName),
+              extra: extra)))
+      .data;
+
+  Future<List<Session>> sessions() => _pages(
+      (cursor, extra) => client.getSelfApi().listSessions(
+          xTrotxiClient: metadata.app,
+          xTrotxiBuild: metadata.build,
+          limit: 200,
+          cursor: cursor,
+          extra: extra),
+      (page) => page.data,
+      (page) => page.page.nextCursor);
+
+  Future<Response<bool>> _ack(Future<Response<void>> request) async {
+    final response = await request;
+    if (response.statusCode != 204) {
+      throw const ApiException(
+          502, 'The server did not acknowledge the request.');
+    }
+    return Response(
+        requestOptions: response.requestOptions, statusCode: 204, data: true);
+  }
+
+  Future<void> revokeSession(Session session) async {
+    final generation = sessionGeneration;
+    await _command(
+        'revokeSession',
+        session.id,
+        (key, extra) => _ack(client.getSelfApi().revokeSession(
+            id: session.id,
+            idempotencyKey: key,
+            xTrotxiClient: metadata.app,
+            xTrotxiBuild: metadata.build,
+            extra: extra)));
+    if (session.current)
+      await _clearAcknowledgedSession(generation, 'revocation');
+  }
+
+  /// 204 acknowledges account erasure and queued external cleanup. It does
+  /// not prove that every private object/backup has already been removed.
+  Future<void> eraseAccount() async {
+    final generation = sessionGeneration;
+    await _command(
+        'eraseAccount',
+        null,
+        (key, extra) => _ack(client.getSelfApi().eraseAccount(
+            idempotencyKey: key,
+            xTrotxiClient: metadata.app,
+            xTrotxiBuild: metadata.build,
+            extra: extra)));
+    await _clearAcknowledgedSession(generation, 'erasure');
+  }
+
+  Future<void> _clearAcknowledgedSession(
+      int generation, String operation) async {
+    try {
+      await store.clearTokensIfGenerationMatches(generation);
+    } catch (_) {
+      // The server already accepted the command. Do not describe an OS
+      // keystore failure as a failed erasure/revocation or undo that fact.
+      throw ApiException(0,
+          'The server accepted $operation, but this device could not clear its session. Please sign out again.',
+          code: '${operation}_accepted_local_clear_failed');
+    }
+  }
+
   Future<Membership> membership() async =>
       (await _read((extra) => client.getRiderOwnApi().getMembership(
               xTrotxiClient: metadata.app,

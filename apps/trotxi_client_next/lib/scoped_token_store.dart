@@ -201,6 +201,17 @@ class ScopedTokenStore implements TokenStore, ConditionalTokenStore {
         }
       });
 
+  /// A destructive account acknowledgement must not clear a newer login,
+  /// including when the OS storage queue is still finishing that login.
+  Future<bool> clearTokensIfGenerationMatches(int expectedGeneration) =>
+      _exclusive(() async {
+        if (_generation != expectedGeneration) return false;
+        await storage.delete(scope.storageKey);
+        _generation++;
+        onCleared?.call();
+        return true;
+      });
+
   @override
   Future<void> clearTokens() => _exclusive(() async {
         await storage.delete(scope.storageKey);

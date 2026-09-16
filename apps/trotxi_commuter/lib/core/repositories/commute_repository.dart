@@ -1,57 +1,54 @@
-import 'package:dio/dio.dart';
-import 'package:trotxi_client/trotxi_client.dart';
+import 'package:trotxi_client_next/trotxi_client_next.dart' as wire;
+import 'package:trotxi_commuter/core/api/commuter_api.dart';
 
-/// Durable requests; the existing client supplies auth, refresh and transport.
 class CommuteRepository {
-  CommuteRepository(TrotxiApiClient client) : _dio = client.dio;
-  final Dio _dio;
+  CommuteRepository(this.client);
+  final CommuterApi client;
 
   Future<List<CommuteRequest>> list() async {
-    final response = await _dio.get<Map<String, dynamic>>(
-      '/me/commute-requests',
-    );
-    return (response.data!['requests'] as List)
-        .map((row) => CommuteRequest.fromJson(row as Map<String, dynamic>))
+    final generation = client.sessionGeneration;
+    final requests = await client.commuteRequests();
+    final routes = await client.routes();
+    client.ensureSession(generation);
+    final names = {for (final route in routes) route.id: route.name};
+    return requests
+        .map(
+          (r) => CommuteRequest(
+            r,
+            names[r.requested.routeId] ??
+                'Requested corridor (not in current catalogue)',
+          ),
+        )
         .toList();
   }
 
-  Future<void> submit(Map<String, Object> input) async {
-    await _dio.post<void>('/me/commute-requests', data: input);
+  Future<void> submit(wire.CommuteRequestInput input) async {
+    await client.submitCommute(input);
   }
 
   Future<void> withdraw(String id) async {
-    await _dio.post<void>('/me/commute-requests/$id/withdraw');
+    await client.withdrawCommute(id);
   }
 }
 
 class CommuteRequest {
-  CommuteRequest.fromJson(Map<String, dynamic> json)
-    : id = json['id'] as String,
-      routeName = json['routeName'] as String,
-      status = json['status'] as String,
-      paused = json['paused'] as bool,
-      requestedDate = json['requestedDate'] as String,
-      effectiveDate = json['effectiveDate'] as String?,
-      decisionNote = json['decisionNote'] as String?;
-  final String id, routeName, status, requestedDate;
-  final String? effectiveDate, decisionNote;
-  final bool paused;
+  CommuteRequest(this.row, this.routeName);
+  final wire.CommuteRequest row;
+  final String routeName;
+  String get id => row.id;
+  String get status => row.status.name;
+  bool get paused => row.paused;
+  String get requestedDate => row.requested.requestedDate.toString();
+  String? get effectiveDate => row.effectiveDate?.toString();
+  String? get decisionNote => row.decisionNote;
   bool get isOpen =>
-      const ['pending', 'waitlisted', 'approved'].contains(status);
+      const ['submitted', 'waitlisted', 'approved'].contains(status);
 }
 
 String commuteError(Object error) {
-  if (error is DioException) {
-    final data = error.response?.data;
-    if (data is Map && data['message'] is String) {
-      return data['message'] as String;
-    }
-    if (error.error is OfflineException ||
-        error.type == DioExceptionType.connectionError ||
-        error.type == DioExceptionType.connectionTimeout ||
-        error.type == DioExceptionType.receiveTimeout) {
-      return 'Connection unavailable. Refresh your requests before retrying; your request may already have reached operations.';
-    }
+  if (error is OfflineException) {
+    return 'Connection unavailable. Refresh your requests before retrying; your request may already have reached operations.';
   }
+  if (error is TrotxiException) return error.message;
   return 'Could not complete the request. Refresh and try again, or contact operations.';
 }

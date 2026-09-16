@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:trotxi_client/trotxi_client.dart';
+import 'package:trotxi_commuter/core/api/commuter_api.dart';
 
 class RoutesTab extends StatefulWidget {
   const RoutesTab({super.key, required this.client});
-  final TrotxiApiClient client;
+  final CommuterApi client;
 
   @override
   State<RoutesTab> createState() => _RoutesTabState();

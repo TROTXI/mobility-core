@@ -1,7 +1,7 @@
 # Stage 4: moving an app to the replacement contract
 
-For whoever owns an app. The driver now uses the replacement on the Stage 4
-branch; the commuter still targets the deployed API. This describes the shared
+For whoever owns an app. Both apps now use the replacement on the Stage 4
+branches; remaining commuter features are tracked separately. This describes the shared
 contract changes, not a deployment or permission to mix backend generations.
 See `stage-4-progress.md` for implementation and verification status.
 
@@ -10,12 +10,12 @@ See `stage-4-progress.md` for implementation and verification status.
 | Package                   | Contract                                 | Used by              |
 | ------------------------- | ---------------------------------------- | -------------------- |
 | `apps/api_client`         | The deployed API, generated from staging | `trotxi_client`      |
-| `apps/trotxi_client`      | Hand-written layer over it               | `trotxi_commuter`    |
+| `apps/trotxi_client`      | Hand-written layer over it               | Neither migrated app |
 | `apps/api_client_next`    | **The replacement**, 119 operations      | `trotxi_client_next` |
-| `apps/trotxi_client_next` | Hand-written layer over that             | `trotxi_driver`      |
+| `apps/trotxi_client_next` | Hand-written layer over that             | Both migrated apps   |
 
-The `_next` pair temporarily separates the migrated driver from the not-yet-
-migrated commuter. Move each app as a coherent build: never mix sessions or
+The `_next` pair remains until the canonical-package cleanup checkpoint.
+Move each app as a coherent build: never mix sessions or
 resource identities across contracts while moving screens. Remove the unused
 legacy pair and settle canonical names once both apps have moved. Regenerate with
 `pnpm run codegen:replacement`, then `dart run build_runner build` inside the
@@ -81,7 +81,7 @@ equivalent for.
 This is the one that is not a rename, and it is why the commuter app's
 `submit` cannot be ported mechanically.
 
-Today the app sends physical stop ids and two times:
+The old app sent physical stop ids and two times:
 
 ```dart
 { routeId, pickupStopId, dropoffStopId, morningDeparture, eveningReturn, … }
@@ -99,9 +99,10 @@ stop. A single physical stop can appear twice in a loop, which is exactly why
 the identity is version-scoped: without it, "the stop I board at" is ambiguous
 on a route that doubles back.
 
-The app cannot derive these from what it holds. It needs a step where the rider
+The app cannot derive these from old selections. The migrated picker lets the rider
 picks a schedule, reading `listRouteSchedules` (`GET /v1/routes/{id}/schedules`)
-and `getPatternVersion`. That step is new work, not a port.
+and `getPatternVersion`. This step is implemented on the commuter branch;
+see its catalogue limitation and verification scope in `stage-4-progress.md`.
 
 ### 6. Reads are paged and enveloped
 

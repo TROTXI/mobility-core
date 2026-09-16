@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:trotxi_client/trotxi_client.dart';
+import 'package:trotxi_commuter/core/api/commuter_api.dart';
 import 'package:trotxi_commuter/core/config/layout/responsive_layout.dart';
 import 'package:trotxi_commuter/core/config/theme/app_colors.dart';
 import 'package:trotxi_commuter/core/config/theme/app_typography.dart';
@@ -8,9 +8,8 @@ import 'package:trotxi_commuter/core/config/theme/app_typography.dart';
 /// "Personal information" row.
 ///
 /// `displayName` is the only field actually editable — it's the one field
-/// `MePatchRequest` supports. Avatar editing is deferred until there's real
-/// backend support (`POST /me/avatar` exists, but the generated client
-/// method has no way to attach file data yet).
+/// the replacement profile command supports. Native photo selection/upload
+/// wiring is a separate remaining step, not a missing backend capability.
 class PersonalInfoPage extends StatefulWidget {
   const PersonalInfoPage({
     super.key,
@@ -18,8 +17,8 @@ class PersonalInfoPage extends StatefulWidget {
     required this.initialUser,
   });
 
-  final TrotxiApiClient client;
-  final MeGet200Response initialUser;
+  final CommuterApi client;
+  final Account initialUser;
 
   @override
   State<PersonalInfoPage> createState() => _PersonalInfoPageState();
@@ -52,8 +51,11 @@ class _PersonalInfoPageState extends State<PersonalInfoPage> {
   }
 
   void _onChangePhoto() {
-    // TODO: wire up avatar upload once the API supports it.
-    debugPrint('Change photo tapped');
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Photo uploads are not yet connected in this build.'),
+      ),
+    );
   }
 
   Future<void> _onSave() async {
@@ -71,9 +73,7 @@ class _PersonalInfoPageState extends State<PersonalInfoPage> {
 
     setState(() => _saving = true);
     try {
-      await widget.client.getAuthApi().mePatch(
-        mePatchRequest: MePatchRequest((b) => b..displayName = trimmed),
-      );
+      await widget.client.updateAccount(trimmed);
       if (!mounted) return;
       Navigator.of(context).pop();
     } catch (e) {
@@ -81,7 +81,7 @@ class _PersonalInfoPageState extends State<PersonalInfoPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Could not save changes. Try again.')),
       );
-      debugPrint('Error updating personal information: $e');
+      debugPrint('Profile update error: ${e.runtimeType}');
     } finally {
       if (mounted) setState(() => _saving = false);
     }

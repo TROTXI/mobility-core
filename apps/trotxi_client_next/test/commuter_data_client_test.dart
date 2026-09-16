@@ -99,6 +99,101 @@ void main() {
   });
   tearDown(() => data.dispose());
 
+  test('profile retry retains its intent key after an uncertain response',
+      () async {
+    reply = (o) => throw DioException(
+        requestOptions: o, type: DioExceptionType.receiveTimeout);
+    await expectLater(
+        data.updateAccount('New name'), throwsA(isA<OfflineException>()));
+    final key = requests.single.headers['Idempotency-Key'];
+    reply = (_) => json(200, {'data': account()});
+    await data.updateAccount('New name');
+    expect(requests.last.method, 'PATCH');
+    expect(requests.last.path, '/v1/me');
+    expect(bodyOf(requests.last), {'displayName': 'New name'});
+    expect(requests.last.headers['Idempotency-Key'], key);
+  });
+
+  Session session(bool current) => Session((b) => b
+    ..id = current ? 'this-session' : 'other-session'
+    ..current = current
+    ..createdAt = DateTime.parse(stamp)
+    ..expiresAt = DateTime.utc(2030));
+
+  test(
+      'session discovery follows pages and revoking another device keeps this login',
+      () async {
+    reply = (o) => o.method == 'GET'
+        ? json(
+            200,
+            page([
+              client.serializers.serializeWith(Session.serializer,
+                  session(o.queryParameters['cursor'] == null))
+            ], o.queryParameters['cursor'] == null ? 'next' : null))
+        : json(204, null);
+    final sessions = await data.sessions();
+    expect(sessions.map((s) => s.id), ['this-session', 'other-session']);
+    await data.revokeSession(sessions.last);
+    expect(requests.last.path, '/v1/me/sessions/other-session');
+    expect(requests.last.method, 'DELETE');
+    expect(await store.getAccessToken(), 'rider-a');
+  });
+
+  for (final erase in [false, true]) {
+    Future<void> action() =>
+        erase ? data.eraseAccount() : data.revokeSession(session(true));
+    test(
+        '${erase ? 'erasure' : 'current revocation'} clears only after an exact acknowledgement',
+        () async {
+      var clears = 0;
+      store.onCleared = () => clears++;
+      reply = (_) => json(200, null);
+      await expectLater(
+          action(),
+          throwsA(
+              isA<ApiException>().having((e) => e.statusCode, 'status', 502)));
+      expect(await store.getAccessToken(), 'rider-a');
+      final key = requests.single.headers['Idempotency-Key'];
+      reply = (_) => json(204, null);
+      await action();
+      expect(requests.last.headers['Idempotency-Key'], key);
+      expect(await store.getAccessToken(), isNull);
+      expect(clears, 1);
+    });
+
+    test(
+        'late ${erase ? 'erasure' : 'revocation'} response never clears a new rider',
+        () async {
+      final entered = Completer<void>(), release = Completer<void>();
+      reply = (_) async {
+        entered.complete();
+        await release.future;
+        return json(204, null);
+      };
+      final pending = action();
+      final assertion =
+          expectLater(pending, throwsA(isA<UnauthorizedException>()));
+      await entered.future;
+      await store.saveTokens(
+          accessToken: 'new-rider', refreshToken: 'new-refresh');
+      release.complete();
+      await assertion;
+      expect(await store.getAccessToken(), 'new-rider');
+    });
+
+    test(
+        'acknowledged ${erase ? 'erasure' : 'revocation'} reports local storage failure honestly',
+        () async {
+      (store.storage as MemorySessionStorage).failDelete = true;
+      reply = (_) => json(204, null);
+      await expectLater(
+          action(),
+          throwsA(isA<ApiException>().having((e) => e.code, 'code',
+              '${erase ? 'erasure' : 'revocation'}_accepted_local_clear_failed')));
+      expect(await store.getAccessToken(), 'rider-a');
+    });
+  }
+
   test('catalog reads preserve schedule version and all route pages', () async {
     final c = choice();
     reply = (o) {

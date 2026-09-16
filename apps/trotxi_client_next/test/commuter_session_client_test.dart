@@ -20,7 +20,7 @@ class Adapter implements HttpClientAdapter {
   void close({bool force = false}) {}
 }
 
-ResponseBody json(int status, Object body) =>
+ResponseBody json(int status, Object? body) =>
     ResponseBody.fromString(jsonEncode(body), status, headers: {
       Headers.contentTypeHeader: ['application/json']
     });
