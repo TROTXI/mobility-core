@@ -12,7 +12,8 @@ test('FIN-01 / PAY-01: financial source fields have pesewa units and runtime can
       "SELECT c.relname,a.attname,col_description(c.oid,a.attnum) AS comment FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace JOIN pg_attribute a ON a.attrelid=c.oid WHERE n.nspname='app' AND a.attname LIKE '%pesewas' AND a.attnum>0",
     )
   ).rows;
-  assert.equal(rows.filter((r) => !r.relname.startsWith('payment_')).length, 10);
+  // 016 adds two more: the corridor fare and the per-ride credit rate.
+  assert.equal(rows.filter((r) => !r.relname.startsWith('payment_')).length, 12);
   assert.equal(rows.filter((r) => r.relname === 'payment_attempts').length, 2);
   for (const r of rows) assert.match(r.comment, /pesewas/);
   await f.grant(1000);

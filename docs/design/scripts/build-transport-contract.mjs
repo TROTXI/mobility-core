@@ -100,6 +100,15 @@ const selected = new Set([
   'listTrips',
   'getTrip',
   'getLiveTrip',
+  'listPurchases',
+  'createPurchase',
+  'getPurchase',
+  'listOpsPurchases',
+  'getOpsPurchase',
+  'listFares',
+  'createFare',
+  'listPlanPricing',
+  'updatePlanPricing',
 ]);
 const count = selected.size;
 const paths = {};
@@ -128,13 +137,46 @@ for (const [path, methods] of Object.entries(source.paths)) {
 }
 if (selected.size) throw new Error(`Missing operations: ${[...selected]}`);
 references({ $ref: '#/components/schemas/ErrorResponse' });
+// The reviewed spec is OpenAPI 3.0, where an exclusive bound is a flag beside
+// the bound it modifies. The runtime validates against 2020-12, where it is
+// the bound. Rewriting it here keeps one authoritative source instead of a
+// second hand-maintained copy, and refuses anything it does not understand.
+function modern(value) {
+  if (Array.isArray(value)) return value.map(modern);
+  if (!value || typeof value !== 'object') return value;
+  const out = {};
+  for (const [key, child] of Object.entries(value)) {
+    if (key === 'exclusiveMinimum' || key === 'exclusiveMaximum') {
+      if (typeof child === 'number') {
+        out[key] = child;
+        continue;
+      }
+      if (child !== true) throw new Error(`Unsupported ${key}: ${JSON.stringify(child)}`);
+      const bound = key === 'exclusiveMinimum' ? 'minimum' : 'maximum';
+      if (typeof value[bound] !== 'number')
+        throw new Error(`Exclusive ${bound} without a bound to exclude`);
+      out[key] = value[bound];
+      delete out[bound];
+      continue;
+    }
+    if ((key === 'minimum' || key === 'maximum') && out[key] === undefined) {
+      const flag = key === 'minimum' ? 'exclusiveMinimum' : 'exclusiveMaximum';
+      if (value[flag] === true) continue;
+    }
+    out[key] = modern(child);
+  }
+  return out;
+}
 const schemas = Object.fromEntries(
-  [...needed].sort().map((name) => [name, source.components.schemas[name]]),
+  [...needed].sort().map((name) => [name, modern(source.components.schemas[name])]),
 );
 await writeArtifact(
   new URL('../../../services/api-next/src/http/contract.json', import.meta.url),
   JSON.stringify(
-    { paths, components: { schemas, responses: source.components.responses } },
+    {
+      paths: modern(paths),
+      components: { schemas, responses: modern(source.components.responses) },
+    },
     null,
     2,
   ) + '\n',

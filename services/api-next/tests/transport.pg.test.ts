@@ -274,7 +274,9 @@ test('MIG-01 clean install records hashes, rerun is no-op, historical drift fail
     // 014 adds the trace and its live projection, learned speeds with the
     // samples and per-trip marker behind them, trace holds and gps receipts.
     // 015 adds boarding receipts, charges, attendance, QR uses and code budgets.
-    assert.equal(tables.rows[0].n, 68);
+    // 016 adds plan pricing, corridor fares, the pricing command and event
+    // receipts, and the provider checkout session behind a purchase.
+    assert.equal(tables.rows[0].n, 73);
     assert.deepEqual(
       (
         await pool.query(
