@@ -128,12 +128,17 @@ request is open while it is one of the first three.
 ## What has not changed
 
 `GET /`, `/healthz`, `/readyz`, `/version`, `/flags` and `POST /webhooks/paystack`
-keep their paths exactly. Health checks, the deploy workflow and Paystack's
-registered webhook do not need touching at cutover.
+keep their paths exactly. These stable paths do not make the deployment workflow
+replacement-ready: it still invokes the old API migrator. Cutover must explicitly
+select the replacement database, migrator, narrow runtime role and service, then
+verify the provider webhook points at that service. Do not reuse old database
+credentials merely because the URL paths match.
 
 ## Sequence that works
 
-1. Point one screen at `trotxi_client_next` and supply `ClientMetadata`.
+1. Migrate in an isolated replacement app build using `trotxi_client_next` and
+   `ClientMetadata`. Do not mix old and replacement identities/data within one
+   signed-in session while moving screens.
 2. Move its reads. They are renames plus the page envelope.
 3. Move its creations, checking for 201 and reading `error.message`.
 4. Leave the commute request until the schedule-selection step exists.

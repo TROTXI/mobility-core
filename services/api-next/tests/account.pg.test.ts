@@ -34,8 +34,7 @@ async function fixture(t: TestContext, options: { store?: boolean; reach?: boole
       options.store === false
         ? undefined
         : {
-            put: async ({ bytes }) => {
-              const objectKey = `avatars/${randomUUID()}`;
+            put: async ({ bytes, objectKey }) => {
               stored.push({ objectKey, bytes: bytes.length });
               return { objectKey };
             },
@@ -289,9 +288,12 @@ test('ACC-05 erasure stops the account working and leaves nothing personal', asy
   assert.ok(device.revoked_at);
   assert.equal(device.token_ciphertext, null, 'a revoked device keeps no token');
   assert.deepEqual(f.removed(), [f.stored()[0]!.objectKey], 'the stored object is removed');
-  assert.equal(f.revoked().length, 1, 'the provider grant is revoked');
-  const tasks = (await f.owner.query('SELECT kind,state FROM app.erasure_tasks ORDER BY kind'))
-    .rows;
+  assert.equal(f.revoked().length, 0, 'Google ID-token sign-in holds no revocable grant');
+  const tasks = (
+    await f.owner.query(
+      "SELECT kind,state FROM app.erasure_tasks WHERE state<>'cancelled' ORDER BY kind",
+    )
+  ).rows;
   assert.deepEqual(
     tasks.map((x: any) => [x.kind, x.state]),
     [
@@ -337,7 +339,7 @@ test('ACC-05 erasure stops the account working and leaves nothing personal', asy
 test('ACC-06 an unreachable provider leaves work to retry, not a finished erasure', async (t) => {
   const f = await fixture(t, { reach: false });
   await f.owner.query(
-    "INSERT INTO app.auth_identities(user_id,provider,subject) VALUES ($1,'apple',$2)",
+    "INSERT INTO app.auth_identities(user_id,provider,subject,provider_token_ciphertext) VALUES ($1,'apple',$2,'sealed-test-grant')",
     [f.actor.userId, 'apple-subject-' + randomUUID()],
   );
   expectStatus(await f.upload(PNG), 200);
@@ -348,7 +350,7 @@ test('ACC-06 an unreachable provider leaves work to retry, not a finished erasur
   );
   const tasks = (
     await f.owner.query(
-      'SELECT kind,state,attempts,last_failure FROM app.erasure_tasks ORDER BY kind',
+      "SELECT kind,state,attempts,last_failure FROM app.erasure_tasks WHERE state<>'cancelled' ORDER BY kind",
     )
   ).rows;
   assert.deepEqual(
@@ -360,8 +362,12 @@ test('ACC-06 an unreachable provider leaves work to retry, not a finished erasur
   );
   assert.ok(tasks.every((x: any) => x.last_failure));
   // The retry is bounded and does not invent success while still unwired.
-  assert.deepEqual(await f.account.retryErasures(), { considered: 2, completed: 0 });
-  const after = (await f.owner.query('SELECT attempts FROM app.erasure_tasks ORDER BY kind')).rows;
+  assert.deepEqual(await f.account.retryErasures(), { considered: 2, completed: 0, failed: 2 });
+  const after = (
+    await f.owner.query(
+      "SELECT attempts FROM app.erasure_tasks WHERE state<>'cancelled' ORDER BY kind",
+    )
+  ).rows;
   assert.deepEqual(
     after.map((x: any) => x.attempts),
     [2, 2],
@@ -527,7 +533,9 @@ test('ACC-13 two sweeps do not do the same outside work twice', async (t) => {
 
   // An exhausted attempt count must not make completion impossible.
   const settled = (
-    await f.owner.query("SELECT state FROM app.erasure_tasks WHERE kind='avatar_object'")
+    await f.owner.query(
+      "SELECT state FROM app.erasure_tasks WHERE kind='avatar_object' AND disposition='removed'",
+    )
   ).rows[0];
   assert.equal(settled.state, 'done');
 });

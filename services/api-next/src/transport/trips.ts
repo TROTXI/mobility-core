@@ -190,7 +190,8 @@ export class Trips {
           await client.query(
             `SELECT effective_captured_at,received_at,
               ST_Y(location) AS latitude,ST_X(location) AS longitude
-            FROM app.trip_live_positions WHERE trip_id=$1`,
+            FROM app.trip_live_positions WHERE trip_id=$1
+              AND received_at>=clock_timestamp()-make_interval(days=>app.trace_retention_days())`,
             [trip.id],
           )
         ).rows[0];

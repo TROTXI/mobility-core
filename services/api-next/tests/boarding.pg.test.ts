@@ -13,6 +13,7 @@ import type { Actor, Body } from '../src/transport/service.js';
 import { TransportService, tripEditToken } from '../src/transport/service.js';
 import { PaymentRecovery } from '../src/payments/recovery.js';
 import { PaystackEvidence } from '../src/payments/provider.js';
+import { purgeExpiredCommandPayloads } from '../src/runtime/receipt-retention.js';
 
 const data = (out: any) => out.body.data;
 async function fixture(t: TestContext, auxFailure = false, through = files.length) {
@@ -254,6 +255,32 @@ test('BRD-02: same-key replay and fresh QR never charge twice; reused QR on a fr
   assert.notEqual(fresh.qrToken, p.qrToken);
   assert.equal((await f.board(f.run.id, { kind: 'qr', token: fresh.qrToken })).chargedRides, 0);
   assert.equal((await f.counts()).debits, 1);
+});
+test('BRD-28 expired boarding snapshots clear without removing a charge or its command link', async (t) => {
+  const f = await seat(t);
+  await f.board(f.run.id, { kind: 'photo', reservationId: f.reservation.id });
+  await f.owner
+    .query(`INSERT INTO app.boarding_commands(actor_user_id,operation,target,key_hash,input_hash,response_body,created_at)
+    SELECT actor_user_id,operation,target,repeat('e',64),input_hash,response_body,clock_timestamp()-interval '8 days' FROM app.boarding_commands`);
+  const charges = (await f.owner.query('SELECT * FROM app.reservation_charges')).rows;
+  assert.equal(charges.length, 1);
+  // The actual charge's receipt uses this fixture's January service clock;
+  // both it and the eight-day-old clone are expired at the database clock.
+  assert.equal(await purgeExpiredCommandPayloads(f.runtime), 2);
+  assert.deepEqual((await f.owner.query('SELECT * FROM app.reservation_charges')).rows, charges);
+  assert.equal(
+    (
+      await f.owner.query(
+        'SELECT count(*)::int n FROM app.boarding_commands WHERE response_body IS NULL',
+      )
+    ).rows[0].n,
+    2,
+  );
+  assert.equal((await f.counts()).debits, 1);
+  await assert.rejects(
+    f.runtime.query("UPDATE app.boarding_commands SET input_hash=repeat('c',64)"),
+    /permission denied/,
+  );
 });
 test('BRD-03: charged no-show can board late by photo, preserving its debit and settlement time', async (t) => {
   const f = await seat(t);
@@ -511,6 +538,8 @@ test('BRD-17: 014 to 015 upgrade preserves funded reservations and recorded migr
     '017_account_privacy.sql',
     '018_configuration.sql',
     '019_shared_admission.sql',
+    '020_account_recovery.sql',
+    '021_receipt_payload_retention.sql',
   ]);
   await grantRuntime(f.owner, f.role);
   assert.deepEqual((await f.owner.query('SELECT * FROM app.reservations')).rows, before);

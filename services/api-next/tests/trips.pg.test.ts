@@ -245,6 +245,33 @@ async function fixture(t: TestContext) {
   };
 }
 
+test('TRP-12 expired raw positions are hidden even while physical deletion is delayed', async (t) => {
+  const f = await fixture(t);
+  const trip = await f.trip({ status: 'active' });
+  const position = (
+    await f.owner.query(
+      `INSERT INTO app.trip_positions(trip_id,client_fix_id,captured_at,effective_captured_at,received_at,location,payload_digest)
+    VALUES ($1,gen_random_uuid(),statement_timestamp()-interval '31 days',statement_timestamp()-interval '31 days',statement_timestamp()-interval '31 days',ST_SetSRID(ST_MakePoint(-0.2,5.6),4326),repeat('a',64)) RETURNING id`,
+      [trip.id],
+    )
+  ).rows[0].id;
+  await f.owner.query(
+    `INSERT INTO app.trip_live_positions(trip_id,position_id,effective_captured_at,received_at,location)
+    SELECT trip_id,id,effective_captured_at,received_at,location FROM app.trip_positions WHERE id=$1`,
+    [position],
+  );
+  const data = expectStatus(await f.get(`/v1/trips/${trip.id}/live`, 'driver'), 200);
+  assert.equal(data.position, null);
+  assert.equal(data.state, 'awaiting_fix');
+  assert.deepEqual(data.etas, []);
+  assert.equal(
+    (await f.owner.query('SELECT count(*)::int n FROM app.trip_positions WHERE id=$1', [position]))
+      .rows[0].n,
+    1,
+    'the read cannot depend on the sweep having run',
+  );
+});
+
 test('TRP-01 the trip list is for signed-in riders, live corridors only, in departure order', async (t) => {
   const f = await fixture(t);
   await f.buy();

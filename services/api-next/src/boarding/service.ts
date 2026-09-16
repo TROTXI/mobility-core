@@ -322,7 +322,11 @@ export class BoardingService {
       ).rows[0];
       if (receipt && receipt.input_hash !== ih)
         fail(409, 'idempotency_conflict', 'This key belongs to different input.');
-      if (receipt && this.now().getTime() - receipt.created_at.getTime() > 7 * 86400000)
+      if (
+        receipt &&
+        (this.now().getTime() - receipt.created_at.getTime() >= 7 * 86400000 ||
+          receipt.response_body === null)
+      )
         fail(409, 'idempotency_expired', 'This command is too old to replay.');
       let rid =
           receipt?.response_body.reservationId ?? (reservationId ? id(reservationId) : undefined),

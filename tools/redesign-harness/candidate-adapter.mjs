@@ -21,16 +21,13 @@ const { Pricing } = await load('payments/pricing.ts');
 const { MembershipService } = await load('membership/service.ts');
 const { default: pg } = await import(pathToFileURL(resolve(NEXT, 'node_modules/pg/lib/index.js')));
 const { Pool } = pg;
-const SOURCE = await sourceDigest();
 
 /**
- * What was actually run, hashed once at load.
+ * Supplemental source digest, recomputed for each scenario. The runner also
+ * verifies all inputs against the declared commit before and after execution.
  *
  * The baseline is verified byte for byte against git before and after a run.
- * The candidate is the working tree, so the next best thing is to record what
- * this adapter imported: every source file under the replacement's src tree
- * plus this adapter itself. The runner refuses a run where that changes
- * partway through.
+ * Includes relative paths so equally named modules cannot exchange contents.
  */
 async function sourceDigest() {
   const digest = createHash('sha256');
@@ -41,7 +38,7 @@ async function sourceDigest() {
       const path = resolve(dir, entry.name);
       if (entry.isDirectory()) await walk(path);
       else if (/\.(ts|json)$/.test(entry.name))
-        digest.update(entry.name).update(await readFile(path));
+        digest.update(path.slice(NEXT.length)).update(await readFile(path));
     }
   };
   await walk(resolve(NEXT, 'src'));
@@ -125,6 +122,8 @@ export async function createAdapter({ databaseUrl }) {
   let result = null;
   let corridor;
   let claim = null;
+  let closeFault = false;
+  let invalidRateRejected = false;
 
   const providerId = (key) => {
     if (!providerIds.has(key)) providerIds.set(key, String(100000 + providerIds.size));
@@ -971,23 +970,41 @@ export async function createAdapter({ databaseUrl }) {
   }
 
   async function malform(name) {
-    // The baseline nulls the period's own conversion rate. The replacement
-    // freezes that rate on the purchase as NOT NULL, so that exact state cannot
-    // exist. The equivalent unconvertible period is one holding more rides than
-    // were ever purchased, which close refuses for the same reason: its terms
-    // cannot produce an honest conversion.
+    // Do not weaken the schema to reproduce an impossible baseline fixture.
+    // First observe direct rejection, then inject a fault AFTER a real write.
     const purchase = await purchaseRow(name);
+    try {
+      await observer.query('UPDATE app.purchases SET conversion_rate_pesewas=NULL WHERE id=$1', [
+        purchase.id,
+      ]);
+    } catch (error) {
+      if (!['23514', '23502'].includes(error.code)) throw error;
+      invalidRateRejected = true;
+    }
     const period = (
       await observer.query('SELECT id FROM app.billing_periods WHERE purchase_id=$1', [purchase.id])
     ).rows[0];
-    await observer.query(
-      `INSERT INTO app.period_closures(period_id,user_id,rides_converted,conversion_rate_pesewas,credit_granted_pesewas,closed_at)
-      VALUES ($1,$2,0,$3,0,clock_timestamp())`,
-      [period.id, purchase.user_id, purchase.conversion_rate_pesewas],
-    );
+    if (!/^[0-9a-f-]{36}$/.test(period.id)) throw new Error('Unexpected fixture period id');
+    await observer.query(`CREATE SEQUENCE public.harness_close_write_seen;
+      CREATE FUNCTION public.harness_fail_after_conversion() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN
+        IF NEW.period_id='${period.id}'::uuid AND NEW.reason='converted' THEN
+          IF NOT EXISTS(SELECT 1 FROM app.period_closures WHERE id=NEW.closure_id)
+            OR NOT EXISTS(SELECT 1 FROM app.ride_entries WHERE id=NEW.id) THEN
+            RAISE EXCEPTION 'fault_premise_not_written';
+          END IF;
+          -- Sequence increments survive rollback and witness the actual write,
+          -- not merely entry to the close function or an attempted INSERT.
+          PERFORM nextval('public.harness_close_write_seen');
+          RAISE EXCEPTION 'harness_failure_after_conversion_write';
+        END IF;
+        RETURN NEW;
+      END $$;
+      CREATE TRIGGER harness_close_fault AFTER INSERT ON app.ride_entries
+        FOR EACH ROW EXECUTE FUNCTION public.harness_fail_after_conversion();`);
+    closeFault = true;
     evidence.push({
       kind: 'pay-08-fixture-substitution',
-      note: 'The baseline nulls the period conversion rate. Here the rate is frozen NOT NULL on the purchase, the purchase terms are immutable by trigger, and a period carries no copy, so a missing or malformed rate is unrepresentable. The one unconvertible period this schema does permit is a half-written close: a closure row against a period that is still open.',
+      note: 'Malformed rate is rejected directly. An AFTER INSERT trigger sees both closure and conversion ride rows, increments a rollback-independent witness, then throws. The observer checks full rollback and progress for the next period.',
       periodId: period.id,
     });
   }
@@ -1201,6 +1218,14 @@ export async function createAdapter({ databaseUrl }) {
       .sort((a, b) => `${a.purchase}/${a.kind}`.localeCompare(`${b.purchase}/${b.kind}`));
     return {
       state: {
+        ...(closeFault
+          ? {
+              invalidRateRejected,
+              closeWriteObserved: (
+                await observer.query('SELECT is_called FROM public.harness_close_write_seen')
+              ).rows[0].is_called,
+            }
+          : {}),
         result,
         riders: riderStates,
         purchases: purchaseStates,
@@ -1250,7 +1275,7 @@ export async function createAdapter({ databaseUrl }) {
       return {
         adapter: 'replacement-postgres',
         package: '@trotxi/api-next',
-        sourceSha256: SOURCE,
+        sourceSha256: await sourceDigest(),
         postgres: (await observer.query('SELECT version()')).rows[0].version,
       };
     },

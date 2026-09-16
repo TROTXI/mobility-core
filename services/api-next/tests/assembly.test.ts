@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { createHash, randomUUID } from 'node:crypto';
 import { readConfiguration, ConfigurationError } from '../src/runtime/config.js';
 import { R2ObjectStore } from '../src/runtime/avatars.js';
+import { jobFailed, jobLog } from '../src/runtime/job-outcome.js';
 
 const key = (n: number) => Buffer.alloc(32, n).toString('base64');
 // Provider-shaped, but assembled at runtime so no credential-looking literal
@@ -11,6 +12,80 @@ const providerKey = (mode: 'test' | 'live') =>
   ['sk', mode, randomUUID().replaceAll('-', '').slice(0, 18)].join('_');
 const PEM = '-----BEGIN PRIVATE KEY-----\\nMHc=\\n-----END PRIVATE KEY-----';
 const maintenanceUser = randomUUID();
+test('maintenance exit policy detects 200 partial failures and contract drift, not business blocks', () => {
+  const clean = { considered: 0, succeeded: 0, blocked: 0, failed: 0, failures: [] };
+  assert.equal(
+    jobFailed({
+      job: 'payments',
+      status: 200,
+      body: {
+        data: {
+          inbox: clean,
+          reconciliation: clean,
+          periods: { ...clean, considered: 1, blocked: 1 },
+        },
+      },
+    }),
+    false,
+  );
+  assert.equal(
+    jobFailed({
+      job: 'payments',
+      status: 200,
+      body: {
+        data: {
+          inbox: clean,
+          reconciliation: clean,
+          periods: {
+            ...clean,
+            considered: 1,
+            failed: 1,
+            failures: [{ resourceId: 'period', reason: 'unexpected_error' }],
+          },
+        },
+      },
+    }),
+    true,
+  );
+  assert.equal(
+    jobFailed({ job: 'erasures', status: 200, body: { considered: 1, completed: 0, failed: 1 } }),
+    true,
+  );
+  assert.throws(
+    () => jobFailed({ job: 'gps-retention', status: 200, body: { data: { succeeded: 1 } } }),
+    /contract_drift/,
+  );
+  assert.equal(jobFailed({ job: 'admission', status: 503, body: {} }), true);
+  const result = {
+    job: 'gps-retention' as const,
+    status: 200,
+    body: { data: clean },
+    retention: {
+      expiredFixes: 1,
+      heldFixes: 0,
+      deletableFixes: 1,
+      oldestDeletableAt: null,
+      overdueSeconds: 3601,
+      batches: 1,
+      elapsedMs: 1,
+      budgetExhausted: true,
+    },
+  };
+  assert.equal(jobFailed(result), true);
+  const logged = JSON.parse(
+    jobLog({
+      job: 'route-learning',
+      status: 200,
+      body: {
+        data: {
+          ...clean,
+          failures: Array.from({ length: 100 }, () => ({ resourceId: 'x', reason: 'failure' })),
+        },
+      },
+    }),
+  );
+  assert.equal(logged.body.data.failures.length, 10);
+});
 /** One complete, valid deployment. Every scenario starts from this. */
 function environment(): Record<string, string> {
   return {

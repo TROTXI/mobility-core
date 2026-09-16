@@ -190,7 +190,8 @@ export async function grantRuntime(pool: Pool, role: string): Promise<void> {
       `SELECT c.relname AS name, EXISTS (
         SELECT 1 FROM pg_trigger g WHERE g.tgrelid = c.oid AND NOT g.tgisinternal
           AND g.tgfoid = ANY (ARRAY[to_regprocedure('app.append_only()'),
-            to_regprocedure('app.guard_driver_receipt()')])
+            to_regprocedure('app.guard_driver_receipt()'), to_regprocedure('app.guard_account_command()'),
+            to_regprocedure('app.guard_receipt_payload()')])
           AND (g.tgtype & 16) <> 0
       ) AS append_only, EXISTS (
         SELECT 1 FROM pg_trigger g WHERE g.tgrelid = c.oid AND NOT g.tgisinternal
@@ -214,6 +215,27 @@ export async function grantRuntime(pool: Pool, role: string): Promise<void> {
       `REVOKE UPDATE ON ${appendOnly.map((name) => `app."${name}"`).join(', ')} FROM ${quoted}`,
     );
     await client.query(`GRANT UPDATE (secret_ciphertext) ON app.driver_commands TO ${quoted}`);
+    if (
+      (await client.query("SELECT to_regprocedure('app.guard_receipt_payload()') AS guard")).rows[0]
+        .guard
+    ) {
+      await client.query(
+        `GRANT UPDATE (response_body,response_headers) ON app.transport_commands TO ${quoted}`,
+      );
+      await client.query(
+        `GRANT UPDATE (response_body) ON app.driver_commands,app.boarding_commands,app.payment_review_commands TO ${quoted}`,
+      );
+      await client.query(
+        `GRANT UPDATE (response_body,response_etag) ON app.config_commands TO ${quoted}`,
+      );
+    }
+    if (
+      (await client.query("SELECT to_regprocedure('app.guard_account_command()') AS guard")).rows[0]
+        .guard
+    )
+      await client.query(
+        `GRANT UPDATE (response_ciphertext,result) ON app.account_commands TO ${quoted}`,
+      );
     // Retention is an obligation, so the runtime needs DELETE somewhere. It is
     // granted only where the schema declares a deletion guard, and that guard
     // refuses anything not past its deadline or named by an active hold, so

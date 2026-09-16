@@ -143,13 +143,13 @@ original unchanged.
 - **PAY-08 &rarr; PAY-08R.** The baseline nulls the period's conversion rate. The
   replacement freezes that rate `NOT NULL` on the purchase, the purchase's terms
   are immutable by trigger, and a period carries no copy of them, so a missing or
-  malformed rate is unrepresentable three ways over. The one unconvertible period
-  this schema does permit is a half-written close: a closure row against a period
-  that is still open. The property under test is unchanged &mdash; one bad period
-  fails in isolation, its effects roll back, the batch still closes the next one
-  &mdash; and each side reports the failure in its own words rather than a third
-  word invented to make them agree. No constraint was weakened, and no
-  production code was added to produce a nicer string.
+  malformed rate is unrepresentable three ways over. The adapter first attempts
+  that invalid update and records its rejection. It then installs a test-only
+  AFTER INSERT trigger: after observing both the closure and converted ride
+  entry, it increments a nontransactional sequence and throws. The observer
+  requires that witness, no committed closure/ledger effects for the failed
+  period, and successful closure of the next period. A failure before the first
+  write cannot satisfy the witness. No production constraint is weakened.
 - **REC-02 &rarr; REC-02R.** REC-02 assumes a committed fulfilment with a missing
   acknowledgement. The replacement commits the effect and its receipt in one
   transaction, so that state cannot exist. REC-02R proves the stronger thing:
@@ -192,10 +192,14 @@ a row the first is holding rather than waiting on it.
 
 ### What was run
 
-The baseline is verified byte for byte against git before and after a run. The
-candidate is the working tree, so the adapter hashes every source file under
-`services/api-next/src` plus itself and reports that digest in its metadata; the
-runner records it and refuses a run where it changed partway through.
+Both baseline and candidate bytes are verified against their declared Git
+revisions before and after a run. Candidate verification includes the complete
+replacement package, harness, root package metadata and dependency lockfile.
+Untracked runtime modules/migrations are refused. The adapter also recomputes
+its source digest per scenario; no comparison relies on a cached import-time
+hash. Commit candidate changes before running compare mode. CI records the
+actual checkout SHA (including the tested PR merge commit), not a different
+head SHA supplied only as a label.
 
 ### Negative controls on the replacement
 

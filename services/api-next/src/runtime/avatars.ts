@@ -78,12 +78,18 @@ export class R2ObjectStore implements AvatarStore {
     return `/${escape(this.options.bucket)}/${escapePath(objectKey)}`;
   }
 
-  async put(request: { userId: string; bytes: Buffer; contentType: string }) {
+  async put(request: { userId: string; objectKey?: string; bytes: Buffer; contentType: string }) {
     const extension = EXTENSIONS[request.contentType];
     if (!extension) throw new Error('Unsupported avatar media type');
-    const objectKey = `avatars/${request.userId.toLowerCase()}/${randomUUID()}.${extension}`;
+    const objectKey =
+      request.objectKey ?? `avatars/${request.userId.toLowerCase()}/${randomUUID()}.${extension}`;
     // What this store mints has to be what it will later agree to sign.
-    if (!KEY.test(objectKey)) throw new Error('Object storage owner is not a user id');
+    if (
+      !KEY.test(objectKey) ||
+      !objectKey.startsWith(`avatars/${request.userId.toLowerCase()}/`) ||
+      !objectKey.endsWith(`.${extension}`)
+    )
+      throw new Error('Object storage owner or content type does not match the reserved key');
     const { amzDate, date } = this.stamps();
     const payloadHash = sha256(request.bytes);
     const headers: Record<string, string> = {
