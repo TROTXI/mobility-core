@@ -11,6 +11,7 @@ export const JOBS = [
   'gps-retention',
   'erasures',
   'driver-secrets',
+  'admission',
 ] as const;
 export type Job = (typeof JOBS)[number];
 export interface JobRequest {
@@ -112,6 +113,12 @@ export async function runJob(backend: Backend, request: JobRequest): Promise<Job
       };
     if (request.job === 'erasures')
       return { job: request.job, status: 200, body: await backend.account.retryErasures(limit) };
+    if (request.job === 'admission')
+      return {
+        job: request.job,
+        status: 200,
+        body: { cleared: await backend.admission.sweep(limit * 10) },
+      };
     const response = await backend.app.inject({
       method: 'POST',
       url: day ?? BATCH[request.job]!,

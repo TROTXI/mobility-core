@@ -19,6 +19,9 @@ process.stdout.write(
     commit: config.build.commit,
     listening: `${config.listen.host}:${config.listen.port}`,
     payments: config.paystack.secretKey.startsWith('sk_live_') ? 'live' : 'test',
+    // What a rider can actually sign in with on this deployment, so the log
+    // says it rather than leaving it to be discovered from a missing button.
+    providers: config.providers,
   })}\n`,
 );
 

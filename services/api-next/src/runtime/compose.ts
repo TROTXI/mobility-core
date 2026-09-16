@@ -17,6 +17,7 @@ import { MembershipService } from '../membership/service.js';
 import { AccountService } from '../account/service.js';
 import { ConfigService } from '../config/service.js';
 import { R2ObjectStore } from './avatars.js';
+import { sharedAdmission } from './admission.js';
 import type { RuntimeConfig } from './config.js';
 
 export interface Backend {
@@ -26,6 +27,8 @@ export interface Backend {
   auth: AuthService;
   /** Erasure's outstanding external work has no reviewed HTTP operation. */
   account: AccountService;
+  /** Closed admission windows are the worker's to clear. */
+  admission: import('./admission.js').Admission;
   maintenanceUserId: string;
   close(): Promise<void>;
 }
@@ -87,12 +90,18 @@ export async function composeBackend(config: RuntimeConfig): Promise<Backend> {
       return url;
     };
     const provider = new PaystackEvidence(config.paystack.secretKey, config.keys.paystackEvidence);
-    const appleTokens = new AppleHttpTokenClient({
-      clientId: config.apple.clientIds[0]!,
-      teamId: config.apple.teamId,
-      keyId: config.apple.keyId,
-      privateKey: config.apple.privateKey,
-    });
+    // Built only where the deployment says it offers Apple. Where it does not,
+    // there is no verifier, no token client and no route, so nothing can half
+    // work: erasure's provider revocation reports that it had no reach, which
+    // is true, instead of appearing to have withdrawn a grant.
+    const appleTokens = config.apple
+      ? new AppleHttpTokenClient({
+          clientId: config.apple.clientIds[0]!,
+          teamId: config.apple.teamId,
+          keyId: config.apple.keyId,
+          privateKey: config.apple.privateKey,
+        })
+      : undefined;
     // Paystack wants a stable customer key. The rider's own address when we
     // hold one, and otherwise the same unroutable per-user address the
     // deployed service already uses, so a rider who signed in with a private
@@ -107,10 +116,13 @@ export async function composeBackend(config: RuntimeConfig): Promise<Backend> {
       if (!identity) throw new Error('The backend was used before it finished composing');
       return identity;
     };
+    const admission = sharedAdmission(pool);
     const app = await createReplacementApp({
       pool,
       cursorSecret: config.keys.cursorSecret,
       credentialReplayKey: config.keys.credentialReplay,
+      authProviders: config.providers,
+      admit: (subject) => admission.spend(subject),
       trustProxy: config.trustProxy,
       requestsPerMinute: config.limits.perUser,
       requestsPerIpPerMinute: config.limits.perIp,
@@ -129,8 +141,8 @@ export async function composeBackend(config: RuntimeConfig): Promise<Backend> {
         shiftTtlHours: config.shiftTtlHours,
         providerEncryptionKey: config.keys.providerEncryption,
         google: new GoogleIdTokenVerifier(config.google.clientId),
-        apple: new AppleIdTokenVerifier(config.apple.clientIds),
-        appleTokens,
+        ...(config.apple ? { apple: new AppleIdTokenVerifier(config.apple.clientIds) } : {}),
+        ...(appleTokens ? { appleTokens } : {}),
         avatarUrl: signAvatar,
       },
       boarding: {
@@ -174,7 +186,8 @@ export async function composeBackend(config: RuntimeConfig): Promise<Backend> {
             revokeProviderGrant: async ({ provider, subject, tokenCiphertext }) => {
               // Google issues no revocable grant on this path, so there is
               // nothing here that could succeed and nothing to pretend about.
-              if (provider !== 'apple') throw new Error('provider_revocation_unsupported');
+              if (provider !== 'apple' || !appleTokens)
+                throw new Error('provider_revocation_unsupported');
               if (!tokenCiphertext) throw new Error('no_stored_grant');
               await appleTokens.revoke(
                 providerTokenBox(config.keys.providerEncryption).open(tokenCiphertext, subject),
@@ -232,6 +245,7 @@ export async function composeBackend(config: RuntimeConfig): Promise<Backend> {
       pool,
       auth: built().auth,
       account: built().account,
+      admission,
       maintenanceUserId: config.maintenanceUserId,
       close: async () => {
         if (closed) return;

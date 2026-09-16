@@ -248,6 +248,18 @@ token and revocation endpoints, Paystack initialize/verify/webhook evidence, and
 Cloudflare R2 for avatars, signed locally with SigV4 so URL signing never makes a
 network call while a lock is held.
 
+Sign-in providers are a deployment statement rather than an assumption. A
+provider listed in `REPLACEMENT_AUTH_PROVIDERS` must be completely configured or
+startup fails; one that is not listed has no route at all, so a client sees it is
+unavailable when it reads the surface rather than when a rider taps the button.
+Google is always required: driver sign-in is a PIN, so without it riders have no
+door.
+
+Per-rider admission is shared across instances through `app.admission_counters`,
+in a window aligned to the clock so two instances agree on which window they are
+in without talking to each other. That costs a round trip on the admission path,
+which is the price of a limit that survives a second instance.
+
 Startup additionally asks the database to prove the connection is the narrow
 runtime role: it refuses to serve if that connection can create objects in the
 `app` schema or update append-only history. Pointing the service at the migration
@@ -366,19 +378,18 @@ The stage-2 baseline and its expectations remain unchanged.
 
 ## Still required before a cutover
 
-1. The full preservation harness against the pinned baseline and this candidate:
-   PAY-01 to PAY-16 and the mapped non-payment scenario groups, with documented
-   substitutions, negative controls and demonstrated contention.
-2. Distributed admission. The per-user budget here is process-local, and a
-   deployment behind more than one instance needs a shared one; forwarded
-   headers are still not trusted and the proxy boundary is still a deployment
-   decision.
-3. Physical receipt expiry for the command stores other than driver credentials.
-   Logical expiry already refuses replay; deletion of the expired rows is not
-   claimed.
-4. Apple provisioning. The Services ID, team id and `.p8` do not exist yet, and
-   the service refuses to start without them, which is one reason the blueprint
-   entries stay commented out.
+1. Physical receipt expiry for the command stores. This is a schema decision,
+   not a sweep: `response_body` is `NOT NULL` on the main stores and twelve
+   event and effect tables reference commands with `ON DELETE RESTRICT`, so
+   expiring a receipt means choosing between a tombstone and a scrub, and
+   relaxing constraints to match. Logical expiry already refuses replay;
+   deletion of the expired rows is not claimed.
+2. An Apple Developer account, if Apple sign-in is wanted. The deployment runs
+   without one: `REPLACEMENT_AUTH_PROVIDERS=google` is a complete deployment and
+   `signInApple` simply has no route. Adding one is four variables and one word.
+3. A Paystack exercise in test mode. Initialize, verify and webhook signing are
+   implemented and tested against synthetic evidence; this service has not yet
+   spoken to Paystack.
 
 ### On future-version reassignment
 

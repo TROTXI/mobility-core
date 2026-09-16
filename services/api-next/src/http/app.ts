@@ -74,6 +74,19 @@ export interface AppOptions extends Dependencies {
   // Signature/issuer/audience/expiry verification belongs to identity. No test
   // header fallback and no listener until a real verifier/session adapter lands.
   verifyAccess: (authorization: string) => Promise<Actor | null>;
+  /**
+   * Which social sign-in routes this application offers. A provider that is
+   * not listed has no route, so a client discovers it is unavailable when it
+   * reads the surface rather than when a rider taps the button. Absent means
+   * both, which is what the per-domain tests supply.
+   */
+  authProviders?: readonly ('google' | 'apple')[];
+  /**
+   * A per-rider budget shared across instances. Absent leaves the bounded
+   * process-local counter below, which is correct for one process and for the
+   * per-domain tests, and is not a limit once the service scales.
+   */
+  admit?: (subject: string) => Promise<{ count: number; resetsInSeconds: number }>;
   minimumBuilds: {
     ops: number;
     driver: { ios: number; android: number };
@@ -256,6 +269,9 @@ export async function createTransportApp(options: AppOptions) {
       const driverEndpoint = (driverOperations as readonly string[]).includes(name);
       if (authentication && !options.auth) continue;
       if (driverEndpoint && !options.drivers) continue;
+      const providers = options.authProviders ?? (['google', 'apple'] as const);
+      if (name === 'signInGoogle' && !providers.includes('google')) continue;
+      if (name === 'signInApple' && !providers.includes('apple')) continue;
       const publicAuth = (publicAuthOperations as readonly string[]).includes(name);
       const publicRead = (publicCatalogReads as readonly string[]).includes(name);
       // Trip reads need a session but not a particular app: a rider watching a
@@ -340,8 +356,18 @@ export async function createTransportApp(options: AppOptions) {
           if (Number(build) < floor)
             fail(426, 'client_upgrade_required', 'Update the application before continuing.');
           if (!actor) return; // Public catalog remains IP-limited; no identity fallback.
-          // Bounded process-local protection only. Distributed admission remains
-          // a deployment concern; untrusted metadata never supplies authority.
+          if (options.admit) {
+            const spent = await options.admit(actor.userId);
+            if (spent.count > budget) {
+              reply.header('Retry-After', String(spent.resetsInSeconds));
+              fail(429, 'rate_limited', 'Please wait before trying again.');
+            }
+            actors.set(request, actor);
+            return;
+          }
+          // Bounded process-local fallback. It is a real limit for one process
+          // and no limit at all across two, which is why the deployable
+          // composition always supplies the shared one.
           const now = Date.now();
           if (counters.size >= 10000)
             for (const [key, row] of counters) if (row.until <= now) counters.delete(key);

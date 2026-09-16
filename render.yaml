@@ -365,6 +365,11 @@ services:
   # basemap silently disabled. That is the point: a half-configured deploy
   # fails visibly instead of passing health checks and being broken.
   #
+  # This entry no longer waits on an Apple Developer account: the deployment
+  # states which sign-in providers it has, and google alone is a complete
+  # deployment. What it still waits on is a funded database and the cutover
+  # decision itself.
+  #
   # BEFORE APPLYING
   #   1. Create the replacement database.
   #   2. Create the narrow runtime role, then run the installer once with the
@@ -437,21 +442,30 @@ services:
   #       sync: false
   #     - key: REPLACEMENT_PAYSTACK_EVIDENCE_KEY
   #       sync: false
+  #     # Which sign-in providers this deployment actually offers. A provider
+  #     # listed here must be completely configured or the service refuses to
+  #     # start; one that is not listed has no route at all, so a client sees it
+  #     # is unavailable when it reads the surface rather than when a rider taps
+  #     # the button. There is no Apple Developer account yet, so this is
+  #     # google only, and the four REPLACEMENT_APPLE_* values below stay
+  #     # commented until there is one. Google must always be listed: driver
+  #     # sign-in is a PIN, so without it riders have no door.
+  #     - key: REPLACEMENT_AUTH_PROVIDERS
+  #       value: google
   #     # Public: a Web client id and the Apple audiences ship inside clients.
   #     - key: REPLACEMENT_GOOGLE_CLIENT_ID
   #       value: 431341307838-pc4m046v2lj18ssfnfl1g52fl5g1cg4q.apps.googleusercontent.com
-  #     # The iOS bundle id and the Services ID, comma-separated. The Services ID
-  #     # does not exist yet, which is one reason this service is not applied:
-  #     # it will not start on a placeholder.
-  #     - key: REPLACEMENT_APPLE_CLIENT_ID
-  #       value: com.trotxi.trotxiCommuter,<Services ID>
-  #     - key: REPLACEMENT_APPLE_TEAM_ID
-  #       value: <Apple Developer team id>
-  #     - key: REPLACEMENT_APPLE_KEY_ID
-  #       value: <Key ID of the .p8>
-  #     # The .p8 itself. A SECRET.
-  #     - key: REPLACEMENT_APPLE_PRIVATE_KEY
-  #       sync: false
+  #     # Add 'apple' to REPLACEMENT_AUTH_PROVIDERS and uncomment all four
+  #     # together once the Apple Developer account, App ID, Services ID and
+  #     # signing key exist. Three of them are public; the .p8 is a SECRET.
+  #     # - key: REPLACEMENT_APPLE_CLIENT_ID
+  #     #   value: com.trotxi.trotxiCommuter,<Services ID>
+  #     # - key: REPLACEMENT_APPLE_TEAM_ID
+  #     #   value: <Apple Developer team id>
+  #     # - key: REPLACEMENT_APPLE_KEY_ID
+  #     #   value: <Key ID of the .p8>
+  #     # - key: REPLACEMENT_APPLE_PRIVATE_KEY
+  #     #   sync: false
   #     # Staging uses the TEST key. A live key additionally requires
   #     # REPLACEMENT_ALLOW_LIVE_PAYMENTS=yes on that service, so a live key
   #     # pasted here by accident stops the deploy instead of taking money.
@@ -539,6 +553,7 @@ services:
   #
   # The whole-batch jobs take no arguments:
   #
+  #   worker admission         */5 * * * *  clear request budgets whose window closed
   #   worker gps-retention     0 1 * * *    delete raw traces past their window
   #   worker driver-secrets    */15 * * * * physically clear expired PIN ciphertext
   #   worker erasures          10 * * * *   retry erasure's external half
@@ -556,7 +571,7 @@ services:
   #   worker no-shows <date> outbound              0 10 * * *  after the morning run
   #   worker no-shows <date> return                0 20 * * *  after the evening run
   #
-  # That is twelve cron services, roughly $12/month. Dropping the return leg or
+  # That is thirteen cron services, roughly $13/month. Dropping the return leg or
   # the defaults jobs to save money does not fail: riders who never answer are
   # simply never defaulted and the return leg is never swept, silently. Decide
   # that deliberately or schedule all twelve.

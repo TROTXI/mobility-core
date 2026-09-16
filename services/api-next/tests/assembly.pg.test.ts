@@ -35,6 +35,7 @@ function configurationFor(f: Fixture, over: Record<string, string> = {}) {
     REPLACEMENT_DEVICE_KEY: key(7),
     REPLACEMENT_PAYSTACK_EVIDENCE_KEY: key(8),
     REPLACEMENT_GOOGLE_CLIENT_ID: 'example.apps.googleusercontent.com',
+    REPLACEMENT_AUTH_PROVIDERS: 'google,apple',
     REPLACEMENT_APPLE_CLIENT_ID: 'com.trotxi.trotxiCommuter',
     REPLACEMENT_APPLE_TEAM_ID: 'TEAMID1234',
     REPLACEMENT_APPLE_KEY_ID: 'KEYID12345',
@@ -723,5 +724,93 @@ test('ASM-20 money, coverage and a seat are one flow through the assembled backe
     (await f.owner.query('SELECT state FROM app.billing_periods WHERE id=$1', [period.id])).rows[0]
       .state,
     'open',
+  );
+});
+
+test('ASM-21 a provider this deployment does not have has no route at all', async (t) => {
+  // With an Apple Developer account the deployment offers Apple and every
+  // reviewed operation is routed, which ASM-10 checks. Without one, the
+  // difference has to be visible in the surface rather than in a 503 a rider
+  // meets after choosing the button.
+  const { backend, call } = await assembled(t, { REPLACEMENT_AUTH_PROVIDERS: 'google' });
+  assert.equal(backend.app.hasRoute({ method: 'POST', url: '/v1/auth/google' }), true);
+  assert.equal(backend.app.hasRoute({ method: 'POST', url: '/v1/auth/apple' }), false);
+  const gone = await backend.app.inject({
+    method: 'POST',
+    url: '/v1/auth/apple',
+    payload: { idToken: 'irrelevant' },
+    headers: { 'x-trotxi-client': 'commuter', 'x-trotxi-build': '9', 'x-trotxi-platform': 'ios' },
+  });
+  assert.equal(gone.statusCode, 404, gone.body);
+  assert.equal(gone.json().error.code, 'not_found');
+  // Everything else is still there: dropping a provider drops one route.
+  let routed = 0;
+  for (const [path, methods] of Object.entries(contract.paths))
+    for (const [method, operation] of Object.entries(methods))
+      if (
+        backend.app.hasRoute({
+          method: method.toUpperCase() as 'GET',
+          url: path.replaceAll(/\{([^}]+)\}/g, ':$1'),
+        })
+      ) {
+        routed += 1;
+        assert.notEqual((operation as { operationId: string }).operationId, 'signInApple');
+      }
+  assert.equal(routed, 118);
+  void call;
+});
+
+test('ASM-22 two instances share one budget, and a closed window is the worker to clear', async (t) => {
+  // The whole point of the shared counter: a budget kept in one process's
+  // memory is a different budget in the next process, so scaling to two
+  // instances quietly doubles what every rider is allowed.
+  const f = await setup(t);
+  const configuration = configurationFor(f, { REPLACEMENT_REQUESTS_PER_MINUTE: '4' });
+  const first = await composeBackend(configuration);
+  t.after(() => first.close());
+  const second = await composeBackend(configuration);
+  t.after(() => second.close());
+  const rider = await tokenFor(first, f.actor.userId);
+  const ask = (backend: Backend) =>
+    backend.app.inject({
+      method: 'GET',
+      url: '/v1/me/membership',
+      headers: {
+        authorization: `Bearer ${rider}`,
+        'x-trotxi-client': 'commuter',
+        'x-trotxi-build': '9',
+        'x-trotxi-platform': 'ios',
+      },
+    });
+  // Two each, alternating. A per-process budget of four would admit all four
+  // and then four more; one shared budget of four admits exactly four.
+  const codes: number[] = [];
+  for (let i = 0; i < 6; i++) codes.push((await ask(i % 2 ? second : first)).statusCode);
+  assert.equal(
+    codes.filter((c) => c === 429).length,
+    2,
+    `the second instance did not share the first's budget: ${codes.join(',')}`,
+  );
+  const counter = (
+    await f.owner.query('SELECT subject,count FROM app.admission_counters WHERE subject=$1', [
+      f.actor.userId,
+    ])
+  ).rows[0];
+  assert.equal(Number(counter.count), 6, 'both instances counted into one row');
+  // A live window is a rider's spent budget: clearing it would hand them a
+  // fresh one, so the guard refuses and the sweep leaves it alone.
+  assert.equal(await first.admission.sweep(100), 0);
+  await assert.rejects(
+    () => f.runtime.query('DELETE FROM app.admission_counters WHERE subject=$1', [f.actor.userId]),
+    /admission_window_live/,
+  );
+  await f.owner.query(
+    "UPDATE app.admission_counters SET window_started_at=clock_timestamp()-interval '5 minutes' WHERE subject=$1",
+    [f.actor.userId],
+  );
+  assert.equal(await first.admission.sweep(100), 1);
+  assert.equal(
+    (await f.owner.query('SELECT count(*)::int AS n FROM app.admission_counters')).rows[0].n,
+    0,
   );
 });

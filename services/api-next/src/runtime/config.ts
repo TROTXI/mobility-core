@@ -34,8 +34,15 @@ export interface RuntimeConfig {
   keys: KeyMaterial;
   /** The PIN secret is consumed as text, so the exact bytes are kept too. */
   pinSecretText: string;
+  /**
+   * The sign-in providers this deployment actually offers. A provider that is
+   * offered must be completely configured or startup fails; one that is not
+   * offered has no route at all, rather than a route that answers 503 the
+   * moment a rider taps the button.
+   */
+  providers: readonly ('google' | 'apple')[];
   google: { clientId: string };
-  apple: { clientIds: string[]; teamId: string; keyId: string; privateKey: string };
+  apple: { clientIds: string[]; teamId: string; keyId: string; privateKey: string } | null;
   paystack: { secretKey: string };
   avatars: {
     accountId: string;
@@ -142,15 +149,34 @@ export function readConfiguration(env: Env = process.env): RuntimeConfig {
     throw new ConfigurationError(
       'A live Paystack key needs REPLACEMENT_ALLOW_LIVE_PAYMENTS=yes on this service',
     );
-  const appleClients = required(env, 'REPLACEMENT_APPLE_CLIENT_ID')
+  const providers = required(env, 'REPLACEMENT_AUTH_PROVIDERS')
     .split(',')
-    .map((id) => id.trim())
+    .map((name) => name.trim())
     .filter(Boolean);
-  if (!appleClients.length)
-    throw new ConfigurationError('REPLACEMENT_APPLE_CLIENT_ID must list at least one audience');
-  const applePrivateKey = required(env, 'REPLACEMENT_APPLE_PRIVATE_KEY').replaceAll('\\n', '\n');
-  if (!applePrivateKey.includes('BEGIN PRIVATE KEY'))
-    throw new ConfigurationError('REPLACEMENT_APPLE_PRIVATE_KEY must be a PKCS#8 PEM .p8 key');
+  if (providers.some((name) => !['google', 'apple'].includes(name)))
+    throw new ConfigurationError('REPLACEMENT_AUTH_PROVIDERS may list google and apple');
+  // Riders have to be able to get in. Driver sign-in is a PIN and is always
+  // available; a deployment offering no social provider has no rider door.
+  if (!providers.includes('google'))
+    throw new ConfigurationError('REPLACEMENT_AUTH_PROVIDERS must include google');
+  let apple: RuntimeConfig['apple'] = null;
+  if (providers.includes('apple')) {
+    const appleClients = required(env, 'REPLACEMENT_APPLE_CLIENT_ID')
+      .split(',')
+      .map((id) => id.trim())
+      .filter(Boolean);
+    if (!appleClients.length)
+      throw new ConfigurationError('REPLACEMENT_APPLE_CLIENT_ID must list at least one audience');
+    const applePrivateKey = required(env, 'REPLACEMENT_APPLE_PRIVATE_KEY').replaceAll('\\n', '\n');
+    if (!applePrivateKey.includes('BEGIN PRIVATE KEY'))
+      throw new ConfigurationError('REPLACEMENT_APPLE_PRIVATE_KEY must be a PKCS#8 PEM .p8 key');
+    apple = {
+      clientIds: appleClients,
+      teamId: required(env, 'REPLACEMENT_APPLE_TEAM_ID'),
+      keyId: required(env, 'REPLACEMENT_APPLE_KEY_ID'),
+      privateKey: applePrivateKey,
+    };
+  }
   const maintenanceUserId = required(env, 'REPLACEMENT_MAINTENANCE_USER_ID').toLowerCase();
   if (!uuid.test(maintenanceUserId))
     throw new ConfigurationError('REPLACEMENT_MAINTENANCE_USER_ID must be a user id');
@@ -194,13 +220,9 @@ export function readConfiguration(env: Env = process.env): RuntimeConfig {
     shiftTtlHours: integer(env, 'REPLACEMENT_SHIFT_TTL_HOURS', 1, 24),
     keys,
     pinSecretText: required(env, 'REPLACEMENT_PIN_SECRET'),
+    providers: providers as readonly ('google' | 'apple')[],
     google: { clientId: required(env, 'REPLACEMENT_GOOGLE_CLIENT_ID') },
-    apple: {
-      clientIds: appleClients,
-      teamId: required(env, 'REPLACEMENT_APPLE_TEAM_ID'),
-      keyId: required(env, 'REPLACEMENT_APPLE_KEY_ID'),
-      privateKey: applePrivateKey,
-    },
+    apple,
     paystack: { secretKey: paystack },
     avatars: {
       accountId: required(env, 'REPLACEMENT_R2_ACCOUNT_ID'),

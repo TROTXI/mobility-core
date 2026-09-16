@@ -30,6 +30,7 @@ function environment(): Record<string, string> {
     REPLACEMENT_DEVICE_KEY: key(7),
     REPLACEMENT_PAYSTACK_EVIDENCE_KEY: key(8),
     REPLACEMENT_GOOGLE_CLIENT_ID: '431341307838-example.apps.googleusercontent.com',
+    REPLACEMENT_AUTH_PROVIDERS: 'google,apple',
     REPLACEMENT_APPLE_CLIENT_ID: 'com.trotxi.trotxiCommuter,com.trotxi.web',
     REPLACEMENT_APPLE_TEAM_ID: 'TEAMID1234',
     REPLACEMENT_APPLE_KEY_ID: 'KEYID12345',
@@ -159,6 +160,47 @@ test('ASM-04 public URLs must be absolute https, and identity must be real', () 
     email: null,
     hours: null,
   });
+});
+
+test('ASM-04b a provider is offered completely or not at all', () => {
+  // There is no Apple Developer account yet. Requiring one made the service
+  // refuse to start; treating one as optional would have made it answer 503
+  // the moment a rider tapped the button. It is a deployment statement
+  // instead: what is offered must be complete, and what is not offered has no
+  // route to be disappointed by.
+  const offered = readConfiguration(environment());
+  assert.deepEqual(offered.providers, ['google', 'apple']);
+  assert.equal(offered.apple?.teamId, 'TEAMID1234');
+  const googleOnly = environment();
+  googleOnly.REPLACEMENT_AUTH_PROVIDERS = 'google';
+  for (const name of [
+    'REPLACEMENT_APPLE_CLIENT_ID',
+    'REPLACEMENT_APPLE_TEAM_ID',
+    'REPLACEMENT_APPLE_KEY_ID',
+    'REPLACEMENT_APPLE_PRIVATE_KEY',
+  ])
+    delete googleOnly[name];
+  const without = readConfiguration(googleOnly);
+  assert.deepEqual(without.providers, ['google']);
+  assert.equal(without.apple, null);
+  // Claiming a provider and not configuring it is still a refusal, by name.
+  for (const name of [
+    'REPLACEMENT_APPLE_CLIENT_ID',
+    'REPLACEMENT_APPLE_TEAM_ID',
+    'REPLACEMENT_APPLE_KEY_ID',
+    'REPLACEMENT_APPLE_PRIVATE_KEY',
+  ]) {
+    const claimed = environment();
+    delete claimed[name];
+    refuses(claimed, name);
+  }
+  // Riders need a door. Driver sign-in is a PIN and is not one.
+  const none = environment();
+  none.REPLACEMENT_AUTH_PROVIDERS = 'apple';
+  refuses(none, 'must include google');
+  const unknown = environment();
+  unknown.REPLACEMENT_AUTH_PROVIDERS = 'google,facebook';
+  refuses(unknown, 'may list google and apple');
 });
 
 test('ASM-05 the proxy boundary is stated, and a hop count is not a statement', () => {
