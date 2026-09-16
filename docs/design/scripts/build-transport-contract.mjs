@@ -196,4 +196,51 @@ await writeArtifact(
     2,
   ) + '\n',
 );
+
+// The same subset as a document a client generator and a Swagger viewer can
+// read. The runtime copy above is rewritten to 2020-12 for the validator; this
+// one keeps the reviewed OpenAPI 3.0 spelling, because that is what consumers
+// parse. It carries only what is implemented: a client offering the thirteen
+// deferred operations would invite calls that 404.
+const published = {
+  openapi: source.openapi,
+  info: {
+    title: 'Trotxi replacement API',
+    version: '1.0.0',
+    description: [
+      'The implemented replacement surface: every reviewed cutover operation and',
+      'nothing else. The thirteen deferred operations are deliberately absent.',
+      'Generated from target-contract.mjs by build-transport-contract.mjs; do not',
+      'edit this JSON. NOT DEPLOYED: no environment serves this contract yet, and',
+      'the server entry below is a placeholder rather than a working host.',
+    ].join(' '),
+  },
+  servers: source.servers,
+  paths: Object.fromEntries(
+    Object.entries(paths).map(([path, methods]) => [
+      path,
+      Object.fromEntries(
+        Object.entries(methods).map(([method, operation]) => [
+          method,
+          // x-delivery-stage said which operations to build. Inside a document
+          // that contains only the built ones it says nothing, so it goes.
+          Object.fromEntries(
+            Object.entries(operation).filter(([key]) => key !== 'x-delivery-stage'),
+          ),
+        ]),
+      ),
+    ]),
+  ),
+  components: {
+    securitySchemes: source.components.securitySchemes,
+    responses: source.components.responses,
+    schemas: Object.fromEntries(
+      [...needed].sort().map((name) => [name, source.components.schemas[name]]),
+    ),
+  },
+};
+await writeArtifact(
+  new URL('../contracts/replacement.openapi.json', import.meta.url),
+  JSON.stringify(published, null, 2) + '\n',
+);
 console.log(`Emitted ${count} reviewed replacement operations, ${needed.size} schemas.`);

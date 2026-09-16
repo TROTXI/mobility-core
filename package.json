@@ -2,7 +2,7 @@
   "name": "mobility-core",
   "version": "0.1.0",
   "private": true,
-  "description": "Trotxi platform monorepo — repo-wide tooling (formatting, git hooks).",
+  "description": "Trotxi platform monorepo \u2014 repo-wide tooling (formatting, git hooks).",
   "packageManager": "pnpm@11.5.2",
   "engines": {
     "node": ">=24"
@@ -26,7 +26,8 @@
     "infra:down": "docker compose -f infra/docker/docker-compose.yml down",
     "infra:logs": "docker compose -f infra/docker/docker-compose.yml logs -f",
     "infra:ps": "docker compose -f infra/docker/docker-compose.yml ps",
-    "codegen": "openapi-generator-cli generate -i https://trotxi-api-staging.onrender.com/docs/json -g dart-dio -o apps/api_client --additional-properties=pubName=trotxi_api_client,pubAuthor=LFE"
+    "codegen": "openapi-generator-cli generate -i https://trotxi-api-staging.onrender.com/docs/json -g dart-dio -o apps/api_client --additional-properties=pubName=trotxi_api_client,pubAuthor=LFE",
+    "codegen:replacement": "openapi-generator-cli generate -i docs/design/contracts/replacement.openapi.json -g dart-dio -o apps/api_client_next --additional-properties=pubName=trotxi_api_client_next,pubAuthor=LFE"
   },
   "devDependencies": {
     "@openapitools/openapi-generator-cli": "^2.41.0",

@@ -136,7 +136,7 @@ jobs:
           node docs/design/scripts/build-contract.mjs
           node docs/design/scripts/build-transport-contract.mjs
           node --test docs/design/scripts/contract.test.mjs
-          git diff --exit-code -- docs/design/contracts/target.openapi.json docs/design/contracts/examples.json docs/design/contracts/endpoint-inventory.json docs/design/stage-1-invariants.md docs/design/stage-1-endpoints.md docs/design/stage-2-operation-scope.md services/api-next/src/http/contract.json
+          git diff --exit-code -- docs/design/contracts/target.openapi.json docs/design/contracts/replacement.openapi.json docs/design/contracts/examples.json docs/design/contracts/endpoint-inventory.json docs/design/stage-1-invariants.md docs/design/stage-1-endpoints.md docs/design/stage-2-operation-scope.md services/api-next/src/http/contract.json
 
   format:
     name: Format (Prettier)
@@ -315,7 +315,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        app: [trotxi_client, trotxi_commuter, trotxi_driver]
+        app: [trotxi_client, trotxi_client_next, trotxi_commuter, trotxi_driver]
     defaults:
       run:
         working-directory: apps/${{ matrix.app }}
