@@ -10,7 +10,7 @@ inventory](stage-1-invariants.md), which decided what behaviour must survive.
 
 The replacement in `services/api-next` implements **all 119 reviewed cutover
 operations**. The merged `636239d` baseline has migrations `001`–`019` and a
-passing comparison artifact. Exit-review corrections add migration `020` and
+passing comparison artifact. Exit-review corrections add migrations `020`–`021` and
 strengthen the gate; the baseline artifact alone does not approve those changes.
 See [the exit audit](stage-exit-audit-636239d.md) for findings and acceptance criteria.
 The [exit-fix record](stage-exit-fixes.md) tracks migrations 020–021 and fresh
@@ -177,8 +177,10 @@ dispute facts have only been seen as synthetic evidence.
    contract and schema decision.
 3. **Distributed admission — delivered.** Migration 019 and the deployable
    composition use shared Postgres admission; ASM-22 tests two instances.
-4. **Physical receipt expiry** for the command stores other than driver
-   credentials. Logical expiry already refuses replay; deletion is not claimed.
+4. **Physical receipt expiry — corrected on the exit-fix branch.** Migrations
+   020–021 permit bounded one-way response cleanup while retaining command
+   identities and accountable history. Review and deploy that branch before
+   treating this as an operational guarantee; see the exit-fix evidence.
 5. **Apple provisioning.** Required before enabling Apple sign-in, not before
    running the Google-only staging backend.
 6. **`deleteAvatar`** remains deferred, as above.

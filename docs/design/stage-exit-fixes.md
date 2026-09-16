@@ -57,6 +57,34 @@ cutover.
 
 ## Verification
 
-Fresh full-suite and compare-mode results are recorded below once run against a
-committed candidate. Earlier counts in the stage-3 report describe its original
-reviewed revision, not this fix branch.
+Verified locally on 2026-09-16:
+
+- **284 Postgres, 34 pure, 21 contract and 10 harness tests passed**, none skipped.
+  The full Postgres suite ran against `3236766`; subsequent `b8a7580` changes only
+  the harness's expected sanitized error name, not any API source or migration.
+- Typecheck, format and generated-artifact drift checks passed. The generators
+  still emit **119 reviewed operations / 179 schemas**, with 50 exact historical
+  non-payment test references verified. That historical-reference count is not
+  a claim that all 50 have independent replacement comparator scenarios.
+- Fresh comparison: candidate `b8a7580b9d968fc83034358db47ea35374f8ad9d`
+  versus frozen baseline `43cdae0b437e70ca146704eb4201a2325c9d9327`.
+  All 16 required payment cases (including the declared PAY-08R substitution),
+  four recovery cases on each implementation and four negative controls passed.
+  The original pinned Postgres suite also passed. All comparison databases were
+  cleaned up by the runner.
+- PAY-08R records both `invalidRateRejected: true` and
+  `closeWriteObserved: true`; the failed period stays open with 44 rides and no
+  closure or conversion effects, while the next period closes for 1,980 pesewas.
+  The first run caught an incorrect test expectation (`unexpected_error` rather
+  than the production mapper's `internal_error`). The correction did not remove
+  either witness or weaken the rollback assertions; the whole run was repeated.
+- Candidate verification checked **109 files** against the commit before and
+  after execution; baseline verification checked **1,255 files**. Candidate
+  source SHA-256: `8a0819d2deea7460444cfcc06375786255b80540b57724203a6cbdd38f25c80c`.
+- Local evidence: `.harness-artifacts/run-85c6b7f632d3/report.json`, SHA-256
+  `410257db4f4c0e7b1dd814a7d6171755c44c010e9478e2271b6dfbfac4936ea1`.
+  These are local results, not a claim of remote CI approval or staging evidence.
+
+Earlier counts in the stage-3 report describe its original reviewed revision,
+not this fix branch. The historical review probes remain local only; the proper
+regression cases above, not tests asserting old defects, are wired into CI.

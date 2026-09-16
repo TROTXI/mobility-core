@@ -13,7 +13,7 @@ No additional legacy compatibility layer or speculative new ops endpoints are re
 - Reviewed the integration checkout at `636239d` against the replacement proposal, invariant inventory, harness requirements, GPS/access policy, completion report and client handoff.
 - Independently ran **271 Postgres tests, 33 pure tests, 21 contract checks and 9 harness unit tests**, all passing with no skips. Regenerated the reviewed contract: **119 operations, 179 schemas**, no generated drift.
 - Inspected the green CI compare artifact from run `35108545594`, head `8a3252c981f7fad3db4a54b0240a272188f62059`. It records 15 payment comparisons plus the declared PAY-08 replacement and recovery substitutions. The complete differential run was not rerun locally in this audit.
-- Added five deterministic, local Postgres review probes in `services/api-next/tests/stage-exit-review.pg.test.ts`. All five reproduce the behavior below. They assert observed defects, not desired acceptance behavior; invert/rework them when implementing fixes. External object storage and revocation are controlled test adapters, not real provider calls.
+- Added five deterministic, local-only Postgres review probes in `services/api-next/tests/stage-exit-review.pg.test.ts` (not committed). All five reproduce the behavior below. They assert observed defects, not desired acceptance behavior. The exit-fix branch instead commits proper regression tests in `account-recovery.pg.test.ts` and the existing suites. External object storage and revocation are controlled test adapters, not real provider calls.
 - This is a plan-compliance review with targeted adversarial checks, not a claim that every line of every merged slice was independently re-reviewed.
 - Review ran in a separate worktree and disposable local database. No staging, main-branch implementation, provider configuration or GitHub state was changed.
 
@@ -163,7 +163,10 @@ Keep these decisions explicit, without inventing functionality:
 - Account receipt expiry is not currently implemented like its siblings; distinguish that bug from the broader physical-purge backlog.
 - Internal cleanup attribution does not require a new public maintenance endpoint.
 
-## Recommended finish order for Claude
+## Historical recommended finish order
+
+Implementation was subsequently assigned solely to Codex. See
+[the exit-fix record](stage-exit-fixes.md) for delivered corrections and remaining gates.
 
 1. **Account/privacy correction PR:** A1–A4, plus exact replay/expiry behavior. Add migrations after the current chain; coordinate numbering with any concurrent implementation. Bring the five review probes into proper regression tests.
 2. **Maintenance/retention correction PR:** A5–A6, durable retry outcomes, bounded draining and observable lag. Supply the load evidence separately if it cannot complete with the code change.
