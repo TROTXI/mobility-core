@@ -46,9 +46,9 @@ class AccountSuspendedException extends TrotxiException {
 /// valid has expired: telling a driver "please log in again" while they are
 /// staring at the log-in screen is the wrong sentence.
 class InvalidCredentialsException extends TrotxiException {
-  const InvalidCredentialsException(
-      [String message = 'Check your details and try again.'])
-      : super(message);
+  const InvalidCredentialsException([
+    String message = 'Check your details and try again.',
+  ]) : super(message);
 }
 
 /// The server will not serve this build (HTTP 426). Per app and platform, so a
@@ -66,7 +66,11 @@ class OfflineException extends TrotxiException {
 
 class ApiException extends TrotxiException {
   final int statusCode;
-  const ApiException(this.statusCode, String message) : super(message);
+
+  /// Stable backend reason, so callers need not branch on translated prose.
+  final String? code;
+  const ApiException(this.statusCode, String message, {this.code})
+      : super(message);
 }
 
 /// Interface for app-level storage of JWT tokens
@@ -76,11 +80,8 @@ class ApiException extends TrotxiException {
 /// request without it is refused whoever sent it. It is transport, not an
 /// argument every call site should have to remember.
 class ClientMetadata {
-  const ClientMetadata({
-    required this.app,
-    required this.build,
-    this.platform,
-  })  : assert(build > 0, 'A build number is a positive integer'),
+  const ClientMetadata({required this.app, required this.build, this.platform})
+      : assert(build > 0, 'A build number is a positive integer'),
         assert(
           app == 'ops' || app == 'worker' || platform != null,
           'commuter and driver builds ship on a platform and must say which',
@@ -94,16 +95,38 @@ class ClientMetadata {
 
   /// `ios` or `android`. Absent for `ops` and `worker`, which have no store build.
   final String? platform;
+
+  /// Runs in release builds too; constructor assertions are not a wire guard.
+  void validate() {
+    if (!const ['commuter', 'driver', 'ops', 'worker'].contains(app) ||
+        build < 1 ||
+        build > 999999999 ||
+        ((app == 'ops' || app == 'worker')
+            ? platform != null
+            : !const ['ios', 'android'].contains(platform))) {
+      throw ArgumentError('Invalid replacement client metadata');
+    }
+  }
 }
 
 /// Puts the metadata on every request. The server reads it before it reads the
 /// token, so this has to run whether or not the caller is signed in.
 class MetadataInterceptor extends Interceptor {
-  MetadataInterceptor(this._metadata);
+  MetadataInterceptor(this._metadata) {
+    _metadata.validate();
+  }
   final ClientMetadata _metadata;
 
   @override
   void onRequest(RequestOptions options, RequestInterceptorHandler handler) {
+    // A request cannot accidentally retain headers from another app/platform.
+    options.headers.removeWhere(
+      (key, _) => const {
+        'x-trotxi-client',
+        'x-trotxi-build',
+        'x-trotxi-platform',
+      }.contains(key.toLowerCase()),
+    );
     options.headers['x-trotxi-client'] = _metadata.app;
     options.headers['x-trotxi-build'] = '${_metadata.build}';
     if (_metadata.platform != null) {
@@ -215,26 +238,31 @@ class AuthInterceptor extends Interceptor {
         }
         newAccessToken = currentToken;
       } else {
-        newAccessToken =
-            await (_refreshFuture ??= _refreshTokens(currentToken));
+        newAccessToken = await (_refreshFuture ??= _refreshTokens(
+          currentToken,
+        ));
       }
     } on DioException catch (refreshError) {
       // Surface the refresh timeout/5xx, not the original access-token 401.
       return handler.next(refreshError);
     } catch (error, stackTrace) {
       // Missing/malformed tokens or storage failures aren't proof of revocation.
-      return handler.next(DioException(
-        requestOptions: err.requestOptions,
-        error: const ApiException(
-            0, 'Unable to restore the session. Please retry.'),
-        stackTrace: stackTrace,
-      ));
+      return handler.next(
+        DioException(
+          requestOptions: err.requestOptions,
+          error: const ApiException(
+            0,
+            'Unable to restore the session. Please retry.',
+          ),
+          stackTrace: stackTrace,
+        ),
+      );
     }
 
     final retry = err.requestOptions.copyWith(
       headers: {
         ...err.requestOptions.headers,
-        'Authorization': 'Bearer $newAccessToken'
+        'Authorization': 'Bearer $newAccessToken',
       },
       extra: {...err.requestOptions.extra, _retried: true},
       data: err.requestOptions.data is FormData
@@ -252,9 +280,11 @@ class AuthInterceptor extends Interceptor {
   /// Whether a path is one of the sign-in routes, where a 401 is a rejected
   /// credential rather than an expired session.
   static bool _isSignInPath(String path) {
-    return path.contains('auth/driver') ||
-        path.contains('auth/google') ||
-        path.contains('auth/apple');
+    return const {
+      '/v1/auth/driver',
+      '/v1/auth/google',
+      '/v1/auth/apple',
+    }.contains(Uri.parse(path).path);
   }
 
   /// Performs the actual refresh call. Only ever invoked once per batch of
@@ -362,13 +392,18 @@ class ErrorInterceptor extends Interceptor {
           DioException(
             requestOptions: err.requestOptions,
             error: isSignIn
-                ? const InvalidCredentialsException(
-                    'Invalid driver code or PIN.')
+                ? InvalidCredentialsException(
+                    _messageOf(response) ??
+                        (Uri.parse(err.requestOptions.path).path ==
+                                '/v1/auth/driver'
+                            ? 'Invalid driver code or PIN.'
+                            : 'Unable to sign in. Please try again.'),
+                  )
                 : const UnauthorizedException(),
           ),
         );
       case 403:
-        if (isSignIn) {
+        if (Uri.parse(err.requestOptions.path).path == '/v1/auth/driver') {
           return handler.reject(
             DioException(
               requestOptions: err.requestOptions,
@@ -410,6 +445,7 @@ class ErrorInterceptor extends Interceptor {
         error: ApiException(
           response.statusCode ?? 0,
           _messageOf(response) ?? response.statusMessage ?? 'Unknown error',
+          code: _fieldOf(response, 'code'),
         ),
         response: response,
       ),
@@ -420,6 +456,10 @@ class ErrorInterceptor extends Interceptor {
   /// message is written to be shown. Falling back to the status line loses
   /// that, so read the envelope first.
   static String? _messageOf(Response response) {
+    return _fieldOf(response, 'message');
+  }
+
+  static String? _fieldOf(Response response, String field) {
     Object? body = response.data;
     if (body is String) {
       try {
@@ -431,7 +471,7 @@ class ErrorInterceptor extends Interceptor {
     if (body is! Map) return null;
     final error = body['error'];
     if (error is! Map) return null;
-    final message = error['message'];
+    final message = error[field];
     return message is String && message.isNotEmpty ? message : null;
   }
 
@@ -449,6 +489,7 @@ class TrotxiClientFactory {
     required TokenStore tokenStore,
     required ClientMetadata metadata,
   }) {
+    metadata.validate();
     final client = TrotxiApiClientNext(basePathOverride: baseUrl);
 
     // Metadata first: the server validates it before it authorizes anything,
