@@ -145,6 +145,19 @@ build), the contention helper demonstrated no contention, and the observer hid a
 committed row to make PAY-08 pass. The last of those is why PAY-08 is now a
 declared substitution rather than a green tick.
 
+### External providers
+
+Both are exercised against the real service, not only against synthetic
+evidence, because an adapter can be internally consistent and still refused.
+
+| Provider      | Exercised                                                     | What it settled                                                                                                                                                                                                                                                                                      |
+| ------------- | ------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Paystack      | 2026-09-16, `scripts/paystack-test-mode.ts`, test key, 6 of 6 | The key's environment matches what the adapter believes; a checkout opens under the reference we sent; an unpaid transaction reads back as a **failure** fact rather than a settlement; Paystack's own webhook signature verifies, while a body altered by one byte and an unsigned body are refused |
+| Cloudflare R2 | 2026-09-16, `scripts/r2-check.ts`, 4 of 4                     | Cloudflare accepts our header-signed upload; the object returns byte-identical through a query-signed URL carrying **no credentials**; a signature past its expiry is refused with 403, so the avatar URL TTL is real; a removed object is gone                                                      |
+
+Still unexercised: a transaction somebody actually pays. Settlement, refund and
+dispute facts have only been seen as synthetic evidence.
+
 ## Gaps, flagged rather than filled
 
 1. **Bulk future-version reassignment.** Publication still refuses to orphan a

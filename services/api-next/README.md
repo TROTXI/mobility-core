@@ -240,6 +240,11 @@ an account with the deployed API cannot inherit its database, signing key or
 provider credentials. A missing variable is refused **by name** before anything
 is built, and the eight key purposes must all be different keys.
 
+Both external adapters are exercised against the real service and not only
+against synthetic evidence: `scripts/paystack-test-mode.ts` (test key, six
+checks) and `scripts/r2-check.ts` (four checks, including that a signature past
+its expiry is refused, so the avatar URL TTL is real).
+
 Nothing degrades. There is no in-memory object store, no recording push sender,
 no permissive session callback and no adapter parameter a caller could pass a
 test double through: `composeBackend` takes configuration and nothing else. The
