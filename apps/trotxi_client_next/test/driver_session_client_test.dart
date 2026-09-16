@@ -122,7 +122,9 @@ void main() {
         client.dio.interceptors.indexWhere((i) => i is ErrorInterceptor),
         InterceptorsWrapper(onError: (error, handler) {
           transportCause = error.error;
-          transportStack = error.stackTrace;
+          transportStack = error.error is Error
+              ? (error.error as Error).stackTrace
+              : error.stackTrace;
           handler.next(error);
         }));
     final DriverIdentity driver;
