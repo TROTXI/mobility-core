@@ -277,7 +277,9 @@ test('MIG-01 clean install records hashes, rerun is no-op, historical drift fail
     // 016 adds plan pricing, corridor fares, the pricing command and event
     // receipts, and the provider checkout session behind a purchase.
     // 017 adds push devices, the erasure record and its outstanding tasks.
-    assert.equal(tables.rows[0].n, 76);
+    // 017 adds push devices, the erasure record, its outstanding tasks and
+    // the account command receipt.
+    assert.equal(tables.rows[0].n, 77);
     assert.deepEqual(
       (
         await pool.query(

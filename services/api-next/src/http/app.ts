@@ -139,6 +139,17 @@ export async function createTransportApp(options: AppOptions) {
   app.addSchema({ $id: 'transport', definitions: jsonSchema(contract.components.schemas) });
   const rootRef = (schema: Record<string, unknown>) => ({ $ref: reference(String(schema.$ref)) });
   app.setErrorHandler((error, request, reply) => {
+    // Busboy aborts a body it cannot parse with a stream error that carries no
+    // status. That is the client's envelope, not our failure.
+    const stream = (error as { code?: string }).code;
+    if (stream === 'ERR_STREAM_PREMATURE_CLOSE' || stream?.startsWith('FST_REQ_FILE'))
+      return reply.code(400).send({
+        error: {
+          code: 'invalid_request',
+          message: 'Supply exactly one image part.',
+          requestId: request.id,
+        },
+      });
     if (error instanceof DriverLockedError)
       reply.header('Retry-After', String(error.retryAfterSeconds));
     const typed = error as { validation?: unknown; statusCode?: number };
@@ -382,12 +393,15 @@ export async function createTransportApp(options: AppOptions) {
                 name as AccountOperation,
                 await part.toBuffer(),
                 (part as { mimetype?: string }).mimetype,
+                request.headers['idempotency-key'] as string | undefined,
               );
             } else
               result = await options.account!.handle(
                 actor!,
                 name as AccountOperation,
                 (request.body ?? {}) as Body,
+                undefined,
+                request.headers['idempotency-key'] as string | undefined,
               );
           } else if (pricingEndpoint || purchaseEndpoint) {
             const query = request.query as Record<string, string | undefined>;

@@ -110,26 +110,68 @@ export class AccountService {
     operation: AccountOperation,
     input: Body | Buffer,
     contentType?: string,
+    key?: string,
   ): Promise<Outcome> {
-    if (operation === 'updateAccount') return this.rename(actor, input as Body);
-    if (operation === 'registerDevice') return this.register(actor, input as Body);
     if (operation === 'getAvatar') return this.avatar(actor);
-    if (operation === 'uploadAvatar') return this.upload(actor, input as Buffer, contentType);
-    return this.erase(actor);
+    if (typeof key !== 'string' || !key.length || key.length > 128)
+      fail(400, 'idempotency_key_required', 'Supply an Idempotency-Key of 1 to 128 characters.');
+    if (operation === 'updateAccount') return this.rename(actor, input as Body, key);
+    if (operation === 'registerDevice') return this.register(actor, input as Body, key);
+    if (operation === 'uploadAvatar') return this.upload(actor, input as Buffer, contentType, key);
+    return this.erase(actor, key);
   }
 
-  private async rename(actor: Actor, input: Body): Promise<Outcome> {
+  /**
+   * The receipt for one command. Renaming and registering are naturally
+   * repeatable, so this exists for the one that is not: an upload writes an
+   * object, and a client that retries after a timeout must not write a second.
+   */
+  private async receipt(
+    c: PoolClient,
+    actor: Actor,
+    operation: AccountOperation,
+    key: string,
+    input: string,
+  ): Promise<{ replay: string | null } | null> {
+    const prior = (
+      await c.query(
+        'SELECT * FROM app.account_commands WHERE actor_user_id=$1 AND operation=$2 AND key_hash=$3',
+        [actor.userId, operation, digest(key)],
+      )
+    ).rows[0];
+    if (!prior) return null;
+    if (prior.input_hash !== digest(input))
+      fail(409, 'idempotency_conflict', 'This key was already used for different input.');
+    return { replay: prior.result };
+  }
+  private async record(
+    c: PoolClient,
+    actor: Actor,
+    operation: AccountOperation,
+    key: string,
+    input: string,
+    result: string | null,
+  ) {
+    await c.query(
+      'INSERT INTO app.account_commands(actor_user_id,operation,key_hash,input_hash,result) VALUES ($1,$2,$3,$4,$5) ON CONFLICT DO NOTHING',
+      [actor.userId, operation, digest(key), digest(input), result],
+    );
+  }
+
+  private async rename(actor: Actor, input: Body, key: string): Promise<Outcome> {
     const name = typeof input.displayName === 'string' ? input.displayName.trim() : '';
     if (!name.length || name.length > 100)
       fail(400, 'invalid_request', 'Supply a display name of 1 to 100 characters.');
     return this.tx(async (c) => {
       const user = await this.owner(c, actor);
+      await this.receipt(c, actor, 'updateAccount', key, name);
       const row = (
         await c.query('UPDATE app.users SET display_name=$2 WHERE id=$1 RETURNING *', [
           user.id,
           name,
         ])
       ).rows[0];
+      await this.record(c, actor, 'updateAccount', key, name, null);
       return {
         status: 200,
         body: { data: await this.view(row) },
@@ -160,7 +202,7 @@ export class AccountService {
    * same token appears under a different account the device moves, because the
    * alternative is a handset that keeps receiving a previous owner's trips.
    */
-  private async register(actor: Actor, input: Body): Promise<Outcome> {
+  private async register(actor: Actor, input: Body, key: string): Promise<Outcome> {
     const token = typeof input.token === 'string' ? input.token : '';
     const platform = String(input.platform);
     if (!token.length || token.length > 4096)
@@ -169,6 +211,7 @@ export class AccountService {
       fail(400, 'invalid_request', 'Supply a supported device platform.');
     return this.tx(async (c) => {
       const user = await this.owner(c, actor);
+      await this.receipt(c, actor, 'registerDevice', key, `${platform}:${token}`);
       const fingerprint = digest(token);
       const sealed = this.seal(token);
       const row = (
@@ -177,11 +220,12 @@ export class AccountService {
           VALUES ($1,$2,$3,$4)
           ON CONFLICT (token_digest) DO UPDATE
             SET user_id=EXCLUDED.user_id,platform=EXCLUDED.platform,
-                token_ciphertext=EXCLUDED.token_ciphertext
+                token_ciphertext=EXCLUDED.token_ciphertext,revoked_at=NULL
           RETURNING *`,
           [user.id, platform, fingerprint, sealed],
         )
       ).rows[0];
+      await this.record(c, actor, 'registerDevice', key, `${platform}:${token}`, row.id);
       return {
         status: 200,
         body: {
@@ -219,7 +263,12 @@ export class AccountService {
    * The object is written before the account points at it, so a failed store
    * leaves an unreferenced object rather than an account referring to nothing.
    */
-  private async upload(actor: Actor, bytes: Buffer, contentType?: string): Promise<Outcome> {
+  private async upload(
+    actor: Actor,
+    bytes: Buffer,
+    contentType: string | undefined,
+    key: string,
+  ): Promise<Outcome> {
     if (!this.options.avatars)
       fail(503, 'avatar_store_unavailable', 'Avatars are temporarily unavailable.');
     const type = String(contentType ?? '')
@@ -235,6 +284,13 @@ export class AccountService {
     // The declared type has to be what the bytes actually are.
     if (!recognises(bytes))
       fail(415, 'unsupported_media_type', 'That file is not the type it claims.');
+    const fingerprint = digest(bytes);
+    // A retry after a timeout must not write a second object into the store.
+    const seen = await this.tx(async (c) => {
+      await this.owner(c, actor);
+      return this.receipt(c, actor, 'uploadAvatar', key, `${type}:${fingerprint}`);
+    });
+    if (seen) return this.avatar(actor);
     const owner = await this.tx((c) => this.owner(c, actor));
     const stored = await this.options.avatars.put({
       userId: owner.id,
@@ -243,11 +299,20 @@ export class AccountService {
     });
     await this.tx(async (c) => {
       const user = await this.owner(c, actor);
+      const displaced = user.avatar_object_key as string | null;
       await c.query('UPDATE app.users SET avatar_object_key=$2 WHERE id=$1', [
         user.id,
         stored.objectKey,
       ]);
+      await this.record(c, actor, 'uploadAvatar', key, `${type}:${fingerprint}`, stored.objectKey);
+      // The picture this one replaced is still in the store and still theirs.
+      if (displaced && displaced !== stored.objectKey)
+        await c.query(
+          'INSERT INTO app.erasure_tasks(user_id,kind,reference) VALUES ($1,$2,$3) ON CONFLICT DO NOTHING',
+          [user.id, 'avatar_object', displaced],
+        );
     });
+    await this.retryErasures(10);
     // The contract answers an upload with the private URL, not the account.
     return this.avatar(actor);
   }
@@ -262,9 +327,10 @@ export class AccountService {
    * that is unreachable leaves work to retry rather than an erasure that
    * quietly did not happen. Accounting we are required to keep is kept.
    */
-  private async erase(actor: Actor): Promise<Outcome> {
+  private async erase(actor: Actor, key: string): Promise<Outcome> {
     const outstanding = await this.tx(async (c) => {
       const user = await this.owner(c, actor);
+      await this.receipt(c, actor, 'eraseAccount', key, user.id);
       const sessions = await c.query(
         'UPDATE app.auth_sessions SET revoked_at=clock_timestamp() WHERE user_id=$1 AND revoked_at IS NULL',
         [user.id],
@@ -286,11 +352,13 @@ export class AccountService {
           [user.id],
         )
       ).rows;
+      // The subject goes now, so signing in again is a new account. The token
+      // stays only until the grant it opens has actually been revoked.
       for (const identity of identities)
-        await c.query(
-          'UPDATE app.auth_identities SET subject=$2,provider_token_ciphertext=NULL WHERE id=$1',
-          [identity.id, `erased:${randomUUID()}`],
-        );
+        await c.query('UPDATE app.auth_identities SET subject=$2 WHERE id=$1', [
+          identity.id,
+          `erased:${randomUUID()}`,
+        ]);
       const objectKey = user.avatar_object_key as string | null;
       // 013's trigger fires on this transition and clears slots, pauses,
       // requests, assignments, reservations and rider notes.
@@ -314,9 +382,17 @@ export class AccountService {
       for (const identity of identities)
         tasks.push({
           kind: 'provider_revocation',
-          reference: `${identity.provider}:${identity.id}`,
+          reference: `${identity.provider}:${identity.id}:${identity.subject}`,
         });
       if (objectKey) tasks.push({ kind: 'avatar_object', reference: objectKey });
+      // A driver's own record carries a name, a phone number and a licence.
+      // Closing the account closes that too, or erasure is only half done.
+      await c.query(
+        `UPDATE app.drivers SET name='Erased driver',phone=NULL,license_number=NULL,
+          archived_at=coalesce(archived_at,clock_timestamp()) WHERE user_id=$1`,
+        [user.id],
+      );
+      await this.record(c, actor, 'eraseAccount', key, user.id, null);
       for (const task of tasks)
         await c.query(
           'INSERT INTO app.erasure_tasks(user_id,kind,reference) VALUES ($1,$2,$3) ON CONFLICT DO NOTHING',
@@ -326,34 +402,60 @@ export class AccountService {
     });
     // Attempted once here so an ordinary erasure finishes now. A failure is
     // already recorded, and the maintenance worker owns the retry.
-    for (const task of outstanding.tasks) await this.attempt(outstanding.userId, task);
+    for (const task of outstanding.tasks) {
+      await this.tx((c) =>
+        c.query(
+          `UPDATE app.erasure_tasks SET attempts=least(attempts+1,1000)
+          WHERE user_id=$1 AND kind=$2 AND reference=$3 AND state<>'done'`,
+          [outstanding.userId, task.kind, task.reference],
+        ),
+      );
+      await this.attempt(outstanding.userId, task);
+    }
     return { status: 204, body: null, headers: {} } as Outcome;
   }
 
   private async attempt(userId: string, task: { kind: string; reference: string }) {
     const reach = this.options.reach;
-    const settle = (state: 'done' | 'unavailable', failure: string | null) =>
-      this.tx((c) =>
+    const settle = async (state: 'done' | 'unavailable', failure: string | null) => {
+      // The attempt was counted when the task was claimed, so a task that has
+      // exhausted its budget can still be recorded as done rather than
+      // repeating the work forever while reporting it never happened.
+      const done = await this.tx((c) =>
         c.query(
           `UPDATE app.erasure_tasks
-          SET state=$4,attempts=attempts+1,last_failure=$5,
+          SET state=$4,last_failure=$5,
               completed_at=CASE WHEN $4='done' THEN clock_timestamp() ELSE NULL END
           WHERE user_id=$1 AND kind=$2 AND reference=$3 AND state<>'done'`,
           [userId, task.kind, task.reference, state, failure],
         ),
-      ).catch(() => undefined);
+      );
+      return (done.rowCount ?? 0) > 0 && state === 'done';
+    };
     try {
       if (task.kind === 'avatar_object') {
         if (!reach?.removeAvatarObject) return settle('unavailable', 'no_object_reach');
         await reach.removeAvatarObject(task.reference);
       } else {
         if (!reach?.revokeProviderGrant) return settle('unavailable', 'no_provider_reach');
-        const [provider] = task.reference.split(':');
+        const [provider, identityId, ...rest] = task.reference.split(':');
+        const sealed = await this.tx((c) =>
+          c.query('SELECT provider_token_ciphertext FROM app.auth_identities WHERE id=$1', [
+            identityId,
+          ]),
+        );
         await reach.revokeProviderGrant({
           provider: provider!,
-          subject: task.reference,
-          tokenCiphertext: null,
+          subject: rest.join(':'),
+          tokenCiphertext: sealed.rows[0]?.provider_token_ciphertext ?? null,
         });
+        // Kept only until the grant is actually revoked, because revoking it
+        // is what the token is still here for.
+        await this.tx((c) =>
+          c.query('UPDATE app.auth_identities SET provider_token_ciphertext=NULL WHERE id=$1', [
+            identityId,
+          ]),
+        ).catch(() => undefined);
       }
       return settle('done', null);
     } catch (error) {
@@ -363,24 +465,37 @@ export class AccountService {
 
   /** Retry what erasure could not finish. Bounded, and never invents success. */
   async retryErasures(limit = 50): Promise<{ considered: number; completed: number }> {
-    const due = await this.tx((c) =>
-      c.query(
-        `SELECT user_id,kind,reference FROM app.erasure_tasks
-        WHERE state<>'done' ORDER BY created_at,id LIMIT $1`,
-        [Math.max(1, Math.min(limit, 100))],
-      ),
-    );
-    let completed = 0;
-    for (const task of due.rows) {
-      await this.attempt(task.user_id, task);
-      const state = await this.tx((c) =>
-        c.query(
-          'SELECT state FROM app.erasure_tasks WHERE user_id=$1 AND kind=$2 AND reference=$3',
-          [task.user_id, task.kind, task.reference],
-        ),
-      );
-      if (state.rows[0]?.state === 'done') completed += 1;
+    let completed = 0,
+      considered = 0;
+    const handled = new Set<string>();
+    for (let taken = 0; taken < Math.max(1, Math.min(limit, 100)); taken++) {
+      // One task at a time, claimed under a row lock that another worker skips,
+      // so two sweeps never both call the provider for the same grant.
+      // One pass is one attempt each, so a task this sweep has already tried
+      // is not a candidate again. Claiming and counting the attempt happen
+      // together, under a row lock another worker skips.
+      const claimed = await this.tx(async (c) => {
+        const row = (
+          await c.query(
+            `SELECT user_id,kind,reference FROM app.erasure_tasks
+            WHERE state<>'done' AND NOT (reference = ANY($1::text[]))
+            ORDER BY attempts,created_at,id LIMIT 1 FOR UPDATE SKIP LOCKED`,
+            [[...handled]],
+          )
+        ).rows[0];
+        if (!row) return null;
+        await c.query(
+          `UPDATE app.erasure_tasks SET attempts=least(attempts+1,1000)
+          WHERE user_id=$1 AND kind=$2 AND reference=$3 AND state<>'done'`,
+          [row.user_id, row.kind, row.reference],
+        );
+        return row;
+      });
+      if (!claimed) break;
+      handled.add(claimed.reference);
+      considered += 1;
+      if (await this.attempt(claimed.user_id, claimed)) completed += 1;
     }
-    return { considered: due.rowCount ?? 0, completed };
+    return { considered, completed };
   }
 }

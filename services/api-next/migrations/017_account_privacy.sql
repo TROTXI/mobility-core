@@ -29,9 +29,11 @@ COMMENT ON TABLE app.push_devices IS
 CREATE FUNCTION app.guard_push_device() RETURNS trigger LANGUAGE plpgsql AS $$
 BEGIN
   IF TG_OP = 'DELETE' THEN RAISE EXCEPTION 'append_only_history' USING ERRCODE = '23514'; END IF;
-  -- A revoked device stays revoked and keeps nothing.
-  IF OLD.revoked_at IS NOT NULL AND
-    (NEW.revoked_at IS NULL OR NEW.token_ciphertext IS NOT NULL) THEN
+  -- A revoked device holds no token. Registering the handset again is how it
+  -- comes back: the row is claimed by whoever installed the app this time,
+  -- because the alternative is a phone whose previous owner closed their
+  -- account and can never receive a notification again.
+  IF NEW.revoked_at IS NOT NULL AND NEW.token_ciphertext IS NOT NULL THEN
     RAISE EXCEPTION 'device_revoked' USING ERRCODE = '23514';
   END IF;
   IF NEW.id <> OLD.id OR NEW.token_digest <> OLD.token_digest OR NEW.created_at <> OLD.created_at THEN
@@ -58,15 +60,18 @@ CREATE TRIGGER immutable_account_erasures BEFORE UPDATE OR DELETE ON app.account
 COMMENT ON TABLE app.account_erasures IS
   'Local completion only. Accounting rows that must be retained are retained and are not counted here; work outside this database is tracked in erasure_tasks.';
 
--- The part of erasure this database cannot finish by committing: revoking a
--- provider grant, removing a stored object. A failure leaves a row to retry,
--- never a silently incomplete erasure.
+-- The part of removal this database cannot finish by committing: revoking a
+-- provider grant, deleting a stored object. A failure leaves a row to retry,
+-- never a silently incomplete erasure. Replacing an avatar files one too: the
+-- picture it displaced is still in the store and still the rider's.
 CREATE TABLE app.erasure_tasks (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id uuid NOT NULL REFERENCES app.account_erasures(user_id) ON DELETE RESTRICT,
+  user_id uuid NOT NULL REFERENCES app.users(id) ON DELETE RESTRICT,
   kind text NOT NULL CHECK (kind IN ('provider_revocation', 'avatar_object')),
   reference text NOT NULL CHECK (length(reference) BETWEEN 1 AND 1024),
   state text NOT NULL DEFAULT 'pending' CHECK (state IN ('pending', 'done', 'unavailable')),
+  -- Capped, and the sweep saturates rather than overflowing it: a task that
+  -- has run out of attempts must not become impossible to record as done.
   attempts integer NOT NULL DEFAULT 0 CHECK (attempts BETWEEN 0 AND 1000),
   last_failure text CHECK (last_failure IS NULL OR length(last_failure) BETWEEN 1 AND 200),
   completed_at timestamptz,
@@ -98,7 +103,7 @@ CREATE TRIGGER protect_erasure_task BEFORE UPDATE OR DELETE ON app.erasure_tasks
 -- a phone number or an avatar from that moment.
 CREATE FUNCTION app.guard_erased_user() RETURNS trigger LANGUAGE plpgsql AS $$
 BEGIN
-  IF OLD.deleted_at IS NOT NULL AND NEW.deleted_at IS NULL THEN
+  IF TG_OP = 'UPDATE' AND OLD.deleted_at IS NOT NULL AND NEW.deleted_at IS NULL THEN
     RAISE EXCEPTION 'erasure_is_final' USING ERRCODE = '23514';
   END IF;
   IF NEW.deleted_at IS NOT NULL THEN
@@ -109,5 +114,22 @@ BEGIN
   END IF;
   RETURN NEW;
 END $$;
-CREATE TRIGGER protect_erased_user BEFORE UPDATE ON app.users
+CREATE TRIGGER protect_erased_user BEFORE INSERT OR UPDATE ON app.users
   FOR EACH ROW EXECUTE FUNCTION app.guard_erased_user();
+
+-- The reviewed contract requires an Idempotency-Key on every account command,
+-- and an avatar upload is the one where a retry costs something: without this
+-- a timed-out client writes a second object into the store.
+CREATE TABLE app.account_commands (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  actor_user_id uuid NOT NULL REFERENCES app.users(id) ON DELETE RESTRICT,
+  operation text NOT NULL CHECK (
+    operation IN ('updateAccount', 'eraseAccount', 'uploadAvatar', 'registerDevice')),
+  key_hash text NOT NULL CHECK (key_hash ~ '^[a-f0-9]{64}$'),
+  input_hash text NOT NULL CHECK (input_hash ~ '^[a-f0-9]{64}$'),
+  result text CHECK (result IS NULL OR length(result) BETWEEN 1 AND 1024),
+  created_at timestamptz NOT NULL DEFAULT clock_timestamp(),
+  UNIQUE (actor_user_id, operation, key_hash)
+);
+CREATE TRIGGER immutable_account_commands BEFORE UPDATE OR DELETE ON app.account_commands
+  FOR EACH ROW EXECUTE FUNCTION app.append_only();

@@ -24,6 +24,8 @@ async function fixture(t: TestContext, options: { store?: boolean; reach?: boole
   const stored: { objectKey: string; bytes: number }[] = [];
   const removed: string[] = [];
   const revoked: string[] = [];
+  const tokens: (string | null)[] = [];
+  let reachable = options.reach !== false;
   const account = new AccountService({
     pool: f.runtime,
     authorizeSession: f.dependencies.authorizeSession,
@@ -39,17 +41,17 @@ async function fixture(t: TestContext, options: { store?: boolean; reach?: boole
             },
             signedUrl: async (key, seconds) => `https://private.example/${key}?expires=${seconds}`,
           },
-    reach:
-      options.reach === false
-        ? {}
-        : {
-            removeAvatarObject: async (key) => {
-              removed.push(key);
-            },
-            revokeProviderGrant: async ({ subject }) => {
-              revoked.push(subject);
-            },
-          },
+    reach: {
+      removeAvatarObject: async (key) => {
+        if (!reachable) throw new Error('unreachable');
+        removed.push(key);
+      },
+      revokeProviderGrant: async ({ subject, tokenCiphertext }) => {
+        if (!reachable) throw new Error('unreachable');
+        revoked.push(subject);
+        tokens.push(tokenCiphertext);
+      },
+    },
   });
   const pricing = new Pricing({
     pool: f.runtime,
@@ -94,12 +96,12 @@ async function fixture(t: TestContext, options: { store?: boolean; reach?: boole
         'x-trotxi-client': 'commuter',
         'x-trotxi-build': '1',
         'x-trotxi-platform': 'android',
-        ...(method === 'GET' || method === 'DELETE' ? {} : { 'idempotency-key': randomUUID() }),
+        ...(method === 'GET' ? {} : { 'idempotency-key': randomUUID() }),
         ...(options.headers ?? {}),
       },
       ...(options.payload === undefined ? {} : { payload: options.payload as never }),
     }) as Promise<Response>;
-  const upload = (bytes: Buffer, type = 'image/png', who = 'rider') => {
+  const upload = (bytes: Buffer, type = 'image/png', who = 'rider', key = randomUUID()) => {
     const boundary = '----trotxitest' + randomUUID().replaceAll('-', '');
     const head = Buffer.from(
       `--${boundary}\r\nContent-Disposition: form-data; name="file"; filename="a.png"\r\n` +
@@ -115,6 +117,7 @@ async function fixture(t: TestContext, options: { store?: boolean; reach?: boole
         'x-trotxi-build': '1',
         'x-trotxi-platform': 'android',
         'content-type': `multipart/form-data; boundary=${boundary}`,
+        'idempotency-key': key,
       },
       payload: Buffer.concat([head, bytes, tail]),
     }) as Promise<Response>;
@@ -131,6 +134,10 @@ async function fixture(t: TestContext, options: { store?: boolean; reach?: boole
     stored: () => stored,
     removed: () => removed,
     revoked: () => revoked,
+    tokens: () => tokens,
+    reconnect: () => {
+      reachable = true;
+    },
   };
 }
 
@@ -150,6 +157,16 @@ test('ACC-01 a rider renames only their own account', async (t) => {
   );
   for (const bad of [{ displayName: '' }, { displayName: '   ' }, { displayName: 'x'.repeat(101) }])
     assert.equal((await f.call('PATCH', '/v1/me', { payload: bad })).statusCode, 400, String(bad));
+  // The reviewed contract requires a key on every account command.
+  assert.equal(
+    (
+      await f.call('PATCH', '/v1/me', {
+        payload: { displayName: 'No key' },
+        headers: { 'idempotency-key': '' },
+      })
+    ).statusCode,
+    400,
+  );
   assert.equal((await f.call('PATCH', '/v1/me', { payload: { role: 'admin' } })).statusCode, 400);
 });
 
@@ -388,4 +405,129 @@ test('ACC-07 erasure clears what a rider had booked and keeps what accounting ne
     0,
     "and 013's triggers closed what the rider had",
   );
+});
+
+test('ACC-08 a handset comes back after its previous owner closes their account', async (t) => {
+  const f = await fixture(t);
+  const token = 'shared-handset-' + randomUUID();
+  expectStatus(
+    await f.call('POST', '/v1/me/devices', { payload: { token, platform: 'android' } }),
+    200,
+  );
+  assert.equal((await f.call('DELETE', '/v1/me')).statusCode, 204);
+  // The phone is still a phone. Its next owner registers it and it works.
+  const reclaimed = expectStatus(
+    await f.call('POST', '/v1/me/devices', {
+      who: 'other',
+      payload: { token, platform: 'ios' },
+    }),
+    200,
+  );
+  const row = (await f.owner.query('SELECT * FROM app.push_devices')).rows[0];
+  assert.equal(row.id, reclaimed.id);
+  assert.equal(row.user_id, f.other.userId);
+  assert.equal(row.revoked_at, null);
+  assert.ok(row.token_ciphertext, 'and it can be notified again');
+});
+
+test('ACC-09 the provider is asked to revoke the grant it actually issued', async (t) => {
+  const f = await fixture(t);
+  const subject = 'apple-subject-' + randomUUID();
+  await f.owner.query(
+    "INSERT INTO app.auth_identities(user_id,provider,subject,provider_token_ciphertext) VALUES ($1,'apple',$2,$3)",
+    [f.actor.userId, subject, 'sealed-refresh-token'],
+  );
+  assert.equal((await f.call('DELETE', '/v1/me')).statusCode, 204);
+  assert.deepEqual(f.revoked(), [subject], 'the provider knows the subject, not our row id');
+  assert.deepEqual(f.tokens(), ['sealed-refresh-token'], 'and Apple needs the token to revoke');
+  assert.equal(
+    (await f.owner.query('SELECT provider_token_ciphertext,subject FROM app.auth_identities'))
+      .rows[0].provider_token_ciphertext,
+    null,
+    'which is kept only until the revocation succeeds',
+  );
+});
+
+test('ACC-10 a replaced avatar does not stay in the store, and a retry writes one object', async (t) => {
+  const f = await fixture(t);
+  const key = randomUUID();
+  expectStatus(await f.upload(PNG, 'image/png', 'rider', key), 200);
+  expectStatus(await f.upload(PNG, 'image/png', 'rider', key), 200);
+  assert.equal(f.stored().length, 1, 'the same key writes one object');
+
+  expectStatus(await f.upload(PNG, 'image/png', 'rider', randomUUID()), 200);
+  assert.equal(f.stored().length, 2);
+  assert.deepEqual(
+    f.removed(),
+    [f.stored()[0]!.objectKey],
+    'and the picture it replaced is deleted rather than left behind',
+  );
+});
+
+test('ACC-11 erasure closes a driver record too', async (t) => {
+  const f = await fixture(t);
+  await f.owner.query("UPDATE app.users SET role='driver' WHERE id=$1", [f.actor.userId]);
+  await f.owner.query(
+    "INSERT INTO app.drivers(user_id,name,phone,license_number) VALUES ($1,'Kwesi','+233555000111','GH-LIC-9911')",
+    [f.actor.userId],
+  );
+  assert.equal((await f.call('DELETE', '/v1/me')).statusCode, 204);
+  const driver = (
+    await f.owner.query('SELECT * FROM app.drivers WHERE user_id=$1', [f.actor.userId])
+  ).rows[0];
+  assert.equal(driver.phone, null);
+  assert.equal(driver.license_number, null);
+  assert.notEqual(driver.name, 'Kwesi');
+  assert.ok(driver.archived_at);
+});
+
+test('ACC-12 a malformed upload is a bad request, and a closed row is born closed', async (t) => {
+  const f = await fixture(t);
+  const boundary = '----trotxi' + randomUUID().replaceAll('-', '');
+  const twoFields = Buffer.from(
+    `--${boundary}\r\nContent-Disposition: form-data; name="note"\r\n\r\nhello\r\n` +
+      `--${boundary}\r\nContent-Disposition: form-data; name="file"; filename="a.png"\r\n` +
+      `Content-Type: image/png\r\n\r\n`,
+  );
+  const malformed = await f.app.inject({
+    method: 'PUT',
+    url: '/v1/me/avatar',
+    headers: {
+      authorization: 'Bearer rider',
+      'x-trotxi-client': 'commuter',
+      'x-trotxi-build': '1',
+      'x-trotxi-platform': 'android',
+      'idempotency-key': randomUUID(),
+      'content-type': `multipart/form-data; boundary=${boundary}`,
+    },
+    payload: Buffer.concat([twoFields, PNG, Buffer.from(`\r\n--${boundary}--\r\n`)]),
+  });
+  assert.equal(malformed.statusCode, 400, malformed.body);
+  assert.equal(f.stored().length, 0);
+
+  // A row created already closed keeps nothing either.
+  const ghost = (
+    await f.owner.query(
+      `INSERT INTO app.users(role,display_name,email,phone,deleted_at)
+      VALUES ('commuter','Ghost','ghost@example.com','+233200000009',clock_timestamp())
+      RETURNING display_name,email,phone`,
+    )
+  ).rows[0];
+  assert.deepEqual(ghost, { display_name: null, email: null, phone: null });
+});
+
+test('ACC-13 two sweeps do not do the same outside work twice', async (t) => {
+  const f = await fixture(t, { reach: false });
+  expectStatus(await f.upload(PNG), 200);
+  assert.equal((await f.call('DELETE', '/v1/me')).statusCode, 204);
+  f.reconnect();
+  const [a, b] = await Promise.all([f.account.retryErasures(), f.account.retryErasures()]);
+  assert.equal(f.removed().length, 1, 'the object is deleted once');
+  assert.equal(a.completed + b.completed, 1, 'and counted once');
+
+  // An exhausted attempt count must not make completion impossible.
+  const settled = (
+    await f.owner.query("SELECT state FROM app.erasure_tasks WHERE kind='avatar_object'")
+  ).rows[0];
+  assert.equal(settled.state, 'done');
 });
