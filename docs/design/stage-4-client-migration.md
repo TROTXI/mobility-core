@@ -12,7 +12,7 @@ See `stage-4-progress.md` for implementation and verification status.
 | `apps/api_client`         | The deployed API, generated from staging | `trotxi_client`      |
 | `apps/trotxi_client`      | Hand-written layer over it               | `trotxi_commuter`    |
 | `apps/api_client_next`    | **The replacement**, 119 operations      | `trotxi_client_next` |
-| `apps/trotxi_client_next` | Hand-written layer over that             | `trotxi_driver`     |
+| `apps/trotxi_client_next` | Hand-written layer over that             | `trotxi_driver`      |
 
 The `_next` pair temporarily separates the migrated driver from the not-yet-
 migrated commuter. Move each app as a coherent build: never mix sessions or
