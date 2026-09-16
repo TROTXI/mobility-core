@@ -15,6 +15,10 @@ import type { DriverService, DriverOperation } from '../auth/driver-service.js';
 import type { PaymentRecovery } from '../payments/recovery.js';
 import { membershipOperations } from '../membership/service.js';
 import { tripReads } from '../transport/trips.js';
+import { pricingOperations } from '../payments/pricing.js';
+import type { Pricing, PricingOperation } from '../payments/pricing.js';
+import { purchaseOperations } from '../payments/purchases.js';
+import type { Purchases, PurchaseOperation } from '../payments/purchases.js';
 import type { TripRead } from '../transport/trips.js';
 import type { MembershipService, MembershipOperation } from '../membership/service.js';
 import { boardingOperations } from '../boarding/service.js';
@@ -57,6 +61,8 @@ export interface AppOptions extends Dependencies {
   // fulfilment coordinators have been explicitly supplied. No silent no-ops.
   payments?: PaymentRecovery;
   membership?: MembershipService;
+  pricing?: Pricing;
+  purchases?: Purchases;
   boarding?: BoardingService;
   authRequestsPerMinute?: number;
 }
@@ -152,7 +158,11 @@ export async function createTransportApp(options: AppOptions) {
       const paymentEndpoint = paymentOperations.includes(name);
       const membershipEndpoint = (membershipOperations as readonly string[]).includes(name);
       const boardingEndpoint = (boardingOperations as readonly string[]).includes(name);
+      const pricingEndpoint = (pricingOperations as readonly string[]).includes(name);
+      const purchaseEndpoint = (purchaseOperations as readonly string[]).includes(name);
       if (boardingEndpoint && !options.boarding) continue;
+      if (pricingEndpoint && !options.pricing) continue;
+      if (purchaseEndpoint && !options.purchases) continue;
       if (membershipEndpoint && !options.membership) continue;
       if (paymentEndpoint && !options.payments) continue;
       if (name === 'receivePaystackWebhook') {
@@ -223,7 +233,7 @@ export async function createTransportApp(options: AppOptions) {
               : client !==
                 (ops
                   ? 'ops'
-                  : membershipEndpoint || name === 'issuePass'
+                  : membershipEndpoint || purchaseEndpoint || name === 'issuePass'
                     ? 'commuter'
                     : 'driver')) ||
             (name === 'signInDriver' && client !== 'driver') ||
@@ -346,6 +356,44 @@ export async function createTransportApp(options: AppOptions) {
               );
             }
             return reply.send({ data });
+          } else if (pricingEndpoint || purchaseEndpoint) {
+            const query = request.query as Record<string, string | undefined>;
+            const allowed = new Set(
+              operation.parameters.filter((p) => p.in === 'query').map((p) => p.name),
+            );
+            if (
+              Object.entries(query).some(
+                ([k, v]) => !allowed.has(k) || typeof v !== 'string' || v.length > 128,
+              )
+            )
+              fail(400, 'invalid_query', 'Unsupported query parameters.');
+            const params = request.params as { id?: string; plan?: string };
+            if (method === 'get')
+              result = pricingEndpoint
+                ? await options.pricing!.read(actor!, name as PricingOperation, params, query)
+                : await options.purchases!.read(actor!, name as PurchaseOperation, params, query);
+            else {
+              const key = request.headers['idempotency-key'],
+                match = request.headers['if-match'];
+              if (typeof key !== 'string' || key.length < 1 || key.length > 128)
+                fail(
+                  400,
+                  'idempotency_key_required',
+                  'Supply an Idempotency-Key of 1 to 128 characters.',
+                );
+              if (match !== undefined && (typeof match !== 'string' || match.length > 128))
+                fail(400, 'invalid_precondition', 'Invalid If-Match header.');
+              result = pricingEndpoint
+                ? await options.pricing!.command(
+                    actor!,
+                    name as PricingOperation,
+                    params.id ?? params.plan ?? '',
+                    (request.body ?? {}) as Body,
+                    key,
+                    match as string | undefined,
+                  )
+                : await options.purchases!.create(actor!, (request.body ?? {}) as Body, key);
+            }
           } else if (membershipEndpoint) {
             const query = request.query as Record<string, string | undefined>;
             const allowed = new Set(
