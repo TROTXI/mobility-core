@@ -28,6 +28,19 @@ import type { TripRead } from '../transport/trips.js';
 import type { MembershipService, MembershipOperation } from '../membership/service.js';
 import { boardingOperations } from '../boarding/service.js';
 import type { BoardingService } from '../boarding/service.js';
+// The contract admits a `worker` client on exactly these, with no platform:
+// scheduled maintenance is an operations caller without an app build behind it.
+const maintenanceOperations = new Set([
+  'runPayments',
+  'runPaymentInbox',
+  'runPaymentReconciliation',
+  'runPeriodClose',
+  'runAskDispatch',
+  'runReservationDefaults',
+  'runNoShows',
+  'runRouteLearning',
+  'runGpsRetention',
+]);
 const paymentOperations = [
   'receivePaystackWebhook',
   'listPaymentReviews',
@@ -38,6 +51,16 @@ const paymentOperations = [
   'runPeriodClose',
 ];
 
+declare module 'fastify' {
+  interface FastifyInstance {
+    /**
+     * The one transport service this application dispatches through. The
+     * maintenance worker runs the same reviewed handlers the HTTP routes do,
+     * rather than a second instance with its own idea of the rules.
+     */
+    transport: TransportService;
+  }
+}
 interface Operation {
   operationId: string;
   parameters: { in: string; name: string; schema: Record<string, unknown> }[];
@@ -100,6 +123,7 @@ export async function createTransportApp(options: AppOptions) {
     genReqId: () => randomUUID(),
     ajv: { customOptions: { removeAdditional: false, coerceTypes: false, useDefaults: true } },
   });
+  app.decorate('transport', service);
   const actors = new WeakMap<FastifyRequest, Actor>();
   const budget = options.requestsPerMinute ?? 120;
   if (!Number.isInteger(budget) || budget < 1) throw new Error('Invalid request budget');
@@ -231,6 +255,7 @@ export async function createTransportApp(options: AppOptions) {
       const anyClient = publicRead || (tripReads as readonly string[]).includes(name);
       const anonymous = publicRead || publicAuth || publicConfig;
       const ops = path.startsWith('/v1/ops/');
+      const scheduled = ops && maintenanceOperations.has(name);
       const response: Record<string, unknown> = {};
       for (const [status, out] of Object.entries(operation.responses)) {
         const schema = out.content?.['application/json']?.schema;
@@ -260,39 +285,44 @@ export async function createTransportApp(options: AppOptions) {
           const client = request.headers['x-trotxi-client'],
             build = request.headers['x-trotxi-build'],
             platform = request.headers['x-trotxi-platform'];
+          // Only the maintenance operations admit it, and only there does it
+          // stand in for an operations client. Nothing else about the ops
+          // client's own rules changes.
+          const workerClient = scheduled && client === 'worker';
+          const platformless = client === 'ops' || workerClient;
           if (
             (anyClient || authentication
               ? !['ops', 'driver', 'commuter'].includes(String(client))
-              : client !==
-                (ops
-                  ? 'ops'
-                  : membershipEndpoint ||
-                      purchaseEndpoint ||
-                      accountEndpoint ||
-                      name === 'issuePass'
-                    ? 'commuter'
-                    : 'driver')) ||
+              : !(
+                  workerClient ||
+                  client ===
+                    (ops
+                      ? 'ops'
+                      : membershipEndpoint ||
+                          purchaseEndpoint ||
+                          accountEndpoint ||
+                          name === 'issuePass'
+                        ? 'commuter'
+                        : 'driver')
+                )) ||
             (name === 'signInDriver' && client !== 'driver') ||
             typeof build !== 'string' ||
             !/^[1-9]\d{0,8}$/.test(build) ||
-            (client === 'ops'
-              ? platform !== undefined
-              : !['ios', 'android'].includes(String(platform)))
+            (platformless ? platform !== undefined : !['ios', 'android'].includes(String(platform)))
           )
             fail(
               400,
               'client_metadata_required',
               'Supply the appropriate client, build and platform metadata.',
             );
-          const floor =
-            client === 'ops'
-              ? floors.ops
-              : options.config
-                ? await options.config.minimumBuild(
-                    client as 'driver' | 'commuter',
-                    platform as 'ios' | 'android',
-                  )
-                : floors[client as 'driver' | 'commuter'][platform as 'ios' | 'android'];
+          const floor = platformless
+            ? floors.ops
+            : options.config
+              ? await options.config.minimumBuild(
+                  client as 'driver' | 'commuter',
+                  platform as 'ios' | 'android',
+                )
+              : floors[client as 'driver' | 'commuter'][platform as 'ios' | 'android'];
           if (Number(build) < floor)
             fail(426, 'client_upgrade_required', 'Update the application before continuing.');
           if (!actor) return; // Public catalog remains IP-limited; no identity fallback.

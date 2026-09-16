@@ -80,6 +80,7 @@ export async function setup(
   owned.push(name);
   const db = new URL(url);
   db.pathname = '/' + name;
+  const ownerUrl = db.href;
   const owner = new pg.Pool({ connectionString: db.href, max: 5 });
   t.after(() => owner.end());
   if (upgrade) {
@@ -263,6 +264,8 @@ export async function setup(
   evidence.push({ test: t.name });
   return {
     owner,
+    ownerUrl,
+    runtimeUrl: db.href,
     adminId,
     runtime,
     role,

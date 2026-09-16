@@ -182,6 +182,56 @@ export class PaystackEvidence {
     c.setAuthTag(encrypted.subarray(12, 28));
     return Buffer.concat([c.update(encrypted.subarray(28)), c.final()]);
   }
+  /**
+   * Open a hosted checkout for an attempt that is already committed.
+   *
+   * Ported from the deployed client at `services/api`: same endpoint, same
+   * currency, same refusal to accept a response naming a different reference.
+   * Called outside every transaction, and a failure leaves the attempt
+   * pending for unresolved-payment discovery rather than inventing a target.
+   */
+  async initialize(request: {
+    reference: string;
+    amountPesewas: number;
+    email: string;
+  }): Promise<{ authorizationUrl: string }> {
+    if (
+      !/^[A-Za-z0-9._=-]{1,100}$/.test(request.reference) ||
+      !Number.isSafeInteger(request.amountPesewas) ||
+      request.amountPesewas < 1 ||
+      request.amountPesewas > 2147483647 ||
+      !/^[^\s@]{1,200}@[^\s@]{1,100}$/.test(request.email)
+    )
+      throw new InvalidProviderFacts('Invalid checkout request');
+    const response = await this.request('https://api.paystack.co/transaction/initialize', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${this.secret}`, 'content-type': 'application/json' },
+      signal: AbortSignal.timeout(10000),
+      redirect: 'error',
+      body: JSON.stringify({
+        email: request.email,
+        amount: request.amountPesewas,
+        reference: request.reference,
+        currency: 'GHS',
+      }),
+    });
+    if (!response.ok) throw new Error('provider_unavailable');
+    const body = z
+      .object({
+        status: z.literal(true),
+        data: z.object({
+          authorization_url: z.string().max(2048),
+          reference: z.string().max(100),
+        }),
+      })
+      .parse(await response.json());
+    if (body.data.reference !== request.reference)
+      throw new InvalidProviderFacts('Provider opened a different reference');
+    const target = new URL(body.data.authorization_url);
+    if (target.protocol !== 'https:') throw new InvalidProviderFacts('Insecure checkout target');
+    return { authorizationUrl: target.toString() };
+  }
+
   async verify(reference: string): Promise<Buffer> {
     if (!reference || reference.length > 100) throw new InvalidProviderFacts();
     const response = await this.request(

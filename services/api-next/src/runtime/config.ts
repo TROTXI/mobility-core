@@ -1,0 +1,223 @@
+import { createHash } from 'node:crypto';
+import type { BuildIdentity, MapTiles, SupportContacts } from '../config/service.js';
+
+/**
+ * Deployment configuration for the replacement backend.
+ *
+ * Every capability the reviewed cutover surface needs is named here and is
+ * required. There is no development fallback, no in-memory substitute and no
+ * switch that quietly turns a reviewed operation into a 503: a deployment that
+ * cannot do the whole job refuses to start and says which variable is missing.
+ *
+ * Every name is prefixed so that running beside the deployed service in one
+ * Render account cannot make this one silently inherit that service's
+ * database, signing key or provider credentials.
+ */
+export interface KeyMaterial {
+  accessSecret: Buffer;
+  cursorSecret: Buffer;
+  pinSecret: Buffer;
+  credentialReplay: Buffer;
+  providerEncryption: Buffer;
+  boardingProof: Buffer;
+  device: Buffer;
+  paystackEvidence: Buffer;
+}
+export interface RuntimeConfig {
+  databaseUrl: string;
+  poolSize: number;
+  listen: { host: string; port: number };
+  build: BuildIdentity;
+  access: { issuer: string; audience: string; ttlSeconds: number };
+  refreshTtlDays: number;
+  shiftTtlHours: number;
+  keys: KeyMaterial;
+  /** The PIN secret is consumed as text, so the exact bytes are kept too. */
+  pinSecretText: string;
+  google: { clientId: string };
+  apple: { clientIds: string[]; teamId: string; keyId: string; privateKey: string };
+  paystack: { secretKey: string };
+  avatars: {
+    accountId: string;
+    accessKeyId: string;
+    secretAccessKey: string;
+    bucket: string;
+    urlTtlSeconds: number;
+    maxBytes: number;
+  };
+  mapTiles: MapTiles;
+  support: SupportContacts;
+  docsUrl: string;
+  floors: {
+    ops: number;
+    driver: { ios: number; android: number };
+    commuter: { ios: number; android: number };
+  };
+  limits: { perUser: number; perIp: number; perAuth: number };
+  /** The operator account every maintenance receipt is attributed to. */
+  maintenanceUserId: string;
+}
+
+export class ConfigurationError extends Error {}
+type Env = Record<string, string | undefined>;
+
+const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+function required(env: Env, name: string): string {
+  const value = env[name];
+  if (typeof value !== 'string' || !value.trim())
+    throw new ConfigurationError(`${name} is required`);
+  return value.trim();
+}
+function optional(env: Env, name: string): string | null {
+  const value = env[name];
+  return typeof value === 'string' && value.trim() ? value.trim() : null;
+}
+function integer(env: Env, name: string, low: number, high: number): number {
+  const raw = required(env, name);
+  const value = Number(raw);
+  if (!Number.isInteger(value) || value < low || value > high)
+    throw new ConfigurationError(`${name} must be an integer between ${low} and ${high}`);
+  return value;
+}
+/** Accepts hex or base64/base64url and insists on exactly 32 decoded bytes. */
+function key(env: Env, name: string): Buffer {
+  const raw = required(env, name);
+  const bytes = /^[a-fA-F0-9]{64}$/.test(raw)
+    ? Buffer.from(raw, 'hex')
+    : Buffer.from(raw, 'base64');
+  if (bytes.length !== 32)
+    throw new ConfigurationError(`${name} must decode to 32 bytes (hex or base64)`);
+  return bytes;
+}
+function url(env: Env, name: string): string {
+  const raw = required(env, name);
+  let parsed: URL;
+  try {
+    parsed = new URL(raw);
+  } catch {
+    throw new ConfigurationError(`${name} must be an absolute URL`);
+  }
+  if (parsed.protocol !== 'https:') throw new ConfigurationError(`${name} must be https`);
+  return parsed.toString();
+}
+
+export function readConfiguration(env: Env = process.env): RuntimeConfig {
+  const keys: KeyMaterial = {
+    accessSecret: key(env, 'REPLACEMENT_ACCESS_SECRET'),
+    cursorSecret: key(env, 'REPLACEMENT_CURSOR_SECRET'),
+    pinSecret: key(env, 'REPLACEMENT_PIN_SECRET'),
+    credentialReplay: key(env, 'REPLACEMENT_CREDENTIAL_REPLAY_KEY'),
+    providerEncryption: key(env, 'REPLACEMENT_PROVIDER_ENCRYPTION_KEY'),
+    boardingProof: key(env, 'REPLACEMENT_BOARDING_PROOF_KEY'),
+    device: key(env, 'REPLACEMENT_DEVICE_KEY'),
+    paystackEvidence: key(env, 'REPLACEMENT_PAYSTACK_EVIDENCE_KEY'),
+  };
+  // Every purpose gets its own key, checked once over the whole set rather
+  // than pair by pair at each composition boundary, so a key added later
+  // cannot be the one nobody compared. Digests, so a mismatch report never
+  // has to hold key bytes.
+  const seen = new Map<string, string>();
+  for (const [name, value] of Object.entries(keys)) {
+    const digest = createHash('sha256').update(value).digest('hex');
+    const first = seen.get(digest);
+    if (first) throw new ConfigurationError(`${name} must differ from ${first}`);
+    seen.set(digest, name);
+  }
+  const paystack = required(env, 'REPLACEMENT_PAYSTACK_SECRET_KEY');
+  if (!/^sk_(test|live)_[A-Za-z0-9]+$/.test(paystack))
+    throw new ConfigurationError('REPLACEMENT_PAYSTACK_SECRET_KEY must be a Paystack secret key');
+  // Live money is opt-in and separately stated. A live key pasted into a
+  // staging service would otherwise take real payments on the first request.
+  if (paystack.startsWith('sk_live_') && optional(env, 'REPLACEMENT_ALLOW_LIVE_PAYMENTS') !== 'yes')
+    throw new ConfigurationError(
+      'A live Paystack key needs REPLACEMENT_ALLOW_LIVE_PAYMENTS=yes on this service',
+    );
+  const appleClients = required(env, 'REPLACEMENT_APPLE_CLIENT_ID')
+    .split(',')
+    .map((id) => id.trim())
+    .filter(Boolean);
+  if (!appleClients.length)
+    throw new ConfigurationError('REPLACEMENT_APPLE_CLIENT_ID must list at least one audience');
+  const applePrivateKey = required(env, 'REPLACEMENT_APPLE_PRIVATE_KEY').replaceAll('\\n', '\n');
+  if (!applePrivateKey.includes('BEGIN PRIVATE KEY'))
+    throw new ConfigurationError('REPLACEMENT_APPLE_PRIVATE_KEY must be a PKCS#8 PEM .p8 key');
+  const maintenanceUserId = required(env, 'REPLACEMENT_MAINTENANCE_USER_ID').toLowerCase();
+  if (!uuid.test(maintenanceUserId))
+    throw new ConfigurationError('REPLACEMENT_MAINTENANCE_USER_ID must be a user id');
+  const databaseUrl = required(env, 'REPLACEMENT_RUNTIME_DATABASE_URL');
+  if (databaseUrl === optional(env, 'REPLACEMENT_DATABASE_URL'))
+    throw new ConfigurationError(
+      'REPLACEMENT_RUNTIME_DATABASE_URL must be the narrow runtime role, not the migration owner',
+    );
+  return {
+    databaseUrl,
+    poolSize: integer(env, 'REPLACEMENT_POOL_SIZE', 1, 100),
+    listen: {
+      host: optional(env, 'REPLACEMENT_HOST') ?? '0.0.0.0',
+      port: integer(env, 'PORT', 1, 65535),
+    },
+    build: {
+      service: required(env, 'REPLACEMENT_SERVICE_NAME'),
+      version: required(env, 'REPLACEMENT_SERVICE_VERSION'),
+      commit: required(env, 'REPLACEMENT_GIT_COMMIT'),
+    },
+    access: {
+      issuer: required(env, 'REPLACEMENT_ACCESS_ISSUER'),
+      audience: required(env, 'REPLACEMENT_ACCESS_AUDIENCE'),
+      ttlSeconds: integer(env, 'REPLACEMENT_ACCESS_TTL_SECONDS', 60, 3600),
+    },
+    refreshTtlDays: integer(env, 'REPLACEMENT_REFRESH_TTL_DAYS', 1, 365),
+    shiftTtlHours: integer(env, 'REPLACEMENT_SHIFT_TTL_HOURS', 1, 24),
+    keys,
+    pinSecretText: required(env, 'REPLACEMENT_PIN_SECRET'),
+    google: { clientId: required(env, 'REPLACEMENT_GOOGLE_CLIENT_ID') },
+    apple: {
+      clientIds: appleClients,
+      teamId: required(env, 'REPLACEMENT_APPLE_TEAM_ID'),
+      keyId: required(env, 'REPLACEMENT_APPLE_KEY_ID'),
+      privateKey: applePrivateKey,
+    },
+    paystack: { secretKey: paystack },
+    avatars: {
+      accountId: required(env, 'REPLACEMENT_R2_ACCOUNT_ID'),
+      accessKeyId: required(env, 'REPLACEMENT_R2_ACCESS_KEY_ID'),
+      secretAccessKey: required(env, 'REPLACEMENT_R2_SECRET_ACCESS_KEY'),
+      bucket: required(env, 'REPLACEMENT_R2_BUCKET_NAME'),
+      urlTtlSeconds: integer(env, 'REPLACEMENT_AVATAR_URL_TTL_SECONDS', 30, 3600),
+      maxBytes: integer(env, 'REPLACEMENT_AVATAR_MAX_BYTES', 1024, 8 * 1024 * 1024),
+    },
+    mapTiles: {
+      url: url(env, 'REPLACEMENT_MAP_TILES_URL'),
+      styleUrl: url(env, 'REPLACEMENT_MAP_STYLE_URL'),
+      darkStyleUrl: url(env, 'REPLACEMENT_MAP_STYLE_DARK_URL'),
+      attribution: required(env, 'REPLACEMENT_MAP_ATTRIBUTION'),
+    },
+    // Unset is a real answer here: the app hides a control it has no number
+    // for, and a placeholder that rings nowhere is worse than none.
+    support: {
+      phone: optional(env, 'REPLACEMENT_OPERATIONS_PHONE'),
+      whatsapp: optional(env, 'REPLACEMENT_OPERATIONS_WHATSAPP'),
+      email: optional(env, 'REPLACEMENT_OPERATIONS_EMAIL'),
+      hours: optional(env, 'REPLACEMENT_OPERATIONS_HOURS'),
+    },
+    docsUrl: url(env, 'REPLACEMENT_DOCS_URL'),
+    floors: {
+      ops: integer(env, 'REPLACEMENT_MINIMUM_BUILD_OPS', 1, 1_000_000),
+      driver: {
+        ios: integer(env, 'REPLACEMENT_MINIMUM_BUILD_DRIVER_IOS', 1, 1_000_000),
+        android: integer(env, 'REPLACEMENT_MINIMUM_BUILD_DRIVER_ANDROID', 1, 1_000_000),
+      },
+      commuter: {
+        ios: integer(env, 'REPLACEMENT_MINIMUM_BUILD_COMMUTER_IOS', 1, 1_000_000),
+        android: integer(env, 'REPLACEMENT_MINIMUM_BUILD_COMMUTER_ANDROID', 1, 1_000_000),
+      },
+    },
+    limits: {
+      perUser: integer(env, 'REPLACEMENT_REQUESTS_PER_MINUTE', 1, 100_000),
+      perIp: integer(env, 'REPLACEMENT_REQUESTS_PER_IP_PER_MINUTE', 1, 100_000),
+      perAuth: integer(env, 'REPLACEMENT_AUTH_REQUESTS_PER_MINUTE', 1, 10_000),
+    },
+    maintenanceUserId,
+  };
+}
