@@ -2,7 +2,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
-import 'package:trotxi_client/trotxi_client.dart';
+import 'support/replacement_client.dart';
 import 'package:trotxi_driver/Presentations/Completion/pages/run_summary_page.dart';
 import 'package:trotxi_driver/core/config/theme/app_theme.dart';
 import 'package:trotxi_driver/core/state/run_controller.dart';
@@ -10,87 +10,116 @@ import 'package:trotxi_driver/data/trips_repository.dart';
 
 const _at = '2026-09-13T06:30:00.000Z';
 
-/// Exercise the real generated serializers and repository, without a network.
-TripsRepository _repository(List<RequestOptions> requests) {
+/// Exercise the replacement serializers and repository, without a network.
+TripsRepository _repository(
+  List<RequestOptions> requests, {
+  bool authenticate = true,
+}) {
+  String? current;
+  var version = 1;
+  Map<String, Object?> trip() => {
+    'id': 'trip-1',
+    'departureId': 'departure-1',
+    'serviceDate': '2026-09-13',
+    'runNumber': 1,
+    'routeId': 'route-1',
+    'patternVersionId': 'version-1',
+    'direction': 'outbound',
+    'scheduledAt': _at,
+    'status': 'completed',
+    'vehicleLabel': 'Bus 1',
+    'startedAt': _at,
+    'completedAt': _at,
+    'currentStopOccurrenceId': current,
+    'version': version,
+    'editToken': '"trip:$version"',
+    'stops': [
+      for (final (seq, name) in [(7, 'Madina'), (0, 'Circle'), (2, 'Nima')])
+        {
+          'id': 'occurrence-$seq',
+          'stopId': 'stop-$seq',
+          'name': name,
+          'ordinal': seq,
+          'location': {'latitude': 5.57, 'longitude': -0.21},
+        },
+    ],
+  };
   final dio = Dio(BaseOptions(baseUrl: 'http://localhost'));
   dio.interceptors.add(
     InterceptorsWrapper(
-      onRequest: (options, handler) {
-        requests.add(options);
+      onRequest: (o, h) {
+        requests.add(o);
         final Object data;
-        switch (options.path) {
-          case '/routes/route-1':
+        switch (o.path) {
+          case '/v1/routes/route-1':
             data = {
-              'id': 'route-1', 'name': 'Circle → Madina',
-              'acceptsRequests': false, 'createdAt': _at,
-              // Deliberately unsorted, zero-based and non-contiguous.
-              'stops': [
-                for (final (seq, name) in [
-                  (7, 'Madina'),
-                  (0, 'Circle'),
-                  (2, 'Nima'),
-                ])
-                  {
-                    'id': 'stop-$seq',
-                    'name': name,
-                    'seq': seq,
-                    'latitude': 5.57,
-                    'longitude': -0.21,
-                    'createdAt': _at,
-                  },
-              ],
+              'data': {
+                'id': 'route-1',
+                'name': 'Circle → Madina',
+                'description': null,
+                'patternIds': ['pattern-1'],
+                'acceptsDriverRequests': false,
+                'archived': false,
+                'createdAt': _at,
+                'updatedAt': _at,
+                'version': 1,
+                'editToken': '"route:1"',
+              },
             };
-          case '/trips/trip-1/arrive':
+          case '/v1/trips/trip-1':
+            data = {'data': trip()};
+          case '/v1/driver/trips':
             data = {
-              'id': 'trip-1',
-              'routeId': 'route-1',
-              'status': 'active',
-              'scheduledAt': _at,
-              'createdAt': _at,
-              'currentStopSeq': (options.data as Map)['seq'],
+              'data': [trip()],
+              'page': {'nextCursor': null},
             };
-          case '/trips/trip-1':
+          case '/v1/driver/trips/trip-1/arrivals':
+            current = (o.data as Map)['stopOccurrenceId'] as String;
+            version++;
+            data = {'data': trip()};
+          case '/v1/driver/trips/trip-1/manifest':
             data = {
-              'id': 'trip-1',
-              'routeId': 'route-1',
-              'status': 'completed',
-              'scheduledAt': _at,
-              'createdAt': _at,
-              'stopCount': 3,
+              'data': {
+                'tripId': 'trip-1',
+                'revision': '1',
+                'generatedAt': _at,
+                'expiresAt': _at,
+                'complete': true,
+                'riders': [],
+              },
             };
-          case '/boarding/manifest':
-            data = {'tripId': 'trip-1', 'riders': []};
-          case '/trips/trip-1/summary':
+          case '/v1/driver/trips/trip-1/summary':
             data = {
-              'tripId': 'trip-1',
-              'boarded': 3,
-              'notBoarded': 1,
-              'byMethod': {'qr': 1, 'pin': 1, 'photo': 1},
-              'stopCount': 3,
+              'data': {
+                'tripId': 'trip-1',
+                'status': 'completed',
+                'boarded': 3,
+                'noShows': 1,
+                'unseated': 0,
+                'scanned': 1,
+                'codeVerified': 1,
+                'photoVerified': 1,
+              },
             };
           default:
-            throw StateError(
-              'Unexpected request ${options.method} ${options.path}',
-            );
+            throw StateError('Unexpected request ${o.method} ${o.path}');
         }
-        handler.resolve(
-          Response(requestOptions: options, statusCode: 200, data: data),
-        );
+        h.resolve(Response(requestOptions: o, statusCode: 200, data: data));
       },
     ),
   );
   return TripsRepository(
-    client: TrotxiApiClient(dio: dio, interceptors: []),
+    client: replacementClient(dio: dio, authenticate: authenticate),
   );
 }
 
 void main() {
   test(
-    'route decoding retains real sequences and arrival sends them unchanged',
+    'trip stop ordinals stay ordered and arrival sends occurrence IDs with edit tokens',
     () async {
       final requests = <RequestOptions>[];
       final repository = _repository(requests);
-      final stops = await repository.stopsFor('route-1');
+      final stops = await repository.stopsFor('trip-1');
       expect(stops.map((s) => s.seq), [0, 2, 7]);
       expect(stops.map((s) => s.name), ['Circle', 'Nima', 'Madina']);
       for (final (index, stop) in stops.indexed) {
@@ -101,12 +130,18 @@ void main() {
         expect(detail.currentStopName, stop.name);
       }
       expect(
-        requests.where((r) => r.path.endsWith('/arrive')).map((r) => r.data),
+        requests.where((r) => r.path.endsWith('/arrivals')).map((r) => r.data),
         [
-          {'seq': 0},
-          {'seq': 2},
-          {'seq': 7},
+          {'stopOccurrenceId': 'occurrence-0', 'correction': false},
+          {'stopOccurrenceId': 'occurrence-2', 'correction': false},
+          {'stopOccurrenceId': 'occurrence-7', 'correction': false},
         ],
+      );
+      expect(
+        requests
+            .where((r) => r.path.endsWith('/arrivals'))
+            .map((r) => r.headers['If-Match']),
+        ['"trip:1"', '"trip:2"', '"trip:3"'],
       );
     },
   );
@@ -123,19 +158,23 @@ void main() {
     testWidgets(
       'summary includes manifest boardings in $brightness without claiming a final GPS save',
       (tester) async {
-        final repository = _repository([]);
-        final controller = RunController(
-          trips: repository,
-          run: DriverRun(
-            id: 'trip-1',
-            routeId: 'route-1',
-            routeName: 'Circle → Madina',
-            scheduledAt: DateTime.parse(_at),
-            status: RunStatus.completed,
-            currentStopSeq: 7,
-          ),
-        );
-        await tester.runAsync(controller.load);
+        late TripsRepository repository;
+        late RunController controller;
+        await tester.runAsync(() async {
+          repository = _repository([], authenticate: false);
+          controller = RunController(
+            trips: repository,
+            run: DriverRun(
+              id: 'trip-1',
+              routeId: 'route-1',
+              routeName: 'Circle → Madina',
+              scheduledAt: DateTime.parse(_at),
+              status: RunStatus.completed,
+              currentStopSeq: 7,
+            ),
+          );
+          await controller.load();
+        });
         await tester.pumpWidget(
           MultiProvider(
             providers: [

@@ -32,15 +32,84 @@ void main() {
   test('maps 401 to UnauthorizedException', () {
     final err = DioException(
       requestOptions: options(),
-      response: Response(
-        requestOptions: options(),
-        statusCode: 401,
-      ),
+      response: Response(requestOptions: options(), statusCode: 401),
       type: DioExceptionType.badResponse,
     );
 
     final error = runOnError(err);
     expect(error, isA<UnauthorizedException>());
+  });
+
+  test(
+    'keeps a structured business error code and message for app decisions',
+    () {
+      final request = RequestOptions(
+        path: '/v1/me/reservations/seat/decisions',
+      );
+      final error = runOnError(
+        DioException(
+          requestOptions: request,
+          response: Response(
+            requestOptions: request,
+            statusCode: 409,
+            data: {
+              'error': {
+                'code': 'reservation_capacity',
+                'message': 'This departure is full.',
+              },
+            },
+          ),
+        ),
+      );
+      expect(error, isA<ApiException>());
+      expect((error as ApiException).code, 'reservation_capacity');
+      expect(error.message, 'This departure is full.');
+    },
+  );
+
+  test('Google rejection never tells a commuter to check a driver PIN', () {
+    final request = RequestOptions(path: '/v1/auth/google');
+    final error = runOnError(
+      DioException(
+        requestOptions: request,
+        response: Response(
+          requestOptions: request,
+          statusCode: 401,
+          data: {
+            'error': {
+              'code': 'identity_rejected',
+              'message': 'Google sign-in was refused.',
+            },
+          },
+        ),
+      ),
+    );
+    expect(error, isA<InvalidCredentialsException>());
+    expect(
+      (error as InvalidCredentialsException).message,
+      'Google sign-in was refused.',
+    );
+  });
+
+  test('social sign-in 403 is not assumed to be driver suspension', () {
+    final request = RequestOptions(path: '/v1/auth/apple');
+    final error = runOnError(
+      DioException(
+        requestOptions: request,
+        response: Response(
+          requestOptions: request,
+          statusCode: 403,
+          data: {
+            'error': {
+              'code': 'identity_not_allowed',
+              'message': 'This identity is not eligible.',
+            },
+          },
+        ),
+      ),
+    );
+    expect(error, isA<ApiException>());
+    expect((error as ApiException).code, 'identity_not_allowed');
   });
 
   test('maps 429 to RateLimitException with Retry-After parsed', () {
@@ -59,11 +128,10 @@ void main() {
     final error = runOnError(err);
     expect(error, isA<RateLimitException>());
     expect(
-        (error as RateLimitException).retryAfter, const Duration(seconds: 12));
+      (error as RateLimitException).retryAfter,
+      const Duration(seconds: 12),
+    );
   });
-
- 
-
 
   test('maps connectionError to OfflineException', () {
     final err = DioException(
@@ -102,25 +170,23 @@ void main() {
   });
 
   test(
-      'passes through when response is null and type is not connection-related',
-      () {
-    final err = DioException(
-      requestOptions: options(),
-      type: DioExceptionType.cancel,
-    );
+    'passes through when response is null and type is not connection-related',
+    () {
+      final err = DioException(
+        requestOptions: options(),
+        type: DioExceptionType.cancel,
+      );
 
-    final error = runOnError(err);
-    expect(error, 'passthrough');
-  });
+      final error = runOnError(err);
+      expect(error, 'passthrough');
+    },
+  );
 }
 
 /// Minimal fake handler so we can inspect what ErrorInterceptor does
 /// without depending on Dio's internal handler completion machinery.
 class _TestErrorInterceptorHandler extends ErrorInterceptorHandler {
-  _TestErrorInterceptorHandler({
-    required this.onReject,
-    required this.onNext,
-  });
+  _TestErrorInterceptorHandler({required this.onReject, required this.onNext});
 
   final void Function(DioException) onReject;
   final void Function(DioException) onNext;

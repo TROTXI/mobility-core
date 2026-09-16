@@ -21,16 +21,23 @@ import 'package:trotxi_driver/data/incidents_repository.dart';
 import 'package:trotxi_driver/data/route_map_repository.dart';
 import 'package:trotxi_driver/data/trips_repository.dart';
 import 'package:trotxi_driver/data/work_repository.dart';
-import 'package:trotxi_client/trotxi_client.dart';
+import 'package:trotxi_driver/core/api/driver_api.dart';
+import 'package:trotxi_client_next/trotxi_client_next.dart' as wire;
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:trotxi_driver/firebase_options.dart';
 import 'package:trotxi_driver/firebase_performance.dart';
 
 const _apiBaseUrl = String.fromEnvironment('API_BASE_URL');
+const _apiRealm = String.fromEnvironment('API_SESSION_REALM');
 
 Future<void> main() async {
+  var launched = false;
   await runZonedGuarded(
     () async {
       WidgetsFlutterBinding.ensureInitialized();
+      // An explicitly selected replacement database is mandatory. Never fall
+      // back to staging or reuse the old unscoped session on a bad build.
+      final tokens = TokenStorage(baseUrl: _apiBaseUrl, realm: _apiRealm);
       await Firebase.initializeApp(
         options: DefaultFirebaseOptions.currentPlatform,
       );
@@ -46,16 +53,54 @@ Future<void> main() async {
         return true;
       };
 
-      final client = TrotxiClientFactory.create(
+      final package = await PackageInfo.fromPlatform();
+      final platform = switch (defaultTargetPlatform) {
+        TargetPlatform.iOS => 'ios',
+        TargetPlatform.android => 'android',
+        _ => throw UnsupportedError('The driver app requires iOS or Android.'),
+      };
+      final metadata = wire.ClientMetadata(
+        app: 'driver',
+        build: int.parse(package.buildNumber),
+        platform: platform,
+      );
+      final transport = wire.TrotxiClientFactory.create(
         baseUrl: _apiBaseUrl,
-        tokenStore: TokenStorage.instance,
+        tokenStore: tokens,
+        metadata: metadata,
+      );
+      final client = DriverApi(
+        client: transport,
+        store: tokens,
+        metadata: metadata,
       );
       client.dio.interceptors.add(PerformanceInterceptor());
       runApp(TrotxiDriverApp(client: client));
+      launched = true;
     },
     (error, stack) {
       // Catches anything thrown outside the zone above (belt-and-suspenders)
-      FirebaseCrashlytics.instance.recordError(error, stack, fatal: true);
+      if (Firebase.apps.isNotEmpty) {
+        FirebaseCrashlytics.instance.recordError(error, stack, fatal: true);
+      }
+      if (launched) return;
+      runApp(
+        const MaterialApp(
+          home: Scaffold(
+            body: SafeArea(
+              child: Center(
+                child: Padding(
+                  padding: EdgeInsets.all(24),
+                  child: Text(
+                    'The driver app could not start. Check that this build has a replacement API URL and session realm, or contact operations.',
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
     },
   );
 }
@@ -63,7 +108,7 @@ Future<void> main() async {
 class TrotxiDriverApp extends StatefulWidget {
   const TrotxiDriverApp({super.key, required this.client});
 
-  final TrotxiApiClient client;
+  final DriverApi client;
 
   @override
   State<TrotxiDriverApp> createState() => _TrotxiDriverAppState();
@@ -72,7 +117,7 @@ class TrotxiDriverApp extends StatefulWidget {
 class _TrotxiDriverAppState extends State<TrotxiDriverApp> {
   late final DriverAuthRepository _auth = DriverAuthRepository(
     client: widget.client,
-    tokenStore: TokenStorage.instance,
+    tokenStore: widget.client.store,
   );
   late final TripsRepository _trips = TripsRepository(
     client: widget.client,
@@ -94,6 +139,9 @@ class _TrotxiDriverAppState extends State<TrotxiDriverApp> {
     client: widget.client,
   );
   late final SessionController _session = SessionController(auth: _auth);
+  late final TodayController _today = TodayController(trips: _trips);
+  int? _sessionGeneration;
+  final _navigator = GlobalKey<NavigatorState>();
 
   @override
   void initState() {
@@ -101,20 +149,41 @@ class _TrotxiDriverAppState extends State<TrotxiDriverApp> {
     // A session revoked server-side now returns the app to sign-in on its own
     // (#235). Automatic clearing requires a refresh endpoint 401, not a
     // timeout/server error or a failed retry after a successful refresh.
-    TokenStorage.instance.onCleared = _session.onSessionRevoked;
+    widget.client.store.onCleared = _session.onSessionRevoked;
     _session.addListener(_syncLocationSession);
+    widget.client.upgradeRequired.addListener(_syncLocationSession);
     _syncLocationSession();
   }
 
-  void _syncLocationSession() =>
-      _location.setSessionReady(_session.stage == SessionStage.ready);
+  void _syncLocationSession() {
+    if (_sessionGeneration != widget.client.store.generation) {
+      final hadSession = _sessionGeneration != null;
+      _sessionGeneration = widget.client.store.generation;
+      _today.reset();
+      if (hadSession) {
+        // Pushed manifest/scan/profile routes must not outlive their identity.
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) {
+            _navigator.currentState?.popUntil((route) => route.isFirst);
+          }
+        });
+      }
+    }
+    _location.setSessionReady(
+      _session.stage == SessionStage.ready &&
+          !widget.client.upgradeRequired.value,
+    );
+  }
 
   @override
   void dispose() {
-    TokenStorage.instance.onCleared = null;
+    widget.client.store.onCleared = null;
     _session.removeListener(_syncLocationSession);
+    widget.client.upgradeRequired.removeListener(_syncLocationSession);
     _location.dispose();
     _positions.dispose();
+    _today.dispose();
+    _session.dispose();
     super.dispose();
   }
 
@@ -126,7 +195,7 @@ class _TrotxiDriverAppState extends State<TrotxiDriverApp> {
     return MultiProvider(
       providers: [
         // One publisher follows the signed-in active trip across all screens.
-        Provider<TrotxiApiClient>.value(value: widget.client),
+        Provider<DriverApi>.value(value: widget.client),
         ChangeNotifierProvider<PositionPublisher>.value(value: _positions),
         Provider<DriverAuthRepository>.value(value: _auth),
         Provider<TripsRepository>.value(value: _trips),
@@ -138,6 +207,7 @@ class _TrotxiDriverAppState extends State<TrotxiDriverApp> {
         // and the screen that needs the operations number most is the one a
         // driver reaches when they cannot get in (#234).
         ChangeNotifierProvider(
+          lazy: false,
           create: (_) => ConfigController(config: _config)..load(),
         ),
         // Follows the device by default. The prototype puts a Theme control on
@@ -146,15 +216,49 @@ class _TrotxiDriverAppState extends State<TrotxiDriverApp> {
         // after dusk on a windscreen-mounted phone.
         ChangeNotifierProvider(create: (_) => AppThemeController()),
         ChangeNotifierProvider.value(value: _session),
-        ChangeNotifierProvider(create: (_) => TodayController(trips: _trips)),
+        ChangeNotifierProvider<TodayController>.value(value: _today),
       ],
       child: Consumer<AppThemeController>(
         builder: (context, theme, _) => MaterialApp(
+          navigatorKey: _navigator,
           title: 'Trotxi Driver',
           theme: AppTheme.lightTheme,
           darkTheme: AppTheme.darkTheme,
           themeMode: theme.themeMode,
           home: AuthGate(home: (context) => const DriverShell()),
+          builder: (context, child) => ValueListenableBuilder<bool>(
+            valueListenable: widget.client.upgradeRequired,
+            builder: (context, blocked, _) => blocked
+                ? const Scaffold(
+                    body: SafeArea(
+                      child: Center(
+                        child: Padding(
+                          padding: EdgeInsets.all(24),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.system_update, size: 48),
+                              SizedBox(height: 16),
+                              Text(
+                                'Update required',
+                                style: TextStyle(
+                                  fontSize: 24,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              SizedBox(height: 12),
+                              Text(
+                                'This build is no longer supported. Update the driver app to continue. If an update is not available, contact operations.',
+                                textAlign: TextAlign.center,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  )
+                : child ?? const SizedBox.shrink(),
+          ),
         ),
       ),
     );

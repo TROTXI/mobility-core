@@ -13,7 +13,6 @@ ManifestRider _rider(
   bool standby = false,
 }) => ManifestRider(
   reservationId: 'res-$id',
-  userId: id,
   name: name ?? 'Rider $id',
   avatarUrl: avatarUrl,
   boarded: false,
@@ -81,7 +80,7 @@ void main() {
       const BoardingResult(
         outcome: BoardingOutcome.ok,
         riderName: 'Ama Owusu',
-        riderId: 'u2',
+        reservationId: 'res-u2',
         deducted: true,
       ),
     );
@@ -110,7 +109,7 @@ void main() {
       const BoardingResult(
         outcome: BoardingOutcome.ok,
         riderName: 'Kofi Mensah',
-        riderId: 'unknown',
+        reservationId: 'unknown',
         deducted: true,
       ),
     );
@@ -132,7 +131,7 @@ void main() {
     await tester.pump();
 
     expect(find.text('Signed out'), findsOneWidget);
-    expect(find.textContaining('Their pass is fine'), findsOneWidget);
+    expect(find.textContaining('check their pass again'), findsOneWidget);
   });
 
   testWidgets('an already-boarded rider is not an error', (tester) async {

@@ -4,7 +4,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:trotxi_client/trotxi_client.dart';
+import 'package:trotxi_driver/core/api/driver_api.dart';
 import 'package:trotxi_driver/Presentations/Auth/pages/sign_in_page.dart';
 import 'package:trotxi_driver/core/config/theme/app_theme.dart';
 import 'package:trotxi_driver/data/driver_auth_repository.dart';
@@ -40,6 +40,7 @@ class _StubAuth implements DriverAuthRepository {
 
   @override
   Future<void> changePin({
+    required String idempotencyKey,
     required String currentPin,
     required String newPin,
   }) async {}

@@ -30,8 +30,10 @@ class _Store implements TokenStore {
   }
 
   @override
-  Future<void> saveTokens(
-      {required String accessToken, required String refreshToken}) async {
+  Future<void> saveTokens({
+    required String accessToken,
+    required String refreshToken,
+  }) async {
     saves++;
     access = accessToken;
     refresh = refreshToken;
@@ -43,8 +45,11 @@ class _Adapter implements HttpClientAdapter {
   final FutureOr<ResponseBody> Function(RequestOptions) respond;
 
   @override
-  Future<ResponseBody> fetch(RequestOptions options,
-          Stream<Uint8List>? requestStream, Future<void>? cancelFuture) async =>
+  Future<ResponseBody> fetch(
+    RequestOptions options,
+    Stream<Uint8List>? requestStream,
+    Future<void>? cancelFuture,
+  ) async =>
       respond(options);
 
   @override
@@ -52,9 +57,13 @@ class _Adapter implements HttpClientAdapter {
 }
 
 ResponseBody _json(int status, [Object body = const {}]) =>
-    ResponseBody.fromString(jsonEncode(body), status, headers: {
-      Headers.contentTypeHeader: ['application/json']
-    });
+    ResponseBody.fromString(
+      jsonEncode(body),
+      status,
+      headers: {
+        Headers.contentTypeHeader: ['application/json'],
+      },
+    );
 
 ResponseBody _rotated() => _json(200, {
       'data': {
@@ -87,10 +96,13 @@ void main() {
   late Dio dio;
   int refreshes = 0;
   int requests = 0;
+  final refreshHeaders = <Map<String, dynamic>>[];
 
   void serve(FutureOr<ResponseBody> Function(RequestOptions) respond) {
     dio.httpClientAdapter = _Adapter((options) {
       if (options.path == '/v1/auth/refresh') {
+        refreshHeaders.add(options.headers
+            .map((name, value) => MapEntry(name.toLowerCase(), value)));
         refreshes++;
       } else {
         requests++;
@@ -111,99 +123,127 @@ void main() {
       ),
     ).dio;
     refreshes = requests = 0;
+    refreshHeaders.clear();
   });
 
-  tearDown(() => dio.close(force: true));
+  tearDown(() {
+    dio.close(force: true);
+    // Assert outside the adapter: Dio would wrap an assertion failure there
+    // as a network error, letting an offline test pass for the wrong reason.
+    for (final headers in refreshHeaders) {
+      expect(headers['x-trotxi-client'], 'commuter');
+      expect(headers['x-trotxi-build'].toString(), '9');
+      expect(headers['x-trotxi-platform'], 'ios');
+    }
+  });
 
   test(
-      'refreshes and retries with rotated tokens through the real interceptor chain',
-      () async {
-    serve((o) => o.path == '/v1/auth/refresh'
-        ? _rotated()
-        : _json(o.headers['Authorization'] == 'Bearer new-access' ? 200 : 401));
-    expect((await dio.get('/me')).statusCode, 200);
-    expect(refreshes, 1);
-    expect(requests, 2);
-    expect(store.access, 'new-access');
-    expect(store.saves, 1);
-    expect(store.clears, 0);
-  });
+    'refreshes and retries with rotated tokens through the real interceptor chain',
+    () async {
+      serve(
+        (o) => o.path == '/v1/auth/refresh'
+            ? _rotated()
+            : _json(
+                o.headers['Authorization'] == 'Bearer new-access' ? 200 : 401,
+              ),
+      );
+      expect((await dio.get('/me')).statusCode, 200);
+      expect(refreshes, 1);
+      expect(requests, 2);
+      expect(store.access, 'new-access');
+      expect(store.saves, 1);
+      expect(store.clears, 0);
+    },
+  );
 
   for (final type in [
     DioExceptionType.connectionError,
     DioExceptionType.connectionTimeout,
     DioExceptionType.sendTimeout,
-    DioExceptionType.receiveTimeout
+    DioExceptionType.receiveTimeout,
   ]) {
-    test('refresh $type preserves the session and surfaces offline, not 401',
-        () async {
-      serve((o) {
-        if (o.path == '/v1/auth/refresh')
-          throw DioException(requestOptions: o, type: type);
-        return _json(401);
-      });
-      expect((await _failure(dio.get('/me'))).error, isA<OfflineException>());
-      expect(store.access, 'old-access');
-      expect(store.refresh, 'old-refresh');
-      expect(store.clears, 0);
-      expect(requests, 1);
-    });
+    test(
+      'refresh $type preserves the session and surfaces offline, not 401',
+      () async {
+        serve((o) {
+          if (o.path == '/v1/auth/refresh')
+            throw DioException(requestOptions: o, type: type);
+          return _json(401);
+        });
+        expect((await _failure(dio.get('/me'))).error, isA<OfflineException>());
+        expect(store.access, 'old-access');
+        expect(store.refresh, 'old-refresh');
+        expect(store.clears, 0);
+        expect(requests, 1);
+      },
+    );
   }
 
   for (final status in [403, 500, 503]) {
-    test('refresh HTTP $status preserves tokens and the server error',
-        () async {
-      serve((o) => _json(o.path == '/v1/auth/refresh' ? status : 401));
-      expect((await _failure(dio.get('/me'))).error,
-          isA<ApiException>().having((e) => e.statusCode, 'status', status));
-      expect(store.clears, 0);
-      expect(store.access, 'old-access');
-    });
+    test(
+      'refresh HTTP $status preserves tokens and the server error',
+      () async {
+        serve((o) => _json(o.path == '/v1/auth/refresh' ? status : 401));
+        expect(
+          (await _failure(dio.get('/me'))).error,
+          isA<ApiException>().having((e) => e.statusCode, 'status', status),
+        );
+        expect(store.clears, 0);
+        expect(store.access, 'old-access');
+      },
+    );
   }
 
-  test('refresh rejection clears tokens once and reports unauthorized',
-      () async {
-    serve((o) => _json(401));
-    expect(
-        (await _failure(dio.get('/me'))).error, isA<UnauthorizedException>());
-    expect(refreshes, 1);
-    expect(requests, 1);
-    expect(store.clears, 1);
-    expect(store.access, isNull);
-  });
+  test(
+    'refresh rejection clears tokens once and reports unauthorized',
+    () async {
+      serve((o) => _json(401));
+      expect(
+        (await _failure(dio.get('/me'))).error,
+        isA<UnauthorizedException>(),
+      );
+      expect(refreshes, 1);
+      expect(requests, 1);
+      expect(store.clears, 1);
+      expect(store.access, isNull);
+    },
+  );
 
   for (final failure in ['connection', 'timeout', '500', '401']) {
     test(
-        'successful refresh followed by retry $failure keeps new tokens and terminates',
-        () async {
-      serve((o) {
-        if (o.path == '/v1/auth/refresh') return _rotated();
-        if (o.headers['Authorization'] == 'Bearer old-access')
-          return _json(401);
-        if (failure == 'connection' || failure == 'timeout') {
-          throw DioException(
+      'successful refresh followed by retry $failure keeps new tokens and terminates',
+      () async {
+        serve((o) {
+          if (o.path == '/v1/auth/refresh') return _rotated();
+          if (o.headers['Authorization'] == 'Bearer old-access')
+            return _json(401);
+          if (failure == 'connection' || failure == 'timeout') {
+            throw DioException(
               requestOptions: o,
               type: failure == 'connection'
                   ? DioExceptionType.connectionError
-                  : DioExceptionType.receiveTimeout);
-        }
-        return _json(int.parse(failure));
-      });
-      final error = await _failure(dio.get('/me'));
-      expect(
+                  : DioExceptionType.receiveTimeout,
+            );
+          }
+          return _json(int.parse(failure));
+        });
+        final error = await _failure(dio.get('/me'));
+        expect(
           error.error,
           failure == '500'
               ? isA<ApiException>().having((e) => e.statusCode, 'status', 500)
               : failure == '401'
                   ? isA<UnauthorizedException>()
-                  : isA<OfflineException>());
-      expect(refreshes, 1);
-      expect(requests, 2);
-      expect(store.saves, 1);
-      expect(store.clears, 0);
-      expect(store.access, 'new-access');
-      expect(store.refresh, 'new-refresh');
-    });
+                  : isA<OfflineException>(),
+        );
+        expect(refreshes, 1);
+        expect(requests, 2);
+        expect(store.saves, 1);
+        expect(store.clears, 0);
+        expect(store.access, 'new-access');
+        expect(store.refresh, 'new-refresh');
+      },
+    );
   }
 
   for (final result in ['success', '401', '503', 'timeout']) {
@@ -216,7 +256,9 @@ void main() {
           await releaseRefresh.future;
           if (result == 'timeout')
             throw DioException(
-                requestOptions: o, type: DioExceptionType.receiveTimeout);
+              requestOptions: o,
+              type: DioExceptionType.receiveTimeout,
+            );
           return result == 'success' ? _rotated() : _json(int.parse(result));
         }
         if (o.headers['Authorization'] == 'Bearer new-access')
@@ -260,39 +302,148 @@ void main() {
     expect(store.clears, 0);
   });
 
-  test('a subsequent request can refresh after a transient refresh failure',
+  test(
+    'a subsequent request can refresh after a transient refresh failure',
+    () async {
+      serve((o) {
+        if (o.path == '/v1/auth/refresh')
+          return refreshes == 1 ? _json(503) : _rotated();
+        return _json(
+          o.headers['Authorization'] == 'Bearer new-access' ? 200 : 401,
+        );
+      });
+      await _failure(dio.get('/me'));
+      expect((await dio.get('/me')).statusCode, 200);
+      expect(refreshes, 2);
+      expect(store.clears, 0);
+    },
+  );
+
+  for (final path in ['/v1/auth/driver', '/v1/auth/google', '/v1/auth/apple']) {
+    test(
+      'sign-in rejection at $path never refreshes or clears tokens',
       () async {
-    serve((o) {
-      if (o.path == '/v1/auth/refresh')
-        return refreshes == 1 ? _json(503) : _rotated();
-      return _json(
-          o.headers['Authorization'] == 'Bearer new-access' ? 200 : 401);
-    });
-    await _failure(dio.get('/me'));
-    expect((await dio.get('/me')).statusCode, 200);
-    expect(refreshes, 2);
+        serve((o) => _json(401));
+        expect(
+          (await _failure(dio.post(path))).error,
+          isA<InvalidCredentialsException>(),
+        );
+        expect(refreshes, 0);
+        expect(store.clears, 0);
+      },
+    );
+  }
+
+  test(
+    'a path merely containing refresh is not a refresh-token rejection',
+    () async {
+      serve(
+        (o) => o.path == '/v1/auth/refresh'
+            ? _rotated()
+            : _json(
+                o.headers['Authorization'] == 'Bearer new-access' ? 200 : 401,
+              ),
+      );
+      expect((await dio.get('/refresh-view')).statusCode, 200);
+      expect(refreshes, 1);
+      expect(store.clears, 0);
+    },
+  );
+
+  test('an auth-like resource name is not a sign-in endpoint', () async {
+    serve(
+      (o) => o.path == '/v1/auth/refresh'
+          ? _rotated()
+          : _json(
+              o.headers['Authorization'] == 'Bearer new-access' ? 200 : 401,
+            ),
+    );
+    expect((await dio.get('/v1/me/auth/driver-history')).statusCode, 200);
+    expect(refreshes, 1);
     expect(store.clears, 0);
   });
 
-  for (final path in ['/v1/auth/driver', '/v1/auth/google', '/v1/auth/apple']) {
-    test('sign-in rejection at $path never refreshes or clears tokens',
-        () async {
-      serve((o) => _json(401));
-      expect((await _failure(dio.post(path))).error,
-          isA<InvalidCredentialsException>());
-      expect(refreshes, 0);
-      expect(store.clears, 0);
-    });
-  }
-
-  test('a path merely containing refresh is not a refresh-token rejection',
-      () async {
-    serve((o) => o.path == '/v1/auth/refresh'
-        ? _rotated()
-        : _json(o.headers['Authorization'] == 'Bearer new-access' ? 200 : 401));
-    expect((await dio.get('/refresh-view')).statusCode, 200);
-    expect(refreshes, 1);
+  test('426 requires an upgrade without refresh or token deletion', () async {
+    serve(
+      (o) => _json(426, {
+        'error': {
+          'code': 'client_upgrade_required',
+          'message': 'Update the application before continuing.',
+        },
+      }),
+    );
+    expect(
+      (await _failure(dio.get('/v1/me'))).error,
+      isA<UpgradeRequiredException>(),
+    );
+    expect(refreshes, 0);
     expect(store.clears, 0);
+  });
+
+  test(
+    'factory metadata overrides request headers without platform leakage',
+    () async {
+      final client = TrotxiClientFactory.create(
+        baseUrl: 'https://unit.test',
+        tokenStore: store,
+        metadata: const ClientMetadata(app: 'ops', build: 12),
+      );
+      addTearDown(() => client.dio.close(force: true));
+      Map<String, dynamic>? sent;
+      client.dio.httpClientAdapter = _Adapter((o) {
+        sent = Map.of(o.headers);
+        return _json(200);
+      });
+      await client.dio.get(
+        '/v1/ops/routes',
+        options: Options(
+          headers: {
+            'X-Trotxi-Client': 'driver',
+            'x-trotxi-platform': 'android',
+            'If-Match': '"resource:7"',
+            'Idempotency-Key': 'retry-identity',
+          },
+        ),
+      );
+      expect(sent, isNotNull);
+      expect(
+          sent!.entries
+              .singleWhere((e) => e.key.toLowerCase() == 'x-trotxi-client')
+              .value,
+          'ops');
+      expect(
+          sent!.entries
+              .singleWhere((e) => e.key.toLowerCase() == 'x-trotxi-build')
+              .value
+              .toString(),
+          '12');
+      expect(sent!.keys.where((k) => k.toLowerCase() == 'x-trotxi-platform'),
+          isEmpty);
+      expect(sent!.keys.where((k) => k.toLowerCase() == 'x-trotxi-client'),
+          hasLength(1));
+      final lower = sent!.map((key, value) => MapEntry(key.toLowerCase(), value));
+      expect(lower['if-match'], '"resource:7"');
+      expect(lower['idempotency-key'], 'retry-identity');
+      expect(lower['authorization'], 'Bearer old-access');
+    },
+  );
+
+  test('invalid metadata is rejected before creating a usable client', () {
+    for (final metadata in const [
+      ClientMetadata(app: 'unknown', build: 1, platform: 'ios'),
+      ClientMetadata(app: 'driver', build: 1, platform: 'web'),
+      ClientMetadata(app: 'commuter', build: 1000000000, platform: 'android'),
+      ClientMetadata(app: 'ops', build: 1, platform: 'ios'),
+    ]) {
+      expect(
+        () => TrotxiClientFactory.create(
+          baseUrl: 'https://unit.test',
+          tokenStore: store,
+          metadata: metadata,
+        ),
+        throwsArgumentError,
+      );
+    }
   });
 
   test('malformed successful refresh preserves the existing session', () async {
@@ -302,78 +453,92 @@ void main() {
     expect(store.saves, 0);
   });
 
-  test('a delayed 401 cannot replay an old operation under a different login',
-      () async {
-    serve((o) {
-      store.access = 'another-login';
-      store.refresh = 'another-refresh';
-      return _json(401);
-    });
-    expect((await _failure(dio.get('/me'))).error, isA<ApiException>());
-    expect(requests, 1);
-    expect(refreshes, 0);
-    expect(store.access, 'another-login');
-    expect(store.clears, 0);
-  });
+  test(
+    'a delayed 401 cannot replay an old operation under a different login',
+    () async {
+      serve((o) {
+        store.access = 'another-login';
+        store.refresh = 'another-refresh';
+        return _json(401);
+      });
+      expect((await _failure(dio.get('/me'))).error, isA<ApiException>());
+      expect(requests, 1);
+      expect(refreshes, 0);
+      expect(store.access, 'another-login');
+      expect(store.clears, 0);
+    },
+  );
 
   test(
-      'missing refresh credentials terminate without claiming server rejection',
-      () async {
-    store.refresh = null;
-    serve((o) => _json(401));
-    expect((await _failure(dio.get('/me'))).error, isA<ApiException>());
-    expect(refreshes, 0);
-    expect(store.clears, 0);
-  });
+    'missing refresh credentials terminate without claiming server rejection',
+    () async {
+      store.refresh = null;
+      serve((o) => _json(401));
+      expect((await _failure(dio.get('/me'))).error, isA<ApiException>());
+      expect(refreshes, 0);
+      expect(store.clears, 0);
+    },
+  );
 
-  test('refresh cancellation preserves tokens and remains cancellation',
-      () async {
-    serve((o) {
-      if (o.path == '/v1/auth/refresh') {
-        throw DioException(requestOptions: o, type: DioExceptionType.cancel);
-      }
-      return _json(401);
-    });
-    expect((await _failure(dio.get('/me'))).type, DioExceptionType.cancel);
-    expect(store.clears, 0);
-  });
+  test(
+    'refresh cancellation preserves tokens and remains cancellation',
+    () async {
+      serve((o) {
+        if (o.path == '/v1/auth/refresh') {
+          throw DioException(requestOptions: o, type: DioExceptionType.cancel);
+        }
+        return _json(401);
+      });
+      expect((await _failure(dio.get('/me'))).type, DioExceptionType.cancel);
+      expect(store.clears, 0);
+    },
+  );
 
   test('direct refresh rejection does not recurse', () async {
     serve((o) => _json(401));
     expect(
-        (await _failure(dio
-                .post('/v1/auth/refresh', data: {'refreshToken': 'old-refresh'})))
-            .error,
-        isA<UnauthorizedException>());
+      (await _failure(
+        dio.post('/v1/auth/refresh', data: {'refreshToken': 'old-refresh'}),
+      ))
+          .error,
+      isA<UnauthorizedException>(),
+    );
     expect(refreshes, 1);
     expect(store.clears, 1);
   });
 
   test(
-      'direct refresh rejection for another token leaves the current session alone',
-      () async {
-    serve((o) => _json(401));
-    await _failure(
-        dio.post('/v1/auth/refresh', data: {'refreshToken': 'a-replaced-token'}));
-    expect(refreshes, 1);
-    expect(store.clears, 0);
-    expect(store.access, 'old-access');
-  });
+    'direct refresh rejection for another token leaves the current session alone',
+    () async {
+      serve((o) => _json(401));
+      await _failure(
+        dio.post(
+          '/v1/auth/refresh',
+          data: {'refreshToken': 'a-replaced-token'},
+        ),
+      );
+      expect(refreshes, 1);
+      expect(store.clears, 0);
+      expect(store.access, 'old-access');
+    },
+  );
 
   for (final status in [200, 401]) {
-    test('in-flight refresh $status cannot overwrite or clear a newer login',
-        () async {
-      serve((o) {
-        if (o.path != '/v1/auth/refresh') return _json(401);
-        store.access = 'another-login';
-        store.refresh = 'another-refresh';
-        return status == 200 ? _rotated() : _json(401);
-      });
-      await _failure(dio.get('/me'));
-      expect(store.access, 'another-login');
-      expect(store.refresh, 'another-refresh');
-      expect(store.clears, 0);
-      expect(store.saves, 0);
-    });
+    test(
+      'in-flight refresh $status cannot overwrite or clear a newer login',
+      () async {
+        serve((o) {
+          if (o.path != '/v1/auth/refresh') return _json(401);
+          store.access = 'another-login';
+          store.refresh = 'another-refresh';
+          return status == 200 ? _rotated() : _json(401);
+        });
+        await _failure(dio.get('/me'));
+        expect(store.access, 'another-login');
+        expect(store.refresh, 'another-refresh');
+        expect(store.clears, 0);
+        expect(store.saves, 0);
+      },
+    );
   }
 }

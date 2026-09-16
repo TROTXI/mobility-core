@@ -7,7 +7,6 @@ import 'package:trotxi_driver/core/state/run_controller.dart';
 
 ManifestRider _rider({String id = 'r1', bool standby = false}) => ManifestRider(
   reservationId: id,
-  userId: 'u-$id',
   name: 'Ama Owusu',
   avatarUrl: null,
   boarded: false,
@@ -108,14 +107,14 @@ void main() {
     expect(find.textContaining('DEPARTS IN'), findsNothing);
   });
 
-  testWidgets('standby seats are split out of the confirmed count', (
+  testWidgets('confirmed total does not invent a standby breakdown', (
     tester,
   ) async {
     await _pump(tester, _detail(riders: 5, standby: 2));
     await tester.pump();
 
-    expect(find.text('3 booked'), findsOneWidget);
-    expect(find.text('2 standby'), findsOneWidget);
+    expect(find.text('5 booked'), findsOneWidget);
+    expect(find.textContaining('standby'), findsNothing);
     expect(find.text('5 riders'), findsNWidgets(2));
   });
 }

@@ -2,7 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:trotxi_client/trotxi_client.dart';
+import 'package:trotxi_driver/core/api/driver_api.dart';
 import 'package:trotxi_driver/Presentations/Auth/models/sign_in_state.dart';
 import 'package:trotxi_driver/Presentations/Auth/pages/cant_sign_in_page.dart';
 import 'package:trotxi_driver/core/widgets/driver_note.dart';

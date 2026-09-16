@@ -1,5 +1,5 @@
-import 'package:dio/dio.dart';
-import 'package:trotxi_client/trotxi_client.dart';
+import 'package:trotxi_client_next/trotxi_client_next.dart' as wire;
+import 'package:trotxi_driver/core/api/driver_api.dart';
 import 'package:trotxi_map/trotxi_map.dart';
 
 /// Where a corridor's drawn line came from.
@@ -43,14 +43,12 @@ class RouteShape {
   final List<MappedStop> stops;
   final RouteShapeSource source;
 
-  /// How many completed runs the path was derived from. Zero for the stop
-  /// fallback, which is what makes "this is a guess" checkable rather than a
-  /// matter of trust.
-  final int runCount;
+  /// Unknown in the replacement geometry contract; never infer a sample count
+  /// from its provenance. ETA confidence is returned separately per segment.
+  final int? runCount;
 
   /// Whether the line follows roads or just joins stops with straight segments.
-  bool get followsRoads =>
-      source == RouteShapeSource.traces || source == RouteShapeSource.matched;
+  bool get followsRoads => source != RouteShapeSource.stops;
 
   /// A box containing the whole corridor, for framing the camera. Null when
   /// there is nothing to frame.
@@ -85,12 +83,14 @@ class StopEta {
     required this.name,
     required this.distanceMeters,
     required this.etaSeconds,
+    this.basis = 'fallback',
   });
 
   final int seq;
   final String name;
   final double distanceMeters;
   final double etaSeconds;
+  final String basis;
 
   /// "1.2 km · ~4 min", as the file sets it.
   String get summary {
@@ -102,7 +102,7 @@ class StopEta {
     // Under a minute is "arriving", not "~0 min": a driver reading zero would
     // look up expecting to already be there.
     final when = minutes < 1 ? 'arriving' : '~$minutes min';
-    return '$distance · $when';
+    return '$distance · $when${basis == 'fallback' ? ' (fallback)' : ''}';
   }
 }
 
@@ -111,7 +111,9 @@ class VehicleFix {
   const VehicleFix({
     required this.position,
     required this.recordedAt,
-    this.etas = const [],
+    this._etas = const [],
+    this.receivedLocallyAt,
+    this.ageAtReceipt,
   });
 
   final LatLng position;
@@ -119,7 +121,11 @@ class VehicleFix {
 
   /// Every stop still ahead, in order. Empty when the corridor has fewer than
   /// two stops or the van is past the last one, both of which the API states.
-  final List<StopEta> etas;
+  final List<StopEta> _etas;
+  final DateTime? receivedLocallyAt;
+  final Duration? ageAtReceipt;
+  List<StopEta> get etas =>
+      age > const Duration(seconds: 120) ? const [] : _etas;
 
   /// The next stop the van is due at, or null when it is past the last.
   StopEta? get nextStop => etas.isEmpty ? null : etas.first;
@@ -129,154 +135,161 @@ class VehicleFix {
   /// Always shown beside the marker. #180 is explicit about it and it is the
   /// right rule: a stale fix presented as current is worse than no fix, because
   /// the map looks confident either way.
-  Duration get age => DateTime.now().difference(recordedAt);
+  Duration get age => receivedLocallyAt == null || ageAtReceipt == null
+      ? DateTime.now().difference(recordedAt)
+      : ageAtReceipt! + DateTime.now().difference(receivedLocallyAt!);
 }
 
 /// The corridor's shape and the vehicle on it, for the driver's map surfaces.
 class RouteMapRepository {
-  RouteMapRepository({required this._client});
-
-  final TrotxiApiClient _client;
-
-  /// Shapes cached for the session. A corridor's learned path changes when
-  /// route learning runs, not during a shift, so one fetch each is plenty and
-  /// a driver reopening the trip screen should not pay for it again.
+  RouteMapRepository({required this.client});
+  final DriverApi client;
   final Map<String, RouteShape> _shapes = {};
-
-  /// Fixes are cached for seconds, not for the session: a position that is
-  /// stale by design is the one thing this app must not serve.
-  static const Duration _fixTtl = Duration(seconds: 5);
   final Map<String, (DateTime, VehicleFix)> _fixes = {};
-
-  /// The line and stops for a corridor.
-  ///
-  /// Geometry and stops are fetched together and degrade independently: a
-  /// corridor with no learned path still gets its stops joined up, and stops
-  /// that will not load still leave whatever line there is.
-  ///
-  /// @param routeId - the corridor.
-  /// @returns its shape.
-  Future<RouteShape> shapeFor(String routeId) async {
-    final cached = _shapes[routeId];
-    if (cached != null) return cached;
-
-    final stops = await _stopsFor(routeId);
-    final geometry = await _geometryFor(routeId);
-
-    // The documented fallback: null geometry draws the stop-to-stop line.
-    // Angular, but not broken — and `source` says so, so the screen can label
-    // it rather than passing it off as the real path.
-    final shape =
-        geometry ??
-        RouteShape(
-          points: stops.map((s) => s.position).toList(),
-          stops: stops,
-          source: RouteShapeSource.stops,
-          runCount: 0,
-        );
-    final withStops = RouteShape(
-      points: shape.points,
-      stops: stops,
-      source: shape.source,
-      runCount: shape.runCount,
-    );
-    _shapes[routeId] = withStops;
-    return withStops;
+  int? _generation;
+  void _sync() {
+    if (_generation != client.store.generation) {
+      _shapes.clear();
+      _fixes.clear();
+      _generation = client.store.generation;
+    }
   }
 
-  /// The latest fix for a run.
-  ///
-  /// Null rather than throwing when there is none: a run that has not reported
-  /// yet is an ordinary state, and the map draws the corridor without a vehicle
-  /// on it.
-  ///
-  /// @param runId - the run.
-  /// @returns the fix, or null.
+  /// Shapes belong to the immutable version operated by this trip, not the
+  /// corridor's latest revision or an inferred morning/evening direction.
+  Future<RouteShape> shapeFor(String runId) async {
+    _sync();
+    final generation = client.sessionGeneration;
+    final trip = await client.trip(runId);
+    final cached = _shapes[trip.patternVersionId];
+    if (cached != null) return cached;
+    final stops =
+        trip.stops
+            .map(
+              (s) => MappedStop(
+                id: s.id,
+                name: s.name,
+                seq: s.ordinal,
+                position: LatLng(
+                  s.location.latitude.toDouble(),
+                  s.location.longitude.toDouble(),
+                ),
+              ),
+            )
+            .toList()
+          ..sort((a, b) => a.seq.compareTo(b.seq));
+    wire.Geometry? geometry;
+    try {
+      final route = (await client.get(
+        '/v1/routes/${Uri.encodeComponent(trip.routeId)}',
+        wire.RouteResponse.serializer,
+      )).data;
+      for (final patternId in route.patternIds) {
+        final pattern = (await client.get(
+          '/v1/route-patterns/${Uri.encodeComponent(patternId)}',
+          wire.PatternResponse.serializer,
+        )).data;
+        if (pattern.direction.name != trip.direction.name) continue;
+        final version = (await client.get(
+          '/v1/route-patterns/${Uri.encodeComponent(patternId)}/versions/${Uri.encodeComponent(trip.patternVersionId)}',
+          wire.PatternVersionResponse.serializer,
+        )).data;
+        if (version.id != trip.patternVersionId ||
+            version.patternId != patternId) {
+          throw const ApiException(
+            502,
+            'The route version did not match this run.',
+          );
+        }
+        if (version.geometryId != null) {
+          geometry = (await client.get(
+            '/v1/route-geometries/${Uri.encodeComponent(version.geometryId!)}',
+            wire.GeometryResponse.serializer,
+          )).data;
+          if (geometry.patternVersionId != trip.patternVersionId) {
+            throw const ApiException(
+              502,
+              'The route geometry did not match this run.',
+            );
+          }
+        }
+        break;
+      }
+    } on TrotxiException {
+      // Known trip stops remain drawable during a geometry/network failure.
+      // Never cache the fallback: the next load must be able to recover.
+      geometry = null;
+    }
+    client.ensureSession(generation);
+    final shape = RouteShape(
+      points:
+          geometry?.points
+              .map((p) => LatLng(p.latitude.toDouble(), p.longitude.toDouble()))
+              .toList() ??
+          stops.map((s) => s.position).toList(),
+      stops: stops,
+      source: geometry == null
+          ? RouteShapeSource.stops
+          : geometry.source_.name == 'observed'
+          ? RouteShapeSource.traces
+          : RouteShapeSource.manual,
+      runCount: null,
+    );
+    if (geometry != null) _shapes[trip.patternVersionId] = shape;
+    return shape;
+  }
+
   Future<VehicleFix?> vehicleOn(String runId) async {
-    // Two surfaces on the trip screen want this: the marker on the map and the
-    // next-stop card's ETA. A few seconds of cache means they share one call
-    // rather than each polling the same endpoint.
+    _sync();
     final cached = _fixes[runId];
-    if (cached != null && DateTime.now().difference(cached.$1) < _fixTtl) {
+    if (cached != null &&
+        DateTime.now().difference(cached.$1) < const Duration(seconds: 5)) {
       return cached.$2;
     }
     try {
-      final response = await _client.getMobilityApi().tripsIdPositionGet(
-        id: runId,
-      );
-      final body = response.data;
-      final p = body?.position;
-      if (body == null || p == null) return null;
+      final trip = await client.trip(runId);
+      final live = (await client.get(
+        '/v1/trips/${Uri.encodeComponent(runId)}/live',
+        wire.LiveTripResponse.serializer,
+      )).data;
+      if (live.tripId != runId ||
+          live.patternVersionId != trip.patternVersionId) {
+        throw const ApiException(502, 'The position did not match this run.');
+      }
+      final position = live.position;
+      if (position == null ||
+          ['ended', 'notStarted'].contains(live.state.name)) {
+        _fixes.remove(runId);
+        return null;
+      }
+      final fetched = DateTime.now();
       final fix = VehicleFix(
-        position: LatLng(p.latitude.toDouble(), p.longitude.toDouble()),
-        recordedAt: p.recordedAt,
+        position: LatLng(
+          position.location.latitude.toDouble(),
+          position.location.longitude.toDouble(),
+        ),
+        recordedAt: position.capturedAt,
+        receivedLocallyAt: fetched,
+        ageAtReceipt: Duration(seconds: position.ageSeconds),
         etas: [
-          for (final e in body.etaToStops)
-            StopEta(
-              seq: e.seq,
-              name: e.name,
-              distanceMeters: e.distanceMeters.toDouble(),
-              etaSeconds: e.etaSeconds.toDouble(),
-            ),
+          if (position.ageSeconds <= 120)
+            for (final eta in live.etas)
+              for (final stop in trip.stops.where(
+                (s) => s.id == eta.stopOccurrenceId,
+              ))
+                StopEta(
+                  seq: stop.ordinal,
+                  name: stop.name,
+                  distanceMeters: eta.distanceMeters.toDouble(),
+                  etaSeconds: eta.durationSeconds.toDouble(),
+                  basis: eta.basis.name,
+                ),
         ],
       );
-      _fixes[runId] = (DateTime.now(), fix);
+      _fixes[runId] = (fetched, fix);
       return fix;
-    } on DioException {
-      // The vehicle marker is one of two independent things on this map (#180).
-      // A position that will not load must not take the route line with it.
-      return null;
-    }
-  }
-
-  /// The corridor's stops, ordered.
-  ///
-  /// @param routeId - the corridor.
-  /// @returns its stops; empty when they cannot be read.
-  Future<List<MappedStop>> _stopsFor(String routeId) async {
-    try {
-      final response = await _client.getMobilityApi().routesIdGet(id: routeId);
-      return (response.data?.stops.toList() ?? [])
-          .map(
-            (s) => MappedStop(
-              id: s.id,
-              name: s.name,
-              seq: s.seq,
-              position: LatLng(s.latitude.toDouble(), s.longitude.toDouble()),
-            ),
-          )
-          .toList()
-        ..sort((a, b) => a.seq.compareTo(b.seq));
-    } on DioException {
-      return const [];
-    }
-  }
-
-  /// The learned path, when the corridor has one.
-  ///
-  /// @param routeId - the corridor.
-  /// @returns the shape, or null to fall back to the stop line.
-  Future<RouteShape?> _geometryFor(String routeId) async {
-    try {
-      final response = await _client.getMobilityApi().routesIdGeometryGet(
-        id: routeId,
-      );
-      final data = response.data;
-      if (data == null || data.points.isEmpty) return null;
-      return RouteShape(
-        points: data.points
-            .map((p) => LatLng(p.latitude.toDouble(), p.longitude.toDouble()))
-            .toList(),
-        stops: const [],
-        source: switch (data.source_.name) {
-          'traces' => RouteShapeSource.traces,
-          'matched' => RouteShapeSource.matched,
-          'manual' => RouteShapeSource.manual,
-          _ => RouteShapeSource.stops,
-        },
-        runCount: data.runCount,
-      );
-    } on DioException {
+    } on TrotxiException {
+      _fixes.remove(runId);
       return null;
     }
   }

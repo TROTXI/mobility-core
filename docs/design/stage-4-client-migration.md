@@ -1,8 +1,9 @@
 # Stage 4: moving an app to the replacement contract
 
-For whoever owns an app. Nothing here changes an app: the packages the apps use
-today are untouched and still build against the deployed API. This describes
-what is available to migrate to, and what actually differs.
+For whoever owns an app. The driver now uses the replacement on the Stage 4
+branch; the commuter still targets the deployed API. This describes the shared
+contract changes, not a deployment or permission to mix backend generations.
+See `stage-4-progress.md` for implementation and verification status.
 
 ## What exists now
 
@@ -11,10 +12,12 @@ what is available to migrate to, and what actually differs.
 | `apps/api_client`         | The deployed API, generated from staging | `trotxi_client`      |
 | `apps/trotxi_client`      | Hand-written layer over it               | `trotxi_commuter`    |
 | `apps/api_client_next`    | **The replacement**, 119 operations      | `trotxi_client_next` |
-| `apps/trotxi_client_next` | Hand-written layer over that             | nothing yet          |
+| `apps/trotxi_client_next` | Hand-written layer over that             | `trotxi_driver`      |
 
-The `_next` pair sits beside the existing one deliberately, so an app can move a
-screen at a time rather than all at once. Regenerate with
+The `_next` pair temporarily separates the migrated driver from the not-yet-
+migrated commuter. Move each app as a coherent build: never mix sessions or
+resource identities across contracts while moving screens. Remove the unused
+legacy pair and settle canonical names once both apps have moved. Regenerate with
 `pnpm run codegen:replacement`, then `dart run build_runner build` inside the
 package, because the generated models are `built_value`.
 

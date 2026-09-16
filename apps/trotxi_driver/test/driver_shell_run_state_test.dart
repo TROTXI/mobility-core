@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
-import 'package:trotxi_client/trotxi_client.dart';
+import 'package:trotxi_driver/core/api/driver_api.dart';
 import 'package:trotxi_driver/Presentations/Run/pages/run_page.dart';
 import 'package:trotxi_driver/Presentations/Shell/pages/driver_shell.dart';
 import 'package:trotxi_driver/Presentations/Shell/widgets/driver_nav.dart';
@@ -22,7 +22,7 @@ class _Auth implements DriverAuthRepository {
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
-class _Client implements TrotxiApiClient {
+class _Client implements DriverApi {
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }

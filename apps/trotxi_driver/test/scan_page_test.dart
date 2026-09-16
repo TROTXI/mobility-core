@@ -18,7 +18,6 @@ class _Trips implements TripsRepository {
     return [
       ManifestRider(
         reservationId: 'reservation-1',
-        userId: 'rider-1',
         name: 'Ama Owusu',
         avatarUrl: 'https://images.example.test/riders/rider-1.jpg',
         boarded: manifestReads > 1,
@@ -49,7 +48,7 @@ class _Trips implements TripsRepository {
     return const BoardingResult(
       outcome: BoardingOutcome.ok,
       riderName: 'Ama Owusu',
-      riderId: 'rider-1',
+      reservationId: 'rider-1',
       deducted: true,
     );
   }

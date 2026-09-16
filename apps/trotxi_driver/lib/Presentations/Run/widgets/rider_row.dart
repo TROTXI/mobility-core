@@ -133,7 +133,7 @@ class RiderRow extends StatelessWidget {
   /// a missing photo called out because that is what sends a driver to the
   /// code instead of the face.
   static String _subtitle(ManifestRider rider) {
-    final when = rider.direction == 'evening' ? 'Evening' : 'Morning';
+    final when = rider.directionLabel;
     // Standby is worth saying before anything else on an unboarded row: the
     // seat was filled from the pool rather than by the rider confirming, so a
     // driver expecting a familiar face gets told why they will not see one.
