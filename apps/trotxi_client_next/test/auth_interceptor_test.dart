@@ -400,6 +400,8 @@ void main() {
           headers: {
             'X-Trotxi-Client': 'driver',
             'x-trotxi-platform': 'android',
+            'If-Match': '"resource:7"',
+            'Idempotency-Key': 'retry-identity',
           },
         ),
       );
@@ -419,6 +421,10 @@ void main() {
           isEmpty);
       expect(sent!.keys.where((k) => k.toLowerCase() == 'x-trotxi-client'),
           hasLength(1));
+      final lower = sent!.map((key, value) => MapEntry(key.toLowerCase(), value));
+      expect(lower['if-match'], '"resource:7"');
+      expect(lower['idempotency-key'], 'retry-identity');
+      expect(lower['authorization'], 'Bearer old-access');
     },
   );
 

@@ -120,18 +120,17 @@ class MetadataInterceptor extends Interceptor {
   @override
   void onRequest(RequestOptions options, RequestInterceptorHandler handler) {
     // A request cannot accidentally retain headers from another app/platform.
-    options.headers.removeWhere(
-      (key, _) => const {
-        'x-trotxi-client',
-        'x-trotxi-build',
-        'x-trotxi-platform',
-      }.contains(key.toLowerCase()),
-    );
-    options.headers['x-trotxi-client'] = _metadata.app;
-    options.headers['x-trotxi-build'] = '${_metadata.build}';
-    if (_metadata.platform != null) {
-      options.headers['x-trotxi-platform'] = _metadata.platform;
-    }
+    // Rebuild rather than remove/reinsert entries in Dio's custom equality
+    // map: that sequence throws in the current Linux/Dart CI runtime.
+    // Generated calls already supply these headers, so this is a real path.
+    const owned = {'x-trotxi-client', 'x-trotxi-build', 'x-trotxi-platform'};
+    options.headers = <String, dynamic>{
+      for (final entry in options.headers.entries)
+        if (!owned.contains(entry.key.toLowerCase())) entry.key: entry.value,
+      'x-trotxi-client': _metadata.app,
+      'x-trotxi-build': '${_metadata.build}',
+      if (_metadata.platform != null) 'x-trotxi-platform': _metadata.platform,
+    };
     handler.next(options);
   }
 }
