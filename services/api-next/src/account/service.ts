@@ -48,16 +48,32 @@ const id = (value: unknown): string => {
   if (typeof value !== 'string' || !uuid.test(value)) fail(404, 'not_found', 'Resource not found.');
   return (value as string).toLowerCase();
 };
-/** What a stored avatar may be. Anything else is refused, not transcoded. */
-const IMAGE_TYPES: Record<string, (bytes: Buffer) => boolean> = {
-  'image/jpeg': (b) => b.length > 3 && b[0] === 0xff && b[1] === 0xd8 && b[2] === 0xff,
-  'image/png': (b) =>
-    b.length > 8 && b.subarray(0, 8).equals(Buffer.from('89504e470d0a1a0a', 'hex')),
-  'image/webp': (b) =>
-    b.length > 12 &&
-    b.subarray(0, 4).toString('ascii') === 'RIFF' &&
-    b.subarray(8, 12).toString('ascii') === 'WEBP',
-};
+/**
+ * What a stored avatar may be. Anything else is refused, not transcoded.
+ *
+ * Each type has its own static call site rather than a function looked up by
+ * the declared type: a request field must never choose what gets called.
+ */
+const isJpeg = (b: Buffer) => b.length > 3 && b[0] === 0xff && b[1] === 0xd8 && b[2] === 0xff;
+const isPng = (b: Buffer) =>
+  b.length > 8 && b.subarray(0, 8).equals(Buffer.from('89504e470d0a1a0a', 'hex'));
+const isWebp = (b: Buffer) =>
+  b.length > 12 &&
+  b.subarray(0, 4).toString('ascii') === 'RIFF' &&
+  b.subarray(8, 12).toString('ascii') === 'WEBP';
+function looksLike(type: string, bytes: Buffer): boolean {
+  switch (type) {
+    case 'image/jpeg':
+      return isJpeg(bytes);
+    case 'image/png':
+      return isPng(bytes);
+    case 'image/webp':
+      return isWebp(bytes);
+    default:
+      return false;
+  }
+}
+const IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
 
 export class AccountService {
   constructor(private readonly options: AccountOptions) {
@@ -275,14 +291,14 @@ export class AccountService {
       .split(';')[0]!
       .trim()
       .toLowerCase();
-    const recognises = IMAGE_TYPES[type];
-    if (!recognises) fail(415, 'unsupported_media_type', 'Supply a JPEG, PNG or WebP image.');
+    if (!IMAGE_TYPES.includes(type))
+      fail(415, 'unsupported_media_type', 'Supply a JPEG, PNG or WebP image.');
     if (!Buffer.isBuffer(bytes) || !bytes.length)
       fail(400, 'invalid_request', 'Supply an image to upload.');
     if (bytes.length > this.maxAvatarBytes)
       fail(413, 'payload_too_large', 'That image is larger than the accepted size.');
     // The declared type has to be what the bytes actually are.
-    if (!recognises(bytes))
+    if (!looksLike(type, bytes))
       fail(415, 'unsupported_media_type', 'That file is not the type it claims.');
     const fingerprint = digest(bytes);
     // A retry after a timeout must not write a second object into the store.
