@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import type { TestContext } from 'node:test';
 import assert from 'node:assert/strict';
-import { createHash, randomUUID } from 'node:crypto';
+import { createHash, createHmac, randomUUID } from 'node:crypto';
 import pg from 'pg';
 import { setup } from './helpers/financial-fixture.js';
 import contract from '../src/http/contract.json' with { type: 'json' };
@@ -13,7 +13,7 @@ import type { Backend } from '../src/runtime/compose.js';
 
 const key = (n: number) => Buffer.alloc(32, n).toString('base64');
 type Fixture = Awaited<ReturnType<typeof setup>>;
-function configurationFor(f: Fixture) {
+function configurationFor(f: Fixture, over: Record<string, string> = {}) {
   return readConfiguration({
     REPLACEMENT_RUNTIME_DATABASE_URL: f.runtimeUrl,
     REPLACEMENT_POOL_SIZE: '6',
@@ -59,7 +59,9 @@ function configurationFor(f: Fixture) {
     REPLACEMENT_REQUESTS_PER_MINUTE: '5000',
     REPLACEMENT_REQUESTS_PER_IP_PER_MINUTE: '5000',
     REPLACEMENT_AUTH_REQUESTS_PER_MINUTE: '5000',
+    REPLACEMENT_TRUST_PROXY: 'none',
     REPLACEMENT_MAINTENANCE_USER_ID: f.adminId,
+    ...over,
   });
 }
 /** The same session the worker opens: a real row, judged by the real rules. */
@@ -78,9 +80,9 @@ async function tokenFor(backend: Backend, userId: string) {
     session.expires_at,
   );
 }
-async function assembled(t: TestContext) {
+async function assembled(t: TestContext, over: Record<string, string> = {}) {
   const f = await setup(t);
-  const backend = await composeBackend(configurationFor(f));
+  const backend = await composeBackend(configurationFor(f, over));
   t.after(() => backend.close());
   const ops = await tokenFor(backend, f.adminId);
   const call = (
@@ -507,5 +509,173 @@ test('ASM-17 without the composed coordinator that same decision is unavailable'
   assert.equal(
     (await f.owner.query('SELECT status FROM app.trips WHERE id=$1', [trip.id])).rows[0].status,
     'scheduled',
+  );
+});
+
+test('ASM-18 raising the operations build floor must not switch the sweeps off', async (t) => {
+  // The worker carries no app build: there is no release of it to upgrade. If
+  // it were held to the console's floor, raising that floor to push an upgrade
+  // would silently stop retention, erasure and period close, and the only
+  // symptom would be a red cron nobody is watching.
+  const { call, backend } = await assembled(t, { REPLACEMENT_MINIMUM_BUILD_OPS: '9999' });
+  const refused = await call('GET', '/v1/ops/routes', { client: 'ops' });
+  assert.equal(refused.statusCode, 426, refused.body);
+  assert.equal(refused.json().error.code, 'client_upgrade_required');
+  for (const job of ['gps-retention', 'route-learning', 'payments'] as const) {
+    const result = await runJob(backend, { job, limit: 5 });
+    assert.equal(result.status, 200, `${job}: ${JSON.stringify(result.body)}`);
+  }
+  const worker = await call('POST', '/v1/ops/maintenance/gps-retention', {
+    payload: { limit: 5 },
+    client: 'worker',
+  });
+  assert.equal(worker.statusCode, 200, worker.body);
+});
+
+test('ASM-19 an untrusted peer cannot state the address it is limited by', async (t) => {
+  // Every per-IP budget buckets on what the server sees. A deployment that has
+  // not named its proxy must ignore the header, or one caller behind it can
+  // spend everyone else's budget, and a direct caller can dodge its own.
+  const { backend } = await assembled(t, {
+    REPLACEMENT_REQUESTS_PER_IP_PER_MINUTE: '3',
+    REPLACEMENT_TRUST_PROXY: 'none',
+  });
+  const hit = (forwarded: string) =>
+    backend.app.inject({
+      method: 'GET',
+      url: '/v1/routes',
+      remoteAddress: '203.0.113.7',
+      headers: {
+        'x-forwarded-for': forwarded,
+        'x-trotxi-client': 'commuter',
+        'x-trotxi-build': '9',
+        'x-trotxi-platform': 'ios',
+      },
+    });
+  const codes: number[] = [];
+  for (let i = 0; i < 5; i++) codes.push((await hit(`198.51.100.${i}`)).statusCode);
+  assert.equal(
+    codes.filter((c) => c === 429).length,
+    2,
+    `a forged forwarded address bought a fresh budget: ${codes.join(',')}`,
+  );
+});
+
+test('ASM-20 money, coverage and a seat are one flow through the assembled backend', async (t) => {
+  const { f, backend, call } = await assembled(t);
+  // A committed purchase with its attempt, made by the domain fixture. Opening
+  // checkout itself would call the provider, and nothing here talks to a
+  // network: the point is what the assembled backend does with the money once
+  // the provider says it arrived.
+  // Coverage has to span now: the assembled backend closes ended periods on
+  // the real clock, and a fixture month starting in January would be over.
+  const now = new Date();
+  const purchase = await f.buy(randomUUID(), now);
+  const attempt = (
+    await f.owner.query('SELECT * FROM app.payment_attempts WHERE purchase_id=$1', [purchase.id])
+  ).rows[0];
+  const body = JSON.stringify({
+    event: 'charge.success',
+    data: {
+      id: '900001',
+      reference: attempt.reference,
+      status: 'success',
+      amount: attempt.amount_pesewas,
+      currency: 'GHS',
+      domain: 'test',
+      channel: 'mobile_money',
+      fees: 0,
+      paid_at: now.toISOString(),
+    },
+  });
+  const delivered = await backend.app.inject({
+    method: 'POST',
+    url: '/webhooks/paystack',
+    payload: body,
+    headers: {
+      'content-type': 'application/json',
+      'x-paystack-signature': createHmac('sha512', ['sk', 'test', 'assemblyonly'].join('_'))
+        .update(body)
+        .digest('hex'),
+    },
+  });
+  assert.equal(delivered.statusCode, 200, delivered.body);
+  // Nothing is granted by delivery alone: the inbox is durable and the worker
+  // owns the effect.
+  assert.equal(
+    (await f.owner.query('SELECT count(*)::int AS n FROM app.billing_periods')).rows[0].n,
+    0,
+    'coverage was granted before the inbox was worked',
+  );
+  const worked = await runJob(backend, { job: 'payments', limit: 10 });
+  assert.equal(worked.status, 200, JSON.stringify(worked.body));
+  // Payments granted coverage; membership materialised the commute the rider
+  // paid for. Neither domain was called directly.
+  const period = (
+    await f.owner.query('SELECT * FROM app.billing_periods WHERE purchase_id=$1', [purchase.id])
+  ).rows[0];
+  assert.equal(period.state, 'open');
+  assert.equal(
+    (
+      await f.owner.query(
+        'SELECT COALESCE(SUM(delta_rides),0)::int AS n FROM app.ride_entries WHERE period_id=$1',
+        [period.id],
+      )
+    ).rows[0].n,
+    44,
+  );
+  const assignment = (
+    await f.owner.query('SELECT * FROM app.commute_assignments WHERE period_id=$1', [period.id])
+  ).rows[0];
+  assert.ok(assignment, 'the paid-for commute was never materialised');
+  // The rider reads their own membership through the assembled backend.
+  const rider = await tokenFor(backend, f.actor.userId);
+  const membership = await call('GET', '/v1/me/membership', {
+    token: rider,
+    client: 'commuter',
+    platform: 'ios',
+  });
+  assert.equal(membership.statusCode, 200, membership.body);
+  const view = membership.json().data;
+  assert.equal(view.membership.lifecycle, 'open');
+  assert.equal(view.coverage.id, period.id);
+  // And takes a seat on a real run, which is transport's row and membership's
+  // decision, reached over HTTP with the rider's own session.
+  const outbound = f.input.legs.find((l) => l.direction === 'outbound')!;
+  const travelDate = new Date(now.getTime() + 86400000).toISOString().slice(0, 10);
+  const vehicle = (
+    await f.owner.query(
+      "INSERT INTO app.vehicles(plate,capacity) VALUES ('ASM 20',18) RETURNING id",
+    )
+  ).rows[0].id;
+  await f.owner.query(
+    `INSERT INTO app.trips(schedule_id,departure_id,pattern_version_id,service_date,scheduled_at,vehicle_id)
+    SELECT id,departure_id,pattern_version_id,$2::date,$2::date+local_departure,$3
+    FROM app.service_schedules WHERE id=$1`,
+    [outbound.scheduleId, travelDate, vehicle],
+  );
+  const confirmed = await call('POST', '/v1/me/reservation-decisions', {
+    token: rider,
+    client: 'commuter',
+    platform: 'ios',
+    payload: { travelDate, direction: 'outbound', decision: 'confirm' },
+  });
+  assert.equal(confirmed.statusCode, 200, confirmed.body);
+  const reservation = (
+    await f.owner.query('SELECT * FROM app.reservations WHERE period_id=$1', [period.id])
+  ).rows[0];
+  assert.equal(reservation.status, 'reserved');
+  // A funded, unsettled seat now blocks the close of the period that funds it,
+  // and the worker reports that as blocked rather than as a fault.
+  const close = await runJob(backend, { job: 'payments', limit: 10 });
+  assert.equal(close.status, 200, JSON.stringify(close.body));
+  const seats = (
+    await f.owner.query('SELECT id,period_id,status,service_date,settled_at FROM app.reservations')
+  ).rows;
+  assert.equal(
+    (await f.owner.query('SELECT state FROM app.billing_periods WHERE id=$1', [period.id])).rows[0]
+      .state,
+    'open',
+    `close=${JSON.stringify(close.body)} seats=${JSON.stringify(seats)} period=${period.id}`,
   );
 });

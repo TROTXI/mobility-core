@@ -143,6 +143,33 @@ export function parseProviderFact(raw: Buffer, source: 'webhook' | 'verify'): Pr
   }
 }
 
+/**
+ * Read a provider response with a ceiling.
+ *
+ * A timeout does not bound a body: ten seconds at line rate is hundreds of
+ * megabytes, and every concurrent checkout would buffer its own copy.
+ */
+async function bounded(body: ReadableStream<Uint8Array>, limit = 1048576): Promise<Buffer> {
+  const reader = body.getReader();
+  const chunks: Uint8Array[] = [];
+  let size = 0;
+  try {
+    for (;;) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      size += value.length;
+      if (size > limit) {
+        await reader.cancel();
+        throw new InvalidProviderFacts('Provider response is too large');
+      }
+      chunks.push(value);
+    }
+  } finally {
+    reader.releaseLock();
+  }
+  return Buffer.concat(chunks);
+}
+
 export class PaystackEvidence {
   readonly environment: 'test' | 'live';
   constructor(
@@ -215,7 +242,7 @@ export class PaystackEvidence {
         currency: 'GHS',
       }),
     });
-    if (!response.ok) throw new Error('provider_unavailable');
+    if (!response.ok || !response.body) throw new Error(`provider_unavailable_${response.status}`);
     const body = z
       .object({
         status: z.literal(true),
@@ -224,10 +251,15 @@ export class PaystackEvidence {
           reference: z.string().max(100),
         }),
       })
-      .parse(await response.json());
+      .parse(JSON.parse((await bounded(response.body)).toString('utf8')));
     if (body.data.reference !== request.reference)
       throw new InvalidProviderFacts('Provider opened a different reference');
-    const target = new URL(body.data.authorization_url);
+    let target: URL;
+    try {
+      target = new URL(body.data.authorization_url);
+    } catch {
+      throw new InvalidProviderFacts('Provider returned an unusable checkout target');
+    }
     if (target.protocol !== 'https:') throw new InvalidProviderFacts('Insecure checkout target');
     return { authorizationUrl: target.toString() };
   }

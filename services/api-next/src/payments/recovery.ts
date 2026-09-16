@@ -661,15 +661,27 @@ export class PaymentRecovery {
         if (await this.options.foundation.closePeriod(row.id, now)) result.succeeded++;
         else result.blocked++;
       } catch (e) {
+        // A period that is refused because something it funds has not settled
+        // yet is blocked, not broken: nothing is wrong, the work is not done.
+        // Reporting it as a failure sends an operator looking for a fault that
+        // does not exist, and hides the periods that genuinely could not close.
         if (
           e instanceof TransportError &&
-          ['period_payment_blocked', 'period_close_blocked'].includes(e.code)
+          [
+            'period_payment_blocked',
+            'period_close_blocked',
+            'period_service_unsettled',
+            'period_paused',
+          ].includes(e.code)
         )
           result.blocked++;
         else {
+          // The code, when the refusal is one of ours, so the report says which
+          // period could not close and why rather than only that one did not.
+          const reason = e instanceof TransportError ? e.code : 'unexpected_error';
           result.failed++;
-          result.failures.push({ resourceId: row.id, reason: 'unexpected_error' });
-          this.options.onFailure?.({ resourceId: row.id, reason: 'unexpected_error' });
+          result.failures.push({ resourceId: row.id, reason });
+          this.options.onFailure?.({ resourceId: row.id, reason });
         }
       }
     }

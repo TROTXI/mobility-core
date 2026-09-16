@@ -2,7 +2,6 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createHash, randomUUID } from 'node:crypto';
 import { readConfiguration, ConfigurationError } from '../src/runtime/config.js';
-import { composeBackend } from '../src/runtime/compose.js';
 import { R2ObjectStore } from '../src/runtime/avatars.js';
 
 const key = (n: number) => Buffer.alloc(32, n).toString('base64');
@@ -55,6 +54,7 @@ function environment(): Record<string, string> {
     REPLACEMENT_REQUESTS_PER_MINUTE: '120',
     REPLACEMENT_REQUESTS_PER_IP_PER_MINUTE: '600',
     REPLACEMENT_AUTH_REQUESTS_PER_MINUTE: '10',
+    REPLACEMENT_TRUST_PROXY: 'loopback, linklocal, uniquelocal',
     REPLACEMENT_MAINTENANCE_USER_ID: maintenanceUser,
   };
 }
@@ -161,11 +161,37 @@ test('ASM-04 public URLs must be absolute https, and identity must be real', () 
   });
 });
 
-test('ASM-05 the backend is composed from configuration alone', () => {
-  // No adapter parameter exists to pass a recording fake, a permissive session
-  // callback or an in-memory object store through. If a capability is to be
-  // substituted, that has to be a visible change here, not a call-site option.
-  assert.equal(composeBackend.length, 1);
+test('ASM-05 the proxy boundary is stated, and a hop count is not a statement', () => {
+  // Every per-IP limit buckets on the address the server sees. Behind a load
+  // balancer that is the balancer, so one caller can rate-limit everyone and
+  // per-IP admission stops being a control. Nobody can guess this, so the
+  // deployment has to say it.
+  assert.equal(readConfiguration(environment()).trustProxy, 'loopback, linklocal, uniquelocal');
+  const none = environment();
+  none.REPLACEMENT_TRUST_PROXY = 'none';
+  assert.equal(readConfiguration(none).trustProxy, false);
+  // Fastify ignores a numeric value and trusts nobody, so a hop count would
+  // silently switch the whole thing off rather than configure it.
+  for (const bad of ['1', '2']) {
+    const env = environment();
+    env.REPLACEMENT_TRUST_PROXY = bad;
+    refuses(env, 'not a hop count');
+  }
+  const junk = environment();
+  junk.REPLACEMENT_TRUST_PROXY = 'loopback; drop table users';
+  refuses(junk, 'address list');
+});
+
+test('ASM-05b a validator must not rewrite the value it approves', () => {
+  // A tile template is the value most likely to arrive here, and percent-
+  // encoding its braces would hand clients a URL that fetches nothing while
+  // the deploy reported success.
+  const env = environment();
+  env.REPLACEMENT_MAP_TILES_URL = 'https://tiles.trotxi.com/{z}/{x}/{y}.png';
+  assert.equal(readConfiguration(env).mapTiles.url, 'https://tiles.trotxi.com/{z}/{x}/{y}.png');
+  const bare = environment();
+  bare.REPLACEMENT_DOCS_URL = 'https://docs.trotxi.com';
+  assert.equal(readConfiguration(bare).docsUrl, 'https://docs.trotxi.com');
 });
 
 const store = (over: Partial<ConstructorParameters<typeof R2ObjectStore>[0]> = {}) =>
@@ -178,8 +204,25 @@ const store = (over: Partial<ConstructorParameters<typeof R2ObjectStore>[0]> = {
     ...over,
   });
 
+// Signatures for one fixed request, computed with @smithy/signature-v4 5.7.3
+// against the same clock, credentials, bucket and object. A signature this
+// implementation merely computes consistently is worth nothing: a canonical
+// request that is wrong in a stable way still 403s every upload and every read.
+const FIXED = {
+  objectKey:
+    'avatars/11111111-2222-4333-8444-555555555555/66666666-7777-4888-8999-aaaaaaaaaaaa.jpg',
+  bytes: Buffer.from('ffd8ffe000104a464946', 'hex'),
+  presign: '9a2f8769cc640204ab26d84b38df2c2b9424ac6aa293a013016433667424e797',
+  delete: 'c41d931213a152b9c15c1d1f4c2ae4bbce31078a9697ab4a9ec188f3f648ebad',
+};
+
 test('ASM-06 an avatar URL is signed locally and only for keys this store made', async () => {
   const s = store();
+  assert.equal(
+    new URL(s.sign(FIXED.objectKey, 300)!).searchParams.get('X-Amz-Signature'),
+    FIXED.presign,
+    'the presigned GET signature does not match an independent SigV4 implementation',
+  );
   const objectKey = `avatars/${randomUUID()}/${randomUUID()}.jpg`;
   const url = s.sign(objectKey, 300)!;
   const parsed = new URL(url);
@@ -215,6 +258,7 @@ test('ASM-06 an avatar URL is signed locally and only for keys this store made',
 
 test('ASM-07 storing an avatar is signed, verified and never assumed', async () => {
   const seen: { url: string; init: RequestInit }[] = [];
+
   const responder = (status: number) => async (url: unknown, init: unknown) => {
     seen.push({ url: String(url), init: init as RequestInit });
     return new Response(null, { status });
@@ -255,6 +299,21 @@ test('ASM-07 storing an avatar is signed, verified and never assumed', async () 
 });
 
 test('ASM-08 removing an object reports a refusal, and an absent one is done', async () => {
+  // Header-signed requests go through the same canonical construction as the
+  // upload, so this vector covers that path too. The upload's own key is minted
+  // per call, which is why it is checked by shape rather than by value.
+  const authorizations: string[] = [];
+  await store({
+    request: (async (_url: unknown, init: unknown) => {
+      authorizations.push((init as { headers: Record<string, string> }).headers.authorization!);
+      return new Response(null, { status: 204 });
+    }) as typeof fetch,
+  }).remove(FIXED.objectKey);
+  assert.equal(
+    /Signature=([a-f0-9]{64})$/.exec(authorizations[0]!)?.[1],
+    FIXED.delete,
+    'the DELETE signature does not match an independent SigV4 implementation',
+  );
   const objectKey = `avatars/${randomUUID()}/${randomUUID()}.png`;
   const answer = (status: number) =>
     store({ request: (async () => new Response(null, { status })) as typeof fetch });

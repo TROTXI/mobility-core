@@ -18,7 +18,8 @@ const EXTENSIONS: Record<string, string> = {
   'image/webp': 'webp',
 };
 /** What this store is allowed to name, and therefore allowed to sign. */
-const KEY = /^avatars\/[0-9a-f-]{36}\/[0-9a-f-]{36}\.(jpg|png|webp)$/;
+const UUID = '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}';
+const KEY = new RegExp(`^avatars/${UUID}/${UUID}\\.(jpg|png|webp)$`);
 const REGION = 'auto';
 const UNSIGNED = 'UNSIGNED-PAYLOAD';
 
@@ -39,7 +40,11 @@ const escapePath = (value: string) => value.split('/').map(escape).join('/');
  * service; this only names, stores, signs and removes them. Every object key
  * this store hands out is one it generated, and it refuses to sign or delete
  * anything that does not have that shape, so a stored key that was tampered
- * with cannot address someone else's object or escape the prefix.
+ * with cannot escape the prefix or address a path of the caller's choosing.
+ *
+ * The shape alone does not say whose object it is: a well-formed key naming
+ * another rider's id is still well formed. What keeps them apart is that the
+ * key is only ever read back from the requester's own row.
  */
 export class R2ObjectStore implements AvatarStore {
   private readonly host: string;
@@ -77,6 +82,8 @@ export class R2ObjectStore implements AvatarStore {
     const extension = EXTENSIONS[request.contentType];
     if (!extension) throw new Error('Unsupported avatar media type');
     const objectKey = `avatars/${request.userId.toLowerCase()}/${randomUUID()}.${extension}`;
+    // What this store mints has to be what it will later agree to sign.
+    if (!KEY.test(objectKey)) throw new Error('Object storage owner is not a user id');
     const { amzDate, date } = this.stamps();
     const payloadHash = sha256(request.bytes);
     const headers: Record<string, string> = {

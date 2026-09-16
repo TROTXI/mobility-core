@@ -1,4 +1,4 @@
-# Stage 2: pinned Postgres baseline harness
+# Preservation harness: pinned baseline versus the replacement
 
 Test infrastructure only. Nothing here is imported by the API or deployed workers.
 No replacement business tables, staging fixtures or app clients are changed.
@@ -92,6 +92,100 @@ Comparison uses the same contract projection after **both** sides satisfy those
 expectations. Old-versus-old is tested only as comparator plumbing, not independent
 correctness evidence. Real negative controls supply separate sensitivity checks.
 
+## The replacement candidate
+
+`candidate-adapter.mjs` runs the replacement backend in `services/api-next`. It
+translates the same catalog actions into that model's own services and reads
+observations back out of committed rows. It imports no expectation and asserts
+no arithmetic of its own.
+
+Run both sides:
+
+```sh
+node --import ./.harness-artifacts/baseline/services/api/node_modules/tsx/dist/loader.mjs \
+  tools/redesign-harness/run.mjs --mode=compare \
+  --candidate-adapter=tools/redesign-harness/candidate-adapter.mjs \
+  --candidate-migrations=services/api-next/migrations \
+  --candidate-commit=HEAD
+```
+
+In compare mode the gate now requires, on the candidate as well as the baseline:
+all sixteen PAY scenarios passing **and** comparing, every supplemental recovery
+case either run or substituted, and both negative controls detected on their
+exact assertion paths. A candidate run that covered fewer cases than the
+baseline is a failed gate, not a shorter one.
+
+### What the two models call the same fact
+
+The candidate normalizes where the representation differs and the fact does not.
+Each mapping is in the adapter with its reason, and the raw rows stay in the
+evidence:
+
+| Fact                   | Baseline                                  | Replacement                                                        |
+| ---------------------- | ----------------------------------------- | ------------------------------------------------------------------ |
+| Membership status      | one `subscriptions.status` column         | membership lifecycle and whether any period is open, read together |
+| Current purchase       | `subscriptions.current_period_id` pointer | the purchase whose coverage runs latest                            |
+| Purchase `disputed`    | a purchase status                         | an unreleased access block on its period                           |
+| Inbox `received`       | `status='received'`                       | `state='ready'` with no attempt yet                                |
+| Inbox `failed`         | `status='failed'`                         | quarantined, or ready after a failed attempt                       |
+| Inbox `processing`     | `status='processing'` plus a lease        | the row is locked by another worker, asked of the lock manager     |
+| Inbox membership       | webhook deliveries                        | webhook deliveries; self-fetched Verify evidence is kept separate  |
+| Consumption            | boarding, no-show and returned entries    | boarding and no-show entries; a refund removal is not consumption  |
+| Operations review list | open work                                 | reviews still in state `open`                                      |
+
+### Fixture substitutions, each with its reason
+
+- **PAY-08's malformed period.** The baseline nulls the period's conversion
+  rate. The replacement freezes that rate `NOT NULL` on the purchase, the
+  purchase's terms are immutable by trigger, and a period carries no copy, so a
+  missing or malformed rate is unrepresentable. The one unconvertible period
+  this schema does permit is a half-written close: a closure row against a
+  period that is still open. Both sides report the outcome as
+  `unconvertible_period`; neither constraint was weakened to make this fit.
+- **PAY-10's discovery cutoff.** The baseline backdates the payment row behind
+  the cutoff. Attempt identity is immutable here, so the cutoff moves instead:
+  the same attempt, the same "older than an hour" rule, no rewritten row.
+- **REC-02 and REC-03** are replaced by `REC-02R` and `REC-03R`, declared in
+  `candidateSubstitutions`. REC-02 assumes a committed fulfilment with a missing
+  acknowledgement; the replacement commits the effect and its receipt in one
+  transaction, so that state cannot exist, and REC-02R proves the stronger thing
+  instead: interrupting the acknowledgement grants nothing at all. REC-03
+  assumes a processing lease to expire; the replacement claims by locking the
+  row inside the processing transaction, and REC-03R proves another worker skips
+  a held claim and that the claim dies with the worker holding it, with no
+  interval to wait out.
+
+A substitution names the case it replaces, states why that case's premise cannot
+exist, and is itself a scenario with fixed expectations that has to pass.
+`harness.test.mjs` enforces all three, and the runner refuses a gate where a
+required case was neither run nor substituted.
+
+### Negative controls on the replacement
+
+Both controls test the measuring instrument, not the schema, and the replacement
+refuses both corrupt states through triggers and a unique index. The adapter
+therefore suspends exactly those protections on its own disposable database,
+records what it suspended in the evidence, and restores them. Detection still
+has to come from the observer and the comparator on the exact assertion path: a
+SQL error does not count. `NEG-ARITHMETIC` is caught at
+`$.riders.riderA.rides` (44 against a written 88) and `NEG-ATTRIBUTION` at
+`$.riders.riderA.currentPurchase` (renewal against a coverage row moved to make
+the first purchase look current).
+
+### What running the replacement found
+
+Two defects in the replacement, both fixed rather than normalized away:
+
+- Period close reported a period blocked by unsettled funded service as
+  `failed`, sending an operator to look for a fault that did not exist and
+  burying the periods that genuinely could not close. PAY-09 is the test.
+- Batch close reported every failure as `unexpected_error`, so the report could
+  not say which period could not close or why. It now carries the refusal's own
+  code.
+
+And one thing the harness could not represent at all, which is recorded rather
+than papered over: a period whose recorded terms are malformed. See PAY-08 above.
+
 ## Candidate extension and honest limits
 
 `adapter-contract.ts` describes the interface. A future candidate module exports
@@ -108,15 +202,13 @@ node --import ./.harness-artifacts/baseline/services/api/node_modules/tsx/dist/l
 ```
 
 The candidate gets separate empty databases and only its own SQL migrations.
-No candidate business adapter exists in stage 2; missing options/files/adapters
-fail rather than skip. The revision is declared input for candidate reports;
+Missing options, files or adapters fail rather than skip. The revision is declared input for candidate reports;
 stage 3 must pin/verify the candidate runtime tree, not mistake that label for
 the byte-level baseline verification performed here. Comparison mode is an
 extension point, **not yet a candidate release gate**.
 
-PAY-08's invalid-rate fixture is baseline-specific. Before a NOT NULL candidate
-replaces it, record the approved substitution: invalid-state rejection plus an
-injected mid-close rollback/batch-continuation test. Do not weaken the constraint.
+PAY-08's invalid-rate fixture was baseline-specific; the approved substitution
+is recorded above and no constraint was weakened to accommodate it.
 Stage 3 must add full-schema candidate integrity/target-only tests and observers
 for each replaced domain. The 50 non-payment references remain that expansion
 inventory; this PR does not claim they have been ported to this adapter.

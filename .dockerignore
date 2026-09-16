@@ -1,0 +1,11 @@
+# The Docker context is the repository root: the pnpm lockfile lives here and
+# both service Dockerfiles install from it. Only things no build needs are
+# excluded, so this cannot quietly break an image by hiding a manifest.
+.git
+.github
+.harness-artifacts
+**/node_modules
+**/dist
+**/build
+**/.dart_tool
+*.log

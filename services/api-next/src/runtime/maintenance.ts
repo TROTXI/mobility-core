@@ -91,19 +91,27 @@ export async function runJob(backend: Backend, request: JobRequest): Promise<Job
   const limit = request.limit ?? 100;
   if (!Number.isInteger(limit) || limit < 1 || limit > 100)
     throw new Error('A maintenance batch is between 1 and 100');
-  if (request.job === 'driver-secrets')
-    return {
-      job: request.job,
-      status: 200,
-      body: { cleared: await purgeExpiredDriverSecrets(backend.pool, limit) },
-    };
-  if (request.job === 'erasures')
-    return { job: request.job, status: 200, body: await backend.account.retryErasures(limit) };
   const day = SERVICE_DAY[request.job];
   if (day && (!request.travelDate || !request.direction))
     throw new Error(`${request.job} needs a travel date and a direction`);
+  // Opened for every job, including the two with no HTTP route: destroying
+  // credential ciphertext and withdrawing a rider's provider grant are not
+  // things an unattributed process should be able to start, so the operations
+  // account is checked and a session opened before either runs.
+  //
+  // KNOWN GAP, flagged rather than invented: those two write no receipt. There
+  // is no reviewed operation and no command store for them, and adding one is
+  // a contract and schema decision, not something to improvise here.
   const session = await operatorSession(backend);
   try {
+    if (request.job === 'driver-secrets')
+      return {
+        job: request.job,
+        status: 200,
+        body: { cleared: await purgeExpiredDriverSecrets(backend.pool, limit) },
+      };
+    if (request.job === 'erasures')
+      return { job: request.job, status: 200, body: await backend.account.retryErasures(limit) };
     const response = await backend.app.inject({
       method: 'POST',
       url: day ?? BATCH[request.job]!,

@@ -224,7 +224,7 @@ export const scenarios = [
           closed: 1,
           blocked: 0,
           failed: 1,
-          failures: [{ purchase: 'first', reason: 'missing_conversion_rate' }],
+          failures: [{ purchase: 'first', reason: 'unconvertible_period' }],
         },
         riders: {
           riderA: { membership: 'active', credit: 0, rides: 44 },
@@ -513,5 +513,70 @@ export const negativeControls = [
     checkpoint: 'renewal-identity',
     mutation: 'wrong_current_purchase',
     expectedPath: '$.riders.riderA.currentPurchase',
+  },
+];
+
+/**
+ * Recovery cases whose baseline premise the replacement makes unrepresentable.
+ *
+ * These are substitutions, not exemptions. Each names the supplemental case it
+ * stands in for and the reason the original state cannot exist, and each has
+ * its own fixed expectations proving the stronger property instead. The runner
+ * requires every supplemental case to be either run or substituted, so a
+ * scenario can never be dropped quietly.
+ */
+export const candidateSubstitutions = [
+  {
+    id: 'REC-02R',
+    replaces: 'REC-02',
+    reason:
+      'The effect and its acknowledgement commit in one transaction, so a committed fulfilment with a missing acknowledgement cannot exist. Interrupting the acknowledgement must therefore grant nothing at all.',
+    title: 'Interrupted acknowledgement commits neither the effect nor the receipt',
+    steps: [
+      rider(),
+      buy(),
+      action('acceptSuccess', { purchase: 'first', at: firstAt }),
+      action('failAcknowledgement'),
+      action('processInbox'),
+      check('nothing-committed', {
+        result: { processed: 0, failed: 1 },
+        totals: { periods: 0, allocations: 0 },
+        purchases: { first: { status: 'pending' } },
+        inbox: { failed: 1, processed: 0 },
+      }),
+      action('restartWorker'),
+      action('processInbox'),
+      check('recovered-once', {
+        ...once,
+        inbox: { processed: 1 },
+        result: { processed: 1, failed: 0 },
+      }),
+    ],
+  },
+  {
+    id: 'REC-03R',
+    replaces: 'REC-03',
+    reason:
+      'There is no processing lease to expire: a claim is a row lock held inside the processing transaction. The property under test is that another worker skips a held claim and that the claim is released when its worker dies, without waiting out an interval.',
+    title: 'A held claim is skipped, and dies with the worker holding it',
+    steps: [
+      rider(),
+      buy(),
+      action('acceptSuccess', { purchase: 'first', at: firstAt }),
+      action('claimOnly'),
+      action('processInbox'),
+      check('claim-live', {
+        inbox: { processing: 1, processed: 0 },
+        totals: { periods: 0, allocations: 0 },
+        result: { processed: 0, failed: 0 },
+      }),
+      action('expireLease'),
+      action('processInbox'),
+      check('claim-released', {
+        ...once,
+        inbox: { processing: 0, processed: 1 },
+        result: { processed: 1, failed: 0 },
+      }),
+    ],
   },
 ];

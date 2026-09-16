@@ -315,14 +315,20 @@ export async function createTransportApp(options: AppOptions) {
               'client_metadata_required',
               'Supply the appropriate client, build and platform metadata.',
             );
-          const floor = platformless
-            ? floors.ops
-            : options.config
-              ? await options.config.minimumBuild(
-                  client as 'driver' | 'commuter',
-                  platform as 'ios' | 'android',
-                )
-              : floors[client as 'driver' | 'commuter'][platform as 'ios' | 'android'];
+          // A scheduled worker has no app build behind it, which is why it
+          // sends no platform either. Holding it to the operations console's
+          // floor would stop retention and period close the moment somebody
+          // raised that floor to push an upgrade.
+          const floor = workerClient
+            ? 0
+            : platformless
+              ? floors.ops
+              : options.config
+                ? await options.config.minimumBuild(
+                    client as 'driver' | 'commuter',
+                    platform as 'ios' | 'android',
+                  )
+                : floors[client as 'driver' | 'commuter'][platform as 'ios' | 'android'];
           if (Number(build) < floor)
             fail(426, 'client_upgrade_required', 'Update the application before continuing.');
           if (!actor) return; // Public catalog remains IP-limited; no identity fallback.

@@ -403,11 +403,11 @@ services:
   #       value: trotxi-api-next
   #     - key: REPLACEMENT_SERVICE_VERSION
   #       value: 0.1.0
+  # What GET /version reports. RENDER_GIT_COMMIT is injected by the
+  # platform at runtime and is not a declared env var, so it cannot be
+  # referenced with fromService; set this on the deploy instead.
   #     - key: REPLACEMENT_GIT_COMMIT
-  #       fromService:
-  #         name: trotxi-api-next-staging
-  #         type: web
-  #         envVarKey: RENDER_GIT_COMMIT
+  #       sync: false
   #     - key: REPLACEMENT_ACCESS_ISSUER
   #       value: https://trotxi-api-next-staging.onrender.com
   #     - key: REPLACEMENT_ACCESS_AUDIENCE
@@ -486,6 +486,8 @@ services:
   #     #     value: '+233XXXXXXXXX'
   #     #   - key: REPLACEMENT_OPERATIONS_WHATSAPP
   #     #     value: '+233XXXXXXXXX'
+  #     #   - key: REPLACEMENT_OPERATIONS_EMAIL
+  #     #     value: ops@trotxi.com
   #     #   - key: REPLACEMENT_OPERATIONS_HOURS
   #     #     value: 05:00-22:00 daily
   #     # Startup floors only. Once a row exists in app.minimum_versions the
@@ -506,6 +508,16 @@ services:
   #       value: '600'
   #     - key: REPLACEMENT_AUTH_REQUESTS_PER_MINUTE
   #       value: '10'
+  #     # Which peers may state the client's address. Render fronts every
+  #     # service with a load balancer that reaches us from inside its private
+  #     # network, so trusting private peers trusts it and nothing else: a
+  #     # client connecting directly is public, is not trusted, and cannot
+  #     # forge the header. Without this every per-IP budget above becomes one
+  #     # global bucket, so the service refuses to start rather than pretend.
+  #     # A hop count is not an answer and is refused: Fastify ignores a
+  #     # numeric value and would trust nobody while looking configured.
+  #     - key: REPLACEMENT_TRUST_PROXY
+  #       value: 'loopback, linklocal, uniquelocal'
   #     # The operations account every maintenance receipt is attributed to.
   #     - key: REPLACEMENT_MAINTENANCE_USER_ID
   #       sync: false
@@ -517,27 +529,42 @@ services:
   # no admin token minted from a shared secret and no HTTP call to a public URL,
   # so a cron cannot be pointed at the wrong environment by editing one variable.
   #
-  # Render bills cron jobs with a ~$1/month minimum each, and these seven would
-  # cost roughly $7/month. They stay commented until both the cutover and that
-  # cost are approved. Nothing is scheduled by uncommenting the web service
-  # alone: retention, erasure and secret cleanup would then not be running, so
-  # they must be enabled together with it.
+  # Render bills cron jobs with a ~$1/month minimum each. They stay commented
+  # until both the cutover and that cost are approved. Nothing is scheduled by
+  # uncommenting the web service alone: retention, erasure and secret cleanup
+  # would then not be running, so they must be enabled together with it.
   #
   # Every entry repeats the web service's env block; Render has no service-level
   # inheritance for these. Use an env var group when they are switched on.
+  #
+  # The whole-batch jobs take no arguments:
   #
   #   worker gps-retention     0 1 * * *    delete raw traces past their window
   #   worker driver-secrets    */15 * * * * physically clear expired PIN ciphertext
   #   worker erasures          10 * * * *   retry erasure's external half
   #   worker payments          15 * * * *   inbox, reconciliation, period close
   #   worker route-learning    0 23 * * *   learn corridor shape from the day
-  #   worker ask-dispatch      0 18 * * *   ask tomorrow-morning riders
-  #   worker no-shows          0 10 * * *   debit confirmed seats nobody took
   #
-  # The service-day jobs take the date and direction as arguments, for example:
-  #   dockerCommand: node dist/worker.js ask-dispatch 2026-09-16 outbound
-  # A scheduler that cannot compute the date must not default to today, so the
-  # wrapper that supplies it is part of switching these on.
+  # The service-day jobs take a date and ONE direction, so each window needs its
+  # own outbound and return entry. The rider loop is a day ahead for the morning
+  # and same-day for the evening, matching the deployed service's windows:
+  #
+  #   worker ask-dispatch <date> outbound          0 18 * * *  ask tomorrow morning
+  #   worker ask-dispatch <date> return            0 12 * * *  ask this evening
+  #   worker reservation-defaults <date> outbound  0 21 * * *  morning cutoff
+  #   worker reservation-defaults <date> return    0 14 * * *  evening cutoff
+  #   worker no-shows <date> outbound              0 10 * * *  after the morning run
+  #   worker no-shows <date> return                0 20 * * *  after the evening run
+  #
+  # That is twelve cron services, roughly $12/month. Dropping the return leg or
+  # the defaults jobs to save money does not fail: riders who never answer are
+  # simply never defaulted and the return leg is never swept, silently. Decide
+  # that deliberately or schedule all twelve.
+  #
+  # The date is an argument because a scheduler that cannot compute it must not
+  # default to today, so the wrapper that supplies it is part of switching these
+  # on, for example:
+  #   dockerCommand: node dist/worker.js ask-dispatch $(date -u +%F) outbound
 
   # ---- Production ----
   # Rebuilt from staging's ACTUAL configuration (#103/#178/#182 all added env

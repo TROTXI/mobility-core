@@ -403,6 +403,14 @@ export class FinancialFoundation {
     )
       fail(409, 'period_payment_blocked', 'A payment dispute blocks this period.');
     await this.options.assertPeriodCanClose(c, { ...b, periodId });
+    // A closure for a period that is still open is a half-written close, and
+    // closing on top of it would either duplicate the conversion or fail on a
+    // unique index deep inside the write. Refuse it as a period needing
+    // reconciliation, so one broken period is reported and the batch goes on.
+    if (
+      (await c.query('SELECT 1 FROM app.period_closures WHERE period_id=$1', [periodId])).rowCount
+    )
+      fail(409, 'period_not_convertible', 'Period requires reconciliation.');
     const p = (
       await c.query<PurchaseRow>('SELECT * FROM app.purchases WHERE id=$1', [period.purchase_id])
     ).rows[0]!;

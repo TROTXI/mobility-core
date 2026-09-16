@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { spawnSync } from 'node:child_process';
-import { scenarios, supplemental, negativeControls } from './catalog.mjs';
+import { scenarios, supplemental, negativeControls, candidateSubstitutions } from './catalog.mjs';
 import {
   assertExpected,
   assertInventory,
@@ -94,4 +94,45 @@ test('CLI rejects missing database/candidate and mistyped mode rather than runni
   const typo = spawnSync(process.execPath, [script, '--mod=compare'], { encoding: 'utf8' });
   assert.notEqual(typo.status, 0);
   assert.match(typo.stderr, /Unknown option/);
+});
+
+test('a substituted case must name what it replaces, why, and prove something', () => {
+  // A substitution is the only way a required case may go unrun against the
+  // candidate. It is not an exemption: it names the case, states why that
+  // case's premise cannot exist in the replacement model, and is itself a
+  // scenario with fixed expectations that has to pass.
+  const ids = new Set(supplemental.map((s) => s.id));
+  for (const entry of candidateSubstitutions) {
+    assert.ok(ids.has(entry.replaces), `${entry.id} replaces an unknown case`);
+    assert.ok(entry.reason && entry.reason.length > 40, `${entry.id} states no real reason`);
+    assert.ok(
+      entry.steps.some((step) => step.checkpoint),
+      `${entry.id} asserts nothing`,
+    );
+    assert.ok(!ids.has(entry.id), `${entry.id} must not shadow a required case id`);
+  }
+  // And it may not quietly stand in for a PAY scenario: those are the gate.
+  const required = new Set(scenarios.map((s) => s.id));
+  for (const entry of candidateSubstitutions)
+    assert.ok(!required.has(entry.replaces), `${entry.id} cannot substitute a PAY scenario`);
+});
+
+test('the compare gate refuses a run that covered fewer cases than the baseline', () => {
+  // The coverage rule the runner applies, exercised directly: a supplemental
+  // case that was neither run nor substituted leaves the gate unsatisfied.
+  const standIn = new Map(candidateSubstitutions.map((s) => [s.id, s.replaces]));
+  const covered = (ran) => new Set(ran.map((id) => standIn.get(id) ?? id));
+  const everything = covered([
+    ...supplemental
+      .filter((s) => !candidateSubstitutions.some((c) => c.replaces === s.id))
+      .map((s) => s.id),
+    ...candidateSubstitutions.map((s) => s.id),
+  ]);
+  assert.ok(supplemental.every((s) => everything.has(s.id)));
+  const short = covered(supplemental.slice(1).map((s) => s.id));
+  assert.ok(
+    supplemental.some((s) => !short.has(s.id)),
+    'a dropped case must be visible',
+  );
+  assert.equal(negativeControls.length, 2);
 });

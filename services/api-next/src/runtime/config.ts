@@ -54,6 +54,8 @@ export interface RuntimeConfig {
     commuter: { ios: number; android: number };
   };
   limits: { perUser: number; perIp: number; perAuth: number };
+  /** Which peers may state the client's address. `false` trusts nobody. */
+  trustProxy: string | false;
   /** The operator account every maintenance receipt is attributed to. */
   maintenanceUserId: string;
 }
@@ -99,7 +101,10 @@ function url(env: Env, name: string): string {
     throw new ConfigurationError(`${name} must be an absolute URL`);
   }
   if (parsed.protocol !== 'https:') throw new ConfigurationError(`${name} must be https`);
-  return parsed.toString();
+  // Parsed only to check it. Returning the parsed form would normalise away a
+  // trailing path and percent-encode a tile template's braces, so a validator
+  // that reported success would have handed clients a URL that fetches nothing.
+  return raw;
 }
 
 export function readConfiguration(env: Env = process.env): RuntimeConfig {
@@ -145,6 +150,20 @@ export function readConfiguration(env: Env = process.env): RuntimeConfig {
   const maintenanceUserId = required(env, 'REPLACEMENT_MAINTENANCE_USER_ID').toLowerCase();
   if (!uuid.test(maintenanceUserId))
     throw new ConfigurationError('REPLACEMENT_MAINTENANCE_USER_ID must be a user id');
+  // Every per-IP limit here buckets on the address the server sees. Behind a
+  // load balancer that is the balancer, so one caller's burst rate-limits
+  // everybody and per-IP admission stops being a control at all. The boundary
+  // is a deployment fact nobody can guess, so it is stated rather than
+  // defaulted. A hop count is not an answer: Fastify ignores a numeric value
+  // and trusts nobody, which would silently switch the whole thing off.
+  const proxy = required(env, 'REPLACEMENT_TRUST_PROXY');
+  if (/^\d+$/.test(proxy))
+    throw new ConfigurationError(
+      'REPLACEMENT_TRUST_PROXY must name the peers to trust, not a hop count',
+    );
+  if (proxy !== 'none' && !/^[A-Za-z0-9.:/, _-]{1,200}$/.test(proxy))
+    throw new ConfigurationError('REPLACEMENT_TRUST_PROXY must be "none" or an address list');
+  const trustProxy = proxy === 'none' ? (false as const) : proxy;
   const databaseUrl = required(env, 'REPLACEMENT_RUNTIME_DATABASE_URL');
   if (databaseUrl === optional(env, 'REPLACEMENT_DATABASE_URL'))
     throw new ConfigurationError(
@@ -218,6 +237,7 @@ export function readConfiguration(env: Env = process.env): RuntimeConfig {
       perIp: integer(env, 'REPLACEMENT_REQUESTS_PER_IP_PER_MINUTE', 1, 100_000),
       perAuth: integer(env, 'REPLACEMENT_AUTH_REQUESTS_PER_MINUTE', 1, 10_000),
     },
+    trustProxy,
     maintenanceUserId,
   };
 }

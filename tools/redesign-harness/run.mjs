@@ -16,7 +16,7 @@ import {
   adminUrl,
   dbIdentifier,
 } from './support.mjs';
-import { scenarios, supplemental, negativeControls } from './catalog.mjs';
+import { scenarios, supplemental, negativeControls, candidateSubstitutions } from './catalog.mjs';
 import {
   assertExpected,
   assertInventory,
@@ -93,11 +93,25 @@ const report = {
   candidateRevision: candidateRevision ?? null,
   originalSuite: null,
   requiredScenarios: scenarios.map((s) => s.id),
+  requiredSupplemental: supplemental.map((s) => s.id),
   scenarios: [],
   supplemental: [],
   negativeControls: [],
+  candidateSupplemental: [],
+  candidateNegativeControls: [],
+  substitutions: [],
   cleanup: [],
 };
+// A substitution stands in for a supplemental case whose baseline premise the
+// candidate model makes unrepresentable. It must name the case it replaces and
+// why, and it is still a scenario that has to pass: this is the only way a
+// supplemental case may go unrun against the candidate, and never silently.
+const substituted = new Map(candidateSubstitutions.map((s) => [s.replaces, s]));
+for (const entry of candidateSubstitutions) {
+  if (!supplemental.some((s) => s.id === entry.replaces))
+    throw new Error(`Substitution ${entry.id} replaces an unknown case ${entry.replaces}`);
+  if (!entry.reason?.trim()) throw new Error(`Substitution ${entry.id} states no reason`);
+}
 const connection = (name) => {
   const url = new URL(source);
   url.pathname = `/${name}`;
@@ -303,21 +317,49 @@ try {
       }
     }
   }
-  for (const scenario of supplemental)
+  for (const scenario of supplemental) {
     report.supplemental.push(await runScenario(scenario, createAdapter, 'supplemental'));
-  for (const control of negativeControls)
+    if (!candidate) continue;
+    const stand = substituted.get(scenario.id);
+    if (stand) {
+      report.substitutions.push({ id: stand.id, replaces: stand.replaces, reason: stand.reason });
+      report.candidateSupplemental.push(
+        await runScenario(stand, candidate.createAdapter, 'candidate-supplemental'),
+      );
+    } else
+      report.candidateSupplemental.push(
+        await runScenario(scenario, candidate.createAdapter, 'candidate-supplemental'),
+      );
+  }
+  for (const control of negativeControls) {
+    const scenario = scenarios.find((s) => s.id === control.scenario);
     report.negativeControls.push(
-      await runScenario(
-        scenarios.find((s) => s.id === control.scenario),
-        createAdapter,
-        control.id.toLowerCase(),
-        control,
-      ),
+      await runScenario(scenario, createAdapter, control.id.toLowerCase(), control),
     );
+    if (candidate)
+      report.candidateNegativeControls.push(
+        await runScenario(
+          scenario,
+          candidate.createAdapter,
+          `candidate-${control.id.toLowerCase()}`,
+          control,
+        ),
+      );
+  }
+  // Every required case is accounted for on both sides. A candidate run that
+  // covered fewer cases than the baseline is a failed gate, not a shorter one.
+  const standIn = new Map(candidateSubstitutions.map((s) => [s.id, s.replaces]));
+  const covered = new Set(
+    report.candidateSupplemental.map((entry) => standIn.get(entry.id) ?? entry.id),
+  );
   if (
     report.scenarios.some((s) => s.status !== 'passed' || s.comparison === 'failed') ||
     report.supplemental.some((s) => s.status !== 'passed') ||
-    report.negativeControls.some((s) => s.status !== 'detected')
+    report.negativeControls.some((s) => s.status !== 'detected') ||
+    (candidate &&
+      (report.candidateSupplemental.some((s) => s.status !== 'passed') ||
+        report.candidateNegativeControls.some((s) => s.status !== 'detected') ||
+        supplemental.some((s) => !covered.has(s.id))))
   )
     throw new Error('Harness gate failed; inspect scenario evidence');
   await verifyBaseline();

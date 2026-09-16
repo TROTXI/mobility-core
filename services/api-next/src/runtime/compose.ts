@@ -31,12 +31,14 @@ export interface Backend {
 }
 
 /**
- * Proof that this process is connected as the narrow runtime role, asked of
- * the database rather than assumed from the URL it was handed.
+ * A startup spot check that this connection is not the schema owner.
  *
- * A deployment that accidentally points at the migration owner would work
- * perfectly and silently hold the power to rewrite its own audit history, so
- * the check is a startup condition, not a warning.
+ * It asks two questions the owner answers yes to and the runtime role does not:
+ * can it create objects in `app`, and can it update `app.trip_events`. That is
+ * not a full audit of the grant — `grantRuntime` is what actually narrows the
+ * role, table by table. It is here because a deployment pointed at the
+ * migration owner would otherwise work perfectly and be quietly unauditable,
+ * and that mistake is worth catching before the listener opens.
  */
 export async function assertRuntimeRole(pool: Pool): Promise<void> {
   const row = (
@@ -109,6 +111,7 @@ export async function composeBackend(config: RuntimeConfig): Promise<Backend> {
       pool,
       cursorSecret: config.keys.cursorSecret,
       credentialReplayKey: config.keys.credentialReplay,
+      trustProxy: config.trustProxy,
       requestsPerMinute: config.limits.perUser,
       requestsPerIpPerMinute: config.limits.perIp,
       authRequestsPerMinute: config.limits.perAuth,
@@ -231,10 +234,13 @@ export async function composeBackend(config: RuntimeConfig): Promise<Backend> {
       account: built().account,
       maintenanceUserId: config.maintenanceUserId,
       close: async () => {
-        await app.close();
         if (closed) return;
         closed = true;
-        await pool.end();
+        try {
+          await app.close();
+        } finally {
+          await pool.end();
+        }
       },
     };
   } catch (error) {
