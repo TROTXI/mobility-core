@@ -467,6 +467,7 @@ export class Catalog {
       return {
         ...base,
         departureId: r.departure_id,
+        patternId: r.pattern_id,
         patternVersionId: r.pattern_version_id,
         serviceWindow: r.service_window,
         localDeparture: String(r.local_departure).slice(0, 5),
@@ -533,9 +534,12 @@ export class Catalog {
     } else if (operation === 'listOpsStops') kind = 'stop';
     else if (operation === 'listPatterns' || operation === 'getPattern') {
       kind = 'pattern';
+      // A schedule/trip can name a published future or retired pattern absent
+      // from Route.patternIds (the current-time projection). Its explicit
+      // owner remains readable; draft-only and archived corridors stay hidden.
       if (publicRead)
         where = `EXISTS (SELECT 1 FROM app.routes r WHERE r.id=x.route_id AND r.archived_at IS NULL)
-        AND EXISTS (SELECT 1 FROM app.route_pattern_versions v WHERE v.pattern_id=x.id AND ${activeVersion('v')})`;
+        AND EXISTS (SELECT 1 FROM app.route_pattern_versions v WHERE v.pattern_id=x.id AND v.state<>'draft')`;
     } else if (operation === 'listRouteSchedules') {
       kind = 'schedule';
       if (

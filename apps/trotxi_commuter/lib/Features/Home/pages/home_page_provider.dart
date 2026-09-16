@@ -1,6 +1,6 @@
 import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:trotxi_client_next/trotxi_client_next.dart' as wire;
+import 'package:trotxi_client/trotxi_client.dart' as wire;
 import 'package:trotxi_commuter/core/api/commuter_api.dart';
 import 'package:trotxi_commuter/main.dart';
 

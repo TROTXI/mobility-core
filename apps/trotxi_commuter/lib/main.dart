@@ -9,7 +9,7 @@ import 'package:trotxi_commuter/Features/Onboarding/widgets/splash_view.dart';
 import 'package:trotxi_commuter/Features/Onboarding/pages/onboard_page.dart';
 import 'package:trotxi_commuter/Features/Home/pages/home_page.dart';
 import 'package:package_info_plus/package_info_plus.dart';
-import 'package:trotxi_client_next/trotxi_client_next.dart' as wire;
+import 'package:trotxi_client/trotxi_client.dart' as wire;
 import 'package:trotxi_commuter/core/Tokens/token_storage.dart';
 import 'package:trotxi_commuter/core/config/theme/app_theme.dart';
 import 'package:trotxi_commuter/core/config/theme/app_theme_controller.dart';

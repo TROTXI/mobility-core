@@ -1,6 +1,6 @@
 import 'package:dio/dio.dart';
-import 'package:trotxi_client_next/trotxi_client_next.dart' as wire;
-import 'package:trotxi_client_next/scoped_token_store.dart';
+import 'package:trotxi_client/trotxi_client.dart' as wire;
+import 'package:trotxi_client/scoped_token_store.dart';
 import 'package:trotxi_driver/core/api/driver_api.dart';
 
 class MemorySessionStorage implements SessionStorage {

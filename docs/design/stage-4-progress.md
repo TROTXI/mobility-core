@@ -27,7 +27,7 @@ test assertion cannot be wrapped as an expected offline failure.
 
 ## Driver session boundary (wired into the driver app)
 
-`apps/trotxi_client_next/lib/driver_session_client.dart` uses the generated
+`apps/trotxi_client/lib/driver_session_client.dart` uses the generated
 replacement sign-in, account, logout and PIN-change operations. It deliberately
 does not accept the old flat sign-in payload or substitute an account ID for a
 fleet driver ID. An account-only restore leaves fleet ID, driver code and the
@@ -57,7 +57,7 @@ cases; `flutter analyze --no-pub` clean. Tests exercise actual generated
 serializers and the factory's interceptor chain with controlled HTTP/storage
 boundaries. They do **not** prove native keychain/keystore behavior on a device
 or sign-in against the replacement server. The existing Flutter CI matrix
-already runs the whole `trotxi_client_next` suite, so these files are not a
+already runs the whole `trotxi_client` suite, so these files are not a
 separate, unregistered test command.
 
 ## Driver application migration
@@ -249,11 +249,10 @@ the local URLs/realm shown above, not staging. Android warns about existing
 Firebase plugins and `package_info_plus` using Kotlin Gradle Plugin; compilation
 succeeds, but a future Flutter toolchain upgrade needs re-verification.
 
-Catalogue limitation: a schedule exposes its version ID but not parent pattern
-ID. The picker resolves it through the route's listed patterns and scoped
-version reads; an unresolvable schedule fails visibly, never guesses a revision.
-Future-only patterns omitted from the route's current pattern list need a
-contract-backed resolution path before promising those departures in the picker.
+Catalogue limitation at that checkpoint: schedules did not expose their parent
+pattern. This is now resolved: schedules and trip views carry `patternId`, and
+the picker and maps use that owner directly. The completion tests include a
+published future pattern absent from today's route projection.
 
 ## Commuter Paystack checkout and durable recovery
 
@@ -360,19 +359,18 @@ transport tests replace the pending authorized server/device map walkthrough.
 This uses existing Flutter components and the shared map, not a claim of a
 newly verified Figma layout.
 
-## Remaining implementation sequence
+## Remaining verification and handoff
 
 1. **Driver walkthrough:** the coherent migration above is implemented. Verify
    actual replacement sign-in, secure storage, trip lifecycle, boarding, GPS
    receipt/live reads, upgrade admission and session changes on both platforms.
-2. **Commuter remaining features:** native avatar selection/upload and device
-   registration/notification handling. Native Apple
-   sign-in is not wired (the button says so). Resolve the catalogue limitation
-   above. Then verify both platforms against the isolated replacement server.
-3. **Canonical client and release checks:** remove unused legacy package copies
-   once both apps have moved, regenerate from the reviewed contract, and verify
-   both app suites and builds. Do not mix old and replacement sessions/data to
-   make an incompletely migrated build appear usable.
+2. **Commuter walkthrough:** verify the migrated flows on both platforms against
+   the isolated replacement server. Native avatar selection/upload, push/device
+   notification handling and native Apple sign-in were not wired in the old
+   app and are handed to frontend separately, per the approved scope.
+3. **Canonical clients:** cleanup is implemented on the completion branch. The
+   replacement now owns `api_client` and `trotxi_client`; the unused legacy and
+   temporary `_next` copies are removed. Both app suites remain in CI.
 4. **Rehearsal:** local and isolated staging walkthroughs, actual hosted Paystack
    TEST payment and automatic delivery/reconciliation, private-object erasure,
    minimum-version enforcement, and the full-size retention/load gate.

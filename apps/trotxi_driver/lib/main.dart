@@ -22,7 +22,7 @@ import 'package:trotxi_driver/data/route_map_repository.dart';
 import 'package:trotxi_driver/data/trips_repository.dart';
 import 'package:trotxi_driver/data/work_repository.dart';
 import 'package:trotxi_driver/core/api/driver_api.dart';
-import 'package:trotxi_client_next/trotxi_client_next.dart' as wire;
+import 'package:trotxi_client/trotxi_client.dart' as wire;
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:trotxi_driver/firebase_options.dart';
 import 'package:trotxi_driver/firebase_performance.dart';

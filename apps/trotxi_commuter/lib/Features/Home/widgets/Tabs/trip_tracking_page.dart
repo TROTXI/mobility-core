@@ -1,8 +1,8 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:trotxi_client_next/commuter_trip_tracking.dart';
-import 'package:trotxi_client_next/trotxi_client_next.dart' as wire;
+import 'package:trotxi_client/commuter_trip_tracking.dart';
+import 'package:trotxi_client/trotxi_client.dart' as wire;
 import 'package:trotxi_commuter/core/api/commuter_api.dart';
 import 'package:trotxi_map/trotxi_map.dart';
 import 'trip_map_canvas.dart';

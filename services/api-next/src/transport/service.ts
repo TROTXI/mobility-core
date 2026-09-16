@@ -638,6 +638,7 @@ export class TransportService {
       id: s.id,
       departureId: s.departure_id,
       patternVersionId: s.pattern_version_id,
+      patternId: s.pattern_id,
       serviceWindow: s.service_window,
       localDeparture: s.local_departure.slice(0, 5),
       timeZone: s.time_zone,
@@ -659,7 +660,7 @@ export class TransportService {
   ): Promise<Body[]> {
     const rows = (
       await client.query(
-        `SELECT t.*,t.service_date::text,p.route_id,p.direction,v.label AS vehicle_label,
+        `SELECT t.*,t.service_date::text,p.route_id,p.id AS pattern_id,p.direction,v.label AS vehicle_label,
       to_char(t.scheduled_at AT TIME ZONE 'UTC','YYYY-MM-DD"T"HH24:MI:SS.US"Z"') AS cursor_time
       FROM app.trips t JOIN app.route_pattern_versions pv ON pv.id=t.pattern_version_id
       JOIN app.route_patterns p ON p.id=pv.pattern_id LEFT JOIN app.vehicles v ON v.id=t.vehicle_id
@@ -684,6 +685,7 @@ export class TransportService {
       serviceDate: t.service_date,
       runNumber: t.run_number,
       routeId: t.route_id,
+      patternId: t.pattern_id,
       patternVersionId: t.pattern_version_id,
       direction: t.direction,
       scheduledAt: t.scheduled_at.toISOString(),

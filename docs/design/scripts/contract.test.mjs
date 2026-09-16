@@ -11,6 +11,37 @@ const spec = JSON.parse(
 const inventory = JSON.parse(
   await readFile(new URL('../contracts/endpoint-inventory.json', import.meta.url), 'utf8'),
 );
+test('schedule and trip contracts carry the exact pattern owner, including driver and ops views', () => {
+  for (const name of ['Schedule', 'Trip', 'DriverTrip', 'OpsTrip']) {
+    assert.ok(spec.components.schemas[name].required.includes('patternId'), name);
+    assert.deepEqual(
+      spec.components.schemas[name].properties.patternId,
+      spec.components.schemas[name].properties.patternVersionId,
+    );
+  }
+});
+test('both apps use the canonical replacement client and codegen cannot pull legacy staging', async () => {
+  const root = new URL('../../../', import.meta.url);
+  const pkg = JSON.parse(await readFile(new URL('package.json', root), 'utf8'));
+  assert.equal(pkg.scripts.codegen, 'pnpm run codegen:replacement');
+  assert.match(
+    pkg.scripts['codegen:replacement'],
+    /-i docs\/design\/contracts\/replacement\.openapi\.json/,
+  );
+  assert.match(
+    pkg.scripts['codegen:replacement'],
+    /-o apps\/api_client --additional-properties=pubName=trotxi_api_client,/,
+  );
+  assert.doesNotMatch(pkg.scripts['codegen:replacement'], /https?:|_next/);
+  for (const app of ['trotxi_driver', 'trotxi_commuter']) {
+    const pubspec = await readFile(new URL(`apps/${app}/pubspec.yaml`, root), 'utf8');
+    assert.match(pubspec, /trotxi_client:\s*\n\s*path: \.\.\/trotxi_client/);
+    assert.doesNotMatch(pubspec, /api_client|_next/);
+  }
+  const shared = await readFile(new URL('apps/trotxi_client/pubspec.yaml', root), 'utf8');
+  assert.match(shared, /trotxi_api_client:\s*\n\s*path: \.\.\/api_client/);
+  assert.doesNotMatch(shared, /_next/);
+});
 test('purchase discovery documents all history, not the trip seven-day default', () => {
   for (const path of ['/v1/me/purchases', '/v1/ops/purchases']) {
     const parameters = spec.paths[path].get.parameters;

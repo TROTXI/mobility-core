@@ -1,7 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:trotxi_client_next/trotxi_client_next.dart' as wire;
+import 'package:trotxi_client/trotxi_client.dart' as wire;
 import 'package:trotxi_commuter/Features/Home/widgets/Tabs/commuter_preference.dart';
 import 'package:trotxi_commuter/core/config/theme/app_theme.dart';
 import 'package:trotxi_commuter/core/repositories/commute_repository.dart';
@@ -17,7 +17,8 @@ void main() {
     'id': 'route',
     'name': 'New corridor',
     'description': null,
-    'patternIds': ['outbound', 'return'],
+    // These published schedule owners are not in today's route projection.
+    'patternIds': <String>[],
     'acceptsDriverRequests': false,
     'archived': false,
     'editToken': 'route:1',
@@ -28,6 +29,7 @@ void main() {
   Map<String, Object?> schedule(String dir) => {
     'id': 'schedule-$dir',
     'departureId': 'departure-$dir',
+    'patternId': dir,
     'patternVersionId': 'version-$dir',
     'serviceWindow': dir == 'outbound' ? 'morning' : 'evening',
     'localDeparture': dir == 'outbound' ? '06:30' : '17:30',

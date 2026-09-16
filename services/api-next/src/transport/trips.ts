@@ -51,6 +51,7 @@ function view(r: QueryResultRow): Body {
     serviceDate: day(r.service_date),
     runNumber: r.run_number,
     routeId: r.route_id,
+    patternId: r.pattern_id,
     patternVersionId: r.pattern_version_id,
     direction: r.direction,
     scheduledAt: iso(r.scheduled_at),
@@ -75,7 +76,7 @@ export class Trips {
     if (operation === 'listTrips') return this.list(client, actor, query);
     const trip = (
       await client.query(
-        `SELECT t.*,r.id AS route_id,p.direction,v.label AS vehicle_label,sc.service_window
+        `SELECT t.*,r.id AS route_id,p.id AS pattern_id,p.direction,v.label AS vehicle_label,sc.service_window
         FROM app.trips t
         JOIN app.service_schedules sc
           ON sc.id=t.schedule_id AND sc.pattern_version_id=t.pattern_version_id
@@ -139,7 +140,7 @@ export class Trips {
     ];
     const rows = (
       await client.query(
-        `SELECT t.*,r.id AS route_id,p.direction,v.label AS vehicle_label,
+        `SELECT t.*,r.id AS route_id,p.id AS pattern_id,p.direction,v.label AS vehicle_label,
           to_char(t.scheduled_at AT TIME ZONE 'UTC','YYYY-MM-DD"T"HH24:MI:SS.US"Z"') AS cursor_time
         FROM app.trips t
         JOIN app.route_pattern_versions pv ON pv.id=t.pattern_version_id AND pv.state<>'draft'

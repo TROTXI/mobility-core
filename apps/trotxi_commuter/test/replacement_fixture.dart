@@ -2,8 +2,8 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
 import 'package:dio/dio.dart';
-import 'package:trotxi_client_next/scoped_token_store.dart';
-import 'package:trotxi_client_next/trotxi_client_next.dart' as wire;
+import 'package:trotxi_client/scoped_token_store.dart';
+import 'package:trotxi_client/trotxi_client.dart' as wire;
 import 'package:trotxi_commuter/core/api/commuter_api.dart';
 
 class MemoryStorage implements SessionStorage {
@@ -117,7 +117,7 @@ class Fixture {
     ),
     storage: storage,
   );
-  late final wire.TrotxiApiClientNext transport;
+  late final wire.TrotxiApiClient transport;
   late final CommuterApi api;
   final requests = <RequestOptions>[];
   FutureOr<ResponseBody> Function(RequestOptions) reply = (o) {

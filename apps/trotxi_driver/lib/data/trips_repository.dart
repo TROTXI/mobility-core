@@ -1,4 +1,4 @@
-import 'package:trotxi_client_next/trotxi_client_next.dart' as wire;
+import 'package:trotxi_client/trotxi_client.dart' as wire;
 import 'package:trotxi_driver/core/api/driver_api.dart';
 import 'package:trotxi_driver/Presentations/Boarding/models/scan_result.dart';
 

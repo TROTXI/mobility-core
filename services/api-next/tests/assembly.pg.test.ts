@@ -819,8 +819,31 @@ test('ASM-22 two instances share one budget, and a closed window is the worker t
     });
   // Two each, alternating. A per-process budget of four would admit all four
   // and then four more; one shared budget of four admits exactly four.
+  // The limiter uses fixed database-clock windows. A minute rollover between
+  // calls legitimately resets the budget: collect six in one observed window
+  // instead of assuming this test always starts far enough from its boundary.
+  // Bound the attempts; a slow/inconclusive run must fail, never pass vacuously.
+  let window: number | undefined;
   const codes: number[] = [];
-  for (let i = 0; i < 6; i++) codes.push((await ask(i % 2 ? second : first)).statusCode);
+  for (let i = 0; i < 18 && codes.length < 6; i++) {
+    const response = await ask(i % 2 ? second : first);
+    const row = (
+      await f.owner.query(
+        'SELECT window_started_at,count FROM app.admission_counters WHERE subject=$1',
+        [f.actor.userId],
+      )
+    ).rows[0];
+    assert.ok(row, 'admission must write the shared counter');
+    const observed = row.window_started_at.getTime();
+    if (observed !== window) {
+      window = observed;
+      codes.length = 0;
+    }
+    codes.push(response.statusCode);
+    assert.equal(Number(row.count), codes.length, 'both instances count into this same window');
+  }
+  assert.equal(codes.length, 6, 'six alternating requests must share an observed window');
+  assert.deepEqual(codes, [200, 200, 200, 200, 429, 429]);
   assert.equal(
     codes.filter((c) => c === 429).length,
     2,

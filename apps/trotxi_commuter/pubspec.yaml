@@ -30,8 +30,8 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  trotxi_client_next:
-    path: ../trotxi_client_next
+  trotxi_client:
+    path: ../trotxi_client
   trotxi_map:
     path: ../trotxi_map
   package_info_plus: ^8.3.1

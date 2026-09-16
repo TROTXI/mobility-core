@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:trotxi_client_next/commute_selection.dart';
-import 'package:trotxi_client_next/trotxi_client_next.dart' as wire;
+import 'package:trotxi_client/commute_selection.dart';
+import 'package:trotxi_client/trotxi_client.dart' as wire;
 import 'package:trotxi_commuter/core/api/commuter_api.dart';
 import 'package:trotxi_commuter/core/config/theme/app_colors.dart';
 import 'package:trotxi_commuter/core/repositories/commute_repository.dart'
@@ -95,32 +95,18 @@ class _CommutePickerPageState extends State<CommutePickerPage> {
     try {
       final schedules = await widget.client.schedules(route.id);
       final patterns = <wire.Pattern>[];
-      for (final id in route.patternIds) {
+      for (final id in schedules.map((s) => s.patternId).toSet()) {
         widget.client.ensureSession(generation);
         patterns.add(await widget.client.pattern(id));
       }
-      // Schedule exposes version identity but not its parent pattern. Resolve
-      // ownership through the public, pattern-scoped version reads; never
-      // substitute publishedVersionId (which may be a different revision).
+      // The schedule names its exact parent and version. Current route links
+      // need not contain a future or retired pattern used by this departure.
       final versions = <String, wire.PatternVersion>{};
       for (final schedule in schedules) {
         if (versions.containsKey(schedule.patternVersionId)) continue;
-        for (final pattern in patterns) {
-          widget.client.ensureSession(generation);
-          try {
-            versions[schedule.patternVersionId] = await widget.client
-                .patternVersion(pattern.id, schedule.patternVersionId);
-            break;
-          } on ApiException catch (e) {
-            if (e.statusCode != 404) rethrow;
-          }
-        }
-        if (!versions.containsKey(schedule.patternVersionId)) {
-          throw const ApiException(
-            409,
-            'The route catalogue changed. Reload it before choosing your commute.',
-          );
-        }
+        widget.client.ensureSession(generation);
+        versions[schedule.patternVersionId] = await widget.client
+            .patternVersion(schedule.patternId, schedule.patternVersionId);
       }
       widget.client.ensureSession(generation);
       final choices =

@@ -3,11 +3,11 @@ import 'dart:convert';
 import 'package:built_value/serializer.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
-import 'package:trotxi_client_next/trotxi_client_next.dart' as wire;
-import 'package:trotxi_client_next/scoped_token_store.dart';
+import 'package:trotxi_client/trotxi_client.dart' as wire;
+import 'package:trotxi_client/scoped_token_store.dart';
 import 'package:uuid/uuid.dart';
 
-export 'package:trotxi_client_next/trotxi_client_next.dart'
+export 'package:trotxi_client/trotxi_client.dart'
     show
         TrotxiException,
         ApiException,
@@ -62,7 +62,7 @@ class DriverApi {
     );
   }
 
-  final wire.TrotxiApiClientNext client;
+  final wire.TrotxiApiClient client;
   final ScopedTokenStore store;
   final wire.ClientMetadata metadata;
   final upgradeRequired = ValueNotifier(false);

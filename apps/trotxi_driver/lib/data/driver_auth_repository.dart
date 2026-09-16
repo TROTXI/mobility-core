@@ -1,5 +1,5 @@
-import 'package:trotxi_client_next/driver_session_client.dart';
-import 'package:trotxi_client_next/scoped_token_store.dart';
+import 'package:trotxi_client/driver_session_client.dart';
+import 'package:trotxi_client/scoped_token_store.dart';
 import 'package:trotxi_driver/core/api/driver_api.dart';
 
 /// The signed-in driver, as the app needs it after sign-in.
