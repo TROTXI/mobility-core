@@ -108,10 +108,11 @@ export class Trips {
     const dates = (value: string | undefined, name: string) => {
       if (value === undefined) return null;
       // A date this service accepts has to be a date PostgreSQL accepts. Date
-      // .parse rolls the thirtieth of February into March; the round trip is
-      // what catches a day that never existed.
+      // .parse rolls the thirtieth of February into March, so the round trip
+      // catches a day that never existed; year zero survives that round trip
+      // and PostgreSQL refuses it anyway, so the pattern excludes it.
       if (
-        !/^\d{4}-\d\d-\d\d$/.test(value) ||
+        !/^(?!0000)\d{4}-\d\d-\d\d$/.test(value) ||
         Number.isNaN(Date.parse(value)) ||
         new Date(value).toISOString().slice(0, 10) !== value
       )
@@ -358,9 +359,7 @@ export class Trips {
           FROM app.route_pattern_versions v JOIN app.route_geometries g ON g.id=v.geometry_id
           WHERE v.id=$1
         ), here AS (
-          SELECT l.id AS geometry_id,
-                 ST_LineLocatePoint(l.line,ST_SetSRID(ST_MakePoint($2,$3),4326))*l.length_m AS raw_m
-          FROM line l
+          SELECT l.id AS geometry_id FROM line l
         ), reached AS (
           SELECT s.ordinal,d.distance_meters
           FROM app.route_pattern_stops s
@@ -368,9 +367,23 @@ export class Trips {
             ON d.stop_occurrence_id=s.id AND d.geometry_id=(SELECT geometry_id FROM here)
           WHERE s.id=$7 AND s.pattern_version_id=$1
         ), at AS (
-          SELECT greatest(h.raw_m,coalesce(r.distance_meters,0)) AS along_m,
-                 coalesce(r.ordinal,-1) AS reached_ordinal
-          FROM here h LEFT JOIN reached r ON true
+          -- A route that retraces its own path passes the same coordinates
+          -- twice, so locating the bus on the whole line answers with the
+          -- first of them and a run down the return leg reads as standing
+          -- still. Locating it on the line still to run instead makes that
+          -- leg count: the search starts where the driver last recorded
+          -- arriving, which is the only thing that says which pass this is.
+          SELECT CASE
+            WHEN r.distance_meters IS NULL
+              THEN ST_LineLocatePoint(l.line,ST_SetSRID(ST_MakePoint($2,$3),4326))*l.length_m
+            WHEN r.distance_meters >= l.length_m THEN l.length_m
+            ELSE r.distance_meters + (l.length_m-r.distance_meters)
+              * ST_LineLocatePoint(
+                  ST_LineSubstring(l.line,r.distance_meters/l.length_m,1),
+                  ST_SetSRID(ST_MakePoint($2,$3),4326))
+          END AS along_m,
+          coalesce(r.ordinal,-1) AS reached_ordinal
+          FROM line l LEFT JOIN reached r ON true
         ), stops AS (
           SELECT s.ordinal,d.stop_occurrence_id,d.distance_meters
           FROM app.geometry_stop_distances d

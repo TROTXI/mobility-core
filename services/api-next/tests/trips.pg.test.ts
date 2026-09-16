@@ -113,7 +113,7 @@ async function fixture(t: TestContext) {
     );
   };
   /** A second published corridor, so "only this route" means something. */
-  const corridor = async (name: string, firstStopMetres = 0) => {
+  const corridor = async (name: string, firstStopMetres = 0, stopCount = 2) => {
     const one = async (sql: string, args: unknown[] = []) =>
       (await f.owner.query(sql + ' RETURNING id', args)).rows[0].id as string;
     const route = await one('INSERT INTO app.routes(name) VALUES ($1)', [name]);
@@ -130,7 +130,7 @@ async function fixture(t: TestContext) {
       [name],
     );
     const occurrences: string[] = [];
-    for (let ordinal = 0; ordinal < 2; ordinal++)
+    for (let ordinal = 0; ordinal < stopCount; ordinal++)
       occurrences.push(
         await one(
           `INSERT INTO app.route_pattern_stops(pattern_version_id,stop_id,ordinal,name,latitude,longitude)
@@ -591,18 +591,18 @@ test("TRP-07 publishing a future revision leaves today's departures visible", as
 
 test('TRP-08 coverage that has lapsed buys no more watching', async (t) => {
   const f = await fixture(t);
-  const expiry = new Date(Date.now() - 60_000);
-  const starts = new Date(expiry);
-  starts.setUTCMonth(starts.getUTCMonth() - 1);
-  const purchase = await f.financial.checkout(f.actor, f.input, randomUUID(), starts);
-  assert.equal(await f.financial.fulfill(f.settle(purchase, starts)), 'fulfilled');
+  // Bought four months ago and never renewed. No month arithmetic: the period
+  // states its own end, and the run is placed just inside it.
+  const bought = new Date(Date.now() - 120 * 86400000);
+  const purchase = await f.financial.checkout(f.actor, f.input, randomUUID(), bought);
+  assert.equal(await f.financial.fulfill(f.settle(purchase, bought)), 'fulfilled');
   const period = await f.period(purchase.id);
-  const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
-  const run = await f.trip({ day: yesterday });
+  const ends = period.effective_ends_at as Date;
+  const run = await f.trip({ day: ends.toISOString().slice(0, 10) });
   // An ordinary delayed run that crossed the paid deadline while running.
   await f.owner.query(
     "UPDATE app.trips SET scheduled_at=$2,status='active',started_at=$2 WHERE id=$1",
-    [run.id, new Date(expiry.getTime() - 60_000)],
+    [run.id, new Date(ends.getTime() - 60_000)],
   );
   await f.place(run.id, 100);
   const facts = (
@@ -623,24 +623,47 @@ test('TRP-08 coverage that has lapsed buys no more watching', async (t) => {
   );
 });
 
-test('TRP-09 a line that doubles back does not resurrect a stop already reached', async (t) => {
+test('TRP-09 a line that doubles back keeps counting down on the way home', async (t) => {
   const f = await fixture(t);
   await f.buy();
-  const run = await f.trip({ status: 'active' });
-  const reached = f.input.legs[0]!.dropoffOccurrenceId;
+  const route = await f.corridor('Three-stop loop', 0, 3);
+  const run = await f.trip({ status: 'active', scheduleId: route.scheduleId });
+  const stops = (
+    await f.owner.query(
+      'SELECT id,ordinal FROM app.route_pattern_stops WHERE pattern_version_id=$1 ORDER BY ordinal',
+      [route.patternVersionId],
+    )
+  ).rows;
   await f.owner.query('UPDATE app.trips SET current_stop_occurrence_id=$2 WHERE id=$1', [
     run.id,
-    reached,
+    stops[1].id,
   ]);
-  // 1500 metres along a line that returns along its own path: projection alone
-  // puts the bus back before a stop the driver recorded arriving at.
-  await f.place(run.id, 1500);
-  const data = expectStatus(await f.get(`/v1/trips/${run.id}/live`, 'ops'), 200);
-  assert.equal(
-    data.etas.some((e: any) => e.stopOccurrenceId === reached),
-    false,
-    'a recorded arrival is behind the bus, whatever the coordinates project to',
-  );
+
+  // Past the middle stop, on a line that returns along its own path. Locating
+  // the bus on the whole line would answer with the outbound pass and pin
+  // every remaining estimate to the last arrival.
+  for (const [travelled, remaining] of [
+    [1500, 500],
+    [1800, 200],
+  ] as const) {
+    await f.place(run.id, travelled);
+    const etas = expectStatus(await f.get(`/v1/trips/${run.id}/live`, 'ops'), 200).etas;
+    assert.equal(
+      etas.some((e: any) => e.stopOccurrenceId === stops[1].id),
+      false,
+      'a recorded arrival stays behind the bus',
+    );
+    const next = etas.find((e: any) => e.stopOccurrenceId === stops[2].id);
+    assert.ok(next, 'the last stop is still ahead');
+    assert.ok(
+      Math.abs(next.distanceMeters - remaining) < 30,
+      `at ${travelled}m expected about ${remaining}m, got ${next.distanceMeters}`,
+    );
+    assert.ok(
+      Math.abs(next.durationSeconds - remaining / 6) < 6,
+      `at ${travelled}m expected about ${Math.round(remaining / 6)}s, got ${next.durationSeconds}`,
+    );
+  }
 });
 
 test('TRP-10 the run up to the first stop is ground the rider is waiting through', async (t) => {
@@ -668,7 +691,7 @@ test('TRP-10 the run up to the first stop is ground the rider is waiting through
 test('TRP-11 a day that never existed is a bad request, not a crash', async (t) => {
   const f = await fixture(t);
   await f.buy();
-  for (const value of ['2026-02-30', '2026-13-01', '2026-00-10', '2025-02-29'])
+  for (const value of ['2026-02-30', '2026-13-01', '2026-00-10', '2025-02-29', '0000-01-01'])
     assert.equal(
       (await f.get(`/v1/trips?fromDate=${value}`)).statusCode,
       400,
