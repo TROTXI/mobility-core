@@ -548,7 +548,9 @@ export const candidateSubstitutions = [
           closed: 1,
           blocked: 0,
           failed: 1,
-          failures: [{ purchase: 'first', reason: 'unexpected_error' }],
+          // The production error mapper sanitizes an injected P0001 to this
+          // code. The two witnesses above prove this was the intended fault.
+          failures: [{ purchase: 'first', reason: 'internal_error' }],
         },
         riders: {
           riderA: { membership: 'active', credit: 0, rides: 44 },
