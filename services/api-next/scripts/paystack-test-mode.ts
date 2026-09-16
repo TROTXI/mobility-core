@@ -4,7 +4,7 @@
  * Everything the provider adapter does has been tested against synthetic
  * evidence. What that cannot tell us is whether Paystack agrees: whether the
  * initialize request is shaped the way it expects, whether a reference comes
- * back as the one we sent, whether our webhook signature matches theirs, and
+ * back as the one we sent, and
  * whether the environment we think we are in is the one the key belongs to.
  *
  *   REPLACEMENT_PAYSTACK_SECRET_KEY=sk_test_... \
@@ -19,7 +19,7 @@ import { PaystackEvidence, parseProviderFact } from '../src/payments/provider.js
 
 const secret = process.env.REPLACEMENT_PAYSTACK_SECRET_KEY;
 if (!secret) throw new Error('REPLACEMENT_PAYSTACK_SECRET_KEY is required');
-if (!secret.startsWith('sk_test_'))
+if (!/^sk_test_[A-Za-z0-9]+$/.test(secret))
   throw new Error('Refusing to run against anything but a test key');
 
 const provider = new PaystackEvidence(secret, randomBytes(32));
@@ -43,8 +43,8 @@ try {
   });
   authorizationUrl = opened.authorizationUrl;
   record('initialize', true, new URL(authorizationUrl).origin);
-} catch (error) {
-  record('initialize', false, String(error));
+} catch {
+  record('initialize', false, 'provider initialize failed; raw provider data withheld');
 }
 
 // 2. Read it back. An unpaid transaction is not a success, and the adapter has
@@ -55,13 +55,13 @@ if (authorizationUrl) {
     const fact = parseProviderFact(raw, 'verify');
     const unpaid = fact?.kind === 'unresolved' || fact?.kind === 'failure';
     record('verify', unpaid, `${fact?.kind ?? 'null'} (${fact?.environment ?? '-'})`);
-  } catch (error) {
-    record('verify', false, String(error));
+  } catch {
+    record('verify', false, 'provider verification failed; raw provider data withheld');
   }
 }
 
-// 3. Their signature, our check. This is the one that silently lets every
-//    webhook through if the algorithm or the encoding is wrong.
+// 3. LOCAL signature self-check, not an observed provider callback. Proving
+// automatic delivery needs a paid TEST checkout and its actual inbox receipt.
 const body = Buffer.from(
   JSON.stringify({
     event: 'charge.success',
@@ -79,7 +79,11 @@ const body = Buffer.from(
   }),
 );
 const signature = createHmac('sha512', secret).update(body).digest('hex');
-record('webhook signature', provider.authenticate(body, signature), 'sha512 over exact bytes');
+record(
+  'local signature self-check',
+  provider.authenticate(body, signature),
+  'synthetic, not provider delivery',
+);
 record(
   'tampered body refused',
   !provider.authenticate(Buffer.concat([body, Buffer.from(' ')]), signature),
@@ -90,5 +94,8 @@ record('unsigned body refused', !provider.authenticate(body, undefined), 'no sig
 const failed = steps.filter((s) => !s.ok);
 process.stdout.write(
   `\n${steps.length - failed.length}/${steps.length} passed. Reference ${reference} is left unpaid on Paystack's test environment.\n`,
+);
+process.stdout.write(
+  'Automatic webhook delivery, payment fulfilment and reconciliation were NOT exercised.\n',
 );
 process.exitCode = failed.length ? 1 : 0;

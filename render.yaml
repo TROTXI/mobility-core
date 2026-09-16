@@ -396,6 +396,8 @@ services:
   #   envVars:
   #     - key: NODE_ENV
   #       value: production
+  #     - key: REPLACEMENT_DEPLOYMENT_ENVIRONMENT
+  #       value: staging
   #     - key: PORT
   #       value: '10000'
   #     # The NARROW runtime role, never the owner. The owner connection is used
@@ -466,9 +468,8 @@ services:
   #     #   value: <Key ID of the .p8>
   #     # - key: REPLACEMENT_APPLE_PRIVATE_KEY
   #     #   sync: false
-  #     # Staging uses the TEST key. A live key additionally requires
-  #     # REPLACEMENT_ALLOW_LIVE_PAYMENTS=yes on that service, so a live key
-  #     # pasted here by accident stops the deploy instead of taking money.
+  #     # Staging accepts TEST keys only, even if a live opt-in was copied.
+  #     # NODE_ENV=production is a Node optimization, not payment authorization.
   #     - key: REPLACEMENT_PAYSTACK_SECRET_KEY
   #       sync: false
   #     - key: REPLACEMENT_R2_ACCOUNT_ID
