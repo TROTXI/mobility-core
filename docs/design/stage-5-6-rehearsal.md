@@ -57,7 +57,7 @@ TEST Paystack credentials and the required R2 settings without database access.
   the deployed API. Credentials and signed URLs are not included in this record.
 
 Automatic webhook delivery, hosted payment completion, reconciliation and
-native app walkthrough remain separate pending gates. A provider initialization
+the remaining native walkthrough remain separate pending gates. A provider initialization
 success is not a paid or fulfilled purchase.
 
 ## Isolated local native rehearsal
@@ -80,7 +80,8 @@ seeding. Health, readiness, version and flags returned 200 over HTTP. This is
 local source-runtime evidence, not a Render deployment or Docker startup gate.
 
 Android driver and iOS commuter debug builds were installed with that local
-base URL and a fresh session realm. Native sign-in is not yet marked passed.
+base URL and a fresh session realm. Native commuter sign-in results follow;
+native driver sign-in is not yet marked passed.
 On iOS 18.4 / Xcode 16.3 the Google authentication sheet failed at
 `accounts.google.com` with NSURLErrorDomain -1005 and QUIC failures, while the
 local API remained healthy. This resembles the
@@ -110,6 +111,113 @@ commuter with two active sessions (up from one after iOS). Wallet showed zero
 rides/credit, no current coverage and no purchases, matching the fresh account.
 Purchase setup opened successfully. Paid checkout, boarding and other post-login
 journeys remain separate gates.
+
+## Full regression and real-account checks, 2026-09-16
+
+Against rehearsal source `d8042b4`:
+
+- Replacement: **285 Postgres**, **37 unit**, **24 contract** and **10 harness
+  unit** tests passed, none skipped. Replacement typecheck passed.
+- Mobile: **35 commuter**, **188 driver** and **167 shared-client** tests
+  passed; all three packages' Flutter analysis reported no issues. These are
+  automated tests, not proof of every native device journey. Generated Dart
+  client TODO test scaffolds are not counted as behavioral evidence.
+- Independent preservation comparison passed against pinned baseline
+  `43cdae0b437e70ca146704eb4201a2325c9d9327`, including its original 16-test
+  Postgres suite, PAY-01–16, the declared PAY-08R substitution, REC-01–04 with
+  declared REC-02R/REC-03R substitutions, and arithmetic/attribution negative
+  controls at their expected checkpoints. Local report:
+  `.harness-artifacts/run-efef1b25ab12/report.json`. This is compare mode with
+  separate databases, not baseline-versus-baseline plumbing evidence.
+- Real HTTP driver credential sign-in, assigned-trip read, refresh-token
+  rotation and logout passed. The logged-out access token then received 401.
+  This uses the disposable seeded driver; it is not a native driver walkthrough.
+- A separate synthetic local commuter exercised real signed-token verification,
+  profile editing, multipart avatar upload to R2, byte-exact signed read and
+  encrypted device registration. Account deletion returned 204, scrubbed the
+  identity, rejected the old session with 401 and physically removed its R2
+  object (the still-valid signed URL returned 404). The erasure worker ran and
+  its object-removal task was durably `done`. No existing user's account or
+  avatar was erased. The first probe assertion incorrectly required the upload's
+  cancelled orphan-cleanup intent to be `done`; recognizing `cancelled/attached`
+  as that intent's correct terminal state made the subsequent full rerun pass.
+- Native Android purchase selection reached both commute legs and created one
+  **TEST** monthly purchase for **GHS 264.00**. The user completed the hosted
+  checkout; Paystack Verify independently returned `domain=test`,
+  `status=success`, `amount=26400`, `currency=GHS`. The isolated purchase remained
+  pending because this local replacement has no public webhook receiver.
+- The real recovery service ran with an explicitly early manual cutoff
+  (`new Date()`, not the scheduled one-hour cutoff). It recovered one purchase,
+  creating exactly one collection, one billing period and one 44-ride allocation.
+  Repeating reconciliation considered zero and left those totals unchanged.
+  The inbox contains one processed `verify` event and no webhook event. No
+  backdated payment, fabricated success or signed replay was used. Android Wallet
+  showed 44 rides, fulfilled purchase and coverage ending 16 October 2026.
+  This proves manual Verify recovery, not scheduled timing or automatic delivery.
+- The old synthetic outbound departure preceded this purchase's coverage start.
+  The ops reschedule HTTP command moved that same disposable departure later,
+  preserving service identity. Native seat confirmation then succeeded, and the
+  boarding-pass screen displayed its QR and expiry. Native driver sign-in/linking
+  succeeded and showed one confirmed passenger. Readiness blocked departure
+  while location was denied. After while-in-use permission was granted, the run
+  started with camera still denied using code-boarding mode.
+
+### Native findings reproduced, then corrected
+
+1. **GPS contract/runtime mismatch.** The driver reports unconfirmed updates and
+   the database has zero fixes for its active test run. A matching direct HTTP
+   request reproduces 400 `idempotency_key_required`. `recordPosition` declares
+   `x-retry: fix_id` with no Idempotency-Key parameter; the app sends `clientFixId`
+   with `command: false`, matching that contract. The shared mutation branch in
+   `src/http/app.ts` nevertheless requires the header before calling
+   `TransportService.command`, which also requires it. The GPS Postgres helper
+   automatically adds a random header to every non-GET request, masking the gap.
+   No native GPS delivery, live marker or ETA success is claimed. The diagnostic
+   HTTP fix was also rejected; it did not replace native evidence.
+2. **Reserved is displayed as boarded.** Immediately after seat confirmation,
+   the greeting says “You have boarded this departure” while the card correctly
+   says “Your seat is reserved / Confirmed”. `home_tab.dart` maps
+   `RideReserved() || RideBoarded()` to the same boarded greeting. The driver
+   still reports zero boarded and one remaining. This is a presentation defect,
+   not evidence of an incorrect ride debit.
+
+The user subsequently authorized fixes and a repeat walkthrough of both cases:
+
+- `recordPosition` now bypasses only the command-key/command-receipt path.
+  Session/driver authorization and assigned active-trip checks still run on
+  every upload. The existing unique `(trip_id, client_fix_id)` plus payload
+  digest deduplicate fixes and reject changed payloads. Other mutations still
+  require command keys. No schema migration or contract change is needed.
+- The GPS test helper no longer supplies an undeclared key to position uploads.
+  GPS-17 first failed with the actual 400, then passed after the fix. It checks
+  headerless duplicate uploads, changed-payload refusal, foreign ownership,
+  irrelevant extra headers, no GPS command receipts, and revoked-session replay.
+- The greeting now distinguishes `RideReserved` from `RideBoarded`. The widget
+  regression first failed on the incorrect boarded text (not a compile failure),
+  then passed for both states after the correction.
+- Restarted only the local API against the existing disposable database. The
+  unchanged native Android driver publisher uploaded a fresh simulated fix;
+  the database recorded it and the UI changed to “Location sharing live — A
+  recent position was received by the API.” No direct HTTP fixture stood in for
+  this native upload.
+- Rebuilt/reinstalled the commuter APK preserving its realm and stored session.
+  Native Home now says “Your seat is confirmed for this departure” alongside its
+  Confirmed reservation card, without an incorrect boarded claim. The TEST
+  purchase and account were retained.
+- Post-fix checks: **286 Postgres, 37 backend unit, 24 contract, 10 harness unit,
+  and 37 commuter tests passed**, none skipped. Backend typecheck and commuter
+  static analysis passed. The pinned preservation comparison recorded above
+  predates these changes and is not claimed to have rerun on this patch.
+
+Both requested bug cases passed their native recheck. Native boarding settlement,
+automatic webhook delivery, full map rendering and complete iOS parity remain
+separate gates; fixing these two cases does not mark Stage 5/6 complete.
+
+All provider work used TEST Paystack and the isolated loopback database. The
+downloaded staging database connection was not used. No staging cutover, reset,
+paid plan change or production action occurred. The compiled Docker image above
+predates the local-rehearsal tooling changes; it is not evidence of this exact
+source revision's deployed runtime.
 
 ## Provider rehearsal: no database access
 
@@ -142,16 +250,16 @@ environment and the separate live opt-in; it is not authorized here.
 
 ## Stage 5 evidence still required
 
-| Gate                        | Required evidence                                                                                                                                              | Current status                                              |
-| --------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------- |
-| Exact deploy artifact       | Docker build, migration hashes, config preflight, narrow-role readiness                                                                                        | In progress                                                 |
-| Android and iOS             | Both apps against assembled replacement: native sign-in, restored secure session, minimum-version refusal, boarding, driver-only GPS receipt and map rendering | Not run this rehearsal                                      |
-| Paystack initialization     | Real TEST initialize/verify via replacement adapter                                                                                                            | Passed: unpaid TEST probe; local checks separately labelled |
-| Automatic Paystack delivery | Hosted paid TEST checkout; reference-correlated provider-origin inbox receipt and exactly one fulfilment; no signed replay used as proof                       | Not run                                                     |
-| Reconciliation              | Separate unresolved TEST purchase recovered through Verify; no fabricated success                                                                              | Not run                                                     |
-| R2 and erasure              | Probe reads/expiry/delete, then account erasure worker removes that account's object with durable completion                                                   | R2 probe passed 4/4; erasure flow pending                   |
-| Capacity                    | 12.96M fixes on approved intended tier; latency, drain rate, backlog recovery, locks, WAL/storage/vacuum                                                       | Pre-production gate; no staging upgrade requested           |
-| Recovery                    | Rehearsal before external writes and a distinct after-external-writes scenario                                                                                 | Not run                                                     |
+| Gate                        | Required evidence                                                                                                                                              | Current status                                                     |
+| --------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------ |
+| Exact deploy artifact       | Docker build, migration hashes, config preflight, narrow-role readiness                                                                                        | In progress                                                        |
+| Android and iOS             | Both apps against assembled replacement: native sign-in, restored secure session, minimum-version refusal, boarding, driver-only GPS receipt and map rendering | Commuter Google sign-in passed on both; remaining journeys pending |
+| Paystack initialization     | Real TEST initialize/verify via replacement adapter                                                                                                            | Passed: unpaid TEST probe; local checks separately labelled        |
+| Automatic Paystack delivery | Hosted paid TEST checkout; reference-correlated provider-origin inbox receipt and exactly one fulfilment; no signed replay used as proof                       | Not run                                                            |
+| Reconciliation              | Separate unresolved TEST purchase recovered through Verify; no fabricated success                                                                              | Passed with explicit early manual cutoff; scheduled delay untested |
+| R2 and erasure              | Probe reads/expiry/delete, then account erasure worker removes that account's object with durable completion                                                   | Probe 4/4 and real HTTP account/object erasure passed              |
+| Capacity                    | 12.96M fixes on approved intended tier; latency, drain rate, backlog recovery, locks, WAL/storage/vacuum                                                       | Pre-production gate; no staging upgrade requested                  |
+| Recovery                    | Rehearsal before external writes and a distinct after-external-writes scenario                                                                                 | Not run                                                            |
 
 Keep raw provider payloads, tokens, signed object URLs and GPS out of committed
 evidence. Record commit, image digest, migration hashes, test counts, sanitized

@@ -243,6 +243,17 @@ export class TransportService {
     actor = { ...actor, userId: resourceId(actor.userId) };
     if (target !== 'collection') target = resourceId(target);
     if (childId !== undefined) childId = catalogId(childId);
+    const body = this.normalize(operation, input);
+    if (operation === 'recordPosition') {
+      // The reviewed wire contract is fix_id, not command idempotency. The
+      // unique (trip, clientFixId) row and payload digest are the durable
+      // receipt. Never cache past assignment/session checks in a second,
+      // seven-day command receipt, nor retain an extra receipt per GPS fix.
+      return this.transaction(async (client) => {
+        const driverId = await this.authorize(client, actor, operation);
+        return this.gps.execute(client, actor, operation, target, body, randomUUID(), driverId);
+      });
+    }
     const catalog = (catalogCommands as readonly string[]).includes(operation);
     const fleet = (fleetCommands as readonly string[]).includes(operation);
     const gps = (gpsCommands as readonly string[]).includes(operation);
@@ -250,7 +261,6 @@ export class TransportService {
     const receiptTarget = childId === undefined ? target : `${target}/${childId}`;
     if (!key || key.length > 128)
       fail(400, 'idempotency_key_required', 'Supply an Idempotency-Key of 1 to 128 characters.');
-    const body = this.normalize(operation, input);
     const keyHash = digest(key),
       inputHash = digest(canonical(body));
     return this.transaction(async (client) => {

@@ -115,7 +115,11 @@ async function setup() {
         ...(options.who && options.who !== 'admin' && !options.ops
           ? { 'x-trotxi-client': 'driver', 'x-trotxi-build': '2', 'x-trotxi-platform': 'android' }
           : { 'x-trotxi-client': 'ops', 'x-trotxi-build': '2' }),
-        ...(method !== 'GET' ? { 'idempotency-key': options.key ?? randomUUID() } : {}),
+        // Fix uploads use their body clientFixId, not a command header. Match
+        // the native client and published contract instead of masking the gap.
+        ...(method !== 'GET' && (!path.endsWith('/positions') || options.key !== undefined)
+          ? { 'idempotency-key': options.key ?? randomUUID() }
+          : {}),
         ...(options.token ? { 'if-match': options.token } : {}),
         ...(body === undefined ? {} : { 'content-type': 'application/json' }),
       },
@@ -1028,4 +1032,50 @@ test('GPS-16 collection is bounded to the run it belongs to', () =>
       }),
       409,
     );
+  }));
+
+test('GPS-17 headerless native fixes deduplicate and reauthorize without command receipts', () =>
+  withCase(async (c) => {
+    const trip = await c.trip('driver');
+    const path = `/v1/driver/trips/${trip}/positions`;
+    const fix = c.fix();
+    const replies = await Promise.all([
+      c.request('POST', path, fix, { who: 'driver' }),
+      c.request('POST', path, fix, { who: 'driver' }),
+    ]);
+    const [first, replay] = replies.map((r) => expectStatus(r, 200));
+    assert.equal(first.receivedAt, replay.receivedAt);
+    assert.equal(first.clientFixId, replay.clientFixId);
+    assert.equal([first, replay].filter((r) => r.acceptedForLive).length, 1);
+    const conflict = await c.request('POST', path, { ...fix, latitude: 6 }, { who: 'driver' });
+    expectStatus(conflict, 409);
+    assert.equal(conflict.json().error.code, 'fix_payload_conflict');
+    expectStatus(await c.request('POST', path, fix, { who: 'other' }), 404);
+    const secondFix = c.fix();
+    // An extraneous shared command key cannot alias distinct fix identities.
+    expectStatus(await c.request('POST', path, secondFix, { who: 'driver', key: 'ignored' }), 200);
+    expectStatus(await c.request('POST', path, c.fix(), { who: 'driver', key: 'ignored' }), 200);
+    assert.equal(
+      (
+        await c.owner.query('SELECT count(*)::int n FROM app.trip_positions WHERE trip_id=$1', [
+          trip,
+        ])
+      ).rows[0].n,
+      3,
+    );
+    assert.equal(
+      (
+        await c.owner.query(
+          "SELECT count(*)::int n FROM app.transport_commands WHERE operation='recordPosition'",
+        )
+      ).rows[0].n,
+      0,
+    );
+    // The special-case must not weaken the command contract for other writes.
+    expectStatus(
+      await c.request('POST', '/v1/ops/maintenance/gps-retention', { limit: 1 }, { key: '' }),
+      400,
+    );
+    await c.owner.query('DELETE FROM app.test_gps_sessions WHERE user_id=$1', [c.users.driver]);
+    expectStatus(await c.request('POST', path, fix, { who: 'driver' }), 401);
   }));
