@@ -9,7 +9,7 @@ import { spawnSync } from 'node:child_process';
 import { readConfiguration, ConfigurationError } from '../src/runtime/config.js';
 import { R2ObjectStore } from '../src/runtime/avatars.js';
 import { jobFailed, jobLog } from '../src/runtime/job-outcome.js';
-import { rehearsalEnvironment } from '../src/runtime/rehearsal.js';
+import { rehearsalEnvironment, localRehearsalAdmin } from '../src/runtime/rehearsal.js';
 
 const key = (n: number) => Buffer.alloc(32, n).toString('base64');
 // Provider-shaped, but assembled at runtime so no credential-looking literal
@@ -18,6 +18,21 @@ const providerKey = (mode: 'test' | 'live') =>
   ['sk', mode, randomUUID().replaceAll('-', '').slice(0, 18)].join('_');
 const PEM = '-----BEGIN PRIVATE KEY-----\\nMHc=\\n-----END PRIVATE KEY-----';
 const maintenanceUser = randomUUID();
+test('local rehearsal never accepts a staging database or an existing application database', () => {
+  assert.equal(localRehearsalAdmin('postgres://test:pw@127.0.0.1:55432/postgres').port, '55432');
+  for (const url of [
+    undefined,
+    'postgres://test:pw@db.render.com/postgres',
+    'postgres://test:pw@127.0.0.1/application',
+    'postgres://test:pw@127.0.0.1/postgres?host=db.render.com',
+    'https://127.0.0.1/postgres',
+  ])
+    assert.throws(() => localRehearsalAdmin(url));
+  assert.throws(
+    () => localRehearsalAdmin('invalid-url-containing-private-data'),
+    (error: unknown) => error instanceof Error && !String(error.stack).includes('private-data'),
+  );
+});
 test('provider rehearsal CLI validates private files and fails closed before network activity', async () => {
   const dir = await mkdtemp(join(tmpdir(), 'trotxi-provider-env-test-'));
   const file = join(dir, 'private.env');

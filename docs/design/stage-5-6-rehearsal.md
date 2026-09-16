@@ -26,7 +26,7 @@ production will use a larger database. Functional rehearsal does not require
 a staging upgrade. Full-scale capacity evidence remains a pre-production gate,
 not a completed check or a reason to allocate a larger staging plan now.
 
-Rehearsal branch checks: **285 Postgres, 36 unit and 24 contract checks pass**,
+Rehearsal branch checks: **285 Postgres, 37 unit and 24 contract checks pass**,
 none skipped; replacement typecheck and formatting pass. The first Docker build
 timed out fetching the official Node image. A separate pull and full rebuild
 subsequently succeeded. The local image (not deployed) is
@@ -59,6 +59,57 @@ TEST Paystack credentials and the required R2 settings without database access.
 Automatic webhook delivery, hosted payment completion, reconciliation and
 native app walkthrough remain separate pending gates. A provider initialization
 success is not a paid or fulfilled purchase.
+
+## Isolated local native rehearsal
+
+`scripts/local-rehearsal.ts` accepts only a loopback PostgreSQL admin connection
+to the `postgres` database and explicit `HARNESS_ALLOW_CREATE_DATABASES=1`.
+It creates a uniquely named local database, installs the 21 reviewed migrations,
+and grants a separate narrow runtime role. The downloaded staging database URL
+is not used. Provider credentials are read as data from the private environment
+export; TEST-only guards remain mandatory. Generated purpose keys, runtime
+configuration and disposable driver credentials stay in owner-only temporary
+files outside Git. Failed runs retain their explicitly named database for
+diagnosis rather than automatically deleting possible provider evidence.
+
+The successful run on 2026-09-16 started the real composition on loopback port
+3002 with Google, TEST Paystack and R2 adapters. HTTP seed commands created a
+test driver, vehicle, two-stop corridor, outbound/return patterns, schedules,
+assigned trips and a fare. The bootstrap operator session was revoked after
+seeding. Health, readiness, version and flags returned 200 over HTTP. This is
+local source-runtime evidence, not a Render deployment or Docker startup gate.
+
+Android driver and iOS commuter debug builds were installed with that local
+base URL and a fresh session realm. Native sign-in is not yet marked passed.
+On iOS 18.4 / Xcode 16.3 the Google authentication sheet failed at
+`accounts.google.com` with NSURLErrorDomain -1005 and QUIC failures, while the
+local API remained healthy. This resembles the
+[Apple-confirmed simulator HTTP/3 defect](https://developer.apple.com/forums/thread/777999);
+the cause is not proven until a different runtime succeeds. The user approved
+installing an alternative runtime without erasing the existing simulator.
+Apple's downloader refused 18.3 but installed **iOS 18.2 (22C150)**. A separate
+`Trotxi Commuter Stable Test` iPhone 16 Pro simulator now runs the same installed
+commuter binary and displays its sign-in screen. No OAuth settings or app code
+were changed for this comparison. The user then completed Google sign-in;
+a read-only check of the isolated database confirmed one Google commuter and
+one active session. That establishes a successful native/provider/backend
+exchange on 18.2, not exhaustive network stability or the rest of the walkthrough.
+
+The subsequent Android commuter "No Connection" screen was on the old build
+(installed September 13), not the rebuilt driver app. A credential-free health
+request from inside the emulator to `10.0.2.2:3002` returned 200. The commuter
+rehearsal build adds a **debug-only** network security config permitting HTTP
+only to `10.0.2.2`, `127.0.0.1` and `localhost`; other hosts retain HTTPS-only
+policy and release manifests do not reference that debug resource.
+The rebuilt Android commuter APK installed successfully without clearing app
+data. The user reported it working, and a fresh UI inspection showed the
+replacement sign-in screen rather than the old connection error. Android
+Google sign-in subsequently succeeded: the user reported completion, the native
+home and Wallet screens loaded, and the local database contained one Google
+commuter with two active sessions (up from one after iOS). Wallet showed zero
+rides/credit, no current coverage and no purchases, matching the fresh account.
+Purchase setup opened successfully. Paid checkout, boarding and other post-login
+journeys remain separate gates.
 
 ## Provider rehearsal: no database access
 

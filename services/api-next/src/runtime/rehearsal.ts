@@ -1,3 +1,24 @@
+/** Never use the downloaded staging connection for local database creation. */
+export function localRehearsalAdmin(raw: string | undefined): URL {
+  if (!raw) throw new Error('HARNESS_ADMIN_DATABASE_URL is required for local rehearsal');
+  let url: URL;
+  try {
+    url = new URL(raw);
+  } catch {
+    // URL errors include their input; never leak a malformed connection secret.
+    throw new Error('Invalid local rehearsal admin database URL');
+  }
+  if (
+    !['postgres:', 'postgresql:'].includes(url.protocol) ||
+    !['127.0.0.1', 'localhost', '[::1]'].includes(url.hostname) ||
+    url.pathname !== '/postgres' ||
+    url.search ||
+    url.hash
+  )
+    throw new Error('Local rehearsal accepts only a loopback postgres admin database');
+  return url;
+}
+
 /** Only provider-specific values cross into a rehearsal subprocess. */
 export function rehearsalEnvironment(
   source: Record<string, string | undefined>,
