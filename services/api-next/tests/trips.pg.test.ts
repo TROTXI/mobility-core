@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import type { TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
-import { setup, at } from './helpers/financial-fixture.js';
+import { setup } from './helpers/financial-fixture.js';
 import { MembershipService } from '../src/membership/service.js';
 import { FinancialFoundation } from '../src/payments/foundation.js';
 import { createTransportApp } from '../src/http/app.js';
@@ -20,12 +20,14 @@ async function fixture(t: TestContext) {
   const f = await setup(t);
   await f.owner.query('INSERT INTO app.test_fin_sessions VALUES ($1,true)', [f.adminId]);
   const admin = { userId: f.adminId, sessionId: f.adminId };
-  const now = new Date(at);
+  // Entitlement asks whether coverage is current, so the fixture lives on the
+  // database's clock rather than a frozen one a year in the past.
+  const day = (offset = 0) => new Date(Date.now() + offset * 86400000).toISOString().slice(0, 10);
   const membership = new MembershipService({
     pool: f.runtime,
     authorizeSession: f.dependencies.authorizeSession,
     cursorSecret: Buffer.alloc(32, 9),
-    now: () => now,
+    now: () => new Date(),
     fareForSelection: async () => 600,
   });
   const financial = new FinancialFoundation({
@@ -35,8 +37,10 @@ async function fixture(t: TestContext) {
     materializeAssignment: membership.materializeAssignment,
   });
   const buy = async (who: Actor = f.actor) => {
-    const p = await financial.checkout(who, f.input, randomUUID(), now);
-    assert.equal(await financial.fulfill(f.settle(p, now)), 'fulfilled');
+    // Coverage that started yesterday and still runs, so "now" is inside it.
+    const from = new Date(Date.now() - 86400000);
+    const p = await financial.checkout(who, f.input, randomUUID(), from);
+    assert.equal(await financial.fulfill(f.settle(p, from)), 'fulfilled');
     return f.period(p.id);
   };
   /** A driver with a real account, so the assigned-driver grant is testable. */
@@ -65,7 +69,7 @@ async function fixture(t: TestContext) {
         `INSERT INTO app.trips(schedule_id,departure_id,pattern_version_id,service_date,scheduled_at,assigned_driver_id,vehicle_id)
         SELECT id,departure_id,pattern_version_id,$2::date,$2::date+local_departure,$3,$4
         FROM app.service_schedules WHERE id=$1 RETURNING *`,
-        [scheduleId, options.day ?? '2026-01-02', driverId, vehicle],
+        [scheduleId, options.day ?? day(), driverId, vehicle],
       )
     ).rows[0];
     if (options.status === 'active' || options.status === 'completed')
@@ -109,7 +113,7 @@ async function fixture(t: TestContext) {
     );
   };
   /** A second published corridor, so "only this route" means something. */
-  const corridor = async (name: string) => {
+  const corridor = async (name: string, firstStopMetres = 0) => {
     const one = async (sql: string, args: unknown[] = []) =>
       (await f.owner.query(sql + ' RETURNING id', args)).rows[0].id as string;
     const route = await one('INSERT INTO app.routes(name) VALUES ($1)', [name]);
@@ -144,7 +148,7 @@ async function fixture(t: TestContext) {
         geometry,
         version,
         occurrence,
-        index * 1000,
+        firstStopMetres + index * 1000,
       ]);
     await f.owner.query("UPDATE app.route_geometries SET state='published' WHERE id=$1", [
       geometry,
@@ -175,7 +179,7 @@ async function fixture(t: TestContext) {
         {
           routeId: f.input.routeId,
           legs: f.input.legs,
-          requestedDate: '2026-01-02',
+          requestedDate: day(1),
           pauseIfWaitlisted: true,
         } as never,
         randomUUID(),
@@ -233,6 +237,8 @@ async function fixture(t: TestContext) {
     place,
     corridor,
     pauseCoverage,
+    app,
+    day,
     get,
     driverId,
     driverUser,
@@ -242,10 +248,10 @@ async function fixture(t: TestContext) {
 test('TRP-01 the trip list is for signed-in riders, live corridors only, in departure order', async (t) => {
   const f = await fixture(t);
   await f.buy();
-  const first = await f.trip({ day: '2026-01-02' });
-  const second = await f.trip({ day: '2026-01-03' });
+  const first = await f.trip({ day: f.day(0) });
+  const second = await f.trip({ day: f.day(1) });
   const elsewhere = await f.corridor('Second corridor');
-  const other = await f.trip({ day: '2026-01-02', scheduleId: elsewhere.scheduleId });
+  const other = await f.trip({ day: f.day(0), scheduleId: elsewhere.scheduleId });
 
   assert.equal((await f.get('/v1/trips', 'none')).statusCode, 401);
   const listed = expectStatus(await f.get('/v1/trips'), 200);
@@ -264,7 +270,7 @@ test('TRP-01 the trip list is for signed-in riders, live corridors only, in depa
     'one corridor means one corridor',
   );
   assert.deepEqual(
-    expectStatus(await f.get('/v1/trips?fromDate=2026-01-03&toDate=2026-01-03'), 200).map(
+    expectStatus(await f.get(`/v1/trips?fromDate=${f.day(1)}&toDate=${f.day(1)}`), 200).map(
       (x: any) => x.id,
     ),
     [second.id],
@@ -285,7 +291,7 @@ test('TRP-01 the trip list is for signed-in riders, live corridors only, in depa
 test('TRP-02 a cursor belongs to the query that issued it', async (t) => {
   const f = await fixture(t);
   await f.buy();
-  for (const day of ['2026-01-02', '2026-01-03', '2026-01-04']) await f.trip({ day });
+  for (const offset of [0, 1, 2]) await f.trip({ day: f.day(offset) });
   const page = await f.get('/v1/trips?limit=1');
   const cursor = page.json().page.nextCursor;
   assert.ok(cursor, 'three departures do not fit one page');
@@ -296,7 +302,7 @@ test('TRP-02 a cursor belongs to the query that issued it', async (t) => {
   );
   // The same cursor under a different filter would silently hide departures.
   assert.equal(
-    (await f.get(`/v1/trips?limit=1&fromDate=2026-01-03&cursor=${encodeURIComponent(cursor)}`))
+    (await f.get(`/v1/trips?limit=1&fromDate=${f.day(1)}&cursor=${encodeURIComponent(cursor)}`))
       .statusCode,
     400,
   );
@@ -309,7 +315,7 @@ test('TRP-03 getTrip is the catalogue view, and archived service is absent', asy
   const data = expectStatus(await f.get(`/v1/trips/${row.id}`), 200);
   assert.partialDeepStrictEqual(data, {
     id: row.id,
-    serviceDate: '2026-01-02',
+    serviceDate: f.day(0),
     runNumber: 1,
     direction: 'outbound',
     status: 'active',
@@ -319,7 +325,7 @@ test('TRP-03 getTrip is the catalogue view, and archived service is absent', asy
   assert.equal((await f.get('/v1/trips/not-a-uuid')).statusCode, 404);
 
   const elsewhere = await f.corridor('Archived corridor');
-  const doomed = await f.trip({ day: '2026-01-05', scheduleId: elsewhere.scheduleId });
+  const doomed = await f.trip({ day: f.day(3), scheduleId: elsewhere.scheduleId });
   assert.equal((await f.get(`/v1/trips/${doomed.id}`)).statusCode, 200);
   await f.owner.query('UPDATE app.routes SET archived_at=clock_timestamp() WHERE id=$1', [
     elsewhere.routeId,
@@ -391,12 +397,12 @@ test('TRP-04 live position is for people entitled to watch this run', async (t) 
   // A seat held on this very run stands on its own: a rider whose commute has
   // since moved elsewhere still watches the bus they are booked on. Booking
   // happens while the departure is still scheduled, as it does in service.
-  const booked = await f.trip({ day: '2026-01-03' });
+  const booked = await f.trip({ day: f.day(1) });
   await f.membership.command(
     f.actor,
     'decideReservation',
     undefined,
-    { travelDate: '2026-01-03', direction: 'outbound', decision: 'confirm' } as never,
+    { travelDate: f.day(1), direction: 'outbound', decision: 'confirm' } as never,
     randomUUID(),
   );
   await f.owner.query(
@@ -406,7 +412,7 @@ test('TRP-04 live position is for people entitled to watch this run', async (t) 
   await f.place(booked.id, 150);
   await f.owner.query(
     'UPDATE app.commute_assignments SET effective_to=$2::date WHERE period_id=$1 AND effective_to IS NULL',
-    [period.id, '2026-01-02'],
+    [period.id, f.day(0)],
   );
   assert.equal((await live('rider')).statusCode, 404, 'the commute no longer covers this run');
   const seat = expectStatus(await f.get(`/v1/trips/${booked.id}/live`), 200);
@@ -432,18 +438,18 @@ test('TRP-05 a run reports what it is doing, and never predicts from a stale fix
   const live = async (row: { id: string }) =>
     shape(expectStatus(await f.get(`/v1/trips/${row.id}/live`), 200));
 
-  assert.deepEqual(await live(await f.trip({ day: '2026-01-02' })), {
+  assert.deepEqual(await live(await f.trip({ day: f.day(0) })), {
     state: 'not_started',
     position: null,
     etas: false,
   });
-  assert.deepEqual(await live(await f.trip({ day: '2026-01-03', status: 'active' })), {
+  assert.deepEqual(await live(await f.trip({ day: f.day(1), status: 'active' })), {
     state: 'awaiting_fix',
     position: null,
     etas: false,
   });
 
-  const running = await f.trip({ day: '2026-01-04', status: 'active' });
+  const running = await f.trip({ day: f.day(2), status: 'active' });
   await f.place(running.id, 100);
   const fresh = expectStatus(await f.get(`/v1/trips/${running.id}/live`), 200);
   assert.deepEqual(shape(fresh), { state: 'live', position: 'present', etas: true });
@@ -451,11 +457,11 @@ test('TRP-05 a run reports what it is doing, and never predicts from a stale fix
   assert.ok(fresh.serverTime > fresh.position.capturedAt);
 
   // A fix the projection is still showing, but old enough to be labelled.
-  const lagging = await f.trip({ day: '2026-01-05', status: 'active' });
+  const lagging = await f.trip({ day: f.day(3), status: 'active' });
   await f.place(lagging.id, 200, 60);
   assert.deepEqual(await live(lagging), { state: 'stale', position: 'present', etas: true });
 
-  const ancient = await f.trip({ day: '2026-01-06', status: 'active' });
+  const ancient = await f.trip({ day: f.day(4), status: 'active' });
   await f.place(ancient.id, 300, 130);
   assert.deepEqual(
     await live(ancient),
@@ -463,7 +469,7 @@ test('TRP-05 a run reports what it is doing, and never predicts from a stale fix
     'the marker and its age still go out; a predicted arrival does not',
   );
 
-  const done = await f.trip({ day: '2026-01-07', status: 'active' });
+  const done = await f.trip({ day: f.day(5), status: 'active' });
   await f.place(done.id, 400);
   await f.owner.query(
     "UPDATE app.trips SET status='completed',completed_at=clock_timestamp() WHERE id=$1",
@@ -502,4 +508,171 @@ test('TRP-06 an estimate says what it was built from', async (t) => {
   const observed = expectStatus(await f.get(`/v1/trips/${run.id}/live`), 200).etas[0];
   assert.equal(observed.basis, 'observed');
   assert.ok(Math.abs(observed.durationSeconds - 1000 / 4) < 5, observed.durationSeconds);
+});
+
+test("TRP-07 publishing a future revision leaves today's departures visible", async (t) => {
+  const f = await fixture(t);
+  await f.buy();
+  const run = await f.trip({ status: 'active' });
+  await f.place(run.id, 100);
+  assert.equal((await f.get(`/v1/trips/${run.id}/live`, 'ops')).statusCode, 200);
+
+  // Publication retires the predecessor the moment the new revision is
+  // accepted, even for a date a day out. The old revision is still the one
+  // running today, and its departures are still real service.
+  const version = (
+    await f.owner.query('SELECT * FROM app.route_pattern_versions WHERE id=$1', [
+      run.pattern_version_id,
+    ])
+  ).rows[0];
+  const stops = (
+    await f.owner.query(
+      'SELECT * FROM app.route_pattern_stops WHERE pattern_version_id=$1 ORDER BY ordinal',
+      [version.id],
+    )
+  ).rows;
+  const post = (url: string, payload: unknown, token?: string) =>
+    f.app.inject({
+      method: 'POST',
+      url,
+      payload: payload as never,
+      headers: {
+        authorization: 'Bearer ops',
+        'x-trotxi-client': 'ops',
+        'x-trotxi-build': '1',
+        'idempotency-key': randomUUID(),
+        ...(token ? { 'if-match': token } : {}),
+      },
+    }) as Promise<Response>;
+  const draft = expectStatus(
+    await post(`/v1/ops/route-patterns/${version.pattern_id}/versions`, {
+      stops: stops.map((s: any) => ({
+        stopId: s.stop_id,
+        name: s.name,
+        location: { latitude: Number(s.latitude), longitude: Number(s.longitude) },
+      })),
+      geometry: {
+        points: [
+          { latitude: 5.6, longitude: -0.2 },
+          { latitude: 5.6, longitude: -0.21 },
+          { latitude: 5.6, longitude: -0.2 },
+        ],
+        stopDistancesMeters: [0, 1000],
+      },
+    }),
+    201,
+  );
+  expectStatus(
+    await post(
+      `/v1/ops/route-patterns/${version.pattern_id}/versions/${draft.id}/publish`,
+      {
+        reason: 'A revision for tomorrow',
+        effectiveFrom: new Date(Date.now() + 86400000).toISOString(),
+      },
+      draft.editToken,
+    ),
+    200,
+  );
+  const retired = (
+    await f.owner.query('SELECT state,effective_to FROM app.route_pattern_versions WHERE id=$1', [
+      version.id,
+    ])
+  ).rows[0];
+  assert.equal(retired.state, 'retired', 'the fixture really did retire the predecessor');
+  assert.ok(new Date() < retired.effective_to, 'and it is still the effective revision');
+
+  assert.equal((await f.get(`/v1/trips/${run.id}`)).statusCode, 200);
+  assert.equal((await f.get(`/v1/trips/${run.id}/live`, 'ops')).statusCode, 200);
+  assert.equal(
+    expectStatus(await f.get('/v1/trips'), 200).some((r: any) => r.id === run.id),
+    true,
+  );
+});
+
+test('TRP-08 coverage that has lapsed buys no more watching', async (t) => {
+  const f = await fixture(t);
+  const expiry = new Date(Date.now() - 60_000);
+  const starts = new Date(expiry);
+  starts.setUTCMonth(starts.getUTCMonth() - 1);
+  const purchase = await f.financial.checkout(f.actor, f.input, randomUUID(), starts);
+  assert.equal(await f.financial.fulfill(f.settle(purchase, starts)), 'fulfilled');
+  const period = await f.period(purchase.id);
+  const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+  const run = await f.trip({ day: yesterday });
+  // An ordinary delayed run that crossed the paid deadline while running.
+  await f.owner.query(
+    "UPDATE app.trips SET scheduled_at=$2,status='active',started_at=$2 WHERE id=$1",
+    [run.id, new Date(expiry.getTime() - 60_000)],
+  );
+  await f.place(run.id, 100);
+  const facts = (
+    await f.owner.query(
+      `SELECT effective_ends_at,clock_timestamp() AS now,
+        (SELECT count(*)::int FROM app.reservations WHERE user_id=$2) AS seats
+      FROM app.billing_periods WHERE id=$1`,
+      [period.id, f.actor.userId],
+    )
+  ).rows[0];
+  assert.ok(facts.effective_ends_at < facts.now, 'coverage really has lapsed');
+  assert.equal(facts.seats, 0, 'and there is no seat to carry it');
+  assert.equal((await f.get(`/v1/trips/${run.id}/live`)).statusCode, 404);
+  assert.equal(
+    (await f.get(`/v1/trips/${run.id}/live`, 'ops')).statusCode,
+    200,
+    'ops still sees it',
+  );
+});
+
+test('TRP-09 a line that doubles back does not resurrect a stop already reached', async (t) => {
+  const f = await fixture(t);
+  await f.buy();
+  const run = await f.trip({ status: 'active' });
+  const reached = f.input.legs[0]!.dropoffOccurrenceId;
+  await f.owner.query('UPDATE app.trips SET current_stop_occurrence_id=$2 WHERE id=$1', [
+    run.id,
+    reached,
+  ]);
+  // 1500 metres along a line that returns along its own path: projection alone
+  // puts the bus back before a stop the driver recorded arriving at.
+  await f.place(run.id, 1500);
+  const data = expectStatus(await f.get(`/v1/trips/${run.id}/live`, 'ops'), 200);
+  assert.equal(
+    data.etas.some((e: any) => e.stopOccurrenceId === reached),
+    false,
+    'a recorded arrival is behind the bus, whatever the coordinates project to',
+  );
+});
+
+test('TRP-10 the run up to the first stop is ground the rider is waiting through', async (t) => {
+  const f = await fixture(t);
+  await f.buy();
+  const route = await f.corridor('Offset first stop', 200);
+  const run = await f.trip({ status: 'active', scheduleId: route.scheduleId });
+  const stops = (
+    await f.owner.query(
+      'SELECT id,ordinal FROM app.route_pattern_stops WHERE pattern_version_id=$1 ORDER BY ordinal',
+      [route.patternVersionId],
+    )
+  ).rows;
+  await f.place(run.id, 0);
+  const etas = expectStatus(await f.get(`/v1/trips/${run.id}/live`, 'ops'), 200).etas;
+  assert.equal(etas.length, 2, 'both stops are still ahead of a bus at the origin');
+  assert.equal(etas[0].stopOccurrenceId, stops[0].id);
+  assert.ok(Math.abs(etas[0].distanceMeters - 200) < 20, etas[0].distanceMeters);
+  assert.ok(Math.abs(etas[0].durationSeconds - 200 / 6) < 5, etas[0].durationSeconds);
+  // The second stop's wait includes the approach, not only the segment between.
+  assert.ok(Math.abs(etas[1].distanceMeters - 1200) < 20, etas[1].distanceMeters);
+  assert.ok(Math.abs(etas[1].durationSeconds - 1200 / 6) < 8, etas[1].durationSeconds);
+});
+
+test('TRP-11 a day that never existed is a bad request, not a crash', async (t) => {
+  const f = await fixture(t);
+  await f.buy();
+  for (const value of ['2026-02-30', '2026-13-01', '2026-00-10', '2025-02-29'])
+    assert.equal(
+      (await f.get(`/v1/trips?fromDate=${value}`)).statusCode,
+      400,
+      `${value} is not a calendar day`,
+    );
+  assert.equal((await f.get('/v1/trips?fromDate=2024-02-29')).statusCode, 200, 'a leap day is');
 });

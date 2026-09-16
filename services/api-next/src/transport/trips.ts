@@ -79,7 +79,7 @@ export class Trips {
         FROM app.trips t
         JOIN app.service_schedules sc
           ON sc.id=t.schedule_id AND sc.pattern_version_id=t.pattern_version_id
-        JOIN app.route_pattern_versions pv ON pv.id=t.pattern_version_id AND pv.state='published'
+        JOIN app.route_pattern_versions pv ON pv.id=t.pattern_version_id AND pv.state<>'draft'
         JOIN app.route_patterns p ON p.id=pv.pattern_id
         JOIN app.routes r ON r.id=p.route_id AND r.archived_at IS NULL
         LEFT JOIN app.vehicles v ON v.id=t.vehicle_id
@@ -107,7 +107,14 @@ export class Trips {
       fail(400, 'invalid_query', 'Invalid page size.');
     const dates = (value: string | undefined, name: string) => {
       if (value === undefined) return null;
-      if (!/^\d{4}-\d\d-\d\d$/.test(value) || Number.isNaN(Date.parse(value)))
+      // A date this service accepts has to be a date PostgreSQL accepts. Date
+      // .parse rolls the thirtieth of February into March; the round trip is
+      // what catches a day that never existed.
+      if (
+        !/^\d{4}-\d\d-\d\d$/.test(value) ||
+        Number.isNaN(Date.parse(value)) ||
+        new Date(value).toISOString().slice(0, 10) !== value
+      )
         fail(400, 'invalid_query', `Supply a calendar date for ${name}.`);
       return value;
     };
@@ -134,7 +141,7 @@ export class Trips {
         `SELECT t.*,r.id AS route_id,p.direction,v.label AS vehicle_label,
           to_char(t.scheduled_at AT TIME ZONE 'UTC','YYYY-MM-DD"T"HH24:MI:SS.US"Z"') AS cursor_time
         FROM app.trips t
-        JOIN app.route_pattern_versions pv ON pv.id=t.pattern_version_id AND pv.state='published'
+        JOIN app.route_pattern_versions pv ON pv.id=t.pattern_version_id AND pv.state<>'draft'
         JOIN app.route_patterns p ON p.id=pv.pattern_id
         JOIN app.routes r ON r.id=p.route_id AND r.archived_at IS NULL
         LEFT JOIN app.vehicles v ON v.id=t.vehicle_id
@@ -272,7 +279,10 @@ export class Trips {
         ? { pickupOccurrenceId: null }
         : null;
     // A rider watches the corridor their funded commute puts them on, whether
-    // or not they have booked a seat, and a seat they hold on this very run.
+    // or not they have booked a seat. That grant asks whether they are covered
+    // now: coverage that has since lapsed buys no more watching. A seat held on
+    // this run is the separate grant, and it is what carries a delayed
+    // departure across the deadline it was funded for.
     const byCommute = (
       await client.query(
         `SELECT l.pickup_occurrence_id FROM app.billing_periods b
@@ -282,13 +292,13 @@ export class Trips {
         JOIN app.commute_selection_legs l
           ON l.selection_id=a.selection_id AND l.schedule_id=$3
         WHERE b.user_id=$1 AND b.state='open'
-          AND b.starts_at<=$4 AND $4<b.effective_ends_at
+          AND b.starts_at<=clock_timestamp() AND clock_timestamp()<b.effective_ends_at
           AND NOT EXISTS (SELECT 1 FROM app.membership_pauses p
             WHERE p.period_id=b.id AND p.ended_at IS NULL)
           AND NOT EXISTS (SELECT 1 FROM app.payment_access_blocks p
             WHERE p.period_id=b.id AND p.released_at IS NULL)
         LIMIT 1`,
-        [actor.userId, day(trip.service_date), trip.schedule_id, trip.scheduled_at],
+        [actor.userId, day(trip.service_date), trip.schedule_id],
       )
     ).rows[0];
     const bySeat = byCommute
@@ -297,13 +307,14 @@ export class Trips {
           await client.query(
             `SELECT r.pickup_occurrence_id FROM app.reservations r
             JOIN app.billing_periods b ON b.id=r.period_id AND b.state<>'reversed'
+              AND b.starts_at<=$3 AND $3<b.effective_ends_at
             WHERE r.user_id=$1 AND r.trip_id=$2 AND r.status IN ('reserved','boarded')
               AND NOT EXISTS (SELECT 1 FROM app.membership_pauses p
                 WHERE p.period_id=b.id AND p.ended_at IS NULL)
               AND NOT EXISTS (SELECT 1 FROM app.payment_access_blocks p
                 WHERE p.period_id=b.id AND p.released_at IS NULL)
             LIMIT 1`,
-            [actor.userId, trip.id],
+            [actor.userId, trip.id, trip.scheduled_at],
           )
         ).rows[0];
     const own = byCommute ?? bySeat;
@@ -326,11 +337,18 @@ export class Trips {
    * Time and ground still to cover to each stop ahead.
    *
    * The bus is placed on the published line, which turns its position into a
-   * distance travelled, and the stops ahead are whatever lies further along.
-   * Each segment contributes only the part the bus has not covered, crossed at
-   * its learned speed where enough runs have taught one and at the labelled
-   * fallback otherwise, so a rider is never shown an observed-looking number
-   * that nothing observed.
+   * distance travelled, and the stops ahead are the occurrences it has not
+   * reached. Occurrences, not distances: a line that doubles back passes the
+   * same ground twice, and projection alone would put the bus at the first
+   * place matching its coordinates and offer a stop it called at an hour ago.
+   * Recorded arrivals decide what is behind; the projection only refines where
+   * it is between them.
+   *
+   * Each segment contributes the part not yet covered, crossed at its learned
+   * speed where enough runs have taught one and at the labelled fallback
+   * otherwise, so a rider is never shown an observed-looking number that
+   * nothing observed. The run up to the first stop is a segment too: a bus
+   * short of its first pickup owes the rider that ground and that wait.
    */
   private async etas(client: PoolClient, trip: QueryResultRow, fix: QueryResultRow) {
     return (
@@ -341,8 +359,18 @@ export class Trips {
           WHERE v.id=$1
         ), here AS (
           SELECT l.id AS geometry_id,
-                 ST_LineLocatePoint(l.line,ST_SetSRID(ST_MakePoint($2,$3),4326))*l.length_m AS along_m
+                 ST_LineLocatePoint(l.line,ST_SetSRID(ST_MakePoint($2,$3),4326))*l.length_m AS raw_m
           FROM line l
+        ), reached AS (
+          SELECT s.ordinal,d.distance_meters
+          FROM app.route_pattern_stops s
+          JOIN app.geometry_stop_distances d
+            ON d.stop_occurrence_id=s.id AND d.geometry_id=(SELECT geometry_id FROM here)
+          WHERE s.id=$7 AND s.pattern_version_id=$1
+        ), at AS (
+          SELECT greatest(h.raw_m,coalesce(r.distance_meters,0)) AS along_m,
+                 coalesce(r.ordinal,-1) AS reached_ordinal
+          FROM here h LEFT JOIN reached r ON true
         ), stops AS (
           SELECT s.ordinal,d.stop_occurrence_id,d.distance_meters
           FROM app.geometry_stop_distances d
@@ -350,25 +378,24 @@ export class Trips {
             ON s.id=d.stop_occurrence_id AND s.pattern_version_id=$1
           WHERE d.geometry_id=(SELECT geometry_id FROM here)
         ), segments AS (
-          SELECT s.ordinal AS to_ordinal,s.distance_meters AS to_m,
-                 lag(s.distance_meters) OVER w AS from_m,
+          SELECT s.ordinal AS to_ordinal,s.stop_occurrence_id,s.distance_meters AS to_m,
+                 coalesce(lag(s.distance_meters) OVER w,0) AS from_m,
                  lag(s.ordinal) OVER w AS from_ordinal
           FROM stops s WINDOW w AS (ORDER BY s.ordinal)
         ), ahead AS (
-          SELECT g.to_ordinal,
-                 (g.to_m-greatest(g.from_m,h.along_m))
+          SELECT g.to_ordinal,g.stop_occurrence_id,g.to_m - a.along_m AS metres,
+                 greatest(g.to_m-greatest(g.from_m,a.along_m),0)
                    / CASE WHEN sp.sample_count>=$4 THEN sp.metres_per_second ELSE $5 END AS seconds,
                  coalesce(sp.sample_count>=$4,false) AS observed
-          FROM segments g CROSS JOIN here h
+          FROM segments g CROSS JOIN at a
           LEFT JOIN app.segment_speeds sp
             ON sp.pattern_version_id=$1 AND sp.service_window=$6 AND sp.from_ordinal=g.from_ordinal
-          WHERE g.from_m IS NOT NULL AND g.to_m>h.along_m
+          WHERE g.to_ordinal>a.reached_ordinal AND g.to_m>a.along_m
         )
-        SELECT s.stop_occurrence_id,s.distance_meters-h.along_m AS metres,
-               sum(a.seconds) OVER (ORDER BY a.to_ordinal) AS seconds,
-               bool_and(a.observed) OVER (ORDER BY a.to_ordinal) AS observed
-        FROM ahead a JOIN stops s ON s.ordinal=a.to_ordinal CROSS JOIN here h
-        ORDER BY a.to_ordinal`,
+        SELECT stop_occurrence_id,metres,
+               sum(seconds) OVER (ORDER BY to_ordinal) AS seconds,
+               bool_and(observed) OVER (ORDER BY to_ordinal) AS observed
+        FROM ahead ORDER BY to_ordinal`,
         [
           trip.pattern_version_id,
           Number(fix.longitude),
@@ -376,6 +403,7 @@ export class Trips {
           MIN_OBSERVED_SAMPLES,
           FALLBACK_SPEED_MPS,
           trip.service_window,
+          trip.current_stop_occurrence_id,
         ],
       )
     ).rows.map((r) => ({
