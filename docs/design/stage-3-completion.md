@@ -69,10 +69,18 @@ recorded here rather than quietly filled.
 
 ### Payment invariants, PAY-01 to PAY-16
 
-All sixteen pass against the replacement and compare against the pinned
-baseline, in one run with the original 16-test suite also passing unchanged.
-See [the harness runbook](../../tools/redesign-harness/README.md) for the
-normalisations and the two fixture substitutions, each with its reason.
+All sixteen pass against the replacement in one run with the original 16-test
+suite also passing unchanged. Fifteen compare checkpoint for checkpoint against
+the pinned baseline. **PAY-08 does not**: it depends on a malformed conversion
+rate, and this schema refuses that state three ways over, so the candidate runs
+a declared substitution that proves the same property &mdash; one bad period
+fails in isolation and the batch still closes the next one &mdash; using the one
+unconvertible period the schema does permit.
+
+Substituting a payment scenario takes a declaration, an entry in a reviewed
+allowlist in `harness.test.mjs`, and a substitute that passes on its own. See
+[the harness runbook](../../tools/redesign-harness/README.md) for that and for
+the normalisations.
 
 ### Non-payment scenario groups
 
@@ -115,10 +123,14 @@ These were listed as unproven by the baseline and had to be established here.
 One compare-mode run, against the pinned baseline at `43cdae0`:
 
 - Original pinned payment suite: 16 assertions, 16 passing, none skipped.
-- PAY-01..16: passed on the baseline, passed on the replacement, and compared.
+- PAY-01..16: passed on the baseline and on the replacement. Fifteen compared;
+  PAY-08 stood in its declared substitution PAY-08R, which passed.
 - REC-01 and REC-04: passed on both. REC-02 and REC-03 passed on the baseline
   and are replaced on the candidate by REC-02R and REC-03R, which passed.
 - Negative controls: detected on both sides, on their exact assertion paths.
+- Contention: the four concurrent scenarios each observed two distinct worker
+  backends in flight with at least one blocked on a lock. Rewriting the
+  contention helper as a sequential loop makes all four fail.
 
 The replacement's own suites: 32 pure checks and 267 real-Postgres checks,
 none skipped.
@@ -126,6 +138,12 @@ none skipped.
 Running the harness against the replacement found two defects in it, both
 fixed: period close reported a period blocked by unsettled funded service as
 failed, and batch close reported every failure as `unexpected_error`.
+
+An independent review of the harness itself found three more, also fixed: the
+proxy boundary was validated and then dropped on the floor (which also broke the
+build), the contention helper demonstrated no contention, and the observer hid a
+committed row to make PAY-08 pass. The last of those is why PAY-08 is now a
+declared substitution rather than a green tick.
 
 ## Gaps, flagged rather than filled
 

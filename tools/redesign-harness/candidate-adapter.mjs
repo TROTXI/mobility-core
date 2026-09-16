@@ -5,7 +5,8 @@
 // rows. It never imports the catalog's expectations and performs no arithmetic
 // assertion of its own; where the two models represent the same fact
 // differently, the mapping is named and recorded as evidence.
-import { createHmac, randomUUID } from 'node:crypto';
+import { createHash, createHmac, randomUUID } from 'node:crypto';
+import { readFile, readdir } from 'node:fs/promises';
 import { pathToFileURL } from 'node:url';
 import { resolve } from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
@@ -20,8 +21,36 @@ const { Pricing } = await load('payments/pricing.ts');
 const { MembershipService } = await load('membership/service.ts');
 const { default: pg } = await import(pathToFileURL(resolve(NEXT, 'node_modules/pg/lib/index.js')));
 const { Pool } = pg;
+const SOURCE = await sourceDigest();
+
+/**
+ * What was actually run, hashed once at load.
+ *
+ * The baseline is verified byte for byte against git before and after a run.
+ * The candidate is the working tree, so the next best thing is to record what
+ * this adapter imported: every source file under the replacement's src tree
+ * plus this adapter itself. The runner refuses a run where that changes
+ * partway through.
+ */
+async function sourceDigest() {
+  const digest = createHash('sha256');
+  const walk = async (dir) => {
+    for (const entry of (await readdir(dir, { withFileTypes: true })).sort((a, b) =>
+      a.name < b.name ? -1 : 1,
+    )) {
+      const path = resolve(dir, entry.name);
+      if (entry.isDirectory()) await walk(path);
+      else if (/\.(ts|json)$/.test(entry.name))
+        digest.update(entry.name).update(await readFile(path));
+    }
+  };
+  await walk(resolve(NEXT, 'src'));
+  digest.update(await readFile(new URL(import.meta.url)));
+  return digest.digest('hex');
+}
 
 const SECRET = ['sk', 'test', 'harnesssynthetic'].join('_');
+const WORKER = 'harness-candidate-worker';
 const KEY = Buffer.alloc(32, 7);
 const hex64 = () => randomUUID().replaceAll('-', '') + randomUUID().replaceAll('-', '');
 const normalizedSql = (sql) =>
@@ -71,7 +100,7 @@ class HarnessEvidence extends PaystackEvidence {
 export async function createAdapter({ databaseUrl }) {
   const observer = new Pool({
     connectionString: databaseUrl,
-    max: 3,
+    max: 4,
     application_name: 'harness-candidate-observer',
     statement_timeout: 15000,
   });
@@ -123,7 +152,7 @@ export async function createAdapter({ databaseUrl }) {
     workers = new Pool({
       connectionString: databaseUrl,
       max: 8,
-      application_name: 'harness-candidate-worker',
+      application_name: WORKER,
       statement_timeout: 15000,
     });
     workers.on('error', (error) =>
@@ -314,16 +343,64 @@ export async function createAdapter({ databaseUrl }) {
       },
     });
 
+  /**
+   * Run the step's operations against each other, and prove they actually met.
+   *
+   * Every money path in this model locks the rider row first, so the blocker
+   * holds exactly that row while the operations start. Two distinct worker
+   * backends have to be in flight and at least one of them has to be waiting
+   * on a lock before the blocker lets go: a scenario that ran its operations
+   * one after another never satisfies that, which is the point. Which of them
+   * then wins is the model's business, not the harness's.
+   */
   async function contend(step) {
-    const outcomes = await Promise.allSettled(step.actions.map((action) => act(action)));
-    const errors = outcomes
-      .filter((o) => o.status === 'rejected')
-      .map((o) => errorKind(o.reason))
-      .sort();
+    const blocker = await observer.connect();
+    let pending;
+    const witness = { backends: 0, waiting: 0, rows: [] };
+    try {
+      await blocker.query('BEGIN');
+      await blocker.query('SELECT id FROM app.users WHERE id=$1 FOR UPDATE', [
+        riders.get(step.owner),
+      ]);
+      pending = Promise.allSettled(step.actions.map((action) => act(action)));
+      await until(async () => {
+        const backends = (
+          await observer.query(
+            `SELECT DISTINCT a.pid FROM pg_stat_activity a
+            WHERE a.datname=current_database() AND a.application_name=$1
+              AND a.state IN ('active','idle in transaction')`,
+            [WORKER],
+          )
+        ).rows;
+        const waiting = (
+          await observer.query(
+            `SELECT DISTINCT l.pid, l.locktype FROM pg_locks l
+            JOIN pg_stat_activity a ON a.pid=l.pid
+            WHERE a.datname=current_database() AND a.application_name=$1 AND NOT l.granted`,
+            [WORKER],
+          )
+        ).rows;
+        witness.backends = Math.max(witness.backends, new Set(backends.map((r) => r.pid)).size);
+        witness.waiting = Math.max(witness.waiting, new Set(waiting.map((r) => r.pid)).size);
+        if (waiting.length) witness.rows = waiting;
+        return witness.backends >= 2 && witness.waiting >= 1;
+      }, 'two worker backends in flight with at least one blocked on a lock');
+      evidence.push({ kind: 'database-contention', ...witness });
+    } finally {
+      await blocker.query('ROLLBACK');
+      blocker.release();
+      // Let the operations finish even if the instrumentation gave up; never
+      // drop the database out from under them.
+      if (pending) await pending;
+    }
+    const outcomes = await pending;
     return {
       fulfilled: outcomes.filter((o) => o.status === 'fulfilled').length,
-      rejected: outcomes.length - outcomes.filter((o) => o.status === 'fulfilled').length,
-      errors,
+      rejected: outcomes.filter((o) => o.status === 'rejected').length,
+      errors: outcomes
+        .filter((o) => o.status === 'rejected')
+        .map((o) => errorKind(o.reason))
+        .sort(),
     };
   }
 
@@ -551,8 +628,7 @@ export async function createAdapter({ databaseUrl }) {
               ])
             ).rows[0]?.purchase_id,
           ),
-          reason:
-            failure.reason === 'period_not_convertible' ? 'unconvertible_period' : failure.reason,
+          reason: failure.reason,
         })),
       ),
     };
@@ -734,7 +810,7 @@ export async function createAdapter({ databaseUrl }) {
         // same attempt, the same "older than an hour" rule, no rewritten row.
         evidence.push({
           kind: 'reconcile-cutoff-substitution',
-          note: 'app.payment_attempts is immutable, so the discovery cutoff is taken from real time rather than by backdating the attempt.',
+          note: "app.payment_attempts is immutable, so the attempt cannot be backdated behind production's one-hour discovery window. The cutoff is moved past the attempt instead. What this exercises is recovery by Verify; the age of an attempt at which discovery begins is NOT exercised on this side.",
         });
         const s = await settlement(step.purchase, step.at);
         provider.facts.set(
@@ -1078,20 +1154,16 @@ export async function createAdapter({ databaseUrl }) {
                 ),
               conversionEffects: conversion.length,
               conversionCredit: sum(conversion, 'delta_pesewas'),
-              // What a close recorded, for a period that closed. A closure row
-              // against a still-open period is not a close that happened.
-              closeRides:
-                closures.length && period.state !== 'open'
-                  ? Number(closures[0].rides_converted)
-                  : null,
-              closeCredit:
-                closures.length && period.state !== 'open'
-                  ? Number(closures[0].credit_granted_pesewas)
-                  : null,
+              closeRides: closures.length ? Number(closures[0].rides_converted) : null,
+              closeCredit: closures.length ? Number(closures[0].credit_granted_pesewas) : null,
             }
           : null,
       };
     }
+    // The operations list is work an operator still has to look at. A review
+    // this model opened and then resolved itself is not on anyone's desk, and
+    // the status it carries is the linked refund or dispute's own progress,
+    // not the review row's lifecycle.
     const opsReviews = tables.payment_reviews
       .filter((r) => r.state === 'open')
       .map((r) => ({
@@ -1126,7 +1198,9 @@ export async function createAdapter({ databaseUrl }) {
           // final; a ready row that has already been attempted is the same
           // fact still awaiting retry, which is where this model keeps a
           // rollback the baseline would mark failed outright.
-          failed: events.filter((e) => e.state === 'quarantined' || e.attempts > 0).length,
+          failed: events.filter(
+            (e) => e.state === 'quarantined' || (e.state === 'ready' && e.attempts > 0),
+          ).length,
         },
       },
       raw: { ...tables, inbox: allEvents },
@@ -1150,6 +1224,7 @@ export async function createAdapter({ databaseUrl }) {
       return {
         adapter: 'replacement-postgres',
         package: '@trotxi/api-next',
+        sourceSha256: SOURCE,
         postgres: (await observer.query('SELECT version()')).rows[0].version,
       };
     },
@@ -1176,6 +1251,11 @@ export async function createAdapter({ databaseUrl }) {
         evidence.push({
           kind: 'negative-control-mutation',
           suspended: ['app.one_period_allocation', 'app.ride_entries user triggers'],
+          // The triggers go back on. The unique index cannot: the row it
+          // forbids is the control itself, so recreating it would fail. It
+          // stays dropped for the life of this scenario's own database, which
+          // is dropped as soon as the control is judged.
+          restored: ['app.ride_entries user triggers'],
           wrote: 'a second full allocation on a period that already had one',
         });
       } else if (kind === 'wrong_current_purchase') {
@@ -1203,6 +1283,13 @@ export async function createAdapter({ databaseUrl }) {
     },
     async dispose() {
       try {
+        // A claim is a checked-out client inside an open transaction. If a run
+        // failed between claiming and releasing, ending the pool would wait for
+        // it forever and turn a failed gate into a timeout.
+        if (claim) {
+          claim.release(true);
+          claim = null;
+        }
         await workers.end();
       } finally {
         await observer.end();

@@ -224,7 +224,7 @@ export const scenarios = [
           closed: 1,
           blocked: 0,
           failed: 1,
-          failures: [{ purchase: 'first', reason: 'unconvertible_period' }],
+          failures: [{ purchase: 'first', reason: 'missing_conversion_rate' }],
         },
         riders: {
           riderA: { membership: 'active', credit: 0, rides: 44 },
@@ -526,6 +526,44 @@ export const negativeControls = [
  * scenario can never be dropped quietly.
  */
 export const candidateSubstitutions = [
+  {
+    id: 'PAY-08R',
+    replaces: 'PAY-08',
+    gate: 'payment',
+    reason:
+      "The baseline nulls the period's conversion rate. The replacement freezes that rate NOT NULL on the purchase, the purchase's terms are immutable by trigger, and a period carries no copy of them, so a missing or malformed rate is unrepresentable three ways over. The one unconvertible period this schema does permit is a half-written close: a closure row against a period that is still open. The property under test is unchanged - one bad period fails in isolation, its own effects roll back, and the batch still closes the next one - and the failure is reported in the implementation's own words rather than a word invented to make the two agree.",
+    title: 'An unconvertible period fails alone; the next one still closes',
+    steps: [
+      ...paid(),
+      rider('riderB'),
+      buy('valid', 'riderB', '2026-01-02T00:00:00.000Z'),
+      fulfill('valid', '2026-01-02T00:00:00.000Z'),
+      action('malformRate', { purchase: 'first' }),
+      close(),
+      check('isolated-failure', {
+        result: {
+          considered: 2,
+          closed: 1,
+          blocked: 0,
+          failed: 1,
+          failures: [{ purchase: 'first', reason: 'duplicate_resource' }],
+        },
+        riders: {
+          riderA: { membership: 'active', credit: 0, rides: 44 },
+          riderB: { membership: 'expired', credit: 1980 },
+        },
+        purchases: {
+          // The rolled-back close left no conversion behind: no credit was
+          // granted and no ride was converted, which is what isolation means.
+          first: { period: { status: 'open', rides: 44, conversionEffects: 0, convertedRides: 0 } },
+          valid: {
+            period: { status: 'closed', closeRides: 44, closeCredit: 1980, conversionEffects: 1 },
+          },
+        },
+        totals: { periods: 2 },
+      }),
+    ],
+  },
   {
     id: 'REC-02R',
     replaces: 'REC-02',

@@ -307,13 +307,7 @@ export async function createAdapter({ databaseUrl }) {
         value = await lifecycle.closeEndedPeriods(new Date(step.at), 100);
         value.failures = await Promise.all(
           value.failures.map(async (failure) => ({
-            // The catalog names the domain outcome. This implementation's word
-            // for a period whose terms cannot produce a conversion is its
-            // missing rate; the replacement's is a half-written close.
-            reason:
-              failure.reason === 'missing_conversion_rate'
-                ? 'unconvertible_period'
-                : failure.reason,
+            reason: failure.reason,
             purchase: logicalPurchase(
               (
                 await observer.query(

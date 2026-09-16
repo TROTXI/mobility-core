@@ -79,6 +79,14 @@ export interface AppOptions extends Dependencies {
     driver: { ios: number; android: number };
     commuter: { ios: number; android: number };
   };
+  /**
+   * Which peers may state the client's address, as an address list Fastify
+   * understands. Absent means nobody, so an unconfigured deployment
+   * under-trusts rather than letting a caller forge its own address. Every
+   * per-IP budget buckets on what this resolves to, so behind a proxy that is
+   * not named here the whole internet shares one bucket.
+   */
+  trustProxy?: string | false;
   requestsPerMinute?: number;
   requestsPerIpPerMinute?: number;
   // Optional only for isolated transport tests. createReplacementApp wires the
@@ -119,7 +127,7 @@ export async function createTransportApp(options: AppOptions) {
     maxParamLength: 256,
     logger: false,
     bodyLimit: 65536,
-    trustProxy: false,
+    trustProxy: options.trustProxy ?? false,
     genReqId: () => randomUUID(),
     ajv: { customOptions: { removeAdditional: false, coerceTypes: false, useDefaults: true } },
   });

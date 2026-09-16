@@ -108,7 +108,10 @@ const report = {
 // supplemental case may go unrun against the candidate, and never silently.
 const substituted = new Map(candidateSubstitutions.map((s) => [s.replaces, s]));
 for (const entry of candidateSubstitutions) {
-  if (!supplemental.some((s) => s.id === entry.replaces))
+  const known =
+    supplemental.some((s) => s.id === entry.replaces) ||
+    scenarios.some((s) => s.id === entry.replaces);
+  if (!known)
     throw new Error(`Substitution ${entry.id} replaces an unknown case ${entry.replaces}`);
   if (!entry.reason?.trim()) throw new Error(`Substitution ${entry.id} states no reason`);
 }
@@ -305,16 +308,32 @@ try {
   for (const scenario of scenarios) {
     const entry = await runScenario(scenario, createAdapter, 'baseline');
     report.scenarios.push(entry);
-    if (candidate) {
-      const other = await runScenario(scenario, candidate.createAdapter, 'candidate');
-      entry.candidate = other;
-      // Both sides must satisfy the same independently fixed contract. Different
-      // legal race winners are permitted; full observations remain in evidence.
-      entry.comparison = 'failed';
-      if (entry.status === 'passed' && other.status === 'passed') {
-        compareCheckpoints(entry.checkpoints, other.checkpoints, scenario.id);
-        entry.comparison = 'passed';
-      }
+    if (!candidate) continue;
+    const stand = substituted.get(scenario.id);
+    if (stand) {
+      // A payment scenario whose premise the candidate model makes
+      // unrepresentable. The baseline still runs it unchanged; the candidate
+      // runs the declared substitute, which carries its own fixed expectations
+      // and has to pass on its own. Two different scenarios cannot be compared
+      // checkpoint for checkpoint, so the comparison is named for what it is.
+      report.substitutions.push({
+        id: stand.id,
+        replaces: stand.replaces,
+        gate: stand.gate ?? 'supplemental',
+        reason: stand.reason,
+      });
+      entry.candidate = await runScenario(stand, candidate.createAdapter, 'candidate');
+      entry.comparison = 'substituted';
+      continue;
+    }
+    const other = await runScenario(scenario, candidate.createAdapter, 'candidate');
+    entry.candidate = other;
+    // Both sides must satisfy the same independently fixed contract. Different
+    // legal race winners are permitted; full observations remain in evidence.
+    entry.comparison = 'failed';
+    if (entry.status === 'passed' && other.status === 'passed') {
+      compareCheckpoints(entry.checkpoints, other.checkpoints, scenario.id);
+      entry.comparison = 'passed';
     }
   }
   for (const scenario of supplemental) {
@@ -322,7 +341,12 @@ try {
     if (!candidate) continue;
     const stand = substituted.get(scenario.id);
     if (stand) {
-      report.substitutions.push({ id: stand.id, replaces: stand.replaces, reason: stand.reason });
+      report.substitutions.push({
+        id: stand.id,
+        replaces: stand.replaces,
+        gate: stand.gate ?? 'supplemental',
+        reason: stand.reason,
+      });
       report.candidateSupplemental.push(
         await runScenario(stand, candidate.createAdapter, 'candidate-supplemental'),
       );
@@ -346,6 +370,20 @@ try {
         ),
       );
   }
+  // The candidate is the working tree, not a verified export, so the least the
+  // report can do is say what it ran and refuse a tree that changed partway.
+  if (candidate) {
+    const digests = new Set(
+      [...report.scenarios.map((s) => s.candidate), ...report.candidateSupplemental]
+        .filter(Boolean)
+        .map((entry) => entry.adapter?.sourceSha256)
+        .filter(Boolean),
+    );
+    if (digests.size > 1) throw new Error('Candidate source changed during the run');
+    report.candidateSourceSha256 = [...digests][0] ?? null;
+    if (!report.candidateSourceSha256)
+      throw new Error('Candidate adapter reported no source digest');
+  }
   // Every required case is accounted for on both sides. A candidate run that
   // covered fewer cases than the baseline is a failed gate, not a shorter one.
   const standIn = new Map(candidateSubstitutions.map((s) => [s.id, s.replaces]));
@@ -353,7 +391,12 @@ try {
     report.candidateSupplemental.map((entry) => standIn.get(entry.id) ?? entry.id),
   );
   if (
-    report.scenarios.some((s) => s.status !== 'passed' || s.comparison === 'failed') ||
+    report.scenarios.some(
+      (s) =>
+        s.status !== 'passed' ||
+        s.comparison === 'failed' ||
+        (candidate && s.candidate?.status !== 'passed'),
+    ) ||
     report.supplemental.some((s) => s.status !== 'passed') ||
     report.negativeControls.some((s) => s.status !== 'detected') ||
     (candidate &&

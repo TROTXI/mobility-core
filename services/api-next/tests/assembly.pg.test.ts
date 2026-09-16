@@ -532,33 +532,72 @@ test('ASM-18 raising the operations build floor must not switch the sweeps off',
   assert.equal(worker.statusCode, 200, worker.body);
 });
 
-test('ASM-19 an untrusted peer cannot state the address it is limited by', async (t) => {
-  // Every per-IP budget buckets on what the server sees. A deployment that has
-  // not named its proxy must ignore the header, or one caller behind it can
-  // spend everyone else's budget, and a direct caller can dodge its own.
-  const { backend } = await assembled(t, {
-    REPLACEMENT_REQUESTS_PER_IP_PER_MINUTE: '3',
-    REPLACEMENT_TRUST_PROXY: 'none',
-  });
-  const hit = (forwarded: string) =>
-    backend.app.inject({
+/** Five requests from one socket, each claiming a different client address. */
+async function forwardedBurst(backend: Backend, peer: string) {
+  const codes: number[] = [];
+  for (let i = 0; i < 5; i++) {
+    const response = await backend.app.inject({
       method: 'GET',
       url: '/v1/routes',
-      remoteAddress: '203.0.113.7',
+      remoteAddress: peer,
       headers: {
-        'x-forwarded-for': forwarded,
+        'x-forwarded-for': `198.51.100.${i}`,
         'x-trotxi-client': 'commuter',
         'x-trotxi-build': '9',
         'x-trotxi-platform': 'ios',
       },
     });
-  const codes: number[] = [];
-  for (let i = 0; i < 5; i++) codes.push((await hit(`198.51.100.${i}`)).statusCode);
+    codes.push(response.statusCode);
+  }
+  return codes;
+}
+
+test('ASM-19 an untrusted peer cannot state the address it is limited by', async (t) => {
+  // Every per-IP budget buckets on what the server sees. A deployment that has
+  // not named its proxy must ignore the header, or a direct caller dodges its
+  // own budget by inventing a new address for every request.
+  const { backend } = await assembled(t, {
+    REPLACEMENT_REQUESTS_PER_IP_PER_MINUTE: '3',
+    REPLACEMENT_TRUST_PROXY: 'none',
+  });
+  const codes = await forwardedBurst(backend, '203.0.113.7');
   assert.equal(
     codes.filter((c) => c === 429).length,
     2,
     `a forged forwarded address bought a fresh budget: ${codes.join(',')}`,
   );
+});
+
+test('ASM-19b a named proxy is believed, so riders behind it keep their own budgets', async (t) => {
+  // The other half, and the half that catches a value that is validated and
+  // then dropped: behind a proxy this deployment has named, each client is
+  // limited on its own address rather than all of them sharing the balancer's.
+  const { backend } = await assembled(t, {
+    REPLACEMENT_REQUESTS_PER_IP_PER_MINUTE: '3',
+    REPLACEMENT_TRUST_PROXY: '127.0.0.1',
+  });
+  const codes = await forwardedBurst(backend, '127.0.0.1');
+  assert.deepEqual(
+    codes.filter((c) => c === 429),
+    [],
+    `the configured proxy was not believed: ${codes.join(',')}`,
+  );
+  // And the peer has to be the one that was named. An unnamed peer stating
+  // someone else's address is still limited on its own.
+  const stranger = await forwardedBurst(backend, '203.0.113.7');
+  assert.equal(
+    stranger.filter((c) => c === 429).length,
+    2,
+    `an unnamed peer was believed: ${stranger.join(',')}`,
+  );
+});
+
+test('ASM-19c the backend is composed from configuration alone', () => {
+  // No adapter parameter exists to pass a recording fake, a permissive session
+  // callback or an in-memory object store through. A second required parameter
+  // would fail this; an optional one would not, so the rule is also stated in
+  // the README and enforced by review.
+  assert.equal(composeBackend.length, 1);
 });
 
 test('ASM-20 money, coverage and a seat are one flow through the assembled backend', async (t) => {
@@ -665,17 +704,24 @@ test('ASM-20 money, coverage and a seat are one flow through the assembled backe
     await f.owner.query('SELECT * FROM app.reservations WHERE period_id=$1', [period.id])
   ).rows[0];
   assert.equal(reservation.status, 'reserved');
-  // A funded, unsettled seat now blocks the close of the period that funds it,
-  // and the worker reports that as blocked rather than as a fault.
+  // Coverage the rider has paid for is not closed early. The batch does not
+  // consider this period at all, which is the honest thing to assert here: the
+  // seat does not block a close that was never attempted.
+  //
+  // That an unsettled funded seat blocks the close of the period funding it is
+  // proven where it can be driven deterministically, by the preservation
+  // harness at PAY-09, which fails if the refusal is reclassified.
   const close = await runJob(backend, { job: 'payments', limit: 10 });
   assert.equal(close.status, 200, JSON.stringify(close.body));
-  const seats = (
-    await f.owner.query('SELECT id,period_id,status,service_date,settled_at FROM app.reservations')
-  ).rows;
+  const batch = (close.body as { data?: Record<string, unknown> }).data ?? close.body;
+  assert.deepEqual(
+    (batch as { periods: unknown }).periods,
+    { considered: 0, succeeded: 0, blocked: 0, failed: 0, failures: [] },
+    `a period whose coverage has not ended was considered for close: ${JSON.stringify(close.body)}`,
+  );
   assert.equal(
     (await f.owner.query('SELECT state FROM app.billing_periods WHERE id=$1', [period.id])).rows[0]
       .state,
     'open',
-    `close=${JSON.stringify(close.body)} seats=${JSON.stringify(seats)} period=${period.id}`,
   );
 });

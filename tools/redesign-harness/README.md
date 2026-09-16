@@ -109,11 +109,12 @@ node --import ./.harness-artifacts/baseline/services/api/node_modules/tsx/dist/l
   --candidate-commit=HEAD
 ```
 
-In compare mode the gate now requires, on the candidate as well as the baseline:
-all sixteen PAY scenarios passing **and** comparing, every supplemental recovery
-case either run or substituted, and both negative controls detected on their
-exact assertion paths. A candidate run that covered fewer cases than the
-baseline is a failed gate, not a shorter one.
+In compare mode the gate requires, on the candidate as well as the baseline:
+every one of the sixteen PAY scenarios passing and either comparing or standing
+in a declared substitution that passed, every supplemental recovery case either
+run or substituted, and both negative controls detected on their exact assertion
+paths. A candidate run that covered fewer cases than the baseline is a failed
+gate, not a shorter one.
 
 ### What the two models call the same fact
 
@@ -133,32 +134,68 @@ evidence:
 | Consumption            | boarding, no-show and returned entries    | boarding and no-show entries; a refund removal is not consumption  |
 | Operations review list | open work                                 | reviews still in state `open`                                      |
 
-### Fixture substitutions, each with its reason
+### Substituted scenarios, each with its reason
 
-- **PAY-08's malformed period.** The baseline nulls the period's conversion
-  rate. The replacement freezes that rate `NOT NULL` on the purchase, the
-  purchase's terms are immutable by trigger, and a period carries no copy, so a
-  missing or malformed rate is unrepresentable. The one unconvertible period
-  this schema does permit is a half-written close: a closure row against a
-  period that is still open. Both sides report the outcome as
-  `unconvertible_period`; neither constraint was weakened to make this fit.
-- **PAY-10's discovery cutoff.** The baseline backdates the payment row behind
-  the cutoff. Attempt identity is immutable here, so the cutoff moves instead:
-  the same attempt, the same "older than an hour" rule, no rewritten row.
-- **REC-02 and REC-03** are replaced by `REC-02R` and `REC-03R`, declared in
-  `candidateSubstitutions`. REC-02 assumes a committed fulfilment with a missing
-  acknowledgement; the replacement commits the effect and its receipt in one
-  transaction, so that state cannot exist, and REC-02R proves the stronger thing
-  instead: interrupting the acknowledgement grants nothing at all. REC-03
-  assumes a processing lease to expire; the replacement claims by locking the
-  row inside the processing transaction, and REC-03R proves another worker skips
-  a held claim and that the claim dies with the worker holding it, with no
-  interval to wait out.
+Three scenarios assume a state the replacement model makes unrepresentable.
+Each is declared in `candidateSubstitutions`, and the baseline still runs the
+original unchanged.
+
+- **PAY-08 &rarr; PAY-08R.** The baseline nulls the period's conversion rate. The
+  replacement freezes that rate `NOT NULL` on the purchase, the purchase's terms
+  are immutable by trigger, and a period carries no copy of them, so a missing or
+  malformed rate is unrepresentable three ways over. The one unconvertible period
+  this schema does permit is a half-written close: a closure row against a period
+  that is still open. The property under test is unchanged &mdash; one bad period
+  fails in isolation, its effects roll back, the batch still closes the next one
+  &mdash; and each side reports the failure in its own words rather than a third
+  word invented to make them agree. No constraint was weakened, and no
+  production code was added to produce a nicer string.
+- **REC-02 &rarr; REC-02R.** REC-02 assumes a committed fulfilment with a missing
+  acknowledgement. The replacement commits the effect and its receipt in one
+  transaction, so that state cannot exist. REC-02R proves the stronger thing:
+  interrupting the acknowledgement grants nothing at all.
+- **REC-03 &rarr; REC-03R.** REC-03 assumes a processing lease to expire. The
+  replacement claims by locking the row inside the processing transaction.
+  REC-03R proves another worker skips a held claim and that the claim dies with
+  the worker holding it, with no interval to wait out.
 
 A substitution names the case it replaces, states why that case's premise cannot
 exist, and is itself a scenario with fixed expectations that has to pass.
-`harness.test.mjs` enforces all three, and the runner refuses a gate where a
-required case was neither run nor substituted.
+`harness.test.mjs` enforces all three. Substituting a **payment** scenario needs
+more than a declaration: its id must also be added to a reviewed allowlist in
+that test, and the substitution must state which gate it stands in. The runner
+refuses a gate where a required case was neither run nor substituted, and
+refuses one where a substitute did not pass.
+
+### Fixture adjustments that are not substitutions
+
+- **PAY-10's discovery cutoff.** The baseline backdates the payment row behind
+  the cutoff. Attempt identity is immutable here, so the cutoff moves past the
+  attempt instead. What this exercises on the candidate is recovery by Verify;
+  the age at which discovery begins is not exercised on that side, and the
+  evidence says so.
+- **The retry backoff.** A failed delivery is retried on an exponential backoff
+  here rather than immediately, so `restartWorker` also brings a backed-off row
+  forward. It is recorded as a `fixture-clock-adjustment`, the same way the
+  baseline expires its lease.
+
+### Contention
+
+`contend()` holds the rider row &mdash; the row every money path locks first
+&mdash; in an open transaction while the scenario's operations start, and
+requires two distinct worker backends in flight with at least one of them
+blocked on a lock before it lets go. A scenario whose operations ran one after
+another never satisfies that: rewriting `contend()` as a sequential loop makes
+PAY-02, PAY-04, PAY-06 and PAY-11 fail with a timeout rather than pass quietly.
+`raceInbox()` proves the same thing for the inbox, where the second worker skips
+a row the first is holding rather than waiting on it.
+
+### What was run
+
+The baseline is verified byte for byte against git before and after a run. The
+candidate is the working tree, so the adapter hashes every source file under
+`services/api-next/src` plus itself and reports that digest in its metadata; the
+runner records it and refuses a run where it changed partway through.
 
 ### Negative controls on the replacement
 

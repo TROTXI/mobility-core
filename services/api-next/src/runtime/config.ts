@@ -94,6 +94,10 @@ function key(env: Env, name: string): Buffer {
 }
 function url(env: Env, name: string): string {
   const raw = required(env, name);
+  // new URL strips interior tabs and newlines before parsing, so a value
+  // carrying them would be approved and then handed back with them intact.
+  if (/[\u0000-\u0020\u007f]/.test(raw))
+    throw new ConfigurationError(`${name} must not contain control characters`);
   let parsed: URL;
   try {
     parsed = new URL(raw);

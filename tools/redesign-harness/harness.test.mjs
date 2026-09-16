@@ -101,7 +101,7 @@ test('a substituted case must name what it replaces, why, and prove something', 
   // candidate. It is not an exemption: it names the case, states why that
   // case's premise cannot exist in the replacement model, and is itself a
   // scenario with fixed expectations that has to pass.
-  const ids = new Set(supplemental.map((s) => s.id));
+  const ids = new Set([...supplemental, ...scenarios].map((s) => s.id));
   for (const entry of candidateSubstitutions) {
     assert.ok(ids.has(entry.replaces), `${entry.id} replaces an unknown case`);
     assert.ok(entry.reason && entry.reason.length > 40, `${entry.id} states no real reason`);
@@ -111,10 +111,23 @@ test('a substituted case must name what it replaces, why, and prove something', 
     );
     assert.ok(!ids.has(entry.id), `${entry.id} must not shadow a required case id`);
   }
-  // And it may not quietly stand in for a PAY scenario: those are the gate.
+  // A payment scenario is the gate, so substituting one takes a deliberate
+  // edit here as well as a declaration. Adding an id to this list is the
+  // review step: it cannot happen by writing a substitution alone.
+  const reviewedPaymentSubstitutions = new Set(['PAY-08']);
   const required = new Set(scenarios.map((s) => s.id));
-  for (const entry of candidateSubstitutions)
-    assert.ok(!required.has(entry.replaces), `${entry.id} cannot substitute a PAY scenario`);
+  for (const entry of candidateSubstitutions) {
+    if (!required.has(entry.replaces)) continue;
+    assert.ok(
+      reviewedPaymentSubstitutions.has(entry.replaces),
+      `${entry.id} substitutes the payment scenario ${entry.replaces} without review`,
+    );
+    assert.equal(entry.gate, 'payment', `${entry.id} must declare which gate it stands in`);
+    assert.ok(
+      entry.reason.length > 200,
+      `${entry.id} substitutes a payment scenario on a one-line reason`,
+    );
+  }
 });
 
 test('the compare gate refuses a run that covered fewer cases than the baseline', () => {
