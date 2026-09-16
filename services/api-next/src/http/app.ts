@@ -1,5 +1,6 @@
 import Fastify from 'fastify';
 import rateLimit from '@fastify/rate-limit';
+import multipart from '@fastify/multipart';
 import type { FastifyRequest } from 'fastify';
 import { randomUUID } from 'node:crypto';
 import contract from './contract.json' with { type: 'json' };
@@ -17,6 +18,8 @@ import { membershipOperations } from '../membership/service.js';
 import { tripReads } from '../transport/trips.js';
 import { pricingOperations } from '../payments/pricing.js';
 import type { Pricing, PricingOperation } from '../payments/pricing.js';
+import { accountOperations } from '../account/service.js';
+import type { AccountService, AccountOperation } from '../account/service.js';
 import { purchaseOperations } from '../payments/purchases.js';
 import type { Purchases, PurchaseOperation } from '../payments/purchases.js';
 import type { TripRead } from '../transport/trips.js';
@@ -62,6 +65,8 @@ export interface AppOptions extends Dependencies {
   payments?: PaymentRecovery;
   membership?: MembershipService;
   pricing?: Pricing;
+  account?: AccountService;
+  maxAvatarBytes?: number;
   purchases?: Purchases;
   boarding?: BoardingService;
   authRequestsPerMinute?: number;
@@ -101,6 +106,11 @@ export async function createTransportApp(options: AppOptions) {
   // Runs before token verification, in addition to the verified-user budget.
   // No trust in forwarded headers; deployment must explicitly configure its
   // ingress/proxy policy before exposing the service behind a shared proxy.
+  if (options.account)
+    await app.register(multipart, {
+      attachFieldsToBody: true,
+      limits: { files: 1, fields: 0, fileSize: options.maxAvatarBytes ?? 2 * 1024 * 1024 },
+    });
   await app.register(rateLimit, {
     global: true,
     hook: 'onRequest',
@@ -160,6 +170,8 @@ export async function createTransportApp(options: AppOptions) {
       const boardingEndpoint = (boardingOperations as readonly string[]).includes(name);
       const pricingEndpoint = (pricingOperations as readonly string[]).includes(name);
       const purchaseEndpoint = (purchaseOperations as readonly string[]).includes(name);
+      const accountEndpoint = (accountOperations as readonly string[]).includes(name);
+      if (accountEndpoint && !options.account) continue;
       if (boardingEndpoint && !options.boarding) continue;
       if (pricingEndpoint && !options.pricing) continue;
       if (purchaseEndpoint && !options.purchases) continue;
@@ -233,7 +245,10 @@ export async function createTransportApp(options: AppOptions) {
               : client !==
                 (ops
                   ? 'ops'
-                  : membershipEndpoint || purchaseEndpoint || name === 'issuePass'
+                  : membershipEndpoint ||
+                      purchaseEndpoint ||
+                      accountEndpoint ||
+                      name === 'issuePass'
                     ? 'commuter'
                     : 'driver')) ||
             (name === 'signInDriver' && client !== 'driver') ||
@@ -356,6 +371,24 @@ export async function createTransportApp(options: AppOptions) {
               );
             }
             return reply.send({ data });
+          } else if (accountEndpoint) {
+            if (name === 'uploadAvatar') {
+              const body = request.body as { file?: { toBuffer?: () => Promise<Buffer> } };
+              const part = body?.file;
+              if (!part || typeof part.toBuffer !== 'function')
+                fail(400, 'invalid_request', 'Supply an image to upload.');
+              result = await options.account!.handle(
+                actor!,
+                name as AccountOperation,
+                await part.toBuffer(),
+                (part as { mimetype?: string }).mimetype,
+              );
+            } else
+              result = await options.account!.handle(
+                actor!,
+                name as AccountOperation,
+                (request.body ?? {}) as Body,
+              );
           } else if (pricingEndpoint || purchaseEndpoint) {
             const query = request.query as Record<string, string | undefined>;
             const allowed = new Set(
