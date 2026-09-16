@@ -109,6 +109,11 @@ const selected = new Set([
   'createFare',
   'listPlanPricing',
   'updatePlanPricing',
+  'updateAccount',
+  'eraseAccount',
+  'getAvatar',
+  'uploadAvatar',
+  'registerDevice',
 ]);
 const count = selected.size;
 const paths = {};
