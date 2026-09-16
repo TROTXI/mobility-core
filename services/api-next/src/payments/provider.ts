@@ -143,6 +143,33 @@ export function parseProviderFact(raw: Buffer, source: 'webhook' | 'verify'): Pr
   }
 }
 
+/**
+ * Read a provider response with a ceiling.
+ *
+ * A timeout does not bound a body: ten seconds at line rate is hundreds of
+ * megabytes, and every concurrent checkout would buffer its own copy.
+ */
+async function bounded(body: ReadableStream<Uint8Array>, limit = 1048576): Promise<Buffer> {
+  const reader = body.getReader();
+  const chunks: Uint8Array[] = [];
+  let size = 0;
+  try {
+    for (;;) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      size += value.length;
+      if (size > limit) {
+        await reader.cancel();
+        throw new InvalidProviderFacts('Provider response is too large');
+      }
+      chunks.push(value);
+    }
+  } finally {
+    reader.releaseLock();
+  }
+  return Buffer.concat(chunks);
+}
+
 export class PaystackEvidence {
   readonly environment: 'test' | 'live';
   constructor(
@@ -182,6 +209,61 @@ export class PaystackEvidence {
     c.setAuthTag(encrypted.subarray(12, 28));
     return Buffer.concat([c.update(encrypted.subarray(28)), c.final()]);
   }
+  /**
+   * Open a hosted checkout for an attempt that is already committed.
+   *
+   * Ported from the deployed client at `services/api`: same endpoint, same
+   * currency, same refusal to accept a response naming a different reference.
+   * Called outside every transaction, and a failure leaves the attempt
+   * pending for unresolved-payment discovery rather than inventing a target.
+   */
+  async initialize(request: {
+    reference: string;
+    amountPesewas: number;
+    email: string;
+  }): Promise<{ authorizationUrl: string }> {
+    if (
+      !/^[A-Za-z0-9._=-]{1,100}$/.test(request.reference) ||
+      !Number.isSafeInteger(request.amountPesewas) ||
+      request.amountPesewas < 1 ||
+      request.amountPesewas > 2147483647 ||
+      !/^[^\s@]{1,200}@[^\s@]{1,100}$/.test(request.email)
+    )
+      throw new InvalidProviderFacts('Invalid checkout request');
+    const response = await this.request('https://api.paystack.co/transaction/initialize', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${this.secret}`, 'content-type': 'application/json' },
+      signal: AbortSignal.timeout(10000),
+      redirect: 'error',
+      body: JSON.stringify({
+        email: request.email,
+        amount: request.amountPesewas,
+        reference: request.reference,
+        currency: 'GHS',
+      }),
+    });
+    if (!response.ok || !response.body) throw new Error(`provider_unavailable_${response.status}`);
+    const body = z
+      .object({
+        status: z.literal(true),
+        data: z.object({
+          authorization_url: z.string().max(2048),
+          reference: z.string().max(100),
+        }),
+      })
+      .parse(JSON.parse((await bounded(response.body)).toString('utf8')));
+    if (body.data.reference !== request.reference)
+      throw new InvalidProviderFacts('Provider opened a different reference');
+    let target: URL;
+    try {
+      target = new URL(body.data.authorization_url);
+    } catch {
+      throw new InvalidProviderFacts('Provider returned an unusable checkout target');
+    }
+    if (target.protocol !== 'https:') throw new InvalidProviderFacts('Insecure checkout target');
+    return { authorizationUrl: target.toString() };
+  }
+
   async verify(reference: string): Promise<Buffer> {
     if (!reference || reference.length > 100) throw new InvalidProviderFacts();
     const response = await this.request(

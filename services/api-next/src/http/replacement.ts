@@ -9,6 +9,9 @@ import type { BoardingOptions } from '../boarding/service.js';
 // Composition boundary: no bearer-header test fallback, no stateless session
 // shortcut. Still refuses startup without the real reservation coordinator.
 // This is a factory, not deployment wiring or permission to start a listener.
+export type ComposedServices = Partial<
+  Pick<AppOptions, 'payments' | 'membership' | 'pricing' | 'purchases' | 'account' | 'config'>
+>;
 export function createReplacementApp(
   options: Omit<
     AppOptions,
@@ -17,6 +20,17 @@ export function createReplacementApp(
     identity: Omit<AuthOptions, 'pool' | 'cursorSecret'>;
     credentialReplayKey: Buffer;
     boarding?: Omit<BoardingOptions, 'pool' | 'authorizeSession'>;
+    /**
+     * Services that need the session authorizer identity owns. They are built
+     * from the one AuthService composed here rather than from a second
+     * instance over the same pool, so there is exactly one place a session is
+     * judged. Supplying a service directly instead still works and is what the
+     * per-domain tests do.
+     */
+    compose?: (identity: {
+      auth: AuthService;
+      authorizeSession: AuthService['authorizeSession'];
+    }) => ComposedServices;
   },
 ) {
   const auth = new AuthService({
@@ -57,8 +71,10 @@ export function createReplacementApp(
         authorizeSession: auth.authorizeSession,
       })
     : undefined;
+  const composed = options.compose?.({ auth, authorizeSession: auth.authorizeSession }) ?? {};
   return createTransportApp({
     ...options,
+    ...composed,
     auth,
     drivers,
     boarding,

@@ -2,20 +2,22 @@
 
 Stage 2 is approved and merged as PR #294, merge `1a46ad0`. The source/lockfile
 baseline remains pinned to `43cdae0`; it is not advanced to the merge commit.
-Stage 3 is **in progress**, not complete and not ready for a staging cutover.
 
-Current implementation branch: 015 [boarding and settlement](stage-3-boarding-settlement.md),
-based on the integration merge of #309 at `a0e8a76`. Merged 013 supplies commute
-and reservations; merged 014 supplies GPS ingestion, learning and retention.
-015 adds six reviewed boarding operations: the executable contract is now 92
-operations, the contiguous schema is 001–015, and there are 68 app tables.
-Optional route groups still require their real composition dependencies; a
-generated operation count is not a deployed-service or stage-exit claim.
+**Stage 3 implementation is complete. Nothing is deployed.** The executable
+contract is the full reviewed cutover surface of **119 operations**, the
+contiguous schema is **001–018**, and the replacement passes the preservation
+harness against the pinned baseline in compare mode.
 
-The earlier sections below are historical slice checkpoints, not current totals.
-Stage 3 still needs purchase/pricing HTTP composition, commuter trip/live reads,
-remaining account/privacy/device/configuration operations, deployment/worker
-composition, and the full preservation harness. Stage 4 remains client integration.
+Read [the stage-3 completion report](stage-3-completion.md) for the operation
+and invariant mapping, the preservation result, and the gaps that are flagged
+rather than filled. The thirteen deferred operations remain deferred and are
+listed separately there.
+
+The sections below are historical slice checkpoints, not current totals. A
+generated operation count was never a deployed-service claim, and still is not:
+the blueprint entries are commented out, no schedule is enabled, no staging
+database has been touched, and the service refuses to start until Apple
+provisioning exists. Stage 4 remains client integration.
 
 ## First review slice: transport storage
 

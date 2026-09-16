@@ -28,6 +28,19 @@ import type { TripRead } from '../transport/trips.js';
 import type { MembershipService, MembershipOperation } from '../membership/service.js';
 import { boardingOperations } from '../boarding/service.js';
 import type { BoardingService } from '../boarding/service.js';
+// The contract admits a `worker` client on exactly these, with no platform:
+// scheduled maintenance is an operations caller without an app build behind it.
+const maintenanceOperations = new Set([
+  'runPayments',
+  'runPaymentInbox',
+  'runPaymentReconciliation',
+  'runPeriodClose',
+  'runAskDispatch',
+  'runReservationDefaults',
+  'runNoShows',
+  'runRouteLearning',
+  'runGpsRetention',
+]);
 const paymentOperations = [
   'receivePaystackWebhook',
   'listPaymentReviews',
@@ -38,6 +51,16 @@ const paymentOperations = [
   'runPeriodClose',
 ];
 
+declare module 'fastify' {
+  interface FastifyInstance {
+    /**
+     * The one transport service this application dispatches through. The
+     * maintenance worker runs the same reviewed handlers the HTTP routes do,
+     * rather than a second instance with its own idea of the rules.
+     */
+    transport: TransportService;
+  }
+}
 interface Operation {
   operationId: string;
   parameters: { in: string; name: string; schema: Record<string, unknown> }[];
@@ -51,11 +74,32 @@ export interface AppOptions extends Dependencies {
   // Signature/issuer/audience/expiry verification belongs to identity. No test
   // header fallback and no listener until a real verifier/session adapter lands.
   verifyAccess: (authorization: string) => Promise<Actor | null>;
+  /**
+   * Which social sign-in routes this application offers. A provider that is
+   * not listed has no route, so a client discovers it is unavailable when it
+   * reads the surface rather than when a rider taps the button. Absent means
+   * both, which is what the per-domain tests supply.
+   */
+  authProviders?: readonly ('google' | 'apple')[];
+  /**
+   * A per-rider budget shared across instances. Absent leaves the bounded
+   * process-local counter below, which is correct for one process and for the
+   * per-domain tests, and is not a limit once the service scales.
+   */
+  admit?: (subject: string) => Promise<{ count: number; resetsInSeconds: number }>;
   minimumBuilds: {
     ops: number;
     driver: { ios: number; android: number };
     commuter: { ios: number; android: number };
   };
+  /**
+   * Which peers may state the client's address, as an address list Fastify
+   * understands. Absent means nobody, so an unconfigured deployment
+   * under-trusts rather than letting a caller forge its own address. Every
+   * per-IP budget buckets on what this resolves to, so behind a proxy that is
+   * not named here the whole internet shares one bucket.
+   */
+  trustProxy?: string | false;
   requestsPerMinute?: number;
   requestsPerIpPerMinute?: number;
   // Optional only for isolated transport tests. createReplacementApp wires the
@@ -96,10 +140,11 @@ export async function createTransportApp(options: AppOptions) {
     maxParamLength: 256,
     logger: false,
     bodyLimit: 65536,
-    trustProxy: false,
+    trustProxy: options.trustProxy ?? false,
     genReqId: () => randomUUID(),
     ajv: { customOptions: { removeAdditional: false, coerceTypes: false, useDefaults: true } },
   });
+  app.decorate('transport', service);
   const actors = new WeakMap<FastifyRequest, Actor>();
   const budget = options.requestsPerMinute ?? 120;
   if (!Number.isInteger(budget) || budget < 1) throw new Error('Invalid request budget');
@@ -224,6 +269,9 @@ export async function createTransportApp(options: AppOptions) {
       const driverEndpoint = (driverOperations as readonly string[]).includes(name);
       if (authentication && !options.auth) continue;
       if (driverEndpoint && !options.drivers) continue;
+      const providers = options.authProviders ?? (['google', 'apple'] as const);
+      if (name === 'signInGoogle' && !providers.includes('google')) continue;
+      if (name === 'signInApple' && !providers.includes('apple')) continue;
       const publicAuth = (publicAuthOperations as readonly string[]).includes(name);
       const publicRead = (publicCatalogReads as readonly string[]).includes(name);
       // Trip reads need a session but not a particular app: a rider watching a
@@ -231,6 +279,7 @@ export async function createTransportApp(options: AppOptions) {
       const anyClient = publicRead || (tripReads as readonly string[]).includes(name);
       const anonymous = publicRead || publicAuth || publicConfig;
       const ops = path.startsWith('/v1/ops/');
+      const scheduled = ops && maintenanceOperations.has(name);
       const response: Record<string, unknown> = {};
       for (const [status, out] of Object.entries(operation.responses)) {
         const schema = out.content?.['application/json']?.schema;
@@ -260,32 +309,43 @@ export async function createTransportApp(options: AppOptions) {
           const client = request.headers['x-trotxi-client'],
             build = request.headers['x-trotxi-build'],
             platform = request.headers['x-trotxi-platform'];
+          // Only the maintenance operations admit it, and only there does it
+          // stand in for an operations client. Nothing else about the ops
+          // client's own rules changes.
+          const workerClient = scheduled && client === 'worker';
+          const platformless = client === 'ops' || workerClient;
           if (
             (anyClient || authentication
               ? !['ops', 'driver', 'commuter'].includes(String(client))
-              : client !==
-                (ops
-                  ? 'ops'
-                  : membershipEndpoint ||
-                      purchaseEndpoint ||
-                      accountEndpoint ||
-                      name === 'issuePass'
-                    ? 'commuter'
-                    : 'driver')) ||
+              : !(
+                  workerClient ||
+                  client ===
+                    (ops
+                      ? 'ops'
+                      : membershipEndpoint ||
+                          purchaseEndpoint ||
+                          accountEndpoint ||
+                          name === 'issuePass'
+                        ? 'commuter'
+                        : 'driver')
+                )) ||
             (name === 'signInDriver' && client !== 'driver') ||
             typeof build !== 'string' ||
             !/^[1-9]\d{0,8}$/.test(build) ||
-            (client === 'ops'
-              ? platform !== undefined
-              : !['ios', 'android'].includes(String(platform)))
+            (platformless ? platform !== undefined : !['ios', 'android'].includes(String(platform)))
           )
             fail(
               400,
               'client_metadata_required',
               'Supply the appropriate client, build and platform metadata.',
             );
-          const floor =
-            client === 'ops'
+          // A scheduled worker has no app build behind it, which is why it
+          // sends no platform either. Holding it to the operations console's
+          // floor would stop retention and period close the moment somebody
+          // raised that floor to push an upgrade.
+          const floor = workerClient
+            ? 0
+            : platformless
               ? floors.ops
               : options.config
                 ? await options.config.minimumBuild(
@@ -296,8 +356,18 @@ export async function createTransportApp(options: AppOptions) {
           if (Number(build) < floor)
             fail(426, 'client_upgrade_required', 'Update the application before continuing.');
           if (!actor) return; // Public catalog remains IP-limited; no identity fallback.
-          // Bounded process-local protection only. Distributed admission remains
-          // a deployment concern; untrusted metadata never supplies authority.
+          if (options.admit) {
+            const spent = await options.admit(actor.userId);
+            if (spent.count > budget) {
+              reply.header('Retry-After', String(spent.resetsInSeconds));
+              fail(429, 'rate_limited', 'Please wait before trying again.');
+            }
+            actors.set(request, actor);
+            return;
+          }
+          // Bounded process-local fallback. It is a real limit for one process
+          // and no limit at all across two, which is why the deployable
+          // composition always supplies the shared one.
           const now = Date.now();
           if (counters.size >= 10000)
             for (const [key, row] of counters) if (row.until <= now) counters.delete(key);

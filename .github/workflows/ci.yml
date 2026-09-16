@@ -63,9 +63,9 @@ jobs:
           retention-days: 14
 
   redesign-harness:
-    name: Redesign baseline harness (Postgres)
+    name: Redesign preservation harness (Postgres)
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 30
     services:
       postgres:
         image: postgis/postgis:16-3.4
@@ -92,11 +92,19 @@ jobs:
         with:
           node-version: 24
           cache: pnpm
+      # The candidate adapter runs the replacement's own services, so the
+      # workspace has to be installed as well as the pinned baseline.
+      - run: pnpm install --frozen-lockfile
       - run: node --test tools/redesign-harness/harness.test.mjs
       - name: Prepare immutable source and locked dependencies
         run: node tools/redesign-harness/prepare.mjs
-      - name: Original suite, fixed expectations, contention and negative controls
-        run: node --import ./.harness-artifacts/baseline/services/api/node_modules/tsx/dist/loader.mjs tools/redesign-harness/run.mjs --mode=baseline
+      - name: Baseline and replacement, fixed expectations, contention and negative controls
+        run: |
+          node --import ./.harness-artifacts/baseline/services/api/node_modules/tsx/dist/loader.mjs \
+            tools/redesign-harness/run.mjs --mode=compare \
+            --candidate-adapter=tools/redesign-harness/candidate-adapter.mjs \
+            --candidate-migrations=services/api-next/migrations \
+            --candidate-commit=${{ github.event.pull_request.head.sha || github.sha }}
       - uses: actions/upload-artifact@v7
         if: always()
         with:

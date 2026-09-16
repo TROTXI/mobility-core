@@ -1,19 +1,24 @@
 # Replacement backend — stage 3
 
-Not deployed. This package has an **injectable HTTP app factory, not a production
-listener or deploy entry point**. `createReplacementApp` now composes the real
-signature/session implementation; provider configuration must be supplied.
-The running API, its 45 migrations, apps, jobs and staging database are unchanged.
-Review into `codex/backend-replacement`, not `main`. Do not point existing API
-binaries at this schema or point this installer at the existing staging database.
+Not deployed. The package now has a real entry point (`src/server.ts`) and a real
+maintenance worker (`src/worker.ts`), but no environment runs them: the blueprint
+entries in `render.yaml` are prepared and commented out, and no schedule is
+enabled. The running API, its 45 migrations, apps, jobs and staging database are
+unchanged. Review into `codex/backend-replacement`, not `main`. Do not point
+existing API binaries at this schema or point this installer at the existing
+staging database.
 
-Current implementation: **001–015**, **68 application tables**, **92 operations**
-in the executable contract. Route groups require their configured dependencies:
-payment recovery, membership and boarding are not silently replaced by stubs.
-See [boarding/settlement](../../docs/design/stage-3-boarding-settlement.md) and
-[the current checkpoint](../../docs/design/stage-3-progress.md) for evidence and
-remaining work. Historical counts and slice descriptions below record earlier
-checkpoints; they are not current totals or a claim of complete deployment wiring.
+Current implementation: **001–018**, **119 operations** in the executable
+contract, which is the full reviewed cutover surface, and the preservation
+harness passes against the pinned baseline in compare mode. Read
+[the stage-3 completion report](../../docs/design/stage-3-completion.md) for the
+operation and invariant mapping, the preservation result, and the gaps. The thirteen deferred
+operations remain deferred and are not implemented. Route groups still require
+their configured dependencies, and the deployable composition supplies all of
+them: it refuses to start rather than serving a reviewed operation without the
+capability behind it. See [the current checkpoint](../../docs/design/stage-3-progress.md)
+for evidence and remaining work. Historical counts and slice descriptions below
+record earlier checkpoints; they are not current totals.
 This does not enable checkout, workers or provider traffic on staging.
 
 ## Implemented here
@@ -226,6 +231,84 @@ atomically; reset/suspension/PIN change revoke sessions transactionally. A separ
 32-byte credential replay key is now required at composition. No driver screen
 or staging change is included, and no booking coordinator is faked for deployment.
 
+## Deployable assembly
+
+`src/server.ts` reads and validates the environment, composes the whole backend
+and only then opens a listener. `src/runtime/config.ts` is the single list of
+what a deployment must supply; every name is `REPLACEMENT_*` so a service sharing
+an account with the deployed API cannot inherit its database, signing key or
+provider credentials. A missing variable is refused **by name** before anything
+is built, and the eight key purposes must all be different keys.
+
+Both external adapters are exercised against the real service and not only
+against synthetic evidence: `scripts/paystack-test-mode.ts` (test key, six
+checks) and `scripts/r2-check.ts` (four checks, including that a signature past
+its expiry is refused, so the avatar URL TTL is real).
+
+Nothing degrades. There is no in-memory object store, no recording push sender,
+no permissive session callback and no adapter parameter a caller could pass a
+test double through: `composeBackend` takes configuration and nothing else. The
+adapters are the real ones — Google and Apple ID-token verification, Apple's
+token and revocation endpoints, Paystack initialize/verify/webhook evidence, and
+Cloudflare R2 for avatars, signed locally with SigV4 so URL signing never makes a
+network call while a lock is held.
+
+Sign-in providers are a deployment statement rather than an assumption. A
+provider listed in `REPLACEMENT_AUTH_PROVIDERS` must be completely configured or
+startup fails; one that is not listed has no route at all, so a client sees it is
+unavailable when it reads the surface rather than when a rider taps the button.
+Google is always required: driver sign-in is a PIN, so without it riders have no
+door.
+
+Per-rider admission is shared across instances through `app.admission_counters`,
+in a window aligned to the clock so two instances agree on which window they are
+in without talking to each other. That costs a round trip on the admission path,
+which is the price of a limit that survives a second instance.
+
+Startup additionally asks the database to prove the connection is the narrow
+runtime role: it refuses to serve if that connection can create objects in the
+`app` schema or update append-only history. Pointing the service at the migration
+owner is a configuration mistake that would otherwise work perfectly and be
+quietly unauditable.
+
+`/healthz` answers for the process; `/readyz` reads a row and reports 503 when it
+cannot. `SIGTERM`/`SIGINT` close the server and the pool once, with a bounded
+deadline; an uncaught exception or unhandled rejection exits non-zero rather than
+continuing to serve money and audit writes in a state we cannot vouch for.
+
+### Maintenance worker
+
+`node dist/worker.js <job> [travel-date] [outbound|return]` runs exactly one job
+and exits non-zero if it was refused, because a scheduler that reports success
+for a sweep that failed is how retention quietly stops happening.
+
+| Job                    | What it does                                          |
+| ---------------------- | ----------------------------------------------------- |
+| `gps-retention`        | Deletes raw traces past the retention window          |
+| `route-learning`       | Learns corridor shape and segment speeds from the day |
+| `payments`             | Webhook inbox, provider reconciliation, period close  |
+| `ask-dispatch`         | Asks riders about a service day                       |
+| `reservation-defaults` | Resolves the still-pending at the cutoff              |
+| `no-shows`             | Debits confirmed seats nobody took                    |
+| `erasures`             | Retries erasure's external half                       |
+| `driver-secrets`       | Physically clears expired credential ciphertext       |
+
+The first six go through the application's own routes, so they get the same
+schema validation, authorization, receipts and idempotency as an operator
+pressing the same button. The contract admits a `worker` client on exactly those
+maintenance operations and the app now accepts it there and nowhere else. The
+worker is not exempt from authorization: it opens a real session for a named
+operations account, every receipt names that user, and the session is revoked
+when the run ends whether or not the run succeeded.
+
+The last two have no reviewed HTTP operation and are called directly, which is
+why they live in the worker. `driver-secrets` is the physical half of credential
+expiry: logical expiry already refuses replay, but the recoverable ciphertext
+stays on disk until this runs. `erasures` is the external half of account
+closure — withdrawing the Apple grant and removing the stored avatar object.
+Neither reports success it did not achieve: an unreachable store leaves the task
+outstanding with its failure recorded, and the next sweep tries again.
+
 ## Run locally
 
 Use Node 24 and the repository's pinned pnpm. The tests create uniquely named
@@ -298,23 +381,41 @@ This is category B/C **storage and command evidence**, not a claim that transpor
 has already replaced the old service or that payment comparison mode has passed.
 The stage-2 baseline and its expectations remain unchanged.
 
-## Still required within stage 3
+## Still required before a cutover
 
-1. Provider secret configuration, bootstrap/deploy wiring, distributed
-   admission and physical receipt expiry; real booking coordination for ops
-   edits. The 44-operation app factory is not a ready-to-deploy replacement service.
-2. Attributable future-version reassignment coordinated with commute assignments
-   and reservations. Until that command exists, version changes on an existing
-   trip fail closed; do not disable the guard to publish over affected trips.
-3. Full transport preservation scenarios against the pinned baseline and the
-   candidate, plus candidate-source pinning. State/timestamp SQL checks are not
-   substituted for driver-service/auth tests or HTTP replay coverage.
-4. Membership, purchases, attempts, periods, typed accounting, payment candidate
-   adapter and all preserved PAY/REC scenarios; approved target-only ownership
-   rules and the PAY-08 fixture substitution.
-5. Commute/boarding, remaining identity/erasure, GPS ingestion/projection/retention/learning,
-   remaining cutover operations and full cross-domain tests.
+1. Physical receipt expiry for the command stores. This is a schema decision,
+   not a sweep: `response_body` is `NOT NULL` on the main stores and twelve
+   event and effect tables reference commands with `ON DELETE RESTRICT`, so
+   expiring a receipt means choosing between a tombstone and a scrub, and
+   relaxing constraints to match. Logical expiry already refuses replay;
+   deletion of the expired rows is not claimed.
+2. An Apple Developer account, if Apple sign-in is wanted. The deployment runs
+   without one: `REPLACEMENT_AUTH_PROVIDERS=google` is a complete deployment and
+   `signInApple` simply has no route. Adding one is four variables and one word.
+3. A paid transaction. Test mode is exercised (`scripts/paystack-test-mode.ts`,
+   six checks passing against a real `sk_test_` key: environment, initialize,
+   verify, and three signature cases). Settlement, refund and dispute facts have
+   still only been seen as synthetic evidence, because nobody has paid one.
 
-No allocation, charging, ETA algorithm, raw-GPS retention job, consumer upgrade
-or staging cutover is delivered by these slices. Auth endpoints exist in the
-factory but have not replaced or changed any deployed endpoint.
+### On future-version reassignment
+
+The version guard on an existing trip still fails closed: `guard_trip()` refuses
+a direct schedule or pattern-version change with `explicit_reassignment_required`,
+and publication refuses a closure that would orphan a non-cancelled trip with
+`409 reassignment_required`. That is unchanged, and the guard must not be
+disabled to publish over affected runs.
+
+What has changed is that ops now has an attributable way through it. The
+reservation coordinator is composed in the deployable backend, so cancelling or
+rescheduling an affected run releases or revalidates the funded seats in the same
+transaction, and publication then succeeds. `ASM-16` walks that whole path with a
+real funded reservation; `ASM-17` is its control, showing the same decision
+returning `503 reservation_coordinator_unavailable` when the coordinator is not
+composed.
+
+A single-command bulk reassignment is a different thing, and the approved
+contract has no operation for it — not even a deferred one. That is a contract
+decision to review rather than an endpoint to invent here.
+
+No staging cutover is delivered. The endpoints exist in a service nothing runs,
+and no deployed endpoint has been replaced or changed.

@@ -39,9 +39,18 @@ const run = randomBytes(5).toString('hex'),
   evidence: unknown[] = [];
 let serial = 0;
 after(async () => {
+  // One database that refuses to drop must not strand every database after it
+  // in the list. Failures are collected and reported once, at the end.
+  const stranded: string[] = [];
   try {
-    for (const name of owned) await admin.query(`DROP DATABASE "${name}"`);
-    for (const role of roles) await admin.query(`DROP ROLE "${role}"`);
+    for (const name of owned)
+      await admin
+        .query(`DROP DATABASE "${name}"`)
+        .catch((error) => stranded.push(`${name}: ${(error as Error).message}`));
+    for (const role of roles)
+      await admin
+        .query(`DROP ROLE "${role}"`)
+        .catch((error) => stranded.push(`${role}: ${(error as Error).message}`));
     if (process.env.REPLACEMENT_EVIDENCE_DIR) {
       await mkdir(process.env.REPLACEMENT_EVIDENCE_DIR, { recursive: true });
       await writeFile(
@@ -64,6 +73,8 @@ after(async () => {
   } finally {
     await admin.end();
   }
+  if (stranded.length)
+    throw new Error(`Test databases or roles were left behind: ${stranded.join('; ')}`);
 });
 export const at = new Date('2026-01-01T00:00:00Z'),
   renewAt = new Date('2026-02-02T00:00:00Z');
@@ -80,6 +91,7 @@ export async function setup(
   owned.push(name);
   const db = new URL(url);
   db.pathname = '/' + name;
+  const ownerUrl = db.href;
   const owner = new pg.Pool({ connectionString: db.href, max: 5 });
   t.after(() => owner.end());
   if (upgrade) {
@@ -263,6 +275,8 @@ export async function setup(
   evidence.push({ test: t.name });
   return {
     owner,
+    ownerUrl,
+    runtimeUrl: db.href,
     adminId,
     runtime,
     role,
