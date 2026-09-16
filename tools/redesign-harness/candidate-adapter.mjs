@@ -358,13 +358,30 @@ export async function createAdapter({ databaseUrl }) {
   async function contend(step) {
     const blocker = await observer.connect();
     let pending;
-    const witness = { backends: 0, waiting: 0, rows: [] };
+    const witness = { backends: 0, waiting: 0, settledWhileBlocked: 0, rows: [] };
+    let blocking = true;
     try {
       await blocker.query('BEGIN');
       await blocker.query('SELECT id FROM app.users WHERE id=$1 FOR UPDATE', [
         riders.get(step.owner),
       ]);
-      pending = Promise.allSettled(step.actions.map((action) => act(action)));
+      // Settling while the blocker still holds the rider row is itself proof of
+      // overlap, and it is not a sampling race: an operation that finished
+      // while another was blocked cannot have run after it.
+      pending = Promise.allSettled(
+        step.actions.map((action) =>
+          act(action).then(
+            (value) => {
+              if (blocking) witness.settledWhileBlocked += 1;
+              return value;
+            },
+            (reason) => {
+              if (blocking) witness.settledWhileBlocked += 1;
+              throw reason;
+            },
+          ),
+        ),
+      );
       await until(async () => {
         const backends = (
           await observer.query(
@@ -385,10 +402,17 @@ export async function createAdapter({ databaseUrl }) {
         witness.backends = Math.max(witness.backends, new Set(backends.map((r) => r.pid)).size);
         witness.waiting = Math.max(witness.waiting, new Set(waiting.map((r) => r.pid)).size);
         if (waiting.length) witness.rows = waiting;
-        return witness.backends >= 2 && witness.waiting >= 1;
-      }, 'two worker backends in flight with at least one blocked on a lock');
+        // One operation blocked on the lock, and a second either blocked
+        // beside it or already finished while it was blocked. A run whose
+        // operations went one after another reaches neither.
+        return (
+          witness.waiting >= 1 &&
+          Math.max(witness.backends, witness.waiting + witness.settledWhileBlocked) >= 2
+        );
+      }, 'two operations overlapping, with at least one blocked on a lock');
       evidence.push({ kind: 'database-contention', ...witness });
     } finally {
+      blocking = false;
       await blocker.query('ROLLBACK');
       blocker.release();
       // Let the operations finish even if the instrumentation gave up; never
