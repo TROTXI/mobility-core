@@ -123,6 +123,44 @@ flutter build ios --simulator --debug \
 Use a new realm after replacing the disposable database. Simulator compilation
 is not device sign-off, store compliance, or a staging cutover.
 
+## Commuter session foundation (not wired into the app yet)
+
+Work continues on `codex/stage-4-commuter`. `CommuterSessionClient` now exchanges
+Google and Apple provider credentials through the generated replacement
+operations, accepts only a commuter account, restores account identity, and
+performs local-first logout with independent remote acknowledgement. Provider
+proofs are transient and never written into session storage.
+
+The attempt starts before opening the native provider prompt: logout while that
+prompt is open prevents even a late token exchange. Tests also cover backend
+responses and OS writes arriving after logout/new sign-in, failed storage,
+wrong roles, old response envelopes, offline restore, authoritative refresh
+rejection and remote logout failure. **19 new tests; 100 shared tests pass;
+shared analyzer clean.** This is not native Google/Apple SDK or device evidence.
+
+The commuter app intentionally still uses its existing client until the rest
+of its repositories and screens can move coherently. In particular:
+
+- `home_page_provider.dart` currently selects a reservation by device-local
+  morning/evening. Replacement selection must use explicit service day,
+  direction, reservation and trip identities, with full pagination.
+- `commuter_preference.dart` currently selects physical stops and times. It
+  needs schedule/version/occurrence selection for both commute legs, not a
+  mechanical field rename. Request history must use the new envelopes/statuses.
+- `pass_tab.dart` currently requests an unscoped pass with a relative TTL. The
+  replacement pass is reservation-scoped and expiry must come from its contract.
+- `wallet_tab.dart` contains a sample Visa card, sample credit activity and a
+  local auto-renew toggle. These are not backend capabilities or real account
+  facts: remove the samples from the integrated account view rather than
+  presenting them as the rider's payment method/history/settings.
+- Profile, sessions and erasure still call old endpoints. Account updates,
+  session revocation, erasure acknowledgement and external-resource completion
+  must remain distinct; clearing local tokens is not proof of completed erasure.
+
+The existing iOS Google configuration fix stays intact. No commuter location
+permission/collection is introduced, and Apple SDK/store setup is not claimed
+complete merely because the server token exchange can be tested.
+
 ## Remaining implementation sequence
 
 1. **Driver walkthrough:** the coherent migration above is implemented. Verify
