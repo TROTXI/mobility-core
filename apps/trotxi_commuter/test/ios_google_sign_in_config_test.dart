@@ -80,7 +80,7 @@ void main() {
         r"_googleServerId\s*=\s*'([^']+)'",
       ).firstMatch(source)?.group(1);
       final renderId = RegExp(
-        r'key: REPLACEMENT_GOOGLE_CLIENT_ID\s+value: ([^\s]+)',
+        r'key: GOOGLE_CLIENT_ID\s+value: ([^\s]+)',
       ).firstMatch(File('../../render.yaml').readAsStringSync())?.group(1);
       expect(dartId, isNotNull);
       expect(renderId, isNotNull);
