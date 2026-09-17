@@ -135,7 +135,71 @@ async function link(subjects: string[]): Promise<void> {
   process.stdout.write(`\n${subjects.length} account(s) can now sign in.\n`);
 }
 
+/**
+ * Rewrite every driver PIN and prove the result against the live service.
+ *
+ * The hash is a keyed HMAC under a secret this script derives the same way the
+ * service does. If the two derivations ever disagree the codes look right and
+ * every sign-in fails, which is a miserable thing to debug from a phone. So
+ * this does not report success on having written a row: it asks the running
+ * service to accept one of the credentials it just wrote, and says plainly
+ * whether it did.
+ */
+async function resetPins(baseUrl: string): Promise<void> {
+  const rows = await q<{ driver_id: string; name: string; driver_code: string }>(
+    `SELECT c.driver_id, d.name, c.driver_code
+     FROM app.driver_credentials c JOIN app.drivers d ON d.id = c.driver_id
+     WHERE d.archived_at IS NULL ORDER BY d.name`,
+  );
+  if (!rows.length) throw new Error('No driver credentials here. Run the seed first.');
+
+  const issued: { name: string; code: string; pin: string }[] = [];
+  for (const row of rows) {
+    const pin = generatePin();
+    await q(
+      `UPDATE app.driver_credentials
+       SET pin_hash=$2, must_change_pin=false, failed_attempts=0, locked_until=NULL,
+           pin_version=pin_version+1, pin_set_at=clock_timestamp(), updated_at=clock_timestamp()
+       WHERE driver_id=$1`,
+      [row.driver_id, hashDriverPin(pin, pinSecret!)],
+    );
+    issued.push({ name: row.name, code: row.driver_code, pin });
+  }
+
+  process.stdout.write('\nDriver logins (code / PIN):\n');
+  for (const one of issued)
+    process.stdout.write(`  ${one.name.padEnd(16)} ${one.code}  ${one.pin}\n`);
+
+  const probe = issued[0]!;
+  const response = await fetch(`${baseUrl}/v1/auth/driver`, {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+      'x-trotxi-client': 'driver',
+      'x-trotxi-build': '1',
+      'x-trotxi-platform': 'android',
+    },
+    body: JSON.stringify({ code: probe.code, pin: probe.pin, ownDevice: false }),
+  });
+  if (response.ok) {
+    process.stdout.write(`\nThe service accepted ${probe.code}. These PINs work.\n`);
+    return;
+  }
+  const body = await response.text();
+  throw new Error(
+    `The service refused ${probe.code} with HTTP ${response.status}. ` +
+      `The PIN secret this script derived is not the one the service verifies with, ` +
+      `so the JWT_SECRET they each start from differs. Body: ${body.slice(0, 200)}`,
+  );
+}
+
 async function main() {
+  if (process.env.SEED_RESET_PINS === 'yes') {
+    const base = process.env.SEED_STAGING_URL;
+    if (!base) throw new Error('SEED_STAGING_URL is required so the result can be proved');
+    await resetPins(base.replace(/\/$/, ''));
+    return;
+  }
   const only = (process.env.SEED_LINK_SUBJECTS ?? '')
     .split(',')
     .map((value) => value.trim())
