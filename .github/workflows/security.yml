@@ -64,7 +64,7 @@ jobs:
       # than just the lines it printed.
       - name: Keep the report
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: codeql-sarif
           path: sarif-results/
