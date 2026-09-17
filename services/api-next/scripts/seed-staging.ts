@@ -370,7 +370,10 @@ async function riders(): Promise<number> {
     selections.push(selection);
   }
 
-  const periodStart = day(-30);
+  // Mid-term rather than expiring: a reservation is only eligible while its
+  // trip falls inside the period, so the window has to cover every seeded day.
+  const periodStart = day(-20);
+  const periodEnd = day(10);
   let count = 0;
   for (const [index, name] of NAMES.entries()) {
     const route = routes[index % routes.length]!;
@@ -437,11 +440,11 @@ async function riders(): Promise<number> {
           membership,
           user,
           periodStart,
-          lapsed ? day(-2) : day(1),
+          lapsed ? day(-2) : periodEnd,
           lapsed ? 'closed' : 'open',
         ],
       );
-      await q(
+      const assignment = await one(
         `INSERT INTO app.commute_assignments(user_id,membership_id,period_id,selection_id,purchase_id,effective_from)
          VALUES ($1,$2,$3,$4,$5,$6::date)`,
         [user, membership, period, selection, purchase, periodStart],
@@ -464,6 +467,53 @@ async function riders(): Promise<number> {
            VALUES ($1,'adjustment',$2,$3)`,
           [user, delta, adjustment],
         );
+      }
+
+      // Reservations are what put a rider on a driver's manifest. Days behind
+      // us are settled, mostly boarded with the occasional no-show; today and
+      // ahead are reserved and still changeable. A lapsed rider stops at the
+      // day their period closed.
+      for (const offset of DAYS) {
+        const date = day(offset);
+        if (lapsed && offset >= -2) continue;
+        for (const leg of legsByRoute.get(route.id) ?? []) {
+          const trip = (
+            await q(
+              'SELECT id,status FROM app.trips WHERE schedule_id=$1 AND service_date=$2::date',
+              [leg.schedule, date],
+            )
+          )[0] as { id: string; status: string } | undefined;
+          if (!trip) continue;
+          // Only runs that have not left. A boarded or no-show reservation is
+          // receipt-backed: the schema requires a matching charge, and a charge
+          // requires a boarding command. Seeding those would mean inventing
+          // receipts for boardings that never happened, which puts fiction in
+          // the audit trail the receipts exist to protect. Past runs therefore
+          // carry no riders; the driver app produces real boardings by
+          // scanning, which is better evidence than anything written here.
+          if (trip.status !== 'scheduled') continue;
+          await q(
+            `INSERT INTO app.reservations(user_id,period_id,assignment_id,selection_id,direction,
+               service_date,trip_id,schedule_id,pattern_version_id,pickup_occurrence_id,
+               dropoff_occurrence_id,status,source,settled_at)
+             VALUES ($1,$2,$3,$4,$5,$6::date,$7,$8,$9,$10,$11,$12,'confirmation',$13)`,
+            [
+              user,
+              period,
+              assignment,
+              selection,
+              leg.direction,
+              date,
+              trip.id,
+              leg.schedule,
+              leg.version,
+              leg.first,
+              leg.last,
+              'reserved',
+              null,
+            ],
+          );
+        }
       }
     });
     count++;
