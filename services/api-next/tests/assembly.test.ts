@@ -273,28 +273,55 @@ function refuses(env: Record<string, string | undefined>, fragment: string) {
   );
 }
 
-test('ASM-01 a deployment missing any capability names it and does not start', () => {
-  const complete = environment();
-  assert.equal(readConfiguration(complete).build.service, 'trotxi-api-next');
-  // Every declared variable is load-bearing. Dropping one has to be refused by
-  // name, so a broken deploy says what to set rather than starting half-wired.
-  const optional = new Set([
-    'REPLACEMENT_OPERATIONS_PHONE',
-    'REPLACEMENT_OPERATIONS_WHATSAPP',
-    'REPLACEMENT_OPERATIONS_EMAIL',
-    'REPLACEMENT_OPERATIONS_HOURS',
-    'REPLACEMENT_ALLOW_LIVE_PAYMENTS',
-  ]);
-  let checked = 0;
-  for (const name of Object.keys(complete)) {
-    if (optional.has(name)) continue;
+/**
+ * What a deployment genuinely owns, and nothing else.
+ *
+ * Its database, its secrets, its bucket. Everything else has a working answer
+ * already, because a timeout or a basemap URL is the same everywhere until
+ * somebody decides otherwise. Turning those into requirements does not make a
+ * deployment safer, it just gives one missing secret thirty more ways to look
+ * like a different problem.
+ */
+const MUST_BE_STATED = [
+  'REPLACEMENT_RUNTIME_DATABASE_URL',
+  'REPLACEMENT_ACCESS_SECRET',
+  'REPLACEMENT_CURSOR_SECRET',
+  'REPLACEMENT_PIN_SECRET',
+  'REPLACEMENT_CREDENTIAL_REPLAY_KEY',
+  'REPLACEMENT_PROVIDER_ENCRYPTION_KEY',
+  'REPLACEMENT_BOARDING_PROOF_KEY',
+  'REPLACEMENT_DEVICE_KEY',
+  'REPLACEMENT_PAYSTACK_EVIDENCE_KEY',
+  'REPLACEMENT_PAYSTACK_SECRET_KEY',
+  'REPLACEMENT_R2_ACCOUNT_ID',
+  'REPLACEMENT_R2_ACCESS_KEY_ID',
+  'REPLACEMENT_R2_SECRET_ACCESS_KEY',
+  'REPLACEMENT_R2_BUCKET_NAME',
+];
+
+test('ASM-01 a deployment states its secrets, and nothing it does not own', () => {
+  // Dropping one of these is still refused by name, so a real gap says what to
+  // set rather than starting half-wired.
+  for (const name of MUST_BE_STATED) {
     const env = environment();
     delete env[name];
     refuses(env, name);
-    checked += 1;
   }
-  assert.equal(checked, Object.keys(complete).length);
-  assert.ok(checked > 40, `only ${checked} required variables were checked`);
+  // And dropping anything else still starts, on a default that works.
+  const bare: Record<string, string> = {};
+  for (const name of MUST_BE_STATED) bare[name] = environment()[name]!;
+  const config = readConfiguration(bare);
+  assert.equal(config.build.service, 'trotxi-api');
+  assert.equal(config.listen.port, 10000);
+  assert.deepEqual(config.providers, ['google']);
+  assert.equal(config.access.ttlSeconds, 900);
+  assert.equal(config.limits.perUser, 120);
+  assert.equal(config.trustProxy, 'loopback, linklocal, uniquelocal');
+  assert.match(config.mapTiles.url ?? '', /^https:\/\//);
+  // The worker's operator account is the worker's requirement, not the
+  // listener's: an API that will not serve riders because a scheduled job has
+  // no operator is refusing the wrong thing.
+  assert.equal(config.maintenanceUserId, '');
 });
 
 test('Render reports the deployed revision rather than a stale environment value', () => {
@@ -304,7 +331,9 @@ test('Render reports the deployed revision rather than a stale environment value
   delete env.REPLACEMENT_GIT_COMMIT;
   assert.equal(readConfiguration(env).build.commit, env.RENDER_GIT_COMMIT);
   delete env.RENDER_GIT_COMMIT;
-  refuses(env, 'REPLACEMENT_GIT_COMMIT');
+  // With neither, the build says it does not know rather than refusing to
+  // start. A wrong commit on /version would be worse than an honest one.
+  assert.equal(readConfiguration(env).build.commit, 'unknown');
 });
 
 test('ASM-02 no two purposes may share one key', () => {

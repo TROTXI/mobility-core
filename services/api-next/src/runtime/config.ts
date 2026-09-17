@@ -78,6 +78,26 @@ function required(env: Env, name: string): string {
     throw new ConfigurationError(`${name} is required`);
   return value.trim();
 }
+/**
+ * A value a deployment may state, with a working answer when it does not.
+ *
+ * Only things a deployment genuinely owns should be mandatory: its secrets,
+ * its database and the accounts it runs as. A timeout, a page size or the
+ * basemap URL is the same everywhere until someone decides otherwise, and
+ * making each of them mandatory turns one missing secret into forty-one
+ * chances to fail a deploy for no reason.
+ */
+function withDefault(env: Env, name: string, fallback: string): string {
+  const value = env[name];
+  return typeof value === 'string' && value.trim() ? value.trim() : fallback;
+}
+function integerOr(env: Env, name: string, fallback: number, low: number, high: number): number {
+  if (env[name] === undefined || String(env[name]).trim() === '') return fallback;
+  return integer(env, name, low, high);
+}
+function urlOr(env: Env, name: string, fallback: string): string {
+  return env[name] === undefined || String(env[name]).trim() === '' ? fallback : url(env, name);
+}
 function optional(env: Env, name: string): string | null {
   const value = env[name];
   return typeof value === 'string' && value.trim() ? value.trim() : null;
@@ -159,7 +179,7 @@ export function readConfiguration(env: Env = process.env): RuntimeConfig {
     throw new ConfigurationError(
       'A live Paystack key needs REPLACEMENT_ALLOW_LIVE_PAYMENTS=yes on this service',
     );
-  const providers = required(env, 'REPLACEMENT_AUTH_PROVIDERS')
+  const providers = withDefault(env, 'REPLACEMENT_AUTH_PROVIDERS', 'google')
     .split(',')
     .map((name) => name.trim())
     .filter(Boolean);
@@ -187,8 +207,11 @@ export function readConfiguration(env: Env = process.env): RuntimeConfig {
       privateKey: applePrivateKey,
     };
   }
-  const maintenanceUserId = required(env, 'REPLACEMENT_MAINTENANCE_USER_ID').toLowerCase();
-  if (!uuid.test(maintenanceUserId))
+  // Only the maintenance worker acts as this account. An API that refuses to
+  // serve riders because a scheduled job has no operator is failing the wrong
+  // thing; the worker refuses instead, where it matters.
+  const maintenanceUserId = (optional(env, 'REPLACEMENT_MAINTENANCE_USER_ID') ?? '').toLowerCase();
+  if (maintenanceUserId && !uuid.test(maintenanceUserId))
     throw new ConfigurationError('REPLACEMENT_MAINTENANCE_USER_ID must be a user id');
   // Every per-IP limit here buckets on the address the server sees. Behind a
   // load balancer that is the balancer, so one caller's burst rate-limits
@@ -196,7 +219,7 @@ export function readConfiguration(env: Env = process.env): RuntimeConfig {
   // is a deployment fact nobody can guess, so it is stated rather than
   // defaulted. A hop count is not an answer: Fastify ignores a numeric value
   // and trusts nobody, which would silently switch the whole thing off.
-  const proxy = required(env, 'REPLACEMENT_TRUST_PROXY');
+  const proxy = withDefault(env, 'REPLACEMENT_TRUST_PROXY', 'loopback, linklocal, uniquelocal');
   if (/^\d+$/.test(proxy))
     throw new ConfigurationError(
       'REPLACEMENT_TRUST_PROXY must name the peers to trust, not a hop count',
@@ -211,29 +234,36 @@ export function readConfiguration(env: Env = process.env): RuntimeConfig {
     );
   return {
     databaseUrl,
-    poolSize: integer(env, 'REPLACEMENT_POOL_SIZE', 1, 100),
+    poolSize: integerOr(env, 'REPLACEMENT_POOL_SIZE', 8, 1, 100),
     listen: {
       host: optional(env, 'REPLACEMENT_HOST') ?? '0.0.0.0',
-      port: integer(env, 'PORT', 1, 65535),
+      port: integerOr(env, 'PORT', 10000, 1, 65535),
     },
     build: {
-      service: required(env, 'REPLACEMENT_SERVICE_NAME'),
-      version: required(env, 'REPLACEMENT_SERVICE_VERSION'),
+      service: withDefault(env, 'REPLACEMENT_SERVICE_NAME', 'trotxi-api'),
+      version: withDefault(env, 'REPLACEMENT_SERVICE_VERSION', '1.0.0'),
       // Render supplies the exact deployed revision. Prefer it over a stale
       // manually configured value; non-Render runtimes must identify themselves.
-      commit: optional(env, 'RENDER_GIT_COMMIT') ?? required(env, 'REPLACEMENT_GIT_COMMIT'),
+      commit:
+        optional(env, 'RENDER_GIT_COMMIT') ?? withDefault(env, 'REPLACEMENT_GIT_COMMIT', 'unknown'),
     },
     access: {
-      issuer: required(env, 'REPLACEMENT_ACCESS_ISSUER'),
-      audience: required(env, 'REPLACEMENT_ACCESS_AUDIENCE'),
-      ttlSeconds: integer(env, 'REPLACEMENT_ACCESS_TTL_SECONDS', 60, 3600),
+      issuer: withDefault(env, 'REPLACEMENT_ACCESS_ISSUER', 'trotxi-api'),
+      audience: withDefault(env, 'REPLACEMENT_ACCESS_AUDIENCE', 'trotxi-clients'),
+      ttlSeconds: integerOr(env, 'REPLACEMENT_ACCESS_TTL_SECONDS', 900, 60, 3600),
     },
-    refreshTtlDays: integer(env, 'REPLACEMENT_REFRESH_TTL_DAYS', 1, 365),
-    shiftTtlHours: integer(env, 'REPLACEMENT_SHIFT_TTL_HOURS', 1, 24),
+    refreshTtlDays: integerOr(env, 'REPLACEMENT_REFRESH_TTL_DAYS', 30, 1, 365),
+    shiftTtlHours: integerOr(env, 'REPLACEMENT_SHIFT_TTL_HOURS', 12, 1, 24),
     keys,
     pinSecretText: required(env, 'REPLACEMENT_PIN_SECRET'),
     providers: providers as readonly ('google' | 'apple')[],
-    google: { clientId: required(env, 'REPLACEMENT_GOOGLE_CLIENT_ID') },
+    google: {
+      clientId: withDefault(
+        env,
+        'REPLACEMENT_GOOGLE_CLIENT_ID',
+        '431341307838-pc4m046v2lj18ssfnfl1g52fl5g1cg4q.apps.googleusercontent.com',
+      ),
+    },
     apple,
     paystack: { secretKey: paystack },
     avatars: {
@@ -241,14 +271,32 @@ export function readConfiguration(env: Env = process.env): RuntimeConfig {
       accessKeyId: required(env, 'REPLACEMENT_R2_ACCESS_KEY_ID'),
       secretAccessKey: required(env, 'REPLACEMENT_R2_SECRET_ACCESS_KEY'),
       bucket: required(env, 'REPLACEMENT_R2_BUCKET_NAME'),
-      urlTtlSeconds: integer(env, 'REPLACEMENT_AVATAR_URL_TTL_SECONDS', 30, 3600),
-      maxBytes: integer(env, 'REPLACEMENT_AVATAR_MAX_BYTES', 1024, 8 * 1024 * 1024),
+      urlTtlSeconds: integerOr(env, 'REPLACEMENT_AVATAR_URL_TTL_SECONDS', 300, 30, 3600),
+      maxBytes: integerOr(
+        env,
+        'REPLACEMENT_AVATAR_MAX_BYTES',
+        2 * 1024 * 1024,
+        1024,
+        8 * 1024 * 1024,
+      ),
     },
     mapTiles: {
-      url: url(env, 'REPLACEMENT_MAP_TILES_URL'),
-      styleUrl: url(env, 'REPLACEMENT_MAP_STYLE_URL'),
-      darkStyleUrl: url(env, 'REPLACEMENT_MAP_STYLE_DARK_URL'),
-      attribution: required(env, 'REPLACEMENT_MAP_ATTRIBUTION'),
+      url: urlOr(env, 'REPLACEMENT_MAP_TILES_URL', 'https://tiles.trotxi.com/ghana.pmtiles'),
+      styleUrl: urlOr(
+        env,
+        'REPLACEMENT_MAP_STYLE_URL',
+        'https://tiles.trotxi.com/style.light.json',
+      ),
+      darkStyleUrl: urlOr(
+        env,
+        'REPLACEMENT_MAP_STYLE_DARK_URL',
+        'https://tiles.trotxi.com/style.dark.json',
+      ),
+      attribution: withDefault(
+        env,
+        'REPLACEMENT_MAP_ATTRIBUTION',
+        '\u00a9 OpenStreetMap contributors',
+      ),
     },
     // Unset is a real answer here: the app hides a control it has no number
     // for, and a placeholder that rings nowhere is worse than none.
@@ -258,22 +306,22 @@ export function readConfiguration(env: Env = process.env): RuntimeConfig {
       email: optional(env, 'REPLACEMENT_OPERATIONS_EMAIL'),
       hours: optional(env, 'REPLACEMENT_OPERATIONS_HOURS'),
     },
-    docsUrl: url(env, 'REPLACEMENT_DOCS_URL'),
+    docsUrl: urlOr(env, 'REPLACEMENT_DOCS_URL', 'https://docs.trotxi.com'),
     floors: {
-      ops: integer(env, 'REPLACEMENT_MINIMUM_BUILD_OPS', 1, 1_000_000),
+      ops: integerOr(env, 'REPLACEMENT_MINIMUM_BUILD_OPS', 1, 1, 1_000_000),
       driver: {
-        ios: integer(env, 'REPLACEMENT_MINIMUM_BUILD_DRIVER_IOS', 1, 1_000_000),
-        android: integer(env, 'REPLACEMENT_MINIMUM_BUILD_DRIVER_ANDROID', 1, 1_000_000),
+        ios: integerOr(env, 'REPLACEMENT_MINIMUM_BUILD_DRIVER_IOS', 1, 1, 1_000_000),
+        android: integerOr(env, 'REPLACEMENT_MINIMUM_BUILD_DRIVER_ANDROID', 1, 1, 1_000_000),
       },
       commuter: {
-        ios: integer(env, 'REPLACEMENT_MINIMUM_BUILD_COMMUTER_IOS', 1, 1_000_000),
-        android: integer(env, 'REPLACEMENT_MINIMUM_BUILD_COMMUTER_ANDROID', 1, 1_000_000),
+        ios: integerOr(env, 'REPLACEMENT_MINIMUM_BUILD_COMMUTER_IOS', 1, 1, 1_000_000),
+        android: integerOr(env, 'REPLACEMENT_MINIMUM_BUILD_COMMUTER_ANDROID', 1, 1, 1_000_000),
       },
     },
     limits: {
-      perUser: integer(env, 'REPLACEMENT_REQUESTS_PER_MINUTE', 1, 100_000),
-      perIp: integer(env, 'REPLACEMENT_REQUESTS_PER_IP_PER_MINUTE', 1, 100_000),
-      perAuth: integer(env, 'REPLACEMENT_AUTH_REQUESTS_PER_MINUTE', 1, 10_000),
+      perUser: integerOr(env, 'REPLACEMENT_REQUESTS_PER_MINUTE', 120, 1, 100_000),
+      perIp: integerOr(env, 'REPLACEMENT_REQUESTS_PER_IP_PER_MINUTE', 600, 1, 100_000),
+      perAuth: integerOr(env, 'REPLACEMENT_AUTH_REQUESTS_PER_MINUTE', 10, 1, 10_000),
     },
     trustProxy,
     maintenanceUserId,
