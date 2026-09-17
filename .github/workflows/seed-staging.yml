@@ -54,10 +54,29 @@ jobs:
           # the service. A JWT_SECRET the service inherits from an env group is
           # not in there, which is exactly how the first attempt derived a
           # secret the service does not verify with. Collect both.
+          # Names and counts only, never values. The first attempt found one
+          # JWT_SECRET and the service verified with none of its derivations, so
+          # what this reads and what the service starts from are different
+          # things, and guessing which has cost two runs already.
+          echo "service: $(api "/services/${SERVICE_ID}" | jq -r '.name // .service.name // "?"') ($SERVICE_ID)"
+          api "/services/${SERVICE_ID}/env-vars?limit=100" \
+            | jq -r '[.. | objects | select(.key?) | .key] | "service-level keys: " + (join(", "))'
+
+          groups=$(api "/env-groups?limit=100" | jq -r '.. | objects | select(.id? and .name?) | "\(.id)\t\(.name)"' | sort -u)
+          if [ -z "$groups" ]; then
+            echo 'env groups visible to this API key: none'
+          else
+            echo "env groups visible to this API key:"
+            printf '%s\n' "$groups" | while IFS=$'\t' read -r id name; do
+              keys=$(api "/env-groups/${id}" | jq -r '[.. | objects | select(.key?) | .key] | join(", ")')
+              echo "  $name ($id): ${keys:-no readable keys}"
+            done
+          fi
+
           {
             api "/services/${SERVICE_ID}/env-vars?limit=100" | pick
-            for group in $(api "/env-groups?limit=100" | jq -r '.. | objects | select(.id? and .name?) | .id' | sort -u); do
-              api "/env-groups/${group}" | pick
+            printf '%s\n' "$groups" | cut -f1 | while read -r id; do
+              [ -n "$id" ] && api "/env-groups/${id}" | pick
             done
           } | grep -v '^$' | sort -u > /tmp/jwt-candidates
 
