@@ -153,8 +153,20 @@ class TodayController extends ChangeNotifier {
     final fetchId = ++_fetchId;
     Loadable<TodayBoard> next;
     try {
-      final today = _todayString(_now());
-      final runs = await _trips.myRuns(date: today);
+      final now = _now().toUtc();
+      final today = _todayString(now);
+      // A late run remains the driver's responsibility after UTC midnight,
+      // including a cold restart with no cached board. Look back one day for
+      // that active run, without presenting yesterday's unstarted/finished
+      // assignments as today's work. This is bounded overnight recovery, not
+      // an unbounded search for historical active trips.
+      final assignments = await _trips.myRuns(
+        from: _todayString(now.subtract(const Duration(days: 1))),
+        to: today,
+      );
+      final runs = assignments.where(
+        (run) => run.isActive || CorridorTime.day(run.scheduledAt) == today,
+      );
 
       final active = runs.where((r) => r.isActive).firstOrNull;
       final upcoming = runs

@@ -143,8 +143,18 @@ export function readConfiguration(env: Env = process.env): RuntimeConfig {
   const paystack = required(env, 'REPLACEMENT_PAYSTACK_SECRET_KEY');
   if (!/^sk_(test|live)_[A-Za-z0-9]+$/.test(paystack))
     throw new ConfigurationError('REPLACEMENT_PAYSTACK_SECRET_KEY must be a Paystack secret key');
-  // Live money is opt-in and separately stated. A live key pasted into a
-  // staging service would otherwise take real payments on the first request.
+  // Staging is the default and cannot opt into live money. The old single
+  // flag could accidentally be copied along with a live credential. A future
+  // production deployment must identify itself AND separately approve money.
+  const deployment = optional(env, 'REPLACEMENT_DEPLOYMENT_ENVIRONMENT') ?? 'staging';
+  if (!['staging', 'production'].includes(deployment))
+    throw new ConfigurationError(
+      'REPLACEMENT_DEPLOYMENT_ENVIRONMENT must be staging or production',
+    );
+  if (deployment === 'staging' && paystack.startsWith('sk_live_'))
+    throw new ConfigurationError(
+      'Staging requires a Paystack TEST key; live payments are forbidden',
+    );
   if (paystack.startsWith('sk_live_') && optional(env, 'REPLACEMENT_ALLOW_LIVE_PAYMENTS') !== 'yes')
     throw new ConfigurationError(
       'A live Paystack key needs REPLACEMENT_ALLOW_LIVE_PAYMENTS=yes on this service',

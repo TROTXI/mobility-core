@@ -706,7 +706,10 @@ export async function createTransportApp(options: AppOptions) {
               fail(400, 'invalid_request', 'This command has no request body.');
             const key = request.headers['idempotency-key'],
               ifMatch = request.headers['if-match'];
-            if (typeof key !== 'string' || key.length < 1 || key.length > 128)
+            if (
+              name !== 'recordPosition' &&
+              (typeof key !== 'string' || key.length < 1 || key.length > 128)
+            )
               fail(
                 400,
                 'idempotency_key_required',
@@ -720,7 +723,7 @@ export async function createTransportApp(options: AppOptions) {
               name as Command,
               target,
               (request.body ?? {}) as Body,
-              key,
+              typeof key === 'string' ? key : '',
               ifMatch as string | undefined,
               (request.params as { versionId?: string }).versionId,
             );

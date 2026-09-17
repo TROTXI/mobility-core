@@ -1,9 +1,19 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createHash, randomUUID } from 'node:crypto';
+import { mkdtemp, writeFile, chmod, rm, symlink } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { spawnSync } from 'node:child_process';
 import { readConfiguration, ConfigurationError } from '../src/runtime/config.js';
 import { R2ObjectStore } from '../src/runtime/avatars.js';
 import { jobFailed, jobLog } from '../src/runtime/job-outcome.js';
+import {
+  rehearsalEnvironment,
+  localRehearsalAdmin,
+  readPrivateEnvironment,
+} from '../src/runtime/rehearsal.js';
 
 const key = (n: number) => Buffer.alloc(32, n).toString('base64');
 // Provider-shaped, but assembled at runtime so no credential-looking literal
@@ -12,6 +22,121 @@ const providerKey = (mode: 'test' | 'live') =>
   ['sk', mode, randomUUID().replaceAll('-', '').slice(0, 18)].join('_');
 const PEM = '-----BEGIN PRIVATE KEY-----\\nMHc=\\n-----END PRIVATE KEY-----';
 const maintenanceUser = randomUUID();
+test('private environment reads reject symlinks, public files, directories and oversized content', async () => {
+  const dir = await mkdtemp(join(tmpdir(), 'trotxi-env-descriptor-'));
+  const file = join(dir, 'private.env');
+  try {
+    await writeFile(file, 'VALUE=private-fixture\n', { mode: 0o600 });
+    assert.deepEqual(await readPrivateEnvironment(file), { VALUE: 'private-fixture' });
+    await symlink(file, join(dir, 'link.env'));
+    await assert.rejects(readPrivateEnvironment(join(dir, 'link.env')));
+    await assert.rejects(readPrivateEnvironment(dir), /ordinary private env/);
+    await assert.rejects(readPrivateEnvironment('relative.env'), /absolute/);
+    await chmod(file, 0o644);
+    await assert.rejects(readPrivateEnvironment(file), /chmod 600/);
+    await chmod(file, 0o600);
+    await writeFile(file, Buffer.alloc(1_048_577, 65));
+    await assert.rejects(readPrivateEnvironment(file), /at most 1 MiB/);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+test('local rehearsal never accepts a staging database or an existing application database', () => {
+  assert.equal(localRehearsalAdmin('postgres://test:pw@127.0.0.1:55432/postgres').port, '55432');
+  for (const url of [
+    undefined,
+    'postgres://test:pw@db.render.com/postgres',
+    'postgres://test:pw@127.0.0.1/application',
+    'postgres://test:pw@127.0.0.1/postgres?host=db.render.com',
+    'https://127.0.0.1/postgres',
+  ])
+    assert.throws(() => localRehearsalAdmin(url));
+  assert.throws(
+    () => localRehearsalAdmin('invalid-url-containing-private-data'),
+    (error: unknown) => error instanceof Error && !String(error.stack).includes('private-data'),
+  );
+});
+test('provider rehearsal CLI validates private files and fails closed before network activity', async () => {
+  const dir = await mkdtemp(join(tmpdir(), 'trotxi-provider-env-test-'));
+  const file = join(dir, 'private.env');
+  const secret = providerKey('test');
+  const write = (key: string) =>
+    writeFile(
+      file,
+      `PAYSTACK_SECRET_KEY=${key}\nR2_ACCOUNT_ID=account\nR2_ACCESS_KEY_ID=access\nR2_SECRET_ACCESS_KEY=secret\nR2_BUCKET=bucket\n`,
+      { mode: 0o600 },
+    );
+  const run = (args: string[]) =>
+    spawnSync(process.execPath, ['--import', 'tsx', 'scripts/provider-rehearsal.ts', ...args], {
+      cwd: fileURLToPath(new URL('..', import.meta.url)),
+      env: { PATH: process.env.PATH },
+      encoding: 'utf8',
+      timeout: 10_000,
+    });
+  try {
+    await write(secret);
+    const args = ['--env-file', file, '--check', 'preflight'];
+    const good = run(args);
+    assert.equal(good.status, 0, good.stderr);
+    assert.match(good.stdout, /No provider request or database connection/);
+    assert.equal(good.stdout.includes(secret), false);
+    await chmod(file, 0o644);
+    const publicFile = run(args);
+    assert.equal(publicFile.status, 1);
+    assert.match(publicFile.stderr, /chmod 600/);
+    await chmod(file, 0o600);
+    const live = providerKey('live');
+    await write(live);
+    const refused = run(['--env-file', file, '--check', 'paystack']);
+    assert.equal(refused.status, 1);
+    assert.match(refused.stderr, /TEST/);
+    assert.equal((refused.stdout + refused.stderr).includes(live), false);
+    assert.equal(run(['--env-file', file, '--chek', 'paystack']).status, 2);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+test('provider rehearsal refuses live keys and never passes database or unrelated secrets', () => {
+  const secret = providerKey('test');
+  const source = {
+    PAYSTACK_SECRET_KEY: secret,
+    DATABASE_URL: 'must-not-be-used',
+    JWT_SECRET: 'must-not-be-used',
+    RENDER_API_KEY: 'must-not-be-used',
+    REPLACEMENT_ALLOW_LIVE_PAYMENTS: 'yes',
+    R2_ACCOUNT_ID: 'account',
+    R2_ACCESS_KEY_ID: 'access',
+    R2_SECRET_ACCESS_KEY: 'secret',
+    R2_BUCKET: 'bucket',
+  };
+  assert.deepEqual(rehearsalEnvironment(source, 'paystack'), {
+    REPLACEMENT_PAYSTACK_SECRET_KEY: secret,
+  });
+  assert.deepEqual(rehearsalEnvironment(source, 'r2'), {
+    R2_ACCOUNT_ID: 'account',
+    R2_ACCESS_KEY_ID: 'access',
+    R2_SECRET_ACCESS_KEY: 'secret',
+    R2_BUCKET: 'bucket',
+  });
+  for (const check of ['paystack', 'r2'] as const) {
+    assert.throws(
+      () => rehearsalEnvironment({ ...source, PAYSTACK_SECRET_KEY: providerKey('live') }, check),
+      /TEST/,
+    );
+    assert.throws(
+      () =>
+        rehearsalEnvironment(
+          { ...source, REPLACEMENT_PAYSTACK_SECRET_KEY: providerKey('test') },
+          check,
+        ),
+      /Conflicting/,
+    );
+  }
+  assert.throws(
+    () => rehearsalEnvironment({ ...source, PAYSTACK_SECRET_KEY: secret + '\n' }, 'paystack'),
+    /invalid/,
+  );
+});
 test('maintenance exit policy detects 200 partial failures and contract drift, not business blocks', () => {
   const clean = { considered: 0, succeeded: 0, blocked: 0, failed: 0, failures: [] };
   assert.equal(
@@ -195,9 +320,19 @@ test('ASM-02 no two purposes may share one key', () => {
 test('ASM-03 live money and a shared owner connection are refused', () => {
   const live = environment();
   live.REPLACEMENT_PAYSTACK_SECRET_KEY = providerKey('live');
+  refuses(live, 'TEST key');
+  live.REPLACEMENT_ALLOW_LIVE_PAYMENTS = 'yes';
+  refuses(live, 'TEST key');
+  live.REPLACEMENT_DEPLOYMENT_ENVIRONMENT = 'staging';
+  refuses(live, 'TEST key');
+  live.REPLACEMENT_DEPLOYMENT_ENVIRONMENT = 'production';
+  delete live.REPLACEMENT_ALLOW_LIVE_PAYMENTS;
   refuses(live, 'REPLACEMENT_ALLOW_LIVE_PAYMENTS');
   live.REPLACEMENT_ALLOW_LIVE_PAYMENTS = 'yes';
   assert.equal(readConfiguration(live).paystack.secretKey.startsWith('sk_live_'), true);
+  const invalidEnvironment = environment();
+  invalidEnvironment.REPLACEMENT_DEPLOYMENT_ENVIRONMENT = 'stagng';
+  refuses(invalidEnvironment, 'REPLACEMENT_DEPLOYMENT_ENVIRONMENT');
   const wrong = environment();
   wrong.REPLACEMENT_PAYSTACK_SECRET_KEY = ['pk', 'test', '0123456789abcdef'].join('_');
   refuses(wrong, 'Paystack secret key');

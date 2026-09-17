@@ -172,7 +172,8 @@ class _HomeTabState extends ConsumerState<HomeTab> {
     final colors = context.appColors;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final subtitle = switch (state) {
-      RideReserved() || RideBoarded() => 'You have boarded this departure.',
+      RideReserved() => 'Your seat is confirmed for this departure.',
+      RideBoarded() => 'You have boarded this departure.',
       _ => "Let's get you moving today",
     };
 

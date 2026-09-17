@@ -45,8 +45,8 @@ try {
   const stored = await store.put({ userId: randomUUID(), bytes, contentType: 'image/png' });
   objectKey = stored.objectKey;
   record('put', true, objectKey);
-} catch (error) {
-  record('put', false, String(error));
+} catch {
+  record('put', false, 'object upload failed; raw provider data withheld');
 }
 
 if (objectKey) {
@@ -54,38 +54,41 @@ if (objectKey) {
   // only thing authorising it, which is what a rider's device actually sends.
   const url = store.sign(objectKey, 120)!;
   try {
-    const response = await fetch(url, { redirect: 'error' });
+    const response = await fetch(url, { redirect: 'error', signal: AbortSignal.timeout(10_000) });
     const body = Buffer.from(await response.arrayBuffer());
     record(
       'presigned read',
       response.ok && body.equals(bytes),
       response.ok ? `${body.length} bytes, identical` : `HTTP ${response.status}`,
     );
-  } catch (error) {
-    record('presigned read', false, String(error));
+  } catch {
+    record('presigned read', false, 'read failed; signed URL withheld');
   }
 
   // An expired signature must stop working, or the TTL means nothing.
   try {
     const stale = store.sign(objectKey, 1)!;
     await new Promise((resolve) => setTimeout(resolve, 2500));
-    const response = await fetch(stale, { redirect: 'error' });
-    record('expired signature refused', !response.ok, `HTTP ${response.status}`);
-  } catch (error) {
-    record('expired signature refused', false, String(error));
+    const response = await fetch(stale, { redirect: 'error', signal: AbortSignal.timeout(10_000) });
+    record('expired signature refused', response.status === 403, `HTTP ${response.status}`);
+  } catch {
+    record('expired signature refused', false, 'expiry check failed; signed URL withheld');
   }
 
   try {
     await store.remove(objectKey);
-    const gone = await fetch(store.sign(objectKey, 120)!, { redirect: 'error' });
+    const gone = await fetch(store.sign(objectKey, 120)!, {
+      redirect: 'error',
+      signal: AbortSignal.timeout(10_000),
+    });
     record('remove', gone.status === 404, `HTTP ${gone.status} after delete`);
-  } catch (error) {
-    record('remove', false, String(error));
+  } catch {
+    record('remove', false, 'cleanup failed; signed URL withheld');
   }
 }
 
 const failed = results.filter((r) => !r.ok);
 process.stdout.write(
-  `\n${results.length - failed.length}/${results.length} passed.${objectKey && failed.length ? ` Object ${objectKey} may still exist; remove it by hand.` : ' The bucket is as it was.'}\n`,
+  `\n${results.length - failed.length}/${results.length} passed.${objectKey && failed.length ? ` Object ${objectKey} may still exist; inspect cleanup.` : failed.length ? ' Upload outcome is uncertain; no cleanup claim is made.' : ' Probe object removed.'}\n`,
 );
 process.exitCode = failed.length ? 1 : 0;

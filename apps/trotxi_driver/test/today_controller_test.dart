@@ -14,13 +14,14 @@ DriverRun _run(
   String id, {
   RunStatus status = RunStatus.scheduled,
   int hour = 6,
+  DateTime? at,
 }) {
-  final now = DateTime.now();
+  final now = DateTime.now().toUtc();
   return DriverRun(
     id: id,
     routeId: 'r1',
     routeName: 'Circle ⇄ Madina',
-    scheduledAt: DateTime(now.year, now.month, now.day, hour, 30),
+    scheduledAt: at ?? DateTime.utc(now.year, now.month, now.day, hour, 30),
     status: status,
   );
 }
@@ -30,6 +31,9 @@ class _StubTrips implements TripsRepository {
 
   List<DriverRun> runs;
   String? lastDate;
+  String? lastFrom;
+  String? lastTo;
+  bool filterDates = false;
   int manifestCalls = 0;
   int stopsCalls = 0;
   List<ManifestRider> riders = const [];
@@ -46,8 +50,16 @@ class _StubTrips implements TripsRepository {
     String? to,
   }) async {
     lastDate = date;
+    lastFrom = from;
+    lastTo = to;
     if (failWith != null) throw failWith!;
-    return pendingRuns == null ? runs : await pendingRuns!;
+    final result = pendingRuns == null ? runs : await pendingRuns!;
+    if (!filterDates) return result;
+    return result.where((run) {
+      final day = CorridorTime.day(run.scheduledAt);
+      return day.compareTo(date ?? from!) >= 0 &&
+          day.compareTo(date ?? to!) <= 0;
+    }).toList();
   }
 
   @override
@@ -215,21 +227,56 @@ void main() {
     expect(controller.busyRunId, isNull);
   });
 
+  test('asks for yesterday through today in the corridor UTC clock', () async {
+    // A local date silently returns nothing whenever the device is not on UTC,
+    // and it looks exactly like "no trips assigned" rather than like a bug.
+    // Ghana is UTC, so in the field these are the same day anyway.
+    final trips = _StubTrips([]);
+    final controller = TodayController(
+      trips: trips,
+      // 23:30 in a UTC-7 zone, which is already the NEXT day in UTC.
+      now: () => DateTime.utc(2026, 9, 10, 6, 30).toLocal(),
+    );
+    await controller.load();
+
+    expect(trips.lastDate, isNull);
+    expect(trips.lastFrom, '2026-09-09');
+    expect(trips.lastTo, '2026-09-10');
+  });
+
   test(
-    'asks for the UTC day, because that is what the API filters on',
+    'cold load recovers an active run across midnight, not old assignments',
     () async {
-      // A local date silently returns nothing whenever the device is not on UTC,
-      // and it looks exactly like "no trips assigned" rather than like a bug.
-      // Ghana is UTC, so in the field these are the same day anyway.
-      final trips = _StubTrips([]);
+      final yesterday = DateTime.utc(2026, 9, 16, 23, 30);
+      final trips = _StubTrips([
+        _run('running', status: RunStatus.active, at: yesterday),
+        _run('old-scheduled', at: yesterday),
+        _run('old-completed', status: RunStatus.completed, at: yesterday),
+        _run('old-cancelled', status: RunStatus.cancelled, at: yesterday),
+        _run('today', at: DateTime.utc(2026, 9, 17, 6)),
+      ])..filterDates = true;
       final controller = TodayController(
         trips: trips,
-        // 23:30 in a UTC-7 zone, which is already the NEXT day in UTC.
-        now: () => DateTime.utc(2026, 9, 10, 6, 30).toLocal(),
+        now: () => DateTime.utc(2026, 9, 17, 0, 10),
       );
       await controller.load();
+      final board = controller.board.valueOrNull!;
+      expect(board.active?.id, 'running');
+      expect(board.next, isNull);
+      expect(board.later.map((r) => r.id), ['today']);
+      expect(board.completed, isEmpty);
 
-      expect(trips.lastDate, '2026-09-10');
+      // After that same historical run finishes, today's assignment takes over.
+      trips.runs[0] = _run(
+        'running',
+        status: RunStatus.completed,
+        at: yesterday,
+      );
+      await controller.load();
+      expect(controller.board.valueOrNull?.active, isNull);
+      expect(controller.board.valueOrNull?.next?.id, 'today');
+      expect(controller.board.valueOrNull?.completed, isEmpty);
+      controller.dispose();
     },
   );
 
