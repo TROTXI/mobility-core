@@ -18040,6 +18040,12 @@
             "minLength": 1,
             "maxLength": 200
           },
+          "vehiclePlate": {
+            "nullable": true,
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 32
+          },
           "startedAt": {
             "nullable": true,
             "type": "string",
@@ -18087,6 +18093,7 @@
           "scheduledAt",
           "status",
           "vehicleLabel",
+          "vehiclePlate",
           "startedAt",
           "completedAt",
           "currentStopOccurrenceId",
@@ -18152,6 +18159,12 @@
             "minLength": 1,
             "maxLength": 200
           },
+          "vehiclePlate": {
+            "nullable": true,
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 32
+          },
           "startedAt": {
             "nullable": true,
             "type": "string",
@@ -18216,6 +18229,7 @@
           "scheduledAt",
           "status",
           "vehicleLabel",
+          "vehiclePlate",
           "startedAt",
           "completedAt",
           "currentStopOccurrenceId",

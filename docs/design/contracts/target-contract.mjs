@@ -485,6 +485,11 @@ named(
 named(
   'DriverTrip',
   schemas.Trip.extend({
+    // The plate, not the label. A plate is mandatory on a vehicle and a label
+    // is not, so a driver handed a vehicle with no label had nothing at all to
+    // identify it by. Added here rather than on Trip: the rider catalogue says
+    // what is running, never which bus was assigned to whom.
+    vehiclePlate: text(32).nullable(),
     startedAt: instant.nullable(),
     completedAt: instant.nullable(),
     currentStopOccurrenceId: id.nullable(),
