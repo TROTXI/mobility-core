@@ -280,6 +280,58 @@ source revision's deployed runtime.
 
 ## Provider rehearsal: no database access
 
+### Additional native evidence, 17 September UTC
+
+- All 15 CI checks passed at `7d48f0f`, including CodeQL and preservation compare.
+  The exact Docker source built as
+  `sha256:d1b7b5d0fc88118763c8e87db41b703c50383b86182be3ada1c18c9c931e4f82`;
+  this does not yet prove its configured container startup.
+- iOS driver sign-in/linking and commuter secure-session restoration passed.
+  Location denial blocked departure; approved while-in-use permission enabled
+  code boarding while camera remained denied. The existing return departure was
+  rescheduled through the ops API, preserving its service date and identity.
+  Native commuter seat confirmation and QR/code display passed. Native driver
+  boarding succeeded and its repeat returned “Already boarded”. The driver
+  showed an API-confirmed GPS receipt; the commuter displayed the configured
+  route and last-known bus marker without collecting commuter location.
+  Both stop arrivals and trip completion passed; the native summary showed
+  two stops and one code-boarded passenger. The final SQL ledger cross-check
+  was blocked by tool approval-service usage exhaustion, so it is not claimed.
+- The approved temporary TEST webhook receiver exposed only the signed callback
+  for one disposable purchase. Public health access returned 404 and an unsigned
+  callback returned 401. The initial synthetic `.invalid` payer email was refused
+  by Paystack; retrying the unchanged purchase/reference with the application's
+  synthetic payer fallback initialized the hosted TEST checkout. The checkout
+  still displayed its confirmation form at final inspection; no provider webhook
+  reached the receiver. Automatic delivery therefore remains unverified.
+  Paystack's original staging TEST webhook URL was restored and persisted after
+  reload. Both the public tunnel and local proxy were stopped. No live setting
+  was changed. Do not complete this old checkout expecting local delivery now.
+
+The native minimum-version, exact-container startup, operational recovery and
+capacity gates remain open; this continuation does not complete Stage 5 or 6.
+
+### Automatic Paystack TEST delivery passed
+
+On 17 September at 01:17:11 UTC, a fresh hosted TEST checkout for a separate
+disposable rider sent its signed callback through the approved temporary
+HTTPS receiver. Reference: `tx-c23ccafd4ba745979a4af527bcc5a87b`.
+The receiver returned 200. Before running any worker, the encrypted inbox
+contained exactly one matching `webhook` event in `ready` state; its payload
+was checked against that exact reference without logging provider personal data.
+
+The real payment worker processed that event successfully. SQL assertions proved
+one TEST collection for GHS 264.00 linked to that webhook's event ID, one billing
+period, one allocation and 44 rides. Reconciliation considered zero payments.
+A second worker run considered zero inbox events and left exactly one collection.
+No signed replay or Verify reconciliation supplied this payment's success.
+The existing subscribed rider was not used or modified by this payment test.
+
+Paystack's original staging TEST webhook was restored after the check, and both
+the tunnel and narrow local proxy were stopped. Live keys/settings were untouched.
+This closes automatic delivery to the assembled local replacement, not the
+future Render deployment or its scheduled-worker execution gate.
+
 Export staging's environment privately from Render, never into Git or chat.
 The launcher reads data with Node's dotenv parser; it does not execute the file.
 It refuses symlinks, non-owner files and group/world-readable files. It passes
@@ -314,7 +366,7 @@ environment and the separate live opt-in; it is not authorized here.
 | Exact deploy artifact       | Docker build, migration hashes, config preflight, narrow-role readiness                                                                                        | In progress                                                                                                          |
 | Android and iOS             | Both apps against assembled replacement: native sign-in, restored secure session, minimum-version refusal, boarding, driver-only GPS receipt and map rendering | Android paid/code-boarding/GPS/map/completion passed; remaining iOS journeys and native minimum-version gate pending |
 | Paystack initialization     | Real TEST initialize/verify via replacement adapter                                                                                                            | Passed: unpaid TEST probe; local checks separately labelled                                                          |
-| Automatic Paystack delivery | Hosted paid TEST checkout; reference-correlated provider-origin inbox receipt and exactly one fulfilment; no signed replay used as proof                       | Not run                                                                                                              |
+| Automatic Paystack delivery | Hosted paid TEST checkout; reference-correlated provider-origin inbox receipt and exactly one fulfilment; no signed replay used as proof                       | Passed on isolated replacement: provider webhook, one collection/period/allocation; no replay or reconciliation      |
 | Reconciliation              | Separate unresolved TEST purchase recovered through Verify; no fabricated success                                                                              | Passed with explicit early manual cutoff; scheduled delay untested                                                   |
 | R2 and erasure              | Probe reads/expiry/delete, then account erasure worker removes that account's object with durable completion                                                   | Probe 4/4 and real HTTP account/object erasure passed                                                                |
 | Capacity                    | 12.96M fixes on approved intended tier; latency, drain rate, backlog recovery, locks, WAL/storage/vacuum                                                       | Pre-production gate; no staging upgrade requested                                                                    |
