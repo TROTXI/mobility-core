@@ -7,24 +7,27 @@ There are no production services or real users. The active blueprint selects
 No additional paid instance or storage upgrade is part of this cutover.
 
 - Existing paid instance: `dpg-d8sugvv7f7vs73bifff0-a`, Frankfurt.
-- Fresh logical database: `trotxi_replacement`; the old `trotxi` database remains.
-- Runtime login: `trotxi_runtime_v1`, never the schema owner.
-- GitHub **staging environment** secret `STAGING_REPLACEMENT_DATABASE_URL`:
-  the external owner URL for `/trotxi_replacement?sslmode=verify-full`.
-  The workflow deliberately does not use `STAGING_DATABASE_URL`.
-- Render receives the complete private `REPLACEMENT_*` configuration, Google
-  sign-in only, and Paystack **TEST** credentials. Live keys fail startup.
+- Database and login remain `trotxi`, using the existing `DATABASE_URL`.
+- The owner explicitly approved the database-owner runtime for this disposable
+  staging service. This relaxes the restricted-login boundary on staging only;
+  it is not suitable for production. Other deployments still refuse owner logins.
+- No new secret variables. The named service reads existing `JWT_SECRET`,
+  `PAYSTACK_SECRET_KEY`, Google, R2, map and proxy settings from the blueprint.
+  Eight internal keys are derived with domain-separated HKDF; they are not
+  dashboard variables. Do not rotate JWT_SECRET without handling ciphertext.
+- Google sign-in only, and Paystack **TEST** credentials. Live keys fail startup.
 - `RENDER_GIT_COMMIT` supplies `/version`; a manually configured older commit
   cannot override the actual Render revision.
 
 `DEPLOY_ENABLED=false` pauses the automatic deployment during the main merge.
-Before re-enabling it, configure the existing Render service's Dockerfile and
-private environment, and install the replacement migration secret. Changing
-the blueprint in Git does not itself apply dashboard settings.
+Before re-enabling it, point the existing service at the replacement Dockerfile
+and complete the one-time disposable legacy-data reset. Changing the blueprint
+in Git does not itself apply dashboard settings. No credentials are replaced.
 
-CI and deployment use the same full commit SHA: checkout, migrations, Render's
-`commitId`, and the `/version` smoke assertion. The workflow has no production
-job. Database installation still runs separately from the narrow-role server.
+CI and deployment use the same full commit SHA: checkout, Render's `commitId`,
+and the `/version` smoke assertion. The workflow has no production job. On this
+named staging service the server applies checksum-verified pending migrations
+before listening. Startup never deletes data or provisions database roles.
 
 Main merge is **not** staging cutover completion. After the settings are ready,
 deploy the approved main commit, verify health/readiness/version, and enable

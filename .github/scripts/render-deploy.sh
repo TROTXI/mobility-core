@@ -4,12 +4,16 @@
 set -euo pipefail
 
 api="https://api.render.com/v1"
+if [[ ! "${COMMIT_ID:-}" =~ ^[0-9a-f]{40}$ ]]; then
+  echo 'COMMIT_ID must be the reviewed full commit SHA' >&2
+  exit 1
+fi
 
 create_response=$(
   curl -fsS -X POST "${api}/services/${SERVICE_ID}/deploys" \
     -H "Authorization: Bearer ${RENDER_API_KEY}" \
     -H "Content-Type: application/json" \
-    -d '{}'
+    -d "$(jq -cn --arg commit "$COMMIT_ID" '{commitId:$commit}')"
 )
 deploy_id=$(echo "${create_response}" | jq -r '.id // empty')
 

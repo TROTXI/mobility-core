@@ -1,5 +1,8 @@
 import { readConfiguration } from './runtime/config.js';
 import { composeBackend } from './runtime/compose.js';
+import pg from 'pg';
+import { fileURLToPath } from 'node:url';
+import { migrate, readMigrations } from './db/migrate.js';
 
 /**
  * The deployable entry point.
@@ -10,6 +13,21 @@ import { composeBackend } from './runtime/compose.js';
  * the name of what is missing and the platform reports a failed deploy.
  */
 const config = readConfiguration();
+// Existing staging uses the same DATABASE_URL for installation and runtime,
+// as explicitly approved. Startup NEVER drops tables: the one-time disposable
+// reset is separate. Applied migration hashes remain checked on every deploy.
+if (config.existingStaging) {
+  const installer = new pg.Pool({ connectionString: config.databaseUrl, max: 1 });
+  try {
+    const files = await readMigrations(fileURLToPath(new URL('../migrations/', import.meta.url)));
+    const installed = await migrate(installer, files);
+    process.stdout.write(
+      `${JSON.stringify({ installed, databaseMode: 'existing-disposable-staging' })}\n`,
+    );
+  } finally {
+    await installer.end();
+  }
+}
 const backend = await composeBackend(config);
 await backend.app.listen({ host: config.listen.host, port: config.listen.port });
 process.stdout.write(

@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto';
+import { existingStagingEnvironment, STAGING_SERVICE_ID } from './staging-profile.js';
 import type { BuildIdentity, MapTiles, SupportContacts } from '../config/service.js';
 
 /**
@@ -24,6 +25,8 @@ export interface KeyMaterial {
   paystackEvidence: Buffer;
 }
 export interface RuntimeConfig {
+  /** Explicitly approved exception for the existing disposable Render staging. */
+  existingStaging?: boolean;
   databaseUrl: string;
   poolSize: number;
   listen: { host: string; port: number };
@@ -139,6 +142,14 @@ function url(env: Env, name: string): string {
 }
 
 export function readConfiguration(env: Env = process.env): RuntimeConfig {
+  const existingStaging = env.RENDER_SERVICE_ID === STAGING_SERVICE_ID;
+  if (existingStaging) {
+    try {
+      env = existingStagingEnvironment(env);
+    } catch (error) {
+      throw new ConfigurationError((error as Error).message);
+    }
+  }
   const keys: KeyMaterial = {
     accessSecret: key(env, 'REPLACEMENT_ACCESS_SECRET'),
     cursorSecret: key(env, 'REPLACEMENT_CURSOR_SECRET'),
@@ -233,6 +244,7 @@ export function readConfiguration(env: Env = process.env): RuntimeConfig {
       'REPLACEMENT_RUNTIME_DATABASE_URL must be the narrow runtime role, not the migration owner',
     );
   return {
+    existingStaging,
     databaseUrl,
     poolSize: integerOr(env, 'REPLACEMENT_POOL_SIZE', 8, 1, 100),
     listen: {
