@@ -5,13 +5,16 @@
  * is one way. Run it only against a database whose contents are genuinely
  * disposable, and only with the OWNER connection.
  *
- *   REPLACEMENT_DATABASE_URL=<owner>  \
- *   REPLACEMENT_RUNTIME_ROLE=trotxi_runtime_v1 \
+ *   REPLACEMENT_DATABASE_URL=<owner> \
  *   REPLACE_IN_PLACE=i-have-read-this \
  *     node --import tsx scripts/replace-in-place.ts
  *
  * Without REPLACE_IN_PLACE it prints what it would drop and stops, which is
  * the way to look before leaping.
+ *
+ * It provisions the narrow runtime role itself, so there is no separate psql
+ * step, and prints the service configuration to paste into the dashboard. Set
+ * REPLACEMENT_RUNTIME_ROLE to use a name other than trotxi_runtime_v1.
  *
  * PostGIS is left alone: extension-owned relations are never dropped, so the
  * extension does not have to be reinstalled and `spatial_ref_sys` survives.
@@ -19,14 +22,28 @@
  * applied here are the same reviewed files with the same recorded hashes.
  */
 import { spawnSync } from 'node:child_process';
+import { randomBytes } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import pg from 'pg';
 
-const ownerUrl = process.env.REPLACEMENT_DATABASE_URL;
-const runtimeRole = process.env.REPLACEMENT_RUNTIME_ROLE;
-if (!ownerUrl) throw new Error('REPLACEMENT_DATABASE_URL (the owner connection) is required');
-if (!runtimeRole) throw new Error('REPLACEMENT_RUNTIME_ROLE is required');
+const rawUrl = process.env.REPLACEMENT_DATABASE_URL;
+if (!rawUrl) throw new Error('REPLACEMENT_DATABASE_URL (the owner connection) is required');
+const runtimeRole = process.env.REPLACEMENT_RUNTIME_ROLE ?? 'trotxi_runtime_v1';
 const confirmed = process.env.REPLACE_IN_PLACE === 'i-have-read-this';
+
+// A hosted database presents a certificate this client has no root for, and
+// pg treats `sslmode=require` as full verification, so the honest default for
+// a one-off admin connection is an encrypted channel without chain checking.
+// Anything explicit in the URL wins.
+const owner = new URL(rawUrl);
+const local = owner.hostname === 'localhost' || owner.hostname === '127.0.0.1';
+if (!owner.searchParams.has('sslmode') && !local) {
+  owner.searchParams.set('sslmode', 'no-verify');
+  process.stdout.write(
+    'Connecting with sslmode=no-verify (encrypted, certificate not verified).\n',
+  );
+}
+const ownerUrl = owner.href;
 
 const KIND: Record<string, string> = {
   r: 'table',
@@ -36,11 +53,19 @@ const KIND: Record<string, string> = {
   f: 'ftbl ',
 };
 
+// Quoted from the connection string rather than interpolated raw: this ends up
+// in DDL that has no parameter form.
+const dbIdent = `"${decodeURIComponent(owner.pathname.slice(1)).replace(/"/g, '""')}"`;
+let runtimePassword = '';
+
 const pool = new pg.Pool({ connectionString: ownerUrl, max: 1 });
 try {
-  const already = (await pool.query("SELECT to_regnamespace('app') IS NOT NULL AS installed"))
-    .rows[0];
-  if (already.installed)
+  const already = (
+    await pool.query<{ installed: boolean }>(
+      "SELECT to_regnamespace('app') IS NOT NULL AS installed",
+    )
+  ).rows[0];
+  if (already?.installed)
     throw new Error('This database already has the app schema. Nothing to replace.');
 
   // Everything in public that no extension owns. An extension's own tables are
@@ -71,7 +96,7 @@ try {
                 await pool.query<{ n: string }>(
                   `SELECT count(*)::text AS n FROM public."${r.name.replace(/"/g, '""')}"`,
                 )
-              ).rows[0].n,
+              ).rows[0]?.n ?? 0,
             )
           : null;
       if (rows !== null) total += rows;
@@ -104,14 +129,81 @@ try {
                      WHEN 'f' THEN 'FOREIGN TABLE' WHEN 'S' THEN 'SEQUENCE' ELSE 'TABLE' END,
       r.relname); END LOOP; END $$;`);
   process.stdout.write(`\nDropped ${doomed.length} relations.\n`);
+
+  // The installer refuses to grant to the owner, so a second role has to exist
+  // before it runs. Doing it here rather than in a separate psql step is the
+  // difference between one command and four. The password is generated and
+  // never read back, so an existing role is reset rather than guessed at.
+  const existed = (
+    await pool.query<{ n: number }>('SELECT count(*)::int AS n FROM pg_roles WHERE rolname = $1', [
+      runtimeRole,
+    ])
+  ).rows[0];
+  const quoted = `"${runtimeRole.replace(/"/g, '""')}"`;
+  const password = randomBytes(24).toString('base64url');
+  await pool.query(
+    `${existed?.n ? 'ALTER' : 'CREATE'} ROLE ${quoted} ${existed?.n ? '' : 'LOGIN '}PASSWORD $1`.replace(
+      '$1',
+      `'${password.replace(/'/g, "''")}'`,
+    ),
+  );
+  await pool.query(`REVOKE ALL ON DATABASE ${dbIdent} FROM ${quoted}`);
+  await pool.query(`GRANT CONNECT ON DATABASE ${dbIdent} TO ${quoted}`);
+  process.stdout.write(`${existed?.n ? 'Reset' : 'Created'} runtime role ${runtimeRole}.\n`);
+  runtimePassword = password;
 } finally {
   await pool.end();
 }
 
-// The ordinary installer from here: same files, same hashes, same grants.
+// The ordinary installer from here: same files, same hashes, same grants. It
+// gets the URL this script actually connected with, not the raw one, or it
+// would rediscover the certificate problem on its own.
 const cli = fileURLToPath(new URL('../src/db/cli.ts', import.meta.url));
 const installed = spawnSync(process.execPath, ['--import', 'tsx', cli], {
   stdio: 'inherit',
-  env: process.env,
+  env: {
+    ...process.env,
+    REPLACEMENT_DATABASE_URL: ownerUrl,
+    REPLACEMENT_RUNTIME_ROLE: runtimeRole,
+  },
 });
-process.exitCode = installed.status ?? 1;
+if (installed.status !== 0) {
+  process.exitCode = installed.status ?? 1;
+} else {
+  // Everything the service needs that only this run can know, in the format
+  // the dashboard's bulk editor accepts. The remaining values are ones this
+  // script has no business inventing.
+  const runtime = new URL(ownerUrl);
+  runtime.username = encodeURIComponent(runtimeRole);
+  runtime.password = encodeURIComponent(runtimePassword);
+  runtime.searchParams.delete('sslmode');
+  // Render's internal hostname is the first label of the external one. Using it
+  // keeps the service off the public endpoint and out of the IP allowlist.
+  const internal = /^dpg-[a-z0-9-]+\./.test(runtime.hostname)
+    ? runtime.hostname.split('.')[0]
+    : null;
+  if (internal) runtime.hostname = internal;
+
+  const keys = [
+    'ACCESS_SECRET',
+    'CURSOR_SECRET',
+    'PIN_SECRET',
+    'CREDENTIAL_REPLAY_KEY',
+    'PROVIDER_ENCRYPTION_KEY',
+    'BOARDING_PROOF_KEY',
+    'DEVICE_KEY',
+    'PAYSTACK_EVIDENCE_KEY',
+  ];
+  process.stdout.write(
+    `\n${'-'.repeat(70)}\n` +
+      'Paste into Render > trotxi-api-staging > Environment > bulk edit:\n\n' +
+      `REPLACEMENT_RUNTIME_DATABASE_URL=${runtime.href}\n` +
+      keys.map((k) => `REPLACEMENT_${k}=${randomBytes(32).toString('base64')}`).join('\n') +
+      `\n\nThen add REPLACEMENT_PAYSTACK_SECRET_KEY (the sk_test one) and the four\n` +
+      'REPLACEMENT_R2_* values, and deploy. Nothing else is required.\n' +
+      (internal
+        ? ''
+        : 'NOTE: could not derive the internal host; this URL uses the public one.\n') +
+      `${'-'.repeat(70)}\n`,
+  );
+}
