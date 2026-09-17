@@ -1,0 +1,532 @@
+/**
+ * Put a week of believable service into a staging database.
+ *
+ * Three corridors, five buses, five drivers who can actually sign in, and
+ * seven days of runs around today. Riders and their reservations land in a
+ * second pass (see `riders()` below).
+ *
+ *   REPLACEMENT_DATABASE_URL=<owner> \
+ *   REPLACEMENT_PIN_SECRET=<the service's PIN secret> \
+ *   SEED_STAGING=yes \
+ *     node --import tsx scripts/seed-staging.ts
+ *
+ * Without SEED_STAGING it prints the plan and stops.
+ *
+ * Written against the schema rather than the API because the rider and ops
+ * surfaces both need a signed-in session, and nobody can mint a Google token
+ * for twenty people. The consequence is stated plainly at the end: the
+ * *_commands and *_events tables stay empty for what this writes, so the audit
+ * trail shows state with no receipts behind it. Everything else is real: every
+ * row here passes the same triggers and constraints a live write would.
+ */
+import pg from 'pg';
+import { randomUUID } from 'node:crypto';
+import { generateDriverCode, generatePin, hashDriverPin } from '../src/auth/driver-pin.js';
+
+const url = process.env.REPLACEMENT_DATABASE_URL;
+const pinSecret = process.env.REPLACEMENT_PIN_SECRET;
+if (!url) throw new Error('REPLACEMENT_DATABASE_URL (the owner connection) is required');
+if (!pinSecret) throw new Error('REPLACEMENT_PIN_SECRET is required to mint usable driver PINs');
+const confirmed = process.env.SEED_STAGING === 'yes';
+
+/** Corridors real enough to recognise on a board, with plausible stop names. */
+const CORRIDORS = [
+  { name: 'Circle - Madina', stops: ['Circle', 'Sankara', 'Legon', 'Madina'] },
+  { name: 'Kaneshie - Lapaz', stops: ['Kaneshie', 'Awudome', 'Darkuman', 'Lapaz'] },
+  {
+    name: 'Achimota - Tema Station',
+    stops: ['Achimota', 'Nkrumah Circle', 'Tudu', 'Tema Station'],
+  },
+];
+const BUSES = [
+  { plate: 'GT 4821-21', label: 'Bus 1', capacity: 18 },
+  { plate: 'GT 5537-20', label: 'Bus 2', capacity: 18 },
+  { plate: 'GR 1194-22', label: 'Bus 3', capacity: 14 },
+  { plate: 'GT 7702-19', label: null, capacity: 18 },
+  { plate: 'GW 3318-23', label: 'Bus 5', capacity: 22 },
+];
+/** GHS 4.50 a ride at a 1.0 multiplier. Placeholders until real fares land. */
+const FARE_PESEWAS = 450;
+const MULTIPLIER_BP = 10000;
+const DRIVERS = ['Kwame Mensah', 'Ama Boateng', 'Yaw Owusu', 'Akosua Darko', 'Kofi Asante'];
+/** Three days behind, today, three ahead: history to look at and runs to drive. */
+const DAYS = [-3, -2, -1, 0, 1, 2, 3];
+
+const pool = new pg.Pool({ connectionString: url, max: 4 });
+const q = async <T extends pg.QueryResultRow = pg.QueryResultRow>(sql: string, v: unknown[] = []) =>
+  (await pool.query<T>(sql, v)).rows;
+const one = async (sql: string, v: unknown[] = []) =>
+  (await q<{ id: string }>(sql + ' RETURNING id', v))[0]!.id;
+/**
+ * Several of the schema's checks are CONSTRAINT TRIGGERs deferred to commit: a
+ * commute selection is judged once its legs are in, not as each row lands. So
+ * anything the schema judges as a unit has to arrive as one transaction, or it
+ * is validated half-built and refused.
+ */
+async function tx<T>(
+  work: (
+    cq: (sql: string, v?: unknown[]) => Promise<pg.QueryResultRow[]>,
+    cone: (sql: string, v?: unknown[]) => Promise<string>,
+  ) => Promise<T>,
+): Promise<T> {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const cq = async (sql: string, v: unknown[] = []) => (await client.query(sql, v)).rows;
+    const cone = async (sql: string, v: unknown[] = []) =>
+      ((await client.query(sql + ' RETURNING id', v)).rows[0] as { id: string }).id;
+    const result = await work(cq, cone);
+    await client.query('COMMIT');
+    return result;
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+const day = (offset: number) => new Date(Date.now() + offset * 86400000).toISOString().slice(0, 10);
+
+async function main() {
+  if (!(await q("SELECT to_regnamespace('app') AS s"))[0]!.s)
+    throw new Error('No app schema here. Install the replacement first.');
+  const existing = (await q<{ n: number }>('SELECT count(*)::int AS n FROM app.routes'))[0]!.n;
+  if (existing)
+    throw new Error(`${existing} routes already exist. Seeding twice would double the catalogue.`);
+
+  process.stdout.write(
+    `Plan\n` +
+      `  ${CORRIDORS.length} corridors, both directions, 4 stops each\n` +
+      `  ${BUSES.length} buses (one deliberately unlabelled, to exercise the plate)\n` +
+      `  ${DRIVERS.length} drivers with working codes and PINs\n` +
+      `  ${DAYS.length} service days: ${day(DAYS[0]!)} to ${day(DAYS.at(-1)!)}\n` +
+      `  ${CORRIDORS.length * 2 * DAYS.length} runs (morning outbound, evening return)\n\n`,
+  );
+  if (!confirmed) {
+    process.stdout.write('Nothing written. Set SEED_STAGING=yes to proceed.\n');
+    return;
+  }
+
+  // Buses and drivers first: a trip cannot be assigned what does not exist.
+  const buses: string[] = [];
+  for (const b of BUSES)
+    buses.push(
+      await one('INSERT INTO app.vehicles(plate,label,capacity) VALUES ($1,$2,$3)', [
+        b.plate,
+        b.label,
+        b.capacity,
+      ]),
+    );
+
+  const credentials: { name: string; code: string; pin: string }[] = [];
+  const drivers: string[] = [];
+  for (const name of DRIVERS) {
+    const id = await one('INSERT INTO app.drivers(name,phone,license_number) VALUES ($1,$2,$3)', [
+      name,
+      `+2332${Math.floor(10000000 + Math.random() * 89999999)}`,
+      `GHA-${randomUUID().slice(0, 8).toUpperCase()}`,
+    ]);
+    drivers.push(id);
+    // A fresh code and PIN, hashed the way the service hashes them, so these
+    // sign in for real rather than only looking right in the table.
+    const code = generateDriverCode();
+    const pin = generatePin();
+    await q(
+      'INSERT INTO app.driver_credentials(driver_id,driver_code,pin_hash,must_change_pin) VALUES ($1,$2,$3,false)',
+      [id, code, hashDriverPin(pin, pinSecret!)],
+    );
+    credentials.push({ name, code, pin });
+  }
+
+  // One corridor is two patterns, and a pattern is only usable once its version
+  // is published with stops and a geometry.
+  let trips = 0;
+  for (const [index, corridor] of CORRIDORS.entries()) {
+    const route = await one('INSERT INTO app.routes(name) VALUES ($1)', [corridor.name]);
+    for (const direction of ['outbound', 'return'] as const) {
+      const ordered = direction === 'outbound' ? corridor.stops : [...corridor.stops].reverse();
+      const pattern = await one(
+        'INSERT INTO app.route_patterns(route_id,direction) VALUES ($1,$2)',
+        [route, direction],
+      );
+      const version = await one(
+        'INSERT INTO app.route_pattern_versions(pattern_id,revision) VALUES ($1,1)',
+        [pattern],
+      );
+      const occurrences: string[] = [];
+      for (const [ordinal, name] of ordered.entries()) {
+        const lat = 5.56 + ordinal * 0.012 + index * 0.02;
+        const lon = -0.2 - ordinal * 0.014 - index * 0.02;
+        const stop = await one('INSERT INTO app.stops(name,latitude,longitude) VALUES ($1,$2,$3)', [
+          name,
+          lat,
+          lon,
+        ]);
+        occurrences.push(
+          await one(
+            `INSERT INTO app.route_pattern_stops(pattern_version_id,stop_id,ordinal,name,latitude,longitude)
+             VALUES ($1,$2,$3,$4,$5,$6)`,
+            [version, stop, ordinal, name, lat, lon],
+          ),
+        );
+      }
+      const line = ordered
+        .map(
+          (_, o) =>
+            `${(-0.2 - o * 0.014 - index * 0.02).toFixed(4)} ${(5.56 + o * 0.012 + index * 0.02).toFixed(4)}`,
+        )
+        .join(',');
+      const geometry = await one(
+        `INSERT INTO app.route_geometries(pattern_version_id,source,line)
+         VALUES ($1,'configured',ST_GeomFromText('LINESTRING(${line})',4326))`,
+        [version],
+      );
+      // Derived from the line rather than invented: the schema refuses any
+      // distance past the geometry's true length, and projecting each stop onto
+      // the line gives ordered distances that fit by construction.
+      await q(
+        `INSERT INTO app.geometry_stop_distances
+         SELECT $1, $2, s.id,
+           ST_Length(ST_LineSubstring(g.line, 0,
+             ST_LineLocatePoint(g.line,
+               ST_SetSRID(ST_MakePoint(s.longitude, s.latitude), 4326)))::geography)
+         FROM app.route_pattern_stops s, app.route_geometries g
+         WHERE s.pattern_version_id = $2 AND g.id = $1
+         ORDER BY s.ordinal`,
+        [geometry, version],
+      );
+      await q("UPDATE app.route_geometries SET state='published' WHERE id=$1", [geometry]);
+      await q(
+        `UPDATE app.route_pattern_versions
+         SET state='published',geometry_id=$2,effective_from='2025-01-01' WHERE id=$1`,
+        [version, geometry],
+      );
+
+      const departure = await one('INSERT INTO app.service_departures(pattern_id) VALUES ($1)', [
+        pattern,
+      ]);
+      const window_ = direction === 'outbound' ? 'morning' : 'evening';
+      const at = direction === 'outbound' ? '06:30' : '17:30';
+      const schedule = await one(
+        `INSERT INTO app.service_schedules(departure_id,pattern_id,pattern_version_id,service_window,local_departure,weekdays,effective_from)
+         VALUES ($1,$2,$3,$4,$5,ARRAY[1,2,3,4,5,6,7]::smallint[],'2025-01-01')`,
+        [departure, pattern, version, window_, at],
+      );
+
+      for (const offset of DAYS) {
+        const date = day(offset);
+        const driver =
+          drivers[(index * 2 + (direction === 'return' ? 1 : 0) + offset + 7) % drivers.length]!;
+        const bus = buses[(index + offset + 7) % buses.length]!;
+        const id = await one(
+          `INSERT INTO app.trips(schedule_id,departure_id,pattern_version_id,service_date,scheduled_at,assigned_driver_id,vehicle_id)
+           VALUES ($1,$2,$3,$4::date,$4::date + $5::time, $6,$7)`,
+          [schedule, departure, version, date, at, driver, bus],
+        );
+        // Days behind us already ran; today's morning is in progress. A run
+        // has to pass through active on the way to completed, and started_at is
+        // immutable once it is set, so this is two steps rather than one write.
+        if (offset < 0) {
+          await q(
+            "UPDATE app.trips SET status='active',started_at=$2::date + $3::time WHERE id=$1",
+            [id, date, at],
+          );
+          await q(
+            `UPDATE app.trips SET status='completed',
+               completed_at=$2::date + $3::time + interval '52 minutes' WHERE id=$1`,
+            [id, date, at],
+          );
+        } else if (offset === 0 && direction === 'outbound')
+          await q(
+            "UPDATE app.trips SET status='active',started_at=clock_timestamp() - interval '20 minutes' WHERE id=$1",
+            [id],
+          );
+        trips++;
+      }
+    }
+  }
+
+  process.stdout.write(
+    `Wrote ${CORRIDORS.length} corridors, ${buses.length} buses, ${trips} runs, ` +
+      `${await riders()} riders.\n\n`,
+  );
+  process.stdout.write('Driver logins (code / PIN), for the driver app:\n');
+  for (const c of credentials) process.stdout.write(`  ${c.name.padEnd(16)} ${c.code}  ${c.pin}\n`);
+  process.stdout.write(
+    '\nThese PINs are shown once and are not recoverable: the table stores only a\n' +
+      'keyed hash. Reset one through ops if it is lost.\n',
+  );
+}
+
+/**
+ * Twenty riders with a month behind them.
+ *
+ * A reservation is only meaningful at the end of a chain: a user owns a
+ * membership, a membership is funded by a purchase, a purchase opens a billing
+ * period, a period carries a commute assignment, and the assignment names the
+ * two legs a rider travels. Every one of those is written here because the
+ * schema refuses a reservation that skips any of them.
+ *
+ * Identities use synthetic Google subjects, so these riders are data and nobody
+ * can sign in as them. Pass real subjects in SEED_LINK_SUBJECTS to make the
+ * first few drivable from the commuter app: sign-in resolves a user by
+ * (provider, subject), so a real subject on a seeded row signs that person in
+ * as that rider, history and all.
+ */
+async function riders(): Promise<number> {
+  const NAMES = [
+    'Abena Osei',
+    'Kojo Antwi',
+    'Efua Mensah',
+    'Kwesi Appiah',
+    'Adjoa Nyarko',
+    'Yaa Asantewaa',
+    'Fiifi Quartey',
+    'Esi Amoah',
+    'Kobby Tetteh',
+    'Maame Serwaa',
+    'Nii Armah',
+    'Akua Frimpong',
+    'Kwabena Addo',
+    'Afia Danso',
+    'Kwaku Bediako',
+    'Araba Aidoo',
+    'Selorm Agbo',
+    'Dzifa Kudjo',
+    'Naa Lamiley',
+    'Paa Kwesi Sam',
+  ];
+  const linked = (process.env.SEED_LINK_SUBJECTS ?? '')
+    .split(',')
+    .map((value) => value.trim())
+    .filter(Boolean);
+
+  // Somebody has to be the actor behind an ops action, and the ops console
+  // needs an account to sign into. The first subject supplied links this one,
+  // so the console is reachable; riders take the rest.
+  const admin = await tx(async (cq, cone) => {
+    const id = await cone("INSERT INTO app.users(role,display_name) VALUES ('admin',$1)", [
+      'Trotxi Operations',
+    ]);
+    await cq('INSERT INTO app.auth_identities(user_id,provider,subject) VALUES ($1,$2,$3)', [
+      id,
+      'google',
+      linked[0] ?? `seed-ops-${randomUUID()}`,
+    ]);
+    return id;
+  });
+
+  const routes = await q<{ id: string; name: string }>(
+    'SELECT id,name FROM app.routes ORDER BY name',
+  );
+  // One selection per corridor, both legs, first stop to last. Riders share
+  // these rather than each inventing their own pair.
+  type Leg = {
+    direction: 'outbound' | 'return';
+    schedule: string;
+    version: string;
+    first: string;
+    last: string;
+  };
+  // A purchase carries the same two legs its commute selection does, and the
+  // schema validates both the same way, so they are gathered once here.
+  const legsByRoute = new Map<string, Leg[]>();
+  const selections: string[] = [];
+  for (const route of routes) {
+    const selection = await tx(async (cq, cone) => {
+      const selection = await cone('INSERT INTO app.commute_selections(route_id) VALUES ($1)', [
+        route.id,
+      ]);
+      for (const direction of ['outbound', 'return'] as const) {
+        const leg = (
+          await q<{ schedule: string; version: string; first: string; last: string }>(
+            `SELECT sc.id AS schedule, sc.pattern_version_id AS version,
+             (SELECT id FROM app.route_pattern_stops WHERE pattern_version_id=sc.pattern_version_id ORDER BY ordinal LIMIT 1) AS first,
+             (SELECT id FROM app.route_pattern_stops WHERE pattern_version_id=sc.pattern_version_id ORDER BY ordinal DESC LIMIT 1) AS last
+           FROM app.service_schedules sc
+           JOIN app.route_patterns p ON p.id=sc.pattern_id
+           WHERE p.route_id=$1 AND p.direction=$2`,
+            [route.id, direction],
+          )
+        )[0]!;
+        await cq(
+          `INSERT INTO app.commute_selection_legs(selection_id,direction,schedule_id,pattern_version_id,pickup_occurrence_id,dropoff_occurrence_id)
+         VALUES ($1,$2,$3,$4,$5,$6)`,
+          [selection, direction, leg.schedule, leg.version, leg.first, leg.last],
+        );
+        legsByRoute.set(route.id, [
+          ...(legsByRoute.get(route.id) ?? []),
+          {
+            direction,
+            schedule: leg.schedule,
+            version: leg.version,
+            first: leg.first,
+            last: leg.last,
+          },
+        ]);
+      }
+      return selection;
+    });
+    selections.push(selection);
+  }
+
+  // Mid-term rather than expiring: a reservation is only eligible while its
+  // trip falls inside the period, so the window has to cover every seeded day.
+  const periodStart = day(-20);
+  const periodEnd = day(10);
+  let count = 0;
+  for (const [index, name] of NAMES.entries()) {
+    const route = routes[index % routes.length]!;
+    const selection = selections[index % selections.length]!;
+    const plan = index % 5 === 0 ? 'annual' : 'monthly';
+    // Two in twenty have lapsed, which is what makes "lapsed" mean anything on
+    // the ops riders screen.
+    const lapsed = index === 7 || index === 15;
+
+    await tx(async (q, one) => {
+      const user = await one("INSERT INTO app.users(role,display_name) VALUES ('commuter',$1)", [
+        name,
+      ]);
+      await q('INSERT INTO app.auth_identities(user_id,provider,subject) VALUES ($1,$2,$3)', [
+        user,
+        'google',
+        linked[index + 1] ?? `seed-${randomUUID()}`,
+      ]);
+      const membership = await one('INSERT INTO app.memberships(user_id) VALUES ($1)', [user]);
+      const rides = plan === 'annual' ? 480 : 40;
+      // The schema derives the price and refuses any other number:
+      // floor((fare * rides * multiplier + 5000) / 10000). Computed from the
+      // same fare and multiplier the insert below states, for the same reason
+      // the stop distances are derived: a guessed figure is refused.
+      const price = Math.floor((FARE_PESEWAS * rides * MULTIPLIER_BP + 5000) / 10000);
+      const purchase = await one(
+        `INSERT INTO app.purchases(membership_id,user_id,route_id,plan,state,price_pesewas,
+           applied_credit_pesewas,cash_due_pesewas,currency,rides_granted,fare_pesewas,
+           price_multiplier_bp,conversion_rate_pesewas,checkout_key_hash,input_hash)
+         VALUES ($1,$2,$3,$4,'fulfilled',$5,0,$5,'GHS',$6,${FARE_PESEWAS},${MULTIPLIER_BP},50,
+           encode(sha256($7::bytea),'hex'), encode(sha256($8::bytea),'hex'))`,
+        [membership, user, route.id, plan, price, rides, `checkout:${user}`, `input:${user}`],
+      );
+      // The purchase carries the same paired legs as the selection, and the
+      // schema refuses a purchase without them.
+      for (const leg of legsByRoute.get(route.id) ?? [])
+        await q(
+          `INSERT INTO app.purchase_legs(purchase_id,direction,schedule_id,pattern_version_id,pickup_occurrence_id,dropoff_occurrence_id)
+           VALUES ($1,$2,$3,$4,$5,$6)`,
+          [purchase, leg.direction, leg.schedule, leg.version, leg.first, leg.last],
+        );
+      // A period only exists behind money that arrived. The schema requires a
+      // successful attempt whose paid_at is exactly the period's start, so this
+      // is not decoration: without it the period is refused.
+      await q(
+        `INSERT INTO app.payment_attempts(purchase_id,user_id,provider,environment,reference,
+           state,amount_pesewas,currency,provider_transaction_id,channel,fees_pesewas,paid_at)
+         VALUES ($1,$2,'paystack','test',$3,'successful',$4,'GHS',$5,'mobile_money',$6,$7::date)`,
+        [
+          purchase,
+          user,
+          `seed-${purchase}`,
+          price,
+          `seed-txn-${purchase}`,
+          Math.round(price * 0.0195),
+          periodStart,
+        ],
+      );
+      const period = await one(
+        `INSERT INTO app.billing_periods(purchase_id,membership_id,user_id,starts_at,original_ends_at,effective_ends_at,state)
+         VALUES ($1,$2,$3,$4::date,$5::date,$5::date,$6)`,
+        [
+          purchase,
+          membership,
+          user,
+          periodStart,
+          lapsed ? day(-2) : periodEnd,
+          lapsed ? 'closed' : 'open',
+        ],
+      );
+      const assignment = await one(
+        `INSERT INTO app.commute_assignments(user_id,membership_id,period_id,selection_id,purchase_id,effective_from)
+         VALUES ($1,$2,$3,$4,$5,$6::date)`,
+        [user, membership, period, selection, purchase, periodStart],
+      );
+      await q(
+        "INSERT INTO app.ride_entries(user_id,period_id,reason,delta_rides) VALUES ($1,$2,'allocation',$3)",
+        [user, period, rides],
+      );
+      // Credit only exists behind a recorded decision: the schema matches the
+      // entry against its adjustment and refuses any other amount.
+      if (index % 4 === 0) {
+        const delta = 500 * ((index % 3) + 1);
+        const adjustment = await one(
+          `INSERT INTO app.credit_adjustments(user_id,actor_user_id,delta_pesewas,reason)
+           VALUES ($1,$2,$3,'Seeded goodwill credit')`,
+          [user, admin, delta],
+        );
+        await q(
+          `INSERT INTO app.credit_entries(user_id,reason,delta_pesewas,adjustment_id)
+           VALUES ($1,'adjustment',$2,$3)`,
+          [user, delta, adjustment],
+        );
+      }
+
+      // Reservations are what put a rider on a driver's manifest. Days behind
+      // us are settled, mostly boarded with the occasional no-show; today and
+      // ahead are reserved and still changeable. A lapsed rider stops at the
+      // day their period closed.
+      for (const offset of DAYS) {
+        const date = day(offset);
+        if (lapsed && offset >= -2) continue;
+        for (const leg of legsByRoute.get(route.id) ?? []) {
+          const trip = (
+            await q(
+              'SELECT id,status FROM app.trips WHERE schedule_id=$1 AND service_date=$2::date',
+              [leg.schedule, date],
+            )
+          )[0] as { id: string; status: string } | undefined;
+          if (!trip) continue;
+          // Only runs that have not left. A boarded or no-show reservation is
+          // receipt-backed: the schema requires a matching charge, and a charge
+          // requires a boarding command. Seeding those would mean inventing
+          // receipts for boardings that never happened, which puts fiction in
+          // the audit trail the receipts exist to protect. Past runs therefore
+          // carry no riders; the driver app produces real boardings by
+          // scanning, which is better evidence than anything written here.
+          if (trip.status !== 'scheduled') continue;
+          await q(
+            `INSERT INTO app.reservations(user_id,period_id,assignment_id,selection_id,direction,
+               service_date,trip_id,schedule_id,pattern_version_id,pickup_occurrence_id,
+               dropoff_occurrence_id,status,source,settled_at)
+             VALUES ($1,$2,$3,$4,$5,$6::date,$7,$8,$9,$10,$11,$12,'confirmation',$13)`,
+            [
+              user,
+              period,
+              assignment,
+              selection,
+              leg.direction,
+              date,
+              trip.id,
+              leg.schedule,
+              leg.version,
+              leg.first,
+              leg.last,
+              'reserved',
+              null,
+            ],
+          );
+        }
+      }
+    });
+    count++;
+  }
+  if (linked.length)
+    process.stdout.write(
+      `Linked ${Math.min(linked.length, NAMES.length)} rider(s) to the Google subjects supplied.\n`,
+    );
+  return count;
+}
+
+try {
+  await main();
+} finally {
+  await pool.end();
+}

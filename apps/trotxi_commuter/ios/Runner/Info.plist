@@ -14,6 +14,14 @@
 	<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
+	<!-- Both are required before the profile photo picker runs: iOS terminates
+	     the app rather than showing a prompt when the string is missing. The
+	     wording says what the photo is for, because a rider is being asked to
+	     hand over a picture of their face. -->
+	<key>NSCameraUsageDescription</key>
+	<string>Take a profile photo so your driver can recognise you when you board.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Choose a profile photo so your driver can recognise you when you board.</string>
 	<key>CFBundleName</key>
 	<string>trotxi_commuter</string>
 	<!-- Registered iOS OAuth client for com.trotxi.trotxiCommuter.

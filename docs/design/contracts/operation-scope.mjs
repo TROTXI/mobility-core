@@ -220,6 +220,12 @@ export const operationScope = [
     'ops-console.md 4.1: the live board must be one request',
     'No predecessor. Assembling the tiles client-side needs one list plus a fan-out per trip, gets slower with every bus, and lets the tiles disagree with the table beneath them.',
   ],
+  [
+    'getDriverSelf',
+    'post-cutover',
+    'A driver session outlives the sign-in response that carries the driver record',
+    'No predecessor. DriverTokens.driver is returned once at sign-in and nothing re-reads it, so an app signed in for weeks cannot show a licence or a suspended credential without signing out.',
+  ],
 ].map(([operationId, delivery, requirement, existingEndpointAssessment]) => ({
   operationId,
   delivery,

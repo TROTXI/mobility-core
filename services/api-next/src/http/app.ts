@@ -671,7 +671,8 @@ export async function createTransportApp(options: AppOptions) {
               )
             )
               fail(400, 'invalid_query', 'Unsupported query parameters.');
-            if (method === 'get') result = await options.drivers!.list(actor, query);
+            if (name === 'getDriverSelf') result = await options.drivers!.self(actor);
+            else if (method === 'get') result = await options.drivers!.list(actor, query);
             else {
               const key = request.headers['idempotency-key'],
                 ifMatch = request.headers['if-match'];

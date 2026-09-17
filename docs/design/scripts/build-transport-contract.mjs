@@ -125,6 +125,7 @@ const selected = new Set([
   'setMinimumVersion',
   'changeRole',
   'getOpsOverview',
+  'getDriverSelf',
 ]);
 const count = selected.size;
 const paths = {};

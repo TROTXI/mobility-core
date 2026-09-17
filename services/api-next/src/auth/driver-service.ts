@@ -18,6 +18,7 @@ import {
 } from './driver-pin.js';
 
 export const driverOperations = [
+  'getDriverSelf',
   'listOpsDrivers',
   'createDriver',
   'updateDriver',
@@ -117,6 +118,55 @@ export class DriverService {
         'invalid_driver_account',
         'Link an existing active driver account, or omit userId to provision one on credential issue.',
       );
+  }
+  /**
+   * The driver's own record. The sign-in response carries it once and a
+   * session outlives that by weeks, so an app that stays signed in has no
+   * other way back to a licence number or a suspended credential.
+   *
+   * Narrower than the ops view of the same row on purpose: a driver reads
+   * their own identity and whether their PIN still works, not the moderation
+   * state ops keeps about them.
+   */
+  async self(actor: Actor): Promise<Output> {
+    return this.transaction(async (client) => {
+      await this.authorize(client, actor, true);
+      const row = (
+        await client.query(
+          `SELECT d.id, d.name, d.phone, d.license_number,
+             c.driver_code, c.status, c.must_change_pin, c.locked_until
+           FROM app.drivers d
+           LEFT JOIN app.driver_credentials c ON c.driver_id = d.id
+           WHERE d.user_id = $1 AND d.archived_at IS NULL`,
+          [actor.userId],
+        )
+      ).rows[0];
+      // A user with the driver role and no live driver row is not a driver any
+      // more. Saying so beats returning an empty shell the app has to guess at.
+      if (!row) fail(404, 'not_found', 'Resource not found.');
+      return {
+        status: 200,
+        body: {
+          data: {
+            id: row.id,
+            name: row.name,
+            phone: row.phone,
+            licenseNumber: row.license_number,
+            // Absent until ops issues one. The app shows "not yet issued"
+            // rather than a code it invented.
+            credential: row.driver_code
+              ? {
+                  driverCode: row.driver_code,
+                  status: row.status,
+                  mustChangePin: row.must_change_pin,
+                  lockedUntil: row.locked_until ? new Date(row.locked_until).toISOString() : null,
+                }
+              : null,
+          },
+        },
+        headers: {},
+      };
+    });
   }
   async list(actor: Actor, query: Record<string, string | undefined>): Promise<Output> {
     return this.transaction(async (client) => {

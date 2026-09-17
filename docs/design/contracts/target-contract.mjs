@@ -485,6 +485,11 @@ named(
 named(
   'DriverTrip',
   schemas.Trip.extend({
+    // The plate, not the label. A plate is mandatory on a vehicle and a label
+    // is not, so a driver handed a vehicle with no label had nothing at all to
+    // identify it by. Added here rather than on Trip: the rider catalogue says
+    // what is running, never which bus was assigned to whom.
+    vehiclePlate: text(32).nullable(),
     startedAt: instant.nullable(),
     completedAt: instant.nullable(),
     currentStopOccurrenceId: id.nullable(),
@@ -956,6 +961,31 @@ named(
   }),
 );
 
+// What a signed-in driver can read about themselves. The driver record reaches
+// the app once, inside the sign-in response, and a session outlives that by
+// weeks: without this the app cannot show a licence, a driver code, or that a
+// credential was suspended, and cannot recover any of it without signing out.
+// Deliberately narrower than the ops view of the same driver: no archived_at,
+// no linked user id, no failed-attempt count.
+named(
+  'DriverSelf',
+  obj({
+    id: id,
+    name: text(),
+    phone: text(32).nullable(),
+    licenseNumber: text(64).nullable(),
+    // The code read down a phone line to identify the driver, and whether the
+    // PIN they hold still works. A locked credential is why the app is
+    // refusing them, so the app has to be able to say so.
+    credential: obj({
+      driverCode: text(32),
+      status: z.enum(['active', 'suspended', 'revoked']),
+      mustChangePin: z.boolean(),
+      lockedUntil: instant.nullable(),
+    }).nullable(),
+  }),
+);
+
 export const operations = [];
 const op = (method, path, operationId, response, options = {}) => {
   const access =
@@ -999,6 +1029,7 @@ post('/v1/auth/logout', 'logoutSession', 'RefreshInput', null, {
   retry: 'credential',
   sensitive: true,
 });
+get('/v1/driver/me', 'getDriverSelf', 'DriverSelf', { access: 'driver_own' });
 post('/v1/auth/driver/pin', 'changeDriverPin', 'PinChange', null, {
   access: 'driver_own',
   status: 204,

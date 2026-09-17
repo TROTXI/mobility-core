@@ -1,5 +1,7 @@
 import 'dart:convert';
+import 'dart:typed_data';
 
+import 'package:crypto/crypto.dart';
 import 'package:dio/dio.dart';
 import 'package:uuid/uuid.dart';
 
@@ -185,6 +187,54 @@ class CommuterDataClient {
               profileUpdate: ProfileUpdate((b) => b.displayName = displayName),
               extra: extra)))
       .data;
+
+  /// The rider's own photo, as a signed URL that expires.
+  ///
+  /// The server hands back a short-lived link rather than the object itself, so
+  /// a cached one stops working. Read [Avatar.expiresAt] and fetch again rather
+  /// than holding the URL: the boarding screen a driver looks at shows this
+  /// picture, and a dead link there reads as a rider with no photo.
+  Future<Avatar> avatar() async => (await _read((extra) => client
+          .getSelfApi()
+          .getAvatar(
+              xTrotxiClient: metadata.app,
+              xTrotxiBuild: metadata.build,
+              xTrotxiPlatform: metadata.platform,
+              extra: extra)))
+      .data;
+
+  /// Replace the rider's photo.
+  ///
+  /// [contentType] must be `image/jpeg`, `image/png` or `image/webp` and must
+  /// describe the bytes: the server reads the file's own header rather than
+  /// trusting the declaration, and refuses a mismatch with 415. Oversize files
+  /// come back as 413. Both are the caller's to show.
+  ///
+  /// The idempotency key is derived from the bytes, so tapping upload twice on
+  /// one picture is one upload, while choosing a different picture is a new
+  /// one. That matters on a bad connection, which is the case this is for.
+  Future<Avatar> uploadAvatar(
+    Uint8List bytes, {
+    required String contentType,
+    String filename = 'avatar',
+  }) async =>
+      (await _command(
+        'uploadAvatar',
+        sha256.convert(bytes).toString(),
+        (key, extra) => client.getSelfApi().uploadAvatar(
+              idempotencyKey: key,
+              xTrotxiClient: metadata.app,
+              xTrotxiBuild: metadata.build,
+              xTrotxiPlatform: metadata.platform,
+              file: MultipartFile.fromBytes(
+                bytes,
+                filename: filename,
+                contentType: DioMediaType.parse(contentType),
+              ),
+              extra: extra,
+            ),
+      ))
+          .data;
 
   Future<List<Session>> sessions() => _pages(
       (cursor, extra) => client.getSelfApi().listSessions(

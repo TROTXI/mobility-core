@@ -673,7 +673,7 @@ export class TransportService {
   ): Promise<Body[]> {
     const rows = (
       await client.query(
-        `SELECT t.*,t.service_date::text,p.route_id,p.id AS pattern_id,p.direction,v.label AS vehicle_label,
+        `SELECT t.*,t.service_date::text,p.route_id,p.id AS pattern_id,p.direction,v.label AS vehicle_label,v.plate AS vehicle_plate,
       to_char(t.scheduled_at AT TIME ZONE 'UTC','YYYY-MM-DD"T"HH24:MI:SS.US"Z"') AS cursor_time
       FROM app.trips t JOIN app.route_pattern_versions pv ON pv.id=t.pattern_version_id
       JOIN app.route_patterns p ON p.id=pv.pattern_id LEFT JOIN app.vehicles v ON v.id=t.vehicle_id
@@ -704,6 +704,7 @@ export class TransportService {
       scheduledAt: t.scheduled_at.toISOString(),
       status: t.status,
       vehicleLabel: t.vehicle_label,
+      vehiclePlate: t.vehicle_plate ?? null,
       startedAt: t.started_at?.toISOString() ?? null,
       completedAt: t.completed_at?.toISOString() ?? null,
       currentStopOccurrenceId: t.current_stop_occurrence_id,

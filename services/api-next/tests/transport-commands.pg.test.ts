@@ -1120,3 +1120,30 @@ test('CMD-16 bounded admission returns Retry-After instead of admitting unlimite
     false,
     2,
   ));
+
+test('CMD-21 a driver is told the plate of the bus, not just an optional label', () =>
+  withCase(async (c) => {
+    const { trip } = await c.seedTrip();
+    const plate = (await c.owner.query('SELECT plate FROM app.vehicles WHERE id=$1', [c.vehicle]))
+      .rows[0].plate as string;
+    const find = async (who: 'driver' | 'admin' | 'rider', path: string) =>
+      JSON.parse((await c.request(who, 'GET', path)).body).data.find(
+        (t: { id: string }) => t.id === trip,
+      );
+
+    const mine = await find('driver', '/v1/driver/trips');
+    assert.equal(mine.vehiclePlate, plate);
+    assert.equal(mine.vehicleLabel, 'Fixture bus');
+
+    // A label is optional and a plate is not, which is the whole point: with no
+    // label a driver previously had nothing at all identifying the vehicle.
+    await c.owner.query('UPDATE app.vehicles SET label=NULL WHERE id=$1', [c.vehicle]);
+    const unlabelled = await find('driver', '/v1/driver/trips');
+    assert.equal(unlabelled.vehicleLabel, null);
+    assert.equal(unlabelled.vehiclePlate, plate, 'the plate still identifies the bus');
+
+    // Ops inherits the field. The rider catalogue deliberately does not: it
+    // says what is running, never which bus was assigned to whom.
+    assert.equal((await find('admin', '/v1/ops/trips')).vehiclePlate, plate);
+    assert.equal('vehiclePlate' in (await find('rider', '/v1/trips')), false);
+  }));
