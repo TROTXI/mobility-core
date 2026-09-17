@@ -52,7 +52,18 @@ const DRIVERS = ['Kwame Mensah', 'Ama Boateng', 'Yaw Owusu', 'Akosua Darko', 'Ko
 /** Three days behind, today, three ahead: history to look at and runs to drive. */
 const DAYS = [-3, -2, -1, 0, 1, 2, 3];
 
-const pool = new pg.Pool({ connectionString: url, max: 4 });
+// A hosted database refuses a plaintext connection, and pg sends one unless
+// the URL says otherwise. Anything explicit in the URL wins; no-verify is the
+// honest default for a one-off admin connection with no root for the
+// certificate chain.
+const connection = new URL(url);
+if (
+  !connection.searchParams.has('sslmode') &&
+  !['localhost', '127.0.0.1', '[::1]'].includes(connection.hostname)
+)
+  connection.searchParams.set('sslmode', 'no-verify');
+
+const pool = new pg.Pool({ connectionString: connection.href, max: 4 });
 const q = async <T extends pg.QueryResultRow = pg.QueryResultRow>(sql: string, v: unknown[] = []) =>
   (await pool.query<T>(sql, v)).rows;
 const one = async (sql: string, v: unknown[] = []) =>
