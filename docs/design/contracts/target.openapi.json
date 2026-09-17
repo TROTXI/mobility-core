@@ -710,6 +710,9 @@
           "409": {
             "$ref": "#/components/responses/Error409"
           },
+          "423": {
+            "$ref": "#/components/responses/Error423"
+          },
           "426": {
             "$ref": "#/components/responses/Error426"
           },
@@ -2096,7 +2099,7 @@
               "type": "string",
               "format": "date"
             },
-            "description": "Africa/Accra day; paired with toDate. Default last/current 7 days; maximum 31 days."
+            "description": "Optional inclusive Africa/Accra purchase-creation day. With no date filters, returns all purchase history, including unresolved purchases. No default recency cutoff."
           },
           {
             "name": "toDate",
@@ -2106,7 +2109,7 @@
               "type": "string",
               "format": "date"
             },
-            "description": "Inclusive; paired with fromDate."
+            "description": "Optional inclusive purchase-creation day; if both bounds are supplied, toDate must not precede fromDate."
           },
           {
             "name": "X-Trotxi-Client",
@@ -8595,7 +8598,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/DriverTripPage"
+                  "$ref": "#/components/schemas/OpsTripPage"
                 }
               }
             },
@@ -8707,7 +8710,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/DriverTripResponse"
+                  "$ref": "#/components/schemas/OpsTripResponse"
                 }
               }
             },
@@ -8844,7 +8847,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/DriverTripResponse"
+                  "$ref": "#/components/schemas/OpsTripResponse"
                 }
               }
             },
@@ -8987,7 +8990,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/DriverTripResponse"
+                  "$ref": "#/components/schemas/OpsTripResponse"
                 }
               }
             },
@@ -9130,7 +9133,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/DriverTripResponse"
+                  "$ref": "#/components/schemas/OpsTripResponse"
                 }
               }
             },
@@ -10889,16 +10892,6 @@
               "default": 50
             },
             "description": "Page size. No silent truncation."
-          },
-          {
-            "name": "status",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "string",
-              "maxLength": 50
-            },
-            "description": "Must match the resource state enum; unknown values return 400."
           },
           {
             "name": "X-Trotxi-Client",
@@ -13220,7 +13213,7 @@
               "type": "string",
               "format": "date"
             },
-            "description": "Africa/Accra day; paired with toDate. Default last/current 7 days; maximum 31 days."
+            "description": "Optional inclusive Africa/Accra purchase-creation day. With no date filters, returns all purchase history, including unresolved purchases. No default recency cutoff."
           },
           {
             "name": "toDate",
@@ -13230,7 +13223,7 @@
               "type": "string",
               "format": "date"
             },
-            "description": "Inclusive; paired with fromDate."
+            "description": "Optional inclusive purchase-creation day; if both bounds are supplied, toDate must not precede fromDate."
           },
           {
             "name": "X-Trotxi-Client",
@@ -15540,7 +15533,7 @@
                   "format": "uri"
                 },
                 "apiMajor": {
-                  "type": "number",
+                  "type": "integer",
                   "enum": [1]
                 }
               },
@@ -15982,6 +15975,11 @@
           "archived": {
             "type": "boolean"
           },
+          "editToken": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
           "createdAt": {
             "type": "string",
             "format": "date-time",
@@ -16005,6 +16003,7 @@
           "patternIds",
           "acceptsDriverRequests",
           "archived",
+          "editToken",
           "createdAt",
           "updatedAt",
           "version"
@@ -16072,6 +16071,11 @@
           "archived": {
             "type": "boolean"
           },
+          "editToken": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
           "createdAt": {
             "type": "string",
             "format": "date-time",
@@ -16088,7 +16092,16 @@
             "maximum": 9007199254740991
           }
         },
-        "required": ["id", "name", "location", "archived", "createdAt", "updatedAt", "version"],
+        "required": [
+          "id",
+          "name",
+          "location",
+          "archived",
+          "editToken",
+          "createdAt",
+          "updatedAt",
+          "version"
+        ],
         "additionalProperties": false
       },
       "StopInput": {
@@ -16236,9 +16249,26 @@
             "minLength": 1,
             "maxLength": 128
           },
+          "revision": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
           "state": {
             "type": "string",
             "enum": ["draft", "published", "retired"]
+          },
+          "effectiveFrom": {
+            "nullable": true,
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+          },
+          "effectiveTo": {
+            "nullable": true,
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
           },
           "stops": {
             "minItems": 2,
@@ -16249,6 +16279,11 @@
           },
           "geometryId": {
             "nullable": true,
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "editToken": {
             "type": "string",
             "minLength": 1,
             "maxLength": 128
@@ -16272,9 +16307,13 @@
         "required": [
           "id",
           "patternId",
+          "revision",
           "state",
+          "effectiveFrom",
+          "effectiveTo",
           "stops",
           "geometryId",
+          "editToken",
           "createdAt",
           "updatedAt",
           "version"
@@ -16308,9 +16347,33 @@
               "required": ["stopId", "name", "location"],
               "additionalProperties": false
             }
+          },
+          "geometry": {
+            "type": "object",
+            "properties": {
+              "points": {
+                "minItems": 2,
+                "maxItems": 10000,
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/Point"
+                }
+              },
+              "stopDistancesMeters": {
+                "minItems": 2,
+                "maxItems": 500,
+                "type": "array",
+                "items": {
+                  "type": "number",
+                  "minimum": 0
+                }
+              }
+            },
+            "required": ["points", "stopDistancesMeters"],
+            "additionalProperties": false
           }
         },
-        "required": ["stops"],
+        "required": ["stops", "geometry"],
         "additionalProperties": false
       },
       "PublishVersionInput": {
@@ -16388,10 +16451,24 @@
             "minLength": 1,
             "maxLength": 128
           },
+          "departureId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "patternId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
           "patternVersionId": {
             "type": "string",
             "minLength": 1,
             "maxLength": 128
+          },
+          "serviceWindow": {
+            "type": "string",
+            "enum": ["morning", "evening"]
           },
           "localDeparture": {
             "type": "string",
@@ -16438,7 +16515,10 @@
         },
         "required": [
           "id",
+          "departureId",
+          "patternId",
           "patternVersionId",
+          "serviceWindow",
           "localDeparture",
           "timeZone",
           "weekdays",
@@ -16453,10 +16533,45 @@
       "ScheduleInput": {
         "type": "object",
         "properties": {
+          "departure": {
+            "oneOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "type": "string",
+                    "enum": ["new"]
+                  }
+                },
+                "required": ["kind"],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "type": "string",
+                    "enum": ["existing"]
+                  },
+                  "departureId": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 128
+                  }
+                },
+                "required": ["kind", "departureId"],
+                "additionalProperties": false
+              }
+            ]
+          },
           "patternVersionId": {
             "type": "string",
             "minLength": 1,
             "maxLength": 128
+          },
+          "serviceWindow": {
+            "type": "string",
+            "enum": ["morning", "evening"]
           },
           "localDeparture": {
             "type": "string",
@@ -16489,7 +16604,9 @@
           }
         },
         "required": [
+          "departure",
           "patternVersionId",
+          "serviceWindow",
           "localDeparture",
           "timeZone",
           "weekdays",
@@ -17377,6 +17494,11 @@
             "minLength": 1,
             "maxLength": 128
           },
+          "editToken": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
           "state": {
             "type": "string",
             "enum": ["available", "held", "assigned", "retired"]
@@ -17402,6 +17524,7 @@
           "legs",
           "availableFrom",
           "id",
+          "editToken",
           "state",
           "createdAt",
           "updatedAt",
@@ -17597,7 +17720,26 @@
             "minLength": 1,
             "maxLength": 128
           },
+          "departureId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "serviceDate": {
+            "type": "string",
+            "format": "date",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+          },
+          "runNumber": {
+            "type": "integer",
+            "enum": [1]
+          },
           "routeId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "patternId": {
             "type": "string",
             "minLength": 1,
             "maxLength": 128
@@ -17629,7 +17771,11 @@
         },
         "required": [
           "id",
+          "departureId",
+          "serviceDate",
+          "runNumber",
           "routeId",
+          "patternId",
           "patternVersionId",
           "direction",
           "scheduledAt",
@@ -17646,7 +17792,26 @@
             "minLength": 1,
             "maxLength": 128
           },
+          "departureId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "serviceDate": {
+            "type": "string",
+            "format": "date",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+          },
+          "runNumber": {
+            "type": "integer",
+            "enum": [1]
+          },
           "routeId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "patternId": {
             "type": "string",
             "minLength": 1,
             "maxLength": 128
@@ -17703,11 +17868,20 @@
             "type": "integer",
             "minimum": 0,
             "maximum": 9007199254740991
+          },
+          "editToken": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
           }
         },
         "required": [
           "id",
+          "departureId",
+          "serviceDate",
+          "runNumber",
           "routeId",
+          "patternId",
           "patternVersionId",
           "direction",
           "scheduledAt",
@@ -17717,7 +17891,140 @@
           "completedAt",
           "currentStopOccurrenceId",
           "stops",
-          "version"
+          "version",
+          "editToken"
+        ],
+        "additionalProperties": false
+      },
+      "OpsTrip": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "departureId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "serviceDate": {
+            "type": "string",
+            "format": "date",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+          },
+          "runNumber": {
+            "type": "integer",
+            "enum": [1]
+          },
+          "routeId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "patternId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "patternVersionId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "direction": {
+            "type": "string",
+            "enum": ["outbound", "return"]
+          },
+          "scheduledAt": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["scheduled", "active", "completed", "cancelled"]
+          },
+          "vehicleLabel": {
+            "nullable": true,
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "startedAt": {
+            "nullable": true,
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+          },
+          "completedAt": {
+            "nullable": true,
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+          },
+          "currentStopOccurrenceId": {
+            "nullable": true,
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "stops": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StopOccurrence"
+            }
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "editToken": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "scheduleId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "assignedDriverId": {
+            "nullable": true,
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "vehicleId": {
+            "nullable": true,
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          }
+        },
+        "required": [
+          "id",
+          "departureId",
+          "serviceDate",
+          "runNumber",
+          "routeId",
+          "patternId",
+          "patternVersionId",
+          "direction",
+          "scheduledAt",
+          "status",
+          "vehicleLabel",
+          "startedAt",
+          "completedAt",
+          "currentStopOccurrenceId",
+          "stops",
+          "version",
+          "editToken",
+          "scheduleId",
+          "assignedDriverId",
+          "vehicleId"
         ],
         "additionalProperties": false
       },
@@ -17729,13 +18036,22 @@
             "minLength": 1,
             "maxLength": 128
           },
+          "serviceDate": {
+            "type": "string",
+            "format": "date",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+          },
+          "runNumber": {
+            "type": "integer",
+            "enum": [1]
+          },
           "scheduledAt": {
             "type": "string",
             "format": "date-time",
             "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
           }
         },
-        "required": ["scheduleId", "scheduledAt"],
+        "required": ["scheduleId", "serviceDate", "scheduledAt"],
         "additionalProperties": false
       },
       "TripEdit": {
@@ -18484,6 +18800,11 @@
           "archived": {
             "type": "boolean"
           },
+          "editToken": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
           "createdAt": {
             "type": "string",
             "format": "date-time",
@@ -18507,6 +18828,7 @@
           "licenseNumber",
           "userId",
           "archived",
+          "editToken",
           "createdAt",
           "updatedAt",
           "version"
@@ -18619,6 +18941,11 @@
           "archived": {
             "type": "boolean"
           },
+          "editToken": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
           "createdAt": {
             "type": "string",
             "format": "date-time",
@@ -18643,6 +18970,7 @@
           "capacity",
           "id",
           "archived",
+          "editToken",
           "createdAt",
           "updatedAt",
           "version"
@@ -18710,7 +19038,6 @@
             "maxLength": 32
           }
         },
-        "required": ["code"],
         "additionalProperties": false
       },
       "CredentialSecret": {
@@ -18936,7 +19263,7 @@
             "maximum": 9007199254740991
           },
           "apiMajor": {
-            "type": "number",
+            "type": "integer",
             "enum": [1]
           },
           "storeUrl": {
@@ -18961,7 +19288,7 @@
             "maximum": 9007199254740991
           },
           "apiMajor": {
-            "type": "number",
+            "type": "integer",
             "enum": [1]
           },
           "storeUrl": {
@@ -18983,6 +19310,11 @@
           "kind": {
             "type": "string",
             "enum": ["refund", "dispute", "manual_review"]
+          },
+          "editToken": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
           },
           "purchaseId": {
             "type": "string",
@@ -19009,7 +19341,16 @@
             "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
           }
         },
-        "required": ["id", "kind", "purchaseId", "status", "amount", "reason", "updatedAt"],
+        "required": [
+          "id",
+          "kind",
+          "editToken",
+          "purchaseId",
+          "status",
+          "amount",
+          "reason",
+          "updatedAt"
+        ],
         "additionalProperties": false
       },
       "ReviewDecision": {
@@ -19068,6 +19409,11 @@
           "active": {
             "type": "boolean"
           },
+          "editToken": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
           "createdAt": {
             "type": "string",
             "format": "date-time",
@@ -19090,6 +19436,7 @@
           "reason",
           "reviewAt",
           "active",
+          "editToken",
           "createdAt",
           "updatedAt",
           "version"
@@ -19173,6 +19520,11 @@
             "type": "string",
             "enum": ["active", "released"]
           },
+          "editToken": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
           "createdAt": {
             "type": "string",
             "format": "date-time",
@@ -19198,6 +19550,7 @@
           "reviewAt",
           "id",
           "state",
+          "editToken",
           "createdAt",
           "updatedAt",
           "version"
@@ -19401,6 +19754,11 @@
             "type": "integer",
             "minimum": 0,
             "maximum": 9007199254740991
+          },
+          "editToken": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
           }
         },
         "required": [
@@ -19416,7 +19774,8 @@
           "driverId",
           "handledBy",
           "handledAt",
-          "version"
+          "version",
+          "editToken"
         ],
         "additionalProperties": false
       },
@@ -19480,6 +19839,11 @@
             "type": "string",
             "minLength": 1,
             "maxLength": 128
+          },
+          "editToken": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
           }
         },
         "required": [
@@ -19494,7 +19858,8 @@
           "version",
           "riderId",
           "slotId",
-          "decidedBy"
+          "decidedBy",
+          "editToken"
         ],
         "additionalProperties": false
       },
@@ -19543,6 +19908,11 @@
             "type": "string",
             "minLength": 1,
             "maxLength": 128
+          },
+          "editToken": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
           }
         },
         "required": [
@@ -19554,7 +19924,8 @@
           "updatedAt",
           "version",
           "driverId",
-          "decidedBy"
+          "decidedBy",
+          "editToken"
         ],
         "additionalProperties": false
       },
@@ -20427,6 +20798,42 @@
         "properties": {
           "data": {
             "$ref": "#/components/schemas/Driver"
+          }
+        },
+        "required": ["data"],
+        "additionalProperties": false
+      },
+      "OpsTripPage": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OpsTrip"
+            }
+          },
+          "page": {
+            "type": "object",
+            "properties": {
+              "nextCursor": {
+                "nullable": true,
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 128
+              }
+            },
+            "required": ["nextCursor"],
+            "additionalProperties": false
+          }
+        },
+        "required": ["data", "page"],
+        "additionalProperties": false
+      },
+      "OpsTripResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/OpsTrip"
           }
         },
         "required": ["data"],

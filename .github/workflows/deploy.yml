@@ -1,8 +1,8 @@
 name: Deploy
 
 # Continuous deployment: runs after CI completes on main.
-# main (CI green) → staging deploys automatically → smoke test
-#                 → production waits for manual approval (GitHub environment)
+# main (CI green) → replacement migrations → pinned staging deploy → smoke test.
+# There is no production environment. This workflow cannot deploy one.
 #
 # Dormant until the DEPLOY_ENABLED repo variable is "true" (set it after
 # connecting the Render blueprint and adding RENDER_API_KEY — see docs/DEPLOY.md).
@@ -31,6 +31,8 @@ jobs:
       url: ${{ vars.STAGING_URL }}
     steps:
       - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
       - uses: pnpm/action-setup@v6
       - uses: actions/setup-node@v7
         with:
@@ -38,72 +40,36 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
 
-      # Migrate BEFORE shipping new code: our migrations are additive
-      # (expand/contract), so the schema must lead the deploy. A failure here
-      # aborts the deploy before any new code goes live.
-      - name: Run DB migrations
+      # The replacement has its own logical database on the existing paid
+      # instance. Never fall back to STAGING_DATABASE_URL / the legacy schema.
+      - name: Run replacement DB migrations
         env:
-          DATABASE_URL: ${{ secrets.STAGING_DATABASE_URL }}
-          DATABASE_SSL: 'true' # external connection from CI requires TLS
+          REPLACEMENT_DATABASE_URL: ${{ secrets.STAGING_REPLACEMENT_DATABASE_URL }}
+          REPLACEMENT_RUNTIME_ROLE: trotxi_runtime_v1
         run: |
-          if [ -z "$DATABASE_URL" ]; then
-            echo "::error::STAGING_DATABASE_URL is not set. Add it as a repo secret: the staging DB's EXTERNAL connection string (see docs/DEPLOY.md)."
+          if [ -z "$REPLACEMENT_DATABASE_URL" ]; then
+            echo "::error::STAGING_REPLACEMENT_DATABASE_URL is required. No legacy database fallback."
             exit 1
           fi
-          pnpm --filter @trotxi/api run migrate
+          node --input-type=module -e '
+            const u = new URL(process.env.REPLACEMENT_DATABASE_URL);
+            if (u.pathname !== "/trotxi_replacement" || u.searchParams.get("sslmode") !== "verify-full")
+              throw new Error("Replacement database and verified TLS are required");
+          '
+          pnpm --filter @trotxi/api-next run migrate
 
       - name: Deploy and wait until live
         run: .github/scripts/render-deploy.sh
         env:
           RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
           SERVICE_ID: ${{ vars.RENDER_STAGING_SERVICE_ID }}
+          COMMIT_ID: ${{ github.event.workflow_run.head_sha }}
 
       - name: Smoke test
-        run: |
-          curl -fsS --retry 5 --retry-delay 5 "${{ vars.STAGING_URL }}/healthz"
-          curl -fsS "${{ vars.STAGING_URL }}/readyz"
-
-  production:
-    name: Deploy production (Render)
-    needs: staging
-    # Skipped until the production service exists (see render.yaml).
-    if: vars.RENDER_PRODUCTION_SERVICE_ID != ''
-    runs-on: ubuntu-latest
-    timeout-minutes: 25
-    # The production environment requires a manual approval in GitHub before
-    # this job starts (Settings → Environments → production → reviewers).
-    environment:
-      name: production
-      url: ${{ vars.PRODUCTION_URL }}
-    steps:
-      - uses: actions/checkout@v7
-      - uses: pnpm/action-setup@v6
-      - uses: actions/setup-node@v7
-        with:
-          node-version: 24
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile
-
-      # Migrate before shipping new code (expand/contract). Aborts the prod
-      # deploy if migrations fail.
-      - name: Run DB migrations
         env:
-          DATABASE_URL: ${{ secrets.PRODUCTION_DATABASE_URL }}
-          DATABASE_SSL: 'true' # external connection from CI requires TLS
+          STAGING_URL: ${{ vars.STAGING_URL }}
+          COMMIT_ID: ${{ github.event.workflow_run.head_sha }}
         run: |
-          if [ -z "$DATABASE_URL" ]; then
-            echo "::error::PRODUCTION_DATABASE_URL is not set. Add it as a repo secret: the production DB's EXTERNAL connection string (see docs/DEPLOY.md)."
-            exit 1
-          fi
-          pnpm --filter @trotxi/api run migrate
-
-      - name: Deploy and wait until live
-        run: .github/scripts/render-deploy.sh
-        env:
-          RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
-          SERVICE_ID: ${{ vars.RENDER_PRODUCTION_SERVICE_ID }}
-
-      - name: Smoke test
-        run: |
-          curl -fsS --retry 5 --retry-delay 5 "${{ vars.PRODUCTION_URL }}/healthz"
-          curl -fsS "${{ vars.PRODUCTION_URL }}/readyz"
+          curl -fsS --retry 5 --retry-delay 5 "$STAGING_URL/healthz"
+          curl -fsS "$STAGING_URL/readyz"
+          curl -fsS "$STAGING_URL/version" | jq -e --arg commit "$COMMIT_ID" '.commit == $commit'

@@ -18,6 +18,21 @@ function normalize(value) {
   if (value.nullable && value.allOf?.length === 1 && converted[value.allOf[0].$ref]) {
     return { ...normalize(converted[value.allOf[0].$ref]), nullable: true };
   }
+  // Zod calls every number a number, so a literal whole number arrives as
+  // `type: number`. A run number and an API major version are integers, and
+  // saying so is both more accurate and what a client generator needs: a
+  // numeric enum it believes is fractional produces a client that will not
+  // compile.
+  if (value.type === 'number' && Array.isArray(value.enum) && value.enum.every(Number.isInteger))
+    return { ...normalize({ ...value, type: undefined }), type: 'integer' };
+  // A default beside an enum of exactly one value tells a reader nothing the
+  // enum has not already told them, and a client generator handed both emits a
+  // constructor that does not compile. The Zod schema keeps its default, which
+  // is what actually supplies the value; only the published shape drops it.
+  if (Array.isArray(value.enum) && value.enum.length === 1 && value.default === value.enum[0]) {
+    const { default: _redundant, ...rest } = value;
+    return normalize(rest);
+  }
   return Object.fromEntries(
     Object.entries(value).map(([k, v]) => [
       k,
@@ -82,7 +97,7 @@ for (const o of operations) {
   if (!['public', 'provider_signature'].includes(o.access)) failures.push(401, 403, 404);
   if (mutation && !o.stable) failures.push(409);
   if (o.etag) failures.push(412, 428);
-  if (o.operationId === 'signInDriver') failures.push(401, 403, 423);
+  if (['signInDriver', 'changeDriverPin'].includes(o.operationId)) failures.push(401, 403, 423);
   if (/signIn|refreshSession/.test(o.operationId)) failures.push(401);
   if (o.path.startsWith('/v1/')) failures.push(426);
   if (o.operationId === 'uploadAvatar') failures.push(413, 415);
@@ -142,15 +157,25 @@ for (const o of operations) {
       query(
         'fromDate',
         { type: 'string', format: 'date' },
-        'Africa/Accra day; paired with toDate. Default last/current 7 days; maximum 31 days.',
+        /purchases/.test(o.path)
+          ? 'Optional inclusive Africa/Accra purchase-creation day. With no date filters, returns all purchase history, including unresolved purchases. No default recency cutoff.'
+          : 'Africa/Accra day; paired with toDate. Default last/current 7 days; maximum 31 days.',
       ),
-      query('toDate', { type: 'string', format: 'date' }, 'Inclusive; paired with fromDate.'),
+      query(
+        'toDate',
+        { type: 'string', format: 'date' },
+        /purchases/.test(o.path)
+          ? 'Optional inclusive purchase-creation day; if both bounds are supplied, toDate must not precede fromDate.'
+          : 'Inclusive; paired with fromDate.',
+      ),
     );
   if (o.list && /trips|schedules|commute-slots/.test(o.path))
     parameters.push(
       query('routeId', str, 'Filter within caller scope; never expands authorization.'),
     );
-  if (o.list && /incidents|requests|reviews/.test(o.path))
+  // A status filter belongs to the resource collection, not nested event
+  // history merely because its parent path contains "requests".
+  if (o.list && /(?:incidents|requests|reviews)$/.test(o.path))
     parameters.push(
       query(
         'status',

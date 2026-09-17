@@ -2,17 +2,20 @@
 // contain. If the generator's alphabet ever changes and this does not, a driver
 // gets a keypad that cannot type the code in front of them.
 
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:trotxi_driver/Presentations/Boarding/widgets/boarding_keypad.dart';
 import 'package:trotxi_driver/core/config/theme/app_theme.dart';
 
-/// The server's `CODE_ALPHABET` from `services/api/src/modules/reservations/pin.ts`.
-const serverAlphabet = '23456789ABCDEFGHJKMNPQRSTVWXYZ';
-
-/// The characters the generator dropped because they are misread aloud or
-/// mistyped off a screen.
-const excluded = ['I', 'L', 'O', 'U'];
+// Read the replacement generator, not the retired service's alphabet. If its
+// declaration changes shape this fails rather than silently checking a copy.
+final serverAlphabet = RegExp(r"const alphabet = '([^']+)';")
+    .firstMatch(
+      File('../../services/api-next/src/boarding/proofs.ts').readAsStringSync(),
+    )!
+    .group(1)!;
 
 void main() {
   group('the key set', () {
@@ -26,21 +29,10 @@ void main() {
       }
     });
 
-    test('keeps 0 and 1 for codes issued before the alphanumeric switch', () {
-      // The generator stopped issuing these, but a rider holding an older
-      // four-digit code still has to be able to board, and the verify endpoints
-      // still accept them.
-      expect(boardingKeys, containsAll(['0', '1']));
-    });
-
-    test('omits the characters people misread', () {
-      for (final char in excluded) {
-        expect(
-          boardingKeys,
-          isNot(contains(char)),
-          reason: '$char is excluded from the alphabet and should not be a key',
-        );
-      }
+    test('offers exactly the replacement alphabet, including I L O U', () {
+      expect(serverAlphabet.length, 32);
+      expect(boardingKeys.toSet(), serverAlphabet.split('').toSet());
+      expect(boardingKeys, containsAll(['I', 'L', 'O', 'U']));
     });
 
     test('has no duplicates', () {
@@ -88,6 +80,21 @@ void main() {
 
       expect(pressed, ['K', '7']);
     });
+
+    testWidgets(
+      'every issued character is rendered and tappable, including final row',
+      (tester) async {
+        final pressed = <String>[];
+        await pump(tester, canSubmit: false, pressed: pressed);
+        for (final char in serverAlphabet.split('')) {
+          final key = find.widgetWithText(InkWell, char).first;
+          await tester.ensureVisible(key);
+          await tester.tap(key);
+        }
+        expect(pressed.join(), serverAlphabet);
+        expect(tester.takeException(), isNull);
+      },
+    );
 
     testWidgets('will not board until four characters are in', (tester) async {
       var boarded = false;

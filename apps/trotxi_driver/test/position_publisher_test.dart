@@ -3,10 +3,11 @@ import 'package:dio/dio.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:geolocator/geolocator.dart';
-import 'package:trotxi_client/trotxi_client.dart';
+import 'package:trotxi_driver/core/api/driver_api.dart';
 import 'package:trotxi_driver/data/position_publisher.dart';
+import 'support/replacement_client.dart';
 
-class _UnusedClient implements TrotxiApiClient {
+class _UnusedClient implements DriverApi {
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
@@ -57,12 +58,11 @@ void main() {
         .whenComplete(() => publisher.removeListener(listen));
   }
 
-  TrotxiApiClient client(
+  DriverApi client(
     void Function(RequestOptions, RequestInterceptorHandler) handler,
-  ) => TrotxiApiClient(
+  ) => replacementClient(
     dio: Dio(BaseOptions(baseUrl: 'http://localhost'))
       ..interceptors.add(InterceptorsWrapper(onRequest: handler)),
-    interceptors: [],
   );
 
   void accept(RequestOptions options, RequestInterceptorHandler handler) {
@@ -70,14 +70,7 @@ void main() {
       Response(
         requestOptions: options,
         statusCode: 200,
-        data: {
-          'tripId': options.path.split('/')[2],
-          'position': {
-            'latitude': (options.data as Map)['latitude'],
-            'longitude': (options.data as Map)['longitude'],
-            'recordedAt': DateTime.now().toUtc().toIso8601String(),
-          },
-        },
+        data: positionReceipt(options),
       ),
     );
   }
@@ -141,6 +134,28 @@ void main() {
   );
 
   test(
+    'a stored fix rejected for live projection never claims location sharing is live',
+    () async {
+      final publisher = PositionPublisher(
+        client: client(
+          (o, h) => h.resolve(
+            Response(
+              requestOptions: o,
+              statusCode: 200,
+              data: positionReceipt(o, accepted: false),
+            ),
+          ),
+        ),
+      );
+      addTearDown(publisher.dispose);
+      await publisher.start('trip-1');
+      await fix();
+      await reaches(publisher, PositionSharing.stale);
+      expect(publisher.lastAcknowledgedAt, isNull);
+    },
+  );
+
+  test(
     'a successful HTTP response without a matching receipt is not live',
     () async {
       final publisher = PositionPublisher(
@@ -150,11 +165,9 @@ void main() {
               requestOptions: o,
               statusCode: 200,
               data: {
-                'tripId': 'another-trip',
-                'position': {
-                  'latitude': 5.57,
-                  'longitude': -0.21,
-                  'recordedAt': DateTime.now().toUtc().toIso8601String(),
+                'data': {
+                  ...positionReceipt(o)['data'] as Map,
+                  'clientFixId': 'different-fix',
                 },
               },
             ),

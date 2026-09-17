@@ -1,10 +1,14 @@
 import 'package:flutter/foundation.dart';
+import 'package:trotxi_driver/core/api/driver_api.dart';
 import 'package:trotxi_driver/data/driver_auth_repository.dart';
 
 /// Where the driver is on the way to their runs.
 enum SessionStage {
   /// Reading the stored token. A disk hit, so this is measured in milliseconds.
   restoring,
+
+  /// Secure storage could not be read; do not guess an identity or erase it.
+  storageFailed,
 
   /// No session. Show sign-in.
   signedOut,
@@ -42,6 +46,8 @@ class SessionController extends ChangeNotifier {
   DriverSession? get session => _session;
 
   bool _busy = false;
+  int _revision = 0;
+  bool _disposed = false;
 
   /// True while a sign-out is in flight, so the button cannot be tapped twice
   /// on a depot connection that takes its time.
@@ -58,6 +64,7 @@ class SessionController extends ChangeNotifier {
   /// left the app in the shell with the header showing "Driver", every call
   /// failing quietly, and nothing telling the driver to sign in again.
   void onSessionRevoked() {
+    _revision++;
     if (_stage == SessionStage.signedOut) return;
     _session = null;
     _set(SessionStage.signedOut);
@@ -70,7 +77,15 @@ class SessionController extends ChangeNotifier {
   /// see stale data rather than be held on a spinner by a reachability check.
   /// A revoked session surfaces when the first real call answers 401.
   Future<void> restore() async {
-    final signedIn = await _auth.hasStoredSession();
+    final revision = ++_revision;
+    late final bool signedIn;
+    try {
+      signedIn = await _auth.hasStoredSession();
+    } catch (_) {
+      if (revision == _revision) _set(SessionStage.storageFailed);
+      return;
+    }
+    if (revision != _revision) return;
     _set(signedIn ? SessionStage.ready : SessionStage.signedOut);
     if (!signedIn) return;
 
@@ -78,10 +93,17 @@ class SessionController extends ChangeNotifier {
     // already decided, so this cannot hold a driver on a splash screen; it just
     // means the profile knows their name a moment later instead of calling them
     // "Driver" for the rest of the shift.
-    final driver = await _auth.currentDriver();
-    if (driver != null) {
-      _session = driver;
-      notifyListeners();
+    try {
+      final driver = await _auth.currentDriver();
+      if (revision == _revision && driver != null) {
+        _session = driver;
+        notifyListeners();
+      }
+    } on TrotxiException {
+      // Offline/5xx do not revoke a session; only the store's conditional
+      // clear callback does. A 426 is displayed by the root update gate.
+    } catch (_) {
+      if (revision == _revision) _set(SessionStage.storageFailed);
     }
   }
 
@@ -91,6 +113,7 @@ class SessionController extends ChangeNotifier {
   ///
   /// @param session - the session just issued.
   void onSignedIn(DriverSession session) {
+    _revision++;
     _session = session;
     _set(SessionStage.confirming);
   }
@@ -118,14 +141,26 @@ class SessionController extends ChangeNotifier {
   /// Clears locally whatever the server says: a depot with no signal is exactly
   /// when someone hands the phone to the next driver.
   Future<void> signOut() async {
+    if (_busy) return;
+    final previous = _session;
+    _revision++;
     _busy = true;
     notifyListeners();
+    var cleared = false;
     try {
       await _auth.signOut();
+      cleared = true;
+    } catch (_) {
+      throw const ApiException(
+        0,
+        'Could not remove the saved session from this device. Please try signing out again.',
+      );
     } finally {
       _busy = false;
-      _session = null;
-      _set(SessionStage.signedOut);
+      if (cleared && (_session == previous || _session == null)) {
+        _session = null;
+        _set(SessionStage.signedOut);
+      }
       // _set only notifies on a stage CHANGE, and signing out from the
       // signed-out stage is a no-op there, so the busy flag needs its own.
       notifyListeners();
@@ -140,5 +175,17 @@ class SessionController extends ChangeNotifier {
     if (_stage == stage) return;
     _stage = stage;
     notifyListeners();
+  }
+
+  @override
+  void notifyListeners() {
+    if (!_disposed) super.notifyListeners();
+  }
+
+  @override
+  void dispose() {
+    _disposed = true;
+    _revision++;
+    super.dispose();
   }
 }

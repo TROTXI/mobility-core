@@ -1,7 +1,9 @@
 // Session restore (#41). A restored session proves a token exists; it carries
 // no name, and the profile screen needs one.
 
+import 'dart:async';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:trotxi_driver/core/api/driver_api.dart';
 import 'package:trotxi_driver/core/state/session_controller.dart';
 import 'package:trotxi_driver/data/driver_auth_repository.dart';
 
@@ -12,20 +14,31 @@ class _StubAuth implements DriverAuthRepository {
   DriverSession? driver;
   int currentDriverCalls = 0;
   int signOutCalls = 0;
+  Future<DriverSession?>? pendingDriver;
+  Future<void>? pendingLogout;
+  Object? storageError;
+  Object? identityError;
+  Object? logoutError;
 
   @override
-  Future<bool> hasStoredSession() async => stored;
+  Future<bool> hasStoredSession() async {
+    if (storageError != null) throw storageError!;
+    return stored;
+  }
 
   @override
   Future<DriverSession?> currentDriver() async {
     currentDriverCalls++;
-    return driver;
+    if (identityError != null) throw identityError!;
+    return pendingDriver == null ? driver : await pendingDriver;
   }
 
   @override
   Future<void> signOut() async {
     signOutCalls++;
+    if (logoutError != null) throw logoutError!;
     stored = false;
+    await pendingLogout;
   }
 
   @override
@@ -33,6 +46,79 @@ class _StubAuth implements DriverAuthRepository {
 }
 
 void main() {
+  test(
+    'failed secure-storage clearing does not pretend sign-out succeeded',
+    () async {
+      final auth = _StubAuth()..logoutError = StateError('Storage unavailable');
+      final controller = SessionController(auth: auth);
+      await controller.restore();
+      await expectLater(controller.signOut(), throwsA(isA<ApiException>()));
+      expect(controller.stage, SessionStage.ready);
+      expect(controller.isBusy, isFalse);
+    },
+  );
+  const newer = DriverSession(
+    driverId: 'new',
+    fullName: 'New driver',
+    mustChangePin: false,
+  );
+  test('late identity hydration cannot overwrite a new sign-in', () async {
+    final delayed = Completer<DriverSession?>();
+    final auth = _StubAuth()..pendingDriver = delayed.future;
+    final controller = SessionController(auth: auth);
+    final restoring = controller.restore();
+    await Future<void>.delayed(Duration.zero);
+    controller.onSignedIn(newer);
+    delayed.complete(
+      const DriverSession(
+        driverId: 'old',
+        fullName: 'Old driver',
+        mustChangePin: false,
+      ),
+    );
+    await restoring;
+    expect(controller.session, newer);
+    expect(controller.stage, SessionStage.confirming);
+  });
+
+  test(
+    'offline identity hydration leaves a stored session available',
+    () async {
+      final auth = _StubAuth()..identityError = const OfflineException();
+      final controller = SessionController(auth: auth);
+      await controller.restore();
+      expect(controller.stage, SessionStage.ready);
+      expect(auth.signOutCalls, 0);
+    },
+  );
+
+  test(
+    'unreadable storage fails visibly and can be retried without erasure',
+    () async {
+      final auth = _StubAuth(stored: false)
+        ..storageError = const FormatException('Invalid');
+      final controller = SessionController(auth: auth);
+      await controller.restore();
+      expect(controller.stage, SessionStage.storageFailed);
+      expect(auth.signOutCalls, 0);
+      auth.storageError = null;
+      await controller.restore();
+      expect(controller.stage, SessionStage.signedOut);
+    },
+  );
+
+  test('late logout completion cannot dismiss a newer sign-in', () async {
+    final delayed = Completer<void>();
+    final auth = _StubAuth()..pendingLogout = delayed.future;
+    final controller = SessionController(auth: auth);
+    final logout = controller.signOut();
+    controller.onSignedIn(newer);
+    delayed.complete();
+    await logout;
+    expect(controller.session, newer);
+    expect(controller.stage, SessionStage.confirming);
+    expect(controller.isBusy, isFalse);
+  });
   test(
     'a stored token opens the app and then fills in who it belongs to',
     () async {

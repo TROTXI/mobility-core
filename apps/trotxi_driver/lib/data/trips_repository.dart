@@ -1,5 +1,5 @@
-import 'package:dio/dio.dart';
-import 'package:trotxi_client/trotxi_client.dart';
+import 'package:trotxi_client/trotxi_client.dart' as wire;
+import 'package:trotxi_driver/core/api/driver_api.dart';
 import 'package:trotxi_driver/Presentations/Boarding/models/scan_result.dart';
 
 /// How far a run has got.
@@ -7,7 +7,7 @@ enum RunStatus { scheduled, active, completed, cancelled }
 
 /// One of the driver's assigned runs, with the corridor's name resolved.
 ///
-/// `GET /me/trips` returns `routeId` and nothing readable, but every frame in
+/// `GET /v1/driver/trips` returns `routeId`, but every frame in
 /// the prototype labels a run by its corridor ("7:40 Medina · Circle"). The
 /// repository joins the name on rather than making each screen do it, and
 /// caches routes for the session since a depot runs a handful of corridors and
@@ -23,30 +23,34 @@ class DriverRun {
     this.vehicleRegistration,
     this.currentStopSeq,
     this.assignmentChangedAt,
+    this.serviceDate,
+    this.direction,
+    this.patternVersionId,
+    this.editToken,
   });
 
   final String id;
   final String routeId;
   final String routeName;
+  final String? serviceDate;
+  final String? direction;
+  final String? patternVersionId;
+  final String? editToken;
   final DateTime scheduledAt;
   final RunStatus status;
   final String? vehicleId;
 
-  /// The plate, once a run has told us which vehicle it is. The header shows it
-  /// beside the driver's name; null until then, because inventing a plate is
-  /// worse than showing none.
+  /// The replacement's vehicle label, retained under this view-model name.
+  /// It is not necessarily a registration plate; null means unknown.
   final String? vehicleRegistration;
 
-  /// Which stop the driver has reported reaching (#230), as a route sequence
-  /// number. Null before the first arrival, which is the honest answer — the
-  /// API deliberately does not guess one from GPS.
+  /// The ordinal of the trip-owned occurrence the driver reported reaching.
+  /// Used for display only; arrival commands send the occurrence ID, not this
+  /// ordinal. Null before the first arrival; never guessed from GPS.
   final int? currentStopSeq;
 
-  /// When operations last moved this run: driver, vehicle or departure time
-  /// (#233). Null on a run nobody has touched.
-  ///
-  /// The Schedule marks a run CHANGED from this rather than from the push that
-  /// announced it, so a phone that was switched off at 04:00 still finds out.
+  /// Optional change metadata. The replacement does not currently expose it,
+  /// so its mapper leaves this null and the UI must not infer a change badge.
   final DateTime? assignmentChangedAt;
 
   bool get isActive => status == RunStatus.active;
@@ -70,7 +74,6 @@ class DriverRun {
 class ManifestRider {
   const ManifestRider({
     required this.reservationId,
-    required this.userId,
     required this.name,
     required this.avatarUrl,
     required this.boarded,
@@ -80,7 +83,6 @@ class ManifestRider {
   });
 
   final String reservationId;
-  final String userId;
 
   /// Null for a rider who never set one, which the manifest has to render
   /// rather than skip: the seat is still taken.
@@ -88,14 +90,12 @@ class ManifestRider {
   final String? avatarUrl;
   final bool boarded;
 
-  /// `morning` or `evening`. The manifest splits on it, and the Today card
-  /// shows the morning share.
+  /// Explicit pattern direction: outbound or return, not inferred time of day.
   final String direction;
 
-  /// How the seat was taken: `confirmation`, `default` or `standby` (#230).
-  /// The Today card breaks a run down as "12 morning · 6 standby", which was
-  /// unanswerable while this was stored but never returned.
-  final String source;
+  /// Not exposed by the replacement manifest. Null means unknown, so the UI
+  /// shows a booked total rather than an invented confirmation/standby split.
+  final String? source;
 
   /// Whether a driver has marked this rider as not having turned up (#227).
   /// They stay on the manifest: a mark made by mistake has to be findable, and
@@ -104,13 +104,22 @@ class ManifestRider {
 
   /// Filled from the standby pool rather than the rider's own confirmation.
   bool get isStandby => source == 'standby';
+
+  String get directionLabel => switch (direction) {
+    'outbound' => 'Outbound',
+    'return_' || 'return' => 'Return',
+    'morning' => 'Morning',
+    'evening' => 'Evening',
+    _ => direction,
+  };
 }
 
-/// A corridor stop retaining the sequence understood by the API.
+/// A trip-owned stop occurrence with its display ordering.
 class DriverStop {
-  const DriverStop({required this.seq, required this.name});
+  const DriverStop({required this.seq, required this.name, this.occurrenceId});
+  final String? occurrenceId;
 
-  /// Server sequence, not the one-based ordinal displayed to the driver.
+  /// Occurrence ordinal; the command identity is [occurrenceId].
   final int seq;
   final String name;
 }
@@ -145,26 +154,22 @@ class RunSummary {
       : completedAt!.difference(startedAt!);
 }
 
-/// What `GET /trips/:id` adds beyond the list (#230).
-///
-/// Named after the endpoint rather than the screen: `RunDetail` in
-/// `run_controller.dart` is the composed view a screen renders, and this is the
-/// raw extra the API returns.
-///
-/// Two numbers the run screen could not previously get: the van's seat ceiling,
-/// and how many stops the corridor has. Both arrive together because they come
-/// from the same request.
+/// Refreshed assigned-trip facts used by the composed run screen. Capacity is
+/// unknown under the replacement contract; stop count comes from this trip's
+/// immutable occurrences, not the corridor's newest revision.
 class TripDetail {
   const TripDetail({
     required this.stopCount,
     this.capacity,
     this.vehicleRegistration,
     this.currentStopSeq,
+    this.run,
   });
 
   /// Stops on the corridor — the "of 11" in the driver's stop counter. Zero
   /// when no stops are attached to the route yet.
   final int stopCount;
+  final DriverRun? run;
 
   /// Seats on the van.
   ///
@@ -180,512 +185,261 @@ class TripDetail {
 
 /// The driver's runs, their manifests, and the lifecycle transitions.
 class TripsRepository {
-  TripsRepository({required this._client, this.beginLifecycleChange});
-
-  final TrotxiApiClient _client;
-
-  /// Capture the current session before a request. A delayed response must not
-  /// start location sharing after a different driver has signed in.
+  TripsRepository({required this.client, this.beginLifecycleChange});
+  final DriverApi client;
   final void Function(DriverRun) Function()? beginLifecycleChange;
+  final Map<String, String> _seatTrips = {};
+  int? _generation;
 
-  /// Corridor names by route id. A depot runs a handful of corridors and they
-  /// do not change mid-shift, so one lookup each is plenty.
-  final Map<String, String> _routeNames = {};
+  void _sync() {
+    if (_generation != client.store.generation) {
+      _seatTrips.clear();
+      _generation = client.store.generation;
+    }
+  }
 
-  /// The signed-in driver's assigned runs.
-  ///
-  /// Takes one day or an inclusive range, never both. The range is what makes
-  /// the month calendar a single request rather than thirty-one (#231); both
-  /// forms filter on the UTC calendar day, which is why every caller sends
-  /// corridor time.
-  ///
-  /// @param date - optional `YYYY-MM-DD` filter for a single day.
-  /// @param from - optional inclusive range start (`YYYY-MM-DD`).
-  /// @param to - optional inclusive range end; required with [from].
-  /// @returns the runs, soonest first.
+  Future<DriverRun> _run(wire.DriverTrip t) async {
+    var name = 'Route';
+    try {
+      name = await client.routeName(t.routeId);
+    } on TrotxiException {
+      /* Keep the assignment visible. */
+    }
+    final reached = t.stops
+        .where((s) => s.id == t.currentStopOccurrenceId)
+        .firstOrNull;
+    return DriverRun(
+      id: t.id,
+      routeId: t.routeId,
+      routeName: name,
+      scheduledAt: t.scheduledAt,
+      status: RunStatus.values.byName(t.status.name),
+      vehicleRegistration: t.vehicleLabel,
+      currentStopSeq: reached?.ordinal,
+      serviceDate: t.serviceDate.toString(),
+      direction: t.direction.name,
+      patternVersionId: t.patternVersionId,
+      editToken: t.editToken,
+    );
+  }
+
   Future<List<DriverRun>> myRuns({
     String? date,
     String? from,
     String? to,
   }) async {
-    try {
-      final response = await _client.getMobilityApi().meTripsGet(
-        date: date,
-        from: from,
-        to: to,
-      );
-      final trips = response.data?.trips.toList() ?? [];
-
-      // Resolved once per unseen corridor, in parallel: a driver with a morning
-      // and an evening run on the same route should not pay for two lookups.
-      final unknown = trips.map((t) => t.routeId).toSet()
-        ..removeWhere(_routeNames.containsKey);
-      await Future.wait(unknown.map(_cacheRouteName));
-
-      final runs =
-          trips
-              .map(
-                (t) => DriverRun(
-                  id: t.id,
-                  routeId: t.routeId,
-                  routeName: _routeNames[t.routeId] ?? 'Route',
-                  scheduledAt: t.scheduledAt,
-                  status: _statusOf(t.status.name),
-                  vehicleId: t.vehicleId,
-                  currentStopSeq: t.currentStopSeq,
-                  assignmentChangedAt: t.assignmentChangedAt,
-                ),
-              )
-              .toList()
-            ..sort((a, b) => a.scheduledAt.compareTo(b.scheduledAt));
-      return runs;
-    } on DioException catch (err) {
-      throw _unwrap(err);
+    _sync();
+    final generation = client.sessionGeneration;
+    if ((date != null && (from != null || to != null)) ||
+        ((from == null) != (to == null))) {
+      throw const ApiException(400, 'Choose one day or a complete date range.');
     }
+    final trips = await client.assigned(from: date ?? from, to: date ?? to);
+    client.ensureSession(generation);
+    final runs = await Future.wait(trips.map(_run));
+    client.ensureSession(generation);
+    return runs..sort((a, b) => a.scheduledAt.compareTo(b.scheduledAt));
   }
 
-  /// Start a run. Idempotent server-side: starting an already-active run
-  /// succeeds, because a driver whose phone dropped mid-tap will press it again
-  /// and an error at the roadside is a worse answer than "yes, it is running".
-  ///
-  /// @param runId - the run to start.
-  /// @returns the run in its new state.
-  Future<DriverRun> start(String runId) => _transition(runId, start: true);
+  Future<DriverRun> start(String runId) => _transition(runId, 'start');
+  Future<DriverRun> complete(String runId) => _transition(runId, 'complete');
 
-  /// End a run. Refused server-side if it never started.
-  ///
-  /// @param runId - the run to complete.
-  /// @returns the run in its new state.
-  Future<DriverRun> complete(String runId) => _transition(runId, start: false);
+  Future<DriverRun> _transition(String id, String action) async {
+    final observe = beginLifecycleChange?.call();
+    final response = await client.post(
+      '/v1/driver/trips/${Uri.encodeComponent(id)}/$action',
+      wire.DriverTripResponse.serializer,
+    );
+    client.trips[id] = response.data;
+    final run = await _run(response.data);
+    observe?.call(run);
+    return run;
+  }
 
-  /// The confirmed riders on a run, with who has boarded.
-  ///
-  /// @param runId - the run.
-  /// @returns the manifest.
   Future<List<ManifestRider>> manifest(String runId) async {
-    try {
-      final response = await _client.getBoardingApi().boardingManifestGet(
-        tripId: runId,
-      );
-      return (response.data?.riders.toList() ?? [])
-          .map(
-            (r) => ManifestRider(
-              reservationId: r.reservationId,
-              userId: r.userId,
-              name: r.name,
-              avatarUrl: r.avatarUrl,
-              boarded: r.boarded,
-              direction: r.direction.name,
-              // `source_` with the underscore: the generator renames a field
-              // that would otherwise collide in the built_value output.
-              source: r.source_.name,
-              noShow: r.noShow,
-            ),
-          )
-          .toList();
-    } on DioException catch (err) {
-      throw _unwrap(err);
+    _sync();
+    final trip = await client.trip(runId);
+    final manifest = (await client.get(
+      '/v1/driver/trips/${Uri.encodeComponent(runId)}/manifest',
+      wire.ManifestResponse.serializer,
+    )).data;
+    if (manifest.tripId != runId || !manifest.complete) {
+      throw const ApiException(502, 'The manifest is incomplete.');
     }
+    for (final rider in manifest.riders) {
+      _seatTrips[rider.reservationId] = runId;
+    }
+    return manifest.riders
+        .where((r) => ['reserved', 'boarded', 'noShow'].contains(r.status.name))
+        .map(
+          (r) => ManifestRider(
+            reservationId: r.reservationId,
+            name: r.displayName,
+            avatarUrl: r.avatarUrl,
+            boarded: r.status.name == 'boarded',
+            noShow: r.status.name == 'noShow' || r.status.name == 'no_show',
+            direction: trip.direction.name,
+            source: null,
+          ),
+        )
+        .toList();
   }
 
-  /// What a run did.
-  ///
-  /// @param runId - the run.
-  /// @returns the summary.
-  Future<RunSummary> summary(String runId) async {
-    try {
-      final response = await _client.getMobilityApi().tripsIdSummaryGet(
-        id: runId,
-      );
-      final data = response.data;
-      if (data == null) {
-        throw const ApiException(200, 'Summary returned nothing.');
-      }
-      return RunSummary(
-        boarded: data.boarded,
-        notBoarded: data.notBoarded,
-        byQr: data.byMethod.qr,
-        byPin: data.byMethod.pin,
-        byPhoto: data.byMethod.photo,
-        stopCount: data.stopCount,
-        startedAt: data.startedAt,
-        completedAt: data.completedAt,
-      );
-    } on DioException catch (err) {
-      throw _unwrap(err);
-    }
+  /// The argument is a trip ID: two directions/revisions on one corridor may
+  /// visit the same stop more than once. Ordinals are display values only.
+  Future<List<DriverStop>> stopsFor(String runId) async {
+    final trip = await client.trip(runId);
+    return trip.stops
+        .map(
+          (s) => DriverStop(seq: s.ordinal, name: s.name, occurrenceId: s.id),
+        )
+        .toList()
+      ..sort((a, b) => a.seq.compareTo(b.seq));
   }
 
-  /// The corridor's stops, in order, for the stop list and progress counter.
-  ///
-  /// @param routeId - the corridor.
-  /// @returns the stop names in sequence.
-  Future<List<DriverStop>> stopsFor(String routeId) async {
-    try {
-      final response = await _client.getMobilityApi().routesIdGet(id: routeId);
-      return (response.data?.stops.toList() ?? [])
-          .map((s) => DriverStop(seq: s.seq, name: s.name))
-          .toList()
-        ..sort((a, b) => a.seq.compareTo(b.seq));
-    } on DioException catch (err) {
-      throw _unwrap(err);
-    }
-  }
-
-  /// The extra detail one run carries: seat ceiling and stop count (#230).
-  ///
-  /// @param runId - the run.
-  /// @returns the detail.
   Future<TripDetail> detail(String runId) async {
-    try {
-      final response = await _client.getMobilityApi().tripsIdGet(id: runId);
-      final data = response.data;
-      if (data == null) {
-        throw const ApiException(200, 'The run returned nothing.');
-      }
-      return TripDetail(
-        stopCount: data.stopCount,
-        capacity: data.vehicle?.capacity,
-        vehicleRegistration: data.vehicle?.registration,
-        currentStopSeq: data.currentStopSeq,
-      );
-    } on DioException catch (err) {
-      throw _unwrap(err);
-    }
+    final trip = await client.trip(runId, refresh: true);
+    final reached = trip.stops
+        .where((s) => s.id == trip.currentStopOccurrenceId)
+        .firstOrNull;
+    return TripDetail(
+      stopCount: trip.stops.length,
+      vehicleRegistration: trip.vehicleLabel,
+      currentStopSeq: reached?.ordinal,
+      run: await _run(trip),
+    );
   }
 
-  /// Report reaching a stop (#230).
-  ///
-  /// Driver-advanced rather than derived from GPS, and not monotonic: a driver
-  /// who taps one stop too far can tap back, because a counter stuck wrong for
-  /// the rest of a run is worse than one that can be corrected.
-  ///
-  /// @param runId - the run.
-  /// @param seq - the stop reached, as a route sequence number.
-  /// @returns the run with its progress advanced.
-  Future<DriverRun> arriveAtStop(String runId, int seq) async {
-    try {
-      final response = await _client.getMobilityApi().tripsIdArrivePost(
-        id: runId,
-        tripsIdArrivePostRequest: TripsIdArrivePostRequest((b) => b.seq = seq),
-      );
-      final trip = response.data;
-      if (trip == null) {
-        throw const ApiException(200, 'The run returned nothing.');
-      }
-      await _cacheRouteName(trip.routeId);
-      return DriverRun(
-        id: trip.id,
-        routeId: trip.routeId,
-        routeName: _routeNames[trip.routeId] ?? 'Route',
-        scheduledAt: trip.scheduledAt,
-        status: _statusOf(trip.status.name),
-        vehicleId: trip.vehicleId,
-        currentStopSeq: trip.currentStopSeq,
-        assignmentChangedAt: trip.assignmentChangedAt,
-      );
-    } on DioException catch (err) {
-      throw _unwrap(err);
-    }
+  Future<RunSummary> summary(String runId) async {
+    final data = (await client.get(
+      '/v1/driver/trips/${Uri.encodeComponent(runId)}/summary',
+      wire.TripSummaryResponse.serializer,
+    )).data;
+    final trip = await client.trip(runId);
+    return RunSummary(
+      boarded: data.boarded,
+      notBoarded: data.noShows + data.unseated,
+      byQr: data.scanned,
+      byPin: data.codeVerified,
+      byPhoto: data.photoVerified,
+      stopCount: trip.stops.length,
+      startedAt: trip.startedAt,
+      completedAt: trip.completedAt,
+    );
   }
 
-  /// Board a rider the driver has identified from the manifest photo (#227).
-  ///
-  /// No code is asked for, which is the whole point: the photo pass exists for
-  /// the case where a code will not scan or the rider cannot produce one, and
-  /// demanding one here would defeat the fallback it is.
-  ///
-  /// @param reservationId - the seat from the manifest.
-  /// @returns the outcome.
+  Future<DriverRun> arriveAtStop(
+    String runId,
+    int seq, {
+    String? editToken,
+    bool correction = false,
+  }) async {
+    // Use the row the UI read, not a silently refreshed token that could mask
+    // a concurrent arrival or ops change. 412 requires an explicit reload.
+    final trip = await client.trip(runId);
+    final stop = trip.stops.where((s) => s.ordinal == seq).firstOrNull;
+    if (stop == null) {
+      throw const ApiException(400, 'That stop is not on this run.');
+    }
+    final response = await client.post(
+      '/v1/driver/trips/${Uri.encodeComponent(runId)}/arrivals',
+      wire.DriverTripResponse.serializer,
+      ifMatch: editToken ?? trip.editToken,
+      body: {'stopOccurrenceId': stop.id, 'correction': correction},
+    );
+    client.trips[runId] = response.data;
+    return _run(response.data);
+  }
+
+  String _tripForSeat(String reservationId) {
+    _sync();
+    final trip = _seatTrips[reservationId];
+    if (trip == null) {
+      throw const ApiException(409, 'Reload the manifest before boarding.');
+    }
+    return trip;
+  }
+
   Future<BoardingResult> boardFromManifest(String reservationId) async {
     try {
-      final response = await _client.getBoardingApi().boardingBoardPost(
-        boardingBoardPostRequest: BoardingBoardPostRequest(
-          (b) => b.reservationId = reservationId,
-        ),
-      );
-      final data = response.data;
-      if (data == null) {
-        return const BoardingResult(outcome: BoardingOutcome.failed);
-      }
-      return BoardingResult(
-        outcome: switch (data.reason.name) {
-          'ok' => BoardingOutcome.ok,
-          'alreadyBoarded' ||
-          'already_boarded' => BoardingOutcome.alreadyBoarded,
-          // The seat was declined, released or never confirmed, so it is not a
-          // seat. Reads as "no reservation" because that is what it means to a
-          // driver holding a queue.
-          'notBoardable' || 'not_boardable' => BoardingOutcome.noReservation,
-          'notFound' || 'not_found' => BoardingOutcome.noReservation,
-          _ => BoardingOutcome.failed,
-        },
-        riderId: data.riderId,
-        deducted: data.deducted,
-      );
-    } on DioException catch (err) {
-      return _boardingFailure(err);
+      return await _board(_tripForSeat(reservationId), {
+        'kind': 'photo',
+        'reservationId': reservationId,
+      });
+    } on TrotxiException catch (error) {
+      return _boardingFailure(error);
     }
   }
 
-  /// Mark one rider as not having turned up (#227).
-  ///
-  /// Final for the seat and debited now, because the driver at the stop knows
-  /// and the cutoff sweep hours later does not. Reversible by boarding them
-  /// afterwards, which costs the rider nothing extra — both paths share the
-  /// same ledger key.
-  ///
-  /// @param reservationId - the seat from the manifest.
-  /// @returns the outcome.
   Future<NoShowResult> markNoShow(String reservationId) async {
     try {
-      // Both endpoints take the same one-field body, so the generator folded
-      // them onto a single request type.
-      final response = await _client.getBoardingApi().boardingNoShowPost(
-        boardingBoardPostRequest: BoardingBoardPostRequest(
-          (b) => b.reservationId = reservationId,
-        ),
-      );
-      final reason = response.data?.reason.name ?? '';
-      return switch (reason) {
-        'ok' => NoShowResult.marked,
-        'alreadyNoShow' || 'already_no_show' => NoShowResult.marked,
-        'alreadyBoarded' || 'already_boarded' => NoShowResult.alreadyBoarded,
-        _ => NoShowResult.failed,
-      };
-    } on DioException catch (err) {
-      final inner = err.error;
-      if (inner is OfflineException) return NoShowResult.offline;
-      if (inner is ApiException && inner.statusCode == 403) {
-        return NoShowResult.forbidden;
-      }
+      final trip = _tripForSeat(reservationId);
+      final result = (await client.post(
+        '/v1/driver/trips/${Uri.encodeComponent(trip)}/reservations/${Uri.encodeComponent(reservationId)}/no-show',
+        wire.BoardingResultResponse.serializer,
+      )).data;
+      return result.status.name == 'boarded'
+          ? NoShowResult.alreadyBoarded
+          : NoShowResult.marked;
+    } on OfflineException {
+      return NoShowResult.offline;
+    } on ApiException catch (error) {
+      return error.statusCode == 404 || error.statusCode == 403
+          ? NoShowResult.forbidden
+          : NoShowResult.failed;
+    } on TrotxiException {
       return NoShowResult.failed;
     }
   }
 
-  /// Board a rider from a scanned QR pass.
-  ///
-  /// @param pass - the token decoded from the QR.
-  /// @param runId - the run being boarded.
-  /// @returns the outcome, with the rider when the pass identified one.
-  Future<BoardingResult> scan({
-    required String pass,
-    required String runId,
-  }) async {
-    try {
-      final response = await _client.getBoardingApi().boardingScanPost(
-        boardingScanPostRequest: BoardingScanPostRequest(
-          (b) => b
-            ..pass = pass
-            ..tripId = runId,
-        ),
-      );
-      final data = response.data;
-      if (data == null) {
-        return const BoardingResult(outcome: BoardingOutcome.invalid);
-      }
-      return BoardingResult(
-        outcome: switch (data.reason.name) {
-          'ok' => BoardingOutcome.ok,
-          'expired' => BoardingOutcome.expired,
-          'reused' => BoardingOutcome.reused,
-          _ => BoardingOutcome.invalid,
-        },
-        riderId: data.riderId,
-        deducted: data.deducted,
-      );
-    } on DioException catch (err) {
-      return _boardingFailure(err);
-    }
-  }
-
-  /// Board whoever holds this code on this run (#241).
-  ///
-  /// No rider is named first, which is the point: a driver at a door takes the
-  /// code they were just read and acts on it. The server searches the run's
-  /// open seats.
-  ///
-  /// @param runId - the run being boarded.
-  /// @param code - the four-character code as typed.
-  /// @returns the outcome, with the rider when the code named one.
+  Future<BoardingResult> scan({required String pass, required String runId}) =>
+      _board(runId, {'kind': 'qr', 'token': pass});
   Future<BoardingResult> boardByCodeOnRun({
     required String runId,
     required String code,
-  }) async {
+  }) => _board(runId, {'kind': 'code', 'code': code.toUpperCase()});
+
+  Future<BoardingResult> _board(
+    String runId,
+    Map<String, dynamic> proof,
+  ) async {
     try {
-      final response = await _client.getBoardingApi().boardingVerifyCodePost(
-        boardingVerifyCodePostRequest: BoardingVerifyCodePostRequest(
-          (b) => b
-            ..tripId = runId
-            ..code = code,
-        ),
-      );
-      final data = response.data;
-      if (data == null) {
-        return const BoardingResult(outcome: BoardingOutcome.failed);
-      }
+      final result = (await client.post(
+        '/v1/driver/trips/${Uri.encodeComponent(runId)}/boardings',
+        wire.BoardingResultResponse.serializer,
+        body: proof,
+      )).data;
       return BoardingResult(
-        outcome: switch (data.reason.name) {
-          'ok' => BoardingOutcome.ok,
-          'alreadyBoarded' ||
-          'already_boarded' => BoardingOutcome.alreadyBoarded,
-          'ambiguous' => BoardingOutcome.ambiguous,
-          // Four characters nobody on this run holds, which at a door is
-          // almost always a mishearing rather than a forgery.
-          'invalid' => BoardingOutcome.codeNotFound,
-          _ => BoardingOutcome.failed,
-        },
-        riderId: data.riderId,
-        deducted: data.deducted,
+        outcome: result.alreadyApplied
+            ? BoardingOutcome.alreadyBoarded
+            : BoardingOutcome.ok,
+        reservationId: result.reservationId,
+        deducted: result.chargedRides > 0,
       );
-    } on DioException catch (err) {
-      return _boardingFailure(err);
+    } on TrotxiException catch (error) {
+      return _boardingFailure(error, kind: proof['kind'] as String);
     }
   }
 
-  /// Board a rider by the daily code they read out.
-  ///
-  /// @param reservationId - the seat from the manifest.
-  /// @param code - the four-character code as typed.
-  /// @returns the outcome.
-  Future<BoardingResult> boardByCode({
-    required String reservationId,
-    required String code,
-  }) async {
-    try {
-      final response = await _client.getBoardingApi().boardingVerifyPinPost(
-        boardingVerifyPinPostRequest: BoardingVerifyPinPostRequest(
-          (b) => b
-            ..reservationId = reservationId
-            ..pin = code,
-        ),
-      );
-      final data = response.data;
-      if (data == null) {
-        return const BoardingResult(outcome: BoardingOutcome.invalid);
-      }
-      return BoardingResult(
-        outcome: switch (data.reason.name) {
-          'ok' => BoardingOutcome.ok,
-          'already_boarded' => BoardingOutcome.alreadyBoarded,
-          'not_found' => BoardingOutcome.noReservation,
-          // The driver already knows who they mean, so this is "wrong code for
-          // this person", not "unknown pass".
-          _ => BoardingOutcome.codeMismatch,
-        },
-        riderId: data.riderId,
-        deducted: data.deducted,
-      );
-    } on DioException catch (err) {
-      return _boardingFailure(err);
-    }
-  }
-
-  /// Turn a transport failure into an outcome rather than an exception.
-  ///
-  /// Boarding happens at a door with people waiting, so every path has to end
-  /// in something the driver can read and act on.
-  ///
-  /// @param err - the caught Dio exception.
-  /// @returns the outcome to show.
-  BoardingResult _boardingFailure(DioException err) {
-    final inner = err.error;
-    if (inner is OfflineException) {
-      return const BoardingResult(outcome: BoardingOutcome.offline);
-    }
-    // A dead session is NOT a bad pass. Saying "pass not accepted" to a driver
-    // whose token expired turns our problem into an accusation about a paying
-    // rider, and turns them away at the door.
-    if (inner is UnauthorizedException ||
-        inner is InvalidCredentialsException) {
-      return const BoardingResult(outcome: BoardingOutcome.sessionExpired);
-    }
-    if (inner is ApiException && inner.statusCode == 403) {
-      return const BoardingResult(outcome: BoardingOutcome.forbidden);
-    }
-    // Only the API actually saying so makes a pass invalid. Everything else is
-    // our failure and has to read as one.
-    return const BoardingResult(outcome: BoardingOutcome.failed);
-  }
-
-  /// Shared start/complete path.
-  ///
-  /// @param runId - the run.
-  /// @param start - true to start, false to complete.
-  /// @returns the run in its new state.
-  Future<DriverRun> _transition(String runId, {required bool start}) async {
-    final reportChange = beginLifecycleChange?.call();
-    try {
-      final api = _client.getMobilityApi();
-      final response = start
-          ? await api.tripsIdStartPost(id: runId)
-          : await api.tripsIdCompletePost(id: runId);
-      final trip = response.data;
-      if (trip == null) {
-        throw const ApiException(200, 'The run returned nothing.');
-      }
-      final run = DriverRun(
-        id: trip.id,
-        routeId: trip.routeId,
-        routeName: _routeNames[trip.routeId] ?? 'Route',
-        scheduledAt: trip.scheduledAt,
-        status: _statusOf(trip.status.name),
-        vehicleId: trip.vehicleId,
-        currentStopSeq: trip.currentStopSeq,
-        assignmentChangedAt: trip.assignmentChangedAt,
-      );
-      reportChange?.call(run);
-      await _cacheRouteName(trip.routeId);
-      return DriverRun(
-        id: run.id,
-        routeId: run.routeId,
-        routeName: _routeNames[run.routeId] ?? run.routeName,
-        scheduledAt: run.scheduledAt,
-        status: run.status,
-        vehicleId: run.vehicleId,
-        currentStopSeq: run.currentStopSeq,
-        assignmentChangedAt: run.assignmentChangedAt,
-      );
-    } on DioException catch (err) {
-      throw _unwrap(err);
-    }
-  }
-
-  /// Look up and remember a corridor's name.
-  ///
-  /// Failure is swallowed: a run with an unresolved name still has to appear on
-  /// Today, because a driver who cannot see their assignment cannot work.
-  ///
-  /// @param routeId - the corridor to resolve.
-  Future<void> _cacheRouteName(String routeId) async {
-    if (_routeNames.containsKey(routeId)) return;
-    try {
-      final response = await _client.getMobilityApi().routesIdGet(id: routeId);
-      final name = response.data?.name;
-      if (name != null) _routeNames[routeId] = name;
-    } on DioException {
-      // Left unresolved; the run still lists, labelled generically.
-    }
-  }
-
-  /// Map the wire status onto the enum, defaulting to scheduled for a value we
-  /// do not know rather than dropping the run off the screen.
-  ///
-  /// @param raw - the status string from the API.
-  /// @returns the status.
-  static RunStatus _statusOf(String raw) => switch (raw) {
-    'active' => RunStatus.active,
-    'completed' => RunStatus.completed,
-    'cancelled' => RunStatus.cancelled,
-    _ => RunStatus.scheduled,
-  };
-
-  /// Recover the typed exception the interceptors attached.
-  ///
-  /// @param err - the caught Dio exception.
-  /// @returns the exception to surface.
-  Object _unwrap(DioException err) {
-    final inner = err.error;
-    return inner is TrotxiException ? inner : err;
+  BoardingResult _boardingFailure(TrotxiException error, {String? kind}) {
+    final outcome = switch (error) {
+      OfflineException() => BoardingOutcome.offline,
+      UnauthorizedException() ||
+      InvalidCredentialsException() => BoardingOutcome.sessionExpired,
+      ApiException(statusCode: 404) ||
+      ApiException(statusCode: 403) => BoardingOutcome.forbidden,
+      ApiException(code: 'boarding_pass_reused') => BoardingOutcome.reused,
+      ApiException(code: 'invalid_boarding_proof') =>
+        kind == 'code' ? BoardingOutcome.codeNotFound : BoardingOutcome.invalid,
+      _ => BoardingOutcome.failed,
+    };
+    return BoardingResult(
+      outcome: outcome,
+      failureMessage: switch (error) {
+        ApiException(code: 'boarding_ineligible') ||
+        ApiException(code: 'insufficient_rides') => error.message,
+        _ => null,
+      },
+    );
   }
 }

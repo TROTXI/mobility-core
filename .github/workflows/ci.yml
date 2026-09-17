@@ -17,10 +17,55 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
-  redesign-harness:
-    name: Redesign baseline harness (Postgres)
+  replacement-transport:
+    name: Replacement transport (Postgres)
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgis/postgis:16-3.4
+        env:
+          POSTGRES_USER: harness
+          POSTGRES_PASSWORD: harness-ci-only
+          POSTGRES_DB: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U harness -d postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    env:
+      HARNESS_ADMIN_DATABASE_URL: postgres://harness:harness-ci-only@127.0.0.1:5432/postgres
+      HARNESS_ALLOW_CREATE_DATABASES: '1'
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Storage and HTTP commands, real contention and attribution negative control
+        env:
+          REPLACEMENT_EVIDENCE_DIR: ${{ github.workspace }}/.harness-artifacts/transport
+        run: |
+          mkdir -p .harness-artifacts/transport
+          cd services/api-next
+          node --import tsx --test --test-reporter=spec --test-reporter-destination=stdout --test-reporter=junit --test-reporter-destination=../../.harness-artifacts/transport/tests.xml tests/transport.pg.test.ts tests/transport-commands.pg.test.ts tests/catalog.pg.test.ts tests/fleet.pg.test.ts tests/gps.pg.test.ts tests/trips.pg.test.ts tests/config.pg.test.ts tests/pricing.pg.test.ts tests/account.pg.test.ts tests/account-recovery.pg.test.ts tests/auth.pg.test.ts tests/driver-credentials.pg.test.ts
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: replacement-transport-evidence
+          path: .harness-artifacts/transport/
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 14
+
+  redesign-harness:
+    name: Redesign preservation harness (Postgres)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
     services:
       postgres:
         image: postgis/postgis:16-3.4
@@ -47,11 +92,19 @@ jobs:
         with:
           node-version: 24
           cache: pnpm
+      # The candidate adapter runs the replacement's own services, so the
+      # workspace has to be installed as well as the pinned baseline.
+      - run: pnpm install --frozen-lockfile
       - run: node --test tools/redesign-harness/harness.test.mjs
       - name: Prepare immutable source and locked dependencies
         run: node tools/redesign-harness/prepare.mjs
-      - name: Original suite, fixed expectations, contention and negative controls
-        run: node --import ./.harness-artifacts/baseline/services/api/node_modules/tsx/dist/loader.mjs tools/redesign-harness/run.mjs --mode=baseline
+      - name: Baseline and replacement, fixed expectations, contention and negative controls
+        run: |
+          node --import ./.harness-artifacts/baseline/services/api/node_modules/tsx/dist/loader.mjs \
+            tools/redesign-harness/run.mjs --mode=compare \
+            --candidate-adapter=tools/redesign-harness/candidate-adapter.mjs \
+            --candidate-migrations=services/api-next/migrations \
+            --candidate-commit=$(git rev-parse HEAD)
       - uses: actions/upload-artifact@v7
         if: always()
         with:
@@ -81,8 +134,9 @@ jobs:
         run: |
           node docs/design/scripts/build-invariants.mjs
           node docs/design/scripts/build-contract.mjs
+          node docs/design/scripts/build-transport-contract.mjs
           node --test docs/design/scripts/contract.test.mjs
-          git diff --exit-code -- docs/design/contracts/target.openapi.json docs/design/contracts/examples.json docs/design/contracts/endpoint-inventory.json docs/design/stage-1-invariants.md docs/design/stage-1-endpoints.md docs/design/stage-2-operation-scope.md
+          git diff --exit-code -- docs/design/contracts/target.openapi.json docs/design/contracts/replacement.openapi.json docs/design/contracts/examples.json docs/design/contracts/endpoint-inventory.json docs/design/stage-1-invariants.md docs/design/stage-1-endpoints.md docs/design/stage-2-operation-scope.md services/api-next/src/http/contract.json
 
   format:
     name: Format (Prettier)

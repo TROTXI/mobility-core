@@ -1,12 +1,12 @@
 import 'dart:async';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:trotxi_client/trotxi_client.dart';
+import 'package:trotxi_driver/core/api/driver_api.dart';
 import 'package:trotxi_driver/core/state/driver_location_controller.dart';
 import 'package:trotxi_driver/data/position_publisher.dart';
 import 'package:trotxi_driver/data/trips_repository.dart';
 
-class _Client implements TrotxiApiClient {
+class _Client implements DriverApi {
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }

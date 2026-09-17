@@ -1,195 +1,276 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:trotxi_client/trotxi_client.dart';
+import 'package:trotxi_client/trotxi_client.dart' as wire;
 import 'package:trotxi_commuter/Features/Home/widgets/Tabs/commuter_preference.dart';
 import 'package:trotxi_commuter/core/config/theme/app_theme.dart';
 import 'package:trotxi_commuter/core/repositories/commute_repository.dart';
+import 'package:trotxi_commuter/core/api/commuter_api.dart';
+import 'replacement_fixture.dart';
 
 void main() {
-  late Dio dio;
-  late TrotxiApiClient client;
-  late List<Map<String, dynamic>> requests;
+  late Fixture f;
+  late List<Map<String, Object?>> requests;
   late List<RequestOptions> writes;
   bool failed = false;
-  final route = {
+  Map<String, Object?> route() => {
     'id': 'route',
     'name': 'New corridor',
-    'acceptsRequests': true,
-    'createdAt': '2026-01-01T00:00:00Z',
     'description': null,
+    // These published schedule owners are not in today's route projection.
+    'patternIds': <String>[],
+    'acceptsDriverRequests': false,
+    'archived': false,
+    'editToken': 'route:1',
+    'createdAt': timestamp,
+    'updatedAt': timestamp,
+    'version': 1,
   };
-  Map<String, dynamic> request({
-    String status = 'pending',
+  Map<String, Object?> schedule(String dir) => {
+    'id': 'schedule-$dir',
+    'departureId': 'departure-$dir',
+    'patternId': dir,
+    'patternVersionId': 'version-$dir',
+    'serviceWindow': dir == 'outbound' ? 'morning' : 'evening',
+    'localDeparture': dir == 'outbound' ? '06:30' : '17:30',
+    'timeZone': 'Africa/Accra',
+    'weekdays': [1, 2, 3, 4, 5],
+    'effectiveFrom': '2026-01-01',
+    'effectiveTo': null,
+    'createdAt': timestamp,
+    'updatedAt': timestamp,
+    'version': 1,
+  };
+  Map<String, Object?> version(String dir) => {
+    'id': 'version-$dir',
+    'patternId': dir,
+    'revision': 1,
+    'state': 'retired',
+    'effectiveFrom': timestamp,
+    'effectiveTo': null,
+    'geometryId': null,
+    'editToken': 'v:1',
+    'createdAt': timestamp,
+    'updatedAt': timestamp,
+    'version': 1,
+    'stops': [
+      for (var i = 0; i < 3; i++)
+        {
+          'id': '$dir-visit-$i',
+          'stopId': i == 1 ? 'office' : 'physical-home',
+          'ordinal': i * 10,
+          'name': i == 1 ? 'Office' : 'Home',
+          'location': {'latitude': 5.6, 'longitude': -.1},
+        },
+    ],
+  };
+  Map<String, Object?> request({
+    String status = 'submitted',
     bool paused = false,
+    Map<String, dynamic>? input,
   }) => {
     'id': 'request',
-    'routeName': 'New corridor',
     'status': status,
     'paused': paused,
-    'requestedDate': '2026-09-15',
     'effectiveDate': null,
+    'requested':
+        input ??
+        {
+          'routeId': 'route',
+          'legs': [
+            for (final dir in ['outbound', 'return'])
+              {
+                'direction': dir,
+                'scheduleId': 'schedule-$dir',
+                'patternVersionId': 'version-$dir',
+                'pickupOccurrenceId': '$dir-visit-0',
+                'dropoffOccurrenceId': '$dir-visit-1',
+              },
+          ],
+          'requestedDate': '2026-09-21',
+          'pauseIfWaitlisted': paused,
+        },
     'decisionNote': 'Operations is reviewing availability',
+    'createdAt': timestamp,
+    'updatedAt': timestamp,
+    'version': 1,
   };
+
   setUp(() {
+    f = Fixture();
+    // These widget cases exercise the real generated contract, not the OS
+    // session queue across fake clocks. Root/session tests retain real auth.
+    f.transport.dio.interceptors.removeWhere((i) => i is wire.AuthInterceptor);
     requests = [];
     writes = [];
     failed = false;
-    dio = Dio(BaseOptions(baseUrl: 'https://api.test'));
-    dio.interceptors.add(
-      InterceptorsWrapper(
-        onRequest: (options, handler) {
-          if (failed) {
-            handler.reject(
-              DioException(
-                requestOptions: options,
-                type: DioExceptionType.connectionError,
-              ),
-            );
-            return;
-          }
-          Object data;
-          if (options.method == 'POST') {
-            writes.add(options);
-            if (options.path.endsWith('/withdraw')) {
-              requests = [];
-            } else {
-              requests = [request()];
-            }
-            data = {'id': 'request'};
-          } else if (options.path == '/routes') {
-            data = [route];
-          } else if (options.path == '/routes/route') {
-            data = {
-              ...route,
-              'stops': [
-                for (final (id, name, seq) in [
-                  ('home', 'Home', 0),
-                  ('office', 'Office', 4),
-                  ('last', 'Last stop', 9),
-                ])
-                  {
-                    'id': id,
-                    'name': name,
-                    'seq': seq,
-                    'latitude': 5.6,
-                    'longitude': -.1,
-                    'createdAt': '2026-01-01T00:00:00Z',
-                  },
-              ],
-            };
-          } else {
-            data = {'requests': requests};
-          }
-          handler.resolve(
-            Response(requestOptions: options, statusCode: 200, data: data),
-          );
-        },
-      ),
-    );
-    client = TrotxiApiClient(dio: dio);
+    f.reply = (o) {
+      if (failed) {
+        throw DioException(
+          requestOptions: o,
+          type: DioExceptionType.connectionError,
+        );
+      }
+      if (o.method == 'POST') {
+        writes.add(o);
+        requests = [
+          request(
+            status: o.path.endsWith('/withdraw') ? 'cancelled' : 'submitted',
+            input: o.path.endsWith('/withdraw') ? null : bodyOf(o),
+          ),
+        ];
+        return jsonResponse({
+          'data': requests.single,
+        }, o.path.endsWith('/withdraw') ? 200 : 201);
+      }
+      if (o.path == '/v1/me/commute-requests') {
+        return jsonResponse(page(requests));
+      }
+      if (o.path == '/v1/routes') return jsonResponse(page([route()]));
+      if (o.path == '/v1/routes/route/schedules') {
+        return jsonResponse(page([schedule('outbound'), schedule('return')]));
+      }
+      for (final dir in ['outbound', 'return']) {
+        if (o.path == '/v1/route-patterns/$dir') {
+          return jsonResponse({
+            'data': {
+              'id': dir,
+              'routeId': 'route',
+              'direction': dir,
+              'publishedVersionId': 'newer-$dir',
+              'createdAt': timestamp,
+              'updatedAt': timestamp,
+              'version': 1,
+            },
+          });
+        }
+        if (o.path == '/v1/route-patterns/$dir/versions/version-$dir') {
+          return jsonResponse({'data': version(dir)});
+        }
+      }
+      return jsonResponse({
+        'error': {'code': 'not_found', 'message': 'No such version'},
+      }, 404);
+    };
   });
-  Future<void> page(WidgetTester tester) async {
+  Future<void> pumpPage(WidgetTester tester) async {
     await tester.binding.setSurfaceSize(const Size(430, 932));
     addTearDown(() => tester.binding.setSurfaceSize(null));
     await tester.pumpWidget(
       MaterialApp(
         theme: AppTheme.lightTheme,
-        home: CommutePreferencesPage(client: client),
+        home: CommutePreferencesPage(client: f.api),
       ),
     );
     await tester.pumpAndSettle();
   }
 
-  Future<void> chooseRoute(WidgetTester tester) async {
+  Future<void> choose(WidgetTester tester) async {
     await tester.tap(find.text('Choose route'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('New corridor'));
     await tester.pumpAndSettle();
+    expect(find.text('Choose outbound departure'), findsOneWidget);
+    await tester.tap(find.text('06:30 · Africa/Accra'));
+    await tester.pumpAndSettle();
     expect(
-      find.text('Last stop'),
-      findsNothing,
-    ); // Cannot board at the final stop.
+      find.text('Home'),
+      findsOneWidget,
+    ); // Last loop visit cannot be pickup.
     await tester.tap(find.text('Home'));
     await tester.pumpAndSettle();
-    expect(find.text('Home'), findsNothing); // Only downstream destinations.
     await tester.tap(find.text('Office'));
+    await tester.pumpAndSettle();
+    expect(find.text('Choose return departure'), findsOneWidget);
+    await tester.tap(find.text('17:30 · Africa/Accra'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Office'));
+    await tester.pumpAndSettle();
+    expect(find.text('Office'), findsNothing); // Only downstream occurrences.
+    await tester.tap(find.text('Home'));
     await tester.pumpAndSettle();
   }
 
   testWidgets(
-    'submits route and stop IDs, default no-pause consent, and keeps pending status visible',
+    'sends two scheduled occurrence legs, not physical IDs or arbitrary times',
     (tester) async {
-      await page(tester);
-      await chooseRoute(tester);
+      await pumpPage(tester);
+      await choose(tester);
       final send = find.text('Send request to operations');
       await tester.ensureVisible(send);
       await tester.tap(send);
       await tester.pumpAndSettle();
       expect(writes, hasLength(1));
-      expect(writes.single.data, containsPair('routeId', 'route'));
-      expect(writes.single.data, containsPair('pickupStopId', 'home'));
-      expect(writes.single.data, containsPair('dropoffStopId', 'office'));
-      expect(writes.single.data, containsPair('pauseIfWaitlisted', false));
-      expect(writes.single.data, containsPair('morningDeparture', '06:30'));
-      expect(find.text('New corridor — pending'), findsOneWidget);
+      final body = bodyOf(writes.single);
+      expect(writes.single.path, '/v1/me/commute-requests');
+      expect(body['pauseIfWaitlisted'], isFalse);
+      expect(body.containsKey('morningDeparture'), isFalse);
+      expect(body['legs'], [
+        {
+          'direction': 'outbound',
+          'scheduleId': 'schedule-outbound',
+          'patternVersionId': 'version-outbound',
+          'pickupOccurrenceId': 'outbound-visit-0',
+          'dropoffOccurrenceId': 'outbound-visit-1',
+        },
+        {
+          'direction': 'return',
+          'scheduleId': 'schedule-return',
+          'patternVersionId': 'version-return',
+          'pickupOccurrenceId': 'return-visit-1',
+          'dropoffOccurrenceId': 'return-visit-2',
+        },
+      ]);
+      expect(find.text('New corridor — submitted'), findsOneWidget);
       expect(find.text('Send request to operations'), findsNothing);
-      expect(find.text('Preferences saved on this device.'), findsNothing);
     },
   );
-  testWidgets(
-    'paused waitlist shows preservation and does not offer withdrawal',
-    (tester) async {
-      requests = [request(status: 'waitlisted', paused: true)];
-      await page(tester);
-      expect(find.text('New corridor — waitlisted'), findsOneWidget);
-      expect(
-        find.textContaining('Rides and remaining paid time are preserved'),
-        findsOneWidget,
-      );
-      expect(find.text('Withdraw request'), findsNothing);
-      expect(writes, isEmpty);
-    },
-  );
-  testWidgets('withdrawal requires confirmation and refreshes from API', (
+
+  testWidgets('paused waitlist shows preservation and no withdrawal', (
+    tester,
+  ) async {
+    requests = [request(status: 'waitlisted', paused: true)];
+    await pumpPage(tester);
+    expect(find.text('New corridor — waitlisted'), findsOneWidget);
+    expect(
+      find.textContaining('Rides and remaining paid time are preserved'),
+      findsOneWidget,
+    );
+    expect(find.text('Withdraw request'), findsNothing);
+    expect(writes, isEmpty);
+  });
+
+  testWidgets('withdrawal requires confirmation and reloads retained history', (
     tester,
   ) async {
     requests = [request()];
-    await page(tester);
+    await pumpPage(tester);
     await tester.tap(find.text('Withdraw request'));
     await tester.pumpAndSettle();
     expect(writes, isEmpty);
     await tester.tap(find.text('Withdraw'));
     await tester.pumpAndSettle();
-    expect(writes.single.path, '/me/commute-requests/request/withdraw');
+    expect(writes.single.path, '/v1/me/commute-requests/request/withdraw');
+    expect(find.text('New corridor — cancelled'), findsOneWidget);
     expect(find.text('Choose route'), findsOneWidget);
   });
-  testWidgets(
-    'offline load displays retry and never claims a request was saved',
-    (tester) async {
-      failed = true;
-      await page(tester);
-      expect(find.textContaining('Connection unavailable'), findsOneWidget);
-      expect(writes, isEmpty);
-      failed = false;
-      await tester.tap(find.text('Refresh requests'));
-      await tester.pumpAndSettle();
-      expect(find.textContaining('Connection unavailable'), findsNothing);
-    },
-  );
-  test('server decision conflicts are actionable', () {
-    final options = RequestOptions(path: '/me/commute-requests');
+
+  testWidgets('offline load shows refresh and never claims local success', (
+    tester,
+  ) async {
+    failed = true;
+    await pumpPage(tester);
+    expect(find.textContaining('Connection unavailable'), findsOneWidget);
+    expect(writes, isEmpty);
+    failed = false;
+    await tester.tap(find.text('Refresh requests'));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('Connection unavailable'), findsNothing);
+  });
+
+  test('replacement decision conflicts keep the server message', () {
     expect(
-      commuteError(
-        DioException(
-          requestOptions: options,
-          response: Response(
-            requestOptions: options,
-            statusCode: 409,
-            data: {'message': 'Resume before withdrawing'},
-          ),
-        ),
-      ),
+      commuteError(const ApiException(409, 'Resume before withdrawing')),
       'Resume before withdrawing',
     );
   });

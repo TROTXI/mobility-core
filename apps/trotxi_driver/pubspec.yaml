@@ -37,6 +37,9 @@ dependencies:
   cupertino_icons: ^1.0.8
   trotxi_client:
     path: ../trotxi_client
+  built_value: ^8.12.6
+  uuid: ^4.5.3
+  package_info_plus: ^10.2.1
   # The shared map surface (#180): renderer, style swap and attribution, built
   # once so this app and the rider app do not grow two integrations against the
   # same tile server.

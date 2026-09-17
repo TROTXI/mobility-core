@@ -390,6 +390,46 @@ is not permission for unrestricted CRUD. Published versions,
 payments and ledgers require specific domain operations. No new refund-initiation,
 dispute-provider submission or automated collection endpoint is implied.
 
+Stage-3 catalog implementation refines the existing draft-version input with a
+required configured geometry: `points` and `stopDistancesMeters`, the latter
+matching input stop order before occurrence IDs are allocated. No new endpoint
+is introduced. Creation saves the complete draft atomically; publication freezes
+it and closes a prior overlapping interval only if existing trips stay eligible.
+Unreassigned trips cause a 409, not an implicit move. Published stop snapshots
+do not follow later physical-stop edits. Draft corrections use another draft;
+an in-place draft-edit endpoint remains outside this slice.
+
+Route/stop/version list rows carry `editToken`; version reads include `revision`,
+`effectiveFrom` and `effectiveTo`. Public current links are selected by effective
+interval, while direct published/retired version reads preserve historic links
+on unarchived corridors. Drafts and archived corridors remain ops-only. These
+are replacement contract changes, not changes to deployed clients or endpoints.
+
+Schedule creation explicitly distinguishes `{ departure: { kind: 'new' } }`
+from `{ departure: { kind: 'existing', departureId } }`. A new pattern/schedule
+revision for the same recurring departure must reuse the stable ID; a genuinely
+additional departure creates a new identity and its schedule atomically. Reads
+include `departureId`. The pattern version and departure must belong to the
+same directional pattern, enforced in storage as well as the later command.
+
+Trip creation requires `scheduleId`, stored business `serviceDate` and operational
+`scheduledAt`; `runNumber` defaults to 1 and no other value is allowed at launch.
+The server derives `departureId` from the chosen schedule, and trip reads expose
+the three identity fields. Reschedule PATCH can edit only `scheduledAt`, not
+`departureId`, `serviceDate` or `runNumber`. Midnight delays retain their original
+business date while still satisfying pattern-version eligibility. Duplicate
+departure/date/run creation is a conflict even after cancellation or through a
+different schedule revision; HTTP replay keys do not replace that DB constraint.
+Changing the business date requires an explicit replacement workflow, not an
+unrestricted edit. No new endpoint is introduced by these contract refinements.
+
+Trip list rows include the resource's `editToken`, copied unchanged into
+`If-Match`; clients do not derive it from numeric `version` or a collection
+ETag. Ops trip reads/results use `OpsTrip`, adding current `scheduleId`,
+`assignedDriverId` and `vehicleId` for assignment editing. Driver responses use
+`DriverTrip` without those ops-only references. This fulfills the list-first
+integration requirement without adding the deferred detail GETs.
+
 Maintenance can remain synchronous and bounded: 200 means the requested batch
 completed, with failed/blocked counts explicit. Do not return 202 unless a durable
 job exists and the caller can inspect its status. Cron requests need limited

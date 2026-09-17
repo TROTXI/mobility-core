@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:trotxi_driver/core/api/driver_api.dart';
 import 'package:trotxi_driver/core/config/theme/app_colors.dart';
 import 'package:trotxi_driver/core/config/theme/app_radii.dart';
 import 'package:trotxi_driver/core/config/theme/app_spacing.dart';
@@ -35,8 +36,17 @@ class _ConfirmAccountPageState extends State<ConfirmAccountPage> {
   Future<void> _reject() async {
     if (_signingOut) return;
     setState(() => _signingOut = true);
-    await widget.onRejected();
-    if (mounted) setState(() => _signingOut = false);
+    try {
+      await widget.onRejected();
+    } on TrotxiException catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(error.message)));
+      }
+    } finally {
+      if (mounted) setState(() => _signingOut = false);
+    }
   }
 
   @override

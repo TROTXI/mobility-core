@@ -1,6 +1,6 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
-import 'package:trotxi_client/trotxi_client.dart';
+import 'package:trotxi_commuter/core/api/commuter_api.dart';
 import 'package:trotxi_commuter/Features/Home/models/home_ride_lifecycle_state.dart';
 import 'package:trotxi_commuter/Features/Home/widgets/BottomNavigation/commuter_navigation.dart';
 import 'package:trotxi_commuter/Features/Home/widgets/Navbar/navbar.dart';
@@ -9,7 +9,6 @@ import 'package:trotxi_commuter/Features/Home/widgets/Tabs/pass_tab.dart';
 import 'package:trotxi_commuter/Features/Home/widgets/Tabs/profile_tab.dart';
 import 'package:trotxi_commuter/Features/Home/widgets/Tabs/routes_tab.dart';
 import 'package:trotxi_commuter/Features/Home/widgets/Tabs/wallet_tab.dart';
-import 'package:trotxi_commuter/Features/Onboarding/pages/onboard_page.dart';
 import 'package:trotxi_commuter/core/config/theme/app_colors.dart';
 
 /// An [IndexedStack] replacement that only builds a child the first time
@@ -63,7 +62,7 @@ class _LazyIndexedStackState extends State<LazyIndexedStack> {
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key, required this.client});
-  final TrotxiApiClient client;
+  final CommuterApi client;
 
   @override
   State<HomePage> createState() => _HomePageState();
@@ -74,7 +73,7 @@ class _HomePageState extends State<HomePage> {
   // 0 = home, 1 = trips, 2 = wallet, 3 = profile.
   CommuterDestination _selected = CommuterDestination.home;
 
-  MeGet200Response? _userData;
+  Account? _userData;
   bool _loadingUser = true;
   TrotxiException? _activeError;
 
@@ -92,7 +91,7 @@ class _HomePageState extends State<HomePage> {
     if (e is TrotxiException) {
       return e;
     }
-    return ApiException(0, e.toString());
+    return const ApiException(0, 'Could not load your account. Please retry.');
   }
 
   Future<void> _fetchCurrentUser() async {
@@ -102,11 +101,11 @@ class _HomePageState extends State<HomePage> {
     });
 
     try {
-      final response = await widget.client.getAuthApi().meGet();
+      final account = await widget.client.account();
 
       if (!mounted) return;
       setState(() {
-        _userData = response.data;
+        _userData = account;
         _loadingUser = false;
       });
     } catch (e) {
@@ -122,13 +121,18 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
-  void _handleUnauthorized() {
-    Navigator.of(context).pushAndRemoveUntil(
-      MaterialPageRoute(
-        builder: (context) => OnBoardPage(client: widget.client),
-      ),
-      (route) => false,
-    );
+  Future<void> _handleUnauthorized() async {
+    try {
+      await widget.client.signOut();
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Could not clear the local session. Please retry.'),
+          ),
+        );
+      }
+    }
   }
 
   void _goToDestination(CommuterDestination destination) {

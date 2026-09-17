@@ -134,6 +134,7 @@ named(
     patternIds: z.array(id),
     acceptsDriverRequests: z.boolean(),
     archived: z.boolean(),
+    editToken: text(128),
     ...audit,
   }),
 );
@@ -154,7 +155,10 @@ named(
     archived: z.boolean().optional(),
   }),
 );
-named('Stop', obj({ id, name: text(), location: point, archived: z.boolean(), ...audit }));
+named(
+  'Stop',
+  obj({ id, name: text(), location: point, archived: z.boolean(), editToken: text(128), ...audit }),
+);
 named('StopInput', obj({ name: text(), location: point }));
 named(
   'StopEdit',
@@ -168,9 +172,13 @@ named(
   obj({
     id,
     patternId: id,
+    revision: z.int().min(1),
     state: z.enum(['draft', 'published', 'retired']),
+    effectiveFrom: instant.nullable(),
+    effectiveTo: instant.nullable(),
     stops: z.array(schemas.StopOccurrence).min(2),
     geometryId: id.nullable(),
+    editToken: text(128),
     ...audit,
   }),
 );
@@ -181,6 +189,13 @@ named(
       .array(obj({ stopId: id, name: text(), location: point }))
       .min(2)
       .max(500),
+    // Configured road geometry, not straight lines guessed between stops. The
+    // positional distance array maps to the request's ordered stop occurrences,
+    // whose UUIDs do not exist until this atomic command succeeds.
+    geometry: obj({
+      points: z.array(point).min(2).max(10000),
+      stopDistancesMeters: z.array(z.number().nonnegative()).min(2).max(500),
+    }),
   }),
 );
 named('PublishVersionInput', obj({ reason: note, effectiveFrom: instant }));
@@ -199,7 +214,10 @@ named(
   'Schedule',
   obj({
     id,
+    departureId: id,
+    patternId: id,
     patternVersionId: id,
+    serviceWindow: z.enum(['morning', 'evening']),
     localDeparture: time,
     timeZone: z.literal('Africa/Accra'),
     weekdays: z.array(z.int().min(1).max(7)),
@@ -211,7 +229,12 @@ named(
 named(
   'ScheduleInput',
   obj({
+    departure: z.discriminatedUnion('kind', [
+      obj({ kind: z.literal('new') }),
+      obj({ kind: z.literal('existing'), departureId: id }),
+    ]),
     patternVersionId: id,
+    serviceWindow: z.enum(['morning', 'evening']),
     localDeparture: time,
     timeZone: z.literal('Africa/Accra'),
     weekdays: z.array(z.int().min(1).max(7)).min(1).max(7),
@@ -392,6 +415,7 @@ named(
   'CommuteSlot',
   schemas.CommuteSlotInput.extend({
     id,
+    editToken: text(128),
     state: z.enum(['available', 'held', 'assigned', 'retired']),
     ...audit,
   }),
@@ -446,7 +470,11 @@ named(
   'Trip',
   obj({
     id,
+    departureId: id,
+    serviceDate: date,
+    runNumber: z.literal(1),
     routeId: id,
+    patternId: id,
     patternVersionId: id,
     direction,
     scheduledAt: instant,
@@ -462,9 +490,28 @@ named(
     currentStopOccurrenceId: id.nullable(),
     stops: z.array(schemas.StopOccurrence),
     version,
+    editToken: text(128),
   }),
 );
-named('TripInput', obj({ scheduleId: id, scheduledAt: instant }));
+named(
+  'OpsTrip',
+  schemas.DriverTrip.extend({
+    scheduleId: id,
+    assignedDriverId: id.nullable(),
+    vehicleId: id.nullable(),
+  }),
+);
+named(
+  'TripInput',
+  obj({
+    scheduleId: id,
+    serviceDate: date,
+    // Optional on the wire as well as at runtime; emitted OpenAPI must not
+    // require a property whose omission is deliberately defaulted by Zod.
+    runNumber: z.literal(1).default(1).optional(),
+    scheduledAt: instant,
+  }),
+);
 named('TripEdit', obj({ scheduledAt: instant }));
 named('TripAssignment', obj({ driverId: id.nullable(), vehicleId: id.nullable() }));
 named('ReasonInput', obj({ reason: note }));
@@ -634,6 +681,7 @@ named(
     licenseNumber: text().nullable(),
     userId: id.nullable(),
     archived: z.boolean(),
+    editToken: text(128),
     ...audit,
   }),
 );
@@ -657,7 +705,14 @@ named(
     capacity: z.int().min(1).max(500),
   }),
 );
-named('Vehicle', schemas.VehicleInput.extend({ id, archived: z.boolean(), ...audit }));
+// Route and Stop expose editToken because their single-resource GETs are
+// deferred and a collection ETag cannot supply a per-row If-Match value.
+// getOpsVehicle is deferred for the same reason, so Vehicle needs it too:
+// without it an ops client can only edit a bus it just created.
+named(
+  'Vehicle',
+  schemas.VehicleInput.extend({ id, archived: z.boolean(), editToken: text(128), ...audit }),
+);
 named(
   'VehicleEdit',
   obj({
@@ -670,7 +725,8 @@ named(
   }),
 );
 named('RoleEdit', obj({ role, reason: note }));
-named('CredentialIssue', obj({ code: text(32) }));
+// Preserve existing ops-generated codes when omitted; an explicit code is optional.
+named('CredentialIssue', obj({ code: text(32).optional() }));
 named('CredentialSecret', obj({ code: text(32), pin: z.string().regex(/^\d{6}$/) }));
 named('CredentialAction', obj({ action: z.enum(['suspend', 'activate', 'unlock']), reason: note }));
 named('FareInput', obj({ amount: money, effectiveFrom: instant, note: note.optional() }));
@@ -729,6 +785,7 @@ named(
   obj({
     id,
     kind: z.enum(['refund', 'dispute', 'manual_review']),
+    editToken: text(128),
     purchaseId: id,
     status: text(50),
     amount: money,
@@ -740,7 +797,15 @@ named('ReviewDecision', obj({ decision: z.enum(['resolved', 'waived']), reason: 
 named('RestrictionInput', obj({ reason: note, reviewAt: instant }));
 named(
   'Restriction',
-  obj({ id, userId: id, reason: note, reviewAt: instant, active: z.boolean(), ...audit }),
+  obj({
+    id,
+    userId: id,
+    reason: note,
+    reviewAt: instant,
+    active: z.boolean(),
+    editToken: text(128),
+    ...audit,
+  }),
 );
 named(
   'TraceHoldInput',
@@ -753,9 +818,16 @@ named(
     reviewAt: instant,
   }),
 );
+// Release requires If-Match and there is no single-hold GET, so the list and
+// the create response are the only places a client can learn the token.
 named(
   'TraceHold',
-  schemas.TraceHoldInput.extend({ id, state: z.enum(['active', 'released']), ...audit }),
+  schemas.TraceHoldInput.extend({
+    id,
+    state: z.enum(['active', 'released']),
+    editToken: text(128),
+    ...audit,
+  }),
 );
 named('MaintenanceInput', obj({ limit: z.int().min(1).max(100).default(100) }));
 named(
@@ -786,6 +858,9 @@ named(
   }),
 );
 named('WebhookAck', obj({ received: z.literal(true) }));
+// decideIncident requires If-Match and getOpsIncident is not offered, so the
+// ops row carries its own edit token: a collection ETag cannot supply a
+// per-row precondition value.
 named(
   'OpsIncident',
   schemas.Incident.extend({
@@ -793,13 +868,25 @@ named(
     handledBy: id.nullable(),
     handledAt: instant.nullable(),
     version,
+    editToken: text(128),
   }),
 );
 named(
   'OpsCommuteRequest',
-  schemas.CommuteRequest.extend({ riderId: id, slotId: id.nullable(), decidedBy: id.nullable() }),
+  schemas.CommuteRequest.extend({
+    riderId: id,
+    slotId: id.nullable(),
+    decidedBy: id.nullable(),
+    editToken: text(128),
+  }),
 );
-named('OpsWorkRequest', schemas.WorkRequest.extend({ driverId: id, decidedBy: id.nullable() }));
+// The decide operations require If-Match and the single-resource reads are
+// deferred, so the ops rows must carry their own edit token: a collection
+// ETag cannot supply a per-row precondition value.
+named(
+  'OpsWorkRequest',
+  schemas.WorkRequest.extend({ driverId: id, decidedBy: id.nullable(), editToken: text(128) }),
+);
 named(
   'OpsPurchase',
   schemas.Purchase.extend({
@@ -975,11 +1062,11 @@ for (const [path, type, input] of [
   post(`/v1/ops/${path}`, `create${type}`, input, type, { status: 201 });
   edit('patch', `/v1/ops/${path}/{id}`, `update${type}`, `${type}Edit`, type);
 }
-list('/v1/ops/trips', 'listOpsTrips', 'DriverTrip');
-post('/v1/ops/trips', 'createTrip', 'TripInput', 'DriverTrip', { status: 201 });
-edit('patch', '/v1/ops/trips/{id}', 'rescheduleTrip', 'TripEdit', 'DriverTrip');
-edit('put', '/v1/ops/trips/{id}/assignment', 'assignTrip', 'TripAssignment', 'DriverTrip');
-post('/v1/ops/trips/{id}/cancel', 'cancelTrip', 'ReasonInput', 'DriverTrip', { etag: true });
+list('/v1/ops/trips', 'listOpsTrips', 'OpsTrip');
+post('/v1/ops/trips', 'createTrip', 'TripInput', 'OpsTrip', { status: 201 });
+edit('patch', '/v1/ops/trips/{id}', 'rescheduleTrip', 'TripEdit', 'OpsTrip');
+edit('put', '/v1/ops/trips/{id}/assignment', 'assignTrip', 'TripAssignment', 'OpsTrip');
+post('/v1/ops/trips/{id}/cancel', 'cancelTrip', 'ReasonInput', 'OpsTrip', { etag: true });
 for (const [path, name, type, input] of [
   ['route-patterns', 'Pattern', 'Pattern', 'PatternInput'],
   ['service-schedules', 'Schedule', 'Schedule', 'ScheduleInput'],

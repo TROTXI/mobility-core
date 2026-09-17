@@ -48,13 +48,25 @@ services:
     repo: https://github.com/TROTXI/mobility-core
     branch: main
     # Build from the repo root: the pnpm workspace lockfile lives there.
-    dockerfilePath: services/api/Dockerfile
+    dockerfilePath: services/api-next/Dockerfile
     dockerContext: .
     plan: free
     region: frankfurt
     healthCheckPath: /healthz
     autoDeploy: false # GitHub Actions triggers deploys after CI passes
     envVars:
+      # Replacement cutover reuses this FREE service and the existing PAID DB
+      # instance. The fresh logical database is trotxi_replacement; do not create
+      # the separately named example service at the bottom of this file.
+      # Import the private REPLACEMENT_* configuration before deploying. It
+      # includes the narrow runtime URL and eight independently generated keys.
+      # The legacy variables below are ignored by api-next, not fallbacks.
+      - key: REPLACEMENT_DEPLOYMENT_ENVIRONMENT
+        value: staging
+      - key: REPLACEMENT_RUNTIME_DATABASE_URL
+        sync: false
+      - key: REPLACEMENT_AUTH_PROVIDERS
+        value: google
       - key: NODE_ENV
         value: production
       - key: DATABASE_URL
@@ -349,6 +361,241 @@ services:
   #   envVars:
   #     - fromGroup: trotxi-cron-staging
   #
+  # ---- Historical replacement configuration reference — DO NOT APPLY ----
+  # The active service above now selects api-next in place. This old example
+  # is retained only as a variable inventory, not authorization for new billing.
+  #
+  # The clean replacement service. It is deliberately commented out: applying
+  # it would create a second web service and a second database, and the cutover
+  # has not been approved. Nothing below changes trotxi-api-staging.
+  #
+  # It shares nothing with the deployed service on purpose. Every variable is
+  # REPLACEMENT_*, so a service that accidentally inherits the deployed one's
+  # DATABASE_URL, JWT_SECRET or Paystack key does not start rather than
+  # quietly running against production data with production credentials.
+  #
+  # It also refuses to start when any capability below is missing, so there is
+  # no state where it serves traffic with sign-in, payments, avatars or the
+  # basemap silently disabled. That is the point: a half-configured deploy
+  # fails visibly instead of passing health checks and being broken.
+  #
+  # This entry no longer waits on an Apple Developer account: the deployment
+  # states which sign-in providers it has, and google alone is a complete
+  # deployment. What it still waits on is a funded database and the cutover
+  # decision itself.
+  #
+  # BEFORE APPLYING
+  #   1. Create the replacement database.
+  #   2. Create the narrow runtime role, then run the installer once with the
+  #      OWNER connection:
+  #        REPLACEMENT_DATABASE_URL=<owner> REPLACEMENT_RUNTIME_ROLE=<role> \
+  #          pnpm --filter @trotxi/api-next run migrate
+  #      The service itself connects as the runtime role and refuses to start
+  #      if that connection can create objects or update history.
+  #   3. Create the operations account the workers act as, and set
+  #      REPLACEMENT_MAINTENANCE_USER_ID to its user id.
+  #   4. Set every `sync: false` value in the dashboard.
+  #
+  # - type: web
+  #   name: trotxi-api-next-staging
+  #   runtime: docker
+  #   repo: https://github.com/TROTXI/mobility-core
+  #   branch: main
+  #   dockerfilePath: services/api-next/Dockerfile
+  #   dockerContext: .
+  #   plan: starter
+  #   region: frankfurt
+  #   healthCheckPath: /healthz
+  #   autoDeploy: false
+  #   envVars:
+  #     - key: NODE_ENV
+  #       value: production
+  #     - key: REPLACEMENT_DEPLOYMENT_ENVIRONMENT
+  #       value: staging
+  #     - key: PORT
+  #       value: '10000'
+  #     # The NARROW runtime role, never the owner. The owner connection is used
+  #     # once by the installer and is not given to the service.
+  #     - key: REPLACEMENT_RUNTIME_DATABASE_URL
+  #       sync: false
+  #     - key: REPLACEMENT_POOL_SIZE
+  #       value: '8'
+  #     - key: REPLACEMENT_SERVICE_NAME
+  #       value: trotxi-api-next
+  #     - key: REPLACEMENT_SERVICE_VERSION
+  #       value: 0.1.0
+  # What GET /version reports. RENDER_GIT_COMMIT is injected by the
+  # platform at runtime and is not a declared env var, so it cannot be
+  # referenced with fromService; set this on the deploy instead.
+  #     - key: REPLACEMENT_GIT_COMMIT
+  #       sync: false
+  #     - key: REPLACEMENT_ACCESS_ISSUER
+  #       value: https://trotxi-api-next-staging.onrender.com
+  #     - key: REPLACEMENT_ACCESS_AUDIENCE
+  #       value: trotxi-clients
+  #     - key: REPLACEMENT_ACCESS_TTL_SECONDS
+  #       value: '900'
+  #     - key: REPLACEMENT_REFRESH_TTL_DAYS
+  #       value: '30'
+  #     - key: REPLACEMENT_SHIFT_TTL_HOURS
+  #       value: '12'
+  #     # Eight independent 32-byte keys, one per purpose. The service refuses to
+  #     # start if any two are equal, so generate each one separately:
+  #     #   openssl rand -base64 32
+  #     - key: REPLACEMENT_ACCESS_SECRET
+  #       sync: false
+  #     - key: REPLACEMENT_CURSOR_SECRET
+  #       sync: false
+  #     - key: REPLACEMENT_PIN_SECRET
+  #       sync: false
+  #     - key: REPLACEMENT_CREDENTIAL_REPLAY_KEY
+  #       sync: false
+  #     - key: REPLACEMENT_PROVIDER_ENCRYPTION_KEY
+  #       sync: false
+  #     - key: REPLACEMENT_BOARDING_PROOF_KEY
+  #       sync: false
+  #     - key: REPLACEMENT_DEVICE_KEY
+  #       sync: false
+  #     - key: REPLACEMENT_PAYSTACK_EVIDENCE_KEY
+  #       sync: false
+  #     # Which sign-in providers this deployment actually offers. A provider
+  #     # listed here must be completely configured or the service refuses to
+  #     # start; one that is not listed has no route at all, so a client sees it
+  #     # is unavailable when it reads the surface rather than when a rider taps
+  #     # the button. There is no Apple Developer account yet, so this is
+  #     # google only, and the four REPLACEMENT_APPLE_* values below stay
+  #     # commented until there is one. Google must always be listed: driver
+  #     # sign-in is a PIN, so without it riders have no door.
+  #     - key: REPLACEMENT_AUTH_PROVIDERS
+  #       value: google
+  #     # Public: a Web client id and the Apple audiences ship inside clients.
+  #     - key: REPLACEMENT_GOOGLE_CLIENT_ID
+  #       value: 431341307838-pc4m046v2lj18ssfnfl1g52fl5g1cg4q.apps.googleusercontent.com
+  #     # Add 'apple' to REPLACEMENT_AUTH_PROVIDERS and uncomment all four
+  #     # together once the Apple Developer account, App ID, Services ID and
+  #     # signing key exist. Three of them are public; the .p8 is a SECRET.
+  #     # - key: REPLACEMENT_APPLE_CLIENT_ID
+  #     #   value: com.trotxi.trotxiCommuter,<Services ID>
+  #     # - key: REPLACEMENT_APPLE_TEAM_ID
+  #     #   value: <Apple Developer team id>
+  #     # - key: REPLACEMENT_APPLE_KEY_ID
+  #     #   value: <Key ID of the .p8>
+  #     # - key: REPLACEMENT_APPLE_PRIVATE_KEY
+  #     #   sync: false
+  #     # Staging accepts TEST keys only, even if a live opt-in was copied.
+  #     # NODE_ENV=production is a Node optimization, not payment authorization.
+  #     - key: REPLACEMENT_PAYSTACK_SECRET_KEY
+  #       sync: false
+  #     - key: REPLACEMENT_R2_ACCOUNT_ID
+  #       sync: false
+  #     - key: REPLACEMENT_R2_ACCESS_KEY_ID
+  #       sync: false
+  #     - key: REPLACEMENT_R2_SECRET_ACCESS_KEY
+  #       sync: false
+  #     - key: REPLACEMENT_R2_BUCKET_NAME
+  #       sync: false
+  #     - key: REPLACEMENT_AVATAR_URL_TTL_SECONDS
+  #       value: '300'
+  #     - key: REPLACEMENT_AVATAR_MAX_BYTES
+  #       value: '2097152'
+  #     # Public by design; the bucket serves anonymous range requests.
+  #     - key: REPLACEMENT_MAP_TILES_URL
+  #       value: https://tiles.trotxi.com/ghana.pmtiles
+  #     - key: REPLACEMENT_MAP_STYLE_URL
+  #       value: https://tiles.trotxi.com/style.light.json
+  #     - key: REPLACEMENT_MAP_STYLE_DARK_URL
+  #       value: https://tiles.trotxi.com/style.dark.json
+  #     - key: REPLACEMENT_MAP_ATTRIBUTION
+  #       value: © OpenStreetMap contributors
+  #     - key: REPLACEMENT_DOCS_URL
+  #       value: https://docs.trotxi.com
+  #     # Support contacts are the one group that may be unset: the app hides a
+  #     # control it has no number for, and a number that rings nowhere is worse.
+  #     #   - key: REPLACEMENT_OPERATIONS_PHONE
+  #     #     value: '+233XXXXXXXXX'
+  #     #   - key: REPLACEMENT_OPERATIONS_WHATSAPP
+  #     #     value: '+233XXXXXXXXX'
+  #     #   - key: REPLACEMENT_OPERATIONS_EMAIL
+  #     #     value: ops@trotxi.com
+  #     #   - key: REPLACEMENT_OPERATIONS_HOURS
+  #     #     value: 05:00-22:00 daily
+  #     # Startup floors only. Once a row exists in app.minimum_versions the
+  #     # database answers instead, so raising a floor is a config change.
+  #     - key: REPLACEMENT_MINIMUM_BUILD_OPS
+  #       value: '1'
+  #     - key: REPLACEMENT_MINIMUM_BUILD_DRIVER_IOS
+  #       value: '1'
+  #     - key: REPLACEMENT_MINIMUM_BUILD_DRIVER_ANDROID
+  #       value: '1'
+  #     - key: REPLACEMENT_MINIMUM_BUILD_COMMUTER_IOS
+  #       value: '1'
+  #     - key: REPLACEMENT_MINIMUM_BUILD_COMMUTER_ANDROID
+  #       value: '1'
+  #     - key: REPLACEMENT_REQUESTS_PER_MINUTE
+  #       value: '120'
+  #     - key: REPLACEMENT_REQUESTS_PER_IP_PER_MINUTE
+  #       value: '600'
+  #     - key: REPLACEMENT_AUTH_REQUESTS_PER_MINUTE
+  #       value: '10'
+  #     # Which peers may state the client's address. Render fronts every
+  #     # service with a load balancer that reaches us from inside its private
+  #     # network, so trusting private peers trusts it and nothing else: a
+  #     # client connecting directly is public, is not trusted, and cannot
+  #     # forge the header. Without this every per-IP budget above becomes one
+  #     # global bucket, so the service refuses to start rather than pretend.
+  #     # A hop count is not an answer and is refused: Fastify ignores a
+  #     # numeric value and would trust nobody while looking configured.
+  #     - key: REPLACEMENT_TRUST_PROXY
+  #       value: 'loopback, linklocal, uniquelocal'
+  #     # The operations account every maintenance receipt is attributed to.
+  #     - key: REPLACEMENT_MAINTENANCE_USER_ID
+  #       sync: false
+
+  # ---- Replacement maintenance jobs — PREPARED, NOT SCHEDULED ----
+  #
+  # Each runs one job in the same process as the service code, signs in as the
+  # operations account above, and exits non-zero if the job is refused. There is
+  # no admin token minted from a shared secret and no HTTP call to a public URL,
+  # so a cron cannot be pointed at the wrong environment by editing one variable.
+  #
+  # Render bills cron jobs with a ~$1/month minimum each. They stay commented
+  # until both the cutover and that cost are approved. Nothing is scheduled by
+  # uncommenting the web service alone: retention, erasure and secret cleanup
+  # would then not be running, so they must be enabled together with it.
+  #
+  # Every entry repeats the web service's env block; Render has no service-level
+  # inheritance for these. Use an env var group when they are switched on.
+  #
+  # The whole-batch jobs take no arguments:
+  #
+  #   worker admission         */5 * * * *  clear request budgets whose window closed
+  #   worker gps-retention     */5 * * * *  drain bounded batches; alert on >1h deletion lag
+  #   worker driver-secrets    */15 * * * * physically clear expired PIN ciphertext
+  #   worker erasures          10 * * * *   retry erasure's external half
+  #   worker payments          15 * * * *   inbox, reconciliation, period close
+  #   worker route-learning    0 23 * * *   learn corridor shape from the day
+  #
+  # The service-day jobs take a date and ONE direction, so each window needs its
+  # own outbound and return entry. The rider loop is a day ahead for the morning
+  # and same-day for the evening, matching the deployed service's windows:
+  #
+  #   worker ask-dispatch <date> outbound          0 18 * * *  ask tomorrow morning
+  #   worker ask-dispatch <date> return            0 12 * * *  ask this evening
+  #   worker reservation-defaults <date> outbound  0 21 * * *  morning cutoff
+  #   worker reservation-defaults <date> return    0 14 * * *  evening cutoff
+  #   worker no-shows <date> outbound              0 10 * * *  after the morning run
+  #   worker no-shows <date> return                0 20 * * *  after the evening run
+  #
+  # That is thirteen cron services, roughly $13/month. Dropping the return leg or
+  # the defaults jobs to save money does not fail: riders who never answer are
+  # simply never defaulted and the return leg is never swept, silently. Decide
+  # that deliberately or schedule all twelve.
+  #
+  # The date is an argument because a scheduler that cannot compute it must not
+  # default to today, so the wrapper that supplies it is part of switching these
+  # on, for example:
+  #   dockerCommand: node dist/worker.js ask-dispatch $(date -u +%F) outbound
+
   # ---- Production ----
   # Rebuilt from staging's ACTUAL configuration (#103/#178/#182 all added env
   # vars the old commented block never learned about). A production service

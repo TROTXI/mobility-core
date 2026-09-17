@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:trotxi_client/trotxi_client.dart';
+import 'package:trotxi_client/trotxi_client.dart' as wire;
+import 'package:trotxi_commuter/core/api/commuter_api.dart';
 import 'package:trotxi_commuter/core/config/theme/app_colors.dart';
 import 'package:trotxi_commuter/Features/Home/pages/home_page_provider.dart';
 
@@ -28,9 +29,9 @@ class HomeTab extends ConsumerStatefulWidget {
     this.onShowBoardingPass,
   });
 
-  final TrotxiApiClient client;
+  final CommuterApi client;
 
-  final MeGet200Response userData;
+  final Account userData;
 
   final VoidCallback? onShowBoardingPass;
 
@@ -40,16 +41,14 @@ class HomeTab extends ConsumerStatefulWidget {
 
 class _HomeTabState extends ConsumerState<HomeTab> {
   // TODO: replace with real stats data once that endpoint exists on
-  // TrotxiApiClient — these are placeholders matching the design.
+  // CommuterApi — these are placeholders matching the design.
   final List<QuickAction> _quickActions = const [
     QuickAction(icon: Icons.event_seat_rounded, label: 'Track ride'),
     QuickAction(icon: Icons.history_rounded, label: 'Schedule'),
     QuickAction(icon: Icons.account_balance_wallet_rounded, label: 'Wallet'),
     QuickAction(icon: Icons.support_agent_rounded, label: 'Support'),
   ];
-  // TODO: replace with the actual current vehicle location, once that's
-  // exposed by the lifecycle/live-tracking data instead of hardcoded.
-  final _busLocation = "Adenta";
+  bool _deciding = false;
 
   String get _firstName {
     final displayName = widget.userData.displayName;
@@ -75,11 +74,39 @@ class _HomeTabState extends ConsumerState<HomeTab> {
     );
   }
 
-  void _onEveningPromptResponse(bool travelingHome) {
-    // TODO: submit the response via widget.client, e.g. create/decline a
-    // reservation, then refresh so the UI reflects the new state:
-    // ref.invalidate(rideLifecycleProvider);
-    debugPrint('Traveling this leg? $travelingHome');
+  Future<void> _onEveningPromptResponse(bool travelingHome) async {
+    if (_deciding) return;
+    setState(() => _deciding = true);
+    final direction = ref.read(selectedDirectionProvider);
+    try {
+      await widget.client.decideReservation(
+        wire.ReservationDecision(
+          (b) => b
+            ..travelDate = wire.Date.now(utc: true)
+            ..direction = direction == CommuteDirection.outbound
+                ? wire.ReservationDecisionDirectionEnum.outbound
+                : wire.ReservationDecisionDirectionEnum.return_
+            ..decision = travelingHome
+                ? wire.ReservationDecisionDecisionEnum.confirm
+                : wire.ReservationDecisionDecisionEnum.decline,
+        ),
+      );
+      if (mounted) ref.invalidate(rideLifecycleProvider);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              e is TrotxiException
+                  ? e.message
+                  : 'Could not update your reservation.',
+            ),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _deciding = false);
+    }
   }
 
   @override
@@ -97,6 +124,28 @@ class _HomeTabState extends ConsumerState<HomeTab> {
               child: ListView(
                 padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
                 children: [
+                  DropdownButton<CommuteDirection>(
+                    value: ref.watch(selectedDirectionProvider),
+                    items: const [
+                      DropdownMenuItem(
+                        value: CommuteDirection.outbound,
+                        child: Text('Today · Outbound'),
+                      ),
+                      DropdownMenuItem(
+                        value: CommuteDirection.returning,
+                        child: Text('Today · Return'),
+                      ),
+                    ],
+                    onChanged: _deciding
+                        ? null
+                        : (value) {
+                            if (value != null) {
+                              ref
+                                  .read(selectedDirectionProvider.notifier)
+                                  .select(value);
+                            }
+                          },
+                  ),
                   _buildGreetingHeader(lifecycleAsync.asData?.value),
                   const SizedBox(height: 24),
                   ...lifecycleAsync.when(
@@ -123,8 +172,8 @@ class _HomeTabState extends ConsumerState<HomeTab> {
     final colors = context.appColors;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final subtitle = switch (state) {
-      RideReserved() ||
-      RideBoarded() => "Your Van is approaching $_busLocation pickup",
+      RideReserved() => 'Your seat is confirmed for this departure.',
+      RideBoarded() => 'You have boarded this departure.',
       _ => "Let's get you moving today",
     };
 
@@ -324,7 +373,8 @@ class _HomeTabState extends ConsumerState<HomeTab> {
   Widget _buildNoReservationCard() {
     final colors = context.appColors;
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final isEvening = DateTime.now().hour >= 12;
+    final isReturn =
+        ref.watch(selectedDirectionProvider) == CommuteDirection.returning;
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(20),
@@ -345,9 +395,9 @@ class _HomeTabState extends ConsumerState<HomeTab> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            isEvening
-                ? 'Traveling home this evening?'
-                : 'Traveling in this morning?',
+            isReturn
+                ? 'Traveling on your return leg today?'
+                : 'Traveling outbound today?',
             style: TextStyle(
               color: colors.textPrimary,
               fontSize: 17,

@@ -11,6 +11,49 @@ const spec = JSON.parse(
 const inventory = JSON.parse(
   await readFile(new URL('../contracts/endpoint-inventory.json', import.meta.url), 'utf8'),
 );
+test('schedule and trip contracts carry the exact pattern owner, including driver and ops views', () => {
+  for (const name of ['Schedule', 'Trip', 'DriverTrip', 'OpsTrip']) {
+    assert.ok(spec.components.schemas[name].required.includes('patternId'), name);
+    assert.deepEqual(
+      spec.components.schemas[name].properties.patternId,
+      spec.components.schemas[name].properties.patternVersionId,
+    );
+  }
+});
+test('both apps use the canonical replacement client and codegen cannot pull legacy staging', async () => {
+  const root = new URL('../../../', import.meta.url);
+  const pkg = JSON.parse(await readFile(new URL('package.json', root), 'utf8'));
+  assert.equal(pkg.scripts.codegen, 'pnpm run codegen:replacement');
+  assert.match(
+    pkg.scripts['codegen:replacement'],
+    /-i docs\/design\/contracts\/replacement\.openapi\.json/,
+  );
+  assert.match(
+    pkg.scripts['codegen:replacement'],
+    /-o apps\/api_client --additional-properties=pubName=trotxi_api_client,/,
+  );
+  assert.doesNotMatch(pkg.scripts['codegen:replacement'], /https?:|_next/);
+  for (const app of ['trotxi_driver', 'trotxi_commuter']) {
+    const pubspec = await readFile(new URL(`apps/${app}/pubspec.yaml`, root), 'utf8');
+    assert.match(pubspec, /trotxi_client:\s*\n\s*path: \.\.\/trotxi_client/);
+    assert.doesNotMatch(pubspec, /api_client|_next/);
+  }
+  const shared = await readFile(new URL('apps/trotxi_client/pubspec.yaml', root), 'utf8');
+  assert.match(shared, /trotxi_api_client:\s*\n\s*path: \.\.\/api_client/);
+  assert.doesNotMatch(shared, /_next/);
+});
+test('purchase discovery documents all history, not the trip seven-day default', () => {
+  for (const path of ['/v1/me/purchases', '/v1/ops/purchases']) {
+    const parameters = spec.paths[path].get.parameters;
+    const from = parameters.find((p) => p.name === 'fromDate').description;
+    assert.match(from, /all purchase history/);
+    assert.doesNotMatch(from, /maximum 31|last\/current 7/);
+  }
+  assert.match(
+    spec.paths['/v1/trips'].get.parameters.find((p) => p.name === 'fromDate').description,
+    /maximum 31/,
+  );
+});
 // Resolve the validator already installed by Fastify, without changing dependencies.
 const require = createRequire(import.meta.url);
 const fastifyRequire = createRequire(require.resolve('../../../services/api/node_modules/fastify'));
@@ -38,6 +81,26 @@ function jsonSchema(value) {
 }
 ajv.addSchema({ $id: 'urn:trotxi:design', components: jsonSchema(spec.components) });
 const validate = (name) => ajv.compile({ $ref: `urn:trotxi:design#/components/schemas/${name}` });
+
+test('commute event history declares pagination only, without its parent status filter', async () => {
+  const runtime = JSON.parse(
+    await readFile(
+      new URL('../../../services/api-next/src/http/contract.json', import.meta.url),
+      'utf8',
+    ),
+  );
+  for (const source of [spec, runtime]) {
+    const operation = source.paths['/v1/ops/commute-requests/{id}/events'].get;
+    assert.deepEqual(
+      operation.parameters.filter((p) => p.in === 'query').map((p) => p.name),
+      ['cursor', 'limit'],
+    );
+    for (const path of ['/v1/me/commute-requests', '/v1/ops/commute-requests'])
+      assert.ok(
+        source.paths[path].get.parameters.some((p) => p.in === 'query' && p.name === 'status'),
+      );
+  }
+});
 
 test('every current operation maps to an explicitly defined replacement', () => {
   assert.equal(inventory.length, 103);
@@ -67,12 +130,97 @@ test('operation IDs, method/path pairs and references are unique/resolved', () =
   for (const name of Object.keys(spec.components.schemas))
     assert.doesNotThrow(() => validate(name), name);
 });
+test('schedule service window is explicit, required and independent of departure time', () => {
+  const input = {
+    departure: { kind: 'new' },
+    patternVersionId: 'version-1',
+    serviceWindow: 'morning',
+    localDeparture: '15:00',
+    timeZone: 'Africa/Accra',
+    weekdays: [1, 2, 3, 4, 5],
+    effectiveFrom: '2026-09-15',
+    effectiveTo: null,
+  };
+  assert.equal(schemas.ScheduleInput.safeParse(input).success, true);
+  assert.equal(validate('ScheduleInput')(input), true);
+  const { serviceWindow, ...missing } = input;
+  assert.equal(schemas.ScheduleInput.safeParse(missing).success, false);
+  assert.equal(validate('ScheduleInput')(missing), false);
+  assert.equal(
+    schemas.ScheduleInput.safeParse({ ...input, serviceWindow: 'outbound' }).success,
+    false,
+  );
+});
+test('schedule creation explicitly distinguishes a new departure from another revision', () => {
+  const base = {
+    patternVersionId: 'version-2',
+    serviceWindow: 'evening',
+    localDeparture: '23:30',
+    timeZone: 'Africa/Accra',
+    weekdays: [1, 2, 3, 4, 5],
+    effectiveFrom: '2026-09-15',
+    effectiveTo: null,
+  };
+  for (const departure of [{ kind: 'new' }, { kind: 'existing', departureId: 'departure-1' }]) {
+    assert.equal(schemas.ScheduleInput.safeParse({ ...base, departure }).success, true);
+    assert.equal(validate('ScheduleInput')({ ...base, departure }), true);
+  }
+  for (const input of [
+    base,
+    { ...base, departure: { kind: 'existing' } },
+    { ...base, departure: { kind: 'new', departureId: 'ignored' } },
+  ]) {
+    assert.equal(schemas.ScheduleInput.safeParse(input).success, false);
+    assert.equal(validate('ScheduleInput')(input), false);
+  }
+});
+test('trip business date is explicit and immutable through reschedule; launch only permits run 1', () => {
+  const input = {
+    scheduleId: 'revision-1',
+    serviceDate: '2026-09-15',
+    scheduledAt: '2026-09-16T00:15:00Z',
+  };
+  assert.equal(schemas.TripInput.parse(input).runNumber, 1);
+  assert.equal(validate('TripInput')(input), true);
+  for (const invalid of [
+    { ...input, serviceDate: undefined },
+    { ...input, serviceDate: '2026-02-30' },
+    { ...input, runNumber: 2 },
+  ]) {
+    assert.equal(schemas.TripInput.safeParse(invalid).success, false);
+    assert.equal(validate('TripInput')(invalid), false);
+  }
+  const edit = { scheduledAt: '2026-09-16T00:15:00Z' };
+  assert.equal(schemas.TripEdit.safeParse(edit).success, true);
+  assert.equal(validate('TripEdit')(edit), true);
+  for (const extra of [
+    { serviceDate: '2026-09-16' },
+    { departureId: 'another' },
+    { runNumber: 2 },
+  ]) {
+    assert.equal(schemas.TripEdit.safeParse({ ...edit, ...extra }).success, false);
+    assert.equal(validate('TripEdit')({ ...edit, ...extra }), false);
+  }
+});
 test('all examples pass both authoritative Zod and emitted OpenAPI schemas', () => {
   for (const sample of exampleCases) {
     schemas[sample.schema].parse(sample.value);
     const check = validate(sample.schema);
     assert.ok(check(sample.value), `${sample.name}: ${JSON.stringify(check.errors)}`);
   }
+});
+test('ops trip responses have assignment references; driver responses expose edit tokens but not ops-only IDs', () => {
+  assert.ok(schemas.DriverTrip.shape.editToken);
+  for (const field of ['scheduleId', 'assignedDriverId', 'vehicleId']) {
+    assert.equal(schemas.DriverTrip.shape[field], undefined);
+    assert.ok(schemas.OpsTrip.shape[field]);
+  }
+  for (const op of operations.filter((o) =>
+    ['listOpsTrips', 'createTrip', 'assignTrip', 'rescheduleTrip', 'cancelTrip'].includes(
+      o.operationId,
+    ),
+  ))
+    assert.equal(op.response, 'OpsTrip');
 });
 test('nullable named objects remain nullable in generated OpenAPI', () => {
   const sample = exampleCases.find((e) => e.name === 'never-subscribed');
@@ -179,4 +327,62 @@ test('domain cross-field rules are explicitly not claimed as schema-only proof',
       (o) => spec.paths[o.path][o.method]['x-implementation-status'] === 'design_only',
     ),
   );
+});
+
+test('catalog drafts require bounded configured geometry; editable lists expose resource tokens', () => {
+  const point = { latitude: 5.6, longitude: -0.2 };
+  const input = {
+    stops: [
+      { stopId: 'one', name: 'Depot', location: point },
+      { stopId: 'one', name: 'Second visit', location: point },
+    ],
+    geometry: {
+      points: [point, { ...point, longitude: -0.21 }, point],
+      stopDistancesMeters: [0, 2200],
+    },
+  };
+  assert.equal(schemas.PatternVersionInput.safeParse(input).success, true);
+  assert.equal(validate('PatternVersionInput')(input), true);
+  for (const bad of [
+    { ...input, geometry: undefined },
+    { ...input, geometry: { ...input.geometry, points: [point] } },
+    { ...input, geometry: { ...input.geometry, stopDistancesMeters: [0, -1] } },
+    { ...input, geometry: { ...input.geometry, points: Array(10001).fill(point) } },
+  ]) {
+    assert.equal(schemas.PatternVersionInput.safeParse(bad).success, false);
+    // Ajv sees JSON, where undefined properties are absent.
+    assert.equal(validate('PatternVersionInput')(JSON.parse(JSON.stringify(bad))), false);
+  }
+  for (const name of ['Route', 'Stop', 'PatternVersion', 'Driver']) {
+    assert.ok(schemas[name].shape.editToken);
+    assert.ok(spec.components.schemas[name].required.includes('editToken'));
+  }
+  for (const field of ['effectiveFrom', 'effectiveTo', 'revision'])
+    assert.ok(schemas.PatternVersion.shape[field]);
+});
+
+test('runtime subset implements only selected cutover operations and contains no deferred detail GET', async () => {
+  const runtime = JSON.parse(
+    await readFile(
+      new URL('../../../services/api-next/src/http/contract.json', import.meta.url),
+      'utf8',
+    ),
+  );
+  let count = 0;
+  for (const [path, methods] of Object.entries(runtime.paths))
+    for (const [method, operation] of Object.entries(methods)) {
+      count++;
+      assert.deepEqual(operation, spec.paths[path][method]);
+      assert.notEqual(operation['x-delivery-stage'], 'deferred');
+    }
+  assert.equal(count, 119);
+  assert.equal(runtime.paths['/v1/ops/routes/{id}'].get, undefined);
+  assert.equal(runtime.paths['/v1/ops/stops/{id}'].get, undefined);
+  assert.equal(runtime.paths['/v1/ops/drivers/{id}'].get, undefined);
+  // Single-resource vehicle reads stay deferred: the ops list carries the row
+  // version, so a detail GET adds surface without answering a requirement.
+  assert.equal(runtime.paths['/v1/ops/vehicles/{id}'].get, undefined);
+  assert.equal(schemas.CredentialIssue.safeParse({}).success, true);
+  assert.equal(schemas.CredentialIssue.safeParse({ code: 'DR-B7K9' }).success, true);
+  assert.ok(runtime.paths['/v1/auth/driver/pin'].post.responses['423']);
 });

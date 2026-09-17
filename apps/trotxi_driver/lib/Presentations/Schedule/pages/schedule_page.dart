@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
-import 'package:trotxi_client/trotxi_client.dart';
+import 'package:trotxi_driver/core/api/driver_api.dart';
 import 'package:trotxi_driver/core/config/corridor_time.dart';
 import 'package:trotxi_driver/core/config/theme/app_colors.dart';
 import 'package:trotxi_driver/core/config/theme/app_radii.dart';
@@ -12,7 +12,7 @@ import 'package:trotxi_driver/data/trips_repository.dart';
 
 /// Schedule and future trips (prototype page 18).
 ///
-/// One request per month, not thirty-one: `GET /me/trips?from=&to=` (#231).
+/// One paged month read, not thirty-one individual day reads.
 /// The grid marks the days that carry work and the agenda below shows the day
 /// the driver tapped, both off the same fetch.
 ///
@@ -70,10 +70,14 @@ class _SchedulePageState extends State<SchedulePage> {
       );
       final grouped = <String, List<DriverRun>>{};
       for (final run in runs) {
-        // Grouped on the run's own corridor day, the same day the API filtered
-        // on. Grouping on a device-local day would scatter a corridor's evening
-        // runs across two cells anywhere but Accra.
-        grouped.putIfAbsent(CorridorTime.day(run.scheduledAt), () => []).add(run);
+        // The stored service day survives a departure delayed past midnight.
+        // Do not derive business identity from the editable operational time.
+        grouped
+            .putIfAbsent(
+              run.serviceDate ?? CorridorTime.day(run.scheduledAt),
+              () => [],
+            )
+            .add(run);
       }
       if (mounted) {
         setState(() {
@@ -109,7 +113,8 @@ class _SchedulePageState extends State<SchedulePage> {
   @override
   Widget build(BuildContext context) {
     final colors = context.driverColors;
-    final selectedRuns = _byDay[CorridorTime.calendarDay(_selected)] ?? const [];
+    final selectedRuns =
+        _byDay[CorridorTime.calendarDay(_selected)] ?? const [];
 
     return RefreshIndicator(
       onRefresh: _load,

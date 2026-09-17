@@ -515,3 +515,119 @@ export const negativeControls = [
     expectedPath: '$.riders.riderA.currentPurchase',
   },
 ];
+
+/**
+ * Recovery cases whose baseline premise the replacement makes unrepresentable.
+ *
+ * These are substitutions, not exemptions. Each names the supplemental case it
+ * stands in for and the reason the original state cannot exist, and each has
+ * its own fixed expectations proving the stronger property instead. The runner
+ * requires every supplemental case to be either run or substituted, so a
+ * scenario can never be dropped quietly.
+ */
+export const candidateSubstitutions = [
+  {
+    id: 'PAY-08R',
+    replaces: 'PAY-08',
+    gate: 'payment',
+    reason:
+      "The baseline nulls the period's conversion rate. The replacement freezes a required rate on immutable purchase terms, so that malformed state is rejected directly. Separately an AFTER INSERT trigger observes the closure and converted ride entry before throwing. A nontransactional sequence witnesses that the write actually happened. The resulting close must leave no closure or ledger effects, keep its period open, and allow the next period to close. No production constraint is weakened to accommodate the fixture.",
+    title: 'A failure after conversion writes rolls back fully; the next period closes',
+    steps: [
+      ...paid(),
+      rider('riderB'),
+      buy('valid', 'riderB', '2026-01-02T00:00:00.000Z'),
+      fulfill('valid', '2026-01-02T00:00:00.000Z'),
+      action('malformRate', { purchase: 'first' }),
+      close(),
+      check('isolated-failure', {
+        invalidRateRejected: true,
+        closeWriteObserved: true,
+        result: {
+          considered: 2,
+          closed: 1,
+          blocked: 0,
+          failed: 1,
+          // The production error mapper sanitizes an injected P0001 to this
+          // code. The two witnesses above prove this was the intended fault.
+          failures: [{ purchase: 'first', reason: 'internal_error' }],
+        },
+        riders: {
+          riderA: { membership: 'active', credit: 0, rides: 44 },
+          riderB: { membership: 'expired', credit: 1980 },
+        },
+        purchases: {
+          // The rolled-back close left no conversion behind: no credit was
+          // granted and no ride was converted, which is what isolation means.
+          first: {
+            period: {
+              status: 'open',
+              rides: 44,
+              closeRides: null,
+              closeCredit: null,
+              conversionEffects: 0,
+              convertedRides: 0,
+            },
+          },
+          valid: {
+            period: { status: 'closed', closeRides: 44, closeCredit: 1980, conversionEffects: 1 },
+          },
+        },
+        totals: { periods: 2 },
+      }),
+    ],
+  },
+  {
+    id: 'REC-02R',
+    replaces: 'REC-02',
+    reason:
+      'The effect and its acknowledgement commit in one transaction, so a committed fulfilment with a missing acknowledgement cannot exist. Interrupting the acknowledgement must therefore grant nothing at all.',
+    title: 'Interrupted acknowledgement commits neither the effect nor the receipt',
+    steps: [
+      rider(),
+      buy(),
+      action('acceptSuccess', { purchase: 'first', at: firstAt }),
+      action('failAcknowledgement'),
+      action('processInbox'),
+      check('nothing-committed', {
+        result: { processed: 0, failed: 1 },
+        totals: { periods: 0, allocations: 0 },
+        purchases: { first: { status: 'pending' } },
+        inbox: { failed: 1, processed: 0 },
+      }),
+      action('restartWorker'),
+      action('processInbox'),
+      check('recovered-once', {
+        ...once,
+        inbox: { processed: 1 },
+        result: { processed: 1, failed: 0 },
+      }),
+    ],
+  },
+  {
+    id: 'REC-03R',
+    replaces: 'REC-03',
+    reason:
+      'There is no processing lease to expire: a claim is a row lock held inside the processing transaction. The property under test is that another worker skips a held claim and that the claim is released when its worker dies, without waiting out an interval.',
+    title: 'A held claim is skipped, and dies with the worker holding it',
+    steps: [
+      rider(),
+      buy(),
+      action('acceptSuccess', { purchase: 'first', at: firstAt }),
+      action('claimOnly'),
+      action('processInbox'),
+      check('claim-live', {
+        inbox: { processing: 1, processed: 0 },
+        totals: { periods: 0, allocations: 0 },
+        result: { processed: 0, failed: 0 },
+      }),
+      action('expireLease'),
+      action('processInbox'),
+      check('claim-released', {
+        ...once,
+        inbox: { processing: 0, processed: 1 },
+        result: { processed: 1, failed: 0 },
+      }),
+    ],
+  },
+];

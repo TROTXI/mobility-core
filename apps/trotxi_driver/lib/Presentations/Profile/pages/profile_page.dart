@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:trotxi_driver/core/api/driver_api.dart';
 import 'package:trotxi_driver/Presentations/Readiness/pages/device_readiness_page.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:provider/provider.dart';
@@ -356,7 +357,17 @@ class _ProfilePageState extends State<ProfilePage> {
         ],
       ),
     );
-    if (confirmed ?? false) await session.signOut();
+    if (confirmed ?? false) {
+      try {
+        await session.signOut();
+      } on TrotxiException catch (error) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text(error.message)));
+        }
+      }
+    }
   }
 
   static String _initials(String name) {

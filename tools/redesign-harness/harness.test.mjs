@@ -1,7 +1,11 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { spawnSync } from 'node:child_process';
-import { scenarios, supplemental, negativeControls } from './catalog.mjs';
+import { spawnSync, execFileSync } from 'node:child_process';
+import { mkdtemp, mkdir, writeFile, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { resolve } from 'node:path';
+import { verifyCandidate } from './candidate-source.mjs';
+import { scenarios, supplemental, negativeControls, candidateSubstitutions } from './catalog.mjs';
 import {
   assertExpected,
   assertInventory,
@@ -10,6 +14,53 @@ import {
   compareCheckpoints,
 } from './assertions.mjs';
 import { adminUrl, dbIdentifier } from './support.mjs';
+
+test('candidate verification binds revision bytes and independently detects later source changes', async (t) => {
+  const root = await mkdtemp(resolve(tmpdir(), 'trotxi-candidate-pin-'));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  for (const path of [
+    'services/api-next/src',
+    'services/api-next/migrations',
+    'tools/redesign-harness',
+  ])
+    await mkdir(resolve(root, path), { recursive: true });
+  const file = resolve(root, 'services/api-next/src/example.ts');
+  await writeFile(file, 'export const value=1;\n');
+  const git = (...args) =>
+    execFileSync('git', args, { cwd: root, stdio: ['ignore', 'pipe', 'pipe'] })
+      .toString()
+      .trim();
+  git('init', '-q');
+  git('add', '.');
+  git(
+    '-c',
+    'user.name=Harness fixture',
+    '-c',
+    'user.email=fixture@example.invalid',
+    'commit',
+    '-qm',
+    'first',
+  );
+  const first = git('rev-parse', 'HEAD');
+  const initial = await verifyCandidate(first, root);
+  await writeFile(file, 'export const value=2;\n');
+  await assert.rejects(verifyCandidate(first, root), /differs from declared revision/);
+  git('add', '.');
+  git(
+    '-c',
+    'user.name=Harness fixture',
+    '-c',
+    'user.email=fixture@example.invalid',
+    'commit',
+    '-qm',
+    'second',
+  );
+  const second = git('rev-parse', 'HEAD');
+  await assert.rejects(verifyCandidate(first, root), /differs from declared revision/);
+  assert.notEqual((await verifyCandidate(second, root)).sourceSha256, initial.sourceSha256);
+  await writeFile(resolve(root, 'services/api-next/src/untracked.ts'), 'export const hidden=true;');
+  await assert.rejects(verifyCandidate(second, root), /Untracked candidate source/);
+});
 
 test('the required scenario inventory cannot shrink or silently skip', () => {
   assertInventory(scenarios.map((s) => s.id));
@@ -94,4 +145,58 @@ test('CLI rejects missing database/candidate and mistyped mode rather than runni
   const typo = spawnSync(process.execPath, [script, '--mod=compare'], { encoding: 'utf8' });
   assert.notEqual(typo.status, 0);
   assert.match(typo.stderr, /Unknown option/);
+});
+
+test('a substituted case must name what it replaces, why, and prove something', () => {
+  // A substitution is the only way a required case may go unrun against the
+  // candidate. It is not an exemption: it names the case, states why that
+  // case's premise cannot exist in the replacement model, and is itself a
+  // scenario with fixed expectations that has to pass.
+  const ids = new Set([...supplemental, ...scenarios].map((s) => s.id));
+  for (const entry of candidateSubstitutions) {
+    assert.ok(ids.has(entry.replaces), `${entry.id} replaces an unknown case`);
+    assert.ok(entry.reason && entry.reason.length > 40, `${entry.id} states no real reason`);
+    assert.ok(
+      entry.steps.some((step) => step.checkpoint),
+      `${entry.id} asserts nothing`,
+    );
+    assert.ok(!ids.has(entry.id), `${entry.id} must not shadow a required case id`);
+  }
+  // A payment scenario is the gate, so substituting one takes a deliberate
+  // edit here as well as a declaration. Adding an id to this list is the
+  // review step: it cannot happen by writing a substitution alone.
+  const reviewedPaymentSubstitutions = new Set(['PAY-08']);
+  const required = new Set(scenarios.map((s) => s.id));
+  for (const entry of candidateSubstitutions) {
+    if (!required.has(entry.replaces)) continue;
+    assert.ok(
+      reviewedPaymentSubstitutions.has(entry.replaces),
+      `${entry.id} substitutes the payment scenario ${entry.replaces} without review`,
+    );
+    assert.equal(entry.gate, 'payment', `${entry.id} must declare which gate it stands in`);
+    assert.ok(
+      entry.reason.length > 200,
+      `${entry.id} substitutes a payment scenario on a one-line reason`,
+    );
+  }
+});
+
+test('the compare gate refuses a run that covered fewer cases than the baseline', () => {
+  // The coverage rule the runner applies, exercised directly: a supplemental
+  // case that was neither run nor substituted leaves the gate unsatisfied.
+  const standIn = new Map(candidateSubstitutions.map((s) => [s.id, s.replaces]));
+  const covered = (ran) => new Set(ran.map((id) => standIn.get(id) ?? id));
+  const everything = covered([
+    ...supplemental
+      .filter((s) => !candidateSubstitutions.some((c) => c.replaces === s.id))
+      .map((s) => s.id),
+    ...candidateSubstitutions.map((s) => s.id),
+  ]);
+  assert.ok(supplemental.every((s) => everything.has(s.id)));
+  const short = covered(supplemental.slice(1).map((s) => s.id));
+  assert.ok(
+    supplemental.some((s) => !short.has(s.id)),
+    'a dropped case must be visible',
+  );
+  assert.equal(negativeControls.length, 2);
 });

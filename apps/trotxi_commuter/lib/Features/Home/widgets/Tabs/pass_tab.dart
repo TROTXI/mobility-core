@@ -1,137 +1,231 @@
 import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:qr_flutter/qr_flutter.dart';
-import 'package:trotxi_client/trotxi_client.dart';
+import 'package:trotxi_client/trotxi_client.dart' as wire;
+import 'package:trotxi_commuter/core/api/commuter_api.dart';
 import 'package:trotxi_commuter/core/config/theme/app_colors.dart';
 
 class PassTab extends StatefulWidget {
-  const PassTab({super.key, required this.client});
-  final TrotxiApiClient client;
-
+  const PassTab({super.key, required this.client, this.now = DateTime.now});
+  final CommuterApi client;
+  final DateTime Function() now;
   @override
   State<PassTab> createState() => _PassTabState();
 }
 
-class _PassTabState extends State<PassTab> {
-  String? _passUrl;
-
-  /// Absolute expiry moment, computed locally from the API's
-  /// `expiresInSeconds` (a TTL, not a timestamp) at the moment we fetch it.
+class _PassTabState extends State<PassTab> with WidgetsBindingObserver {
+  List<wire.Reservation> _seats = [];
+  String? _selectedId, _passUrl, _boardingCode;
   DateTime? _expiresAt;
-
-  bool _loading = true;
+  bool _loading = true, _foreground = true;
   Object? _error;
-
-  Timer? _refreshTimer;
-  Timer? _tickTimer;
+  Timer? _refreshTimer, _tickTimer;
   Duration _remaining = Duration.zero;
+  int _attempt = 0;
 
   @override
   void initState() {
     super.initState();
-    _fetchPass();
+    WidgetsBinding.instance.addObserver(this);
+    _loadSeats();
   }
 
   @override
   void dispose() {
+    _attempt++;
     _refreshTimer?.cancel();
     _tickTimer?.cancel();
+    WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
 
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    _foreground = state == AppLifecycleState.resumed;
+    _attempt++;
+    _refreshTimer?.cancel();
+    _tickTimer?.cancel();
+    if (_foreground) {
+      _loadSeats();
+    } else {
+      setState(() {
+        _passUrl = null;
+        _boardingCode = null;
+      });
+    }
+  }
+
+  Future<void> _loadSeats() async {
+    final attempt = ++_attempt;
+    _refreshTimer?.cancel();
+    _tickTimer?.cancel();
+    setState(() {
+      _loading = true;
+      _error = null;
+      _passUrl = null;
+      _boardingCode = null;
+    });
+    try {
+      final now = widget.now().toUtc(),
+          yesterday = widget.now().toUtc().subtract(const Duration(days: 1));
+      final rows = await widget.client.reservations(
+        from: wire.Date(yesterday.year, yesterday.month, yesterday.day),
+        to: wire.Date(now.year, now.month, now.day),
+      );
+      if (!mounted || attempt != _attempt) return;
+      setState(() {
+        _seats = rows
+            .where(
+              (r) =>
+                  r.status == wire.ReservationStatusEnum.reserved &&
+                  r.tripId != null,
+            )
+            .toList();
+        if (!_seats.any((r) => r.id == _selectedId)) _selectedId = null;
+        // Even one seat is explicitly chosen, so the rider sees which day/leg this proof authorizes.
+        _loading = false;
+      });
+      if (_selectedId != null) await _fetchPass();
+    } catch (e) {
+      if (mounted && attempt == _attempt) {
+        setState(() {
+          _error = e;
+          _loading = false;
+        });
+      }
+    }
+  }
+
   Future<void> _fetchPass() async {
+    final id = _selectedId;
+    if (id == null || !_foreground) return;
+    final attempt = ++_attempt;
+    _refreshTimer?.cancel();
     setState(() {
       _loading = true;
       _error = null;
     });
-
     try {
-      final response = await widget.client.getBoardingApi().mePassGet();
-      final data = response.data;
-      if (data == null) {
-        throw StateError('mePassGet() returned no data');
+      final pass = await widget.client.issuePass(id);
+      if (!mounted ||
+          attempt != _attempt ||
+          id != _selectedId ||
+          !_foreground) {
+        return;
       }
-
-      // expiresInSeconds is a TTL ("expires in N seconds from now"), so
-      // anchor it to the current time to get an absolute expiry moment.
-      final expiresAt = DateTime.now().add(
-        Duration(seconds: data.expiresInSeconds),
+      if (!pass.expiresAt.isAfter(widget.now())) {
+        throw const ApiException(
+          502,
+          'This pass has expired. Request a new one.',
+        );
+      }
+      setState(() {
+        _passUrl = pass.qrToken;
+        _boardingCode = pass.boardingCode;
+        _expiresAt = pass.expiresAt;
+        _remaining = pass.expiresAt.difference(widget.now());
+        _loading = false;
+      });
+      final delay =
+          pass.expiresAt.difference(widget.now()) - const Duration(seconds: 3);
+      _refreshTimer = Timer(
+        delay < const Duration(seconds: 1) ? const Duration(seconds: 1) : delay,
+        _fetchPass,
       );
-
-      if (!mounted) return;
-      setState(() {
-        _passUrl = data.pass;
-        _expiresAt = expiresAt;
-        _loading = false;
+      _tickTimer?.cancel();
+      _tickTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+        if (!mounted) return;
+        final remaining = _expiresAt!.difference(widget.now());
+        setState(() {
+          _remaining = remaining.isNegative ? Duration.zero : remaining;
+          if (_remaining == Duration.zero) {
+            _passUrl = null;
+            _boardingCode = null;
+          }
+        });
       });
-
-      _scheduleRefresh();
-      _startCountdown();
     } catch (e) {
-      if (!mounted) return;
-      setState(() {
-        _error = e;
-        _loading = false;
-      });
-      debugPrint('Error fetching boarding pass: $e');
+      if (mounted && attempt == _attempt) {
+        setState(() {
+          _error = e;
+          _loading = false;
+          _passUrl = null;
+          _boardingCode = null;
+        });
+      }
     }
   }
 
-  /// Refetches a couple seconds before the current pass URL expires so the
-  /// driver's scanner is never looking at a dead code.
-  void _scheduleRefresh() {
-    _refreshTimer?.cancel();
-    final expiresAt = _expiresAt;
-    if (expiresAt == null) return;
-
-    const lead = Duration(seconds: 3);
-    final delay = expiresAt.difference(DateTime.now()) - lead;
-
-    _refreshTimer = Timer(delay.isNegative ? Duration.zero : delay, _fetchPass);
-  }
-
-  void _startCountdown() {
-    _tickTimer?.cancel();
-    _tickTimer = Timer.periodic(const Duration(seconds: 1), (_) {
-      final expiresAt = _expiresAt;
-      if (expiresAt == null || !mounted) return;
-      final remaining = expiresAt.difference(DateTime.now());
-      setState(
-        () => _remaining = remaining.isNegative ? Duration.zero : remaining,
-      );
-    });
-  }
-
   @override
-  Widget build(BuildContext context) {
-    return Container(
-      color: AppColors.lightBackground,
+  Widget build(BuildContext context) => Scaffold(
+    backgroundColor: context.appColors.backgroundDefault,
+    appBar: AppBar(title: const Text('Boarding pass')),
+    body: SafeArea(
       child: SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(16, 16, 16, 128),
+        padding: const EdgeInsets.all(16),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             const _PassHeader(),
-            const SizedBox(height: 24),
-            _PassCard(
-              loading: _loading,
-              error: _error,
-              passUrl: _passUrl,
-              expiresAt: _expiresAt,
-              remaining: _remaining,
-              onRetry: _fetchPass,
+            const SizedBox(height: 16),
+            if (_seats.isNotEmpty)
+              DropdownButton<String>(
+                isExpanded: true,
+                value: _selectedId,
+                hint: const Text('Choose your reserved departure'),
+                items: [
+                  for (final seat in _seats)
+                    DropdownMenuItem(
+                      value: seat.id,
+                      child: Text(
+                        '${seat.travelDate} · ${seat.direction == wire.ReservationDirectionEnum.outbound ? 'Outbound' : 'Return'}',
+                      ),
+                    ),
+                ],
+                onChanged: (id) {
+                  _attempt++;
+                  _refreshTimer?.cancel();
+                  _tickTimer?.cancel();
+                  setState(() {
+                    _selectedId = id;
+                    _passUrl = null;
+                    _boardingCode = null;
+                  });
+                  _fetchPass();
+                },
+              ),
+            if (_error != null)
+              Text(
+                _error is TrotxiException
+                    ? (_error as TrotxiException).message
+                    : 'Could not load your pass.',
+              ),
+            if (_selectedId != null)
+              _PassCard(
+                loading: _loading,
+                error: _error,
+                passUrl: _passUrl,
+                expiresAt: _expiresAt,
+                remaining: _remaining,
+                onRetry: _fetchPass,
+              )
+            else if (_loading)
+              const CircularProgressIndicator()
+            else if (_seats.isEmpty)
+              const Text('No reserved departures for today or yesterday.'),
+            TextButton(
+              onPressed: _loadSeats,
+              child: const Text('Refresh reservations'),
             ),
-            const SizedBox(height: 24),
-            const _PassFooter(),
+            if (_boardingCode != null && _passUrl != null)
+              _PassFooter(code: _boardingCode!),
           ],
         ),
       ),
-    );
-  }
+    ),
+  );
 }
 
-/// Title + "Active" status chip.
+/// Neutral heading: a reservation and a valid proof have not been loaded yet.
 class _PassHeader extends StatelessWidget {
   const _PassHeader();
 
@@ -163,7 +257,7 @@ class _PassHeader extends StatelessWidget {
               _Dot(),
               SizedBox(width: 4),
               Text(
-                'Active - Boarding Pass',
+                'RESERVATION PASS',
                 style: TextStyle(
                   color: Colors.white,
                   fontSize: 12,
@@ -220,8 +314,10 @@ class _PassCard extends StatelessWidget {
     // Only show a blocking loading/error state before we've ever had a
     // pass URL. Once we have one, background refreshes happen silently
     // and the existing QR stays on screen until the new one is ready.
-    final showLoading = loading && passUrl == null;
-    final showError = error != null && passUrl == null;
+    final valid =
+        passUrl != null && expiresAt != null && remaining > Duration.zero;
+    final showLoading = loading && !valid;
+    final showError = !valid && !showLoading;
 
     return ConstrainedBox(
       constraints: const BoxConstraints(maxWidth: 448),
@@ -247,8 +343,7 @@ class _PassCard extends StatelessWidget {
               _QrError(onRetry: onRetry)
             else
               _QrSection(passUrl: passUrl!),
-            if (passUrl != null)
-              _PassMetaRow(expiresAt: expiresAt, remaining: remaining),
+            if (valid) _PassMetaRow(expiresAt: expiresAt, remaining: remaining),
           ],
         ),
       ),
@@ -340,7 +435,7 @@ class _QrSection extends StatelessWidget {
                 const _CornerBracket(alignment: Alignment.topRight),
                 const _CornerBracket(alignment: Alignment.bottomLeft),
                 const _CornerBracket(alignment: Alignment.bottomRight),
-                _QrCode(data: passUrl),
+                BoardingQr(data: passUrl),
               ],
             ),
           ),
@@ -386,8 +481,8 @@ class _CornerBracket extends StatelessWidget {
   }
 }
 
-class _QrCode extends StatelessWidget {
-  const _QrCode({required this.data});
+class BoardingQr extends StatelessWidget {
+  const BoardingQr({super.key, required this.data});
   final String data;
 
   @override
@@ -442,7 +537,7 @@ class _PassMetaRow extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.end,
         children: [
           _MetaItem(
-            label: 'REFRESHES IN',
+            label: 'EXPIRES IN',
             value: _formatCountdown(remaining),
             alignment: CrossAxisAlignment.end,
           ),
@@ -494,9 +589,10 @@ class _MetaItem extends StatelessWidget {
   }
 }
 
-/// Tip banner + Daily PIN session card below the boarding-pass card.
+/// The actual reservation's fallback boarding code.
 class _PassFooter extends StatelessWidget {
-  const _PassFooter();
+  const _PassFooter({required this.code});
+  final String code;
 
   @override
   Widget build(BuildContext context) {
@@ -526,27 +622,24 @@ class _PassFooter extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 16),
-          const _DailyPinCard(),
+          _DailyPinCard(key: ValueKey(code), code: code),
         ],
       ),
     );
   }
 }
 
-/// Displays the session's 4-digit daily boarding PIN, masked by default,
-/// with an eye icon to toggle visibility.
-///
-/// TODO: source `_pin` from the boarding-session response instead of the
-/// hardcoded value.
+/// Mask the returned boarding code until explicitly revealed.
 class _DailyPinCard extends StatefulWidget {
-  const _DailyPinCard();
+  const _DailyPinCard({super.key, required this.code});
+  final String code;
 
   @override
   State<_DailyPinCard> createState() => _DailyPinCardState();
 }
 
 class _DailyPinCardState extends State<_DailyPinCard> {
-  static const String _pin = '4821';
+  String get _pin => widget.code;
   bool _visible = false;
 
   void _toggleVisibility() {
@@ -570,33 +663,35 @@ class _DailyPinCardState extends State<_DailyPinCard> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                'DAILY BOARDING PIN',
-                style: TextStyle(
-                  color: Colors.white70,
-                  fontSize: 12,
-                  fontFamily: 'JetBrains Mono',
-                  fontWeight: FontWeight.w600,
-                  height: 1.33,
-                  letterSpacing: 0.60,
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'RESERVATION BOARDING CODE',
+                  style: TextStyle(
+                    color: Colors.white70,
+                    fontSize: 12,
+                    fontFamily: 'JetBrains Mono',
+                    fontWeight: FontWeight.w600,
+                    height: 1.33,
+                    letterSpacing: 0.60,
+                  ),
                 ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                displayValue,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 24,
-                  fontFamily: 'JetBrains Mono',
-                  fontWeight: FontWeight.w700,
-                  height: 1.33,
-                  letterSpacing: 2,
+                const SizedBox(height: 4),
+                Text(
+                  displayValue,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 24,
+                    fontFamily: 'JetBrains Mono',
+                    fontWeight: FontWeight.w700,
+                    height: 1.33,
+                    letterSpacing: 2,
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
           IconButton(
             onPressed: _toggleVisibility,
@@ -606,7 +701,7 @@ class _DailyPinCardState extends State<_DailyPinCard> {
                   : Icons.visibility_outlined,
               color: Colors.white,
             ),
-            tooltip: _visible ? 'Hide PIN' : 'Show PIN',
+            tooltip: _visible ? 'Hide code' : 'Show code',
           ),
         ],
       ),

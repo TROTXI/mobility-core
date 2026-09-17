@@ -1,9 +1,11 @@
 import 'dart:async';
 
 import 'package:dio/dio.dart';
+import 'package:trotxi_client/trotxi_client.dart' as wire;
+import 'package:uuid/uuid.dart';
 import 'package:flutter/foundation.dart';
 import 'package:geolocator/geolocator.dart';
-import 'package:trotxi_client/trotxi_client.dart';
+import 'package:trotxi_driver/core/api/driver_api.dart';
 
 /// Why position sharing is not running.
 enum PositionBlock {
@@ -42,11 +44,11 @@ class PositionPublisher extends ChangeNotifier {
   PositionPublisher({
     required this._client,
     DateTime Function()? now,
-    this.freshFor = const Duration(minutes: 2),
+    this.freshFor = const Duration(seconds: 30),
     this.weakAccuracyMeters = 50,
   }) : _now = now ?? DateTime.now;
 
-  final TrotxiApiClient _client;
+  final DriverApi _client;
   final DateTime Function() _now;
   final Duration freshFor;
 
@@ -215,24 +217,33 @@ class PositionPublisher extends ChangeNotifier {
         }
         try {
           final health = _healthRevision;
-          final response = await _client.getMobilityApi().tripsIdPositionPost(
-            id: _runId!,
+          final fixId = const Uuid().v4();
+          final response = await _client.post(
+            '/v1/driver/trips/${Uri.encodeComponent(_runId!)}/positions',
+            wire.PositionReceiptResponse.serializer,
+            command: false,
             cancelToken: _cancel,
-            tripsIdPositionPostRequest: TripsIdPositionPostRequest(
-              (b) => b
-                ..latitude = position.latitude
-                ..longitude = position.longitude,
-            ),
+            body: {
+              'clientFixId': fixId,
+              'capturedAt': position.timestamp.toUtc().toIso8601String(),
+              'latitude': position.latitude,
+              'longitude': position.longitude,
+              if (position.accuracy.isFinite && position.accuracy >= 0)
+                'accuracyMeters': position.accuracy,
+            },
           );
           if (generation != _generation) return;
           if (health != _healthRevision) continue;
           final receipt = response.data;
-          if (receipt == null ||
-              receipt.tripId != _runId ||
-              receipt.position.latitude != position.latitude ||
-              receipt.position.longitude != position.longitude) {
+          if (receipt.clientFixId != fixId ||
+              !receipt.capturedAt.isAtSameMomentAs(position.timestamp)) {
             _expiry?.cancel();
             _set(PositionSharing.failed);
+            continue;
+          }
+          if (!receipt.acceptedForLive) {
+            _expiry?.cancel();
+            _set(PositionSharing.stale);
             continue;
           }
           final remaining = freshFor - _now().difference(position.timestamp);
@@ -251,7 +262,7 @@ class PositionPublisher extends ChangeNotifier {
               if (generation == _generation) _set(PositionSharing.stale);
             });
           }
-        } on DioException {
+        } on TrotxiException {
           if (generation != _generation) return;
           _expiry?.cancel();
           _set(PositionSharing.failed);

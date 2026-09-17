@@ -10,7 +10,6 @@ ManifestRider _rider({
   String direction = 'morning',
 }) => ManifestRider(
   reservationId: id,
-  userId: 'u-$id',
   name: 'Ama Owusu',
   avatarUrl: null,
   boarded: boarded,

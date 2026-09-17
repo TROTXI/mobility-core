@@ -3,7 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:provider/provider.dart';
-import 'package:trotxi_client/trotxi_client.dart';
+import 'package:trotxi_driver/core/api/driver_api.dart';
 import 'package:trotxi_driver/Presentations/Readiness/pages/device_readiness_page.dart';
 import 'package:trotxi_driver/Presentations/Run/pages/run_page.dart';
 import 'package:trotxi_driver/Presentations/Today/pages/today_page.dart';
@@ -11,7 +11,7 @@ import 'package:trotxi_driver/core/config/theme/app_theme.dart';
 import 'package:trotxi_driver/core/state/today_controller.dart';
 import 'package:trotxi_driver/data/trips_repository.dart';
 
-class _UnusedClient implements TrotxiApiClient {
+class _UnusedClient implements DriverApi {
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
@@ -85,7 +85,7 @@ void main() {
         MultiProvider(
           providers: [
             Provider<TripsRepository>.value(value: trips),
-            Provider<TrotxiApiClient>.value(value: _UnusedClient()),
+            Provider<DriverApi>.value(value: _UnusedClient()),
             ChangeNotifierProvider(
               create: (_) => TodayController(trips: trips),
             ),

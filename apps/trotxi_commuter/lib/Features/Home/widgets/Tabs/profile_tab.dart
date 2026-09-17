@@ -1,27 +1,25 @@
 import 'package:flutter/material.dart';
 
-import 'package:trotxi_client/trotxi_client.dart';
+import 'package:trotxi_commuter/core/api/commuter_api.dart';
 import 'package:trotxi_commuter/Features/Home/widgets/Tabs/commuter_preference.dart';
 import 'package:trotxi_commuter/Features/Home/widgets/Tabs/personal_info.dart';
 import 'package:trotxi_commuter/Features/Home/widgets/Tabs/profile_notification.dart';
 import 'package:trotxi_commuter/Features/Home/widgets/Tabs/profile_security.dart';
-import 'package:trotxi_commuter/Features/Onboarding/pages/onboard_page.dart';
 import 'package:trotxi_commuter/core/config/layout/responsive_layout.dart';
 import 'package:trotxi_commuter/core/config/theme/app_colors.dart';
 import 'package:trotxi_commuter/core/config/theme/app_theme_controller.dart';
 import 'package:trotxi_commuter/core/config/theme/app_typography.dart';
-import 'package:trotxi_commuter/core/Tokens/token_storage.dart';
 
 class ProfileTab extends StatefulWidget {
   const ProfileTab({super.key, required this.client});
-  final TrotxiApiClient client;
+  final CommuterApi client;
 
   @override
   State<ProfileTab> createState() => _ProfileTabState();
 }
 
 class _ProfileTabState extends State<ProfileTab> {
-  MeGet200Response? _user;
+  Account? _user;
   bool _loading = true;
   Object? _error;
 
@@ -38,10 +36,10 @@ class _ProfileTabState extends State<ProfileTab> {
     });
 
     try {
-      final response = await widget.client.getAuthApi().meGet();
+      final account = await widget.client.account();
       if (!mounted) return;
       setState(() {
-        _user = response.data;
+        _user = account;
         _loading = false;
       });
     } catch (e) {
@@ -50,11 +48,12 @@ class _ProfileTabState extends State<ProfileTab> {
         _error = e;
         _loading = false;
       });
-      debugPrint('Error fetching profile: $e');
+      debugPrint('Profile fetch error: ${e.runtimeType}');
     }
   }
 
   Future<void> _editDisplayName() async {
+    final generation = widget.client.sessionGeneration;
     final user = _user;
     if (user == null) return;
 
@@ -65,27 +64,29 @@ class _ProfileTabState extends State<ProfileTab> {
     );
 
     final trimmed = newName?.trim();
-    if (trimmed == null || trimmed.isEmpty || trimmed == user.displayName) {
+    if (!mounted ||
+        generation != widget.client.sessionGeneration ||
+        trimmed == null ||
+        trimmed.isEmpty ||
+        trimmed == user.displayName) {
       return;
     }
 
     try {
-      // Adjust method/parameter names to match your generated client.
-      final response = await widget.client.getAuthApi().mePatch(
-        mePatchRequest: MePatchRequest((b) => b..displayName = trimmed),
-      );
+      final account = await widget.client.updateAccount(trimmed);
       if (!mounted) return;
-      setState(() => _user = response.data ?? _user);
+      setState(() => _user = account);
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Could not update name. Try again.')),
       );
-      debugPrint('Error updating display name: $e');
+      debugPrint('Profile update error: ${e.runtimeType}');
     }
   }
 
   Future<void> _confirmSignOut(BuildContext context) async {
+    final generation = widget.client.sessionGeneration;
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
@@ -104,40 +105,24 @@ class _ProfileTabState extends State<ProfileTab> {
       ),
     );
 
-    if (confirmed == true) {
+    if (confirmed == true &&
+        mounted &&
+        generation == widget.client.sessionGeneration) {
       await _signOut();
     }
   }
 
   Future<void> _signOut() async {
-    final refreshToken = await TokenStorage.instance.getRefreshToken();
-
-    if (refreshToken != null && refreshToken.isNotEmpty) {
-      try {
-        await widget.client
-            .getAuthApi()
-            .authLogoutPost(
-              authRefreshPostRequest: AuthRefreshPostRequest(
-                (b) => b..refreshToken = refreshToken,
-              ),
-            )
-            .timeout(const Duration(seconds: 5));
-      } catch (_) {
-        // Best effort: /auth/logout is idempotent and outside the auth
-        // guard, so this only fails on things like a dead network — in
-        // which case we still clear locally so the rider isn't stuck.
-      }
+    try {
+      await widget.client.signOut();
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Could not clear this device’s session. Please retry.'),
+        ),
+      );
     }
-
-    await TokenStorage.instance.clearTokens();
-
-    if (!mounted) return;
-    Navigator.of(context).pushAndRemoveUntil(
-      MaterialPageRoute(
-        builder: (context) => OnBoardPage(client: widget.client),
-      ),
-      (route) => false,
-    );
   }
 
   Future<void> _openPersonalInfo() async {

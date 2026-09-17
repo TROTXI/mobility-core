@@ -1,7 +1,12 @@
 #!/usr/bin/env bash
 # Trigger a Render deploy and block until it is live (or fails).
-# Requires: RENDER_API_KEY (secret), SERVICE_ID (the srv-… id of the service).
+# Requires: RENDER_API_KEY (secret), SERVICE_ID and the CI-approved COMMIT_ID.
 set -euo pipefail
+
+if [[ ! "${COMMIT_ID:-}" =~ ^[a-f0-9]{40}$ ]]; then
+  echo 'COMMIT_ID must be the full CI-approved Git SHA.' >&2
+  exit 1
+fi
 
 api="https://api.render.com/v1"
 
@@ -9,7 +14,7 @@ create_response=$(
   curl -fsS -X POST "${api}/services/${SERVICE_ID}/deploys" \
     -H "Authorization: Bearer ${RENDER_API_KEY}" \
     -H "Content-Type: application/json" \
-    -d '{}'
+    -d "$(jq -cn --arg commit "$COMMIT_ID" '{commitId: $commit}')"
 )
 deploy_id=$(echo "${create_response}" | jq -r '.id // empty')
 

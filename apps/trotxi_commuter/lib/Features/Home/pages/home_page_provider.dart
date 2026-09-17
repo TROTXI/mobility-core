@@ -1,59 +1,23 @@
 import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:trotxi_client/trotxi_client.dart';
+import 'package:trotxi_client/trotxi_client.dart' as wire;
+import 'package:trotxi_commuter/core/api/commuter_api.dart';
 import 'package:trotxi_commuter/main.dart';
 
-typedef ReservationDto = MeReservationsGet200ResponseReservationsInner;
+typedef ReservationDto = wire.Reservation;
 
-enum ReservationStatus {
-  pending,
-  reserved,
-  boarded,
-  declined,
-  unseated,
-  noShow,
-  released,
-  operatorCancelled,
+enum CommuteDirection { outbound, returning }
+
+class SelectedDirection extends Notifier<CommuteDirection> {
+  @override
+  CommuteDirection build() => CommuteDirection.outbound;
+  void select(CommuteDirection direction) => state = direction;
 }
 
-ReservationStatus _mapStatus(
-  MeReservationsGet200ResponseReservationsInnerStatusEnum status,
-) {
-  if (status ==
-      MeReservationsGet200ResponseReservationsInnerStatusEnum.pending) {
-    return ReservationStatus.pending;
-  }
-  if (status ==
-      MeReservationsGet200ResponseReservationsInnerStatusEnum.reserved) {
-    return ReservationStatus.reserved;
-  }
-  if (status ==
-      MeReservationsGet200ResponseReservationsInnerStatusEnum.declined) {
-    return ReservationStatus.declined;
-  }
-  if (status ==
-      MeReservationsGet200ResponseReservationsInnerStatusEnum.boarded) {
-    return ReservationStatus.boarded;
-  }
-  if (status ==
-      MeReservationsGet200ResponseReservationsInnerStatusEnum.noShow) {
-    return ReservationStatus.noShow;
-  }
-  if (status ==
-      MeReservationsGet200ResponseReservationsInnerStatusEnum.released) {
-    return ReservationStatus.released;
-  }
-  if (status ==
-      MeReservationsGet200ResponseReservationsInnerStatusEnum
-          .operatorCancelled) {
-    return ReservationStatus.operatorCancelled;
-  }
-  if (status ==
-      MeReservationsGet200ResponseReservationsInnerStatusEnum.unseated) {
-    return ReservationStatus.unseated;
-  }
-  throw StateError('Unhandled reservation status from API: $status');
-}
+final selectedDirectionProvider =
+    NotifierProvider<SelectedDirection, CommuteDirection>(
+      SelectedDirection.new,
+    );
 
 class EtaPhase {
   final Duration? eta;
@@ -100,73 +64,81 @@ class RideOperatorCancelled extends RideLifecycleState {
   const RideOperatorCancelled();
 }
 
-// =============================================================================
-// Repository
-// =============================================================================
-
 abstract class ReservationRepository {
   Future<ReservationDto?> fetchTodayReservation();
 }
 
 class DioReservationRepository implements ReservationRepository {
-  final ReservationsApi _api;
-
-  DioReservationRepository(this._api);
-
+  DioReservationRepository(this.client, this.direction);
+  final CommuterApi client;
+  final CommuteDirection direction;
   @override
   Future<ReservationDto?> fetchTodayReservation() async {
-    final today = DateTime.now().toIso8601String().split('T').first;
-    final response = await _api.meReservationsGet(from: today);
-    final reservations = response.data?.reservations;
-
-    if (reservations == null) return null;
-
-    final wantedDirection = DateTime.now().hour < 12
-        ? MeReservationsGet200ResponseReservationsInnerDirectionEnum.morning
-        : MeReservationsGet200ResponseReservationsInnerDirectionEnum.evening;
-
-    for (final r in reservations) {
-      if (r.travelDate == today && r.direction == wantedDirection) {
-        return r;
-      }
+    // Service calendars are Africa/Accra (UTC), regardless of phone timezone.
+    final today = wire.Date.now(utc: true);
+    final rows = await client.reservations(from: today, to: today);
+    final matching = rows
+        .where(
+          (r) =>
+              r.travelDate == today &&
+              r.direction ==
+                  (direction == CommuteDirection.outbound
+                      ? wire.ReservationDirectionEnum.outbound
+                      : wire.ReservationDirectionEnum.return_),
+        )
+        .toList();
+    if (matching.length > 1) {
+      throw const ApiException(
+        502,
+        'More than one reservation was returned for this direction.',
+      );
     }
-    return null;
+    return matching.isEmpty ? null : matching.single;
   }
 }
 
-final reservationRepositoryProvider = Provider<ReservationRepository>((ref) {
-  final client = ref.watch(trotxiClientProvider);
-  return DioReservationRepository(client.getReservationsApi());
-});
-
-// =============================================================================
-// Notifier
-// =============================================================================
+final reservationRepositoryProvider = Provider<ReservationRepository>(
+  (ref) => DioReservationRepository(
+    ref.watch(trotxiClientProvider),
+    ref.watch(selectedDirectionProvider),
+  ),
+);
 
 class RideLifecycleNotifier extends AsyncNotifier<RideLifecycleState?> {
   @override
   FutureOr<RideLifecycleState?> build() async {
-    final reservation = await ref
-        .read(reservationRepositoryProvider)
+    final r = await ref
+        .watch(reservationRepositoryProvider)
         .fetchTodayReservation();
-
-    if (reservation == null) return null;
-
-    final status = _mapStatus(reservation.status);
-
-    return switch (status) {
-      ReservationStatus.pending => const RidePending(),
-      ReservationStatus.reserved => RideReserved(
-        tripId: reservation.tripId,
-        etaPhase: const EtaPhase(isEstimated: true), // no live position yet
-      ),
-      ReservationStatus.boarded => RideBoarded(tripId: reservation.tripId!),
-      ReservationStatus.declined => const RideDeclined(),
-      ReservationStatus.unseated => const RideUnseated(),
-      ReservationStatus.noShow => const RideNoShow(),
-      ReservationStatus.released => const RideReleased(),
-      ReservationStatus.operatorCancelled => const RideOperatorCancelled(),
-    };
+    if (r == null) return null;
+    if (r.status == wire.ReservationStatusEnum.boarded && r.tripId == null) {
+      throw const ApiException(502, 'Boarded reservation has no departure.');
+    }
+    if (r.status == wire.ReservationStatusEnum.pending) {
+      return const RidePending();
+    }
+    if (r.status == wire.ReservationStatusEnum.reserved) {
+      return RideReserved(
+        tripId: r.tripId,
+        etaPhase: const EtaPhase(isEstimated: true),
+      );
+    }
+    if (r.status == wire.ReservationStatusEnum.boarded) {
+      return RideBoarded(tripId: r.tripId!);
+    }
+    if (r.status == wire.ReservationStatusEnum.declined) {
+      return const RideDeclined();
+    }
+    if (r.status == wire.ReservationStatusEnum.unseated) {
+      return const RideUnseated();
+    }
+    if (r.status == wire.ReservationStatusEnum.noShow) {
+      return const RideNoShow();
+    }
+    if (r.status == wire.ReservationStatusEnum.operatorCancelled) {
+      return const RideOperatorCancelled();
+    }
+    throw const ApiException(502, 'Unknown reservation state.');
   }
 }
 
