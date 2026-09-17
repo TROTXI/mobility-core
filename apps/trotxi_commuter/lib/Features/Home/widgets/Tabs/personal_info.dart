@@ -1,4 +1,8 @@
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show PlatformException;
+import 'package:image_picker/image_picker.dart';
 import 'package:trotxi_commuter/core/api/commuter_api.dart';
 import 'package:trotxi_commuter/core/config/layout/responsive_layout.dart';
 import 'package:trotxi_commuter/core/config/theme/app_colors.dart';
@@ -7,9 +11,9 @@ import 'package:trotxi_commuter/core/config/theme/app_typography.dart';
 /// Full-page "Personal information" editor, pushed from ProfileTab's
 /// "Personal information" row.
 ///
-/// `displayName` is the only field actually editable — it's the one field
-/// the replacement profile command supports. Native photo selection/upload
-/// wiring is a separate remaining step, not a missing backend capability.
+/// `displayName` and the rider's photo are the two things this page changes.
+/// The photo matters beyond the profile screen: a driver checks it against the
+/// person in front of them at boarding, so a missing one weakens that check.
 class PersonalInfoPage extends StatefulWidget {
   const PersonalInfoPage({
     super.key,
@@ -29,6 +33,10 @@ class _PersonalInfoPageState extends State<PersonalInfoPage> {
     text: widget.initialUser.displayName,
   );
   bool _saving = false;
+  bool _uploading = false;
+  /// Set once an upload returns, so the new picture shows without a round trip.
+  /// Signed and short-lived: never persisted, never reused after this screen.
+  String? _avatarUrl;
 
   @override
   void dispose() {
@@ -50,13 +58,91 @@ class _PersonalInfoPageState extends State<PersonalInfoPage> {
     return (parts[0][0] + parts[1][0]).toUpperCase();
   }
 
-  void _onChangePhoto() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Photo uploads are not yet connected in this build.'),
+  /// The types the server accepts. It reads the file's own header rather than
+  /// trusting the extension, so anything else is refused however it is named.
+  static const _accepted = {'jpg': 'image/jpeg', 'jpeg': 'image/jpeg', 'png': 'image/png', 'webp': 'image/webp'};
+
+  Future<void> _onChangePhoto() async {
+    final source = await showModalBottomSheet<ImageSource>(
+      context: context,
+      builder: (sheet) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.photo_camera_outlined),
+              title: const Text('Take a photo'),
+              onTap: () => Navigator.of(sheet).pop(ImageSource.camera),
+            ),
+            ListTile(
+              leading: const Icon(Icons.photo_library_outlined),
+              title: const Text('Choose from library'),
+              onTap: () => Navigator.of(sheet).pop(ImageSource.gallery),
+            ),
+          ],
+        ),
       ),
     );
+    if (source == null || !mounted) return;
+
+    final XFile? picked;
+    try {
+      // Resized before it leaves the device: a modern phone photo is several
+      // megabytes and the server caps the upload, so sending the original
+      // wastes a rider's data to earn a 413. 1024px is far more than the
+      // boarding screen shows.
+      picked = await ImagePicker().pickImage(
+        source: source,
+        maxWidth: 1024,
+        maxHeight: 1024,
+        imageQuality: 85,
+      );
+    } on PlatformException {
+      if (!mounted) return;
+      _say('Trotxi needs permission to use that. Check your settings.');
+      return;
+    }
+    if (picked == null || !mounted) return;
+
+    final extension = picked.name.split('.').last.toLowerCase();
+    final contentType = _accepted[extension];
+    if (contentType == null) {
+      _say('Choose a JPEG, PNG or WebP image.');
+      return;
+    }
+
+    setState(() => _uploading = true);
+    try {
+      final Uint8List bytes = await picked.readAsBytes();
+      final avatar = await widget.client.uploadAvatar(
+        bytes,
+        contentType: contentType,
+        filename: picked.name,
+      );
+      if (!mounted) return;
+      // The URL is signed and short-lived, so it is held only for this screen
+      // and re-read from the server the next time anything needs it.
+      setState(() => _avatarUrl = avatar.url);
+      _say('Photo updated.');
+    } on ApiException catch (error) {
+      if (!mounted) return;
+      _say(switch (error.statusCode) {
+        413 => 'That photo is too large. Try a smaller one.',
+        415 => 'That file is not an image Trotxi can read.',
+        429 => 'Too many attempts. Wait a moment and try again.',
+        _ => 'Could not upload that photo. Try again.',
+      });
+    } catch (error) {
+      if (!mounted) return;
+      _say('Could not upload that photo. Try again.');
+      debugPrint('Avatar upload error: ${error.runtimeType}');
+    } finally {
+      if (mounted) setState(() => _uploading = false);
+    }
   }
+
+  void _say(String message) =>
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
 
   Future<void> _onSave() async {
     final trimmed = _nameController.text.trim();
@@ -205,7 +291,7 @@ class _PersonalInfoPageState extends State<PersonalInfoPage> {
 
   Widget _buildAvatarSection(BuildContext context) {
     final colors = context.appColors;
-    final avatarUrl = widget.initialUser.avatarUrl;
+    final avatarUrl = _avatarUrl ?? widget.initialUser.avatarUrl;
     final hasAvatar = avatarUrl != null && avatarUrl.isNotEmpty;
 
     return Column(
@@ -238,15 +324,35 @@ class _PersonalInfoPageState extends State<PersonalInfoPage> {
                 ),
         ),
         const SizedBox(height: 12),
-        GestureDetector(
-          onTap: _onChangePhoto,
-          child: Text(
-            'Change photo',
-            style: AppTypography.label.copyWith(
-              color: colors.actionPrimaryDefault,
+        if (_uploading)
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              SizedBox(
+                width: 14,
+                height: 14,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: colors.actionPrimaryDefault,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Text(
+                'Uploading',
+                style: AppTypography.label.copyWith(color: colors.textSecondary),
+              ),
+            ],
+          )
+        else
+          GestureDetector(
+            onTap: _onChangePhoto,
+            child: Text(
+              hasAvatar ? 'Change photo' : 'Add a photo',
+              style: AppTypography.label.copyWith(
+                color: colors.actionPrimaryDefault,
+              ),
             ),
           ),
-        ),
       ],
     );
   }
