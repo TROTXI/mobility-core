@@ -1,5 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import contract from '../src/http/contract.json' with { type: 'json' };
 import { Pool } from 'pg';
 import { canonical, tripEditToken } from '../src/transport/service.js';
 import { cursorCodec } from '../src/transport/cursor.js';
@@ -88,6 +89,54 @@ test('HTTP factory compiles reviewed schemas and has no unauthenticated or guess
     assert.equal(response.statusCode, 401);
     assert.equal(response.json().error.code, 'unauthenticated');
     assert.equal(response.headers['cache-control'], 'no-store');
+  } finally {
+    await app.close();
+    await pool.end();
+  }
+});
+
+test('the service describes itself at /docs, from the contract it routes from', async () => {
+  const pool = new Pool();
+  const app = await createTransportApp({
+    pool,
+    coordinateReservations: rejectBookingChanges,
+    cursorSecret: Buffer.alloc(32, 9),
+    verifyAccess: async () => null,
+    authorizeSession: async () => {
+      throw new Error('describing the surface must not touch a session');
+    },
+    minimumBuilds: { ops: 1, driver: { ios: 1, android: 1 }, commuter: { ios: 1, android: 1 } },
+  });
+  try {
+    const response = await app.inject({ method: 'GET', url: '/docs/json' });
+    assert.equal(response.statusCode, 200);
+    const spec = response.json();
+    assert.equal(spec.openapi, '3.0.3');
+    assert.ok(spec.info.title && spec.info.version, 'OpenAPI requires both');
+    assert.ok(spec.servers[0].url.length, 'a server the reader can actually call');
+
+    // Served from the same object the factory registers routes from, so the
+    // document cannot describe an endpoint that does not exist. Asserted
+    // rather than assumed, because serving a second hand-kept copy is exactly
+    // the mistake this is here to prevent.
+    assert.deepEqual(spec.paths, contract.paths);
+    assert.deepEqual(spec.components, contract.components);
+    assert.ok(spec.paths['/v1/me/membership'].get, 'the rider subscription read');
+    assert.ok(spec.paths['/v1/ops/trips'].get, 'the ops trip list');
+
+    const page = await app.inject({ method: 'GET', url: '/docs' });
+    assert.equal(page.statusCode, 200);
+    assert.match(page.headers['content-type'] as string, /text\/html/);
+    assert.match(page.body, /spec-url="\/docs\/json"/);
+
+    // Both are deliberately open, which is what the old service did. If that
+    // is ever tightened, this is the line that should fail and be changed on
+    // purpose rather than the surface quietly closing or opening.
+    assert.equal(
+      (await app.inject({ method: 'GET', url: '/docs/json', headers: {} })).statusCode,
+      200,
+      'no authorization header required',
+    );
   } finally {
     await app.close();
     await pool.end();

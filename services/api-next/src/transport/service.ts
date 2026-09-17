@@ -15,6 +15,8 @@ import { Gps, gpsCommands, gpsReads, driverGpsOperations } from './gps.js';
 import { Trips, tripReads } from './trips.js';
 import type { TripRead } from './trips.js';
 import type { GpsCommand, GpsRead, GpsLocked } from './gps.js';
+import { overviewReads, readOverview } from './overview.js';
+import type { OverviewRead } from './overview.js';
 import type { FleetCommand, FleetRead, FleetLocked } from './fleet.js';
 
 export type Command =
@@ -29,7 +31,8 @@ export type Command =
   | 'startTrip'
   | 'completeTrip'
   | 'recordArrival';
-export type Read = 'listSchedules' | 'listOpsTrips' | 'listDriverTrips' | FleetRead | GpsRead;
+export type Read =
+  'listSchedules' | 'listOpsTrips' | 'listDriverTrips' | FleetRead | GpsRead | OverviewRead;
 type Json = null | boolean | number | string | Json[] | { [key: string]: Json };
 export type Body = Record<string, Json>;
 export interface Outcome {
@@ -737,6 +740,10 @@ export class TransportService {
         return this.fleet.read(client, operation as FleetRead, actor, query, driverId);
       if ((gpsReads as readonly string[]).includes(operation))
         return this.gps.read(client, operation as GpsRead, actor, query);
+      // One statement, so one snapshot: the board's numbers cannot disagree
+      // with each other without a second query to disagree with.
+      if ((overviewReads as readonly string[]).includes(operation))
+        return readOverview(client, query);
       const now = new Date();
       const schedules = operation === 'listSchedules';
       const limit = query.limit === undefined ? 50 : Number(query.limit);

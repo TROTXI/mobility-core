@@ -904,6 +904,58 @@ named(
   }),
 );
 
+// The live board (ops-console.md 4.1). One request, one snapshot: the console
+// must not list trips and then fan out per trip for positions and reservations,
+// or the screen slows with every bus and the numbers disagree with each other
+// mid-render.
+//
+// This returns the window's runs and nothing else. The four stat tiles are sums
+// over `trips`, so the console computes them and they cannot contradict the
+// table underneath them. Sending a separate tiles object would mean a contract
+// change, and three review gates, every time a screen gains a tile. The screens
+// are still being designed; the facts they are drawn from are not.
+//
+// What cannot be derived client-side is here: staleness needs one clock and one
+// threshold, and two surfaces deciding it separately would disagree.
+named(
+  'OpsOverview',
+  obj({
+    generatedAt: instant,
+    // Echoed back so a late response cannot be read as the other window.
+    window: z.enum(['morning', 'evening']),
+    staleFixAfterSeconds: count,
+    trips: z.array(
+      obj({
+        tripId: id,
+        scheduledAt: instant,
+        status: z.enum(['scheduled', 'active', 'completed', 'cancelled']),
+        routeName: text().nullable(),
+        driverId: id.nullable(),
+        driverName: text().nullable(),
+        // No phone here on purpose. Call driver needs a dialable number, and
+        // the console already holds one from GET /v1/ops/drivers, which it
+        // loads for the assignment pickers. Repeating it in a response polled
+        // every ten seconds puts the number on the wire 360 times an hour to
+        // save a join the console is already able to make.
+        vehicleId: id.nullable(),
+        vehicleLabel: text().nullable(),
+        // The seat ceiling reservations are checked against, rendered "12 / 18".
+        capacity: count.nullable(),
+        confirmed: count,
+        boarded: count,
+        noShow: count,
+        lastFixAt: instant.nullable(),
+        // Null when there is no fix at all, which the board shows as NO FIX
+        // rather than as an age of zero.
+        fixAgeSeconds: count.nullable(),
+        // For the live-vehicle map. Null before the first fix.
+        lastPosition: point.nullable(),
+        badge: z.enum(['on_time', 'stale_gps', 'unassigned']),
+      }),
+    ),
+  }),
+);
+
 export const operations = [];
 const op = (method, path, operationId, response, options = {}) => {
   const access =
@@ -1067,6 +1119,7 @@ post('/v1/ops/trips', 'createTrip', 'TripInput', 'OpsTrip', { status: 201 });
 edit('patch', '/v1/ops/trips/{id}', 'rescheduleTrip', 'TripEdit', 'OpsTrip');
 edit('put', '/v1/ops/trips/{id}/assignment', 'assignTrip', 'TripAssignment', 'OpsTrip');
 post('/v1/ops/trips/{id}/cancel', 'cancelTrip', 'ReasonInput', 'OpsTrip', { etag: true });
+get('/v1/ops/overview', 'getOpsOverview', 'OpsOverview');
 for (const [path, name, type, input] of [
   ['route-patterns', 'Pattern', 'Pattern', 'PatternInput'],
   ['service-schedules', 'Schedule', 'Schedule', 'ScheduleInput'],
