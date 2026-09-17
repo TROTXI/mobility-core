@@ -209,9 +209,46 @@ The user subsequently authorized fixes and a repeat walkthrough of both cases:
   static analysis passed. The pinned preservation comparison recorded above
   predates these changes and is not claimed to have rerun on this patch.
 
-Both requested bug cases passed their native recheck. Native boarding settlement,
-automatic webhook delivery, full map rendering and complete iOS parity remain
-separate gates; fixing these two cases does not mark Stage 5/6 complete.
+Both requested bug cases passed their native recheck. At that checkpoint native
+boarding settlement and map rendering were still pending; the continuation
+below records their later results. Neither marks Stage 5/6 complete.
+
+### Boarding and overnight-run continuation (17 September UTC)
+
+Two additional native integration defects were fixed without changing the
+existing purchase, reservation, trip identity or service date:
+
+- The keypad still used the retired boarding alphabet and could not enter the
+  issued replacement code. It now offers exactly `A–Z` and `2–7`, including
+  `I/L/O/U`. Regression tests read the actual replacement code generator and
+  tap every issued character, including the last rendered row. The old keypad
+  failed the alphabet test before the fix.
+- Reopening the driver after Ghana midnight hid the previous day's active run.
+  Today now requests yesterday through today and retains previous-day runs
+  only when active. A date-filtering test first reproduced the missing run,
+  then verified recovery, exclusion of old scheduled/completed/cancelled runs,
+  and removal after completion. This is bounded overnight recovery, not an
+  unbounded historical-active-trip search.
+- **189 driver tests passed** after both fixes; driver static analysis and
+  Android debug build passed. Installation preserved the same driver session.
+- Native Today recovered the same active run. The original issued code then
+  boarded its funded reservation successfully. A second native submission
+  returned “Already boarded”; read-only SQL confirmed **one** boarding debit,
+  settled attendance and **43 rides remaining** from the original 44.
+- The commuter's native map rendered the configured route, stop markers and
+  bus marker. With the driver foreground and simulated movement, it showed
+  “Live bus · 8s old” and an approximately 336-metre fallback next-stop ETA.
+  Backgrounding the driver stopped publishing as intended; the commuter
+  labelled the position stale and suppressed predictions beyond 120 seconds.
+  No commuter-location permission or collection was used.
+- The driver recorded both stop arrivals and completed the native end-of-run
+  checklist. The summary reported two stops and one code-boarded rider. SQL
+  confirmed `completed`, final occurrence ordinal `1`, original service date
+  `2026-09-16`, settled attendance, and still one debit/43 rides. The commuter
+  then displayed “Trip ended. No live bus location is shown.”
+
+These are Android/local replacement results. Automatic TEST webhook delivery,
+the remaining iOS journeys and the deployment/recovery gates below remain open.
 
 All provider work used TEST Paystack and the isolated loopback database. The
 downloaded staging database connection was not used. No staging cutover, reset,
@@ -250,16 +287,16 @@ environment and the separate live opt-in; it is not authorized here.
 
 ## Stage 5 evidence still required
 
-| Gate                        | Required evidence                                                                                                                                              | Current status                                                     |
-| --------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------ |
-| Exact deploy artifact       | Docker build, migration hashes, config preflight, narrow-role readiness                                                                                        | In progress                                                        |
-| Android and iOS             | Both apps against assembled replacement: native sign-in, restored secure session, minimum-version refusal, boarding, driver-only GPS receipt and map rendering | Commuter Google sign-in passed on both; remaining journeys pending |
-| Paystack initialization     | Real TEST initialize/verify via replacement adapter                                                                                                            | Passed: unpaid TEST probe; local checks separately labelled        |
-| Automatic Paystack delivery | Hosted paid TEST checkout; reference-correlated provider-origin inbox receipt and exactly one fulfilment; no signed replay used as proof                       | Not run                                                            |
-| Reconciliation              | Separate unresolved TEST purchase recovered through Verify; no fabricated success                                                                              | Passed with explicit early manual cutoff; scheduled delay untested |
-| R2 and erasure              | Probe reads/expiry/delete, then account erasure worker removes that account's object with durable completion                                                   | Probe 4/4 and real HTTP account/object erasure passed              |
-| Capacity                    | 12.96M fixes on approved intended tier; latency, drain rate, backlog recovery, locks, WAL/storage/vacuum                                                       | Pre-production gate; no staging upgrade requested                  |
-| Recovery                    | Rehearsal before external writes and a distinct after-external-writes scenario                                                                                 | Not run                                                            |
+| Gate                        | Required evidence                                                                                                                                              | Current status                                                                                                       |
+| --------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| Exact deploy artifact       | Docker build, migration hashes, config preflight, narrow-role readiness                                                                                        | In progress                                                                                                          |
+| Android and iOS             | Both apps against assembled replacement: native sign-in, restored secure session, minimum-version refusal, boarding, driver-only GPS receipt and map rendering | Android paid/code-boarding/GPS/map/completion passed; remaining iOS journeys and native minimum-version gate pending |
+| Paystack initialization     | Real TEST initialize/verify via replacement adapter                                                                                                            | Passed: unpaid TEST probe; local checks separately labelled                                                          |
+| Automatic Paystack delivery | Hosted paid TEST checkout; reference-correlated provider-origin inbox receipt and exactly one fulfilment; no signed replay used as proof                       | Not run                                                                                                              |
+| Reconciliation              | Separate unresolved TEST purchase recovered through Verify; no fabricated success                                                                              | Passed with explicit early manual cutoff; scheduled delay untested                                                   |
+| R2 and erasure              | Probe reads/expiry/delete, then account erasure worker removes that account's object with durable completion                                                   | Probe 4/4 and real HTTP account/object erasure passed                                                                |
+| Capacity                    | 12.96M fixes on approved intended tier; latency, drain rate, backlog recovery, locks, WAL/storage/vacuum                                                       | Pre-production gate; no staging upgrade requested                                                                    |
+| Recovery                    | Rehearsal before external writes and a distinct after-external-writes scenario                                                                                 | Not run                                                                                                              |
 
 Keep raw provider payloads, tokens, signed object URLs and GPS out of committed
 evidence. Record commit, image digest, migration hashes, test counts, sanitized
