@@ -47,13 +47,28 @@ jobs:
           if [ -z "$SERVICE_ID" ]; then
             echo '::error::RENDER_STAGING_SERVICE_ID is not set.'; exit 1
           fi
-          jwt=$(curl -fsS -H "Authorization: Bearer ${RENDER_API_KEY}" \
-            "https://api.render.com/v1/services/${SERVICE_ID}/env-vars?limit=100" \
-            | jq -r '.[] | select(.envVar.key == "JWT_SECRET") | .envVar.value')
-          if [ -z "$jwt" ] || [ "$jwt" = "null" ]; then
-            echo '::error::JWT_SECRET is not set on the service; the PIN secret cannot be derived.'
+          api() { curl -fsS -H "Authorization: Bearer ${RENDER_API_KEY}" "https://api.render.com/v1$1"; }
+          pick() { jq -r '.. | objects | select(.key? == "JWT_SECRET") | .value' 2>/dev/null; }
+
+          # The service env-vars endpoint returns only what is set directly on
+          # the service. A JWT_SECRET the service inherits from an env group is
+          # not in there, which is exactly how the first attempt derived a
+          # secret the service does not verify with. Collect both.
+          {
+            api "/services/${SERVICE_ID}/env-vars?limit=100" | pick
+            for group in $(api "/env-groups?limit=100" | jq -r '.. | objects | select(.id? and .name?) | .id' | sort -u); do
+              api "/env-groups/${group}" | pick
+            done
+          } | grep -v '^$' | sort -u > /tmp/jwt-candidates
+
+          count=$(wc -l < /tmp/jwt-candidates | tr -d ' ')
+          if [ "$count" = "0" ]; then
+            echo '::error::No JWT_SECRET found on the service or in any env group.'
             exit 1
           fi
+          echo "Found $count distinct JWT_SECRET value(s) across the service and its env groups."
+          while IFS= read -r value; do echo "::add-mask::$value"; done < /tmp/jwt-candidates
+          jwt=$(head -1 /tmp/jwt-candidates)
           echo "::add-mask::$jwt"
           pin=$(JWT="$jwt" node --input-type=module -e '
             import { hkdfSync } from "node:crypto";
@@ -63,6 +78,12 @@ jobs:
           ')
           echo "::add-mask::$pin"
           echo "REPLACEMENT_PIN_SECRET=$pin" >> "$GITHUB_ENV"
+          # reset-pins needs the raw value so it can try the derivations the
+          # service might be using and let the service pick.
+          echo "SEED_JWT_SECRETS<<TROTXI_EOF" >> "$GITHUB_ENV"
+          cat /tmp/jwt-candidates >> "$GITHUB_ENV"
+          echo "TROTXI_EOF" >> "$GITHUB_ENV"
+          rm -f /tmp/jwt-candidates
 
       - name: Run
         working-directory: services/api-next
