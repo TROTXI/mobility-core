@@ -1,5 +1,5 @@
 # Built from the repo ROOT context (the pnpm workspace lockfile lives there).
-# The staging blueprint selects this image. Schema installation is separate.
+# Existing staging installs pending, checksum-verified migrations on startup.
 FROM node:24-alpine AS build
 RUN corepack enable
 WORKDIR /repo
@@ -23,6 +23,6 @@ COPY --from=build /app/package.json ./package.json
 # hashes, so the image carries the same bytes that were reviewed.
 COPY --from=build /repo/services/api-next/migrations ./migrations
 EXPOSE 10000
-# No migration or grant on boot: installing the schema is a separate, deliberate
-# step run by an operator with the owner credentials, not something a restart does.
+# Only the named disposable staging service installs migrations on boot.
+# Startup never resets data, provisions logins, or changes credentials.
 CMD ["node", "dist/server.js"]

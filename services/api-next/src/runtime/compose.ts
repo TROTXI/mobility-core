@@ -43,10 +43,17 @@ export interface Backend {
  * migration owner would otherwise work perfectly and be quietly unauditable,
  * and that mistake is worth catching before the listener opens.
  */
-export async function assertRuntimeRole(pool: Pool): Promise<void> {
+export async function assertRuntimeRole(pool: Pool, existingStaging = false): Promise<void> {
   const row = (
-    await pool.query<{ create_schema: boolean; rewrite_history: boolean; installed: boolean }>(
-      `SELECT to_regclass('app.users') IS NOT NULL AS installed,
+    await pool.query<{
+      create_schema: boolean;
+      rewrite_history: boolean;
+      installed: boolean;
+      database: string;
+      login: string;
+    }>(
+      `SELECT current_database() AS database, current_user AS login,
+        to_regclass('app.users') IS NOT NULL AS installed,
         CASE WHEN to_regnamespace('app') IS NULL THEN false
           ELSE has_schema_privilege(current_user,'app','CREATE') END AS create_schema,
         CASE WHEN to_regclass('app.trip_events') IS NULL THEN false
@@ -54,6 +61,16 @@ export async function assertRuntimeRole(pool: Pool): Promise<void> {
     )
   ).rows[0];
   if (!row?.installed) throw new Error('The replacement schema is not installed on this database');
+  // Approved for the disposable, existing staging service only. Configuration
+  // also pins the Render service, host and TEST key. This deliberately gives up
+  // the narrow-login boundary; it is not a claim that owners are restricted.
+  if (existingStaging) {
+    if (row.database !== 'trotxi' || row.login !== 'trotxi')
+      throw new Error(
+        'The staging owner exception requires the existing trotxi database and login',
+      );
+    return;
+  }
   if (row.create_schema)
     throw new Error('Refusing to start: this connection can create objects in the app schema');
   if (row.rewrite_history)
@@ -77,7 +94,7 @@ export async function composeBackend(config: RuntimeConfig): Promise<Backend> {
     idleTimeoutMillis: 30000,
   });
   try {
-    await assertRuntimeRole(pool);
+    await assertRuntimeRole(pool, config.existingStaging);
     const avatars = new R2ObjectStore(config.avatars);
     const signAvatar = (objectKey: string) => {
       const url = avatars.sign(objectKey, config.avatars.urlTtlSeconds);
