@@ -45,6 +45,9 @@ const BUSES = [
   { plate: 'GT 7702-19', label: null, capacity: 18 },
   { plate: 'GW 3318-23', label: 'Bus 5', capacity: 22 },
 ];
+/** GHS 4.50 a ride at a 1.0 multiplier. Placeholders until real fares land. */
+const FARE_PESEWAS = 450;
+const MULTIPLIER_BP = 10000;
 const DRIVERS = ['Kwame Mensah', 'Ama Boateng', 'Yaw Owusu', 'Akosua Darko', 'Kofi Asante'];
 /** Three days behind, today, three ahead: history to look at and runs to drive. */
 const DAYS = [-3, -2, -1, 0, 1, 2, 3];
@@ -54,6 +57,34 @@ const q = async <T extends pg.QueryResultRow = pg.QueryResultRow>(sql: string, v
   (await pool.query<T>(sql, v)).rows;
 const one = async (sql: string, v: unknown[] = []) =>
   (await q<{ id: string }>(sql + ' RETURNING id', v))[0]!.id;
+/**
+ * Several of the schema's checks are CONSTRAINT TRIGGERs deferred to commit: a
+ * commute selection is judged once its legs are in, not as each row lands. So
+ * anything the schema judges as a unit has to arrive as one transaction, or it
+ * is validated half-built and refused.
+ */
+async function tx<T>(
+  work: (
+    cq: (sql: string, v?: unknown[]) => Promise<pg.QueryResultRow[]>,
+    cone: (sql: string, v?: unknown[]) => Promise<string>,
+  ) => Promise<T>,
+): Promise<T> {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const cq = async (sql: string, v: unknown[] = []) => (await client.query(sql, v)).rows;
+    const cone = async (sql: string, v: unknown[] = []) =>
+      ((await client.query(sql + ' RETURNING id', v)).rows[0] as { id: string }).id;
+    const result = await work(cq, cone);
+    await client.query('COMMIT');
+    return result;
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
+  }
+}
 const day = (offset: number) => new Date(Date.now() + offset * 86400000).toISOString().slice(0, 10);
 
 async function main() {
@@ -216,7 +247,8 @@ async function main() {
   }
 
   process.stdout.write(
-    `Wrote ${CORRIDORS.length} corridors, ${buses.length} buses, ${trips} runs.\n\n`,
+    `Wrote ${CORRIDORS.length} corridors, ${buses.length} buses, ${trips} runs, ` +
+      `${await riders()} riders.\n\n`,
   );
   process.stdout.write('Driver logins (code / PIN), for the driver app:\n');
   for (const c of credentials) process.stdout.write(`  ${c.name.padEnd(16)} ${c.code}  ${c.pin}\n`);
@@ -224,6 +256,223 @@ async function main() {
     '\nThese PINs are shown once and are not recoverable: the table stores only a\n' +
       'keyed hash. Reset one through ops if it is lost.\n',
   );
+}
+
+/**
+ * Twenty riders with a month behind them.
+ *
+ * A reservation is only meaningful at the end of a chain: a user owns a
+ * membership, a membership is funded by a purchase, a purchase opens a billing
+ * period, a period carries a commute assignment, and the assignment names the
+ * two legs a rider travels. Every one of those is written here because the
+ * schema refuses a reservation that skips any of them.
+ *
+ * Identities use synthetic Google subjects, so these riders are data and nobody
+ * can sign in as them. Pass real subjects in SEED_LINK_SUBJECTS to make the
+ * first few drivable from the commuter app: sign-in resolves a user by
+ * (provider, subject), so a real subject on a seeded row signs that person in
+ * as that rider, history and all.
+ */
+async function riders(): Promise<number> {
+  const NAMES = [
+    'Abena Osei',
+    'Kojo Antwi',
+    'Efua Mensah',
+    'Kwesi Appiah',
+    'Adjoa Nyarko',
+    'Yaa Asantewaa',
+    'Fiifi Quartey',
+    'Esi Amoah',
+    'Kobby Tetteh',
+    'Maame Serwaa',
+    'Nii Armah',
+    'Akua Frimpong',
+    'Kwabena Addo',
+    'Afia Danso',
+    'Kwaku Bediako',
+    'Araba Aidoo',
+    'Selorm Agbo',
+    'Dzifa Kudjo',
+    'Naa Lamiley',
+    'Paa Kwesi Sam',
+  ];
+  const linked = (process.env.SEED_LINK_SUBJECTS ?? '')
+    .split(',')
+    .map((value) => value.trim())
+    .filter(Boolean);
+
+  // Somebody has to be the actor behind an ops action, and the ops console
+  // needs an account to sign into. The first subject supplied links this one,
+  // so the console is reachable; riders take the rest.
+  const admin = await tx(async (cq, cone) => {
+    const id = await cone("INSERT INTO app.users(role,display_name) VALUES ('admin',$1)", [
+      'Trotxi Operations',
+    ]);
+    await cq('INSERT INTO app.auth_identities(user_id,provider,subject) VALUES ($1,$2,$3)', [
+      id,
+      'google',
+      linked[0] ?? `seed-ops-${randomUUID()}`,
+    ]);
+    return id;
+  });
+
+  const routes = await q<{ id: string; name: string }>(
+    'SELECT id,name FROM app.routes ORDER BY name',
+  );
+  // One selection per corridor, both legs, first stop to last. Riders share
+  // these rather than each inventing their own pair.
+  type Leg = {
+    direction: 'outbound' | 'return';
+    schedule: string;
+    version: string;
+    first: string;
+    last: string;
+  };
+  // A purchase carries the same two legs its commute selection does, and the
+  // schema validates both the same way, so they are gathered once here.
+  const legsByRoute = new Map<string, Leg[]>();
+  const selections: string[] = [];
+  for (const route of routes) {
+    const selection = await tx(async (cq, cone) => {
+      const selection = await cone('INSERT INTO app.commute_selections(route_id) VALUES ($1)', [
+        route.id,
+      ]);
+      for (const direction of ['outbound', 'return'] as const) {
+        const leg = (
+          await q<{ schedule: string; version: string; first: string; last: string }>(
+            `SELECT sc.id AS schedule, sc.pattern_version_id AS version,
+             (SELECT id FROM app.route_pattern_stops WHERE pattern_version_id=sc.pattern_version_id ORDER BY ordinal LIMIT 1) AS first,
+             (SELECT id FROM app.route_pattern_stops WHERE pattern_version_id=sc.pattern_version_id ORDER BY ordinal DESC LIMIT 1) AS last
+           FROM app.service_schedules sc
+           JOIN app.route_patterns p ON p.id=sc.pattern_id
+           WHERE p.route_id=$1 AND p.direction=$2`,
+            [route.id, direction],
+          )
+        )[0]!;
+        await cq(
+          `INSERT INTO app.commute_selection_legs(selection_id,direction,schedule_id,pattern_version_id,pickup_occurrence_id,dropoff_occurrence_id)
+         VALUES ($1,$2,$3,$4,$5,$6)`,
+          [selection, direction, leg.schedule, leg.version, leg.first, leg.last],
+        );
+        legsByRoute.set(route.id, [
+          ...(legsByRoute.get(route.id) ?? []),
+          {
+            direction,
+            schedule: leg.schedule,
+            version: leg.version,
+            first: leg.first,
+            last: leg.last,
+          },
+        ]);
+      }
+      return selection;
+    });
+    selections.push(selection);
+  }
+
+  const periodStart = day(-30);
+  let count = 0;
+  for (const [index, name] of NAMES.entries()) {
+    const route = routes[index % routes.length]!;
+    const selection = selections[index % selections.length]!;
+    const plan = index % 5 === 0 ? 'annual' : 'monthly';
+    // Two in twenty have lapsed, which is what makes "lapsed" mean anything on
+    // the ops riders screen.
+    const lapsed = index === 7 || index === 15;
+
+    await tx(async (q, one) => {
+      const user = await one("INSERT INTO app.users(role,display_name) VALUES ('commuter',$1)", [
+        name,
+      ]);
+      await q('INSERT INTO app.auth_identities(user_id,provider,subject) VALUES ($1,$2,$3)', [
+        user,
+        'google',
+        linked[index + 1] ?? `seed-${randomUUID()}`,
+      ]);
+      const membership = await one('INSERT INTO app.memberships(user_id) VALUES ($1)', [user]);
+      const rides = plan === 'annual' ? 480 : 40;
+      // The schema derives the price and refuses any other number:
+      // floor((fare * rides * multiplier + 5000) / 10000). Computed from the
+      // same fare and multiplier the insert below states, for the same reason
+      // the stop distances are derived: a guessed figure is refused.
+      const price = Math.floor((FARE_PESEWAS * rides * MULTIPLIER_BP + 5000) / 10000);
+      const purchase = await one(
+        `INSERT INTO app.purchases(membership_id,user_id,route_id,plan,state,price_pesewas,
+           applied_credit_pesewas,cash_due_pesewas,currency,rides_granted,fare_pesewas,
+           price_multiplier_bp,conversion_rate_pesewas,checkout_key_hash,input_hash)
+         VALUES ($1,$2,$3,$4,'fulfilled',$5,0,$5,'GHS',$6,${FARE_PESEWAS},${MULTIPLIER_BP},50,
+           encode(sha256($7::bytea),'hex'), encode(sha256($8::bytea),'hex'))`,
+        [membership, user, route.id, plan, price, rides, `checkout:${user}`, `input:${user}`],
+      );
+      // The purchase carries the same paired legs as the selection, and the
+      // schema refuses a purchase without them.
+      for (const leg of legsByRoute.get(route.id) ?? [])
+        await q(
+          `INSERT INTO app.purchase_legs(purchase_id,direction,schedule_id,pattern_version_id,pickup_occurrence_id,dropoff_occurrence_id)
+           VALUES ($1,$2,$3,$4,$5,$6)`,
+          [purchase, leg.direction, leg.schedule, leg.version, leg.first, leg.last],
+        );
+      // A period only exists behind money that arrived. The schema requires a
+      // successful attempt whose paid_at is exactly the period's start, so this
+      // is not decoration: without it the period is refused.
+      await q(
+        `INSERT INTO app.payment_attempts(purchase_id,user_id,provider,environment,reference,
+           state,amount_pesewas,currency,provider_transaction_id,channel,fees_pesewas,paid_at)
+         VALUES ($1,$2,'paystack','test',$3,'successful',$4,'GHS',$5,'mobile_money',$6,$7::date)`,
+        [
+          purchase,
+          user,
+          `seed-${purchase}`,
+          price,
+          `seed-txn-${purchase}`,
+          Math.round(price * 0.0195),
+          periodStart,
+        ],
+      );
+      const period = await one(
+        `INSERT INTO app.billing_periods(purchase_id,membership_id,user_id,starts_at,original_ends_at,effective_ends_at,state)
+         VALUES ($1,$2,$3,$4::date,$5::date,$5::date,$6)`,
+        [
+          purchase,
+          membership,
+          user,
+          periodStart,
+          lapsed ? day(-2) : day(1),
+          lapsed ? 'closed' : 'open',
+        ],
+      );
+      await q(
+        `INSERT INTO app.commute_assignments(user_id,membership_id,period_id,selection_id,purchase_id,effective_from)
+         VALUES ($1,$2,$3,$4,$5,$6::date)`,
+        [user, membership, period, selection, purchase, periodStart],
+      );
+      await q(
+        "INSERT INTO app.ride_entries(user_id,period_id,reason,delta_rides) VALUES ($1,$2,'allocation',$3)",
+        [user, period, rides],
+      );
+      // Credit only exists behind a recorded decision: the schema matches the
+      // entry against its adjustment and refuses any other amount.
+      if (index % 4 === 0) {
+        const delta = 500 * ((index % 3) + 1);
+        const adjustment = await one(
+          `INSERT INTO app.credit_adjustments(user_id,actor_user_id,delta_pesewas,reason)
+           VALUES ($1,$2,$3,'Seeded goodwill credit')`,
+          [user, admin, delta],
+        );
+        await q(
+          `INSERT INTO app.credit_entries(user_id,reason,delta_pesewas,adjustment_id)
+           VALUES ($1,'adjustment',$2,$3)`,
+          [user, delta, adjustment],
+        );
+      }
+    });
+    count++;
+  }
+  if (linked.length)
+    process.stdout.write(
+      `Linked ${Math.min(linked.length, NAMES.length)} rider(s) to the Google subjects supplied.\n`,
+    );
+  return count;
 }
 
 try {
