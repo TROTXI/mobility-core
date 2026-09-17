@@ -57,7 +57,8 @@ export interface RuntimeConfig {
   };
   mapTiles: MapTiles;
   support: SupportContacts;
-  docsUrl: string;
+  /** Absent means the service's own /docs, which is what it serves. */
+  docsUrl?: string;
   floors: {
     ops: number;
     driver: { ios: number; android: number };
@@ -318,7 +319,12 @@ export function readConfiguration(env: Env = process.env): RuntimeConfig {
       email: optional(env, 'REPLACEMENT_OPERATIONS_EMAIL'),
       hours: optional(env, 'REPLACEMENT_OPERATIONS_HOURS'),
     },
-    docsUrl: urlOr(env, 'REPLACEMENT_DOCS_URL', 'https://docs.trotxi.com'),
+    // No default. The service describes itself at /docs, which is what the
+    // config service falls back to. The previous default named a domain
+    // nobody owns, so every client was told where the documentation was and
+    // sent somewhere that does not resolve. Set this only when the docs move
+    // to a real host, and it still has to be an absolute https URL.
+    docsUrl: optional(env, 'REPLACEMENT_DOCS_URL') ? url(env, 'REPLACEMENT_DOCS_URL') : undefined,
     floors: {
       ops: integerOr(env, 'REPLACEMENT_MINIMUM_BUILD_OPS', 1, 1, 1_000_000),
       driver: {
