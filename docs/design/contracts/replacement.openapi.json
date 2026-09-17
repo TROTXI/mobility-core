@@ -628,6 +628,100 @@
         "x-implementation-status": "design_only"
       }
     },
+    "/v1/driver/me": {
+      "get": {
+        "operationId": "getDriverSelf",
+        "summary": "get Driver Self",
+        "tags": ["driver_own"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-Trotxi-Client",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": ["commuter", "driver", "ops", "worker"]
+            },
+            "description": "Compatibility metadata only, never grants a role."
+          },
+          {
+            "name": "X-Trotxi-Build",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable."
+          },
+          {
+            "name": "X-Trotxi-Platform",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": ["ios", "android"]
+            },
+            "description": "Required for commuter/driver, absent for ops/worker."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DriverSelfResponse"
+                }
+              }
+            },
+            "headers": {
+              "ETag": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "Opaque resource version; required on protected edits."
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "426": {
+            "$ref": "#/components/responses/Error426"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error429"
+          },
+          "500": {
+            "$ref": "#/components/responses/Error500"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error503"
+          }
+        },
+        "x-authorization": "driver_own",
+        "x-retry": "safe_read",
+        "x-sensitive": false,
+        "x-implementation-status": "design_only",
+        "x-requirement": "A driver session outlives the sign-in response that carries the driver record",
+        "x-existing-endpoint-assessment": "No predecessor. DriverTokens.driver is returned once at sign-in and nothing re-reads it, so an app signed in for weeks cannot show a licence or a suspended credential without signing out."
+      }
+    },
     "/v1/auth/driver/pin": {
       "post": {
         "operationId": "changeDriverPin",
@@ -15149,6 +15243,71 @@
         "properties": {
           "data": {
             "$ref": "#/components/schemas/Driver"
+          }
+        },
+        "required": ["data"],
+        "additionalProperties": false
+      },
+      "DriverSelf": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "phone": {
+            "nullable": true,
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 32
+          },
+          "licenseNumber": {
+            "nullable": true,
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 64
+          },
+          "credential": {
+            "nullable": true,
+            "type": "object",
+            "properties": {
+              "driverCode": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 32
+              },
+              "status": {
+                "type": "string",
+                "enum": ["active", "suspended", "revoked"]
+              },
+              "mustChangePin": {
+                "type": "boolean"
+              },
+              "lockedUntil": {
+                "nullable": true,
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+              }
+            },
+            "required": ["driverCode", "status", "mustChangePin", "lockedUntil"],
+            "additionalProperties": false
+          }
+        },
+        "required": ["id", "name", "phone", "licenseNumber", "credential"],
+        "additionalProperties": false
+      },
+      "DriverSelfResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/DriverSelf"
           }
         },
         "required": ["data"],

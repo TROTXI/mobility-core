@@ -881,3 +881,64 @@ test('DRV-15: event attribution FK is deferred and rejects another actor; lists 
     0,
   );
 });
+
+test('DRV-20: a driver can re-read their own record long after the sign-in response is gone', async (t) => {
+  const f = await fixture(t),
+    driver = await f.create(),
+    secret = data(await f.issue(driver.id), 201),
+    session = await f.login(secret);
+
+  const me = async (token?: string) =>
+    f.request('GET', '/v1/driver/me', undefined, token, { 'x-trotxi-client': 'driver' });
+
+  const mine = data(await me(session.accessToken));
+  assert.equal(mine.id, driver.id);
+  assert.equal(mine.name, driver.name);
+  // The point of the endpoint: sign-in carried {id, name} and nothing else,
+  // and a session outlives that response by weeks.
+  assert.equal(mine.licenseNumber, driver.licenseNumber ?? null);
+  assert.equal(mine.credential.driverCode, secret.code);
+  assert.equal(mine.credential.status, 'active');
+  assert.equal(mine.credential.mustChangePin, true);
+  assert.equal(mine.credential.lockedUntil, null);
+  // The moderation state ops keeps about a driver is not the driver's to read.
+  assert.equal(mine.failedAttempts, undefined);
+  assert.equal(mine.userId, undefined);
+  assert.equal(mine.archivedAt, undefined);
+
+  // An admin is not a driver, and neither is an anonymous caller.
+  const asOps = await f.request('GET', '/v1/driver/me', undefined, f.ops.accessToken, {
+    'x-trotxi-client': 'driver',
+  });
+  assert.equal(asOps.statusCode, 403, asOps.body);
+  assert.equal((await me()).statusCode, 401);
+});
+
+test('DRV-21: a suspended driver is refused this read too, not told why', async (t) => {
+  const f = await fixture(t),
+    driver = await f.create(),
+    secret = data(await f.issue(driver.id), 201),
+    session = await f.login(secret);
+  assert.equal(
+    data(
+      await f.request('GET', '/v1/driver/me', undefined, session.accessToken, {
+        'x-trotxi-client': 'driver',
+      }),
+    ).credential.status,
+    'active',
+  );
+
+  await f.action(driver.id, 'suspend');
+
+  // Session authorization refuses any credential that is not active, before a
+  // handler runs, so this endpoint cannot be the one that explains a
+  // suspension: the driver is already locked out of every authenticated call.
+  // Recorded rather than worked around. Telling a suspended driver why would
+  // mean an unauthenticated or specially exempted read, which is a decision
+  // about what a revoked credential may still see, not a missing handler.
+  const refused = await f.request('GET', '/v1/driver/me', undefined, session.accessToken, {
+    'x-trotxi-client': 'driver',
+  });
+  assert.equal(refused.statusCode, 401, refused.body);
+  assert.equal(refused.json().error.code, 'unauthenticated');
+});
