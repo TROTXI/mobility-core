@@ -211,6 +211,15 @@ export const operationScope = [
     'GPS-09: enforce 30-day receipt-time expiry',
     'No existing bounded maintenance operation enforces raw-trace retention.',
   ],
+  // Not a cutover of anything: the old API had no aggregate endpoint, which is
+  // why the console was blocked on it. Labelling it 'cutover' would claim it
+  // was part of the reviewed replacement surface, and it was not.
+  [
+    'getOpsOverview',
+    'post-cutover',
+    'ops-console.md 4.1: the live board must be one request',
+    'No predecessor. Assembling the tiles client-side needs one list plus a fan-out per trip, gets slower with every bus, and lets the tiles disagree with the table beneath them.',
+  ],
 ].map(([operationId, delivery, requirement, existingEndpointAssessment]) => ({
   operationId,
   delivery,

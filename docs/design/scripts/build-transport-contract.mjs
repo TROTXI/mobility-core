@@ -124,6 +124,7 @@ const selected = new Set([
   'listMinimumVersions',
   'setMinimumVersion',
   'changeRole',
+  'getOpsOverview',
 ]);
 const count = selected.size;
 const paths = {};

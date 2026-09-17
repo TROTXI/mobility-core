@@ -152,6 +152,19 @@ for (const o of operations) {
         'Page size. No silent truncation.',
       ),
     );
+  // The board's morning/evening toggle. Required, not defaulted: the schema is
+  // explicit that the service window is stated and never inferred from a
+  // timestamp, and a server guessing it from the clock is exactly that
+  // inference wearing a convenience argument.
+  if (o.operationId === 'getOpsOverview')
+    parameters.push({
+      ...query(
+        'window',
+        { type: 'string', enum: ['morning', 'evening'] },
+        'Which service window the board shows. Stated by the caller, never inferred.',
+      ),
+      required: true,
+    });
   if (o.list && /trips|reservations|billing-periods|purchases|entries/.test(o.path))
     parameters.push(
       query(
