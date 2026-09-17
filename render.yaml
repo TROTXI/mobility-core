@@ -67,6 +67,15 @@ services:
       # to start if any two keys are equal. Generate each separately:
       #   openssl rand -base64 32
 
+      # The Google "Web" client id: the audience sign-in is verified against.
+      # PUBLIC, so it lives here rather than the dashboard, and it is here
+      # rather than defaulted in code because the iOS plist and the commuter
+      # app's Dart source must name the same one. A test cross-checks all
+      # three, and a default nobody can see would have made that agreement
+      # unverifiable.
+      - key: REPLACEMENT_GOOGLE_CLIENT_ID
+        value: 431341307838-pc4m046v2lj18ssfnfl1g52fl5g1cg4q.apps.googleusercontent.com
+
       # The NARROW runtime role, never the owner. The owner connection is used
       # once by the installer and is not given to the service.
       - key: REPLACEMENT_RUNTIME_DATABASE_URL
