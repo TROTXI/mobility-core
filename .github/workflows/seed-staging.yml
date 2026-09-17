@@ -63,6 +63,11 @@ jobs:
           ')
           echo "::add-mask::$pin"
           echo "REPLACEMENT_PIN_SECRET=$pin" >> "$GITHUB_ENV"
+          # reset-pins needs the raw value so it can try the derivations the
+          # service might be using and let the service pick.
+          echo "SEED_JWT_SECRET<<TROTXI_EOF" >> "$GITHUB_ENV"
+          echo "$jwt" >> "$GITHUB_ENV"
+          echo "TROTXI_EOF" >> "$GITHUB_ENV"
 
       - name: Run
         working-directory: services/api-next

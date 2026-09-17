@@ -21,6 +21,7 @@
  */
 import pg from 'pg';
 import { randomUUID } from 'node:crypto';
+import { hkdfSync } from 'node:crypto';
 import { generateDriverCode, generatePin, hashDriverPin } from '../src/auth/driver-pin.js';
 
 const url = process.env.REPLACEMENT_DATABASE_URL;
@@ -145,6 +146,40 @@ async function link(subjects: string[]): Promise<void> {
  * service to accept one of the credentials it just wrote, and says plainly
  * whether it did.
  */
+function pinSecretsFrom(jwt: string): { label: string; secret: string }[] {
+  // The service derives its PIN secret from JWT_SECRET. Reading that value back
+  // out of an API is lossy in ways that do not show up until a hash disagrees:
+  // a trailing newline survives in one place and is stripped in another. Rather
+  // than assert which happened, try each and let the service say.
+  const derive = (ikm: string) =>
+    Buffer.from(
+      hkdfSync('sha256', ikm, 'trotxi:replacement:staging:v1', 'PIN_SECRET', 32),
+    ).toString('base64');
+  const seen = new Set<string>();
+  return [
+    { label: 'as read', value: jwt },
+    { label: 'trimmed', value: jwt.trim() },
+    { label: 'with a trailing newline', value: `${jwt}\n` },
+    { label: 'trimmed, trailing newline', value: `${jwt.trim()}\n` },
+  ]
+    .filter((c) => !seen.has(c.value) && seen.add(c.value))
+    .map((c) => ({ label: c.label, secret: derive(c.value) }));
+}
+
+async function signsIn(baseUrl: string, code: string, pin: string): Promise<boolean> {
+  const response = await fetch(`${baseUrl}/v1/auth/driver`, {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+      'x-trotxi-client': 'driver',
+      'x-trotxi-build': '1',
+      'x-trotxi-platform': 'android',
+    },
+    body: JSON.stringify({ code, pin, ownDevice: false }),
+  });
+  return response.ok;
+}
+
 async function resetPins(baseUrl: string): Promise<void> {
   const rows = await q<{ driver_id: string; name: string; driver_code: string }>(
     `SELECT c.driver_id, d.name, c.driver_code
@@ -152,6 +187,32 @@ async function resetPins(baseUrl: string): Promise<void> {
      WHERE d.archived_at IS NULL ORDER BY d.name`,
   );
   if (!rows.length) throw new Error('No driver credentials here. Run the seed first.');
+
+  // Find the derivation the service actually verifies with, using one driver as
+  // the probe, before rewriting the rest under a secret that might be wrong.
+  const jwt = process.env.SEED_JWT_SECRET;
+  const candidates = jwt ? pinSecretsFrom(jwt) : [{ label: 'supplied', secret: pinSecret! }];
+  const probe = rows[0]!;
+  let agreed: { label: string; secret: string } | null = null;
+  for (const candidate of candidates) {
+    const pin = generatePin();
+    await q('UPDATE app.driver_credentials SET pin_hash=$2 WHERE driver_id=$1', [
+      probe.driver_id,
+      hashDriverPin(pin, candidate.secret),
+    ]);
+    if (await signsIn(baseUrl, probe.driver_code, pin)) {
+      agreed = candidate;
+      process.stdout.write(`The service verifies with JWT_SECRET ${candidate.label}.\n`);
+      break;
+    }
+    process.stdout.write(`  not ${candidate.label}\n`);
+  }
+  if (!agreed)
+    throw new Error(
+      `None of the ${candidates.length} derivations were accepted. The service is starting ` +
+        `from a different JWT_SECRET than this workflow read, so read it from wherever the ` +
+        `service actually gets it (an env group is not returned by the service env-vars API).`,
+    );
 
   const issued: { name: string; code: string; pin: string }[] = [];
   for (const row of rows) {
@@ -161,7 +222,7 @@ async function resetPins(baseUrl: string): Promise<void> {
        SET pin_hash=$2, must_change_pin=false, failed_attempts=0, locked_until=NULL,
            pin_version=pin_version+1, pin_set_at=clock_timestamp(), updated_at=clock_timestamp()
        WHERE driver_id=$1`,
-      [row.driver_id, hashDriverPin(pin, pinSecret!)],
+      [row.driver_id, hashDriverPin(pin, agreed.secret)],
     );
     issued.push({ name: row.name, code: row.driver_code, pin });
   }
@@ -170,27 +231,11 @@ async function resetPins(baseUrl: string): Promise<void> {
   for (const one of issued)
     process.stdout.write(`  ${one.name.padEnd(16)} ${one.code}  ${one.pin}\n`);
 
-  const probe = issued[0]!;
-  const response = await fetch(`${baseUrl}/v1/auth/driver`, {
-    method: 'POST',
-    headers: {
-      'content-type': 'application/json',
-      'x-trotxi-client': 'driver',
-      'x-trotxi-build': '1',
-      'x-trotxi-platform': 'android',
-    },
-    body: JSON.stringify({ code: probe.code, pin: probe.pin, ownDevice: false }),
-  });
-  if (response.ok) {
-    process.stdout.write(`\nThe service accepted ${probe.code}. These PINs work.\n`);
-    return;
-  }
-  const body = await response.text();
-  throw new Error(
-    `The service refused ${probe.code} with HTTP ${response.status}. ` +
-      `The PIN secret this script derived is not the one the service verifies with, ` +
-      `so the JWT_SECRET they each start from differs. Body: ${body.slice(0, 200)}`,
-  );
+  // Prove the set that was actually handed over, not the probe.
+  const last = issued.at(-1)!;
+  if (!(await signsIn(baseUrl, last.code, last.pin)))
+    throw new Error(`The service refused ${last.code} after agreeing on the derivation.`);
+  process.stdout.write(`\nThe service accepted ${last.code}. These PINs work.\n`);
 }
 
 async function main() {
