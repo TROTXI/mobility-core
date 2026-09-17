@@ -23,6 +23,7 @@
  */
 import { spawnSync } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
+import { writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import pg from 'pg';
 
@@ -184,7 +185,10 @@ if (installed.status !== 0) {
     : null;
   if (internal) runtime.hostname = internal;
 
-  const keys = [
+  const generated: Record<string, string> = {
+    REPLACEMENT_RUNTIME_DATABASE_URL: runtime.href,
+  };
+  for (const k of [
     'ACCESS_SECRET',
     'CURSOR_SECRET',
     'PIN_SECRET',
@@ -193,17 +197,31 @@ if (installed.status !== 0) {
     'BOARDING_PROOF_KEY',
     'DEVICE_KEY',
     'PAYSTACK_EVIDENCE_KEY',
-  ];
-  process.stdout.write(
-    `\n${'-'.repeat(70)}\n` +
-      'Paste into Render > trotxi-api-staging > Environment > bulk edit:\n\n' +
-      `REPLACEMENT_RUNTIME_DATABASE_URL=${runtime.href}\n` +
-      keys.map((k) => `REPLACEMENT_${k}=${randomBytes(32).toString('base64')}`).join('\n') +
-      `\n\nThen add REPLACEMENT_PAYSTACK_SECRET_KEY (the sk_test one) and the four\n` +
-      'REPLACEMENT_R2_* values, and deploy. Nothing else is required.\n' +
-      (internal
-        ? ''
-        : 'NOTE: could not derive the internal host; this URL uses the public one.\n') +
-      `${'-'.repeat(70)}\n`,
-  );
+  ])
+    generated[`REPLACEMENT_${k}`] = randomBytes(32).toString('base64');
+
+  // Printing these is right at a terminal the operator is sitting at, and
+  // wrong in a CI log that is kept. When a destination is named, the values go
+  // there and only the names are printed.
+  const out = process.env.REPLACEMENT_CONFIG_OUT;
+  if (out) {
+    writeFileSync(out, JSON.stringify(generated, null, 2), { mode: 0o600 });
+    process.stdout.write(`\nWrote ${Object.keys(generated).length} values to ${out}:\n`);
+    for (const name of Object.keys(generated)) process.stdout.write(`  ${name}\n`);
+  } else {
+    process.stdout.write(
+      `\n${'-'.repeat(70)}\n` +
+        'Paste into Render > trotxi-api-staging > Environment > bulk edit:\n\n' +
+        Object.entries(generated)
+          .map(([k, v]) => `${k}=${v}`)
+          .join('\n') +
+        '\n\nThen add REPLACEMENT_PAYSTACK_SECRET_KEY (the sk_test one) and the four\n' +
+        'REPLACEMENT_R2_* values, and deploy. Nothing else is required.\n' +
+        `${'-'.repeat(70)}\n`,
+    );
+  }
+  if (!internal)
+    process.stdout.write(
+      'NOTE: could not derive the internal host; the URL uses the public one.\n',
+    );
 }
