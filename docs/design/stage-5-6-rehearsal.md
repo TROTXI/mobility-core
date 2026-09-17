@@ -250,6 +250,28 @@ existing purchase, reservation, trip identity or service date:
 These are Android/local replacement results. Automatic TEST webhook delivery,
 the remaining iOS journeys and the deployment/recovery gates below remain open.
 
+### Rehearsal file-reader hardening and iOS preparation
+
+The subsequent CodeQL gate reported a check/read race in both rehearsal CLIs:
+`lstat(path)` validated permissions before `readFile(path)` reopened the name.
+Both now use one shared reader which opens with `O_NOFOLLOW | O_NONBLOCK`,
+validates the opened descriptor's regular-file type, owner and private mode,
+and reads at most 1 MiB plus one overflow-detection byte from that descriptor.
+Path replacement cannot redirect the read; size/time changes during the read
+are refused. The file is closed in `finally`. No CodeQL suppression was added.
+
+All **38 backend unit tests** and typecheck pass after this change. The actual
+owner-only TEST export passes preflight without network or database activity.
+New tests cover symlink, directory, relative path, public permissions and
+oversize rejection. The CI rerun is separate evidence, not inferred from these
+local checks.
+
+Both current iOS debug builds compile and are installed on the previously
+working iOS 18.2 simulator with the existing local session realm. Installation
+is preparation, not completed native walkthrough evidence. The Paystack TEST
+webhook was read as the existing staging receiver; it has not been changed to
+the local replacement without approval of a temporary public receiver.
+
 All provider work used TEST Paystack and the isolated loopback database. The
 downloaded staging database connection was not used. No staging cutover, reset,
 paid plan change or production action occurred. The compiled Docker image above

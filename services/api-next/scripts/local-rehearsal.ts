@@ -1,14 +1,17 @@
 /** Real composed backend, unique local DB, real TEST providers; no fake sessions
  * or pricing adapters. Seed credentials stay in a private local artifact. */
 import { randomBytes, randomUUID } from 'node:crypto';
-import { lstat, readFile, mkdtemp, writeFile } from 'node:fs/promises';
-import { parseEnv } from 'node:util';
+import { mkdtemp, writeFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import pg from 'pg';
 import { readConfiguration } from '../src/runtime/config.js';
 import { composeBackend } from '../src/runtime/compose.js';
 import { migrate, grantRuntime, readMigrations, runtimeRoleIdentifier } from '../src/db/migrate.js';
-import { rehearsalEnvironment, localRehearsalAdmin } from '../src/runtime/rehearsal.js';
+import {
+  rehearsalEnvironment,
+  localRehearsalAdmin,
+  readPrivateEnvironment,
+} from '../src/runtime/rehearsal.js';
 
 const args = process.argv.slice(2);
 if (args.length !== 2 || args[0] !== '--env-file' || !args[1]?.startsWith('/'))
@@ -16,10 +19,7 @@ if (args.length !== 2 || args[0] !== '--env-file' || !args[1]?.startsWith('/'))
 const adminUrl = localRehearsalAdmin(process.env.HARNESS_ADMIN_DATABASE_URL);
 if (process.env.HARNESS_ALLOW_CREATE_DATABASES !== '1')
   throw new Error('Explicit permission to create disposable local databases is required');
-const info = await lstat(args[1]);
-if (!info.isFile() || info.mode & 0o077 || info.uid !== process.getuid?.() || info.size > 1048576)
-  throw new Error('An owner-only regular credential file is required');
-const source = parseEnv(await readFile(args[1], 'utf8'));
+const source = await readPrivateEnvironment(args[1]);
 const paystack = rehearsalEnvironment(source, 'paystack');
 const r2 = rehearsalEnvironment(source, 'r2');
 const run = randomBytes(6).toString('hex');

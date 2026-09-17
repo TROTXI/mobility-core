@@ -1,9 +1,7 @@
-import { lstat, readFile } from 'node:fs/promises';
 import { isAbsolute } from 'node:path';
-import { parseEnv } from 'node:util';
 import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
-import { rehearsalEnvironment } from '../src/runtime/rehearsal.js';
+import { rehearsalEnvironment, readPrivateEnvironment } from '../src/runtime/rehearsal.js';
 
 // An explicit exported file, never shell `source`, ambient credentials or a
 // database URL. Usage errors must not silently downgrade into another check.
@@ -21,17 +19,7 @@ if (
   process.exit(2);
 }
 try {
-  const info = await lstat(args[1]!);
-  if (!info.isFile() || (info.mode & 0o077) !== 0 || info.size > 1_048_576)
-    throw new Error('Use an ordinary private env file (chmod 600), at most 1 MiB');
-  if (process.getuid && info.uid !== process.getuid())
-    throw new Error('The env file must belong to the current user');
-  let source: Record<string, string>;
-  try {
-    source = parseEnv(await readFile(args[1]!, 'utf8'));
-  } catch {
-    throw new Error('Unable to parse the private env file');
-  }
+  const source = await readPrivateEnvironment(args[1]!);
   const check = args[3]!;
   if (check === 'preflight') {
     rehearsalEnvironment(source, 'paystack');

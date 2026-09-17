@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createHash, randomUUID } from 'node:crypto';
-import { mkdtemp, writeFile, chmod, rm } from 'node:fs/promises';
+import { mkdtemp, writeFile, chmod, rm, symlink } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -9,7 +9,11 @@ import { spawnSync } from 'node:child_process';
 import { readConfiguration, ConfigurationError } from '../src/runtime/config.js';
 import { R2ObjectStore } from '../src/runtime/avatars.js';
 import { jobFailed, jobLog } from '../src/runtime/job-outcome.js';
-import { rehearsalEnvironment, localRehearsalAdmin } from '../src/runtime/rehearsal.js';
+import {
+  rehearsalEnvironment,
+  localRehearsalAdmin,
+  readPrivateEnvironment,
+} from '../src/runtime/rehearsal.js';
 
 const key = (n: number) => Buffer.alloc(32, n).toString('base64');
 // Provider-shaped, but assembled at runtime so no credential-looking literal
@@ -18,6 +22,25 @@ const providerKey = (mode: 'test' | 'live') =>
   ['sk', mode, randomUUID().replaceAll('-', '').slice(0, 18)].join('_');
 const PEM = '-----BEGIN PRIVATE KEY-----\\nMHc=\\n-----END PRIVATE KEY-----';
 const maintenanceUser = randomUUID();
+test('private environment reads reject symlinks, public files, directories and oversized content', async () => {
+  const dir = await mkdtemp(join(tmpdir(), 'trotxi-env-descriptor-'));
+  const file = join(dir, 'private.env');
+  try {
+    await writeFile(file, 'VALUE=private-fixture\n', { mode: 0o600 });
+    assert.deepEqual(await readPrivateEnvironment(file), { VALUE: 'private-fixture' });
+    await symlink(file, join(dir, 'link.env'));
+    await assert.rejects(readPrivateEnvironment(join(dir, 'link.env')));
+    await assert.rejects(readPrivateEnvironment(dir), /ordinary private env/);
+    await assert.rejects(readPrivateEnvironment('relative.env'), /absolute/);
+    await chmod(file, 0o644);
+    await assert.rejects(readPrivateEnvironment(file), /chmod 600/);
+    await chmod(file, 0o600);
+    await writeFile(file, Buffer.alloc(1_048_577, 65));
+    await assert.rejects(readPrivateEnvironment(file), /at most 1 MiB/);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
 test('local rehearsal never accepts a staging database or an existing application database', () => {
   assert.equal(localRehearsalAdmin('postgres://test:pw@127.0.0.1:55432/postgres').port, '55432');
   for (const url of [
