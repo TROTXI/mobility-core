@@ -1,0 +1,82 @@
+# Puts a week of believable service into the staging database, or links real
+# Google accounts to what is already there. Manual only.
+#
+# Nothing has to be handed to anyone: the database comes from
+# STAGING_DATABASE_URL, and the PIN secret is derived from the service's own
+# JWT_SECRET, read through the Render API. Driver PINs print in the run log,
+# which is the only place they exist.
+name: Seed staging
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: 'check reads only. seed writes the catalogue. link attaches Google accounts.'
+        type: choice
+        options: [check, seed, link]
+        default: check
+      subjects:
+        description: 'Google subject ids, comma separated. First takes the operations account, the rest take riders.'
+        type: string
+        default: ''
+
+concurrency: seed-staging
+
+jobs:
+  seed:
+    name: ${{ inputs.mode }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+
+      # The PIN secret is not a repo secret. It is derived from the service's
+      # JWT_SECRET exactly the way the running service derives it, so a seeded
+      # PIN verifies against the same hash the sign-in path checks.
+      - name: Derive the service's PIN secret
+        env:
+          RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+          SERVICE_ID: ${{ vars.RENDER_STAGING_SERVICE_ID }}
+        run: |
+          if [ -z "$SERVICE_ID" ]; then
+            echo '::error::RENDER_STAGING_SERVICE_ID is not set.'; exit 1
+          fi
+          jwt=$(curl -fsS -H "Authorization: Bearer ${RENDER_API_KEY}" \
+            "https://api.render.com/v1/services/${SERVICE_ID}/env-vars?limit=100" \
+            | jq -r '.[] | select(.envVar.key == "JWT_SECRET") | .envVar.value')
+          if [ -z "$jwt" ] || [ "$jwt" = "null" ]; then
+            echo '::error::JWT_SECRET is not set on the service; the PIN secret cannot be derived.'
+            exit 1
+          fi
+          echo "::add-mask::$jwt"
+          pin=$(JWT="$jwt" node --input-type=module -e '
+            import { hkdfSync } from "node:crypto";
+            process.stdout.write(Buffer.from(
+              hkdfSync("sha256", process.env.JWT, "trotxi:replacement:staging:v1", "PIN_SECRET", 32),
+            ).toString("base64"));
+          ')
+          echo "::add-mask::$pin"
+          echo "REPLACEMENT_PIN_SECRET=$pin" >> "$GITHUB_ENV"
+
+      - name: Run
+        working-directory: services/api-next
+        env:
+          REPLACEMENT_DATABASE_URL: ${{ secrets.STAGING_DATABASE_URL }}
+          SEED_LINK_SUBJECTS: ${{ inputs.subjects }}
+          SEED_STAGING: ${{ inputs.mode == 'seed' && 'yes' || '' }}
+          SEED_LINK_ONLY: ${{ inputs.mode == 'link' && 'yes' || '' }}
+        run: node --import tsx scripts/seed-staging.ts
+
+      - name: What the driver app needs
+        if: inputs.mode == 'seed'
+        run: |
+          echo 'The driver codes and PINs above are the only copy: the table'
+          echo 'stores a keyed hash and nothing else. Save them now.'
+          echo 'To make an account reachable from an app later, re-run this'
+          echo 'workflow in link mode with real Google subject ids.'

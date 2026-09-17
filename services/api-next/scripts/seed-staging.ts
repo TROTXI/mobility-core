@@ -87,7 +87,54 @@ async function tx<T>(
 }
 const day = (offset: number) => new Date(Date.now() + offset * 86400000).toISOString().slice(0, 10);
 
+/**
+ * Attach real Google subjects to accounts that are already seeded.
+ *
+ * Separated from the seed so choosing not to supply subjects on the day does
+ * not cost a wipe later: sign-in resolves a user by (provider, subject), so
+ * swapping a synthetic subject for a real one is all it takes to make that
+ * account reachable. The first subject takes the operations account, which is
+ * the ops console login; the rest take riders in the order they were created.
+ */
+async function link(subjects: string[]): Promise<void> {
+  const targets = await q<{ id: string; role: string; display_name: string }>(
+    `SELECT id, role, display_name FROM app.users
+     WHERE role IN ('admin','commuter') AND deleted_at IS NULL
+     ORDER BY role, created_at`,
+  );
+  if (!targets.length) throw new Error('Nothing seeded here yet. Run the seed first.');
+  if (subjects.length > targets.length)
+    throw new Error(`${subjects.length} subjects for ${targets.length} accounts`);
+  for (const [index, subject] of subjects.entries()) {
+    const target = targets[index]!;
+    // A subject already used by another account would collide on the unique
+    // index, so say which rather than let Postgres name a constraint.
+    const held = await q<{ id: string }>(
+      "SELECT user_id AS id FROM app.auth_identities WHERE provider='google' AND subject=$1",
+      [subject],
+    );
+    if (held.length && held[0]!.id !== target.id)
+      throw new Error(`That subject already belongs to another account: ${subject.slice(0, 8)}...`);
+    await q("UPDATE app.auth_identities SET subject=$2 WHERE user_id=$1 AND provider='google'", [
+      target.id,
+      subject,
+    ]);
+    process.stdout.write(`  linked ${target.role.padEnd(9)} ${target.display_name}\n`);
+  }
+  process.stdout.write(`\n${subjects.length} account(s) can now sign in.\n`);
+}
+
 async function main() {
+  const only = (process.env.SEED_LINK_SUBJECTS ?? '')
+    .split(',')
+    .map((value) => value.trim())
+    .filter(Boolean);
+  if (process.env.SEED_LINK_ONLY === 'yes') {
+    if (!only.length) throw new Error('SEED_LINK_SUBJECTS is required to link');
+    process.stdout.write(`Linking ${only.length} Google subject(s) to seeded accounts:\n`);
+    await link(only);
+    return;
+  }
   if (!(await q("SELECT to_regnamespace('app') AS s"))[0]!.s)
     throw new Error('No app schema here. Install the replacement first.');
   const existing = (await q<{ n: number }>('SELECT count(*)::int AS n FROM app.routes'))[0]!.n;
