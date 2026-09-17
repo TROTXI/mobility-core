@@ -48,13 +48,25 @@ services:
     repo: https://github.com/TROTXI/mobility-core
     branch: main
     # Build from the repo root: the pnpm workspace lockfile lives there.
-    dockerfilePath: services/api/Dockerfile
+    dockerfilePath: services/api-next/Dockerfile
     dockerContext: .
     plan: free
     region: frankfurt
     healthCheckPath: /healthz
     autoDeploy: false # GitHub Actions triggers deploys after CI passes
     envVars:
+      # Replacement cutover reuses this FREE service and the existing PAID DB
+      # instance. The fresh logical database is trotxi_replacement; do not create
+      # the separately named example service at the bottom of this file.
+      # Import the private REPLACEMENT_* configuration before deploying. It
+      # includes the narrow runtime URL and eight independently generated keys.
+      # The legacy variables below are ignored by api-next, not fallbacks.
+      - key: REPLACEMENT_DEPLOYMENT_ENVIRONMENT
+        value: staging
+      - key: REPLACEMENT_RUNTIME_DATABASE_URL
+        sync: false
+      - key: REPLACEMENT_AUTH_PROVIDERS
+        value: google
       - key: NODE_ENV
         value: production
       - key: DATABASE_URL
@@ -349,7 +361,9 @@ services:
   #   envVars:
   #     - fromGroup: trotxi-cron-staging
   #
-  # ---- Replacement backend (api-next) — PREPARED, NOT APPLIED ----
+  # ---- Historical replacement configuration reference — DO NOT APPLY ----
+  # The active service above now selects api-next in place. This old example
+  # is retained only as a variable inventory, not authorization for new billing.
   #
   # The clean replacement service. It is deliberately commented out: applying
   # it would create a second web service and a second database, and the cutover

@@ -297,6 +297,16 @@ test('ASM-01 a deployment missing any capability names it and does not start', (
   assert.ok(checked > 40, `only ${checked} required variables were checked`);
 });
 
+test('Render reports the deployed revision rather than a stale environment value', () => {
+  const env = environment();
+  env.RENDER_GIT_COMMIT = 'a'.repeat(40);
+  assert.equal(readConfiguration(env).build.commit, env.RENDER_GIT_COMMIT);
+  delete env.REPLACEMENT_GIT_COMMIT;
+  assert.equal(readConfiguration(env).build.commit, env.RENDER_GIT_COMMIT);
+  delete env.RENDER_GIT_COMMIT;
+  refuses(env, 'REPLACEMENT_GIT_COMMIT');
+});
+
 test('ASM-02 no two purposes may share one key', () => {
   for (const [a, b] of [
     ['REPLACEMENT_ACCESS_SECRET', 'REPLACEMENT_DEVICE_KEY'],

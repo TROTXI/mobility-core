@@ -1,6 +1,5 @@
 # Built from the repo ROOT context (the pnpm workspace lockfile lives there).
-# This image is for the replacement backend and is not the deployed service:
-# nothing applies it until the blueprint entries in render.yaml are uncommented.
+# The staging blueprint selects this image. Schema installation is separate.
 FROM node:24-alpine AS build
 RUN corepack enable
 WORKDIR /repo

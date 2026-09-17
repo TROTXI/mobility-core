@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Isolated clean replacement; not connected to staging or the deployed API.",
+  "description": "Replacement backend for the staging API.",
   "engines": {
     "node": ">=24"
   },

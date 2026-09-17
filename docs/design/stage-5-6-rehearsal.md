@@ -4,6 +4,33 @@ Owner: Codex only. Starting integration commit: `67c8147` (merged #323).
 This is an execution record and release checklist, **not a completed cutover**.
 New frontend features excluded in `stage-4-completion.md` stay out of scope.
 
+## Staging-only scope and main merge, 2026-09-17
+
+The owner reconfirmed zero real users, disposable staging and TEST payments,
+and approved proceeding without more simulator purchases, native update-gate
+rehearsals or a production recovery exercise. Unrun checks are deferred, not
+reported as passes. Production capacity and release readiness are not staging
+cutover gates.
+
+- #324 merged into `codex/backend-replacement` at `95855d3`; this was not main.
+- Final iOS trip state was checked: the return run completed at its final stop,
+  four fixes were recorded, and the original purchase has one 44-ride allocation
+  and two boarding debits for distinct trips (42 rides remaining).
+- The built `7d48f0f` application image started read-only as the Node user with
+  a narrow runtime role: health/readiness returned 200 and `/version` matched.
+  Image digest: `sha256:d1b7b5d0fc88118763c8e87db41b703c50383b86182be3ada1c18c9c931e4f82`.
+- On the existing paid staging instance, verified TLS and owner capabilities
+  allowed a fresh logical database `trotxi_replacement`. All 21 reviewed
+  migrations installed; `trotxi_runtime_v1` received narrow runtime grants;
+  a dedicated maintenance principal was created. No old database was deleted.
+- Independent purpose keys and TEST-only runtime configuration are in private
+  local artifacts, not Git. They have not yet been applied to Render.
+- Automatic deploy is paused with `DEPLOY_ENABLED=false` while the replacement
+  is merged to main and the existing service's settings are switched.
+
+The evidence below preserves the earlier sequence. Pending items in its original
+gate table do not override the owner's narrower staging-only scope above.
+
 ## Observed deployment, 2026-09-16
 
 - Existing API: `trotxi-api-staging`, `srv-d8suhkn7f7vs73bigd40`, Frankfurt,

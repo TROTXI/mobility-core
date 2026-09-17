@@ -219,7 +219,9 @@ export function readConfiguration(env: Env = process.env): RuntimeConfig {
     build: {
       service: required(env, 'REPLACEMENT_SERVICE_NAME'),
       version: required(env, 'REPLACEMENT_SERVICE_VERSION'),
-      commit: required(env, 'REPLACEMENT_GIT_COMMIT'),
+      // Render supplies the exact deployed revision. Prefer it over a stale
+      // manually configured value; non-Render runtimes must identify themselves.
+      commit: optional(env, 'RENDER_GIT_COMMIT') ?? required(env, 'REPLACEMENT_GIT_COMMIT'),
     },
     access: {
       issuer: required(env, 'REPLACEMENT_ACCESS_ISSUER'),
