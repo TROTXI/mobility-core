@@ -188,6 +188,21 @@ async function resetPins(baseUrl: string): Promise<void> {
   );
   if (!rows.length) throw new Error('No driver credentials here. Run the seed first.');
 
+  // Drivers seeded before this was understood have no linked user, and sign-in
+  // refuses those before it looks at the PIN. Backfill rather than require a
+  // wipe: the account carries the driver role the sign-in path checks for.
+  const orphans = await q<{ id: string; name: string }>(
+    'SELECT id, name FROM app.drivers WHERE user_id IS NULL AND archived_at IS NULL',
+  );
+  for (const orphan of orphans) {
+    const account = await one("INSERT INTO app.users(role,display_name) VALUES ('driver',$1)", [
+      orphan.name,
+    ]);
+    await q('UPDATE app.drivers SET user_id=$2 WHERE id=$1', [orphan.id, account]);
+  }
+  if (orphans.length)
+    process.stdout.write(`Linked ${orphans.length} driver(s) that had no account.\n`);
+
   // The service inherits JWT_SECRET from an env group, and the service env-vars
   // endpoint returns only what is set directly on the service. So every value
   // found across both is offered here, and one driver is the probe: find the
@@ -297,11 +312,22 @@ async function main() {
   const credentials: { name: string; code: string; pin: string }[] = [];
   const drivers: string[] = [];
   for (const name of DRIVERS) {
-    const id = await one('INSERT INTO app.drivers(name,phone,license_number) VALUES ($1,$2,$3)', [
+    // Sign-in refuses a driver with no linked user before it ever checks the
+    // PIN (auth/service.ts: `if (!match?.user_id)`), which is what the app
+    // means by 'ask your operator to link your driver account'. So the account
+    // is created here, carrying the driver role that path also requires.
+    const account = await one("INSERT INTO app.users(role,display_name) VALUES ('driver',$1)", [
       name,
-      `+2332${Math.floor(10000000 + Math.random() * 89999999)}`,
-      `GHA-${randomUUID().slice(0, 8).toUpperCase()}`,
     ]);
+    const id = await one(
+      'INSERT INTO app.drivers(user_id,name,phone,license_number) VALUES ($1,$2,$3,$4)',
+      [
+        account,
+        name,
+        `+2332${Math.floor(10000000 + Math.random() * 89999999)}`,
+        `GHA-${randomUUID().slice(0, 8).toUpperCase()}`,
+      ],
+    );
     drivers.push(id);
     // A fresh code and PIN, hashed the way the service hashes them, so these
     // sign in for real rather than only looking right in the table.
