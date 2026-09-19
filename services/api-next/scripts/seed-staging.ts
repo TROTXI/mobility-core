@@ -262,7 +262,35 @@ async function resetPins(baseUrl: string): Promise<void> {
   process.stdout.write(`\nThe service accepted ${last.code}. These PINs work.\n`);
 }
 
+/**
+ * Give every signed-in commuter who has no membership the same history a
+ * seeded rider has, so a real Google account can walk the whole journey.
+ */
+async function enroll(): Promise<void> {
+  const waiting = await q<{ id: string; name: string }>(
+    `SELECT u.id, COALESCE(u.display_name, 'Rider') AS name
+     FROM app.users u
+     LEFT JOIN app.memberships m ON m.user_id = u.id
+     WHERE u.role = 'commuter' AND u.deleted_at IS NULL AND m.id IS NULL
+     ORDER BY u.created_at`,
+  );
+  if (!waiting.length) {
+    process.stdout.write(
+      'Every commuter already has a membership. Sign in with Google first, then run this.\n',
+    );
+    return;
+  }
+  process.stdout.write(`Enrolling ${waiting.length} account(s):\n`);
+  for (const one of waiting) process.stdout.write(`  ${one.name}\n`);
+  await riders(waiting);
+  process.stdout.write('\nThey now have a membership, a commute and reservations to confirm.\n');
+}
+
 async function main() {
+  if (process.env.SEED_ENROLL === 'yes') {
+    await enroll();
+    return;
+  }
   if (process.env.SEED_RESET_PINS === 'yes') {
     const base = process.env.SEED_STAGING_URL;
     if (!base) throw new Error('SEED_STAGING_URL is required so the result can be proved');
@@ -475,7 +503,16 @@ async function main() {
  * (provider, subject), so a real subject on a seeded row signs that person in
  * as that rider, history and all.
  */
-async function riders(): Promise<number> {
+/**
+ * Enrol riders: create them, or give existing accounts the same history.
+ *
+ * Passing `existing` is how a real person joins. They sign in with Google
+ * first, which leaves a commuter with an identity and nothing else, and this
+ * then hangs the whole chain off that account. The other direction, linking a
+ * seeded rider to a real subject, only works before they ever sign in, because
+ * afterwards the subject already belongs to the account they just made.
+ */
+async function riders(existing?: { id: string; name: string }[]): Promise<number> {
   const NAMES = [
     'Abena Osei',
     'Kojo Antwi',
@@ -506,17 +543,27 @@ async function riders(): Promise<number> {
   // Somebody has to be the actor behind an ops action, and the ops console
   // needs an account to sign into. The first subject supplied links this one,
   // so the console is reachable; riders take the rest.
-  const admin = await tx(async (cq, cone) => {
-    const id = await cone("INSERT INTO app.users(role,display_name) VALUES ('admin',$1)", [
-      'Trotxi Operations',
-    ]);
-    await cq('INSERT INTO app.auth_identities(user_id,provider,subject) VALUES ($1,$2,$3)', [
-      id,
-      'google',
-      linked[0] ?? `seed-ops-${randomUUID()}`,
-    ]);
-    return id;
-  });
+  // Reused when enrolling, never duplicated: enroll runs this same function
+  // against accounts that already exist, and a second operations account would
+  // quietly take the next linked subject.
+  const existingAdmin = (
+    await q<{ id: string }>(
+      "SELECT id FROM app.users WHERE role='admin' ORDER BY created_at LIMIT 1",
+    )
+  )[0];
+  const admin =
+    existingAdmin?.id ??
+    (await tx(async (cq, cone) => {
+      const id = await cone("INSERT INTO app.users(role,display_name) VALUES ('admin',$1)", [
+        'Trotxi Operations',
+      ]);
+      await cq('INSERT INTO app.auth_identities(user_id,provider,subject) VALUES ($1,$2,$3)', [
+        id,
+        'google',
+        linked[0] ?? `seed-ops-${randomUUID()}`,
+      ]);
+      return id;
+    }));
 
   const routes = await q<{ id: string; name: string }>(
     'SELECT id,name FROM app.routes ORDER BY name',
@@ -577,23 +624,29 @@ async function riders(): Promise<number> {
   const periodStart = day(-20);
   const periodEnd = day(10);
   let count = 0;
-  for (const [index, name] of NAMES.entries()) {
+  const targets = existing
+    ? existing.map((e, index) => ({ index, name: e.name, id: e.id as string | null }))
+    : NAMES.map((name, index) => ({ index, name, id: null as string | null }));
+  for (const { index, name, id: joining } of targets) {
     const route = routes[index % routes.length]!;
     const selection = selections[index % selections.length]!;
     const plan = index % 5 === 0 ? 'annual' : 'monthly';
     // Two in twenty have lapsed, which is what makes "lapsed" mean anything on
-    // the ops riders screen.
-    const lapsed = index === 7 || index === 15;
+    // the ops riders screen. A real person joining is never one of them.
+    const lapsed = !joining && (index === 7 || index === 15);
 
     await tx(async (q, one) => {
-      const user = await one("INSERT INTO app.users(role,display_name) VALUES ('commuter',$1)", [
-        name,
-      ]);
-      await q('INSERT INTO app.auth_identities(user_id,provider,subject) VALUES ($1,$2,$3)', [
-        user,
-        'google',
-        linked[index + 1] ?? `seed-${randomUUID()}`,
-      ]);
+      // An account that already signed in keeps its own identity; a seeded one
+      // gets a synthetic subject nobody can sign in with.
+      const user =
+        joining ??
+        (await one("INSERT INTO app.users(role,display_name) VALUES ('commuter',$1)", [name]));
+      if (!joining)
+        await q('INSERT INTO app.auth_identities(user_id,provider,subject) VALUES ($1,$2,$3)', [
+          user,
+          'google',
+          linked[index + 1] ?? `seed-${randomUUID()}`,
+        ]);
       const membership = await one('INSERT INTO app.memberships(user_id) VALUES ($1)', [user]);
       const rides = plan === 'annual' ? 480 : 40;
       // The schema derives the price and refuses any other number:
