@@ -13,6 +13,22 @@ export function fail(status: number, code: string, message: string): never {
 export function mapDatabaseError(error: unknown): TransportError {
   if (error instanceof TransportError) return error;
   const e = error as { code?: string; constraint?: string; message?: string };
+  if (
+    e.code === '23514' &&
+    [
+      'personal_pause_not_allowed',
+      'personal_resume_not_allowed',
+      'personal_pause_service_started',
+      'personal_pause_active',
+      'personal_pause_pending',
+      'personal_pause_unsettled',
+    ].includes(e.message ?? '')
+  )
+    return new TransportError(
+      409,
+      e.message!,
+      'This pause or service change is not currently allowed.',
+    );
   if (e.code === '23505')
     return new TransportError(
       409,

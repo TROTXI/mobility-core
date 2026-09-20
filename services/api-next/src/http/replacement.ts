@@ -10,7 +10,10 @@ import type { BoardingOptions } from '../boarding/service.js';
 // shortcut. Still refuses startup without the real reservation coordinator.
 // This is a factory, not deployment wiring or permission to start a listener.
 export type ComposedServices = Partial<
-  Pick<AppOptions, 'payments' | 'membership' | 'pricing' | 'purchases' | 'account' | 'config'>
+  Pick<
+    AppOptions,
+    'payments' | 'membership' | 'pricing' | 'purchases' | 'account' | 'config' | 'refunds'
+  >
 >;
 export function createReplacementApp(
   options: Omit<

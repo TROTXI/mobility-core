@@ -485,6 +485,125 @@ export class TransportService {
       headers: { location: `/v1/ops/service-schedules/${row.id}` },
     };
   }
+  /** Generate unassigned runs; existing/cancelled/rescheduled identities stay untouched. */
+  async generateTrips(
+    actor: Actor,
+    input: { serviceDate: string; routeId?: string; limit?: number },
+  ): Promise<Outcome> {
+    const day = input.serviceDate,
+      limit = input.limit ?? 100;
+    if (
+      !/^(?!0000)\d{4}-\d\d-\d\d$/.test(day) ||
+      !Number.isFinite(Date.parse(day)) ||
+      new Date(day).toISOString().slice(0, 10) !== day ||
+      !Number.isInteger(limit) ||
+      limit < 1 ||
+      limit > 100
+    )
+      fail(400, 'invalid_request', 'Supply a valid service date and bounded batch.');
+    const route = input.routeId === undefined ? null : resourceId(input.routeId);
+    const eligible = `SELECT s.id,s.departure_id,s.pattern_version_id,
+      (($1::date+s.local_departure) AT TIME ZONE s.time_zone) AS scheduled_at
+      FROM app.service_schedules s JOIN app.route_pattern_versions v ON v.id=s.pattern_version_id
+      JOIN app.route_patterns p ON p.id=v.pattern_id JOIN app.routes r ON r.id=p.route_id
+      WHERE r.archived_at IS NULL AND v.state IN ('published','retired')
+        AND ($2::uuid IS NULL OR r.id=$2) AND s.effective_from<=$1::date
+        AND (s.effective_to IS NULL OR s.effective_to>=$1::date)
+        AND extract(isodow FROM $1::date)::smallint=ANY(s.weekdays)
+        AND v.effective_from<=(($1::date+s.local_departure) AT TIME ZONE s.time_zone)
+        AND (v.effective_to IS NULL OR v.effective_to>(($1::date+s.local_departure) AT TIME ZONE s.time_zone))`;
+    const candidates = await this.transaction(async (c) => {
+      await this.authorize(c, actor, 'createTrip');
+      const now = (await c.query('SELECT clock_timestamp() now')).rows[0].now as Date;
+      const today = now.toISOString().slice(0, 10);
+      if (day < today || Date.parse(day) > Date.parse(today) + 31 * 86400000)
+        fail(400, 'invalid_request', 'Generate today through the next 31 days only.');
+      return (
+        await c.query(
+          `WITH eligible AS (${eligible}) SELECT DISTINCT e.departure_id
+        FROM eligible e WHERE e.scheduled_at>clock_timestamp() AND NOT EXISTS(
+          SELECT 1 FROM app.trips t WHERE t.departure_id=e.departure_id AND t.service_date=$1 AND t.run_number=1)
+        ORDER BY e.departure_id LIMIT $3`,
+          [day, route, limit],
+        )
+      ).rows;
+    });
+    const result = {
+      considered: candidates.length,
+      succeeded: 0,
+      blocked: 0,
+      failed: 0,
+      failures: [] as { resourceId: string; reason: string }[],
+    };
+    for (const candidate of candidates) {
+      try {
+        const created = await this.transaction(async (c) => {
+          await this.authorize(c, actor, 'createTrip');
+          await c.query('SELECT pg_advisory_xact_lock(hashtextextended($1,0))', [
+            `generate-trip:${candidate.departure_id}:${day}`,
+          ]);
+          if (
+            (
+              await c.query(
+                'SELECT 1 FROM app.trips WHERE departure_id=$1 AND service_date=$2 AND run_number=1',
+                [candidate.departure_id, day],
+              )
+            ).rowCount
+          )
+            return false;
+          const choices = (
+            await c.query(`SELECT e.* FROM (${eligible}) e WHERE e.departure_id=$3`, [
+              day,
+              route,
+              candidate.departure_id,
+            ])
+          ).rows;
+          if (!choices.length) return false;
+          if (choices.length !== 1)
+            fail(409, 'ambiguous_schedule', 'Resolve overlapping departure schedules.');
+          const chosen = choices[0];
+          if (chosen.scheduled_at <= (await c.query('SELECT clock_timestamp() now')).rows[0].now)
+            return false;
+          const commandId = randomUUID();
+          const body = {
+            scheduleId: chosen.id,
+            serviceDate: day,
+            scheduledAt: chosen.scheduled_at.toISOString(),
+            runNumber: 1,
+          };
+          const outcome = await this.createTrip(c, actor, body, commandId);
+          await c.query(
+            `INSERT INTO app.transport_commands
+            (id,actor_user_id,operation,target,key_hash,input_hash,response_status,response_body,response_headers,replay_expires_at)
+            VALUES ($1,$2,'createTrip','collection',$3,$4,$5,$6,$7,clock_timestamp()+interval '7 days')`,
+            [
+              commandId,
+              actor.userId,
+              digest(`generated:${candidate.departure_id}:${day}`),
+              digest(canonical(body)),
+              outcome.status,
+              outcome.body,
+              outcome.headers,
+            ],
+          );
+          return true;
+        });
+        if (created) result.succeeded++;
+        else result.blocked++;
+      } catch (error) {
+        result.failed++;
+        result.failures.push({
+          resourceId: candidate.departure_id,
+          reason:
+            error instanceof Error && 'code' in error && error.code === 'ambiguous_schedule'
+              ? 'ambiguous_schedule'
+              : 'generation_conflict',
+        });
+      }
+    }
+    return { status: 200, headers: {}, body: { data: result } };
+  }
+
   private async createTrip(
     client: PoolClient,
     actor: Actor,

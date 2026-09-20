@@ -3,6 +3,12 @@
 export type Plan = 'monthly' | 'annual';
 export const MIN_CHARGE_PESEWAS = 100;
 export const MAX_MONEY = 2147483647;
+/** Shared by preview and checkout: keep the provider's minimum cash charge. */
+export function appliedCredit(price: number, available: number, useCredit: boolean): number {
+  whole(price, MIN_CHARGE_PESEWAS);
+  if (!Number.isSafeInteger(available) || available < 0) throw new Error('invalid_credit_balance');
+  return useCredit ? Math.min(available, price - MIN_CHARGE_PESEWAS) : 0;
+}
 export interface Pricing {
   ridesGranted: number;
   farePesewas: number;

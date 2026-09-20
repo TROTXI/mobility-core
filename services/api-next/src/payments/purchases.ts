@@ -11,6 +11,8 @@ export const purchaseOperations = [
   'getPurchase',
   'listOpsPurchases',
   'getOpsPurchase',
+  'listRideEntries',
+  'listCreditEntries',
 ] as const;
 export type PurchaseOperation = (typeof purchaseOperations)[number];
 
@@ -150,6 +152,58 @@ export class Purchases {
     return this.tx(async (c) => {
       await this.authorize(c, actor, operation);
       const admin = ops(operation);
+      if (operation === 'listRideEntries' || operation === 'listCreditEntries') {
+        const limit = query.limit === undefined ? 50 : Number(query.limit);
+        if (
+          !Number.isInteger(limit) ||
+          limit < 1 ||
+          limit > 200 ||
+          (query.limit !== undefined && !/^[1-9]\d*$/.test(query.limit))
+        )
+          fail(400, 'invalid_query', 'Invalid page size.');
+        const context = canonical(['ledger', operation, actor.userId, 'created_at,id']);
+        const cursor = query.cursor ? this.cursors.decode(query.cursor, context, this.now()) : null;
+        const table = operation === 'listRideEntries' ? 'ride_entries' : 'credit_entries';
+        const rows = (
+          await c.query(
+            `SELECT *,to_char(created_at AT TIME ZONE 'UTC','YYYY-MM-DD"T"HH24:MI:SS.US"Z"') cursor_time
+          FROM app.${table} WHERE user_id=$1 AND ($2::timestamptz IS NULL OR (created_at,id)<($2::timestamptz,$3::uuid))
+          ORDER BY created_at DESC,id DESC LIMIT $4`,
+            [actor.userId, cursor?.time ?? null, cursor?.id ?? null, limit + 1],
+          )
+        ).rows;
+        const page = rows.slice(0, limit),
+          last = page.at(-1);
+        return {
+          status: 200,
+          headers: {},
+          body: {
+            data: page.map((r): Body =>
+              operation === 'listRideEntries'
+                ? {
+                    id: r.id,
+                    deltaRides: r.delta_rides,
+                    reason: r.reason,
+                    billingPeriodId: r.period_id,
+                    createdAt: iso(r.created_at),
+                  }
+                : {
+                    id: r.id,
+                    deltaMinor: r.delta_pesewas,
+                    currency: 'GHS',
+                    reason: r.reason,
+                    createdAt: iso(r.created_at),
+                  },
+            ),
+            page: {
+              nextCursor:
+                rows.length > limit && last
+                  ? this.cursors.encode(last.cursor_time, last.id, context, this.now())
+                  : null,
+            },
+          },
+        };
+      }
       if (operation === 'getPurchase' || operation === 'getOpsPurchase') {
         const row = (
           await c.query(

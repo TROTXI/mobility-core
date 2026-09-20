@@ -113,6 +113,9 @@ test('ACR-08 forward upgrade scrubs settled task identities and refuses to disca
     '020_account_recovery.sql',
     '021_receipt_payload_retention.sql',
     '022_transactional_email.sql',
+    '023_rider_delivery.sql',
+    '024_refund_initiation.sql',
+    '025_personal_pauses.sql',
   ]);
   assert.deepEqual(
     (

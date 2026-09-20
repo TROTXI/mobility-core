@@ -236,6 +236,49 @@ test('ACC-04 an unwired avatar store refuses rather than pretending', async (t) 
   assert.equal((await f.upload(PNG)).statusCode, 503);
   assert.equal((await f.call('GET', '/v1/me/avatar')).statusCode, 404);
 });
+test('ACC-DELETE: avatar removal queues physical erasure and replay cannot remove a replacement', async (t) => {
+  const f = await fixture(t);
+  expectStatus(await f.upload(PNG), 200);
+  const old = (
+    await f.owner.query('SELECT avatar_object_key FROM app.users WHERE id=$1', [f.actor.userId])
+  ).rows[0].avatar_object_key;
+  const key = randomUUID();
+  expectStatus(
+    await f.call('DELETE', '/v1/me/avatar', { headers: { 'idempotency-key': key } }),
+    204,
+  );
+  assert.equal((await f.call('GET', '/v1/me/avatar')).statusCode, 404);
+  assert.equal(
+    (
+      await f.owner.query(
+        "SELECT count(*)::int n FROM app.erasure_tasks WHERE kind='avatar_object' AND reference=$1",
+        [old],
+      )
+    ).rows[0].n,
+    1,
+  );
+  await f.account.retryErasures(100);
+  assert.ok(f.removed().includes(old));
+  expectStatus(await f.upload(PNG), 200);
+  const next = (
+    await f.owner.query('SELECT avatar_object_key FROM app.users WHERE id=$1', [f.actor.userId])
+  ).rows[0].avatar_object_key;
+  expectStatus(
+    await f.call('DELETE', '/v1/me/avatar', { headers: { 'idempotency-key': key } }),
+    204,
+  );
+  assert.equal(
+    (await f.owner.query('SELECT avatar_object_key FROM app.users WHERE id=$1', [f.actor.userId]))
+      .rows[0].avatar_object_key,
+    next,
+  );
+  assert.equal((await f.call('GET', '/v1/me/avatar')).statusCode, 200);
+  assert.equal(
+    (await f.owner.query('SELECT deleted_at FROM app.users WHERE id=$1', [f.actor.userId])).rows[0]
+      .deleted_at,
+    null,
+  );
+});
 
 test('ACC-05 erasure stops the account working and leaves nothing personal', async (t) => {
   const f = await fixture(t);

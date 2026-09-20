@@ -121,6 +121,107 @@ async function fixture(t: TestContext, target = true) {
   };
 }
 
+test('QUOTE-01 preview matches checkout without creating financial state or calling the provider', async (t) => {
+  const f = await fixture(t);
+  expectStatus(await f.publishFare(600), 201);
+  await f.grant(1000);
+  const snapshot = async () =>
+    (
+      await f.owner.query(`SELECT
+    (SELECT count(*) FROM app.memberships)::int memberships,
+    (SELECT count(*) FROM app.purchases)::int purchases,
+    (SELECT count(*) FROM app.credit_holds)::int holds,
+    (SELECT count(*) FROM app.payment_attempts)::int attempts`)
+    ).rows[0];
+  const before = await snapshot();
+  const quote = expectStatus(
+    await f.call('POST', '/v1/me/purchase-quotes', {
+      payload: { routeId: f.input.routeId, plan: 'monthly', useCredit: true },
+    }),
+    200,
+  );
+  assert.equal(quote.price.amountMinor, 26400);
+  assert.equal(quote.appliedCredit.amountMinor, 1000);
+  assert.equal(quote.cashDue.amountMinor, 25400);
+  assert.equal(quote.binding, false);
+  assert.equal(quote.renewalMode, 'manual');
+  assert.equal(quote.ridesGranted, 44);
+  assert.equal(f.initialized(), 0);
+  assert.deepEqual(await snapshot(), before);
+  const purchase = expectStatus(
+    await f.call('POST', '/v1/me/purchases', { payload: f.input }),
+    201,
+  );
+  for (const field of ['price', 'appliedCredit', 'cashDue'])
+    assert.deepEqual(quote[field], purchase[field]);
+  const held = expectStatus(
+    await f.call('POST', '/v1/me/purchase-quotes', {
+      payload: { routeId: f.input.routeId, plan: 'monthly', useCredit: true },
+    }),
+    200,
+  );
+  assert.equal(held.availableCredit.amountMinor, 0);
+});
+
+test('QUOTE-02 preview isolates riders and enforces minimum cash, role and current route', async (t) => {
+  const f = await fixture(t);
+  const payload = { routeId: f.input.routeId, plan: 'monthly', useCredit: true };
+  assert.equal((await f.call('POST', '/v1/me/purchase-quotes', { payload })).statusCode, 409);
+  expectStatus(await f.publishFare(600), 201);
+  await f.grant(50000);
+  const q = expectStatus(await f.call('POST', '/v1/me/purchase-quotes', { payload }), 200);
+  assert.equal(q.cashDue.amountMinor, 100);
+  assert.equal(q.appliedCredit.amountMinor, 26300);
+  const other = expectStatus(
+    await f.call('POST', '/v1/me/purchase-quotes', { payload, who: 'other' }),
+    200,
+  );
+  assert.equal(other.availableCredit.amountMinor, 0);
+  assert.equal(
+    (await f.call('POST', '/v1/me/purchase-quotes', { payload, who: 'ops', client: 'commuter' }))
+      .statusCode,
+    403,
+  );
+  assert.equal(
+    (await f.call('POST', '/v1/me/purchase-quotes', { payload: { ...payload, price: 1 } }))
+      .statusCode,
+    400,
+  );
+  await f.owner.query('UPDATE app.routes SET archived_at=clock_timestamp() WHERE id=$1', [
+    f.input.routeId,
+  ]);
+  assert.equal((await f.call('POST', '/v1/me/purchase-quotes', { payload })).statusCode, 404);
+});
+
+test('LEDGER-01 own history is paginated, scoped and carries the declared schemas', async (t) => {
+  const f = await fixture(t);
+  await f.grant(1000);
+  await f.grant(2000);
+  const first = await f.call('GET', '/v1/me/credit-entries?limit=1');
+  assert.equal(first.statusCode, 200, first.body);
+  assert.equal(first.json().data[0].currency, 'GHS');
+  const cursor = encodeURIComponent(first.json().page.nextCursor);
+  const second = await f.call('GET', `/v1/me/credit-entries?limit=1&cursor=${cursor}`);
+  assert.equal(second.statusCode, 200, second.body);
+  assert.notEqual(first.json().data[0].id, second.json().data[0].id);
+  assert.equal(second.json().page.nextCursor, null);
+  assert.equal(
+    (await f.call('GET', `/v1/me/credit-entries?cursor=${cursor}`, { who: 'other' })).statusCode,
+    400,
+  );
+  assert.equal((await f.call('GET', `/v1/me/ride-entries?cursor=${cursor}`)).statusCode, 400);
+  assert.deepEqual(
+    (await f.call('GET', '/v1/me/credit-entries', { who: 'other' })).json().data,
+    [],
+  );
+  const purchase = await f.buy();
+  await f.service.fulfill(f.settle(purchase));
+  const rides = await f.call('GET', '/v1/me/ride-entries');
+  assert.equal(rides.statusCode, 200, rides.body);
+  assert.equal(rides.json().data.length, 1);
+  assert.equal(rides.json().data[0].deltaRides, 44);
+  assert.equal(rides.json().data[0].reason, 'allocation');
+});
 test('PRC-01 a corridor with no published fare cannot be bought', async (t) => {
   const f = await fixture(t);
   const refused = await f.call('POST', '/v1/me/purchases', { payload: f.input });

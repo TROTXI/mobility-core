@@ -5,6 +5,18 @@ const source = JSON.parse(
   await readFile(new URL('../contracts/target.openapi.json', import.meta.url), 'utf8'),
 );
 const selected = new Set([
+  'previewPurchase',
+  'getPersonalPause',
+  'previewPersonalPause',
+  'createPersonalPause',
+  'resumePersonalPause',
+  'runPersonalPauseResumes',
+  'initiateRefund',
+  'listRefundInitiations',
+  'runTripGeneration',
+  'listRideEntries',
+  'listCreditEntries',
+  'deleteAvatar',
   'issuePass',
   'getManifest',
   'getTripSummary',

@@ -132,6 +132,7 @@ export class TransactionalEmail {
       JOIN app.users u ON u.id=b.user_id AND u.deleted_at IS NULL AND u.email IS NOT NULL
       WHERE b.state='open' AND b.effective_ends_at>clock_timestamp()
         AND b.effective_ends_at<=clock_timestamp()+interval '3 days'
+        AND NOT EXISTS(SELECT 1 FROM app.personal_pauses p WHERE p.period_id=b.id AND p.state='planned')
         AND NOT EXISTS(SELECT 1 FROM app.membership_pauses p WHERE p.period_id=b.id AND p.ended_at IS NULL)
         AND NOT EXISTS(SELECT 1 FROM app.payment_access_blocks p WHERE p.period_id=b.id AND p.released_at IS NULL)
         AND NOT EXISTS(SELECT 1 FROM app.email_outbox e WHERE e.kind='subscription_expiring' AND e.source_id=b.id
@@ -153,6 +154,7 @@ export class TransactionalEmail {
           await c.query(
             `SELECT effective_ends_at,extract(epoch FROM effective_ends_at)::text AS epoch FROM app.billing_periods b
           WHERE id=$1 AND state='open' AND effective_ends_at>clock_timestamp() AND effective_ends_at<=clock_timestamp()+interval '3 days'
+          AND NOT EXISTS(SELECT 1 FROM app.personal_pauses p WHERE p.period_id=b.id AND p.state='planned')
           AND NOT EXISTS(SELECT 1 FROM app.membership_pauses p WHERE p.period_id=b.id AND p.ended_at IS NULL)
           AND NOT EXISTS(SELECT 1 FROM app.payment_access_blocks p WHERE p.period_id=b.id AND p.released_at IS NULL)`,
             [row.id],
@@ -261,6 +263,7 @@ export class TransactionalEmail {
                 await c.query(
                   `SELECT 1 FROM app.billing_periods b WHERE b.id=$1 AND b.state='open'
               AND b.effective_ends_at=$2 AND b.effective_ends_at>clock_timestamp()
+              AND NOT EXISTS(SELECT 1 FROM app.personal_pauses p WHERE p.period_id=b.id AND p.state='planned')
               AND NOT EXISTS(SELECT 1 FROM app.membership_pauses p WHERE p.period_id=b.id AND p.ended_at IS NULL)
               AND NOT EXISTS(SELECT 1 FROM app.payment_access_blocks p WHERE p.period_id=b.id AND p.released_at IS NULL)`,
                   [row.source_id, payload.periodEnd],

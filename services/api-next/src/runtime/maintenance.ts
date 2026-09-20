@@ -5,6 +5,7 @@ import { jobFailed } from './job-outcome.js';
 import { purgeExpiredCommandPayloads } from './receipt-retention.js';
 
 export const JOBS = [
+  'personal-pause-resumes',
   'payments',
   'ask-dispatch',
   'reservation-defaults',
@@ -15,6 +16,8 @@ export const JOBS = [
   'driver-secrets',
   'admission',
   'emails',
+  'trip-generation',
+  'push',
 ] as const;
 export type Job = (typeof JOBS)[number];
 export interface JobRequest {
@@ -48,6 +51,7 @@ const SERVICE_DAY: Record<string, string> = {
   'no-shows': '/v1/ops/maintenance/no-shows',
 };
 const BATCH: Record<string, string> = {
+  'personal-pause-resumes': '/v1/ops/maintenance/personal-pause-resumes',
   payments: '/v1/ops/maintenance/payments',
   'route-learning': '/v1/ops/maintenance/route-learning',
   'gps-retention': '/v1/ops/maintenance/gps-retention',
@@ -123,6 +127,28 @@ export async function runJob(backend: Backend, request: JobRequest): Promise<Job
   // a contract and schema decision, not something to improvise here.
   const session = await operatorSession(backend);
   try {
+    if (request.job === 'push') {
+      if (!backend.push)
+        throw new Error('FIREBASE_SERVICE_ACCOUNT is required for the push worker');
+      return { job: request.job, status: 200, body: await backend.push.drain(limit) };
+    }
+    if (request.job === 'trip-generation') {
+      const response = await backend.app.inject({
+        method: 'POST',
+        url: '/v1/ops/maintenance/trip-generation',
+        headers: {
+          authorization: `Bearer ${session.token}`,
+          'x-trotxi-client': 'worker',
+          'x-trotxi-build': '1',
+        },
+        payload: {
+          serviceDate:
+            request.travelDate ?? new Date(Date.now() + 86400000).toISOString().slice(0, 10),
+          limit,
+        },
+      });
+      return { job: request.job, status: response.statusCode, body: response.json() };
+    }
     if (request.job === 'emails') {
       if (!backend.email) throw new Error('RESEND_API_KEY is required for the email worker');
       await backend.email.prepareReminders(limit);

@@ -29,7 +29,11 @@ async function fixture(t: TestContext, auxFailure = false, through = files.lengt
   });
   const financial = new FinancialFoundation({
     ...f.dependencies,
-    assertCheckoutAllowed: membership.assertCheckoutAllowed,
+    // The historical upgrade fixture predates personal-pause storage. Seed
+    // its old schema without calling a current-schema checkout coordinator;
+    // every normal fixture still uses the real coordinator.
+    assertCheckoutAllowed:
+      through < 25 ? f.dependencies.assertCheckoutAllowed : membership.assertCheckoutAllowed,
     assertPeriodCanClose: membership.assertPeriodCanClose,
     materializeAssignment: membership.materializeAssignment,
   });
@@ -129,8 +133,24 @@ async function fixture(t: TestContext, auxFailure = false, through = files.lengt
       )
     ).rows[0];
   };
-  const reserve = async (who = f.actor, direction = 'outbound', day = '2026-01-02') =>
-    data(
+  const reserve = async (who = f.actor, direction = 'outbound', day = '2026-01-02') => {
+    if (through < 25) {
+      // This is pre-upgrade data, not a current booking endpoint test. Keep
+      // all 014 ownership/capacity/coverage constraints enabled while seeding.
+      const rows = await f.runtime.query(
+        `INSERT INTO app.reservations
+        (user_id,period_id,assignment_id,selection_id,direction,service_date,trip_id,schedule_id,pattern_version_id,pickup_occurrence_id,dropoff_occurrence_id,status,source)
+        SELECT b.user_id,b.id,a.id,a.selection_id,l.direction,$2,t.id,l.schedule_id,l.pattern_version_id,l.pickup_occurrence_id,l.dropoff_occurrence_id,'reserved','confirmation'
+        FROM app.billing_periods b JOIN app.commute_assignments a ON a.period_id=b.id
+        JOIN app.commute_selection_legs l ON l.selection_id=a.selection_id AND l.direction=$3
+        JOIN app.trips t ON t.schedule_id=l.schedule_id AND t.service_date=$2
+        WHERE b.user_id=$1 AND b.state='open' RETURNING *`,
+        [who.userId, day, direction],
+      );
+      assert.equal(rows.rowCount, 1);
+      return rows.rows[0];
+    }
+    return data(
       await membership.command(
         who,
         'decideReservation',
@@ -139,6 +159,7 @@ async function fixture(t: TestContext, auxFailure = false, through = files.lengt
         randomUUID(),
       ),
     ).reservation;
+  };
   const pass = async (rid: string, who = 'rider') =>
     (await request('POST', `/v1/me/reservations/${rid}/pass`, undefined, who)).data;
   const board = async (
@@ -541,6 +562,9 @@ test('BRD-17: 014 to 015 upgrade preserves funded reservations and recorded migr
     '020_account_recovery.sql',
     '021_receipt_payload_retention.sql',
     '022_transactional_email.sql',
+    '023_rider_delivery.sql',
+    '024_refund_initiation.sql',
+    '025_personal_pauses.sql',
   ]);
   await grantRuntime(f.owner, f.role);
   assert.deepEqual((await f.owner.query('SELECT * FROM app.reservations')).rows, before);

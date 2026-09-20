@@ -17,6 +17,45 @@ const fields = {
   paid_at: '2026-01-01T00:00:00Z',
   status: 'success',
 };
+test('PROV-REF: refund POST is TEST-only, bounded, exact-reference and never follows redirects', async () => {
+  let count = 0,
+    domain = 'test';
+  const p = new PaystackEvidence('sk_test_fixture', randomBytes(32), async (url, init) => {
+    count++;
+    assert.equal(url, 'https://api.paystack.co/refund');
+    assert.equal(init?.redirect, 'error');
+    assert.deepEqual(JSON.parse(String(init?.body)), {
+      transaction: 'tx-example',
+      amount: 100,
+      currency: 'GHS',
+      merchant_note: 'trotxi-refund:11111111-1111-4111-8111-111111111111',
+    });
+    return Response.json({
+      status: true,
+      data: {
+        id: 55,
+        domain,
+        currency: 'GHS',
+        amount: 100,
+        transaction: { reference: 'tx-example', domain },
+      },
+    });
+  });
+  assert.equal(
+    await p.initiateRefund('tx-example', 100, '11111111-1111-4111-8111-111111111111'),
+    '55',
+  );
+  domain = 'live';
+  await assert.rejects(p.initiateRefund('tx-example', 100, '11111111-1111-4111-8111-111111111111'));
+  const live = new PaystackEvidence('sk_live_fixture', randomBytes(32), async () => {
+    count++;
+    throw Error('must not call');
+  });
+  await assert.rejects(
+    live.initiateRefund('tx-example', 100, '11111111-1111-4111-8111-111111111111'),
+  );
+  assert.equal(count, 2);
+});
 test('PROV-01: exact raw HMAC and authenticated encryption bind both ciphertext and context', () => {
   const p = new PaystackEvidence('sk_test_fixture', randomBytes(32));
   const bytes = raw('charge.success', fields);

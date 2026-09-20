@@ -1423,6 +1423,96 @@
         "x-authorization": "self",
         "x-retry": "idempotency_key",
         "x-sensitive": true
+      },
+      "delete": {
+        "operationId": "deleteAvatar",
+        "summary": "delete Avatar",
+        "tags": ["self"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            },
+            "description": "Caller + operation + target scoped; payload mismatch = 409. Never log secrets."
+          },
+          {
+            "name": "X-Trotxi-Client",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": ["commuter", "driver", "ops", "worker"]
+            },
+            "description": "Compatibility metadata only, never grants a role."
+          },
+          {
+            "name": "X-Trotxi-Build",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable."
+          },
+          {
+            "name": "X-Trotxi-Platform",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": ["ios", "android"]
+            },
+            "description": "Required for commuter/driver, absent for ops/worker."
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Success"
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error409"
+          },
+          "426": {
+            "$ref": "#/components/responses/Error426"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error429"
+          },
+          "500": {
+            "$ref": "#/components/responses/Error500"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error503"
+          }
+        },
+        "x-authorization": "self",
+        "x-retry": "idempotency_key",
+        "x-sensitive": false,
+        "x-requirement": "Requested rider privacy actions",
+        "x-existing-endpoint-assessment": "Deleting the entire account is not an appropriate prerequisite for removing its profile image."
       }
     },
     "/v1/me/sessions": {
@@ -2050,6 +2140,531 @@
         "x-authorization": "rider_own",
         "x-retry": "safe_read",
         "x-sensitive": false
+      }
+    },
+    "/v1/me/membership/pause": {
+      "get": {
+        "operationId": "getPersonalPause",
+        "summary": "get Personal Pause",
+        "tags": ["rider_own"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-Trotxi-Client",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": ["commuter", "driver", "ops", "worker"]
+            },
+            "description": "Compatibility metadata only, never grants a role."
+          },
+          {
+            "name": "X-Trotxi-Build",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable."
+          },
+          {
+            "name": "X-Trotxi-Platform",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": ["ios", "android"]
+            },
+            "description": "Required for commuter/driver, absent for ops/worker."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OptionalPersonalPauseResponse"
+                }
+              }
+            },
+            "headers": {
+              "ETag": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "Opaque resource version; required on protected edits."
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "426": {
+            "$ref": "#/components/responses/Error426"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error429"
+          },
+          "500": {
+            "$ref": "#/components/responses/Error500"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error503"
+          }
+        },
+        "x-authorization": "rider_own",
+        "x-retry": "safe_read",
+        "x-sensitive": false,
+        "x-requirement": "Approved personal pause: 3–14 calendar days once per paid period, with paid-time preservation",
+        "x-existing-endpoint-assessment": "Waitlist pauses require a route-change request and ops consent; they cannot represent a scheduled personal break or its automatic end."
+      }
+    },
+    "/v1/me/membership/pause-preview": {
+      "post": {
+        "operationId": "previewPersonalPause",
+        "summary": "preview Personal Pause",
+        "tags": ["rider_own"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-Trotxi-Client",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": ["commuter", "driver", "ops", "worker"]
+            },
+            "description": "Compatibility metadata only, never grants a role."
+          },
+          {
+            "name": "X-Trotxi-Build",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable."
+          },
+          {
+            "name": "X-Trotxi-Platform",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": ["ios", "android"]
+            },
+            "description": "Required for commuter/driver, absent for ops/worker."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PersonalPauseInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PersonalPausePreviewResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error409"
+          },
+          "426": {
+            "$ref": "#/components/responses/Error426"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error429"
+          },
+          "500": {
+            "$ref": "#/components/responses/Error500"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error503"
+          }
+        },
+        "x-authorization": "rider_own",
+        "x-retry": "safe_read",
+        "x-sensitive": false,
+        "x-requirement": "Approved personal pause: 3–14 calendar days once per paid period, with paid-time preservation",
+        "x-existing-endpoint-assessment": "Waitlist pauses require a route-change request and ops consent; they cannot represent a scheduled personal break or its automatic end."
+      }
+    },
+    "/v1/me/membership/pauses": {
+      "post": {
+        "operationId": "createPersonalPause",
+        "summary": "create Personal Pause",
+        "tags": ["rider_own"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            },
+            "description": "Caller + operation + target scoped; payload mismatch = 409. Never log secrets."
+          },
+          {
+            "name": "X-Trotxi-Client",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": ["commuter", "driver", "ops", "worker"]
+            },
+            "description": "Compatibility metadata only, never grants a role."
+          },
+          {
+            "name": "X-Trotxi-Build",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable."
+          },
+          {
+            "name": "X-Trotxi-Platform",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": ["ios", "android"]
+            },
+            "description": "Required for commuter/driver, absent for ops/worker."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PersonalPauseInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PersonalPauseResponse"
+                }
+              }
+            },
+            "headers": {
+              "Location": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "Canonical resource URL, even when payment remains pending."
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error409"
+          },
+          "426": {
+            "$ref": "#/components/responses/Error426"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error429"
+          },
+          "500": {
+            "$ref": "#/components/responses/Error500"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error503"
+          }
+        },
+        "x-authorization": "rider_own",
+        "x-retry": "idempotency_key",
+        "x-sensitive": false,
+        "x-requirement": "Approved personal pause: 3–14 calendar days once per paid period, with paid-time preservation",
+        "x-existing-endpoint-assessment": "Waitlist pauses require a route-change request and ops consent; they cannot represent a scheduled personal break or its automatic end."
+      }
+    },
+    "/v1/me/membership/pauses/{id}/resume": {
+      "post": {
+        "operationId": "resumePersonalPause",
+        "summary": "resume Personal Pause",
+        "tags": ["rider_own"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            },
+            "description": "Caller + operation + target scoped; payload mismatch = 409. Never log secrets."
+          },
+          {
+            "name": "X-Trotxi-Client",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": ["commuter", "driver", "ops", "worker"]
+            },
+            "description": "Compatibility metadata only, never grants a role."
+          },
+          {
+            "name": "X-Trotxi-Build",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable."
+          },
+          {
+            "name": "X-Trotxi-Platform",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": ["ios", "android"]
+            },
+            "description": "Required for commuter/driver, absent for ops/worker."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PersonalResumeInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PersonalPauseResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error409"
+          },
+          "426": {
+            "$ref": "#/components/responses/Error426"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error429"
+          },
+          "500": {
+            "$ref": "#/components/responses/Error500"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error503"
+          }
+        },
+        "x-authorization": "rider_own",
+        "x-retry": "idempotency_key",
+        "x-sensitive": false,
+        "x-requirement": "Approved personal pause: 3–14 calendar days once per paid period, with paid-time preservation",
+        "x-existing-endpoint-assessment": "Waitlist pauses require a route-change request and ops consent; they cannot represent a scheduled personal break or its automatic end."
+      }
+    },
+    "/v1/ops/maintenance/personal-pause-resumes": {
+      "post": {
+        "operationId": "runPersonalPauseResumes",
+        "summary": "run Personal Pause Resumes",
+        "tags": ["ops"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-Trotxi-Client",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": ["commuter", "driver", "ops", "worker"]
+            },
+            "description": "Compatibility metadata only, never grants a role."
+          },
+          {
+            "name": "X-Trotxi-Build",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable."
+          },
+          {
+            "name": "X-Trotxi-Platform",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": ["ios", "android"]
+            },
+            "description": "Required for commuter/driver, absent for ops/worker."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MaintenanceInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MaintenanceResultResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error409"
+          },
+          "426": {
+            "$ref": "#/components/responses/Error426"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error429"
+          },
+          "500": {
+            "$ref": "#/components/responses/Error500"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error503"
+          }
+        },
+        "x-authorization": "ops",
+        "x-retry": "safe_batch",
+        "x-sensitive": false,
+        "x-requirement": "Approved personal pause: 3–14 calendar days once per paid period, with paid-time preservation",
+        "x-existing-endpoint-assessment": "Waitlist pauses require a route-change request and ops consent; they cannot represent a scheduled personal break or its automatic end."
       }
     },
     "/v1/me/purchases": {
@@ -2941,6 +3556,598 @@
         "x-retry": "safe_read",
         "x-sensitive": false,
         "x-list-order": "createdAt DESC, id DESC"
+      }
+    },
+    "/v1/me/ride-entries": {
+      "get": {
+        "operationId": "listRideEntries",
+        "summary": "list Ride Entries",
+        "tags": ["rider_own"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            },
+            "description": "Opaque cursor bound to caller, sort and filters."
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 200,
+              "default": 50
+            },
+            "description": "Page size. No silent truncation."
+          },
+          {
+            "name": "fromDate",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            },
+            "description": "Africa/Accra day; paired with toDate. Default last/current 7 days; maximum 31 days."
+          },
+          {
+            "name": "toDate",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            },
+            "description": "Inclusive; paired with fromDate."
+          },
+          {
+            "name": "X-Trotxi-Client",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": ["commuter", "driver", "ops", "worker"]
+            },
+            "description": "Compatibility metadata only, never grants a role."
+          },
+          {
+            "name": "X-Trotxi-Build",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable."
+          },
+          {
+            "name": "X-Trotxi-Platform",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": ["ios", "android"]
+            },
+            "description": "Required for commuter/driver, absent for ops/worker."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RideEntryPage"
+                }
+              }
+            },
+            "headers": {
+              "ETag": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "Opaque resource version; required on protected edits."
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "426": {
+            "$ref": "#/components/responses/Error426"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error429"
+          },
+          "500": {
+            "$ref": "#/components/responses/Error500"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error503"
+          }
+        },
+        "x-authorization": "rider_own",
+        "x-retry": "safe_read",
+        "x-sensitive": false,
+        "x-list-order": "createdAt DESC, id DESC",
+        "x-requirement": "Requested rider ride history",
+        "x-existing-endpoint-assessment": "A balance alone cannot explain boarding, no-show, returned or converted ride changes."
+      }
+    },
+    "/v1/me/credit-entries": {
+      "get": {
+        "operationId": "listCreditEntries",
+        "summary": "list Credit Entries",
+        "tags": ["rider_own"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            },
+            "description": "Opaque cursor bound to caller, sort and filters."
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 200,
+              "default": 50
+            },
+            "description": "Page size. No silent truncation."
+          },
+          {
+            "name": "fromDate",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            },
+            "description": "Africa/Accra day; paired with toDate. Default last/current 7 days; maximum 31 days."
+          },
+          {
+            "name": "toDate",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            },
+            "description": "Inclusive; paired with fromDate."
+          },
+          {
+            "name": "X-Trotxi-Client",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": ["commuter", "driver", "ops", "worker"]
+            },
+            "description": "Compatibility metadata only, never grants a role."
+          },
+          {
+            "name": "X-Trotxi-Build",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable."
+          },
+          {
+            "name": "X-Trotxi-Platform",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": ["ios", "android"]
+            },
+            "description": "Required for commuter/driver, absent for ops/worker."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreditEntryPage"
+                }
+              }
+            },
+            "headers": {
+              "ETag": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "Opaque resource version; required on protected edits."
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "426": {
+            "$ref": "#/components/responses/Error426"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error429"
+          },
+          "500": {
+            "$ref": "#/components/responses/Error500"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error503"
+          }
+        },
+        "x-authorization": "rider_own",
+        "x-retry": "safe_read",
+        "x-sensitive": false,
+        "x-list-order": "createdAt DESC, id DESC",
+        "x-requirement": "Requested rider credit history",
+        "x-existing-endpoint-assessment": "Purchase reads do not show conversion, refund restoration and adjustment entries."
+      }
+    },
+    "/v1/me/purchase-quotes": {
+      "post": {
+        "operationId": "previewPurchase",
+        "summary": "preview Purchase",
+        "tags": ["rider_own"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-Trotxi-Client",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": ["commuter", "driver", "ops", "worker"]
+            },
+            "description": "Compatibility metadata only, never grants a role."
+          },
+          {
+            "name": "X-Trotxi-Build",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable."
+          },
+          {
+            "name": "X-Trotxi-Platform",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": ["ios", "android"]
+            },
+            "description": "Required for commuter/driver, absent for ops/worker."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PurchaseQuoteInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PurchaseQuoteResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error409"
+          },
+          "426": {
+            "$ref": "#/components/responses/Error426"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error429"
+          },
+          "500": {
+            "$ref": "#/components/responses/Error500"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error503"
+          }
+        },
+        "x-authorization": "rider_own",
+        "x-retry": "safe_read",
+        "x-sensitive": false,
+        "x-requirement": "Pre-checkout authoritative price preview",
+        "x-existing-endpoint-assessment": "Creating a purchase freezes terms and holds credit; riders need a non-mutating price read before making that commitment."
+      }
+    },
+    "/v1/ops/purchases/{id}/refunds": {
+      "post": {
+        "operationId": "initiateRefund",
+        "summary": "initiate Refund",
+        "tags": ["ops"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            },
+            "description": "Caller + operation + target scoped; payload mismatch = 409. Never log secrets."
+          },
+          {
+            "name": "X-Trotxi-Client",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": ["commuter", "driver", "ops", "worker"]
+            },
+            "description": "Compatibility metadata only, never grants a role."
+          },
+          {
+            "name": "X-Trotxi-Build",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable."
+          },
+          {
+            "name": "X-Trotxi-Platform",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": ["ios", "android"]
+            },
+            "description": "Required for commuter/driver, absent for ops/worker."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RefundInitiationInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RefundInitiationResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error409"
+          },
+          "426": {
+            "$ref": "#/components/responses/Error426"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error429"
+          },
+          "500": {
+            "$ref": "#/components/responses/Error500"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error503"
+          }
+        },
+        "x-authorization": "ops",
+        "x-retry": "idempotency_key",
+        "x-sensitive": false,
+        "x-requirement": "Ops-only TEST refund initiation with an attributable reason",
+        "x-existing-endpoint-assessment": "Existing provider callbacks record facts; they cannot ask Paystack to issue a refund."
+      },
+      "get": {
+        "operationId": "listRefundInitiations",
+        "summary": "list Refund Initiations",
+        "tags": ["ops"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            }
+          },
+          {
+            "name": "X-Trotxi-Client",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": ["commuter", "driver", "ops", "worker"]
+            },
+            "description": "Compatibility metadata only, never grants a role."
+          },
+          {
+            "name": "X-Trotxi-Build",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable."
+          },
+          {
+            "name": "X-Trotxi-Platform",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": ["ios", "android"]
+            },
+            "description": "Required for commuter/driver, absent for ops/worker."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RefundInitiationCollectionResponse"
+                }
+              }
+            },
+            "headers": {
+              "ETag": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "Opaque resource version; required on protected edits."
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "426": {
+            "$ref": "#/components/responses/Error426"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error429"
+          },
+          "500": {
+            "$ref": "#/components/responses/Error500"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error503"
+          }
+        },
+        "x-authorization": "ops",
+        "x-retry": "safe_read",
+        "x-sensitive": false,
+        "x-requirement": "Discover submitted and uncertain refund requests before retrying",
+        "x-existing-endpoint-assessment": "Purchase reads expose collection attempts, not once-only refund initiation or its uncertain external outcome."
       }
     },
     "/v1/me/commute-requests/{id}/withdraw": {
@@ -14393,6 +15600,107 @@
         "x-existing-endpoint-assessment": "No existing bounded maintenance operation enforces raw-trace retention."
       }
     },
+    "/v1/ops/maintenance/trip-generation": {
+      "post": {
+        "operationId": "runTripGeneration",
+        "summary": "run Trip Generation",
+        "tags": ["ops_or_scoped_worker"],
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "workerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-Trotxi-Client",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": ["commuter", "driver", "ops", "worker"]
+            },
+            "description": "Compatibility metadata only, never grants a role."
+          },
+          {
+            "name": "X-Trotxi-Build",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable."
+          },
+          {
+            "name": "X-Trotxi-Platform",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": ["ios", "android"]
+            },
+            "description": "Required for commuter/driver, absent for ops/worker."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TripGenerationInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MaintenanceResultResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error409"
+          },
+          "426": {
+            "$ref": "#/components/responses/Error426"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error429"
+          },
+          "500": {
+            "$ref": "#/components/responses/Error500"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error503"
+          }
+        },
+        "x-authorization": "ops_or_scoped_worker",
+        "x-retry": "safe_batch",
+        "x-sensitive": false,
+        "x-requirement": "Generate recurring service without duplicate departures",
+        "x-existing-endpoint-assessment": "Manual trip creation does not enumerate eligible schedules or safely drain a service-day batch."
+      }
+    },
     "/webhooks/paystack": {
       "post": {
         "operationId": "receivePaystackWebhook",
@@ -15527,6 +16835,68 @@
           }
         },
         "required": ["data"],
+        "additionalProperties": false
+      },
+      "CreditEntry": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "deltaMinor": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "currency": {
+            "type": "string",
+            "enum": ["GHS"]
+          },
+          "reason": {
+            "type": "string",
+            "enum": [
+              "month_end_conversion",
+              "purchase_applied",
+              "refund_restored",
+              "conversion_reversed",
+              "adjustment"
+            ]
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+          }
+        },
+        "required": ["id", "deltaMinor", "currency", "reason", "createdAt"],
+        "additionalProperties": false
+      },
+      "CreditEntryPage": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CreditEntry"
+            }
+          },
+          "page": {
+            "type": "object",
+            "properties": {
+              "nextCursor": {
+                "nullable": true,
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 128
+              }
+            },
+            "required": ["nextCursor"],
+            "additionalProperties": false
+          }
+        },
+        "required": ["data", "page"],
         "additionalProperties": false
       },
       "DecisionEvent": {
@@ -17970,6 +19340,59 @@
         "required": ["data"],
         "additionalProperties": false
       },
+      "OptionalPersonalPause": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "startDate": {
+            "type": "string",
+            "format": "date",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+          },
+          "resumeDate": {
+            "type": "string",
+            "format": "date",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["scheduled", "paused", "resumed", "terminated"]
+          },
+          "projectedEndsAt": {
+            "nullable": true,
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+          },
+          "extensionApplied": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "startDate",
+          "resumeDate",
+          "status",
+          "projectedEndsAt",
+          "extensionApplied"
+        ],
+        "additionalProperties": false,
+        "nullable": true
+      },
+      "OptionalPersonalPauseResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/OptionalPersonalPause"
+          }
+        },
+        "required": ["data"],
+        "additionalProperties": false
+      },
       "Pass": {
         "type": "object",
         "properties": {
@@ -18405,6 +19828,127 @@
         "required": ["data"],
         "additionalProperties": false
       },
+      "PersonalPause": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "startDate": {
+            "type": "string",
+            "format": "date",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+          },
+          "resumeDate": {
+            "type": "string",
+            "format": "date",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["scheduled", "paused", "resumed", "terminated"]
+          },
+          "projectedEndsAt": {
+            "nullable": true,
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+          },
+          "extensionApplied": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "startDate",
+          "resumeDate",
+          "status",
+          "projectedEndsAt",
+          "extensionApplied"
+        ],
+        "additionalProperties": false
+      },
+      "PersonalPauseInput": {
+        "type": "object",
+        "properties": {
+          "startDate": {
+            "type": "string",
+            "format": "date",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+          },
+          "resumeDate": {
+            "type": "string",
+            "format": "date",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+          }
+        },
+        "required": ["startDate", "resumeDate"],
+        "additionalProperties": false
+      },
+      "PersonalPausePreview": {
+        "type": "object",
+        "properties": {
+          "startDate": {
+            "type": "string",
+            "format": "date",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+          },
+          "resumeDate": {
+            "type": "string",
+            "format": "date",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+          },
+          "projectedEndsAt": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+          },
+          "cancelledReservationIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            }
+          }
+        },
+        "required": ["startDate", "resumeDate", "projectedEndsAt", "cancelledReservationIds"],
+        "additionalProperties": false
+      },
+      "PersonalPausePreviewResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/PersonalPausePreview"
+          }
+        },
+        "required": ["data"],
+        "additionalProperties": false
+      },
+      "PersonalPauseResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/PersonalPause"
+          }
+        },
+        "required": ["data"],
+        "additionalProperties": false
+      },
+      "PersonalResumeInput": {
+        "type": "object",
+        "properties": {
+          "resumeDate": {
+            "type": "string",
+            "format": "date",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+          }
+        },
+        "required": ["resumeDate"],
+        "additionalProperties": false
+      },
       "PinChange": {
         "type": "object",
         "properties": {
@@ -18795,6 +20339,100 @@
         "required": ["data", "page"],
         "additionalProperties": false
       },
+      "PurchaseQuote": {
+        "type": "object",
+        "properties": {
+          "routeId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "plan": {
+            "type": "string",
+            "enum": ["monthly", "annual"]
+          },
+          "ridesGranted": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "fare": {
+            "$ref": "#/components/schemas/Money"
+          },
+          "price": {
+            "$ref": "#/components/schemas/Money"
+          },
+          "availableCredit": {
+            "$ref": "#/components/schemas/Money"
+          },
+          "appliedCredit": {
+            "$ref": "#/components/schemas/Money"
+          },
+          "cashDue": {
+            "$ref": "#/components/schemas/Money"
+          },
+          "minimumCashDue": {
+            "$ref": "#/components/schemas/Money"
+          },
+          "renewalMode": {
+            "type": "string",
+            "enum": ["manual"]
+          },
+          "binding": {
+            "type": "boolean",
+            "enum": [false]
+          },
+          "quotedAt": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+          }
+        },
+        "required": [
+          "routeId",
+          "plan",
+          "ridesGranted",
+          "fare",
+          "price",
+          "availableCredit",
+          "appliedCredit",
+          "cashDue",
+          "minimumCashDue",
+          "renewalMode",
+          "binding",
+          "quotedAt"
+        ],
+        "additionalProperties": false
+      },
+      "PurchaseQuoteInput": {
+        "type": "object",
+        "properties": {
+          "plan": {
+            "type": "string",
+            "enum": ["monthly", "annual"]
+          },
+          "routeId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "useCredit": {
+            "type": "boolean"
+          }
+        },
+        "required": ["plan", "routeId", "useCredit"],
+        "additionalProperties": false
+      },
+      "PurchaseQuoteResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/PurchaseQuote"
+          }
+        },
+        "required": ["data"],
+        "additionalProperties": false
+      },
       "PurchaseResponse": {
         "type": "object",
         "properties": {
@@ -18826,6 +20464,103 @@
           }
         },
         "required": ["refreshToken"],
+        "additionalProperties": false
+      },
+      "RefundInitiation": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "purchaseId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "amount": {
+            "$ref": "#/components/schemas/Money"
+          },
+          "reason": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 500
+          },
+          "state": {
+            "type": "string",
+            "enum": ["submitting", "accepted", "unknown"]
+          },
+          "providerRefundId": {
+            "nullable": true,
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 30
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+          }
+        },
+        "required": [
+          "id",
+          "purchaseId",
+          "amount",
+          "reason",
+          "state",
+          "providerRefundId",
+          "createdAt"
+        ],
+        "additionalProperties": false
+      },
+      "RefundInitiationCollection": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "maxItems": 1,
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RefundInitiation"
+            }
+          }
+        },
+        "required": ["items"],
+        "additionalProperties": false
+      },
+      "RefundInitiationCollectionResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/RefundInitiationCollection"
+          }
+        },
+        "required": ["data"],
+        "additionalProperties": false
+      },
+      "RefundInitiationInput": {
+        "type": "object",
+        "properties": {
+          "amount": {
+            "$ref": "#/components/schemas/Money"
+          },
+          "reason": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 500
+          }
+        },
+        "required": ["amount", "reason"],
+        "additionalProperties": false
+      },
+      "RefundInitiationResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/RefundInitiation"
+          }
+        },
+        "required": ["data"],
         "additionalProperties": false
       },
       "Reservation": {
@@ -19111,6 +20846,63 @@
           }
         },
         "required": ["decision", "reason"],
+        "additionalProperties": false
+      },
+      "RideEntry": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "deltaRides": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "reason": {
+            "type": "string",
+            "enum": ["allocation", "boarding", "no_show", "returned", "refund", "converted"]
+          },
+          "billingPeriodId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+          }
+        },
+        "required": ["id", "deltaRides", "reason", "billingPeriodId", "createdAt"],
+        "additionalProperties": false
+      },
+      "RideEntryPage": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RideEntry"
+            }
+          },
+          "page": {
+            "type": "object",
+            "properties": {
+              "nextCursor": {
+                "nullable": true,
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 128
+              }
+            },
+            "required": ["nextCursor"],
+            "additionalProperties": false
+          }
+        },
+        "required": ["data", "page"],
         "additionalProperties": false
       },
       "RoleEdit": {
@@ -20052,6 +21844,29 @@
           }
         },
         "required": ["scheduledAt"],
+        "additionalProperties": false
+      },
+      "TripGenerationInput": {
+        "type": "object",
+        "properties": {
+          "serviceDate": {
+            "type": "string",
+            "format": "date",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+          },
+          "routeId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "limit": {
+            "default": 100,
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100
+          }
+        },
+        "required": ["serviceDate", "limit"],
         "additionalProperties": false
       },
       "TripInput": {
