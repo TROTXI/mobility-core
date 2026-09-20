@@ -59,6 +59,7 @@ dependencies:
   # emergency control all end in a phone call, and there is no in-app substitute
   # for one — a driver at a roadside needs a person, not a queue.
   url_launcher: ^6.3.1
+  firebase_messaging: ^16.7.0
 dev_dependencies:
   flutter_test:
     sdk: flutter

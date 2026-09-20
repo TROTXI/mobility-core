@@ -13,6 +13,18 @@ const credentials = JSON.stringify({
   private_key: key,
   token_uri: 'https://untrusted.invalid',
 });
+test('FCM driver assignment alerts contain no trip, driver, route or rider details', async () => {
+  const sender = new FcmSender(credentials, async (url, init) => {
+    if (String(url).includes('oauth2'))
+      return Response.json({ access_token: 'test', expires_in: 3600 });
+    const message = JSON.parse(String(init?.body)).message;
+    assert.deepEqual(message.data, { type: 'driver_assignment', notificationId: 'event-delivery' });
+    assert.equal(message.notification.title, 'Your schedule changed');
+    assert.ok(!JSON.stringify(message).includes('private-trip'));
+    return Response.json({ name: 'projects/test/messages/driver' });
+  });
+  await sender.send('device-token', 'event-delivery', 'private-trip', 'driver_assignment');
+});
 test('FCM-01 fixed endpoints, scoped OAuth, minimal data and cached short-lived token', async () => {
   const calls: { url: string; init?: RequestInit }[] = [];
   const sender = new FcmSender(credentials, async (url, init) => {

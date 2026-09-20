@@ -26,6 +26,7 @@ part 'ops_trip.g.dart';
 /// * [status] 
 /// * [vehicleLabel] 
 /// * [vehiclePlate] 
+/// * [assignmentChangedAt]
 /// * [startedAt] 
 /// * [completedAt] 
 /// * [currentStopOccurrenceId] 
@@ -75,6 +76,9 @@ abstract class OpsTrip implements Built<OpsTrip, OpsTripBuilder> {
 
   @BuiltValueField(wireName: r'vehiclePlate')
   String? get vehiclePlate;
+
+  @BuiltValueField(wireName: r'assignmentChangedAt')
+  DateTime? get assignmentChangedAt;
 
   @BuiltValueField(wireName: r'startedAt')
   DateTime? get startedAt;
@@ -186,6 +190,13 @@ class _$OpsTripSerializer implements PrimitiveSerializer<OpsTrip> {
       object.vehiclePlate,
       specifiedType: const FullType.nullable(String),
     );
+    if (object.assignmentChangedAt != null) {
+      yield r'assignmentChangedAt';
+      yield serializers.serialize(
+        object.assignmentChangedAt,
+        specifiedType: const FullType.nullable(DateTime),
+      );
+    }
     yield r'startedAt';
     yield object.startedAt == null ? null : serializers.serialize(
       object.startedAt,
@@ -340,6 +351,14 @@ class _$OpsTripSerializer implements PrimitiveSerializer<OpsTrip> {
           if (valueDes == null) continue;
           result.vehiclePlate = valueDes;
           break;
+        case r'assignmentChangedAt':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType.nullable(DateTime),
+          ) as DateTime?;
+          if (valueDes == null) continue;
+          result.assignmentChangedAt = valueDes;
+          break;
         case r'startedAt':
           final valueDes = serializers.deserialize(
             value,
@@ -483,4 +502,3 @@ class OpsTripStatusEnum extends EnumClass {
   static BuiltSet<OpsTripStatusEnum> get values => _$opsTripStatusEnumValues;
   static OpsTripStatusEnum valueOf(String name) => _$opsTripStatusEnumValueOf(name);
 }
-

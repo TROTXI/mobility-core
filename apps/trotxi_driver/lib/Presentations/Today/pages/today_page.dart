@@ -12,6 +12,7 @@ import 'package:trotxi_driver/core/config/theme/app_typography.dart';
 import 'package:trotxi_driver/core/state/loadable.dart';
 import 'package:trotxi_driver/core/state/run_controller.dart';
 import 'package:trotxi_driver/core/state/today_controller.dart';
+import 'package:trotxi_driver/core/state/driver_notifications.dart';
 import 'package:trotxi_driver/data/trips_repository.dart';
 
 /// Today (prototype frames 14 to 18).
@@ -39,6 +40,7 @@ class _TodayPageState extends State<TodayPage> {
   Widget build(BuildContext context) {
     final colors = context.driverColors;
     final controller = context.watch<TodayController>();
+    final alerts = context.watch<DriverNotifications?>();
     final board = controller.board;
 
     // No Scaffold and no AppBar: the shell owns the identity header and the tab
@@ -46,7 +48,21 @@ class _TodayPageState extends State<TodayPage> {
     // behind one that says the same thing.
     return RefreshIndicator(
       onRefresh: controller.load,
-      child: _body(context, controller, board, colors),
+      child: Column(
+        children: [
+          if (alerts?.notice != null)
+            MaterialBanner(
+              content: Text(alerts!.notice!),
+              actions: [
+                TextButton(
+                  onPressed: alerts.dismiss,
+                  child: const Text('Dismiss'),
+                ),
+              ],
+            ),
+          Expanded(child: _body(context, controller, board, colors)),
+        ],
+      ),
     );
   }
 

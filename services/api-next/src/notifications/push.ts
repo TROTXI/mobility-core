@@ -9,6 +9,21 @@ export class PushNotifications {
   async drain(limit = 100) {
     if (!Number.isInteger(limit) || limit < 1 || limit > 100) throw new Error('invalid_push_limit');
     const { pool } = this.options;
+    // Both the removed and newly assigned driver need to refresh their roster.
+    // Events are committed with commands, so rollback/replay creates no alert.
+    await pool.query(
+      `INSERT INTO app.push_deliveries(trip_event_id,device_id,user_id)
+       SELECT e.id,d.id,u.id FROM app.trip_events e
+       JOIN app.drivers dr ON dr.id::text IN (e.before_state->>'assignedDriverId',e.after_state->>'assignedDriverId')
+       JOIN app.users u ON u.id=dr.user_id AND u.role='driver' AND u.deleted_at IS NULL
+       JOIN app.push_devices d ON d.user_id=u.id AND d.revoked_at IS NULL AND d.created_at<=e.created_at
+       WHERE e.operation IN ('assign','reschedule','cancel') AND dr.archived_at IS NULL
+         AND e.created_at>clock_timestamp()-interval '24 hours'
+         AND e.before_state IS DISTINCT FROM e.after_state
+         AND NOT EXISTS(SELECT 1 FROM app.push_deliveries n WHERE n.trip_event_id=e.id AND n.device_id=d.id AND n.user_id=u.id)
+       ORDER BY e.created_at,e.id,d.id LIMIT $1 ON CONFLICT DO NOTHING`,
+      [limit],
+    );
     await pool.query(
       `INSERT INTO app.push_deliveries(reservation_id,device_id,user_id)
       SELECT r.id,d.id,r.user_id FROM app.reservation_prompts p JOIN app.reservations r ON r.id=p.reservation_id
@@ -47,9 +62,22 @@ export class PushNotifications {
         const device = (
           await c.query('SELECT * FROM app.push_devices WHERE id=$1 FOR UPDATE', [row.device_id])
         ).rows[0];
-        const eligible = (
-          await c.query(
-            `SELECT r.id FROM app.reservations r JOIN app.trips t ON t.id=r.trip_id
+        const eligible = row.trip_event_id
+          ? (
+              await c.query(
+                `SELECT e.id FROM app.trip_events e JOIN app.drivers dr
+            ON dr.id::text IN (e.before_state->>'assignedDriverId',e.after_state->>'assignedDriverId')
+            JOIN app.users u ON u.id=dr.user_id
+            WHERE e.id=$1 AND u.id=$2 AND u.role='driver' AND u.deleted_at IS NULL
+              AND dr.archived_at IS NULL AND e.created_at>clock_timestamp()-interval '24 hours'
+              AND EXISTS(SELECT 1 FROM app.auth_sessions s WHERE s.user_id=u.id AND s.revoked_at IS NULL AND s.expires_at>clock_timestamp())
+            FOR SHARE OF dr,u`,
+                [row.trip_event_id, row.user_id],
+              )
+            ).rowCount
+          : (
+              await c.query(
+                `SELECT r.id FROM app.reservations r JOIN app.trips t ON t.id=r.trip_id
           JOIN app.billing_periods b ON b.id=r.period_id JOIN app.users u ON u.id=r.user_id
           WHERE r.id=$1 AND r.user_id=$2 AND u.deleted_at IS NULL AND r.status='pending'
             AND t.status='scheduled' AND t.scheduled_at>clock_timestamp() AND b.state='open'
@@ -58,9 +86,9 @@ export class PushNotifications {
             AND NOT EXISTS(SELECT 1 FROM app.payment_access_blocks p WHERE p.period_id=b.id AND p.released_at IS NULL)
             AND NOT EXISTS(SELECT 1 FROM app.account_restrictions p WHERE p.user_id=r.user_id AND p.released_at IS NULL)
           FOR SHARE OF r,t,b`,
-            [row.reservation_id, row.user_id],
-          )
-        ).rowCount;
+                [row.reservation_id, row.user_id],
+              )
+            ).rowCount;
         if (
           !eligible ||
           !device ||
@@ -87,7 +115,12 @@ export class PushNotifications {
               cipher.update(bytes.subarray(28)),
               cipher.final(),
             ]).toString('utf8');
-            const providerId = await this.options.sender.send(token, row.id, row.reservation_id);
+            const providerId = await this.options.sender.send(
+              token,
+              row.id,
+              row.reservation_id ?? row.trip_event_id,
+              row.trip_event_id ? 'driver_assignment' : 'reservation_prompt',
+            );
             await c.query(
               "UPDATE app.push_deliveries SET state='accepted',attempts=$2,provider_id=$3 WHERE id=$1",
               [row.id, attempt, providerId],

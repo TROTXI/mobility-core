@@ -78,6 +78,20 @@ class RunController extends ChangeNotifier {
   RunController({required this._trips, required this._run});
 
   final TripsRepository _trips;
+  bool _disposed = false;
+  int _revision = 0;
+  @override
+  void notifyListeners() {
+    if (!_disposed) super.notifyListeners();
+  }
+
+  @override
+  void dispose() {
+    _disposed = true;
+    _revision++;
+    super.dispose();
+  }
+
   DriverRun _run;
 
   /// The latest lifecycle state accepted from the API.
@@ -95,6 +109,7 @@ class RunController extends ChangeNotifier {
 
   /// Load or reload the run and its manifest.
   Future<void> load() async {
+    if (_disposed || _transitioning) return;
     _detail = Loadable.loading(previous: _detail.valueOrNull);
     notifyListeners();
     await _fetch();
@@ -138,6 +153,7 @@ class RunController extends ChangeNotifier {
   ///
   /// @param seq - the stop reached, as a route sequence number.
   Future<void> arriveAtStop(int seq, {bool correction = false}) async {
+    _revision++;
     final current = _detail.valueOrNull;
     try {
       _run = await _trips.arriveAtStop(
@@ -146,6 +162,7 @@ class RunController extends ChangeNotifier {
         editToken: _run.editToken,
         correction: correction,
       );
+      _revision++;
       if (current != null) {
         _detail = Loadable.data(
           RunDetail(
@@ -186,10 +203,12 @@ class RunController extends ChangeNotifier {
   }
 
   Future<bool> _transition(Future<DriverRun> Function() action) async {
+    _revision++;
     _transitioning = true;
     notifyListeners();
     try {
       _run = await action();
+      _revision++;
       final previous = _detail.valueOrNull;
       if (previous != null) {
         // Preserve the accepted lifecycle response even if the subsequent
@@ -217,6 +236,8 @@ class RunController extends ChangeNotifier {
   }
 
   Future<void> _fetch() async {
+    if (_disposed) return;
+    final revision = ++_revision;
     try {
       // In parallel: the manifest, the stop list and the run's own detail are
       // independent, and a driver waiting at a stop should not pay for them in
@@ -227,6 +248,7 @@ class RunController extends ChangeNotifier {
         _trips.detail(_run.id),
       ]);
       final facts = results[2] as TripDetail;
+      if (_disposed || revision != _revision) return;
       _run = facts.run ?? _run;
       _detail = Loadable.data(
         RunDetail(
@@ -238,11 +260,13 @@ class RunController extends ChangeNotifier {
         ),
       );
     } on OfflineException {
+      if (_disposed || revision != _revision) return;
       _detail = Loadable.failure(
         'You are offline. Showing the last manifest loaded.',
         previous: _detail.valueOrNull,
       );
     } on TrotxiException catch (err) {
+      if (_disposed || revision != _revision) return;
       _detail = Loadable.failure(err.message, previous: _detail.valueOrNull);
     }
     notifyListeners();

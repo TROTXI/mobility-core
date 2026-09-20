@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:trotxi_client/trotxi_client.dart' as wire;
 import 'package:trotxi_driver/core/api/driver_api.dart';
 import 'package:trotxi_map/trotxi_map.dart';
@@ -54,32 +55,56 @@ class AppConfig {
 class ConfigRepository {
   ConfigRepository({required this.client});
   final DriverApi client;
+  String get _cacheKey => '${client.store.scope.storageKey}.public-config';
+  Future<AppConfig?> cached() async {
+    final raw = await client.store.storage.read(_cacheKey);
+    if (raw == null) return null;
+    final config = client.client.serializers.deserializeWith(
+      wire.Bootstrap.serializer,
+      jsonDecode(raw),
+    );
+    return config == null ? null : _view(config);
+  }
+
   Future<AppConfig> load() async {
+    final config = await client.get('/flags', wire.Bootstrap.serializer);
     try {
-      final config = await client.get('/flags', wire.Bootstrap.serializer);
-      for (final app in config.applications) {
-        if (app.app.name == 'driver' &&
-            app.platform.name == client.metadata.platform &&
-            client.metadata.build < app.minSupportedBuild) {
-          client.upgradeRequired.value = true;
-        }
-      }
-      return AppConfig(
-        operations: OperationsContact(
-          phone: _clean(config.operations.phone),
-          whatsapp: _clean(config.operations.whatsapp),
-          email: _clean(config.operations.email),
-          hours: _clean(config.operations.hours),
-        ),
-        mapStyle: TrotxiMapStyle(
-          lightUrl: _clean(config.mapTiles.styleUrl),
-          darkUrl: _clean(config.mapTiles.darkStyleUrl),
-          attribution: config.mapTiles.attribution,
+      await client.store.storage.write(
+        _cacheKey,
+        jsonEncode(
+          client.client.serializers.serializeWith(
+            wire.Bootstrap.serializer,
+            config,
+          ),
         ),
       );
-    } on TrotxiException {
-      return AppConfig.empty;
+    } catch (_) {
+      // Cache failure must not discard a successful network response.
     }
+    return _view(config);
+  }
+
+  AppConfig _view(wire.Bootstrap config) {
+    for (final app in config.applications) {
+      if (app.app.name == 'driver' &&
+          app.platform.name == client.metadata.platform &&
+          client.metadata.build < app.minSupportedBuild) {
+        client.upgradeRequired.value = true;
+      }
+    }
+    return AppConfig(
+      operations: OperationsContact(
+        phone: _clean(config.operations.phone),
+        whatsapp: _clean(config.operations.whatsapp),
+        email: _clean(config.operations.email),
+        hours: _clean(config.operations.hours),
+      ),
+      mapStyle: TrotxiMapStyle(
+        lightUrl: _clean(config.mapTiles.styleUrl),
+        darkUrl: _clean(config.mapTiles.darkStyleUrl),
+        attribution: config.mapTiles.attribution,
+      ),
+    );
   }
 
   static String? _clean(String? value) =>

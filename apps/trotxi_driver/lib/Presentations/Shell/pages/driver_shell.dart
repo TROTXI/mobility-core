@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:trotxi_driver/core/state/foreground_refresh.dart';
 import 'package:provider/provider.dart';
 import 'package:trotxi_driver/Presentations/Boarding/pages/scan_page.dart';
 import 'package:trotxi_driver/Presentations/Profile/pages/profile_page.dart';
@@ -25,6 +26,17 @@ class DriverShell extends StatefulWidget {
 }
 
 class _DriverShellState extends State<DriverShell> {
+  ForegroundRefresh? _refresh;
+  @override
+  void initState() {
+    super.initState();
+    _refresh = ForegroundRefresh(() async {
+      if (!mounted) return;
+      await context.read<TodayController>().load();
+      if (mounted) await _run?.load();
+    }, interval: const Duration(seconds: 30));
+  }
+
   DriverTab _tab = DriverTab.today;
 
   /// One controller for the run the driver is on, shared by Trip, Scan and
@@ -74,6 +86,7 @@ class _DriverShellState extends State<DriverShell> {
 
   @override
   void dispose() {
+    _refresh?.dispose();
     _disposeRun();
     super.dispose();
   }

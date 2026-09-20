@@ -10,6 +10,30 @@ import { Pricing } from '../src/payments/pricing.js';
 import { createTransportApp } from '../src/http/app.js';
 
 type Response = { statusCode: number; body: string; json(): any };
+test('driver app can register its own push device without opening other account routes to driver metadata', async (t) => {
+  const f = await fixture(t);
+  await f.owner.query("UPDATE app.users SET role='driver' WHERE id=$1", [f.actor.userId]);
+  const response = await f.call('POST', '/v1/me/devices', {
+    payload: { platform: 'android', token: 'driver-token' },
+    headers: { 'x-trotxi-client': 'driver' },
+  });
+  expectStatus(response, 200);
+  assert.equal(
+    (
+      await f.owner.query('SELECT user_id FROM app.push_devices WHERE id=$1', [
+        response.json().data.id,
+      ])
+    ).rows[0].user_id,
+    f.actor.userId,
+  );
+  expectStatus(
+    await f.call('PATCH', '/v1/me', {
+      payload: { displayName: 'Changed' },
+      headers: { 'x-trotxi-client': 'driver' },
+    }),
+    400,
+  );
+});
 function expectStatus(response: Response, code: number) {
   assert.equal(response.statusCode, code, response.body);
   return response.body ? response.json().data : null;

@@ -198,6 +198,8 @@ class _$DriverTrip extends DriverTrip {
   @override
   final String? vehiclePlate;
   @override
+  final DateTime? assignmentChangedAt;
+  @override
   final DateTime? startedAt;
   @override
   final DateTime? completedAt;
@@ -226,6 +228,7 @@ class _$DriverTrip extends DriverTrip {
       required this.status,
       this.vehicleLabel,
       this.vehiclePlate,
+      this.assignmentChangedAt,
       this.startedAt,
       this.completedAt,
       this.currentStopOccurrenceId,
@@ -256,6 +259,7 @@ class _$DriverTrip extends DriverTrip {
         status == other.status &&
         vehicleLabel == other.vehicleLabel &&
         vehiclePlate == other.vehiclePlate &&
+        assignmentChangedAt == other.assignmentChangedAt &&
         startedAt == other.startedAt &&
         completedAt == other.completedAt &&
         currentStopOccurrenceId == other.currentStopOccurrenceId &&
@@ -279,6 +283,7 @@ class _$DriverTrip extends DriverTrip {
     _$hash = $jc(_$hash, status.hashCode);
     _$hash = $jc(_$hash, vehicleLabel.hashCode);
     _$hash = $jc(_$hash, vehiclePlate.hashCode);
+    _$hash = $jc(_$hash, assignmentChangedAt.hashCode);
     _$hash = $jc(_$hash, startedAt.hashCode);
     _$hash = $jc(_$hash, completedAt.hashCode);
     _$hash = $jc(_$hash, currentStopOccurrenceId.hashCode);
@@ -304,6 +309,7 @@ class _$DriverTrip extends DriverTrip {
           ..add('status', status)
           ..add('vehicleLabel', vehicleLabel)
           ..add('vehiclePlate', vehiclePlate)
+          ..add('assignmentChangedAt', assignmentChangedAt)
           ..add('startedAt', startedAt)
           ..add('completedAt', completedAt)
           ..add('currentStopOccurrenceId', currentStopOccurrenceId)
@@ -368,6 +374,11 @@ class DriverTripBuilder implements Builder<DriverTrip, DriverTripBuilder> {
   String? get vehiclePlate => _$this._vehiclePlate;
   set vehiclePlate(String? vehiclePlate) => _$this._vehiclePlate = vehiclePlate;
 
+  DateTime? _assignmentChangedAt;
+  DateTime? get assignmentChangedAt => _$this._assignmentChangedAt;
+  set assignmentChangedAt(DateTime? assignmentChangedAt) =>
+      _$this._assignmentChangedAt = assignmentChangedAt;
+
   DateTime? _startedAt;
   DateTime? get startedAt => _$this._startedAt;
   set startedAt(DateTime? startedAt) => _$this._startedAt = startedAt;
@@ -413,6 +424,7 @@ class DriverTripBuilder implements Builder<DriverTrip, DriverTripBuilder> {
       _status = $v.status;
       _vehicleLabel = $v.vehicleLabel;
       _vehiclePlate = $v.vehiclePlate;
+      _assignmentChangedAt = $v.assignmentChangedAt;
       _startedAt = $v.startedAt;
       _completedAt = $v.completedAt;
       _currentStopOccurrenceId = $v.currentStopOccurrenceId;
@@ -463,6 +475,7 @@ class DriverTripBuilder implements Builder<DriverTrip, DriverTripBuilder> {
                 status, r'DriverTrip', 'status'),
             vehicleLabel: vehicleLabel,
             vehiclePlate: vehiclePlate,
+            assignmentChangedAt: assignmentChangedAt,
             startedAt: startedAt,
             completedAt: completedAt,
             currentStopOccurrenceId: currentStopOccurrenceId,

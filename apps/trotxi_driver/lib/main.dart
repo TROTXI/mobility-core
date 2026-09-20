@@ -13,8 +13,10 @@ import 'package:trotxi_driver/Presentations/Shell/pages/driver_shell.dart';
 import 'package:trotxi_driver/core/state/config_controller.dart';
 import 'package:trotxi_driver/core/state/session_controller.dart';
 import 'package:trotxi_driver/core/state/today_controller.dart';
+import 'package:trotxi_driver/core/state/driver_notifications.dart';
 import 'package:trotxi_driver/core/state/driver_location_controller.dart';
 import 'package:trotxi_driver/data/position_publisher.dart';
+import 'package:trotxi_driver/data/position_queue.dart';
 import 'package:trotxi_driver/data/config_repository.dart';
 import 'package:trotxi_driver/data/driver_auth_repository.dart';
 import 'package:trotxi_driver/data/incidents_repository.dart';
@@ -122,9 +124,15 @@ class _TrotxiDriverAppState extends State<TrotxiDriverApp> {
   late final TripsRepository _trips = TripsRepository(
     client: widget.client,
     beginLifecycleChange: () => _location.captureRunObserver(),
+    beforeComplete: (id) => _positions.flushBeforeComplete(id),
+    completionFailed: () => _positions.resumeAfterCompletionFailure(),
   );
   late final PositionPublisher _positions = PositionPublisher(
     client: widget.client,
+    queue: PositionQueue(
+      storage: widget.client.store.storage,
+      key: '${widget.client.store.scope.storageKey}.gps-queue',
+    ),
   );
   late final DriverLocationController _location = DriverLocationController(
     trips: _trips,
@@ -140,12 +148,20 @@ class _TrotxiDriverAppState extends State<TrotxiDriverApp> {
   );
   late final SessionController _session = SessionController(auth: _auth);
   late final TodayController _today = TodayController(trips: _trips);
+  late final DriverNotifications _notifications = DriverNotifications(
+    api: widget.client,
+    refresh: _today.load,
+  );
   int? _sessionGeneration;
+  String? _gpsOwner;
+  Future<void> _gpsBinding = Future.value();
+  int _locationRevision = 0;
   final _navigator = GlobalKey<NavigatorState>();
 
   @override
   void initState() {
     super.initState();
+    _notifications.start();
     // A session revoked server-side now returns the app to sign-in on its own
     // (#235). Automatic clearing requires a refresh endpoint 401, not a
     // timeout/server error or a failed retry after a successful refresh.
@@ -155,7 +171,8 @@ class _TrotxiDriverAppState extends State<TrotxiDriverApp> {
     _syncLocationSession();
   }
 
-  void _syncLocationSession() {
+  Future<void> _syncLocationSession() async {
+    final revision = ++_locationRevision;
     if (_sessionGeneration != widget.client.store.generation) {
       final hadSession = _sessionGeneration != null;
       _sessionGeneration = widget.client.store.generation;
@@ -169,10 +186,32 @@ class _TrotxiDriverAppState extends State<TrotxiDriverApp> {
         });
       }
     }
-    _location.setSessionReady(
-      _session.stage == SessionStage.ready &&
-          !widget.client.upgradeRequired.value,
+    final owner = _session.session?.accountId;
+    _notifications.setOwner(
+      _session.stage == SessionStage.ready ? owner : null,
     );
+    final ready =
+        _session.stage == SessionStage.ready &&
+        owner != null &&
+        !widget.client.upgradeRequired.value;
+    if (!ready) _location.setSessionReady(false);
+    if (owner != _gpsOwner || _session.stage == SessionStage.signedOut) {
+      _location.setSessionReady(false);
+      _gpsOwner = owner;
+      _gpsBinding = _gpsBinding
+          .then<void>((_) {}, onError: (Object _, StackTrace _) {})
+          .then((_) => _positions.bindOwner(owner));
+    }
+    try {
+      // Re-entrant session notifications must also await the same binding.
+      await _gpsBinding;
+    } catch (_) {
+      if (revision == _locationRevision) _gpsOwner = null;
+      return; // Fail closed when private queued data cannot be scoped safely.
+    }
+    if (mounted && revision == _locationRevision) {
+      _location.setSessionReady(ready);
+    }
   }
 
   @override
@@ -183,6 +222,7 @@ class _TrotxiDriverAppState extends State<TrotxiDriverApp> {
     _location.dispose();
     _positions.dispose();
     _today.dispose();
+    _notifications.dispose();
     _session.dispose();
     super.dispose();
   }
@@ -208,7 +248,9 @@ class _TrotxiDriverAppState extends State<TrotxiDriverApp> {
         // driver reaches when they cannot get in (#234).
         ChangeNotifierProvider(
           lazy: false,
-          create: (_) => ConfigController(config: _config)..load(),
+          create: (_) => ConfigController(config: _config)
+            ..startRecovery()
+            ..load(),
         ),
         // Follows the device by default. The prototype puts a Theme control on
         // Profile > App preferences, which drives this; dark is the one that
@@ -217,6 +259,9 @@ class _TrotxiDriverAppState extends State<TrotxiDriverApp> {
         ChangeNotifierProvider(create: (_) => AppThemeController()),
         ChangeNotifierProvider.value(value: _session),
         ChangeNotifierProvider<TodayController>.value(value: _today),
+        ChangeNotifierProvider<DriverNotifications>.value(
+          value: _notifications,
+        ),
       ],
       child: Consumer<AppThemeController>(
         builder: (context, theme, _) => MaterialApp(
@@ -257,7 +302,38 @@ class _TrotxiDriverAppState extends State<TrotxiDriverApp> {
                       ),
                     ),
                   )
-                : child ?? const SizedBox.shrink(),
+                : Consumer<ConfigController>(
+                    builder: (context, config, _) => Column(
+                      children: [
+                        if (config.error != null)
+                          Material(
+                            child: SafeArea(
+                              bottom: false,
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                ),
+                                child: Row(
+                                  children: [
+                                    Expanded(
+                                      child: Text(
+                                        config.error!,
+                                        style: const TextStyle(fontSize: 12),
+                                      ),
+                                    ),
+                                    TextButton(
+                                      onPressed: config.load,
+                                      child: const Text('Retry'),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                        Expanded(child: child ?? const SizedBox.shrink()),
+                      ],
+                    ),
+                  ),
           ),
         ),
       ),

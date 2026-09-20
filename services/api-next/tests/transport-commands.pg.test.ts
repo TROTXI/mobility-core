@@ -661,6 +661,17 @@ test('CMD-06 explicit booking coordinator shares assignment, midnight reschedule
     );
     status(move, 200);
     assert.equal(move.json().data.serviceDate, '2026-09-15');
+    const roster = await c.request('other', 'GET', '/v1/driver/trips');
+    status(roster, 200);
+    const assigned = roster.json().data.find((row: { id: string }) => row.id === trip);
+    const latestChange = (
+      await c.owner.query(
+        "SELECT max(created_at) AS changed FROM app.trip_events WHERE trip_id=$1 AND operation IN ('assign','reschedule','cancel')",
+        [trip],
+      )
+    ).rows[0].changed;
+    assert.ok(latestChange, 'fixture must contain a committed schedule change');
+    assert.equal(assigned?.assignmentChangedAt, latestChange.toISOString());
     const cancel = await c.request(
       'admin',
       'POST',

@@ -9,7 +9,12 @@ export class PushSendError extends Error {
   }
 }
 export interface PushSender {
-  send(token: string, notificationId: string, reservationId: string): Promise<string>;
+  send(
+    token: string,
+    notificationId: string,
+    resourceId: string,
+    kind?: 'reservation_prompt' | 'driver_assignment',
+  ): Promise<string>;
 }
 /** Fixed Google endpoints; service-account token_uri is never used as a URL. */
 export class FcmSender implements PushSender {
@@ -93,7 +98,12 @@ export class FcmSender implements PushSender {
     };
     return data.access_token;
   }
-  async send(token: string, notificationId: string, reservationId: string): Promise<string> {
+  async send(
+    token: string,
+    notificationId: string,
+    reservationId: string,
+    kind: 'reservation_prompt' | 'driver_assignment' = 'reservation_prompt',
+  ): Promise<string> {
     try {
       const access = await this.access();
       const res = await this.request(
@@ -107,10 +117,17 @@ export class FcmSender implements PushSender {
             message: {
               token,
               notification: {
-                title: 'Confirm your commute',
-                body: 'Open Trotxi to confirm or decline your upcoming trip.',
+                title:
+                  kind === 'driver_assignment' ? 'Your schedule changed' : 'Confirm your commute',
+                body:
+                  kind === 'driver_assignment'
+                    ? 'Open Trotxi Driver to refresh your assignments.'
+                    : 'Open Trotxi to confirm or decline your upcoming trip.',
               },
-              data: { type: 'reservation_prompt', notificationId, reservationId },
+              data:
+                kind === 'driver_assignment'
+                  ? { type: kind, notificationId }
+                  : { type: kind, notificationId, reservationId },
               android: { ttl: '300s', collapse_key: notificationId },
               apns: {
                 headers: {
