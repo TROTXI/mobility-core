@@ -616,6 +616,7 @@ void main() {
         final fix = await RouteMapRepository(client: api).vehicleOn('trip-1');
         expect(fix, isNotNull);
         expect(fix!.age.inSeconds, age);
+        expect(fix.receivedAt, DateTime.parse(at));
         if (age > 120) {
           expect(fix.etas, isEmpty);
         } else {

@@ -58,6 +58,20 @@ class _RunMapState extends State<RunMap> {
   int _revision = 0;
   bool _drawing = false;
   bool _redraw = false;
+  int _mapEpoch = 0;
+  int? _drawnRoute;
+  late final VehicleMarker _marker = VehicleMarker(
+    options: (point, fresh) {
+      final colors = context.driverColors;
+      return CircleOptions(
+        geometry: point,
+        circleRadius: 9,
+        circleColor: _hex(fresh ? colors.live : colors.textSecondary),
+        circleStrokeColor: _hex(colors.surface),
+        circleStrokeWidth: 3,
+      );
+    },
+  );
 
   @override
   void initState() {
@@ -75,9 +89,11 @@ class _RunMapState extends State<RunMap> {
         oldWidget.isActive != widget.isActive) {
       _revision++;
       _vehicle = null;
+      _marker.clear();
       if (oldWidget.runId != widget.runId) {
         _shape = null;
         _framed = false;
+        _drawnRoute = null;
       }
       unawaited(_load());
     }
@@ -87,6 +103,7 @@ class _RunMapState extends State<RunMap> {
   void dispose() {
     _revision++;
     _refresh?.dispose();
+    _marker.dispose();
     super.dispose();
   }
 
@@ -105,9 +122,21 @@ class _RunMapState extends State<RunMap> {
         _shape = shape;
         _vehicle = vehicle;
       });
+      if (vehicle == null) {
+        _marker.clear();
+      } else {
+        _marker.accept(
+          vehicle.position,
+          vehicle.receivedAt ?? vehicle.recordedAt,
+          fresh: vehicle.age <= const Duration(seconds: 30),
+        );
+      }
       await _draw();
     } on TrotxiException {
-      if (mounted && revision == _revision) setState(() => _vehicle = null);
+      if (mounted && revision == _revision) {
+        _marker.clear();
+        setState(() => _vehicle = null);
+      }
     }
   }
 
@@ -139,6 +168,25 @@ class _RunMapState extends State<RunMap> {
     final controller = _controller;
     final shape = _shape;
     if (controller == null || shape == null || !mounted) return;
+    final signature = Object.hash(
+      widget.runId,
+      shape.source,
+      Object.hashAll(
+        shape.points.map((p) => Object.hash(p.latitude, p.longitude)),
+      ),
+      Object.hashAll(
+        shape.stops.map(
+          (s) => Object.hash(
+            s.id,
+            s.seq,
+            s.position.latitude,
+            s.position.longitude,
+          ),
+        ),
+      ),
+    );
+    if (_drawnRoute == signature) return;
+    final epoch = _mapEpoch;
 
     final colors = context.driverColors;
     await controller.clearLines();
@@ -170,18 +218,9 @@ class _RunMapState extends State<RunMap> {
       );
     }
 
-    final vehicle = _vehicle;
-    if (vehicle != null) {
-      await controller.addCircle(
-        CircleOptions(
-          geometry: vehicle.position,
-          circleRadius: 9,
-          circleColor: _hex(colors.live),
-          circleStrokeColor: _hex(colors.surface),
-          circleStrokeWidth: 3,
-        ),
-      );
-    }
+    if (epoch != _mapEpoch || !mounted) return;
+    _drawnRoute = signature;
+    _marker.attach(controller);
 
     // Framed once. Re-framing on every redraw would fight a driver who has
     // panned the map to look at something.
@@ -233,10 +272,15 @@ class _RunMapState extends State<RunMap> {
                   const LatLng(5.6037, -0.187),
               interactive: false,
               onMapReady: (controller) {
+                _mapEpoch++;
                 _controller = controller;
+              },
+              onStyleReloaded: (controller) {
+                _mapEpoch++;
+                _controller = controller;
+                _drawnRoute = null;
                 unawaited(_draw());
               },
-              onStyleReloaded: (_) => unawaited(_draw()),
             ),
 
             // Both notes sit bottom-left, clear of the attribution's own line

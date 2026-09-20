@@ -111,6 +111,7 @@ class VehicleFix {
   const VehicleFix({
     required this.position,
     required this.recordedAt,
+    this.receivedAt,
     this._etas = const [],
     this.receivedLocallyAt,
     this.ageAtReceipt,
@@ -118,6 +119,9 @@ class VehicleFix {
 
   final LatLng position;
   final DateTime recordedAt;
+
+  /// Server receipt orders fixes even when a device clock is corrected.
+  final DateTime? receivedAt;
 
   /// Every stop still ahead, in order. Empty when the corridor has fewer than
   /// two stops or the van is past the last one, both of which the API states.
@@ -260,6 +264,7 @@ class RouteMapRepository {
           position.location.longitude.toDouble(),
         ),
         recordedAt: position.capturedAt,
+        receivedAt: position.receivedAt,
         receivedLocallyAt: fetched,
         ageAtReceipt: Duration(seconds: position.ageSeconds),
         etas: [
