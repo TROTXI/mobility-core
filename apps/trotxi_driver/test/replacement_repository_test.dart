@@ -154,6 +154,45 @@ void seedTrip(
 }
 
 void main() {
+  test(
+    'driver rows expose the actual plate and assignment change time',
+    () async {
+      final api = withAdapter(
+        Adapter(
+          (o) => o.path == '/v1/driver/trips'
+              ? (
+                  200,
+                  {
+                    'data': [
+                      {
+                        ...trip(),
+                        'vehiclePlate': 'GT 1234-26',
+                        'assignmentChangedAt': at,
+                      },
+                    ],
+                    'page': {'nextCursor': null},
+                  },
+                )
+              : (200, {'data': route()}),
+        ),
+      );
+      final runs = await TripsRepository(client: api).myRuns();
+      expect(runs.single.vehicleRegistration, 'GT 1234-26');
+      expect(runs.single.assignmentChangedAt, DateTime.parse(at));
+    },
+  );
+
+  test(
+    'cached public configuration is scoped and survives repository restart',
+    () async {
+      final api = withAdapter(Adapter((_) => (200, bootstrap())));
+      await ConfigRepository(client: api).load();
+      expect(
+        (await ConfigRepository(client: api).cached())!.operations.phone,
+        '+233200000000',
+      );
+    },
+  );
   for (final code in ['boarding_ineligible', 'insufficient_rides']) {
     test(
       '$code preserves the refusal without claiming the seat is absent',

@@ -545,6 +545,7 @@ named(
     // identify it by. Added here rather than on Trip: the rider catalogue says
     // what is running, never which bus was assigned to whom.
     vehiclePlate: text(32).nullable(),
+    assignmentChangedAt: instant.nullable().optional(),
     startedAt: instant.nullable(),
     completedAt: instant.nullable(),
     currentStopOccurrenceId: id.nullable(),

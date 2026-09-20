@@ -357,21 +357,23 @@ export async function createTransportApp(options: AppOptions) {
           const workerClient = scheduled && client === 'worker';
           const platformless = client === 'ops' || workerClient;
           if (
-            (anyClient || authentication
-              ? !['ops', 'driver', 'commuter'].includes(String(client))
-              : !(
-                  workerClient ||
-                  client ===
-                    (ops
-                      ? 'ops'
-                      : membershipEndpoint ||
-                          purchaseEndpoint ||
-                          accountEndpoint ||
-                          name === 'previewPurchase' ||
-                          name === 'issuePass'
-                        ? 'commuter'
-                        : 'driver')
-                )) ||
+            (name === 'registerDevice'
+              ? !['driver', 'commuter'].includes(String(client))
+              : anyClient || authentication
+                ? !['ops', 'driver', 'commuter'].includes(String(client))
+                : !(
+                    workerClient ||
+                    client ===
+                      (ops
+                        ? 'ops'
+                        : membershipEndpoint ||
+                            purchaseEndpoint ||
+                            accountEndpoint ||
+                            name === 'previewPurchase' ||
+                            name === 'issuePass'
+                          ? 'commuter'
+                          : 'driver')
+                  )) ||
             (name === 'signInDriver' && client !== 'driver') ||
             typeof build !== 'string' ||
             !/^[1-9]\d{0,8}$/.test(build) ||

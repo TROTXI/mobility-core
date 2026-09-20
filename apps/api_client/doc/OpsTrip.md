@@ -20,6 +20,7 @@ Name | Type | Description | Notes
 **status** | **String** |  | 
 **vehicleLabel** | **String** |  | 
 **vehiclePlate** | **String** |  | 
+**assignmentChangedAt** | [**DateTime**](DateTime.md) |  | [optional]
 **startedAt** | [**DateTime**](DateTime.md) |  | 
 **completedAt** | [**DateTime**](DateTime.md) |  | 
 **currentStopOccurrenceId** | **String** |  | 
@@ -31,5 +32,4 @@ Name | Type | Description | Notes
 **vehicleId** | **String** |  | 
 
 [[Back to Model list]](../README.md#documentation-for-models) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to README]](../README.md)
-
 

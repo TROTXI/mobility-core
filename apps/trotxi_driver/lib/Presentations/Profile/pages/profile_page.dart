@@ -12,14 +12,12 @@ import 'package:trotxi_driver/Presentations/Schedule/pages/schedule_page.dart';
 import 'package:trotxi_driver/Presentations/Support/pages/incident_support_page.dart';
 import 'package:trotxi_driver/Presentations/Work/pages/work_requests_page.dart';
 import 'package:trotxi_driver/core/state/session_controller.dart';
+import 'package:trotxi_driver/core/state/driver_notifications.dart';
 
 /// Profile and settings (prototype frames 49 to 54).
 ///
-/// Only what the app can actually honour. The prototype also draws notification
-/// preferences, and those are left out on purpose: there is no API behind them,
-/// so shipping the toggles would mean a driver switching off assignment alerts
-/// and still being woken by them. A control that lies is worse than a missing
-/// one.
+/// Assignment alerts reflect device permission and actual API registration;
+/// general notification preferences remain outside this driver's workflow.
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
 
@@ -54,6 +52,7 @@ class _ProfilePageState extends State<ProfilePage> {
     final session = context.watch<SessionController>();
     final theme = context.watch<AppThemeController>();
     final driver = session.session;
+    final alerts = context.watch<DriverNotifications?>();
     final identity = Container(
       padding: const EdgeInsets.all(AppSpacing.space20),
       decoration: BoxDecoration(
@@ -175,6 +174,17 @@ class _ProfilePageState extends State<ProfilePage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          if (alerts != null)
+            ListTile(
+              title: const Text('Assignment alerts'),
+              subtitle: Text(alerts.status),
+              trailing: alerts.enabled
+                  ? const Icon(Icons.notifications_active_outlined)
+                  : TextButton(
+                      onPressed: alerts.busy ? null : alerts.enable,
+                      child: const Text('Enable'),
+                    ),
+            ),
           _Card(
             colors: colors,
             child: Column(
@@ -343,7 +353,8 @@ class _ProfilePageState extends State<ProfilePage> {
         title: const Text('Sign out?'),
         content: const Text(
           'You will need your driver code and PIN to sign back in. Any trip you '
-          'have running stays running.',
+          'have running stays running. GPS positions not yet uploaded are removed '
+          'from this phone when you sign out. Reconnect first to preserve them.',
         ),
         actions: [
           TextButton(

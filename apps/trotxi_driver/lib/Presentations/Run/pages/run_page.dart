@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:trotxi_driver/core/state/foreground_refresh.dart';
+import 'package:trotxi_driver/core/api/driver_api.dart';
 import 'package:trotxi_driver/Presentations/Readiness/pages/device_readiness_page.dart';
 import 'package:trotxi_driver/core/config/corridor_time.dart';
 import 'package:provider/provider.dart';
@@ -43,14 +45,17 @@ class _RunPageState extends State<RunPage> {
   /// Null until the run reports a position, which is most of a run's first
   /// minutes and every run in a dead zone.
   VehicleFix? _fix;
+  int _fixRevision = 0;
 
   /// The corridor's stops with their coordinates, for handing one to the
   /// phone's navigation app. Cached for the session by the repository.
   RouteShape? _shape;
+  ForegroundRefresh? _refresh;
 
   @override
   void initState() {
     super.initState();
+    _refresh = ForegroundRefresh(_loadFix);
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (!mounted) return;
       await context.read<RunController>().load();
@@ -58,21 +63,39 @@ class _RunPageState extends State<RunPage> {
     });
   }
 
+  @override
+  void dispose() {
+    _refresh?.dispose();
+    super.dispose();
+  }
+
   /// Read the vehicle's position for its stop ETAs.
   ///
   /// Shares the repository's short-lived cache with the map, so the two
   /// surfaces on this screen that want a fix make one call between them.
   Future<void> _loadFix() async {
+    if (!mounted) return;
+    final revision = ++_fixRevision;
     final run = context.read<RunController>().detail.valueOrNull?.run;
-    if (run == null || !run.isActive) return;
+    if (run == null || !run.isActive) {
+      if (_fix != null) setState(() => _fix = null);
+      return;
+    }
     final maps = context.read<RouteMapRepository>();
-    final fix = await maps.vehicleOn(run.id);
-    final shape = await maps.shapeFor(run.id);
-    if (mounted) {
-      setState(() {
-        _fix = fix;
-        _shape = shape;
-      });
+    try {
+      final fix = await maps.vehicleOn(run.id);
+      final shape = await maps.shapeFor(run.id);
+      if (mounted &&
+          revision == _fixRevision &&
+          context.read<RunController>().currentRun.id == run.id &&
+          context.read<RunController>().currentRun.isActive) {
+        setState(() {
+          _fix = fix;
+          _shape = shape;
+        });
+      }
+    } on TrotxiException {
+      if (mounted && revision == _fixRevision) setState(() => _fix = null);
     }
   }
 

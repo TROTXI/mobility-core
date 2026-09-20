@@ -40,8 +40,8 @@ class DriverRun {
   final RunStatus status;
   final String? vehicleId;
 
-  /// The replacement's vehicle label, retained under this view-model name.
-  /// It is not necessarily a registration plate; null means unknown.
+  /// Registration plate when supplied, falling back to the vehicle label.
+  /// Null means the assignment has no vehicle information yet.
   final String? vehicleRegistration;
 
   /// The ordinal of the trip-owned occurrence the driver reported reaching.
@@ -185,8 +185,15 @@ class TripDetail {
 
 /// The driver's runs, their manifests, and the lifecycle transitions.
 class TripsRepository {
-  TripsRepository({required this.client, this.beginLifecycleChange});
+  TripsRepository({
+    required this.client,
+    this.beginLifecycleChange,
+    this.beforeComplete,
+    this.completionFailed,
+  });
   final DriverApi client;
+  final Future<void> Function(String)? beforeComplete;
+  final void Function()? completionFailed;
   final void Function(DriverRun) Function()? beginLifecycleChange;
   final Map<String, String> _seatTrips = {};
   int? _generation;
@@ -214,7 +221,8 @@ class TripsRepository {
       routeName: name,
       scheduledAt: t.scheduledAt,
       status: RunStatus.values.byName(t.status.name),
-      vehicleRegistration: t.vehicleLabel,
+      vehicleRegistration: t.vehiclePlate ?? t.vehicleLabel,
+      assignmentChangedAt: t.assignmentChangedAt,
       currentStopSeq: reached?.ordinal,
       serviceDate: t.serviceDate.toString(),
       direction: t.direction.name,
@@ -242,7 +250,15 @@ class TripsRepository {
   }
 
   Future<DriverRun> start(String runId) => _transition(runId, 'start');
-  Future<DriverRun> complete(String runId) => _transition(runId, 'complete');
+  Future<DriverRun> complete(String runId) async {
+    try {
+      await beforeComplete?.call(runId);
+      return await _transition(runId, 'complete');
+    } catch (_) {
+      completionFailed?.call();
+      rethrow;
+    }
+  }
 
   Future<DriverRun> _transition(String id, String action) async {
     final observe = beginLifecycleChange?.call();
@@ -304,7 +320,7 @@ class TripsRepository {
         .firstOrNull;
     return TripDetail(
       stopCount: trip.stops.length,
-      vehicleRegistration: trip.vehicleLabel,
+      vehicleRegistration: trip.vehiclePlate ?? trip.vehicleLabel,
       currentStopSeq: reached?.ordinal,
       run: await _run(trip),
     );

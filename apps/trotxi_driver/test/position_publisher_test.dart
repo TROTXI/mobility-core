@@ -22,6 +22,7 @@ void main() {
   late bool services;
   late LocationPermission permission;
   Completer<int>? pending;
+  DateTime? nativeTimestamp;
 
   Future<void> fix({
     DateTime? timestamp,
@@ -80,6 +81,7 @@ void main() {
     services = true;
     permission = LocationPermission.whileInUse;
     pending = null;
+    nativeTimestamp = null;
     messenger.setMockMethodCallHandler(location, (call) async {
       calls.add(call.method);
       switch (call.method) {
@@ -87,6 +89,18 @@ void main() {
           return services;
         case 'checkPermission':
           return pending?.future ?? permission.index;
+        case 'getCurrentPosition':
+          return {
+            'latitude': 5.57,
+            'longitude': -0.21,
+            'timestamp':
+                (nativeTimestamp ?? DateTime.now()).millisecondsSinceEpoch,
+            'accuracy': 5.0,
+            'altitude': 0.0,
+            'heading': 0.0,
+            'speed': 0.0,
+            'speed_accuracy': 0.0,
+          };
         default:
           throw StateError('Unexpected native method ${call.method}');
       }
@@ -100,6 +114,75 @@ void main() {
     messenger.setMockMethodCallHandler(location, null);
     messenger.setMockMethodCallHandler(updates, null);
   });
+
+  test(
+    'a fresh stationary reading is captured without 25 metres of movement',
+    () async {
+      var now = DateTime.now().subtract(const Duration(seconds: 20));
+      final bodies = <Map>[];
+      final secondDelivery = Completer<void>();
+      final publisher = PositionPublisher(
+        client: client((o, h) {
+          bodies.add(Map.from(o.data as Map));
+          accept(o, h);
+          if (bodies.length == 2) secondDelivery.complete();
+        }),
+        now: () => now,
+      );
+      addTearDown(publisher.dispose);
+      await publisher.start('trip-1');
+      await fix(timestamp: now);
+      await reaches(publisher, PositionSharing.live);
+      now = now.add(const Duration(seconds: 5));
+      nativeTimestamp = now;
+      await publisher.captureNow();
+      await secondDelivery.future.timeout(const Duration(seconds: 2));
+      expect(calls, contains('getCurrentPosition'));
+      expect(publisher.queueError, isNull);
+      expect(publisher.state, PositionSharing.live);
+      expect(bodies.length, 2);
+      expect(bodies[0]['latitude'], bodies[1]['latitude']);
+      expect(bodies[0]['capturedAt'], isNot(bodies[1]['capturedAt']));
+      expect(bodies[0]['clientFixId'], isNot(bodies[1]['clientFixId']));
+    },
+  );
+
+  test(
+    'completion is refused with unsent GPS, then succeeds after retry with the same fix ID',
+    () async {
+      var offline = true;
+      final ids = <String>[];
+      final publisher = PositionPublisher(
+        client: client((o, h) {
+          ids.add((o.data as Map)['clientFixId'] as String);
+          if (offline) {
+            h.reject(
+              DioException(
+                requestOptions: o,
+                type: DioExceptionType.connectionError,
+              ),
+            );
+          } else {
+            accept(o, h);
+          }
+        }),
+      );
+      addTearDown(publisher.dispose);
+      await publisher.start('trip-1');
+      await fix();
+      await reaches(publisher, PositionSharing.failed);
+      await expectLater(
+        publisher.flushBeforeComplete('trip-1'),
+        throwsA(isA<ApiException>()),
+      );
+      expect(publisher.queuedFixes, 1);
+      offline = false;
+      await publisher.flushBeforeComplete('trip-1');
+      expect(publisher.queuedFixes, 0);
+      expect(ids.length, greaterThanOrEqualTo(3));
+      expect(ids.toSet().length, 1);
+    },
+  );
 
   test(
     'permission and a native fix alone do not claim live; only an API acknowledgement does',
@@ -206,7 +289,7 @@ void main() {
   );
 
   test(
-    'failed upload is not live or queued; a later successful fix recovers',
+    'failed upload stays queued and retry recovers without changing its identity',
     () async {
       var fail = true;
       final publisher = PositionPublisher(
@@ -227,9 +310,11 @@ void main() {
       await publisher.start('trip-1');
       await fix();
       await reaches(publisher, PositionSharing.failed);
+      expect(publisher.queuedFixes, 1);
       fail = false;
-      await fix();
+      await publisher.retry();
       await reaches(publisher, PositionSharing.live);
+      expect(publisher.queuedFixes, 0);
     },
   );
 

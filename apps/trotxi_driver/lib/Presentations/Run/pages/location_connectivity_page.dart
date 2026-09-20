@@ -45,6 +45,27 @@ class LocationConnectivityPage extends StatelessWidget {
                 ),
                 const SizedBox(height: AppSpacing.space16),
                 GpsIndicator(state: state, detail: _gpsDetail(positions)),
+                if (positions.expiredFixes > 0)
+                  ListTile(
+                    title: Text(
+                      '${positions.expiredFixes} saved GPS positions expired before upload.',
+                    ),
+                    subtitle: const Text(
+                      'Positions are kept on this phone for at most 24 hours. These positions were not uploaded.',
+                    ),
+                    trailing: TextButton(
+                      onPressed: positions.acknowledgeExpiry,
+                      child: const Text('Understood'),
+                    ),
+                  ),
+                if (positions.queuedFixes > 0 || positions.queueError != null)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 8),
+                    child: Text(
+                      positions.queueError ??
+                          '${positions.queuedFixes} GPS positions saved on this phone, waiting to upload. Keep this account signed in.',
+                    ),
+                  ),
                 const SizedBox(height: AppSpacing.space16),
                 RunMap(
                   routeId: run.routeId,

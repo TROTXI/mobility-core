@@ -10,6 +10,157 @@ import { PushNotifications } from '../src/notifications/push.js';
 import { PushSendError } from '../src/notifications/fcm.js';
 import type { PushSender } from '../src/notifications/fcm.js';
 
+async function driverFixture(t: Parameters<typeof setup>[0], sender: PushSender) {
+  const f = await setup(t);
+  await f.owner.query('INSERT INTO app.test_fin_sessions VALUES ($1,true)', [f.adminId]);
+  const transport = new TransportService({ ...f.dependencies, cursorSecret: Buffer.alloc(32, 9) });
+  await transport.generateTrips(
+    { userId: f.adminId, sessionId: f.adminId },
+    { serviceDate: new Date(Date.now() + 86400000).toISOString().slice(0, 10) },
+  );
+  const trip = (await f.owner.query('SELECT id FROM app.trips LIMIT 1')).rows[0].id;
+  const user = (
+    await f.owner.query(
+      "INSERT INTO app.users(role,display_name) VALUES ('driver','Test driver') RETURNING id",
+    )
+  ).rows[0].id;
+  const driver = (
+    await f.owner.query(
+      "INSERT INTO app.drivers(user_id,name) VALUES ($1,'Test driver') RETURNING id",
+      [user],
+    )
+  ).rows[0].id;
+  await f.owner.query('INSERT INTO app.test_fin_sessions VALUES ($1,true)', [user]);
+  await f.owner.query(
+    "INSERT INTO app.auth_sessions(user_id,expires_at) VALUES ($1,clock_timestamp()+interval '1 hour')",
+    [user],
+  );
+  const account = new AccountService({
+    pool: f.runtime,
+    authorizeSession: f.dependencies.authorizeSession,
+    deviceKey: Buffer.alloc(32, 2),
+  });
+  const device = await account.handle(
+    { userId: user, sessionId: user },
+    'registerDevice',
+    { platform: 'android', token: 'driver-token' },
+    undefined,
+    randomUUID(),
+  );
+  const insertEvent = async (operation = 'assign') =>
+    (
+      await f.owner.query(
+        `INSERT INTO app.trip_events(trip_id,actor_user_id,operation,before_state,after_state)
+     VALUES ($1,$2,$3,$4,$5) RETURNING id`,
+        [
+          trip,
+          f.adminId,
+          operation,
+          { assignedDriverId: driver, version: 1 },
+          { assignedDriverId: driver, version: 2 },
+        ],
+      )
+    ).rows[0].id;
+  return {
+    ...f,
+    account,
+    user,
+    driver,
+    trip,
+    insertEvent,
+    deviceId: (device.body as any).data.id,
+    push: new PushNotifications({ pool: f.runtime, deviceKey: Buffer.alloc(32, 2), sender }),
+  };
+}
+
+test('driver assignment, reschedule and cancellation alerts are bounded and deduplicated across workers', async (t) => {
+  const sent: string[] = [];
+  const f = await driverFixture(t, {
+    send: async (token, id, _, kind) => {
+      assert.equal(token, 'driver-token');
+      assert.equal(kind, 'driver_assignment');
+      sent.push(id);
+      return 'accepted';
+    },
+  });
+  for (const operation of ['assign', 'reschedule', 'cancel']) await f.insertEvent(operation);
+  await Promise.all([f.push.drain(), f.push.drain()]);
+  await f.push.drain();
+  assert.equal(sent.length, 3);
+  assert.equal(new Set(sent).size, 3);
+  assert.equal(
+    (
+      await f.owner.query(
+        "SELECT count(*)::integer n FROM app.push_deliveries WHERE state='accepted' AND trip_event_id IS NOT NULL",
+      )
+    ).rows[0].n,
+    3,
+  );
+});
+
+test('driver alert retries recheck device ownership and session revocation', async (t) => {
+  let sends = 0;
+  const f = await driverFixture(t, {
+    send: async () => {
+      sends++;
+      throw new PushSendError(true);
+    },
+  });
+  await f.insertEvent();
+  await f.push.drain();
+  assert.equal(sends, 1);
+  await f.account.handle(
+    f.other,
+    'registerDevice',
+    { platform: 'android', token: 'driver-token' },
+    undefined,
+    randomUUID(),
+  );
+  await f.owner.query(
+    "UPDATE app.push_deliveries SET next_attempt_at=clock_timestamp()-interval '1 second'",
+  );
+  assert.equal((await f.push.drain()).cancelled, 1);
+  assert.equal(sends, 1);
+  await f.account.handle(
+    { userId: f.user, sessionId: f.user },
+    'registerDevice',
+    { platform: 'android', token: 'new-driver-token' },
+    undefined,
+    randomUUID(),
+  );
+  await f.owner.query(
+    'UPDATE app.auth_sessions SET revoked_at=clock_timestamp() WHERE user_id=$1',
+    [f.user],
+  );
+  await f.insertEvent('cancel');
+  await f.push.drain();
+  assert.equal(sends, 1);
+});
+
+test('rolled-back driver events do not send alerts', async (t) => {
+  let sends = 0;
+  const f = await driverFixture(t, {
+    send: async () => {
+      sends++;
+      return 'accepted';
+    },
+  });
+  const c = await f.owner.connect();
+  try {
+    await c.query('BEGIN');
+    await c.query(
+      `INSERT INTO app.trip_events(trip_id,actor_user_id,operation,before_state,after_state)
+      VALUES ($1,$2,'assign','{}',$3)`,
+      [f.trip, f.adminId, { assignedDriverId: f.driver }],
+    );
+    await c.query('ROLLBACK');
+  } finally {
+    c.release();
+  }
+  await f.push.drain();
+  assert.equal(sends, 0);
+});
+
 async function fixture(t: Parameters<typeof setup>[0], sender: PushSender) {
   const f = await setup(t);
   await f.owner.query('INSERT INTO app.test_fin_sessions VALUES ($1,true)', [f.adminId]);
