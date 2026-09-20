@@ -47,6 +47,8 @@ export interface RuntimeConfig {
   google: { clientId: string };
   apple: { clientIds: string[]; teamId: string; keyId: string; privateKey: string } | null;
   paystack: { secretKey: string };
+  /** Optional until email is provisioned; no extra encryption or sender secrets. */
+  email?: { apiKey: string; staging: boolean };
   avatars: {
     accountId: string;
     accessKeyId: string;
@@ -246,6 +248,9 @@ export function readConfiguration(env: Env = process.env): RuntimeConfig {
     );
   return {
     existingStaging,
+    ...(optional(env, 'RESEND_API_KEY')
+      ? { email: { apiKey: required(env, 'RESEND_API_KEY'), staging: deployment === 'staging' } }
+      : {}),
     databaseUrl,
     poolSize: integerOr(env, 'REPLACEMENT_POOL_SIZE', 8, 1, 100),
     listen: {

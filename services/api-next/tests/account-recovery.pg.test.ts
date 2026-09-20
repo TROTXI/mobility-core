@@ -112,6 +112,7 @@ test('ACR-08 forward upgrade scrubs settled task identities and refuses to disca
   assert.deepEqual(await migrate(f.owner, files), [
     '020_account_recovery.sql',
     '021_receipt_payload_retention.sql',
+    '022_transactional_email.sql',
   ]);
   assert.deepEqual(
     (

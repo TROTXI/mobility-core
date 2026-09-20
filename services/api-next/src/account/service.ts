@@ -43,6 +43,7 @@ export interface AccountOptions {
   pool: Pool;
   authorizeSession: (client: PoolClient, actor: Actor) => Promise<void>;
   deviceKey: Buffer;
+  erasureRequested?: (client: PoolClient, userId: string, email: string | null) => Promise<void>;
   avatars?: AvatarStore;
   reach?: ErasureReach;
   avatarUrlTtlSeconds?: number;
@@ -492,6 +493,7 @@ export class AccountService {
       }
       const user = await this.owner(c, actor);
       await this.receipt(c, actor, 'eraseAccount', key, user.id);
+      await this.options.erasureRequested?.(c, user.id, user.email ?? null);
       const sessions = await c.query(
         'UPDATE app.auth_sessions SET revoked_at=clock_timestamp() WHERE user_id=$1 AND revoked_at IS NULL',
         [user.id],
