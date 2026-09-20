@@ -1,5 +1,5 @@
-// DESIGN CONTRACT ONLY. Not imported by the application or served on staging.
-// Zod is authoritative for these proposed fields; build-contract.mjs emits OpenAPI.
+// Authoritative Zod contract, including explicitly deferred operations.
+// build-transport-contract.mjs selects the implemented subset for API/SDK/docs.
 import { z } from '../../../services/api/node_modules/zod/index.js';
 
 export const registry = z.registry();

@@ -1,5 +1,9 @@
 # Stage 4: moving an app to the replacement contract
 
+For the current staging integration and captured responses, start with the
+[commuter API guide](../api/README.md). The stage notes below are historical
+migration context, not the current deployment runbook.
+
 For whoever owns an app. Both apps now use the replacement on the Stage 4
 branches; remaining commuter features are tracked separately. This describes the shared
 contract changes, not a deployment or permission to mix backend generations.
@@ -9,7 +13,7 @@ See `stage-4-progress.md` for implementation and verification status.
 
 | Package              | Contract                                   | Used by            |
 | -------------------- | ------------------------------------------ | ------------------ |
-| `apps/api_client`    | **The replacement**, 119 operations        | `trotxi_client`    |
+| `apps/api_client`    | **The replacement**, 121 operations        | `trotxi_client`    |
 | `apps/trotxi_client` | Shared session, transport and domain layer | Both migrated apps |
 
 The temporary `_next` packages and the unused legacy clients have been removed.

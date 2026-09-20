@@ -125,6 +125,16 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/Build"
+                },
+                "examples": {
+                  "staging_5": {
+                    "summary": "Staging 2026-09-20T00:20:54.705Z — identifiers/personal fields sanitized",
+                    "value": {
+                      "service": "trotxi-api-staging",
+                      "version": "1.0.0",
+                      "commit": "b5a462eb38b3a58736083f8736aca13e700a8c4e"
+                    }
+                  }
                 }
               }
             }
@@ -162,6 +172,106 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/Bootstrap"
+                },
+                "examples": {
+                  "staging_6": {
+                    "summary": "Staging 2026-09-20T00:20:54.897Z — identifiers/personal fields sanitized",
+                    "value": {
+                      "serverTime": "2026-09-20T00:20:54.881Z",
+                      "applications": [
+                        {
+                          "app": "commuter",
+                          "platform": "ios",
+                          "minSupportedBuild": 1,
+                          "storeUrl": null,
+                          "apiMajor": 1
+                        },
+                        {
+                          "app": "commuter",
+                          "platform": "android",
+                          "minSupportedBuild": 1,
+                          "storeUrl": null,
+                          "apiMajor": 1
+                        },
+                        {
+                          "app": "driver",
+                          "platform": "ios",
+                          "minSupportedBuild": 1,
+                          "storeUrl": null,
+                          "apiMajor": 1
+                        },
+                        {
+                          "app": "driver",
+                          "platform": "android",
+                          "minSupportedBuild": 1,
+                          "storeUrl": null,
+                          "apiMajor": 1
+                        }
+                      ],
+                      "operations": {
+                        "phone": null,
+                        "whatsapp": null,
+                        "email": null,
+                        "hours": null
+                      },
+                      "mapTiles": {
+                        "url": "https://tiles.trotxi.com/ghana.pmtiles",
+                        "styleUrl": "https://tiles.trotxi.com/style.light.json",
+                        "darkStyleUrl": "https://tiles.trotxi.com/style.dark.json",
+                        "attribution": "© OpenStreetMap contributors"
+                      },
+                      "flags": []
+                    }
+                  },
+                  "staging_17": {
+                    "summary": "Staging 2026-09-20T00:32:58.843Z — identifiers/personal fields sanitized",
+                    "value": {
+                      "serverTime": "2026-09-20T00:32:59.154Z",
+                      "applications": [
+                        {
+                          "app": "commuter",
+                          "platform": "ios",
+                          "minSupportedBuild": 1,
+                          "storeUrl": null,
+                          "apiMajor": 1
+                        },
+                        {
+                          "app": "commuter",
+                          "platform": "android",
+                          "minSupportedBuild": 1,
+                          "storeUrl": null,
+                          "apiMajor": 1
+                        },
+                        {
+                          "app": "driver",
+                          "platform": "ios",
+                          "minSupportedBuild": 1,
+                          "storeUrl": null,
+                          "apiMajor": 1
+                        },
+                        {
+                          "app": "driver",
+                          "platform": "android",
+                          "minSupportedBuild": 1,
+                          "storeUrl": null,
+                          "apiMajor": 1
+                        }
+                      ],
+                      "operations": {
+                        "phone": null,
+                        "whatsapp": null,
+                        "email": null,
+                        "hours": null
+                      },
+                      "mapTiles": {
+                        "url": "https://tiles.trotxi.com/ghana.pmtiles",
+                        "styleUrl": "https://tiles.trotxi.com/style.light.json",
+                        "darkStyleUrl": "https://tiles.trotxi.com/style.dark.json",
+                        "attribution": "© OpenStreetMap contributors"
+                      },
+                      "flags": []
+                    }
+                  }
                 }
               }
             }
@@ -864,6 +974,21 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/AccountResponse"
+                },
+                "examples": {
+                  "staging_1": {
+                    "summary": "Staging 2026-09-20T00:33:43.258Z — identifiers/personal fields sanitized",
+                    "value": {
+                      "data": {
+                        "id": "3a0942ec-aa27-48f0-a0e1-5be8b81dcb70",
+                        "displayName": "Test Rider",
+                        "phone": null,
+                        "avatarUrl": null,
+                        "role": "commuter",
+                        "createdAt": "2026-09-20T00:10:32.424Z"
+                      }
+                    }
+                  }
                 }
               }
             },
@@ -1760,6 +1885,139 @@
                         }
                       }
                     }
+                  },
+                  "staging_3": {
+                    "summary": "Staging 2026-09-20T00:14:46.393Z — identifiers/personal fields sanitized",
+                    "value": {
+                      "data": {
+                        "membership": null,
+                        "coverage": null,
+                        "lastCoverageEndedAt": null,
+                        "access": {
+                          "canReserve": false,
+                          "blocks": []
+                        },
+                        "commute": null,
+                        "entitlements": {
+                          "remainingRides": 0,
+                          "credit": {
+                            "amountMinor": 0,
+                            "currency": "GHS"
+                          },
+                          "heldCredit": {
+                            "amountMinor": 0,
+                            "currency": "GHS"
+                          },
+                          "availableCredit": {
+                            "amountMinor": 0,
+                            "currency": "GHS"
+                          }
+                        }
+                      }
+                    }
+                  },
+                  "staging_14": {
+                    "summary": "Staging 2026-09-20T00:27:24.196Z — identifiers/personal fields sanitized",
+                    "value": {
+                      "data": {
+                        "membership": {
+                          "id": "d5b4c19e-7a1f-4d03-ab43-34ce258ed1f7",
+                          "lifecycle": "open"
+                        },
+                        "coverage": null,
+                        "lastCoverageEndedAt": null,
+                        "access": {
+                          "canReserve": false,
+                          "blocks": []
+                        },
+                        "commute": null,
+                        "entitlements": {
+                          "remainingRides": 0,
+                          "credit": {
+                            "amountMinor": 0,
+                            "currency": "GHS"
+                          },
+                          "heldCredit": {
+                            "amountMinor": 0,
+                            "currency": "GHS"
+                          },
+                          "availableCredit": {
+                            "amountMinor": 0,
+                            "currency": "GHS"
+                          }
+                        }
+                      }
+                    }
+                  },
+                  "staging_18": {
+                    "summary": "Staging 2026-09-20T00:33:05.278Z — identifiers/personal fields sanitized",
+                    "value": {
+                      "data": {
+                        "membership": {
+                          "id": "d5b4c19e-7a1f-4d03-ab43-34ce258ed1f7",
+                          "lifecycle": "open"
+                        },
+                        "coverage": {
+                          "id": "151ba008-adbd-46e5-a088-8570a2bb389b",
+                          "startsAt": "2026-09-20T00:26:24.000Z",
+                          "endsAt": "2026-10-20T00:26:24.000Z",
+                          "state": "open",
+                          "paused": false,
+                          "renewalMode": "manual"
+                        },
+                        "lastCoverageEndedAt": null,
+                        "access": {
+                          "canReserve": true,
+                          "blocks": []
+                        },
+                        "commute": {
+                          "id": "4f59c218-1175-4691-a70f-20bc49fb3173",
+                          "routeId": "14765db8-f2a0-4964-a58e-c3c52f097fa5",
+                          "routeName": "Circle - Madina",
+                          "effectiveFrom": "2026-09-20",
+                          "effectiveTo": null,
+                          "legs": [
+                            {
+                              "direction": "outbound",
+                              "scheduleId": "eaf63bb1-821c-4341-a4bf-6acf2a47f478",
+                              "patternVersionId": "8b49dcca-1616-4157-a9f2-441826185f8b",
+                              "pickupOccurrenceId": "84972387-af52-4a9e-ab86-11309a10920f",
+                              "dropoffOccurrenceId": "54221133-1dcb-456f-a298-fad8b95dad53",
+                              "localDeparture": "06:30",
+                              "timeZone": "Africa/Accra",
+                              "pickupName": "Circle",
+                              "dropoffName": "Madina"
+                            },
+                            {
+                              "direction": "return",
+                              "scheduleId": "2eef04cd-8119-425a-a8f6-8c4bcd73a1c9",
+                              "patternVersionId": "905e640f-641c-4d78-adaf-333d98dbfe82",
+                              "pickupOccurrenceId": "75292b6a-8ee2-4c54-a21b-835cd1fb3954",
+                              "dropoffOccurrenceId": "7a4c982b-ccf0-45c1-af08-7f212e7f1ef4",
+                              "localDeparture": "17:30",
+                              "timeZone": "Africa/Accra",
+                              "pickupName": "Madina",
+                              "dropoffName": "Circle"
+                            }
+                          ]
+                        },
+                        "entitlements": {
+                          "remainingRides": 44,
+                          "credit": {
+                            "amountMinor": 0,
+                            "currency": "GHS"
+                          },
+                          "heldCredit": {
+                            "amountMinor": 0,
+                            "currency": "GHS"
+                          },
+                          "availableCredit": {
+                            "amountMinor": 0,
+                            "currency": "GHS"
+                          }
+                        }
+                      }
+                    }
                   }
                 }
               }
@@ -1896,6 +2154,87 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/PurchasePage"
+                },
+                "examples": {
+                  "staging_4": {
+                    "summary": "Staging 2026-09-20T00:17:37.234Z — identifiers/personal fields sanitized",
+                    "value": {
+                      "data": [],
+                      "page": {
+                        "nextCursor": null
+                      }
+                    }
+                  },
+                  "staging_12": {
+                    "summary": "Staging 2026-09-20T00:27:24.421Z — identifiers/personal fields sanitized",
+                    "value": {
+                      "data": [
+                        {
+                          "id": "3b393f7a-1913-4ceb-a517-524c5bc41715",
+                          "plan": "monthly",
+                          "state": "awaiting_payment",
+                          "collectionState": "pending",
+                          "price": {
+                            "amountMinor": 26400,
+                            "currency": "GHS"
+                          },
+                          "appliedCredit": {
+                            "amountMinor": 0,
+                            "currency": "GHS"
+                          },
+                          "cashDue": {
+                            "amountMinor": 26400,
+                            "currency": "GHS"
+                          },
+                          "checkout": {
+                            "url": "https://checkout.paystack.com/REDACTED",
+                            "expiresAt": null
+                          },
+                          "billingPeriodId": null,
+                          "failureCode": null,
+                          "createdAt": "2026-09-20T00:20:49.139Z"
+                        }
+                      ],
+                      "page": {
+                        "nextCursor": null
+                      }
+                    }
+                  },
+                  "staging_16": {
+                    "summary": "Staging 2026-09-20T00:33:43.807Z — identifiers/personal fields sanitized",
+                    "value": {
+                      "data": [
+                        {
+                          "id": "3b393f7a-1913-4ceb-a517-524c5bc41715",
+                          "plan": "monthly",
+                          "state": "fulfilled",
+                          "collectionState": "successful",
+                          "price": {
+                            "amountMinor": 26400,
+                            "currency": "GHS"
+                          },
+                          "appliedCredit": {
+                            "amountMinor": 0,
+                            "currency": "GHS"
+                          },
+                          "cashDue": {
+                            "amountMinor": 26400,
+                            "currency": "GHS"
+                          },
+                          "checkout": {
+                            "url": "https://checkout.paystack.com/REDACTED",
+                            "expiresAt": null
+                          },
+                          "billingPeriodId": "151ba008-adbd-46e5-a088-8570a2bb389b",
+                          "failureCode": null,
+                          "createdAt": "2026-09-20T00:20:49.139Z"
+                        }
+                      ],
+                      "page": {
+                        "nextCursor": null
+                      }
+                    }
+                  }
                 }
               }
             },
@@ -2116,6 +2455,68 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/PurchaseResponse"
+                },
+                "examples": {
+                  "staging_13": {
+                    "summary": "Staging 2026-09-20T00:27:09.434Z — identifiers/personal fields sanitized",
+                    "value": {
+                      "data": {
+                        "id": "3b393f7a-1913-4ceb-a517-524c5bc41715",
+                        "plan": "monthly",
+                        "state": "awaiting_payment",
+                        "collectionState": "pending",
+                        "price": {
+                          "amountMinor": 26400,
+                          "currency": "GHS"
+                        },
+                        "appliedCredit": {
+                          "amountMinor": 0,
+                          "currency": "GHS"
+                        },
+                        "cashDue": {
+                          "amountMinor": 26400,
+                          "currency": "GHS"
+                        },
+                        "checkout": {
+                          "url": "https://checkout.paystack.com/REDACTED",
+                          "expiresAt": null
+                        },
+                        "billingPeriodId": null,
+                        "failureCode": null,
+                        "createdAt": "2026-09-20T00:20:49.139Z"
+                      }
+                    }
+                  },
+                  "staging_19": {
+                    "summary": "Staging 2026-09-20T00:33:44.035Z — identifiers/personal fields sanitized",
+                    "value": {
+                      "data": {
+                        "id": "3b393f7a-1913-4ceb-a517-524c5bc41715",
+                        "plan": "monthly",
+                        "state": "fulfilled",
+                        "collectionState": "successful",
+                        "price": {
+                          "amountMinor": 26400,
+                          "currency": "GHS"
+                        },
+                        "appliedCredit": {
+                          "amountMinor": 0,
+                          "currency": "GHS"
+                        },
+                        "cashDue": {
+                          "amountMinor": 26400,
+                          "currency": "GHS"
+                        },
+                        "checkout": {
+                          "url": "https://checkout.paystack.com/REDACTED",
+                          "expiresAt": null
+                        },
+                        "billingPeriodId": "151ba008-adbd-46e5-a088-8570a2bb389b",
+                        "failureCode": null,
+                        "createdAt": "2026-09-20T00:20:49.139Z"
+                      }
+                    }
+                  }
                 }
               }
             },
@@ -2244,6 +2645,17 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/CommuteRequestPage"
+                },
+                "examples": {
+                  "staging_15": {
+                    "summary": "Staging 2026-09-20T00:29:20.635Z — identifiers/personal fields sanitized",
+                    "value": {
+                      "data": [],
+                      "page": {
+                        "nextCursor": null
+                      }
+                    }
+                  }
                 }
               }
             },
@@ -2494,6 +2906,17 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ReservationPage"
+                },
+                "examples": {
+                  "staging_2": {
+                    "summary": "Staging 2026-09-20T00:33:00.506Z — identifiers/personal fields sanitized",
+                    "value": {
+                      "data": [],
+                      "page": {
+                        "nextCursor": null
+                      }
+                    }
+                  }
                 }
               }
             },
@@ -2930,6 +3353,63 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/RoutePage"
+                },
+                "examples": {
+                  "staging_7": {
+                    "summary": "Staging 2026-09-20T00:20:55.086Z — identifiers/personal fields sanitized",
+                    "value": {
+                      "data": [
+                        {
+                          "id": "ba13a31d-d631-43db-a0f2-0b12c462a9e3",
+                          "name": "Achimota - Tema Station",
+                          "description": null,
+                          "patternIds": [
+                            "579e07b2-6748-4816-a9c3-852c41df9fa3",
+                            "305643d8-e0e1-4702-a021-d1e2587c2b26"
+                          ],
+                          "acceptsDriverRequests": false,
+                          "archived": false,
+                          "editToken": "\"route:ba13a31d-d631-43db-a0f2-0b12c462a9e3:1\"",
+                          "createdAt": "2026-09-17T17:15:50.904Z",
+                          "updatedAt": "2026-09-17T17:15:50.904Z",
+                          "version": 1
+                        },
+                        {
+                          "id": "2274213a-271e-429b-a62c-357c440f9750",
+                          "name": "Kaneshie - Lapaz",
+                          "description": null,
+                          "patternIds": [
+                            "6fe60efd-8346-4f5b-aff0-72824027a2fa",
+                            "540d100f-cec2-4a33-ad30-e5f07e485ab8"
+                          ],
+                          "acceptsDriverRequests": false,
+                          "archived": false,
+                          "editToken": "\"route:2274213a-271e-429b-a62c-357c440f9750:1\"",
+                          "createdAt": "2026-09-17T17:15:42.458Z",
+                          "updatedAt": "2026-09-17T17:15:42.458Z",
+                          "version": 1
+                        },
+                        {
+                          "id": "14765db8-f2a0-4964-a58e-c3c52f097fa5",
+                          "name": "Circle - Madina",
+                          "description": null,
+                          "patternIds": [
+                            "10808079-bf71-4fe0-ad35-bf8dbea2b081",
+                            "26d90c93-5d8e-4886-a3e2-e321f0173b90"
+                          ],
+                          "acceptsDriverRequests": false,
+                          "archived": false,
+                          "editToken": "\"route:14765db8-f2a0-4964-a58e-c3c52f097fa5:1\"",
+                          "createdAt": "2026-09-17T17:15:34.244Z",
+                          "updatedAt": "2026-09-17T17:15:34.244Z",
+                          "version": 1
+                        }
+                      ],
+                      "page": {
+                        "nextCursor": null
+                      }
+                    }
+                  }
                 }
               }
             },
@@ -3020,6 +3500,28 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/RouteResponse"
+                },
+                "examples": {
+                  "staging_8": {
+                    "summary": "Staging 2026-09-20T00:20:55.272Z — identifiers/personal fields sanitized",
+                    "value": {
+                      "data": {
+                        "id": "14765db8-f2a0-4964-a58e-c3c52f097fa5",
+                        "name": "Circle - Madina",
+                        "description": null,
+                        "patternIds": [
+                          "10808079-bf71-4fe0-ad35-bf8dbea2b081",
+                          "26d90c93-5d8e-4886-a3e2-e321f0173b90"
+                        ],
+                        "acceptsDriverRequests": false,
+                        "archived": false,
+                        "editToken": "\"route:14765db8-f2a0-4964-a58e-c3c52f097fa5:1\"",
+                        "createdAt": "2026-09-17T17:15:34.244Z",
+                        "updatedAt": "2026-09-17T17:15:34.244Z",
+                        "version": 1
+                      }
+                    }
+                  }
                 }
               }
             },
@@ -3146,6 +3648,48 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/SchedulePage"
+                },
+                "examples": {
+                  "staging_9": {
+                    "summary": "Staging 2026-09-20T00:20:55.458Z — identifiers/personal fields sanitized",
+                    "value": {
+                      "data": [
+                        {
+                          "id": "2eef04cd-8119-425a-a8f6-8c4bcd73a1c9",
+                          "departureId": "b5fcba63-593f-4ba1-aac9-aefa4529f9ff",
+                          "patternId": "26d90c93-5d8e-4886-a3e2-e321f0173b90",
+                          "patternVersionId": "905e640f-641c-4d78-adaf-333d98dbfe82",
+                          "serviceWindow": "evening",
+                          "localDeparture": "17:30",
+                          "timeZone": "Africa/Accra",
+                          "weekdays": [1, 2, 3, 4, 5, 6, 7],
+                          "effectiveFrom": "2025-01-01",
+                          "effectiveTo": null,
+                          "createdAt": "2026-09-17T17:15:40.364Z",
+                          "updatedAt": "2026-09-17T17:15:40.364Z",
+                          "version": 1
+                        },
+                        {
+                          "id": "eaf63bb1-821c-4341-a4bf-6acf2a47f478",
+                          "departureId": "1ef83e70-8f51-40c2-aecf-02ba6a532a6b",
+                          "patternId": "10808079-bf71-4fe0-ad35-bf8dbea2b081",
+                          "patternVersionId": "8b49dcca-1616-4157-a9f2-441826185f8b",
+                          "serviceWindow": "morning",
+                          "localDeparture": "06:30",
+                          "timeZone": "Africa/Accra",
+                          "weekdays": [1, 2, 3, 4, 5, 6, 7],
+                          "effectiveFrom": "2025-01-01",
+                          "effectiveTo": null,
+                          "createdAt": "2026-09-17T17:15:36.462Z",
+                          "updatedAt": "2026-09-17T17:15:36.462Z",
+                          "version": 1
+                        }
+                      ],
+                      "page": {
+                        "nextCursor": null
+                      }
+                    }
+                  }
                 }
               }
             },
@@ -3347,6 +3891,128 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/PatternVersionResponse"
+                },
+                "examples": {
+                  "staging_10": {
+                    "summary": "Staging 2026-09-20T00:20:55.975Z — identifiers/personal fields sanitized",
+                    "value": {
+                      "data": {
+                        "id": "905e640f-641c-4d78-adaf-333d98dbfe82",
+                        "patternId": "26d90c93-5d8e-4886-a3e2-e321f0173b90",
+                        "revision": 1,
+                        "state": "published",
+                        "effectiveFrom": "2025-01-01T00:00:00.000Z",
+                        "effectiveTo": null,
+                        "stops": [
+                          {
+                            "id": "75292b6a-8ee2-4c54-a21b-835cd1fb3954",
+                            "stopId": "8620e4c3-c57f-4fe9-af8c-b43a0e9cd3eb",
+                            "ordinal": 0,
+                            "name": "Madina",
+                            "location": {
+                              "latitude": 5.56,
+                              "longitude": -0.2
+                            }
+                          },
+                          {
+                            "id": "b702433b-6fb3-416f-a31c-8adee99ac748",
+                            "stopId": "d4ea75f9-e818-4f9f-aac5-04a0edc63be9",
+                            "ordinal": 1,
+                            "name": "Legon",
+                            "location": {
+                              "latitude": 5.571999999999999,
+                              "longitude": -0.21400000000000002
+                            }
+                          },
+                          {
+                            "id": "ea749cce-9979-43ff-af8b-f182cdd53f45",
+                            "stopId": "b99e16b2-a474-45ef-aa85-3296f9a0cc85",
+                            "ordinal": 2,
+                            "name": "Sankara",
+                            "location": {
+                              "latitude": 5.584,
+                              "longitude": -0.228
+                            }
+                          },
+                          {
+                            "id": "7a4c982b-ccf0-45c1-af08-7f212e7f1ef4",
+                            "stopId": "309f7bc7-92a1-4fef-afe4-1b0f74d5adf4",
+                            "ordinal": 3,
+                            "name": "Circle",
+                            "location": {
+                              "latitude": 5.595999999999999,
+                              "longitude": -0.24200000000000002
+                            }
+                          }
+                        ],
+                        "geometryId": "e35893b8-e5a3-4405-a299-521e5dedef7b",
+                        "editToken": "\"version:905e640f-641c-4d78-adaf-333d98dbfe82:2\"",
+                        "createdAt": "2026-09-17T17:15:38.591Z",
+                        "updatedAt": "2026-09-17T17:15:40.112Z",
+                        "version": 2
+                      }
+                    }
+                  },
+                  "staging_11": {
+                    "summary": "Staging 2026-09-20T00:20:56.590Z — identifiers/personal fields sanitized",
+                    "value": {
+                      "data": {
+                        "id": "8b49dcca-1616-4157-a9f2-441826185f8b",
+                        "patternId": "10808079-bf71-4fe0-ad35-bf8dbea2b081",
+                        "revision": 1,
+                        "state": "published",
+                        "effectiveFrom": "2025-01-01T00:00:00.000Z",
+                        "effectiveTo": null,
+                        "stops": [
+                          {
+                            "id": "84972387-af52-4a9e-ab86-11309a10920f",
+                            "stopId": "174b94ce-88d5-4a68-a764-6c8302fcede5",
+                            "ordinal": 0,
+                            "name": "Circle",
+                            "location": {
+                              "latitude": 5.56,
+                              "longitude": -0.2
+                            }
+                          },
+                          {
+                            "id": "9a28e37d-4bfb-43b5-a057-2bf8fc63a945",
+                            "stopId": "7551559d-c69f-4ed6-a98d-3b9bb6e0642d",
+                            "ordinal": 1,
+                            "name": "Sankara",
+                            "location": {
+                              "latitude": 5.571999999999999,
+                              "longitude": -0.21400000000000002
+                            }
+                          },
+                          {
+                            "id": "2fe77939-40e2-4e58-ab1f-b91a2ccbc51c",
+                            "stopId": "49f45dc3-1373-4bc1-a8f6-7aed9af07786",
+                            "ordinal": 2,
+                            "name": "Legon",
+                            "location": {
+                              "latitude": 5.584,
+                              "longitude": -0.228
+                            }
+                          },
+                          {
+                            "id": "54221133-1dcb-456f-a298-fad8b95dad53",
+                            "stopId": "6057a967-9faa-46d6-ae18-895ea797cce8",
+                            "ordinal": 3,
+                            "name": "Madina",
+                            "location": {
+                              "latitude": 5.595999999999999,
+                              "longitude": -0.24200000000000002
+                            }
+                          }
+                        ],
+                        "geometryId": "060f6bf4-73eb-4ab7-a61c-13af403f1c93",
+                        "editToken": "\"version:8b49dcca-1616-4157-a9f2-441826185f8b:2\"",
+                        "createdAt": "2026-09-17T17:15:34.497Z",
+                        "updatedAt": "2026-09-17T17:15:36.207Z",
+                        "version": 2
+                      }
+                    }
+                  }
                 }
               }
             },
@@ -13933,6 +14599,18 @@
     }
   },
   "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      },
+      "workerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "Audience-restricted service token, allowed task only; not a rider token."
+      }
+    },
     "schemas": {
       "AccessBlock": {
         "type": "object",

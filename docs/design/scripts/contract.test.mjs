@@ -11,6 +11,51 @@ const spec = JSON.parse(
 const inventory = JSON.parse(
   await readFile(new URL('../contracts/endpoint-inventory.json', import.meta.url), 'utf8'),
 );
+test('captured staging responses and request bodies satisfy the authoritative schemas', async () => {
+  const captured = JSON.parse(
+    await readFile(new URL('../../api/staging-examples.json', import.meta.url), 'utf8'),
+  );
+  assert.ok(captured.examples.length >= 10, 'Missing live documentation evidence');
+  assert.match(captured.backendCommit, /^[0-9a-f]{40}$/);
+  const published = JSON.parse(
+    await readFile(new URL('../contracts/replacement.openapi.json', import.meta.url), 'utf8'),
+  );
+  for (const [index, example] of captured.examples.entries()) {
+    const op = spec.paths[example.pathTemplate]?.[example.method.toLowerCase()];
+    assert.equal(op?.operationId, example.operationId);
+    const responseRef =
+      op.responses[String(example.status)]?.content?.['application/json']?.schema?.$ref;
+    assert.ok(responseRef, `${example.operationId}/${example.status} is undeclared`);
+    schemas[responseRef.split('/').at(-1)].parse(example.body);
+    const validateResponse = validate(responseRef.split('/').at(-1));
+    assert.ok(validateResponse(example.body), JSON.stringify(validateResponse.errors));
+    assert.deepEqual(
+      published.paths[example.pathTemplate][example.method.toLowerCase()].responses[
+        String(example.status)
+      ].content['application/json'].examples[`staging_${index + 1}`].value,
+      example.body,
+    );
+    if (example.requestBody != null) {
+      const requestRef = op.requestBody.content['application/json'].schema.$ref;
+      schemas[requestRef.split('/').at(-1)].parse(example.requestBody);
+      const validateRequest = validate(requestRef.split('/').at(-1));
+      assert.ok(validateRequest(example.requestBody), JSON.stringify(validateRequest.errors));
+    }
+  }
+  const serialized = JSON.stringify(captured);
+  assert.doesNotMatch(serialized, /sk_(test|live)_|Bearer\s|eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\./);
+  assert.doesNotMatch(serialized, /@gmail\.com|@googlemail\.com/);
+  const guide = await readFile(new URL('../../api/README.md', import.meta.url), 'utf8');
+  const blocks = [...guide.matchAll(/```json\n([\s\S]*?)\n```/g)];
+  assert.equal(blocks.length, 2, 'Keep the two verified before/after guide examples');
+  for (const [, block] of blocks) {
+    const body = JSON.parse(block);
+    assert.ok(
+      captured.examples.some((example) => JSON.stringify(example.body) === JSON.stringify(body)),
+      'Guide JSON must be an actual validated capture, not a hand-written success',
+    );
+  }
+});
 test('schedule and trip contracts carry the exact pattern owner, including driver and ops views', () => {
   for (const name of ['Schedule', 'Trip', 'DriverTrip', 'OpsTrip']) {
     assert.ok(spec.components.schemas[name].required.includes('patternId'), name);
@@ -375,7 +420,20 @@ test('runtime subset implements only selected cutover operations and contains no
   for (const [path, methods] of Object.entries(runtime.paths))
     for (const [method, operation] of Object.entries(methods)) {
       count++;
-      assert.deepEqual(operation, spec.paths[path][method]);
+      // Documentation examples are captured evidence, not a second contract.
+      // Remove only captured examples; original design examples and every
+      // schema/header/status stay pinned.
+      const withoutCapturedExamples = structuredClone(operation);
+      const removeCaptured = (media) => {
+        if (!media?.examples) return;
+        for (const name of Object.keys(media.examples))
+          if (/^staging_\d+$/.test(name)) delete media.examples[name];
+        if (Object.keys(media.examples).length === 0) delete media.examples;
+      };
+      for (const response of Object.values(withoutCapturedExamples.responses))
+        removeCaptured(response.content?.['application/json']);
+      removeCaptured(withoutCapturedExamples.requestBody?.content?.['application/json']);
+      assert.deepEqual(withoutCapturedExamples, spec.paths[path][method]);
       assert.notEqual(operation['x-delivery-stage'], 'deferred');
     }
   assert.equal(count, 121);

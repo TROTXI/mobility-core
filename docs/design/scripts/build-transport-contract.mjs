@@ -153,6 +153,30 @@ for (const [path, methods] of Object.entries(source.paths)) {
   }
 }
 if (selected.size) throw new Error(`Missing operations: ${[...selected]}`);
+// Real, sanitized staging snapshots. Keep the original response shape and
+// distinguish capture time from the schema/release version.
+const liveExamples = JSON.parse(
+  await readFile(new URL('../../api/staging-examples.json', import.meta.url), 'utf8'),
+);
+for (const [index, example] of liveExamples.examples.entries()) {
+  const operation = paths[example.pathTemplate]?.[example.method.toLowerCase()];
+  if (!operation || operation.operationId !== example.operationId)
+    throw new Error(`Captured example has no implemented operation: ${example.operationId}`);
+  const media = operation.responses[String(example.status)]?.content?.['application/json'];
+  if (!media)
+    throw new Error(`Captured status is undeclared: ${example.operationId}/${example.status}`);
+  media.examples ??= {};
+  media.examples[`staging_${index + 1}`] = {
+    summary: `Staging ${example.capturedAt} — identifiers/personal fields sanitized`,
+    value: example.body,
+  };
+  if (example.requestBody != null) {
+    const request = operation.requestBody?.content?.['application/json'];
+    if (!request) throw new Error(`Unexpected captured body: ${example.operationId}`);
+    request.examples ??= {};
+    request.examples[`staging_${index + 1}`] = { value: example.requestBody };
+  }
+}
 references({ $ref: '#/components/schemas/ErrorResponse' });
 // The reviewed spec is OpenAPI 3.0, where an exclusive bound is a flag beside
 // the bound it modifies. The runtime validates against 2020-12, where it is
@@ -192,7 +216,11 @@ await writeArtifact(
   JSON.stringify(
     {
       paths: modern(paths),
-      components: { schemas, responses: modern(source.components.responses) },
+      components: {
+        securitySchemes: source.components.securitySchemes,
+        schemas,
+        responses: modern(source.components.responses),
+      },
     },
     null,
     2,
@@ -213,11 +241,11 @@ const published = {
       'The implemented replacement surface: every reviewed cutover operation and',
       'nothing else. The thirteen deferred operations are deliberately absent.',
       'Generated from target-contract.mjs by build-transport-contract.mjs; do not',
-      'edit this JSON. NOT DEPLOYED: no environment serves this contract yet, and',
-      'the server entry below is a placeholder rather than a working host.',
+      'edit this JSON. For the routes enabled on a specific deployment and its',
+      'server address, read that deployment’s /docs/json.',
     ].join(' '),
   },
-  servers: source.servers,
+  servers: [{ url: liveExamples.baseUrl, description: 'Disposable staging — Paystack TEST only' }],
   paths: Object.fromEntries(
     Object.entries(paths).map(([path, methods]) => [
       path,
@@ -227,7 +255,9 @@ const published = {
           // x-delivery-stage said which operations to build. Inside a document
           // that contains only the built ones it says nothing, so it goes.
           Object.fromEntries(
-            Object.entries(operation).filter(([key]) => key !== 'x-delivery-stage'),
+            Object.entries(operation).filter(
+              ([key]) => key !== 'x-delivery-stage' && key !== 'x-implementation-status',
+            ),
           ),
         ]),
       ),

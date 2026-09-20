@@ -1,6 +1,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import contract from '../src/http/contract.json' with { type: 'json' };
+import { readFile } from 'node:fs/promises';
+import { openApiDocument } from '../src/http/openapi.js';
 import { Pool } from 'pg';
 import { canonical, tripEditToken } from '../src/transport/service.js';
 import { cursorCodec } from '../src/transport/cursor.js';
@@ -115,14 +117,25 @@ test('the service describes itself at /docs, from the contract it routes from', 
     assert.ok(spec.info.title && spec.info.version, 'OpenAPI requires both');
     assert.ok(spec.servers[0].url.length, 'a server the reader can actually call');
 
-    // Served from the same object the factory registers routes from, so the
-    // document cannot describe an endpoint that does not exist. Asserted
-    // rather than assumed, because serving a second hand-kept copy is exactly
-    // the mistake this is here to prevent.
-    assert.deepEqual(spec.paths, contract.paths);
-    assert.deepEqual(spec.components, contract.components);
-    assert.ok(spec.paths['/v1/me/membership'].get, 'the rider subscription read');
+    // This factory deliberately has no membership/auth adapters. Documentation
+    // must reflect actual registration, not every possible composition.
+    assert.equal(spec.paths['/v1/me/membership'], undefined);
+    assert.equal(spec.paths['/v1/auth/apple'], undefined);
     assert.ok(spec.paths['/v1/ops/trips'].get, 'the ops trip list');
+    for (const [path, methods] of Object.entries(spec.paths))
+      for (const method of Object.keys(methods as object))
+        assert.ok(
+          app.hasRoute({
+            method: method.toUpperCase() as 'GET',
+            url: path.replaceAll(/\{([^}]+)\}/g, ':$1'),
+          }),
+        );
+    assert.equal(spec.components.securitySchemes.bearerAuth.scheme, 'bearer');
+    assert.equal(spec.components.schemas.PlanPricing.properties.ridesPerPeriod.minimum, 0);
+    assert.equal(
+      spec.components.schemas.PlanPricing.properties.ridesPerPeriod.exclusiveMinimum,
+      true,
+    );
 
     const page = await app.inject({ method: 'GET', url: '/docs' });
     assert.equal(page.statusCode, 200);
@@ -141,6 +154,26 @@ test('the service describes itself at /docs, from the contract it routes from', 
     await app.close();
     await pool.end();
   }
+});
+
+test('documentation round-trips to the generator-facing OpenAPI, including security and bounds', async () => {
+  const published = JSON.parse(
+    await readFile(
+      new URL('../../../docs/design/contracts/replacement.openapi.json', import.meta.url),
+      'utf8',
+    ),
+  );
+  const enabled = new Set(
+    Object.values(contract.paths).flatMap((methods) =>
+      Object.values(methods).map((operation) => operation.operationId),
+    ),
+  );
+  const document = openApiDocument('https://example.test:8443', enabled);
+  assert.deepEqual(document.components, published.components);
+  assert.deepEqual(document.paths, published.paths);
+  assert.equal(document.paths['/v1/me/membership'].get['x-implementation-status'], undefined);
+  assert.equal(published.servers[0].url, 'https://trotxi-api-staging.onrender.com');
+  assert.equal(document.servers[0]?.url, 'https://example.test:8443');
 });
 
 test('IP admission runs before verification and forged forwarded headers cannot evade it', async () => {
