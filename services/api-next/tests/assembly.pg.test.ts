@@ -150,6 +150,24 @@ async function assembled(t: TestContext, over: Record<string, string> = {}) {
   return { f, backend, ops, call };
 }
 
+test('ASM-EMAIL configured email worker is composed; missing key refuses explicitly', async (t) => {
+  const enabled = await assembled(t, { RESEND_API_KEY: 're_fixture_only' });
+  assert.ok(enabled.backend.email);
+  const result = await runJob(enabled.backend, { job: 'emails', limit: 1 });
+  assert.deepEqual(result.body, {
+    considered: 0,
+    accepted: 0,
+    cancelled: 0,
+    failed: 0,
+    retried: 0,
+    unknown: 0,
+  });
+  assert.equal(jobFailed(result), false);
+  const disabled = await assembled(t);
+  assert.equal(disabled.backend.email, undefined);
+  await assert.rejects(runJob(disabled.backend, { job: 'emails' }), /RESEND_API_KEY is required/);
+});
+
 test('ASM-09 the backend refuses a database it could rewrite its own history on', async (t) => {
   const f = await setup(t);
   // The owner installs the schema, so it can create objects and update event

@@ -18,6 +18,8 @@ import { AccountService } from '../account/service.js';
 import { ConfigService } from '../config/service.js';
 import { R2ObjectStore } from './avatars.js';
 import { sharedAdmission } from './admission.js';
+import { TransactionalEmail } from '../notifications/email.js';
+import { ResendSender } from '../notifications/resend.js';
 import type { RuntimeConfig } from './config.js';
 
 export interface Backend {
@@ -30,6 +32,7 @@ export interface Backend {
   /** Closed admission windows are the worker's to clear. */
   admission: import('./admission.js').Admission;
   maintenanceUserId: string;
+  email?: TransactionalEmail;
   close(): Promise<void>;
 }
 
@@ -107,6 +110,14 @@ export async function composeBackend(config: RuntimeConfig): Promise<Backend> {
       return url;
     };
     const provider = new PaystackEvidence(config.paystack.secretKey, config.keys.paystackEvidence);
+    const email = config.email
+      ? new TransactionalEmail({
+          pool,
+          encryptionKey: config.keys.device,
+          sender: new ResendSender(config.email.apiKey),
+          staging: config.email.staging,
+        })
+      : undefined;
     // Built only where the deployment says it offers Apple. Where it does not,
     // there is no verifier, no token client and no route, so nothing can half
     // work: erasure's provider revocation reports that it had no reach, which
@@ -189,11 +200,13 @@ export async function composeBackend(config: RuntimeConfig): Promise<Backend> {
           assertPeriodCanClose: membership.assertPeriodCanClose,
           materializeAssignment: membership.materializeAssignment,
           quote: pricing.quote,
+          subscriptionActive: email?.subscriptionActive,
         });
         const account = new AccountService({
           pool,
           authorizeSession,
           deviceKey: config.keys.device,
+          erasureRequested: email?.erasureRequested,
           avatars,
           // Erasure's external half. Marking a row deleted withdraws nothing
           // from Apple and removes no object, so both are wired and both
@@ -264,6 +277,7 @@ export async function composeBackend(config: RuntimeConfig): Promise<Backend> {
       account: built().account,
       admission,
       maintenanceUserId: config.maintenanceUserId,
+      email,
       close: async () => {
         if (closed) return;
         closed = true;

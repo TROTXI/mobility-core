@@ -14,6 +14,7 @@ export const JOBS = [
   'erasures',
   'driver-secrets',
   'admission',
+  'emails',
 ] as const;
 export type Job = (typeof JOBS)[number];
 export interface JobRequest {
@@ -122,6 +123,11 @@ export async function runJob(backend: Backend, request: JobRequest): Promise<Job
   // a contract and schema decision, not something to improvise here.
   const session = await operatorSession(backend);
   try {
+    if (request.job === 'emails') {
+      if (!backend.email) throw new Error('RESEND_API_KEY is required for the email worker');
+      await backend.email.prepareReminders(limit);
+      return { job: request.job, status: 200, body: await backend.email.drain(limit) };
+    }
     if (request.job === 'driver-secrets')
       return {
         job: request.job,

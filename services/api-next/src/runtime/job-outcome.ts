@@ -22,6 +22,16 @@ const schemas = {
   erasures: z.object({ considered: count, completed: count, failed: count }).strict(),
   'driver-secrets': z.object({ cleared: count }).strict(),
   admission: z.object({ cleared: count }).strict(),
+  emails: z
+    .object({
+      considered: count,
+      accepted: count,
+      cancelled: count,
+      failed: count,
+      retried: count,
+      unknown: count,
+    })
+    .strict(),
 };
 
 /** HTTP 200 means a batch completed, not that every item succeeded. */
@@ -35,7 +45,12 @@ export function jobFailed(result: JobResult): boolean {
     if (Array.isArray(value.failures) && value.failures.length > 0) return true;
     return Object.values(value).some(failures);
   };
-  return failures(parsed.data) || (result.retention?.overdueSeconds ?? 0) > 3600;
+  return (
+    failures(parsed.data) ||
+    (result.job === 'emails' &&
+      ((parsed.data as any).retried > 0 || (parsed.data as any).unknown > 0)) ||
+    (result.retention?.overdueSeconds ?? 0) > 3600
+  );
 }
 
 /** Preserve counts, bound detailed failure logging. No provider payloads. */

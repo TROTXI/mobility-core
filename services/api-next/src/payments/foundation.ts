@@ -38,6 +38,7 @@ export interface FinancialDependencies {
   pool: Pool;
   environment: 'test' | 'live';
   authorizeSession: (client: PoolClient, actor: Actor) => Promise<void>;
+  subscriptionActive?: (client: PoolClient, userId: string, purchaseId: string) => Promise<void>;
   // These MUST use this transaction client. No HTTP/provider calls or commits.
   // 012 supplies applicable account/period blocks; 013 supplies pause/reservation
   // facts and assignment materialization. Missing adapters fail closed.
@@ -382,6 +383,7 @@ export class FinancialFoundation {
       periodId: period.id,
       now: s.paidAt,
     });
+    await this.options.subscriptionActive?.(c, p.user_id, p.id);
     return 'fulfilled';
   }
   private async closeOne(c: PoolClient, periodId: string, b: Boundary) {
