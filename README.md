@@ -6,6 +6,9 @@ them for reliable daily commutes on managed trotro routes.
 
 > Technology is not the product — **mobility is the product**.
 
+**Frontend integration:** use the [current commuter API guide](docs/api/README.md)
+for the replacement backend, schemas and sanitized actual staging responses.
+
 ## Architecture in five lines
 
 Two decoupled paths (see [docs/architecture.md](docs/architecture.md) and the

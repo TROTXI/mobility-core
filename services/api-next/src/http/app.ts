@@ -4,6 +4,7 @@ import multipart from '@fastify/multipart';
 import type { FastifyRequest } from 'fastify';
 import { randomUUID } from 'node:crypto';
 import contract from './contract.json' with { type: 'json' };
+import { openApiDocument } from './openapi.js';
 import { TransportService } from '../transport/service.js';
 import type { Actor, Body, Command, Read, Dependencies } from '../transport/service.js';
 import { TransportError, fail, mapDatabaseError } from '../transport/errors.js';
@@ -230,23 +231,12 @@ export async function createTransportApp(options: AppOptions) {
   // Unauthenticated, which is what the old service did. That publishes the ops
   // surface to anyone who reaches the host, and is a decision to revisit before
   // there is a production deployment worth reading.
-  const describe = (origin: string) => ({
-    openapi: '3.0.3',
-    info: {
-      title: 'Trotxi API',
-      version: '1.0.0',
-      description:
-        'Reads return a data envelope; lists add page.nextCursor. Every call sends ' +
-        'X-Trotxi-Client and X-Trotxi-Build, and ops sends no platform header. ' +
-        'Mutations need an Idempotency-Key, and edits an If-Match from the editToken.',
-    },
-    servers: [{ url: origin }],
-    paths: contract.paths,
-    components: contract.components,
-  });
+  // Populated at the same branches that register handlers. Optional providers
+  // and unwired services must not appear just because they exist in the contract.
+  const documentedOperations = new Set<string>();
   app.get('/docs/json', async (request, reply) => {
     reply.header('Cache-Control', 'no-store');
-    return describe(`${request.protocol}://${request.hostname}`);
+    return openApiDocument(`${request.protocol}://${request.host}`, documentedOperations);
   });
   app.get('/docs', async (_request, reply) => {
     reply.header('Cache-Control', 'no-store').type('text/html; charset=utf-8');
@@ -284,6 +274,7 @@ export async function createTransportApp(options: AppOptions) {
       if (membershipEndpoint && !options.membership) continue;
       if (paymentEndpoint && !options.payments) continue;
       if (name === 'receivePaystackWebhook') {
+        documentedOperations.add(name);
         // Encapsulated parser preserves the exact bytes for HMAC. It must not
         // replace normal JSON validation on any rider or ops route.
         await app.register(async (hook) => {
@@ -315,6 +306,7 @@ export async function createTransportApp(options: AppOptions) {
       const providers = options.authProviders ?? (['google', 'apple'] as const);
       if (name === 'signInGoogle' && !providers.includes('google')) continue;
       if (name === 'signInApple' && !providers.includes('apple')) continue;
+      documentedOperations.add(name);
       const publicAuth = (publicAuthOperations as readonly string[]).includes(name);
       const publicRead = (publicCatalogReads as readonly string[]).includes(name);
       // Trip reads need a session but not a particular app: a rider watching a
