@@ -19,6 +19,7 @@ Name | Type | Description | Notes
 **scheduledAt** | [**DateTime**](DateTime.md) |  | 
 **status** | **String** |  | 
 **vehicleLabel** | **String** |  | 
+**vehiclePlate** | **String** |  | 
 **startedAt** | [**DateTime**](DateTime.md) |  | 
 **completedAt** | [**DateTime**](DateTime.md) |  | 
 **currentStopOccurrenceId** | **String** |  | 

@@ -25,6 +25,7 @@ part 'driver_trip.g.dart';
 /// * [scheduledAt] 
 /// * [status] 
 /// * [vehicleLabel] 
+/// * [vehiclePlate] 
 /// * [startedAt] 
 /// * [completedAt] 
 /// * [currentStopOccurrenceId] 
@@ -68,6 +69,9 @@ abstract class DriverTrip implements Built<DriverTrip, DriverTripBuilder> {
 
   @BuiltValueField(wireName: r'vehicleLabel')
   String? get vehicleLabel;
+
+  @BuiltValueField(wireName: r'vehiclePlate')
+  String? get vehiclePlate;
 
   @BuiltValueField(wireName: r'startedAt')
   DateTime? get startedAt;
@@ -163,6 +167,11 @@ class _$DriverTripSerializer implements PrimitiveSerializer<DriverTrip> {
     yield r'vehicleLabel';
     yield object.vehicleLabel == null ? null : serializers.serialize(
       object.vehicleLabel,
+      specifiedType: const FullType.nullable(String),
+    );
+    yield r'vehiclePlate';
+    yield object.vehiclePlate == null ? null : serializers.serialize(
+      object.vehiclePlate,
       specifiedType: const FullType.nullable(String),
     );
     yield r'startedAt';
@@ -295,6 +304,14 @@ class _$DriverTripSerializer implements PrimitiveSerializer<DriverTrip> {
           ) as String?;
           if (valueDes == null) continue;
           result.vehicleLabel = valueDes;
+          break;
+        case r'vehiclePlate':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType.nullable(String),
+          ) as String?;
+          if (valueDes == null) continue;
+          result.vehiclePlate = valueDes;
           break;
         case r'startedAt':
           final valueDes = serializers.deserialize(

@@ -5,7 +5,7 @@
 import 'package:trotxi_api_client/api.dart';
 ```
 
-All URIs are relative to *https://api.example.invalid*
+All URIs are relative to *https://trotxi-api-staging.onrender.com*
 
 Method | HTTP request | Description
 ------------- | ------------- | -------------
@@ -28,8 +28,10 @@ Method | HTTP request | Description
 [**decideCommuteRequest**](OpsApi.md#decidecommuterequest) | **POST** /v1/ops/commute-requests/{id}/decisions | decide Commute Request
 [**decideDriverRequest**](OpsApi.md#decidedriverrequest) | **POST** /v1/ops/driver-requests/{id}/decisions | decide Driver Request
 [**decideIncident**](OpsApi.md#decideincident) | **POST** /v1/ops/incidents/{id}/decisions | decide Incident
+[**getOpsOverview**](OpsApi.md#getopsoverview) | **GET** /v1/ops/overview | get Ops Overview
 [**getOpsPatternVersion**](OpsApi.md#getopspatternversion) | **GET** /v1/ops/route-patterns/{id}/versions/{versionId} | get Ops Pattern Version
 [**getOpsPurchase**](OpsApi.md#getopspurchase) | **GET** /v1/ops/purchases/{id} | get Ops Purchase
+[**initiateRefund**](OpsApi.md#initiaterefund) | **POST** /v1/ops/purchases/{id}/refunds | initiate Refund
 [**issueDriverCredential**](OpsApi.md#issuedrivercredential) | **POST** /v1/ops/drivers/{id}/credentials | issue Driver Credential
 [**listCommuteEvents**](OpsApi.md#listcommuteevents) | **GET** /v1/ops/commute-requests/{id}/events | list Commute Events
 [**listCommuteSlots**](OpsApi.md#listcommuteslots) | **GET** /v1/ops/commute-slots | list Commute Slots
@@ -49,6 +51,7 @@ Method | HTTP request | Description
 [**listPatterns**](OpsApi.md#listpatterns) | **GET** /v1/ops/route-patterns | list Patterns
 [**listPaymentReviews**](OpsApi.md#listpaymentreviews) | **GET** /v1/ops/payments/reviews | list Payment Reviews
 [**listPlanPricing**](OpsApi.md#listplanpricing) | **GET** /v1/ops/plan-pricing | list Plan Pricing
+[**listRefundInitiations**](OpsApi.md#listrefundinitiations) | **GET** /v1/ops/purchases/{id}/refunds | list Refund Initiations
 [**listSchedules**](OpsApi.md#listschedules) | **GET** /v1/ops/service-schedules | list Schedules
 [**listTraceHolds**](OpsApi.md#listtraceholds) | **GET** /v1/ops/trace-holds | list Trace Holds
 [**publishPatternVersion**](OpsApi.md#publishpatternversion) | **POST** /v1/ops/route-patterns/{id}/versions/{versionId}/publish | publish Pattern Version
@@ -58,6 +61,7 @@ Method | HTTP request | Description
 [**resetDriverPin**](OpsApi.md#resetdriverpin) | **POST** /v1/ops/drivers/{id}/credentials/reset-pin | reset Driver Pin
 [**resolvePaymentReview**](OpsApi.md#resolvepaymentreview) | **POST** /v1/ops/payments/reviews/{id}/decisions | resolve Payment Review
 [**retireCommuteSlot**](OpsApi.md#retirecommuteslot) | **POST** /v1/ops/commute-slots/{id}/retire | retire Commute Slot
+[**runPersonalPauseResumes**](OpsApi.md#runpersonalpauseresumes) | **POST** /v1/ops/maintenance/personal-pause-resumes | run Personal Pause Resumes
 [**setFlag**](OpsApi.md#setflag) | **PUT** /v1/ops/flags/{key} | set Flag
 [**setMinimumVersion**](OpsApi.md#setminimumversion) | **PUT** /v1/ops/min-versions/{app}/{platform} | set Minimum Version
 [**updateDriver**](OpsApi.md#updatedriver) | **PATCH** /v1/ops/drivers/{id} | update Driver
@@ -1029,6 +1033,53 @@ Name | Type | Description  | Notes
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
+# **getOpsOverview**
+> OpsOverviewResponse getOpsOverview(window, xTrotxiClient, xTrotxiBuild, xTrotxiPlatform)
+
+get Ops Overview
+
+### Example
+```dart
+import 'package:trotxi_api_client/api.dart';
+
+final api = TrotxiApiClient().getOpsApi();
+final String window = window_example; // String | Which service window the board shows. Stated by the caller, never inferred.
+final String xTrotxiClient = xTrotxiClient_example; // String | Compatibility metadata only, never grants a role.
+final int xTrotxiBuild = 56; // int | Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
+final String xTrotxiPlatform = xTrotxiPlatform_example; // String | Required for commuter/driver, absent for ops/worker.
+
+try {
+    final response = api.getOpsOverview(window, xTrotxiClient, xTrotxiBuild, xTrotxiPlatform);
+    print(response);
+} on DioException catch (e) {
+    print('Exception when calling OpsApi->getOpsOverview: $e\n');
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **window** | **String**| Which service window the board shows. Stated by the caller, never inferred. | 
+ **xTrotxiClient** | **String**| Compatibility metadata only, never grants a role. | 
+ **xTrotxiBuild** | **int**| Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable. | 
+ **xTrotxiPlatform** | **String**| Required for commuter/driver, absent for ops/worker. | [optional] 
+
+### Return type
+
+[**OpsOverviewResponse**](OpsOverviewResponse.md)
+
+### Authorization
+
+[bearerAuth](../README.md#bearerAuth)
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
+ - **Accept**: application/json
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
 # **getOpsPatternVersion**
 > PatternVersionResponse getOpsPatternVersion(id, versionId, xTrotxiClient, xTrotxiBuild, xTrotxiPlatform)
 
@@ -1121,6 +1172,57 @@ Name | Type | Description  | Notes
 ### HTTP request headers
 
  - **Content-Type**: Not defined
+ - **Accept**: application/json
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
+# **initiateRefund**
+> RefundInitiationResponse initiateRefund(id, idempotencyKey, xTrotxiClient, xTrotxiBuild, refundInitiationInput, xTrotxiPlatform)
+
+initiate Refund
+
+### Example
+```dart
+import 'package:trotxi_api_client/api.dart';
+
+final api = TrotxiApiClient().getOpsApi();
+final String id = id_example; // String | 
+final String idempotencyKey = idempotencyKey_example; // String | Caller + operation + target scoped; payload mismatch = 409. Never log secrets.
+final String xTrotxiClient = xTrotxiClient_example; // String | Compatibility metadata only, never grants a role.
+final int xTrotxiBuild = 56; // int | Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
+final RefundInitiationInput refundInitiationInput = ; // RefundInitiationInput | 
+final String xTrotxiPlatform = xTrotxiPlatform_example; // String | Required for commuter/driver, absent for ops/worker.
+
+try {
+    final response = api.initiateRefund(id, idempotencyKey, xTrotxiClient, xTrotxiBuild, refundInitiationInput, xTrotxiPlatform);
+    print(response);
+} on DioException catch (e) {
+    print('Exception when calling OpsApi->initiateRefund: $e\n');
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **id** | **String**|  | 
+ **idempotencyKey** | **String**| Caller + operation + target scoped; payload mismatch = 409. Never log secrets. | 
+ **xTrotxiClient** | **String**| Compatibility metadata only, never grants a role. | 
+ **xTrotxiBuild** | **int**| Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable. | 
+ **refundInitiationInput** | [**RefundInitiationInput**](RefundInitiationInput.md)|  | 
+ **xTrotxiPlatform** | **String**| Required for commuter/driver, absent for ops/worker. | [optional] 
+
+### Return type
+
+[**RefundInitiationResponse**](RefundInitiationResponse.md)
+
+### Authorization
+
+[bearerAuth](../README.md#bearerAuth)
+
+### HTTP request headers
+
+ - **Content-Type**: application/json
  - **Accept**: application/json
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
@@ -2084,6 +2186,53 @@ Name | Type | Description  | Notes
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
+# **listRefundInitiations**
+> RefundInitiationCollectionResponse listRefundInitiations(id, xTrotxiClient, xTrotxiBuild, xTrotxiPlatform)
+
+list Refund Initiations
+
+### Example
+```dart
+import 'package:trotxi_api_client/api.dart';
+
+final api = TrotxiApiClient().getOpsApi();
+final String id = id_example; // String | 
+final String xTrotxiClient = xTrotxiClient_example; // String | Compatibility metadata only, never grants a role.
+final int xTrotxiBuild = 56; // int | Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
+final String xTrotxiPlatform = xTrotxiPlatform_example; // String | Required for commuter/driver, absent for ops/worker.
+
+try {
+    final response = api.listRefundInitiations(id, xTrotxiClient, xTrotxiBuild, xTrotxiPlatform);
+    print(response);
+} on DioException catch (e) {
+    print('Exception when calling OpsApi->listRefundInitiations: $e\n');
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **id** | **String**|  | 
+ **xTrotxiClient** | **String**| Compatibility metadata only, never grants a role. | 
+ **xTrotxiBuild** | **int**| Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable. | 
+ **xTrotxiPlatform** | **String**| Required for commuter/driver, absent for ops/worker. | [optional] 
+
+### Return type
+
+[**RefundInitiationCollectionResponse**](RefundInitiationCollectionResponse.md)
+
+### Authorization
+
+[bearerAuth](../README.md#bearerAuth)
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
+ - **Accept**: application/json
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
 # **listSchedules**
 > SchedulePage listSchedules(xTrotxiClient, xTrotxiBuild, cursor, limit, routeId, xTrotxiPlatform)
 
@@ -2545,6 +2694,53 @@ Name | Type | Description  | Notes
 ### Return type
 
 [**CommuteSlotResponse**](CommuteSlotResponse.md)
+
+### Authorization
+
+[bearerAuth](../README.md#bearerAuth)
+
+### HTTP request headers
+
+ - **Content-Type**: application/json
+ - **Accept**: application/json
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
+# **runPersonalPauseResumes**
+> MaintenanceResultResponse runPersonalPauseResumes(xTrotxiClient, xTrotxiBuild, maintenanceInput, xTrotxiPlatform)
+
+run Personal Pause Resumes
+
+### Example
+```dart
+import 'package:trotxi_api_client/api.dart';
+
+final api = TrotxiApiClient().getOpsApi();
+final String xTrotxiClient = xTrotxiClient_example; // String | Compatibility metadata only, never grants a role.
+final int xTrotxiBuild = 56; // int | Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
+final MaintenanceInput maintenanceInput = ; // MaintenanceInput | 
+final String xTrotxiPlatform = xTrotxiPlatform_example; // String | Required for commuter/driver, absent for ops/worker.
+
+try {
+    final response = api.runPersonalPauseResumes(xTrotxiClient, xTrotxiBuild, maintenanceInput, xTrotxiPlatform);
+    print(response);
+} on DioException catch (e) {
+    print('Exception when calling OpsApi->runPersonalPauseResumes: $e\n');
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **xTrotxiClient** | **String**| Compatibility metadata only, never grants a role. | 
+ **xTrotxiBuild** | **int**| Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable. | 
+ **maintenanceInput** | [**MaintenanceInput**](MaintenanceInput.md)|  | 
+ **xTrotxiPlatform** | **String**| Required for commuter/driver, absent for ops/worker. | [optional] 
+
+### Return type
+
+[**MaintenanceResultResponse**](MaintenanceResultResponse.md)
 
 ### Authorization
 

@@ -5,10 +5,11 @@
 import 'package:trotxi_api_client/api.dart';
 ```
 
-All URIs are relative to *https://api.example.invalid*
+All URIs are relative to *https://trotxi-api-staging.onrender.com*
 
 Method | HTTP request | Description
 ------------- | ------------- | -------------
+[**deleteAvatar**](SelfApi.md#deleteavatar) | **DELETE** /v1/me/avatar | delete Avatar
 [**eraseAccount**](SelfApi.md#eraseaccount) | **DELETE** /v1/me | erase Account
 [**getAccount**](SelfApi.md#getaccount) | **GET** /v1/me | get Account
 [**getAvatar**](SelfApi.md#getavatar) | **GET** /v1/me/avatar | get Avatar
@@ -18,6 +19,52 @@ Method | HTTP request | Description
 [**updateAccount**](SelfApi.md#updateaccount) | **PATCH** /v1/me | update Account
 [**uploadAvatar**](SelfApi.md#uploadavatar) | **PUT** /v1/me/avatar | upload Avatar
 
+
+# **deleteAvatar**
+> deleteAvatar(idempotencyKey, xTrotxiClient, xTrotxiBuild, xTrotxiPlatform)
+
+delete Avatar
+
+### Example
+```dart
+import 'package:trotxi_api_client/api.dart';
+
+final api = TrotxiApiClient().getSelfApi();
+final String idempotencyKey = idempotencyKey_example; // String | Caller + operation + target scoped; payload mismatch = 409. Never log secrets.
+final String xTrotxiClient = xTrotxiClient_example; // String | Compatibility metadata only, never grants a role.
+final int xTrotxiBuild = 56; // int | Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
+final String xTrotxiPlatform = xTrotxiPlatform_example; // String | Required for commuter/driver, absent for ops/worker.
+
+try {
+    api.deleteAvatar(idempotencyKey, xTrotxiClient, xTrotxiBuild, xTrotxiPlatform);
+} on DioException catch (e) {
+    print('Exception when calling SelfApi->deleteAvatar: $e\n');
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **idempotencyKey** | **String**| Caller + operation + target scoped; payload mismatch = 409. Never log secrets. | 
+ **xTrotxiClient** | **String**| Compatibility metadata only, never grants a role. | 
+ **xTrotxiBuild** | **int**| Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable. | 
+ **xTrotxiPlatform** | **String**| Required for commuter/driver, absent for ops/worker. | [optional] 
+
+### Return type
+
+void (empty response body)
+
+### Authorization
+
+[bearerAuth](../README.md#bearerAuth)
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
+ - **Accept**: application/json
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **eraseAccount**
 > eraseAccount(idempotencyKey, xTrotxiClient, xTrotxiBuild, xTrotxiPlatform)

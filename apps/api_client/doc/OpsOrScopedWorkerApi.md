@@ -5,7 +5,7 @@
 import 'package:trotxi_api_client/api.dart';
 ```
 
-All URIs are relative to *https://api.example.invalid*
+All URIs are relative to *https://trotxi-api-staging.onrender.com*
 
 Method | HTTP request | Description
 ------------- | ------------- | -------------
@@ -18,6 +18,7 @@ Method | HTTP request | Description
 [**runPeriodClose**](OpsOrScopedWorkerApi.md#runperiodclose) | **POST** /v1/ops/maintenance/period-close | run Period Close
 [**runReservationDefaults**](OpsOrScopedWorkerApi.md#runreservationdefaults) | **POST** /v1/ops/maintenance/reservation-defaults | run Reservation Defaults
 [**runRouteLearning**](OpsOrScopedWorkerApi.md#runroutelearning) | **POST** /v1/ops/maintenance/route-learning | run Route Learning
+[**runTripGeneration**](OpsOrScopedWorkerApi.md#runtripgeneration) | **POST** /v1/ops/maintenance/trip-generation | run Trip Generation
 
 
 # **runAskDispatch**
@@ -426,6 +427,53 @@ Name | Type | Description  | Notes
  **xTrotxiClient** | **String**| Compatibility metadata only, never grants a role. | 
  **xTrotxiBuild** | **int**| Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable. | 
  **maintenanceInput** | [**MaintenanceInput**](MaintenanceInput.md)|  | 
+ **xTrotxiPlatform** | **String**| Required for commuter/driver, absent for ops/worker. | [optional] 
+
+### Return type
+
+[**MaintenanceResultResponse**](MaintenanceResultResponse.md)
+
+### Authorization
+
+[workerAuth](../README.md#workerAuth), [bearerAuth](../README.md#bearerAuth)
+
+### HTTP request headers
+
+ - **Content-Type**: application/json
+ - **Accept**: application/json
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
+# **runTripGeneration**
+> MaintenanceResultResponse runTripGeneration(xTrotxiClient, xTrotxiBuild, tripGenerationInput, xTrotxiPlatform)
+
+run Trip Generation
+
+### Example
+```dart
+import 'package:trotxi_api_client/api.dart';
+
+final api = TrotxiApiClient().getOpsOrScopedWorkerApi();
+final String xTrotxiClient = xTrotxiClient_example; // String | Compatibility metadata only, never grants a role.
+final int xTrotxiBuild = 56; // int | Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
+final TripGenerationInput tripGenerationInput = ; // TripGenerationInput | 
+final String xTrotxiPlatform = xTrotxiPlatform_example; // String | Required for commuter/driver, absent for ops/worker.
+
+try {
+    final response = api.runTripGeneration(xTrotxiClient, xTrotxiBuild, tripGenerationInput, xTrotxiPlatform);
+    print(response);
+} on DioException catch (e) {
+    print('Exception when calling OpsOrScopedWorkerApi->runTripGeneration: $e\n');
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **xTrotxiClient** | **String**| Compatibility metadata only, never grants a role. | 
+ **xTrotxiBuild** | **int**| Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable. | 
+ **tripGenerationInput** | [**TripGenerationInput**](TripGenerationInput.md)|  | 
  **xTrotxiPlatform** | **String**| Required for commuter/driver, absent for ops/worker. | [optional] 
 
 ### Return type

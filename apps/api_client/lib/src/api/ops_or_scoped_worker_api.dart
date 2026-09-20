@@ -13,6 +13,7 @@ import 'package:trotxi_api_client/src/model/maintenance_input.dart';
 import 'package:trotxi_api_client/src/model/maintenance_result_response.dart';
 import 'package:trotxi_api_client/src/model/payment_maintenance_result_response.dart';
 import 'package:trotxi_api_client/src/model/service_day_input.dart';
+import 'package:trotxi_api_client/src/model/trip_generation_input.dart';
 
 class OpsOrScopedWorkerApi {
 
@@ -995,6 +996,120 @@ class OpsOrScopedWorkerApi {
     try {
       const _type = FullType(MaintenanceInput);
       _bodyData = _serializers.serialize(maintenanceInput, specifiedType: _type);
+
+    } catch(error, stackTrace) {
+      throw DioException(
+         requestOptions: _options.compose(
+          _dio.options,
+          _path,
+        ),
+        type: DioExceptionType.unknown,
+        error: error,
+        stackTrace: stackTrace,
+      );
+    }
+
+    final _response = await _dio.request<Object>(
+      _path,
+      data: _bodyData,
+      options: _options,
+      cancelToken: cancelToken,
+      onSendProgress: onSendProgress,
+      onReceiveProgress: onReceiveProgress,
+    );
+
+    MaintenanceResultResponse? _responseData;
+
+    try {
+      final rawResponse = _response.data;
+      _responseData = rawResponse == null ? null : _serializers.deserialize(
+        rawResponse,
+        specifiedType: const FullType(MaintenanceResultResponse),
+      ) as MaintenanceResultResponse;
+
+    } catch (error, stackTrace) {
+      throw DioException(
+        requestOptions: _response.requestOptions,
+        response: _response,
+        type: DioExceptionType.unknown,
+        error: error,
+        stackTrace: stackTrace,
+      );
+    }
+
+    return Response<MaintenanceResultResponse>(
+      data: _responseData,
+      headers: _response.headers,
+      isRedirect: _response.isRedirect,
+      requestOptions: _response.requestOptions,
+      redirects: _response.redirects,
+      statusCode: _response.statusCode,
+      statusMessage: _response.statusMessage,
+      extra: _response.extra,
+    );
+  }
+
+  /// run Trip Generation
+  /// 
+  ///
+  /// Parameters:
+  /// * [xTrotxiClient] - Compatibility metadata only, never grants a role.
+  /// * [xTrotxiBuild] - Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
+  /// * [tripGenerationInput] 
+  /// * [xTrotxiPlatform] - Required for commuter/driver, absent for ops/worker.
+  /// * [cancelToken] - A [CancelToken] that can be used to cancel the operation
+  /// * [headers] - Can be used to add additional headers to the request
+  /// * [extras] - Can be used to add flags to the request
+  /// * [validateStatus] - A [ValidateStatus] callback that can be used to determine request success based on the HTTP status of the response
+  /// * [onSendProgress] - A [ProgressCallback] that can be used to get the send progress
+  /// * [onReceiveProgress] - A [ProgressCallback] that can be used to get the receive progress
+  ///
+  /// Returns a [Future] containing a [Response] with a [MaintenanceResultResponse] as data
+  /// Throws [DioException] if API call or serialization fails
+  Future<Response<MaintenanceResultResponse>> runTripGeneration({ 
+    required String xTrotxiClient,
+    required int xTrotxiBuild,
+    required TripGenerationInput tripGenerationInput,
+    String? xTrotxiPlatform,
+    CancelToken? cancelToken,
+    Map<String, dynamic>? headers,
+    Map<String, dynamic>? extra,
+    ValidateStatus? validateStatus,
+    ProgressCallback? onSendProgress,
+    ProgressCallback? onReceiveProgress,
+  }) async {
+    final _path = r'/v1/ops/maintenance/trip-generation';
+    final _options = Options(
+      method: r'POST',
+      headers: <String, dynamic>{
+        r'X-Trotxi-Client': xTrotxiClient,
+        r'X-Trotxi-Build': xTrotxiBuild,
+        if (xTrotxiPlatform != null) r'X-Trotxi-Platform': xTrotxiPlatform,
+        ...?headers,
+      },
+      extra: <String, dynamic>{
+        'secure': <Map<String, String>>[
+          {
+            'type': 'http',
+            'scheme': 'bearer',
+            'name': 'workerAuth',
+          },{
+            'type': 'http',
+            'scheme': 'bearer',
+            'name': 'bearerAuth',
+          },
+        ],
+        ...?extra,
+      },
+      contentType: 'application/json',
+      validateStatus: validateStatus,
+    );
+
+    dynamic _bodyData;
+
+    try {
+      const _type = FullType(TripGenerationInput);
+      _bodyData = _serializers.serialize(tripGenerationInput, specifiedType: _type);
 
     } catch(error, stackTrace) {
       throw DioException(

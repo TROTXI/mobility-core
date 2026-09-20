@@ -95,8 +95,15 @@ export function parseProviderFact(raw: Buffer, source: 'webhook' | 'verify'): Pr
       if (!Object.hasOwn(refundRank, state) || String(d.status).replaceAll('-', '_') !== state)
         throw new InvalidProviderFacts();
       const c = common.parse({ ...d, reference: d.transaction_reference });
-      // Missing refund identity cannot be safely deduplicated by amount/event hash.
-      const providerReference = z.string().min(1).max(200).parse(d.refund_reference);
+      // Paystack's real pending webhook can have refund_reference=null while
+      // id is already assigned. Prefer that stable id on EVERY status, even
+      // when a later event gains a reference, or one refund becomes two rows.
+      // Keep reference-only evidence supported; never derive identity from an
+      // amount or event hash, and never fall back around a malformed supplied id.
+      const providerReference =
+        d.id !== undefined && d.id !== null
+          ? `paystack-refund-id:${ident.parse(d.id)}`
+          : z.string().min(1).max(200).parse(d.refund_reference);
       return {
         kind: 'refund',
         reference: c.reference,

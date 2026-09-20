@@ -56,6 +56,8 @@ import 'package:trotxi_api_client/src/model/credential_action.dart';
 import 'package:trotxi_api_client/src/model/credential_issue.dart';
 import 'package:trotxi_api_client/src/model/credential_secret.dart';
 import 'package:trotxi_api_client/src/model/credential_secret_response.dart';
+import 'package:trotxi_api_client/src/model/credit_entry.dart';
+import 'package:trotxi_api_client/src/model/credit_entry_page.dart';
 import 'package:trotxi_api_client/src/model/decision_event.dart';
 import 'package:trotxi_api_client/src/model/decision_event_page.dart';
 import 'package:trotxi_api_client/src/model/device.dart';
@@ -66,6 +68,9 @@ import 'package:trotxi_api_client/src/model/driver_edit.dart';
 import 'package:trotxi_api_client/src/model/driver_input.dart';
 import 'package:trotxi_api_client/src/model/driver_page.dart';
 import 'package:trotxi_api_client/src/model/driver_response.dart';
+import 'package:trotxi_api_client/src/model/driver_self.dart';
+import 'package:trotxi_api_client/src/model/driver_self_credential.dart';
+import 'package:trotxi_api_client/src/model/driver_self_response.dart';
 import 'package:trotxi_api_client/src/model/driver_sign_in.dart';
 import 'package:trotxi_api_client/src/model/driver_tokens.dart';
 import 'package:trotxi_api_client/src/model/driver_tokens_driver.dart';
@@ -123,6 +128,9 @@ import 'package:trotxi_api_client/src/model/ops_commute_request_response.dart';
 import 'package:trotxi_api_client/src/model/ops_incident.dart';
 import 'package:trotxi_api_client/src/model/ops_incident_page.dart';
 import 'package:trotxi_api_client/src/model/ops_incident_response.dart';
+import 'package:trotxi_api_client/src/model/ops_overview.dart';
+import 'package:trotxi_api_client/src/model/ops_overview_response.dart';
+import 'package:trotxi_api_client/src/model/ops_overview_trips_inner.dart';
 import 'package:trotxi_api_client/src/model/ops_purchase.dart';
 import 'package:trotxi_api_client/src/model/ops_purchase_attempts_inner.dart';
 import 'package:trotxi_api_client/src/model/ops_purchase_attempts_inner_received_amount.dart';
@@ -135,6 +143,8 @@ import 'package:trotxi_api_client/src/model/ops_trip_response.dart';
 import 'package:trotxi_api_client/src/model/ops_work_request.dart';
 import 'package:trotxi_api_client/src/model/ops_work_request_page.dart';
 import 'package:trotxi_api_client/src/model/ops_work_request_response.dart';
+import 'package:trotxi_api_client/src/model/optional_personal_pause.dart';
+import 'package:trotxi_api_client/src/model/optional_personal_pause_response.dart';
 import 'package:trotxi_api_client/src/model/pass.dart';
 import 'package:trotxi_api_client/src/model/pass_response.dart';
 import 'package:trotxi_api_client/src/model/pattern.dart';
@@ -152,6 +162,12 @@ import 'package:trotxi_api_client/src/model/payment_maintenance_result_response.
 import 'package:trotxi_api_client/src/model/payment_review.dart';
 import 'package:trotxi_api_client/src/model/payment_review_page.dart';
 import 'package:trotxi_api_client/src/model/payment_review_response.dart';
+import 'package:trotxi_api_client/src/model/personal_pause.dart';
+import 'package:trotxi_api_client/src/model/personal_pause_input.dart';
+import 'package:trotxi_api_client/src/model/personal_pause_preview.dart';
+import 'package:trotxi_api_client/src/model/personal_pause_preview_response.dart';
+import 'package:trotxi_api_client/src/model/personal_pause_response.dart';
+import 'package:trotxi_api_client/src/model/personal_resume_input.dart';
 import 'package:trotxi_api_client/src/model/pin_change.dart';
 import 'package:trotxi_api_client/src/model/plan_pricing.dart';
 import 'package:trotxi_api_client/src/model/plan_pricing_page.dart';
@@ -166,10 +182,18 @@ import 'package:trotxi_api_client/src/model/publish_version_input.dart';
 import 'package:trotxi_api_client/src/model/purchase.dart';
 import 'package:trotxi_api_client/src/model/purchase_input.dart';
 import 'package:trotxi_api_client/src/model/purchase_page.dart';
+import 'package:trotxi_api_client/src/model/purchase_quote.dart';
+import 'package:trotxi_api_client/src/model/purchase_quote_input.dart';
+import 'package:trotxi_api_client/src/model/purchase_quote_response.dart';
 import 'package:trotxi_api_client/src/model/purchase_response.dart';
 import 'package:trotxi_api_client/src/model/reason_input.dart';
 import 'package:trotxi_api_client/src/model/receive_paystack_webhook_request.dart';
 import 'package:trotxi_api_client/src/model/refresh_input.dart';
+import 'package:trotxi_api_client/src/model/refund_initiation.dart';
+import 'package:trotxi_api_client/src/model/refund_initiation_collection.dart';
+import 'package:trotxi_api_client/src/model/refund_initiation_collection_response.dart';
+import 'package:trotxi_api_client/src/model/refund_initiation_input.dart';
+import 'package:trotxi_api_client/src/model/refund_initiation_response.dart';
 import 'package:trotxi_api_client/src/model/reservation.dart';
 import 'package:trotxi_api_client/src/model/reservation_decision.dart';
 import 'package:trotxi_api_client/src/model/reservation_decision_result.dart';
@@ -180,6 +204,8 @@ import 'package:trotxi_api_client/src/model/restriction.dart';
 import 'package:trotxi_api_client/src/model/restriction_input.dart';
 import 'package:trotxi_api_client/src/model/restriction_response.dart';
 import 'package:trotxi_api_client/src/model/review_decision.dart';
+import 'package:trotxi_api_client/src/model/ride_entry.dart';
+import 'package:trotxi_api_client/src/model/ride_entry_page.dart';
 import 'package:trotxi_api_client/src/model/role_edit.dart';
 import 'package:trotxi_api_client/src/model/root.dart';
 import 'package:trotxi_api_client/src/model/route.dart';
@@ -213,6 +239,7 @@ import 'package:trotxi_api_client/src/model/trace_hold_response.dart';
 import 'package:trotxi_api_client/src/model/trip.dart';
 import 'package:trotxi_api_client/src/model/trip_assignment.dart';
 import 'package:trotxi_api_client/src/model/trip_edit.dart';
+import 'package:trotxi_api_client/src/model/trip_generation_input.dart';
 import 'package:trotxi_api_client/src/model/trip_input.dart';
 import 'package:trotxi_api_client/src/model/trip_page.dart';
 import 'package:trotxi_api_client/src/model/trip_response.dart';
@@ -277,6 +304,8 @@ part 'serializers.g.dart';
   CredentialIssue,
   CredentialSecret,
   CredentialSecretResponse,
+  CreditEntry,
+  CreditEntryPage,
   DecisionEvent,
   DecisionEventPage,
   Device,
@@ -287,6 +316,9 @@ part 'serializers.g.dart';
   DriverInput,
   DriverPage,
   DriverResponse,
+  DriverSelf,
+  DriverSelfCredential,
+  DriverSelfResponse,
   DriverSignIn,
   DriverTokens,
   DriverTokensDriver,
@@ -344,6 +376,9 @@ part 'serializers.g.dart';
   OpsIncident,
   OpsIncidentPage,
   OpsIncidentResponse,
+  OpsOverview,
+  OpsOverviewResponse,
+  OpsOverviewTripsInner,
   OpsPurchase,
   OpsPurchaseAttemptsInner,
   OpsPurchaseAttemptsInnerReceivedAmount,
@@ -356,6 +391,8 @@ part 'serializers.g.dart';
   OpsWorkRequest,
   OpsWorkRequestPage,
   OpsWorkRequestResponse,
+  OptionalPersonalPause,
+  OptionalPersonalPauseResponse,
   Pass,
   PassResponse,
   Pattern,
@@ -373,6 +410,12 @@ part 'serializers.g.dart';
   PaymentReview,
   PaymentReviewPage,
   PaymentReviewResponse,
+  PersonalPause,
+  PersonalPauseInput,
+  PersonalPausePreview,
+  PersonalPausePreviewResponse,
+  PersonalPauseResponse,
+  PersonalResumeInput,
   PinChange,
   PlanPricing,
   PlanPricingPage,
@@ -387,10 +430,18 @@ part 'serializers.g.dart';
   Purchase,
   PurchaseInput,
   PurchasePage,
+  PurchaseQuote,
+  PurchaseQuoteInput,
+  PurchaseQuoteResponse,
   PurchaseResponse,
   ReasonInput,
   ReceivePaystackWebhookRequest,
   RefreshInput,
+  RefundInitiation,
+  RefundInitiationCollection,
+  RefundInitiationCollectionResponse,
+  RefundInitiationInput,
+  RefundInitiationResponse,
   Reservation,
   ReservationDecision,
   ReservationDecisionResult,
@@ -401,6 +452,8 @@ part 'serializers.g.dart';
   RestrictionInput,
   RestrictionResponse,
   ReviewDecision,
+  RideEntry,
+  RideEntryPage,
   RoleEdit,
   Root,
   Route,
@@ -434,6 +487,7 @@ part 'serializers.g.dart';
   Trip,
   TripAssignment,
   TripEdit,
+  TripGenerationInput,
   TripInput,
   TripPage,
   TripResponse,

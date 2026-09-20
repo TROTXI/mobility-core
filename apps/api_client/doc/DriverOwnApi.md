@@ -5,12 +5,13 @@
 import 'package:trotxi_api_client/api.dart';
 ```
 
-All URIs are relative to *https://api.example.invalid*
+All URIs are relative to *https://trotxi-api-staging.onrender.com*
 
 Method | HTTP request | Description
 ------------- | ------------- | -------------
 [**changeDriverPin**](DriverOwnApi.md#changedriverpin) | **POST** /v1/auth/driver/pin | change Driver Pin
 [**createDriverRequest**](DriverOwnApi.md#createdriverrequest) | **POST** /v1/driver/requests | create Driver Request
+[**getDriverSelf**](DriverOwnApi.md#getdriverself) | **GET** /v1/driver/me | get Driver Self
 [**listDriverAvailableRoutes**](DriverOwnApi.md#listdriveravailableroutes) | **GET** /v1/driver/available-routes | list Driver Available Routes
 [**listDriverIncidents**](DriverOwnApi.md#listdriverincidents) | **GET** /v1/driver/incidents | list Driver Incidents
 [**listDriverRequests**](DriverOwnApi.md#listdriverrequests) | **GET** /v1/driver/requests | list Driver Requests
@@ -111,6 +112,51 @@ Name | Type | Description  | Notes
 ### HTTP request headers
 
  - **Content-Type**: application/json
+ - **Accept**: application/json
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
+# **getDriverSelf**
+> DriverSelfResponse getDriverSelf(xTrotxiClient, xTrotxiBuild, xTrotxiPlatform)
+
+get Driver Self
+
+### Example
+```dart
+import 'package:trotxi_api_client/api.dart';
+
+final api = TrotxiApiClient().getDriverOwnApi();
+final String xTrotxiClient = xTrotxiClient_example; // String | Compatibility metadata only, never grants a role.
+final int xTrotxiBuild = 56; // int | Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
+final String xTrotxiPlatform = xTrotxiPlatform_example; // String | Required for commuter/driver, absent for ops/worker.
+
+try {
+    final response = api.getDriverSelf(xTrotxiClient, xTrotxiBuild, xTrotxiPlatform);
+    print(response);
+} on DioException catch (e) {
+    print('Exception when calling DriverOwnApi->getDriverSelf: $e\n');
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **xTrotxiClient** | **String**| Compatibility metadata only, never grants a role. | 
+ **xTrotxiBuild** | **int**| Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable. | 
+ **xTrotxiPlatform** | **String**| Required for commuter/driver, absent for ops/worker. | [optional] 
+
+### Return type
+
+[**DriverSelfResponse**](DriverSelfResponse.md)
+
+### Authorization
+
+[bearerAuth](../README.md#bearerAuth)
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
  - **Accept**: application/json
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)

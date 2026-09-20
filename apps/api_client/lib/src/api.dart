@@ -21,7 +21,7 @@ import 'package:trotxi_api_client/src/api/self_api.dart';
 import 'package:trotxi_api_client/src/api/signed_in_catalog_api.dart';
 
 class TrotxiApiClient {
-  static const String basePath = r'https://api.example.invalid';
+  static const String basePath = r'https://trotxi-api-staging.onrender.com';
 
   final Dio dio;
   final Serializers serializers;

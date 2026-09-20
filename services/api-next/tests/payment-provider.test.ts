@@ -84,6 +84,7 @@ test('PROV-02: invalid money, absent refund identity and inconsistent events are
       parseProviderFact(
         raw('refund.processed', {
           ...fields,
+          id: undefined,
           transaction_reference: 'tx-example',
           status: 'processed',
         }),
@@ -105,6 +106,38 @@ test('PROV-02: invalid money, absent refund identity and inconsistent events are
     parseProviderFact(raw('transaction.verify', { ...fields, status: 'ongoing' }), 'verify')?.kind,
     'unresolved',
   );
+});
+test('PROV-REF-ID: null pending reference and later reference share the stable refund id', () => {
+  const refund = (state: string, id: unknown, reference: unknown) =>
+    raw(`refund.${state}`, {
+      domain: 'test',
+      currency: 'GHS',
+      amount: 26400,
+      transaction_reference: 'tx-example',
+      status: state,
+      id,
+      refund_reference: reference,
+    });
+  const pending = parseProviderFact(refund('pending', '12345', null), 'webhook');
+  const processed = parseProviderFact(refund('processed', 12345, 'bank-ref-123'), 'webhook');
+  assert.equal(pending?.kind, 'refund');
+  assert.equal(processed?.kind, 'refund');
+  if (pending?.kind !== 'refund' || processed?.kind !== 'refund') assert.fail('refund facts');
+  assert.equal(pending.providerReference, 'paystack-refund-id:12345');
+  assert.equal(processed.providerReference, pending.providerReference);
+  assert.equal(pending.state, 'pending');
+  assert.equal(processed.state, 'processed');
+  for (const id of [-1, 1.5, true, '', 'not-an-id', Number.MAX_SAFE_INTEGER + 1])
+    assert.throws(
+      () => parseProviderFact(refund('pending', id, 'valid-ref'), 'webhook'),
+      InvalidProviderFacts,
+    );
+  assert.throws(
+    () => parseProviderFact(refund('pending', undefined, null), 'webhook'),
+    InvalidProviderFacts,
+  );
+  const legacy = parseProviderFact(refund('processed', undefined, 'existing-ref'), 'webhook');
+  assert.equal(legacy?.kind === 'refund' && legacy.providerReference, 'existing-ref');
 });
 test('PROV-03: Verify is exact-reference, exact-environment, size-bounded and never follows redirects', async () => {
   let data = { ...fields };
