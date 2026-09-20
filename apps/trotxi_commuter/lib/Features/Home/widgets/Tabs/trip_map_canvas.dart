@@ -15,17 +15,57 @@ class _TripMapCanvasState extends State<TripMapCanvas> {
   MapLibreMapController? _controller;
   bool _ready = false, _framed = false, _failed = false;
   int _revision = 0;
+  int? _drawnRoute;
   Future<void> _draws = Future.value();
+  late final VehicleMarker _marker = VehicleMarker(
+    options: (point, _) => CircleOptions(
+      geometry: point,
+      // Neutral marker: the live/stale text below ages with the server fix.
+      circleColor: '#19364D',
+      circleRadius: 10,
+      circleStrokeColor: '#FFFFFF',
+      circleStrokeWidth: 3,
+    ),
+  );
+
+  @override
+  void initState() {
+    super.initState();
+    _acceptPosition();
+  }
+
+  void _acceptPosition() {
+    final position = widget.snapshot.hasPosition
+        ? widget.snapshot.live.position
+        : null;
+    if (position == null) {
+      _marker.clear();
+    } else {
+      _marker.accept(
+        LatLng(
+          position.location.latitude.toDouble(),
+          position.location.longitude.toDouble(),
+        ),
+        position.receivedAt,
+        fresh: widget.snapshot.fresh,
+      );
+    }
+  }
+
   @override
   void didUpdateWidget(covariant TripMapCanvas oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.snapshot != widget.snapshot) _draw();
+    if (oldWidget.snapshot != widget.snapshot) {
+      _acceptPosition();
+      _draw();
+    }
   }
 
   @override
   void dispose() {
     _revision++;
     _ready = false;
+    _marker.dispose();
     super.dispose();
   }
 
@@ -41,10 +81,21 @@ class _TripMapCanvasState extends State<TripMapCanvas> {
               controller == _controller;
           if (controller == null || !current()) return;
           final snapshot = widget.snapshot;
-          await controller.clearLines();
-          if (!current()) return;
-          await controller.clearCircles();
-          if (!current()) return;
+          final signature = Object.hash(
+            snapshot.trip.id,
+            snapshot.geometry?.id,
+            snapshot.live.riderPickupOccurrenceId,
+            Object.hashAll(
+              snapshot.stops.map(
+                (s) => Object.hash(
+                  s.id,
+                  s.ordinal,
+                  s.location.latitude,
+                  s.location.longitude,
+                ),
+              ),
+            ),
+          );
           final points =
               snapshot.geometry?.points
                   .map(
@@ -53,48 +104,44 @@ class _TripMapCanvasState extends State<TripMapCanvas> {
                   )
                   .toList() ??
               <LatLng>[];
-          if (points.length >= 2) {
-            await controller.addLine(
-              LineOptions(geometry: points, lineColor: '#50789A', lineWidth: 5),
-            );
+          if (_drawnRoute != signature) {
+            await controller.clearLines();
             if (!current()) return;
-          }
-          for (final stop in snapshot.stops) {
-            await controller.addCircle(
-              CircleOptions(
-                geometry: LatLng(
-                  stop.location.latitude.toDouble(),
-                  stop.location.longitude.toDouble(),
+            await controller.clearCircles();
+            if (!current()) return;
+            if (points.length >= 2) {
+              await controller.addLine(
+                LineOptions(
+                  geometry: points,
+                  lineColor: '#50789A',
+                  lineWidth: 5,
                 ),
-                circleRadius: stop.id == snapshot.live.riderPickupOccurrenceId
-                    ? 8
-                    : 5,
-                circleColor: stop.id == snapshot.live.riderPickupOccurrenceId
-                    ? '#F2A900'
-                    : '#FFFFFF',
-                circleStrokeColor: '#50789A',
-                circleStrokeWidth: 2,
-              ),
-            );
-            if (!current()) return;
+              );
+              if (!current()) return;
+            }
+            for (final stop in snapshot.stops) {
+              await controller.addCircle(
+                CircleOptions(
+                  geometry: LatLng(
+                    stop.location.latitude.toDouble(),
+                    stop.location.longitude.toDouble(),
+                  ),
+                  circleRadius: stop.id == snapshot.live.riderPickupOccurrenceId
+                      ? 8
+                      : 5,
+                  circleColor: stop.id == snapshot.live.riderPickupOccurrenceId
+                      ? '#F2A900'
+                      : '#FFFFFF',
+                  circleStrokeColor: '#50789A',
+                  circleStrokeWidth: 2,
+                ),
+              );
+              if (!current()) return;
+            }
+            _drawnRoute = signature;
+            _marker.attach(controller);
           }
           final position = snapshot.hasPosition ? snapshot.live.position : null;
-          if (position != null) {
-            await controller.addCircle(
-              CircleOptions(
-                geometry: LatLng(
-                  position.location.latitude.toDouble(),
-                  position.location.longitude.toDouble(),
-                ),
-                // Neutral marker: live/stale text ages without stale green annotation.
-                circleColor: '#19364D',
-                circleRadius: 10,
-                circleStrokeColor: '#FFFFFF',
-                circleStrokeWidth: 3,
-              ),
-            );
-            if (!current()) return;
-          }
           if (!_framed) {
             final all = [
               ...points,
@@ -164,10 +211,12 @@ class _TripMapCanvasState extends State<TripMapCanvas> {
               _controller = controller;
               _ready = false;
               _framed = false;
+              _drawnRoute = null;
             },
             onStyleReloaded: (controller) {
               _controller = controller;
               _ready = true;
+              _drawnRoute = null;
               _draw();
             },
           ),
