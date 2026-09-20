@@ -194,6 +194,8 @@ class _$OpsTrip extends OpsTrip {
   @override
   final String? vehicleLabel;
   @override
+  final String? vehiclePlate;
+  @override
   final DateTime? startedAt;
   @override
   final DateTime? completedAt;
@@ -227,6 +229,7 @@ class _$OpsTrip extends OpsTrip {
       required this.scheduledAt,
       required this.status,
       this.vehicleLabel,
+      this.vehiclePlate,
       this.startedAt,
       this.completedAt,
       this.currentStopOccurrenceId,
@@ -259,6 +262,7 @@ class _$OpsTrip extends OpsTrip {
         scheduledAt == other.scheduledAt &&
         status == other.status &&
         vehicleLabel == other.vehicleLabel &&
+        vehiclePlate == other.vehiclePlate &&
         startedAt == other.startedAt &&
         completedAt == other.completedAt &&
         currentStopOccurrenceId == other.currentStopOccurrenceId &&
@@ -284,6 +288,7 @@ class _$OpsTrip extends OpsTrip {
     _$hash = $jc(_$hash, scheduledAt.hashCode);
     _$hash = $jc(_$hash, status.hashCode);
     _$hash = $jc(_$hash, vehicleLabel.hashCode);
+    _$hash = $jc(_$hash, vehiclePlate.hashCode);
     _$hash = $jc(_$hash, startedAt.hashCode);
     _$hash = $jc(_$hash, completedAt.hashCode);
     _$hash = $jc(_$hash, currentStopOccurrenceId.hashCode);
@@ -311,6 +316,7 @@ class _$OpsTrip extends OpsTrip {
           ..add('scheduledAt', scheduledAt)
           ..add('status', status)
           ..add('vehicleLabel', vehicleLabel)
+          ..add('vehiclePlate', vehiclePlate)
           ..add('startedAt', startedAt)
           ..add('completedAt', completedAt)
           ..add('currentStopOccurrenceId', currentStopOccurrenceId)
@@ -374,6 +380,10 @@ class OpsTripBuilder implements Builder<OpsTrip, OpsTripBuilder> {
   String? get vehicleLabel => _$this._vehicleLabel;
   set vehicleLabel(String? vehicleLabel) => _$this._vehicleLabel = vehicleLabel;
 
+  String? _vehiclePlate;
+  String? get vehiclePlate => _$this._vehiclePlate;
+  set vehiclePlate(String? vehiclePlate) => _$this._vehiclePlate = vehiclePlate;
+
   DateTime? _startedAt;
   DateTime? get startedAt => _$this._startedAt;
   set startedAt(DateTime? startedAt) => _$this._startedAt = startedAt;
@@ -431,6 +441,7 @@ class OpsTripBuilder implements Builder<OpsTrip, OpsTripBuilder> {
       _scheduledAt = $v.scheduledAt;
       _status = $v.status;
       _vehicleLabel = $v.vehicleLabel;
+      _vehiclePlate = $v.vehiclePlate;
       _startedAt = $v.startedAt;
       _completedAt = $v.completedAt;
       _currentStopOccurrenceId = $v.currentStopOccurrenceId;
@@ -483,6 +494,7 @@ class OpsTripBuilder implements Builder<OpsTrip, OpsTripBuilder> {
             status: BuiltValueNullFieldError.checkNotNull(
                 status, r'OpsTrip', 'status'),
             vehicleLabel: vehicleLabel,
+            vehiclePlate: vehiclePlate,
             startedAt: startedAt,
             completedAt: completedAt,
             currentStopOccurrenceId: currentStopOccurrenceId,

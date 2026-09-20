@@ -234,6 +234,47 @@ test('REC-05: explicit verified failure releases hold; late success is cash evid
     'awaiting_payment',
   );
 });
+test('REC-REF-ID: real pending shape and processed replay update one refund and reverse once', async (t) => {
+  const f = await fixture(t);
+  const p = await f.buy();
+  assert.equal((await f.send(f.success(p))).succeeded, 1);
+  const event = (state: string, id: string | number, reference: string | null) => ({
+    event: `refund.${state}`,
+    data: {
+      ...f.refund(p).data,
+      status: state,
+      id,
+      refund_reference: reference,
+    },
+  });
+  assert.equal((await f.send(event('pending', '12345', null))).succeeded, 1);
+  assert.equal((await f.period(p.id)).state, 'open');
+  assert.equal((await f.send(event('processed', 12345, 'later-bank-ref'))).succeeded, 1);
+  await f.send(event('processed', '12345', 'later-bank-ref'));
+  await f.send(event('pending', '12345', null));
+  assert.deepEqual(
+    (
+      await f.owner.query(
+        'SELECT provider_reference,state,amount_pesewas FROM app.payment_refunds WHERE purchase_id=$1',
+        [p.id],
+      )
+    ).rows,
+    [
+      {
+        provider_reference: 'paystack-refund-id:12345',
+        state: 'processed',
+        amount_pesewas: p.cashDuePesewas,
+      },
+    ],
+  );
+  assert.equal((await f.period(p.id)).state, 'reversed');
+  assert.equal(
+    (await f.owner.query("SELECT count(*)::int AS n FROM app.ride_entries WHERE reason='refund'"))
+      .rows[0].n,
+    1,
+  );
+});
+
 test('REC-06: concurrent full refund restores captured credit exactly once without editing capture history', async (t) => {
   const f = await fixture(t);
   await f.grant(1000);

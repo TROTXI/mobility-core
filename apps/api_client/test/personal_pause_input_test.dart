@@ -1,0 +1,21 @@
+import 'package:test/test.dart';
+import 'package:trotxi_api_client/trotxi_api_client.dart';
+
+// tests for PersonalPauseInput
+void main() {
+  final instance = PersonalPauseInputBuilder();
+  // TODO add properties to the builder and call build()
+
+  group(PersonalPauseInput, () {
+    // Date startDate
+    test('to test the property `startDate`', () async {
+      // TODO
+    });
+
+    // Date resumeDate
+    test('to test the property `resumeDate`', () async {
+      // TODO
+    });
+
+  });
+}

@@ -5,7 +5,7 @@
 import 'package:trotxi_api_client/api.dart';
 ```
 
-All URIs are relative to *https://api.example.invalid*
+All URIs are relative to *https://trotxi-api-staging.onrender.com*
 
 Method | HTTP request | Description
 ------------- | ------------- | -------------
