@@ -296,6 +296,7 @@ export class Trips {
           ON l.selection_id=a.selection_id AND l.schedule_id=$3
         WHERE b.user_id=$1 AND b.state='open'
           AND b.starts_at<=clock_timestamp() AND clock_timestamp()<b.effective_ends_at
+          AND NOT app.personal_pause_blocks(b.id,app.personal_pause_now())
           AND NOT EXISTS (SELECT 1 FROM app.membership_pauses p
             WHERE p.period_id=b.id AND p.ended_at IS NULL)
           AND NOT EXISTS (SELECT 1 FROM app.payment_access_blocks p
@@ -312,6 +313,7 @@ export class Trips {
             JOIN app.billing_periods b ON b.id=r.period_id AND b.state<>'reversed'
               AND b.starts_at<=$3 AND $3<b.effective_ends_at
             WHERE r.user_id=$1 AND r.trip_id=$2 AND r.status IN ('reserved','boarded')
+              AND NOT app.personal_pause_blocks(b.id,app.personal_pause_now())
               AND NOT EXISTS (SELECT 1 FROM app.membership_pauses p
                 WHERE p.period_id=b.id AND p.ended_at IS NULL)
               AND NOT EXISTS (SELECT 1 FROM app.payment_access_blocks p

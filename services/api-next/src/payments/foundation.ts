@@ -3,7 +3,7 @@ import type { Pool, PoolClient } from 'pg';
 import type { Actor } from '../transport/service.js';
 import { canonical } from '../transport/service.js';
 import { fail, mapDatabaseError } from '../transport/errors.js';
-import { billingEnd, MIN_CHARGE_PESEWAS, priceTerms, whole } from './terms.js';
+import { appliedCredit, billingEnd, priceTerms, whole } from './terms.js';
 import type { Plan, PricedTerms } from './terms.js';
 
 export interface PurchaseLeg {
@@ -223,9 +223,7 @@ export class FinancialFoundation {
       if (terms.pricePesewas !== quoted.pricePesewas)
         fail(409, 'invalid_quote', 'Price does not match its terms.');
       const balances = await this.balances(c, actor.userId);
-      const applied = input.useCredit
-        ? Math.min(balances.available, terms.pricePesewas - MIN_CHARGE_PESEWAS)
-        : 0;
+      const applied = appliedCredit(terms.pricePesewas, balances.available, input.useCredit);
       const p = (
         await c.query<PurchaseRow>(
           `INSERT INTO app.purchases(membership_id,user_id,route_id,plan,price_pesewas,
@@ -405,6 +403,12 @@ export class FinancialFoundation {
     )
       fail(409, 'period_payment_blocked', 'A payment dispute blocks this period.');
     await this.options.assertPeriodCanClose(c, { ...b, periodId });
+    // The coordinator can settle a due personal pause while holding this rider
+    // and period. Never close against the pre-extension snapshot.
+    const currentEnd = (
+      await c.query('SELECT effective_ends_at FROM app.billing_periods WHERE id=$1', [periodId])
+    ).rows[0].effective_ends_at;
+    if (currentEnd > b.now) return false;
     const p = (
       await c.query<PurchaseRow>('SELECT * FROM app.purchases WHERE id=$1', [period.purchase_id])
     ).rows[0]!;

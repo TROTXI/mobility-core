@@ -13,6 +13,7 @@ import { FinancialFoundation } from '../payments/foundation.js';
 import { PaymentRecovery } from '../payments/recovery.js';
 import { Pricing } from '../payments/pricing.js';
 import { Purchases } from '../payments/purchases.js';
+import { RefundInitiation } from '../payments/refunds.js';
 import { MembershipService } from '../membership/service.js';
 import { AccountService } from '../account/service.js';
 import { ConfigService } from '../config/service.js';
@@ -20,6 +21,8 @@ import { R2ObjectStore } from './avatars.js';
 import { sharedAdmission } from './admission.js';
 import { TransactionalEmail } from '../notifications/email.js';
 import { ResendSender } from '../notifications/resend.js';
+import { FcmSender } from '../notifications/fcm.js';
+import { PushNotifications } from '../notifications/push.js';
 import type { RuntimeConfig } from './config.js';
 
 export interface Backend {
@@ -33,6 +36,7 @@ export interface Backend {
   admission: import('./admission.js').Admission;
   maintenanceUserId: string;
   email?: TransactionalEmail;
+  push?: PushNotifications;
   close(): Promise<void>;
 }
 
@@ -99,6 +103,13 @@ export async function composeBackend(config: RuntimeConfig): Promise<Backend> {
   try {
     await assertRuntimeRole(pool, config.existingStaging);
     const avatars = new R2ObjectStore(config.avatars);
+    const push = config.firebaseServiceAccount
+      ? new PushNotifications({
+          pool,
+          deviceKey: config.keys.device,
+          sender: new FcmSender(config.firebaseServiceAccount),
+        })
+      : undefined;
     const signAvatar = (objectKey: string) => {
       const url = avatars.sign(objectKey, config.avatars.urlTtlSeconds);
       if (!url)
@@ -230,6 +241,13 @@ export async function composeBackend(config: RuntimeConfig): Promise<Backend> {
         identity = { auth, membership, account };
         return {
           pricing,
+          refunds: new RefundInitiation({
+            pool,
+            authorizeSession,
+            environment: provider.environment,
+            initiate: (reference, amount, intentId) =>
+              provider.initiateRefund(reference, amount, intentId),
+          }),
           membership,
           account,
           purchases: new Purchases({
@@ -278,6 +296,7 @@ export async function composeBackend(config: RuntimeConfig): Promise<Backend> {
       admission,
       maintenanceUserId: config.maintenanceUserId,
       email,
+      push,
       close: async () => {
         if (closed) return;
         closed = true;

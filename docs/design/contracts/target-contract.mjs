@@ -349,6 +349,61 @@ named(
     createdAt: instant,
   }),
 );
+named('PurchaseQuoteInput', obj({ plan, routeId: id, useCredit: z.boolean() }));
+named('PersonalPauseInput', obj({ startDate: date, resumeDate: date }));
+named('PersonalResumeInput', obj({ resumeDate: date }));
+named(
+  'PersonalPause',
+  obj({
+    id,
+    startDate: date,
+    resumeDate: date,
+    status: z.enum(['scheduled', 'paused', 'resumed', 'terminated']),
+    projectedEndsAt: z.string().datetime().nullable(),
+    extensionApplied: z.boolean(),
+  }),
+);
+named(
+  'PersonalPausePreview',
+  obj({
+    startDate: date,
+    resumeDate: date,
+    projectedEndsAt: z.string().datetime(),
+    cancelledReservationIds: z.array(id),
+  }),
+);
+named('OptionalPersonalPause', schemas.PersonalPause.nullable());
+named('RefundInitiationInput', obj({ amount: money, reason: text(500) }));
+named(
+  'RefundInitiation',
+  obj({
+    id,
+    purchaseId: id,
+    amount: money,
+    reason: text(500),
+    state: z.enum(['submitting', 'accepted', 'unknown']),
+    providerRefundId: text(30).nullable(),
+    createdAt: instant,
+  }),
+);
+named('RefundInitiationCollection', obj({ items: z.array(schemas.RefundInitiation).max(1) }));
+named(
+  'PurchaseQuote',
+  obj({
+    routeId: id,
+    plan,
+    ridesGranted: count,
+    fare: money,
+    price: money,
+    availableCredit: money,
+    appliedCredit: money,
+    cashDue: money,
+    minimumCashDue: money,
+    renewalMode: z.literal('manual'),
+    binding: z.literal(false),
+    quotedAt: instant,
+  }),
+);
 named(
   'RideEntry',
   obj({
@@ -836,6 +891,10 @@ named(
 );
 named('MaintenanceInput', obj({ limit: z.int().min(1).max(100).default(100) }));
 named(
+  'TripGenerationInput',
+  obj({ serviceDate: date, routeId: id.optional(), limit: z.int().min(1).max(100).default(100) }),
+);
+named(
   'ServiceDayInput',
   obj({
     travelDate: date,
@@ -1052,6 +1111,34 @@ list('/v1/me/sessions', 'listSessions', 'Session');
 del('/v1/me/sessions/{id}', 'revokeSession');
 post('/v1/me/devices', 'registerDevice', 'DeviceInput', 'Device');
 get('/v1/me/membership', 'getMembership', 'Membership', { access: 'rider_own' });
+get('/v1/me/membership/pause', 'getPersonalPause', 'OptionalPersonalPause', {
+  access: 'rider_own',
+});
+post(
+  '/v1/me/membership/pause-preview',
+  'previewPersonalPause',
+  'PersonalPauseInput',
+  'PersonalPausePreview',
+  { access: 'rider_own', retry: 'safe_read' },
+);
+post('/v1/me/membership/pauses', 'createPersonalPause', 'PersonalPauseInput', 'PersonalPause', {
+  access: 'rider_own',
+  status: 201,
+});
+post(
+  '/v1/me/membership/pauses/{id}/resume',
+  'resumePersonalPause',
+  'PersonalResumeInput',
+  'PersonalPause',
+  { access: 'rider_own' },
+);
+post(
+  '/v1/ops/maintenance/personal-pause-resumes',
+  'runPersonalPauseResumes',
+  'MaintenanceInput',
+  'MaintenanceResult',
+  { retry: 'safe_batch' },
+);
 for (const [path, name, type] of [
   ['billing-periods', 'BillingPeriods', 'BillingPeriod'],
   ['purchases', 'Purchases', 'Purchase'],
@@ -1071,6 +1158,18 @@ post('/v1/me/purchases', 'createPurchase', 'PurchaseInput', 'Purchase', {
   access: 'rider_own',
   status: 201,
 });
+post('/v1/me/purchase-quotes', 'previewPurchase', 'PurchaseQuoteInput', 'PurchaseQuote', {
+  access: 'rider_own',
+  retry: 'safe_read',
+});
+post(
+  '/v1/ops/purchases/{id}/refunds',
+  'initiateRefund',
+  'RefundInitiationInput',
+  'RefundInitiation',
+  { status: 202 },
+);
+get('/v1/ops/purchases/{id}/refunds', 'listRefundInitiations', 'RefundInitiationCollection');
 post('/v1/me/commute-requests', 'createCommuteRequest', 'CommuteRequestInput', 'CommuteRequest', {
   access: 'rider_own',
   status: 201,
@@ -1287,6 +1386,16 @@ for (const task of [
     task === 'payments' ? 'PaymentMaintenanceResult' : 'MaintenanceResult',
     { access: 'ops_or_scoped_worker', retry: 'safe_batch' },
   );
+post(
+  '/v1/ops/maintenance/trip-generation',
+  'runTripGeneration',
+  'TripGenerationInput',
+  'MaintenanceResult',
+  {
+    access: 'ops_or_scoped_worker',
+    retry: 'safe_batch',
+  },
+);
 post('/webhooks/paystack', 'receivePaystackWebhook', null, 'WebhookAck', {
   access: 'provider_signature',
   stable: true,

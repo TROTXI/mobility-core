@@ -127,7 +127,8 @@ export class BoardingService {
       await c.query(
         `SELECT 1 FROM app.account_restrictions WHERE user_id=$1 AND released_at IS NULL
       UNION ALL SELECT 1 FROM app.payment_access_blocks WHERE period_id=$2 AND released_at IS NULL
-      UNION ALL SELECT 1 FROM app.membership_pauses WHERE period_id=$2 AND ended_at IS NULL`,
+      UNION ALL SELECT 1 FROM app.membership_pauses WHERE period_id=$2 AND ended_at IS NULL
+      UNION ALL SELECT 1 WHERE app.personal_pause_blocks($2,app.personal_pause_now())`,
         [r.user_id, r.period_id],
       )
     ).rowCount;

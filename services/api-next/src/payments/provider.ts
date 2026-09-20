@@ -264,6 +264,48 @@ export class PaystackEvidence {
     return { authorizationUrl: target.toString() };
   }
 
+  async initiateRefund(
+    reference: string,
+    amountPesewas: number,
+    intentId: string,
+  ): Promise<string> {
+    if (
+      this.environment !== 'test' ||
+      !/^[A-Za-z0-9._=-]{1,100}$/.test(reference) ||
+      !Number.isSafeInteger(amountPesewas) ||
+      amountPesewas < 1 ||
+      amountPesewas > 2147483647 ||
+      !/^[0-9a-f-]{36}$/.test(intentId)
+    )
+      throw new InvalidProviderFacts('Invalid TEST refund request');
+    const response = await this.request('https://api.paystack.co/refund', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${this.secret}`, 'content-type': 'application/json' },
+      redirect: 'error',
+      signal: AbortSignal.timeout(10000),
+      body: JSON.stringify({
+        transaction: reference,
+        amount: amountPesewas,
+        currency: 'GHS',
+        merchant_note: `trotxi-refund:${intentId}`,
+      }),
+    });
+    if (!response.ok || !response.body) throw new Error('refund_outcome_unknown');
+    const data = z
+      .object({
+        status: z.literal(true),
+        data: z.object({
+          id: ident,
+          domain: z.literal('test'),
+          currency: z.literal('GHS'),
+          amount: z.literal(amountPesewas),
+          transaction: z.object({ reference: z.literal(reference), domain: z.literal('test') }),
+        }),
+      })
+      .parse(JSON.parse((await bounded(response.body)).toString('utf8')));
+    return data.data.id;
+  }
+
   async verify(reference: string): Promise<Buffer> {
     if (!reference || reference.length > 100) throw new InvalidProviderFacts();
     const response = await this.request(

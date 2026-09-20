@@ -49,6 +49,7 @@ export interface RuntimeConfig {
   paystack: { secretKey: string };
   /** Optional until email is provisioned; no extra encryption or sender secrets. */
   email?: { apiKey: string; staging: boolean };
+  firebaseServiceAccount?: string;
   avatars: {
     accountId: string;
     accessKeyId: string;
@@ -248,6 +249,9 @@ export function readConfiguration(env: Env = process.env): RuntimeConfig {
     );
   return {
     existingStaging,
+    ...(optional(env, 'FIREBASE_SERVICE_ACCOUNT')
+      ? { firebaseServiceAccount: required(env, 'FIREBASE_SERVICE_ACCOUNT') }
+      : {}),
     ...(optional(env, 'RESEND_API_KEY')
       ? { email: { apiKey: required(env, 'RESEND_API_KEY'), staging: deployment === 'staging' } }
       : {}),

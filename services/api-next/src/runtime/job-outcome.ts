@@ -13,8 +13,10 @@ const batch = z
   .strict();
 const envelope = (schema: z.ZodType) => z.object({ data: schema }).strict();
 const schemas = {
+  'personal-pause-resumes': envelope(batch),
   payments: envelope(z.object({ inbox: batch, reconciliation: batch, periods: batch }).strict()),
   'ask-dispatch': envelope(batch),
+  'trip-generation': envelope(batch),
   'reservation-defaults': envelope(batch),
   'no-shows': envelope(batch),
   'route-learning': envelope(batch),
@@ -22,6 +24,9 @@ const schemas = {
   erasures: z.object({ considered: count, completed: count, failed: count }).strict(),
   'driver-secrets': z.object({ cleared: count }).strict(),
   admission: z.object({ cleared: count }).strict(),
+  push: z
+    .object({ considered: count, accepted: count, cancelled: count, failed: count, retried: count })
+    .strict(),
   emails: z
     .object({
       considered: count,
@@ -47,7 +52,7 @@ export function jobFailed(result: JobResult): boolean {
   };
   return (
     failures(parsed.data) ||
-    (result.job === 'emails' &&
+    ((result.job === 'emails' || result.job === 'push') &&
       ((parsed.data as any).retried > 0 || (parsed.data as any).unknown > 0)) ||
     (result.retention?.overdueSeconds ?? 0) > 3600
   );

@@ -15,6 +15,8 @@ import type { AuthService, AuthOperation } from '../auth/service.js';
 import { driverOperations } from '../auth/driver-service.js';
 import type { DriverService, DriverOperation } from '../auth/driver-service.js';
 import type { PaymentRecovery } from '../payments/recovery.js';
+import { refundOperations } from '../payments/refunds.js';
+import type { RefundInitiation } from '../payments/refunds.js';
 import { membershipOperations } from '../membership/service.js';
 import { tripReads } from '../transport/trips.js';
 import { configOperations, publicConfigOperations } from '../config/service.js';
@@ -32,6 +34,8 @@ import type { BoardingService } from '../boarding/service.js';
 // The contract admits a `worker` client on exactly these, with no platform:
 // scheduled maintenance is an operations caller without an app build behind it.
 const maintenanceOperations = new Set([
+  'runPersonalPauseResumes',
+  'runTripGeneration',
   'runPayments',
   'runPaymentInbox',
   'runPaymentReconciliation',
@@ -69,6 +73,7 @@ interface Operation {
   responses: Record<string, { content?: Record<string, { schema: Record<string, unknown> }> }>;
 }
 export interface AppOptions extends Dependencies {
+  refunds?: RefundInitiation;
   // Unlike the independently testable service, the application must not start
   // with booking-aware mutations exposed but their required adapter absent.
   coordinateReservations: NonNullable<Dependencies['coordinateReservations']>;
@@ -259,6 +264,8 @@ export async function createTransportApp(options: AppOptions) {
       const operation = value as unknown as Operation;
       const name = operation.operationId;
       const paymentEndpoint = paymentOperations.includes(name);
+      const refundEndpoint = (refundOperations as readonly string[]).includes(name);
+      if (refundEndpoint && !options.refunds) continue;
       const membershipEndpoint = (membershipOperations as readonly string[]).includes(name);
       const boardingEndpoint = (boardingOperations as readonly string[]).includes(name);
       const pricingEndpoint = (pricingOperations as readonly string[]).includes(name);
@@ -360,6 +367,7 @@ export async function createTransportApp(options: AppOptions) {
                       : membershipEndpoint ||
                           purchaseEndpoint ||
                           accountEndpoint ||
+                          name === 'previewPurchase' ||
                           name === 'issuePass'
                         ? 'commuter'
                         : 'driver')
@@ -422,7 +430,31 @@ export async function createTransportApp(options: AppOptions) {
         handler: async (request, reply) => {
           const actor = actors.get(request)!;
           let result;
-          if (boardingEndpoint) {
+          if (refundEndpoint) {
+            if (Object.keys(request.query as object).length)
+              fail(400, 'invalid_query', 'Unsupported query parameters.');
+            const target = (request.params as { id: string }).id;
+            if (name === 'listRefundInitiations')
+              result = await options.refunds!.read(actor, target);
+            else {
+              const key = request.headers['idempotency-key'];
+              if (typeof key !== 'string')
+                fail(400, 'idempotency_key_required', 'Supply an Idempotency-Key.');
+              result = await options.refunds!.initiate(
+                actor,
+                target,
+                (request.body ?? {}) as Body,
+                key,
+              );
+            }
+          } else if (name === 'runTripGeneration') {
+            if (Object.keys(request.query as object).length)
+              fail(400, 'invalid_query', 'Unsupported query parameters.');
+            result = await service.generateTrips(
+              actor,
+              request.body as { serviceDate: string; routeId?: string; limit?: number },
+            );
+          } else if (boardingEndpoint) {
             if (Object.keys(request.query as object).length)
               fail(400, 'invalid_query', 'Unsupported query parameters.');
             if (!input && request.body !== undefined)
@@ -579,7 +611,9 @@ export async function createTransportApp(options: AppOptions) {
             )
               fail(400, 'invalid_query', 'Unsupported query parameters.');
             const params = request.params as { id?: string; plan?: string };
-            if (method === 'get')
+            if (name === 'previewPurchase')
+              result = await options.pricing!.preview(actor!, (request.body ?? {}) as Body);
+            else if (method === 'get')
               result = pricingEndpoint
                 ? await options.pricing!.read(actor!, name as PricingOperation, params, query)
                 : await options.purchases!.read(actor!, name as PurchaseOperation, params, query);
@@ -617,7 +651,17 @@ export async function createTransportApp(options: AppOptions) {
             )
               fail(400, 'invalid_query', 'Unsupported query parameters.');
             const params = request.params as { id?: string; restrictionId?: string };
-            if (name === 'runAskDispatch' || name === 'runReservationDefaults')
+            if (name === 'previewPersonalPause')
+              result = await options.membership!.previewPersonalPause(
+                actor,
+                (request.body ?? {}) as Body,
+              );
+            else if (name === 'runPersonalPauseResumes')
+              result = await options.membership!.resumeDuePersonalPauses(
+                actor,
+                (request.body as { limit?: number })?.limit,
+              );
+            else if (name === 'runAskDispatch' || name === 'runReservationDefaults')
               result = await options.membership!.maintenance(
                 actor,
                 name,

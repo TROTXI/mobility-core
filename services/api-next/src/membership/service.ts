@@ -7,6 +7,11 @@ import { cursorCodec } from '../transport/cursor.js';
 import type { FinancialDependencies, PurchaseLeg } from '../payments/foundation.js';
 
 export const membershipOperations = [
+  'getPersonalPause',
+  'previewPersonalPause',
+  'createPersonalPause',
+  'resumePersonalPause',
+  'runPersonalPauseResumes',
   'getMembership',
   'listCommuteRequests',
   'createCommuteRequest',
@@ -66,6 +71,7 @@ const ops = (op: string) =>
     'releaseAccountRestriction',
     'runAskDispatch',
     'runReservationDefaults',
+    'runPersonalPauseResumes',
   ].includes(op);
 
 export class MembershipService {
@@ -115,6 +121,7 @@ export class MembershipService {
       fail(404, 'not_found', 'Rider not found.');
   }
   private async period(c: PoolClient, userId: string) {
+    await c.query('SELECT app.settle_personal_pauses($1)', [userId]);
     const b = (
       await c.query(
         "SELECT b.*,p.fare_pesewas FROM app.billing_periods b JOIN app.purchases p ON p.id=b.purchase_id WHERE b.user_id=$1 AND b.state='open' FOR UPDATE OF b",
@@ -129,7 +136,8 @@ export class MembershipService {
       await c.query(
         `SELECT 'ops_restriction' AS kind,'account' AS scope,NULL::uuid AS "periodId" FROM app.account_restrictions WHERE user_id=$1 AND released_at IS NULL
       UNION ALL SELECT 'dispute','period',period_id FROM app.payment_access_blocks WHERE period_id=$2 AND released_at IS NULL
-      UNION ALL SELECT 'paused','period',period_id FROM app.membership_pauses WHERE period_id=$2 AND ended_at IS NULL`,
+      UNION ALL SELECT 'paused','period',period_id FROM app.membership_pauses WHERE period_id=$2 AND ended_at IS NULL
+      UNION ALL SELECT 'paused','period',period_id FROM app.personal_pauses WHERE period_id=$2 AND app.personal_pause_blocks(period_id,app.personal_pause_now())`,
         [userId, periodId],
       )
     ).rows;
@@ -138,6 +146,7 @@ export class MembershipService {
     c,
     b,
   ) => {
+    await c.query('SELECT app.settle_personal_pauses($1)', [b.userId]);
     const period = (
       await c.query("SELECT id FROM app.billing_periods WHERE membership_id=$1 AND state='open'", [
         b.membershipId,
@@ -150,6 +159,15 @@ export class MembershipService {
     c,
     b,
   ) => {
+    await c.query('SELECT app.settle_personal_pauses($1)', [b.userId]);
+    if (
+      (
+        await c.query(`SELECT 1 FROM app.personal_pauses WHERE period_id=$1 AND state='planned'`, [
+          b.periodId,
+        ])
+      ).rowCount
+    )
+      fail(409, 'period_paused', 'Personal pause time must settle before period close.');
     if (
       (
         await c.query(
@@ -388,6 +406,8 @@ export class MembershipService {
     };
   }
   private async render(c: PoolClient, op: string, resource: string, admin: boolean) {
+    if (op === 'createPersonalPause' || op === 'resumePersonalPause')
+      return this.personalPauseView(c, resource);
     if (op.includes('CommuteSlot'))
       return this.slotView(
         c,
@@ -474,12 +494,12 @@ export class MembershipService {
         fail(404, 'not_found', 'Restriction not found.');
       // Foreign rider resources are refused before receipt lookup or If-Match.
       if (
-        op === 'withdrawCommuteRequest' &&
+        (op === 'withdrawCommuteRequest' || op === 'resumePersonalPause') &&
         !(
-          await c.query('SELECT 1 FROM app.commute_requests WHERE id=$1 AND user_id=$2', [
-            scope,
-            actor.userId,
-          ])
+          await c.query(
+            `SELECT 1 FROM app.${op === 'resumePersonalPause' ? 'personal_pauses' : 'commute_requests'} WHERE id=$1 AND user_id=$2`,
+            [scope, actor.userId],
+          )
         ).rowCount
       )
         fail(404, 'not_found', 'Request not found.');
@@ -527,6 +547,21 @@ export class MembershipService {
     match?: string,
   ): Promise<string> {
     const now = this.now();
+    if (op === 'createPersonalPause')
+      return (await this.insertPersonalPause(c, actor.userId, input)).id;
+    if (op === 'resumePersonalPause') {
+      await this.period(c, actor.userId);
+      const resumeDate = this.personalDate(input.resumeDate);
+      const row = (
+        await c.query(
+          `UPDATE app.personal_pauses SET resume_date=$3 WHERE id=$1 AND user_id=$2
+        AND state='planned' AND resume_date>$3 RETURNING id`,
+          [target, actor.userId, resumeDate],
+        )
+      ).rows[0];
+      if (!row) fail(409, 'personal_resume_not_allowed', 'Choose an earlier future service day.');
+      return row.id;
+    }
     if (op === 'createCommuteRequest') {
       const b = await this.period(c, actor.userId);
       if (b.effective_ends_at <= now || String(input.requestedDate) < date(now))
@@ -869,6 +904,7 @@ export class MembershipService {
         AND ($3::uuid IS NULL OR s.route_id=$3)
         AND NOT EXISTS(SELECT 1 FROM app.reservations r WHERE r.user_id=b.user_id AND r.service_date=$1 AND r.direction=$2)
         AND NOT EXISTS(SELECT 1 FROM app.membership_pauses p WHERE p.period_id=b.id AND p.ended_at IS NULL)
+        AND NOT app.personal_pause_blocks(b.id,$1::date::timestamp AT TIME ZONE 'Africa/Accra')
         AND NOT EXISTS(SELECT 1 FROM app.payment_access_blocks p WHERE p.period_id=b.id AND p.released_at IS NULL)
         AND NOT EXISTS(SELECT 1 FROM app.account_restrictions r WHERE r.user_id=b.user_id AND r.released_at IS NULL)
         ORDER BY b.user_id LIMIT $5`,
@@ -960,6 +996,20 @@ export class MembershipService {
     return this.tx(async (c) => {
       if (!ops(op)) await this.lockUser(c, actor.userId);
       await this.authorize(c, actor, op);
+      if (op === 'getPersonalPause') {
+        await c.query('SELECT app.settle_personal_pauses($1)', [actor.userId]);
+        const row = (
+          await c.query(
+            'SELECT id FROM app.personal_pauses WHERE user_id=$1 ORDER BY created_at DESC,id DESC LIMIT 1',
+            [actor.userId],
+          )
+        ).rows[0];
+        return {
+          status: 200,
+          headers: {},
+          body: { data: row ? await this.personalPauseView(c, row.id) : null },
+        } as Outcome;
+      }
       if (op === 'getMembership')
         return {
           status: 200,
@@ -1089,7 +1139,120 @@ export class MembershipService {
       } as Outcome;
     });
   }
+  private personalDate(value: unknown): string {
+    if (
+      typeof value !== 'string' ||
+      !/^(?!0000)\d{4}-\d{2}-\d{2}$/.test(value) ||
+      !Number.isFinite(Date.parse(value)) ||
+      new Date(value).toISOString().slice(0, 10) !== value
+    )
+      fail(400, 'invalid_request', 'Supply a real calendar date.');
+    return value;
+  }
+  private async personalPauseView(c: PoolClient, pauseId: string): Promise<Body> {
+    const p = (
+      await c.query(
+        `SELECT *,to_char(start_date,'YYYY-MM-DD') AS start_day,to_char(resume_date,'YYYY-MM-DD') AS resume_day,
+      CASE WHEN state='terminated' THEN 'terminated' WHEN resume_date<=(app.personal_pause_now() AT TIME ZONE 'Africa/Accra')::date THEN 'resumed'
+      WHEN start_date<=(app.personal_pause_now() AT TIME ZONE 'Africa/Accra')::date THEN 'paused' ELSE 'scheduled' END AS phase,
+      ends_before+make_interval(days=>resume_date-start_date) AS expected_end FROM app.personal_pauses WHERE id=$1`,
+        [pauseId],
+      )
+    ).rows[0];
+    return {
+      id: p.id,
+      startDate: p.start_day,
+      resumeDate: p.resume_day,
+      status: p.phase,
+      projectedEndsAt: p.state === 'terminated' ? null : iso(p.expected_end),
+      extensionApplied: p.state === 'completed',
+    };
+  }
+  private async insertPersonalPause(c: PoolClient, userId: string, input: Body) {
+    const start = this.personalDate(input.startDate),
+      resume = this.personalDate(input.resumeDate);
+    const b = await this.period(c, userId);
+    if ((await c.query('SELECT 1 FROM app.personal_pauses WHERE period_id=$1', [b.id])).rowCount)
+      fail(409, 'personal_pause_used', 'This paid period already has a personal pause.');
+    const cancelled = (
+      await c.query(
+        `SELECT id FROM app.reservations WHERE period_id=$1 AND service_date>=$2 AND service_date<$3
+      AND status IN ('pending','reserved','unseated') ORDER BY service_date,direction`,
+        [b.id, start, resume],
+      )
+    ).rows.map((r) => r.id);
+    const row = (
+      await c.query(
+        `INSERT INTO app.personal_pauses(period_id,user_id,start_date,original_resume_date,resume_date,ends_before)
+      VALUES ($1,$2,$3,$4,$4,$5) RETURNING id`,
+        [b.id, userId, start, resume, b.effective_ends_at],
+      )
+    ).rows[0];
+    return { id: row.id as string, cancelled };
+  }
+  async previewPersonalPause(actor: Actor, input: Body): Promise<Outcome> {
+    return this.tx(async (c) => {
+      await this.lockUser(c, actor.userId);
+      await this.authorize(c, actor, 'previewPersonalPause');
+      // Validate through the exact database rules without keeping a pause,
+      // cancellation, version increment or command. No provider calls occur.
+      await c.query('SAVEPOINT preview');
+      const created = await this.insertPersonalPause(c, actor.userId, input);
+      const view = await this.personalPauseView(c, created.id);
+      await c.query('ROLLBACK TO SAVEPOINT preview');
+      return {
+        status: 200,
+        headers: {},
+        body: {
+          data: {
+            startDate: view.startDate!,
+            resumeDate: view.resumeDate!,
+            projectedEndsAt: view.projectedEndsAt!,
+            cancelledReservationIds: created.cancelled,
+          },
+        },
+      };
+    });
+  }
+  async resumeDuePersonalPauses(actor: Actor, limit = 100): Promise<Outcome> {
+    if (!Number.isInteger(limit) || limit < 1 || limit > 100)
+      fail(400, 'invalid_request', 'Invalid batch limit.');
+    const rows = await this.tx(async (c) => {
+      await this.authorize(c, actor, 'runPersonalPauseResumes');
+      return (
+        await c.query(
+          `SELECT id,user_id FROM app.personal_pauses WHERE state='planned'
+        AND resume_date<=(app.personal_pause_now() AT TIME ZONE 'Africa/Accra')::date ORDER BY resume_date,id LIMIT $1`,
+          [limit],
+        )
+      ).rows;
+    });
+    const result = {
+      considered: rows.length,
+      succeeded: 0,
+      blocked: 0,
+      failed: 0,
+      failures: [] as { resourceId: string; reason: string }[],
+    };
+    for (const row of rows)
+      try {
+        const n = await this.tx(async (c) => {
+          await this.lockUser(c, row.user_id);
+          await this.authorize(c, actor, 'runPersonalPauseResumes');
+          return Number(
+            (await c.query('SELECT app.settle_personal_pauses($1) n', [row.user_id])).rows[0].n,
+          );
+        });
+        if (n) result.succeeded++;
+        else result.blocked++;
+      } catch {
+        result.failed++;
+        result.failures.push({ resourceId: row.id, reason: 'personal_resume_failed' });
+      }
+    return { status: 200, headers: {}, body: { data: result } };
+  }
   private async membership(c: PoolClient, userId: string) {
+    await c.query('SELECT app.settle_personal_pauses($1)', [userId]);
     const m = (await c.query('SELECT * FROM app.memberships WHERE user_id=$1', [userId])).rows[0];
     const b = (
       await c.query("SELECT * FROM app.billing_periods WHERE user_id=$1 AND state='open'", [userId])

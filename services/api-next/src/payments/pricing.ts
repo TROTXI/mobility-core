@@ -5,8 +5,10 @@ import { canonical } from '../transport/service.js';
 import type { Actor, Body, Outcome } from '../transport/service.js';
 import { cursorCodec } from '../transport/cursor.js';
 import type { PricedTerms } from './terms.js';
+import { appliedCredit, MIN_CHARGE_PESEWAS, priceTerms } from './terms.js';
 
 export const pricingOperations = [
+  'previewPurchase',
   'listFares',
   'createFare',
   'listPlanPricing',
@@ -71,7 +73,7 @@ export class Pricing {
       c.release();
     }
   }
-  private async authorize(c: PoolClient, actor: Actor) {
+  private async authorize(c: PoolClient, actor: Actor, role = 'admin') {
     await this.options.authorizeSession(c, actor);
     const user = (
       await c.query('SELECT role FROM app.users WHERE id=$1 AND deleted_at IS NULL FOR SHARE', [
@@ -79,7 +81,67 @@ export class Pricing {
       ])
     ).rows[0];
     if (!user) fail(401, 'unauthenticated', 'Sign in to continue.');
-    if (user.role !== 'admin') fail(403, 'forbidden', 'This operation is not permitted.');
+    if (user.role !== role) fail(403, 'forbidden', 'This operation is not permitted.');
+  }
+
+  /** A non-binding read: no purchase, membership, hold, or provider request. */
+  async preview(actor: Actor, input: Body): Promise<Outcome> {
+    const routeId = id(input.routeId);
+    if (!plans.includes(input.plan as string) || typeof input.useCredit !== 'boolean')
+      fail(400, 'invalid_request', 'Supply a plan, route and credit preference.');
+    return this.tx(async (c) => {
+      // Match financial writers' rider-first lock order, without mutating it.
+      await c.query('SELECT id FROM app.users WHERE id=$1 FOR UPDATE', [id(actor.userId)]);
+      await this.authorize(c, actor, 'commuter');
+      const now = this.now();
+      if (
+        !(
+          await c.query(
+            `SELECT r.id FROM app.routes r WHERE r.id=$1 AND r.archived_at IS NULL
+        AND EXISTS(SELECT 1 FROM app.route_patterns p JOIN app.route_pattern_versions v ON v.pattern_id=p.id
+          WHERE p.route_id=r.id AND v.state IN ('published','retired') AND v.effective_from<=$2
+          AND (v.effective_to IS NULL OR v.effective_to>$2)) FOR SHARE OF r`,
+            [routeId, now],
+          )
+        ).rowCount
+      )
+        fail(404, 'not_found', 'Resource not found.');
+      const terms = priceTerms(await this.quote(c, { routeId, plan: input.plan as string, now }));
+      const row = (
+        await c.query(
+          `SELECT
+        COALESCE((SELECT SUM(delta_pesewas) FROM app.credit_entries WHERE user_id=$1),0)::text credit,
+        COALESCE((SELECT SUM(amount_pesewas) FROM app.credit_holds WHERE user_id=$1 AND state='held'),0)::text held`,
+          [actor.userId],
+        )
+      ).rows[0];
+      const credit = Number(row.credit),
+        held = Number(row.held),
+        available = credit - held;
+      if (!Number.isSafeInteger(credit) || !Number.isSafeInteger(held) || held < 0 || available < 0)
+        fail(409, 'invalid_credit_balance', 'Credit requires reconciliation.');
+      const applied = appliedCredit(terms.pricePesewas, available, input.useCredit as boolean);
+      return {
+        status: 200,
+        headers: {},
+        body: {
+          data: {
+            routeId,
+            plan: input.plan as string,
+            ridesGranted: terms.ridesGranted,
+            fare: money(terms.farePesewas),
+            price: money(terms.pricePesewas),
+            availableCredit: money(available),
+            appliedCredit: money(applied),
+            cashDue: money(terms.pricePesewas - applied),
+            minimumCashDue: money(MIN_CHARGE_PESEWAS),
+            renewalMode: 'manual',
+            binding: false,
+            quotedAt: iso(now),
+          },
+        },
+      };
+    });
   }
 
   /**

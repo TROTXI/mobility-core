@@ -16,6 +16,7 @@ export const accountOperations = [
   'getAvatar',
   'uploadAvatar',
   'registerDevice',
+  'deleteAvatar',
 ] as const;
 export type AccountOperation = (typeof accountOperations)[number];
 
@@ -169,6 +170,7 @@ export class AccountService {
       fail(400, 'idempotency_key_required', 'Supply an Idempotency-Key of 1 to 128 characters.');
     if (operation === 'updateAccount') return this.rename(actor, input as Body, key);
     if (operation === 'registerDevice') return this.register(actor, input as Body, key);
+    if (operation === 'deleteAvatar') return this.deleteAvatar(actor, key);
     if (operation === 'uploadAvatar') return this.upload(actor, input as Buffer, contentType, key);
     return this.erase(actor, key);
   }
@@ -334,6 +336,23 @@ export class AccountService {
         },
         headers: {},
       } as Outcome;
+    });
+  }
+
+  private async deleteAvatar(actor: Actor, key: string): Promise<Outcome> {
+    return this.tx(async (c) => {
+      const user = await this.owner(c, actor);
+      const prior = await this.receipt(c, actor, 'deleteAvatar', key, '');
+      if (prior) return { status: 204, body: null, headers: {} };
+      if (user.avatar_object_key) {
+        await c.query(
+          `INSERT INTO app.erasure_tasks(user_id,kind,reference) VALUES ($1,'avatar_object',$2) ON CONFLICT DO NOTHING`,
+          [user.id, user.avatar_object_key],
+        );
+        await c.query('UPDATE app.users SET avatar_object_key=NULL WHERE id=$1', [user.id]);
+      }
+      await this.record(c, actor, 'deleteAvatar', key, '', null);
+      return { status: 204, body: null, headers: {} };
     });
   }
 

@@ -13,7 +13,8 @@ test('FIN-01 / PAY-01: financial source fields have pesewa units and runtime can
     )
   ).rows;
   // 016 adds two more: the corridor fare and the per-ride credit rate.
-  assert.equal(rows.filter((r) => !r.relname.startsWith('payment_')).length, 12);
+  // 024 adds the cash refund initiation amount, also explicitly in pesewas.
+  assert.equal(rows.filter((r) => !r.relname.startsWith('payment_')).length, 13);
   assert.equal(rows.filter((r) => r.relname === 'payment_attempts').length, 2);
   for (const r of rows) assert.match(r.comment, /pesewas/);
   await f.grant(1000);

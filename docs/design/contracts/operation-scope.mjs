@@ -1,11 +1,47 @@
 // Stage-1 review follow-up: predecessor absence is not proof of feature expansion.
 // Deferred operations remain documented proposals, not stage-3 commitments.
 export const operationScope = [
+  ...[
+    'getPersonalPause',
+    'previewPersonalPause',
+    'createPersonalPause',
+    'resumePersonalPause',
+    'runPersonalPauseResumes',
+  ].map((name) => [
+    name,
+    'post-cutover',
+    'Approved personal pause: 3–14 calendar days once per paid period, with paid-time preservation',
+    'Waitlist pauses require a route-change request and ops consent; they cannot represent a scheduled personal break or its automatic end.',
+  ]),
+  [
+    'initiateRefund',
+    'post-cutover',
+    'Ops-only TEST refund initiation with an attributable reason',
+    'Existing provider callbacks record facts; they cannot ask Paystack to issue a refund.',
+  ],
+  [
+    'listRefundInitiations',
+    'post-cutover',
+    'Discover submitted and uncertain refund requests before retrying',
+    'Purchase reads expose collection attempts, not once-only refund initiation or its uncertain external outcome.',
+  ],
+  [
+    'runTripGeneration',
+    'post-cutover',
+    'Generate recurring service without duplicate departures',
+    'Manual trip creation does not enumerate eligible schedules or safely drain a service-day batch.',
+  ],
+  [
+    'previewPurchase',
+    'post-cutover',
+    'Pre-checkout authoritative price preview',
+    'Creating a purchase freezes terms and holds credit; riders need a non-mutating price read before making that commitment.',
+  ],
   [
     'deleteAvatar',
-    'deferred',
-    'No approved standalone avatar-removal UX',
-    'Account erasure already removes the object; that internal obligation does not require a separate HTTP endpoint.',
+    'post-cutover',
+    'Requested rider privacy actions',
+    'Deleting the entire account is not an appropriate prerequisite for removing its profile image.',
   ],
   [
     'listBillingPeriods',
@@ -45,15 +81,15 @@ export const operationScope = [
   ],
   [
     'listRideEntries',
-    'deferred',
-    'No approved rider ledger-history screen',
-    'Membership balances suffice for the current Pass experience; accounting stays implemented and observable by the harness.',
+    'post-cutover',
+    'Requested rider ride history',
+    'A balance alone cannot explain boarding, no-show, returned or converted ride changes.',
   ],
   [
     'listCreditEntries',
-    'deferred',
-    'No approved rider credit-history screen',
-    'Membership and purchase credit amounts cover checkout; a transaction feed can be additive later.',
+    'post-cutover',
+    'Requested rider credit history',
+    'Purchase reads do not show conversion, refund restoration and adjustment entries.',
   ],
   [
     'listCommuteAssignments',

@@ -281,7 +281,8 @@ test('MIG-01 clean install records hashes, rerun is no-op, historical drift fail
     // account command receipt. 018 adds minimum versions, feature flags and
     // the configuration receipts.
     // 022 adds the encrypted transactional email outbox.
-    assert.equal(tables.rows[0].n, 83);
+    // 023–025 add push deliveries, refund initiation and personal pauses.
+    assert.equal(tables.rows[0].n, 86);
     assert.deepEqual(
       (
         await pool.query(
