@@ -224,7 +224,10 @@ for (const o of operations) {
       ),
       header(
         'X-Trotxi-Build',
-        { type: 'integer', minimum: 1 },
+        // Defaulted because Swagger UI seeds an empty integer field with 0,
+        // and 0 is refused twice over: below the minimum, and not a positive
+        // integer. Every first try-it-out call failed on a value nobody typed.
+        { type: 'integer', minimum: 1, default: 1 },
         true,
         'Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.',
       ),
