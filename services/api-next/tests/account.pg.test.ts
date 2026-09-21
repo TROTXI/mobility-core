@@ -34,6 +34,33 @@ test('driver app can register its own push device without opening other account 
     400,
   );
 });
+
+test('a driver sets their own photo from the driver app, and still cannot rename', async (t) => {
+  const f = await fixture(t);
+  await f.owner.query("UPDATE app.users SET role='driver' WHERE id=$1", [f.actor.userId]);
+
+  // The photo is the person's, and the driver app is where a driver is. This
+  // was refused before the client check ever reached authentication, which
+  // read in the app as an upload that failed for no stated reason.
+  expectStatus(await f.upload(PNG, 'image/png', 'rider', randomUUID(), 'driver'), 200);
+  expectStatus(
+    await f.call('GET', '/v1/me/avatar', { headers: { 'x-trotxi-client': 'driver' } }),
+    200,
+  );
+  expectStatus(
+    await f.call('DELETE', '/v1/me/avatar', { headers: { 'x-trotxi-client': 'driver' } }),
+    204,
+  );
+
+  // Widening the photo did not widen the rest of the account surface.
+  expectStatus(
+    await f.call('PATCH', '/v1/me', {
+      payload: { displayName: 'Changed' },
+      headers: { 'x-trotxi-client': 'driver' },
+    }),
+    400,
+  );
+});
 function expectStatus(response: Response, code: number) {
   assert.equal(response.statusCode, code, response.body);
   return response.body ? response.json().data : null;
@@ -124,7 +151,13 @@ async function fixture(t: TestContext, options: { store?: boolean; reach?: boole
       },
       ...(options.payload === undefined ? {} : { payload: options.payload as never }),
     }) as Promise<Response>;
-  const upload = (bytes: Buffer, type = 'image/png', who = 'rider', key = randomUUID()) => {
+  const upload = (
+    bytes: Buffer,
+    type = 'image/png',
+    who = 'rider',
+    key = randomUUID(),
+    client = 'commuter',
+  ) => {
     const boundary = '----trotxitest' + randomUUID().replaceAll('-', '');
     const head = Buffer.from(
       `--${boundary}\r\nContent-Disposition: form-data; name="file"; filename="a.png"\r\n` +
@@ -136,7 +169,7 @@ async function fixture(t: TestContext, options: { store?: boolean; reach?: boole
       url: '/v1/me/avatar',
       headers: {
         authorization: `Bearer ${who}`,
-        'x-trotxi-client': 'commuter',
+        'x-trotxi-client': client,
         'x-trotxi-build': '1',
         'x-trotxi-platform': 'android',
         'content-type': `multipart/form-data; boundary=${boundary}`,

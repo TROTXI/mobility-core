@@ -10,6 +10,8 @@ import type { Pool, PoolClient } from 'pg';
 import { fail } from '../transport/errors.js';
 import type { Actor, Body, Outcome } from '../transport/service.js';
 
+/** The person's own photo. Either app they hold, because it is theirs. */
+export const avatarOperations = ['getAvatar', 'uploadAvatar', 'deleteAvatar'] as const;
 export const accountOperations = [
   'updateAccount',
   'eraseAccount',

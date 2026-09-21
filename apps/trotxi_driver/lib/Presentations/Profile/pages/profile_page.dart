@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:trotxi_driver/core/api/driver_api.dart';
 import 'package:trotxi_driver/data/profile_repository.dart';
+import 'package:trotxi_driver/Presentations/Profile/widgets/photo_action.dart';
 import 'package:trotxi_driver/Presentations/Readiness/pages/device_readiness_page.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:provider/provider.dart';
@@ -189,17 +190,10 @@ class _ProfilePageState extends State<ProfilePage> {
                     color: colors.textSecondary,
                   ),
                 ),
-                const SizedBox(height: AppSpacing.space4),
-                GestureDetector(
-                  onTap: _uploading ? null : _changePhoto,
-                  child: Text(
-                    _photoUrl == null ? 'Add a photo' : 'Change photo',
-                    style: AppTypography.label.copyWith(
-                      color: _uploading
-                          ? colors.textSecondary
-                          : colors.action,
-                    ),
-                  ),
+                PhotoAction(
+                  hasPhoto: _photoUrl != null,
+                  busy: _uploading,
+                  onPressed: _changePhoto,
                 ),
               ],
             ),

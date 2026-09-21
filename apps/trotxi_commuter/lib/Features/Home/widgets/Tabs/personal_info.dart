@@ -344,13 +344,20 @@ class _PersonalInfoPageState extends State<PersonalInfoPage> {
             ],
           )
         else
-          GestureDetector(
-            onTap: _onChangePhoto,
+          // A button, not a tappable label: a GestureDetector defers hit
+          // testing to its child and a bare Text does not hit test itself, so
+          // this rendered correctly and never fired.
+          TextButton(
+            onPressed: _onChangePhoto,
+            style: TextButton.styleFrom(
+              padding: EdgeInsets.zero,
+              alignment: Alignment.centerLeft,
+              minimumSize: const Size(0, 44),
+              foregroundColor: colors.actionPrimaryDefault,
+            ),
             child: Text(
               hasAvatar ? 'Change photo' : 'Add a photo',
-              style: AppTypography.label.copyWith(
-                color: colors.actionPrimaryDefault,
-              ),
+              style: AppTypography.label,
             ),
           ),
       ],
