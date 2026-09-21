@@ -60,6 +60,8 @@ dependencies:
   # for one — a driver at a roadside needs a person, not a queue.
   url_launcher: ^6.3.1
   firebase_messaging: ^16.7.0
+  image_picker: ^1.1.2
+  crypto: ^3.0.7
 dev_dependencies:
   flutter_test:
     sdk: flutter

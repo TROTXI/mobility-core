@@ -1,5 +1,7 @@
 import 'dart:convert';
 
+import 'package:crypto/crypto.dart';
+
 import 'package:built_value/serializer.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
@@ -163,6 +165,55 @@ class DriverApi {
           status < 500 &&
           status != 429) {
         _pending.remove(intent);
+      }
+      throw unwrap(error);
+    }
+  }
+
+  /// Send one file as multipart, the shape `PUT /v1/me/avatar` expects.
+  ///
+  /// The action key is the digest of the bytes, so a retry after an uncertain
+  /// delivery is the same upload while a different picture is a new one. That
+  /// is the case this exists for: a driver on a depot's connection.
+  Future<T> upload<T>(
+    String path,
+    Serializer<T> serializer, {
+    required Uint8List bytes,
+    required String contentType,
+    required String filename,
+  }) async {
+    final generation = _sync();
+    final key = _pending.putIfAbsent(
+      '$path:${sha256.convert(bytes)}',
+      () => const Uuid().v4(),
+    );
+    try {
+      final response = await dio.put<Object?>(
+        path,
+        data: FormData.fromMap({
+          'file': MultipartFile.fromBytes(
+            bytes,
+            filename: filename,
+            contentType: DioMediaType.parse(contentType),
+          ),
+        }),
+        options: Options(
+          extra: {'driver.sessionGeneration': generation},
+          headers: {'Idempotency-Key': key},
+        ),
+      );
+      _check(generation);
+      final result = _decode(serializer, response.data);
+      _pending.remove('$path:${sha256.convert(bytes)}');
+      return result;
+    } on DioException catch (error) {
+      final status = error.response?.statusCode;
+      if (generation == store.generation &&
+          status != null &&
+          status >= 400 &&
+          status < 500 &&
+          status != 429) {
+        _pending.remove('$path:${sha256.convert(bytes)}');
       }
       throw unwrap(error);
     }
