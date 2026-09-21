@@ -19,6 +19,10 @@ on:
         description: 'Google subject ids, comma separated. First takes the operations account, the rest take riders.'
         type: string
         default: ''
+      email:
+        description: 'enrol only this address. Blank enrols every commuter without a membership.'
+        type: string
+        default: ''
 
 concurrency: seed-staging
 
@@ -113,6 +117,7 @@ jobs:
           SEED_LINK_ONLY: ${{ inputs.mode == 'link' && 'yes' || '' }}
           SEED_RESET_PINS: ${{ inputs.mode == 'reset-pins' && 'yes' || '' }}
           SEED_ENROLL: ${{ inputs.mode == 'enroll' && 'yes' || '' }}
+          SEED_ENROLL_EMAIL: ${{ inputs.email }}
           SEED_STAGING_URL: ${{ vars.STAGING_URL }}
         run: node --import tsx scripts/seed-staging.ts
 

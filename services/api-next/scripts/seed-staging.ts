@@ -267,21 +267,54 @@ async function resetPins(baseUrl: string): Promise<void> {
  * seeded rider has, so a real Google account can walk the whole journey.
  */
 async function enroll(): Promise<void> {
-  const waiting = await q<{ id: string; name: string }>(
-    `SELECT u.id, COALESCE(u.display_name, 'Rider') AS name
+  // Print who is actually in there before touching anything. Every run so far
+  // has turned on a question this answers: which account is which, and whether
+  // the one we mean already has a membership.
+  const roster = await q<{
+    id: string;
+    name: string;
+    email: string | null;
+    memberships: number;
+    providers: string | null;
+  }>(
+    `SELECT u.id, COALESCE(u.display_name, 'Rider') AS name, u.email,
+       count(DISTINCT m.id)::int AS memberships,
+       string_agg(DISTINCT i.provider, ',') AS providers
      FROM app.users u
      LEFT JOIN app.memberships m ON m.user_id = u.id
-     WHERE u.role = 'commuter' AND u.deleted_at IS NULL AND m.id IS NULL
+     LEFT JOIN app.auth_identities i ON i.user_id = u.id
+     WHERE u.role = 'commuter' AND u.deleted_at IS NULL
+     GROUP BY u.id
      ORDER BY u.created_at`,
   );
+  process.stdout.write(`Commuters on staging (${roster.length}):\n`);
+  for (const one of roster)
+    process.stdout.write(
+      `  ${one.name.padEnd(24)} ${(one.email ?? '(no email)').padEnd(32)}` +
+        ` ${one.memberships} membership(s)  ${one.providers ?? 'no identity'}\n`,
+    );
+
+  const wanted = (process.env.SEED_ENROLL_EMAIL ?? '').trim().toLowerCase();
+  let waiting = roster.filter((one) => one.memberships === 0);
+  if (wanted) {
+    const match = roster.find((one) => (one.email ?? '').toLowerCase() === wanted);
+    if (!match) throw new Error(`No commuter on staging has the address ${wanted}.`);
+    if (match.memberships > 0) {
+      process.stdout.write(`\n${wanted} already has a membership. Nothing to do.\n`);
+      return;
+    }
+    waiting = [match];
+  }
+
   if (!waiting.length) {
     process.stdout.write(
-      'Every commuter already has a membership. Sign in with Google first, then run this.\n',
+      '\nEvery commuter already has a membership. Sign in with Google first, then run this.\n',
     );
     return;
   }
-  process.stdout.write(`Enrolling ${waiting.length} account(s):\n`);
-  for (const one of waiting) process.stdout.write(`  ${one.name}\n`);
+  process.stdout.write(`\nEnrolling ${waiting.length} account(s):\n`);
+  for (const one of waiting)
+    process.stdout.write(`  ${one.name}${one.email ? `  <${one.email}>` : ''}\n`);
   await riders(waiting);
   process.stdout.write('\nThey now have a membership, a commute and reservations to confirm.\n');
 }
@@ -624,6 +657,7 @@ async function riders(existing?: { id: string; name: string }[]): Promise<number
   const periodStart = day(-20);
   const periodEnd = day(10);
   let count = 0;
+  const skipped: string[] = [];
   const targets = existing
     ? existing.map((e, index) => ({ index, name: e.name, id: e.id as string | null }))
     : NAMES.map((name, index) => ({ index, name, id: null as string | null }));
@@ -747,6 +781,28 @@ async function riders(existing?: { id: string; name: string }[]): Promise<number
           // carry no riders; the driver app produces real boardings by
           // scanning, which is better evidence than anything written here.
           if (trip.status !== 'scheduled') continue;
+          // The guard refuses a seat when the bus is full AND when the run has
+          // no bus at all, with the same message. Read both so the log says
+          // which, and skip rather than lose the whole enrolment to one run.
+          const seats = (
+            await q(
+              `SELECT v.capacity::int AS capacity,
+                 (SELECT count(*)::int FROM app.reservations r
+                   WHERE r.trip_id = t.id AND r.status IN ('reserved','boarded','no_show')) AS used
+               FROM app.trips t
+               LEFT JOIN app.vehicles v ON v.id = t.vehicle_id
+               WHERE t.id = $1`,
+              [trip.id],
+            )
+          )[0] as { capacity: number | null; used: number } | undefined;
+          if (!seats || seats.capacity === null) {
+            skipped.push(`${date} ${leg.direction} (no vehicle)`);
+            continue;
+          }
+          if (seats.used >= seats.capacity) {
+            skipped.push(`${date} ${leg.direction} (full ${seats.used}/${seats.capacity})`);
+            continue;
+          }
           await q(
             `INSERT INTO app.reservations(user_id,period_id,assignment_id,selection_id,direction,
                service_date,trip_id,schedule_id,pattern_version_id,pickup_occurrence_id,
@@ -773,6 +829,10 @@ async function riders(existing?: { id: string; name: string }[]): Promise<number
     });
     count++;
   }
+  if (skipped.length)
+    process.stdout.write(
+      `Skipped ${skipped.length} full run(s): ${[...new Set(skipped)].join(', ')}\n`,
+    );
   if (linked.length)
     process.stdout.write(
       `Linked ${Math.min(linked.length, NAMES.length)} rider(s) to the Google subjects supplied.\n`,
