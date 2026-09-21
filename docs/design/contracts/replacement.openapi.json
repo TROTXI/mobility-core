@@ -317,7 +317,8 @@
               "type": "string",
               "enum": ["commuter", "driver", "ops", "worker"]
             },
-            "description": "Compatibility metadata only, never grants a role."
+            "description": "Compatibility metadata only, never grants a role.",
+            "example": "commuter"
           },
           {
             "name": "X-Trotxi-Build",
@@ -328,7 +329,8 @@
               "minimum": 1,
               "default": 1
             },
-            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable."
+            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.",
+            "example": 1
           },
           {
             "name": "X-Trotxi-Platform",
@@ -338,7 +340,8 @@
               "type": "string",
               "enum": ["ios", "android"]
             },
-            "description": "Required for commuter/driver, absent for ops/worker."
+            "description": "Required for commuter/driver, absent for ops/worker.",
+            "example": "ios"
           }
         ],
         "requestBody": {
@@ -404,7 +407,8 @@
               "type": "string",
               "enum": ["commuter", "driver", "ops", "worker"]
             },
-            "description": "Compatibility metadata only, never grants a role."
+            "description": "Compatibility metadata only, never grants a role.",
+            "example": "commuter"
           },
           {
             "name": "X-Trotxi-Build",
@@ -415,7 +419,8 @@
               "minimum": 1,
               "default": 1
             },
-            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable."
+            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.",
+            "example": 1
           },
           {
             "name": "X-Trotxi-Platform",
@@ -425,7 +430,8 @@
               "type": "string",
               "enum": ["ios", "android"]
             },
-            "description": "Required for commuter/driver, absent for ops/worker."
+            "description": "Required for commuter/driver, absent for ops/worker.",
+            "example": "ios"
           }
         ],
         "requestBody": {
@@ -491,7 +497,8 @@
               "type": "string",
               "enum": ["commuter", "driver", "ops", "worker"]
             },
-            "description": "Compatibility metadata only, never grants a role."
+            "description": "Compatibility metadata only, never grants a role.",
+            "example": "commuter"
           },
           {
             "name": "X-Trotxi-Build",
@@ -502,7 +509,8 @@
               "minimum": 1,
               "default": 1
             },
-            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable."
+            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.",
+            "example": 1
           },
           {
             "name": "X-Trotxi-Platform",
@@ -512,7 +520,8 @@
               "type": "string",
               "enum": ["ios", "android"]
             },
-            "description": "Required for commuter/driver, absent for ops/worker."
+            "description": "Required for commuter/driver, absent for ops/worker.",
+            "example": "ios"
           }
         ],
         "requestBody": {
@@ -584,7 +593,8 @@
               "type": "string",
               "enum": ["commuter", "driver", "ops", "worker"]
             },
-            "description": "Compatibility metadata only, never grants a role."
+            "description": "Compatibility metadata only, never grants a role.",
+            "example": "commuter"
           },
           {
             "name": "X-Trotxi-Build",
@@ -595,7 +605,8 @@
               "minimum": 1,
               "default": 1
             },
-            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable."
+            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.",
+            "example": 1
           },
           {
             "name": "X-Trotxi-Platform",
@@ -605,7 +616,8 @@
               "type": "string",
               "enum": ["ios", "android"]
             },
-            "description": "Required for commuter/driver, absent for ops/worker."
+            "description": "Required for commuter/driver, absent for ops/worker.",
+            "example": "ios"
           }
         ],
         "requestBody": {
@@ -671,7 +683,8 @@
               "type": "string",
               "enum": ["commuter", "driver", "ops", "worker"]
             },
-            "description": "Compatibility metadata only, never grants a role."
+            "description": "Compatibility metadata only, never grants a role.",
+            "example": "commuter"
           },
           {
             "name": "X-Trotxi-Build",
@@ -682,7 +695,8 @@
               "minimum": 1,
               "default": 1
             },
-            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable."
+            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.",
+            "example": 1
           },
           {
             "name": "X-Trotxi-Platform",
@@ -692,7 +706,8 @@
               "type": "string",
               "enum": ["ios", "android"]
             },
-            "description": "Required for commuter/driver, absent for ops/worker."
+            "description": "Required for commuter/driver, absent for ops/worker.",
+            "example": "ios"
           }
         ],
         "requestBody": {
@@ -752,7 +767,8 @@
               "type": "string",
               "enum": ["commuter", "driver", "ops", "worker"]
             },
-            "description": "Compatibility metadata only, never grants a role."
+            "description": "Compatibility metadata only, never grants a role.",
+            "example": "driver"
           },
           {
             "name": "X-Trotxi-Build",
@@ -763,7 +779,8 @@
               "minimum": 1,
               "default": 1
             },
-            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable."
+            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.",
+            "example": 1
           },
           {
             "name": "X-Trotxi-Platform",
@@ -773,7 +790,8 @@
               "type": "string",
               "enum": ["ios", "android"]
             },
-            "description": "Required for commuter/driver, absent for ops/worker."
+            "description": "Required for commuter/driver, absent for ops/worker.",
+            "example": "ios"
           }
         ],
         "responses": {
@@ -857,7 +875,8 @@
               "type": "string",
               "enum": ["commuter", "driver", "ops", "worker"]
             },
-            "description": "Compatibility metadata only, never grants a role."
+            "description": "Compatibility metadata only, never grants a role.",
+            "example": "driver"
           },
           {
             "name": "X-Trotxi-Build",
@@ -868,7 +887,8 @@
               "minimum": 1,
               "default": 1
             },
-            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable."
+            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.",
+            "example": 1
           },
           {
             "name": "X-Trotxi-Platform",
@@ -878,7 +898,8 @@
               "type": "string",
               "enum": ["ios", "android"]
             },
-            "description": "Required for commuter/driver, absent for ops/worker."
+            "description": "Required for commuter/driver, absent for ops/worker.",
+            "example": "ios"
           }
         ],
         "requestBody": {
@@ -950,7 +971,8 @@
               "type": "string",
               "enum": ["commuter", "driver", "ops", "worker"]
             },
-            "description": "Compatibility metadata only, never grants a role."
+            "description": "Compatibility metadata only, never grants a role.",
+            "example": "commuter"
           },
           {
             "name": "X-Trotxi-Build",
@@ -961,7 +983,8 @@
               "minimum": 1,
               "default": 1
             },
-            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable."
+            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.",
+            "example": 1
           },
           {
             "name": "X-Trotxi-Platform",
@@ -971,7 +994,8 @@
               "type": "string",
               "enum": ["ios", "android"]
             },
-            "description": "Required for commuter/driver, absent for ops/worker."
+            "description": "Required for commuter/driver, absent for ops/worker.",
+            "example": "ios"
           }
         ],
         "responses": {
@@ -1066,7 +1090,8 @@
               "type": "string",
               "enum": ["commuter", "driver", "ops", "worker"]
             },
-            "description": "Compatibility metadata only, never grants a role."
+            "description": "Compatibility metadata only, never grants a role.",
+            "example": "commuter"
           },
           {
             "name": "X-Trotxi-Build",
@@ -1077,7 +1102,8 @@
               "minimum": 1,
               "default": 1
             },
-            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable."
+            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.",
+            "example": 1
           },
           {
             "name": "X-Trotxi-Platform",
@@ -1087,7 +1113,8 @@
               "type": "string",
               "enum": ["ios", "android"]
             },
-            "description": "Required for commuter/driver, absent for ops/worker."
+            "description": "Required for commuter/driver, absent for ops/worker.",
+            "example": "ios"
           }
         ],
         "requestBody": {
@@ -1172,7 +1199,8 @@
               "type": "string",
               "enum": ["commuter", "driver", "ops", "worker"]
             },
-            "description": "Compatibility metadata only, never grants a role."
+            "description": "Compatibility metadata only, never grants a role.",
+            "example": "commuter"
           },
           {
             "name": "X-Trotxi-Build",
@@ -1183,7 +1211,8 @@
               "minimum": 1,
               "default": 1
             },
-            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable."
+            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.",
+            "example": 1
           },
           {
             "name": "X-Trotxi-Platform",
@@ -1193,7 +1222,8 @@
               "type": "string",
               "enum": ["ios", "android"]
             },
-            "description": "Required for commuter/driver, absent for ops/worker."
+            "description": "Required for commuter/driver, absent for ops/worker.",
+            "example": "ios"
           }
         ],
         "responses": {
@@ -1252,7 +1282,8 @@
               "type": "string",
               "enum": ["commuter", "driver", "ops", "worker"]
             },
-            "description": "Compatibility metadata only, never grants a role."
+            "description": "Compatibility metadata only, never grants a role.",
+            "example": "commuter"
           },
           {
             "name": "X-Trotxi-Build",
@@ -1263,7 +1294,8 @@
               "minimum": 1,
               "default": 1
             },
-            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable."
+            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.",
+            "example": 1
           },
           {
             "name": "X-Trotxi-Platform",
@@ -1273,7 +1305,8 @@
               "type": "string",
               "enum": ["ios", "android"]
             },
-            "description": "Required for commuter/driver, absent for ops/worker."
+            "description": "Required for commuter/driver, absent for ops/worker.",
+            "example": "ios"
           }
         ],
         "responses": {
@@ -1353,7 +1386,8 @@
               "type": "string",
               "enum": ["commuter", "driver", "ops", "worker"]
             },
-            "description": "Compatibility metadata only, never grants a role."
+            "description": "Compatibility metadata only, never grants a role.",
+            "example": "commuter"
           },
           {
             "name": "X-Trotxi-Build",
@@ -1364,7 +1398,8 @@
               "minimum": 1,
               "default": 1
             },
-            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable."
+            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.",
+            "example": 1
           },
           {
             "name": "X-Trotxi-Platform",
@@ -1374,7 +1409,8 @@
               "type": "string",
               "enum": ["ios", "android"]
             },
-            "description": "Required for commuter/driver, absent for ops/worker."
+            "description": "Required for commuter/driver, absent for ops/worker.",
+            "example": "ios"
           }
         ],
         "requestBody": {
@@ -1465,7 +1501,8 @@
               "type": "string",
               "enum": ["commuter", "driver", "ops", "worker"]
             },
-            "description": "Compatibility metadata only, never grants a role."
+            "description": "Compatibility metadata only, never grants a role.",
+            "example": "commuter"
           },
           {
             "name": "X-Trotxi-Build",
@@ -1476,7 +1513,8 @@
               "minimum": 1,
               "default": 1
             },
-            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable."
+            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.",
+            "example": 1
           },
           {
             "name": "X-Trotxi-Platform",
@@ -1486,7 +1524,8 @@
               "type": "string",
               "enum": ["ios", "android"]
             },
-            "description": "Required for commuter/driver, absent for ops/worker."
+            "description": "Required for commuter/driver, absent for ops/worker.",
+            "example": "ios"
           }
         ],
         "responses": {
@@ -1570,7 +1609,8 @@
               "type": "string",
               "enum": ["commuter", "driver", "ops", "worker"]
             },
-            "description": "Compatibility metadata only, never grants a role."
+            "description": "Compatibility metadata only, never grants a role.",
+            "example": "commuter"
           },
           {
             "name": "X-Trotxi-Build",
@@ -1581,7 +1621,8 @@
               "minimum": 1,
               "default": 1
             },
-            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable."
+            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.",
+            "example": 1
           },
           {
             "name": "X-Trotxi-Platform",
@@ -1591,7 +1632,8 @@
               "type": "string",
               "enum": ["ios", "android"]
             },
-            "description": "Required for commuter/driver, absent for ops/worker."
+            "description": "Required for commuter/driver, absent for ops/worker.",
+            "example": "ios"
           }
         ],
         "responses": {
@@ -1684,7 +1726,8 @@
               "type": "string",
               "enum": ["commuter", "driver", "ops", "worker"]
             },
-            "description": "Compatibility metadata only, never grants a role."
+            "description": "Compatibility metadata only, never grants a role.",
+            "example": "commuter"
           },
           {
             "name": "X-Trotxi-Build",
@@ -1695,7 +1738,8 @@
               "minimum": 1,
               "default": 1
             },
-            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable."
+            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.",
+            "example": 1
           },
           {
             "name": "X-Trotxi-Platform",
@@ -1705,7 +1749,8 @@
               "type": "string",
               "enum": ["ios", "android"]
             },
-            "description": "Required for commuter/driver, absent for ops/worker."
+            "description": "Required for commuter/driver, absent for ops/worker.",
+            "example": "ios"
           }
         ],
         "responses": {
@@ -1775,7 +1820,8 @@
               "type": "string",
               "enum": ["commuter", "driver", "ops", "worker"]
             },
-            "description": "Compatibility metadata only, never grants a role."
+            "description": "Compatibility metadata only, never grants a role.",
+            "example": "commuter"
           },
           {
             "name": "X-Trotxi-Build",
@@ -1786,7 +1832,8 @@
               "minimum": 1,
               "default": 1
             },
-            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable."
+            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.",
+            "example": 1
           },
           {
             "name": "X-Trotxi-Platform",
@@ -1796,7 +1843,8 @@
               "type": "string",
               "enum": ["ios", "android"]
             },
-            "description": "Required for commuter/driver, absent for ops/worker."
+            "description": "Required for commuter/driver, absent for ops/worker.",
+            "example": "ios"
           }
         ],
         "requestBody": {
@@ -1872,7 +1920,8 @@
               "type": "string",
               "enum": ["commuter", "driver", "ops", "worker"]
             },
-            "description": "Compatibility metadata only, never grants a role."
+            "description": "Compatibility metadata only, never grants a role.",
+            "example": "commuter"
           },
           {
             "name": "X-Trotxi-Build",
@@ -1883,7 +1932,8 @@
               "minimum": 1,
               "default": 1
             },
-            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable."
+            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.",
+            "example": 1
           },
           {
             "name": "X-Trotxi-Platform",
@@ -1893,7 +1943,8 @@
               "type": "string",
               "enum": ["ios", "android"]
             },
-            "description": "Required for commuter/driver, absent for ops/worker."
+            "description": "Required for commuter/driver, absent for ops/worker.",
+            "example": "ios"
           }
         ],
         "responses": {
@@ -2178,7 +2229,8 @@
               "type": "string",
               "enum": ["commuter", "driver", "ops", "worker"]
             },
-            "description": "Compatibility metadata only, never grants a role."
+            "description": "Compatibility metadata only, never grants a role.",
+            "example": "commuter"
           },
           {
             "name": "X-Trotxi-Build",
@@ -2189,7 +2241,8 @@
               "minimum": 1,
               "default": 1
             },
-            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable."
+            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.",
+            "example": 1
           },
           {
             "name": "X-Trotxi-Platform",
@@ -2199,7 +2252,8 @@
               "type": "string",
               "enum": ["ios", "android"]
             },
-            "description": "Required for commuter/driver, absent for ops/worker."
+            "description": "Required for commuter/driver, absent for ops/worker.",
+            "example": "ios"
           }
         ],
         "responses": {
@@ -2272,7 +2326,8 @@
               "type": "string",
               "enum": ["commuter", "driver", "ops", "worker"]
             },
-            "description": "Compatibility metadata only, never grants a role."
+            "description": "Compatibility metadata only, never grants a role.",
+            "example": "commuter"
           },
           {
             "name": "X-Trotxi-Build",
@@ -2283,7 +2338,8 @@
               "minimum": 1,
               "default": 1
             },
-            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable."
+            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.",
+            "example": 1
           },
           {
             "name": "X-Trotxi-Platform",
@@ -2293,7 +2349,8 @@
               "type": "string",
               "enum": ["ios", "android"]
             },
-            "description": "Required for commuter/driver, absent for ops/worker."
+            "description": "Required for commuter/driver, absent for ops/worker.",
+            "example": "ios"
           }
         ],
         "requestBody": {
@@ -2382,7 +2439,8 @@
               "type": "string",
               "enum": ["commuter", "driver", "ops", "worker"]
             },
-            "description": "Compatibility metadata only, never grants a role."
+            "description": "Compatibility metadata only, never grants a role.",
+            "example": "commuter"
           },
           {
             "name": "X-Trotxi-Build",
@@ -2393,7 +2451,8 @@
               "minimum": 1,
               "default": 1
             },
-            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable."
+            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.",
+            "example": 1
           },
           {
             "name": "X-Trotxi-Platform",
@@ -2403,7 +2462,8 @@
               "type": "string",
               "enum": ["ios", "android"]
             },
-            "description": "Required for commuter/driver, absent for ops/worker."
+            "description": "Required for commuter/driver, absent for ops/worker.",
+            "example": "ios"
           }
         ],
         "requestBody": {
@@ -2510,7 +2570,8 @@
               "type": "string",
               "enum": ["commuter", "driver", "ops", "worker"]
             },
-            "description": "Compatibility metadata only, never grants a role."
+            "description": "Compatibility metadata only, never grants a role.",
+            "example": "commuter"
           },
           {
             "name": "X-Trotxi-Build",
@@ -2521,7 +2582,8 @@
               "minimum": 1,
               "default": 1
             },
-            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable."
+            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.",
+            "example": 1
           },
           {
             "name": "X-Trotxi-Platform",
@@ -2531,7 +2593,8 @@
               "type": "string",
               "enum": ["ios", "android"]
             },
-            "description": "Required for commuter/driver, absent for ops/worker."
+            "description": "Required for commuter/driver, absent for ops/worker.",
+            "example": "ios"
           }
         ],
         "requestBody": {
@@ -2609,7 +2672,8 @@
               "type": "string",
               "enum": ["commuter", "driver", "ops", "worker"]
             },
-            "description": "Compatibility metadata only, never grants a role."
+            "description": "Compatibility metadata only, never grants a role.",
+            "example": "ops"
           },
           {
             "name": "X-Trotxi-Build",
@@ -2620,7 +2684,8 @@
               "minimum": 1,
               "default": 1
             },
-            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable."
+            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.",
+            "example": 1
           },
           {
             "name": "X-Trotxi-Platform",
@@ -2751,7 +2816,8 @@
               "type": "string",
               "enum": ["commuter", "driver", "ops", "worker"]
             },
-            "description": "Compatibility metadata only, never grants a role."
+            "description": "Compatibility metadata only, never grants a role.",
+            "example": "commuter"
           },
           {
             "name": "X-Trotxi-Build",
@@ -2762,7 +2828,8 @@
               "minimum": 1,
               "default": 1
             },
-            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable."
+            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.",
+            "example": 1
           },
           {
             "name": "X-Trotxi-Platform",
@@ -2772,7 +2839,8 @@
               "type": "string",
               "enum": ["ios", "android"]
             },
-            "description": "Required for commuter/driver, absent for ops/worker."
+            "description": "Required for commuter/driver, absent for ops/worker.",
+            "example": "ios"
           }
         ],
         "responses": {
@@ -2936,7 +3004,8 @@
               "type": "string",
               "enum": ["commuter", "driver", "ops", "worker"]
             },
-            "description": "Compatibility metadata only, never grants a role."
+            "description": "Compatibility metadata only, never grants a role.",
+            "example": "commuter"
           },
           {
             "name": "X-Trotxi-Build",
@@ -2947,7 +3016,8 @@
               "minimum": 1,
               "default": 1
             },
-            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable."
+            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.",
+            "example": 1
           },
           {
             "name": "X-Trotxi-Platform",
@@ -2957,7 +3027,8 @@
               "type": "string",
               "enum": ["ios", "android"]
             },
-            "description": "Required for commuter/driver, absent for ops/worker."
+            "description": "Required for commuter/driver, absent for ops/worker.",
+            "example": "ios"
           }
         ],
         "requestBody": {
@@ -3051,7 +3122,8 @@
               "type": "string",
               "enum": ["commuter", "driver", "ops", "worker"]
             },
-            "description": "Compatibility metadata only, never grants a role."
+            "description": "Compatibility metadata only, never grants a role.",
+            "example": "commuter"
           },
           {
             "name": "X-Trotxi-Build",
@@ -3062,7 +3134,8 @@
               "minimum": 1,
               "default": 1
             },
-            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable."
+            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.",
+            "example": 1
           },
           {
             "name": "X-Trotxi-Platform",
@@ -3072,7 +3145,8 @@
               "type": "string",
               "enum": ["ios", "android"]
             },
-            "description": "Required for commuter/driver, absent for ops/worker."
+            "description": "Required for commuter/driver, absent for ops/worker.",
+            "example": "ios"
           }
         ],
         "responses": {
@@ -3240,7 +3314,8 @@
               "type": "string",
               "enum": ["commuter", "driver", "ops", "worker"]
             },
-            "description": "Compatibility metadata only, never grants a role."
+            "description": "Compatibility metadata only, never grants a role.",
+            "example": "commuter"
           },
           {
             "name": "X-Trotxi-Build",
@@ -3251,7 +3326,8 @@
               "minimum": 1,
               "default": 1
             },
-            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable."
+            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.",
+            "example": 1
           },
           {
             "name": "X-Trotxi-Platform",
@@ -3261,7 +3337,8 @@
               "type": "string",
               "enum": ["ios", "android"]
             },
-            "description": "Required for commuter/driver, absent for ops/worker."
+            "description": "Required for commuter/driver, absent for ops/worker.",
+            "example": "ios"
           }
         ],
         "responses": {
@@ -3353,7 +3430,8 @@
               "type": "string",
               "enum": ["commuter", "driver", "ops", "worker"]
             },
-            "description": "Compatibility metadata only, never grants a role."
+            "description": "Compatibility metadata only, never grants a role.",
+            "example": "commuter"
           },
           {
             "name": "X-Trotxi-Build",
@@ -3364,7 +3442,8 @@
               "minimum": 1,
               "default": 1
             },
-            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable."
+            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.",
+            "example": 1
           },
           {
             "name": "X-Trotxi-Platform",
@@ -3374,7 +3453,8 @@
               "type": "string",
               "enum": ["ios", "android"]
             },
-            "description": "Required for commuter/driver, absent for ops/worker."
+            "description": "Required for commuter/driver, absent for ops/worker.",
+            "example": "ios"
           }
         ],
         "requestBody": {
@@ -3501,7 +3581,8 @@
               "type": "string",
               "enum": ["commuter", "driver", "ops", "worker"]
             },
-            "description": "Compatibility metadata only, never grants a role."
+            "description": "Compatibility metadata only, never grants a role.",
+            "example": "commuter"
           },
           {
             "name": "X-Trotxi-Build",
@@ -3512,7 +3593,8 @@
               "minimum": 1,
               "default": 1
             },
-            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable."
+            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.",
+            "example": 1
           },
           {
             "name": "X-Trotxi-Platform",
@@ -3522,7 +3604,8 @@
               "type": "string",
               "enum": ["ios", "android"]
             },
-            "description": "Required for commuter/driver, absent for ops/worker."
+            "description": "Required for commuter/driver, absent for ops/worker.",
+            "example": "ios"
           }
         ],
         "responses": {
@@ -3648,7 +3731,8 @@
               "type": "string",
               "enum": ["commuter", "driver", "ops", "worker"]
             },
-            "description": "Compatibility metadata only, never grants a role."
+            "description": "Compatibility metadata only, never grants a role.",
+            "example": "commuter"
           },
           {
             "name": "X-Trotxi-Build",
@@ -3659,7 +3743,8 @@
               "minimum": 1,
               "default": 1
             },
-            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable."
+            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.",
+            "example": 1
           },
           {
             "name": "X-Trotxi-Platform",
@@ -3669,7 +3754,8 @@
               "type": "string",
               "enum": ["ios", "android"]
             },
-            "description": "Required for commuter/driver, absent for ops/worker."
+            "description": "Required for commuter/driver, absent for ops/worker.",
+            "example": "ios"
           }
         ],
         "responses": {
@@ -3786,7 +3872,8 @@
               "type": "string",
               "enum": ["commuter", "driver", "ops", "worker"]
             },
-            "description": "Compatibility metadata only, never grants a role."
+            "description": "Compatibility metadata only, never grants a role.",
+            "example": "commuter"
           },
           {
             "name": "X-Trotxi-Build",
@@ -3797,7 +3884,8 @@
               "minimum": 1,
               "default": 1
             },
-            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable."
+            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.",
+            "example": 1
           },
           {
             "name": "X-Trotxi-Platform",
@@ -3807,7 +3895,8 @@
               "type": "string",
               "enum": ["ios", "android"]
             },
-            "description": "Required for commuter/driver, absent for ops/worker."
+            "description": "Required for commuter/driver, absent for ops/worker.",
+            "example": "ios"
           }
         ],
         "responses": {
@@ -3881,7 +3970,8 @@
               "type": "string",
               "enum": ["commuter", "driver", "ops", "worker"]
             },
-            "description": "Compatibility metadata only, never grants a role."
+            "description": "Compatibility metadata only, never grants a role.",
+            "example": "commuter"
           },
           {
             "name": "X-Trotxi-Build",
@@ -3892,7 +3982,8 @@
               "minimum": 1,
               "default": 1
             },
-            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable."
+            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.",
+            "example": 1
           },
           {
             "name": "X-Trotxi-Platform",
@@ -3902,7 +3993,8 @@
               "type": "string",
               "enum": ["ios", "android"]
             },
-            "description": "Required for commuter/driver, absent for ops/worker."
+            "description": "Required for commuter/driver, absent for ops/worker.",
+            "example": "ios"
           }
         ],
         "requestBody": {
@@ -4001,7 +4093,8 @@
               "type": "string",
               "enum": ["commuter", "driver", "ops", "worker"]
             },
-            "description": "Compatibility metadata only, never grants a role."
+            "description": "Compatibility metadata only, never grants a role.",
+            "example": "ops"
           },
           {
             "name": "X-Trotxi-Build",
@@ -4012,7 +4105,8 @@
               "minimum": 1,
               "default": 1
             },
-            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable."
+            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.",
+            "example": 1
           },
           {
             "name": "X-Trotxi-Platform",
@@ -4108,7 +4202,8 @@
               "type": "string",
               "enum": ["commuter", "driver", "ops", "worker"]
             },
-            "description": "Compatibility metadata only, never grants a role."
+            "description": "Compatibility metadata only, never grants a role.",
+            "example": "ops"
           },
           {
             "name": "X-Trotxi-Build",
@@ -4119,7 +4214,8 @@
               "minimum": 1,
               "default": 1
             },
-            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable."
+            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.",
+            "example": 1
           },
           {
             "name": "X-Trotxi-Platform",
@@ -4223,7 +4319,8 @@
               "type": "string",
               "enum": ["commuter", "driver", "ops", "worker"]
             },
-            "description": "Compatibility metadata only, never grants a role."
+            "description": "Compatibility metadata only, never grants a role.",
+            "example": "commuter"
           },
           {
             "name": "X-Trotxi-Build",
@@ -4234,7 +4331,8 @@
               "minimum": 1,
               "default": 1
             },
-            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable."
+            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.",
+            "example": 1
           },
           {
             "name": "X-Trotxi-Platform",
@@ -4244,7 +4342,8 @@
               "type": "string",
               "enum": ["ios", "android"]
             },
-            "description": "Required for commuter/driver, absent for ops/worker."
+            "description": "Required for commuter/driver, absent for ops/worker.",
+            "example": "ios"
           }
         ],
         "responses": {
@@ -4321,7 +4420,8 @@
               "type": "string",
               "enum": ["commuter", "driver", "ops", "worker"]
             },
-            "description": "Compatibility metadata only, never grants a role."
+            "description": "Compatibility metadata only, never grants a role.",
+            "example": "commuter"
           },
           {
             "name": "X-Trotxi-Build",
@@ -4332,7 +4432,8 @@
               "minimum": 1,
               "default": 1
             },
-            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable."
+            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.",
+            "example": 1
           },
           {
             "name": "X-Trotxi-Platform",
@@ -4342,7 +4443,8 @@
               "type": "string",
               "enum": ["ios", "android"]
             },
-            "description": "Required for commuter/driver, absent for ops/worker."
+            "description": "Required for commuter/driver, absent for ops/worker.",
+            "example": "ios"
           }
         ],
         "requestBody": {
@@ -4439,7 +4541,8 @@
               "type": "string",
               "enum": ["commuter", "driver", "ops", "worker"]
             },
-            "description": "Compatibility metadata only, never grants a role."
+            "description": "Compatibility metadata only, never grants a role.",
+            "example": "commuter"
           },
           {
             "name": "X-Trotxi-Build",
@@ -4450,7 +4553,8 @@
               "minimum": 1,
               "default": 1
             },
-            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable."
+            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.",
+            "example": 1
           },
           {
             "name": "X-Trotxi-Platform",
@@ -4460,7 +4564,8 @@
               "type": "string",
               "enum": ["ios", "android"]
             },
-            "description": "Required for commuter/driver, absent for ops/worker."
+            "description": "Required for commuter/driver, absent for ops/worker.",
+            "example": "ios"
           }
         ],
         "responses": {
@@ -4545,7 +4650,8 @@
               "type": "string",
               "enum": ["commuter", "driver", "ops", "worker"]
             },
-            "description": "Compatibility metadata only, never grants a role."
+            "description": "Compatibility metadata only, never grants a role.",
+            "example": "commuter"
           },
           {
             "name": "X-Trotxi-Build",
@@ -4556,7 +4662,8 @@
               "minimum": 1,
               "default": 1
             },
-            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable."
+            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.",
+            "example": 1
           },
           {
             "name": "X-Trotxi-Platform",
@@ -4566,7 +4673,8 @@
               "type": "string",
               "enum": ["ios", "android"]
             },
-            "description": "Required for commuter/driver, absent for ops/worker."
+            "description": "Required for commuter/driver, absent for ops/worker.",
+            "example": "ios"
           }
         ],
         "responses": {
@@ -4692,7 +4800,8 @@
               "type": "string",
               "enum": ["commuter", "driver", "ops", "worker"]
             },
-            "description": "Compatibility metadata only, never grants a role."
+            "description": "Compatibility metadata only, never grants a role.",
+            "example": "commuter"
           },
           {
             "name": "X-Trotxi-Build",
@@ -4703,7 +4812,8 @@
               "minimum": 1,
               "default": 1
             },
-            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable."
+            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.",
+            "example": 1
           },
           {
             "name": "X-Trotxi-Platform",
@@ -4713,7 +4823,8 @@
               "type": "string",
               "enum": ["ios", "android"]
             },
-            "description": "Required for commuter/driver, absent for ops/worker."
+            "description": "Required for commuter/driver, absent for ops/worker.",
+            "example": "ios"
           }
         ],
         "responses": {
@@ -4840,7 +4951,8 @@
               "type": "string",
               "enum": ["commuter", "driver", "ops", "worker"]
             },
-            "description": "Compatibility metadata only, never grants a role."
+            "description": "Compatibility metadata only, never grants a role.",
+            "example": "commuter"
           },
           {
             "name": "X-Trotxi-Build",
@@ -4851,7 +4963,8 @@
               "minimum": 1,
               "default": 1
             },
-            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable."
+            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.",
+            "example": 1
           },
           {
             "name": "X-Trotxi-Platform",
@@ -4861,7 +4974,8 @@
               "type": "string",
               "enum": ["ios", "android"]
             },
-            "description": "Required for commuter/driver, absent for ops/worker."
+            "description": "Required for commuter/driver, absent for ops/worker.",
+            "example": "ios"
           }
         ],
         "responses": {
@@ -4977,7 +5091,8 @@
               "type": "string",
               "enum": ["commuter", "driver", "ops", "worker"]
             },
-            "description": "Compatibility metadata only, never grants a role."
+            "description": "Compatibility metadata only, never grants a role.",
+            "example": "commuter"
           },
           {
             "name": "X-Trotxi-Build",
@@ -4988,7 +5103,8 @@
               "minimum": 1,
               "default": 1
             },
-            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable."
+            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.",
+            "example": 1
           },
           {
             "name": "X-Trotxi-Platform",
@@ -4998,7 +5114,8 @@
               "type": "string",
               "enum": ["ios", "android"]
             },
-            "description": "Required for commuter/driver, absent for ops/worker."
+            "description": "Required for commuter/driver, absent for ops/worker.",
+            "example": "ios"
           }
         ],
         "responses": {
@@ -5081,7 +5198,8 @@
               "type": "string",
               "enum": ["commuter", "driver", "ops", "worker"]
             },
-            "description": "Compatibility metadata only, never grants a role."
+            "description": "Compatibility metadata only, never grants a role.",
+            "example": "commuter"
           },
           {
             "name": "X-Trotxi-Build",
@@ -5092,7 +5210,8 @@
               "minimum": 1,
               "default": 1
             },
-            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable."
+            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.",
+            "example": 1
           },
           {
             "name": "X-Trotxi-Platform",
@@ -5102,7 +5221,8 @@
               "type": "string",
               "enum": ["ios", "android"]
             },
-            "description": "Required for commuter/driver, absent for ops/worker."
+            "description": "Required for commuter/driver, absent for ops/worker.",
+            "example": "ios"
           }
         ],
         "responses": {
@@ -5297,7 +5417,8 @@
               "type": "string",
               "enum": ["commuter", "driver", "ops", "worker"]
             },
-            "description": "Compatibility metadata only, never grants a role."
+            "description": "Compatibility metadata only, never grants a role.",
+            "example": "commuter"
           },
           {
             "name": "X-Trotxi-Build",
@@ -5308,7 +5429,8 @@
               "minimum": 1,
               "default": 1
             },
-            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable."
+            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.",
+            "example": 1
           },
           {
             "name": "X-Trotxi-Platform",
@@ -5318,7 +5440,8 @@
               "type": "string",
               "enum": ["ios", "android"]
             },
-            "description": "Required for commuter/driver, absent for ops/worker."
+            "description": "Required for commuter/driver, absent for ops/worker.",
+            "example": "ios"
           }
         ],
         "responses": {
@@ -5437,7 +5560,8 @@
               "type": "string",
               "enum": ["commuter", "driver", "ops", "worker"]
             },
-            "description": "Compatibility metadata only, never grants a role."
+            "description": "Compatibility metadata only, never grants a role.",
+            "example": "commuter"
           },
           {
             "name": "X-Trotxi-Build",
@@ -5448,7 +5572,8 @@
               "minimum": 1,
               "default": 1
             },
-            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable."
+            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.",
+            "example": 1
           },
           {
             "name": "X-Trotxi-Platform",
@@ -5458,7 +5583,8 @@
               "type": "string",
               "enum": ["ios", "android"]
             },
-            "description": "Required for commuter/driver, absent for ops/worker."
+            "description": "Required for commuter/driver, absent for ops/worker.",
+            "example": "ios"
           }
         ],
         "responses": {
@@ -5540,7 +5666,8 @@
               "type": "string",
               "enum": ["commuter", "driver", "ops", "worker"]
             },
-            "description": "Compatibility metadata only, never grants a role."
+            "description": "Compatibility metadata only, never grants a role.",
+            "example": "commuter"
           },
           {
             "name": "X-Trotxi-Build",
@@ -5551,7 +5678,8 @@
               "minimum": 1,
               "default": 1
             },
-            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable."
+            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.",
+            "example": 1
           },
           {
             "name": "X-Trotxi-Platform",
@@ -5561,7 +5689,8 @@
               "type": "string",
               "enum": ["ios", "android"]
             },
-            "description": "Required for commuter/driver, absent for ops/worker."
+            "description": "Required for commuter/driver, absent for ops/worker.",
+            "example": "ios"
           }
         ],
         "responses": {
@@ -5642,7 +5771,8 @@
               "type": "string",
               "enum": ["commuter", "driver", "ops", "worker"]
             },
-            "description": "Compatibility metadata only, never grants a role."
+            "description": "Compatibility metadata only, never grants a role.",
+            "example": "commuter"
           },
           {
             "name": "X-Trotxi-Build",
@@ -5653,7 +5783,8 @@
               "minimum": 1,
               "default": 1
             },
-            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable."
+            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.",
+            "example": 1
           },
           {
             "name": "X-Trotxi-Platform",
@@ -5663,7 +5794,8 @@
               "type": "string",
               "enum": ["ios", "android"]
             },
-            "description": "Required for commuter/driver, absent for ops/worker."
+            "description": "Required for commuter/driver, absent for ops/worker.",
+            "example": "ios"
           }
         ],
         "responses": {
@@ -5804,7 +5936,8 @@
               "type": "string",
               "enum": ["commuter", "driver", "ops", "worker"]
             },
-            "description": "Compatibility metadata only, never grants a role."
+            "description": "Compatibility metadata only, never grants a role.",
+            "example": "driver"
           },
           {
             "name": "X-Trotxi-Build",
@@ -5815,7 +5948,8 @@
               "minimum": 1,
               "default": 1
             },
-            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable."
+            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.",
+            "example": 1
           },
           {
             "name": "X-Trotxi-Platform",
@@ -5825,7 +5959,8 @@
               "type": "string",
               "enum": ["ios", "android"]
             },
-            "description": "Required for commuter/driver, absent for ops/worker."
+            "description": "Required for commuter/driver, absent for ops/worker.",
+            "example": "ios"
           }
         ],
         "responses": {
@@ -5907,7 +6042,8 @@
               "type": "string",
               "enum": ["commuter", "driver", "ops", "worker"]
             },
-            "description": "Compatibility metadata only, never grants a role."
+            "description": "Compatibility metadata only, never grants a role.",
+            "example": "driver"
           },
           {
             "name": "X-Trotxi-Build",
@@ -5918,7 +6054,8 @@
               "minimum": 1,
               "default": 1
             },
-            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable."
+            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.",
+            "example": 1
           },
           {
             "name": "X-Trotxi-Platform",
@@ -5928,7 +6065,8 @@
               "type": "string",
               "enum": ["ios", "android"]
             },
-            "description": "Required for commuter/driver, absent for ops/worker."
+            "description": "Required for commuter/driver, absent for ops/worker.",
+            "example": "ios"
           }
         ],
         "responses": {
@@ -6009,7 +6147,8 @@
               "type": "string",
               "enum": ["commuter", "driver", "ops", "worker"]
             },
-            "description": "Compatibility metadata only, never grants a role."
+            "description": "Compatibility metadata only, never grants a role.",
+            "example": "driver"
           },
           {
             "name": "X-Trotxi-Build",
@@ -6020,7 +6159,8 @@
               "minimum": 1,
               "default": 1
             },
-            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable."
+            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.",
+            "example": 1
           },
           {
             "name": "X-Trotxi-Platform",
@@ -6030,7 +6170,8 @@
               "type": "string",
               "enum": ["ios", "android"]
             },
-            "description": "Required for commuter/driver, absent for ops/worker."
+            "description": "Required for commuter/driver, absent for ops/worker.",
+            "example": "ios"
           }
         ],
         "responses": {
@@ -6122,7 +6263,8 @@
               "type": "string",
               "enum": ["commuter", "driver", "ops", "worker"]
             },
-            "description": "Compatibility metadata only, never grants a role."
+            "description": "Compatibility metadata only, never grants a role.",
+            "example": "driver"
           },
           {
             "name": "X-Trotxi-Build",
@@ -6133,7 +6275,8 @@
               "minimum": 1,
               "default": 1
             },
-            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable."
+            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.",
+            "example": 1
           },
           {
             "name": "X-Trotxi-Platform",
@@ -6143,7 +6286,8 @@
               "type": "string",
               "enum": ["ios", "android"]
             },
-            "description": "Required for commuter/driver, absent for ops/worker."
+            "description": "Required for commuter/driver, absent for ops/worker.",
+            "example": "ios"
           }
         ],
         "responses": {
@@ -6230,7 +6374,8 @@
               "type": "string",
               "enum": ["commuter", "driver", "ops", "worker"]
             },
-            "description": "Compatibility metadata only, never grants a role."
+            "description": "Compatibility metadata only, never grants a role.",
+            "example": "driver"
           },
           {
             "name": "X-Trotxi-Build",
@@ -6241,7 +6386,8 @@
               "minimum": 1,
               "default": 1
             },
-            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable."
+            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.",
+            "example": 1
           },
           {
             "name": "X-Trotxi-Platform",
@@ -6251,7 +6397,8 @@
               "type": "string",
               "enum": ["ios", "android"]
             },
-            "description": "Required for commuter/driver, absent for ops/worker."
+            "description": "Required for commuter/driver, absent for ops/worker.",
+            "example": "ios"
           }
         ],
         "responses": {
@@ -6349,7 +6496,8 @@
               "type": "string",
               "enum": ["commuter", "driver", "ops", "worker"]
             },
-            "description": "Compatibility metadata only, never grants a role."
+            "description": "Compatibility metadata only, never grants a role.",
+            "example": "driver"
           },
           {
             "name": "X-Trotxi-Build",
@@ -6360,7 +6508,8 @@
               "minimum": 1,
               "default": 1
             },
-            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable."
+            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.",
+            "example": 1
           },
           {
             "name": "X-Trotxi-Platform",
@@ -6370,7 +6519,8 @@
               "type": "string",
               "enum": ["ios", "android"]
             },
-            "description": "Required for commuter/driver, absent for ops/worker."
+            "description": "Required for commuter/driver, absent for ops/worker.",
+            "example": "ios"
           }
         ],
         "requestBody": {
@@ -6470,7 +6620,8 @@
               "type": "string",
               "enum": ["commuter", "driver", "ops", "worker"]
             },
-            "description": "Compatibility metadata only, never grants a role."
+            "description": "Compatibility metadata only, never grants a role.",
+            "example": "driver"
           },
           {
             "name": "X-Trotxi-Build",
@@ -6481,7 +6632,8 @@
               "minimum": 1,
               "default": 1
             },
-            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable."
+            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.",
+            "example": 1
           },
           {
             "name": "X-Trotxi-Platform",
@@ -6491,7 +6643,8 @@
               "type": "string",
               "enum": ["ios", "android"]
             },
-            "description": "Required for commuter/driver, absent for ops/worker."
+            "description": "Required for commuter/driver, absent for ops/worker.",
+            "example": "ios"
           }
         ],
         "requestBody": {
@@ -6588,7 +6741,8 @@
               "type": "string",
               "enum": ["commuter", "driver", "ops", "worker"]
             },
-            "description": "Compatibility metadata only, never grants a role."
+            "description": "Compatibility metadata only, never grants a role.",
+            "example": "driver"
           },
           {
             "name": "X-Trotxi-Build",
@@ -6599,7 +6753,8 @@
               "minimum": 1,
               "default": 1
             },
-            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable."
+            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.",
+            "example": 1
           },
           {
             "name": "X-Trotxi-Platform",
@@ -6609,7 +6764,8 @@
               "type": "string",
               "enum": ["ios", "android"]
             },
-            "description": "Required for commuter/driver, absent for ops/worker."
+            "description": "Required for commuter/driver, absent for ops/worker.",
+            "example": "ios"
           }
         ],
         "requestBody": {
@@ -6728,7 +6884,8 @@
               "type": "string",
               "enum": ["commuter", "driver", "ops", "worker"]
             },
-            "description": "Compatibility metadata only, never grants a role."
+            "description": "Compatibility metadata only, never grants a role.",
+            "example": "driver"
           },
           {
             "name": "X-Trotxi-Build",
@@ -6739,7 +6896,8 @@
               "minimum": 1,
               "default": 1
             },
-            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable."
+            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.",
+            "example": 1
           },
           {
             "name": "X-Trotxi-Platform",
@@ -6749,7 +6907,8 @@
               "type": "string",
               "enum": ["ios", "android"]
             },
-            "description": "Required for commuter/driver, absent for ops/worker."
+            "description": "Required for commuter/driver, absent for ops/worker.",
+            "example": "ios"
           }
         ],
         "responses": {
@@ -6860,7 +7019,8 @@
               "type": "string",
               "enum": ["commuter", "driver", "ops", "worker"]
             },
-            "description": "Compatibility metadata only, never grants a role."
+            "description": "Compatibility metadata only, never grants a role.",
+            "example": "driver"
           },
           {
             "name": "X-Trotxi-Build",
@@ -6871,7 +7031,8 @@
               "minimum": 1,
               "default": 1
             },
-            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable."
+            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.",
+            "example": 1
           },
           {
             "name": "X-Trotxi-Platform",
@@ -6881,7 +7042,8 @@
               "type": "string",
               "enum": ["ios", "android"]
             },
-            "description": "Required for commuter/driver, absent for ops/worker."
+            "description": "Required for commuter/driver, absent for ops/worker.",
+            "example": "ios"
           }
         ],
         "responses": {
@@ -6962,7 +7124,8 @@
               "type": "string",
               "enum": ["commuter", "driver", "ops", "worker"]
             },
-            "description": "Compatibility metadata only, never grants a role."
+            "description": "Compatibility metadata only, never grants a role.",
+            "example": "driver"
           },
           {
             "name": "X-Trotxi-Build",
@@ -6973,7 +7136,8 @@
               "minimum": 1,
               "default": 1
             },
-            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable."
+            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.",
+            "example": 1
           },
           {
             "name": "X-Trotxi-Platform",
@@ -6983,7 +7147,8 @@
               "type": "string",
               "enum": ["ios", "android"]
             },
-            "description": "Required for commuter/driver, absent for ops/worker."
+            "description": "Required for commuter/driver, absent for ops/worker.",
+            "example": "ios"
           }
         ],
         "requestBody": {
@@ -7100,7 +7265,8 @@
               "type": "string",
               "enum": ["commuter", "driver", "ops", "worker"]
             },
-            "description": "Compatibility metadata only, never grants a role."
+            "description": "Compatibility metadata only, never grants a role.",
+            "example": "driver"
           },
           {
             "name": "X-Trotxi-Build",
@@ -7111,7 +7277,8 @@
               "minimum": 1,
               "default": 1
             },
-            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable."
+            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.",
+            "example": 1
           },
           {
             "name": "X-Trotxi-Platform",
@@ -7121,7 +7288,8 @@
               "type": "string",
               "enum": ["ios", "android"]
             },
-            "description": "Required for commuter/driver, absent for ops/worker."
+            "description": "Required for commuter/driver, absent for ops/worker.",
+            "example": "ios"
           }
         ],
         "responses": {
@@ -7202,7 +7370,8 @@
               "type": "string",
               "enum": ["commuter", "driver", "ops", "worker"]
             },
-            "description": "Compatibility metadata only, never grants a role."
+            "description": "Compatibility metadata only, never grants a role.",
+            "example": "driver"
           },
           {
             "name": "X-Trotxi-Build",
@@ -7213,7 +7382,8 @@
               "minimum": 1,
               "default": 1
             },
-            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable."
+            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.",
+            "example": 1
           },
           {
             "name": "X-Trotxi-Platform",
@@ -7223,7 +7393,8 @@
               "type": "string",
               "enum": ["ios", "android"]
             },
-            "description": "Required for commuter/driver, absent for ops/worker."
+            "description": "Required for commuter/driver, absent for ops/worker.",
+            "example": "ios"
           }
         ],
         "requestBody": {
@@ -7328,7 +7499,8 @@
               "type": "string",
               "enum": ["commuter", "driver", "ops", "worker"]
             },
-            "description": "Compatibility metadata only, never grants a role."
+            "description": "Compatibility metadata only, never grants a role.",
+            "example": "driver"
           },
           {
             "name": "X-Trotxi-Build",
@@ -7339,7 +7511,8 @@
               "minimum": 1,
               "default": 1
             },
-            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable."
+            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.",
+            "example": 1
           },
           {
             "name": "X-Trotxi-Platform",
@@ -7349,7 +7522,8 @@
               "type": "string",
               "enum": ["ios", "android"]
             },
-            "description": "Required for commuter/driver, absent for ops/worker."
+            "description": "Required for commuter/driver, absent for ops/worker.",
+            "example": "ios"
           }
         ],
         "responses": {
@@ -7438,7 +7612,8 @@
               "type": "string",
               "enum": ["commuter", "driver", "ops", "worker"]
             },
-            "description": "Compatibility metadata only, never grants a role."
+            "description": "Compatibility metadata only, never grants a role.",
+            "example": "driver"
           },
           {
             "name": "X-Trotxi-Build",
@@ -7449,7 +7624,8 @@
               "minimum": 1,
               "default": 1
             },
-            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable."
+            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.",
+            "example": 1
           },
           {
             "name": "X-Trotxi-Platform",
@@ -7459,7 +7635,8 @@
               "type": "string",
               "enum": ["ios", "android"]
             },
-            "description": "Required for commuter/driver, absent for ops/worker."
+            "description": "Required for commuter/driver, absent for ops/worker.",
+            "example": "ios"
           }
         ],
         "responses": {
@@ -7554,7 +7731,8 @@
               "type": "string",
               "enum": ["commuter", "driver", "ops", "worker"]
             },
-            "description": "Compatibility metadata only, never grants a role."
+            "description": "Compatibility metadata only, never grants a role.",
+            "example": "ops"
           },
           {
             "name": "X-Trotxi-Build",
@@ -7565,7 +7743,8 @@
               "minimum": 1,
               "default": 1
             },
-            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable."
+            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.",
+            "example": 1
           },
           {
             "name": "X-Trotxi-Platform",
@@ -7656,7 +7835,8 @@
               "type": "string",
               "enum": ["commuter", "driver", "ops", "worker"]
             },
-            "description": "Compatibility metadata only, never grants a role."
+            "description": "Compatibility metadata only, never grants a role.",
+            "example": "ops"
           },
           {
             "name": "X-Trotxi-Build",
@@ -7667,7 +7847,8 @@
               "minimum": 1,
               "default": 1
             },
-            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable."
+            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.",
+            "example": 1
           },
           {
             "name": "X-Trotxi-Platform",
@@ -7793,7 +7974,8 @@
               "type": "string",
               "enum": ["commuter", "driver", "ops", "worker"]
             },
-            "description": "Compatibility metadata only, never grants a role."
+            "description": "Compatibility metadata only, never grants a role.",
+            "example": "ops"
           },
           {
             "name": "X-Trotxi-Build",
@@ -7804,7 +7986,8 @@
               "minimum": 1,
               "default": 1
             },
-            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable."
+            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.",
+            "example": 1
           },
           {
             "name": "X-Trotxi-Platform",
@@ -7927,7 +8110,8 @@
               "type": "string",
               "enum": ["commuter", "driver", "ops", "worker"]
             },
-            "description": "Compatibility metadata only, never grants a role."
+            "description": "Compatibility metadata only, never grants a role.",
+            "example": "ops"
           },
           {
             "name": "X-Trotxi-Build",
@@ -7938,7 +8122,8 @@
               "minimum": 1,
               "default": 1
             },
-            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable."
+            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.",
+            "example": 1
           },
           {
             "name": "X-Trotxi-Platform",
@@ -8029,7 +8214,8 @@
               "type": "string",
               "enum": ["commuter", "driver", "ops", "worker"]
             },
-            "description": "Compatibility metadata only, never grants a role."
+            "description": "Compatibility metadata only, never grants a role.",
+            "example": "ops"
           },
           {
             "name": "X-Trotxi-Build",
@@ -8040,7 +8226,8 @@
               "minimum": 1,
               "default": 1
             },
-            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable."
+            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.",
+            "example": 1
           },
           {
             "name": "X-Trotxi-Platform",
@@ -8166,7 +8353,8 @@
               "type": "string",
               "enum": ["commuter", "driver", "ops", "worker"]
             },
-            "description": "Compatibility metadata only, never grants a role."
+            "description": "Compatibility metadata only, never grants a role.",
+            "example": "ops"
           },
           {
             "name": "X-Trotxi-Build",
@@ -8177,7 +8365,8 @@
               "minimum": 1,
               "default": 1
             },
-            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable."
+            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.",
+            "example": 1
           },
           {
             "name": "X-Trotxi-Platform",
@@ -8300,7 +8489,8 @@
               "type": "string",
               "enum": ["commuter", "driver", "ops", "worker"]
             },
-            "description": "Compatibility metadata only, never grants a role."
+            "description": "Compatibility metadata only, never grants a role.",
+            "example": "ops"
           },
           {
             "name": "X-Trotxi-Build",
@@ -8311,7 +8501,8 @@
               "minimum": 1,
               "default": 1
             },
-            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable."
+            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.",
+            "example": 1
           },
           {
             "name": "X-Trotxi-Platform",
@@ -8402,7 +8593,8 @@
               "type": "string",
               "enum": ["commuter", "driver", "ops", "worker"]
             },
-            "description": "Compatibility metadata only, never grants a role."
+            "description": "Compatibility metadata only, never grants a role.",
+            "example": "ops"
           },
           {
             "name": "X-Trotxi-Build",
@@ -8413,7 +8605,8 @@
               "minimum": 1,
               "default": 1
             },
-            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable."
+            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.",
+            "example": 1
           },
           {
             "name": "X-Trotxi-Platform",
@@ -8539,7 +8732,8 @@
               "type": "string",
               "enum": ["commuter", "driver", "ops", "worker"]
             },
-            "description": "Compatibility metadata only, never grants a role."
+            "description": "Compatibility metadata only, never grants a role.",
+            "example": "ops"
           },
           {
             "name": "X-Trotxi-Build",
@@ -8550,7 +8744,8 @@
               "minimum": 1,
               "default": 1
             },
-            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable."
+            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.",
+            "example": 1
           },
           {
             "name": "X-Trotxi-Platform",
@@ -8673,7 +8868,8 @@
               "type": "string",
               "enum": ["commuter", "driver", "ops", "worker"]
             },
-            "description": "Compatibility metadata only, never grants a role."
+            "description": "Compatibility metadata only, never grants a role.",
+            "example": "ops"
           },
           {
             "name": "X-Trotxi-Build",
@@ -8684,7 +8880,8 @@
               "minimum": 1,
               "default": 1
             },
-            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable."
+            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.",
+            "example": 1
           },
           {
             "name": "X-Trotxi-Platform",
@@ -8775,7 +8972,8 @@
               "type": "string",
               "enum": ["commuter", "driver", "ops", "worker"]
             },
-            "description": "Compatibility metadata only, never grants a role."
+            "description": "Compatibility metadata only, never grants a role.",
+            "example": "ops"
           },
           {
             "name": "X-Trotxi-Build",
@@ -8786,7 +8984,8 @@
               "minimum": 1,
               "default": 1
             },
-            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable."
+            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.",
+            "example": 1
           },
           {
             "name": "X-Trotxi-Platform",
@@ -8912,7 +9111,8 @@
               "type": "string",
               "enum": ["commuter", "driver", "ops", "worker"]
             },
-            "description": "Compatibility metadata only, never grants a role."
+            "description": "Compatibility metadata only, never grants a role.",
+            "example": "ops"
           },
           {
             "name": "X-Trotxi-Build",
@@ -8923,7 +9123,8 @@
               "minimum": 1,
               "default": 1
             },
-            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable."
+            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.",
+            "example": 1
           },
           {
             "name": "X-Trotxi-Platform",
@@ -9077,7 +9278,8 @@
               "type": "string",
               "enum": ["commuter", "driver", "ops", "worker"]
             },
-            "description": "Compatibility metadata only, never grants a role."
+            "description": "Compatibility metadata only, never grants a role.",
+            "example": "ops"
           },
           {
             "name": "X-Trotxi-Build",
@@ -9088,7 +9290,8 @@
               "minimum": 1,
               "default": 1
             },
-            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable."
+            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.",
+            "example": 1
           },
           {
             "name": "X-Trotxi-Platform",
@@ -9179,7 +9382,8 @@
               "type": "string",
               "enum": ["commuter", "driver", "ops", "worker"]
             },
-            "description": "Compatibility metadata only, never grants a role."
+            "description": "Compatibility metadata only, never grants a role.",
+            "example": "ops"
           },
           {
             "name": "X-Trotxi-Build",
@@ -9190,7 +9394,8 @@
               "minimum": 1,
               "default": 1
             },
-            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable."
+            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.",
+            "example": 1
           },
           {
             "name": "X-Trotxi-Platform",
@@ -9316,7 +9521,8 @@
               "type": "string",
               "enum": ["commuter", "driver", "ops", "worker"]
             },
-            "description": "Compatibility metadata only, never grants a role."
+            "description": "Compatibility metadata only, never grants a role.",
+            "example": "ops"
           },
           {
             "name": "X-Trotxi-Build",
@@ -9327,7 +9533,8 @@
               "minimum": 1,
               "default": 1
             },
-            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable."
+            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.",
+            "example": 1
           },
           {
             "name": "X-Trotxi-Platform",
@@ -9459,7 +9666,8 @@
               "type": "string",
               "enum": ["commuter", "driver", "ops", "worker"]
             },
-            "description": "Compatibility metadata only, never grants a role."
+            "description": "Compatibility metadata only, never grants a role.",
+            "example": "ops"
           },
           {
             "name": "X-Trotxi-Build",
@@ -9470,7 +9678,8 @@
               "minimum": 1,
               "default": 1
             },
-            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable."
+            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.",
+            "example": 1
           },
           {
             "name": "X-Trotxi-Platform",
@@ -9602,7 +9811,8 @@
               "type": "string",
               "enum": ["commuter", "driver", "ops", "worker"]
             },
-            "description": "Compatibility metadata only, never grants a role."
+            "description": "Compatibility metadata only, never grants a role.",
+            "example": "ops"
           },
           {
             "name": "X-Trotxi-Build",
@@ -9613,7 +9823,8 @@
               "minimum": 1,
               "default": 1
             },
-            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable."
+            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.",
+            "example": 1
           },
           {
             "name": "X-Trotxi-Platform",
@@ -9725,7 +9936,8 @@
               "type": "string",
               "enum": ["commuter", "driver", "ops", "worker"]
             },
-            "description": "Compatibility metadata only, never grants a role."
+            "description": "Compatibility metadata only, never grants a role.",
+            "example": "ops"
           },
           {
             "name": "X-Trotxi-Build",
@@ -9736,7 +9948,8 @@
               "minimum": 1,
               "default": 1
             },
-            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable."
+            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.",
+            "example": 1
           },
           {
             "name": "X-Trotxi-Platform",
@@ -9842,7 +10055,8 @@
               "type": "string",
               "enum": ["commuter", "driver", "ops", "worker"]
             },
-            "description": "Compatibility metadata only, never grants a role."
+            "description": "Compatibility metadata only, never grants a role.",
+            "example": "ops"
           },
           {
             "name": "X-Trotxi-Build",
@@ -9853,7 +10067,8 @@
               "minimum": 1,
               "default": 1
             },
-            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable."
+            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.",
+            "example": 1
           },
           {
             "name": "X-Trotxi-Platform",
@@ -9946,7 +10161,8 @@
               "type": "string",
               "enum": ["commuter", "driver", "ops", "worker"]
             },
-            "description": "Compatibility metadata only, never grants a role."
+            "description": "Compatibility metadata only, never grants a role.",
+            "example": "ops"
           },
           {
             "name": "X-Trotxi-Build",
@@ -9957,7 +10173,8 @@
               "minimum": 1,
               "default": 1
             },
-            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable."
+            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.",
+            "example": 1
           },
           {
             "name": "X-Trotxi-Platform",
@@ -10087,7 +10304,8 @@
               "type": "string",
               "enum": ["commuter", "driver", "ops", "worker"]
             },
-            "description": "Compatibility metadata only, never grants a role."
+            "description": "Compatibility metadata only, never grants a role.",
+            "example": "ops"
           },
           {
             "name": "X-Trotxi-Build",
@@ -10098,7 +10316,8 @@
               "minimum": 1,
               "default": 1
             },
-            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable."
+            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.",
+            "example": 1
           },
           {
             "name": "X-Trotxi-Platform",
@@ -10191,7 +10410,8 @@
               "type": "string",
               "enum": ["commuter", "driver", "ops", "worker"]
             },
-            "description": "Compatibility metadata only, never grants a role."
+            "description": "Compatibility metadata only, never grants a role.",
+            "example": "ops"
           },
           {
             "name": "X-Trotxi-Build",
@@ -10202,7 +10422,8 @@
               "minimum": 1,
               "default": 1
             },
-            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable."
+            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.",
+            "example": 1
           },
           {
             "name": "X-Trotxi-Platform",
@@ -10332,7 +10553,8 @@
               "type": "string",
               "enum": ["commuter", "driver", "ops", "worker"]
             },
-            "description": "Compatibility metadata only, never grants a role."
+            "description": "Compatibility metadata only, never grants a role.",
+            "example": "ops"
           },
           {
             "name": "X-Trotxi-Build",
@@ -10343,7 +10565,8 @@
               "minimum": 1,
               "default": 1
             },
-            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable."
+            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.",
+            "example": 1
           },
           {
             "name": "X-Trotxi-Platform",
@@ -10434,7 +10657,8 @@
               "type": "string",
               "enum": ["commuter", "driver", "ops", "worker"]
             },
-            "description": "Compatibility metadata only, never grants a role."
+            "description": "Compatibility metadata only, never grants a role.",
+            "example": "ops"
           },
           {
             "name": "X-Trotxi-Build",
@@ -10445,7 +10669,8 @@
               "minimum": 1,
               "default": 1
             },
-            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable."
+            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.",
+            "example": 1
           },
           {
             "name": "X-Trotxi-Platform",
@@ -10560,7 +10785,8 @@
               "type": "string",
               "enum": ["commuter", "driver", "ops", "worker"]
             },
-            "description": "Compatibility metadata only, never grants a role."
+            "description": "Compatibility metadata only, never grants a role.",
+            "example": "ops"
           },
           {
             "name": "X-Trotxi-Build",
@@ -10571,7 +10797,8 @@
               "minimum": 1,
               "default": 1
             },
-            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable."
+            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.",
+            "example": 1
           },
           {
             "name": "X-Trotxi-Platform",
@@ -10696,7 +10923,8 @@
               "type": "string",
               "enum": ["commuter", "driver", "ops", "worker"]
             },
-            "description": "Compatibility metadata only, never grants a role."
+            "description": "Compatibility metadata only, never grants a role.",
+            "example": "ops"
           },
           {
             "name": "X-Trotxi-Build",
@@ -10707,7 +10935,8 @@
               "minimum": 1,
               "default": 1
             },
-            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable."
+            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.",
+            "example": 1
           },
           {
             "name": "X-Trotxi-Platform",
@@ -10811,7 +11040,8 @@
               "type": "string",
               "enum": ["commuter", "driver", "ops", "worker"]
             },
-            "description": "Compatibility metadata only, never grants a role."
+            "description": "Compatibility metadata only, never grants a role.",
+            "example": "ops"
           },
           {
             "name": "X-Trotxi-Build",
@@ -10822,7 +11052,8 @@
               "minimum": 1,
               "default": 1
             },
-            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable."
+            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.",
+            "example": 1
           },
           {
             "name": "X-Trotxi-Platform",
@@ -10947,7 +11178,8 @@
               "type": "string",
               "enum": ["commuter", "driver", "ops", "worker"]
             },
-            "description": "Compatibility metadata only, never grants a role."
+            "description": "Compatibility metadata only, never grants a role.",
+            "example": "ops"
           },
           {
             "name": "X-Trotxi-Build",
@@ -10958,7 +11190,8 @@
               "minimum": 1,
               "default": 1
             },
-            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable."
+            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.",
+            "example": 1
           },
           {
             "name": "X-Trotxi-Platform",
@@ -11092,7 +11325,8 @@
               "type": "string",
               "enum": ["commuter", "driver", "ops", "worker"]
             },
-            "description": "Compatibility metadata only, never grants a role."
+            "description": "Compatibility metadata only, never grants a role.",
+            "example": "ops"
           },
           {
             "name": "X-Trotxi-Build",
@@ -11103,7 +11337,8 @@
               "minimum": 1,
               "default": 1
             },
-            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable."
+            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.",
+            "example": 1
           },
           {
             "name": "X-Trotxi-Platform",
@@ -11236,7 +11471,8 @@
               "type": "string",
               "enum": ["commuter", "driver", "ops", "worker"]
             },
-            "description": "Compatibility metadata only, never grants a role."
+            "description": "Compatibility metadata only, never grants a role.",
+            "example": "ops"
           },
           {
             "name": "X-Trotxi-Build",
@@ -11247,7 +11483,8 @@
               "minimum": 1,
               "default": 1
             },
-            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable."
+            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.",
+            "example": 1
           },
           {
             "name": "X-Trotxi-Platform",
@@ -11361,7 +11598,8 @@
               "type": "string",
               "enum": ["commuter", "driver", "ops", "worker"]
             },
-            "description": "Compatibility metadata only, never grants a role."
+            "description": "Compatibility metadata only, never grants a role.",
+            "example": "ops"
           },
           {
             "name": "X-Trotxi-Build",
@@ -11372,7 +11610,8 @@
               "minimum": 1,
               "default": 1
             },
-            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable."
+            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.",
+            "example": 1
           },
           {
             "name": "X-Trotxi-Platform",
@@ -11505,7 +11744,8 @@
               "type": "string",
               "enum": ["commuter", "driver", "ops", "worker"]
             },
-            "description": "Compatibility metadata only, never grants a role."
+            "description": "Compatibility metadata only, never grants a role.",
+            "example": "ops"
           },
           {
             "name": "X-Trotxi-Build",
@@ -11516,7 +11756,8 @@
               "minimum": 1,
               "default": 1
             },
-            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable."
+            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.",
+            "example": 1
           },
           {
             "name": "X-Trotxi-Platform",
@@ -11631,7 +11872,8 @@
               "type": "string",
               "enum": ["commuter", "driver", "ops", "worker"]
             },
-            "description": "Compatibility metadata only, never grants a role."
+            "description": "Compatibility metadata only, never grants a role.",
+            "example": "ops"
           },
           {
             "name": "X-Trotxi-Build",
@@ -11642,7 +11884,8 @@
               "minimum": 1,
               "default": 1
             },
-            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable."
+            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.",
+            "example": 1
           },
           {
             "name": "X-Trotxi-Platform",
@@ -11756,7 +11999,8 @@
               "type": "string",
               "enum": ["commuter", "driver", "ops", "worker"]
             },
-            "description": "Compatibility metadata only, never grants a role."
+            "description": "Compatibility metadata only, never grants a role.",
+            "example": "ops"
           },
           {
             "name": "X-Trotxi-Build",
@@ -11767,7 +12011,8 @@
               "minimum": 1,
               "default": 1
             },
-            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable."
+            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.",
+            "example": 1
           },
           {
             "name": "X-Trotxi-Platform",
@@ -11900,7 +12145,8 @@
               "type": "string",
               "enum": ["commuter", "driver", "ops", "worker"]
             },
-            "description": "Compatibility metadata only, never grants a role."
+            "description": "Compatibility metadata only, never grants a role.",
+            "example": "ops"
           },
           {
             "name": "X-Trotxi-Build",
@@ -11911,7 +12157,8 @@
               "minimum": 1,
               "default": 1
             },
-            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable."
+            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.",
+            "example": 1
           },
           {
             "name": "X-Trotxi-Platform",
@@ -12025,7 +12272,8 @@
               "type": "string",
               "enum": ["commuter", "driver", "ops", "worker"]
             },
-            "description": "Compatibility metadata only, never grants a role."
+            "description": "Compatibility metadata only, never grants a role.",
+            "example": "ops"
           },
           {
             "name": "X-Trotxi-Build",
@@ -12036,7 +12284,8 @@
               "minimum": 1,
               "default": 1
             },
-            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable."
+            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.",
+            "example": 1
           },
           {
             "name": "X-Trotxi-Platform",
@@ -12168,7 +12417,8 @@
               "type": "string",
               "enum": ["commuter", "driver", "ops", "worker"]
             },
-            "description": "Compatibility metadata only, never grants a role."
+            "description": "Compatibility metadata only, never grants a role.",
+            "example": "ops"
           },
           {
             "name": "X-Trotxi-Build",
@@ -12179,7 +12429,8 @@
               "minimum": 1,
               "default": 1
             },
-            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable."
+            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.",
+            "example": 1
           },
           {
             "name": "X-Trotxi-Platform",
@@ -12300,7 +12551,8 @@
               "type": "string",
               "enum": ["commuter", "driver", "ops", "worker"]
             },
-            "description": "Compatibility metadata only, never grants a role."
+            "description": "Compatibility metadata only, never grants a role.",
+            "example": "ops"
           },
           {
             "name": "X-Trotxi-Build",
@@ -12311,7 +12563,8 @@
               "minimum": 1,
               "default": 1
             },
-            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable."
+            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.",
+            "example": 1
           },
           {
             "name": "X-Trotxi-Platform",
@@ -12426,7 +12679,8 @@
               "type": "string",
               "enum": ["commuter", "driver", "ops", "worker"]
             },
-            "description": "Compatibility metadata only, never grants a role."
+            "description": "Compatibility metadata only, never grants a role.",
+            "example": "ops"
           },
           {
             "name": "X-Trotxi-Build",
@@ -12437,7 +12691,8 @@
               "minimum": 1,
               "default": 1
             },
-            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable."
+            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.",
+            "example": 1
           },
           {
             "name": "X-Trotxi-Platform",
@@ -12544,7 +12799,8 @@
               "type": "string",
               "enum": ["commuter", "driver", "ops", "worker"]
             },
-            "description": "Compatibility metadata only, never grants a role."
+            "description": "Compatibility metadata only, never grants a role.",
+            "example": "ops"
           },
           {
             "name": "X-Trotxi-Build",
@@ -12555,7 +12811,8 @@
               "minimum": 1,
               "default": 1
             },
-            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable."
+            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.",
+            "example": 1
           },
           {
             "name": "X-Trotxi-Platform",
@@ -12667,7 +12924,8 @@
               "type": "string",
               "enum": ["commuter", "driver", "ops", "worker"]
             },
-            "description": "Compatibility metadata only, never grants a role."
+            "description": "Compatibility metadata only, never grants a role.",
+            "example": "ops"
           },
           {
             "name": "X-Trotxi-Build",
@@ -12678,7 +12936,8 @@
               "minimum": 1,
               "default": 1
             },
-            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable."
+            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.",
+            "example": 1
           },
           {
             "name": "X-Trotxi-Platform",
@@ -12779,7 +13038,8 @@
               "type": "string",
               "enum": ["commuter", "driver", "ops", "worker"]
             },
-            "description": "Compatibility metadata only, never grants a role."
+            "description": "Compatibility metadata only, never grants a role.",
+            "example": "ops"
           },
           {
             "name": "X-Trotxi-Build",
@@ -12790,7 +13050,8 @@
               "minimum": 1,
               "default": 1
             },
-            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable."
+            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.",
+            "example": 1
           },
           {
             "name": "X-Trotxi-Platform",
@@ -12907,7 +13168,8 @@
               "type": "string",
               "enum": ["commuter", "driver", "ops", "worker"]
             },
-            "description": "Compatibility metadata only, never grants a role."
+            "description": "Compatibility metadata only, never grants a role.",
+            "example": "ops"
           },
           {
             "name": "X-Trotxi-Build",
@@ -12918,7 +13180,8 @@
               "minimum": 1,
               "default": 1
             },
-            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable."
+            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.",
+            "example": 1
           },
           {
             "name": "X-Trotxi-Platform",
@@ -13031,7 +13294,8 @@
               "type": "string",
               "enum": ["commuter", "driver", "ops", "worker"]
             },
-            "description": "Compatibility metadata only, never grants a role."
+            "description": "Compatibility metadata only, never grants a role.",
+            "example": "ops"
           },
           {
             "name": "X-Trotxi-Build",
@@ -13042,7 +13306,8 @@
               "minimum": 1,
               "default": 1
             },
-            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable."
+            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.",
+            "example": 1
           },
           {
             "name": "X-Trotxi-Platform",
@@ -13165,7 +13430,8 @@
               "type": "string",
               "enum": ["commuter", "driver", "ops", "worker"]
             },
-            "description": "Compatibility metadata only, never grants a role."
+            "description": "Compatibility metadata only, never grants a role.",
+            "example": "ops"
           },
           {
             "name": "X-Trotxi-Build",
@@ -13176,7 +13442,8 @@
               "minimum": 1,
               "default": 1
             },
-            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable."
+            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.",
+            "example": 1
           },
           {
             "name": "X-Trotxi-Platform",
@@ -13290,7 +13557,8 @@
               "type": "string",
               "enum": ["commuter", "driver", "ops", "worker"]
             },
-            "description": "Compatibility metadata only, never grants a role."
+            "description": "Compatibility metadata only, never grants a role.",
+            "example": "ops"
           },
           {
             "name": "X-Trotxi-Build",
@@ -13301,7 +13569,8 @@
               "minimum": 1,
               "default": 1
             },
-            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable."
+            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.",
+            "example": 1
           },
           {
             "name": "X-Trotxi-Platform",
@@ -13424,7 +13693,8 @@
               "type": "string",
               "enum": ["commuter", "driver", "ops", "worker"]
             },
-            "description": "Compatibility metadata only, never grants a role."
+            "description": "Compatibility metadata only, never grants a role.",
+            "example": "ops"
           },
           {
             "name": "X-Trotxi-Build",
@@ -13435,7 +13705,8 @@
               "minimum": 1,
               "default": 1
             },
-            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable."
+            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.",
+            "example": 1
           },
           {
             "name": "X-Trotxi-Platform",
@@ -13557,7 +13828,8 @@
               "type": "string",
               "enum": ["commuter", "driver", "ops", "worker"]
             },
-            "description": "Compatibility metadata only, never grants a role."
+            "description": "Compatibility metadata only, never grants a role.",
+            "example": "ops"
           },
           {
             "name": "X-Trotxi-Build",
@@ -13568,7 +13840,8 @@
               "minimum": 1,
               "default": 1
             },
-            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable."
+            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.",
+            "example": 1
           },
           {
             "name": "X-Trotxi-Platform",
@@ -13701,7 +13974,8 @@
               "type": "string",
               "enum": ["commuter", "driver", "ops", "worker"]
             },
-            "description": "Compatibility metadata only, never grants a role."
+            "description": "Compatibility metadata only, never grants a role.",
+            "example": "ops"
           },
           {
             "name": "X-Trotxi-Build",
@@ -13712,7 +13986,8 @@
               "minimum": 1,
               "default": 1
             },
-            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable."
+            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.",
+            "example": 1
           },
           {
             "name": "X-Trotxi-Platform",
@@ -13837,7 +14112,8 @@
               "type": "string",
               "enum": ["commuter", "driver", "ops", "worker"]
             },
-            "description": "Compatibility metadata only, never grants a role."
+            "description": "Compatibility metadata only, never grants a role.",
+            "example": "ops"
           },
           {
             "name": "X-Trotxi-Build",
@@ -13848,7 +14124,8 @@
               "minimum": 1,
               "default": 1
             },
-            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable."
+            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.",
+            "example": 1
           },
           {
             "name": "X-Trotxi-Platform",
@@ -13942,7 +14219,8 @@
               "type": "string",
               "enum": ["commuter", "driver", "ops", "worker"]
             },
-            "description": "Compatibility metadata only, never grants a role."
+            "description": "Compatibility metadata only, never grants a role.",
+            "example": "ops"
           },
           {
             "name": "X-Trotxi-Build",
@@ -13953,7 +14231,8 @@
               "minimum": 1,
               "default": 1
             },
-            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable."
+            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.",
+            "example": 1
           },
           {
             "name": "X-Trotxi-Platform",
@@ -14068,7 +14347,8 @@
               "type": "string",
               "enum": ["commuter", "driver", "ops", "worker"]
             },
-            "description": "Compatibility metadata only, never grants a role."
+            "description": "Compatibility metadata only, never grants a role.",
+            "example": "ops"
           },
           {
             "name": "X-Trotxi-Build",
@@ -14079,7 +14359,8 @@
               "minimum": 1,
               "default": 1
             },
-            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable."
+            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.",
+            "example": 1
           },
           {
             "name": "X-Trotxi-Platform",
@@ -14202,7 +14483,8 @@
               "type": "string",
               "enum": ["commuter", "driver", "ops", "worker"]
             },
-            "description": "Compatibility metadata only, never grants a role."
+            "description": "Compatibility metadata only, never grants a role.",
+            "example": "ops"
           },
           {
             "name": "X-Trotxi-Build",
@@ -14213,7 +14495,8 @@
               "minimum": 1,
               "default": 1
             },
-            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable."
+            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.",
+            "example": 1
           },
           {
             "name": "X-Trotxi-Platform",
@@ -14351,7 +14634,8 @@
               "type": "string",
               "enum": ["commuter", "driver", "ops", "worker"]
             },
-            "description": "Compatibility metadata only, never grants a role."
+            "description": "Compatibility metadata only, never grants a role.",
+            "example": "ops"
           },
           {
             "name": "X-Trotxi-Build",
@@ -14362,7 +14646,8 @@
               "minimum": 1,
               "default": 1
             },
-            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable."
+            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.",
+            "example": 1
           },
           {
             "name": "X-Trotxi-Platform",
@@ -14475,7 +14760,8 @@
               "type": "string",
               "enum": ["commuter", "driver", "ops", "worker"]
             },
-            "description": "Compatibility metadata only, never grants a role."
+            "description": "Compatibility metadata only, never grants a role.",
+            "example": "ops"
           },
           {
             "name": "X-Trotxi-Build",
@@ -14486,7 +14772,8 @@
               "minimum": 1,
               "default": 1
             },
-            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable."
+            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.",
+            "example": 1
           },
           {
             "name": "X-Trotxi-Platform",
@@ -14603,7 +14890,8 @@
               "type": "string",
               "enum": ["commuter", "driver", "ops", "worker"]
             },
-            "description": "Compatibility metadata only, never grants a role."
+            "description": "Compatibility metadata only, never grants a role.",
+            "example": "ops"
           },
           {
             "name": "X-Trotxi-Build",
@@ -14614,7 +14902,8 @@
               "minimum": 1,
               "default": 1
             },
-            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable."
+            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.",
+            "example": 1
           },
           {
             "name": "X-Trotxi-Platform",
@@ -14730,7 +15019,8 @@
               "type": "string",
               "enum": ["commuter", "driver", "ops", "worker"]
             },
-            "description": "Compatibility metadata only, never grants a role."
+            "description": "Compatibility metadata only, never grants a role.",
+            "example": "ops"
           },
           {
             "name": "X-Trotxi-Build",
@@ -14741,7 +15031,8 @@
               "minimum": 1,
               "default": 1
             },
-            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable."
+            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.",
+            "example": 1
           },
           {
             "name": "X-Trotxi-Platform",
@@ -14846,7 +15137,8 @@
               "type": "string",
               "enum": ["commuter", "driver", "ops", "worker"]
             },
-            "description": "Compatibility metadata only, never grants a role."
+            "description": "Compatibility metadata only, never grants a role.",
+            "example": "ops"
           },
           {
             "name": "X-Trotxi-Build",
@@ -14857,7 +15149,8 @@
               "minimum": 1,
               "default": 1
             },
-            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable."
+            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.",
+            "example": 1
           },
           {
             "name": "X-Trotxi-Platform",
@@ -14946,7 +15239,8 @@
               "type": "string",
               "enum": ["commuter", "driver", "ops", "worker"]
             },
-            "description": "Compatibility metadata only, never grants a role."
+            "description": "Compatibility metadata only, never grants a role.",
+            "example": "ops"
           },
           {
             "name": "X-Trotxi-Build",
@@ -14957,7 +15251,8 @@
               "minimum": 1,
               "default": 1
             },
-            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable."
+            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.",
+            "example": 1
           },
           {
             "name": "X-Trotxi-Platform",
@@ -15046,7 +15341,8 @@
               "type": "string",
               "enum": ["commuter", "driver", "ops", "worker"]
             },
-            "description": "Compatibility metadata only, never grants a role."
+            "description": "Compatibility metadata only, never grants a role.",
+            "example": "ops"
           },
           {
             "name": "X-Trotxi-Build",
@@ -15057,7 +15353,8 @@
               "minimum": 1,
               "default": 1
             },
-            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable."
+            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.",
+            "example": 1
           },
           {
             "name": "X-Trotxi-Platform",
@@ -15146,7 +15443,8 @@
               "type": "string",
               "enum": ["commuter", "driver", "ops", "worker"]
             },
-            "description": "Compatibility metadata only, never grants a role."
+            "description": "Compatibility metadata only, never grants a role.",
+            "example": "ops"
           },
           {
             "name": "X-Trotxi-Build",
@@ -15157,7 +15455,8 @@
               "minimum": 1,
               "default": 1
             },
-            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable."
+            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.",
+            "example": 1
           },
           {
             "name": "X-Trotxi-Platform",
@@ -15246,7 +15545,8 @@
               "type": "string",
               "enum": ["commuter", "driver", "ops", "worker"]
             },
-            "description": "Compatibility metadata only, never grants a role."
+            "description": "Compatibility metadata only, never grants a role.",
+            "example": "ops"
           },
           {
             "name": "X-Trotxi-Build",
@@ -15257,7 +15557,8 @@
               "minimum": 1,
               "default": 1
             },
-            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable."
+            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.",
+            "example": 1
           },
           {
             "name": "X-Trotxi-Platform",
@@ -15346,7 +15647,8 @@
               "type": "string",
               "enum": ["commuter", "driver", "ops", "worker"]
             },
-            "description": "Compatibility metadata only, never grants a role."
+            "description": "Compatibility metadata only, never grants a role.",
+            "example": "ops"
           },
           {
             "name": "X-Trotxi-Build",
@@ -15357,7 +15659,8 @@
               "minimum": 1,
               "default": 1
             },
-            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable."
+            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.",
+            "example": 1
           },
           {
             "name": "X-Trotxi-Platform",
@@ -15446,7 +15749,8 @@
               "type": "string",
               "enum": ["commuter", "driver", "ops", "worker"]
             },
-            "description": "Compatibility metadata only, never grants a role."
+            "description": "Compatibility metadata only, never grants a role.",
+            "example": "ops"
           },
           {
             "name": "X-Trotxi-Build",
@@ -15457,7 +15761,8 @@
               "minimum": 1,
               "default": 1
             },
-            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable."
+            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.",
+            "example": 1
           },
           {
             "name": "X-Trotxi-Platform",
@@ -15546,7 +15851,8 @@
               "type": "string",
               "enum": ["commuter", "driver", "ops", "worker"]
             },
-            "description": "Compatibility metadata only, never grants a role."
+            "description": "Compatibility metadata only, never grants a role.",
+            "example": "ops"
           },
           {
             "name": "X-Trotxi-Build",
@@ -15557,7 +15863,8 @@
               "minimum": 1,
               "default": 1
             },
-            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable."
+            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.",
+            "example": 1
           },
           {
             "name": "X-Trotxi-Platform",
@@ -15646,7 +15953,8 @@
               "type": "string",
               "enum": ["commuter", "driver", "ops", "worker"]
             },
-            "description": "Compatibility metadata only, never grants a role."
+            "description": "Compatibility metadata only, never grants a role.",
+            "example": "ops"
           },
           {
             "name": "X-Trotxi-Build",
@@ -15657,7 +15965,8 @@
               "minimum": 1,
               "default": 1
             },
-            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable."
+            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.",
+            "example": 1
           },
           {
             "name": "X-Trotxi-Platform",
@@ -15748,7 +16057,8 @@
               "type": "string",
               "enum": ["commuter", "driver", "ops", "worker"]
             },
-            "description": "Compatibility metadata only, never grants a role."
+            "description": "Compatibility metadata only, never grants a role.",
+            "example": "ops"
           },
           {
             "name": "X-Trotxi-Build",
@@ -15759,7 +16069,8 @@
               "minimum": 1,
               "default": 1
             },
-            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable."
+            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.",
+            "example": 1
           },
           {
             "name": "X-Trotxi-Platform",

@@ -256,6 +256,7 @@ export async function createTransportApp(options: AppOptions) {
   nav-hover-bg-color="#0B4423" nav-accent-color="#BDCABE" render-style="read"
   schema-style="table" show-header="false" allow-spec-url-load="false"
   allow-spec-file-load="false" show-method-in-nav-bar="as-colored-text"
+  persist-auth="true"
   use-path-in-nav-bar="true" sort-endpoints-by="path"></rapi-doc></body></html>`;
   });
 
