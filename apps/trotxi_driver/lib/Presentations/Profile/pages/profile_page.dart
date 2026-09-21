@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:trotxi_driver/core/api/driver_api.dart';
+import 'package:trotxi_driver/data/profile_repository.dart';
 import 'package:trotxi_driver/Presentations/Readiness/pages/device_readiness_page.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:provider/provider.dart';
@@ -28,11 +31,110 @@ class ProfilePage extends StatefulWidget {
 class _ProfilePageState extends State<ProfilePage> {
   LocationPermission? _locationPermission;
   bool? _locationServices;
+  String? _photoUrl;
+  bool _uploading = false;
 
   @override
   void initState() {
     super.initState();
     _readDeviceState();
+    _readPhoto();
+  }
+
+  /// A missing photo is the ordinary case, not an error worth showing: the
+  /// card falls back to initials, which is what it drew before there were
+  /// photos at all.
+  Future<void> _readPhoto() async {
+    try {
+      final account = await DriverProfileRepository(
+        context.read<DriverApi>(),
+      ).account();
+      if (mounted) setState(() => _photoUrl = account.avatarUrl);
+    } on TrotxiException {
+      // Leave the initials in place.
+    }
+  }
+
+  void _say(String message) => ScaffoldMessenger.of(
+    context,
+  ).showSnackBar(SnackBar(content: Text(message)));
+
+  /// Riders already see a driver's manifest photo of themselves; this is the
+  /// other half of that. Resized before it leaves the handset because a phone
+  /// photo is several megabytes and the server caps the upload, so sending the
+  /// original spends a driver's data to earn a 413.
+  Future<void> _changePhoto() async {
+    final source = await showModalBottomSheet<ImageSource>(
+      context: context,
+      builder: (sheet) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.photo_camera_outlined),
+              title: const Text('Take a photo'),
+              onTap: () => Navigator.of(sheet).pop(ImageSource.camera),
+            ),
+            ListTile(
+              leading: const Icon(Icons.photo_library_outlined),
+              title: const Text('Choose from library'),
+              onTap: () => Navigator.of(sheet).pop(ImageSource.gallery),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (source == null || !mounted) return;
+
+    final XFile? picked;
+    try {
+      picked = await ImagePicker().pickImage(
+        source: source,
+        maxWidth: 1024,
+        maxHeight: 1024,
+        imageQuality: 85,
+      );
+    } on PlatformException {
+      if (mounted) {
+        _say('Trotxi needs permission to use that. Check your settings.');
+      }
+      return;
+    }
+    if (picked == null || !mounted) return;
+
+    final contentType =
+        DriverProfileRepository.accepted[picked.name.split('.').last
+            .toLowerCase()];
+    if (contentType == null) {
+      _say('Choose a JPEG, PNG or WebP image.');
+      return;
+    }
+
+    final repository = DriverProfileRepository(context.read<DriverApi>());
+    setState(() => _uploading = true);
+    try {
+      final Uint8List bytes = await picked.readAsBytes();
+      final url = await repository.uploadPhoto(
+        bytes,
+        contentType: contentType,
+        filename: picked.name,
+      );
+      if (!mounted) return;
+      setState(() => _photoUrl = url);
+      _say('Photo updated.');
+    } on ApiException catch (error) {
+      if (!mounted) return;
+      _say(switch (error.statusCode) {
+        413 => 'That photo is too large. Try a smaller one.',
+        415 => 'That file is not an image Trotxi can read.',
+        429 => 'Too many attempts. Wait a moment and try again.',
+        _ => 'Could not upload that photo. Try again.',
+      });
+    } on TrotxiException {
+      if (mounted) _say('Could not upload that photo. Try again.');
+    } finally {
+      if (mounted) setState(() => _uploading = false);
+    }
   }
 
   Future<void> _readDeviceState() async {
@@ -62,18 +164,11 @@ class _ProfilePageState extends State<ProfilePage> {
       ),
       child: Row(
         children: [
-          Container(
-            width: 56,
-            height: 56,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              color: colors.surfaceSelected,
-              borderRadius: AppRadii.circular(AppRadii.full),
-            ),
-            child: Text(
-              _initials(driver?.fullName ?? '?'),
-              style: AppTypography.title.copyWith(color: colors.textPrimary),
-            ),
+          _Photo(
+            url: _photoUrl,
+            initials: _initials(driver?.fullName ?? '?'),
+            busy: _uploading,
+            colors: colors,
           ),
           const SizedBox(width: AppSpacing.space16),
           Expanded(
@@ -92,6 +187,18 @@ class _ProfilePageState extends State<ProfilePage> {
                       : 'Driver · ${driver!.driverCode}',
                   style: AppTypography.bodySmall.copyWith(
                     color: colors.textSecondary,
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.space4),
+                GestureDetector(
+                  onTap: _uploading ? null : _changePhoto,
+                  child: Text(
+                    _photoUrl == null ? 'Add a photo' : 'Change photo',
+                    style: AppTypography.label.copyWith(
+                      color: _uploading
+                          ? colors.textSecondary
+                          : colors.action,
+                    ),
                   ),
                 ),
               ],
@@ -476,6 +583,57 @@ class _StatusRow extends StatelessWidget {
         detail,
         style: AppTypography.bodySmall.copyWith(color: colors.textSecondary),
       ),
+    );
+  }
+}
+
+/// The driver's photo, or their initials until there is one.
+///
+/// A photo that will not load falls back to the initials rather than a broken
+/// image: the card has to read as a person either way.
+class _Photo extends StatelessWidget {
+  const _Photo({
+    required this.url,
+    required this.initials,
+    required this.busy,
+    required this.colors,
+  });
+
+  final String? url;
+  final String initials;
+  final bool busy;
+  final AppColors colors;
+
+  @override
+  Widget build(BuildContext context) {
+    final letters = Text(
+      initials,
+      style: AppTypography.title.copyWith(color: colors.textPrimary),
+    );
+    return Container(
+      width: 56,
+      height: 56,
+      alignment: Alignment.center,
+      clipBehavior: Clip.antiAlias,
+      decoration: BoxDecoration(
+        color: colors.surfaceSelected,
+        borderRadius: AppRadii.circular(AppRadii.full),
+      ),
+      child: busy
+          ? const SizedBox(
+              width: 20,
+              height: 20,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            )
+          : url == null
+          ? letters
+          : Image.network(
+              url!,
+              width: 56,
+              height: 56,
+              fit: BoxFit.cover,
+              errorBuilder: (_, _, _) => letters,
+            ),
     );
   }
 }
