@@ -414,7 +414,8 @@ export class ConfigService {
           displayName: row.display_name || 'New user',
           // The approved contract has no ops account read and this operation
           // is not being made into one: ops changes a role, it does not learn
-          // a rider's phone number by asking to.
+          // a rider's phone number or address by asking to.
+          email: null,
           phone: null,
           avatarUrl: null,
           role: row.role,

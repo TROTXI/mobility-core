@@ -18,6 +18,7 @@
         "data": {
           "id": "3a0942ec-aa27-48f0-a0e1-5be8b81dcb70",
           "displayName": "Test Rider",
+          "email": null,
           "phone": null,
           "avatarUrl": null,
           "role": "commuter",
@@ -171,7 +172,7 @@
           "url": "https://tiles.trotxi.com/ghana.pmtiles",
           "styleUrl": "https://tiles.trotxi.com/style.light.json",
           "darkStyleUrl": "https://tiles.trotxi.com/style.dark.json",
-          "attribution": "© OpenStreetMap contributors"
+          "attribution": "\u00a9 OpenStreetMap contributors"
         },
         "flags": []
       }
@@ -693,7 +694,7 @@
           "url": "https://tiles.trotxi.com/ghana.pmtiles",
           "styleUrl": "https://tiles.trotxi.com/style.light.json",
           "darkStyleUrl": "https://tiles.trotxi.com/style.dark.json",
-          "attribution": "© OpenStreetMap contributors"
+          "attribution": "\u00a9 OpenStreetMap contributors"
         },
         "flags": []
       }

@@ -79,6 +79,9 @@ named(
   obj({
     id,
     displayName: text(),
+    // The address the identity provider gave us. Read-only: it is not ours to
+    // change, and erasure nulls it along with the rest of the profile.
+    email: z.email().nullable(),
     phone: text().nullable(),
     avatarUrl: z.url().nullable(),
     role,
