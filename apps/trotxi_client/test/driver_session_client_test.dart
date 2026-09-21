@@ -80,6 +80,18 @@ Map<String, Object?> tokens({String suffix = '1', String role = 'driver'}) => {
       'driver': {'id': 'fleet-$suffix', 'name': 'Test driver'},
       'mustChangePin': false,
     };
+Map<String, Object?> driverSelf({Object? credential = const {
+  'driverCode': 'DR-7Q4M',
+  'status': 'active',
+  'mustChangePin': true,
+}}) =>
+    {
+      'id': 'fleet-1',
+      'name': 'Kwame Mensah',
+      'phone': null,
+      'licenseNumber': null,
+      'credential': credential,
+    };
 Map<String, dynamic> bodyOf(RequestOptions options) =>
     (options.data is String ? jsonDecode(options.data as String) : options.data)
         as Map<String, dynamic>;
@@ -208,15 +220,56 @@ void main() {
     });
   }
 
-  test('restore uses account identity and never invents a fleet ID', () async {
+  test('restore reads the fleet record, so the driver code survives a restart',
+      () async {
     await signIn();
-    respond = (_) => json(200, {'data': account()});
+    respond = (o) => json(
+        200,
+        {'data': o.path == '/v1/driver/me' ? driverSelf() : account()});
     final restored = await sessions.restore();
-    expect(requests.last.path, '/v1/me');
+    expect(requests.map((r) => r.path),
+        contains('/v1/driver/me'), reason: 'the account read has no fleet');
     expect(restored?.accountId, 'account-1');
-    expect(restored?.fleetDriverId, isNull);
-    expect(restored?.code, isNull);
+    expect(restored?.fleetDriverId, 'fleet-1');
+    expect(restored?.code, 'DR-7Q4M');
+    expect(restored?.mustChangePin, isTrue);
+    expect(restored?.name, 'Kwame Mensah');
+  });
+
+  test('a fleet read that fails keeps the session on account identity',
+      () async {
+    await signIn();
+    respond = (o) => o.path == '/v1/driver/me'
+        ? json(503, {
+            'error': {
+              'code': 'unavailable',
+              'message': 'Down',
+              'requestId': 'r'
+            }
+          })
+        : json(200, {'data': account()});
+    final restored = await sessions.restore();
+    expect(restored, isNotNull,
+        reason: 'a fleet outage must not sign a driver out mid-shift');
+    expect(restored?.accountId, 'account-1');
     expect(restored?.name, 'Test driver');
+    expect(restored?.code, isNull);
+  });
+
+  test('a driver with no credential never borrows the account UUID as a code',
+      () async {
+    await signIn();
+    respond = (o) => json(
+        200,
+        {
+          'data': o.path == '/v1/driver/me'
+              ? driverSelf(credential: null)
+              : account()
+        });
+    final restored = await sessions.restore();
+    expect(restored?.fleetDriverId, 'fleet-1');
+    expect(restored?.code, isNull);
+    expect(restored?.mustChangePin, isNull);
   });
 
   test('empty scope restores without network', () async {

@@ -138,15 +138,44 @@ class DriverSessionClient {
       if (account == null || account.role != AccountRoleEnum.driver) {
         throw const ApiException(403, 'This account is not a driver.');
       }
+      // The account read knows nothing about the fleet: no driver ID, no
+      // driver code, and no PIN state. Without this second read a restored
+      // session is thinner than the one sign-in produced, so the code a driver
+      // quotes to operations vanishes when they reopen the app.
+      final self = await _fleet(attempt, generation);
+      if (attempt != _attempt || generation != store.generation) return null;
       return DriverIdentity(
         accountId: account.id,
-        name: account.displayName,
-        mustChangePin: null,
+        fleetDriverId: self?.id,
+        name: self?.name ?? account.displayName,
+        code: self?.credential?.driverCode,
+        mustChangePin: self?.credential?.mustChangePin,
       );
     } on DioException catch (error) {
       if (error.error is UnauthorizedException &&
           await store.getAccessToken() == null) return null;
       throw _unwrap(error);
+    }
+  }
+
+  /// The fleet record behind a restored session.
+  ///
+  /// Null rather than throwing when the service will not answer: an account
+  /// that is a driver still has a usable session, and losing it because the
+  /// fleet read failed would sign someone out mid-shift over a detail. The
+  /// caller then publishes the account-only identity it published before.
+  Future<DriverSelf?> _fleet(int attempt, int generation) async {
+    try {
+      final response = await client.getDriverOwnApi().getDriverSelf(
+            xTrotxiClient: metadata.app,
+            xTrotxiBuild: metadata.build,
+            xTrotxiPlatform: metadata.platform,
+          );
+      if (attempt != _attempt || generation != store.generation) return null;
+      return response.data?.data;
+    } on DioException catch (error) {
+      if (error.error is UnauthorizedException) rethrow;
+      return null;
     }
   }
 
