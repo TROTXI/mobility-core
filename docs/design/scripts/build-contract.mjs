@@ -214,30 +214,62 @@ for (const o of operations) {
         'Caller + operation + target scoped; payload mismatch = 409. Never log secrets.',
       ),
     );
-  if (o.path.startsWith('/v1/'))
+  if (o.path.startsWith('/v1/')) {
+    // The renderer fills a try-it-out field from the parameter's example, not
+    // from a schema default, so these three carry one. Which caller an
+    // operation is for is already decided by its access, and a reader who has
+    // to work that out per endpoint gets it wrong: three of them arriving
+    // wrong is the difference between a 400 and a first call that works.
+    const client = o.access.startsWith('driver')
+      ? 'driver'
+      : o.access.startsWith('ops')
+        ? 'ops'
+        : 'commuter';
+    // Parameter-level only: an unknown keyword inside a schema is the kind of
+    // thing a strict validator rejects at boot, and the renderer reads this.
+    const merge = (base, value) => ({ ...base, example: value });
     parameters.push(
-      header(
-        'X-Trotxi-Client',
-        { type: 'string', enum: ['commuter', 'driver', 'ops', 'worker'] },
-        true,
-        'Compatibility metadata only, never grants a role.',
+      merge(
+        header(
+          'X-Trotxi-Client',
+          { type: 'string', enum: ['commuter', 'driver', 'ops', 'worker'] },
+          true,
+          'Compatibility metadata only, never grants a role.',
+        ),
+        client,
       ),
-      header(
-        'X-Trotxi-Build',
-        // Defaulted because Swagger UI seeds an empty integer field with 0,
-        // and 0 is refused twice over: below the minimum, and not a positive
-        // integer. Every first try-it-out call failed on a value nobody typed.
-        { type: 'integer', minimum: 1, default: 1 },
-        true,
-        'Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.',
+      merge(
+        header(
+          'X-Trotxi-Build',
+          // Defaulted because Swagger UI seeds an empty integer field with 0,
+          // and 0 is refused twice over: below the minimum, and not a positive
+          // integer. Every first try-it-out call failed on a value nobody typed.
+          { type: 'integer', minimum: 1, default: 1 },
+          true,
+          'Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.',
+        ),
+        1,
       ),
-      header(
-        'X-Trotxi-Platform',
-        { type: 'string', enum: ['ios', 'android'] },
-        false,
-        'Required for commuter/driver, absent for ops/worker.',
-      ),
+      // Optional, and the description says ops and worker must not send it, so
+      // only the two app callers get an example to fill.
+      client === 'ops'
+        ? header(
+            'X-Trotxi-Platform',
+            { type: 'string', enum: ['ios', 'android'] },
+            false,
+            'Required for commuter/driver, absent for ops/worker.',
+          )
+        : merge(
+            header(
+              'X-Trotxi-Platform',
+              { type: 'string', enum: ['ios', 'android'] },
+              false,
+              'Required for commuter/driver, absent for ops/worker.',
+            ),
+            'ios',
+          ),
     );
+  }
   let requestBody;
   if (o.input)
     requestBody = {
