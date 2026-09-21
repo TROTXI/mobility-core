@@ -265,6 +265,7 @@ export class AccountService {
     return {
       id: user.id,
       displayName: user.display_name || 'New user',
+      email: user.email ?? null,
       phone: user.phone ?? null,
       avatarUrl: url ?? null,
       role: user.role,

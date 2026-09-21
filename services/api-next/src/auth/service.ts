@@ -115,6 +115,7 @@ export class AuthService {
       id: user.id,
       role: user.role,
       displayName: user.display_name || 'New user',
+      email: user.email,
       phone: user.phone,
       avatarUrl: user.avatar_object_key ? this.options.avatarUrl!(user.avatar_object_key) : null,
       createdAt: user.created_at.toISOString(),

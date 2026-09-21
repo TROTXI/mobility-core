@@ -989,6 +989,7 @@
                       "data": {
                         "id": "3a0942ec-aa27-48f0-a0e1-5be8b81dcb70",
                         "displayName": "Test Rider",
+                        "email": null,
                         "phone": null,
                         "avatarUrl": null,
                         "role": "commuter",
@@ -16099,6 +16100,12 @@
             "minLength": 1,
             "maxLength": 200
           },
+          "email": {
+            "nullable": true,
+            "type": "string",
+            "format": "email",
+            "pattern": "^(?!\\.)(?!.*\\.\\.)([A-Za-z0-9_'+\\-\\.]*)[A-Za-z0-9_+-]@([A-Za-z0-9][A-Za-z0-9\\-]*\\.)+[A-Za-z]{2,}$"
+          },
           "phone": {
             "nullable": true,
             "type": "string",
@@ -16120,7 +16127,7 @@
             "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
           }
         },
-        "required": ["id", "displayName", "phone", "avatarUrl", "role", "createdAt"],
+        "required": ["id", "displayName", "email", "phone", "avatarUrl", "role", "createdAt"],
         "additionalProperties": false
       },
       "AccountResponse": {
