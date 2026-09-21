@@ -23,7 +23,7 @@ import { configOperations, publicConfigOperations } from '../config/service.js';
 import type { ConfigService, ConfigOperation } from '../config/service.js';
 import { pricingOperations } from '../payments/pricing.js';
 import type { Pricing, PricingOperation } from '../payments/pricing.js';
-import { accountOperations } from '../account/service.js';
+import { accountOperations, avatarOperations } from '../account/service.js';
 import type { AccountService, AccountOperation } from '../account/service.js';
 import { purchaseOperations } from '../payments/purchases.js';
 import type { Purchases, PurchaseOperation } from '../payments/purchases.js';
@@ -272,6 +272,7 @@ export async function createTransportApp(options: AppOptions) {
       const pricingEndpoint = (pricingOperations as readonly string[]).includes(name);
       const purchaseEndpoint = (purchaseOperations as readonly string[]).includes(name);
       const accountEndpoint = (accountOperations as readonly string[]).includes(name);
+      const avatarEndpoint = (avatarOperations as readonly string[]).includes(name);
       const configEndpoint = (configOperations as readonly string[]).includes(name);
       const publicConfig = (publicConfigOperations as readonly string[]).includes(name);
       if ((configEndpoint || publicConfig) && !options.config) continue;
@@ -358,7 +359,11 @@ export async function createTransportApp(options: AppOptions) {
           const workerClient = scheduled && client === 'worker';
           const platformless = client === 'ops' || workerClient;
           if (
-            (name === 'registerDevice'
+            // A photo belongs to the person, not to the app they happen to
+            // be holding, and the manifest a driver reads shows the rider's.
+            // Rename and erase stay commuter-only, which is a separate call
+            // and has a test of its own.
+            (name === 'registerDevice' || avatarEndpoint
               ? !['driver', 'commuter'].includes(String(client))
               : anyClient || authentication
                 ? !['ops', 'driver', 'commuter'].includes(String(client))
