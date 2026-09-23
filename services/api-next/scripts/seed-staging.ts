@@ -21,6 +21,7 @@
  */
 import pg from 'pg';
 import { randomUUID } from 'node:crypto';
+import { SignJWT } from 'jose';
 import { hkdfSync } from 'node:crypto';
 import { generateDriverCode, generatePin, hashDriverPin } from '../src/auth/driver-pin.js';
 
@@ -336,6 +337,279 @@ async function enroll(): Promise<void> {
 }
 
 /**
+ * Read one account's money state and say what the app would show for it.
+ *
+ * Every question so far has been "the app says zero, is that right", and
+ * answering it meant guessing from the UI. This reproduces the arithmetic in
+ * membership/service.ts exactly, so the numbers here are the numbers the app
+ * renders, and the rows underneath say how they got there. Reads only.
+ */
+async function inspect(email: string): Promise<void> {
+  const users = await q<{
+    id: string;
+    role: string;
+    display_name: string | null;
+    email: string | null;
+    created_at: Date;
+    deleted_at: Date | null;
+  }>(
+    `SELECT id, role, display_name, email, created_at, deleted_at
+       FROM app.users
+       WHERE lower(email)=lower($1)
+          OR ($1 ~ '^[0-9a-fA-F-]{36}$' AND id=$1::uuid)
+          OR ($1 ~ '^[0-9a-fA-F-]{36}$'
+              AND id IN (SELECT user_id FROM app.purchases WHERE id=$1::uuid))
+       ORDER BY created_at`,
+    [email],
+  );
+  if (!users.length) {
+    process.stdout.write(`No account on staging matches ${email}.\n`);
+    return;
+  }
+  // One address can own more than one row. Reporting only the first silently
+  // answers about an account nobody asked about, which already happened once.
+  if (users.length > 1)
+    process.stdout.write(
+      `${users.length} accounts match ${email}: ${users.map((u) => u.id).join(', ')}.\n` +
+        'Reporting the most recent.\n',
+    );
+  const user = users.at(-1)!;
+  const line = (label: string, value: unknown) =>
+    process.stdout.write(`  ${label.padEnd(22)} ${value}\n`);
+
+  process.stdout.write(`\n${user.display_name ?? '(no name)'}  <${user.email}>\n`);
+  line('user id', user.id);
+  line('role', user.role);
+  line('created', user.created_at.toISOString().slice(0, 10));
+  if (user.deleted_at) line('DELETED', user.deleted_at.toISOString());
+
+  const providers = await q<{ provider: string }>(
+    'SELECT provider FROM app.auth_identities WHERE user_id=$1',
+    [user.id],
+  );
+  line('identities', providers.map((r) => r.provider).join(', ') || 'none');
+
+  const membership = (
+    await q<{ id: string; lifecycle: string }>(
+      'SELECT id, lifecycle FROM app.memberships WHERE user_id=$1',
+      [user.id],
+    )
+  )[0];
+  line('membership', membership ? `${membership.id} (${membership.lifecycle})` : 'NONE');
+
+  const purchases = await q<{
+    id: string;
+    state: string;
+    plan: string;
+    rides_granted: number;
+    price_pesewas: number;
+    applied_credit_pesewas: number;
+  }>(
+    `SELECT id, state, plan, rides_granted, price_pesewas, applied_credit_pesewas
+     FROM app.purchases WHERE user_id=$1 ORDER BY created_at`,
+    [user.id],
+  );
+  process.stdout.write(`\nPurchases (${purchases.length}):\n`);
+  for (const p of purchases)
+    process.stdout.write(
+      `  ${p.id}  ${p.state.padEnd(16)} ${p.plan.padEnd(8)}` +
+        ` ${String(p.rides_granted).padStart(4)} rides  price ${p.price_pesewas}\n`,
+    );
+
+  const attempts = await q<{ state: string; amount_pesewas: number; paid_at: Date | null }>(
+    `SELECT state, amount_pesewas, paid_at FROM app.payment_attempts
+     WHERE user_id=$1 ORDER BY created_at`,
+    [user.id],
+  );
+  process.stdout.write(`\nPayment attempts (${attempts.length}):\n`);
+  for (const a of attempts)
+    process.stdout.write(
+      `  ${a.state.padEnd(12)} ${a.amount_pesewas}` +
+        `  paid ${a.paid_at ? a.paid_at.toISOString().slice(0, 10) : 'never'}\n`,
+    );
+
+  const periods = await q<{
+    id: string;
+    state: string;
+    starts_at: Date;
+    effective_ends_at: Date;
+  }>(
+    `SELECT id, state, starts_at, effective_ends_at FROM app.billing_periods
+     WHERE user_id=$1 ORDER BY starts_at`,
+    [user.id],
+  );
+  const now = new Date();
+  process.stdout.write(`\nBilling periods (${periods.length}), now ${now.toISOString()}:\n`);
+  for (const b of periods)
+    process.stdout.write(
+      `  ${b.state.padEnd(9)} ${b.starts_at.toISOString().slice(0, 10)}` +
+        ` -> ${b.effective_ends_at.toISOString().slice(0, 10)}` +
+        `${b.effective_ends_at > now ? '  (covers now)' : '  (ended)'}\n`,
+    );
+
+  // service.ts picks the open period, then treats it as current only while it
+  // still covers now, or while a pause holds it open. Rides are summed against
+  // that period alone, which is why an ended period reads as zero rides even
+  // though the allocation row is still there.
+  const open = periods.find((b) => b.state === 'open') ?? null;
+  const pauses = await q<{ n: string }>(
+    `SELECT count(*)::text AS n FROM app.membership_pauses
+     WHERE period_id=$1 AND ended_at IS NULL`,
+    [open?.id ?? null],
+  );
+  const paused = Number(pauses[0]?.n ?? 0) > 0;
+  const current = open && (open.effective_ends_at > now || paused) ? open : null;
+
+  const rides = await q<{ reason: string; total: string }>(
+    `SELECT reason, sum(delta_rides)::text AS total FROM app.ride_entries
+     WHERE user_id=$1 GROUP BY reason ORDER BY reason`,
+    [user.id],
+  );
+  process.stdout.write('\nRide entries by reason (all periods):\n');
+  for (const r of rides) line(r.reason, r.total);
+  if (!rides.length) process.stdout.write('  none\n');
+
+  const credits = await q<{ reason: string; total: string }>(
+    `SELECT reason, sum(delta_pesewas)::text AS total FROM app.credit_entries
+     WHERE user_id=$1 GROUP BY reason ORDER BY reason`,
+    [user.id],
+  );
+  process.stdout.write('\nCredit entries by reason:\n');
+  for (const r of credits) line(r.reason, r.total);
+  if (!credits.length)
+    process.stdout.write('  none, which is normal until a period closes with rides unspent\n');
+
+  const totals = (
+    await q<{ rides: string; credit: string; held: string }>(
+      `SELECT coalesce((SELECT sum(delta_rides) FROM app.ride_entries WHERE period_id=$2),0)::text AS rides,
+         coalesce((SELECT sum(delta_pesewas) FROM app.credit_entries WHERE user_id=$1),0)::text AS credit,
+         coalesce((SELECT sum(amount_pesewas) FROM app.credit_holds WHERE user_id=$1 AND state='held'),0)::text AS held`,
+      [user.id, current?.id ?? null],
+    )
+  )[0]!;
+
+  const assignment = current
+    ? await q<{ id: string }>(
+        `SELECT id FROM app.commute_assignments
+         WHERE period_id=$1 AND effective_from<=$2::date AND (effective_to IS NULL OR $2::date<effective_to)`,
+        [current.id, now.toISOString().slice(0, 10)],
+      )
+    : [];
+
+  process.stdout.write('\nWhat GET /v1/me/membership will report:\n');
+  line('current period', current ? current.id : 'NONE (nothing covers now)');
+  line('remainingRides', totals.rides);
+  line('credit', `${totals.credit} pesewas`);
+  line('heldCredit', `${totals.held} pesewas`);
+  line('availableCredit', `${Number(totals.credit) - Number(totals.held)} pesewas`);
+  line('assignment', assignment.length ? assignment[0]!.id : 'none');
+  line(
+    'canReserve',
+    !!current && assignment.length > 0 && Number(totals.rides) > 0
+      ? 'true'
+      : 'false (needs a current period, an assignment and rides > 0)',
+  );
+
+  // Not user-scoped, but every payment question turns on it. Paystack evidence
+  // arrives either as a webhook it pushed, or as a verify this service pulled
+  // during reconciliation. No webhook rows at all means the provider was never
+  // pointed at this deployment, and no payment will ever settle on its own.
+  const evidence = await q<{ source: string; state: string; n: string; latest: Date | null }>(
+    `SELECT source, state, count(*)::text AS n, max(received_at) AS latest
+     FROM app.payment_events GROUP BY source, state ORDER BY source, state`,
+  );
+  process.stdout.write('\nProvider evidence on this database (all accounts):\n');
+  for (const e of evidence)
+    line(`${e.source}/${e.state}`, `${e.n}, latest ${e.latest ? e.latest.toISOString() : 'never'}`);
+  if (!evidence.some((e) => e.source === 'webhook'))
+    process.stdout.write(
+      '  NO WEBHOOK HAS EVER ARRIVED. Paystack is not pointed at this deployment,\n' +
+        '  so nothing settles without payment-reconciliation.\n',
+    );
+
+  const reservations = await q<{ status: string; n: string }>(
+    `SELECT status, count(*)::text AS n FROM app.reservations
+     WHERE user_id=$1 GROUP BY status ORDER BY status`,
+    [user.id],
+  );
+  process.stdout.write('\nReservations by status:\n');
+  for (const r of reservations) line(r.status, r.n);
+  if (!reservations.length) process.stdout.write('  none\n');
+}
+
+/**
+ * Drive the money-recovery jobs over HTTP as operations.
+ *
+ * A webhook lands in app.payment_events as 'ready' and something has to read
+ * it. On Render that is a cron nobody has funded, so the inbox fills and every
+ * payment strands: the attempt stays pending, no period is created, and the
+ * purchase_unresolved guard then locks the rider out of paying again.
+ *
+ * The same endpoints an operator would call are called here with a real admin
+ * session, minted against the database and signed with the key the service
+ * verifies with, then revoked. Nothing bypasses authorization.
+ */
+async function maintenance(baseUrl: string): Promise<void> {
+  const secret = process.env.REPLACEMENT_ACCESS_SECRET;
+  if (!secret) throw new Error('REPLACEMENT_ACCESS_SECRET is required to mint an operator session');
+  const key = Buffer.from(secret, 'base64');
+  if (key.length !== 32) throw new Error('REPLACEMENT_ACCESS_SECRET must decode to 32 bytes');
+
+  const admin = await tx(async (cq, cone) => {
+    const existing = (
+      await cq(
+        "SELECT id FROM app.users WHERE role='admin' AND deleted_at IS NULL ORDER BY created_at LIMIT 1",
+      )
+    )[0] as { id: string } | undefined;
+    const id =
+      existing?.id ??
+      (await cone("INSERT INTO app.users(role,display_name) VALUES ('admin','Operations')"));
+    // Short life: this exists for the length of one maintenance run.
+    const session = await cone(
+      `INSERT INTO app.auth_sessions(user_id,expires_at)
+       VALUES ($1, clock_timestamp() + interval '10 minutes')`,
+      [id],
+    );
+    return { id, session };
+  });
+
+  const token = await new SignJWT({ sid: admin.session, role: 'admin' })
+    .setProtectedHeader({ alg: 'HS256', typ: 'JWT' })
+    .setSubject(admin.id)
+    .setIssuer(process.env.REPLACEMENT_ACCESS_ISSUER ?? 'trotxi-api')
+    .setAudience(process.env.REPLACEMENT_ACCESS_AUDIENCE ?? 'trotxi-clients')
+    .setIssuedAt()
+    .setExpirationTime('10m')
+    .sign(key);
+
+  try {
+    for (const job of ['payment-inbox', 'payment-reconciliation'] as const) {
+      const response = await fetch(`${baseUrl}/v1/ops/maintenance/${job}`, {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          'x-trotxi-client': 'ops',
+          'x-trotxi-build': '1',
+          'idempotency-key': randomUUID(),
+          authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ limit: 100 }),
+      });
+      const text = await response.text();
+      process.stdout.write(`\n${job}: ${response.status}\n  ${text.slice(0, 600)}\n`);
+      if (response.status === 401 || response.status === 403)
+        throw new Error(`The service refused the operator session on ${job}.`);
+    }
+  } finally {
+    // The session outlives the run only if this fails, and it expires anyway.
+    await q('UPDATE app.auth_sessions SET revoked_at=clock_timestamp() WHERE id=$1', [
+      admin.session,
+    ]);
+    process.stdout.write('\nOperator session revoked.\n');
+  }
+}
+
+/**
  * Fill in the runs a seeded database is missing, without touching anything else.
  *
  * `seed` refuses a database that already has routes, and rightly: it is a
@@ -405,6 +679,17 @@ async function extend(): Promise<void> {
 async function main() {
   if (process.env.SEED_EXTEND === 'yes') {
     await extend();
+    return;
+  }
+  if (process.env.SEED_MAINTENANCE === 'yes') {
+    const base = process.env.SEED_STAGING_URL;
+    if (!base) throw new Error('SEED_STAGING_URL is required');
+    await maintenance(base.replace(/\/$/, ''));
+    return;
+  }
+  const look = (process.env.SEED_INSPECT_EMAIL ?? '').trim();
+  if (look) {
+    await inspect(look);
     return;
   }
   if (process.env.SEED_ENROLL === 'yes') {
