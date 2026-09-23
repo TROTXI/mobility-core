@@ -51,7 +51,23 @@ const FARE_PESEWAS = 450;
 const MULTIPLIER_BP = 10000;
 const DRIVERS = ['Kwame Mensah', 'Ama Boateng', 'Yaw Owusu', 'Akosua Darko', 'Kofi Asante'];
 /** Three days behind, today, three ahead: history to look at and runs to drive. */
+// Reservations stay in a tight window around today: they are rider history and
+// a week of it is enough to read a manifest.
 const DAYS = [-3, -2, -1, 0, 1, 2, 3];
+/**
+ * Runs, on the other hand, go to the end of the year.
+ *
+ * A driver testing in November needs an assigned run in November, and a seed
+ * that stops three days out means reseeding every week or testing against an
+ * empty Today. Trips are cheap: one row each, a driver and a bus, and the
+ * generator would be producing these anyway once ops assigns them.
+ */
+const HORIZON = Math.round(
+  (Date.parse(`${new Date().getUTCFullYear()}-12-31T00:00:00Z`) -
+    Date.parse(`${new Date().toISOString().slice(0, 10)}T00:00:00Z`)) /
+    86400000,
+);
+const TRIP_DAYS = Array.from({ length: Math.max(HORIZON, 3) + 4 }, (_, i) => i - 3);
 
 // A hosted database refuses a plaintext connection, and pg sends one unless
 // the URL says otherwise. Anything explicit in the URL wins; no-verify is the
@@ -319,7 +335,78 @@ async function enroll(): Promise<void> {
   process.stdout.write('\nThey now have a membership, a commute and reservations to confirm.\n');
 }
 
+/**
+ * Fill in the runs a seeded database is missing, without touching anything else.
+ *
+ * `seed` refuses a database that already has routes, and rightly: it is a
+ * first install, not a merge. But a database seeded in September has runs for
+ * three days and then nothing, and wiping it to get October back would take
+ * the accounts and subscriptions people are testing with.
+ *
+ * This adds only the trips that do not exist yet, each with a driver and a bus,
+ * and leaves every existing row alone. Running it twice adds nothing.
+ */
+async function extend(): Promise<void> {
+  const drivers = (
+    await q<{ id: string }>('SELECT id FROM app.drivers WHERE archived_at IS NULL ORDER BY name')
+  ).map((r) => r.id);
+  const buses = (await q<{ id: string }>('SELECT id FROM app.vehicles ORDER BY plate')).map(
+    (r) => r.id,
+  );
+  if (!drivers.length || !buses.length) {
+    process.stdout.write('No drivers or vehicles here. Run the full seed first.\n');
+    return;
+  }
+  const schedules = await q<{
+    id: string;
+    departure_id: string;
+    pattern_version_id: string;
+    local_departure: string;
+  }>(
+    `SELECT sc.id, sc.departure_id, sc.pattern_version_id, sc.local_departure
+     FROM app.service_schedules sc
+     JOIN app.route_patterns p ON p.id = sc.pattern_id
+     ORDER BY p.route_id, p.direction`,
+  );
+  process.stdout.write(
+    `${schedules.length} schedules, filling ${day(TRIP_DAYS[0]!)} to ${day(TRIP_DAYS.at(-1)!)}\n` +
+      `${drivers.length} drivers and ${buses.length} buses to assign from.\n`,
+  );
+
+  let added = 0,
+    present = 0;
+  for (const [index, sc] of schedules.entries()) {
+    for (const offset of TRIP_DAYS) {
+      const date = day(offset);
+      const exists = await q('SELECT 1 FROM app.trips WHERE schedule_id=$1 AND service_date=$2', [
+        sc.id,
+        date,
+      ]);
+      if (exists.length) {
+        present++;
+        continue;
+      }
+      // Same rotation the full seed uses, so a driver's week is varied rather
+      // than one person owning one corridor for three months.
+      const driver = drivers[(index + offset + drivers.length * 2) % drivers.length]!;
+      const bus = buses[(index + offset + buses.length * 2) % buses.length]!;
+      await q(
+        `INSERT INTO app.trips(schedule_id,departure_id,pattern_version_id,service_date,
+           scheduled_at,assigned_driver_id,vehicle_id)
+         VALUES ($1,$2,$3,$4::date,$4::date + $5::time,$6,$7)`,
+        [sc.id, sc.departure_id, sc.pattern_version_id, date, sc.local_departure, driver, bus],
+      );
+      added++;
+    }
+  }
+  process.stdout.write(`\nAdded ${added} run(s). ${present} were already there.\n`);
+}
+
 async function main() {
+  if (process.env.SEED_EXTEND === 'yes') {
+    await extend();
+    return;
+  }
   if (process.env.SEED_ENROLL === 'yes') {
     await enroll();
     return;
@@ -351,8 +438,10 @@ async function main() {
       `  ${CORRIDORS.length} corridors, both directions, 4 stops each\n` +
       `  ${BUSES.length} buses (one deliberately unlabelled, to exercise the plate)\n` +
       `  ${DRIVERS.length} drivers with working codes and PINs\n` +
-      `  ${DAYS.length} service days: ${day(DAYS[0]!)} to ${day(DAYS.at(-1)!)}\n` +
-      `  ${CORRIDORS.length * 2 * DAYS.length} runs (morning outbound, evening return)\n\n`,
+      `  ${TRIP_DAYS.length} service days: ${day(TRIP_DAYS[0]!)} to ${day(TRIP_DAYS.at(-1)!)}\n` +
+      `  ${CORRIDORS.length * 2 * TRIP_DAYS.length} runs (morning outbound, evening return),\n` +
+      `    every one with a driver and a bus already assigned\n` +
+      `  ${DAYS.length} days of reservations, around today\n\n`,
   );
   if (!confirmed) {
     process.stdout.write('Nothing written. Set SEED_STAGING=yes to proceed.\n');
@@ -476,7 +565,7 @@ async function main() {
         [departure, pattern, version, window_, at],
       );
 
-      for (const offset of DAYS) {
+      for (const offset of TRIP_DAYS) {
         const date = day(offset);
         const driver =
           drivers[(index * 2 + (direction === 'return' ? 1 : 0) + offset + 7) % drivers.length]!;
@@ -655,7 +744,9 @@ async function riders(existing?: { id: string; name: string }[]): Promise<number
   // Mid-term rather than expiring: a reservation is only eligible while its
   // trip falls inside the period, so the window has to cover every seeded day.
   const periodStart = day(-20);
-  const periodEnd = day(10);
+  // Covers every seeded run, so a rider can reserve a December trip from the
+  // app rather than the period quietly making them ineligible in October.
+  const periodEnd = day(Math.max(HORIZON, 10) + 1);
   let count = 0;
   const skipped: string[] = [];
   const targets = existing
