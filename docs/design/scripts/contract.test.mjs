@@ -101,7 +101,9 @@ test('purchase discovery documents all history, not the trip seven-day default',
 });
 // Resolve the validator already installed by Fastify, without changing dependencies.
 const require = createRequire(import.meta.url);
-const fastifyRequire = createRequire(require.resolve('../../../services/api/node_modules/fastify'));
+const fastifyRequire = createRequire(
+  require.resolve('../../../services/api-next/node_modules/fastify'),
+);
 const compilerRequire = createRequire(fastifyRequire.resolve('@fastify/ajv-compiler'));
 const Ajv = compilerRequire('ajv');
 const addFormats = compilerRequire('ajv-formats');
