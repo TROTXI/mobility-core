@@ -661,7 +661,17 @@ test('CMD-06 explicit booking coordinator shares assignment, midnight reschedule
     );
     status(move, 200);
     assert.equal(move.json().data.serviceDate, '2026-09-15');
-    const roster = await c.request('other', 'GET', '/v1/driver/trips');
+    // Pinned to the fixture's days, not the endpoint's default window. That
+    // default is the last seven days relative to now, so a listing with no
+    // range silently stops containing a fixture dated in the past: this test
+    // began failing on 2026-09-22 with nothing changed but the date. The
+    // reschedule above moves scheduled_at into the 16th, and the filter reads
+    // scheduled_at, so both days are needed.
+    const roster = await c.request(
+      'other',
+      'GET',
+      '/v1/driver/trips?fromDate=2026-09-15&toDate=2026-09-16',
+    );
     status(roster, 200);
     const assigned = roster.json().data.find((row: { id: string }) => row.id === trip);
     const latestChange = (
@@ -1137,10 +1147,12 @@ test('CMD-21 a driver is told the plate of the bus, not just an optional label',
     const { trip } = await c.seedTrip();
     const plate = (await c.owner.query('SELECT plate FROM app.vehicles WHERE id=$1', [c.vehicle]))
       .rows[0].plate as string;
+    // Same reason as CMD-06: the fixture is dated, the default window is
+    // relative, and an unpinned listing quietly empties as the days pass.
     const find = async (who: 'driver' | 'admin' | 'rider', path: string) =>
-      JSON.parse((await c.request(who, 'GET', path)).body).data.find(
-        (t: { id: string }) => t.id === trip,
-      );
+      JSON.parse(
+        (await c.request(who, 'GET', `${path}?fromDate=2026-09-15&toDate=2026-09-15`)).body,
+      ).data.find((t: { id: string }) => t.id === trip);
 
     const mine = await find('driver', '/v1/driver/trips');
     assert.equal(mine.vehiclePlate, plate);
