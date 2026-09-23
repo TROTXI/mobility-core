@@ -338,12 +338,15 @@ async function inspect(email: string): Promise<void> {
       deleted_at: Date | null;
     }>(
       `SELECT id, role, display_name, email, created_at, deleted_at
-       FROM app.users WHERE lower(email)=lower($1) ORDER BY created_at`,
+       FROM app.users
+       WHERE lower(email)=lower($1)
+          OR ($1 ~ '^[0-9a-fA-F-]{36}$' AND id=$1::uuid)
+       ORDER BY created_at`,
       [email],
     )
   )[0];
   if (!user) {
-    process.stdout.write(`No account on staging has the address ${email}.\n`);
+    process.stdout.write(`No account on staging matches ${email}.\n`);
     return;
   }
   const line = (label: string, value: unknown) =>
