@@ -328,27 +328,35 @@ async function enroll(): Promise<void> {
  * renders, and the rows underneath say how they got there. Reads only.
  */
 async function inspect(email: string): Promise<void> {
-  const user = (
-    await q<{
-      id: string;
-      role: string;
-      display_name: string | null;
-      email: string | null;
-      created_at: Date;
-      deleted_at: Date | null;
-    }>(
-      `SELECT id, role, display_name, email, created_at, deleted_at
+  const users = await q<{
+    id: string;
+    role: string;
+    display_name: string | null;
+    email: string | null;
+    created_at: Date;
+    deleted_at: Date | null;
+  }>(
+    `SELECT id, role, display_name, email, created_at, deleted_at
        FROM app.users
        WHERE lower(email)=lower($1)
           OR ($1 ~ '^[0-9a-fA-F-]{36}$' AND id=$1::uuid)
+          OR ($1 ~ '^[0-9a-fA-F-]{36}$'
+              AND id IN (SELECT user_id FROM app.purchases WHERE id=$1::uuid))
        ORDER BY created_at`,
-      [email],
-    )
-  )[0];
-  if (!user) {
+    [email],
+  );
+  if (!users.length) {
     process.stdout.write(`No account on staging matches ${email}.\n`);
     return;
   }
+  // One address can own more than one row. Reporting only the first silently
+  // answers about an account nobody asked about, which already happened once.
+  if (users.length > 1)
+    process.stdout.write(
+      `${users.length} accounts match ${email}: ${users.map((u) => u.id).join(', ')}.\n` +
+        'Reporting the most recent.\n',
+    );
+  const user = users.at(-1)!;
   const line = (label: string, value: unknown) =>
     process.stdout.write(`  ${label.padEnd(22)} ${value}\n`);
 
@@ -387,8 +395,8 @@ async function inspect(email: string): Promise<void> {
   process.stdout.write(`\nPurchases (${purchases.length}):\n`);
   for (const p of purchases)
     process.stdout.write(
-      `  ${p.state.padEnd(12)} ${p.plan.padEnd(8)} ${String(p.rides_granted).padStart(4)} rides` +
-        `  price ${p.price_pesewas}  credit applied ${p.applied_credit_pesewas}\n`,
+      `  ${p.id}  ${p.state.padEnd(16)} ${p.plan.padEnd(8)}` +
+        ` ${String(p.rides_granted).padStart(4)} rides  price ${p.price_pesewas}\n`,
     );
 
   const attempts = await q<{ state: string; amount_pesewas: number; paid_at: Date | null }>(
