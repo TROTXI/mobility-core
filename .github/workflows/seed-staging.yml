@@ -13,14 +13,14 @@ on:
       mode:
         description: 'check reads only. seed writes the catalogue. link attaches Google accounts. reset-pins reissues driver PINs and proves them against the live service.'
         type: choice
-        options: [check, seed, link, reset-pins, enroll]
+        options: [check, seed, link, reset-pins, enroll, inspect]
         default: check
       subjects:
         description: 'Google subject ids, comma separated. First takes the operations account, the rest take riders.'
         type: string
         default: ''
       email:
-        description: 'enrol only this address. Blank enrols every commuter without a membership.'
+        description: 'inspect reads this address. enrol restricted to it; blank enrols every commuter without a membership.'
         type: string
         default: ''
 
@@ -118,6 +118,7 @@ jobs:
           SEED_RESET_PINS: ${{ inputs.mode == 'reset-pins' && 'yes' || '' }}
           SEED_ENROLL: ${{ inputs.mode == 'enroll' && 'yes' || '' }}
           SEED_ENROLL_EMAIL: ${{ inputs.email }}
+          SEED_INSPECT_EMAIL: ${{ inputs.mode == 'inspect' && inputs.email || '' }}
           SEED_STAGING_URL: ${{ vars.STAGING_URL }}
         run: node --import tsx scripts/seed-staging.ts
 

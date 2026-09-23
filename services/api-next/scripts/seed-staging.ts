@@ -319,7 +319,185 @@ async function enroll(): Promise<void> {
   process.stdout.write('\nThey now have a membership, a commute and reservations to confirm.\n');
 }
 
+/**
+ * Read one account's money state and say what the app would show for it.
+ *
+ * Every question so far has been "the app says zero, is that right", and
+ * answering it meant guessing from the UI. This reproduces the arithmetic in
+ * membership/service.ts exactly, so the numbers here are the numbers the app
+ * renders, and the rows underneath say how they got there. Reads only.
+ */
+async function inspect(email: string): Promise<void> {
+  const user = (
+    await q<{
+      id: string;
+      role: string;
+      display_name: string | null;
+      email: string | null;
+      created_at: Date;
+      deleted_at: Date | null;
+    }>(
+      `SELECT id, role, display_name, email, created_at, deleted_at
+       FROM app.users WHERE lower(email)=lower($1) ORDER BY created_at`,
+      [email],
+    )
+  )[0];
+  if (!user) {
+    process.stdout.write(`No account on staging has the address ${email}.\n`);
+    return;
+  }
+  const line = (label: string, value: unknown) =>
+    process.stdout.write(`  ${label.padEnd(22)} ${value}\n`);
+
+  process.stdout.write(`\n${user.display_name ?? '(no name)'}  <${user.email}>\n`);
+  line('user id', user.id);
+  line('role', user.role);
+  line('created', user.created_at.toISOString().slice(0, 10));
+  if (user.deleted_at) line('DELETED', user.deleted_at.toISOString());
+
+  const providers = await q<{ provider: string }>(
+    'SELECT provider FROM app.auth_identities WHERE user_id=$1',
+    [user.id],
+  );
+  line('identities', providers.map((r) => r.provider).join(', ') || 'none');
+
+  const membership = (
+    await q<{ id: string; lifecycle: string }>(
+      'SELECT id, lifecycle FROM app.memberships WHERE user_id=$1',
+      [user.id],
+    )
+  )[0];
+  line('membership', membership ? `${membership.id} (${membership.lifecycle})` : 'NONE');
+
+  const purchases = await q<{
+    id: string;
+    state: string;
+    plan: string;
+    rides_granted: number;
+    price_pesewas: number;
+    applied_credit_pesewas: number;
+  }>(
+    `SELECT id, state, plan, rides_granted, price_pesewas, applied_credit_pesewas
+     FROM app.purchases WHERE user_id=$1 ORDER BY created_at`,
+    [user.id],
+  );
+  process.stdout.write(`\nPurchases (${purchases.length}):\n`);
+  for (const p of purchases)
+    process.stdout.write(
+      `  ${p.state.padEnd(12)} ${p.plan.padEnd(8)} ${String(p.rides_granted).padStart(4)} rides` +
+        `  price ${p.price_pesewas}  credit applied ${p.applied_credit_pesewas}\n`,
+    );
+
+  const attempts = await q<{ state: string; amount_pesewas: number; paid_at: Date | null }>(
+    `SELECT state, amount_pesewas, paid_at FROM app.payment_attempts
+     WHERE user_id=$1 ORDER BY created_at`,
+    [user.id],
+  );
+  process.stdout.write(`\nPayment attempts (${attempts.length}):\n`);
+  for (const a of attempts)
+    process.stdout.write(
+      `  ${a.state.padEnd(12)} ${a.amount_pesewas}` +
+        `  paid ${a.paid_at ? a.paid_at.toISOString().slice(0, 10) : 'never'}\n`,
+    );
+
+  const periods = await q<{
+    id: string;
+    state: string;
+    starts_at: Date;
+    effective_ends_at: Date;
+  }>(
+    `SELECT id, state, starts_at, effective_ends_at FROM app.billing_periods
+     WHERE user_id=$1 ORDER BY starts_at`,
+    [user.id],
+  );
+  const now = new Date();
+  process.stdout.write(`\nBilling periods (${periods.length}), now ${now.toISOString()}:\n`);
+  for (const b of periods)
+    process.stdout.write(
+      `  ${b.state.padEnd(9)} ${b.starts_at.toISOString().slice(0, 10)}` +
+        ` -> ${b.effective_ends_at.toISOString().slice(0, 10)}` +
+        `${b.effective_ends_at > now ? '  (covers now)' : '  (ended)'}\n`,
+    );
+
+  // service.ts picks the open period, then treats it as current only while it
+  // still covers now, or while a pause holds it open. Rides are summed against
+  // that period alone, which is why an ended period reads as zero rides even
+  // though the allocation row is still there.
+  const open = periods.find((b) => b.state === 'open') ?? null;
+  const pauses = await q<{ n: string }>(
+    `SELECT count(*)::text AS n FROM app.membership_pauses
+     WHERE period_id=$1 AND ended_at IS NULL`,
+    [open?.id ?? null],
+  );
+  const paused = Number(pauses[0]?.n ?? 0) > 0;
+  const current = open && (open.effective_ends_at > now || paused) ? open : null;
+
+  const rides = await q<{ reason: string; total: string }>(
+    `SELECT reason, sum(delta_rides)::text AS total FROM app.ride_entries
+     WHERE user_id=$1 GROUP BY reason ORDER BY reason`,
+    [user.id],
+  );
+  process.stdout.write('\nRide entries by reason (all periods):\n');
+  for (const r of rides) line(r.reason, r.total);
+  if (!rides.length) process.stdout.write('  none\n');
+
+  const credits = await q<{ reason: string; total: string }>(
+    `SELECT reason, sum(delta_pesewas)::text AS total FROM app.credit_entries
+     WHERE user_id=$1 GROUP BY reason ORDER BY reason`,
+    [user.id],
+  );
+  process.stdout.write('\nCredit entries by reason:\n');
+  for (const r of credits) line(r.reason, r.total);
+  if (!credits.length)
+    process.stdout.write('  none, which is normal until a period closes with rides unspent\n');
+
+  const totals = (
+    await q<{ rides: string; credit: string; held: string }>(
+      `SELECT coalesce((SELECT sum(delta_rides) FROM app.ride_entries WHERE period_id=$2),0)::text AS rides,
+         coalesce((SELECT sum(delta_pesewas) FROM app.credit_entries WHERE user_id=$1),0)::text AS credit,
+         coalesce((SELECT sum(amount_pesewas) FROM app.credit_holds WHERE user_id=$1 AND state='held'),0)::text AS held`,
+      [user.id, current?.id ?? null],
+    )
+  )[0]!;
+
+  const assignment = current
+    ? await q<{ id: string }>(
+        `SELECT id FROM app.commute_assignments
+         WHERE period_id=$1 AND effective_from<=$2::date AND (effective_to IS NULL OR $2::date<effective_to)`,
+        [current.id, now.toISOString().slice(0, 10)],
+      )
+    : [];
+
+  process.stdout.write('\nWhat GET /v1/me/membership will report:\n');
+  line('current period', current ? current.id : 'NONE (nothing covers now)');
+  line('remainingRides', totals.rides);
+  line('credit', `${totals.credit} pesewas`);
+  line('heldCredit', `${totals.held} pesewas`);
+  line('availableCredit', `${Number(totals.credit) - Number(totals.held)} pesewas`);
+  line('assignment', assignment.length ? assignment[0]!.id : 'none');
+  line(
+    'canReserve',
+    !!current && assignment.length > 0 && Number(totals.rides) > 0
+      ? 'true'
+      : 'false (needs a current period, an assignment and rides > 0)',
+  );
+
+  const reservations = await q<{ status: string; n: string }>(
+    `SELECT status, count(*)::text AS n FROM app.reservations
+     WHERE user_id=$1 GROUP BY status ORDER BY status`,
+    [user.id],
+  );
+  process.stdout.write('\nReservations by status:\n');
+  for (const r of reservations) line(r.status, r.n);
+  if (!reservations.length) process.stdout.write('  none\n');
+}
+
 async function main() {
+  const look = (process.env.SEED_INSPECT_EMAIL ?? '').trim();
+  if (look) {
+    await inspect(look);
+    return;
+  }
   if (process.env.SEED_ENROLL === 'yes') {
     await enroll();
     return;
