@@ -482,6 +482,23 @@ async function inspect(email: string): Promise<void> {
       : 'false (needs a current period, an assignment and rides > 0)',
   );
 
+  // Not user-scoped, but every payment question turns on it. Paystack evidence
+  // arrives either as a webhook it pushed, or as a verify this service pulled
+  // during reconciliation. No webhook rows at all means the provider was never
+  // pointed at this deployment, and no payment will ever settle on its own.
+  const evidence = await q<{ source: string; n: string; latest: Date | null }>(
+    `SELECT source, count(*)::text AS n, max(created_at) AS latest
+     FROM app.payment_events GROUP BY source ORDER BY source`,
+  );
+  process.stdout.write('\nProvider evidence on this database (all accounts):\n');
+  for (const e of evidence)
+    line(e.source, `${e.n}, latest ${e.latest ? e.latest.toISOString() : 'never'}`);
+  if (!evidence.some((e) => e.source === 'webhook'))
+    process.stdout.write(
+      '  NO WEBHOOK HAS EVER ARRIVED. Paystack is not pointed at this deployment,\n' +
+        '  so nothing settles without payment-reconciliation.\n',
+    );
+
   const reservations = await q<{ status: string; n: string }>(
     `SELECT status, count(*)::text AS n FROM app.reservations
      WHERE user_id=$1 GROUP BY status ORDER BY status`,
