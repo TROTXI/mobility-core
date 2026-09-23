@@ -13,7 +13,7 @@ on:
       mode:
         description: 'check reads only. seed writes the catalogue. link attaches Google accounts. reset-pins reissues driver PINs and proves them against the live service.'
         type: choice
-        options: [check, seed, link, reset-pins, enroll, inspect, maintenance]
+        options: [check, seed, extend, link, reset-pins, enroll, inspect, maintenance]
         default: check
       subjects:
         description: 'Google subject ids, comma separated. First takes the operations account, the rest take riders.'
@@ -127,6 +127,7 @@ jobs:
           SEED_LINK_ONLY: ${{ inputs.mode == 'link' && 'yes' || '' }}
           SEED_RESET_PINS: ${{ inputs.mode == 'reset-pins' && 'yes' || '' }}
           SEED_ENROLL: ${{ inputs.mode == 'enroll' && 'yes' || '' }}
+          SEED_EXTEND: ${{ inputs.mode == 'extend' && 'yes' || '' }}
           SEED_ENROLL_EMAIL: ${{ inputs.email }}
           SEED_INSPECT_EMAIL: ${{ inputs.mode == 'inspect' && inputs.email || '' }}
           SEED_MAINTENANCE: ${{ inputs.mode == 'maintenance' && 'yes' || '' }}
