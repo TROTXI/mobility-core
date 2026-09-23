@@ -13,7 +13,7 @@ on:
       mode:
         description: 'check reads only. seed writes the catalogue. link attaches Google accounts. reset-pins reissues driver PINs and proves them against the live service.'
         type: choice
-        options: [check, seed, link, reset-pins, enroll, inspect]
+        options: [check, seed, link, reset-pins, enroll, inspect, maintenance]
         default: check
       subjects:
         description: 'Google subject ids, comma separated. First takes the operations account, the rest take riders.'
@@ -101,6 +101,16 @@ jobs:
           ')
           echo "::add-mask::$pin"
           echo "REPLACEMENT_PIN_SECRET=$pin" >> "$GITHUB_ENV"
+          # Same derivation, different purpose: maintenance mints an operator
+          # session and the service verifies it with this key.
+          access=$(JWT="$jwt" node --input-type=module -e '
+            import { hkdfSync } from "node:crypto";
+            process.stdout.write(Buffer.from(
+              hkdfSync("sha256", process.env.JWT, "trotxi:replacement:staging:v1", "ACCESS_SECRET", 32),
+            ).toString("base64"));
+          ')
+          echo "::add-mask::$access"
+          echo "REPLACEMENT_ACCESS_SECRET=$access" >> "$GITHUB_ENV"
           # reset-pins needs the raw value so it can try the derivations the
           # service might be using and let the service pick.
           echo "SEED_JWT_SECRETS<<TROTXI_EOF" >> "$GITHUB_ENV"
@@ -119,6 +129,7 @@ jobs:
           SEED_ENROLL: ${{ inputs.mode == 'enroll' && 'yes' || '' }}
           SEED_ENROLL_EMAIL: ${{ inputs.email }}
           SEED_INSPECT_EMAIL: ${{ inputs.mode == 'inspect' && inputs.email || '' }}
+          SEED_MAINTENANCE: ${{ inputs.mode == 'maintenance' && 'yes' || '' }}
           SEED_STAGING_URL: ${{ vars.STAGING_URL }}
         run: node --import tsx scripts/seed-staging.ts
 

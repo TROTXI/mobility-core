@@ -21,6 +21,7 @@
  */
 import pg from 'pg';
 import { randomUUID } from 'node:crypto';
+import { SignJWT } from 'jose';
 import { hkdfSync } from 'node:crypto';
 import { generateDriverCode, generatePin, hashDriverPin } from '../src/auth/driver-pin.js';
 
@@ -520,7 +521,85 @@ async function inspect(email: string): Promise<void> {
   if (!reservations.length) process.stdout.write('  none\n');
 }
 
+/**
+ * Drive the money-recovery jobs over HTTP as operations.
+ *
+ * A webhook lands in app.payment_events as 'ready' and something has to read
+ * it. On Render that is a cron nobody has funded, so the inbox fills and every
+ * payment strands: the attempt stays pending, no period is created, and the
+ * purchase_unresolved guard then locks the rider out of paying again.
+ *
+ * The same endpoints an operator would call are called here with a real admin
+ * session, minted against the database and signed with the key the service
+ * verifies with, then revoked. Nothing bypasses authorization.
+ */
+async function maintenance(baseUrl: string): Promise<void> {
+  const secret = process.env.REPLACEMENT_ACCESS_SECRET;
+  if (!secret) throw new Error('REPLACEMENT_ACCESS_SECRET is required to mint an operator session');
+  const key = Buffer.from(secret, 'base64');
+  if (key.length !== 32) throw new Error('REPLACEMENT_ACCESS_SECRET must decode to 32 bytes');
+
+  const admin = await tx(async (cq, cone) => {
+    const existing = (
+      await cq(
+        "SELECT id FROM app.users WHERE role='admin' AND deleted_at IS NULL ORDER BY created_at LIMIT 1",
+      )
+    )[0] as { id: string } | undefined;
+    const id =
+      existing?.id ??
+      (await cone("INSERT INTO app.users(role,display_name) VALUES ('admin','Operations')"));
+    // Short life: this exists for the length of one maintenance run.
+    const session = await cone(
+      `INSERT INTO app.auth_sessions(user_id,expires_at)
+       VALUES ($1, clock_timestamp() + interval '10 minutes')`,
+      [id],
+    );
+    return { id, session };
+  });
+
+  const token = await new SignJWT({ sid: admin.session, role: 'admin' })
+    .setProtectedHeader({ alg: 'HS256', typ: 'JWT' })
+    .setSubject(admin.id)
+    .setIssuer(process.env.REPLACEMENT_ACCESS_ISSUER ?? 'trotxi-api')
+    .setAudience(process.env.REPLACEMENT_ACCESS_AUDIENCE ?? 'trotxi-clients')
+    .setIssuedAt()
+    .setExpirationTime('10m')
+    .sign(key);
+
+  try {
+    for (const job of ['payment-inbox', 'payment-reconciliation'] as const) {
+      const response = await fetch(`${baseUrl}/v1/ops/maintenance/${job}`, {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          'x-trotxi-client': 'ops',
+          'x-trotxi-build': '1',
+          'idempotency-key': randomUUID(),
+          authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ limit: 100 }),
+      });
+      const text = await response.text();
+      process.stdout.write(`\n${job}: ${response.status}\n  ${text.slice(0, 600)}\n`);
+      if (response.status === 401 || response.status === 403)
+        throw new Error(`The service refused the operator session on ${job}.`);
+    }
+  } finally {
+    // The session outlives the run only if this fails, and it expires anyway.
+    await q('UPDATE app.auth_sessions SET revoked_at=clock_timestamp() WHERE id=$1', [
+      admin.session,
+    ]);
+    process.stdout.write('\nOperator session revoked.\n');
+  }
+}
+
 async function main() {
+  if (process.env.SEED_MAINTENANCE === 'yes') {
+    const base = process.env.SEED_STAGING_URL;
+    if (!base) throw new Error('SEED_STAGING_URL is required');
+    await maintenance(base.replace(/\/$/, ''));
+    return;
+  }
   const look = (process.env.SEED_INSPECT_EMAIL ?? '').trim();
   if (look) {
     await inspect(look);
