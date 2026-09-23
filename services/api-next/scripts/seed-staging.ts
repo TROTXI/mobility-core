@@ -486,13 +486,13 @@ async function inspect(email: string): Promise<void> {
   // arrives either as a webhook it pushed, or as a verify this service pulled
   // during reconciliation. No webhook rows at all means the provider was never
   // pointed at this deployment, and no payment will ever settle on its own.
-  const evidence = await q<{ source: string; n: string; latest: Date | null }>(
-    `SELECT source, count(*)::text AS n, max(created_at) AS latest
-     FROM app.payment_events GROUP BY source ORDER BY source`,
+  const evidence = await q<{ source: string; state: string; n: string; latest: Date | null }>(
+    `SELECT source, state, count(*)::text AS n, max(received_at) AS latest
+     FROM app.payment_events GROUP BY source, state ORDER BY source, state`,
   );
   process.stdout.write('\nProvider evidence on this database (all accounts):\n');
   for (const e of evidence)
-    line(e.source, `${e.n}, latest ${e.latest ? e.latest.toISOString() : 'never'}`);
+    line(`${e.source}/${e.state}`, `${e.n}, latest ${e.latest ? e.latest.toISOString() : 'never'}`);
   if (!evidence.some((e) => e.source === 'webhook'))
     process.stdout.write(
       '  NO WEBHOOK HAS EVER ARRIVED. Paystack is not pointed at this deployment,\n' +
