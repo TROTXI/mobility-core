@@ -1,6 +1,6 @@
 // Authoritative Zod contract, including explicitly deferred operations.
 // build-transport-contract.mjs selects the implemented subset for API/SDK/docs.
-import { z } from '../../../services/api/node_modules/zod/index.js';
+import { z } from '../../../services/api-next/node_modules/zod/index.js';
 
 export const registry = z.registry();
 export const schemas = {};

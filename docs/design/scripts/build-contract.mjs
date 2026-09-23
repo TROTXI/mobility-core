@@ -1,6 +1,6 @@
 import { readFile } from 'node:fs/promises';
 import { writeArtifact } from './artifact-io.mjs';
-import { z } from '../../../services/api/node_modules/zod/index.js';
+import { z } from '../../../services/api-next/node_modules/zod/index.js';
 import { registry, operations, schemas, exampleCases } from '../contracts/target-contract.mjs';
 import { operationScope } from '../contracts/operation-scope.mjs';
 
