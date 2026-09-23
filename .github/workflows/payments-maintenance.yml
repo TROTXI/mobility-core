@@ -1,0 +1,71 @@
+# Drains the Paystack webhook inbox and reconciles stale attempts.
+#
+# This is not a backstop. acceptWebhook stores and acknowledges only, and says
+# so: "Durable acknowledgement only. Processing happens in the bounded worker."
+# Nothing else runs that worker on staging, so until this exists a paid
+# subscription never becomes rides, and the purchase_unresolved guard then
+# stops the rider paying again. Two testers were stranded that way.
+#
+# A Render cron would be the tidier home for it, at about a dollar a month per
+# cron service. This costs nothing on a public repository, so it runs here
+# until that is funded.
+#
+# Prints counts only, never an address or an amount, which matters because
+# this repository is public and so are these logs.
+name: Payments maintenance
+
+on:
+  schedule:
+    - cron: '*/15 * * * *' # best effort; GitHub can delay a scheduled run
+  workflow_dispatch:
+
+concurrency: seed-staging # never overlap the seeding workflow's writes
+
+jobs:
+  drain:
+    name: drain the inbox
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+
+      # Same derivation the service performs at boot, and the same one
+      # seed-staging.yml uses. Keep the two in step.
+      - name: Derive the operator signing key
+        env:
+          RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+          SERVICE_ID: ${{ vars.RENDER_STAGING_SERVICE_ID }}
+        run: |
+          if [ -z "$SERVICE_ID" ]; then
+            echo '::error::RENDER_STAGING_SERVICE_ID is not set.'; exit 1
+          fi
+          api() { curl -fsS -H "Authorization: Bearer ${RENDER_API_KEY}" "https://api.render.com/v1$1"; }
+          jwt=$(api "/services/${SERVICE_ID}/env-vars?limit=100" \
+            | jq -r '.. | objects | select(.key? == "JWT_SECRET") | .value' | head -1)
+          if [ -z "$jwt" ]; then
+            echo '::error::No JWT_SECRET on the service.'; exit 1
+          fi
+          echo "::add-mask::$jwt"
+          access=$(JWT="$jwt" node --input-type=module -e '
+            import { hkdfSync } from "node:crypto";
+            process.stdout.write(Buffer.from(
+              hkdfSync("sha256", process.env.JWT, "trotxi:replacement:staging:v1", "ACCESS_SECRET", 32),
+            ).toString("base64"));
+          ')
+          echo "::add-mask::$access"
+          echo "REPLACEMENT_ACCESS_SECRET=$access" >> "$GITHUB_ENV"
+
+      - name: Run the money-recovery jobs
+        working-directory: services/api-next
+        env:
+          REPLACEMENT_DATABASE_URL: ${{ secrets.STAGING_DATABASE_URL }}
+          REPLACEMENT_ACCESS_SECRET: ${{ env.REPLACEMENT_ACCESS_SECRET }}
+          SEED_MAINTENANCE: 'yes'
+          SEED_STAGING_URL: https://trotxi-api-staging.onrender.com
+        run: node --import tsx scripts/seed-staging.ts
