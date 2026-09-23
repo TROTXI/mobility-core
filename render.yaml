@@ -187,20 +187,27 @@ services:
   # it cannot convert rides before boarding/no-show settlement.
   #
   # Render bills cron jobs while they run and applies a $1/month minimum per
-  # cron service. Uncomment only after that recurring cost is approved. Until
-  # then, POST /admin/payments/maintenance is the identical manual trigger.
+  # cron service. Uncomment only after that recurring cost is approved.
+  #
+  # Until then .github/workflows/payments-maintenance.yml runs the same job on
+  # a schedule, free because this repository is public. That workflow is the
+  # thing keeping payments settling; this block is the tidier home for it, not
+  # a replacement for work nothing else does.
   # - type: cron
   #   name: trotxi-payments-maintenance-staging
   #   runtime: docker
   #   repo: https://github.com/TROTXI/mobility-core
   #   branch: main
-  #   dockerfilePath: services/api/Dockerfile
+  #   dockerfilePath: services/api-next/Dockerfile
   #   dockerContext: .
   #   plan: starter
   #   region: frankfurt
   #   autoDeploy: false
-  #   schedule: '15 * * * *' # hourly UTC; webhooks still process immediately
-  #   dockerCommand: node dist/cron/payments-maintenance-cron.js
+  # NOT a backstop: acceptWebhook stores and acknowledges only, so nothing
+  # settles a payment until this job runs. The old claim that webhooks still
+  # processed immediately described services/api and is false here.
+  #   schedule: '15 * * * *' # hourly UTC
+  #   dockerCommand: node dist/worker.js payments
   #   envVars:
   #     - fromGroup: trotxi-cron-staging
 
@@ -218,7 +225,9 @@ services:
   # /admin/resolve-no-shows.
   #
   # TO ENABLE: uncomment, change every `plan: free` to `plan: starter`, and
-  # apply. Route learning (23:00) has nothing to learn until riders board, so it
+  # apply. The worker takes `<job> [travel-date] [outbound|return]`, so each of
+  # these still needs its date argument decided: the morning ask is for
+  # tomorrow, the evening one for today. Left as TODOs rather than guessed. Route learning (23:00) has nothing to learn until riders board, so it
   # can stay off longest.
   # Each mints an admin token and POSTs a trigger on the deployed API. Windows are
   # from docs/features/reservations.md; Ghana is UTC (GMT+0) so schedules are plain
@@ -231,13 +240,13 @@ services:
   #   runtime: docker
   #   repo: https://github.com/TROTXI/mobility-core
   #   branch: main
-  #   dockerfilePath: services/api/Dockerfile
+  #   dockerfilePath: services/api-next/Dockerfile
   #   dockerContext: .
   #   plan: free
   #   region: frankfurt
   #   autoDeploy: false
   #   schedule: '0 18 * * *' # 18:00 — ask tomorrow-morning riders
-  #   dockerCommand: node dist/cron/ask-dispatch-cron.js ask morning
+  #   dockerCommand: node dist/worker.js ask-dispatch  # TODO: travel date, outbound
   #   envVars:
   #     - fromGroup: trotxi-cron-staging
   # - type: cron
@@ -245,13 +254,13 @@ services:
   #   runtime: docker
   #   repo: https://github.com/TROTXI/mobility-core
   #   branch: main
-  #   dockerfilePath: services/api/Dockerfile
+  #   dockerfilePath: services/api-next/Dockerfile
   #   dockerContext: .
   #   plan: free
   #   region: frankfurt
   #   autoDeploy: false
   #   schedule: '0 21 * * *' # 21:00 cutoff — default-yes the still-pending (morning)
-  #   dockerCommand: node dist/cron/ask-dispatch-cron.js resolve morning
+  #   dockerCommand: node dist/worker.js reservation-defaults  # TODO: travel date, outbound
   #   envVars:
   #     - fromGroup: trotxi-cron-staging
   # - type: cron
@@ -259,13 +268,13 @@ services:
   #   runtime: docker
   #   repo: https://github.com/TROTXI/mobility-core
   #   branch: main
-  #   dockerfilePath: services/api/Dockerfile
+  #   dockerfilePath: services/api-next/Dockerfile
   #   dockerContext: .
   #   plan: free
   #   region: frankfurt
   #   autoDeploy: false
   #   schedule: '0 12 * * *' # 12:00 — ask this-evening riders
-  #   dockerCommand: node dist/cron/ask-dispatch-cron.js ask evening
+  #   dockerCommand: node dist/worker.js ask-dispatch  # TODO: travel date, return
   #   envVars:
   #     - fromGroup: trotxi-cron-staging
   # - type: cron
@@ -273,13 +282,13 @@ services:
   #   runtime: docker
   #   repo: https://github.com/TROTXI/mobility-core
   #   branch: main
-  #   dockerfilePath: services/api/Dockerfile
+  #   dockerfilePath: services/api-next/Dockerfile
   #   dockerContext: .
   #   plan: free
   #   region: frankfurt
   #   autoDeploy: false
   #   schedule: '0 14 * * *' # 14:00 cutoff — default-yes the still-pending (evening)
-  #   dockerCommand: node dist/cron/ask-dispatch-cron.js resolve evening
+  #   dockerCommand: node dist/worker.js reservation-defaults  # TODO: travel date, return
   #   envVars:
   #     - fromGroup: trotxi-cron-staging
   # # No-show sweeps (E4). These run AFTER the run has departed and debit riders
@@ -290,13 +299,13 @@ services:
   #   runtime: docker
   #   repo: https://github.com/TROTXI/mobility-core
   #   branch: main
-  #   dockerfilePath: services/api/Dockerfile
+  #   dockerfilePath: services/api-next/Dockerfile
   #   dockerContext: .
   #   plan: free
   #   region: frankfurt
   #   autoDeploy: false
   #   schedule: '0 10 * * *' # 10:00 — after the 06:30 morning run has finished
-  #   dockerCommand: node dist/cron/ask-dispatch-cron.js noshow morning
+  #   dockerCommand: node dist/worker.js no-shows  # TODO: travel date, outbound
   #   envVars:
   #     - fromGroup: trotxi-cron-staging
   # - type: cron
@@ -304,13 +313,13 @@ services:
   #   runtime: docker
   #   repo: https://github.com/TROTXI/mobility-core
   #   branch: main
-  #   dockerfilePath: services/api/Dockerfile
+  #   dockerfilePath: services/api-next/Dockerfile
   #   dockerContext: .
   #   plan: free
   #   region: frankfurt
   #   autoDeploy: false
   #   schedule: '0 20 * * *' # 20:00 — after the evening run, still the same UTC day
-  #   dockerCommand: node dist/cron/ask-dispatch-cron.js noshow evening
+  #   dockerCommand: node dist/worker.js no-shows  # TODO: travel date, return
   #   envVars:
   #     - fromGroup: trotxi-cron-staging
   #
@@ -339,13 +348,13 @@ services:
   #   runtime: docker
   #   repo: https://github.com/TROTXI/mobility-core
   #   branch: main
-  #   dockerfilePath: services/api/Dockerfile
+  #   dockerfilePath: services/api-next/Dockerfile
   #   dockerContext: .
   #   plan: free
   #   region: frankfurt
   #   autoDeploy: false
   #   schedule: '0 23 * * *' # 23:00 — after the evening sweep, before the next day
-  #   dockerCommand: node dist/cron/route-learning-cron.js
+  #   dockerCommand: node dist/worker.js route-learning
   #   envVars:
   #     - fromGroup: trotxi-cron-staging
   #
@@ -626,7 +635,7 @@ services:
   #   runtime: docker
   #   repo: https://github.com/TROTXI/mobility-core
   #   branch: main
-  #   dockerfilePath: services/api/Dockerfile
+  #   dockerfilePath: services/api-next/Dockerfile
   #   dockerContext: .
   #   plan: starter
   #   region: frankfurt
