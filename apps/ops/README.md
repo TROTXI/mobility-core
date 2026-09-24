@@ -1,40 +1,56 @@
-# Trotxi ops console
+# Trotxi Ops console
 
-The dispatcher's web app (#170): assign buses and drivers to runs, watch the
-ones in progress, settle the ones that finished. Replaces Swagger and curl for
-daily operations.
+The desktop operations workspace for dispatch, support, payments and platform
+control. It is a React + Vite static site and talks only to the reviewed `/v1`
+contract generated into `src/generated/api.ts`.
 
-**Design:** `docs/ops-console.md` in the private `TROTXI/strategy` repo —
-stack, access model, screens, data flow, and what the API still owes this
-console. Read it before scaffolding.
+## Access
 
-## What is already set up (the seam, #174)
+An operator signs in with an approved Google account and then completes a
+WebAuthn passkey check. Access tokens remain in memory; the rotating refresh
+token is scoped to the browser tab. Every `/v1/ops/*` request is still
+authorized by current database role and passkey elevation on the API.
 
-- **Workspace entry** — `pnpm-workspace.yaml` lists `apps/ops`; `pnpm install`
-  resolves `@trotxi/ops` from the repo root.
-- **CI** — the workspace-wide gates (#172) run `typecheck`, `lint`,
-  `test:coverage`, and `build` in every package that defines them. This package
-  defines none yet, so CI skips it; the moment your scaffold adds those
-  scripts, they become merge gates automatically. No workflow edit needed.
-- **`theme.ts`** — the Fluent UI v9 `BrandVariants` ramp generated from the
-  brand primary `#013215`, plus light and dark themes. Move it into your `src/`
-  tree; regenerate rather than hand-tweak.
-- **Deploy target** — a commented `runtime: static` block in `render.yaml`
-  (same precedent as the production block). It gets uncommented when your
-  first deployable build lands; `CORS_ORIGINS` on the API is set at the same
-  time.
+The first administrator registers a passkey after their database role is
+provisioned. A verified administrator may promote another rider account; that
+new administrator must create their own passkey. Lost passkeys are reset only
+by another verified administrator—there are no email codes or recovery codes.
 
-## What is deliberately yours
+## Local development
 
-Everything else: Vite config, tsconfig, ESLint setup, routing, components,
-`src/`. The design doc records the agreed stack (React + Vite + TypeScript,
-Fluent UI v9, `openapi-typescript` + `openapi-fetch`, React Router, MapLibre +
-PMTiles); the choices inside it are the build owner's.
+Use Node 24 and run from the repository root:
 
-Two repo conventions that apply here:
+```sh
+pnpm --filter @trotxi/ops dev
+```
 
-- Use the pinned pnpm via `corepack enable`, and install with
-  `pnpm install --frozen-lockfile` unless you are deliberately adding a
-  dependency — the lockfile guard in CI rejects lockfile churn that arrives
-  without a manifest change.
-- `pnpm run format:check` (Prettier, repo root) covers this directory already.
+Optional public build values:
+
+```text
+VITE_API_BASE_URL=https://trotxi-api-staging.onrender.com
+VITE_GOOGLE_CLIENT_ID=<Google Web client ID>
+VITE_OPS_BUILD=1
+```
+
+No secret belongs in a `VITE_*` variable; Vite embeds them into the browser
+bundle. Map styles and PMTiles locations come from the API's public `/flags`
+bootstrap response.
+
+## Verification
+
+```sh
+pnpm --filter @trotxi/ops typecheck
+pnpm --filter @trotxi/ops test:coverage
+pnpm --filter @trotxi/ops build
+```
+
+The main shell and screens are route-split. MapLibre/PMTiles is isolated in its
+own browser chunk and positions refresh from the single Ops overview snapshot
+every ten seconds.
+
+## Deployment
+
+`render.yaml` defines `trotxi-ops-staging` as a static site with an SPA rewrite.
+After the Blueprint creates it, set the API's existing `CORS_ORIGINS` value to
+the site's exact HTTPS origin. The backend derives the staging passkey RP/origin
+from that allowlist; no extra WebAuthn secret is needed.
