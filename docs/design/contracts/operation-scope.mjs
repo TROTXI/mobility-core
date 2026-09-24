@@ -257,6 +257,36 @@ export const operationScope = [
     'No predecessor. Assembling the tiles client-side needs one list plus a fan-out per trip, gets slower with every bus, and lets the tiles disagree with the table beneath them.',
   ],
   [
+    'getMfaStatus',
+    'post-cutover',
+    'Admins need a second factor before operating the network',
+    'No predecessor. Tells the console whether to enrol, verify or proceed, and is answerable by a session that has not yet passed the check.',
+  ],
+  [
+    'startMfaEnrolment',
+    'post-cutover',
+    'Admins need a second factor before operating the network',
+    'No predecessor. Issues an authenticator secret. An enrolled admin cannot replace it themselves; that takes a reset by an elevated admin.',
+  ],
+  [
+    'confirmMfaEnrolment',
+    'post-cutover',
+    'Admins need a second factor before operating the network',
+    'No predecessor. A code from the new authenticator enables it and returns recovery codes, shown once.',
+  ],
+  [
+    'verifyMfa',
+    'post-cutover',
+    'Admins need a second factor before operating the network',
+    'No predecessor. An authenticator code or a single-use recovery code elevates the session for eight hours. Email recovery is deliberately absent: it would route through the Google account the first factor already relies on.',
+  ],
+  [
+    'resetOperatorMfa',
+    'post-cutover',
+    'A lost phone must not lock an admin out for good',
+    'No predecessor. An elevated admin clears another admin second factor and signs them out everywhere. Naturally idempotent, so it takes no command key.',
+  ],
+  [
     'listOpsRiders',
     'post-cutover',
     'ops-console.md: the riders screen needs a searchable list',

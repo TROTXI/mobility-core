@@ -80,6 +80,7 @@ for (const name of [
   'BOARDING_PROOF_KEY',
   'DEVICE_KEY',
   'PAYSTACK_EVIDENCE_KEY',
+  'TOTP_ENCRYPTION_KEY',
 ])
   env[`REPLACEMENT_${name}`] = randomBytes(32).toString('base64');
 const config = readConfiguration(env); // fail before creating anything
@@ -123,8 +124,10 @@ const backend = await composeBackend(config);
 try {
   const session = (
     await backend.pool.query(
-      `INSERT INTO app.auth_sessions(user_id,expires_at)
-    VALUES ($1,clock_timestamp()+interval '15 minutes') RETURNING id,created_at,expires_at`,
+      // Elevated at birth, like the worker's: minted with database access.
+      `INSERT INTO app.auth_sessions(user_id,expires_at,mfa_verified_at)
+    VALUES ($1,clock_timestamp()+interval '15 minutes',clock_timestamp())
+    RETURNING id,created_at,expires_at`,
       [adminId],
     )
   ).rows[0];

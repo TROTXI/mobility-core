@@ -16,6 +16,7 @@ import { AppleIdTokenVerifier } from '../src/auth/id-token-verifier.apple.js';
 import { hashDriverPin } from '../src/auth/driver-pin.js';
 import { hashToken, providerTokenBox } from '../src/auth/credentials.js';
 import { TransportError } from '../src/transport/errors.js';
+import { base32Decode, codeAt, stepAt } from '../src/auth/totp.js';
 import { grantRuntime, migrate, readMigrations } from '../src/db/migrate.js';
 
 const value = process.env.HARNESS_ADMIN_DATABASE_URL;
@@ -128,6 +129,7 @@ async function setup(
     google,
     apple,
     providerEncryptionKey: encryptionKey,
+    totpEncryptionKey: Buffer.alloc(32, 12),
     appleTokens: {
       exchangeCode: async (code: string) => ({
         refreshToken: code === 'used' ? null : 'apple-private-refresh',
@@ -718,4 +720,241 @@ test('AUTH-17: session-revocation failures leave no receipt; unauthorized replay
     204,
   );
   data(await f.request('DELETE', path, undefined, a.accessToken, headers), 401);
+});
+
+/**
+ * The second factor, end to end: real Google sign-in, real sessions, and an
+ * ops read served by a different service, so enforcement is proven to live in
+ * the session check every service shares rather than in one handler.
+ */
+async function operator(f: Awaited<ReturnType<typeof setup>>, subject: string) {
+  const signed = await f.sign(subject);
+  await f.owner.query("UPDATE app.users SET role='admin' WHERE id=$1", [signed.account.id]);
+  return { id: signed.account.id as string, token: signed.accessToken as string };
+}
+/** As the ops console calls: its own client, and no platform header. */
+function ops(
+  f: Awaited<ReturnType<typeof setup>>,
+  method: 'GET' | 'POST',
+  path: string,
+  token: string,
+  body?: unknown,
+) {
+  return f.app.inject({
+    method,
+    url: path,
+    ...(body !== undefined ? { payload: body as object } : {}),
+    headers: { authorization: `Bearer ${token}`, 'x-trotxi-client': 'ops', 'x-trotxi-build': '2' },
+  });
+}
+const code = (secret: string, offset = 0) =>
+  codeAt(base32Decode(secret), stepAt(new Date()) + offset);
+/** Enrol an operator and return what the enrolment handed back. */
+async function enrol(f: Awaited<ReturnType<typeof setup>>, token: string) {
+  const started = await ops(f, 'POST', '/v1/auth/mfa/enrolment', token);
+  assert.equal(started.statusCode, 200, started.body);
+  const { secret } = started.json().data;
+  const confirmed = await ops(f, 'POST', '/v1/auth/mfa/enrolment/confirmation', token, {
+    code: code(secret),
+  });
+  assert.equal(confirmed.statusCode, 200, confirmed.body);
+  return {
+    secret: secret as string,
+    recoveryCodes: confirmed.json().data.recoveryCodes as string[],
+  };
+}
+
+test('MFA-01 an admin is refused everywhere until the authenticator check, then admitted', async (t) => {
+  const f = await setup(t);
+  const admin = await operator(f, 'ops-1');
+  const refused = await ops(f, 'GET', '/v1/ops/riders', admin.token);
+  assert.equal(refused.statusCode, 403, refused.body);
+  assert.equal(refused.json().error.code, 'mfa_required', 'asks for a code, not a new sign-in');
+
+  const before = (await ops(f, 'GET', '/v1/auth/mfa', admin.token)).json().data;
+  assert.deepEqual(before, {
+    enrolled: false,
+    pendingEnrolment: false,
+    verified: false,
+    recoveryCodesRemaining: 0,
+    lockedUntil: null,
+  });
+
+  const started = await ops(f, 'POST', '/v1/auth/mfa/enrolment', admin.token);
+  assert.equal(started.statusCode, 200, started.body);
+  const { otpauthUri, secret } = started.json().data;
+  assert.match(otpauthUri, /^otpauth:\/\/totp\//);
+  // Stored sealed, never as the secret the app was shown.
+  const stored = (
+    await f.owner.query('SELECT secret_ciphertext FROM app.admin_mfa WHERE user_id=$1', [admin.id])
+  ).rows[0].secret_ciphertext as string;
+  assert.equal(stored.includes(secret), false);
+
+  const wrong = await ops(f, 'POST', '/v1/auth/mfa/enrolment/confirmation', admin.token, {
+    code: code(secret) === '000000' ? '111111' : '000000',
+  });
+  assert.equal(wrong.statusCode, 400, 'a typo must not read as a dead session');
+  assert.equal(wrong.json().error.code, 'mfa_invalid_code');
+
+  const confirmed = await ops(f, 'POST', '/v1/auth/mfa/enrolment/confirmation', admin.token, {
+    code: code(secret),
+  });
+  assert.equal(confirmed.statusCode, 200, confirmed.body);
+  const codes = confirmed.json().data.recoveryCodes as string[];
+  assert.equal(codes.length, 10);
+
+  assert.equal((await ops(f, 'GET', '/v1/ops/riders', admin.token)).statusCode, 200);
+  const after = (await ops(f, 'GET', '/v1/auth/mfa', admin.token)).json().data;
+  assert.equal(after.enrolled, true);
+  assert.equal(after.verified, true);
+  assert.equal(after.recoveryCodesRemaining, 10);
+
+  const log = (
+    await f.owner.query(
+      'SELECT action FROM app.admin_mfa_events WHERE user_id=$1 ORDER BY occurred_at',
+      [admin.id],
+    )
+  ).rows.map((r) => r.action);
+  assert.deepEqual(log, ['enrolment_started', 'failed', 'enrolled']);
+  // The recovery codes themselves are stored only as hashes.
+  const hashes = (
+    await f.owner.query('SELECT code_hash FROM app.admin_mfa_recovery_codes WHERE user_id=$1', [
+      admin.id,
+    ])
+  ).rows.map((r) => r.code_hash as string);
+  for (const plain of codes)
+    assert.equal(
+      hashes.some((h) => h.includes(plain.replace('-', ''))),
+      false,
+    );
+});
+
+test('MFA-02 each session needs its own check, and a code works once', async (t) => {
+  const f = await setup(t);
+  const admin = await operator(f, 'ops-2');
+  const { secret } = await enrol(f, admin.token);
+
+  // A fresh sign-in is a fresh session, and it starts unverified.
+  const second = await f.sign('ops-2');
+  assert.equal((await ops(f, 'GET', '/v1/ops/riders', second.accessToken)).statusCode, 403);
+  // Enrolment used the current step, so the next code is the one ahead of it.
+  const next = code(secret, 1);
+  const verified = await ops(f, 'POST', '/v1/auth/mfa/verification', second.accessToken, {
+    method: 'authenticator',
+    code: next,
+  });
+  assert.equal(verified.statusCode, 204, verified.body);
+  assert.equal((await ops(f, 'GET', '/v1/ops/riders', second.accessToken)).statusCode, 200);
+
+  // The same code, seen over a shoulder and tried from another session.
+  const third = await f.sign('ops-2');
+  const replayed = await ops(f, 'POST', '/v1/auth/mfa/verification', third.accessToken, {
+    method: 'authenticator',
+    code: next,
+  });
+  assert.equal(replayed.statusCode, 400, 'a used code is dead inside its thirty seconds');
+  assert.equal((await ops(f, 'GET', '/v1/ops/riders', third.accessToken)).statusCode, 403);
+});
+
+test('MFA-03 a recovery code gets you in once', async (t) => {
+  const f = await setup(t);
+  const admin = await operator(f, 'ops-3');
+  const { recoveryCodes } = await enrol(f, admin.token);
+
+  const lostPhone = await f.sign('ops-3');
+  const used = await ops(f, 'POST', '/v1/auth/mfa/verification', lostPhone.accessToken, {
+    method: 'recovery',
+    recoveryCode: recoveryCodes[0]!.toUpperCase(),
+  });
+  assert.equal(used.statusCode, 204, used.body);
+  assert.equal((await ops(f, 'GET', '/v1/ops/riders', lostPhone.accessToken)).statusCode, 200);
+  assert.equal(
+    (await ops(f, 'GET', '/v1/auth/mfa', lostPhone.accessToken)).json().data.recoveryCodesRemaining,
+    9,
+  );
+
+  const again = await f.sign('ops-3');
+  const spent = await ops(f, 'POST', '/v1/auth/mfa/verification', again.accessToken, {
+    method: 'recovery',
+    recoveryCode: recoveryCodes[0],
+  });
+  assert.equal(spent.statusCode, 400, 'a recovery code is single use');
+});
+
+test('MFA-04 five wrong codes lock the check, and a right code waits it out', async (t) => {
+  const f = await setup(t);
+  const admin = await operator(f, 'ops-4');
+  const { secret } = await enrol(f, admin.token);
+  const session = await f.sign('ops-4');
+  const wrong = code(secret, 1) === '000000' ? '111111' : '000000';
+  for (let attempt = 1; attempt <= 4; attempt++) {
+    const r = await ops(f, 'POST', '/v1/auth/mfa/verification', session.accessToken, {
+      method: 'authenticator',
+      code: wrong,
+    });
+    assert.equal(r.statusCode, 400, `attempt ${attempt}`);
+  }
+  const locking = await ops(f, 'POST', '/v1/auth/mfa/verification', session.accessToken, {
+    method: 'authenticator',
+    code: wrong,
+  });
+  assert.equal(locking.statusCode, 423, locking.body);
+  assert.ok(Number(locking.headers['retry-after']) > 0, 'says how long to wait');
+
+  const right = await ops(f, 'POST', '/v1/auth/mfa/verification', session.accessToken, {
+    method: 'authenticator',
+    code: code(secret, 1),
+  });
+  assert.equal(right.statusCode, 423, 'the lock holds even for the right code');
+  assert.ok((await ops(f, 'GET', '/v1/auth/mfa', session.accessToken)).json().data.lockedUntil);
+});
+
+test('MFA-05 another admin resets a lost authenticator and signs its owner out', async (t) => {
+  const f = await setup(t);
+  const lost = await operator(f, 'ops-5a');
+  await enrol(f, lost.token);
+  const helper = await operator(f, 'ops-5b');
+  await enrol(f, helper.token);
+
+  // An enrolled admin cannot swap in a new phone on their own.
+  assert.equal((await ops(f, 'POST', '/v1/auth/mfa/enrolment', helper.token)).statusCode, 409);
+
+  // Resetting is itself an operations action, so it needs a verified session.
+  const unverified = await f.sign('ops-5b');
+  assert.equal(
+    (await ops(f, 'POST', `/v1/ops/users/${lost.id}/mfa/reset`, unverified.accessToken)).statusCode,
+    403,
+  );
+
+  const reset = await ops(f, 'POST', `/v1/ops/users/${lost.id}/mfa/reset`, helper.token);
+  assert.equal(reset.statusCode, 204, reset.body);
+  // Any session someone might have taken over dies with the reset.
+  assert.equal((await ops(f, 'GET', '/v1/auth/mfa', lost.token)).statusCode, 401);
+
+  const back = await f.sign('ops-5a');
+  const status = (await ops(f, 'GET', '/v1/auth/mfa', back.accessToken)).json().data;
+  assert.equal(status.enrolled, false);
+  assert.equal(
+    status.pendingEnrolment,
+    false,
+    'sent to enrol afresh, not to confirm a hidden secret',
+  );
+  assert.equal((await ops(f, 'POST', '/v1/auth/mfa/enrolment', back.accessToken)).statusCode, 200);
+
+  const log = (
+    await f.owner.query(
+      "SELECT actor_user_id FROM app.admin_mfa_events WHERE user_id=$1 AND action='reset'",
+      [lost.id],
+    )
+  ).rows;
+  assert.deepEqual(log, [{ actor_user_id: helper.id }], 'the reset names who did it');
+});
+
+test('MFA-06 riders never meet a second factor', async (t) => {
+  const f = await setup(t);
+  const rider = await f.sign('rider-mfa');
+  const refused = await f.request('GET', '/v1/auth/mfa', undefined, rider.accessToken);
+  assert.equal(refused.statusCode, 403);
+  assert.equal(refused.json().error.code, 'forbidden');
+  assert.equal((await f.request('GET', '/v1/me', undefined, rider.accessToken)).statusCode, 200);
 });

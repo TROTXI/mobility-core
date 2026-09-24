@@ -20,6 +20,7 @@ export interface KeyMaterial {
   pinSecret: Buffer;
   credentialReplay: Buffer;
   providerEncryption: Buffer;
+  totpEncryption: Buffer;
   boardingProof: Buffer;
   device: Buffer;
   paystackEvidence: Buffer;
@@ -162,6 +163,10 @@ export function readConfiguration(env: Env = process.env): RuntimeConfig {
     pinSecret: key(env, 'REPLACEMENT_PIN_SECRET'),
     credentialReplay: key(env, 'REPLACEMENT_CREDENTIAL_REPLAY_KEY'),
     providerEncryption: key(env, 'REPLACEMENT_PROVIDER_ENCRYPTION_KEY'),
+    // Seals admin authenticator secrets. Required: a deployment without it would
+    // either refuse every admin or let them skip the second factor, and neither
+    // should start.
+    totpEncryption: key(env, 'REPLACEMENT_TOTP_ENCRYPTION_KEY'),
     boardingProof: key(env, 'REPLACEMENT_BOARDING_PROOF_KEY'),
     device: key(env, 'REPLACEMENT_DEVICE_KEY'),
     paystackEvidence: key(env, 'REPLACEMENT_PAYSTACK_EVIDENCE_KEY'),

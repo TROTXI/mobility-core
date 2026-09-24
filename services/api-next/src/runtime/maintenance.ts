@@ -79,8 +79,13 @@ async function operatorSession(backend: Backend, minutes = 15) {
   if (user.role !== 'admin') throw new Error('The configured maintenance user is not an operator');
   const session = (
     await backend.pool.query(
-      `INSERT INTO app.auth_sessions(user_id,expires_at)
-      VALUES ($1, clock_timestamp() + make_interval(mins => $2)) RETURNING id,created_at,expires_at`,
+      // Elevated at birth. Admin sessions need the authenticator check, and this
+      // one is minted by a process holding database access, which is already
+      // past anything a second factor protects. Without this, every scheduled
+      // job would be refused the moment two-factor sign-in shipped.
+      `INSERT INTO app.auth_sessions(user_id,expires_at,mfa_verified_at)
+      VALUES ($1, clock_timestamp() + make_interval(mins => $2), clock_timestamp())
+      RETURNING id,created_at,expires_at`,
       [backend.maintenanceUserId, minutes],
     )
   ).rows[0];

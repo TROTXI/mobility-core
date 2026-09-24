@@ -181,6 +181,7 @@ export async function composeBackend(config: RuntimeConfig): Promise<Backend> {
         refreshTtlDays: config.refreshTtlDays,
         shiftTtlHours: config.shiftTtlHours,
         providerEncryptionKey: config.keys.providerEncryption,
+        totpEncryptionKey: config.keys.totpEncryption,
         google: new GoogleIdTokenVerifier(config.google.clientId),
         ...(config.apple ? { apple: new AppleIdTokenVerifier(config.apple.clientIds) } : {}),
         ...(appleTokens ? { appleTokens } : {}),

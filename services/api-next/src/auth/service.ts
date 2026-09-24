@@ -1,3 +1,4 @@
+import { hkdfSync, randomBytes } from 'node:crypto';
 import type { Pool, PoolClient } from 'pg';
 import { errors as joseErrors } from 'jose';
 import { ZodError } from 'zod';
@@ -9,6 +10,15 @@ import type { AccessConfig } from './credentials.js';
 import type { IdTokenVerifier, Provider, VerifiedIdentity } from './types.js';
 import type { AppleTokenClient } from './apple-token-types.js';
 import { normalizeDriverCode, verifyDriverPin } from './driver-pin.js';
+import {
+  base32Encode,
+  matchStep,
+  newRecoveryCodes,
+  newSecret,
+  otpauthUri,
+  recoveryCodeHash,
+  totpSecretBox,
+} from './totp.js';
 
 export const authOperations = [
   'signInGoogle',
@@ -19,7 +29,31 @@ export const authOperations = [
   'getAccount',
   'listSessions',
   'revokeSession',
+  'getMfaStatus',
+  'startMfaEnrolment',
+  'confirmMfaEnrolment',
+  'verifyMfa',
+  'resetOperatorMfa',
 ] as const;
+/** The only operations an admin session that has not passed the check may call. */
+export const mfaOperations = [
+  'getMfaStatus',
+  'startMfaEnrolment',
+  'confirmMfaEnrolment',
+  'verifyMfa',
+  'resetOperatorMfa',
+] as const;
+type MfaOperation = (typeof mfaOperations)[number];
+/**
+ * How long a passed check lasts. The design's session card says eight hours,
+ * one shift: after that the console asks for a code again, and the session
+ * itself stays signed in.
+ */
+export const ADMIN_ELEVATION_HOURS = 8;
+const MFA_LOCK_AFTER = 5;
+const MFA_LOCK_SECONDS = 900;
+/** Time allowed between showing a secret and confirming a code from it. */
+const MFA_ENROLMENT_SECONDS = 900;
 export const publicAuthOperations = [
   'signInGoogle',
   'signInApple',
@@ -28,9 +62,24 @@ export const publicAuthOperations = [
   'logoutSession',
 ] as const;
 export type AuthOperation = (typeof authOperations)[number];
-export class DriverLockedError extends TransportError {
-  constructor(public readonly retryAfterSeconds: number) {
-    super(423, 'driver_locked', 'Too many attempts. Please try again later.');
+/** A lockout the client can wait out. The HTTP layer turns this into Retry-After. */
+export class LockedError extends TransportError {
+  constructor(
+    code: string,
+    message: string,
+    public readonly retryAfterSeconds: number,
+  ) {
+    super(423, code, message);
+  }
+}
+export class DriverLockedError extends LockedError {
+  constructor(retryAfterSeconds: number) {
+    super('driver_locked', 'Too many attempts. Please try again later.', retryAfterSeconds);
+  }
+}
+export class MfaLockedError extends LockedError {
+  constructor(retryAfterSeconds: number) {
+    super('mfa_locked', 'Too many wrong codes. Try again in a few minutes.', retryAfterSeconds);
   }
 }
 export interface AuthOptions {
@@ -44,6 +93,11 @@ export interface AuthOptions {
   apple?: IdTokenVerifier;
   appleTokens?: AppleTokenClient;
   providerEncryptionKey?: Buffer;
+  /**
+   * Seals admin authenticator secrets and keys the recovery-code hashes. Two
+   * subkeys are derived from it, so one key never does both jobs.
+   */
+  totpEncryptionKey?: Buffer;
   // URL signing must be local; never make a network call while holding auth locks.
   avatarUrl?: (objectKey: string) => string;
 }
@@ -68,6 +122,7 @@ export class AuthService {
   readonly tokens;
   private readonly cursor;
   private readonly box;
+  private readonly mfaKeys;
   constructor(private readonly options: AuthOptions) {
     this.tokens = accessTokens(options.access);
     this.cursor = cursorCodec(options.cursorSecret);
@@ -85,6 +140,15 @@ export class AuthService {
       throw new Error('Apple code exchange requires encrypted credential storage');
     this.box = options.providerEncryptionKey
       ? providerTokenBox(options.providerEncryptionKey)
+      : undefined;
+    const mfaKey = options.totpEncryptionKey;
+    this.mfaKeys = mfaKey
+      ? {
+          secrets: totpSecretBox(
+            Buffer.from(hkdfSync('sha256', mfaKey, 'trotxi:mfa:v1', 'secret-seal', 32)),
+          ),
+          recovery: Buffer.from(hkdfSync('sha256', mfaKey, 'trotxi:mfa:v1', 'recovery-mac', 32)),
+        }
       : undefined;
   }
 
@@ -146,17 +210,36 @@ export class AuthService {
     if (!row || row.status !== 'active') throw denied();
   }
   // Used by transport INSIDE its transaction. A valid signature is not access.
-  readonly authorizeSession = async (client: PoolClient, actor: Actor): Promise<void> => {
+  /**
+   * Every authenticated request passes through here, and so does the second
+   * factor: an admin session that has not passed the authenticator check, or
+   * passed it more than a shift ago, is refused. 403 and not 401, because the
+   * session is valid and the client must ask for a code, not sign out.
+   *
+   * allowUnelevated is for the two-factor endpoints alone, which are how an
+   * admin gets from signed in to verified.
+   */
+  readonly authorizeSession = async (
+    client: PoolClient,
+    actor: Actor,
+    options: { allowUnelevated?: boolean } = {},
+  ): Promise<void> => {
     const user = await this.user(client, actor.userId);
     const session = (
       await client.query(
-        `SELECT id FROM app.auth_sessions
-      WHERE id=$1 AND user_id=$2 AND revoked_at IS NULL AND expires_at>clock_timestamp() FOR SHARE`,
+        `SELECT id,
+          (mfa_verified_at IS NOT NULL
+            AND mfa_verified_at > clock_timestamp() - make_interval(hours => ${ADMIN_ELEVATION_HOURS}))
+            AS elevated
+        FROM app.auth_sessions
+        WHERE id=$1 AND user_id=$2 AND revoked_at IS NULL AND expires_at>clock_timestamp() FOR SHARE`,
         [actor.sessionId, actor.userId],
       )
     ).rows[0];
     if (!session) throw denied();
     await this.driverAllowed(client, user);
+    if (user.role === 'admin' && !session.elevated && !options.allowUnelevated)
+      fail(403, 'mfa_required', 'Confirm it is you with your authenticator app.');
   };
 
   private async issue(
@@ -406,6 +489,246 @@ export class AuthService {
     });
   }
 
+  /**
+   * The second factor for operations accounts.
+   *
+   * Runs in its own transaction and returns, rather than throws, a wrong code
+   * or a lockout: a thrown error rolls back, and the failed-attempt count has to
+   * survive the refusal or the lockout never arrives. The same shape the driver
+   * PIN uses.
+   */
+  private async mfa(name: MfaOperation, actor: Actor, body: any, target: string | undefined) {
+    const keys = this.mfaKeys;
+    if (!keys) fail(503, 'mfa_unavailable', 'Two-factor sign-in is not configured here.');
+    const output = await this.transaction(async (client) => {
+      // One writer per account, so two codes racing cannot both be accepted.
+      const user = await this.user(client, actor.userId, true);
+      if (name === 'resetOperatorMfa') {
+        // Resetting someone else's factor is itself an operations action, so it
+        // needs a session that has already passed the check.
+        await this.authorizeSession(client, actor);
+        if (user.role !== 'admin')
+          fail(403, 'forbidden', 'This operation is not available to your account.');
+        return this.resetMfa(client, actor, target, keys);
+      }
+      await this.authorizeSession(client, actor, { allowUnelevated: true });
+      if (user.role !== 'admin')
+        fail(403, 'forbidden', 'Two-factor sign-in is for operations accounts.');
+      const now = await this.now(client);
+      const row = (
+        await client.query('SELECT * FROM app.admin_mfa WHERE user_id=$1 FOR UPDATE', [user.id])
+      ).rows[0];
+      const enrolled = !!row?.enabled_at;
+      const pending =
+        !!row &&
+        !row.enabled_at &&
+        !!row.secret_issued_at &&
+        now.getTime() - row.secret_issued_at.getTime() < MFA_ENROLMENT_SECONDS * 1000;
+      const locked = row?.locked_until && row.locked_until > now ? row.locked_until : null;
+
+      if (name === 'getMfaStatus') {
+        const session = (
+          await client.query(
+            `SELECT (mfa_verified_at IS NOT NULL
+              AND mfa_verified_at > $2::timestamptz - make_interval(hours => ${ADMIN_ELEVATION_HOURS}))
+              AS elevated FROM app.auth_sessions WHERE id=$1`,
+            [actor.sessionId, now],
+          )
+        ).rows[0];
+        const remaining = enrolled
+          ? Number(
+              (
+                await client.query(
+                  'SELECT count(*) AS n FROM app.admin_mfa_recovery_codes WHERE user_id=$1 AND used_at IS NULL',
+                  [user.id],
+                )
+              ).rows[0].n,
+            )
+          : 0;
+        return result({
+          enrolled,
+          pendingEnrolment: pending,
+          verified: session?.elevated === true,
+          recoveryCodesRemaining: remaining,
+          lockedUntil: locked ? locked.toISOString() : null,
+        });
+      }
+
+      if (name === 'startMfaEnrolment') {
+        // Replacing a working authenticator takes another admin's reset. Were it
+        // self-service, a stolen Google session could swap in its own phone.
+        if (enrolled)
+          fail(409, 'mfa_already_enrolled', 'This account already has an authenticator.');
+        const secret = newSecret();
+        await client.query(
+          `INSERT INTO app.admin_mfa(user_id,secret_ciphertext,secret_issued_at,updated_at)
+          VALUES ($1,$2,$3,$3)
+          ON CONFLICT (user_id) DO UPDATE SET secret_ciphertext=EXCLUDED.secret_ciphertext,
+            secret_issued_at=EXCLUDED.secret_issued_at, enabled_at=NULL, last_used_step=NULL,
+            failed_attempts=0, locked_until=NULL, updated_at=EXCLUDED.updated_at`,
+          [user.id, keys.secrets.seal(secret, user.id), now],
+        );
+        await this.mfaEvent(client, user.id, user.id, 'enrolment_started');
+        return result({
+          otpauthUri: otpauthUri(secret, user.email ?? user.display_name ?? user.id),
+          secret: base32Encode(secret),
+        });
+      }
+
+      if (name === 'confirmMfaEnrolment') {
+        if (!pending) fail(409, 'mfa_not_pending', 'Start setting up your authenticator again.');
+        if (locked) return new MfaLockedError(this.secondsUntil(locked, now));
+        const step = matchStep(
+          keys.secrets.open(row.secret_ciphertext, user.id),
+          String(body?.code ?? ''),
+          now,
+          row.last_used_step === null ? null : Number(row.last_used_step),
+        );
+        if (step === null) return this.mfaFailure(client, user.id, row, now);
+        await client.query(
+          `UPDATE app.admin_mfa SET enabled_at=$2,last_used_step=$3,failed_attempts=0,
+            locked_until=NULL,updated_at=$2 WHERE user_id=$1`,
+          [user.id, now, step],
+        );
+        // Only the set shown now works; any earlier codes are spent.
+        await client.query(
+          'UPDATE app.admin_mfa_recovery_codes SET used_at=$2 WHERE user_id=$1 AND used_at IS NULL',
+          [user.id, now],
+        );
+        const codes = newRecoveryCodes();
+        for (const code of codes)
+          await client.query(
+            'INSERT INTO app.admin_mfa_recovery_codes(user_id,code_hash) VALUES ($1,$2)',
+            [user.id, recoveryCodeHash(keys.recovery, code)],
+          );
+        await this.elevate(client, actor, now);
+        await this.mfaEvent(client, user.id, user.id, 'enrolled');
+        return result({ recoveryCodes: codes });
+      }
+
+      // verifyMfa
+      if (!enrolled) fail(409, 'mfa_not_enrolled', 'Set up your authenticator first.');
+      if (locked) return new MfaLockedError(this.secondsUntil(locked, now));
+      if (body?.method === 'recovery') {
+        const spent = (
+          await client.query(
+            `UPDATE app.admin_mfa_recovery_codes SET used_at=$3
+            WHERE user_id=$1 AND code_hash=$2 AND used_at IS NULL RETURNING id`,
+            [user.id, recoveryCodeHash(keys.recovery, String(body.recoveryCode ?? '')), now],
+          )
+        ).rows[0];
+        if (!spent) return this.mfaFailure(client, user.id, row, now);
+        await client.query(
+          'UPDATE app.admin_mfa SET failed_attempts=0,locked_until=NULL,updated_at=$2 WHERE user_id=$1',
+          [user.id, now],
+        );
+        await this.elevate(client, actor, now);
+        await this.mfaEvent(client, user.id, user.id, 'recovery_used');
+        return result();
+      }
+      const step = matchStep(
+        keys.secrets.open(row.secret_ciphertext, user.id),
+        String(body?.code ?? ''),
+        now,
+        row.last_used_step === null ? null : Number(row.last_used_step),
+      );
+      if (step === null) return this.mfaFailure(client, user.id, row, now);
+      await client.query(
+        `UPDATE app.admin_mfa SET last_used_step=$2,failed_attempts=0,locked_until=NULL,
+          updated_at=$3 WHERE user_id=$1`,
+        [user.id, step, now],
+      );
+      await this.elevate(client, actor, now);
+      await this.mfaEvent(client, user.id, user.id, 'verified');
+      return result();
+    });
+    if (output instanceof TransportError) throw output;
+    return output;
+  }
+
+  /**
+   * Count a wrong code and lock after five. 400, never 401: a 401 makes the
+   * app's client treat the session as dead, refresh and then sign out, and a
+   * typo in a code must not end the sign-in.
+   */
+  private async mfaFailure(client: PoolClient, userId: string, row: any, now: Date) {
+    const attempts = Number(row.failed_attempts) + 1;
+    const lock = attempts >= MFA_LOCK_AFTER;
+    await client.query(
+      `UPDATE app.admin_mfa SET failed_attempts=$2,
+        locked_until=CASE WHEN $3 THEN $4::timestamptz + make_interval(secs => ${MFA_LOCK_SECONDS})
+          ELSE locked_until END,
+        updated_at=$4 WHERE user_id=$1`,
+      [userId, attempts, lock, now],
+    );
+    await this.mfaEvent(client, userId, userId, lock ? 'locked' : 'failed');
+    return lock
+      ? new MfaLockedError(MFA_LOCK_SECONDS)
+      : new TransportError(
+          400,
+          'mfa_invalid_code',
+          'That code is not right. Check your authenticator app and try again.',
+        );
+  }
+
+  /**
+   * Clear an admin's second factor and sign them out everywhere, so a session
+   * someone took over does not outlive the reset. The stored secret becomes one
+   * nobody has seen, and the next sign-in starts enrolment from scratch.
+   */
+  private async resetMfa(
+    client: PoolClient,
+    actor: Actor,
+    target: string | undefined,
+    keys: NonNullable<AuthService['mfaKeys']>,
+  ) {
+    if (!target || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(target))
+      fail(400, 'invalid_request', 'Invalid account identifier.');
+    const subject = (
+      await client.query(
+        'SELECT id,role FROM app.users WHERE id=$1 AND deleted_at IS NULL FOR UPDATE',
+        [target],
+      )
+    ).rows[0];
+    if (!subject) fail(404, 'not_found', 'Resource not found.');
+    if (subject.role !== 'admin')
+      fail(409, 'not_an_operator', 'Only operations accounts have a second factor to reset.');
+    const now = await this.now(client);
+    await client.query(
+      `UPDATE app.admin_mfa SET secret_ciphertext=$2,secret_issued_at=NULL,enabled_at=NULL,
+        last_used_step=NULL,failed_attempts=0,locked_until=NULL,updated_at=$3 WHERE user_id=$1`,
+      [subject.id, keys.secrets.seal(randomBytes(20), subject.id), now],
+    );
+    await client.query(
+      'UPDATE app.admin_mfa_recovery_codes SET used_at=$2 WHERE user_id=$1 AND used_at IS NULL',
+      [subject.id, now],
+    );
+    await client.query(
+      'UPDATE app.auth_sessions SET revoked_at=COALESCE(revoked_at,$2) WHERE user_id=$1',
+      [subject.id, now],
+    );
+    await this.mfaEvent(client, subject.id, actor.userId, 'reset');
+    return result();
+  }
+
+  private async elevate(client: PoolClient, actor: Actor, now: Date) {
+    await client.query(
+      'UPDATE app.auth_sessions SET mfa_verified_at=$3 WHERE id=$1 AND user_id=$2',
+      [actor.sessionId, actor.userId, now],
+    );
+  }
+
+  private async mfaEvent(client: PoolClient, userId: string, actorId: string, action: string) {
+    await client.query(
+      'INSERT INTO app.admin_mfa_events(user_id,actor_user_id,action) VALUES ($1,$2,$3)',
+      [userId, actorId, action],
+    );
+  }
+
+  private secondsUntil(until: Date, now: Date) {
+    return Math.max(1, Math.ceil((until.getTime() - now.getTime()) / 1000));
+  }
+
   async handle(
     name: AuthOperation,
     actor: Actor | undefined,
@@ -423,6 +746,8 @@ export class AuthService {
       return result();
     }
     if (!actor) throw denied();
+    if ((mfaOperations as readonly string[]).includes(name))
+      return this.mfa(name as MfaOperation, actor, body, target);
     return this.transaction(async (client) => {
       // Revocation takes the exclusive user lock first; do not upgrade a shared
       // lock after session checks (two concurrent revokers would deadlock).

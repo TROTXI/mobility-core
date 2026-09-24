@@ -10,7 +10,7 @@ import type { Actor, Body, Command, Read, Dependencies } from '../transport/serv
 import { TransportError, fail, mapDatabaseError } from '../transport/errors.js';
 import { catalogReads, publicCatalogReads } from '../transport/catalog.js';
 import type { CatalogRead } from '../transport/catalog.js';
-import { authOperations, publicAuthOperations, DriverLockedError } from '../auth/service.js';
+import { authOperations, publicAuthOperations, LockedError } from '../auth/service.js';
 import type { AuthService, AuthOperation } from '../auth/service.js';
 import { driverOperations } from '../auth/driver-service.js';
 import type { DriverService, DriverOperation } from '../auth/driver-service.js';
@@ -227,8 +227,7 @@ export async function createTransportApp(options: AppOptions) {
           requestId: request.id,
         },
       });
-    if (error instanceof DriverLockedError)
-      reply.header('Retry-After', String(error.retryAfterSeconds));
+    if (error instanceof LockedError) reply.header('Retry-After', String(error.retryAfterSeconds));
     const typed = error as { validation?: unknown; statusCode?: number };
     let safe: TransportError;
     if (error instanceof TransportError) safe = error;

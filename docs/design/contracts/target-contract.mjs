@@ -89,6 +89,43 @@ named(
   }),
 );
 named('ProfileUpdate', obj({ displayName: text(100) }));
+named(
+  'MfaStatus',
+  obj({
+    // An authenticator has been confirmed and protects this account.
+    enrolled: z.boolean(),
+    // A secret has been issued and no code from it confirmed yet.
+    pendingEnrolment: z.boolean(),
+    // This session has passed the check and is inside its elevation window.
+    verified: z.boolean(),
+    recoveryCodesRemaining: count,
+    lockedUntil: instant.nullable(),
+  }),
+);
+named(
+  'MfaEnrolment',
+  obj({
+    // For the QR code. Every authenticator app reads an otpauth link.
+    otpauthUri: text(1000),
+    // The same secret for typing in by hand. Shown once, never readable again.
+    secret: text(64),
+  }),
+);
+named('MfaCode', obj({ code: z.string().regex(/^\d{6}$/) }));
+named(
+  'MfaVerification',
+  z.discriminatedUnion('method', [
+    obj({ method: z.literal('authenticator'), code: z.string().regex(/^\d{6}$/) }),
+    obj({ method: z.literal('recovery'), recoveryCode: text(20) }),
+  ]),
+);
+named(
+  'RecoveryCodes',
+  // Shown once at enrolment and stored only as hashes: this is the only time
+  // anyone sees them, so the console has to make saving them the next step.
+  obj({ recoveryCodes: z.array(text(20)).length(10) }),
+);
+
 named('Avatar', obj({ url: z.url(), expiresAt: instant }));
 named('AvatarUpload', obj({ file: z.string().meta({ format: 'binary' }) }));
 named('Session', obj({ id, createdAt: instant, expiresAt: instant, current: z.boolean() }));
@@ -1150,6 +1187,30 @@ post('/v1/auth/refresh', 'refreshSession', 'RefreshInput', 'Tokens', {
   sensitive: true,
 });
 post('/v1/auth/logout', 'logoutSession', 'RefreshInput', null, {
+  status: 204,
+  retry: 'credential',
+  sensitive: true,
+});
+// A second factor for operations accounts. These answer an admin whose session
+// has not yet passed the check; every other operation refuses one.
+get('/v1/auth/mfa', 'getMfaStatus', 'MfaStatus', { access: 'self' });
+post('/v1/auth/mfa/enrolment', 'startMfaEnrolment', null, 'MfaEnrolment', {
+  access: 'self',
+  retry: 'credential',
+  sensitive: true,
+});
+post('/v1/auth/mfa/enrolment/confirmation', 'confirmMfaEnrolment', 'MfaCode', 'RecoveryCodes', {
+  access: 'self',
+  retry: 'credential',
+  sensitive: true,
+});
+post('/v1/auth/mfa/verification', 'verifyMfa', 'MfaVerification', null, {
+  access: 'self',
+  status: 204,
+  retry: 'credential',
+  sensitive: true,
+});
+post('/v1/ops/users/{id}/mfa/reset', 'resetOperatorMfa', null, null, {
   status: 204,
   retry: 'credential',
   sensitive: true,

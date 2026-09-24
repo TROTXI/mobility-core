@@ -577,8 +577,10 @@ async function maintenance(baseUrl: string): Promise<void> {
       (await cone("INSERT INTO app.users(role,display_name) VALUES ('admin','Operations')"));
     // Short life: this exists for the length of one maintenance run.
     const session = await cone(
-      `INSERT INTO app.auth_sessions(user_id,expires_at)
-       VALUES ($1, clock_timestamp() + interval '10 minutes')`,
+      // Elevated at birth, for the same reason the worker's is: this is minted
+      // with database access, and the payments schedule stops dead otherwise.
+      `INSERT INTO app.auth_sessions(user_id,expires_at,mfa_verified_at)
+       VALUES ($1, clock_timestamp() + interval '10 minutes', clock_timestamp())`,
       [id],
     );
     return { id, session };

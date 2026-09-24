@@ -156,13 +156,13 @@ test('every current operation maps to an explicitly defined replacement', () => 
     assert.ok(spec.paths[path]?.[method.toLowerCase()], row.current);
   }
 });
-test('all 48 predecessor-free operations have a requirement, scope decision and existing-endpoint assessment', () => {
+test('all 53 predecessor-free operations have a requirement, scope decision and existing-endpoint assessment', () => {
   const predecessors = new Set(inventory.map((r) => r.target));
   const additions = operations.filter(
     (o) => !predecessors.has(`${o.method.toUpperCase()} ${o.path}`),
   );
-  assert.equal(additions.length, 48);
-  assert.equal(operationScope.length, 48);
+  assert.equal(additions.length, 53);
+  assert.equal(operationScope.length, 53);
   for (const o of additions) {
     const api = spec.paths[o.path][o.method];
     // post-cutover is work added after the replacement shipped, and is kept
@@ -438,7 +438,7 @@ test('runtime subset implements only selected cutover operations and contains no
       assert.deepEqual(withoutCapturedExamples, spec.paths[path][method]);
       assert.notEqual(operation['x-delivery-stage'], 'deferred');
     }
-  assert.equal(count, 135);
+  assert.equal(count, 140);
   assert.equal(runtime.paths['/v1/ops/routes/{id}'].get, undefined);
   assert.equal(runtime.paths['/v1/ops/stops/{id}'].get, undefined);
   assert.equal(runtime.paths['/v1/ops/drivers/{id}'].get, undefined);

@@ -11,6 +11,7 @@ const purposes = [
   'BOARDING_PROOF_KEY',
   'DEVICE_KEY',
   'PAYSTACK_EVIDENCE_KEY',
+  'TOTP_ENCRYPTION_KEY',
 ] as const;
 
 /** Existing, disposable staging only. No additional dashboard secrets.

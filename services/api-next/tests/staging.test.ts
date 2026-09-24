@@ -38,7 +38,7 @@ test('existing staging config needs no new secrets and preserves existing provid
   assert.equal(config.build.commit, env.RENDER_GIT_COMMIT);
   assert.deepEqual(config.providers, ['google']);
   assert.equal(config.maintenanceUserId, '');
-  assert.equal(new Set(Object.values(config.keys).map((k) => k.toString('hex'))).size, 8);
+  assert.equal(new Set(Object.values(config.keys).map((k) => k.toString('hex'))).size, 9);
   assert.deepEqual(readConfiguration(env).keys, config.keys);
   assert.notDeepEqual(
     readConfiguration({ ...env, JWT_SECRET: env.JWT_SECRET + 'changed' }).keys,
