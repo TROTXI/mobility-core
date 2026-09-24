@@ -17,6 +17,8 @@ import type { TripRead } from './trips.js';
 import type { GpsCommand, GpsRead, GpsLocked } from './gps.js';
 import { overviewReads, readOverview } from './overview.js';
 import type { OverviewRead } from './overview.js';
+import { riderReads, readRiders } from './riders.js';
+import type { RiderRead } from './riders.js';
 import type { FleetCommand, FleetRead, FleetLocked } from './fleet.js';
 
 export type Command =
@@ -32,7 +34,13 @@ export type Command =
   | 'completeTrip'
   | 'recordArrival';
 export type Read =
-  'listSchedules' | 'listOpsTrips' | 'listDriverTrips' | FleetRead | GpsRead | OverviewRead;
+  | 'listSchedules'
+  | 'listOpsTrips'
+  | 'listDriverTrips'
+  | FleetRead
+  | GpsRead
+  | OverviewRead
+  | RiderRead;
 type Json = null | boolean | number | string | Json[] | { [key: string]: Json };
 export type Body = Record<string, Json>;
 export interface Outcome {
@@ -75,6 +83,8 @@ export interface Dependencies {
   // Trip lock is already held. Validate/release/update affected reservations
   // using THIS client or throw; never commit or call external services here.
   coordinateReservations?: (client: PoolClient, change: ReservationChange) => Promise<void>;
+  /** When a running bus counts as gone quiet on the ops board. */
+  staleFixAfterSeconds?: number;
 }
 export function canonical(value: Json): string {
   if (Array.isArray(value)) return `[${value.map(canonical).join(',')}]`;
@@ -865,7 +875,9 @@ export class TransportService {
       // One statement, so one snapshot: the board's numbers cannot disagree
       // with each other without a second query to disagree with.
       if ((overviewReads as readonly string[]).includes(operation))
-        return readOverview(client, query);
+        return readOverview(client, query, this.deps.staleFixAfterSeconds);
+      if ((riderReads as readonly string[]).includes(operation))
+        return readRiders(client, operation as RiderRead, query, this.cursors, actor);
       const now = new Date();
       const schedules = operation === 'listSchedules';
       const limit = query.limit === undefined ? 50 : Number(query.limit);

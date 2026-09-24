@@ -34,18 +34,23 @@ const BOARD = `
     SELECT r.trip_id,
       count(*) FILTER (WHERE r.status IN ('reserved','boarded','no_show'))::int AS confirmed,
       count(*) FILTER (WHERE r.status = 'boarded')::int AS boarded,
-      count(*) FILTER (WHERE r.status = 'no_show')::int AS no_show
+      count(*) FILTER (WHERE r.status = 'no_show')::int AS no_show,
+      count(*) FILTER (WHERE r.status = 'reserved')::int AS reserved
     FROM app.reservations r
     JOIN windowed w ON w.id = r.trip_id
+    -- Every count below already sits inside these statuses. Saying so lets the
+    -- planner use reservations_trip_seats, which is partial on exactly them.
+    WHERE r.status IN ('reserved', 'boarded', 'no_show')
     GROUP BY r.trip_id
   )
   SELECT w.id, w.scheduled_at, w.status,
     ro.name AS route_name,
     w.assigned_driver_id AS driver_id, d.name AS driver_name,
-    w.vehicle_id, v.label AS vehicle_label, v.capacity,
+    w.vehicle_id, v.label AS vehicle_label, v.plate AS vehicle_plate, v.capacity,
     COALESCE(c.confirmed, 0) AS confirmed,
     COALESCE(c.boarded, 0) AS boarded,
     COALESCE(c.no_show, 0) AS no_show,
+    COALESCE(c.reserved, 0) AS reserved,
     lp.effective_captured_at AS last_fix_at,
     ST_Y(lp.location) AS latitude, ST_X(lp.location) AS longitude
   FROM windowed w
@@ -67,10 +72,12 @@ interface Row {
   driver_name: string | null;
   vehicle_id: string | null;
   vehicle_label: string | null;
+  vehicle_plate: string | null;
   capacity: number | null;
   confirmed: number;
   boarded: number;
   no_show: number;
+  reserved: number;
   last_fix_at: Date | null;
   latitude: number | null;
   longitude: number | null;
@@ -93,6 +100,7 @@ function serviceDay(now: Date): string {
 export async function readOverview(
   client: PoolClient,
   query: Record<string, string | undefined>,
+  staleAfterSeconds: number = STALE_FIX_AFTER_SECONDS,
 ): Promise<Outcome> {
   const serviceWindow = query.window;
   // Required, not defaulted. The schema is explicit that a service window is
@@ -100,11 +108,80 @@ export async function readOverview(
   // its own clock is that inference with a friendlier name.
   if (serviceWindow !== 'morning' && serviceWindow !== 'evening')
     fail(400, 'invalid_query', 'Supply window=morning or window=evening.');
-  if (Object.keys(query).some((key) => key !== 'window'))
+  if (Object.keys(query).some((key) => key !== 'window' && key !== 'date'))
     fail(400, 'invalid_query', 'Unsupported query parameters.');
+  // A past day is how the morning review works through last night's
+  // unresolved seats. The service day is still stated, never inferred.
+  if (
+    query.date !== undefined &&
+    (!/^\d{4}-\d{2}-\d{2}$/.test(query.date) ||
+      new Date(`${query.date}T00:00:00Z`).toISOString().slice(0, 10) !== query.date)
+  )
+    fail(400, 'invalid_query', 'Supply date as YYYY-MM-DD.');
 
   const now = new Date();
-  const { rows } = await client.query<Row>(BOARD, [serviceWindow, serviceDay(now)]);
+  const day = query.date ?? serviceDay(now);
+  const { rows } = await client.query<Row>(BOARD, [serviceWindow, day]);
+
+  const trips = rows.map((row) => {
+    const lastFix = row.last_fix_at ? new Date(row.last_fix_at) : null;
+    const ageSeconds = lastFix
+      ? Math.max(0, Math.floor((now.getTime() - lastFix.getTime()) / 1000))
+      : null;
+    // A trip only reports once it is running, so an absent fix is only an
+    // exception on an active trip. The schema already guarantees an active
+    // trip has a driver, which is why unassigned is a scheduled-trip state.
+    const stale =
+      row.status === 'active' && (ageSeconds === null || ageSeconds > staleAfterSeconds);
+    const unassigned =
+      row.status === 'scheduled' && (row.driver_id === null || row.vehicle_id === null);
+    return {
+      tripId: row.id,
+      scheduledAt: new Date(row.scheduled_at).toISOString(),
+      status: row.status,
+      routeName: row.route_name,
+      driverId: row.driver_id,
+      driverName: row.driver_name,
+      vehicleId: row.vehicle_id,
+      vehicleLabel: row.vehicle_label,
+      vehiclePlate: row.vehicle_plate,
+      capacity: row.capacity,
+      confirmed: Number(row.confirmed),
+      boarded: Number(row.boarded),
+      noShow: Number(row.no_show),
+      reserved: Number(row.reserved),
+      lastFixAt: lastFix ? lastFix.toISOString() : null,
+      fixAgeSeconds: ageSeconds,
+      lastPosition:
+        row.latitude === null || row.longitude === null
+          ? null
+          : { latitude: row.latitude, longitude: row.longitude },
+      badge: stale ? 'stale_gps' : unassigned ? 'unassigned' : 'on_time',
+    };
+  });
+
+  // Summed from the trips above rather than counted again in SQL, so a tile
+  // can never disagree with the table under it. Every per-trip figure is
+  // already an SQL aggregate; this adds up a handful of rows, one per bus.
+  const running = trips.filter((t) => t.status !== 'cancelled');
+  const sum = (list: typeof trips, pick: (t: (typeof trips)[number]) => number) =>
+    list.reduce((total, t) => total + pick(t), 0);
+  const tiles = {
+    trips: trips.length,
+    inProgress: trips.filter((t) => t.status === 'active').length,
+    completed: trips.filter((t) => t.status === 'completed').length,
+    cancelled: trips.length - running.length,
+    seatCapacity: sum(running, (t) => t.capacity ?? 0),
+    seatsConfirmed: sum(running, (t) => t.confirmed),
+    boarded: sum(running, (t) => t.boarded),
+    noShows: sum(running, (t) => t.noShow),
+    awaitingResolution: sum(
+      trips.filter((t) => t.status === 'completed'),
+      (t) => t.reserved,
+    ),
+    staleGps: trips.filter((t) => t.badge === 'stale_gps').length,
+    unassigned: trips.filter((t) => t.badge === 'unassigned').length,
+  };
 
   return {
     status: 200,
@@ -114,42 +191,10 @@ export async function readOverview(
       data: {
         generatedAt: now.toISOString(),
         window: serviceWindow,
-        staleFixAfterSeconds: STALE_FIX_AFTER_SECONDS,
-        trips: rows.map((row) => {
-          const lastFix = row.last_fix_at ? new Date(row.last_fix_at) : null;
-          const ageSeconds = lastFix
-            ? Math.max(0, Math.floor((now.getTime() - lastFix.getTime()) / 1000))
-            : null;
-          // A trip only reports once it is running, so an absent fix is only an
-          // exception on an active trip. The schema already guarantees an active
-          // trip has a driver, which is why unassigned is a scheduled-trip state.
-          const stale =
-            row.status === 'active' &&
-            (ageSeconds === null || ageSeconds > STALE_FIX_AFTER_SECONDS);
-          const unassigned =
-            row.status === 'scheduled' && (row.driver_id === null || row.vehicle_id === null);
-          return {
-            tripId: row.id,
-            scheduledAt: new Date(row.scheduled_at).toISOString(),
-            status: row.status,
-            routeName: row.route_name,
-            driverId: row.driver_id,
-            driverName: row.driver_name,
-            vehicleId: row.vehicle_id,
-            vehicleLabel: row.vehicle_label,
-            capacity: row.capacity,
-            confirmed: Number(row.confirmed),
-            boarded: Number(row.boarded),
-            noShow: Number(row.no_show),
-            lastFixAt: lastFix ? lastFix.toISOString() : null,
-            fixAgeSeconds: ageSeconds,
-            lastPosition:
-              row.latitude === null || row.longitude === null
-                ? null
-                : { latitude: row.latitude, longitude: row.longitude },
-            badge: stale ? 'stale_gps' : unassigned ? 'unassigned' : 'on_time',
-          };
-        }),
+        serviceDate: day,
+        staleFixAfterSeconds: staleAfterSeconds,
+        tiles,
+        trips,
       },
     },
     headers: {},

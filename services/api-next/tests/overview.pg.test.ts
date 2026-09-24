@@ -39,7 +39,7 @@ after(async () => {
 /** The service day the board reads, in the same terms the board uses. */
 const today = () => new Date().toISOString().slice(0, 10);
 
-async function setup() {
+async function setup(options: { staleFixAfterSeconds?: number } = {}) {
   const n = ++serial,
     name = `trotxi_harness_${run}_overview_${n}`,
     role = `trotxi_runtime_overview_${run}_${n}`;
@@ -92,6 +92,9 @@ async function setup() {
     coordinateReservations: async () => {
       throw new TransportError(503, 'unavailable', 'Not wired in this slice.');
     },
+    ...(options.staleFixAfterSeconds === undefined
+      ? {}
+      : { staleFixAfterSeconds: options.staleFixAfterSeconds }),
   });
   let vehicles = 0;
   open.push(
@@ -232,10 +235,10 @@ async function setup() {
     );
   };
 
-  const board = (serviceWindow = 'morning', who: keyof typeof users = 'admin') =>
+  const board = (serviceWindow = 'morning', who: keyof typeof users = 'admin', extra = '') =>
     app.inject({
       method: 'GET',
-      url: `/v1/ops/overview?window=${serviceWindow}`,
+      url: `/v1/ops/overview?window=${serviceWindow}${extra}`,
       headers: {
         authorization: `Bearer ${who}`,
         'x-trotxi-client': 'ops',
@@ -345,4 +348,67 @@ test('the window is stated by the caller, and the board is admin only', async ()
 
   const commuter = await f.board('morning', 'commuter');
   assert.equal(commuter.statusCode, 403, commuter.body);
+});
+
+test('the tiles add up to the table under them', async () => {
+  const f = await setup();
+  const line = await f.corridor('Circle - Madina');
+  await f.trip(line, { status: 'active' });
+  await f.trip(line, { driver: false, vehicle: false });
+
+  const body = (await f.board()).json().data;
+  assert.equal(body.trips.length, 2);
+  assert.deepEqual(body.tiles, {
+    trips: 2,
+    inProgress: 1,
+    completed: 0,
+    cancelled: 0,
+    // The unassigned run has no bus yet, so it adds no seats.
+    seatCapacity: 18,
+    seatsConfirmed: 0,
+    boarded: 0,
+    noShows: 0,
+    awaitingResolution: 0,
+    // Running with no fix at all is the stale case, not the healthy one.
+    staleGps: 1,
+    unassigned: 1,
+  });
+  const running = body.trips.find((t: { status: string }) => t.status === 'active');
+  assert.match(running.vehiclePlate, /^GT-/, 'the plate identifies the bus, the label may not');
+  assert.equal(running.reserved, 0);
+});
+
+test('a past day can be reviewed, and the day shown is always stated', async () => {
+  const f = await setup();
+  const line = await f.corridor('Circle - Madina');
+  await f.trip(line, { serviceDate: '2025-01-02' });
+
+  const today = (await f.board()).json().data;
+  assert.equal(today.trips.length, 0);
+  assert.equal(today.serviceDate, new Date().toISOString().slice(0, 10));
+
+  const past = (await f.board('morning', 'admin', '&date=2025-01-02')).json().data;
+  assert.equal(past.trips.length, 1);
+  assert.equal(past.serviceDate, '2025-01-02');
+
+  for (const bad of ['2025-02-30', '2025-1-2', 'yesterday']) {
+    const response = await f.board('morning', 'admin', `&date=${bad}`);
+    assert.equal(response.statusCode, 400, `${bad}: ${response.body}`);
+  }
+});
+
+test('how quiet a bus can go before it is flagged is configured, not hard-coded', async () => {
+  const tight = await setup({ staleFixAfterSeconds: 60 });
+  const line = await tight.corridor('Circle - Madina');
+  const trip = await tight.trip(line, { status: 'active' });
+  await tight.fix(trip, 120);
+  const flagged = (await tight.board()).json().data;
+  assert.equal(flagged.staleFixAfterSeconds, 60);
+  assert.equal(flagged.trips[0].badge, 'stale_gps', 'two minutes is past a one-minute threshold');
+
+  const relaxed = await setup();
+  const again = await relaxed.corridor('Circle - Madina');
+  const same = await relaxed.trip(again, { status: 'active' });
+  await relaxed.fix(same, 120);
+  assert.equal((await relaxed.board()).json().data.trips[0].badge, 'on_time');
 });

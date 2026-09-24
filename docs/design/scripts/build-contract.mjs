@@ -157,14 +157,29 @@ for (const o of operations) {
   // timestamp, and a server guessing it from the clock is exactly that
   // inference wearing a convenience argument.
   if (o.operationId === 'getOpsOverview')
-    parameters.push({
-      ...query(
-        'window',
-        { type: 'string', enum: ['morning', 'evening'] },
-        'Which service window the board shows. Stated by the caller, never inferred.',
+    parameters.push(
+      {
+        ...query(
+          'window',
+          { type: 'string', enum: ['morning', 'evening'] },
+          'Which service window the board shows. Stated by the caller, never inferred.',
+        ),
+        required: true,
+      },
+      query(
+        'date',
+        { type: 'string', format: 'date' },
+        'Service day to show. Defaults to today in Accra; set it to review a past day.',
       ),
-      required: true,
-    });
+    );
+  if (o.operationId === 'listOpsRiders')
+    parameters.push(
+      query(
+        'q',
+        { type: 'string', minLength: 1, maxLength: 100 },
+        'Name, phone or email, partial.',
+      ),
+    );
   if (o.list && /trips|reservations|billing-periods|purchases|entries/.test(o.path))
     parameters.push(
       query(

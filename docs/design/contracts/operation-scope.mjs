@@ -257,6 +257,18 @@ export const operationScope = [
     'No predecessor. Assembling the tiles client-side needs one list plus a fan-out per trip, gets slower with every bus, and lets the tiles disagree with the table beneath them.',
   ],
   [
+    'listOpsRiders',
+    'post-cutover',
+    'ops-console.md: the riders screen needs a searchable list',
+    'No predecessor. Search by name, phone or email over commuters, paginated because the count will outgrow a single page.',
+  ],
+  [
+    'getOpsRiderSummary',
+    'post-cutover',
+    'ops-console.md: the riders screen opens on its aggregates',
+    'No predecessor. Kept apart from the list so paging through riders does not recompute the whole summary each page.',
+  ],
+  [
     'getDriverSelf',
     'post-cutover',
     'A driver session outlives the sign-in response that carries the driver record',
