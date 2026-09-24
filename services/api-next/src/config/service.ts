@@ -73,6 +73,23 @@ const userToken = (r: Row) => `"user:${r.id}:${r.version}"`;
  * Which builds are still admitted, what clients are told at start-up, and who
  * changed a role.
  */
+/**
+ * Whether one person falls inside a flag's rollout.
+ *
+ * Deterministic, so the answer is the same on every launch: a feature must not
+ * appear and vanish between sessions. The key is hashed with the person, so
+ * each flag draws its own sample and the same people are not first into every
+ * rollout. Ten thousand buckets, because the column holds two decimals and a
+ * 12.5% rollout should mean 1,250 of them, not a rounded 12 or 13.
+ */
+export function inRollout(userId: string, key: string, percentage: number): boolean {
+  if (!(percentage > 0)) return false;
+  if (percentage >= 100) return true;
+  const bucket =
+    createHash('sha256').update(`${key}\u0000${userId}`).digest().readUInt32BE(0) % 10000;
+  return bucket < Math.round(percentage * 100);
+}
+
 export class ConfigService {
   private readonly floors = new Map<string, { build: number; until: number }>();
   private readonly cursors;
@@ -150,12 +167,15 @@ export class ConfigService {
   /**
    * Everything a client needs before it has signed in.
    *
-   * Flags are published as definitions rather than as decisions: the reviewed
-   * schema carries the rollout percentage to the client, so the client decides
-   * its own bucket. No reviewed operation is gated by a flag on this side, so
-   * nothing here evaluates one.
+   * Flags are decided here, per caller. They used to go out as definitions for
+   * the client to bucket, and no client ever did, so a flag at 25% was on for
+   * everyone or no one while the ops screen said 25%. `enabled` now answers
+   * "is this on for you", and `rolloutPercentage` stays as information.
+   *
+   * Someone not yet signed in has nothing stable to bucket by, so they get a
+   * flag only when it is fully rolled out. Partial rollouts apply from sign-in.
    */
-  async bootstrap(): Promise<Outcome> {
+  async bootstrap(userId: string | null = null): Promise<Outcome> {
     const { versions, flags } = await this.tx(async (c) => ({
       versions: (await c.query('SELECT * FROM app.minimum_versions ORDER BY app,platform')).rows,
       flags: (await c.query('SELECT * FROM app.feature_flags ORDER BY key')).rows,
@@ -187,11 +207,16 @@ export class ConfigService {
           hours: null,
         },
         mapTiles: { ...this.options.mapTiles },
-        flags: flags.map((f) => ({
-          key: f.key,
-          enabled: f.enabled,
-          rolloutPercentage: Number(f.rollout_percentage),
-        })),
+        flags: flags.map((f) => {
+          const rolloutPercentage = Number(f.rollout_percentage);
+          return {
+            key: f.key,
+            enabled:
+              f.enabled &&
+              (userId ? inRollout(userId, f.key, rolloutPercentage) : rolloutPercentage >= 100),
+            rolloutPercentage,
+          };
+        }),
       } as unknown as Body,
       headers: {},
     } as Outcome;
