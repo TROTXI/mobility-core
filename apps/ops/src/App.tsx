@@ -28,6 +28,16 @@ const Payments = lazy(() =>
 const Platform = lazy(() =>
   import('./screens/Platform').then((module) => ({ default: module.Platform })),
 );
+const Reports = lazy(() =>
+  import('./screens/Reports').then((module) => ({ default: module.Reports })),
+);
+const People = lazy(() =>
+  import('./screens/People').then((module) => ({ default: module.People })),
+);
+const Audit = lazy(() => import('./screens/Audit').then((module) => ({ default: module.Audit })));
+const Profile = lazy(() =>
+  import('./screens/Profile').then((module) => ({ default: module.Profile })),
+);
 
 export function App() {
   return (
@@ -67,7 +77,11 @@ function Entry() {
               <Route path="riders" element={<Riders />} />
               <Route path="support" element={<Support />} />
               <Route path="payments" element={<Payments />} />
+              <Route path="reports" element={<Reports />} />
+              <Route path="people" element={<People />} />
+              <Route path="audit" element={<Audit />} />
               <Route path="platform" element={<Platform />} />
+              <Route path="profile" element={<Profile />} />
             </Route>
           </Routes>
         </Suspense>

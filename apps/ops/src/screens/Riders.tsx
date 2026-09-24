@@ -11,6 +11,7 @@ import {
   Panel,
   StatusBadge,
   money,
+  when,
 } from '../components/Page';
 import { useQuery } from '../hooks/useQuery';
 import { opsHeaders } from '../api/session';
@@ -116,31 +117,22 @@ export function Riders() {
         )}
       </Panel>
       {selected && (
-        <div className="selection-bar">
-          <div>
-            <strong>{selected.displayName}</strong>
-            <div className="muted">{selected.email ?? selected.id}</div>
-          </div>
-          <Button
-            onClick={() => {
-              setMode('restrict');
-              setReviewAt(new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 16));
-            }}
-          >
-            Restrict account
-          </Button>
-          <Button
-            onClick={() => {
-              setRole(selected.role);
-              setMode('role');
-            }}
-          >
-            Change role
-          </Button>
-          <Button appearance="subtle" onClick={() => setSelected(null)}>
-            Close
-          </Button>
-        </div>
+        <RiderDetail
+          rider={selected}
+          onClose={() => setSelected(null)}
+          onRestrict={() => {
+            setMode('restrict');
+            setReviewAt(new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 16));
+          }}
+          onRole={() => {
+            setRole(selected.role);
+            setMode('role');
+          }}
+          onChanged={() => {
+            query.retry();
+            setSelected(null);
+          }}
+        />
       )}
       <ActionDialog
         open={mode !== null}
@@ -212,6 +204,173 @@ export function Riders() {
         </label>
       </ActionDialog>
     </Page>
+  );
+}
+
+function RiderDetail({
+  rider,
+  onClose,
+  onRestrict,
+  onRole,
+  onChanged,
+}: {
+  rider: Rider;
+  onClose: () => void;
+  onRestrict: () => void;
+  onRole: () => void;
+  onChanged: () => void;
+}) {
+  const { session } = useAuth();
+  const [release, setRelease] = useState<components['schemas']['Restriction'] | null>(null);
+  const [reason, setReason] = useState('');
+  const query = useQuery<components['schemas']['OpsRiderDetail']>(
+    async (signal) => {
+      const response = await session.client.GET('/v1/ops/riders/{id}', {
+        params: { path: { id: rider.id }, header: opsHeaders },
+        signal,
+      });
+      if (response.error) throw new Error(response.error.error.message);
+      return response.data.data;
+    },
+    [session, rider.id],
+  );
+  const detail = query.data;
+  return (
+    <>
+      <aside className="detail-drawer">
+        <div className="detail-drawer-heading">
+          <div>
+            <div className="eyebrow">Rider account</div>
+            <h2>{rider.displayName}</h2>
+          </div>
+          <Button appearance="subtle" onClick={onClose}>
+            Close
+          </Button>
+        </div>
+        {query.error && <ErrorState message={query.error} retry={query.retry} />}
+        {query.loading ? (
+          <LoadingRows rows={5} />
+        ) : (
+          detail && (
+            <>
+              <dl className="detail-grid">
+                <div>
+                  <dt>Membership</dt>
+                  <dd>
+                    <StatusBadge value={detail.rider.status} />
+                  </dd>
+                </div>
+                <div>
+                  <dt>Coverage ends</dt>
+                  <dd>{detail.membership?.endsAt ? when(detail.membership.endsAt) : '—'}</dd>
+                </div>
+                <div>
+                  <dt>Rides left</dt>
+                  <dd>{detail.rider.ridesLeft ?? '—'}</dd>
+                </div>
+                <div>
+                  <dt>Credit</dt>
+                  <dd>{money(detail.rider.availableCredit)}</dd>
+                </div>
+              </dl>
+              <h3>Access restrictions</h3>
+              <div className="stack-list">
+                {detail.restrictions.length ? (
+                  detail.restrictions.map((row) => (
+                    <div className="stack-row" key={row.id}>
+                      <span>
+                        <strong>{row.reason}</strong>
+                        <small>
+                          Review {when(row.reviewAt)} · {row.active ? 'active' : 'released'}
+                        </small>
+                      </span>
+                      {row.active && (
+                        <Button appearance="subtle" onClick={() => setRelease(row)}>
+                          Release
+                        </Button>
+                      )}
+                    </div>
+                  ))
+                ) : (
+                  <p className="muted">No restrictions.</p>
+                )}
+              </div>
+              <h3>Recent purchases</h3>
+              <div className="stack-list">
+                {detail.purchases.slice(0, 5).map((row) => (
+                  <div className="stack-row" key={row.id}>
+                    <span>
+                      <strong>
+                        {row.plan} · {money(row.cashDue)}
+                      </strong>
+                      <small>{when(row.createdAt)}</small>
+                    </span>
+                    <StatusBadge value={row.state} />
+                  </div>
+                ))}
+              </div>
+              <h3>Recent reservations</h3>
+              <div className="stack-list">
+                {detail.reservations.slice(0, 5).map((row) => (
+                  <div className="stack-row" key={row.id}>
+                    <span>
+                      <strong>{row.routeName ?? row.direction}</strong>
+                      <small>{row.serviceDate}</small>
+                    </span>
+                    <StatusBadge value={row.status} />
+                  </div>
+                ))}
+              </div>
+              <div className="drawer-actions">
+                <Button onClick={onRestrict}>Restrict account</Button>
+                <Button onClick={onRole}>Change role</Button>
+              </div>
+            </>
+          )
+        )}
+      </aside>
+      <ActionDialog
+        open={Boolean(release)}
+        title="Release account restriction"
+        description="The release is attributed to your administrator account and leaves the restriction history intact."
+        confirmLabel="Release restriction"
+        onClose={() => {
+          setRelease(null);
+          setReason('');
+        }}
+        onConfirm={async () => {
+          if (!release) return;
+          const response = await session.client.POST(
+            '/v1/ops/users/{id}/restrictions/{restrictionId}/release',
+            {
+              params: {
+                path: { id: rider.id, restrictionId: release.id },
+                header: {
+                  ...opsHeaders,
+                  'Idempotency-Key': crypto.randomUUID(),
+                  'If-Match': release.editToken,
+                },
+              },
+              body: { reason },
+            },
+          );
+          if (response.error) throw new Error(response.error.error.message);
+          setRelease(null);
+          setReason('');
+          onChanged();
+        }}
+      >
+        <label>
+          Reason
+          <textarea
+            rows={4}
+            required
+            value={reason}
+            onChange={(event) => setReason(event.target.value)}
+          />
+        </label>
+      </ActionDialog>
+    </>
   );
 }
 function Stat({ label, value }: { label: string; value?: string | number }) {

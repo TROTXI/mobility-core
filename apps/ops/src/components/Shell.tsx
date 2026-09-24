@@ -22,7 +22,11 @@ const items = [
   ['/riders', 'Riders', PeopleRegular],
   ['/support', 'Support', PersonSupportRegular],
   ['/payments', 'Payments', MoneyRegular],
+  ['/reports', 'Reports', DataTrendingRegular],
+  ['/people', 'People & messages', PeopleRegular],
+  ['/audit', 'Audit log', PersonSupportRegular],
   ['/platform', 'Platform', SettingsRegular],
+  ['/profile', 'Profile', PeopleRegular],
 ] as const;
 
 const titles = Object.fromEntries(items.map(([path, label]) => [path, label]));
@@ -64,11 +68,13 @@ export function Shell() {
           <div className="connection-dot" aria-label="Connected" />
           <div className="topbar-title">{titles[pathname] ?? 'Trotxi Operations'}</div>
           <AlertBadgeRegular aria-label="Notifications" />
-          <Avatar
-            name={account?.displayName}
-            image={account?.avatarUrl ? { src: account.avatarUrl } : undefined}
-          />
-          <span>{account?.displayName}</span>
+          <NavLink className="profile-link" to="/profile" aria-label="Open profile">
+            <Avatar
+              name={account?.displayName}
+              image={account?.avatarUrl ? { src: account.avatarUrl } : undefined}
+            />
+            <span>{account?.displayName}</span>
+          </NavLink>
           <Tooltip content="Sign out" relationship="label">
             <Button
               appearance="subtle"

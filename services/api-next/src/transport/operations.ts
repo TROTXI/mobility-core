@@ -160,7 +160,7 @@ export async function readOperations(
     const rows = (
       await client.query(
         `SELECT u.id,u.display_name,u.email,u.version,u.created_at,
-        count(pk.id) FILTER (WHERE pk.revoked_at IS NULL)::int AS passkey_count,
+        count(DISTINCT pk.id) FILTER (WHERE pk.revoked_at IS NULL)::int AS passkey_count,
         count(DISTINCT s.id) FILTER (WHERE s.revoked_at IS NULL AND s.expires_at>$1)::int AS active_sessions,
         max(pk.last_used_at) AS last_passkey_used_at,
         to_char(u.created_at AT TIME ZONE 'UTC','YYYY-MM-DD"T"HH24:MI:SS.US"Z"') AS cursor_time

@@ -158,6 +158,7 @@ select {
 .nav-list {
   display: grid;
   gap: 5px;
+  overflow-y: auto;
 }
 .nav-link {
   display: flex;
@@ -213,6 +214,14 @@ select {
   font-size: 20px;
   font-weight: 750;
   letter-spacing: -0.3px;
+}
+.profile-link {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  color: inherit;
+  text-decoration: none;
+  font-weight: 650;
 }
 .connection-dot {
   width: 8px;
@@ -617,6 +626,50 @@ select {
 }
 .muted {
   color: #746d79;
+}
+.metric-bars {
+  display: grid;
+  gap: 20px;
+  padding: 20px;
+}
+.metric-row > div:first-child {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 8px;
+}
+.metric-track {
+  height: 10px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #ece8ef;
+}
+.metric-track span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #756687, #a394b3);
+}
+.profile-card {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding: 22px;
+}
+.profile-card h2,
+.profile-card p {
+  margin: 0 0 7px;
+}
+.profile-avatar {
+  display: grid;
+  width: 68px;
+  height: 68px;
+  place-items: center;
+  border-radius: 22px;
+  color: #fff;
+  background: #51465d;
+  font-size: 28px;
+  font-weight: 800;
 }
 .mono {
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
