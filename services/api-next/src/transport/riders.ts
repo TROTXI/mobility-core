@@ -45,7 +45,7 @@ const RIDER_STATE = `
     GROUP BY user_id
   ),
   base AS (
-    SELECT u.id, u.display_name, u.phone, u.email, u.role, u.created_at,
+    SELECT u.id, u.display_name, u.phone, u.email, u.role, u.version, u.created_at,
       (m.id IS NOT NULL) AS has_membership,
       op.purchase_id,
       COALESCE(op.paused, false) AS paused,
@@ -63,7 +63,7 @@ const RIDER_STATE = `
     WHERE u.role = 'commuter' AND u.deleted_at IS NULL
   ),
   rider_state AS (
-    SELECT b.id, b.display_name, b.phone, b.email, b.role, b.created_at,
+    SELECT b.id, b.display_name, b.phone, b.email, b.role, b.version, b.created_at,
       CASE
         WHEN b.period_id IS NULL THEN CASE WHEN b.has_membership THEN 'lapsed' ELSE 'none' END
         WHEN b.paused THEN 'paused'
@@ -83,7 +83,7 @@ const RIDER_STATE = `
   )`;
 
 const LIST = `${RIDER_STATE}
-  SELECT id, display_name, phone, email, role, status, plan, route_name, rides_left,
+  SELECT id, display_name, phone, email, role, version, status, plan, route_name, rides_left,
     available_credit, created_at,
     to_char(created_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"') AS cursor_time
   FROM rider_state
@@ -173,6 +173,7 @@ export async function readRiders(
         ridesLeft: r.rides_left === null ? null : Number(r.rides_left),
         availableCredit: money(Number(r.available_credit)),
         joinedAt: new Date(r.created_at).toISOString(),
+        editToken: `"user:${r.id}:${r.version}"`,
       })),
       page: {
         nextCursor:

@@ -911,6 +911,7 @@ named(
     rolloutPercentage: z.number().min(0).max(100),
     description: note,
     version,
+    editToken: text(128),
   }),
 );
 named(
@@ -926,6 +927,7 @@ named(
     apiMajor: z.literal(1),
     storeUrl: z.url(),
     version,
+    editToken: text(128),
   }),
 );
 named(
@@ -1091,6 +1093,9 @@ named(
     ridesLeft: count.nullable(),
     availableCredit: money,
     joinedAt: instant,
+    // Role changes require If-Match; the list is the screen's only source of
+    // the per-user token, so do not make the client reconstruct it.
+    editToken: text(128),
   }),
 );
 named(
