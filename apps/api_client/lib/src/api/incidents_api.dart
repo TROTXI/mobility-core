@@ -4,17 +4,14 @@
 
 import 'dart:async';
 
-import 'package:built_value/json_object.dart';
 import 'package:built_value/serializer.dart';
 import 'package:dio/dio.dart';
 
-import 'package:trotxi_api_client/src/model/me_get401_response.dart';
 import 'package:trotxi_api_client/src/model/me_incidents_get200_response.dart';
 import 'package:trotxi_api_client/src/model/me_incidents_get200_response_incidents_inner.dart';
 import 'package:trotxi_api_client/src/model/me_incidents_post_request.dart';
 
 class IncidentsApi {
-
   final Dio _dio;
 
   final Serializers _serializers;
@@ -22,7 +19,7 @@ class IncidentsApi {
   const IncidentsApi(this._dio, this._serializers);
 
   /// My incident reports and what operations did with them (driver)
-  /// 
+  ///
   ///
   /// Parameters:
   /// * [cancelToken] - A [CancelToken] that can be used to cancel the operation
@@ -34,7 +31,7 @@ class IncidentsApi {
   ///
   /// Returns a [Future] containing a [Response] with a [MeIncidentsGet200Response] as data
   /// Throws [DioException] if API call or serialization fails
-  Future<Response<MeIncidentsGet200Response>> meIncidentsGet({ 
+  Future<Response<MeIncidentsGet200Response>> meIncidentsGet({
     CancelToken? cancelToken,
     Map<String, dynamic>? headers,
     Map<String, dynamic>? extra,
@@ -73,11 +70,12 @@ class IncidentsApi {
 
     try {
       final rawResponse = _response.data;
-      _responseData = rawResponse == null ? null : _serializers.deserialize(
-        rawResponse,
-        specifiedType: const FullType(MeIncidentsGet200Response),
-      ) as MeIncidentsGet200Response;
-
+      _responseData = rawResponse == null
+          ? null
+          : _serializers.deserialize(
+              rawResponse,
+              specifiedType: const FullType(MeIncidentsGet200Response),
+            ) as MeIncidentsGet200Response;
     } catch (error, stackTrace) {
       throw DioException(
         requestOptions: _response.requestOptions,
@@ -104,7 +102,7 @@ class IncidentsApi {
   /// The server attaches the vehicle from the named trip rather than trusting the app to send it. A report with no trip is accepted — a fault found in the yard is exactly the one worth filing.
   ///
   /// Parameters:
-  /// * [meIncidentsPostRequest] 
+  /// * [meIncidentsPostRequest]
   /// * [cancelToken] - A [CancelToken] that can be used to cancel the operation
   /// * [headers] - Can be used to add additional headers to the request
   /// * [extras] - Can be used to add flags to the request
@@ -114,7 +112,7 @@ class IncidentsApi {
   ///
   /// Returns a [Future] containing a [Response] with a [MeIncidentsGet200ResponseIncidentsInner] as data
   /// Throws [DioException] if API call or serialization fails
-  Future<Response<MeIncidentsGet200ResponseIncidentsInner>> meIncidentsPost({ 
+  Future<Response<MeIncidentsGet200ResponseIncidentsInner>> meIncidentsPost({
     required MeIncidentsPostRequest meIncidentsPostRequest,
     CancelToken? cancelToken,
     Map<String, dynamic>? headers,
@@ -147,11 +145,11 @@ class IncidentsApi {
 
     try {
       const _type = FullType(MeIncidentsPostRequest);
-      _bodyData = _serializers.serialize(meIncidentsPostRequest, specifiedType: _type);
-
-    } catch(error, stackTrace) {
+      _bodyData =
+          _serializers.serialize(meIncidentsPostRequest, specifiedType: _type);
+    } catch (error, stackTrace) {
       throw DioException(
-         requestOptions: _options.compose(
+        requestOptions: _options.compose(
           _dio.options,
           _path,
         ),
@@ -174,11 +172,13 @@ class IncidentsApi {
 
     try {
       final rawResponse = _response.data;
-      _responseData = rawResponse == null ? null : _serializers.deserialize(
-        rawResponse,
-        specifiedType: const FullType(MeIncidentsGet200ResponseIncidentsInner),
-      ) as MeIncidentsGet200ResponseIncidentsInner;
-
+      _responseData = rawResponse == null
+          ? null
+          : _serializers.deserialize(
+              rawResponse,
+              specifiedType:
+                  const FullType(MeIncidentsGet200ResponseIncidentsInner),
+            ) as MeIncidentsGet200ResponseIncidentsInner;
     } catch (error, stackTrace) {
       throw DioException(
         requestOptions: _response.requestOptions,
@@ -200,5 +200,4 @@ class IncidentsApi {
       extra: _response.extra,
     );
   }
-
 }

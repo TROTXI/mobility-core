@@ -1,5 +1,9 @@
 import 'package:flutter/foundation.dart';
-import 'package:trotxi_client/trotxi_client.dart';
+// The generated client exports wire models named ManifestRider and
+// BoardingResult; this controller means the ones in trips_repository.dart and
+// scan_result.dart.
+import 'package:trotxi_client/trotxi_client.dart'
+    hide ManifestRider, BoardingResult;
 import 'package:trotxi_driver/core/state/loadable.dart';
 import 'package:trotxi_driver/Presentations/Boarding/models/scan_result.dart';
 import 'package:trotxi_driver/data/trips_repository.dart';

@@ -1,5 +1,7 @@
 import 'package:flutter/foundation.dart';
-import 'package:trotxi_client/trotxi_client.dart';
+// The generated client exports a wire model named ManifestRider; this
+// controller means the one in trips_repository.dart.
+import 'package:trotxi_client/trotxi_client.dart' hide ManifestRider;
 import 'package:trotxi_driver/core/config/corridor_time.dart';
 import 'package:trotxi_driver/core/state/loadable.dart';
 import 'package:trotxi_driver/data/trips_repository.dart';

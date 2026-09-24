@@ -39,6 +39,7 @@ void main() {
     client = TrotxiClientFactory.create(
       baseUrl: 'https://api.trotxi.com',
       tokenStore: FakeTokenStore(),
+      metadata: const TrotxiClientMetadata(client: 'commuter', build: 1),
     );
   });
 

@@ -29,8 +29,16 @@ class SplashView extends StatelessWidget {
             brightness,
           );
 
+          // Deliberately unkeyed. Keying this on the device class made the
+          // key change *during layout* (it is derived from the LayoutBuilder's
+          // own constraints), which tears the subtree below down and inflates
+          // a fresh one mid-layout — and the SafeArea in there depends on
+          // MediaQuery, so the deactivated element still held an inherited
+          // dependency. Android resizing the window on background was enough
+          // to trip it. Nothing here needs the teardown: `config` is passed
+          // down as plain values, and the two images that actually have to
+          // swap carry their own keys.
           return Stack(
-            key: ValueKey('splash-layout-${layout.deviceClass.name}'),
             fit: StackFit.expand,
             children: [
               ExcludeSemantics(

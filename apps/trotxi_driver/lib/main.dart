@@ -5,6 +5,7 @@ import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:trotxi_driver/core/Tokens/token_storage.dart';
+import 'package:trotxi_driver/core/config/client_metadata.dart';
 import 'package:trotxi_driver/core/config/theme/app_theme.dart';
 import 'package:trotxi_driver/core/config/theme/app_theme_controller.dart';
 import 'package:provider/provider.dart';
@@ -47,6 +48,7 @@ Future<void> main() async {
       final client = TrotxiClientFactory.create(
         baseUrl: _apiBaseUrl,
         tokenStore: TokenStorage.instance,
+        metadata: driverMetadata,
       );
       client.dio.interceptors.add(PerformanceInterceptor());
       runApp(TrotxiDriverApp(client: client));

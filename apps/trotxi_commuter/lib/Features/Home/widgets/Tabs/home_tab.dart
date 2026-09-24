@@ -30,7 +30,7 @@ class HomeTab extends ConsumerStatefulWidget {
 
   final TrotxiApiClient client;
 
-  final MeGet200Response userData;
+  final Account userData;
 
   final VoidCallback? onShowBoardingPass;
 
@@ -39,8 +39,6 @@ class HomeTab extends ConsumerStatefulWidget {
 }
 
 class _HomeTabState extends ConsumerState<HomeTab> {
-  // TODO: replace with real stats data once that endpoint exists on
-  // TrotxiApiClient — these are placeholders matching the design.
   final List<QuickAction> _quickActions = const [
     QuickAction(icon: Icons.event_seat_rounded, label: 'Track ride'),
     QuickAction(icon: Icons.history_rounded, label: 'Schedule'),
@@ -49,6 +47,7 @@ class _HomeTabState extends ConsumerState<HomeTab> {
   ];
   // TODO: replace with the actual current vehicle location, once that's
   // exposed by the lifecycle/live-tracking data instead of hardcoded.
+
   final _busLocation = "Adenta";
 
   String get _firstName {

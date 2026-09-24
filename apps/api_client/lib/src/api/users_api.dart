@@ -4,14 +4,10 @@
 
 import 'dart:async';
 
-import 'package:built_value/json_object.dart';
 import 'package:built_value/serializer.dart';
 import 'package:dio/dio.dart';
 
-import 'package:trotxi_api_client/src/model/me_get401_response.dart';
-
 class UsersApi {
-
   final Dio _dio;
 
   final Serializers _serializers;
@@ -31,7 +27,7 @@ class UsersApi {
   ///
   /// Returns a [Future] containing a [Response] with a [String] as data
   /// Throws [DioException] if API call or serialization fails
-  Future<Response<String>> meDelete({ 
+  Future<Response<String>> meDelete({
     CancelToken? cancelToken,
     Map<String, dynamic>? headers,
     Map<String, dynamic>? extra,
@@ -71,7 +67,6 @@ class UsersApi {
     try {
       final rawResponse = _response.data;
       _responseData = rawResponse == null ? null : rawResponse as String;
-
     } catch (error, stackTrace) {
       throw DioException(
         requestOptions: _response.requestOptions,
@@ -93,5 +88,4 @@ class UsersApi {
       extra: _response.extra,
     );
   }
-
 }

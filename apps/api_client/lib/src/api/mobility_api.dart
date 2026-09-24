@@ -4,13 +4,11 @@
 
 import 'dart:async';
 
-import 'package:built_value/json_object.dart';
 import 'package:built_value/serializer.dart';
 import 'package:dio/dio.dart';
 
 import 'package:built_collection/built_collection.dart';
 import 'package:trotxi_api_client/src/api_util.dart';
-import 'package:trotxi_api_client/src/model/me_get401_response.dart';
 import 'package:trotxi_api_client/src/model/routes_get200_response_inner.dart';
 import 'package:trotxi_api_client/src/model/routes_id_geometry_get200_response.dart';
 import 'package:trotxi_api_client/src/model/routes_id_get200_response.dart';
@@ -24,7 +22,6 @@ import 'package:trotxi_api_client/src/model/trips_id_position_post_request.dart'
 import 'package:trotxi_api_client/src/model/trips_id_summary_get200_response.dart';
 
 class MobilityApi {
-
   final Dio _dio;
 
   final Serializers _serializers;
@@ -35,9 +32,9 @@ class MobilityApi {
   /// Scoped to the caller rather than taking a driver id, so one driver cannot enumerate another’s schedule. Takes either one &#x60;date&#x60; or an inclusive &#x60;from&#x60;/&#x60;to&#x60; range, so a month calendar is one request rather than thirty-one. Both filter on the UTC calendar day.
   ///
   /// Parameters:
-  /// * [date] 
-  /// * [from] 
-  /// * [to] 
+  /// * [date]
+  /// * [from]
+  /// * [to]
   /// * [cancelToken] - A [CancelToken] that can be used to cancel the operation
   /// * [headers] - Can be used to add additional headers to the request
   /// * [extras] - Can be used to add flags to the request
@@ -47,7 +44,7 @@ class MobilityApi {
   ///
   /// Returns a [Future] containing a [Response] with a [TripsGet200Response] as data
   /// Throws [DioException] if API call or serialization fails
-  Future<Response<TripsGet200Response>> meTripsGet({ 
+  Future<Response<TripsGet200Response>> meTripsGet({
     String? date,
     String? from,
     String? to,
@@ -78,9 +75,14 @@ class MobilityApi {
     );
 
     final _queryParameters = <String, dynamic>{
-      if (date != null) r'date': encodeQueryParameter(_serializers, date, const FullType(String)),
-      if (from != null) r'from': encodeQueryParameter(_serializers, from, const FullType(String)),
-      if (to != null) r'to': encodeQueryParameter(_serializers, to, const FullType(String)),
+      if (date != null)
+        r'date':
+            encodeQueryParameter(_serializers, date, const FullType(String)),
+      if (from != null)
+        r'from':
+            encodeQueryParameter(_serializers, from, const FullType(String)),
+      if (to != null)
+        r'to': encodeQueryParameter(_serializers, to, const FullType(String)),
     };
 
     final _response = await _dio.request<Object>(
@@ -96,11 +98,12 @@ class MobilityApi {
 
     try {
       final rawResponse = _response.data;
-      _responseData = rawResponse == null ? null : _serializers.deserialize(
-        rawResponse,
-        specifiedType: const FullType(TripsGet200Response),
-      ) as TripsGet200Response;
-
+      _responseData = rawResponse == null
+          ? null
+          : _serializers.deserialize(
+              rawResponse,
+              specifiedType: const FullType(TripsGet200Response),
+            ) as TripsGet200Response;
     } catch (error, stackTrace) {
       throw DioException(
         requestOptions: _response.requestOptions,
@@ -124,7 +127,7 @@ class MobilityApi {
   }
 
   /// List all routes
-  /// 
+  ///
   ///
   /// Parameters:
   /// * [cancelToken] - A [CancelToken] that can be used to cancel the operation
@@ -136,7 +139,7 @@ class MobilityApi {
   ///
   /// Returns a [Future] containing a [Response] with a [BuiltList<RoutesGet200ResponseInner>] as data
   /// Throws [DioException] if API call or serialization fails
-  Future<Response<BuiltList<RoutesGet200ResponseInner>>> routesGet({ 
+  Future<Response<BuiltList<RoutesGet200ResponseInner>>> routesGet({
     CancelToken? cancelToken,
     Map<String, dynamic>? headers,
     Map<String, dynamic>? extra,
@@ -169,11 +172,13 @@ class MobilityApi {
 
     try {
       final rawResponse = _response.data;
-      _responseData = rawResponse == null ? null : _serializers.deserialize(
-        rawResponse,
-        specifiedType: const FullType(BuiltList, [FullType(RoutesGet200ResponseInner)]),
-      ) as BuiltList<RoutesGet200ResponseInner>;
-
+      _responseData = rawResponse == null
+          ? null
+          : _serializers.deserialize(
+              rawResponse,
+              specifiedType: const FullType(
+                  BuiltList, [FullType(RoutesGet200ResponseInner)]),
+            ) as BuiltList<RoutesGet200ResponseInner>;
     } catch (error, stackTrace) {
       throw DioException(
         requestOptions: _response.requestOptions,
@@ -200,7 +205,7 @@ class MobilityApi {
   /// Returns the road-following path learned from completed runs (#179) when we have one, and a straight line through the stops when we do not. &#x60;source&#x60; tells you which you got, so a client can render the fallback differently rather than pretending it follows the road.
   ///
   /// Parameters:
-  /// * [id] 
+  /// * [id]
   /// * [cancelToken] - A [CancelToken] that can be used to cancel the operation
   /// * [headers] - Can be used to add additional headers to the request
   /// * [extras] - Can be used to add flags to the request
@@ -210,7 +215,7 @@ class MobilityApi {
   ///
   /// Returns a [Future] containing a [Response] with a [RoutesIdGeometryGet200Response] as data
   /// Throws [DioException] if API call or serialization fails
-  Future<Response<RoutesIdGeometryGet200Response>> routesIdGeometryGet({ 
+  Future<Response<RoutesIdGeometryGet200Response>> routesIdGeometryGet({
     required String id,
     CancelToken? cancelToken,
     Map<String, dynamic>? headers,
@@ -219,7 +224,10 @@ class MobilityApi {
     ProgressCallback? onSendProgress,
     ProgressCallback? onReceiveProgress,
   }) async {
-    final _path = r'/routes/{id}/geometry'.replaceAll('{' r'id' '}', encodeQueryParameter(_serializers, id, const FullType(String)).toString());
+    final _path = r'/routes/{id}/geometry'.replaceAll(
+        '{' r'id' '}',
+        encodeQueryParameter(_serializers, id, const FullType(String))
+            .toString());
     final _options = Options(
       method: r'GET',
       headers: <String, dynamic>{
@@ -244,11 +252,12 @@ class MobilityApi {
 
     try {
       final rawResponse = _response.data;
-      _responseData = rawResponse == null ? null : _serializers.deserialize(
-        rawResponse,
-        specifiedType: const FullType(RoutesIdGeometryGet200Response),
-      ) as RoutesIdGeometryGet200Response;
-
+      _responseData = rawResponse == null
+          ? null
+          : _serializers.deserialize(
+              rawResponse,
+              specifiedType: const FullType(RoutesIdGeometryGet200Response),
+            ) as RoutesIdGeometryGet200Response;
     } catch (error, stackTrace) {
       throw DioException(
         requestOptions: _response.requestOptions,
@@ -272,10 +281,10 @@ class MobilityApi {
   }
 
   /// Get a route with its stops in order
-  /// 
+  ///
   ///
   /// Parameters:
-  /// * [id] 
+  /// * [id]
   /// * [cancelToken] - A [CancelToken] that can be used to cancel the operation
   /// * [headers] - Can be used to add additional headers to the request
   /// * [extras] - Can be used to add flags to the request
@@ -285,7 +294,7 @@ class MobilityApi {
   ///
   /// Returns a [Future] containing a [Response] with a [RoutesIdGet200Response] as data
   /// Throws [DioException] if API call or serialization fails
-  Future<Response<RoutesIdGet200Response>> routesIdGet({ 
+  Future<Response<RoutesIdGet200Response>> routesIdGet({
     required String id,
     CancelToken? cancelToken,
     Map<String, dynamic>? headers,
@@ -294,7 +303,10 @@ class MobilityApi {
     ProgressCallback? onSendProgress,
     ProgressCallback? onReceiveProgress,
   }) async {
-    final _path = r'/routes/{id}'.replaceAll('{' r'id' '}', encodeQueryParameter(_serializers, id, const FullType(String)).toString());
+    final _path = r'/routes/{id}'.replaceAll(
+        '{' r'id' '}',
+        encodeQueryParameter(_serializers, id, const FullType(String))
+            .toString());
     final _options = Options(
       method: r'GET',
       headers: <String, dynamic>{
@@ -319,11 +331,12 @@ class MobilityApi {
 
     try {
       final rawResponse = _response.data;
-      _responseData = rawResponse == null ? null : _serializers.deserialize(
-        rawResponse,
-        specifiedType: const FullType(RoutesIdGet200Response),
-      ) as RoutesIdGet200Response;
-
+      _responseData = rawResponse == null
+          ? null
+          : _serializers.deserialize(
+              rawResponse,
+              specifiedType: const FullType(RoutesIdGet200Response),
+            ) as RoutesIdGet200Response;
     } catch (error, stackTrace) {
       throw DioException(
         requestOptions: _response.requestOptions,
@@ -347,10 +360,10 @@ class MobilityApi {
   }
 
   /// List trips, optionally filtered by route
-  /// 
+  ///
   ///
   /// Parameters:
-  /// * [routeId] 
+  /// * [routeId]
   /// * [cancelToken] - A [CancelToken] that can be used to cancel the operation
   /// * [headers] - Can be used to add additional headers to the request
   /// * [extras] - Can be used to add flags to the request
@@ -360,7 +373,7 @@ class MobilityApi {
   ///
   /// Returns a [Future] containing a [Response] with a [TripsGet200Response] as data
   /// Throws [DioException] if API call or serialization fails
-  Future<Response<TripsGet200Response>> tripsGet({ 
+  Future<Response<TripsGet200Response>> tripsGet({
     String? routeId,
     CancelToken? cancelToken,
     Map<String, dynamic>? headers,
@@ -389,7 +402,9 @@ class MobilityApi {
     );
 
     final _queryParameters = <String, dynamic>{
-      if (routeId != null) r'routeId': encodeQueryParameter(_serializers, routeId, const FullType(String)),
+      if (routeId != null)
+        r'routeId':
+            encodeQueryParameter(_serializers, routeId, const FullType(String)),
     };
 
     final _response = await _dio.request<Object>(
@@ -405,11 +420,12 @@ class MobilityApi {
 
     try {
       final rawResponse = _response.data;
-      _responseData = rawResponse == null ? null : _serializers.deserialize(
-        rawResponse,
-        specifiedType: const FullType(TripsGet200Response),
-      ) as TripsGet200Response;
-
+      _responseData = rawResponse == null
+          ? null
+          : _serializers.deserialize(
+              rawResponse,
+              specifiedType: const FullType(TripsGet200Response),
+            ) as TripsGet200Response;
     } catch (error, stackTrace) {
       throw DioException(
         requestOptions: _response.requestOptions,
@@ -436,8 +452,8 @@ class MobilityApi {
   /// Idempotent, and not monotonic: a driver who taps one stop too far can tap back. The seq must be one of the route’s own stops.
   ///
   /// Parameters:
-  /// * [id] 
-  /// * [tripsIdArrivePostRequest] 
+  /// * [id]
+  /// * [tripsIdArrivePostRequest]
   /// * [cancelToken] - A [CancelToken] that can be used to cancel the operation
   /// * [headers] - Can be used to add additional headers to the request
   /// * [extras] - Can be used to add flags to the request
@@ -447,7 +463,7 @@ class MobilityApi {
   ///
   /// Returns a [Future] containing a [Response] with a [TripsGet200ResponseTripsInner] as data
   /// Throws [DioException] if API call or serialization fails
-  Future<Response<TripsGet200ResponseTripsInner>> tripsIdArrivePost({ 
+  Future<Response<TripsGet200ResponseTripsInner>> tripsIdArrivePost({
     required String id,
     required TripsIdArrivePostRequest tripsIdArrivePostRequest,
     CancelToken? cancelToken,
@@ -457,7 +473,10 @@ class MobilityApi {
     ProgressCallback? onSendProgress,
     ProgressCallback? onReceiveProgress,
   }) async {
-    final _path = r'/trips/{id}/arrive'.replaceAll('{' r'id' '}', encodeQueryParameter(_serializers, id, const FullType(String)).toString());
+    final _path = r'/trips/{id}/arrive'.replaceAll(
+        '{' r'id' '}',
+        encodeQueryParameter(_serializers, id, const FullType(String))
+            .toString());
     final _options = Options(
       method: r'POST',
       headers: <String, dynamic>{
@@ -481,11 +500,11 @@ class MobilityApi {
 
     try {
       const _type = FullType(TripsIdArrivePostRequest);
-      _bodyData = _serializers.serialize(tripsIdArrivePostRequest, specifiedType: _type);
-
-    } catch(error, stackTrace) {
+      _bodyData = _serializers.serialize(tripsIdArrivePostRequest,
+          specifiedType: _type);
+    } catch (error, stackTrace) {
       throw DioException(
-         requestOptions: _options.compose(
+        requestOptions: _options.compose(
           _dio.options,
           _path,
         ),
@@ -508,11 +527,12 @@ class MobilityApi {
 
     try {
       final rawResponse = _response.data;
-      _responseData = rawResponse == null ? null : _serializers.deserialize(
-        rawResponse,
-        specifiedType: const FullType(TripsGet200ResponseTripsInner),
-      ) as TripsGet200ResponseTripsInner;
-
+      _responseData = rawResponse == null
+          ? null
+          : _serializers.deserialize(
+              rawResponse,
+              specifiedType: const FullType(TripsGet200ResponseTripsInner),
+            ) as TripsGet200ResponseTripsInner;
     } catch (error, stackTrace) {
       throw DioException(
         requestOptions: _response.requestOptions,
@@ -539,7 +559,7 @@ class MobilityApi {
   /// Refuses a trip that never started — that means the wrong run was tapped, and a completed trip with no GPS trace would poison route learning.
   ///
   /// Parameters:
-  /// * [id] 
+  /// * [id]
   /// * [cancelToken] - A [CancelToken] that can be used to cancel the operation
   /// * [headers] - Can be used to add additional headers to the request
   /// * [extras] - Can be used to add flags to the request
@@ -549,7 +569,7 @@ class MobilityApi {
   ///
   /// Returns a [Future] containing a [Response] with a [TripsGet200ResponseTripsInner] as data
   /// Throws [DioException] if API call or serialization fails
-  Future<Response<TripsGet200ResponseTripsInner>> tripsIdCompletePost({ 
+  Future<Response<TripsGet200ResponseTripsInner>> tripsIdCompletePost({
     required String id,
     CancelToken? cancelToken,
     Map<String, dynamic>? headers,
@@ -558,7 +578,10 @@ class MobilityApi {
     ProgressCallback? onSendProgress,
     ProgressCallback? onReceiveProgress,
   }) async {
-    final _path = r'/trips/{id}/complete'.replaceAll('{' r'id' '}', encodeQueryParameter(_serializers, id, const FullType(String)).toString());
+    final _path = r'/trips/{id}/complete'.replaceAll(
+        '{' r'id' '}',
+        encodeQueryParameter(_serializers, id, const FullType(String))
+            .toString());
     final _options = Options(
       method: r'POST',
       headers: <String, dynamic>{
@@ -589,11 +612,12 @@ class MobilityApi {
 
     try {
       final rawResponse = _response.data;
-      _responseData = rawResponse == null ? null : _serializers.deserialize(
-        rawResponse,
-        specifiedType: const FullType(TripsGet200ResponseTripsInner),
-      ) as TripsGet200ResponseTripsInner;
-
+      _responseData = rawResponse == null
+          ? null
+          : _serializers.deserialize(
+              rawResponse,
+              specifiedType: const FullType(TripsGet200ResponseTripsInner),
+            ) as TripsGet200ResponseTripsInner;
     } catch (error, stackTrace) {
       throw DioException(
         requestOptions: _response.requestOptions,
@@ -617,10 +641,10 @@ class MobilityApi {
   }
 
   /// Get a trip by id
-  /// 
+  ///
   ///
   /// Parameters:
-  /// * [id] 
+  /// * [id]
   /// * [cancelToken] - A [CancelToken] that can be used to cancel the operation
   /// * [headers] - Can be used to add additional headers to the request
   /// * [extras] - Can be used to add flags to the request
@@ -630,7 +654,7 @@ class MobilityApi {
   ///
   /// Returns a [Future] containing a [Response] with a [TripsIdGet200Response] as data
   /// Throws [DioException] if API call or serialization fails
-  Future<Response<TripsIdGet200Response>> tripsIdGet({ 
+  Future<Response<TripsIdGet200Response>> tripsIdGet({
     required String id,
     CancelToken? cancelToken,
     Map<String, dynamic>? headers,
@@ -639,7 +663,10 @@ class MobilityApi {
     ProgressCallback? onSendProgress,
     ProgressCallback? onReceiveProgress,
   }) async {
-    final _path = r'/trips/{id}'.replaceAll('{' r'id' '}', encodeQueryParameter(_serializers, id, const FullType(String)).toString());
+    final _path = r'/trips/{id}'.replaceAll(
+        '{' r'id' '}',
+        encodeQueryParameter(_serializers, id, const FullType(String))
+            .toString());
     final _options = Options(
       method: r'GET',
       headers: <String, dynamic>{
@@ -670,11 +697,12 @@ class MobilityApi {
 
     try {
       final rawResponse = _response.data;
-      _responseData = rawResponse == null ? null : _serializers.deserialize(
-        rawResponse,
-        specifiedType: const FullType(TripsIdGet200Response),
-      ) as TripsIdGet200Response;
-
+      _responseData = rawResponse == null
+          ? null
+          : _serializers.deserialize(
+              rawResponse,
+              specifiedType: const FullType(TripsIdGet200Response),
+            ) as TripsIdGet200Response;
     } catch (error, stackTrace) {
       throw DioException(
         requestOptions: _response.requestOptions,
@@ -698,10 +726,10 @@ class MobilityApi {
   }
 
   /// Get a trip&#39;s latest position with a deterministic ETA to each upcoming stop
-  /// 
+  ///
   ///
   /// Parameters:
-  /// * [id] 
+  /// * [id]
   /// * [cancelToken] - A [CancelToken] that can be used to cancel the operation
   /// * [headers] - Can be used to add additional headers to the request
   /// * [extras] - Can be used to add flags to the request
@@ -711,7 +739,7 @@ class MobilityApi {
   ///
   /// Returns a [Future] containing a [Response] with a [TripsIdPositionGet200Response] as data
   /// Throws [DioException] if API call or serialization fails
-  Future<Response<TripsIdPositionGet200Response>> tripsIdPositionGet({ 
+  Future<Response<TripsIdPositionGet200Response>> tripsIdPositionGet({
     required String id,
     CancelToken? cancelToken,
     Map<String, dynamic>? headers,
@@ -720,7 +748,10 @@ class MobilityApi {
     ProgressCallback? onSendProgress,
     ProgressCallback? onReceiveProgress,
   }) async {
-    final _path = r'/trips/{id}/position'.replaceAll('{' r'id' '}', encodeQueryParameter(_serializers, id, const FullType(String)).toString());
+    final _path = r'/trips/{id}/position'.replaceAll(
+        '{' r'id' '}',
+        encodeQueryParameter(_serializers, id, const FullType(String))
+            .toString());
     final _options = Options(
       method: r'GET',
       headers: <String, dynamic>{
@@ -751,11 +782,12 @@ class MobilityApi {
 
     try {
       final rawResponse = _response.data;
-      _responseData = rawResponse == null ? null : _serializers.deserialize(
-        rawResponse,
-        specifiedType: const FullType(TripsIdPositionGet200Response),
-      ) as TripsIdPositionGet200Response;
-
+      _responseData = rawResponse == null
+          ? null
+          : _serializers.deserialize(
+              rawResponse,
+              specifiedType: const FullType(TripsIdPositionGet200Response),
+            ) as TripsIdPositionGet200Response;
     } catch (error, stackTrace) {
       throw DioException(
         requestOptions: _response.requestOptions,
@@ -779,11 +811,11 @@ class MobilityApi {
   }
 
   /// Report a GPS fix for a trip (assigned driver only)
-  /// 
+  ///
   ///
   /// Parameters:
-  /// * [id] 
-  /// * [tripsIdPositionPostRequest] 
+  /// * [id]
+  /// * [tripsIdPositionPostRequest]
   /// * [cancelToken] - A [CancelToken] that can be used to cancel the operation
   /// * [headers] - Can be used to add additional headers to the request
   /// * [extras] - Can be used to add flags to the request
@@ -793,7 +825,7 @@ class MobilityApi {
   ///
   /// Returns a [Future] containing a [Response] with a [TripsIdPositionPost200Response] as data
   /// Throws [DioException] if API call or serialization fails
-  Future<Response<TripsIdPositionPost200Response>> tripsIdPositionPost({ 
+  Future<Response<TripsIdPositionPost200Response>> tripsIdPositionPost({
     required String id,
     required TripsIdPositionPostRequest tripsIdPositionPostRequest,
     CancelToken? cancelToken,
@@ -803,7 +835,10 @@ class MobilityApi {
     ProgressCallback? onSendProgress,
     ProgressCallback? onReceiveProgress,
   }) async {
-    final _path = r'/trips/{id}/position'.replaceAll('{' r'id' '}', encodeQueryParameter(_serializers, id, const FullType(String)).toString());
+    final _path = r'/trips/{id}/position'.replaceAll(
+        '{' r'id' '}',
+        encodeQueryParameter(_serializers, id, const FullType(String))
+            .toString());
     final _options = Options(
       method: r'POST',
       headers: <String, dynamic>{
@@ -827,11 +862,11 @@ class MobilityApi {
 
     try {
       const _type = FullType(TripsIdPositionPostRequest);
-      _bodyData = _serializers.serialize(tripsIdPositionPostRequest, specifiedType: _type);
-
-    } catch(error, stackTrace) {
+      _bodyData = _serializers.serialize(tripsIdPositionPostRequest,
+          specifiedType: _type);
+    } catch (error, stackTrace) {
       throw DioException(
-         requestOptions: _options.compose(
+        requestOptions: _options.compose(
           _dio.options,
           _path,
         ),
@@ -854,11 +889,12 @@ class MobilityApi {
 
     try {
       final rawResponse = _response.data;
-      _responseData = rawResponse == null ? null : _serializers.deserialize(
-        rawResponse,
-        specifiedType: const FullType(TripsIdPositionPost200Response),
-      ) as TripsIdPositionPost200Response;
-
+      _responseData = rawResponse == null
+          ? null
+          : _serializers.deserialize(
+              rawResponse,
+              specifiedType: const FullType(TripsIdPositionPost200Response),
+            ) as TripsIdPositionPost200Response;
     } catch (error, stackTrace) {
       throw DioException(
         requestOptions: _response.requestOptions,
@@ -885,7 +921,7 @@ class MobilityApi {
   /// Idempotent: starting an already-active trip succeeds. A driver whose phone dropped mid-tap will press it again, and an error at the roadside is a worse answer than \&quot;yes, it is running\&quot;.
   ///
   /// Parameters:
-  /// * [id] 
+  /// * [id]
   /// * [cancelToken] - A [CancelToken] that can be used to cancel the operation
   /// * [headers] - Can be used to add additional headers to the request
   /// * [extras] - Can be used to add flags to the request
@@ -895,7 +931,7 @@ class MobilityApi {
   ///
   /// Returns a [Future] containing a [Response] with a [TripsGet200ResponseTripsInner] as data
   /// Throws [DioException] if API call or serialization fails
-  Future<Response<TripsGet200ResponseTripsInner>> tripsIdStartPost({ 
+  Future<Response<TripsGet200ResponseTripsInner>> tripsIdStartPost({
     required String id,
     CancelToken? cancelToken,
     Map<String, dynamic>? headers,
@@ -904,7 +940,10 @@ class MobilityApi {
     ProgressCallback? onSendProgress,
     ProgressCallback? onReceiveProgress,
   }) async {
-    final _path = r'/trips/{id}/start'.replaceAll('{' r'id' '}', encodeQueryParameter(_serializers, id, const FullType(String)).toString());
+    final _path = r'/trips/{id}/start'.replaceAll(
+        '{' r'id' '}',
+        encodeQueryParameter(_serializers, id, const FullType(String))
+            .toString());
     final _options = Options(
       method: r'POST',
       headers: <String, dynamic>{
@@ -935,11 +974,12 @@ class MobilityApi {
 
     try {
       final rawResponse = _response.data;
-      _responseData = rawResponse == null ? null : _serializers.deserialize(
-        rawResponse,
-        specifiedType: const FullType(TripsGet200ResponseTripsInner),
-      ) as TripsGet200ResponseTripsInner;
-
+      _responseData = rawResponse == null
+          ? null
+          : _serializers.deserialize(
+              rawResponse,
+              specifiedType: const FullType(TripsGet200ResponseTripsInner),
+            ) as TripsGet200ResponseTripsInner;
     } catch (error, stackTrace) {
       throw DioException(
         requestOptions: _response.requestOptions,
@@ -966,7 +1006,7 @@ class MobilityApi {
   /// Reports notBoarded rather than \&quot;no-shows deducted\&quot;: the debit is the ops cutoff’s decision, not this screen’s, and a driver should not read a deduction that has not happened yet.
   ///
   /// Parameters:
-  /// * [id] 
+  /// * [id]
   /// * [cancelToken] - A [CancelToken] that can be used to cancel the operation
   /// * [headers] - Can be used to add additional headers to the request
   /// * [extras] - Can be used to add flags to the request
@@ -976,7 +1016,7 @@ class MobilityApi {
   ///
   /// Returns a [Future] containing a [Response] with a [TripsIdSummaryGet200Response] as data
   /// Throws [DioException] if API call or serialization fails
-  Future<Response<TripsIdSummaryGet200Response>> tripsIdSummaryGet({ 
+  Future<Response<TripsIdSummaryGet200Response>> tripsIdSummaryGet({
     required String id,
     CancelToken? cancelToken,
     Map<String, dynamic>? headers,
@@ -985,7 +1025,10 @@ class MobilityApi {
     ProgressCallback? onSendProgress,
     ProgressCallback? onReceiveProgress,
   }) async {
-    final _path = r'/trips/{id}/summary'.replaceAll('{' r'id' '}', encodeQueryParameter(_serializers, id, const FullType(String)).toString());
+    final _path = r'/trips/{id}/summary'.replaceAll(
+        '{' r'id' '}',
+        encodeQueryParameter(_serializers, id, const FullType(String))
+            .toString());
     final _options = Options(
       method: r'GET',
       headers: <String, dynamic>{
@@ -1016,11 +1059,12 @@ class MobilityApi {
 
     try {
       final rawResponse = _response.data;
-      _responseData = rawResponse == null ? null : _serializers.deserialize(
-        rawResponse,
-        specifiedType: const FullType(TripsIdSummaryGet200Response),
-      ) as TripsIdSummaryGet200Response;
-
+      _responseData = rawResponse == null
+          ? null
+          : _serializers.deserialize(
+              rawResponse,
+              specifiedType: const FullType(TripsIdSummaryGet200Response),
+            ) as TripsIdSummaryGet200Response;
     } catch (error, stackTrace) {
       throw DioException(
         requestOptions: _response.requestOptions,
@@ -1042,5 +1086,4 @@ class MobilityApi {
       extra: _response.extra,
     );
   }
-
 }

@@ -1,5 +1,7 @@
 import 'package:dio/dio.dart';
-import 'package:trotxi_client/trotxi_client.dart';
+// The generated client exports a wire model named BoardingResult; this
+// repository means the one in scan_result.dart.
+import 'package:trotxi_client/trotxi_client.dart' hide BoardingResult;
 import 'package:trotxi_driver/Presentations/Boarding/models/scan_result.dart';
 
 /// How far a run has got.

@@ -4,7 +4,6 @@
 
 import 'dart:async';
 
-import 'package:built_value/json_object.dart';
 import 'package:built_value/serializer.dart';
 import 'package:dio/dio.dart';
 
@@ -19,11 +18,9 @@ import 'package:trotxi_api_client/src/model/boarding_verify_code_post200_respons
 import 'package:trotxi_api_client/src/model/boarding_verify_code_post_request.dart';
 import 'package:trotxi_api_client/src/model/boarding_verify_pin_post200_response.dart';
 import 'package:trotxi_api_client/src/model/boarding_verify_pin_post_request.dart';
-import 'package:trotxi_api_client/src/model/me_get401_response.dart';
 import 'package:trotxi_api_client/src/model/me_pass_get200_response.dart';
 
 class BoardingApi {
-
   final Dio _dio;
 
   final Serializers _serializers;
@@ -34,7 +31,7 @@ class BoardingApi {
   /// The fallback for when a code will not scan or the rider cannot produce one. Idempotent per reservation, and shares boarding’s ledger key, so a rider previously marked a no-show is charged once rather than twice.
   ///
   /// Parameters:
-  /// * [boardingBoardPostRequest] 
+  /// * [boardingBoardPostRequest]
   /// * [cancelToken] - A [CancelToken] that can be used to cancel the operation
   /// * [headers] - Can be used to add additional headers to the request
   /// * [extras] - Can be used to add flags to the request
@@ -44,7 +41,7 @@ class BoardingApi {
   ///
   /// Returns a [Future] containing a [Response] with a [BoardingBoardPost200Response] as data
   /// Throws [DioException] if API call or serialization fails
-  Future<Response<BoardingBoardPost200Response>> boardingBoardPost({ 
+  Future<Response<BoardingBoardPost200Response>> boardingBoardPost({
     required BoardingBoardPostRequest boardingBoardPostRequest,
     CancelToken? cancelToken,
     Map<String, dynamic>? headers,
@@ -77,11 +74,11 @@ class BoardingApi {
 
     try {
       const _type = FullType(BoardingBoardPostRequest);
-      _bodyData = _serializers.serialize(boardingBoardPostRequest, specifiedType: _type);
-
-    } catch(error, stackTrace) {
+      _bodyData = _serializers.serialize(boardingBoardPostRequest,
+          specifiedType: _type);
+    } catch (error, stackTrace) {
       throw DioException(
-         requestOptions: _options.compose(
+        requestOptions: _options.compose(
           _dio.options,
           _path,
         ),
@@ -104,11 +101,12 @@ class BoardingApi {
 
     try {
       final rawResponse = _response.data;
-      _responseData = rawResponse == null ? null : _serializers.deserialize(
-        rawResponse,
-        specifiedType: const FullType(BoardingBoardPost200Response),
-      ) as BoardingBoardPost200Response;
-
+      _responseData = rawResponse == null
+          ? null
+          : _serializers.deserialize(
+              rawResponse,
+              specifiedType: const FullType(BoardingBoardPost200Response),
+            ) as BoardingBoardPost200Response;
     } catch (error, stackTrace) {
       throw DioException(
         requestOptions: _response.requestOptions,
@@ -132,10 +130,10 @@ class BoardingApi {
   }
 
   /// A trip&#39;s manifest — confirmed riders with name + photo (assigned driver only)
-  /// 
+  ///
   ///
   /// Parameters:
-  /// * [tripId] 
+  /// * [tripId]
   /// * [cancelToken] - A [CancelToken] that can be used to cancel the operation
   /// * [headers] - Can be used to add additional headers to the request
   /// * [extras] - Can be used to add flags to the request
@@ -145,7 +143,7 @@ class BoardingApi {
   ///
   /// Returns a [Future] containing a [Response] with a [BoardingManifestGet200Response] as data
   /// Throws [DioException] if API call or serialization fails
-  Future<Response<BoardingManifestGet200Response>> boardingManifestGet({ 
+  Future<Response<BoardingManifestGet200Response>> boardingManifestGet({
     required String tripId,
     CancelToken? cancelToken,
     Map<String, dynamic>? headers,
@@ -174,7 +172,8 @@ class BoardingApi {
     );
 
     final _queryParameters = <String, dynamic>{
-      r'tripId': encodeQueryParameter(_serializers, tripId, const FullType(String)),
+      r'tripId':
+          encodeQueryParameter(_serializers, tripId, const FullType(String)),
     };
 
     final _response = await _dio.request<Object>(
@@ -190,11 +189,12 @@ class BoardingApi {
 
     try {
       final rawResponse = _response.data;
-      _responseData = rawResponse == null ? null : _serializers.deserialize(
-        rawResponse,
-        specifiedType: const FullType(BoardingManifestGet200Response),
-      ) as BoardingManifestGet200Response;
-
+      _responseData = rawResponse == null
+          ? null
+          : _serializers.deserialize(
+              rawResponse,
+              specifiedType: const FullType(BoardingManifestGet200Response),
+            ) as BoardingManifestGet200Response;
     } catch (error, stackTrace) {
       throw DioException(
         requestOptions: _response.requestOptions,
@@ -221,7 +221,7 @@ class BoardingApi {
   /// Deducts the ride now rather than at the cutoff. Reversible by boarding the rider afterwards — the shared ledger key means that costs nothing extra.
   ///
   /// Parameters:
-  /// * [boardingBoardPostRequest] 
+  /// * [boardingBoardPostRequest]
   /// * [cancelToken] - A [CancelToken] that can be used to cancel the operation
   /// * [headers] - Can be used to add additional headers to the request
   /// * [extras] - Can be used to add flags to the request
@@ -231,7 +231,7 @@ class BoardingApi {
   ///
   /// Returns a [Future] containing a [Response] with a [BoardingNoShowPost200Response] as data
   /// Throws [DioException] if API call or serialization fails
-  Future<Response<BoardingNoShowPost200Response>> boardingNoShowPost({ 
+  Future<Response<BoardingNoShowPost200Response>> boardingNoShowPost({
     required BoardingBoardPostRequest boardingBoardPostRequest,
     CancelToken? cancelToken,
     Map<String, dynamic>? headers,
@@ -264,11 +264,11 @@ class BoardingApi {
 
     try {
       const _type = FullType(BoardingBoardPostRequest);
-      _bodyData = _serializers.serialize(boardingBoardPostRequest, specifiedType: _type);
-
-    } catch(error, stackTrace) {
+      _bodyData = _serializers.serialize(boardingBoardPostRequest,
+          specifiedType: _type);
+    } catch (error, stackTrace) {
       throw DioException(
-         requestOptions: _options.compose(
+        requestOptions: _options.compose(
           _dio.options,
           _path,
         ),
@@ -291,11 +291,12 @@ class BoardingApi {
 
     try {
       final rawResponse = _response.data;
-      _responseData = rawResponse == null ? null : _serializers.deserialize(
-        rawResponse,
-        specifiedType: const FullType(BoardingNoShowPost200Response),
-      ) as BoardingNoShowPost200Response;
-
+      _responseData = rawResponse == null
+          ? null
+          : _serializers.deserialize(
+              rawResponse,
+              specifiedType: const FullType(BoardingNoShowPost200Response),
+            ) as BoardingNoShowPost200Response;
     } catch (error, stackTrace) {
       throw DioException(
         requestOptions: _response.requestOptions,
@@ -319,10 +320,10 @@ class BoardingApi {
   }
 
   /// Verify a scanned rider pass (driver only) and record the scan
-  /// 
+  ///
   ///
   /// Parameters:
-  /// * [boardingScanPostRequest] 
+  /// * [boardingScanPostRequest]
   /// * [cancelToken] - A [CancelToken] that can be used to cancel the operation
   /// * [headers] - Can be used to add additional headers to the request
   /// * [extras] - Can be used to add flags to the request
@@ -332,7 +333,7 @@ class BoardingApi {
   ///
   /// Returns a [Future] containing a [Response] with a [BoardingScanPost200Response] as data
   /// Throws [DioException] if API call or serialization fails
-  Future<Response<BoardingScanPost200Response>> boardingScanPost({ 
+  Future<Response<BoardingScanPost200Response>> boardingScanPost({
     required BoardingScanPostRequest boardingScanPostRequest,
     CancelToken? cancelToken,
     Map<String, dynamic>? headers,
@@ -365,11 +366,11 @@ class BoardingApi {
 
     try {
       const _type = FullType(BoardingScanPostRequest);
-      _bodyData = _serializers.serialize(boardingScanPostRequest, specifiedType: _type);
-
-    } catch(error, stackTrace) {
+      _bodyData =
+          _serializers.serialize(boardingScanPostRequest, specifiedType: _type);
+    } catch (error, stackTrace) {
       throw DioException(
-         requestOptions: _options.compose(
+        requestOptions: _options.compose(
           _dio.options,
           _path,
         ),
@@ -392,11 +393,12 @@ class BoardingApi {
 
     try {
       final rawResponse = _response.data;
-      _responseData = rawResponse == null ? null : _serializers.deserialize(
-        rawResponse,
-        specifiedType: const FullType(BoardingScanPost200Response),
-      ) as BoardingScanPost200Response;
-
+      _responseData = rawResponse == null
+          ? null
+          : _serializers.deserialize(
+              rawResponse,
+              specifiedType: const FullType(BoardingScanPost200Response),
+            ) as BoardingScanPost200Response;
     } catch (error, stackTrace) {
       throw DioException(
         requestOptions: _response.requestOptions,
@@ -423,7 +425,7 @@ class BoardingApi {
   /// Searches the run’s open seats for the code rather than checking one named seat. Safe because the caller is already the assigned driver, who can board any rider on their manifest with no code at all (POST /boarding/board). Two seats holding one code is refused rather than guessed.
   ///
   /// Parameters:
-  /// * [boardingVerifyCodePostRequest] 
+  /// * [boardingVerifyCodePostRequest]
   /// * [cancelToken] - A [CancelToken] that can be used to cancel the operation
   /// * [headers] - Can be used to add additional headers to the request
   /// * [extras] - Can be used to add flags to the request
@@ -433,7 +435,7 @@ class BoardingApi {
   ///
   /// Returns a [Future] containing a [Response] with a [BoardingVerifyCodePost200Response] as data
   /// Throws [DioException] if API call or serialization fails
-  Future<Response<BoardingVerifyCodePost200Response>> boardingVerifyCodePost({ 
+  Future<Response<BoardingVerifyCodePost200Response>> boardingVerifyCodePost({
     required BoardingVerifyCodePostRequest boardingVerifyCodePostRequest,
     CancelToken? cancelToken,
     Map<String, dynamic>? headers,
@@ -466,11 +468,11 @@ class BoardingApi {
 
     try {
       const _type = FullType(BoardingVerifyCodePostRequest);
-      _bodyData = _serializers.serialize(boardingVerifyCodePostRequest, specifiedType: _type);
-
-    } catch(error, stackTrace) {
+      _bodyData = _serializers.serialize(boardingVerifyCodePostRequest,
+          specifiedType: _type);
+    } catch (error, stackTrace) {
       throw DioException(
-         requestOptions: _options.compose(
+        requestOptions: _options.compose(
           _dio.options,
           _path,
         ),
@@ -493,11 +495,12 @@ class BoardingApi {
 
     try {
       final rawResponse = _response.data;
-      _responseData = rawResponse == null ? null : _serializers.deserialize(
-        rawResponse,
-        specifiedType: const FullType(BoardingVerifyCodePost200Response),
-      ) as BoardingVerifyCodePost200Response;
-
+      _responseData = rawResponse == null
+          ? null
+          : _serializers.deserialize(
+              rawResponse,
+              specifiedType: const FullType(BoardingVerifyCodePost200Response),
+            ) as BoardingVerifyCodePost200Response;
     } catch (error, stackTrace) {
       throw DioException(
         requestOptions: _response.requestOptions,
@@ -521,10 +524,10 @@ class BoardingApi {
   }
 
   /// Board a rider via their daily boarding code (driver only)
-  /// 
+  ///
   ///
   /// Parameters:
-  /// * [boardingVerifyPinPostRequest] 
+  /// * [boardingVerifyPinPostRequest]
   /// * [cancelToken] - A [CancelToken] that can be used to cancel the operation
   /// * [headers] - Can be used to add additional headers to the request
   /// * [extras] - Can be used to add flags to the request
@@ -534,7 +537,7 @@ class BoardingApi {
   ///
   /// Returns a [Future] containing a [Response] with a [BoardingVerifyPinPost200Response] as data
   /// Throws [DioException] if API call or serialization fails
-  Future<Response<BoardingVerifyPinPost200Response>> boardingVerifyPinPost({ 
+  Future<Response<BoardingVerifyPinPost200Response>> boardingVerifyPinPost({
     required BoardingVerifyPinPostRequest boardingVerifyPinPostRequest,
     CancelToken? cancelToken,
     Map<String, dynamic>? headers,
@@ -567,11 +570,11 @@ class BoardingApi {
 
     try {
       const _type = FullType(BoardingVerifyPinPostRequest);
-      _bodyData = _serializers.serialize(boardingVerifyPinPostRequest, specifiedType: _type);
-
-    } catch(error, stackTrace) {
+      _bodyData = _serializers.serialize(boardingVerifyPinPostRequest,
+          specifiedType: _type);
+    } catch (error, stackTrace) {
       throw DioException(
-         requestOptions: _options.compose(
+        requestOptions: _options.compose(
           _dio.options,
           _path,
         ),
@@ -594,11 +597,12 @@ class BoardingApi {
 
     try {
       final rawResponse = _response.data;
-      _responseData = rawResponse == null ? null : _serializers.deserialize(
-        rawResponse,
-        specifiedType: const FullType(BoardingVerifyPinPost200Response),
-      ) as BoardingVerifyPinPost200Response;
-
+      _responseData = rawResponse == null
+          ? null
+          : _serializers.deserialize(
+              rawResponse,
+              specifiedType: const FullType(BoardingVerifyPinPost200Response),
+            ) as BoardingVerifyPinPost200Response;
     } catch (error, stackTrace) {
       throw DioException(
         requestOptions: _response.requestOptions,
@@ -622,7 +626,7 @@ class BoardingApi {
   }
 
   /// Issue the rider a short-lived boarding pass (render as a QR)
-  /// 
+  ///
   ///
   /// Parameters:
   /// * [cancelToken] - A [CancelToken] that can be used to cancel the operation
@@ -634,7 +638,7 @@ class BoardingApi {
   ///
   /// Returns a [Future] containing a [Response] with a [MePassGet200Response] as data
   /// Throws [DioException] if API call or serialization fails
-  Future<Response<MePassGet200Response>> mePassGet({ 
+  Future<Response<MePassGet200Response>> mePassGet({
     CancelToken? cancelToken,
     Map<String, dynamic>? headers,
     Map<String, dynamic>? extra,
@@ -673,11 +677,12 @@ class BoardingApi {
 
     try {
       final rawResponse = _response.data;
-      _responseData = rawResponse == null ? null : _serializers.deserialize(
-        rawResponse,
-        specifiedType: const FullType(MePassGet200Response),
-      ) as MePassGet200Response;
-
+      _responseData = rawResponse == null
+          ? null
+          : _serializers.deserialize(
+              rawResponse,
+              specifiedType: const FullType(MePassGet200Response),
+            ) as MePassGet200Response;
     } catch (error, stackTrace) {
       throw DioException(
         requestOptions: _response.requestOptions,
@@ -699,5 +704,4 @@ class BoardingApi {
       extra: _response.extra,
     );
   }
-
 }

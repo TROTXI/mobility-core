@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:trotxi_commuter/Features/Onboarding/pages/splash_page.dart';
 import 'package:trotxi_commuter/core/Tokens/token_storage.dart';
+import 'package:trotxi_commuter/core/config/client_metadata.dart';
 import 'package:trotxi_commuter/core/config/theme/app_theme.dart';
 import 'package:trotxi_commuter/core/config/theme/app_theme_controller.dart';
 import 'package:trotxi_client/trotxi_client.dart';
@@ -44,6 +45,7 @@ Future<void> main() async {
       final client = TrotxiClientFactory.create(
         baseUrl: _apiBaseUrl,
         tokenStore: TokenStorage.instance,
+        metadata: commuterMetadata,
       );
       client.dio.interceptors.add(PerformanceInterceptor());
       //await TokenStorage.instance.clearTokens();

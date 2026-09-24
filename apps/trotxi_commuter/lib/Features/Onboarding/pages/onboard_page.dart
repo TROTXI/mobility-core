@@ -3,9 +3,11 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_sign_in/google_sign_in.dart';
-import 'package:trotxi_client/trotxi_client.dart';
+
+import 'package:trotxi_client/trotxi_client.dart' hide GoogleSignIn;
 import 'package:trotxi_commuter/Features/Home/pages/home_page.dart';
 import 'package:trotxi_commuter/core/Tokens/token_storage.dart';
+import 'package:trotxi_commuter/core/config/client_metadata.dart';
 import 'package:trotxi_commuter/core/config/theme/app_colors.dart';
 import 'package:trotxi_commuter/core/config/theme/app_spacing.dart';
 import 'package:trotxi_commuter/core/config/theme/app_typography.dart';
@@ -26,7 +28,6 @@ class _OnBoardPageState extends State<OnBoardPage> {
       '431341307838-pc4m046v2lj18ssfnfl1g52fl5g1cg4q.apps.googleusercontent.com';
 
   final GoogleSignIn _googleSignIn = GoogleSignIn.instance;
-  late final AuthApi _authApi;
 
   bool _isGoogleSignInInitialized = false;
   bool _isSigningIn = false;
@@ -34,7 +35,6 @@ class _OnBoardPageState extends State<OnBoardPage> {
   @override
   void initState() {
     super.initState();
-    _authApi = widget.client.getAuthApi();
     _initializeGoogleSignIn();
   }
 
@@ -69,8 +69,16 @@ class _OnBoardPageState extends State<OnBoardPage> {
       if (!mounted) return;
       _navigateToHome();
     } on DioException catch (e) {
-      debugPrint('Backend authentication failed: ${e.message}');
-      _showError('Unable to sign in. Please try again.');
+      // ErrorInterceptor puts the typed exception in `error` and leaves
+      // `message` null, so reading `message` here reported "null" and threw
+      // away the only useful detail.
+      final failure = e.error;
+      debugPrint('Backend authentication failed: ${failure ?? e.message}');
+      _showError(
+        failure is TrotxiException
+            ? failure.message
+            : 'Unable to sign in. Please try again.',
+      );
     } catch (e) {
       debugPrint('Google Sign-In failed: $e');
       _showError('Unable to sign in with Google. Please try again.');
@@ -85,30 +93,57 @@ class _OnBoardPageState extends State<OnBoardPage> {
     final GoogleSignInAuthentication authentication = user.authentication;
     final String? idToken = authentication.idToken;
 
-    if (idToken == null) {
-      throw Exception('Google ID token was not returned.');
+    // Empty counts as missing: the API's body schema is strict, so an empty
+    // `idToken` comes back as a 400 `invalid_request` that reads like a bug in
+    // the request shape rather than a credential the plugin never produced.
+    // Android hands back a null/empty token when the release SHA-1 is not
+    // registered against the OAuth client for `_googleServerId`.
+    if (idToken == null || idToken.isEmpty) {
+      throw const TrotxiException(
+        'Google did not return an ID token. Check that this build’s '
+        'signing certificate is registered with the Google OAuth client.',
+      );
     }
-
+    if (kDebugMode) {
+      debugPrint('Google ID token obtained $idToken )');
+    }
     return idToken;
   }
 
   Future<({String accessToken, String refreshToken})> _exchangeGoogleToken(
     String idToken,
   ) async {
-    final request = AuthGooglePostRequest(
-      (builder) => builder..idToken = idToken,
+    // Plain POST to /v1/auth/google. The generated AuthApi has `/auth/google`
+    // baked in and that route is gone, so this goes straight at the live one.
+    // The client/build/platform headers are required: without them the API
+    // answers 400 `client_metadata_required`.
+    final response = await widget.client.dio.post<Map<String, dynamic>>(
+      '/v1/auth/google',
+      data: {'idToken': idToken},
+      options: Options(
+        headers: {
+          'accept': 'application/json',
+          'content-type': 'application/json',
+          'x-trotxi-client': commuterMetadata.client,
+          'x-trotxi-build': commuterMetadata.build,
+          if (commuterMetadata.platform != null)
+            'x-trotxi-platform': commuterMetadata.platform,
+        },
+      ),
     );
 
-    final response = await _authApi.authGooglePost(
-      authGooglePostRequest: request,
-    );
-
-    final data = response.data;
+    final tokens = response.data?['data'] as Map<String, dynamic>?;
     if (kDebugMode) {
-      debugPrint('Backend authentication response: $data');
+      debugPrint('Backend authentication response: $tokens');
     }
 
-    return (accessToken: data!.accessToken, refreshToken: data.refreshToken);
+    final accessToken = tokens?['accessToken'] as String?;
+    final refreshToken = tokens?['refreshToken'] as String?;
+    if (accessToken == null || refreshToken == null) {
+      throw const TrotxiException('Sign-in response carried no tokens.');
+    }
+
+    return (accessToken: accessToken, refreshToken: refreshToken);
   }
 
   Future<void> _signInWithApple() async {
@@ -178,17 +213,19 @@ class _OnBoardPageState extends State<OnBoardPage> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
+                        // Equal flex above and below the sign-in block, so it
+                        // sits centred in whatever room the tagline leaves at
+                        // the foot of the page. Both collapse to nothing on a
+                        // short screen, where the column scrolls from the top
+                        // instead.
+                        const Spacer(),
                         _buildLogo(context),
                         const SizedBox(height: AppSpacing.space24),
                         _buildHeader(context),
                         const SizedBox(height: 22),
                         _buildAuthCard(context),
-                        const SizedBox(height: 10),
-
                         const Spacer(),
                         const SizedBox(height: AppSpacing.space24),
-
-                        const SizedBox(height: AppSpacing.space20),
                         _buildTagline(context),
                       ],
                     ),
@@ -230,7 +267,7 @@ class _OnBoardPageState extends State<OnBoardPage> {
         ),
         const SizedBox(height: AppSpacing.space12),
         Text(
-          'Use Google, Apple, phone number, or email to access your Trotxi account.',
+          'Use Google or Apple to access your Trotxi account.',
           textAlign: TextAlign.center,
           style: AppTypography.body.copyWith(
             color: colors.textSecondary,

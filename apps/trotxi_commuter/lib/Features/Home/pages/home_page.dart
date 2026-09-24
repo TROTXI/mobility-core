@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:trotxi_client/trotxi_client.dart';
 import 'package:trotxi_commuter/Features/Home/models/home_ride_lifecycle_state.dart';
@@ -10,6 +11,8 @@ import 'package:trotxi_commuter/Features/Home/widgets/Tabs/profile_tab.dart';
 import 'package:trotxi_commuter/Features/Home/widgets/Tabs/routes_tab.dart';
 import 'package:trotxi_commuter/Features/Home/widgets/Tabs/wallet_tab.dart';
 import 'package:trotxi_commuter/Features/Onboarding/pages/onboard_page.dart';
+import 'package:trotxi_commuter/core/Tokens/token_storage.dart';
+import 'package:trotxi_commuter/core/config/client_metadata.dart';
 import 'package:trotxi_commuter/core/config/theme/app_colors.dart';
 
 /// An [IndexedStack] replacement that only builds a child the first time
@@ -74,7 +77,7 @@ class _HomePageState extends State<HomePage> {
   // 0 = home, 1 = trips, 2 = wallet, 3 = profile.
   CommuterDestination _selected = CommuterDestination.home;
 
-  MeGet200Response? _userData;
+  Account? _userData;
   bool _loadingUser = true;
   TrotxiException? _activeError;
 
@@ -102,13 +105,19 @@ class _HomePageState extends State<HomePage> {
     });
 
     try {
-      final response = await widget.client.getAuthApi().meGet();
+      final response = await widget.client.getSelfApi().getAccount(
+        xTrotxiClient: commuterMetadata.client,
+        xTrotxiBuild: commuterMetadata.build,
+        xTrotxiPlatform: commuterMetadata.platform,
+      );
 
       if (!mounted) return;
       setState(() {
-        _userData = response.data;
+        _userData = response.data?.data;
         _loadingUser = false;
       });
+
+      await _debugDumpSession(response.data?.data);
     } catch (e) {
       if (!mounted) return;
       final parsedError = _parseError(e);
@@ -119,6 +128,53 @@ class _HomePageState extends State<HomePage> {
       });
 
       debugPrint('Error fetching user data: $parsedError');
+    }
+  }
+
+  /// Debug-only dump of the signed-in account plus the stored tokens, so the
+  /// access token can be pasted into Swagger's "Authorize" box (`Bearer <token>`)
+  /// and the refresh token into `POST /v1/auth/refresh`.
+  ///
+  /// Wrapped in [kDebugMode] so tokens are never written to logs in a release
+  /// build. Tokens are printed in chunks because Android's logcat drops
+  /// anything past ~1000 characters on a single line, which would otherwise
+  /// truncate the JWT mid-string.
+  Future<void> _debugDumpSession(Account? account) async {
+    if (!kDebugMode) return;
+
+    debugPrint('===== CURRENT USER =====');
+    if (account == null) {
+      debugPrint('account: null');
+    } else {
+      debugPrint('id:          ${account.id}');
+      debugPrint('displayName: ${account.displayName}');
+      debugPrint('phone:       ${account.phone}');
+      debugPrint('avatarUrl:   ${account.avatarUrl}');
+      debugPrint('role:        ${account.role}');
+      debugPrint('createdAt:   ${account.createdAt}');
+    }
+
+    debugPrint('baseUrl:     ${widget.client.dio.options.baseUrl}');
+
+    final accessToken = await TokenStorage.instance.getAccessToken();
+    final refreshToken = await TokenStorage.instance.getRefreshToken();
+    _debugPrintToken('ACCESS TOKEN', accessToken);
+    _debugPrintToken('REFRESH TOKEN', refreshToken);
+    debugPrint('========================');
+  }
+
+  /// Prints [value] under [label] in 800-character chunks (see
+  /// [_debugDumpSession] for why).
+  void _debugPrintToken(String label, String? value) {
+    if (value == null) {
+      debugPrint('$label: null');
+      return;
+    }
+    debugPrint('$label (${value.length} chars):');
+    const chunkSize = 800;
+    for (var i = 0; i < value.length; i += chunkSize) {
+      final end = (i + chunkSize < value.length) ? i + chunkSize : value.length;
+      debugPrint(value.substring(i, end));
     }
   }
 

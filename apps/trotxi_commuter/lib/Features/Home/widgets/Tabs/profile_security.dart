@@ -3,21 +3,19 @@ import 'package:intl/intl.dart';
 import 'package:trotxi_client/trotxi_client.dart';
 import 'package:trotxi_commuter/Features/Onboarding/pages/onboard_page.dart';
 import 'package:trotxi_commuter/core/Tokens/token_storage.dart';
+import 'package:trotxi_commuter/core/config/client_metadata.dart';
 import 'package:trotxi_commuter/core/config/layout/responsive_layout.dart';
 import 'package:trotxi_commuter/core/config/theme/app_colors.dart';
 import 'package:trotxi_commuter/core/config/theme/app_typography.dart';
 
-String _formatSessionDate(String raw) {
-  final parsed = DateTime.tryParse(raw);
-  if (parsed == null) return raw;
-  return DateFormat('d MMM y, h:mm a').format(parsed.toLocal());
-}
+String _formatSessionDate(DateTime raw) =>
+    DateFormat('d MMM y, h:mm a').format(raw.toLocal());
 
 /// Full-page "Security & sign-in", pushed from ProfileTab's
 /// "Security & sign-in" row.
 ///
-/// Sessions are real, from `GET /me/sessions` and `DELETE
-/// /me/sessions/{id}`, and account deletion is real, via `DELETE /me`.
+/// Sessions are real, from `GET /v1/me/sessions` and `DELETE
+/// /v1/me/sessions/{id}`, and account deletion is real, via `DELETE /v1/me`.
 /// Two-step verification is dropped (not asked for). "Change password/PIN"
 /// and "Biometric unlock" have no backend behind them — Trotxi is
 /// Google/Apple sign-in only, and biometric app-lock would need a new
@@ -81,11 +79,12 @@ class _ProfileSecurityPageState extends State<ProfileSecurityPage> {
     if (refreshToken != null && refreshToken.isNotEmpty) {
       try {
         await widget.client
-            .getAuthApi()
-            .authLogoutPost(
-              authRefreshPostRequest: AuthRefreshPostRequest(
-                (b) => b..refreshToken = refreshToken,
-              ),
+            .getPublicApi()
+            .logoutSession(
+              xTrotxiClient: commuterMetadata.client,
+              xTrotxiBuild: commuterMetadata.build,
+              xTrotxiPlatform: commuterMetadata.platform,
+              refreshInput: RefreshInput((b) => b..refreshToken = refreshToken),
             )
             .timeout(const Duration(seconds: 5));
       } catch (_) {
@@ -128,7 +127,12 @@ class _ProfileSecurityPageState extends State<ProfileSecurityPage> {
 
   Future<void> _deleteAccount() async {
     try {
-      await widget.client.getUsersApi().meDelete();
+      await widget.client.getSelfApi().eraseAccount(
+        idempotencyKey: newIdempotencyKey(),
+        xTrotxiClient: commuterMetadata.client,
+        xTrotxiBuild: commuterMetadata.build,
+        xTrotxiPlatform: commuterMetadata.platform,
+      );
       await TokenStorage.instance.clearTokens();
       if (!mounted) return;
       Navigator.of(context).pushAndRemoveUntil(
@@ -426,7 +430,7 @@ class _SessionsListPage extends StatefulWidget {
 class _SessionsListPageState extends State<_SessionsListPage> {
   bool _loading = true;
   Object? _error;
-  List<MeSessionsGet200ResponseSessionsInner> _sessions = const [];
+  List<Session> _sessions = const [];
   final Set<String> _revokingIds = {};
 
   @override
@@ -441,10 +445,14 @@ class _SessionsListPageState extends State<_SessionsListPage> {
       _error = null;
     });
     try {
-      final response = await widget.client.getAuthApi().meSessionsGet();
+      final response = await widget.client.getSelfApi().listSessions(
+        xTrotxiClient: commuterMetadata.client,
+        xTrotxiBuild: commuterMetadata.build,
+        xTrotxiPlatform: commuterMetadata.platform,
+      );
       if (!mounted) return;
       setState(() {
-        _sessions = response.data?.sessions.toList() ?? const [];
+        _sessions = response.data?.data.toList() ?? const [];
         _loading = false;
       });
     } catch (e) {
@@ -457,9 +465,7 @@ class _SessionsListPageState extends State<_SessionsListPage> {
     }
   }
 
-  Future<void> _confirmRevoke(
-    MeSessionsGet200ResponseSessionsInner session,
-  ) async {
+  Future<void> _confirmRevoke(Session session) async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
@@ -483,10 +489,16 @@ class _SessionsListPageState extends State<_SessionsListPage> {
     if (confirmed == true) await _revoke(session);
   }
 
-  Future<void> _revoke(MeSessionsGet200ResponseSessionsInner session) async {
+  Future<void> _revoke(Session session) async {
     setState(() => _revokingIds.add(session.id));
     try {
-      await widget.client.getAuthApi().meSessionsIdDelete(id: session.id);
+      await widget.client.getSelfApi().revokeSession(
+        id: session.id,
+        idempotencyKey: newIdempotencyKey(),
+        xTrotxiClient: commuterMetadata.client,
+        xTrotxiBuild: commuterMetadata.build,
+        xTrotxiPlatform: commuterMetadata.platform,
+      );
       if (!mounted) return;
       setState(() {
         _sessions = _sessions.where((s) => s.id != session.id).toList();

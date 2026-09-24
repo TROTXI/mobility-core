@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:trotxi_driver/core/config/corridor_time.dart';
 import 'package:provider/provider.dart';
-import 'package:trotxi_client/trotxi_client.dart';
+// The generated client exports wire models named TripSummary and StopEta;
+// this page means the widget in pre_trip.dart and the view model in
+// route_map_repository.dart.
+import 'package:trotxi_client/trotxi_client.dart' hide TripSummary, StopEta;
 import 'package:trotxi_driver/Presentations/Boarding/pages/board_by_code_page.dart';
 import 'package:trotxi_driver/Presentations/Boarding/pages/scan_page.dart';
 import 'package:trotxi_driver/Presentations/Completion/pages/end_run_page.dart';

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:trotxi_client/trotxi_client.dart';
+import 'package:trotxi_commuter/core/config/client_metadata.dart';
 import 'package:trotxi_commuter/core/config/layout/responsive_layout.dart';
 import 'package:trotxi_commuter/core/config/theme/app_colors.dart';
 import 'package:trotxi_commuter/core/config/theme/app_typography.dart';
@@ -8,8 +9,8 @@ import 'package:trotxi_commuter/core/config/theme/app_typography.dart';
 /// "Personal information" row.
 ///
 /// `displayName` is the only field actually editable — it's the one field
-/// `MePatchRequest` supports. Avatar editing is deferred until there's real
-/// backend support (`POST /me/avatar` exists, but the generated client
+/// `ProfileUpdate` supports. Avatar editing is deferred until there's real
+/// backend support (`POST /v1/me/avatar` exists, but the generated client
 /// method has no way to attach file data yet).
 class PersonalInfoPage extends StatefulWidget {
   const PersonalInfoPage({
@@ -19,7 +20,7 @@ class PersonalInfoPage extends StatefulWidget {
   });
 
   final TrotxiApiClient client;
-  final MeGet200Response initialUser;
+  final Account initialUser;
 
   @override
   State<PersonalInfoPage> createState() => _PersonalInfoPageState();
@@ -71,8 +72,12 @@ class _PersonalInfoPageState extends State<PersonalInfoPage> {
 
     setState(() => _saving = true);
     try {
-      await widget.client.getAuthApi().mePatch(
-        mePatchRequest: MePatchRequest((b) => b..displayName = trimmed),
+      await widget.client.getSelfApi().updateAccount(
+        idempotencyKey: newIdempotencyKey(),
+        xTrotxiClient: commuterMetadata.client,
+        xTrotxiBuild: commuterMetadata.build,
+        xTrotxiPlatform: commuterMetadata.platform,
+        profileUpdate: ProfileUpdate((b) => b..displayName = trimmed),
       );
       if (!mounted) return;
       Navigator.of(context).pop();

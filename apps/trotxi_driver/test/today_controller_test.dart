@@ -3,7 +3,9 @@
 // completely differently to a driver at the start of a shift.
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:trotxi_client/trotxi_client.dart';
+// The generated client exports a wire model named ManifestRider; these tests
+// mean the one in trips_repository.dart.
+import 'package:trotxi_client/trotxi_client.dart' hide ManifestRider;
 import 'package:trotxi_driver/core/config/corridor_time.dart';
 import 'package:trotxi_driver/core/state/loadable.dart';
 import 'package:trotxi_driver/core/state/today_controller.dart';

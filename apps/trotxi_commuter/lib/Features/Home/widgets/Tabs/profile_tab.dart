@@ -6,6 +6,7 @@ import 'package:trotxi_commuter/Features/Home/widgets/Tabs/personal_info.dart';
 import 'package:trotxi_commuter/Features/Home/widgets/Tabs/profile_notification.dart';
 import 'package:trotxi_commuter/Features/Home/widgets/Tabs/profile_security.dart';
 import 'package:trotxi_commuter/Features/Onboarding/pages/onboard_page.dart';
+import 'package:trotxi_commuter/core/config/client_metadata.dart';
 import 'package:trotxi_commuter/core/config/layout/responsive_layout.dart';
 import 'package:trotxi_commuter/core/config/theme/app_colors.dart';
 import 'package:trotxi_commuter/core/config/theme/app_theme_controller.dart';
@@ -21,7 +22,7 @@ class ProfileTab extends StatefulWidget {
 }
 
 class _ProfileTabState extends State<ProfileTab> {
-  MeGet200Response? _user;
+  Account? _user;
   bool _loading = true;
   Object? _error;
 
@@ -38,10 +39,14 @@ class _ProfileTabState extends State<ProfileTab> {
     });
 
     try {
-      final response = await widget.client.getAuthApi().meGet();
+      final response = await widget.client.getSelfApi().getAccount(
+        xTrotxiClient: commuterMetadata.client,
+        xTrotxiBuild: commuterMetadata.build,
+        xTrotxiPlatform: commuterMetadata.platform,
+      );
       if (!mounted) return;
       setState(() {
-        _user = response.data;
+        _user = response.data?.data;
         _loading = false;
       });
     } catch (e) {
@@ -70,12 +75,18 @@ class _ProfileTabState extends State<ProfileTab> {
     }
 
     try {
-      // Adjust method/parameter names to match your generated client.
-      final response = await widget.client.getAuthApi().mePatch(
-        mePatchRequest: MePatchRequest((b) => b..displayName = trimmed),
+      // A fresh key per distinct name: the API scopes an Idempotency-Key to
+      // caller + operation + payload and answers 409 if the same key comes
+      // back carrying something different.
+      final response = await widget.client.getSelfApi().updateAccount(
+        idempotencyKey: newIdempotencyKey(),
+        xTrotxiClient: commuterMetadata.client,
+        xTrotxiBuild: commuterMetadata.build,
+        xTrotxiPlatform: commuterMetadata.platform,
+        profileUpdate: ProfileUpdate((b) => b..displayName = trimmed),
       );
       if (!mounted) return;
-      setState(() => _user = response.data ?? _user);
+      setState(() => _user = response.data?.data ?? _user);
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -115,15 +126,16 @@ class _ProfileTabState extends State<ProfileTab> {
     if (refreshToken != null && refreshToken.isNotEmpty) {
       try {
         await widget.client
-            .getAuthApi()
-            .authLogoutPost(
-              authRefreshPostRequest: AuthRefreshPostRequest(
-                (b) => b..refreshToken = refreshToken,
-              ),
+            .getPublicApi()
+            .logoutSession(
+              xTrotxiClient: commuterMetadata.client,
+              xTrotxiBuild: commuterMetadata.build,
+              xTrotxiPlatform: commuterMetadata.platform,
+              refreshInput: RefreshInput((b) => b..refreshToken = refreshToken),
             )
             .timeout(const Duration(seconds: 5));
       } catch (_) {
-        // Best effort: /auth/logout is idempotent and outside the auth
+        // Best effort: /v1/auth/logout is idempotent and outside the auth
         // guard, so this only fails on things like a dead network — in
         // which case we still clear locally so the rider isn't stuck.
       }
