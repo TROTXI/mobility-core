@@ -3,7 +3,7 @@ import type { TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import { setup } from './helpers/financial-fixture.js';
-import { ConfigService } from '../src/config/service.js';
+import { ConfigService, inRollout } from '../src/config/service.js';
 import { MembershipService } from '../src/membership/service.js';
 import { createTransportApp } from '../src/http/app.js';
 
@@ -166,7 +166,7 @@ test('CFG-03 a stored build floor governs admission, not a constructor value', a
   );
 });
 
-test('CFG-04 flags are published as definitions for the client to decide', async (t) => {
+test('CFG-04 a flag fully on or off reads the same to everyone', async (t) => {
   const f = await fixture(t);
   expectStatus(
     await f.call('PUT', '/v1/ops/flags/commute.transfers', {
@@ -188,7 +188,7 @@ test('CFG-04 flags are published as definitions for the client to decide', async
       { key: 'commute.transfers', enabled: true, rolloutPercentage: 100 },
       { key: 'map.live', enabled: false, rolloutPercentage: 100 },
     ],
-    'the reviewed schema carries the rollout to the client, so the client buckets',
+    'at 100% or switched off there is nothing to bucket, so anonymous and signed-in agree',
   );
   assert.equal(
     JSON.stringify(expectStatus(await f.bare('/flags'), 200).flags).includes('description'),
@@ -223,6 +223,56 @@ test('CFG-04 flags are published as definitions for the client to decide', async
       .rolloutPercentage,
     50,
   );
+});
+
+test('CFG-04b a partial rollout is decided per person, and only from sign-in', async (t) => {
+  const f = await fixture(t);
+  expectStatus(
+    await f.call('PUT', '/v1/ops/flags/map.live', {
+      payload: { enabled: true, rolloutPercentage: 50, description: 'Half' },
+      match: '*',
+    }),
+    200,
+  );
+  const flag = async (response: Promise<Response>) =>
+    expectStatus(await response, 200).flags.find((x: { key: string }) => x.key === 'map.live');
+
+  // Nobody to bucket before sign-in, so a half-released feature stays hidden
+  // rather than being shown to an arbitrary anonymous half.
+  assert.deepEqual(await flag(f.bare('/flags')), {
+    key: 'map.live',
+    enabled: false,
+    rolloutPercentage: 50,
+  });
+
+  // Signed in, the answer is that person's bucket, and the same one each time.
+  const expected = inRollout(f.actor.userId, 'map.live', 50);
+  const asRider = await flag(f.call('GET', '/flags', { who: 'rider' }));
+  assert.equal(asRider.enabled, expected);
+  assert.equal((await flag(f.call('GET', '/flags', { who: 'rider' }))).enabled, expected);
+  assert.equal(asRider.rolloutPercentage, 50, 'the percentage is still reported');
+
+  // A token the service does not accept is anonymous, not an error: this
+  // endpoint answers on the sign-in screen and must never refuse.
+  const rejected = f.app.inject({
+    method: 'GET',
+    url: '/flags',
+    headers: { authorization: 'Bearer not-a-session' },
+  }) as Promise<Response>;
+  assert.equal((await flag(rejected)).enabled, false);
+
+  // Switched off wins over any bucket. An existing flag needs its own token.
+  const current = expectStatus(await f.call('GET', '/v1/ops/flags'), 200).find(
+    (x: { key: string }) => x.key === 'map.live',
+  );
+  expectStatus(
+    await f.call('PUT', '/v1/ops/flags/map.live', {
+      payload: { enabled: false, rolloutPercentage: 100, description: 'Off' },
+      match: `"flag:map.live:${current.version}"`,
+    }),
+    200,
+  );
+  assert.equal((await flag(f.call('GET', '/flags', { who: 'rider' }))).enabled, false);
 });
 
 test('CFG-05 configuration is ops work, attributable and replayable', async (t) => {

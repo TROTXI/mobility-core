@@ -127,6 +127,24 @@ export interface AppOptions extends Dependencies {
 export async function createTransportApp(options: AppOptions) {
   if (typeof options.coordinateReservations !== 'function')
     throw new Error('Transactional reservation coordinator required before application startup');
+  /**
+   * The caller behind a public route, if they offered a session.
+   *
+   * Bootstrap never demands one: it answers on the sign-in screen and the
+   * cannot-sign-in screen. But it decides flag rollouts per person when it can,
+   * so a valid token identifies the caller and anything else, missing,
+   * malformed or expired, is simply anonymous. It never fails the request.
+   */
+  const optionalCaller = async (request: { headers: { authorization?: string } }) => {
+    const authorization = request.headers.authorization;
+    if (typeof authorization !== 'string' || !/^Bearer [^\s]{1,8192}$/.test(authorization))
+      return null;
+    try {
+      return (await options.verifyAccess(authorization))?.userId ?? null;
+    } catch {
+      return null;
+    }
+  };
   if (typeof options.verifyAccess !== 'function')
     throw new Error('Verified access-token adapter required');
   const floors = options.minimumBuilds;
@@ -552,7 +570,7 @@ export async function createTransportApp(options: AppOptions) {
                     ? options.config!.health()
                     : name === 'getReadiness'
                       ? await options.config!.readiness()
-                      : await options.config!.bootstrap();
+                      : await options.config!.bootstrap(await optionalCaller(request));
           } else if (configEndpoint) {
             const query = request.query as Record<string, string | undefined>;
             const allowed = new Set(
