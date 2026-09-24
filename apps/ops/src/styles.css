@@ -112,6 +112,7 @@ select {
 .auth-card h1 {
   margin: 28px 0 10px;
   font-size: 34px;
+  line-height: 1.05;
   letter-spacing: -0.9px;
 }
 .auth-card p {

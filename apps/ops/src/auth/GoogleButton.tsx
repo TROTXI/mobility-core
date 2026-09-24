@@ -87,6 +87,12 @@ export function GoogleButton() {
       </div>
     );
   return (
-    <div ref={host}>{state === 'loading' && <Spinner label="Preparing secure sign in" />}</div>
+    <div className="auth-actions">
+      {state === 'loading' && <Spinner label="Preparing secure sign in" />}
+      {/* Google owns every child of this host. Keeping React-rendered children
+          outside it prevents the provider widget and React from removing the
+          same DOM node during development remounts or a slow script load. */}
+      <div ref={host} />
+    </div>
   );
 }
