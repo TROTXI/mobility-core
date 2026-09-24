@@ -25,4 +25,6 @@ COPY --from=build /repo/services/api-next/migrations ./migrations
 EXPOSE 10000
 # Only the named disposable staging service installs migrations on boot.
 # Startup never resets data, provisions logins, or changes credentials.
-CMD ["node", "dist/server.js"]
+# Telemetry loads first so it can instrument Fastify and pg as they load. It
+# does nothing unless OTEL_EXPORTER_OTLP_ENDPOINT is set.
+CMD ["node", "--import", "./dist/observability/telemetry.js", "dist/server.js"]

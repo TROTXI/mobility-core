@@ -31,6 +31,8 @@ import type { TripRead } from '../transport/trips.js';
 import type { MembershipService, MembershipOperation } from '../membership/service.js';
 import { boardingOperations } from '../boarding/service.js';
 import type { BoardingService } from '../boarding/service.js';
+import { loggerOptions } from '../observability/logging.js';
+import { recordJob } from '../observability/metrics.js';
 // The contract admits a `worker` client on exactly these, with no platform:
 // scheduled maintenance is an operations caller without an app build behind it.
 const maintenanceOperations = new Set([
@@ -74,6 +76,8 @@ interface Operation {
 }
 export interface AppOptions extends Dependencies {
   refunds?: RefundInitiation;
+  /** Request logs to stdout, which OpenTelemetry ships to Loki. Off in tests. */
+  logRequests?: boolean;
   // Unlike the independently testable service, the application must not start
   // with booking-aware mutations exposed but their required adapter absent.
   coordinateReservations: NonNullable<Dependencies['coordinateReservations']>;
@@ -162,7 +166,7 @@ export async function createTransportApp(options: AppOptions) {
   const service = new TransportService(options);
   const app = Fastify({
     maxParamLength: 256,
-    logger: false,
+    logger: options.logRequests ? loggerOptions() : false,
     bodyLimit: 65536,
     trustProxy: options.trustProxy ?? false,
     genReqId: () => randomUUID(),
@@ -356,6 +360,21 @@ export async function createTransportApp(options: AppOptions) {
           ? { config: { rateLimit: { max: authBudget, timeWindow: 60000 } } }
           : {}),
         schema: { ...(input ? { body: rootRef(input) } : {}), response },
+        // Every scheduled job reports its outcome here, whichever service ran
+        // it. One place, so a job added later is counted without anyone
+        // remembering to count it.
+        ...(scheduled
+          ? {
+              onSend: async (
+                _request: unknown,
+                reply: { statusCode: number },
+                payload: unknown,
+              ) => {
+                recordJob(name, reply.statusCode, payload);
+                return payload;
+              },
+            }
+          : {}),
         // The plugin's onRequest IP limiter must run before verification.
         // A route-local onRequest auth hook would precede its appended hook.
         preValidation: async (request, reply) => {

@@ -3,6 +3,8 @@ import { composeBackend } from './runtime/compose.js';
 import pg from 'pg';
 import { fileURLToPath } from 'node:url';
 import { migrate, readMigrations } from './db/migrate.js';
+import { observeBusiness } from './observability/metrics.js';
+import { stopTelemetry } from './observability/telemetry.js';
 
 /**
  * The deployable entry point.
@@ -29,6 +31,8 @@ if (config.existingStaging) {
   }
 }
 const backend = await composeBackend(config);
+// A no-op unless telemetry started: with no provider the gauges never ask.
+observeBusiness(backend.pool, config.staleFixAfterSeconds);
 await backend.app.listen({ host: config.listen.host, port: config.listen.port });
 process.stdout.write(
   `${JSON.stringify({
@@ -53,6 +57,8 @@ async function stop(signal: string) {
   deadline.unref();
   try {
     await backend.close();
+    // Inside the deadline above, so a slow collector cannot hold the exit.
+    await stopTelemetry();
     process.stdout.write(`${JSON.stringify({ stopped: signal })}\n`);
     process.exit(0);
   } catch (error) {
