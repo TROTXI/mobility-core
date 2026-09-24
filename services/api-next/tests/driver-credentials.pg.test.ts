@@ -229,6 +229,12 @@ async function fixture(t: TestContext) {
   const f = await setup(t),
     ops = await f.sign('operator');
   await f.owner.query("UPDATE app.users SET role='admin' WHERE id=$1", [ops.account.id]);
+  // A verified operator. The second factor itself is tested in auth.pg.test.ts;
+  // these tests are about credentials, so the admin here has passed it.
+  await f.owner.query(
+    'UPDATE app.auth_sessions SET mfa_verified_at=clock_timestamp() WHERE user_id=$1',
+    [ops.account.id],
+  );
   const call = (
     method: 'GET' | 'POST' | 'PATCH',
     path: string,

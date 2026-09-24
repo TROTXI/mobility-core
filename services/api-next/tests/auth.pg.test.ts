@@ -501,6 +501,13 @@ test('AUTH-09: real JWT transport integration reads DB roles and revoked/erased 
     });
   data(await ops(), 403);
   await f.owner.query("UPDATE app.users SET role='admin' WHERE id=$1", [a.account.id]);
+  // Promotion alone does not open ops: the new admin still has to pass the
+  // authenticator check, and is asked for a code rather than signed out.
+  assert.equal((await ops()).json().error.code, 'mfa_required');
+  await f.owner.query(
+    'UPDATE app.auth_sessions SET mfa_verified_at=clock_timestamp() WHERE user_id=$1',
+    [a.account.id],
+  );
   data(await ops()); // JWT still says commuter; current DB role decides.
   await f.owner.query('UPDATE app.users SET deleted_at=clock_timestamp() WHERE id=$1', [
     a.account.id,

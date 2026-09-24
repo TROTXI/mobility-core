@@ -106,8 +106,10 @@ function configurationFor(f: Fixture, over: Record<string, string> = {}) {
 async function tokenFor(backend: Backend, userId: string) {
   const session = (
     await backend.pool.query(
-      `INSERT INTO app.auth_sessions(user_id,expires_at)
-      VALUES ($1, clock_timestamp() + interval '1 hour') RETURNING id,created_at,expires_at`,
+      // Elevated at birth, exactly as the worker's now is.
+      `INSERT INTO app.auth_sessions(user_id,expires_at,mfa_verified_at)
+      VALUES ($1, clock_timestamp() + interval '1 hour', clock_timestamp())
+      RETURNING id,created_at,expires_at`,
       [userId],
     )
   ).rows[0];
