@@ -824,7 +824,7 @@ function authenticationResponse(challenge: string, id: string, signature = 'c2ln
     clientExtensionResults: {},
     response: {
       clientDataJSON: challenge,
-      authenticatorData: 'YXV0aGVudGljYXRvci1kYXRh',
+      authenticatorData: Buffer.from('test-authenticator-data').toString('base64url'),
       signature,
       userHandle: null,
     },
