@@ -83,7 +83,7 @@ async function operatorSession(backend: Backend, minutes = 15) {
       // one is minted by a process holding database access, which is already
       // past anything a second factor protects. Without this, every scheduled
       // job would be refused the moment two-factor sign-in shipped.
-      `INSERT INTO app.auth_sessions(user_id,expires_at,mfa_verified_at)
+      `INSERT INTO app.auth_sessions(user_id,expires_at,admin_verified_at)
       VALUES ($1, clock_timestamp() + make_interval(mins => $2), clock_timestamp())
       RETURNING id,created_at,expires_at`,
       [backend.maintenanceUserId, minutes],

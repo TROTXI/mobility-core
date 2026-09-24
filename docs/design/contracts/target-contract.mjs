@@ -90,40 +90,91 @@ named(
 );
 named('ProfileUpdate', obj({ displayName: text(100) }));
 named(
-  'MfaStatus',
+  'PasskeyStatus',
   obj({
-    // An authenticator has been confirmed and protects this account.
-    enrolled: z.boolean(),
-    // A secret has been issued and no code from it confirmed yet.
-    pendingEnrolment: z.boolean(),
-    // This session has passed the check and is inside its elevation window.
+    registered: z.boolean(),
+    passkeyCount: count,
+    registrationPending: z.boolean(),
+    // This particular session, not the whole account, passed WebAuthn.
     verified: z.boolean(),
-    recoveryCodesRemaining: count,
-    lockedUntil: instant.nullable(),
   }),
 );
+const base64url = z
+  .string()
+  .min(1)
+  .max(65536)
+  .regex(/^[A-Za-z0-9_-]+$/);
+const transport = text(32);
+const credentialDescriptor = obj({
+  id: base64url,
+  type: z.literal('public-key'),
+  transports: z.array(transport).optional(),
+});
 named(
-  'MfaEnrolment',
+  'PasskeyRegistrationOptions',
   obj({
-    // For the QR code. Every authenticator app reads an otpauth link.
-    otpauthUri: text(1000),
-    // The same secret for typing in by hand. Shown once, never readable again.
-    secret: text(64),
+    rp: obj({ id: text(253), name: text(100) }),
+    user: obj({ id: base64url, name: text(320), displayName: text(200) }),
+    challenge: base64url,
+    pubKeyCredParams: z.array(obj({ type: z.literal('public-key'), alg: z.int() })).min(1),
+    timeout: z.number().positive().optional(),
+    excludeCredentials: z.array(credentialDescriptor).optional(),
+    authenticatorSelection: obj({
+      authenticatorAttachment: z.enum(['cross-platform', 'platform']).optional(),
+      requireResidentKey: z.boolean().optional(),
+      residentKey: z.enum(['discouraged', 'preferred', 'required']).optional(),
+      userVerification: z.enum(['discouraged', 'preferred', 'required']).optional(),
+    }).optional(),
+    hints: z.array(text(64)).optional(),
+    attestation: z.enum(['direct', 'enterprise', 'indirect', 'none']).optional(),
+    attestationFormats: z.array(text(64)).optional(),
+    extensions: z.looseObject({}).optional(),
   }),
 );
-named('MfaCode', obj({ code: z.string().regex(/^\d{6}$/) }));
 named(
-  'MfaVerification',
-  z.discriminatedUnion('method', [
-    obj({ method: z.literal('authenticator'), code: z.string().regex(/^\d{6}$/) }),
-    obj({ method: z.literal('recovery'), recoveryCode: text(20) }),
-  ]),
+  'PasskeyAuthenticationOptions',
+  obj({
+    challenge: base64url,
+    timeout: z.number().positive().optional(),
+    rpId: text(253).optional(),
+    allowCredentials: z.array(credentialDescriptor).optional(),
+    userVerification: z.enum(['discouraged', 'preferred', 'required']).optional(),
+    hints: z.array(text(64)).optional(),
+    extensions: z.looseObject({}).optional(),
+  }),
+);
+const credentialEnvelope = {
+  id: base64url,
+  rawId: base64url,
+  authenticatorAttachment: z.enum(['cross-platform', 'platform']).nullable().optional(),
+  clientExtensionResults: z.looseObject({}),
+  type: z.literal('public-key'),
+};
+named(
+  'PasskeyRegistrationResponse',
+  obj({
+    ...credentialEnvelope,
+    response: obj({
+      clientDataJSON: base64url,
+      attestationObject: base64url,
+      authenticatorData: base64url.optional(),
+      transports: z.array(transport).optional(),
+      publicKeyAlgorithm: z.int().optional(),
+      publicKey: base64url.optional(),
+    }),
+  }),
 );
 named(
-  'RecoveryCodes',
-  // Shown once at enrolment and stored only as hashes: this is the only time
-  // anyone sees them, so the console has to make saving them the next step.
-  obj({ recoveryCodes: z.array(text(20)).length(10) }),
+  'PasskeyAuthenticationResponse',
+  obj({
+    ...credentialEnvelope,
+    response: obj({
+      clientDataJSON: base64url,
+      authenticatorData: base64url,
+      signature: base64url,
+      userHandle: base64url.nullable().optional(),
+    }),
+  }),
 );
 
 named('Avatar', obj({ url: z.url(), expiresAt: instant }));
@@ -1191,26 +1242,56 @@ post('/v1/auth/logout', 'logoutSession', 'RefreshInput', null, {
   retry: 'credential',
   sensitive: true,
 });
-// A second factor for operations accounts. These answer an admin whose session
-// has not yet passed the check; every other operation refuses one.
-get('/v1/auth/mfa', 'getMfaStatus', 'MfaStatus', { access: 'self' });
-post('/v1/auth/mfa/enrolment', 'startMfaEnrolment', null, 'MfaEnrolment', {
-  access: 'self',
-  retry: 'credential',
-  sensitive: true,
-});
-post('/v1/auth/mfa/enrolment/confirmation', 'confirmMfaEnrolment', 'MfaCode', 'RecoveryCodes', {
-  access: 'self',
-  retry: 'credential',
-  sensitive: true,
-});
-post('/v1/auth/mfa/verification', 'verifyMfa', 'MfaVerification', null, {
-  access: 'self',
-  status: 204,
-  retry: 'credential',
-  sensitive: true,
-});
-post('/v1/ops/users/{id}/mfa/reset', 'resetOperatorMfa', null, null, {
+// A phishing-resistant passkey check for operations accounts. These answer an
+// admin whose session is not yet elevated; every other operation refuses one.
+get('/v1/auth/passkeys', 'getPasskeyStatus', 'PasskeyStatus', { access: 'self' });
+post(
+  '/v1/auth/passkeys/registration/options',
+  'startPasskeyRegistration',
+  null,
+  'PasskeyRegistrationOptions',
+  {
+    access: 'self',
+    retry: 'credential',
+    sensitive: true,
+  },
+);
+post(
+  '/v1/auth/passkeys/registration/verification',
+  'finishPasskeyRegistration',
+  'PasskeyRegistrationResponse',
+  null,
+  {
+    access: 'self',
+    status: 204,
+    retry: 'credential',
+    sensitive: true,
+  },
+);
+post(
+  '/v1/auth/passkeys/authentication/options',
+  'startPasskeyAuthentication',
+  null,
+  'PasskeyAuthenticationOptions',
+  {
+    access: 'self',
+    retry: 'credential',
+    sensitive: true,
+  },
+);
+post(
+  '/v1/auth/passkeys/authentication/verification',
+  'finishPasskeyAuthentication',
+  'PasskeyAuthenticationResponse',
+  null,
+  {
+    access: 'self',
+    status: 204,
+    retry: 'credential',
+    sensitive: true,
+  },
+);
+post('/v1/ops/users/{id}/passkeys/reset', 'resetOperatorPasskeys', null, null, {
   status: 204,
   retry: 'credential',
   sensitive: true,

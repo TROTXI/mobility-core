@@ -579,7 +579,7 @@ async function maintenance(baseUrl: string): Promise<void> {
     const session = await cone(
       // Elevated at birth, for the same reason the worker's is: this is minted
       // with database access, and the payments schedule stops dead otherwise.
-      `INSERT INTO app.auth_sessions(user_id,expires_at,mfa_verified_at)
+      `INSERT INTO app.auth_sessions(user_id,expires_at,admin_verified_at)
        VALUES ($1, clock_timestamp() + interval '10 minutes', clock_timestamp())`,
       [id],
     );

@@ -232,7 +232,7 @@ async function fixture(t: TestContext) {
   // A verified operator. The second factor itself is tested in auth.pg.test.ts;
   // these tests are about credentials, so the admin here has passed it.
   await f.owner.query(
-    'UPDATE app.auth_sessions SET mfa_verified_at=clock_timestamp() WHERE user_id=$1',
+    'UPDATE app.auth_sessions SET admin_verified_at=clock_timestamp() WHERE user_id=$1',
     [ops.account.id],
   );
   const call = (

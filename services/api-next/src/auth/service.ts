@@ -1,4 +1,3 @@
-import { hkdfSync, randomBytes } from 'node:crypto';
 import type { Pool, PoolClient } from 'pg';
 import { errors as joseErrors } from 'jose';
 import { ZodError } from 'zod';
@@ -10,15 +9,8 @@ import type { AccessConfig } from './credentials.js';
 import type { IdTokenVerifier, Provider, VerifiedIdentity } from './types.js';
 import type { AppleTokenClient } from './apple-token-types.js';
 import { normalizeDriverCode, verifyDriverPin } from './driver-pin.js';
-import {
-  base32Encode,
-  matchStep,
-  newRecoveryCodes,
-  newSecret,
-  otpauthUri,
-  recoveryCodeHash,
-  totpSecretBox,
-} from './totp.js';
+import type { AuthenticationResponseJSON, RegistrationResponseJSON } from '@simplewebauthn/server';
+import type { PasskeyRelyingParty, StoredPasskey } from './passkeys.js';
 
 export const authOperations = [
   'signInGoogle',
@@ -29,31 +21,30 @@ export const authOperations = [
   'getAccount',
   'listSessions',
   'revokeSession',
-  'getMfaStatus',
-  'startMfaEnrolment',
-  'confirmMfaEnrolment',
-  'verifyMfa',
-  'resetOperatorMfa',
+  'getPasskeyStatus',
+  'startPasskeyRegistration',
+  'finishPasskeyRegistration',
+  'startPasskeyAuthentication',
+  'finishPasskeyAuthentication',
+  'resetOperatorPasskeys',
 ] as const;
 /** The only operations an admin session that has not passed the check may call. */
-export const mfaOperations = [
-  'getMfaStatus',
-  'startMfaEnrolment',
-  'confirmMfaEnrolment',
-  'verifyMfa',
-  'resetOperatorMfa',
+export const passkeyOperations = [
+  'getPasskeyStatus',
+  'startPasskeyRegistration',
+  'finishPasskeyRegistration',
+  'startPasskeyAuthentication',
+  'finishPasskeyAuthentication',
+  'resetOperatorPasskeys',
 ] as const;
-type MfaOperation = (typeof mfaOperations)[number];
+type PasskeyOperation = (typeof passkeyOperations)[number];
 /**
  * How long a passed check lasts. The design's session card says eight hours,
  * one shift: after that the console asks for a code again, and the session
  * itself stays signed in.
  */
 export const ADMIN_ELEVATION_HOURS = 8;
-const MFA_LOCK_AFTER = 5;
-const MFA_LOCK_SECONDS = 900;
-/** Time allowed between showing a secret and confirming a code from it. */
-const MFA_ENROLMENT_SECONDS = 900;
+const PASSKEY_CHALLENGE_SECONDS = 300;
 export const publicAuthOperations = [
   'signInGoogle',
   'signInApple',
@@ -77,11 +68,6 @@ export class DriverLockedError extends LockedError {
     super('driver_locked', 'Too many attempts. Please try again later.', retryAfterSeconds);
   }
 }
-export class MfaLockedError extends LockedError {
-  constructor(retryAfterSeconds: number) {
-    super('mfa_locked', 'Too many wrong codes. Try again in a few minutes.', retryAfterSeconds);
-  }
-}
 export interface AuthOptions {
   pool: Pool;
   access: AccessConfig;
@@ -93,11 +79,8 @@ export interface AuthOptions {
   apple?: IdTokenVerifier;
   appleTokens?: AppleTokenClient;
   providerEncryptionKey?: Buffer;
-  /**
-   * Seals admin authenticator secrets and keys the recovery-code hashes. Two
-   * subkeys are derived from it, so one key never does both jobs.
-   */
-  totpEncryptionKey?: Buffer;
+  /** Standards verifier bound to the exact Ops origin and relying-party ID. */
+  passkeys?: PasskeyRelyingParty;
   // URL signing must be local; never make a network call while holding auth locks.
   avatarUrl?: (objectKey: string) => string;
 }
@@ -122,7 +105,6 @@ export class AuthService {
   readonly tokens;
   private readonly cursor;
   private readonly box;
-  private readonly mfaKeys;
   constructor(private readonly options: AuthOptions) {
     this.tokens = accessTokens(options.access);
     this.cursor = cursorCodec(options.cursorSecret);
@@ -140,15 +122,6 @@ export class AuthService {
       throw new Error('Apple code exchange requires encrypted credential storage');
     this.box = options.providerEncryptionKey
       ? providerTokenBox(options.providerEncryptionKey)
-      : undefined;
-    const mfaKey = options.totpEncryptionKey;
-    this.mfaKeys = mfaKey
-      ? {
-          secrets: totpSecretBox(
-            Buffer.from(hkdfSync('sha256', mfaKey, 'trotxi:mfa:v1', 'secret-seal', 32)),
-          ),
-          recovery: Buffer.from(hkdfSync('sha256', mfaKey, 'trotxi:mfa:v1', 'recovery-mac', 32)),
-        }
       : undefined;
   }
 
@@ -216,7 +189,7 @@ export class AuthService {
    * passed it more than a shift ago, is refused. 403 and not 401, because the
    * session is valid and the client must ask for a code, not sign out.
    *
-   * allowUnelevated is for the two-factor endpoints alone, which are how an
+   * allowUnelevated is for the passkey endpoints alone, which are how an
    * admin gets from signed in to verified.
    */
   readonly authorizeSession = async (
@@ -228,8 +201,8 @@ export class AuthService {
     const session = (
       await client.query(
         `SELECT id,
-          (mfa_verified_at IS NOT NULL
-            AND mfa_verified_at > clock_timestamp() - make_interval(hours => ${ADMIN_ELEVATION_HOURS}))
+          (admin_verified_at IS NOT NULL
+            AND admin_verified_at > clock_timestamp() - make_interval(hours => ${ADMIN_ELEVATION_HOURS}))
             AS elevated
         FROM app.auth_sessions
         WHERE id=$1 AND user_id=$2 AND revoked_at IS NULL AND expires_at>clock_timestamp() FOR SHARE`,
@@ -239,7 +212,7 @@ export class AuthService {
     if (!session) throw denied();
     await this.driverAllowed(client, user);
     if (user.role === 'admin' && !session.elevated && !options.allowUnelevated)
-      fail(403, 'mfa_required', 'Confirm it is you with your authenticator app.');
+      fail(403, 'passkey_required', 'Use your passkey to continue.');
   };
 
   private async issue(
@@ -489,201 +462,220 @@ export class AuthService {
     });
   }
 
-  /**
-   * The second factor for operations accounts.
-   *
-   * Runs in its own transaction and returns, rather than throws, a wrong code
-   * or a lockout: a thrown error rolls back, and the failed-attempt count has to
-   * survive the refusal or the lockout never arrives. The same shape the driver
-   * PIN uses.
-   */
-  private async mfa(name: MfaOperation, actor: Actor, body: any, target: string | undefined) {
-    const keys = this.mfaKeys;
-    if (!keys) fail(503, 'mfa_unavailable', 'Two-factor sign-in is not configured here.');
-    const output = await this.transaction(async (client) => {
-      // One writer per account, so two codes racing cannot both be accepted.
+  private async passkey(
+    name: PasskeyOperation,
+    actor: Actor,
+    body: any,
+    target: string | undefined,
+  ) {
+    const relyingParty = this.options.passkeys;
+    if (!relyingParty)
+      fail(503, 'passkeys_unavailable', 'Passkey authentication is not configured here.');
+    return this.transaction(async (client) => {
       const user = await this.user(client, actor.userId, true);
-      if (name === 'resetOperatorMfa') {
-        // Resetting someone else's factor is itself an operations action, so it
-        // needs a session that has already passed the check.
+
+      if (name === 'resetOperatorPasskeys') {
         await this.authorizeSession(client, actor);
         if (user.role !== 'admin')
           fail(403, 'forbidden', 'This operation is not available to your account.');
-        return this.resetMfa(client, actor, target, keys);
+        return this.resetPasskeys(client, actor, target);
       }
+
       await this.authorizeSession(client, actor, { allowUnelevated: true });
-      if (user.role !== 'admin')
-        fail(403, 'forbidden', 'Two-factor sign-in is for operations accounts.');
+      if (user.role !== 'admin') fail(403, 'forbidden', 'Passkeys are for operations accounts.');
+
       const now = await this.now(client);
-      const row = (
-        await client.query('SELECT * FROM app.admin_mfa WHERE user_id=$1 FOR UPDATE', [user.id])
-      ).rows[0];
-      const enrolled = !!row?.enabled_at;
-      const pending =
-        !!row &&
-        !row.enabled_at &&
-        !!row.secret_issued_at &&
-        now.getTime() - row.secret_issued_at.getTime() < MFA_ENROLMENT_SECONDS * 1000;
-      const locked = row?.locked_until && row.locked_until > now ? row.locked_until : null;
-
-      if (name === 'getMfaStatus') {
-        const session = (
+      const credentials = (
+        await client.query(
+          `SELECT credential_id,public_key,signature_counter,transports
+           FROM app.admin_passkeys
+           WHERE user_id=$1 AND revoked_at IS NULL
+           ORDER BY created_at,id FOR UPDATE`,
+          [user.id],
+        )
+      ).rows;
+      const stored = credentials.map((row): StoredPasskey => ({
+        id: row.credential_id,
+        publicKey: Uint8Array.from(row.public_key),
+        counter: Number(row.signature_counter),
+        transports: row.transports,
+      }));
+      const elevated =
+        (
           await client.query(
-            `SELECT (mfa_verified_at IS NOT NULL
-              AND mfa_verified_at > $2::timestamptz - make_interval(hours => ${ADMIN_ELEVATION_HOURS}))
-              AS elevated FROM app.auth_sessions WHERE id=$1`,
-            [actor.sessionId, now],
+            `SELECT (admin_verified_at IS NOT NULL
+              AND admin_verified_at > $2::timestamptz - make_interval(hours => ${ADMIN_ELEVATION_HOURS}))
+              AS elevated
+             FROM app.auth_sessions WHERE id=$1 AND user_id=$3`,
+            [actor.sessionId, now, actor.userId],
           )
-        ).rows[0];
-        const remaining = enrolled
-          ? Number(
-              (
-                await client.query(
-                  'SELECT count(*) AS n FROM app.admin_mfa_recovery_codes WHERE user_id=$1 AND used_at IS NULL',
-                  [user.id],
-                )
-              ).rows[0].n,
+        ).rows[0]?.elevated === true;
+
+      if (name === 'getPasskeyStatus') {
+        const pending =
+          (
+            await client.query(
+              `SELECT 1 FROM app.admin_passkey_challenges
+               WHERE session_id=$1 AND user_id=$2 AND purpose='registration'
+                 AND consumed_at IS NULL AND expires_at>$3 LIMIT 1`,
+              [actor.sessionId, user.id, now],
             )
-          : 0;
+          ).rowCount === 1;
         return result({
-          enrolled,
-          pendingEnrolment: pending,
-          verified: session?.elevated === true,
-          recoveryCodesRemaining: remaining,
-          lockedUntil: locked ? locked.toISOString() : null,
+          registered: stored.length > 0,
+          passkeyCount: stored.length,
+          registrationPending: pending,
+          verified: elevated,
         });
       }
 
-      if (name === 'startMfaEnrolment') {
-        // Replacing a working authenticator takes another admin's reset. Were it
-        // self-service, a stolen Google session could swap in its own phone.
-        if (enrolled)
-          fail(409, 'mfa_already_enrolled', 'This account already has an authenticator.');
-        const secret = newSecret();
-        await client.query(
-          `INSERT INTO app.admin_mfa(user_id,secret_ciphertext,secret_issued_at,updated_at)
-          VALUES ($1,$2,$3,$3)
-          ON CONFLICT (user_id) DO UPDATE SET secret_ciphertext=EXCLUDED.secret_ciphertext,
-            secret_issued_at=EXCLUDED.secret_issued_at, enabled_at=NULL, last_used_step=NULL,
-            failed_attempts=0, locked_until=NULL, updated_at=EXCLUDED.updated_at`,
-          [user.id, keys.secrets.seal(secret, user.id), now],
-        );
-        await this.mfaEvent(client, user.id, user.id, 'enrolment_started');
-        return result({
-          otpauthUri: otpauthUri(secret, user.email ?? user.display_name ?? user.id),
-          secret: base32Encode(secret),
+      if (name === 'startPasskeyRegistration') {
+        if (stored.length && !elevated)
+          fail(403, 'passkey_required', 'Use an existing passkey before adding another.');
+        const options = await relyingParty.registrationOptions({
+          userId: user.id,
+          userName: user.email ?? user.id,
+          displayName: user.display_name ?? user.email ?? 'Trotxi operator',
+          credentials: stored,
         });
+        await this.savePasskeyChallenge(client, actor, 'registration', options.challenge, now);
+        await this.passkeyEvent(client, user.id, user.id, 'registration_started');
+        return result(options);
       }
 
-      if (name === 'confirmMfaEnrolment') {
-        if (!pending) fail(409, 'mfa_not_pending', 'Start setting up your authenticator again.');
-        if (locked) return new MfaLockedError(this.secondsUntil(locked, now));
-        const step = matchStep(
-          keys.secrets.open(row.secret_ciphertext, user.id),
-          String(body?.code ?? ''),
-          now,
-          row.last_used_step === null ? null : Number(row.last_used_step),
-        );
-        if (step === null) return this.mfaFailure(client, user.id, row, now);
-        await client.query(
-          `UPDATE app.admin_mfa SET enabled_at=$2,last_used_step=$3,failed_attempts=0,
-            locked_until=NULL,updated_at=$2 WHERE user_id=$1`,
-          [user.id, now, step],
-        );
-        // Only the set shown now works; any earlier codes are spent.
-        await client.query(
-          'UPDATE app.admin_mfa_recovery_codes SET used_at=$2 WHERE user_id=$1 AND used_at IS NULL',
-          [user.id, now],
-        );
-        const codes = newRecoveryCodes();
-        for (const code of codes)
-          await client.query(
-            'INSERT INTO app.admin_mfa_recovery_codes(user_id,code_hash) VALUES ($1,$2)',
-            [user.id, recoveryCodeHash(keys.recovery, code)],
+      if (name === 'finishPasskeyRegistration') {
+        if (stored.length && !elevated)
+          fail(403, 'passkey_required', 'Use an existing passkey before adding another.');
+        const challenge = await this.passkeyChallenge(client, actor, 'registration', now);
+        let registered;
+        try {
+          registered = await relyingParty.verifyRegistration(
+            body as RegistrationResponseJSON,
+            challenge,
           );
-        await this.elevate(client, actor, now);
-        await this.mfaEvent(client, user.id, user.id, 'enrolled');
-        return result({ recoveryCodes: codes });
-      }
-
-      // verifyMfa
-      if (!enrolled) fail(409, 'mfa_not_enrolled', 'Set up your authenticator first.');
-      if (locked) return new MfaLockedError(this.secondsUntil(locked, now));
-      if (body?.method === 'recovery') {
-        const spent = (
-          await client.query(
-            `UPDATE app.admin_mfa_recovery_codes SET used_at=$3
-            WHERE user_id=$1 AND code_hash=$2 AND used_at IS NULL RETURNING id`,
-            [user.id, recoveryCodeHash(keys.recovery, String(body.recoveryCode ?? '')), now],
-          )
-        ).rows[0];
-        if (!spent) return this.mfaFailure(client, user.id, row, now);
+        } catch {
+          fail(400, 'passkey_verification_failed', 'The passkey could not be verified.');
+        }
         await client.query(
-          'UPDATE app.admin_mfa SET failed_attempts=0,locked_until=NULL,updated_at=$2 WHERE user_id=$1',
-          [user.id, now],
+          `INSERT INTO app.admin_passkeys(
+             user_id,credential_id,public_key,signature_counter,transports,
+             device_type,backed_up,created_at
+           ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
+          [
+            user.id,
+            registered.id,
+            Buffer.from(registered.publicKey),
+            registered.counter,
+            registered.transports ?? [],
+            registered.deviceType,
+            registered.backedUp,
+            now,
+          ],
         );
+        await this.consumePasskeyChallenge(client, actor, 'registration');
         await this.elevate(client, actor, now);
-        await this.mfaEvent(client, user.id, user.id, 'recovery_used');
+        await this.passkeyEvent(client, user.id, user.id, 'registered');
         return result();
       }
-      const step = matchStep(
-        keys.secrets.open(row.secret_ciphertext, user.id),
-        String(body?.code ?? ''),
-        now,
-        row.last_used_step === null ? null : Number(row.last_used_step),
-      );
-      if (step === null) return this.mfaFailure(client, user.id, row, now);
+
+      if (!stored.length)
+        fail(409, 'passkey_not_registered', 'Register a passkey before continuing.');
+
+      if (name === 'startPasskeyAuthentication') {
+        const options = await relyingParty.authenticationOptions(stored);
+        await this.savePasskeyChallenge(client, actor, 'authentication', options.challenge, now);
+        return result(options);
+      }
+
+      const challenge = await this.passkeyChallenge(client, actor, 'authentication', now);
+      const credentialRow = credentials.find((row) => row.credential_id === String(body?.id ?? ''));
+      if (!credentialRow)
+        fail(400, 'passkey_verification_failed', 'The passkey could not be verified.');
+      const credential: StoredPasskey = {
+        id: credentialRow.credential_id,
+        publicKey: Uint8Array.from(credentialRow.public_key),
+        counter: Number(credentialRow.signature_counter),
+        transports: credentialRow.transports,
+      };
+      let verified;
+      try {
+        verified = await relyingParty.verifyAuthentication(
+          body as AuthenticationResponseJSON,
+          challenge,
+          credential,
+        );
+      } catch {
+        fail(400, 'passkey_verification_failed', 'The passkey could not be verified.');
+      }
       await client.query(
-        `UPDATE app.admin_mfa SET last_used_step=$2,failed_attempts=0,locked_until=NULL,
-          updated_at=$3 WHERE user_id=$1`,
-        [user.id, step, now],
+        `UPDATE app.admin_passkeys
+         SET signature_counter=$2,device_type=$3,backed_up=$4,last_used_at=$5
+         WHERE user_id=$1 AND credential_id=$6 AND revoked_at IS NULL`,
+        [user.id, verified.newCounter, verified.deviceType, verified.backedUp, now, credential.id],
       );
+      await this.consumePasskeyChallenge(client, actor, 'authentication');
       await this.elevate(client, actor, now);
-      await this.mfaEvent(client, user.id, user.id, 'verified');
+      await this.passkeyEvent(client, user.id, user.id, 'verified');
       return result();
     });
-    if (output instanceof TransportError) throw output;
-    return output;
   }
 
-  /**
-   * Count a wrong code and lock after five. 400, never 401: a 401 makes the
-   * app's client treat the session as dead, refresh and then sign out, and a
-   * typo in a code must not end the sign-in.
-   */
-  private async mfaFailure(client: PoolClient, userId: string, row: any, now: Date) {
-    const attempts = Number(row.failed_attempts) + 1;
-    const lock = attempts >= MFA_LOCK_AFTER;
-    await client.query(
-      `UPDATE app.admin_mfa SET failed_attempts=$2,
-        locked_until=CASE WHEN $3 THEN $4::timestamptz + make_interval(secs => ${MFA_LOCK_SECONDS})
-          ELSE locked_until END,
-        updated_at=$4 WHERE user_id=$1`,
-      [userId, attempts, lock, now],
-    );
-    await this.mfaEvent(client, userId, userId, lock ? 'locked' : 'failed');
-    return lock
-      ? new MfaLockedError(MFA_LOCK_SECONDS)
-      : new TransportError(
-          400,
-          'mfa_invalid_code',
-          'That code is not right. Check your authenticator app and try again.',
-        );
-  }
-
-  /**
-   * Clear an admin's second factor and sign them out everywhere, so a session
-   * someone took over does not outlive the reset. The stored secret becomes one
-   * nobody has seen, and the next sign-in starts enrolment from scratch.
-   */
-  private async resetMfa(
+  private async savePasskeyChallenge(
     client: PoolClient,
     actor: Actor,
-    target: string | undefined,
-    keys: NonNullable<AuthService['mfaKeys']>,
+    purpose: 'registration' | 'authentication',
+    challenge: string,
+    now: Date,
   ) {
+    const expires = new Date(now.getTime() + PASSKEY_CHALLENGE_SECONDS * 1000);
+    await client.query(
+      `INSERT INTO app.admin_passkey_challenges(
+         session_id,user_id,purpose,challenge,created_at,expires_at,consumed_at
+       ) VALUES ($1,$2,$3,$4,$5,$6,NULL)
+       ON CONFLICT (session_id,purpose) DO UPDATE
+       SET user_id=EXCLUDED.user_id,challenge=EXCLUDED.challenge,
+           created_at=EXCLUDED.created_at,expires_at=EXCLUDED.expires_at,
+           consumed_at=NULL`,
+      [actor.sessionId, actor.userId, purpose, challenge, now, expires],
+    );
+  }
+
+  private async passkeyChallenge(
+    client: PoolClient,
+    actor: Actor,
+    purpose: 'registration' | 'authentication',
+    now: Date,
+  ): Promise<string> {
+    const row = (
+      await client.query(
+        `SELECT challenge FROM app.admin_passkey_challenges
+         WHERE session_id=$1 AND user_id=$2 AND purpose=$3
+           AND consumed_at IS NULL AND expires_at>$4
+         FOR UPDATE`,
+        [actor.sessionId, actor.userId, purpose, now],
+      )
+    ).rows[0];
+    if (!row) fail(409, 'passkey_challenge_missing', 'Start the passkey check again.');
+    return row.challenge;
+  }
+
+  private async consumePasskeyChallenge(
+    client: PoolClient,
+    actor: Actor,
+    purpose: 'registration' | 'authentication',
+  ) {
+    await client.query(
+      `UPDATE app.admin_passkey_challenges SET consumed_at=clock_timestamp()
+       WHERE session_id=$1 AND user_id=$2 AND purpose=$3 AND consumed_at IS NULL`,
+      [actor.sessionId, actor.userId, purpose],
+    );
+  }
+
+  private async resetPasskeys(client: PoolClient, actor: Actor, target: string | undefined) {
     if (!target || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(target))
       fail(400, 'invalid_request', 'Invalid account identifier.');
+    if (target.toLowerCase() === actor.userId.toLowerCase())
+      fail(403, 'self_reset_forbidden', 'Another verified administrator must reset your passkeys.');
     const subject = (
       await client.query(
         'SELECT id,role FROM app.users WHERE id=$1 AND deleted_at IS NULL FOR UPDATE',
@@ -692,41 +684,42 @@ export class AuthService {
     ).rows[0];
     if (!subject) fail(404, 'not_found', 'Resource not found.');
     if (subject.role !== 'admin')
-      fail(409, 'not_an_operator', 'Only operations accounts have a second factor to reset.');
+      fail(409, 'not_an_operator', 'Only operations accounts have passkeys to reset.');
     const now = await this.now(client);
     await client.query(
-      `UPDATE app.admin_mfa SET secret_ciphertext=$2,secret_issued_at=NULL,enabled_at=NULL,
-        last_used_step=NULL,failed_attempts=0,locked_until=NULL,updated_at=$3 WHERE user_id=$1`,
-      [subject.id, keys.secrets.seal(randomBytes(20), subject.id), now],
+      'UPDATE app.admin_passkeys SET revoked_at=COALESCE(revoked_at,$2) WHERE user_id=$1',
+      [subject.id, now],
     );
     await client.query(
-      'UPDATE app.admin_mfa_recovery_codes SET used_at=$2 WHERE user_id=$1 AND used_at IS NULL',
+      `UPDATE app.admin_passkey_challenges
+       SET consumed_at=COALESCE(consumed_at,$2) WHERE user_id=$1`,
       [subject.id, now],
     );
     await client.query(
       'UPDATE app.auth_sessions SET revoked_at=COALESCE(revoked_at,$2) WHERE user_id=$1',
       [subject.id, now],
     );
-    await this.mfaEvent(client, subject.id, actor.userId, 'reset');
+    await this.passkeyEvent(client, subject.id, actor.userId, 'reset');
     return result();
   }
 
   private async elevate(client: PoolClient, actor: Actor, now: Date) {
     await client.query(
-      'UPDATE app.auth_sessions SET mfa_verified_at=$3 WHERE id=$1 AND user_id=$2',
+      'UPDATE app.auth_sessions SET admin_verified_at=$3 WHERE id=$1 AND user_id=$2',
       [actor.sessionId, actor.userId, now],
     );
   }
 
-  private async mfaEvent(client: PoolClient, userId: string, actorId: string, action: string) {
+  private async passkeyEvent(
+    client: PoolClient,
+    userId: string,
+    actorId: string,
+    action: 'registration_started' | 'registered' | 'verified' | 'reset',
+  ) {
     await client.query(
-      'INSERT INTO app.admin_mfa_events(user_id,actor_user_id,action) VALUES ($1,$2,$3)',
+      'INSERT INTO app.admin_passkey_events(user_id,actor_user_id,action) VALUES ($1,$2,$3)',
       [userId, actorId, action],
     );
-  }
-
-  private secondsUntil(until: Date, now: Date) {
-    return Math.max(1, Math.ceil((until.getTime() - now.getTime()) / 1000));
   }
 
   async handle(
@@ -746,8 +739,8 @@ export class AuthService {
       return result();
     }
     if (!actor) throw denied();
-    if ((mfaOperations as readonly string[]).includes(name))
-      return this.mfa(name as MfaOperation, actor, body, target);
+    if ((passkeyOperations as readonly string[]).includes(name))
+      return this.passkey(name as PasskeyOperation, actor, body, target);
     return this.transaction(async (client) => {
       // Revocation takes the exclusive user lock first; do not upgrade a shared
       // lock after session checks (two concurrent revokers would deadlock).

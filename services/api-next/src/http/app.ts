@@ -10,7 +10,12 @@ import type { Actor, Body, Command, Read, Dependencies } from '../transport/serv
 import { TransportError, fail, mapDatabaseError } from '../transport/errors.js';
 import { catalogReads, publicCatalogReads } from '../transport/catalog.js';
 import type { CatalogRead } from '../transport/catalog.js';
-import { authOperations, publicAuthOperations, LockedError } from '../auth/service.js';
+import {
+  authOperations,
+  publicAuthOperations,
+  passkeyOperations,
+  LockedError,
+} from '../auth/service.js';
 import type { AuthService, AuthOperation } from '../auth/service.js';
 import { driverOperations } from '../auth/driver-service.js';
 import type { DriverService, DriverOperation } from '../auth/driver-service.js';
@@ -355,7 +360,9 @@ export async function createTransportApp(options: AppOptions) {
         method: method.toUpperCase() as 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE',
         url: path.replaceAll(/\{([^}]+)\}/g, ':$1'),
         ...(name === 'createPatternVersion' ? { bodyLimit: 1048576 } : {}),
-        ...(publicAuth || name === 'changeDriverPin'
+        ...(publicAuth ||
+        name === 'changeDriverPin' ||
+        (passkeyOperations as readonly string[]).includes(name)
           ? { config: { rateLimit: { max: authBudget, timeWindow: 60000 } } }
           : {}),
         schema: { ...(input ? { body: rootRef(input) } : {}), response },

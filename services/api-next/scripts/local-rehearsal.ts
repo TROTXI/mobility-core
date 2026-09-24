@@ -70,6 +70,7 @@ const env: Record<string, string> = {
   REPLACEMENT_REQUESTS_PER_IP_PER_MINUTE: '600',
   REPLACEMENT_AUTH_REQUESTS_PER_MINUTE: '10',
   REPLACEMENT_TRUST_PROXY: 'none',
+  REPLACEMENT_OPS_ORIGIN: 'http://localhost:5173',
 };
 for (const name of [
   'ACCESS_SECRET',
@@ -80,7 +81,6 @@ for (const name of [
   'BOARDING_PROOF_KEY',
   'DEVICE_KEY',
   'PAYSTACK_EVIDENCE_KEY',
-  'TOTP_ENCRYPTION_KEY',
 ])
   env[`REPLACEMENT_${name}`] = randomBytes(32).toString('base64');
 const config = readConfiguration(env); // fail before creating anything
@@ -125,7 +125,7 @@ try {
   const session = (
     await backend.pool.query(
       // Elevated at birth, like the worker's: minted with database access.
-      `INSERT INTO app.auth_sessions(user_id,expires_at,mfa_verified_at)
+      `INSERT INTO app.auth_sessions(user_id,expires_at,admin_verified_at)
     VALUES ($1,clock_timestamp()+interval '15 minutes',clock_timestamp())
     RETURNING id,created_at,expires_at`,
       [adminId],
