@@ -29,6 +29,7 @@ export interface RuntimeConfig {
   existingStaging?: boolean;
   databaseUrl: string;
   poolSize: number;
+  staleFixAfterSeconds: number;
   listen: { host: string; port: number };
   build: BuildIdentity;
   access: { issuer: string; audience: string; ttlSeconds: number };
@@ -257,6 +258,10 @@ export function readConfiguration(env: Env = process.env): RuntimeConfig {
       : {}),
     databaseUrl,
     poolSize: integerOr(env, 'REPLACEMENT_POOL_SIZE', 8, 1, 100),
+    // Drivers publish every five seconds through patchy coverage, so a short
+    // threshold cries wolf all morning. Five minutes to start; tune it from what
+    // the ops team actually sees rather than from a guess made before launch.
+    staleFixAfterSeconds: integerOr(env, 'REPLACEMENT_STALE_FIX_AFTER_SECONDS', 300, 30, 3600),
     listen: {
       host: optional(env, 'REPLACEMENT_HOST') ?? '0.0.0.0',
       port: integerOr(env, 'PORT', 10000, 1, 65535),

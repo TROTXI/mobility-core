@@ -167,6 +167,7 @@ export async function composeBackend(config: RuntimeConfig): Promise<Backend> {
       requestsPerIpPerMinute: config.limits.perIp,
       authRequestsPerMinute: config.limits.perAuth,
       minimumBuilds: config.floors,
+      staleFixAfterSeconds: config.staleFixAfterSeconds,
       maxAvatarBytes: config.avatars.maxBytes,
       identity: {
         access: {

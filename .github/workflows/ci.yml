@@ -52,7 +52,7 @@ jobs:
         run: |
           mkdir -p .harness-artifacts/transport
           cd services/api-next
-          node --import tsx --test --test-reporter=spec --test-reporter-destination=stdout --test-reporter=junit --test-reporter-destination=../../.harness-artifacts/transport/tests.xml tests/transport.pg.test.ts tests/transport-commands.pg.test.ts tests/catalog.pg.test.ts tests/fleet.pg.test.ts tests/gps.pg.test.ts tests/trips.pg.test.ts tests/config.pg.test.ts tests/pricing.pg.test.ts tests/account.pg.test.ts tests/account-recovery.pg.test.ts tests/auth.pg.test.ts tests/driver-credentials.pg.test.ts tests/assembly.pg.test.ts tests/overview.pg.test.ts tests/email.pg.test.ts tests/push.pg.test.ts tests/refund-initiation.pg.test.ts tests/trip-generation.pg.test.ts tests/personal-pauses.pg.test.ts
+          node --import tsx --test --test-reporter=spec --test-reporter-destination=stdout --test-reporter=junit --test-reporter-destination=../../.harness-artifacts/transport/tests.xml tests/transport.pg.test.ts tests/transport-commands.pg.test.ts tests/catalog.pg.test.ts tests/fleet.pg.test.ts tests/gps.pg.test.ts tests/trips.pg.test.ts tests/config.pg.test.ts tests/pricing.pg.test.ts tests/account.pg.test.ts tests/account-recovery.pg.test.ts tests/auth.pg.test.ts tests/driver-credentials.pg.test.ts tests/assembly.pg.test.ts tests/overview.pg.test.ts tests/riders.pg.test.ts tests/email.pg.test.ts tests/push.pg.test.ts tests/refund-initiation.pg.test.ts tests/trip-generation.pg.test.ts tests/personal-pauses.pg.test.ts
       - uses: actions/upload-artifact@v7
         if: always()
         with:

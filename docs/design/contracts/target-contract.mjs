@@ -986,12 +986,69 @@ named(
 // What cannot be derived client-side is here: staleness needs one clock and one
 // threshold, and two surfaces deciding it separately would disagree.
 named(
+  'OpsRider',
+  obj({
+    id,
+    displayName: text(),
+    phone: text().nullable(),
+    email: z.email().nullable(),
+    role,
+    // What the rider can do today, not a raw lifecycle: a paused rider still
+    // holds a current period, and a lapsed one has a membership but no period.
+    status: z.enum(['active', 'paused', 'lapsed', 'none']),
+    plan: plan.nullable(),
+    routeName: text().nullable(),
+    // Rides left in the current period. Null with no current period, which
+    // is different from a period with none left.
+    ridesLeft: count.nullable(),
+    availableCredit: money,
+    joinedAt: instant,
+  }),
+);
+named(
+  'OpsRiderSummary',
+  obj({
+    generatedAt: instant,
+    active: count,
+    paused: count,
+    lapsed: count,
+    monthly: count,
+    annual: count,
+    // Money riders can still spend, net of credit already held for checkout.
+    creditOutstanding: money,
+    // Across riders with a current period, boardings and no-shows only.
+    // Null when nobody has a current period, rather than a misleading zero.
+    averageRidesUsed: z.number().min(0).nullable(),
+  }),
+);
+named(
   'OpsOverview',
   obj({
     generatedAt: instant,
     // Echoed back so a late response cannot be read as the other window.
     window: z.enum(['morning', 'evening']),
+    // Echoed for the same reason: a board left open past midnight must not
+    // show yesterday's numbers under today's heading.
+    serviceDate: date,
     staleFixAfterSeconds: count,
+    // Summed from the same rows as the trips below, so a tile cannot disagree
+    // with the table under it.
+    tiles: obj({
+      trips: count,
+      inProgress: count,
+      completed: count,
+      cancelled: count,
+      // Seats across runs that are not cancelled and have a bus.
+      seatCapacity: count,
+      seatsConfirmed: count,
+      boarded: count,
+      noShows: count,
+      // Still marked reserved on a run that has finished: nobody decided
+      // whether that rider boarded. The morning review works from this.
+      awaitingResolution: count,
+      staleGps: count,
+      unassigned: count,
+    }),
     trips: z.array(
       obj({
         tripId: id,
@@ -1007,11 +1064,16 @@ named(
         // save a join the console is already able to make.
         vehicleId: id.nullable(),
         vehicleLabel: text().nullable(),
+        // The label is optional and the plate is not, so this is what actually
+        // identifies the bus to a dispatcher reading the board.
+        vehiclePlate: text().nullable(),
         // The seat ceiling reservations are checked against, rendered "12 / 18".
         capacity: count.nullable(),
         confirmed: count,
         boarded: count,
         noShow: count,
+        // Confirmed and not yet boarded or marked absent.
+        reserved: count,
         lastFixAt: instant.nullable(),
         // Null when there is no fix at all, which the board shows as NO FIX
         // rather than as an age of zero.
@@ -1254,6 +1316,8 @@ edit('patch', '/v1/ops/trips/{id}', 'rescheduleTrip', 'TripEdit', 'OpsTrip');
 edit('put', '/v1/ops/trips/{id}/assignment', 'assignTrip', 'TripAssignment', 'OpsTrip');
 post('/v1/ops/trips/{id}/cancel', 'cancelTrip', 'ReasonInput', 'OpsTrip', { etag: true });
 get('/v1/ops/overview', 'getOpsOverview', 'OpsOverview');
+list('/v1/ops/riders', 'listOpsRiders', 'OpsRider');
+get('/v1/ops/riders/summary', 'getOpsRiderSummary', 'OpsRiderSummary');
 for (const [path, name, type, input] of [
   ['route-patterns', 'Pattern', 'Pattern', 'PatternInput'],
   ['service-schedules', 'Schedule', 'Schedule', 'ScheduleInput'],

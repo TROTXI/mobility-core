@@ -137,6 +137,8 @@ const selected = new Set([
   'setMinimumVersion',
   'changeRole',
   'getOpsOverview',
+  'listOpsRiders',
+  'getOpsRiderSummary',
   'getDriverSelf',
 ]);
 const count = selected.size;
