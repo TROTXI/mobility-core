@@ -28,7 +28,18 @@ import { generateDriverCode, generatePin, hashDriverPin } from '../src/auth/driv
 const url = process.env.REPLACEMENT_DATABASE_URL;
 const pinSecret = process.env.REPLACEMENT_PIN_SECRET;
 if (!url) throw new Error('REPLACEMENT_DATABASE_URL (the owner connection) is required');
-if (!pinSecret) throw new Error('REPLACEMENT_PIN_SECRET is required to mint usable driver PINs');
+/**
+ * Only the modes that mint a PIN need the secret behind it.
+ *
+ * Demanding it at load meant every mode did: the scheduled payments job
+ * supplies a database and an operator key, has no business knowing a PIN
+ * secret, and died here before main() could dispatch it. Every run since it
+ * was added failed, silently, while payments sat undrained.
+ */
+const requirePinSecret = () => {
+  if (!pinSecret) throw new Error('REPLACEMENT_PIN_SECRET is required to mint usable driver PINs');
+  return pinSecret;
+};
 const confirmed = process.env.SEED_STAGING === 'yes';
 
 /** Corridors real enough to recognise on a board, with plausible stop names. */
@@ -233,7 +244,7 @@ async function resetPins(baseUrl: string): Promise<void> {
     ? supplied.flatMap((value, index) =>
         pinSecretsFrom(value).map((c) => ({ ...c, label: `secret ${index + 1}, ${c.label}` })),
       )
-    : [{ label: 'supplied', secret: pinSecret! }];
+    : [{ label: 'supplied', secret: requirePinSecret() }];
   const first = rows[0]!;
   let agreed: { label: string; secret: string } | null = null;
   for (const candidate of candidates) {
@@ -770,7 +781,7 @@ async function main() {
     const pin = generatePin();
     await q(
       'INSERT INTO app.driver_credentials(driver_id,driver_code,pin_hash,must_change_pin) VALUES ($1,$2,$3,false)',
-      [id, code, hashDriverPin(pin, pinSecret!)],
+      [id, code, hashDriverPin(pin, requirePinSecret())],
     );
     credentials.push({ name, code, pin });
   }
