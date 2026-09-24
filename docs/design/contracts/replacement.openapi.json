@@ -23095,6 +23095,11 @@
           "creditPerRide": {
             "$ref": "#/components/schemas/Money"
           },
+          "editToken": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
           "version": {
             "type": "integer",
             "minimum": 0,
@@ -23107,6 +23112,7 @@
           "priceMultiplierBp",
           "takeRateBp",
           "creditPerRide",
+          "editToken",
           "version"
         ],
         "additionalProperties": false

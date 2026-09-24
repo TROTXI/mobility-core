@@ -3530,6 +3530,7 @@ export interface components {
       priceMultiplierBp: number;
       takeRateBp: number;
       creditPerRide: components['schemas']['Money'];
+      editToken: string;
       version: number;
     };
     PlanPricingPage: {

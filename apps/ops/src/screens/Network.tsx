@@ -16,7 +16,8 @@ type PatternVersion = components['schemas']['PatternVersion'];
 type Schedule = components['schemas']['Schedule'];
 type CommuteSlot = components['schemas']['CommuteSlot'];
 type Fare = components['schemas']['Fare'];
-type TabName = 'routes' | 'stops' | 'patterns' | 'schedules' | 'fares' | 'slots';
+type PlanPricing = components['schemas']['PlanPricing'];
+type TabName = 'routes' | 'stops' | 'patterns' | 'schedules' | 'fares' | 'pricing' | 'slots';
 type DialogKind =
   | 'route-create'
   | 'route-edit'
@@ -27,6 +28,7 @@ type DialogKind =
   | 'version-publish'
   | 'schedule-create'
   | 'fare-create'
+  | 'pricing-edit'
   | 'slot-create'
   | 'slot-retire';
 
@@ -76,6 +78,7 @@ export function Network() {
   const [selectedPattern, setSelectedPattern] = useState<Pattern | null>(null);
   const [selectedVersion, setSelectedVersion] = useState<PatternVersion | null>(null);
   const [selectedSlot, setSelectedSlot] = useState<CommuteSlot | null>(null);
+  const [selectedPricing, setSelectedPricing] = useState<PlanPricing | null>(null);
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [acceptsDriverRequests, setAcceptsDriverRequests] = useState(false);
@@ -93,6 +96,10 @@ export function Network() {
   const [localDeparture, setLocalDeparture] = useState('06:30');
   const [selectedWeekdays, setSelectedWeekdays] = useState([1, 2, 3, 4, 5]);
   const [amountGhs, setAmountGhs] = useState('6');
+  const [ridesPerPeriod, setRidesPerPeriod] = useState(44);
+  const [priceMultiplierBp, setPriceMultiplierBp] = useState(10000);
+  const [takeRateBp, setTakeRateBp] = useState(0);
+  const [creditPerRideGhs, setCreditPerRideGhs] = useState('0');
   const [note, setNote] = useState('');
   const [outboundScheduleId, setOutboundScheduleId] = useState('');
   const [returnScheduleId, setReturnScheduleId] = useState('');
@@ -107,9 +114,10 @@ export function Network() {
     patterns: Pattern[];
     schedules: Schedule[];
     slots: CommuteSlot[];
+    pricing: PlanPricing[];
   }>(
     async (signal) => {
-      const [routes, stops, patterns, schedules, slots] = await Promise.all([
+      const [routes, stops, patterns, schedules, slots, pricing] = await Promise.all([
         session.client.GET('/v1/ops/routes', {
           params: { query: { limit: 200 }, header: opsHeaders },
           signal,
@@ -130,11 +138,27 @@ export function Network() {
           params: { query: { limit: 200 }, header: opsHeaders },
           signal,
         }),
+        session.client.GET('/v1/ops/plan-pricing', {
+          params: { query: { limit: 10 }, header: opsHeaders },
+          signal,
+        }),
       ]);
       const failure =
-        routes.error ?? stops.error ?? patterns.error ?? schedules.error ?? slots.error;
+        routes.error ??
+        stops.error ??
+        patterns.error ??
+        schedules.error ??
+        slots.error ??
+        pricing.error;
       if (failure) throw new Error(failure.error.message);
-      if (!routes.data || !stops.data || !patterns.data || !schedules.data || !slots.data) {
+      if (
+        !routes.data ||
+        !stops.data ||
+        !patterns.data ||
+        !schedules.data ||
+        !slots.data ||
+        !pricing.data
+      ) {
         throw new Error('The network workspace returned an incomplete response.');
       }
       return {
@@ -143,6 +167,7 @@ export function Network() {
         patterns: patterns.data.data,
         schedules: schedules.data.data,
         slots: slots.data.data,
+        pricing: pricing.data.data,
       };
     },
     [session],
@@ -163,6 +188,25 @@ export function Network() {
       return data.data;
     },
     [session, selectedPattern?.id],
+  );
+
+  const versionDetailQuery = useQuery<PatternVersion | null>(
+    async (signal) => {
+      if (!selectedPattern || !selectedVersion) return null;
+      const { data, error } = await session.client.GET(
+        '/v1/ops/route-patterns/{id}/versions/{versionId}',
+        {
+          params: {
+            path: { id: selectedPattern.id, versionId: selectedVersion.id },
+            header: opsHeaders,
+          },
+          signal,
+        },
+      );
+      if (error) throw new Error(error.error.message);
+      return data.data;
+    },
+    [session, selectedPattern?.id, selectedVersion?.id],
   );
 
   const fareQuery = useQuery<Fare[]>(
@@ -225,6 +269,11 @@ export function Network() {
     } else if (kind === 'fare-create') {
       setAmountGhs('6');
       setEffectiveFrom(new Date().toISOString().slice(0, 16));
+    } else if (kind === 'pricing-edit' && selectedPricing) {
+      setRidesPerPeriod(selectedPricing.ridesPerPeriod);
+      setPriceMultiplierBp(selectedPricing.priceMultiplierBp);
+      setTakeRateBp(selectedPricing.takeRateBp);
+      setCreditPerRideGhs(String(selectedPricing.creditPerRide.amountMinor / 100));
     } else if (kind === 'slot-create') {
       setRouteId(query.data?.routes[0]?.id ?? '');
       setEffectiveFrom(today());
@@ -234,6 +283,7 @@ export function Network() {
   const refreshAll = () => {
     query.retry();
     versionQuery.retry();
+    versionDetailQuery.retry();
     fareQuery.retry();
   };
 
@@ -243,6 +293,7 @@ export function Network() {
     patterns: 'New pattern',
     schedules: 'New schedule',
     fares: 'New fare',
+    pricing: 'Edit plan',
     slots: 'New slot',
   };
   const actionKind: Record<TabName, DialogKind> = {
@@ -251,6 +302,7 @@ export function Network() {
     patterns: 'pattern-create',
     schedules: 'schedule-create',
     fares: 'fare-create',
+    pricing: 'pricing-edit',
     slots: 'slot-create',
   };
 
@@ -263,13 +315,15 @@ export function Network() {
           <Button icon={<ArrowClockwiseRegular />} onClick={refreshAll}>
             Refresh
           </Button>
-          <Button
-            appearance="primary"
-            icon={<AddRegular />}
-            onClick={() => startDialog(actionKind[tab])}
-          >
-            {actionLabel[tab]}
-          </Button>
+          {tab !== 'pricing' && (
+            <Button
+              appearance="primary"
+              icon={<AddRegular />}
+              onClick={() => startDialog(actionKind[tab])}
+            >
+              {actionLabel[tab]}
+            </Button>
+          )}
         </>
       }
     >
@@ -279,6 +333,7 @@ export function Network() {
         <Tab value="patterns">Patterns & versions</Tab>
         <Tab value="schedules">Schedules</Tab>
         <Tab value="fares">Fares</Tab>
+        <Tab value="pricing">Plan pricing</Tab>
         <Tab value="slots">Commute slots</Tab>
       </TabList>
 
@@ -463,7 +518,7 @@ export function Network() {
             {selectedVersion && (
               <div className="version-detail">
                 <div className="stop-list">
-                  {selectedVersion.stops.map((stop, index) => (
+                  {(versionDetailQuery.data ?? selectedVersion).stops.map((stop, index) => (
                     <div className="stop-item" key={stop.id}>
                       <span>{index + 1}</span>
                       <strong>{stop.name}</strong>
@@ -573,6 +628,53 @@ export function Network() {
               </tbody>
             </table>
           )}
+        </Panel>
+      )}
+
+      {tab === 'pricing' && (
+        <Panel title="Membership plan pricing">
+          <TableState loading={query.loading} empty={!query.data?.pricing.length}>
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>Plan</th>
+                  <th>Rides</th>
+                  <th>Price multiplier</th>
+                  <th>Take rate</th>
+                  <th>Conversion credit</th>
+                  <th />
+                </tr>
+              </thead>
+              <tbody>
+                {query.data?.pricing.map((row) => (
+                  <tr key={row.plan}>
+                    <td>
+                      <strong>{row.plan}</strong>
+                    </td>
+                    <td>{row.ridesPerPeriod}</td>
+                    <td>{(row.priceMultiplierBp / 100).toFixed(2)}%</td>
+                    <td>{(row.takeRateBp / 100).toFixed(2)}%</td>
+                    <td>GHS {(row.creditPerRide.amountMinor / 100).toFixed(2)} / ride</td>
+                    <td>
+                      <Button
+                        appearance="subtle"
+                        onClick={() => {
+                          setSelectedPricing(row);
+                          setRidesPerPeriod(row.ridesPerPeriod);
+                          setPriceMultiplierBp(row.priceMultiplierBp);
+                          setTakeRateBp(row.takeRateBp);
+                          setCreditPerRideGhs(String(row.creditPerRide.amountMinor / 100));
+                          setDialog('pricing-edit');
+                        }}
+                      >
+                        Edit
+                      </Button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </TableState>
         </Panel>
       )}
 
@@ -909,6 +1011,55 @@ export function Network() {
             </label>
           </>
         )}
+        {dialog === 'pricing-edit' && selectedPricing && (
+          <>
+            <p className="dialog-note">
+              Editing the {selectedPricing.plan} plan changes future purchases only.
+            </p>
+            <label>
+              Rides per period
+              <input
+                type="number"
+                min="1"
+                required
+                value={ridesPerPeriod}
+                onChange={(event) => setRidesPerPeriod(Number(event.target.value))}
+              />
+            </label>
+            <label>
+              Price multiplier (basis points)
+              <input
+                type="number"
+                min="1"
+                required
+                value={priceMultiplierBp}
+                onChange={(event) => setPriceMultiplierBp(Number(event.target.value))}
+              />
+            </label>
+            <label>
+              Operator take rate (basis points)
+              <input
+                type="number"
+                min="0"
+                max="10000"
+                required
+                value={takeRateBp}
+                onChange={(event) => setTakeRateBp(Number(event.target.value))}
+              />
+            </label>
+            <label>
+              Credit per unused ride (GHS)
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                required
+                value={creditPerRideGhs}
+                onChange={(event) => setCreditPerRideGhs(event.target.value)}
+              />
+            </label>
+          </>
+        )}
         {dialog === 'slot-create' && (
           <>
             <label>
@@ -1074,6 +1225,26 @@ export function Network() {
         },
       });
       if (response.error) throw new Error(response.error.error.message);
+    } else if (dialog === 'pricing-edit' && selectedPricing) {
+      const response = await session.client.PATCH('/v1/ops/plan-pricing/{plan}', {
+        params: {
+          path: { plan: selectedPricing.plan },
+          header: {
+            ...mutation,
+            'If-Match': selectedPricing.editToken,
+          },
+        },
+        body: {
+          ridesPerPeriod,
+          priceMultiplierBp,
+          takeRateBp,
+          creditPerRide: {
+            amountMinor: Math.round(Number(creditPerRideGhs) * 100),
+            currency: 'GHS',
+          },
+        },
+      });
+      if (response.error) throw new Error(response.error.error.message);
     } else if (dialog === 'slot-create') {
       const outbound = query.data?.schedules.find((schedule) => schedule.id === outboundScheduleId);
       const inbound = query.data?.schedules.find((schedule) => schedule.id === returnScheduleId);
@@ -1202,6 +1373,7 @@ function dialogTitle(dialog: DialogKind | null) {
       'version-publish': 'Publish pattern version',
       'schedule-create': 'Create schedule',
       'fare-create': 'Publish fare',
+      'pricing-edit': 'Edit plan pricing',
       'slot-create': 'Create commute slot',
       'slot-retire': 'Retire commute slot',
     } satisfies Record<DialogKind, string>

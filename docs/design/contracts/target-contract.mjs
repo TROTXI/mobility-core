@@ -891,6 +891,7 @@ named(
     priceMultiplierBp: z.int().positive(),
     takeRateBp: z.int().min(0).max(10000),
     creditPerRide: money,
+    editToken: text(128),
     version,
   }),
 );
