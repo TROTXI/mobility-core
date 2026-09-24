@@ -11,7 +11,9 @@ import { ActionDialog } from '../components/ActionDialog';
 
 type Flag = components['schemas']['Flag'];
 type Minimum = components['schemas']['MinimumVersion'];
+type TraceHold = components['schemas']['TraceHold'];
 const jobs = [
+  ['Run payment maintenance', '/v1/ops/maintenance/payments'],
   ['Generate trips', '/v1/ops/maintenance/trip-generation'],
   ['Ask riders', '/v1/ops/maintenance/ask-dispatch'],
   ['Apply reservation defaults', '/v1/ops/maintenance/reservation-defaults'],
@@ -26,7 +28,7 @@ const jobs = [
 
 export function Platform() {
   const { session } = useAuth();
-  const [tab, setTab] = useState<'flags' | 'versions' | 'jobs' | 'security'>('flags');
+  const [tab, setTab] = useState<'flags' | 'versions' | 'jobs' | 'traces' | 'security'>('flags');
   const [minimum, setMinimum] = useState<Minimum | null>(null);
   const [minimumBuild, setMinimumBuild] = useState(1);
   const [storeUrl, setStoreUrl] = useState('');
@@ -61,6 +63,7 @@ export function Platform() {
         <Tab value="flags">Feature flags</Tab>
         <Tab value="versions">Minimum versions</Tab>
         <Tab value="jobs">Manual jobs</Tab>
+        <Tab value="traces">Trace holds</Tab>
         <Tab value="security">Security</Tab>
       </TabList>
       {query.error && <ErrorState message={query.error} retry={query.retry} />}
@@ -152,6 +155,7 @@ export function Platform() {
         </Panel>
       )}
       {tab === 'jobs' && <MaintenanceJobs session={session} />}
+      {tab === 'traces' && <TraceHolds />}
       {tab === 'security' && <SecurityPanel />}
       <ActionDialog
         open={Boolean(minimum)}
@@ -300,31 +304,33 @@ function MaintenanceJobs({ session }: { session: ReturnType<typeof useAuth>['ses
         body: { travelDate: serviceDate, direction, limit: 100 },
       } as const;
       const response =
-        path === '/v1/ops/maintenance/trip-generation'
-          ? await session.client.POST(path, {
-              params: { header: opsHeaders },
-              body: { serviceDate, limit: 100 },
-            })
-          : path === '/v1/ops/maintenance/ask-dispatch'
-            ? await session.client.POST(path, serviceDay)
-            : path === '/v1/ops/maintenance/reservation-defaults'
+        path === '/v1/ops/maintenance/payments'
+          ? await session.client.POST(path, maintenance)
+          : path === '/v1/ops/maintenance/trip-generation'
+            ? await session.client.POST(path, {
+                params: { header: opsHeaders },
+                body: { serviceDate, limit: 100 },
+              })
+            : path === '/v1/ops/maintenance/ask-dispatch'
               ? await session.client.POST(path, serviceDay)
-              : path === '/v1/ops/maintenance/no-shows'
+              : path === '/v1/ops/maintenance/reservation-defaults'
                 ? await session.client.POST(path, serviceDay)
-                : path === '/v1/ops/maintenance/personal-pause-resumes'
-                  ? await session.client.POST(path, maintenance)
-                  : path === '/v1/ops/maintenance/payment-inbox'
+                : path === '/v1/ops/maintenance/no-shows'
+                  ? await session.client.POST(path, serviceDay)
+                  : path === '/v1/ops/maintenance/personal-pause-resumes'
                     ? await session.client.POST(path, maintenance)
-                    : path === '/v1/ops/maintenance/payment-reconciliation'
+                    : path === '/v1/ops/maintenance/payment-inbox'
                       ? await session.client.POST(path, maintenance)
-                      : path === '/v1/ops/maintenance/period-close'
+                      : path === '/v1/ops/maintenance/payment-reconciliation'
                         ? await session.client.POST(path, maintenance)
-                        : path === '/v1/ops/maintenance/route-learning'
+                        : path === '/v1/ops/maintenance/period-close'
                           ? await session.client.POST(path, maintenance)
-                          : await session.client.POST(
-                              '/v1/ops/maintenance/gps-retention',
-                              maintenance,
-                            );
+                          : path === '/v1/ops/maintenance/route-learning'
+                            ? await session.client.POST(path, maintenance)
+                            : await session.client.POST(
+                                '/v1/ops/maintenance/gps-retention',
+                                maintenance,
+                              );
       if (response.error) throw new Error(response.error.error.message);
       setResult(`${path.split('/').at(-1)} completed: ${JSON.stringify(response.data.data)}`);
     } catch (error) {
@@ -383,5 +389,196 @@ function MaintenanceJobs({ session }: { session: ReturnType<typeof useAuth>['ses
         {result && <div className="job-result">{result}</div>}
       </div>
     </Panel>
+  );
+}
+
+function TraceHolds() {
+  const { session } = useAuth();
+  const [creating, setCreating] = useState(false);
+  const [releasing, setReleasing] = useState<TraceHold | null>(null);
+  const [incidentId, setIncidentId] = useState('');
+  const [tripId, setTripId] = useState('');
+  const [receivedFrom, setReceivedFrom] = useState('');
+  const [receivedTo, setReceivedTo] = useState('');
+  const [reviewAt, setReviewAt] = useState('');
+  const [reason, setReason] = useState('');
+  const query = useQuery<TraceHold[]>(
+    async (signal) => {
+      const response = await session.client.GET('/v1/ops/trace-holds', {
+        params: { query: { limit: 200 }, header: opsHeaders },
+        signal,
+      });
+      if (response.error) throw new Error(response.error.error.message);
+      return response.data.data;
+    },
+    [session],
+  );
+  const clear = () => {
+    setCreating(false);
+    setReleasing(null);
+    setIncidentId('');
+    setTripId('');
+    setReceivedFrom('');
+    setReceivedTo('');
+    setReviewAt('');
+    setReason('');
+  };
+  return (
+    <>
+      <Panel
+        title="GPS evidence holds"
+        action={<Button onClick={() => setCreating(true)}>Create hold</Button>}
+      >
+        {query.loading ? (
+          <LoadingRows />
+        ) : !query.data?.length ? (
+          <Empty>No GPS evidence is currently held.</Empty>
+        ) : (
+          <table className="data-table">
+            <thead>
+              <tr>
+                <th>Incident</th>
+                <th>Trip</th>
+                <th>Evidence window</th>
+                <th>Review</th>
+                <th>State</th>
+                <th />
+              </tr>
+            </thead>
+            <tbody>
+              {query.data.map((row) => (
+                <tr key={row.id}>
+                  <td className="mono">{row.incidentId.slice(0, 8)}</td>
+                  <td className="mono">{row.tripId.slice(0, 8)}</td>
+                  <td>
+                    {new Date(row.receivedFrom).toLocaleString()} –{' '}
+                    {new Date(row.receivedTo).toLocaleString()}
+                  </td>
+                  <td>{new Date(row.reviewAt).toLocaleString()}</td>
+                  <td>
+                    <StatusBadge value={row.state} />
+                  </td>
+                  <td>
+                    <Button
+                      appearance="subtle"
+                      disabled={row.state !== 'active'}
+                      onClick={() => setReleasing(row)}
+                    >
+                      Release
+                    </Button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </Panel>
+      <ActionDialog
+        open={creating}
+        title="Hold GPS evidence"
+        description="Preserves a bounded trace window for an existing incident beyond normal retention."
+        confirmLabel="Create hold"
+        onClose={clear}
+        onConfirm={async () => {
+          const response = await session.client.POST('/v1/ops/trace-holds', {
+            params: { header: { ...opsHeaders, 'Idempotency-Key': crypto.randomUUID() } },
+            body: {
+              incidentId,
+              tripId,
+              receivedFrom: new Date(receivedFrom).toISOString(),
+              receivedTo: new Date(receivedTo).toISOString(),
+              reviewAt: new Date(reviewAt).toISOString(),
+              reason,
+            },
+          });
+          if (response.error) throw new Error(response.error.error.message);
+          clear();
+          query.retry();
+        }}
+      >
+        <label>
+          Incident ID
+          <input
+            required
+            value={incidentId}
+            onChange={(event) => setIncidentId(event.target.value)}
+          />
+        </label>
+        <label>
+          Trip ID
+          <input required value={tripId} onChange={(event) => setTripId(event.target.value)} />
+        </label>
+        <label>
+          Evidence from
+          <input
+            type="datetime-local"
+            required
+            value={receivedFrom}
+            onChange={(event) => setReceivedFrom(event.target.value)}
+          />
+        </label>
+        <label>
+          Evidence to
+          <input
+            type="datetime-local"
+            required
+            value={receivedTo}
+            onChange={(event) => setReceivedTo(event.target.value)}
+          />
+        </label>
+        <label>
+          Review at
+          <input
+            type="datetime-local"
+            required
+            value={reviewAt}
+            onChange={(event) => setReviewAt(event.target.value)}
+          />
+        </label>
+        <label>
+          Reason
+          <textarea
+            rows={3}
+            required
+            value={reason}
+            onChange={(event) => setReason(event.target.value)}
+          />
+        </label>
+      </ActionDialog>
+      <ActionDialog
+        open={Boolean(releasing)}
+        title="Release GPS evidence hold"
+        description="The trace returns to the normal retention policy."
+        confirmLabel="Release hold"
+        onClose={clear}
+        onConfirm={async () => {
+          if (!releasing) return;
+          const response = await session.client.POST('/v1/ops/trace-holds/{id}/release', {
+            params: {
+              path: { id: releasing.id },
+              header: {
+                ...opsHeaders,
+                'Idempotency-Key': crypto.randomUUID(),
+                'If-Match': releasing.editToken,
+              },
+            },
+            body: { reason },
+          });
+          if (response.error) throw new Error(response.error.error.message);
+          clear();
+          query.retry();
+        }}
+      >
+        <label>
+          Reason
+          <textarea
+            rows={3}
+            required
+            value={reason}
+            onChange={(event) => setReason(event.target.value)}
+          />
+        </label>
+      </ActionDialog>
+    </>
   );
 }

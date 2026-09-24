@@ -15,6 +15,8 @@ type Selection =
 type Incident = components['schemas']['OpsIncident'];
 type WorkRequest = components['schemas']['OpsWorkRequest'];
 type CommuteRequest = components['schemas']['OpsCommuteRequest'];
+type CommuteSlot = components['schemas']['CommuteSlot'];
+type DecisionEvent = components['schemas']['DecisionEvent'];
 
 export function Support() {
   const { session } = useAuth();
@@ -28,9 +30,10 @@ export function Support() {
     incidents: Incident[];
     driver: WorkRequest[];
     commute: CommuteRequest[];
+    slots: CommuteSlot[];
   }>(
     async (signal) => {
-      const [incidents, driver, commute] = await Promise.all([
+      const [incidents, driver, commute, slots] = await Promise.all([
         session.client.GET('/v1/ops/incidents', {
           params: { query: { limit: 200 }, header: opsHeaders },
           signal,
@@ -43,18 +46,46 @@ export function Support() {
           params: { query: { limit: 200 }, header: opsHeaders },
           signal,
         }),
+        session.client.GET('/v1/ops/commute-slots', {
+          params: { query: { limit: 200 }, header: opsHeaders },
+          signal,
+        }),
       ]);
       if (incidents.error) throw new Error(incidents.error.error.message);
       if (driver.error) throw new Error(driver.error.error.message);
       if (commute.error) throw new Error(commute.error.error.message);
+      if (slots.error) throw new Error(slots.error.error.message);
       return {
         incidents: incidents.data.data,
         driver: driver.data.data,
         commute: commute.data.data,
+        slots: slots.data.data,
       };
     },
     [session],
   );
+  const history = useQuery<DecisionEvent[]>(
+    async (signal) => {
+      if (selected?.kind !== 'commute') return [];
+      const response = await session.client.GET('/v1/ops/commute-requests/{id}/events', {
+        params: {
+          path: { id: selected.row.id },
+          query: { limit: 100 },
+          header: opsHeaders,
+        },
+        signal,
+      });
+      if (response.error) throw new Error(response.error.error.message);
+      return response.data.data;
+    },
+    [session, selected?.kind === 'commute' ? selected.row.id : null],
+  );
+  const availableSlots =
+    selected?.kind === 'commute'
+      ? (query.data?.slots ?? []).filter(
+          (slot) => slot.state === 'available' && slot.routeId === selected.row.requested.routeId,
+        )
+      : [];
   return (
     <Page
       title="Support & requests"
@@ -182,8 +213,15 @@ export function Support() {
         {selected?.kind === 'commute' && decision === 'approve' && (
           <>
             <label>
-              Slot ID
-              <input required value={slotId} onChange={(event) => setSlotId(event.target.value)} />
+              Available slot
+              <select required value={slotId} onChange={(event) => setSlotId(event.target.value)}>
+                <option value="">Select a slot</option>
+                {availableSlots.map((slot) => (
+                  <option key={slot.id} value={slot.id}>
+                    {slot.availableFrom} · {slot.legs.length} legs · {slot.id.slice(0, 8)}
+                  </option>
+                ))}
+              </select>
             </label>
             <label>
               Effective date
@@ -205,6 +243,30 @@ export function Support() {
             onChange={(event) => setNote(event.target.value)}
           />
         </label>
+        {selected?.kind === 'commute' && (
+          <div>
+            <strong>Decision history</strong>
+            {history.loading ? (
+              <p className="muted">Loading history…</p>
+            ) : history.error ? (
+              <p className="muted">{history.error}</p>
+            ) : history.data?.length ? (
+              <div className="stack-list compact">
+                {history.data.map((event) => (
+                  <div className="stack-row" key={event.id}>
+                    <span>
+                      <strong>{event.action.replaceAll('_', ' ')}</strong>
+                      <small>{event.note ?? 'No note'}</small>
+                    </span>
+                    <small>{when(event.occurredAt)}</small>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="muted">No decisions recorded yet.</p>
+            )}
+          </div>
+        )}
       </ActionDialog>
     </Page>
   );

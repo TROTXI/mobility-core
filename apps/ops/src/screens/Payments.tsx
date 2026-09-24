@@ -19,11 +19,13 @@ import { ActionDialog } from '../components/ActionDialog';
 
 type Purchase = components['schemas']['OpsPurchase'];
 type Review = components['schemas']['PaymentReview'];
+type Refund = components['schemas']['RefundInitiation'];
 
 export function Payments() {
   const { session } = useAuth();
   const [tab, setTab] = useState<'purchases' | 'reviews'>('purchases');
   const [purchase, setPurchase] = useState<Purchase | null>(null);
+  const [detailPurchase, setDetailPurchase] = useState<Purchase | null>(null);
   const [review, setReview] = useState<Review | null>(null);
   const [amount, setAmount] = useState('');
   const [reason, setReason] = useState('');
@@ -71,6 +73,7 @@ export function Payments() {
         ) : tab === 'purchases' ? (
           <PurchaseRows
             rows={query.data?.purchases ?? []}
+            onDetail={setDetailPurchase}
             onRefund={(row) => {
               setPurchase(row);
               setAmount(String(row.cashDue.amountMinor / 100));
@@ -80,6 +83,9 @@ export function Payments() {
           <ReviewRows rows={query.data?.reviews ?? []} onResolve={setReview} />
         )}
       </Panel>
+      {detailPurchase && (
+        <PurchaseDetail purchase={detailPurchase} onClose={() => setDetailPurchase(null)} />
+      )}
       <ActionDialog
         open={Boolean(purchase)}
         title="Initiate refund"
@@ -164,7 +170,15 @@ export function Payments() {
     </Page>
   );
 }
-function PurchaseRows({ rows, onRefund }: { rows: Purchase[]; onRefund: (row: Purchase) => void }) {
+function PurchaseRows({
+  rows,
+  onDetail,
+  onRefund,
+}: {
+  rows: Purchase[];
+  onDetail: (row: Purchase) => void;
+  onRefund: (row: Purchase) => void;
+}) {
   if (!rows.length) return <Empty>No purchases match this view.</Empty>;
   return (
     <div style={{ overflowX: 'auto' }}>
@@ -194,6 +208,9 @@ function PurchaseRows({ rows, onRefund }: { rows: Purchase[]; onRefund: (row: Pu
                 <StatusBadge value={row.state} />
               </td>
               <td>
+                <Button appearance="subtle" onClick={() => onDetail(row)}>
+                  Details
+                </Button>
                 <Button
                   appearance="subtle"
                   disabled={row.collectionState !== 'successful'}
@@ -207,6 +224,111 @@ function PurchaseRows({ rows, onRefund }: { rows: Purchase[]; onRefund: (row: Pu
         </tbody>
       </table>
     </div>
+  );
+}
+
+function PurchaseDetail({ purchase, onClose }: { purchase: Purchase; onClose: () => void }) {
+  const { session } = useAuth();
+  const query = useQuery<{ purchase: Purchase; refunds: Refund[] }>(
+    async (signal) => {
+      const [detail, refunds] = await Promise.all([
+        session.client.GET('/v1/ops/purchases/{id}', {
+          params: { path: { id: purchase.id }, header: opsHeaders },
+          signal,
+        }),
+        session.client.GET('/v1/ops/purchases/{id}/refunds', {
+          params: { path: { id: purchase.id }, header: opsHeaders },
+          signal,
+        }),
+      ]);
+      if (detail.error) throw new Error(detail.error.error.message);
+      if (refunds.error) throw new Error(refunds.error.error.message);
+      return { purchase: detail.data.data, refunds: refunds.data.data.items };
+    },
+    [session, purchase.id],
+  );
+  const detail = query.data?.purchase;
+  return (
+    <aside className="detail-drawer">
+      <div className="detail-drawer-heading">
+        <div>
+          <div className="eyebrow">Purchase</div>
+          <h2 className="mono">{purchase.id.slice(0, 12)}</h2>
+        </div>
+        <Button appearance="subtle" onClick={onClose}>
+          Close
+        </Button>
+      </div>
+      {query.error && <ErrorState message={query.error} retry={query.retry} />}
+      {query.loading ? (
+        <LoadingRows rows={5} />
+      ) : (
+        detail && (
+          <>
+            <dl className="detail-grid">
+              <div>
+                <dt>Rider</dt>
+                <dd className="mono">{detail.riderId.slice(0, 12)}</dd>
+              </div>
+              <div>
+                <dt>State</dt>
+                <dd>
+                  <StatusBadge value={detail.state} />
+                </dd>
+              </div>
+              <div>
+                <dt>Price</dt>
+                <dd>{money(detail.price)}</dd>
+              </div>
+              <div>
+                <dt>Credit applied</dt>
+                <dd>{money(detail.appliedCredit)}</dd>
+              </div>
+              <div>
+                <dt>Cash due</dt>
+                <dd>{money(detail.cashDue)}</dd>
+              </div>
+              <div>
+                <dt>Created</dt>
+                <dd>{when(detail.createdAt)}</dd>
+              </div>
+            </dl>
+            <h3>Provider attempts</h3>
+            <div className="stack-list">
+              {detail.attempts.length ? (
+                detail.attempts.map((row) => (
+                  <div className="stack-row" key={row.id}>
+                    <span>
+                      <strong>{row.providerReference}</strong>
+                      <small>{row.environment} environment</small>
+                    </span>
+                    <StatusBadge value={row.status} />
+                  </div>
+                ))
+              ) : (
+                <p className="muted">No provider attempt recorded.</p>
+              )}
+            </div>
+            <h3>Refund requests</h3>
+            <div className="stack-list">
+              {query.data?.refunds.length ? (
+                query.data.refunds.map((row) => (
+                  <div className="stack-row" key={row.id}>
+                    <span>
+                      <strong>{money(row.amount)}</strong>
+                      <small>{row.reason}</small>
+                    </span>
+                    <StatusBadge value={row.state} />
+                  </div>
+                ))
+              ) : (
+                <p className="muted">No refund request recorded.</p>
+              )}
+            </div>
+          </>
+        )
+      )}
+    </aside>
   );
 }
 function ReviewRows({ rows, onResolve }: { rows: Review[]; onResolve: (row: Review) => void }) {
