@@ -16,6 +16,9 @@ regexes = [
   # Not a Paystack/Stripe account credential. Current tests generate it in memory.
   # Exact value only: do not exempt payment files or real sk_test_* credentials.
   '''^sk_test_disposable012$''',
+  # Historical WebAuthn fixture in f56f33b, auth.pg.test.ts:827: base64url of the
+  # literal text "authenticator-data". Not key material. Exact value only.
+  '''^YXV0aGVudGljYXRvci1kYXRh$''',
 ]
 # Firebase CLIENT config (google-services.json / firebase_options.dart /
 # GoogleService-Info.plist). The "API key" in these is a PUBLIC project
