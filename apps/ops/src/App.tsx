@@ -1,0 +1,77 @@
+import { Button, FluentProvider } from '@fluentui/react-components';
+import { BrowserRouter, Route, Routes } from 'react-router-dom';
+import { lazy, Suspense } from 'react';
+import { AuthProvider, useAuth } from './auth/AuthContext';
+import { PasskeyGate, AuthFrame } from './auth/PasskeyGate';
+import { SignIn } from './auth/SignIn';
+import { LoadingPage } from './components/Page';
+import { Shell } from './components/Shell';
+import { trotxiLight } from './theme';
+
+const Overview = lazy(() =>
+  import('./screens/Overview').then((module) => ({ default: module.Overview })),
+);
+const Trips = lazy(() => import('./screens/Trips').then((module) => ({ default: module.Trips })));
+const Network = lazy(() =>
+  import('./screens/Network').then((module) => ({ default: module.Network })),
+);
+const Fleet = lazy(() => import('./screens/Fleet').then((module) => ({ default: module.Fleet })));
+const Riders = lazy(() =>
+  import('./screens/Riders').then((module) => ({ default: module.Riders })),
+);
+const Support = lazy(() =>
+  import('./screens/Support').then((module) => ({ default: module.Support })),
+);
+const Payments = lazy(() =>
+  import('./screens/Payments').then((module) => ({ default: module.Payments })),
+);
+const Platform = lazy(() =>
+  import('./screens/Platform').then((module) => ({ default: module.Platform })),
+);
+
+export function App() {
+  return (
+    <FluentProvider theme={trotxiLight} style={{ minHeight: '100vh' }}>
+      <AuthProvider>
+        <Entry />
+      </AuthProvider>
+    </FluentProvider>
+  );
+}
+
+function Entry() {
+  const { account, restoring, session } = useAuth();
+  if (restoring) return <LoadingPage />;
+  if (!account) return <SignIn />;
+  if (account.role !== 'admin')
+    return (
+      <AuthFrame
+        title="This account has no Ops access"
+        copy="You are signed in, but this Google account is not an approved Trotxi operator."
+      >
+        <Button appearance="primary" onClick={() => void session.logout()}>
+          Use another account
+        </Button>
+      </AuthFrame>
+    );
+  return (
+    <PasskeyGate>
+      <BrowserRouter>
+        <Suspense fallback={<LoadingPage />}>
+          <Routes>
+            <Route element={<Shell />}>
+              <Route index element={<Overview />} />
+              <Route path="trips" element={<Trips />} />
+              <Route path="network" element={<Network />} />
+              <Route path="fleet" element={<Fleet />} />
+              <Route path="riders" element={<Riders />} />
+              <Route path="support" element={<Support />} />
+              <Route path="payments" element={<Payments />} />
+              <Route path="platform" element={<Platform />} />
+            </Route>
+          </Routes>
+        </Suspense>
+      </BrowserRouter>
+    </PasskeyGate>
+  );
+}

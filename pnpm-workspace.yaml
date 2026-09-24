@@ -45,3 +45,6 @@ allowBuilds:
   # sharp (avatar resize/EXIF-strip, #24) needs its postinstall to install the
   # platform's prebuilt libvips binary.
   sharp: true
+
+minimumReleaseAgeExclude:
+  - vite@8.3.1
