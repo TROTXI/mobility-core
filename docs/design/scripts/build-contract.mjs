@@ -180,6 +180,18 @@ for (const o of operations) {
         'Name, phone or email, partial.',
       ),
     );
+  if (o.operationId === 'listOpsDeliveries')
+    parameters.push(
+      query('channel', { type: 'string', enum: ['email', 'push'] }, 'Delivery channel.'),
+      query('state', { type: 'string', maxLength: 50 }, 'Provider delivery state.'),
+    );
+  if (o.operationId === 'listOpsAuditEvents')
+    parameters.push(query('area', { type: 'string', maxLength: 50 }, 'Audit domain.'));
+  if (o.operationId === 'getOpsReportSummary')
+    parameters.push(
+      query('fromDate', { type: 'string', format: 'date' }, 'Inclusive reporting day.'),
+      query('toDate', { type: 'string', format: 'date' }, 'Inclusive reporting day.'),
+    );
   if (o.list && /trips|reservations|billing-periods|purchases|entries/.test(o.path))
     parameters.push(
       query(

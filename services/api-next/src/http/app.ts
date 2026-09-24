@@ -831,7 +831,7 @@ export async function createTransportApp(options: AppOptions) {
                     request.params as { id?: string; versionId?: string },
                     query,
                   )
-                : await service.list(actor, name as Read, query);
+                : await service.list(actor, name as Read, query, request.params as { id?: string });
           } else {
             if (!input && request.body !== undefined)
               fail(400, 'invalid_request', 'This command has no request body.');

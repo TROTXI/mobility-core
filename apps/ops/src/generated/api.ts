@@ -1327,6 +1327,91 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/v1/ops/riders/{id}': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** get Ops Rider Detail */
+    get: operations['getOpsRiderDetail'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/v1/ops/operators': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** list Ops Operators */
+    get: operations['listOpsOperators'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/v1/ops/deliveries': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** list Ops Deliveries */
+    get: operations['listOpsDeliveries'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/v1/ops/audit-events': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** list Ops Audit Events */
+    get: operations['listOpsAuditEvents'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/v1/ops/reports/summary': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** get Ops Report Summary */
+    get: operations['getOpsReportSummary'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/v1/ops/route-patterns': {
     parameters: {
       query?: never;
@@ -2765,6 +2850,34 @@ export interface components {
       /** @enum {string} */
       currency: 'GHS';
     };
+    OpsAuditEvent: {
+      id: string;
+      /** @enum {string} */
+      area:
+        | 'catalog'
+        | 'trip'
+        | 'schedule'
+        | 'fleet'
+        | 'driver'
+        | 'membership'
+        | 'boarding'
+        | 'pricing'
+        | 'configuration'
+        | 'security';
+      action: string;
+      actorId: string;
+      actorName: string;
+      targetId: string;
+      reason: string | null;
+      /** Format: date-time */
+      occurredAt: string;
+    };
+    OpsAuditEventPage: {
+      data: components['schemas']['OpsAuditEvent'][];
+      page: {
+        nextCursor: string | null;
+      };
+    };
     OpsCommuteRequest: {
       id: string;
       /** @enum {string} */
@@ -2792,6 +2905,25 @@ export interface components {
     };
     OpsCommuteRequestResponse: {
       data: components['schemas']['OpsCommuteRequest'];
+    };
+    OpsDelivery: {
+      id: string;
+      /** @enum {string} */
+      channel: 'email' | 'push';
+      kind: string;
+      userId: string;
+      state: string;
+      attempts: number;
+      providerId: string | null;
+      failureCode: string | null;
+      /** Format: date-time */
+      createdAt: string;
+    };
+    OpsDeliveryPage: {
+      data: components['schemas']['OpsDelivery'][];
+      page: {
+        nextCursor: string | null;
+      };
     };
     OpsIncident: {
       id: string;
@@ -2824,6 +2956,25 @@ export interface components {
     };
     OpsIncidentResponse: {
       data: components['schemas']['OpsIncident'];
+    };
+    OpsOperator: {
+      id: string;
+      displayName: string;
+      /** Format: email */
+      email: string | null;
+      passkeyCount: number;
+      activeSessions: number;
+      /** Format: date-time */
+      lastPasskeyUsedAt: string | null;
+      /** Format: date-time */
+      joinedAt: string;
+      editToken: string;
+    };
+    OpsOperatorPage: {
+      data: components['schemas']['OpsOperator'][];
+      page: {
+        nextCursor: string | null;
+      };
     };
     OpsOverview: {
       /** Format: date-time */
@@ -2929,6 +3080,39 @@ export interface components {
     OpsPurchaseResponse: {
       data: components['schemas']['OpsPurchase'];
     };
+    OpsReportSummary: {
+      /** Format: date-time */
+      generatedAt: string;
+      /** Format: date */
+      fromDate: string;
+      /** Format: date */
+      toDate: string;
+      riders: {
+        total: number;
+        active: number;
+        paused: number;
+        restricted: number;
+      };
+      trips: {
+        total: number;
+        completed: number;
+        cancelled: number;
+        boarded: number;
+        noShows: number;
+      };
+      payments: {
+        collected: components['schemas']['Money'];
+        refunded: components['schemas']['Money'];
+        openReviews: number;
+      };
+      delivery: {
+        pending: number;
+        failed: number;
+      };
+    };
+    OpsReportSummaryResponse: {
+      data: components['schemas']['OpsReportSummary'];
+    };
     OpsRider: {
       id: string;
       displayName: string;
@@ -2947,6 +3131,43 @@ export interface components {
       /** Format: date-time */
       joinedAt: string;
       editToken: string;
+    };
+    OpsRiderDetail: {
+      rider: components['schemas']['OpsRider'];
+      membership: {
+        id: string;
+        /** @enum {string} */
+        lifecycle: 'open' | 'ended';
+        periodId: string | null;
+        /** Format: date-time */
+        startsAt: string | null;
+        /** Format: date-time */
+        endsAt: string | null;
+      } | null;
+      restrictions: components['schemas']['Restriction'][];
+      reservations: {
+        id: string;
+        /** Format: date */
+        serviceDate: string;
+        /** @enum {string} */
+        direction: 'outbound' | 'return';
+        status: string;
+        routeName: string | null;
+        /** Format: date-time */
+        scheduledAt: string | null;
+      }[];
+      purchases: {
+        id: string;
+        /** @enum {string} */
+        plan: 'monthly' | 'annual';
+        state: string;
+        cashDue: components['schemas']['Money'];
+        /** Format: date-time */
+        createdAt: string;
+      }[];
+    };
+    OpsRiderDetailResponse: {
+      data: components['schemas']['OpsRiderDetail'];
     };
     OpsRiderPage: {
       data: components['schemas']['OpsRider'][];
@@ -8468,6 +8689,249 @@ export interface operations {
         };
         content: {
           'application/json': components['schemas']['OpsRiderSummaryResponse'];
+        };
+      };
+      400: components['responses']['Error400'];
+      401: components['responses']['Error401'];
+      403: components['responses']['Error403'];
+      404: components['responses']['Error404'];
+      426: components['responses']['Error426'];
+      429: components['responses']['Error429'];
+      500: components['responses']['Error500'];
+      503: components['responses']['Error503'];
+    };
+  };
+  getOpsRiderDetail: {
+    parameters: {
+      query?: never;
+      header: {
+        /**
+         * @description Compatibility metadata only, never grants a role.
+         * @example ops
+         */
+        'X-Trotxi-Client': 'commuter' | 'driver' | 'ops' | 'worker';
+        /**
+         * @description Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
+         * @example 1
+         */
+        'X-Trotxi-Build': number;
+        /** @description Required for commuter/driver, absent for ops/worker. */
+        'X-Trotxi-Platform'?: 'ios' | 'android';
+      };
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Success */
+      200: {
+        headers: {
+          /** @description Opaque resource version; required on protected edits. */
+          ETag?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['OpsRiderDetailResponse'];
+        };
+      };
+      400: components['responses']['Error400'];
+      401: components['responses']['Error401'];
+      403: components['responses']['Error403'];
+      404: components['responses']['Error404'];
+      426: components['responses']['Error426'];
+      429: components['responses']['Error429'];
+      500: components['responses']['Error500'];
+      503: components['responses']['Error503'];
+    };
+  };
+  listOpsOperators: {
+    parameters: {
+      query?: {
+        /** @description Opaque cursor bound to caller, sort and filters. */
+        cursor?: string;
+        /** @description Page size. No silent truncation. */
+        limit?: number;
+      };
+      header: {
+        /**
+         * @description Compatibility metadata only, never grants a role.
+         * @example ops
+         */
+        'X-Trotxi-Client': 'commuter' | 'driver' | 'ops' | 'worker';
+        /**
+         * @description Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
+         * @example 1
+         */
+        'X-Trotxi-Build': number;
+        /** @description Required for commuter/driver, absent for ops/worker. */
+        'X-Trotxi-Platform'?: 'ios' | 'android';
+      };
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Success */
+      200: {
+        headers: {
+          /** @description Opaque resource version; required on protected edits. */
+          ETag?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['OpsOperatorPage'];
+        };
+      };
+      400: components['responses']['Error400'];
+      401: components['responses']['Error401'];
+      403: components['responses']['Error403'];
+      404: components['responses']['Error404'];
+      426: components['responses']['Error426'];
+      429: components['responses']['Error429'];
+      500: components['responses']['Error500'];
+      503: components['responses']['Error503'];
+    };
+  };
+  listOpsDeliveries: {
+    parameters: {
+      query?: {
+        /** @description Opaque cursor bound to caller, sort and filters. */
+        cursor?: string;
+        /** @description Page size. No silent truncation. */
+        limit?: number;
+        /** @description Delivery channel. */
+        channel?: 'email' | 'push';
+        /** @description Provider delivery state. */
+        state?: string;
+      };
+      header: {
+        /**
+         * @description Compatibility metadata only, never grants a role.
+         * @example ops
+         */
+        'X-Trotxi-Client': 'commuter' | 'driver' | 'ops' | 'worker';
+        /**
+         * @description Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
+         * @example 1
+         */
+        'X-Trotxi-Build': number;
+        /** @description Required for commuter/driver, absent for ops/worker. */
+        'X-Trotxi-Platform'?: 'ios' | 'android';
+      };
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Success */
+      200: {
+        headers: {
+          /** @description Opaque resource version; required on protected edits. */
+          ETag?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['OpsDeliveryPage'];
+        };
+      };
+      400: components['responses']['Error400'];
+      401: components['responses']['Error401'];
+      403: components['responses']['Error403'];
+      404: components['responses']['Error404'];
+      426: components['responses']['Error426'];
+      429: components['responses']['Error429'];
+      500: components['responses']['Error500'];
+      503: components['responses']['Error503'];
+    };
+  };
+  listOpsAuditEvents: {
+    parameters: {
+      query?: {
+        /** @description Opaque cursor bound to caller, sort and filters. */
+        cursor?: string;
+        /** @description Page size. No silent truncation. */
+        limit?: number;
+        /** @description Audit domain. */
+        area?: string;
+      };
+      header: {
+        /**
+         * @description Compatibility metadata only, never grants a role.
+         * @example ops
+         */
+        'X-Trotxi-Client': 'commuter' | 'driver' | 'ops' | 'worker';
+        /**
+         * @description Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
+         * @example 1
+         */
+        'X-Trotxi-Build': number;
+        /** @description Required for commuter/driver, absent for ops/worker. */
+        'X-Trotxi-Platform'?: 'ios' | 'android';
+      };
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Success */
+      200: {
+        headers: {
+          /** @description Opaque resource version; required on protected edits. */
+          ETag?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['OpsAuditEventPage'];
+        };
+      };
+      400: components['responses']['Error400'];
+      401: components['responses']['Error401'];
+      403: components['responses']['Error403'];
+      404: components['responses']['Error404'];
+      426: components['responses']['Error426'];
+      429: components['responses']['Error429'];
+      500: components['responses']['Error500'];
+      503: components['responses']['Error503'];
+    };
+  };
+  getOpsReportSummary: {
+    parameters: {
+      query?: {
+        /** @description Inclusive reporting day. */
+        fromDate?: string;
+        /** @description Inclusive reporting day. */
+        toDate?: string;
+      };
+      header: {
+        /**
+         * @description Compatibility metadata only, never grants a role.
+         * @example ops
+         */
+        'X-Trotxi-Client': 'commuter' | 'driver' | 'ops' | 'worker';
+        /**
+         * @description Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
+         * @example 1
+         */
+        'X-Trotxi-Build': number;
+        /** @description Required for commuter/driver, absent for ops/worker. */
+        'X-Trotxi-Platform'?: 'ios' | 'android';
+      };
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Success */
+      200: {
+        headers: {
+          /** @description Opaque resource version; required on protected edits. */
+          ETag?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['OpsReportSummaryResponse'];
         };
       };
       400: components['responses']['Error400'];

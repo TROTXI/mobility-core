@@ -1099,6 +1099,100 @@ named(
   }),
 );
 named(
+  'OpsRiderDetail',
+  obj({
+    rider: schemas.OpsRider,
+    membership: obj({
+      id,
+      lifecycle: z.enum(['open', 'ended']),
+      periodId: id.nullable(),
+      startsAt: instant.nullable(),
+      endsAt: instant.nullable(),
+    }).nullable(),
+    restrictions: z.array(schemas.Restriction),
+    reservations: z.array(
+      obj({
+        id,
+        serviceDate: date,
+        direction,
+        status: text(50),
+        routeName: text().nullable(),
+        scheduledAt: instant.nullable(),
+      }),
+    ),
+    purchases: z.array(obj({ id, plan, state: text(50), cashDue: money, createdAt: instant })),
+  }),
+);
+named(
+  'OpsOperator',
+  obj({
+    id,
+    displayName: text(),
+    email: z.email().nullable(),
+    passkeyCount: count,
+    activeSessions: count,
+    lastPasskeyUsedAt: instant.nullable(),
+    joinedAt: instant,
+    editToken: text(128),
+  }),
+);
+named(
+  'OpsDelivery',
+  obj({
+    id,
+    channel: z.enum(['email', 'push']),
+    kind: text(100),
+    userId: id,
+    state: text(50),
+    attempts: count,
+    providerId: text(512).nullable(),
+    failureCode: text(100).nullable(),
+    createdAt: instant,
+  }),
+);
+named(
+  'OpsAuditEvent',
+  obj({
+    id,
+    area: z.enum([
+      'catalog',
+      'trip',
+      'schedule',
+      'fleet',
+      'driver',
+      'membership',
+      'boarding',
+      'pricing',
+      'configuration',
+      'security',
+    ]),
+    action: text(100),
+    actorId: id,
+    actorName: text(),
+    targetId: text(200),
+    reason: note.nullable(),
+    occurredAt: instant,
+  }),
+);
+named(
+  'OpsReportSummary',
+  obj({
+    generatedAt: instant,
+    fromDate: date,
+    toDate: date,
+    riders: obj({ total: count, active: count, paused: count, restricted: count }),
+    trips: obj({
+      total: count,
+      completed: count,
+      cancelled: count,
+      boarded: count,
+      noShows: count,
+    }),
+    payments: obj({ collected: money, refunded: money, openReviews: count }),
+    delivery: obj({ pending: count, failed: count }),
+  }),
+);
+named(
   'OpsRiderSummary',
   obj({
     generatedAt: instant,
@@ -1465,6 +1559,11 @@ post('/v1/ops/trips/{id}/cancel', 'cancelTrip', 'ReasonInput', 'OpsTrip', { etag
 get('/v1/ops/overview', 'getOpsOverview', 'OpsOverview');
 list('/v1/ops/riders', 'listOpsRiders', 'OpsRider');
 get('/v1/ops/riders/summary', 'getOpsRiderSummary', 'OpsRiderSummary');
+get('/v1/ops/riders/{id}', 'getOpsRiderDetail', 'OpsRiderDetail');
+list('/v1/ops/operators', 'listOpsOperators', 'OpsOperator');
+list('/v1/ops/deliveries', 'listOpsDeliveries', 'OpsDelivery');
+list('/v1/ops/audit-events', 'listOpsAuditEvents', 'OpsAuditEvent');
+get('/v1/ops/reports/summary', 'getOpsReportSummary', 'OpsReportSummary');
 for (const [path, name, type, input] of [
   ['route-patterns', 'Pattern', 'Pattern', 'PatternInput'],
   ['service-schedules', 'Schedule', 'Schedule', 'ScheduleInput'],

@@ -145,6 +145,11 @@ const selected = new Set([
   'resetOperatorPasskeys',
   'listOpsRiders',
   'getOpsRiderSummary',
+  'getOpsRiderDetail',
+  'listOpsOperators',
+  'listOpsDeliveries',
+  'listOpsAuditEvents',
+  'getOpsReportSummary',
   'getDriverSelf',
 ]);
 const count = selected.size;

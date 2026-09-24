@@ -305,6 +305,36 @@ export const operationScope = [
     'No predecessor. Kept apart from the list so paging through riders does not recompute the whole summary each page.',
   ],
   [
+    'getOpsRiderDetail',
+    'post-cutover',
+    'ops-console.md: support must inspect one rider before changing access',
+    'The directory row omits restrictions, recent reservations and purchases; acting from that row alone would hide the facts that justify an ops decision.',
+  ],
+  [
+    'listOpsOperators',
+    'post-cutover',
+    'Figma 17: administrator roles and passkey readiness must be visible',
+    'Role mutation can promote an account but cannot show which administrators have passkeys or active sessions.',
+  ],
+  [
+    'listOpsDeliveries',
+    'post-cutover',
+    'Figma 16A: operations needs delivery status for rider communications',
+    'Worker metrics expose totals, not which queued email or push failed and needs investigation.',
+  ],
+  [
+    'listOpsAuditEvents',
+    'post-cutover',
+    'ops-console.md: every mutating action must be attributable and reviewable',
+    'The append-only domain event tables retain evidence but no endpoint presents their shared actor, action, target and time to administrators.',
+  ],
+  [
+    'getOpsReportSummary',
+    'post-cutover',
+    'Figma 14: operational reporting for the pilot',
+    'The live overview covers one service day and window; it cannot summarize trips, collections and delivery exceptions over a selected period.',
+  ],
+  [
     'getDriverSelf',
     'post-cutover',
     'A driver session outlives the sign-in response that carries the driver record',

@@ -11393,6 +11393,628 @@
         "x-existing-endpoint-assessment": "No predecessor. Kept apart from the list so paging through riders does not recompute the whole summary each page."
       }
     },
+    "/v1/ops/riders/{id}": {
+      "get": {
+        "operationId": "getOpsRiderDetail",
+        "summary": "get Ops Rider Detail",
+        "tags": ["ops"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            }
+          },
+          {
+            "name": "X-Trotxi-Client",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": ["commuter", "driver", "ops", "worker"]
+            },
+            "description": "Compatibility metadata only, never grants a role.",
+            "example": "ops"
+          },
+          {
+            "name": "X-Trotxi-Build",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1
+            },
+            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.",
+            "example": 1
+          },
+          {
+            "name": "X-Trotxi-Platform",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": ["ios", "android"]
+            },
+            "description": "Required for commuter/driver, absent for ops/worker."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpsRiderDetailResponse"
+                }
+              }
+            },
+            "headers": {
+              "ETag": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "Opaque resource version; required on protected edits."
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "426": {
+            "$ref": "#/components/responses/Error426"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error429"
+          },
+          "500": {
+            "$ref": "#/components/responses/Error500"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error503"
+          }
+        },
+        "x-authorization": "ops",
+        "x-retry": "safe_read",
+        "x-sensitive": false,
+        "x-implementation-status": "design_only",
+        "x-delivery-stage": "post-cutover",
+        "x-requirement": "ops-console.md: support must inspect one rider before changing access",
+        "x-existing-endpoint-assessment": "The directory row omits restrictions, recent reservations and purchases; acting from that row alone would hide the facts that justify an ops decision."
+      }
+    },
+    "/v1/ops/operators": {
+      "get": {
+        "operationId": "listOpsOperators",
+        "summary": "list Ops Operators",
+        "tags": ["ops"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            },
+            "description": "Opaque cursor bound to caller, sort and filters."
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 200,
+              "default": 50
+            },
+            "description": "Page size. No silent truncation."
+          },
+          {
+            "name": "X-Trotxi-Client",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": ["commuter", "driver", "ops", "worker"]
+            },
+            "description": "Compatibility metadata only, never grants a role.",
+            "example": "ops"
+          },
+          {
+            "name": "X-Trotxi-Build",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1
+            },
+            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.",
+            "example": 1
+          },
+          {
+            "name": "X-Trotxi-Platform",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": ["ios", "android"]
+            },
+            "description": "Required for commuter/driver, absent for ops/worker."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpsOperatorPage"
+                }
+              }
+            },
+            "headers": {
+              "ETag": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "Opaque resource version; required on protected edits."
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "426": {
+            "$ref": "#/components/responses/Error426"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error429"
+          },
+          "500": {
+            "$ref": "#/components/responses/Error500"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error503"
+          }
+        },
+        "x-authorization": "ops",
+        "x-retry": "safe_read",
+        "x-sensitive": false,
+        "x-list-order": "createdAt DESC, id DESC",
+        "x-implementation-status": "design_only",
+        "x-delivery-stage": "post-cutover",
+        "x-requirement": "Figma 17: administrator roles and passkey readiness must be visible",
+        "x-existing-endpoint-assessment": "Role mutation can promote an account but cannot show which administrators have passkeys or active sessions."
+      }
+    },
+    "/v1/ops/deliveries": {
+      "get": {
+        "operationId": "listOpsDeliveries",
+        "summary": "list Ops Deliveries",
+        "tags": ["ops"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            },
+            "description": "Opaque cursor bound to caller, sort and filters."
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 200,
+              "default": 50
+            },
+            "description": "Page size. No silent truncation."
+          },
+          {
+            "name": "channel",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": ["email", "push"]
+            },
+            "description": "Delivery channel."
+          },
+          {
+            "name": "state",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 50
+            },
+            "description": "Provider delivery state."
+          },
+          {
+            "name": "X-Trotxi-Client",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": ["commuter", "driver", "ops", "worker"]
+            },
+            "description": "Compatibility metadata only, never grants a role.",
+            "example": "ops"
+          },
+          {
+            "name": "X-Trotxi-Build",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1
+            },
+            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.",
+            "example": 1
+          },
+          {
+            "name": "X-Trotxi-Platform",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": ["ios", "android"]
+            },
+            "description": "Required for commuter/driver, absent for ops/worker."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpsDeliveryPage"
+                }
+              }
+            },
+            "headers": {
+              "ETag": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "Opaque resource version; required on protected edits."
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "426": {
+            "$ref": "#/components/responses/Error426"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error429"
+          },
+          "500": {
+            "$ref": "#/components/responses/Error500"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error503"
+          }
+        },
+        "x-authorization": "ops",
+        "x-retry": "safe_read",
+        "x-sensitive": false,
+        "x-list-order": "createdAt DESC, id DESC",
+        "x-implementation-status": "design_only",
+        "x-delivery-stage": "post-cutover",
+        "x-requirement": "Figma 16A: operations needs delivery status for rider communications",
+        "x-existing-endpoint-assessment": "Worker metrics expose totals, not which queued email or push failed and needs investigation."
+      }
+    },
+    "/v1/ops/audit-events": {
+      "get": {
+        "operationId": "listOpsAuditEvents",
+        "summary": "list Ops Audit Events",
+        "tags": ["ops"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            },
+            "description": "Opaque cursor bound to caller, sort and filters."
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 200,
+              "default": 50
+            },
+            "description": "Page size. No silent truncation."
+          },
+          {
+            "name": "area",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 50
+            },
+            "description": "Audit domain."
+          },
+          {
+            "name": "X-Trotxi-Client",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": ["commuter", "driver", "ops", "worker"]
+            },
+            "description": "Compatibility metadata only, never grants a role.",
+            "example": "ops"
+          },
+          {
+            "name": "X-Trotxi-Build",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1
+            },
+            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.",
+            "example": 1
+          },
+          {
+            "name": "X-Trotxi-Platform",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": ["ios", "android"]
+            },
+            "description": "Required for commuter/driver, absent for ops/worker."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpsAuditEventPage"
+                }
+              }
+            },
+            "headers": {
+              "ETag": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "Opaque resource version; required on protected edits."
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "426": {
+            "$ref": "#/components/responses/Error426"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error429"
+          },
+          "500": {
+            "$ref": "#/components/responses/Error500"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error503"
+          }
+        },
+        "x-authorization": "ops",
+        "x-retry": "safe_read",
+        "x-sensitive": false,
+        "x-list-order": "createdAt DESC, id DESC",
+        "x-implementation-status": "design_only",
+        "x-delivery-stage": "post-cutover",
+        "x-requirement": "ops-console.md: every mutating action must be attributable and reviewable",
+        "x-existing-endpoint-assessment": "The append-only domain event tables retain evidence but no endpoint presents their shared actor, action, target and time to administrators."
+      }
+    },
+    "/v1/ops/reports/summary": {
+      "get": {
+        "operationId": "getOpsReportSummary",
+        "summary": "get Ops Report Summary",
+        "tags": ["ops"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "fromDate",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            },
+            "description": "Inclusive reporting day."
+          },
+          {
+            "name": "toDate",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            },
+            "description": "Inclusive reporting day."
+          },
+          {
+            "name": "X-Trotxi-Client",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": ["commuter", "driver", "ops", "worker"]
+            },
+            "description": "Compatibility metadata only, never grants a role.",
+            "example": "ops"
+          },
+          {
+            "name": "X-Trotxi-Build",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1
+            },
+            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.",
+            "example": 1
+          },
+          {
+            "name": "X-Trotxi-Platform",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": ["ios", "android"]
+            },
+            "description": "Required for commuter/driver, absent for ops/worker."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpsReportSummaryResponse"
+                }
+              }
+            },
+            "headers": {
+              "ETag": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "Opaque resource version; required on protected edits."
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "426": {
+            "$ref": "#/components/responses/Error426"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error429"
+          },
+          "500": {
+            "$ref": "#/components/responses/Error500"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error503"
+          }
+        },
+        "x-authorization": "ops",
+        "x-retry": "safe_read",
+        "x-sensitive": false,
+        "x-implementation-status": "design_only",
+        "x-delivery-stage": "post-cutover",
+        "x-requirement": "Figma 14: operational reporting for the pilot",
+        "x-existing-endpoint-assessment": "The live overview covers one service day and window; it cannot summarize trips, collections and delivery exceptions over a selected period."
+      }
+    },
     "/v1/ops/route-patterns": {
       "get": {
         "operationId": "listPatterns",
@@ -23376,6 +23998,441 @@
         ],
         "additionalProperties": false
       },
+      "OpsRiderDetail": {
+        "type": "object",
+        "properties": {
+          "rider": {
+            "$ref": "#/components/schemas/OpsRider"
+          },
+          "membership": {
+            "nullable": true,
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 128
+              },
+              "lifecycle": {
+                "type": "string",
+                "enum": ["open", "ended"]
+              },
+              "periodId": {
+                "nullable": true,
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 128
+              },
+              "startsAt": {
+                "nullable": true,
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+              },
+              "endsAt": {
+                "nullable": true,
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+              }
+            },
+            "required": ["id", "lifecycle", "periodId", "startsAt", "endsAt"],
+            "additionalProperties": false
+          },
+          "restrictions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Restriction"
+            }
+          },
+          "reservations": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 128
+                },
+                "serviceDate": {
+                  "type": "string",
+                  "format": "date",
+                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+                },
+                "direction": {
+                  "type": "string",
+                  "enum": ["outbound", "return"]
+                },
+                "status": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 50
+                },
+                "routeName": {
+                  "nullable": true,
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 200
+                },
+                "scheduledAt": {
+                  "nullable": true,
+                  "type": "string",
+                  "format": "date-time",
+                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                }
+              },
+              "required": ["id", "serviceDate", "direction", "status", "routeName", "scheduledAt"],
+              "additionalProperties": false
+            }
+          },
+          "purchases": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 128
+                },
+                "plan": {
+                  "type": "string",
+                  "enum": ["monthly", "annual"]
+                },
+                "state": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 50
+                },
+                "cashDue": {
+                  "$ref": "#/components/schemas/Money"
+                },
+                "createdAt": {
+                  "type": "string",
+                  "format": "date-time",
+                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                }
+              },
+              "required": ["id", "plan", "state", "cashDue", "createdAt"],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": ["rider", "membership", "restrictions", "reservations", "purchases"],
+        "additionalProperties": false
+      },
+      "OpsOperator": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "displayName": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "email": {
+            "nullable": true,
+            "type": "string",
+            "format": "email",
+            "pattern": "^(?!\\.)(?!.*\\.\\.)([A-Za-z0-9_'+\\-\\.]*)[A-Za-z0-9_+-]@([A-Za-z0-9][A-Za-z0-9\\-]*\\.)+[A-Za-z]{2,}$"
+          },
+          "passkeyCount": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "activeSessions": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "lastPasskeyUsedAt": {
+            "nullable": true,
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+          },
+          "joinedAt": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+          },
+          "editToken": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          }
+        },
+        "required": [
+          "id",
+          "displayName",
+          "email",
+          "passkeyCount",
+          "activeSessions",
+          "lastPasskeyUsedAt",
+          "joinedAt",
+          "editToken"
+        ],
+        "additionalProperties": false
+      },
+      "OpsDelivery": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "channel": {
+            "type": "string",
+            "enum": ["email", "push"]
+          },
+          "kind": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100
+          },
+          "userId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "state": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 50
+          },
+          "attempts": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "providerId": {
+            "nullable": true,
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 512
+          },
+          "failureCode": {
+            "nullable": true,
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+          }
+        },
+        "required": [
+          "id",
+          "channel",
+          "kind",
+          "userId",
+          "state",
+          "attempts",
+          "providerId",
+          "failureCode",
+          "createdAt"
+        ],
+        "additionalProperties": false
+      },
+      "OpsAuditEvent": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "area": {
+            "type": "string",
+            "enum": [
+              "catalog",
+              "trip",
+              "schedule",
+              "fleet",
+              "driver",
+              "membership",
+              "boarding",
+              "pricing",
+              "configuration",
+              "security"
+            ]
+          },
+          "action": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100
+          },
+          "actorId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "actorName": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "targetId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "reason": {
+            "nullable": true,
+            "type": "string",
+            "maxLength": 2000
+          },
+          "occurredAt": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+          }
+        },
+        "required": [
+          "id",
+          "area",
+          "action",
+          "actorId",
+          "actorName",
+          "targetId",
+          "reason",
+          "occurredAt"
+        ],
+        "additionalProperties": false
+      },
+      "OpsReportSummary": {
+        "type": "object",
+        "properties": {
+          "generatedAt": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+          },
+          "fromDate": {
+            "type": "string",
+            "format": "date",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+          },
+          "toDate": {
+            "type": "string",
+            "format": "date",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+          },
+          "riders": {
+            "type": "object",
+            "properties": {
+              "total": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              "active": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              "paused": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              "restricted": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              }
+            },
+            "required": ["total", "active", "paused", "restricted"],
+            "additionalProperties": false
+          },
+          "trips": {
+            "type": "object",
+            "properties": {
+              "total": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              "completed": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              "cancelled": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              "boarded": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              "noShows": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              }
+            },
+            "required": ["total", "completed", "cancelled", "boarded", "noShows"],
+            "additionalProperties": false
+          },
+          "payments": {
+            "type": "object",
+            "properties": {
+              "collected": {
+                "$ref": "#/components/schemas/Money"
+              },
+              "refunded": {
+                "$ref": "#/components/schemas/Money"
+              },
+              "openReviews": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              }
+            },
+            "required": ["collected", "refunded", "openReviews"],
+            "additionalProperties": false
+          },
+          "delivery": {
+            "type": "object",
+            "properties": {
+              "pending": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              "failed": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              }
+            },
+            "required": ["pending", "failed"],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "generatedAt",
+          "fromDate",
+          "toDate",
+          "riders",
+          "trips",
+          "payments",
+          "delivery"
+        ],
+        "additionalProperties": false
+      },
       "OpsRiderSummary": {
         "type": "object",
         "properties": {
@@ -24640,6 +25697,104 @@
         "properties": {
           "data": {
             "$ref": "#/components/schemas/OpsRiderSummary"
+          }
+        },
+        "required": ["data"],
+        "additionalProperties": false
+      },
+      "OpsRiderDetailResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/OpsRiderDetail"
+          }
+        },
+        "required": ["data"],
+        "additionalProperties": false
+      },
+      "OpsOperatorPage": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OpsOperator"
+            }
+          },
+          "page": {
+            "type": "object",
+            "properties": {
+              "nextCursor": {
+                "nullable": true,
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 128
+              }
+            },
+            "required": ["nextCursor"],
+            "additionalProperties": false
+          }
+        },
+        "required": ["data", "page"],
+        "additionalProperties": false
+      },
+      "OpsDeliveryPage": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OpsDelivery"
+            }
+          },
+          "page": {
+            "type": "object",
+            "properties": {
+              "nextCursor": {
+                "nullable": true,
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 128
+              }
+            },
+            "required": ["nextCursor"],
+            "additionalProperties": false
+          }
+        },
+        "required": ["data", "page"],
+        "additionalProperties": false
+      },
+      "OpsAuditEventPage": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OpsAuditEvent"
+            }
+          },
+          "page": {
+            "type": "object",
+            "properties": {
+              "nextCursor": {
+                "nullable": true,
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 128
+              }
+            },
+            "required": ["nextCursor"],
+            "additionalProperties": false
+          }
+        },
+        "required": ["data", "page"],
+        "additionalProperties": false
+      },
+      "OpsReportSummaryResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/OpsReportSummary"
           }
         },
         "required": ["data"],
