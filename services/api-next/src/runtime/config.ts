@@ -30,6 +30,7 @@ export interface RuntimeConfig {
   databaseUrl: string;
   poolSize: number;
   staleFixAfterSeconds: number;
+  logRequests: boolean;
   listen: { host: string; port: number };
   build: BuildIdentity;
   access: { issuer: string; audience: string; ttlSeconds: number };
@@ -261,6 +262,8 @@ export function readConfiguration(env: Env = process.env): RuntimeConfig {
     // Drivers publish every five seconds through patchy coverage, so a short
     // threshold cries wolf all morning. Five minutes to start; tune it from what
     // the ops team actually sees rather than from a guess made before launch.
+    // On wherever the platform runs it; tests and local runs stay quiet.
+    logRequests: env.NODE_ENV === 'production',
     staleFixAfterSeconds: integerOr(env, 'REPLACEMENT_STALE_FIX_AFTER_SECONDS', 300, 30, 3600),
     listen: {
       host: optional(env, 'REPLACEMENT_HOST') ?? '0.0.0.0',

@@ -6,6 +6,7 @@ import pg from 'pg';
 import { createTransportApp } from '../src/http/app.js';
 import { TransportError } from '../src/transport/errors.js';
 import { STALE_FIX_AFTER_SECONDS } from '../src/transport/overview.js';
+import { readBusinessState } from '../src/observability/metrics.js';
 import { grantRuntime, migrate, readMigrations } from '../src/db/migrate.js';
 
 const value = process.env.HARNESS_ADMIN_DATABASE_URL;
@@ -411,4 +412,34 @@ test('how quiet a bus can go before it is flagged is configured, not hard-coded'
   const same = await relaxed.trip(again, { status: 'active' });
   await relaxed.fix(same, 120);
   assert.equal((await relaxed.board()).json().data.trips[0].badge, 'on_time');
+});
+
+test('the Grafana gauges count what the board flags and what payments wait on', async () => {
+  const f = await setup();
+  const line = await f.corridor('Circle - Madina');
+  const quiet = await f.trip(line, { status: 'active' });
+  await f.fix(quiet, 600);
+  const reporting = await f.trip(line, { status: 'active' });
+  await f.fix(reporting, 10);
+  await f.trip(line, { driver: false });
+  // A webhook that arrived twenty minutes ago and was never processed: the
+  // exact state that stranded a paid subscription this week.
+  await f.owner.query(
+    `INSERT INTO app.payment_events(environment,source,payload_hash,ciphertext,received_at)
+    VALUES ('test','webhook',repeat('a',64),decode(repeat('00',40),'hex'),
+      clock_timestamp() - interval '20 minutes')`,
+  );
+
+  // Read as the runtime role the gauges run under in production. Without its
+  // grants the callback would catch the error and publish nothing, silently.
+  const state = await readBusinessState(f.runtime, {
+    staleAfterSeconds: STALE_FIX_AFTER_SECONDS,
+  });
+  assert.equal(state.tripsActive, 2);
+  assert.equal(state.tripsStaleGps, 1, 'ten minutes quiet is past five');
+  assert.equal(state.tripsUnassignedToday, 1);
+  assert.equal(state.inboxReady, 1);
+  assert.ok(state.inboxOldestReadySeconds >= 1200, `oldest ${state.inboxOldestReadySeconds}s`);
+  assert.equal(state.purchasesUnresolved, 0);
+  assert.equal(state.boardedToday, 0);
 });
