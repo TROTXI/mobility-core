@@ -108,3 +108,31 @@ test('OPS-READ-03 operator counts exclude revoked credentials and sessions', asy
   assert.ok(admin.lastPasskeyUsedAt);
   assert.ok(Date.parse(admin.lastPasskeyUsedAt) < Date.now() - 24 * 3600_000);
 });
+
+test('OPS-READ-04 reports a processed refund in its processing window', async (t) => {
+  const f = await fixture(t);
+  const purchase = await f.buy();
+  const event = (
+    await f.owner.query(
+      `INSERT INTO app.payment_events
+       (environment,source,payload_hash,ciphertext,state,processed_at)
+       VALUES ('test','webhook',repeat('a',64),decode(repeat('aa',29),'hex'),
+         'processed',clock_timestamp()) RETURNING id`,
+    )
+  ).rows[0].id;
+  await f.owner.query(
+    `INSERT INTO app.payment_refunds
+     (attempt_id,purchase_id,user_id,environment,provider_reference,amount_pesewas,
+      state,event_id,created_at,updated_at)
+     VALUES ($1,$2,$3,'test','report-refund',100,'processed',$4,
+       '2026-01-31T12:00:00Z','2026-02-02T12:00:00Z')`,
+    [purchase.attempt.id, purchase.id, f.actor.userId, event],
+  );
+  const amount = async (from: string, to: string) => {
+    const response = await f.get(`/v1/ops/reports/summary?fromDate=${from}&toDate=${to}`);
+    assert.equal(response.statusCode, 200, response.body);
+    return response.json().data.payments.refunded.amountMinor;
+  };
+  assert.equal(await amount('2026-01-01', '2026-01-31'), 0);
+  assert.equal(await amount('2026-02-01', '2026-02-28'), 100);
+});

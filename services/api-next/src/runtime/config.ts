@@ -148,8 +148,8 @@ function url(env: Env, name: string): string {
   // that reported success would have handed clients a URL that fetches nothing.
   return raw;
 }
-function webOrigin(env: Env, name: string, fallback: string): string {
-  const raw = withDefault(env, name, fallback);
+function webOrigin(env: Env, name: string): string {
+  const raw = required(env, name);
   let parsed: URL;
   try {
     parsed = new URL(raw);
@@ -316,7 +316,7 @@ export function readConfiguration(env: Env = process.env): RuntimeConfig {
         '431341307838-pc4m046v2lj18ssfnfl1g52fl5g1cg4q.apps.googleusercontent.com',
       ),
     },
-    opsOrigin: webOrigin(env, 'REPLACEMENT_OPS_ORIGIN', required(env, 'REPLACEMENT_OPS_ORIGIN')),
+    opsOrigin: webOrigin(env, 'REPLACEMENT_OPS_ORIGIN'),
     apple,
     paystack: { secretKey: paystack },
     avatars: {
