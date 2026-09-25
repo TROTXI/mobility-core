@@ -334,7 +334,7 @@ services:
     runtime: static
     repo: https://github.com/TROTXI/mobility-core
     branch: main
-    buildCommand: corepack enable && pnpm install --frozen-lockfile && pnpm --filter @trotxi/ops run build
+    buildCommand: pnpm install --frozen-lockfile && pnpm --filter @trotxi/ops run build
     staticPublishPath: apps/ops/dist
     autoDeploy: false
     envVars:
