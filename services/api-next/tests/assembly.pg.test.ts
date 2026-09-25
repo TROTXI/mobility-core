@@ -820,7 +820,10 @@ test('ASM-21 a provider this deployment does not have has no route at all', asyn
         routed += 1;
         assert.notEqual((operation as { operationId: string }).operationId, 'signInApple');
       }
-  assert.equal(routed, 145);
+  const reviewedOperations = Object.values(contract.paths).flatMap((methods) =>
+    Object.values(methods),
+  ).length;
+  assert.equal(routed, reviewedOperations - 1);
   const docs = (await backend.app.inject({ method: 'GET', url: '/docs/json' })).json();
   assert.equal(docs.paths['/v1/auth/apple'], undefined);
   assert.ok(docs.paths['/v1/auth/google']);
