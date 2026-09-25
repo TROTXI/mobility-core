@@ -39,12 +39,22 @@ export function startTelemetry(env: NodeJS.ProcessEnv = process.env): boolean {
   if (sdk) return true;
   if (!env.OTEL_EXPORTER_OTLP_ENDPOINT && !env.OTEL_EXPORTER_OTLP_TRACES_ENDPOINT) return false;
   register('@opentelemetry/instrumentation/hook.mjs', import.meta.url);
+  // Unset on Render means staging, the same default configuration applies.
+  const environment = env.REPLACEMENT_DEPLOYMENT_ENVIRONMENT ?? (env.RENDER ? 'staging' : 'local');
   sdk = new NodeSDK({
     resource: resourceFromAttributes({
+      // Grafana Cloud labels every series job="<namespace>/<name>" and keeps no
+      // other resource attribute as a label, so this is what separates staging
+      // from production in every query: job="staging/trotxi-api".
+      'service.namespace': environment,
       [ATTR_SERVICE_NAME]: env.OTEL_SERVICE_NAME ?? 'trotxi-api',
       // Render sets the deployed commit, so a regression in Grafana points at
       // the deploy that introduced it.
       [ATTR_SERVICE_VERSION]: env.RENDER_GIT_COMMIT ?? 'local',
+      // Becomes the `instance` label. Without it, two instances of one service
+      // write the same series and each overwrites the other's numbers.
+      'service.instance.id': env.RENDER_INSTANCE_ID ?? env.HOSTNAME ?? 'local',
+      'deployment.environment.name': environment,
     }),
     traceExporter: new OTLPTraceExporter(),
     metricReader: new PeriodicExportingMetricReader({ exporter: new OTLPMetricExporter() }),

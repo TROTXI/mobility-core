@@ -1,64 +1,90 @@
-# Grafana — API dashboard & alerts (#28 Phase 4)
+# Grafana: Trotxi API health
 
-Backend telemetry (metrics/traces/logs) flows to Grafana Cloud over OTLP
-(`docs/design/observability.md`). This folder turns the **metrics** into an
-importable dashboard + the alert rules that make us _page_, not just observe.
+The API sends metrics, traces and logs to Grafana Cloud over OTLP
+(`services/api-next/src/observability/telemetry.ts`). This folder turns the
+metrics into one dashboard and a set of alert rules, both applied by a script.
 
-- **Datasource:** the stack's Prometheus (`grafanacloud-…-prom`).
-- **Metric names** are OTel-via-OTLP (verified in the metric browser):
-  `http_server_duration_milliseconds_*` (RED, **milliseconds**),
-  `nodejs_eventloop_delay_p99_seconds`, `v8js_memory_heap_{used,limit}_bytes`.
-- **Verify once:** the 5xx filter assumes the label is `http_status_code`. If your
-  metric browser shows `http_response_status_code`, swap it in the queries below.
+- [`dashboards/trotxi-api-health.json`](dashboards/trotxi-api-health.json): the dashboard.
+- [`alerts/trotxi-api.json`](alerts/trotxi-api.json): the alert rules.
+- [`apply.mjs`](apply.mjs): puts both into a Grafana stack. Safe to rerun.
 
-## Import the dashboard
+## Apply
 
-Grafana → **Dashboards → New → Import** → upload
-[`dashboards/trotxi-api-overview.json`](dashboards/trotxi-api-overview.json) →
-pick your Prometheus datasource when prompted.
+1. In Grafana Cloud: **Administration → Users and access → Service accounts →
+   Add service account**, role **Admin**, then **Add service account token**.
+   Admin is needed because alert rule provisioning is an admin action.
+2. Keep the token in your shell, never in the repo or a chat:
 
-## Panels (PromQL, if you'd rather build by hand)
+   ```sh
+   export GRAFANA_URL=https://<stack>.grafana.net
+   export GRAFANA_TOKEN=<token>
+   node ops/grafana/apply.mjs --job staging/trotxi-api
+   ```
 
-| Panel                     | Query                                                                                                                                                                                         |
-| ------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Request rate (req/s)      | `sum(rate(http_server_duration_milliseconds_count[5m]))`                                                                                                                                      |
-| Error rate (%)            | `100 * (sum(rate(http_server_duration_milliseconds_count{http_status_code=~"5.."}[5m])) or vector(0)) / clamp_min(sum(rate(http_server_duration_milliseconds_count[5m])) or vector(0), 1e-6)` |
-| Latency p95 (ms)          | `histogram_quantile(0.95, sum by (le) (rate(http_server_duration_milliseconds_bucket[5m])))`                                                                                                  |
-| Latency p99 (ms)          | `histogram_quantile(0.99, sum by (le) (rate(http_server_duration_milliseconds_bucket[5m])))`                                                                                                  |
-| Latency p95 by route (ms) | `histogram_quantile(0.95, sum by (le, http_route) (rate(http_server_duration_milliseconds_bucket[5m])))`                                                                                      |
-| Event-loop lag p99 (ms)   | `nodejs_eventloop_delay_p99_seconds * 1000`                                                                                                                                                   |
-| Heap used vs limit (%)    | `100 * v8js_memory_heap_used_bytes / v8js_memory_heap_limit_bytes`                                                                                                                            |
+3. It prints the dashboard link. Rerun it after changing anything here.
 
-## Alert rules (create in Alerting → Alert rules)
+`--job` is the service to watch. Every series carries
+`job="<environment>/<service>"`: the environment comes from the
+`service.namespace` resource attribute the API sets, so staging and production
+never share a graph or an alert. Run the script once per environment; each gets
+its own alert group (`trotxi-api-staging`, `trotxi-api-production`).
 
-Thresholds come from `docs/design/observability.md §7`. Route **page** alerts to
-`#alerts`/on-call; **notify** to the same channel without paging.
+Alerts go to the stack's default notification policy, which on a new Grafana
+Cloud stack emails the account owner. To route `severity=page` somewhere
+louder, add a contact point and a notification policy matching that label in
+**Alerting → Notification policies**.
 
-| Alert                   | Expression                                                                                                                                                                                    | Fires when                                                         | For | Tier      |
-| ----------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------ | --- | --------- |
-| **API not reporting**   | `absent(http_server_duration_milliseconds_count)`                                                                                                                                             | metric absent (no OTLP arriving — service down or exporter broken) | 5m  | 🔴 page   |
-| **High 5xx error rate** | `100 * (sum(rate(http_server_duration_milliseconds_count{http_status_code=~"5.."}[5m])) or vector(0)) / clamp_min(sum(rate(http_server_duration_milliseconds_count[5m])) or vector(0), 1e-6)` | `> 0.5`                                                            | 5m  | 🔴 page   |
-| **High latency (p95)**  | `histogram_quantile(0.95, sum by (le) (rate(http_server_duration_milliseconds_bucket[5m])))`                                                                                                  | `> 300` (ms)                                                       | 10m | 🟠 notify |
-| **Event-loop lag**      | `nodejs_eventloop_delay_p99_seconds`                                                                                                                                                          | `> 0.07` (70 ms)                                                   | 10m | 🟠 notify |
-| **Memory near limit**   | `100 * v8js_memory_heap_used_bytes / v8js_memory_heap_limit_bytes`                                                                                                                            | `> 80`                                                             | 10m | 🟠 notify |
+## What the dashboard answers
 
-Notes:
+| Row                           | Question                                                                      |
+| ----------------------------- | ----------------------------------------------------------------------------- |
+| Service level                 | Is it up, fast and correct right now? Which commit is running?                |
+| Latency                       | How long do requests take, and which routes are slow or busy?                 |
+| Reliability                   | What fails, where, and which scheduled jobs failed?                           |
+| Responsiveness and saturation | Is the single JavaScript thread keeping up? Is the database pool exhausted?   |
+| Memory                        | Resident memory against the 256 MB plan, heap, and garbage collection time.   |
+| Dependencies                  | Latency and failures of calls to Paystack, Google, email, push and storage.   |
+| Operations                    | Paystack inbox age, unresolved purchases, live runs, stale GPS, riders today. |
 
-- **Absence, not `up`:** we **push** OTLP (no Prometheus scrape target), so there's
-  no `up` metric — `absent(...)` is the down-detector.
-- **`absent()` detects total silence only.** Adequate while we run **one
-  instance** (current). With >1 replica, a single crash-looping instance won't
-  trip it (the healthy replicas keep reporting). Before scaling out: set
-  `OTEL_RESOURCE_ATTRIBUTES=service.instance.id=$RENDER_INSTANCE_ID` on the
-  service so metrics carry a per-instance label, then alert per instance (e.g.
-  `count by (service_instance_id) (rate(http_server_duration_milliseconds_count[5m]))`
-  dropping below the replica count).
-- **Division is NaN/No-Data-proof:** the error-rate query uses
-  `or vector(0)` + `clamp_min(..., 1e-6)`, so a zero-traffic window (3am) reads
-  **0%**, never `0/0 = NaN` or an empty result. Belt-and-braces: still set the
-  alert rule's **"No data" state to OK** (Alerting → rule → "Configure no data
-  and error handling") so a datasource hiccup can't page either — the
-  **API-not-reporting** rule is the one that owns "nothing is arriving".
-- Add an external **uptime monitor** on `/healthz` (UptimeRobot/Better Stack free)
-  as a second, independent down-signal (design §6).
-- These are starting SLOs — calibrate the thresholds after a week of real traffic.
+Deploys appear as annotations when a new `service_version` (the Render commit)
+starts reporting.
+
+## Alerts
+
+| Alert                                           | Severity | Fires when                                            |
+| ----------------------------------------------- | -------- | ----------------------------------------------------- |
+| API is not reporting                            | page     | no metrics for 5 minutes                              |
+| Server errors above 2%                          | page     | 5xx share over 2% for 10 minutes, with real traffic   |
+| Paystack payments are not being applied         | page     | oldest unapplied Paystack event older than 15 minutes |
+| Memory near the plan limit                      | notify   | resident memory over 200 MB for 10 minutes            |
+| Requests are slow (p95 over 1s)                 | notify   | for 15 minutes, with real traffic                     |
+| Event loop is blocked                           | notify   | p99 delay over 200 ms for 10 minutes                  |
+| Requests are waiting for a database connection  | notify   | any request queued for a connection for 5 minutes     |
+| A scheduled job failed                          | notify   | any failed maintenance run in the last 30 minutes     |
+| A purchase has been unresolved for over an hour | notify   | for 10 minutes                                        |
+| A bus on a live run has stopped reporting       | notify   | any run in progress without recent GPS for 10 minutes |
+| A third-party service is failing                | notify   | outbound 5xx or connection errors for 10 minutes      |
+
+These thresholds are pilot starting points. Recalibrate after a few weeks of
+real traffic; the rules stay editable in the Grafana UI, and the next apply puts
+back what is committed here, so commit any threshold you keep.
+
+## Things to know
+
+- **Metrics arrive once a minute.** The SDK exports every 60 seconds, which
+  keeps the free tier's data-points-per-minute allowance. Every graph therefore
+  has a 2 minute minimum interval, so each rate window holds two samples;
+  anything shorter draws nothing.
+- **Grafana Cloud keeps only `job` and `instance` as labels** from the resource.
+  Version, host and environment live on `target_info`. Queries filter on `job`
+  and `instance` only.
+- **Silence is detected with `absent_over_time` on memory**, which is reported
+  every export whether or not there is traffic, so a quiet night is not an
+  outage. For an independent check from outside, add a Grafana Cloud Synthetic
+  Monitoring HTTP check on `https://trotxi-api-staging.onrender.com/healthz`
+  (free tier).
+- **Mobile crash and performance data** stays in Firebase Crashlytics and
+  Performance, per `docs/design/observability.md`.
+- **Checking changes locally**: run `grafana/otel-lgtm` in Docker, point
+  `OTEL_EXPORTER_OTLP_ENDPOINT` at it, and run `apply.mjs` against
+  `http://localhost:3000` with a local service account token.

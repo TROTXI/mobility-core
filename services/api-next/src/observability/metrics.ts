@@ -52,7 +52,12 @@ export function recordJob(operation: string, status: number, payload: unknown): 
       body = null;
     }
   }
-  jobRuns.add(1, { job: operation, outcome: batchFailed(status, body) ? 'failed' : 'succeeded' });
+  // Not `job`: Prometheus reserves that label for the service, and the OTLP
+  // conversion overwrites it, which would fold every job into one series.
+  jobRuns.add(1, {
+    operation,
+    outcome: batchFailed(status, body) ? 'failed' : 'succeeded',
+  });
 }
 
 export interface BusinessState {
@@ -161,6 +166,34 @@ const GAUGES: [keyof BusinessState, string, string][] = [
   ['noShowsToday', 'trotxi_reservations_no_shows_today', 'Riders marked absent today.'],
   ['reservedToday', 'trotxi_reservations_reserved_today', 'Seats held today and not yet settled.'],
 ];
+
+/**
+ * What the platform kills the process for. The V8 heap limit is sized for the
+ * machine, not the plan, so heap used against it reads comfortable right up to
+ * the moment Render stops a 256 MB instance for exceeding its memory. Resident
+ * memory is the number that plan limit is enforced on. CPU time is a counter;
+ * its rate is the share of a core in use.
+ */
+export function observeProcess(): void {
+  const meter = metrics.getMeter(METER);
+  const rss = meter.createObservableGauge('process.memory.usage', {
+    description: 'Resident memory of the API process.',
+    unit: 'By',
+  });
+  const cpu = meter.createObservableCounter('process.cpu.time', {
+    description: 'CPU time used by the API process.',
+    unit: 's',
+  });
+  meter.addBatchObservableCallback(
+    (observer) => {
+      observer.observe(rss, process.memoryUsage.rss());
+      const usage = process.cpuUsage();
+      observer.observe(cpu, usage.user / 1e6, { 'cpu.mode': 'user' });
+      observer.observe(cpu, usage.system / 1e6, { 'cpu.mode': 'system' });
+    },
+    [rss, cpu],
+  );
+}
 
 /**
  * Read the state once per export and publish every gauge from it. A query that
