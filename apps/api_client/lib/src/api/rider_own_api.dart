@@ -29,6 +29,7 @@ import 'package:trotxi_api_client/src/model/purchase_quote_response.dart';
 import 'package:trotxi_api_client/src/model/purchase_response.dart';
 import 'package:trotxi_api_client/src/model/reservation_decision.dart';
 import 'package:trotxi_api_client/src/model/reservation_decision_result_response.dart';
+import 'package:trotxi_api_client/src/model/reservation_detail_response.dart';
 import 'package:trotxi_api_client/src/model/reservation_page.dart';
 import 'package:trotxi_api_client/src/model/ride_entry_page.dart';
 
@@ -747,6 +748,95 @@ class RiderOwnApi {
     }
 
     return Response<PurchaseResponse>(
+      data: _responseData,
+      headers: _response.headers,
+      isRedirect: _response.isRedirect,
+      requestOptions: _response.requestOptions,
+      redirects: _response.redirects,
+      statusCode: _response.statusCode,
+      statusMessage: _response.statusMessage,
+      extra: _response.extra,
+    );
+  }
+
+  /// get Reservation
+  ///
+  /// Parameters:
+  /// * [id]
+  /// * [xTrotxiClient] - Compatibility metadata only, never grants a role.
+  /// * [xTrotxiBuild] - Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
+  /// * [xTrotxiPlatform] - Required for commuter/driver, absent for ops/worker.
+  /// * [cancelToken] - A [CancelToken] that can be used to cancel the operation
+  /// * [headers] - Can be used to add additional headers to the request
+  /// * [extra] - Can be used to add flags to the request
+  /// * [validateStatus] - A [ValidateStatus] callback that can be used to determine request success based on the HTTP status of the response
+  /// * [onSendProgress] - A [ProgressCallback] that can be used to get the send progress
+  /// * [onReceiveProgress] - A [ProgressCallback] that can be used to get the receive progress
+  ///
+  /// Returns a [Future] containing a [Response] with a [ReservationDetailResponse] as data
+  /// Throws [DioException] if API call or serialization fails
+  Future<Response<ReservationDetailResponse>> getReservation({
+    required String id,
+    required String xTrotxiClient,
+    required int xTrotxiBuild,
+    String? xTrotxiPlatform,
+    CancelToken? cancelToken,
+    Map<String, dynamic>? headers,
+    Map<String, dynamic>? extra,
+    ValidateStatus? validateStatus,
+    ProgressCallback? onSendProgress,
+    ProgressCallback? onReceiveProgress,
+  }) async {
+    final _path = r'/v1/me/reservations/{id}'.replaceAll('{' r'id' '}', encodeQueryParameter(_serializers, id, const FullType(String)).toString());
+    final _options = Options(
+      method: r'GET',
+      headers: <String, dynamic>{
+        r'X-Trotxi-Client': xTrotxiClient,
+        r'X-Trotxi-Build': xTrotxiBuild,
+        if (xTrotxiPlatform != null) r'X-Trotxi-Platform': xTrotxiPlatform,
+        ...?headers,
+      },
+      extra: <String, dynamic>{
+        'secure': <Map<String, String>>[
+          {
+            'type': 'http',
+            'scheme': 'bearer',
+            'name': 'bearerAuth',
+          },
+        ],
+        ...?extra,
+      },
+      validateStatus: validateStatus,
+    );
+
+    final _response = await _dio.request<Object>(
+      _path,
+      options: _options,
+      cancelToken: cancelToken,
+      onSendProgress: onSendProgress,
+      onReceiveProgress: onReceiveProgress,
+    );
+
+    ReservationDetailResponse? _responseData;
+
+    try {
+      final rawResponse = _response.data;
+      _responseData = rawResponse == null ? null : _serializers.deserialize(
+        rawResponse,
+        specifiedType: const FullType(ReservationDetailResponse),
+      ) as ReservationDetailResponse;
+
+    } catch (error, stackTrace) {
+      throw DioException(
+        requestOptions: _response.requestOptions,
+        response: _response,
+        type: DioExceptionType.unknown,
+        error: error,
+        stackTrace: stackTrace,
+      );
+    }
+
+    return Response<ReservationDetailResponse>(
       data: _responseData,
       headers: _response.headers,
       isRedirect: _response.isRedirect,

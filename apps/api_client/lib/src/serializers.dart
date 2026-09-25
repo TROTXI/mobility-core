@@ -199,6 +199,11 @@ import 'package:trotxi_api_client/src/model/reservation_decision.dart';
 import 'package:trotxi_api_client/src/model/reservation_decision_result.dart';
 import 'package:trotxi_api_client/src/model/reservation_decision_result_pass.dart';
 import 'package:trotxi_api_client/src/model/reservation_decision_result_response.dart';
+import 'package:trotxi_api_client/src/model/reservation_detail.dart';
+import 'package:trotxi_api_client/src/model/reservation_detail_pickup_stop.dart';
+import 'package:trotxi_api_client/src/model/reservation_detail_response.dart';
+import 'package:trotxi_api_client/src/model/reservation_detail_route.dart';
+import 'package:trotxi_api_client/src/model/reservation_detail_trip.dart';
 import 'package:trotxi_api_client/src/model/reservation_page.dart';
 import 'package:trotxi_api_client/src/model/restriction.dart';
 import 'package:trotxi_api_client/src/model/restriction_input.dart';
@@ -447,6 +452,11 @@ part 'serializers.g.dart';
   ReservationDecisionResult,
   ReservationDecisionResultPass,
   ReservationDecisionResultResponse,
+  ReservationDetail,
+  ReservationDetailPickupStop,
+  ReservationDetailResponse,
+  ReservationDetailRoute,
+  ReservationDetailTrip,
   ReservationPage,
   Restriction,
   RestrictionInput,
