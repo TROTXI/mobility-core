@@ -101,13 +101,8 @@ services:
       #   value: <Key ID of the .p8>
       # - key: APPLE_PRIVATE_KEY
       #   sync: false
-      # Observability (#28). Set in the dashboard when Grafana Cloud is wired up.
-      # METRICS_TOKEN gates GET /metrics (scraper sends it as a bearer token);
-      # unset -> /metrics is disabled (404) in production.
-      - key: METRICS_TOKEN
-        sync: false
-      # OpenTelemetry tracing → Grafana Cloud (Tempo) via OTLP/HTTP. Unset ->
-      # tracing disabled. OTEL_EXPORTER_OTLP_HEADERS carries the Grafana auth,
+      # OpenTelemetry metrics, traces and logs → Grafana Cloud via OTLP/HTTP.
+      # Unset -> telemetry disabled. OTEL_EXPORTER_OTLP_HEADERS carries the auth,
       # e.g. "Authorization=Basic <base64 instanceID:token>".
       - key: OTEL_EXPORTER_OTLP_ENDPOINT
         sync: false
@@ -644,16 +639,14 @@ services:
   #   FIREBASE_SERVICE_ACCOUNT the whole service-account JSON.
   #   R2_*                     four values; may reuse the staging bucket or a
   #                            separate production one.
-  #   METRICS_TOKEN            required in production or /metrics is disabled.
   #   OTEL_EXPORTER_OTLP_*     Grafana Cloud endpoint + auth header.
   # ---- Production web service — COMMENTED OUT ----
   # Depends on trotxi-db-production, which is also commented out: bringing
   # production up means a SECOND paid database plus a paid web service. The
   # database already purchased is the staging one, upgraded in place.
   #
-  # The env list below is complete and was diffed against staging (#194) —
-  # sixteen for sixteen — so uncommenting both blocks is all that is needed
-  # when production is deliberately funded.
+  # Review the commented env list against staging before deliberately funding
+  # and enabling production; keep OTLP credentials separate per environment.
   #
   # - type: web
   #   name: trotxi-api
@@ -668,6 +661,9 @@ services:
   #   autoDeploy: false # GitHub Actions deploys after CI + manual approval
   #   envVars:
   #     - key: NODE_ENV
+  #       value: production
+  #     # Separates production telemetry and runtime policy from staging.
+  #     - key: REPLACEMENT_DEPLOYMENT_ENVIRONMENT
   #       value: production
   #     - key: DATABASE_URL
   #       fromDatabase:
@@ -691,15 +687,12 @@ services:
   #     # the Services ID, comma-separated.
   #     - key: APPLE_CLIENT_ID
   #       value: com.trotxi.trotxiCommuter,<Services ID>
-  #     # Unset in production -> /metrics is disabled (404) rather than left open.
-  #     - key: METRICS_TOKEN
-  #       sync: false
   #     - key: OTEL_EXPORTER_OTLP_ENDPOINT
   #       sync: false
   #     - key: OTEL_EXPORTER_OTLP_HEADERS
   #       sync: false
   #     - key: OTEL_SERVICE_NAME
-  #       value: trotxi-api-production
+  #       value: trotxi-api
   #     # Set once the ops console has a production origin. Unset -> any origin is
   #     # reflected, which is safe here only because auth is a bearer token.
   #     - key: CORS_ORIGINS

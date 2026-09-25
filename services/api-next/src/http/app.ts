@@ -84,6 +84,8 @@ export interface AppOptions extends Dependencies {
   refunds?: RefundInitiation;
   /** Request logs to stdout, which OpenTelemetry ships to Loki. Off in tests. */
   logRequests?: boolean;
+  /** Optional destination for request-log tests. Production uses stdout. */
+  requestLogStream?: NodeJS.WritableStream;
   // Unlike the independently testable service, the application must not start
   // with booking-aware mutations exposed but their required adapter absent.
   coordinateReservations: NonNullable<Dependencies['coordinateReservations']>;
@@ -178,7 +180,7 @@ export async function createTransportApp(options: AppOptions) {
   const service = new TransportService(options);
   const app = Fastify({
     maxParamLength: 256,
-    logger: options.logRequests ? loggerOptions() : false,
+    logger: options.logRequests ? loggerOptions(options.requestLogStream) : false,
     bodyLimit: 65536,
     trustProxy: options.trustProxy ?? false,
     genReqId: () => randomUUID(),
@@ -385,6 +387,9 @@ export async function createTransportApp(options: AppOptions) {
       app.route({
         method: method.toUpperCase() as 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE',
         url: path.replaceAll(/\{([^}]+)\}/g, ':$1'),
+        // Render probes liveness every few seconds. Keep readiness and normal
+        // requests visible, but do not ship successful liveness noise to Loki.
+        ...(name === 'getHealth' ? { logLevel: 'silent' as const } : {}),
         ...(name === 'createPatternVersion' ? { bodyLimit: 1048576 } : {}),
         ...(publicAuth ||
         name === 'changeDriverPin' ||

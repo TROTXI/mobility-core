@@ -2,7 +2,10 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { Writable } from 'node:stream';
 import Fastify from 'fastify';
+import { Pool } from 'pg';
 import { loggerOptions } from '../src/observability/logging.js';
+import { createTransportApp } from '../src/http/app.js';
+import type { ConfigService } from '../src/config/service.js';
 import { readFile } from 'node:fs/promises';
 import { metrics } from '@opentelemetry/api';
 import {
@@ -75,6 +78,47 @@ test('OBS-03 request logs keep the path and never the search, the token or a PIN
     'DR-7Q4M',
   ])
     assert.equal(written.includes(secret), false, `${secret} reached the log`);
+});
+
+test('OBS-06 liveness probes do not flood logs, while ordinary requests still log', async () => {
+  let written = '';
+  const sink = new Writable({
+    write(chunk, _encoding, done) {
+      written += chunk.toString();
+      done();
+    },
+  });
+  const pool = new Pool();
+  const app = await createTransportApp({
+    pool,
+    coordinateReservations: async () => {
+      throw new Error('no booking work in this test');
+    },
+    cursorSecret: Buffer.alloc(32, 9),
+    verifyAccess: async () => null,
+    authorizeSession: async () => {
+      throw new Error('no session work in this test');
+    },
+    minimumBuilds: { ops: 1, driver: { ios: 1, android: 1 }, commuter: { ios: 1, android: 1 } },
+    config: {
+      health: () => ({ status: 200, body: { status: 'ok' }, headers: {} }),
+      readiness: async () => ({ status: 200, body: { status: 'ok' }, headers: {} }),
+      root: () => ({ status: 200, body: { docs: '/docs', health: '/healthz' }, headers: {} }),
+    } as unknown as ConfigService,
+    logRequests: true,
+    requestLogStream: sink,
+  });
+  try {
+    assert.equal((await app.inject('/healthz')).statusCode, 200);
+    assert.equal((await app.inject('/readyz')).statusCode, 200);
+    assert.equal((await app.inject('/')).statusCode, 200);
+  } finally {
+    await app.close();
+    await pool.end();
+  }
+  assert.equal(written.includes('"path":"/healthz"'), false);
+  assert.match(written, /"path":"\/readyz"/, 'readiness remains logged');
+  assert.match(written, /"path":"\/"/, 'ordinary requests remain logged');
 });
 
 test('OBS-04 job runs are labelled by operation, and memory is what the plan limit sees', async () => {
