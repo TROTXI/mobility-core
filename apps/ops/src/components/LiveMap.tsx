@@ -3,6 +3,7 @@ import type { GeoJSONSource, Map as MapLibreMap, MapLayerMouseEvent } from 'mapl
 import { Protocol } from 'pmtiles';
 import { useEffect, useRef, useState } from 'react';
 import 'maplibre-gl/dist/maplibre-gl.css';
+import { mapStyleFromBootstrap } from '../api/map-config';
 
 type Marker = {
   id: string;
@@ -75,8 +76,24 @@ export function LiveMap({
   currentMarkers.current = markers;
   const currentLine = useRef(line);
   currentLine.current = line;
-  const [styleUrl, setStyleUrl] = useState<string | null>(null);
+  const [bootstrap, setBootstrap] = useState<unknown>(null);
+  const [appearance, setAppearance] = useState<'dark' | 'light'>(() =>
+    document.querySelector('[data-theme]')?.getAttribute('data-theme') === 'dark'
+      ? 'dark'
+      : 'light',
+  );
   const [failed, setFailed] = useState(false);
+  const styleUrl = mapStyleFromBootstrap(bootstrap, appearance);
+
+  useEffect(() => {
+    const root = document.querySelector('[data-theme]');
+    if (!root) return;
+    const observer = new MutationObserver(() => {
+      setAppearance(root.getAttribute('data-theme') === 'dark' ? 'dark' : 'light');
+    });
+    observer.observe(root, { attributes: true, attributeFilter: ['data-theme'] });
+    return () => observer.disconnect();
+  }, []);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -87,9 +104,12 @@ export function LiveMap({
       .then((response) =>
         response.ok ? response.json() : Promise.reject(new Error('map_config_unavailable')),
       )
-      .then((body: { data?: { mapTiles?: { styleUrl?: string | null } } }) =>
-        setStyleUrl(body.data?.mapTiles?.styleUrl ?? null),
-      )
+      .then((body: unknown) => {
+        // GET /flags is a public Bootstrap object, not a {data: ...} envelope.
+        const style = mapStyleFromBootstrap(body, appearance);
+        if (!style) throw new Error('map_style_unavailable');
+        setBootstrap(body);
+      })
       .catch((error: unknown) => {
         if (!(error instanceof DOMException && error.name === 'AbortError')) setFailed(true);
       });
