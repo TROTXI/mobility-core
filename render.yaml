@@ -662,6 +662,9 @@ services:
   #   envVars:
   #     - key: NODE_ENV
   #       value: production
+  #     # Separates production telemetry and runtime policy from staging.
+  #     - key: REPLACEMENT_DEPLOYMENT_ENVIRONMENT
+  #       value: production
   #     - key: DATABASE_URL
   #       fromDatabase:
   #         name: trotxi-db-production
