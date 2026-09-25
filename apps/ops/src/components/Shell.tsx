@@ -4,6 +4,7 @@ import {
   CalendarRegular,
   DataTrendingRegular,
   HomeRegular,
+  MoreHorizontalRegular,
   MoneyRegular,
   PeopleRegular,
   PersonSupportRegular,
@@ -14,12 +15,21 @@ import {
   WeatherSunnyRegular,
   VehicleTruckRegular,
 } from '@fluentui/react-icons';
-import { Avatar, Button, Tooltip } from '@fluentui/react-components';
+import {
+  Avatar,
+  Button,
+  Menu,
+  MenuItem,
+  MenuList,
+  MenuPopover,
+  MenuTrigger,
+  Tooltip,
+} from '@fluentui/react-components';
 import { useState } from 'react';
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
 
-const items = [
+const primaryItems = [
   ['/', 'Live operations', HomeRegular],
   ['/trips', 'Trips', CalendarRegular],
   ['/network', 'Routes & stops', DataTrendingRegular],
@@ -27,14 +37,17 @@ const items = [
   ['/drivers', 'Drivers', PeopleRegular],
   ['/riders', 'Riders', PeopleRegular],
   ['/support', 'Support', PersonSupportRegular],
+] as const;
+
+const secondaryItems = [
   ['/payments', 'Payments', MoneyRegular],
   ['/reports', 'Reports', DataTrendingRegular],
   ['/people', 'People & messages', PeopleRegular],
   ['/audit', 'Audit log', BoardRegular],
   ['/platform', 'Platform', SettingsRegular],
-  ['/profile', 'Profile', PeopleRegular],
 ] as const;
 
+const items = [...primaryItems, ...secondaryItems, ['/profile', 'Profile', PeopleRegular]] as const;
 const titles = Object.fromEntries(items.map(([path, label]) => [path, label]));
 
 export function Shell({
@@ -57,7 +70,7 @@ export function Shell({
           </NavLink>
         </div>
         <nav className="nav-list" aria-label="Operations">
-          {items.map(([path, label, Icon]) => (
+          {primaryItems.map(([path, label, Icon]) => (
             <Tooltip key={path} content={label} relationship="label">
               <NavLink
                 className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}
@@ -69,6 +82,28 @@ export function Shell({
               </NavLink>
             </Tooltip>
           ))}
+          <Menu positioning="after">
+            <MenuTrigger disableButtonEnhancement>
+              <button
+                type="button"
+                className={`nav-link sidebar-more-trigger${secondaryItems.some(([path]) => pathname === path) ? ' active' : ''}`}
+                aria-label="More sections"
+                title="More sections"
+              >
+                <MoreHorizontalRegular aria-hidden="true" />
+                <span className="nav-label">More</span>
+              </button>
+            </MenuTrigger>
+            <MenuPopover>
+              <MenuList>
+                {secondaryItems.map(([path, label, Icon]) => (
+                  <MenuItem key={path} icon={<Icon />} onClick={() => navigate(path)}>
+                    {label}
+                  </MenuItem>
+                ))}
+              </MenuList>
+            </MenuPopover>
+          </Menu>
         </nav>
         <div className="sidebar-footer">
           <NavLink to="/profile" aria-label="Open profile">
@@ -84,7 +119,7 @@ export function Shell({
         <header className="topbar">
           <div className="topbar-heading">
             <div className="topbar-title">{titles[pathname] ?? 'Trotxi Operations'}</div>
-            <div className="topbar-subtitle">Accra network · Operations home</div>
+            <div className="topbar-subtitle">Accra network · Operations</div>
           </div>
           <form
             className="topbar-search"

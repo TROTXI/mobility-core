@@ -1,6 +1,7 @@
 import { Badge, Button, Spinner } from '@fluentui/react-components';
 import { ArrowClockwiseRegular } from '@fluentui/react-icons';
 import type { ReactNode } from 'react';
+import { formatAccraTime } from '../api/accra-time';
 
 export function Page({
   title,
@@ -93,7 +94,9 @@ export function StatusBadge({ value }: { value: string }) {
           normalized.includes('failed') ||
           normalized.includes('stale')
         ? 'danger'
-        : normalized.includes('pending') || normalized.includes('unassigned')
+        : normalized.includes('pending') ||
+            normalized.includes('unassigned') ||
+            normalized.includes('awaiting')
           ? 'warning'
           : 'informative';
   return (
@@ -120,7 +123,5 @@ export function money(value?: { amountMinor: number; currency: 'GHS' } | null) {
 
 export function when(value?: string | null) {
   if (!value) return '—';
-  return new Intl.DateTimeFormat('en-GH', { dateStyle: 'medium', timeStyle: 'short' }).format(
-    new Date(value),
-  );
+  return formatAccraTime(value);
 }

@@ -47,6 +47,7 @@ export function Trips() {
   const [driverId, setDriverId] = useState('');
   const [vehicleId, setVehicleId] = useState('');
   const [reason, setReason] = useState('');
+  const [showEmptyMap, setShowEmptyMap] = useState(false);
 
   const query = useQuery<{
     trips: Trip[];
@@ -151,7 +152,7 @@ export function Trips() {
     (trip) => trip.status === 'scheduled' && (!trip.assignedDriverId || !trip.vehicleId),
   );
   const liveMarkers = (liveQuery.data ?? []).flatMap((trip) =>
-    trip.lastPosition
+    trip.status === 'active' && trip.lastPosition
       ? [
           {
             id: trip.tripId,
@@ -162,6 +163,8 @@ export function Trips() {
         ]
       : [],
   );
+  const showMap = liveMarkers.length > 0 || showEmptyMap;
+  const showQueue = query.loading || needsAssignment.length > 0;
 
   const openCreate = () => {
     setScheduleId('');
@@ -185,16 +188,20 @@ export function Trips() {
         </>
       }
     >
-      <div className="stat-grid">
+      <div className="stat-grid dispatch-stat-grid">
         <Stat label="Departures" value={filtered.length} />
         <Stat
           label="Ready to depart"
-          value={filtered.filter((trip) => trip.assignedDriverId && trip.vehicleId).length}
+          value={
+            filtered.filter(
+              (trip) => trip.status === 'scheduled' && trip.assignedDriverId && trip.vehicleId,
+            ).length
+          }
         />
         <Stat
           label="Unassigned"
-          value={filtered.filter((trip) => !trip.assignedDriverId || !trip.vehicleId).length}
-          attention={filtered.some((trip) => !trip.assignedDriverId || !trip.vehicleId)}
+          value={needsAssignment.length}
+          attention={needsAssignment.length > 0}
         />
         <Stat
           label="Cancelled"
@@ -232,60 +239,92 @@ export function Trips() {
       </div>
 
       {query.error && <ErrorState message={query.error} retry={query.retry} />}
-      <div className="dispatch-stage">
-        <section className="dispatch-map-panel" aria-label="Current driver positions">
-          <div className="overview-section-heading">
-            <div>
-              <h2>Dispatch map</h2>
-              <span>Driver positions in the current service day</span>
-            </div>
-            <Button appearance="subtle" size="small" onClick={liveQuery.retry}>
-              Refresh map
-            </Button>
-          </div>
-          {liveQuery.error && <p className="muted">Live positions could not be loaded.</p>}
-          <LiveMap markers={liveMarkers} />
-          <p className="dispatch-map-note">
-            Showing the latest reported driver positions. Planned routes are listed in the departure
-            board.
-          </p>
-        </section>
-        <section className="dispatch-queue-panel" aria-label="Assignment queue">
-          <div className="overview-section-heading">
-            <div>
-              <h2>Assignment queue</h2>
-              <span>{needsAssignment.length} departures need crew or a vehicle</span>
-            </div>
-          </div>
-          {query.loading ? (
-            <LoadingRows />
-          ) : needsAssignment.length === 0 ? (
-            <Empty>Every scheduled departure in this view is assigned.</Empty>
-          ) : (
-            <div className="dispatch-queue-scroll">
-              {needsAssignment.map((trip) => (
-                <button
-                  key={trip.id}
-                  type="button"
-                  className="dispatch-queue-item"
-                  onClick={() => setSelected(trip)}
-                >
-                  <strong>{when(trip.scheduledAt)}</strong>
-                  <span>
-                    {trip.direction} · {trip.serviceDate}
-                  </span>
-                  <small>
-                    {!trip.assignedDriverId ? 'Driver needed' : 'Driver assigned'} ·{' '}
-                    {!trip.vehicleId ? 'Vehicle needed' : 'Vehicle assigned'}
-                  </small>
-                </button>
-              ))}
-            </div>
-          )}
-        </section>
+      <div className="dispatch-live-summary">
+        <span>
+          {liveQuery.error
+            ? 'Live positions could not be loaded.'
+            : liveQuery.loading
+              ? 'Checking live positions…'
+              : liveMarkers.length
+                ? `${liveMarkers.length} buses reporting`
+                : 'No buses reporting live positions'}
+          {' · '}
+          {query.error && !query.data
+            ? 'Assignment status unavailable'
+            : query.loading
+              ? 'Checking assignments…'
+              : needsAssignment.length
+                ? `${needsAssignment.length} departures need assignment`
+                : 'All scheduled departures assigned'}
+        </span>
+        {!liveMarkers.length && (
+          <Button appearance="subtle" size="small" onClick={() => setShowEmptyMap(!showEmptyMap)}>
+            {showEmptyMap ? 'Hide map' : 'Show map'}
+          </Button>
+        )}
       </div>
+      {(showMap || showQueue) && (
+        <div className={`dispatch-stage${showMap && showQueue ? '' : ' dispatch-stage--single'}`}>
+          {showMap && (
+            <section className="dispatch-map-panel" aria-label="Current driver positions">
+              <div className="overview-section-heading">
+                <div>
+                  <h2>Dispatch map</h2>
+                  <span>Driver positions in the current service day</span>
+                </div>
+                <Button appearance="subtle" size="small" onClick={liveQuery.retry}>
+                  Refresh map
+                </Button>
+              </div>
+              {liveQuery.error && <p className="muted">Live positions could not be loaded.</p>}
+              <LiveMap markers={liveMarkers} />
+              <p className="dispatch-map-note">
+                Showing the latest reported driver positions. Planned routes are listed in the
+                departure board.
+              </p>
+            </section>
+          )}
+          {showQueue && (
+            <section className="dispatch-queue-panel" aria-label="Assignment queue">
+              <div className="overview-section-heading">
+                <div>
+                  <h2>Assignment queue</h2>
+                  <span>{needsAssignment.length} departures need crew or a vehicle</span>
+                </div>
+              </div>
+              {query.loading ? (
+                <LoadingRows />
+              ) : needsAssignment.length === 0 ? (
+                <Empty>Every scheduled departure in this view is assigned.</Empty>
+              ) : (
+                <div className="dispatch-queue-scroll">
+                  {needsAssignment.map((trip) => (
+                    <button
+                      key={trip.id}
+                      type="button"
+                      className="dispatch-queue-item"
+                      onClick={() => setSelected(trip)}
+                    >
+                      <strong>{when(trip.scheduledAt)}</strong>
+                      <span>
+                        {trip.direction} · {trip.serviceDate}
+                      </span>
+                      <small>
+                        {!trip.assignedDriverId ? 'Driver needed' : 'Driver assigned'} ·{' '}
+                        {!trip.vehicleId ? 'Vehicle needed' : 'Vehicle assigned'}
+                      </small>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </section>
+          )}
+        </div>
+      )}
       <Panel title="Departure board">
-        {query.loading ? (
+        {query.error && !query.data ? (
+          <Empty>Departure data is unavailable. Retry to load the board.</Empty>
+        ) : query.loading ? (
           <LoadingRows />
         ) : !filtered.length ? (
           <Empty>No departures match this view.</Empty>

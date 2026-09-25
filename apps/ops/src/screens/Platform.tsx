@@ -4,7 +4,7 @@ import { startRegistration } from '@simplewebauthn/browser';
 import { useState } from 'react';
 import type { components } from '../generated/api';
 import { useAuth } from '../auth/AuthContext';
-import { Empty, ErrorState, LoadingRows, Page, Panel, StatusBadge } from '../components/Page';
+import { Empty, ErrorState, LoadingRows, Page, Panel, StatusBadge, when } from '../components/Page';
 import { useQuery } from '../hooks/useQuery';
 import { opsHeaders } from '../api/session';
 import { accraLocalToIso } from '../api/accra-time';
@@ -452,10 +452,9 @@ function TraceHolds() {
                   <td className="mono">{row.incidentId.slice(0, 8)}</td>
                   <td className="mono">{row.tripId.slice(0, 8)}</td>
                   <td>
-                    {new Date(row.receivedFrom).toLocaleString()} –{' '}
-                    {new Date(row.receivedTo).toLocaleString()}
+                    {when(row.receivedFrom)} – {when(row.receivedTo)}
                   </td>
-                  <td>{new Date(row.reviewAt).toLocaleString()}</td>
+                  <td>{when(row.reviewAt)}</td>
                   <td>
                     <StatusBadge value={row.state} />
                   </td>
