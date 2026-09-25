@@ -17,6 +17,7 @@ export function ActionDialog({
   description,
   confirmLabel = 'Save',
   danger = false,
+  wide = false,
   onClose,
   onConfirm,
   children,
@@ -26,6 +27,7 @@ export function ActionDialog({
   description?: string;
   confirmLabel?: string;
   danger?: boolean;
+  wide?: boolean;
   onClose: () => void;
   onConfirm: () => Promise<void>;
   children: ReactNode;
@@ -51,7 +53,7 @@ export function ActionDialog({
         if (!data.open && !working) onClose();
       }}
     >
-      <DialogSurface>
+      <DialogSurface className={wide ? 'dialog-surface-wide' : undefined}>
         <DialogBody>
           <DialogTitle>{title}</DialogTitle>
           <DialogContent>

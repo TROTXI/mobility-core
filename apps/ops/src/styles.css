@@ -682,6 +682,53 @@ select {
   min-width: min(480px, 78vw);
   margin-top: 18px;
 }
+.dialog-surface-wide {
+  width: min(1120px, calc(100vw - 36px));
+  max-width: min(1120px, calc(100vw - 36px));
+}
+.route-draft-layout {
+  display: grid;
+  grid-template-columns: minmax(245px, 310px) minmax(0, 1fr);
+  gap: 18px;
+}
+.route-draft-controls {
+  display: grid;
+  align-content: start;
+  gap: 10px;
+}
+.route-draft-stops {
+  margin: 0;
+  padding-left: 24px;
+  max-height: 170px;
+  overflow-y: auto;
+}
+.route-draft-stops li {
+  padding: 4px 0;
+}
+.route-draft-stops li .fui-Button {
+  margin-left: 8px;
+}
+.route-draft-coordinate-inputs {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+.route-draft-map {
+  min-width: 0;
+}
+.route-draft-map .live-map,
+.route-draft-map .map-placeholder {
+  min-height: 420px;
+}
+@media (max-width: 760px) {
+  .route-draft-layout {
+    grid-template-columns: 1fr;
+  }
+  .route-draft-map .live-map,
+  .route-draft-map .map-placeholder {
+    min-height: 300px;
+  }
+}
 .dialog-form label {
   display: grid;
   gap: 6px;

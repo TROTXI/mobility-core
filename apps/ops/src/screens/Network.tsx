@@ -8,6 +8,7 @@ import { useQuery } from '../hooks/useQuery';
 import { opsHeaders } from '../api/session';
 import { ActionDialog } from '../components/ActionDialog';
 import { LiveMap } from '../components/LiveMap';
+import { buildRouteGeometry, type RoutePoint } from './routeGeometry';
 
 type Route = components['schemas']['Route'];
 type Stop = components['schemas']['Stop'];
@@ -50,25 +51,6 @@ function toIso(value: string) {
   return new Date(value).toISOString();
 }
 
-function distance(a: Stop['location'], b: Stop['location']) {
-  const radians = (value: number) => (value * Math.PI) / 180;
-  const earth = 6_371_000;
-  const lat = radians(b.latitude - a.latitude);
-  const lon = radians(b.longitude - a.longitude);
-  const x =
-    Math.sin(lat / 2) ** 2 +
-    Math.cos(radians(a.latitude)) * Math.cos(radians(b.latitude)) * Math.sin(lon / 2) ** 2;
-  return 2 * earth * Math.atan2(Math.sqrt(x), Math.sqrt(1 - x));
-}
-
-function straightLineDistances(stops: Stop[]) {
-  const values = [0];
-  for (let index = 1; index < stops.length; index += 1) {
-    values.push(values[index - 1] + distance(stops[index - 1].location, stops[index].location));
-  }
-  return values;
-}
-
 export function Network() {
   const { session } = useAuth();
   const [tab, setTab] = useState<TabName>('routes');
@@ -88,6 +70,12 @@ export function Network() {
   const [routeId, setRouteId] = useState('');
   const [direction, setDirection] = useState<'outbound' | 'return'>('outbound');
   const [versionStops, setVersionStops] = useState<string[]>([]);
+  const [routeWaypoints, setRouteWaypoints] = useState<Record<number, RoutePoint[]>>({});
+  const [confirmedSegments, setConfirmedSegments] = useState<number[]>([]);
+  const [activeSegment, setActiveSegment] = useState(0);
+  const [nextStopId, setNextStopId] = useState('');
+  const [waypointLatitude, setWaypointLatitude] = useState('');
+  const [waypointLongitude, setWaypointLongitude] = useState('');
   const [effectiveFrom, setEffectiveFrom] = useState(today());
   const [effectiveTo, setEffectiveTo] = useState('');
   const [reason, setReason] = useState('');
@@ -230,6 +218,20 @@ export function Network() {
     () => new Map(query.data?.patterns.map((pattern) => [pattern.id, pattern])),
     [query.data?.patterns],
   );
+  const draftStops = useMemo(
+    () =>
+      versionStops
+        .map((id) => query.data?.stops.find((stop) => stop.id === id))
+        .filter((stop): stop is Stop => Boolean(stop)),
+    [versionStops, query.data?.stops],
+  );
+  const draftLine = useMemo(() => {
+    if (!draftStops.length) return [];
+    const points: RoutePoint[] = [draftStops[0].location];
+    for (let segment = 0; segment < draftStops.length - 1; segment += 1)
+      points.push(...(routeWaypoints[segment] ?? []), draftStops[segment + 1].location);
+    return points;
+  }, [draftStops, routeWaypoints]);
 
   const startDialog = (kind: DialogKind) => {
     setDialog(kind);
@@ -260,6 +262,12 @@ export function Network() {
       setDirection('outbound');
     } else if (kind === 'version-create') {
       setVersionStops([]);
+      setRouteWaypoints({});
+      setConfirmedSegments([]);
+      setActiveSegment(0);
+      setNextStopId('');
+      setWaypointLatitude('');
+      setWaypointLongitude('');
     } else if (kind === 'version-publish') {
       setEffectiveFrom(new Date().toISOString().slice(0, 16));
     } else if (kind === 'schedule-create') {
@@ -728,6 +736,7 @@ export function Network() {
       <ActionDialog
         open={dialog !== null}
         title={dialogTitle(dialog)}
+        wide={dialog === 'version-create'}
         confirmLabel={
           dialog === 'version-publish'
             ? 'Publish'
@@ -847,29 +856,177 @@ export function Network() {
         {dialog === 'version-create' && (
           <>
             <p className="dialog-note">
-              Choose stops in travel order. The first draft uses the stop-to-stop line; review it
-              before publishing.
+              Add stops in travel order, then trace each leg by clicking the map. This is a manual
+              path—not an automatically optimised road route. Check the drawn line before
+              publishing.
             </p>
-            <div className="choice-grid">
-              {query.data?.stops
-                .filter((stop) => !stop.archived)
-                .map((stop) => (
-                  <label className="check-row" key={stop.id}>
-                    <input
-                      type="checkbox"
-                      checked={versionStops.includes(stop.id)}
-                      onChange={(event) =>
-                        setVersionStops((current) =>
-                          event.target.checked
-                            ? [...current, stop.id]
-                            : current.filter((id) => id !== stop.id),
+            <div className="route-draft-layout">
+              <div className="route-draft-controls">
+                <label>
+                  Add stop occurrence
+                  <select
+                    value={nextStopId}
+                    onChange={(event) => setNextStopId(event.target.value)}
+                  >
+                    <option value="">Choose a stop</option>
+                    {query.data?.stops
+                      .filter((stop) => !stop.archived)
+                      .map((stop) => (
+                        <option key={stop.id} value={stop.id}>
+                          {stop.name}
+                        </option>
+                      ))}
+                  </select>
+                </label>
+                <Button
+                  disabled={!nextStopId}
+                  onClick={() => {
+                    setActiveSegment(Math.max(0, versionStops.length - 1));
+                    setVersionStops((current) => [...current, nextStopId]);
+                    setConfirmedSegments([]);
+                    setNextStopId('');
+                  }}
+                >
+                  Add to route
+                </Button>
+                <ol className="route-draft-stops">
+                  {draftStops.map((stop, index) => (
+                    <li key={`${stop.id}-${index}`}>
+                      <span>{stop.name}</span>
+                      <Button
+                        size="small"
+                        aria-label={`Remove occurrence ${index + 1}: ${stop.name}`}
+                        onClick={() => {
+                          setVersionStops((current) => current.filter((_, at) => at !== index));
+                          setRouteWaypoints({});
+                          setConfirmedSegments([]);
+                          setActiveSegment(0);
+                        }}
+                      >
+                        Remove
+                      </Button>
+                    </li>
+                  ))}
+                </ol>
+                {draftStops.length >= 2 && (
+                  <>
+                    <label>
+                      Draw leg
+                      <select
+                        value={activeSegment}
+                        onChange={(event) => setActiveSegment(Number(event.target.value))}
+                      >
+                        {draftStops.slice(0, -1).map((stop, index) => (
+                          <option key={index} value={index}>
+                            {index + 1}. {stop.name} → {draftStops[index + 1].name} (
+                            {routeWaypoints[index]?.length ?? 0} waypoints
+                            {confirmedSegments.includes(index) ? ', confirmed' : ', needs review'})
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <div className="route-draft-coordinate-inputs">
+                      <label>
+                        Latitude
+                        <input
+                          type="number"
+                          step="any"
+                          value={waypointLatitude}
+                          onChange={(event) => setWaypointLatitude(event.target.value)}
+                        />
+                      </label>
+                      <label>
+                        Longitude
+                        <input
+                          type="number"
+                          step="any"
+                          value={waypointLongitude}
+                          onChange={(event) => setWaypointLongitude(event.target.value)}
+                        />
+                      </label>
+                    </div>
+                    <Button
+                      disabled={
+                        !waypointLatitude ||
+                        !waypointLongitude ||
+                        !Number.isFinite(Number(waypointLatitude)) ||
+                        !Number.isFinite(Number(waypointLongitude))
+                      }
+                      onClick={() => {
+                        const point = {
+                          latitude: Number(waypointLatitude),
+                          longitude: Number(waypointLongitude),
+                        };
+                        setRouteWaypoints((current) => ({
+                          ...current,
+                          [activeSegment]: [...(current[activeSegment] ?? []), point],
+                        }));
+                        setConfirmedSegments((current) =>
+                          current.filter((segment) => segment !== activeSegment),
+                        );
+                        setWaypointLatitude('');
+                        setWaypointLongitude('');
+                      }}
+                    >
+                      Add waypoint by coordinates
+                    </Button>
+                    <Button
+                      disabled={!routeWaypoints[activeSegment]?.length}
+                      onClick={() => {
+                        setRouteWaypoints((current) => ({
+                          ...current,
+                          [activeSegment]: current[activeSegment]?.slice(0, -1) ?? [],
+                        }));
+                        setConfirmedSegments((current) =>
+                          current.filter((segment) => segment !== activeSegment),
+                        );
+                      }}
+                    >
+                      Undo last waypoint
+                    </Button>
+                    <Button
+                      appearance={
+                        confirmedSegments.includes(activeSegment) ? 'secondary' : 'primary'
+                      }
+                      onClick={() =>
+                        setConfirmedSegments((current) =>
+                          current.includes(activeSegment) ? current : [...current, activeSegment],
                         )
                       }
-                    />
-                    {versionStops.includes(stop.id) ? `${versionStops.indexOf(stop.id) + 1}. ` : ''}
-                    {stop.name}
-                  </label>
-                ))}
+                    >
+                      {confirmedSegments.includes(activeSegment)
+                        ? 'Leg reviewed'
+                        : 'Confirm this leg follows the planned road'}
+                    </Button>
+                  </>
+                )}
+              </div>
+              <div className="route-draft-map">
+                <LiveMap
+                  markers={draftStops.map((stop, index) => ({
+                    id: `${stop.id}-${index}`,
+                    ...stop.location,
+                    label: `${index + 1}. ${stop.name}`,
+                    state: 'stop',
+                  }))}
+                  line={draftLine}
+                  onMapClick={(point) => {
+                    if (draftStops.length < 2) return;
+                    setRouteWaypoints((current) => ({
+                      ...current,
+                      [activeSegment]: [...(current[activeSegment] ?? []), point],
+                    }));
+                    setConfirmedSegments((current) =>
+                      current.filter((segment) => segment !== activeSegment),
+                    );
+                  }}
+                />
+                <p className="muted">
+                  Click along the road for leg {activeSegment + 1}. If the map is unavailable, enter
+                  waypoint coordinates on the left. The line is operator-configured, not snapped to
+                  roads.
+                </p>
+              </div>
             </div>
           </>
         )}
@@ -1169,10 +1326,10 @@ export function Network() {
       });
       if (response.error) throw new Error(response.error.error.message);
     } else if (dialog === 'version-create' && selectedPattern) {
-      const chosen = versionStops
-        .map((id) => query.data?.stops.find((stop) => stop.id === id))
-        .filter((stop): stop is Stop => Boolean(stop));
-      if (chosen.length < 2) throw new Error('Choose at least two stops in travel order.');
+      const chosen = draftStops;
+      if (chosen.slice(0, -1).some((_, index) => !confirmedSegments.includes(index)))
+        throw new Error('Review and confirm every route leg before creating the draft.');
+      const geometry = buildRouteGeometry(chosen, routeWaypoints);
       const response = await session.client.POST('/v1/ops/route-patterns/{id}/versions', {
         params: { path: { id: selectedPattern.id }, header: mutation },
         body: {
@@ -1181,10 +1338,7 @@ export function Network() {
             name: stop.name,
             location: stop.location,
           })),
-          geometry: {
-            points: chosen.map((stop) => stop.location),
-            stopDistancesMeters: straightLineDistances(chosen),
-          },
+          geometry,
         },
       });
       if (response.error) throw new Error(response.error.error.message);

@@ -11,8 +11,10 @@ type Marker = {
   label?: string;
   state?: string;
 };
+type Point = { latitude: number; longitude: number };
 
 const sourceId = 'trotxi-live-vehicles';
+const routeSourceId = 'trotxi-route-draft';
 let protocolReady = false;
 
 function asGeoJson(markers: Marker[]) {
@@ -27,9 +29,52 @@ function asGeoJson(markers: Marker[]) {
   };
 }
 
-export function LiveMap({ markers }: { markers: Marker[] }) {
+function asLineGeoJson(points: Point[]) {
+  return {
+    type: 'FeatureCollection',
+    features:
+      points.length < 2
+        ? []
+        : [
+            {
+              type: 'Feature',
+              geometry: {
+                type: 'LineString',
+                coordinates: points.map((point) => [point.longitude, point.latitude]),
+              },
+              properties: {},
+            },
+          ],
+  };
+}
+
+function frameLine(instance: MapLibreMap, points: Point[]) {
+  if (points.length === 1) {
+    instance.jumpTo({ center: [points[0].longitude, points[0].latitude], zoom: 14 });
+  } else if (points.length > 1) {
+    const bounds = new maplibregl.LngLatBounds();
+    for (const point of points) bounds.extend([point.longitude, point.latitude]);
+    instance.fitBounds(bounds, { padding: 48, maxZoom: 15, duration: 0 });
+  }
+}
+
+export function LiveMap({
+  markers,
+  line = [],
+  onMapClick,
+}: {
+  markers: Marker[];
+  line?: Point[];
+  onMapClick?: (point: Point) => void;
+}) {
   const container = useRef<HTMLDivElement>(null);
   const map = useRef<MapLibreMap | null>(null);
+  const clickHandler = useRef(onMapClick);
+  clickHandler.current = onMapClick;
+  const currentMarkers = useRef(markers);
+  currentMarkers.current = markers;
+  const currentLine = useRef(line);
+  currentLine.current = line;
   const [styleUrl, setStyleUrl] = useState<string | null>(null);
   const [failed, setFailed] = useState(false);
 
@@ -68,7 +113,17 @@ export function LiveMap({ markers }: { markers: Marker[] }) {
     instance.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'top-right');
     instance.addControl(new maplibregl.AttributionControl({ compact: true }), 'bottom-right');
     instance.on('load', () => {
-      instance.addSource(sourceId, { type: 'geojson', data: asGeoJson(markers) });
+      instance.addSource(routeSourceId, {
+        type: 'geojson',
+        data: asLineGeoJson(currentLine.current),
+      });
+      instance.addLayer({
+        id: routeSourceId,
+        type: 'line',
+        source: routeSourceId,
+        paint: { 'line-color': '#bc783c', 'line-width': 5, 'line-opacity': 0.9 },
+      });
+      instance.addSource(sourceId, { type: 'geojson', data: asGeoJson(currentMarkers.current) });
       instance.addLayer({
         id: `${sourceId}-halo`,
         type: 'circle',
@@ -108,6 +163,11 @@ export function LiveMap({ markers }: { markers: Marker[] }) {
       instance.on('mouseleave', sourceId, () => {
         instance.getCanvas().style.cursor = '';
       });
+      instance.on('click', (event) => {
+        if (instance.queryRenderedFeatures(event.point, { layers: [sourceId] }).length) return;
+        clickHandler.current?.({ latitude: event.lngLat.lat, longitude: event.lngLat.lng });
+      });
+      frameLine(instance, currentLine.current);
     });
     instance.on('error', () => setFailed(true));
     map.current = instance;
@@ -122,8 +182,20 @@ export function LiveMap({ markers }: { markers: Marker[] }) {
     source?.setData(asGeoJson(markers));
   }, [markers]);
 
+  useEffect(() => {
+    const source = map.current?.getSource(routeSourceId) as GeoJSONSource | undefined;
+    source?.setData(asLineGeoJson(line));
+    if (source && map.current) frameLine(map.current, line);
+  }, [line]);
+
   if (!styleUrl || failed) return <MapFallback markers={markers} failed={failed} />;
-  return <div className="live-map" ref={container} aria-label="Live vehicle map" />;
+  return (
+    <div
+      className="live-map"
+      ref={container}
+      aria-label={onMapClick ? 'Route drawing map' : 'Live vehicle map'}
+    />
+  );
 }
 
 function MapFallback({ markers, failed }: { markers: Marker[]; failed: boolean }) {
