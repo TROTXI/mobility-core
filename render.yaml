@@ -128,13 +128,13 @@ services:
       # thing off; the API refuses to boot on one rather than let that happen.
       - key: TRUST_PROXY
         value: 'loopback, linklocal, uniquelocal'
-      # Browser-client origin allowlist, comma-separated (#174). Unset -> the
-      # API reflects any origin, which is fine while no browser client exists.
-      # Set in the dashboard to the ops console's origin when trotxi-ops-staging
-      # (below) goes live.
+      # Unused by api-next; kept only so an existing dashboard value is not
+      # silently dropped. The browser origin allowlist is OPS_ORIGIN below.
       - key: CORS_ORIGINS
         sync: false
-      # Exact WebAuthn origin; deliberately independent of CORS ordering.
+      # The Ops website's exact origin. It is both the one browser origin CORS
+      # admits and the WebAuthn relying party, so passkeys and CORS cannot
+      # disagree about which site Ops is.
       - key: OPS_ORIGIN
         value: https://trotxi-ops-staging.onrender.com
       # Cloudflare R2 (avatars, #24) — S3-compatible object storage. The access

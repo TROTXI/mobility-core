@@ -164,6 +164,7 @@ export async function composeBackend(config: RuntimeConfig): Promise<Backend> {
       authProviders: config.providers,
       admit: (subject) => admission.spend(subject),
       trustProxy: config.trustProxy,
+      corsOrigin: config.opsOrigin,
       requestsPerMinute: config.limits.perUser,
       requestsPerIpPerMinute: config.limits.perIp,
       authRequestsPerMinute: config.limits.perAuth,

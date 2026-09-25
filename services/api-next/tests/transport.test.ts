@@ -97,6 +97,59 @@ test('HTTP factory compiles reviewed schemas and has no unauthenticated or guess
   }
 });
 
+test('only the Ops website origin passes a browser preflight, and a real request is still authenticated', async () => {
+  const pool = new Pool();
+  const ops = 'https://trotxi-ops-staging.onrender.com';
+  const app = await createTransportApp({
+    pool,
+    coordinateReservations: rejectBookingChanges,
+    cursorSecret: Buffer.alloc(32, 9),
+    verifyAccess: async () => null,
+    authorizeSession: async () => {
+      throw new Error('must not query a session without verified access');
+    },
+    minimumBuilds: { ops: 1, driver: { ios: 1, android: 1 }, commuter: { ios: 1, android: 1 } },
+    corsOrigin: ops,
+  });
+  const preflight = (origin: string) =>
+    app.inject({
+      method: 'OPTIONS',
+      url: '/v1/auth/google',
+      headers: {
+        origin,
+        'access-control-request-method': 'POST',
+        'access-control-request-headers': 'content-type,x-trotxi-client,x-trotxi-build',
+      },
+    });
+  try {
+    await app.ready();
+    // The sign-in call the Ops website makes first. Without this the browser
+    // never sends it, and sign-in fails after Google has already said yes.
+    const allowed = await preflight(ops);
+    assert.equal(allowed.statusCode, 204);
+    assert.equal(allowed.headers['access-control-allow-origin'], ops);
+    assert.match(String(allowed.headers['access-control-allow-headers']), /X-Trotxi-Client/);
+    assert.equal(allowed.headers['access-control-allow-credentials'], undefined);
+
+    const other = await preflight('https://evil.example');
+    assert.equal(other.headers['access-control-allow-origin'], undefined);
+
+    // CORS is a browser rule, not access control: the real request is judged
+    // exactly as before.
+    const real = await app.inject({
+      method: 'GET',
+      url: '/v1/ops/trips',
+      headers: { origin: ops, 'x-trotxi-client': 'ops', 'x-trotxi-build': '1' },
+    });
+    assert.equal(real.statusCode, 401);
+    assert.equal(real.headers['access-control-allow-origin'], ops);
+    assert.match(String(real.headers['access-control-expose-headers']), /ETag/);
+  } finally {
+    await app.close();
+    await pool.end();
+  }
+});
+
 test('the service describes itself at /docs, from the contract it routes from', async () => {
   const pool = new Pool();
   const app = await createTransportApp({

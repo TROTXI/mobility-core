@@ -1,4 +1,5 @@
 import Fastify from 'fastify';
+import cors from '@fastify/cors';
 import rateLimit from '@fastify/rate-limit';
 import multipart from '@fastify/multipart';
 import type { FastifyRequest } from 'fastify';
@@ -115,6 +116,12 @@ export interface AppOptions extends Dependencies {
    * not named here the whole internet shares one bucket.
    */
   trustProxy?: string | false;
+  /**
+   * The one browser origin allowed to call this API: the Ops website. The
+   * mobile apps are not browsers and need no CORS. Absent means no browser
+   * origin is allowed, which is what the per-domain tests supply.
+   */
+  corsOrigin?: string;
   requestsPerMinute?: number;
   requestsPerIpPerMinute?: number;
   // Optional only for isolated transport tests. createReplacementApp wires the
@@ -192,6 +199,25 @@ export async function createTransportApp(options: AppOptions) {
     await app.register(multipart, {
       attachFieldsToBody: true,
       limits: { files: 1, fields: 0, fileSize: options.maxAvatarBytes ?? 2 * 1024 * 1024 },
+    });
+  // Before the limiter and every route hook: a preflight carries no token or
+  // client metadata, so it must be answered here or the browser never sends
+  // the real request. Bearer tokens, not cookies, so no credentials mode.
+  if (options.corsOrigin)
+    await app.register(cors, {
+      origin: [options.corsOrigin],
+      methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
+      allowedHeaders: [
+        'Authorization',
+        'Content-Type',
+        'If-Match',
+        'Idempotency-Key',
+        'X-Trotxi-Client',
+        'X-Trotxi-Build',
+        'X-Trotxi-Platform',
+      ],
+      exposedHeaders: ['ETag', 'Retry-After'],
+      maxAge: 600,
     });
   await app.register(rateLimit, {
     global: true,
