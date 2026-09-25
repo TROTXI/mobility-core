@@ -131,8 +131,7 @@ matters — the service cannot resolve `DATABASE_URL` before the database exists
    | `PAYSTACK_SECRET_KEY`                                                    | The **live** key (`sk_live_…`). Staging's test key would accept payments that go nowhere and look like they worked.                               |
    | `FIREBASE_SERVICE_ACCOUNT`                                               | The whole service-account JSON. Unset -> no push, so the daily ask never reaches anyone.                                                          |
    | `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET` | Unset -> avatars are held in memory and lost on restart.                                                                                          |
-   | `METRICS_TOKEN`                                                          | Unset in production -> `/metrics` is disabled (404) rather than left open.                                                                        |
-   | `OTEL_EXPORTER_OTLP_ENDPOINT`, `OTEL_EXPORTER_OTLP_HEADERS`              | Grafana Cloud. Unset -> no tracing.                                                                                                               |
+   | `OTEL_EXPORTER_OTLP_ENDPOINT`, `OTEL_EXPORTER_OTLP_HEADERS`              | Grafana Cloud. Unset -> no metrics, traces or logs are exported.                                                                                  |
    | `CORS_ORIGINS`                                                           | Set once the ops console has a production origin.                                                                                                 |
 
    Everything else (`NODE_ENV`, `GOOGLE_CLIENT_ID`, `OTEL_SERVICE_NAME`,

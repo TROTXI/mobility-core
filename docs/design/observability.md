@@ -1,6 +1,6 @@
 # Observability & performance design
 
-**Owner:** Godfred Awuku · **Date:** 2026-06-28 · **Last verified:** 2026-09-12
+**Owner:** Godfred Awuku · **Date:** 2026-06-28 · **Last verified:** 2026-09-25
 
 **Status:** Backend metrics, traces and logs are live on staging. Firebase
 Crashlytics and Performance are wired in both Flutter apps. Dashboard and alert
@@ -99,31 +99,27 @@ a dashboard we can jump to the exact trace and its logs.
 
 ## 4. Backend (Fastify API)
 
-Build on what already exists: **pino structured logging** and the `/healthz` +
-`/readyz` endpoints (the latter already pings DB + KV).
+The replacement API uses **pino structured logging** and `/healthz` (process
+liveness) plus `/readyz` (database readiness).
 
-- **Metrics** — expose `GET /metrics` (Prometheus format via `prom-client`):
-  - RED histograms per route+method+status (`http_request_duration_seconds`).
-  - Node runtime: heap/RSS, **event-loop lag**, GC, active handles
-    (`prom-client` default metrics).
-  - Domain counters: payments initialized, webhook events processed/failed,
-    rate-limit rejections, sign-ins.
-  - **Shipped to Grafana via OTLP push** (no scraper/agent): the OTel SDK exports
-    HTTP RED + Node runtime metrics over the same OTLP endpoint as traces. The
-    `prom-client` `/metrics` endpoint stays for local/debug pull.
-- **Traces** — OTel SDK auto-instruments Fastify/pg/ioredis/http; spans for
-  `request → query → Paystack`. Head sampling (e.g. 10–20%), but keep **100% of
-  errors**.
+- **Metrics** — the OTel SDK exports HTTP RED, Node runtime and the business
+  gauges/counters in `services/api-next/src/observability/metrics.ts` to Grafana
+  Cloud over OTLP. There is no `/metrics` route, `prom-client` dependency,
+  scraper or `METRICS_TOKEN` in the replacement API.
+- **Traces** — OTel auto-instruments Fastify, Postgres and outbound HTTP. Probe
+  requests to `/healthz` and `/readyz` are excluded. Error-aware sampling is a
+  future tuning task, not an implemented guarantee.
 - **Logs** — pino JSON to stdout (Render captures) **and shipped to Loki via
-  OTLP**; `trace_id`/`span_id` are injected into every line (pino instrumentation)
-  so logs ↔ traces correlate in Grafana. Fastify's default serializers log no
-  request bodies or headers, so nothing sensitive (auth tokens, `/payments/*`
-  bodies) reaches the log pipeline.
+  OTLP**; `trace_id`/`span_id` accompany lines written in an active trace (pino
+  instrumentation), so those logs ↔ traces correlate in Grafana. `/healthz`
+  request logs are suppressed, while `/readyz` remains visible. Fastify's
+  request serializer logs no request bodies or headers, so auth tokens and
+  payment bodies are not included in automatic request logs.
 - **Health** — keep `/healthz` (liveness) and `/readyz` (readiness); Render and an
   external uptime check both probe them.
 
-`/metrics` must not be public — bind it to an internal path/token (it leaks
-internal shape otherwise).
+There is no metrics HTTP endpoint to expose or protect; exporter credentials
+stay in Render's secret configuration.
 
 ---
 
@@ -188,9 +184,10 @@ to cut noise.
 
 ## 8. Alerting
 
-Two tiers, prod only (staging is dashboards-only):
+Two tiers are defined for each environment; import and notification routing
+are still outstanding on staging and production:
 
-- **Page (act now):** API down (`/health` failing), 5xx error-rate spike / fast
+- **Page (act now):** API down (`/healthz` failing), 5xx error-rate spike / fast
   SLO burn, **payment webhook backlog**, Postgres unreachable, memory near limit.
 - **Notify (look soon):** latency SLO slow-burn, elevated rate-limit rejections,
   Redis degraded (fail-open masking it), crash-free dipping toward its SLO,
@@ -211,7 +208,7 @@ Optimised for **$0 at pilot scale**, standard SDKs, and a clean upgrade path.
 | Backend metrics/traces/logs | **Grafana Cloud free tier** (Mimir/Tempo/Loki) | managed, generous free tier, one place for all three                                                 | self-host Prom+Grafana+Loki+Tempo; Better Stack; Axiom; Datadog/New Relic (paid, later) |
 | Mobile RUM + crashes        | **Firebase Crashlytics + Performance**         | free, best-in-class for Flutter frame/jank/start metrics; likely already in the project for FCM push | Sentry (mobile)                                                                         |
 | Error tracking (optional)   | **Sentry** (FE + BE)                           | unifies error grouping + release health both ends; good free tier                                    | rely on Crashlytics (mobile) + logs/Grafana (backend) to save a tool                    |
-| Uptime                      | **Better Stack / UptimeRobot** free            | independent external probe of `/health`                                                              | Grafana Synthetic Monitoring                                                            |
+| Uptime                      | **Better Stack / UptimeRobot** free            | independent external probe of `/healthz`                                                             | Grafana Synthetic Monitoring                                                            |
 
 **Decided (2026-06-28): free-tier only — OTel → Grafana Cloud (backend) +
 Firebase (mobile).** Covers all four signals across both ends at **$0**. We pay
@@ -259,7 +256,7 @@ A money app — telemetry must not become a leak:
   low.
 - **Retention** kept short (e.g. 14–30 days) and the backend region chosen
   deliberately (data residency).
-- `/metrics` is **not public**.
+- No `/metrics` HTTP route exists; keep OTLP exporter credentials private.
 - Reuses our existing guards: gitleaks (no secrets in code), structured logging
   already in place.
 
@@ -270,15 +267,16 @@ A money app — telemetry must not become a leak:
 | Phase                                        | Scope                                                                                                                                                                                                                                                                                              | Outcome                                                          |
 | -------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------- |
 | **0 — Foundation** ✅                        | pino structured logs, `/healthz` + `/readyz`, `request_id` + `trace_id`/`span_id` correlation                                                                                                                                                                                                      | clean, correlatable logs                                         |
-| **1 — Backend metrics** ✅                   | `/metrics` endpoint (`prom-client`, local) **+ metrics pushed via OTLP** (HTTP RED + Node runtime: event loop, GC, heap) — no scraper/agent needed. **Remaining:** dashboards + 2–3 alerts (error rate, p95, memory)                                                                               | latency + memory + reliability visible (satisfies #28's RED ask) |
+| **1 — Backend metrics** ✅                   | OTel pushes HTTP RED, Node runtime and business metrics via OTLP; no pull endpoint or scraper. **Remaining:** import the dashboard and alert rules.                                                                                                                                                | latency + memory + reliability visible (satisfies #28's RED ask) |
 | **2 — Tracing + logs** ✅                    | OTel SDK + auto-instrumentation (HTTP/Fastify/pg/ioredis/pino) → traces, metrics **and** logs pushed via OTLP (gated by `OTEL_EXPORTER_OTLP_ENDPOINT`); pino logs carry `trace_id`/`span_id` (logs ↔ traces correlate). **Remaining (polish):** sampling tuning (head sample, keep 100% of errors) | debug slow requests end-to-end; pivot trace ↔ logs               |
 | **3 — Mobile RUM** ✅ _wired in both apps_   | Firebase Crashlytics + Performance interceptors in commuter and driver apps; release telemetry still depends on valid Firebase project configuration                                                                                                                                               | responsiveness + reliability from real devices                   |
 | **4 — SLOs & alerting** 🟡 _defined as code_ | dashboard + alert rules committed in [`ops/grafana/`](../../ops/grafana/README.md) and applied by `ops/grafana/apply.mjs` (RED, runtime, memory against the plan limit, dependencies, business); **remaining:** apply to the Cloud stack + route `severity=page`                                   | budget-driven, low-noise alerting                                |
 
-Phases 0–2 are **live on staging** (verified: `/readyz` traces show the parent
-request + `pg` child spans; metrics + logs flowing). Phase 3 is implemented in
-both app codebases. Next: import the Phase 4 dashboard/alert definitions, connect
-the notification channel and verify mobile release data in the Firebase projects.
+Phases 0–2 are **live on staging** (verified in Grafana Explore: non-probe API
+traces, process and business metrics, and logs flowing). Phase 3 is implemented
+in both app codebases. Next: import the Phase 4 dashboard/alert definitions,
+connect the notification channel and verify mobile release data in the Firebase
+projects.
 
 ---
 
@@ -302,18 +300,20 @@ metrics, and logs. Unset → telemetry is a no-op (dev/tests).
 In Grafana → **Explore**, choose the data source:
 
 - **Traces (Tempo)** — `…-traces`. Search **Service Name = `trotxi-api`**, or
-  TraceQL `{ resource.service.name = "trotxi-api" }`; narrow to an endpoint with
-  `{ span.http.target = "/readyz" }`. Expand a trace for the span waterfall
+  TraceQL `{ resource.service.name = "trotxi-api" }`; narrow to an operation such
+  as `GET /version`. Expand a trace for the span waterfall
   (request → `pg`/`ioredis` child spans); each span has a **"Logs for this span"**
   jump.
-- **Metrics (Prometheus)** — `…-prom`. Request rate/latency from
-  `http_server_request_duration_*`; memory/event-loop from `nodejs_*` /
-  `process_*`; filter `service_name="trotxi-api"`.
-- **Logs (Loki)** — `…-logs`. `{ service_name="trotxi-api" }`; every line carries
-  `trace_id`/`span_id`, so you can pivot logs ↔ traces.
+- **Metrics (Prometheus)** — `…-prom`. Try
+  `process_memory_usage_bytes{job="staging/trotxi-api"}` or
+  `trotxi_payment_inbox_ready{job="staging/trotxi-api"}`. Production uses a
+  separate `production/trotxi-api` job label.
+- **Logs (Loki)** — `…-logs`. `{ service_name="trotxi-api" }`; request logs
+  include the path without query parameters. Correlation IDs appear where a
+  trace is active, not on every line.
 
-Locally, `GET /metrics` (prom-client) still serves a pull endpoint — open in dev,
-token-gated and disabled in production.
+Metrics are pushed via OTLP in configured deployments; local runs without an
+exporter do not serve a pull endpoint.
 
 ## Related
 

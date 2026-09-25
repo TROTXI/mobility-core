@@ -20,10 +20,9 @@ product under Act 843). Full design: [`docs/design/observability.md`](../design/
 - **Mobile RUM + crashes: Firebase Crashlytics + Performance** (free).
 - **Sentry deferred**; a paid APM (Datadog / New Relic) is a later, deliberate
   choice only if scale demands it.
-- **Phase 1 (this slice):** expose `GET /metrics` via `prom-client` — a RED
-  histogram (`http_request_duration_seconds`) plus Node runtime metrics
-  (memory, event-loop lag, GC). Token-gated; disabled (404) in production when no
-  token is set, same fail-safe posture as payments/sign-in.
+- **Backend metrics:** export HTTP RED, Node runtime and business metrics over
+  OTLP alongside traces and logs. The replacement API does not expose
+  `GET /metrics` or use `prom-client`.
 
 ## Consequences
 
@@ -31,10 +30,10 @@ product under Act 843). Full design: [`docs/design/observability.md`](../design/
 - One standard (OTel) scales to the future Go telemetry service + MQTT.
 - We must **stay inside free-tier limits** (sampling + short retention; alert and
   revisit before any paid threshold) and **scrub PII/secrets** from telemetry.
-- `/metrics` is kept out of the public OpenAPI and is token-gated; scrapers
-  (Grafana Agent) authenticate with `Authorization: Bearer <METRICS_TOKEN>`.
-- Remaining for Phase 1: a Grafana Cloud account + scrape config + dashboards and
-  the first alerts (external account setup, like Google/Paystack).
+- No metrics HTTP endpoint or scraper credential is needed. Keep the OTLP
+  exporter endpoint and authentication header in Render's secret configuration.
+- Remaining: import the committed dashboard and alert rules into Grafana Cloud
+  and test notification delivery.
 - **In-house dashboards / a self-hosted stack stay a deferred, open option** — we
   own the data via OTel/Prometheus, so no lock-in. Managed free tiers are chosen
   now because a dashboard is the easy part; the storage/query/alerting (and, for
@@ -47,11 +46,11 @@ product under Act 843). Full design: [`docs/design/observability.md`](../design/
 
 Built and live on staging (Phases 0–2): **traces, metrics, and logs all push to
 Grafana Cloud over a single OTLP endpoint** — no Grafana Alloy/scraper. So the
-"scrape config" line above is moot: metrics go over OTLP push too (the only env
+scrape configuration is unnecessary: metrics go over OTLP push too (the only env
 vars needed are `OTEL_EXPORTER_OTLP_ENDPOINT` + `OTEL_EXPORTER_OTLP_HEADERS`).
 The protobuf exporter is used (Grafana's default); `protobufjs`'s build script is
-skipped (works from prebuilt dist). The `/metrics` endpoint + `METRICS_TOKEN`
-remain as a local/debug **pull** path, not the production shipping mechanism.
+skipped (works from prebuilt dist). There is no local/debug pull path or
+`METRICS_TOKEN` in the replacement implementation.
 The dashboard and alert definitions are committed under `ops/grafana`; import
 and production notification wiring remain. Firebase Crashlytics and Performance
 are now integrated in both Flutter apps, subject to valid release-project
