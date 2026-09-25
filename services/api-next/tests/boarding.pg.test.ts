@@ -362,6 +362,24 @@ test('BRD-06: manifest is complete, assigned-driver-only, private, and summary c
   assert.equal(m.riders[0].displayName, 'Test Rider');
   assert.equal(m.riders[0].avatarUrl, 'https://private.example/avatar?expires=120');
   assert.ok(!JSON.stringify(m).includes('private/key'));
+  const opsPath = `/v1/ops/trips/${f.run.id}/manifest`;
+  const opsManifest = (await f.request('GET', opsPath, undefined, 'ops')).data;
+  assert.equal(opsManifest.tripId, f.run.id);
+  assert.deepEqual(opsManifest.riders, m.riders);
+  // The app rejects a commuter client at metadata validation, then current
+  // database role still rejects a rider token presented as an Ops client.
+  await f.request('GET', opsPath, undefined, 'rider', 400);
+  const riderAsOps = await f.app.inject({
+    method: 'GET',
+    url: opsPath,
+    headers: {
+      authorization: 'Bearer rider',
+      'x-trotxi-client': 'ops',
+      'x-trotxi-build': '1',
+    },
+  });
+  assert.equal(riderAsOps.statusCode, 403);
+  await f.request('GET', `/v1/ops/trips/${randomUUID()}/manifest`, undefined, 'ops', 404);
   await f.board(f.run.id, { kind: 'photo', reservationId: f.reservation.id });
   assert.deepEqual((await f.request('GET', `/v1/driver/trips/${f.run.id}/summary`)).data, {
     tripId: f.run.id,

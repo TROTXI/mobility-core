@@ -19,6 +19,7 @@ const selected = new Set([
   'deleteAvatar',
   'issuePass',
   'getManifest',
+  'getOpsManifest',
   'getTripSummary',
   'boardRider',
   'markNoShow',

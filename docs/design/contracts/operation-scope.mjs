@@ -335,6 +335,12 @@ export const operationScope = [
     'The live overview covers one service day and window; it cannot summarize trips, collections and delivery exceptions over a selected period.',
   ],
   [
+    'getOpsManifest',
+    'post-cutover',
+    'Figma 08: dispatch must see confirmed, waiting and boarded riders on a selected run',
+    'The driver manifest is scoped to the assigned driver and cannot be called from the Ops website; the trip list contains counts but no rider identities or pickup stops.',
+  ],
+  [
     'getDriverSelf',
     'post-cutover',
     'A driver session outlives the sign-in response that carries the driver record',

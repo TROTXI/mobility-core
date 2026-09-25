@@ -1553,6 +1553,7 @@ for (const [path, type, input] of [
   edit('patch', `/v1/ops/${path}/{id}`, `update${type}`, `${type}Edit`, type);
 }
 list('/v1/ops/trips', 'listOpsTrips', 'OpsTrip');
+get('/v1/ops/trips/{id}/manifest', 'getOpsManifest', 'Manifest', { sensitive: true });
 post('/v1/ops/trips', 'createTrip', 'TripInput', 'OpsTrip', { status: 201 });
 edit('patch', '/v1/ops/trips/{id}', 'rescheduleTrip', 'TripEdit', 'OpsTrip');
 edit('put', '/v1/ops/trips/{id}/assignment', 'assignTrip', 'TripAssignment', 'OpsTrip');

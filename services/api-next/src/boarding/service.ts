@@ -8,6 +8,7 @@ import { BoardingProofs } from './proofs.js';
 export const boardingOperations = [
   'issuePass',
   'getManifest',
+  'getOpsManifest',
   'getTripSummary',
   'boardRider',
   'markNoShow',
@@ -169,9 +170,13 @@ export class BoardingService {
       );
     });
   }
-  async read(actor: Actor, op: 'getManifest' | 'getTripSummary', tripId: string) {
+  async read(
+    actor: Actor,
+    op: 'getManifest' | 'getOpsManifest' | 'getTripSummary',
+    tripId: string,
+  ) {
     const data = await this.tx(async (c) => {
-      const driver = await this.authorize(c, actor, 'driver');
+      const driver = await this.authorize(c, actor, op === 'getOpsManifest' ? 'admin' : 'driver');
       const trip = await this.trip(c, id(tripId), driver);
       if (op === 'getTripSummary') {
         const row = (

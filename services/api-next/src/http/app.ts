@@ -512,7 +512,11 @@ export async function createTransportApp(options: AppOptions) {
               fail(400, 'invalid_request', 'This operation has no request body.');
             const params = request.params as { id: string; reservationId?: string };
             if (name === 'issuePass') result = await options.boarding!.issue(actor, params.id);
-            else if (name === 'getManifest' || name === 'getTripSummary')
+            else if (
+              name === 'getManifest' ||
+              name === 'getOpsManifest' ||
+              name === 'getTripSummary'
+            )
               result = await options.boarding!.read(actor, name, params.id);
             else if (name === 'runNoShows')
               result = await options.boarding!.maintenance(
