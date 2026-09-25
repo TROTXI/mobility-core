@@ -172,7 +172,7 @@ test('all 60 predecessor-free operations have a requirement, scope decision and 
     assert.ok(api['x-requirement']);
     assert.ok(api['x-existing-endpoint-assessment']);
   }
-  assert.equal(operationScope.filter((s) => s.delivery === 'deferred').length, 10);
+  assert.equal(operationScope.filter((s) => s.delivery === 'deferred').length, 9);
 });
 test('operation IDs, method/path pairs and references are unique/resolved', () => {
   assert.equal(new Set(operations.map((o) => o.operationId)).size, operations.length);
@@ -438,7 +438,8 @@ test('runtime subset implements only selected cutover operations and contains no
       assert.deepEqual(withoutCapturedExamples, spec.paths[path][method]);
       assert.notEqual(operation['x-delivery-stage'], 'deferred');
     }
-  assert.equal(count, 147);
+  assert.equal(count, 148);
+  assert.equal(runtime.paths['/v1/me/reservations/{id}'].get.operationId, 'getReservation');
   assert.equal(runtime.paths['/v1/ops/routes/{id}'].get, undefined);
   assert.equal(runtime.paths['/v1/ops/stops/{id}'].get, undefined);
   assert.equal(runtime.paths['/v1/ops/drivers/{id}'].get, undefined);

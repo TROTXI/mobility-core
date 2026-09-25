@@ -23,6 +23,7 @@ export const membershipOperations = [
   'createCommuteSlot',
   'retireCommuteSlot',
   'listReservations',
+  'getReservation',
   'decideReservation',
   'createAccountRestriction',
   'releaseAccountRestriction',
@@ -1016,6 +1017,69 @@ export class MembershipService {
           body: { data: await this.membership(c, actor.userId) },
           headers: {},
         } as Outcome;
+      if (op === 'getReservation') {
+        // Read through the owned reservation, not the public trip catalogue:
+        // history must remain visible after a route is archived, while a
+        // pending or declined decision legitimately has no trip or stops.
+        const row = (
+          await c.query(
+            `SELECT r.*,t.id AS detail_trip_id,t.scheduled_at AS trip_scheduled_at,
+              t.status AS trip_status,v.label AS vehicle_label,v.plate AS vehicle_plate,
+              rt.id AS route_id,rt.name AS route_name,
+              pickup.name AS pickup_name,pickup.latitude AS pickup_latitude,
+              pickup.longitude AS pickup_longitude,pickup.ordinal AS pickup_ordinal,
+              dropoff.name AS dropoff_name,dropoff.latitude AS dropoff_latitude,
+              dropoff.longitude AS dropoff_longitude,dropoff.ordinal AS dropoff_ordinal
+            FROM app.reservations r
+            LEFT JOIN app.trips t ON t.id=r.trip_id
+            LEFT JOIN app.vehicles v ON v.id=t.vehicle_id
+            LEFT JOIN app.route_pattern_versions pv ON pv.id=r.pattern_version_id
+            LEFT JOIN app.route_patterns p ON p.id=pv.pattern_id
+            LEFT JOIN app.routes rt ON rt.id=p.route_id
+            LEFT JOIN app.route_pattern_stops pickup
+              ON pickup.id=r.pickup_occurrence_id AND pickup.pattern_version_id=r.pattern_version_id
+            LEFT JOIN app.route_pattern_stops dropoff
+              ON dropoff.id=r.dropoff_occurrence_id AND dropoff.pattern_version_id=r.pattern_version_id
+            WHERE r.id=$1 AND r.user_id=$2`,
+            [id(target), actor.userId],
+          )
+        ).rows[0];
+        if (!row) fail(404, 'not_found', 'Reservation not found.');
+        const stop = (kind: 'pickup' | 'dropoff') =>
+          row[`${kind}_name`] === null
+            ? null
+            : {
+                occurrenceId: row[`${kind}_occurrence_id`],
+                name: row[`${kind}_name`],
+                location: {
+                  latitude: row[`${kind}_latitude`],
+                  longitude: row[`${kind}_longitude`],
+                },
+                ordinal: row[`${kind}_ordinal`],
+              };
+        return {
+          status: 200,
+          headers: {},
+          body: {
+            data: {
+              reservation: this.reservationView(row),
+              route: row.route_id === null ? null : { id: row.route_id, name: row.route_name },
+              trip:
+                row.detail_trip_id === null
+                  ? null
+                  : {
+                      id: row.detail_trip_id,
+                      scheduledAt: iso(row.trip_scheduled_at),
+                      status: row.trip_status,
+                      vehicleLabel: row.vehicle_label,
+                      vehiclePlate: row.vehicle_plate,
+                    },
+              pickupStop: stop('pickup'),
+              dropoffStop: stop('dropoff'),
+            },
+          },
+        } as Outcome;
+      }
       const limit = Number(query.limit ?? 50);
       if (!Number.isInteger(limit) || limit < 1 || limit > 200)
         fail(400, 'invalid_query', 'Invalid page limit.');

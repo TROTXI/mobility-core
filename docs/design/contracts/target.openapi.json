@@ -4288,7 +4288,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ReservationResponse"
+                  "$ref": "#/components/schemas/ReservationDetailResponse"
                 }
               }
             },
@@ -4330,9 +4330,9 @@
         "x-retry": "safe_read",
         "x-sensitive": false,
         "x-implementation-status": "design_only",
-        "x-delivery-stage": "deferred",
-        "x-requirement": "No approved standalone reservation-detail journey",
-        "x-existing-endpoint-assessment": "The owned reservation list and decision/pass operations cover the current journey."
+        "x-delivery-stage": "post-cutover",
+        "x-requirement": "Rider detail for upcoming and historical reservations outside the list date window",
+        "x-existing-endpoint-assessment": "The owned list carries identifiers only; the signed-in trip read omits stops and route name and hides archived routes."
       }
     },
     "/v1/me/ride-entries": {
@@ -21492,6 +21492,124 @@
         ],
         "additionalProperties": false
       },
+      "ReservationDetail": {
+        "type": "object",
+        "properties": {
+          "reservation": {
+            "$ref": "#/components/schemas/Reservation"
+          },
+          "route": {
+            "nullable": true,
+            "description": "Current corridor name; the reservation does not snapshot route renames.",
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 128
+              },
+              "name": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 200
+              }
+            },
+            "required": ["id", "name"],
+            "additionalProperties": false
+          },
+          "trip": {
+            "nullable": true,
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 128
+              },
+              "scheduledAt": {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$",
+                "description": "Operational scheduled departure, not a pickup-stop ETA."
+              },
+              "status": {
+                "type": "string",
+                "enum": ["scheduled", "active", "completed", "cancelled"]
+              },
+              "vehicleLabel": {
+                "nullable": true,
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 200
+              },
+              "vehiclePlate": {
+                "nullable": true,
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 32
+              }
+            },
+            "required": ["id", "scheduledAt", "status", "vehicleLabel", "vehiclePlate"],
+            "additionalProperties": false
+          },
+          "pickupStop": {
+            "nullable": true,
+            "description": "Published stop-occurrence snapshot; null until a trip is assigned.",
+            "type": "object",
+            "properties": {
+              "occurrenceId": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 128
+              },
+              "name": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 200
+              },
+              "location": {
+                "$ref": "#/components/schemas/Point"
+              },
+              "ordinal": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              }
+            },
+            "required": ["occurrenceId", "name", "location", "ordinal"],
+            "additionalProperties": false
+          },
+          "dropoffStop": {
+            "nullable": true,
+            "description": "Published stop-occurrence snapshot; null until a trip is assigned.",
+            "type": "object",
+            "properties": {
+              "occurrenceId": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 128
+              },
+              "name": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 200
+              },
+              "location": {
+                "$ref": "#/components/schemas/Point"
+              },
+              "ordinal": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              }
+            },
+            "required": ["occurrenceId", "name", "location", "ordinal"],
+            "additionalProperties": false
+          }
+        },
+        "required": ["reservation", "route", "trip", "pickupStop", "dropoffStop"],
+        "additionalProperties": false
+      },
       "ReservationDecision": {
         "type": "object",
         "properties": {
@@ -25202,11 +25320,11 @@
         "required": ["data", "page"],
         "additionalProperties": false
       },
-      "ReservationResponse": {
+      "ReservationDetailResponse": {
         "type": "object",
         "properties": {
           "data": {
-            "$ref": "#/components/schemas/Reservation"
+            "$ref": "#/components/schemas/ReservationDetail"
           }
         },
         "required": ["data"],

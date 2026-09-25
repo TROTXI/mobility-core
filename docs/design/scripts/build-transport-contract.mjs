@@ -37,6 +37,7 @@ const selected = new Set([
   'createCommuteSlot',
   'retireCommuteSlot',
   'listReservations',
+  'getReservation',
   'decideReservation',
   'createAccountRestriction',
   'releaseAccountRestriction',

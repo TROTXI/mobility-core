@@ -219,9 +219,9 @@ jobs:
       - run: flutter pub get
       - run: flutter analyze
       - run: flutter test
-      - name: Rider-service API client serialization
+      - name: Rider API client serialization
         if: matrix.app == 'trotxi_client'
         working-directory: apps/api_client
         run: |
           dart pub get
-          dart test test/rider_services_serialization_test.dart
+          dart test test/rider_services_serialization_test.dart test/reservation_detail_serialization_test.dart

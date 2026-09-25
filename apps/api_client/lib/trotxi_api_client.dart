@@ -206,6 +206,11 @@ export 'package:trotxi_api_client/src/model/reservation_decision.dart';
 export 'package:trotxi_api_client/src/model/reservation_decision_result.dart';
 export 'package:trotxi_api_client/src/model/reservation_decision_result_pass.dart';
 export 'package:trotxi_api_client/src/model/reservation_decision_result_response.dart';
+export 'package:trotxi_api_client/src/model/reservation_detail.dart';
+export 'package:trotxi_api_client/src/model/reservation_detail_pickup_stop.dart';
+export 'package:trotxi_api_client/src/model/reservation_detail_response.dart';
+export 'package:trotxi_api_client/src/model/reservation_detail_route.dart';
+export 'package:trotxi_api_client/src/model/reservation_detail_trip.dart';
 export 'package:trotxi_api_client/src/model/reservation_page.dart';
 export 'package:trotxi_api_client/src/model/restriction.dart';
 export 'package:trotxi_api_client/src/model/restriction_input.dart';
@@ -265,4 +270,3 @@ export 'package:trotxi_api_client/src/model/work_request_input_one_of.dart';
 export 'package:trotxi_api_client/src/model/work_request_input_one_of1.dart';
 export 'package:trotxi_api_client/src/model/work_request_page.dart';
 export 'package:trotxi_api_client/src/model/work_request_response.dart';
-

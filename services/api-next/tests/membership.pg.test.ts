@@ -45,7 +45,13 @@ async function httpFixture(t: TestContext) {
     coordinateReservations: f.membership.coordinateReservations,
     membership: f.membership,
     verifyAccess: async (h) =>
-      h === 'Bearer rider' ? f.actor : h === 'Bearer ops' ? f.admin : null,
+      h === 'Bearer rider'
+        ? f.actor
+        : h === 'Bearer other'
+          ? f.other
+          : h === 'Bearer ops'
+            ? f.admin
+            : null,
     minimumBuilds: { ops: 1, driver: { ios: 1, android: 1 }, commuter: { ios: 1, android: 1 } },
   });
   t.after(() => app.close());
@@ -56,13 +62,73 @@ async function httpFixture(t: TestContext) {
     'x-trotxi-platform': 'android',
   };
   const admin = { authorization: 'Bearer ops', 'x-trotxi-client': 'ops', 'x-trotxi-build': '1' };
+  const otherHeaders = { ...rider, authorization: 'Bearer other' };
   const get = async (url: string, headers: Record<string, string> = rider, status = 200) => {
     const r = await app.inject({ url, headers });
     assert.equal(r.statusCode, status, r.body);
     return r.json();
   };
-  return { ...f, app, rider, adminHeaders: admin, get };
+  return { ...f, app, rider, otherHeaders, adminHeaders: admin, get };
 }
+
+test('RES-08: owned detail serves archived history beyond the list window without driver identity', async (t) => {
+  const f = await httpFixture(t);
+  const declined = await f.command('decideReservation', {
+    travelDate: '2026-01-03',
+    direction: 'outbound',
+    decision: 'decline',
+  });
+  const declinedDetail = await f.get(`/v1/me/reservations/${declined.reservation.id}`);
+  assert.equal(declinedDetail.data.reservation.status, 'declined');
+  for (const field of ['route', 'trip', 'pickupStop', 'dropoffStop'])
+    assert.equal(declinedDetail.data[field], null);
+
+  await f.buy();
+  const trip = await f.trip();
+  const reserved = await f.reserve();
+  const path = `/v1/me/reservations/${reserved.reservation.id}`;
+  const upcoming = await f.get(path);
+  assert.equal(upcoming.data.reservation.id, reserved.reservation.id);
+  assert.equal(upcoming.data.route.name, 'Financial test corridor');
+  assert.equal(upcoming.data.trip.id, trip.id);
+  assert.equal(upcoming.data.trip.status, 'scheduled');
+  assert.equal(upcoming.data.trip.scheduledAt, trip.scheduled_at.toISOString());
+  assert.equal(upcoming.data.trip.vehicleLabel, null);
+  assert.match(upcoming.data.trip.vehiclePlate, /^[A-F0-9]{8}$/);
+  assert.equal(upcoming.data.pickupStop.ordinal, 0);
+  assert.equal(upcoming.data.dropoffStop.ordinal, 1);
+  assert.deepEqual(upcoming.data.pickupStop.location, { latitude: 5.6, longitude: -0.2 });
+  assert.equal(JSON.stringify(upcoming).includes('driver'), false);
+
+  await f.owner.query(
+    "UPDATE app.trips SET status='active',started_at=clock_timestamp() WHERE id=$1",
+    [trip.id],
+  );
+  await f.owner.query(
+    "UPDATE app.trips SET status='completed',completed_at=clock_timestamp() WHERE id=$1",
+    [trip.id],
+  );
+  await f.owner.query('UPDATE app.routes SET archived_at=clock_timestamp() WHERE id=$1', [
+    f.input.routeId,
+  ]);
+  f.setNow('2026-03-01T00:00:00Z');
+  assert.equal((await f.get('/v1/me/reservations')).data.length, 0);
+  const history = await f.get(path);
+  assert.equal(history.data.trip.status, 'completed');
+  assert.equal(history.data.route.name, 'Financial test corridor');
+  assert.equal(history.data.pickupStop.occurrenceId, reserved.reservation.pickupOccurrenceId);
+  assert.equal(history.data.dropoffStop.occurrenceId, reserved.reservation.dropoffOccurrenceId);
+
+  assert.equal((await f.get(path, f.otherHeaders, 404)).error.code, 'not_found');
+  assert.equal(
+    (await f.get(`/v1/me/reservations/${randomUUID()}`, f.rider, 404)).error.code,
+    'not_found',
+  );
+  assert.equal(
+    (await f.get('/v1/me/reservations/not-a-uuid', f.rider, 404)).error.code,
+    'not_found',
+  );
+});
 
 test('COM-18: HTTP request status and slot route filters narrow results and bind normalized cursors', async (t) => {
   const f = await httpFixture(t);

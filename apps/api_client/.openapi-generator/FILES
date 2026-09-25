@@ -459,6 +459,11 @@ lib/src/model/reservation_decision.dart
 lib/src/model/reservation_decision_result.dart
 lib/src/model/reservation_decision_result_pass.dart
 lib/src/model/reservation_decision_result_response.dart
+lib/src/model/reservation_detail.dart
+lib/src/model/reservation_detail_pickup_stop.dart
+lib/src/model/reservation_detail_response.dart
+lib/src/model/reservation_detail_route.dart
+lib/src/model/reservation_detail_trip.dart
 lib/src/model/reservation_page.dart
 lib/src/model/restriction.dart
 lib/src/model/restriction_input.dart
