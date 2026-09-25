@@ -588,6 +588,35 @@ named(
     ...audit,
   }),
 );
+const reservationStop = obj({
+  occurrenceId: id,
+  name: text(),
+  location: point,
+  ordinal: z.int().nonnegative(),
+});
+named(
+  'ReservationDetail',
+  obj({
+    reservation: schemas.Reservation,
+    // Pending and declined decisions have no trip or selected stop yet.
+    route: obj({ id, name: text() })
+      .nullable()
+      .describe('Current corridor name; the reservation does not snapshot route renames.'),
+    trip: obj({
+      id,
+      scheduledAt: instant.describe('Operational scheduled departure, not a pickup-stop ETA.'),
+      status: tripState,
+      vehicleLabel: text().nullable(),
+      vehiclePlate: text(32).nullable(),
+    }).nullable(),
+    pickupStop: reservationStop
+      .nullable()
+      .describe('Published stop-occurrence snapshot; null until a trip is assigned.'),
+    dropoffStop: reservationStop
+      .nullable()
+      .describe('Published stop-occurrence snapshot; null until a trip is assigned.'),
+  }),
+);
 named(
   'ReservationDecision',
   obj({
@@ -1454,8 +1483,12 @@ for (const [path, name, type] of [
   ['reservations', 'Reservations', 'Reservation'],
 ]) {
   list(`/v1/me/${path}`, `list${name}`, type, { access: 'rider_own' });
-  get(`/v1/me/${path}/{id}`, `get${type}`, type, { access: 'rider_own' });
+  if (type !== 'Reservation')
+    get(`/v1/me/${path}/{id}`, `get${type}`, type, { access: 'rider_own' });
 }
+get('/v1/me/reservations/{id}', 'getReservation', 'ReservationDetail', {
+  access: 'rider_own',
+});
 for (const [path, name, type] of [
   ['ride-entries', 'RideEntries', 'RideEntry'],
   ['credit-entries', 'CreditEntries', 'CreditEntry'],

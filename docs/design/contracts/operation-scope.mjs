@@ -75,9 +75,9 @@ export const operationScope = [
   ],
   [
     'getReservation',
-    'deferred',
-    'No approved standalone reservation-detail journey',
-    'The owned reservation list and decision/pass operations cover the current journey.',
+    'post-cutover',
+    'Rider detail for upcoming and historical reservations outside the list date window',
+    'The owned list carries identifiers only; the signed-in trip read omits stops and route name and hides archived routes.',
   ],
   [
     'listRideEntries',
