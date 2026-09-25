@@ -123,15 +123,37 @@ export function AuthFrame({
           }).format(now)}
         </span>
       </div>
-      <section className="auth-card">
-        <div className="brand-mark" style={{ justifyContent: 'center' }}>
-          <span className="brand-symbol" aria-hidden="true" />
-          <span>Trotxi</span>
-        </div>
-        <h1>{title}</h1>
-        <p>{copy}</p>
-        <div className="auth-actions">{children}</div>
-      </section>
+      <div className="auth-workspace-mark" aria-label="Trotxi Operations">
+        <span>HQ</span>
+        <small>Trotxi Ops · secure workspace</small>
+      </div>
+      <div className="auth-layout">
+        <section className="auth-story" aria-label="Trotxi Operations">
+          <div className="auth-story-inner">
+            <div className="brand-mark">
+              <span className="brand-symbol" aria-hidden="true" />
+              <span>Trotxi</span>
+            </div>
+            <h2>One secure operations entry.</h2>
+            <p>
+              Manage the Accra network from a workspace protected by your organisation account and
+              passkey.
+            </p>
+            <div className="auth-trust-markers">
+              <span>Accra network</span>
+              <span>Role-based access</span>
+              <span>Passkey protected</span>
+            </div>
+          </div>
+        </section>
+        <section className="auth-card">
+          <span className="auth-eyebrow">Trotxi Operations</span>
+          <h1>{title}</h1>
+          <p>{copy}</p>
+          <div className="auth-actions">{children}</div>
+        </section>
+      </div>
+      <div className="auth-footer">Need help? Contact your organisation administrator.</div>
     </main>
   );
 }

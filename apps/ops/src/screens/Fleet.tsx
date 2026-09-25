@@ -1,6 +1,7 @@
 import { Button, Input, Tab, TabList } from '@fluentui/react-components';
 import { AddRegular, ArrowClockwiseRegular, SearchRegular } from '@fluentui/react-icons';
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import type { components } from '../generated/api';
 import { useAuth } from '../auth/AuthContext';
 import { Empty, ErrorState, LoadingRows, Page, Panel, StatusBadge } from '../components/Page';
@@ -19,9 +20,10 @@ type Mode =
   | 'vehicle-create'
   | 'vehicle-edit';
 
-export function Fleet() {
+export function Fleet({ view = 'drivers' }: { view?: 'drivers' | 'vehicles' }) {
   const { session } = useAuth();
-  const [tab, setTab] = useState<'drivers' | 'vehicles'>('drivers');
+  const navigate = useNavigate();
+  const tab = view;
   const [search, setSearch] = useState('');
   const [mode, setMode] = useState<Mode | null>(null);
   const [selectedDriver, setSelectedDriver] = useState<Driver | null>(null);
@@ -110,8 +112,12 @@ export function Fleet() {
 
   return (
     <Page
-      title="Fleet & people"
-      description="Keep drivers linked, credentials controlled, and every operating bus capacity-safe."
+      title={tab === 'drivers' ? 'Drivers' : 'Fleet & vehicles'}
+      description={
+        tab === 'drivers'
+          ? 'Manage driver accounts, credentials and availability.'
+          : 'Register vehicles, inspect capacity and manage the operating fleet.'
+      }
       actions={
         <>
           <Input
@@ -133,7 +139,10 @@ export function Fleet() {
         </>
       }
     >
-      <TabList selectedValue={tab} onTabSelect={(_, data) => setTab(data.value as typeof tab)}>
+      <TabList
+        selectedValue={tab}
+        onTabSelect={(_, data) => navigate(data.value === 'drivers' ? '/drivers' : '/fleet')}
+      >
         <Tab value="drivers">Drivers</Tab>
         <Tab value="vehicles">Vehicles</Tab>
       </TabList>

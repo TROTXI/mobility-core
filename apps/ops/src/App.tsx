@@ -93,7 +93,8 @@ function Entry({
               <Route index element={<Overview />} />
               <Route path="trips" element={<Trips />} />
               <Route path="network" element={<Network />} />
-              <Route path="fleet" element={<Fleet />} />
+              <Route path="fleet" element={<Fleet view="vehicles" />} />
+              <Route path="drivers" element={<Fleet view="drivers" />} />
               <Route path="riders" element={<Riders />} />
               <Route path="support" element={<Support />} />
               <Route path="payments" element={<Payments />} />

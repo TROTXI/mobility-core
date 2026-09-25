@@ -8,11 +8,13 @@ import { Empty, ErrorState, LoadingRows, Page, Panel, StatusBadge, when } from '
 import { useQuery } from '../hooks/useQuery';
 import { opsHeaders } from '../api/session';
 import { ActionDialog } from '../components/ActionDialog';
+import { LiveMap } from '../components/LiveMap';
 
 type Trip = components['schemas']['OpsTrip'];
 type Driver = components['schemas']['Driver'];
 type Vehicle = components['schemas']['Vehicle'];
 type Schedule = components['schemas']['Schedule'];
+type OverviewData = components['schemas']['OpsOverview'];
 
 function isoDay(date: Date) {
   return date.toISOString().slice(0, 10);
@@ -84,6 +86,31 @@ export function Trips() {
     [session, fromDate, toDate],
   );
 
+  const liveQuery = useQuery<OverviewData['trips']>(
+    async (signal) => {
+      const [morning, evening] = await Promise.all(
+        (['morning', 'evening'] as const).map((windowName) =>
+          session.client.GET('/v1/ops/overview', {
+            params: { query: { window: windowName }, header: opsHeaders },
+            signal,
+          }),
+        ),
+      );
+      if (morning.error || evening.error) {
+        throw new Error(
+          morning.error?.error.message ?? evening.error?.error.message ?? 'Live map unavailable.',
+        );
+      }
+      return [...(morning.data?.data.trips ?? []), ...(evening.data?.data.trips ?? [])];
+    },
+    [session],
+  );
+
+  useEffect(() => {
+    const timer = window.setInterval(liveQuery.retry, 10_000);
+    return () => window.clearInterval(timer);
+  }, [liveQuery.retry]);
+
   const driverById = new Map(query.data?.drivers.map((driver) => [driver.id, driver]));
   const filtered = (query.data?.trips ?? []).filter((trip) => {
     if (direction !== 'all' && trip.direction !== direction) return false;
@@ -99,6 +126,21 @@ export function Trips() {
       driver?.name,
     ].some((value) => value?.toLowerCase().includes(needle));
   });
+  const needsAssignment = filtered.filter(
+    (trip) => trip.status === 'scheduled' && (!trip.assignedDriverId || !trip.vehicleId),
+  );
+  const liveMarkers = (liveQuery.data ?? []).flatMap((trip) =>
+    trip.lastPosition
+      ? [
+          {
+            id: trip.tripId,
+            ...trip.lastPosition,
+            label: `${trip.routeName ?? 'Route'} · ${trip.vehiclePlate ?? trip.vehicleLabel ?? 'vehicle'}`,
+            state: trip.badge,
+          },
+        ]
+      : [],
+  );
 
   const openCreate = () => {
     setScheduleId('');
@@ -134,7 +176,7 @@ export function Trips() {
           attention={filtered.some((trip) => !trip.assignedDriverId || !trip.vehicleId)}
         />
         <Stat
-          label="Schedule conflicts"
+          label="Cancelled"
           value={filtered.filter((trip) => trip.status === 'cancelled').length}
         />
       </div>
@@ -169,6 +211,58 @@ export function Trips() {
       </div>
 
       {query.error && <ErrorState message={query.error} retry={query.retry} />}
+      <div className="dispatch-stage">
+        <section className="dispatch-map-panel" aria-label="Current driver positions">
+          <div className="overview-section-heading">
+            <div>
+              <h2>Dispatch map</h2>
+              <span>Driver positions in the current service day</span>
+            </div>
+            <Button appearance="subtle" size="small" onClick={liveQuery.retry}>
+              Refresh map
+            </Button>
+          </div>
+          {liveQuery.error && <p className="muted">Live positions could not be loaded.</p>}
+          <LiveMap markers={liveMarkers} />
+          <p className="dispatch-map-note">
+            Showing the latest reported driver positions. Planned routes are listed in the departure
+            board.
+          </p>
+        </section>
+        <section className="dispatch-queue-panel" aria-label="Assignment queue">
+          <div className="overview-section-heading">
+            <div>
+              <h2>Assignment queue</h2>
+              <span>{needsAssignment.length} departures need crew or a vehicle</span>
+            </div>
+          </div>
+          {query.loading ? (
+            <LoadingRows />
+          ) : needsAssignment.length === 0 ? (
+            <Empty>Every scheduled departure in this view is assigned.</Empty>
+          ) : (
+            <div className="dispatch-queue-scroll">
+              {needsAssignment.map((trip) => (
+                <button
+                  key={trip.id}
+                  type="button"
+                  className="dispatch-queue-item"
+                  onClick={() => setSelected(trip)}
+                >
+                  <strong>{when(trip.scheduledAt)}</strong>
+                  <span>
+                    {trip.direction} · {trip.serviceDate}
+                  </span>
+                  <small>
+                    {!trip.assignedDriverId ? 'Driver needed' : 'Driver assigned'} ·{' '}
+                    {!trip.vehicleId ? 'Vehicle needed' : 'Vehicle assigned'}
+                  </small>
+                </button>
+              ))}
+            </div>
+          )}
+        </section>
+      </div>
       <Panel title="Departure board">
         {query.loading ? (
           <LoadingRows />
