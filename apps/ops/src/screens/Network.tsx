@@ -1110,7 +1110,7 @@ export function Network() {
               ))}
             </div>
             <label>
-              Effective from (Accra time, GMT)
+              Effective from (service date)
               <input
                 type="date"
                 required
@@ -1155,7 +1155,7 @@ export function Network() {
               />
             </label>
             <label>
-              Effective from
+              Effective from (Accra time, GMT)
               <input
                 type="datetime-local"
                 required
