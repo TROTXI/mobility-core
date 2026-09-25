@@ -36,6 +36,16 @@ No secret belongs in a `VITE_*` variable; Vite embeds them into the browser
 bundle. Map styles and PMTiles locations come from the API's public `/flags`
 bootstrap response.
 
+The local Vite preview is useful for layout and component development, but it
+cannot complete the staging sign-in flow by merely using staging's Google client
+ID. Google requires the browser's exact origin (scheme, host and port) on that
+client's Authorized JavaScript origins list. The API also verifies WebAuthn
+against its configured Ops origin and relying-party ID. For a full authenticated
+walkthrough, deploy the Ops static site at its approved staging HTTPS origin,
+authorize that exact origin in Google Cloud, and configure the API's existing
+Ops/CORS origin setting to the same site. Do not bypass the passkey gate or add
+arbitrary local preview ports to the staging OAuth client just for visual QA.
+
 ## Verification
 
 ```sh
