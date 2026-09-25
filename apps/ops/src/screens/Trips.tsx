@@ -15,6 +15,7 @@ type Driver = components['schemas']['Driver'];
 type Vehicle = components['schemas']['Vehicle'];
 type Schedule = components['schemas']['Schedule'];
 type OverviewData = components['schemas']['OpsOverview'];
+type Manifest = components['schemas']['Manifest'];
 
 function isoDay(date: Date) {
   return date.toISOString().slice(0, 10);
@@ -110,6 +111,25 @@ export function Trips() {
     const timer = window.setInterval(liveQuery.retry, 10_000);
     return () => window.clearInterval(timer);
   }, [liveQuery.retry]);
+
+  const manifestQuery = useQuery<Manifest | null>(
+    async (signal) => {
+      if (!selected) return null;
+      const response = await session.client.GET('/v1/ops/trips/{id}/manifest', {
+        params: { path: { id: selected.id }, header: opsHeaders },
+        signal,
+      });
+      if (response.error) throw new Error(response.error.error.message);
+      return response.data.data;
+    },
+    [session, selected?.id],
+  );
+
+  useEffect(() => {
+    if (!selected) return;
+    const timer = window.setInterval(manifestQuery.retry, 60_000);
+    return () => window.clearInterval(timer);
+  }, [manifestQuery.retry, selected]);
 
   const driverById = new Map(query.data?.drivers.map((driver) => [driver.id, driver]));
   const filtered = (query.data?.trips ?? []).filter((trip) => {
@@ -315,7 +335,7 @@ export function Trips() {
       </Panel>
 
       {selected && (
-        <aside className="detail-drawer" aria-label="Trip detail">
+        <aside className="detail-drawer trip-detail-drawer" aria-label="Trip detail">
           <div className="detail-drawer-heading">
             <div>
               <span className="eyebrow">Trip detail</span>
@@ -327,67 +347,134 @@ export function Trips() {
               Close
             </Button>
           </div>
-          <dl className="detail-grid">
-            <div>
-              <dt>Service date</dt>
-              <dd>{selected.serviceDate}</dd>
-            </div>
-            <div>
-              <dt>Status</dt>
-              <dd>
-                <StatusBadge value={selected.status} />
-              </dd>
-            </div>
-            <div>
-              <dt>Driver</dt>
-              <dd>
-                {selected.assignedDriverId
-                  ? (driverById.get(selected.assignedDriverId)?.name ?? selected.assignedDriverId)
-                  : 'Unassigned'}
-              </dd>
-            </div>
-            <div>
-              <dt>Vehicle</dt>
-              <dd>{selected.vehiclePlate ?? selected.vehicleLabel ?? 'Unassigned'}</dd>
-            </div>
-          </dl>
-          <div className="stop-list">
-            {selected.stops.map((stop, index) => (
-              <div className="stop-item" key={stop.id}>
-                <span>{index + 1}</span>
+          <div className="trip-detail-layout">
+            <section className="trip-detail-card" aria-label="Trip overview">
+              <h3>Trip overview</h3>
+              <dl className="detail-grid">
                 <div>
-                  <strong>{stop.name}</strong>
-                  <div className="muted">{stop.id}</div>
+                  <dt>Service date</dt>
+                  <dd>{selected.serviceDate}</dd>
                 </div>
+                <div>
+                  <dt>Status</dt>
+                  <dd>
+                    <StatusBadge value={selected.status} />
+                  </dd>
+                </div>
+                <div>
+                  <dt>Direction</dt>
+                  <dd>{selected.direction}</dd>
+                </div>
+                <div>
+                  <dt>Stops</dt>
+                  <dd>{selected.stops.length}</dd>
+                </div>
+              </dl>
+              <h4>Route progress</h4>
+              <div className="stop-list">
+                {selected.stops.map((stop, index) => (
+                  <div className="stop-item" key={stop.id}>
+                    <span>{index + 1}</span>
+                    <div>
+                      <strong>{stop.name}</strong>
+                      {selected.currentStopOccurrenceId === stop.id && (
+                        <div className="muted">Current stop</div>
+                      )}
+                    </div>
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
-          <div className="drawer-actions">
-            <Button
-              appearance="primary"
-              onClick={() => {
-                setDriverId(selected.assignedDriverId ?? '');
-                setVehicleId(selected.vehicleId ?? '');
-                setMode('assign');
-              }}
-            >
-              Assign crew
-            </Button>
-            <Button
-              onClick={() => {
-                setScheduledAt(selected.scheduledAt.slice(0, 16));
-                setMode('reschedule');
-              }}
-            >
-              Reschedule
-            </Button>
-            <Button
-              appearance="subtle"
-              disabled={selected.status === 'cancelled' || selected.status === 'completed'}
-              onClick={() => setMode('cancel')}
-            >
-              Cancel trip
-            </Button>
+            </section>
+            <section className="trip-detail-card" aria-label="Rider manifest">
+              <div className="trip-detail-card-heading">
+                <h3>Rider manifest</h3>
+                <Button size="small" appearance="subtle" onClick={manifestQuery.retry}>
+                  Refresh
+                </Button>
+              </div>
+              {manifestQuery.loading ? (
+                <LoadingRows rows={4} />
+              ) : manifestQuery.error ? (
+                <ErrorState message={manifestQuery.error} retry={manifestQuery.retry} />
+              ) : !manifestQuery.data?.riders.length ? (
+                <Empty>No confirmed riders on this run.</Empty>
+              ) : (
+                <div className="trip-manifest-list">
+                  {manifestQuery.data.riders.map((rider) => (
+                    <div className="trip-manifest-rider" key={rider.reservationId}>
+                      {rider.avatarUrl ? (
+                        <img src={rider.avatarUrl} alt="" referrerPolicy="no-referrer" />
+                      ) : (
+                        <span className="trip-manifest-avatar" aria-hidden="true">
+                          {rider.displayName.slice(0, 1).toUpperCase()}
+                        </span>
+                      )}
+                      <div>
+                        <strong>{rider.displayName}</strong>
+                        <small>
+                          Pickup:{' '}
+                          {selected.stops.find((stop) => stop.id === rider.pickupOccurrenceId)
+                            ?.name ?? 'Stop unavailable'}
+                        </small>
+                      </div>
+                      <StatusBadge value={rider.status} />
+                    </div>
+                  ))}
+                </div>
+              )}
+              {manifestQuery.data && (
+                <p className="muted">Updated {when(manifestQuery.data.generatedAt)}</p>
+              )}
+            </section>
+            <section className="trip-detail-card" aria-label="Current assignment">
+              <h3>Current assignment</h3>
+              <dl className="trip-assignment-list">
+                <div>
+                  <dt>Driver</dt>
+                  <dd>
+                    {selected.assignedDriverId
+                      ? (driverById.get(selected.assignedDriverId)?.name ??
+                        selected.assignedDriverId)
+                      : 'Unassigned'}
+                  </dd>
+                </div>
+                <div>
+                  <dt>Vehicle</dt>
+                  <dd>{selected.vehiclePlate ?? selected.vehicleLabel ?? 'Unassigned'}</dd>
+                </div>
+                <div>
+                  <dt>Departure time</dt>
+                  <dd>{when(selected.scheduledAt)}</dd>
+                </div>
+              </dl>
+              <div className="drawer-actions">
+                <Button
+                  appearance="primary"
+                  onClick={() => {
+                    setDriverId(selected.assignedDriverId ?? '');
+                    setVehicleId(selected.vehicleId ?? '');
+                    setMode('assign');
+                  }}
+                >
+                  Assign crew
+                </Button>
+                <Button
+                  onClick={() => {
+                    setScheduledAt(selected.scheduledAt.slice(0, 16));
+                    setMode('reschedule');
+                  }}
+                >
+                  Reschedule
+                </Button>
+                <Button
+                  appearance="subtle"
+                  disabled={selected.status === 'cancelled' || selected.status === 'completed'}
+                  onClick={() => setMode('cancel')}
+                >
+                  Cancel trip
+                </Button>
+              </div>
+            </section>
           </div>
         </aside>
       )}

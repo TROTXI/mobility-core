@@ -1492,12 +1492,113 @@ select {
   text-align: right;
   font-size: 11px;
 }
+
+.trip-detail-drawer {
+  width: min(1120px, calc(100vw - 95px));
+  padding: 24px;
+}
+.trip-detail-layout {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-items: start;
+  gap: 12px;
+  margin-top: 18px;
+}
+.trip-detail-card {
+  min-width: 0;
+  padding: 17px;
+  border: 1px solid var(--ops-border);
+  border-radius: 16px;
+  background: var(--ops-surface-raised);
+}
+.trip-detail-card h3 {
+  margin: 0 0 14px;
+  font-size: 16px;
+}
+.trip-detail-card h4 {
+  margin: 20px 0 11px;
+  font-size: 12px;
+}
+.trip-detail-card-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.trip-detail-card .detail-grid {
+  margin: 12px 0;
+}
+.trip-manifest-list {
+  display: grid;
+  gap: 8px;
+  max-height: 500px;
+  overflow-y: auto;
+}
+.trip-manifest-rider {
+  display: grid;
+  grid-template-columns: 32px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid var(--ops-border);
+  border-radius: 12px;
+  background: var(--ops-surface);
+}
+.trip-manifest-rider img,
+.trip-manifest-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+.trip-manifest-avatar {
+  display: grid;
+  place-items: center;
+  color: #fff;
+  background: #6b5779;
+  font-weight: 800;
+}
+.trip-manifest-rider strong,
+.trip-manifest-rider small {
+  display: block;
+}
+.trip-manifest-rider strong {
+  font-size: 12px;
+}
+.trip-manifest-rider small {
+  margin-top: 3px;
+  color: var(--ops-muted);
+  font-size: 10px;
+}
+.trip-assignment-list {
+  display: grid;
+  gap: 12px;
+  margin: 0;
+}
+.trip-assignment-list > div {
+  padding: 11px;
+  border: 1px solid var(--ops-border);
+  border-radius: 11px;
+  background: var(--ops-surface);
+}
+.trip-assignment-list dt {
+  color: var(--ops-muted);
+  font-size: 11px;
+}
+.trip-assignment-list dd {
+  margin: 4px 0 0;
+  font-size: 12px;
+  font-weight: 700;
+}
 @media (max-width: 1000px) {
   .auth-story {
     padding: 30px;
   }
   .auth-trust-markers {
     margin-top: 45px;
+  }
+  .trip-detail-layout {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 @media (max-width: 700px) {
@@ -1534,5 +1635,13 @@ select {
   }
   .auth-footer {
     text-align: center;
+  }
+  .trip-detail-drawer {
+    width: 100vw;
+    inset: 0;
+    padding: 18px;
+  }
+  .trip-detail-layout {
+    grid-template-columns: 1fr;
   }
 }
