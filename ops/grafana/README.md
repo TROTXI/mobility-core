@@ -51,19 +51,20 @@ starts reporting.
 
 ## Alerts
 
-| Alert                                           | Severity | Fires when                                            |
-| ----------------------------------------------- | -------- | ----------------------------------------------------- |
-| API is not reporting                            | page     | no metrics for 5 minutes                              |
-| Server errors above 2%                          | page     | 5xx share over 2% for 10 minutes, with real traffic   |
-| Paystack payments are not being applied         | page     | oldest unapplied Paystack event older than 15 minutes |
-| Memory near the plan limit                      | notify   | resident memory over 200 MB for 10 minutes            |
-| Requests are slow (p95 over 1s)                 | notify   | for 15 minutes, with real traffic                     |
-| Event loop is blocked                           | notify   | p99 delay over 200 ms for 10 minutes                  |
-| Requests are waiting for a database connection  | notify   | any request queued for a connection for 5 minutes     |
-| A scheduled job failed                          | notify   | any failed maintenance run in the last 30 minutes     |
-| A purchase has been unresolved for over an hour | notify   | for 10 minutes                                        |
-| A bus on a live run has stopped reporting       | notify   | any run in progress without recent GPS for 10 minutes |
-| A third-party service is failing                | notify   | outbound 5xx or connection errors for 10 minutes      |
+| Alert                                           | Severity | Fires when                                                                                                                |
+| ----------------------------------------------- | -------- | ------------------------------------------------------------------------------------------------------------------------- |
+| API is not reporting                            | page     | no metrics for about 5 minutes                                                                                            |
+| Server errors above 2%                          | page     | 5xx share over 2% for 10 minutes, with real traffic                                                                       |
+| Paystack payments are not being applied         | page     | oldest unapplied Paystack event older than 15 minutes                                                                     |
+| Payment and trip state is not being reported    | page     | the API reports but its state query has returned nothing for 5 minutes, which blinds the payment, purchase and GPS alerts |
+| Memory near the plan limit                      | notify   | resident memory over 200 MB for 10 minutes                                                                                |
+| Requests are slow (p95 over 1s)                 | notify   | for 15 minutes, with real traffic                                                                                         |
+| Event loop is blocked                           | notify   | p99 delay over 200 ms for 10 minutes                                                                                      |
+| Requests are waiting for a database connection  | notify   | any request queued for a connection for 5 minutes                                                                         |
+| A scheduled job failed                          | notify   | any failed maintenance run in the last 30 minutes                                                                         |
+| A purchase has been unresolved for over an hour | notify   | for 10 minutes                                                                                                            |
+| A bus on a live run has stopped reporting       | notify   | any run in progress without recent GPS for 10 minutes                                                                     |
+| A third-party service is failing                | notify   | outbound 5xx or connection errors for 10 minutes                                                                          |
 
 These thresholds are pilot starting points. Recalibrate after a few weeks of
 real traffic; the rules stay editable in the Grafana UI, and the next apply puts

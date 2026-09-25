@@ -5,12 +5,12 @@
       "key": "silent",
       "title": "API is not reporting",
       "severity": "page",
-      "expr": "absent_over_time(process_memory_usage_bytes{job=\"$job\"}[5m])",
+      "expr": "absent_over_time(process_memory_usage_bytes{job=\"$job\"}[3m])",
       "above": 0,
-      "for": "5m",
+      "for": "2m",
       "noData": "OK",
-      "summary": "{{ $labels.job }} has sent no metrics for 5 minutes.",
-      "description": "The process is down, crash-looping, or cannot reach Grafana. Check the Render service events and logs first. Memory is reported every export whether or not there is traffic, so silence here is not a quiet night."
+      "summary": "{{ $labels.job }} has sent no metrics for about 5 minutes.",
+      "description": "The process is down, crash-looping, or cannot reach Grafana. Check the Render service events and logs first. Memory is reported every minute whether or not there is traffic, so silence here is not a quiet night. Three minutes of absence then two of confirmation: metrics arrive once a minute, so one late export never pages."
     },
     {
       "key": "server-errors",
@@ -33,6 +33,17 @@
       "noData": "OK",
       "summary": "A Paystack event has waited {{ humanizeDuration $values.A.Value }} to be applied on {{ $labels.job }}.",
       "description": "Riders have paid and their subscription or credit is not live. The payments maintenance job is failing or not running: check the GitHub Actions 'payments queue' workflow, then run it by hand."
+    },
+    {
+      "key": "ops-data-missing",
+      "title": "Payment and trip state is not being reported",
+      "severity": "page",
+      "expr": "absent_over_time(trotxi_payment_inbox_oldest_ready_seconds{job=\"$job\"}[5m]) and on() count_over_time(process_memory_usage_bytes{job=\"$job\"}[5m])",
+      "above": 0,
+      "for": "5m",
+      "noData": "OK",
+      "summary": "{{ $labels.job }} is running but has stopped reporting payment, purchase and trip state.",
+      "description": "The API could not read its operational state from the database, so the Paystack, purchase and GPS alerts are blind: they read no data as healthy. Check database connectivity and the API logs for the failing state query. Fires only while the process itself is reporting, so an outage pages once, as 'API is not reporting'."
     },
     {
       "key": "memory",
