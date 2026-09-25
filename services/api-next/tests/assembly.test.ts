@@ -294,6 +294,7 @@ const MUST_BE_STATED = [
   'REPLACEMENT_DEVICE_KEY',
   'REPLACEMENT_PAYSTACK_EVIDENCE_KEY',
   'REPLACEMENT_PAYSTACK_SECRET_KEY',
+  'REPLACEMENT_OPS_ORIGIN',
   'REPLACEMENT_R2_ACCOUNT_ID',
   'REPLACEMENT_R2_ACCESS_KEY_ID',
   'REPLACEMENT_R2_SECRET_ACCESS_KEY',
@@ -338,6 +339,9 @@ test('Render reports the deployed revision rather than a stale environment value
 });
 
 test('ASM-02 no two purposes may share one key', () => {
+  const noOpsOrigin = environment();
+  delete noOpsOrigin.REPLACEMENT_OPS_ORIGIN;
+  refuses(noOpsOrigin, 'REPLACEMENT_OPS_ORIGIN');
   for (const [a, b] of [
     ['REPLACEMENT_ACCESS_SECRET', 'REPLACEMENT_DEVICE_KEY'],
     ['REPLACEMENT_CURSOR_SECRET', 'REPLACEMENT_BOARDING_PROOF_KEY'],

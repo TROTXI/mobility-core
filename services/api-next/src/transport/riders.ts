@@ -136,34 +136,32 @@ export async function readRiders(
       )
     ).rows[0];
     if (!rider) fail(404, 'not_found', 'Rider not found.');
-    const [membership, restrictions, reservations, purchases] = await Promise.all([
-      client.query(
-        `SELECT m.id,m.lifecycle,b.id AS period_id,b.starts_at,b.effective_ends_at
+    const membership = await client.query(
+      `SELECT m.id,m.lifecycle,b.id AS period_id,b.starts_at,b.effective_ends_at
         FROM app.memberships m LEFT JOIN app.billing_periods b
           ON b.membership_id=m.id AND b.state='open'
         WHERE m.user_id=$1`,
-        [riderId],
-      ),
-      client.query(
-        `SELECT * FROM app.account_restrictions WHERE user_id=$1
+      [riderId],
+    );
+    const restrictions = await client.query(
+      `SELECT * FROM app.account_restrictions WHERE user_id=$1
         ORDER BY created_at DESC LIMIT 50`,
-        [riderId],
-      ),
-      client.query(
-        `SELECT r.id,r.service_date::text,r.direction,r.status,t.scheduled_at,ro.name AS route_name
+      [riderId],
+    );
+    const reservations = await client.query(
+      `SELECT r.id,r.service_date::text,r.direction,r.status,t.scheduled_at,ro.name AS route_name
         FROM app.reservations r LEFT JOIN app.trips t ON t.id=r.trip_id
         LEFT JOIN app.route_pattern_versions pv ON pv.id=r.pattern_version_id
         LEFT JOIN app.route_patterns rp ON rp.id=pv.pattern_id
         LEFT JOIN app.routes ro ON ro.id=rp.route_id
         WHERE r.user_id=$1 ORDER BY r.service_date DESC,r.created_at DESC LIMIT 25`,
-        [riderId],
-      ),
-      client.query(
-        `SELECT id,plan,state,cash_due_pesewas,created_at FROM app.purchases
+      [riderId],
+    );
+    const purchases = await client.query(
+      `SELECT id,plan,state,cash_due_pesewas,created_at FROM app.purchases
         WHERE user_id=$1 ORDER BY created_at DESC LIMIT 25`,
-        [riderId],
-      ),
-    ]);
+      [riderId],
+    );
     const membershipRow = membership.rows[0];
     return {
       status: 200,

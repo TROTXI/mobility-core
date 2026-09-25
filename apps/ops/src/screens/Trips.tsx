@@ -7,6 +7,7 @@ import { useAuth } from '../auth/AuthContext';
 import { Empty, ErrorState, LoadingRows, Page, Panel, StatusBadge, when } from '../components/Page';
 import { useQuery } from '../hooks/useQuery';
 import { opsHeaders } from '../api/session';
+import { accraLocalToIso } from '../api/accra-time';
 import { ActionDialog } from '../components/ActionDialog';
 import { LiveMap } from '../components/LiveMap';
 
@@ -460,7 +461,7 @@ export function Trips() {
                 </Button>
                 <Button
                   onClick={() => {
-                    setScheduledAt(selected.scheduledAt.slice(0, 16));
+                    setScheduledAt(new Date(selected.scheduledAt).toISOString().slice(0, 16));
                     setMode('reschedule');
                   }}
                 >
@@ -498,7 +499,7 @@ export function Trips() {
           if (mode === 'create') {
             const response = await session.client.POST('/v1/ops/trips', {
               params: { header: { ...opsHeaders, 'Idempotency-Key': key } },
-              body: { scheduleId, serviceDate, scheduledAt: new Date(scheduledAt).toISOString() },
+              body: { scheduleId, serviceDate, scheduledAt: accraLocalToIso(scheduledAt) },
             });
             if (response.error) throw new Error(response.error.error.message);
           } else if (selected) {
@@ -516,7 +517,7 @@ export function Trips() {
             } else if (mode === 'reschedule') {
               const response = await session.client.PATCH('/v1/ops/trips/{id}', {
                 params: { path: { id: selected.id }, header },
-                body: { scheduledAt: new Date(scheduledAt).toISOString() },
+                body: { scheduledAt: accraLocalToIso(scheduledAt) },
               });
               if (response.error) throw new Error(response.error.error.message);
             } else {
@@ -560,7 +561,7 @@ export function Trips() {
               />
             </label>
             <label>
-              Departure time
+              Departure time (Accra time, GMT)
               <input
                 type="datetime-local"
                 required
@@ -606,7 +607,7 @@ export function Trips() {
         )}
         {mode === 'reschedule' && (
           <label>
-            New departure time
+            New departure time (Accra time, GMT)
             <input
               type="datetime-local"
               required

@@ -40,13 +40,21 @@ const Profile = lazy(() =>
 );
 
 export function App() {
-  const [appearance, setAppearance] = useState<'dark' | 'light'>(() =>
-    window.localStorage.getItem('trotxi-ops-appearance') === 'light' ? 'light' : 'dark',
-  );
+  const [appearance, setAppearance] = useState<'dark' | 'light'>(() => {
+    try {
+      return window.localStorage.getItem('trotxi-ops-appearance') === 'light' ? 'light' : 'dark';
+    } catch {
+      return 'dark';
+    }
+  });
   const toggleAppearance = () => {
     setAppearance((current) => {
       const next = current === 'dark' ? 'light' : 'dark';
-      window.localStorage.setItem('trotxi-ops-appearance', next);
+      try {
+        window.localStorage.setItem('trotxi-ops-appearance', next);
+      } catch {
+        // Appearance still changes in memory when storage is disabled.
+      }
       return next;
     });
   };

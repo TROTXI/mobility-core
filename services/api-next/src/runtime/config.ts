@@ -316,7 +316,7 @@ export function readConfiguration(env: Env = process.env): RuntimeConfig {
         '431341307838-pc4m046v2lj18ssfnfl1g52fl5g1cg4q.apps.googleusercontent.com',
       ),
     },
-    opsOrigin: webOrigin(env, 'REPLACEMENT_OPS_ORIGIN', 'https://trotxi-ops-staging.onrender.com'),
+    opsOrigin: webOrigin(env, 'REPLACEMENT_OPS_ORIGIN', required(env, 'REPLACEMENT_OPS_ORIGIN')),
     apple,
     paystack: { secretKey: paystack },
     avatars: {

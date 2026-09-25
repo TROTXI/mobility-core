@@ -63,10 +63,7 @@ export function existingStagingEnvironment(env: Env): Env {
     REPLACEMENT_PAYSTACK_SECRET_KEY: env.PAYSTACK_SECRET_KEY,
     REPLACEMENT_GOOGLE_CLIENT_ID: env.GOOGLE_CLIENT_ID,
     REPLACEMENT_AUTH_PROVIDERS: 'google',
-    REPLACEMENT_OPS_ORIGIN:
-      env.CORS_ORIGINS?.split(',')
-        .map((origin) => origin.trim())
-        .find(Boolean) ?? 'https://trotxi-ops-staging.onrender.com',
+    REPLACEMENT_OPS_ORIGIN: env.OPS_ORIGIN ?? 'https://trotxi-ops-staging.onrender.com',
     REPLACEMENT_R2_ACCOUNT_ID: env.R2_ACCOUNT_ID,
     REPLACEMENT_R2_ACCESS_KEY_ID: env.R2_ACCESS_KEY_ID,
     REPLACEMENT_R2_SECRET_ACCESS_KEY: env.R2_SECRET_ACCESS_KEY,

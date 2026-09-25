@@ -79,3 +79,32 @@ test('OPS-READ-02 filters are validated and cursors are bound to them', async (t
   );
   assert.equal((await f.get('/v1/ops/riders/not-a-uuid')).statusCode, 404);
 });
+
+test('OPS-READ-03 operator counts exclude revoked credentials and sessions', async (t) => {
+  const f = await fixture(t);
+  for (const [index, revoked] of [false, false, true].entries()) {
+    await f.owner.query(
+      `INSERT INTO app.admin_passkeys
+       (user_id,credential_id,public_key,device_type,backed_up,created_at,last_used_at,revoked_at)
+       VALUES ($1,$2,decode(repeat('aa',32),'hex'),'singleDevice',false,
+         clock_timestamp()-interval '2 days',
+         clock_timestamp()-$3::interval,
+         CASE WHEN $4 THEN clock_timestamp() ELSE NULL END)`,
+      [f.adminId, `credential-test-${index}`, `${revoked ? 1 : 2} days`, revoked],
+    );
+  }
+  await f.owner.query(
+    `INSERT INTO app.auth_sessions(user_id,created_at,expires_at,revoked_at)
+     VALUES ($1,clock_timestamp(),clock_timestamp()+interval '1 day',NULL),
+            ($1,clock_timestamp(),clock_timestamp()+interval '1 day',clock_timestamp()),
+            ($1,clock_timestamp()-interval '1 day',clock_timestamp()-interval '1 minute',NULL)`,
+    [f.adminId],
+  );
+  const response = await f.get('/v1/ops/operators');
+  assert.equal(response.statusCode, 200, response.body);
+  const admin = response.json().data.find((row: { id: string }) => row.id === f.adminId);
+  assert.equal(admin.passkeyCount, 2);
+  assert.equal(admin.activeSessions, 1);
+  assert.ok(admin.lastPasskeyUsedAt);
+  assert.ok(Date.parse(admin.lastPasskeyUsedAt) < Date.now() - 24 * 3600_000);
+});

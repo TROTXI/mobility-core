@@ -15,6 +15,7 @@ import {
 } from '../components/Page';
 import { useQuery } from '../hooks/useQuery';
 import { opsHeaders } from '../api/session';
+import { accraLocalToIso } from '../api/accra-time';
 import { ActionDialog } from '../components/ActionDialog';
 
 type Rider = components['schemas']['OpsRider'];
@@ -154,7 +155,7 @@ export function Riders() {
                 path: { id: selected.id },
                 header: { ...opsHeaders, 'Idempotency-Key': key },
               },
-              body: { reason, reviewAt: new Date(reviewAt).toISOString() },
+              body: { reason, reviewAt: accraLocalToIso(reviewAt) },
             });
             if (response.error) throw new Error(response.error.error.message);
           } else {
@@ -174,7 +175,7 @@ export function Riders() {
       >
         {mode === 'restrict' && (
           <label>
-            Review at
+            Review at (Accra time, GMT)
             <input
               type="datetime-local"
               required

@@ -90,7 +90,7 @@ export async function readOperations(
         WHERE paid_at >= $1::date AND paid_at < ($2::date+1)
       ), refunded AS (
         SELECT COALESCE(sum(amount_pesewas),0)::bigint AS total FROM app.payment_refunds
-        WHERE state='processed' AND created_at >= $1::date AND created_at < ($2::date+1)
+        WHERE state='processed' AND updated_at >= $1::date AND updated_at < ($2::date+1)
       ), delivery AS (
         SELECT count(*) FILTER (WHERE state='pending')::int AS pending,
           count(*) FILTER (WHERE state='failed')::int AS failed
@@ -160,15 +160,17 @@ export async function readOperations(
     const rows = (
       await client.query(
         `SELECT u.id,u.display_name,u.email,u.version,u.created_at,
-        count(DISTINCT pk.id) FILTER (WHERE pk.revoked_at IS NULL)::int AS passkey_count,
-        count(DISTINCT s.id) FILTER (WHERE s.revoked_at IS NULL AND s.expires_at>$1)::int AS active_sessions,
-        max(pk.last_used_at) AS last_passkey_used_at,
+        (SELECT count(*)::int FROM app.admin_passkeys pk
+         WHERE pk.user_id=u.id AND pk.revoked_at IS NULL) AS passkey_count,
+        (SELECT count(*)::int FROM app.auth_sessions s
+         WHERE s.user_id=u.id AND s.revoked_at IS NULL AND s.expires_at>$1) AS active_sessions,
+        (SELECT max(pk.last_used_at) FROM app.admin_passkeys pk
+         WHERE pk.user_id=u.id AND pk.revoked_at IS NULL) AS last_passkey_used_at,
         to_char(u.created_at AT TIME ZONE 'UTC','YYYY-MM-DD"T"HH24:MI:SS.US"Z"') AS cursor_time
-      FROM app.users u LEFT JOIN app.admin_passkeys pk ON pk.user_id=u.id
-      LEFT JOIN app.auth_sessions s ON s.user_id=u.id
+      FROM app.users u
       WHERE u.role='admin' AND u.deleted_at IS NULL
         AND ($2::timestamptz IS NULL OR (u.created_at,u.id)<($2::timestamptz,$3::uuid))
-      GROUP BY u.id ORDER BY u.created_at DESC,u.id DESC LIMIT $4`,
+      ORDER BY u.created_at DESC,u.id DESC LIMIT $4`,
         [now, cursor?.time ?? null, cursor?.id ?? null, limit + 1],
       )
     ).rows;

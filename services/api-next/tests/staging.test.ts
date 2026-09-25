@@ -47,6 +47,18 @@ test('existing staging config needs no new secrets and preserves existing provid
   );
 });
 
+test('WebAuthn origin is independent of CORS origin order', () => {
+  const env = {
+    ...settings(),
+    CORS_ORIGINS: 'http://localhost:5173,https://trotxi-ops-staging.onrender.com',
+  };
+  assert.equal(readConfiguration(env).opsOrigin, 'https://trotxi-ops-staging.onrender.com');
+  assert.equal(
+    readConfiguration({ ...env, OPS_ORIGIN: 'https://ops.example.com' }).opsOrigin,
+    'https://ops.example.com',
+  );
+});
+
 test('staging config rejects live keys, foreign targets, weak roots and mixed key sets', () => {
   for (const change of [
     { RENDER_SERVICE_NAME: 'production' },

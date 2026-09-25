@@ -134,6 +134,9 @@ services:
       # (below) goes live.
       - key: CORS_ORIGINS
         sync: false
+      # Exact WebAuthn origin; deliberately independent of CORS ordering.
+      - key: OPS_ORIGIN
+        value: https://trotxi-ops-staging.onrender.com
       # Cloudflare R2 (avatars, #24) — S3-compatible object storage. The access
       # keys are secrets → set in the dashboard, never commit. All four unset ->
       # in-memory object store (no avatars persisted).

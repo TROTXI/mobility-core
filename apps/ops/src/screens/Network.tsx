@@ -6,6 +6,7 @@ import { useAuth } from '../auth/AuthContext';
 import { Empty, ErrorState, LoadingRows, Page, Panel, StatusBadge, when } from '../components/Page';
 import { useQuery } from '../hooks/useQuery';
 import { opsHeaders } from '../api/session';
+import { accraLocalToIso } from '../api/accra-time';
 import { ActionDialog } from '../components/ActionDialog';
 import { LiveMap } from '../components/LiveMap';
 import { buildRouteGeometry, type RoutePoint } from './routeGeometry';
@@ -48,7 +49,7 @@ function today() {
 }
 
 function toIso(value: string) {
-  return new Date(value).toISOString();
+  return accraLocalToIso(value);
 }
 
 export function Network() {
@@ -1033,7 +1034,7 @@ export function Network() {
         {dialog === 'version-publish' && (
           <>
             <label>
-              Effective from
+              Effective from (Accra time, GMT)
               <input
                 type="datetime-local"
                 required
@@ -1109,7 +1110,7 @@ export function Network() {
               ))}
             </div>
             <label>
-              Effective from
+              Effective from (Accra time, GMT)
               <input
                 type="date"
                 required

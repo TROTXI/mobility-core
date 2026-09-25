@@ -7,6 +7,7 @@ import { useAuth } from '../auth/AuthContext';
 import { Empty, ErrorState, LoadingRows, Page, Panel, StatusBadge } from '../components/Page';
 import { useQuery } from '../hooks/useQuery';
 import { opsHeaders } from '../api/session';
+import { accraLocalToIso } from '../api/accra-time';
 import { ActionDialog } from '../components/ActionDialog';
 
 type Flag = components['schemas']['Flag'];
@@ -485,9 +486,9 @@ function TraceHolds() {
             body: {
               incidentId,
               tripId,
-              receivedFrom: new Date(receivedFrom).toISOString(),
-              receivedTo: new Date(receivedTo).toISOString(),
-              reviewAt: new Date(reviewAt).toISOString(),
+              receivedFrom: accraLocalToIso(receivedFrom),
+              receivedTo: accraLocalToIso(receivedTo),
+              reviewAt: accraLocalToIso(reviewAt),
               reason,
             },
           });
@@ -509,7 +510,7 @@ function TraceHolds() {
           <input required value={tripId} onChange={(event) => setTripId(event.target.value)} />
         </label>
         <label>
-          Evidence from
+          Evidence from (Accra time, GMT)
           <input
             type="datetime-local"
             required
@@ -518,7 +519,7 @@ function TraceHolds() {
           />
         </label>
         <label>
-          Evidence to
+          Evidence to (Accra time, GMT)
           <input
             type="datetime-local"
             required
@@ -527,7 +528,7 @@ function TraceHolds() {
           />
         </label>
         <label>
-          Review at
+          Review at (Accra time, GMT)
           <input
             type="datetime-local"
             required

@@ -185,9 +185,10 @@ export class AuthService {
   // Used by transport INSIDE its transaction. A valid signature is not access.
   /**
    * Every authenticated request passes through here, and so does the second
-   * factor: an admin session that has not passed the authenticator check, or
+   * factor: an admin session that has not passed the passkey check, or
    * passed it more than a shift ago, is refused. 403 and not 401, because the
-   * session is valid and the client must ask for a code, not sign out.
+   * session is valid and the client must send the operator through passkey
+   * verification, not sign out.
    *
    * allowUnelevated is for the passkey endpoints alone, which are how an
    * admin gets from signed in to verified.
