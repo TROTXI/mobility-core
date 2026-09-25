@@ -353,7 +353,7 @@ services:
         value: "frame-ancestors 'none'; base-uri 'none'; object-src 'none'"
       - path: /*
         name: Referrer-Policy
-        value: strict-origin-when-cross-origin
+        value: no-referrer
       - path: /*
         name: X-Content-Type-Options
         value: nosniff
