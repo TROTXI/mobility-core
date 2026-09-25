@@ -1,6 +1,7 @@
 import { Button, Input, Tab, TabList } from '@fluentui/react-components';
 import { AddRegular, ArrowClockwiseRegular } from '@fluentui/react-icons';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import type { components } from '../generated/api';
 import { useAuth } from '../auth/AuthContext';
 import { Empty, ErrorState, LoadingRows, Page, Panel, StatusBadge, when } from '../components/Page';
@@ -26,13 +27,16 @@ function initialRange() {
 
 export function Trips() {
   const { session } = useAuth();
+  const [searchParams] = useSearchParams();
+  const searchFromUrl = searchParams.get('search') ?? '';
   const defaults = useMemo(initialRange, []);
   const [selected, setSelected] = useState<Trip | null>(null);
   const [mode, setMode] = useState<'create' | 'assign' | 'reschedule' | 'cancel' | null>(null);
   const [fromDate, setFromDate] = useState(defaults.fromDate);
   const [toDate, setToDate] = useState(defaults.toDate);
   const [direction, setDirection] = useState<'all' | 'outbound' | 'return'>('all');
-  const [search, setSearch] = useState('');
+  const [search, setSearch] = useState(searchFromUrl);
+  useEffect(() => setSearch(searchFromUrl), [searchFromUrl]);
   const [scheduleId, setScheduleId] = useState('');
   const [serviceDate, setServiceDate] = useState('');
   const [scheduledAt, setScheduledAt] = useState('');

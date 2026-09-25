@@ -1,9 +1,10 @@
 import { Button, Tab, TabList } from '@fluentui/react-components';
 import { ArrowClockwiseRegular } from '@fluentui/react-icons';
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import type { components } from '../generated/api';
 import { useAuth } from '../auth/AuthContext';
-import { Empty, ErrorState, LoadingRows, Page, Panel, StatusBadge, when } from '../components/Page';
+import { Empty, ErrorState, LoadingRows, Page, StatusBadge, when } from '../components/Page';
 import { useQuery } from '../hooks/useQuery';
 import { opsHeaders } from '../api/session';
 import { LiveMap } from '../components/LiveMap';
@@ -14,6 +15,9 @@ export function Overview() {
   const { session } = useAuth();
   const [windowName, setWindowName] = useState<'morning' | 'evening'>('morning');
   const [date, setDate] = useState('');
+  const [selectedTripId, setSelectedTripId] = useState<string | null>(null);
+  const [attentionOnly, setAttentionOnly] = useState(false);
+  const [search, setSearch] = useState('');
   const query = useQuery<OverviewData>(
     async (signal) => {
       const { data, error } = await session.client.GET('/v1/ops/overview', {
@@ -32,6 +36,19 @@ export function Overview() {
   }, [query.retry]);
 
   const tiles = query.data?.tiles;
+  const trips = query.data?.trips ?? [];
+  const visibleTrips = trips.filter((trip) => {
+    if (attentionOnly && trip.badge === 'on_time') return false;
+    const needle = search.trim().toLowerCase();
+    return (
+      !needle ||
+      [trip.routeName, trip.driverName, trip.vehiclePlate, trip.vehicleLabel].some((value) =>
+        value?.toLowerCase().includes(needle),
+      )
+    );
+  });
+  const selectedTrip =
+    visibleTrips.find((trip) => trip.tripId === selectedTripId) ?? visibleTrips[0];
   return (
     <Page
       title="Live operations"
@@ -71,63 +88,78 @@ export function Overview() {
           )}
         />
       </div>
-      <div className="split-grid">
-        <Panel title="Runs in this window">
+      <div className="overview-stage">
+        <section className="overview-trips" aria-label="Trips in motion">
+          <div className="overview-section-heading">
+            <h2>Trips in motion</h2>
+            <span>{trips.length} in this window</span>
+          </div>
+          <input
+            className="overview-search"
+            aria-label="Find a trip or driver"
+            placeholder="Find a trip or driver"
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+          />
+          <div className="overview-filters">
+            <button
+              type="button"
+              className={!attentionOnly ? 'active' : ''}
+              onClick={() => setAttentionOnly(false)}
+            >
+              All
+            </button>
+            <button
+              type="button"
+              className={attentionOnly ? 'active' : ''}
+              onClick={() => setAttentionOnly(true)}
+            >
+              Needs attention
+            </button>
+          </div>
           {query.loading ? (
             <LoadingRows />
-          ) : !query.data?.trips.length ? (
-            <Empty>No runs are scheduled in this service window.</Empty>
+          ) : !visibleTrips.length ? (
+            <Empty>No trips match this view.</Empty>
           ) : (
-            <div style={{ overflowX: 'auto' }}>
-              <table className="data-table">
-                <thead>
-                  <tr>
-                    <th>Departure</th>
-                    <th>Route</th>
-                    <th>Driver / bus</th>
-                    <th>Seats</th>
-                    <th>Signal</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {query.data.trips.map((trip) => (
-                    <tr key={trip.tripId}>
-                      <td>
-                        <strong>
-                          {new Date(trip.scheduledAt).toLocaleTimeString('en-GH', {
-                            hour: '2-digit',
-                            minute: '2-digit',
-                          })}
-                        </strong>
-                        <div className="muted">{trip.status}</div>
-                      </td>
-                      <td>{trip.routeName ?? 'Unpublished route'}</td>
-                      <td>
-                        {trip.driverName ?? 'Driver unassigned'}
-                        <div className="muted">
-                          {trip.vehiclePlate ?? trip.vehicleLabel ?? 'Bus unassigned'}
-                        </div>
-                      </td>
-                      <td>
-                        {trip.boarded} / {trip.confirmed}
-                        <div className="muted">capacity {trip.capacity ?? '—'}</div>
-                      </td>
-                      <td>
-                        <StatusBadge value={trip.badge} />
-                        {trip.fixAgeSeconds != null && (
-                          <div className="muted">{Math.floor(trip.fixAgeSeconds / 60)}m ago</div>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+            <div className="overview-trip-scroll">
+              {visibleTrips.map((trip) => (
+                <button
+                  key={trip.tripId}
+                  type="button"
+                  className={`overview-trip${selectedTrip?.tripId === trip.tripId ? ' selected' : ''}`}
+                  onClick={() => setSelectedTripId(trip.tripId)}
+                >
+                  <span className="overview-trip-main">
+                    <strong>{trip.routeName ?? 'Unpublished route'}</strong>
+                    <StatusBadge value={trip.badge} />
+                  </span>
+                  <span>
+                    {trip.driverName ?? 'Driver unassigned'} ·{' '}
+                    {trip.vehiclePlate ?? trip.vehicleLabel ?? 'Bus unassigned'}
+                  </span>
+                  <small>
+                    {new Date(trip.scheduledAt).toLocaleTimeString('en-GH', {
+                      hour: '2-digit',
+                      minute: '2-digit',
+                    })}{' '}
+                    · {trip.boarded}/{trip.confirmed} boarded
+                  </small>
+                </button>
+              ))}
             </div>
           )}
-        </Panel>
-        <Panel title="Network position">
+        </section>
+        <section className="overview-map-panel" aria-label="Accra network live map">
+          <div className="overview-section-heading">
+            <div>
+              <h2>Accra network · live</h2>
+              <span>Driver positions and trip context</span>
+            </div>
+            <span className="map-live-badge">Network view</span>
+          </div>
           <LiveMap
-            markers={(query.data?.trips ?? []).flatMap((trip) =>
+            markers={trips.flatMap((trip) =>
               trip.lastPosition
                 ? [
                     {
@@ -140,12 +172,37 @@ export function Overview() {
                 : [],
             )}
           />
+          <div className="overview-map-footer">
+            {selectedTrip ? (
+              <div className="overview-selected-trip">
+                <div>
+                  <span className="eyebrow">Selected trip</span>
+                  <h3>{selectedTrip.routeName ?? 'Unpublished route'}</h3>
+                  <p>
+                    {selectedTrip.driverName ?? 'Driver unassigned'} ·{' '}
+                    {selectedTrip.vehiclePlate ?? selectedTrip.vehicleLabel ?? 'Bus unassigned'}
+                  </p>
+                </div>
+                <div className="overview-selected-details">
+                  <StatusBadge value={selectedTrip.badge} />
+                  <span>
+                    {selectedTrip.boarded} of {selectedTrip.confirmed} boarded
+                  </span>
+                  <Link to={`/trips?search=${encodeURIComponent(selectedTrip.tripId)}`}>
+                    Open dispatch
+                  </Link>
+                </div>
+              </div>
+            ) : (
+              <Empty>Select a trip to see its context.</Empty>
+            )}
+          </div>
           {query.data && (
             <div className="map-meta">
               Snapshot {when(query.data.generatedAt)} · refreshes every 10 seconds
             </div>
           )}
-        </Panel>
+        </section>
       </div>
     </Page>
   );

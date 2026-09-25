@@ -1,12 +1,12 @@
 import { Button, FluentProvider } from '@fluentui/react-components';
 import { BrowserRouter, Route, Routes } from 'react-router-dom';
-import { lazy, Suspense } from 'react';
+import { lazy, Suspense, useState } from 'react';
 import { AuthProvider, useAuth } from './auth/AuthContext';
 import { PasskeyGate, AuthFrame } from './auth/PasskeyGate';
 import { SignIn } from './auth/SignIn';
 import { LoadingPage } from './components/Page';
 import { Shell } from './components/Shell';
-import { trotxiLight } from './theme';
+import { trotxiDark, trotxiLight } from './theme';
 
 const Overview = lazy(() =>
   import('./screens/Overview').then((module) => ({ default: module.Overview })),
@@ -40,16 +40,36 @@ const Profile = lazy(() =>
 );
 
 export function App() {
+  const [appearance, setAppearance] = useState<'dark' | 'light'>(() =>
+    window.localStorage.getItem('trotxi-ops-appearance') === 'light' ? 'light' : 'dark',
+  );
+  const toggleAppearance = () => {
+    setAppearance((current) => {
+      const next = current === 'dark' ? 'light' : 'dark';
+      window.localStorage.setItem('trotxi-ops-appearance', next);
+      return next;
+    });
+  };
   return (
-    <FluentProvider theme={trotxiLight} style={{ minHeight: '100vh' }}>
+    <FluentProvider
+      theme={appearance === 'dark' ? trotxiDark : trotxiLight}
+      data-theme={appearance}
+      style={{ minHeight: '100vh' }}
+    >
       <AuthProvider>
-        <Entry />
+        <Entry appearance={appearance} toggleAppearance={toggleAppearance} />
       </AuthProvider>
     </FluentProvider>
   );
 }
 
-function Entry() {
+function Entry({
+  appearance,
+  toggleAppearance,
+}: {
+  appearance: 'dark' | 'light';
+  toggleAppearance: () => void;
+}) {
   const { account, restoring, session } = useAuth();
   if (restoring) return <LoadingPage />;
   if (!account) return <SignIn />;
@@ -69,7 +89,7 @@ function Entry() {
       <BrowserRouter>
         <Suspense fallback={<LoadingPage />}>
           <Routes>
-            <Route element={<Shell />}>
+            <Route element={<Shell appearance={appearance} toggleAppearance={toggleAppearance} />}>
               <Route index element={<Overview />} />
               <Route path="trips" element={<Trips />} />
               <Route path="network" element={<Network />} />
