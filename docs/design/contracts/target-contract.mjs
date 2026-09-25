@@ -89,6 +89,94 @@ named(
   }),
 );
 named('ProfileUpdate', obj({ displayName: text(100) }));
+named(
+  'PasskeyStatus',
+  obj({
+    registered: z.boolean(),
+    passkeyCount: count,
+    registrationPending: z.boolean(),
+    // This particular session, not the whole account, passed WebAuthn.
+    verified: z.boolean(),
+  }),
+);
+const base64url = z
+  .string()
+  .min(1)
+  .max(65536)
+  .regex(/^[A-Za-z0-9_-]+$/);
+const transport = text(32);
+const credentialDescriptor = obj({
+  id: base64url,
+  type: z.literal('public-key'),
+  transports: z.array(transport).optional(),
+});
+named(
+  'PasskeyRegistrationOptions',
+  obj({
+    rp: obj({ id: text(253), name: text(100) }),
+    user: obj({ id: base64url, name: text(320), displayName: text(200) }),
+    challenge: base64url,
+    pubKeyCredParams: z.array(obj({ type: z.literal('public-key'), alg: z.int() })).min(1),
+    timeout: z.number().positive().optional(),
+    excludeCredentials: z.array(credentialDescriptor).optional(),
+    authenticatorSelection: obj({
+      authenticatorAttachment: z.enum(['cross-platform', 'platform']).optional(),
+      requireResidentKey: z.boolean().optional(),
+      residentKey: z.enum(['discouraged', 'preferred', 'required']).optional(),
+      userVerification: z.enum(['discouraged', 'preferred', 'required']).optional(),
+    }).optional(),
+    hints: z.array(text(64)).optional(),
+    attestation: z.enum(['direct', 'enterprise', 'indirect', 'none']).optional(),
+    attestationFormats: z.array(text(64)).optional(),
+    extensions: z.looseObject({}).optional(),
+  }),
+);
+named(
+  'PasskeyAuthenticationOptions',
+  obj({
+    challenge: base64url,
+    timeout: z.number().positive().optional(),
+    rpId: text(253).optional(),
+    allowCredentials: z.array(credentialDescriptor).optional(),
+    userVerification: z.enum(['discouraged', 'preferred', 'required']).optional(),
+    hints: z.array(text(64)).optional(),
+    extensions: z.looseObject({}).optional(),
+  }),
+);
+const credentialEnvelope = {
+  id: base64url,
+  rawId: base64url,
+  authenticatorAttachment: z.enum(['cross-platform', 'platform']).nullable().optional(),
+  clientExtensionResults: z.looseObject({}),
+  type: z.literal('public-key'),
+};
+named(
+  'PasskeyRegistrationResponse',
+  obj({
+    ...credentialEnvelope,
+    response: obj({
+      clientDataJSON: base64url,
+      attestationObject: base64url,
+      authenticatorData: base64url.optional(),
+      transports: z.array(transport).optional(),
+      publicKeyAlgorithm: z.int().optional(),
+      publicKey: base64url.optional(),
+    }),
+  }),
+);
+named(
+  'PasskeyAuthenticationResponse',
+  obj({
+    ...credentialEnvelope,
+    response: obj({
+      clientDataJSON: base64url,
+      authenticatorData: base64url,
+      signature: base64url,
+      userHandle: base64url.nullable().optional(),
+    }),
+  }),
+);
+
 named('Avatar', obj({ url: z.url(), expiresAt: instant }));
 named('AvatarUpload', obj({ file: z.string().meta({ format: 'binary' }) }));
 named('Session', obj({ id, createdAt: instant, expiresAt: instant, current: z.boolean() }));
@@ -803,6 +891,7 @@ named(
     priceMultiplierBp: z.int().positive(),
     takeRateBp: z.int().min(0).max(10000),
     creditPerRide: money,
+    editToken: text(128),
     version,
   }),
 );
@@ -823,6 +912,7 @@ named(
     rolloutPercentage: z.number().min(0).max(100),
     description: note,
     version,
+    editToken: text(128),
   }),
 );
 named(
@@ -838,6 +928,7 @@ named(
     apiMajor: z.literal(1),
     storeUrl: z.url(),
     version,
+    editToken: text(128),
   }),
 );
 named(
@@ -1003,6 +1094,103 @@ named(
     ridesLeft: count.nullable(),
     availableCredit: money,
     joinedAt: instant,
+    // Role changes require If-Match; the list is the screen's only source of
+    // the per-user token, so do not make the client reconstruct it.
+    editToken: text(128),
+  }),
+);
+named(
+  'OpsRiderDetail',
+  obj({
+    rider: schemas.OpsRider,
+    membership: obj({
+      id,
+      lifecycle: z.enum(['open', 'ended']),
+      periodId: id.nullable(),
+      startsAt: instant.nullable(),
+      endsAt: instant.nullable(),
+    }).nullable(),
+    restrictions: z.array(schemas.Restriction),
+    reservations: z.array(
+      obj({
+        id,
+        serviceDate: date,
+        direction,
+        status: text(50),
+        routeName: text().nullable(),
+        scheduledAt: instant.nullable(),
+      }),
+    ),
+    purchases: z.array(obj({ id, plan, state: text(50), cashDue: money, createdAt: instant })),
+  }),
+);
+named(
+  'OpsOperator',
+  obj({
+    id,
+    displayName: text(),
+    email: z.email().nullable(),
+    passkeyCount: count,
+    activeSessions: count,
+    lastPasskeyUsedAt: instant.nullable(),
+    joinedAt: instant,
+    editToken: text(128),
+  }),
+);
+named(
+  'OpsDelivery',
+  obj({
+    id,
+    channel: z.enum(['email', 'push']),
+    kind: text(100),
+    userId: id,
+    state: text(50),
+    attempts: count,
+    providerId: text(512).nullable(),
+    failureCode: text(100).nullable(),
+    createdAt: instant,
+  }),
+);
+named(
+  'OpsAuditEvent',
+  obj({
+    id,
+    area: z.enum([
+      'catalog',
+      'trip',
+      'schedule',
+      'fleet',
+      'driver',
+      'membership',
+      'boarding',
+      'pricing',
+      'configuration',
+      'security',
+    ]),
+    action: text(100),
+    actorId: id,
+    actorName: text(),
+    targetId: text(200),
+    reason: note.nullable(),
+    occurredAt: instant,
+  }),
+);
+named(
+  'OpsReportSummary',
+  obj({
+    generatedAt: instant,
+    fromDate: date,
+    toDate: date,
+    riders: obj({ total: count, active: count, paused: count, restricted: count }),
+    trips: obj({
+      total: count,
+      completed: count,
+      cancelled: count,
+      boarded: count,
+      noShows: count,
+    }),
+    payments: obj({ collected: money, refunded: money, openReviews: count }),
+    delivery: obj({ pending: count, failed: count }),
   }),
 );
 named(
@@ -1150,6 +1338,60 @@ post('/v1/auth/refresh', 'refreshSession', 'RefreshInput', 'Tokens', {
   sensitive: true,
 });
 post('/v1/auth/logout', 'logoutSession', 'RefreshInput', null, {
+  status: 204,
+  retry: 'credential',
+  sensitive: true,
+});
+// A phishing-resistant passkey check for operations accounts. These answer an
+// admin whose session is not yet elevated; every other operation refuses one.
+get('/v1/auth/passkeys', 'getPasskeyStatus', 'PasskeyStatus', { access: 'self' });
+post(
+  '/v1/auth/passkeys/registration/options',
+  'startPasskeyRegistration',
+  null,
+  'PasskeyRegistrationOptions',
+  {
+    access: 'self',
+    retry: 'credential',
+    sensitive: true,
+  },
+);
+post(
+  '/v1/auth/passkeys/registration/verification',
+  'finishPasskeyRegistration',
+  'PasskeyRegistrationResponse',
+  null,
+  {
+    access: 'self',
+    status: 204,
+    retry: 'credential',
+    sensitive: true,
+  },
+);
+post(
+  '/v1/auth/passkeys/authentication/options',
+  'startPasskeyAuthentication',
+  null,
+  'PasskeyAuthenticationOptions',
+  {
+    access: 'self',
+    retry: 'credential',
+    sensitive: true,
+  },
+);
+post(
+  '/v1/auth/passkeys/authentication/verification',
+  'finishPasskeyAuthentication',
+  'PasskeyAuthenticationResponse',
+  null,
+  {
+    access: 'self',
+    status: 204,
+    retry: 'credential',
+    sensitive: true,
+  },
+);
+post('/v1/ops/users/{id}/passkeys/reset', 'resetOperatorPasskeys', null, null, {
   status: 204,
   retry: 'credential',
   sensitive: true,
@@ -1311,6 +1553,7 @@ for (const [path, type, input] of [
   edit('patch', `/v1/ops/${path}/{id}`, `update${type}`, `${type}Edit`, type);
 }
 list('/v1/ops/trips', 'listOpsTrips', 'OpsTrip');
+get('/v1/ops/trips/{id}/manifest', 'getOpsManifest', 'Manifest', { sensitive: true });
 post('/v1/ops/trips', 'createTrip', 'TripInput', 'OpsTrip', { status: 201 });
 edit('patch', '/v1/ops/trips/{id}', 'rescheduleTrip', 'TripEdit', 'OpsTrip');
 edit('put', '/v1/ops/trips/{id}/assignment', 'assignTrip', 'TripAssignment', 'OpsTrip');
@@ -1318,6 +1561,11 @@ post('/v1/ops/trips/{id}/cancel', 'cancelTrip', 'ReasonInput', 'OpsTrip', { etag
 get('/v1/ops/overview', 'getOpsOverview', 'OpsOverview');
 list('/v1/ops/riders', 'listOpsRiders', 'OpsRider');
 get('/v1/ops/riders/summary', 'getOpsRiderSummary', 'OpsRiderSummary');
+get('/v1/ops/riders/{id}', 'getOpsRiderDetail', 'OpsRiderDetail');
+list('/v1/ops/operators', 'listOpsOperators', 'OpsOperator');
+list('/v1/ops/deliveries', 'listOpsDeliveries', 'OpsDelivery');
+list('/v1/ops/audit-events', 'listOpsAuditEvents', 'OpsAuditEvent');
+get('/v1/ops/reports/summary', 'getOpsReportSummary', 'OpsReportSummary');
 for (const [path, name, type, input] of [
   ['route-patterns', 'Pattern', 'Pattern', 'PatternInput'],
   ['service-schedules', 'Schedule', 'Schedule', 'ScheduleInput'],

@@ -47,6 +47,8 @@ export interface RuntimeConfig {
    */
   providers: readonly ('google' | 'apple')[];
   google: { clientId: string };
+  /** Exact Ops website origin; also defines the WebAuthn relying-party ID. */
+  opsOrigin: string;
   apple: { clientIds: string[]; teamId: string; keyId: string; privateKey: string } | null;
   paystack: { secretKey: string };
   /** Optional until email is provisioned; no extra encryption or sender secrets. */
@@ -145,6 +147,26 @@ function url(env: Env, name: string): string {
   // trailing path and percent-encode a tile template's braces, so a validator
   // that reported success would have handed clients a URL that fetches nothing.
   return raw;
+}
+function webOrigin(env: Env, name: string): string {
+  const raw = required(env, name);
+  let parsed: URL;
+  try {
+    parsed = new URL(raw);
+  } catch {
+    throw new ConfigurationError(`${name} must be an absolute origin`);
+  }
+  const localhost = parsed.hostname === 'localhost' || parsed.hostname === '127.0.0.1';
+  if (
+    (parsed.protocol !== 'https:' && !(localhost && parsed.protocol === 'http:')) ||
+    parsed.pathname !== '/' ||
+    parsed.search ||
+    parsed.hash ||
+    parsed.username ||
+    parsed.password
+  )
+    throw new ConfigurationError(`${name} must be an HTTPS origin (HTTP localhost is allowed)`);
+  return parsed.origin;
 }
 
 export function readConfiguration(env: Env = process.env): RuntimeConfig {
@@ -294,6 +316,7 @@ export function readConfiguration(env: Env = process.env): RuntimeConfig {
         '431341307838-pc4m046v2lj18ssfnfl1g52fl5g1cg4q.apps.googleusercontent.com',
       ),
     },
+    opsOrigin: webOrigin(env, 'REPLACEMENT_OPS_ORIGIN'),
     apple,
     paystack: { secretKey: paystack },
     avatars: {

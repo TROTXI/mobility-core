@@ -10,7 +10,12 @@ import type { Actor, Body, Command, Read, Dependencies } from '../transport/serv
 import { TransportError, fail, mapDatabaseError } from '../transport/errors.js';
 import { catalogReads, publicCatalogReads } from '../transport/catalog.js';
 import type { CatalogRead } from '../transport/catalog.js';
-import { authOperations, publicAuthOperations, DriverLockedError } from '../auth/service.js';
+import {
+  authOperations,
+  publicAuthOperations,
+  passkeyOperations,
+  LockedError,
+} from '../auth/service.js';
 import type { AuthService, AuthOperation } from '../auth/service.js';
 import { driverOperations } from '../auth/driver-service.js';
 import type { DriverService, DriverOperation } from '../auth/driver-service.js';
@@ -227,8 +232,7 @@ export async function createTransportApp(options: AppOptions) {
           requestId: request.id,
         },
       });
-    if (error instanceof DriverLockedError)
-      reply.header('Retry-After', String(error.retryAfterSeconds));
+    if (error instanceof LockedError) reply.header('Retry-After', String(error.retryAfterSeconds));
     const typed = error as { validation?: unknown; statusCode?: number };
     let safe: TransportError;
     if (error instanceof TransportError) safe = error;
@@ -356,7 +360,9 @@ export async function createTransportApp(options: AppOptions) {
         method: method.toUpperCase() as 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE',
         url: path.replaceAll(/\{([^}]+)\}/g, ':$1'),
         ...(name === 'createPatternVersion' ? { bodyLimit: 1048576 } : {}),
-        ...(publicAuth || name === 'changeDriverPin'
+        ...(publicAuth ||
+        name === 'changeDriverPin' ||
+        (passkeyOperations as readonly string[]).includes(name)
           ? { config: { rateLimit: { max: authBudget, timeWindow: 60000 } } }
           : {}),
         schema: { ...(input ? { body: rootRef(input) } : {}), response },
@@ -506,7 +512,11 @@ export async function createTransportApp(options: AppOptions) {
               fail(400, 'invalid_request', 'This operation has no request body.');
             const params = request.params as { id: string; reservationId?: string };
             if (name === 'issuePass') result = await options.boarding!.issue(actor, params.id);
-            else if (name === 'getManifest' || name === 'getTripSummary')
+            else if (
+              name === 'getManifest' ||
+              name === 'getOpsManifest' ||
+              name === 'getTripSummary'
+            )
               result = await options.boarding!.read(actor, name, params.id);
             else if (name === 'runNoShows')
               result = await options.boarding!.maintenance(
@@ -825,7 +835,7 @@ export async function createTransportApp(options: AppOptions) {
                     request.params as { id?: string; versionId?: string },
                     query,
                   )
-                : await service.list(actor, name as Read, query);
+                : await service.list(actor, name as Read, query, request.params as { id?: string });
           } else {
             if (!input && request.body !== undefined)
               fail(400, 'invalid_request', 'This command has no request body.');

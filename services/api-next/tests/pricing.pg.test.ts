@@ -363,6 +363,7 @@ test('PRC-06 plan pricing is edited under its own token and recorded', async (t)
   const listed = expectStatus(await f.call('GET', '/v1/ops/plan-pricing', { who: 'ops' }), 200);
   const monthly = listed.find((p: any) => p.plan === 'monthly');
   assert.partialDeepStrictEqual(monthly, { ridesPerPeriod: 44, priceMultiplierBp: 10000 });
+  assert.match(monthly.editToken, /^"pricing:monthly:\d+"$/);
 
   assert.equal(
     (
@@ -381,7 +382,7 @@ test('PRC-06 plan pricing is edited under its own token and recorded', async (t)
     await f.call('PATCH', '/v1/ops/plan-pricing/monthly', {
       who: 'ops',
       payload: { ridesPerPeriod: 40 },
-      match: `"pricing:monthly:${current}"`,
+      match: monthly.editToken,
     }),
     200,
   );

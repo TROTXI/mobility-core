@@ -70,6 +70,7 @@ const env: Record<string, string> = {
   REPLACEMENT_REQUESTS_PER_IP_PER_MINUTE: '600',
   REPLACEMENT_AUTH_REQUESTS_PER_MINUTE: '10',
   REPLACEMENT_TRUST_PROXY: 'none',
+  REPLACEMENT_OPS_ORIGIN: 'http://localhost:5173',
 };
 for (const name of [
   'ACCESS_SECRET',
@@ -123,8 +124,10 @@ const backend = await composeBackend(config);
 try {
   const session = (
     await backend.pool.query(
-      `INSERT INTO app.auth_sessions(user_id,expires_at)
-    VALUES ($1,clock_timestamp()+interval '15 minutes') RETURNING id,created_at,expires_at`,
+      // Elevated at birth, like the worker's: minted with database access.
+      `INSERT INTO app.auth_sessions(user_id,expires_at,admin_verified_at)
+    VALUES ($1,clock_timestamp()+interval '15 minutes',clock_timestamp())
+    RETURNING id,created_at,expires_at`,
       [adminId],
     )
   ).rows[0];

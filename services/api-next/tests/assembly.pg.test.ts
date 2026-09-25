@@ -70,6 +70,7 @@ function configurationFor(f: Fixture, over: Record<string, string> = {}) {
     REPLACEMENT_BOARDING_PROOF_KEY: key(6),
     REPLACEMENT_DEVICE_KEY: key(7),
     REPLACEMENT_PAYSTACK_EVIDENCE_KEY: key(8),
+    REPLACEMENT_OPS_ORIGIN: 'https://ops.trotxi.test',
     REPLACEMENT_GOOGLE_CLIENT_ID: 'example.apps.googleusercontent.com',
     REPLACEMENT_AUTH_PROVIDERS: 'google,apple',
     REPLACEMENT_APPLE_CLIENT_ID: 'com.trotxi.trotxiCommuter',
@@ -105,8 +106,10 @@ function configurationFor(f: Fixture, over: Record<string, string> = {}) {
 async function tokenFor(backend: Backend, userId: string) {
   const session = (
     await backend.pool.query(
-      `INSERT INTO app.auth_sessions(user_id,expires_at)
-      VALUES ($1, clock_timestamp() + interval '1 hour') RETURNING id,created_at,expires_at`,
+      // Elevated at birth, exactly as the worker's now is.
+      `INSERT INTO app.auth_sessions(user_id,expires_at,admin_verified_at)
+      VALUES ($1, clock_timestamp() + interval '1 hour', clock_timestamp())
+      RETURNING id,created_at,expires_at`,
       [userId],
     )
   ).rows[0];
@@ -204,8 +207,16 @@ test('ASM-10 the assembled backend routes every reviewed operation', async (t) =
     }
   // Every group's dependency is required, so none of them may be absent. A
   // route that is skipped for a missing service would fail the loop above.
-  assert.equal(expected.length, 135);
-  assert.equal(new Set(expected).size, 135);
+  assert.equal(expected.length, 147);
+  assert.equal(new Set(expected).size, 147);
+  for (const operation of [
+    'getOpsRiderDetail',
+    'listOpsOperators',
+    'listOpsDeliveries',
+    'listOpsAuditEvents',
+    'getOpsReportSummary',
+  ])
+    assert.ok(expected.includes(operation), `${operation} is absent from the assembled contract`);
 });
 
 test('ASM-11 the unauthenticated surface answers, and readiness tells the truth', async (t) => {
@@ -809,7 +820,7 @@ test('ASM-21 a provider this deployment does not have has no route at all', asyn
         routed += 1;
         assert.notEqual((operation as { operationId: string }).operationId, 'signInApple');
       }
-  assert.equal(routed, 134);
+  assert.equal(routed, 146);
   const docs = (await backend.app.inject({ method: 'GET', url: '/docs/json' })).json();
   assert.equal(docs.paths['/v1/auth/apple'], undefined);
   assert.ok(docs.paths['/v1/auth/google']);

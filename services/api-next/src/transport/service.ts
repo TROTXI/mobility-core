@@ -19,6 +19,8 @@ import { overviewReads, readOverview } from './overview.js';
 import type { OverviewRead } from './overview.js';
 import { riderReads, readRiders } from './riders.js';
 import type { RiderRead } from './riders.js';
+import { operationsReads, readOperations } from './operations.js';
+import type { OperationsRead } from './operations.js';
 import type { FleetCommand, FleetRead, FleetLocked } from './fleet.js';
 
 export type Command =
@@ -40,7 +42,8 @@ export type Read =
   | FleetRead
   | GpsRead
   | OverviewRead
-  | RiderRead;
+  | RiderRead
+  | OperationsRead;
 type Json = null | boolean | number | string | Json[] | { [key: string]: Json };
 export type Body = Record<string, Json>;
 export interface Outcome {
@@ -864,6 +867,7 @@ export class TransportService {
     actor: Actor,
     operation: Read,
     query: Record<string, string | undefined>,
+    params: { id?: string } = {},
   ): Promise<Outcome> {
     actor = { ...actor, userId: resourceId(actor.userId) };
     return this.transaction(async (client) => {
@@ -877,7 +881,9 @@ export class TransportService {
       if ((overviewReads as readonly string[]).includes(operation))
         return readOverview(client, query, this.deps.staleFixAfterSeconds);
       if ((riderReads as readonly string[]).includes(operation))
-        return readRiders(client, operation as RiderRead, query, this.cursors, actor);
+        return readRiders(client, operation as RiderRead, query, this.cursors, actor, params);
+      if ((operationsReads as readonly string[]).includes(operation))
+        return readOperations(client, operation as OperationsRead, query, this.cursors, actor);
       const now = new Date();
       const schedules = operation === 'listSchedules';
       const limit = query.limit === undefined ? 50 : Number(query.limit);

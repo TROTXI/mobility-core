@@ -217,6 +217,7 @@ export class Pricing {
       priceMultiplierBp: r.price_multiplier_bp,
       takeRateBp: r.take_rate_bp,
       creditPerRide: money(r.credit_per_ride_pesewas),
+      editToken: planToken(r),
       version: r.version,
     };
   }

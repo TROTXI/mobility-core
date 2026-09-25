@@ -9,6 +9,7 @@ import { AppleIdTokenVerifier } from '../auth/id-token-verifier.apple.js';
 import { AppleHttpTokenClient } from '../auth/apple-token.client.apple.js';
 import { PaystackEvidence } from '../payments/provider.js';
 import { providerTokenBox } from '../auth/credentials.js';
+import { webAuthnRelyingParty } from '../auth/passkeys.js';
 import { FinancialFoundation } from '../payments/foundation.js';
 import { PaymentRecovery } from '../payments/recovery.js';
 import { Pricing } from '../payments/pricing.js';
@@ -181,6 +182,7 @@ export async function composeBackend(config: RuntimeConfig): Promise<Backend> {
         refreshTtlDays: config.refreshTtlDays,
         shiftTtlHours: config.shiftTtlHours,
         providerEncryptionKey: config.keys.providerEncryption,
+        passkeys: webAuthnRelyingParty(config.opsOrigin),
         google: new GoogleIdTokenVerifier(config.google.clientId),
         ...(config.apple ? { apple: new AppleIdTokenVerifier(config.apple.clientIds) } : {}),
         ...(appleTokens ? { appleTokens } : {}),

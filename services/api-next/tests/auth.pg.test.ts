@@ -16,6 +16,7 @@ import { AppleIdTokenVerifier } from '../src/auth/id-token-verifier.apple.js';
 import { hashDriverPin } from '../src/auth/driver-pin.js';
 import { hashToken, providerTokenBox } from '../src/auth/credentials.js';
 import { TransportError } from '../src/transport/errors.js';
+import type { PasskeyRelyingParty } from '../src/auth/passkeys.js';
 import { grantRuntime, migrate, readMigrations } from '../src/db/migrate.js';
 
 const value = process.env.HARNESS_ADMIN_DATABASE_URL;
@@ -50,6 +51,53 @@ const access = {
 };
 const google = new GoogleIdTokenVerifier('web-client', keys),
   apple = new AppleIdTokenVerifier(['ios-client'], keys);
+const testPasskeys: PasskeyRelyingParty = {
+  registrationOptions: async ({ userId, userName, displayName, credentials }) => ({
+    rp: { id: 'localhost', name: 'Trotxi Ops' },
+    user: { id: Buffer.from(userId).toString('base64url'), name: userName, displayName },
+    challenge: randomBytes(32).toString('base64url'),
+    pubKeyCredParams: [{ type: 'public-key', alg: -7 }],
+    timeout: 300_000,
+    excludeCredentials: credentials.map((credential) => ({
+      id: credential.id,
+      type: 'public-key',
+      transports: credential.transports,
+    })),
+    authenticatorSelection: { residentKey: 'required', userVerification: 'required' },
+    attestation: 'none',
+  }),
+  verifyRegistration: async (response, challenge) => {
+    if (response.response.clientDataJSON !== challenge) throw new Error('wrong challenge');
+    return {
+      id: response.id,
+      publicKey: Buffer.alloc(64, 1),
+      counter: 0,
+      transports: response.response.transports,
+      deviceType: 'multiDevice',
+      backedUp: true,
+    };
+  },
+  authenticationOptions: async (credentials) => ({
+    challenge: randomBytes(32).toString('base64url'),
+    timeout: 300_000,
+    rpId: 'localhost',
+    allowCredentials: credentials.map((credential) => ({
+      id: credential.id,
+      type: 'public-key',
+      transports: credential.transports,
+    })),
+    userVerification: 'required',
+  }),
+  verifyAuthentication: async (response, challenge, credential) => {
+    if (
+      response.id !== credential.id ||
+      response.response.clientDataJSON !== challenge ||
+      response.response.signature === 'YmFk'
+    )
+      throw new Error('invalid assertion');
+    return { newCounter: credential.counter + 1, deviceType: 'multiDevice', backedUp: true };
+  },
+};
 async function identityToken(
   subject: string,
   provider = 'google',
@@ -128,6 +176,7 @@ async function setup(
     google,
     apple,
     providerEncryptionKey: encryptionKey,
+    passkeys: testPasskeys,
     appleTokens: {
       exchangeCode: async (code: string) => ({
         refreshToken: code === 'used' ? null : 'apple-private-refresh',
@@ -499,6 +548,13 @@ test('AUTH-09: real JWT transport integration reads DB roles and revoked/erased 
     });
   data(await ops(), 403);
   await f.owner.query("UPDATE app.users SET role='admin' WHERE id=$1", [a.account.id]);
+  // Promotion alone does not open ops: the new admin still has to pass the
+  // authenticator check, and is asked for a code rather than signed out.
+  assert.equal((await ops()).json().error.code, 'passkey_required');
+  await f.owner.query(
+    'UPDATE app.auth_sessions SET admin_verified_at=clock_timestamp() WHERE user_id=$1',
+    [a.account.id],
+  );
   data(await ops()); // JWT still says commuter; current DB role decides.
   await f.owner.query('UPDATE app.users SET deleted_at=clock_timestamp() WHERE id=$1', [
     a.account.id,
@@ -718,4 +774,292 @@ test('AUTH-17: session-revocation failures leave no receipt; unauthorized replay
     204,
   );
   data(await f.request('DELETE', path, undefined, a.accessToken, headers), 401);
+});
+
+/**
+ * Passkey elevation end to end. The browser ceremony is a deterministic test
+ * adapter; session, challenge, credential, authorization and replay handling
+ * all run through the real HTTP and PostgreSQL paths.
+ */
+async function operator(f: Awaited<ReturnType<typeof setup>>, subject: string) {
+  const signed = await f.sign(subject);
+  await f.owner.query("UPDATE app.users SET role='admin' WHERE id=$1", [signed.account.id]);
+  return { id: signed.account.id as string, token: signed.accessToken as string };
+}
+/** As the Ops website calls: its own client, and no mobile platform header. */
+function ops(
+  f: Awaited<ReturnType<typeof setup>>,
+  method: 'GET' | 'POST',
+  path: string,
+  token: string,
+  body?: unknown,
+) {
+  return f.app.inject({
+    method,
+    url: path,
+    ...(body !== undefined ? { payload: body as object } : {}),
+    headers: { authorization: `Bearer ${token}`, 'x-trotxi-client': 'ops', 'x-trotxi-build': '2' },
+  });
+}
+function registrationResponse(challenge: string, id = randomBytes(24).toString('base64url')) {
+  return {
+    id,
+    rawId: id,
+    type: 'public-key',
+    authenticatorAttachment: 'platform',
+    clientExtensionResults: {},
+    response: {
+      clientDataJSON: challenge,
+      attestationObject: 'YXR0ZXN0YXRpb24',
+      transports: ['internal', 'hybrid'],
+    },
+  };
+}
+function authenticationResponse(challenge: string, id: string, signature = 'c2lnbmF0dXJl') {
+  return {
+    id,
+    rawId: id,
+    type: 'public-key',
+    authenticatorAttachment: 'platform',
+    clientExtensionResults: {},
+    response: {
+      clientDataJSON: challenge,
+      authenticatorData: Buffer.from('test-authenticator-data').toString('base64url'),
+      signature,
+      userHandle: null,
+    },
+  };
+}
+async function register(f: Awaited<ReturnType<typeof setup>>, token: string, id?: string) {
+  const started = await ops(f, 'POST', '/v1/auth/passkeys/registration/options', token);
+  assert.equal(started.statusCode, 200, started.body);
+  const options = started.json().data;
+  const response = registrationResponse(options.challenge, id);
+  const completed = await ops(
+    f,
+    'POST',
+    '/v1/auth/passkeys/registration/verification',
+    token,
+    response,
+  );
+  assert.equal(completed.statusCode, 204, completed.body);
+  return response.id as string;
+}
+
+test('PASSKEY-01 an admin needs a user-verified passkey before any Ops action', async (t) => {
+  const f = await setup(t);
+  const admin = await operator(f, 'ops-passkey-1');
+  const refused = await ops(f, 'GET', '/v1/ops/riders', admin.token);
+  assert.equal(refused.statusCode, 403, refused.body);
+  assert.equal(refused.json().error.code, 'passkey_required');
+
+  const before = (await ops(f, 'GET', '/v1/auth/passkeys', admin.token)).json().data;
+  assert.deepEqual(before, {
+    registered: false,
+    passkeyCount: 0,
+    registrationPending: false,
+    verified: false,
+  });
+
+  const started = await ops(f, 'POST', '/v1/auth/passkeys/registration/options', admin.token);
+  assert.equal(started.statusCode, 200, started.body);
+  const options = started.json().data;
+  assert.equal(options.rp.id, 'localhost');
+  assert.equal(options.authenticatorSelection.userVerification, 'required');
+  assert.equal(options.authenticatorSelection.residentKey, 'required');
+
+  const wrong = await ops(
+    f,
+    'POST',
+    '/v1/auth/passkeys/registration/verification',
+    admin.token,
+    registrationResponse(randomBytes(32).toString('base64url')),
+  );
+  assert.equal(wrong.statusCode, 400);
+  assert.equal(wrong.json().error.code, 'passkey_verification_failed');
+
+  const credential = registrationResponse(options.challenge);
+  assert.equal(
+    (await ops(f, 'POST', '/v1/auth/passkeys/registration/verification', admin.token, credential))
+      .statusCode,
+    204,
+  );
+  assert.equal((await ops(f, 'GET', '/v1/ops/riders', admin.token)).statusCode, 200);
+  assert.deepEqual((await ops(f, 'GET', '/v1/auth/passkeys', admin.token)).json().data, {
+    registered: true,
+    passkeyCount: 1,
+    registrationPending: false,
+    verified: true,
+  });
+
+  const columns = (
+    await f.owner.query(
+      `SELECT column_name FROM information_schema.columns
+       WHERE table_schema='app' AND table_name='admin_passkeys' ORDER BY column_name`,
+    )
+  ).rows.map((row) => row.column_name);
+  assert.equal(
+    columns.some((name) => /secret|recovery|private/i.test(name)),
+    false,
+  );
+  assert.deepEqual(
+    (
+      await f.owner.query(
+        'SELECT action FROM app.admin_passkey_events WHERE user_id=$1 ORDER BY occurred_at',
+        [admin.id],
+      )
+    ).rows.map((row) => row.action),
+    ['registration_started', 'registered'],
+  );
+});
+
+test('PASSKEY-02 elevation is per session and a completed assertion cannot replay', async (t) => {
+  const f = await setup(t);
+  const admin = await operator(f, 'ops-passkey-2');
+  const credentialId = await register(f, admin.token);
+
+  const second = await f.sign('ops-passkey-2');
+  assert.equal((await ops(f, 'GET', '/v1/ops/riders', second.accessToken)).statusCode, 403);
+  const options = (
+    await ops(f, 'POST', '/v1/auth/passkeys/authentication/options', second.accessToken)
+  ).json().data;
+  const assertion = authenticationResponse(options.challenge, credentialId);
+  assert.equal(
+    (
+      await ops(
+        f,
+        'POST',
+        '/v1/auth/passkeys/authentication/verification',
+        second.accessToken,
+        assertion,
+      )
+    ).statusCode,
+    204,
+  );
+  assert.equal((await ops(f, 'GET', '/v1/ops/riders', second.accessToken)).statusCode, 200);
+  const replay = await ops(
+    f,
+    'POST',
+    '/v1/auth/passkeys/authentication/verification',
+    second.accessToken,
+    assertion,
+  );
+  assert.equal(replay.statusCode, 409);
+  assert.equal(replay.json().error.code, 'passkey_challenge_missing');
+  assert.equal(
+    (
+      await f.owner.query(
+        'SELECT signature_counter FROM app.admin_passkeys WHERE user_id=$1 AND credential_id=$2',
+        [admin.id, credentialId],
+      )
+    ).rows[0].signature_counter,
+    '1',
+  );
+});
+
+test('PASSKEY-03 a verified admin can add a second passkey; an unelevated session cannot', async (t) => {
+  const f = await setup(t);
+  const admin = await operator(f, 'ops-passkey-3');
+  await register(f, admin.token);
+  await register(f, admin.token);
+
+  const fresh = await f.sign('ops-passkey-3');
+  const refused = await ops(f, 'POST', '/v1/auth/passkeys/registration/options', fresh.accessToken);
+  assert.equal(refused.statusCode, 403);
+  assert.equal(refused.json().error.code, 'passkey_required');
+  assert.equal(
+    (await ops(f, 'GET', '/v1/auth/passkeys', fresh.accessToken)).json().data.passkeyCount,
+    2,
+  );
+});
+
+test('PASSKEY-04 only another elevated admin can reset passkeys', async (t) => {
+  const f = await setup(t);
+  const lost = await operator(f, 'ops-passkey-4a');
+  await register(f, lost.token);
+  const helper = await operator(f, 'ops-passkey-4b');
+  await register(f, helper.token);
+
+  const self = await ops(f, 'POST', `/v1/ops/users/${helper.id}/passkeys/reset`, helper.token);
+  assert.equal(self.statusCode, 403);
+  assert.equal(self.json().error.code, 'self_reset_forbidden');
+
+  const unverified = await f.sign('ops-passkey-4b');
+  assert.equal(
+    (await ops(f, 'POST', `/v1/ops/users/${lost.id}/passkeys/reset`, unverified.accessToken))
+      .statusCode,
+    403,
+  );
+
+  const reset = await ops(f, 'POST', `/v1/ops/users/${lost.id}/passkeys/reset`, helper.token);
+  assert.equal(reset.statusCode, 204, reset.body);
+  assert.equal((await ops(f, 'GET', '/v1/auth/passkeys', lost.token)).statusCode, 401);
+
+  const back = await f.sign('ops-passkey-4a');
+  assert.equal(
+    (await ops(f, 'GET', '/v1/auth/passkeys', back.accessToken)).json().data.registered,
+    false,
+  );
+  assert.equal(
+    (await ops(f, 'POST', '/v1/auth/passkeys/registration/options', back.accessToken)).statusCode,
+    200,
+  );
+  assert.deepEqual(
+    (
+      await f.owner.query(
+        "SELECT actor_user_id FROM app.admin_passkey_events WHERE user_id=$1 AND action='reset'",
+        [lost.id],
+      )
+    ).rows,
+    [{ actor_user_id: helper.id }],
+  );
+});
+
+test('PASSKEY-05 challenges are session-bound, purpose-bound, expiring and replaceable', async (t) => {
+  const f = await setup(t);
+  const admin = await operator(f, 'ops-passkey-5');
+  const first = (await ops(f, 'POST', '/v1/auth/passkeys/registration/options', admin.token)).json()
+    .data;
+  const second = (
+    await ops(f, 'POST', '/v1/auth/passkeys/registration/options', admin.token)
+  ).json().data;
+  assert.notEqual(first.challenge, second.challenge);
+  assert.equal(
+    (
+      await ops(
+        f,
+        'POST',
+        '/v1/auth/passkeys/registration/verification',
+        admin.token,
+        registrationResponse(first.challenge),
+      )
+    ).statusCode,
+    400,
+  );
+
+  await f.owner.query(
+    `UPDATE app.admin_passkey_challenges
+     SET created_at=clock_timestamp()-interval '6 minutes',
+         expires_at=clock_timestamp()-interval '2 minutes'
+     WHERE user_id=$1`,
+    [admin.id],
+  );
+  const expired = await ops(
+    f,
+    'POST',
+    '/v1/auth/passkeys/registration/verification',
+    admin.token,
+    registrationResponse(second.challenge),
+  );
+  assert.equal(expired.statusCode, 409);
+  assert.equal(expired.json().error.code, 'passkey_challenge_missing');
+});
+
+test('PASSKEY-06 riders never meet the administrator passkey flow', async (t) => {
+  const f = await setup(t);
+  const rider = await f.sign('rider-passkey');
+  const refused = await f.request('GET', '/v1/auth/passkeys', undefined, rider.accessToken);
+  assert.equal(refused.statusCode, 403);
+  assert.equal(refused.json().error.code, 'forbidden');
+  assert.equal((await f.request('GET', '/v1/me', undefined, rider.accessToken)).statusCode, 200);
 });

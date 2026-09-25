@@ -2,7 +2,7 @@ import type { PoolClient } from 'pg';
 import type { Actor, Outcome } from './service.js';
 import { fail } from './errors.js';
 
-export const riderReads = ['listOpsRiders', 'getOpsRiderSummary'] as const;
+export const riderReads = ['listOpsRiders', 'getOpsRiderSummary', 'getOpsRiderDetail'] as const;
 export type RiderRead = (typeof riderReads)[number];
 
 interface Cursors {
@@ -45,7 +45,7 @@ const RIDER_STATE = `
     GROUP BY user_id
   ),
   base AS (
-    SELECT u.id, u.display_name, u.phone, u.email, u.role, u.created_at,
+    SELECT u.id, u.display_name, u.phone, u.email, u.role, u.version, u.created_at,
       (m.id IS NOT NULL) AS has_membership,
       op.purchase_id,
       COALESCE(op.paused, false) AS paused,
@@ -63,7 +63,7 @@ const RIDER_STATE = `
     WHERE u.role = 'commuter' AND u.deleted_at IS NULL
   ),
   rider_state AS (
-    SELECT b.id, b.display_name, b.phone, b.email, b.role, b.created_at,
+    SELECT b.id, b.display_name, b.phone, b.email, b.role, b.version, b.created_at,
       CASE
         WHEN b.period_id IS NULL THEN CASE WHEN b.has_membership THEN 'lapsed' ELSE 'none' END
         WHEN b.paused THEN 'paused'
@@ -83,7 +83,7 @@ const RIDER_STATE = `
   )`;
 
 const LIST = `${RIDER_STATE}
-  SELECT id, display_name, phone, email, role, status, plan, route_name, rides_left,
+  SELECT id, display_name, phone, email, role, version, status, plan, route_name, rides_left,
     available_credit, created_at,
     to_char(created_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"') AS cursor_time
   FROM rider_state
@@ -120,8 +120,107 @@ export async function readRiders(
   query: Record<string, string | undefined>,
   cursors: Cursors,
   actor: Actor,
+  params: { id?: string } = {},
 ): Promise<Outcome> {
   const now = (await client.query('SELECT clock_timestamp() AS now')).rows[0].now as Date;
+
+  if (operation === 'getOpsRiderDetail') {
+    if (Object.keys(query).length) fail(400, 'invalid_query', 'Unsupported query parameters.');
+    const riderId = params.id;
+    if (!riderId || !/^[0-9a-f-]{36}$/i.test(riderId)) fail(404, 'not_found', 'Rider not found.');
+    const rider = (
+      await client.query(
+        `${RIDER_STATE}
+      SELECT * FROM rider_state WHERE id=$2::uuid`,
+        [now, riderId],
+      )
+    ).rows[0];
+    if (!rider) fail(404, 'not_found', 'Rider not found.');
+    const membership = await client.query(
+      `SELECT m.id,m.lifecycle,b.id AS period_id,b.starts_at,b.effective_ends_at
+        FROM app.memberships m LEFT JOIN app.billing_periods b
+          ON b.membership_id=m.id AND b.state='open'
+        WHERE m.user_id=$1`,
+      [riderId],
+    );
+    const restrictions = await client.query(
+      `SELECT * FROM app.account_restrictions WHERE user_id=$1
+        ORDER BY created_at DESC LIMIT 50`,
+      [riderId],
+    );
+    const reservations = await client.query(
+      `SELECT r.id,r.service_date::text,r.direction,r.status,t.scheduled_at,ro.name AS route_name
+        FROM app.reservations r LEFT JOIN app.trips t ON t.id=r.trip_id
+        LEFT JOIN app.route_pattern_versions pv ON pv.id=r.pattern_version_id
+        LEFT JOIN app.route_patterns rp ON rp.id=pv.pattern_id
+        LEFT JOIN app.routes ro ON ro.id=rp.route_id
+        WHERE r.user_id=$1 ORDER BY r.service_date DESC,r.created_at DESC LIMIT 25`,
+      [riderId],
+    );
+    const purchases = await client.query(
+      `SELECT id,plan,state,cash_due_pesewas,created_at FROM app.purchases
+        WHERE user_id=$1 ORDER BY created_at DESC LIMIT 25`,
+      [riderId],
+    );
+    const membershipRow = membership.rows[0];
+    return {
+      status: 200,
+      body: {
+        data: {
+          rider: {
+            id: rider.id,
+            displayName: rider.display_name || 'Rider',
+            phone: rider.phone ?? null,
+            email: rider.email ?? null,
+            role: rider.role,
+            status: rider.status,
+            plan: rider.plan ?? null,
+            routeName: rider.route_name ?? null,
+            ridesLeft: rider.rides_left === null ? null : Number(rider.rides_left),
+            availableCredit: money(Number(rider.available_credit)),
+            joinedAt: new Date(rider.created_at).toISOString(),
+            editToken: `"user:${rider.id}:${rider.version}"`,
+          },
+          membership: membershipRow
+            ? {
+                id: membershipRow.id,
+                lifecycle: membershipRow.lifecycle,
+                periodId: membershipRow.period_id ?? null,
+                startsAt: membershipRow.starts_at?.toISOString() ?? null,
+                endsAt: membershipRow.effective_ends_at?.toISOString() ?? null,
+              }
+            : null,
+          restrictions: restrictions.rows.map((r) => ({
+            id: r.id,
+            userId: r.user_id,
+            reason: r.reason,
+            reviewAt: r.review_at.toISOString(),
+            active: r.released_at === null,
+            editToken: `"restriction:${r.id}:${r.version}"`,
+            createdAt: r.created_at.toISOString(),
+            updatedAt: r.updated_at.toISOString(),
+            version: r.version,
+          })),
+          reservations: reservations.rows.map((r) => ({
+            id: r.id,
+            serviceDate: r.service_date,
+            direction: r.direction,
+            status: r.status,
+            routeName: r.route_name ?? null,
+            scheduledAt: r.scheduled_at?.toISOString() ?? null,
+          })),
+          purchases: purchases.rows.map((p) => ({
+            id: p.id,
+            plan: p.plan,
+            state: p.state,
+            cashDue: money(Number(p.cash_due_pesewas)),
+            createdAt: p.created_at.toISOString(),
+          })),
+        },
+      },
+      headers: {},
+    };
+  }
 
   if (operation === 'getOpsRiderSummary') {
     if (Object.keys(query).length) fail(400, 'invalid_query', 'Unsupported query parameters.');
@@ -173,6 +272,7 @@ export async function readRiders(
         ridesLeft: r.rides_left === null ? null : Number(r.rides_left),
         availableCredit: money(Number(r.available_credit)),
         joinedAt: new Date(r.created_at).toISOString(),
+        editToken: `"user:${r.id}:${r.version}"`,
       })),
       page: {
         nextCursor:

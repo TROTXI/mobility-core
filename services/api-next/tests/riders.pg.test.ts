@@ -77,6 +77,7 @@ test('RID-01 each rider says what they can do today', async (t) => {
   assert.ok(ama.ridesLeft > 0, 'a fresh period has its allocation');
   assert.ok(ama.routeName, 'the route the rider paid for');
   assert.deepEqual(ama.availableCredit, { amountMinor: 2500, currency: 'GHS' });
+  assert.match(ama.editToken, /^"user:[0-9a-f-]+:\d+"$/);
 
   const kojo = byId.get(f.other.userId) as Record<string, any>;
   assert.equal(kojo.status, 'lapsed', 'paid in January, so the period has ended');

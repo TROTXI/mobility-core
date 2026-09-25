@@ -255,6 +255,7 @@ export class ConfigService {
       rolloutPercentage: Number(r.rollout_percentage),
       description: r.description,
       version: r.version,
+      editToken: flagToken(r),
     };
   }
   private versionView(r: Row): Body {
@@ -265,6 +266,7 @@ export class ConfigService {
       apiMajor: r.api_major,
       storeUrl: r.store_url,
       version: r.version,
+      editToken: versionToken(r),
     };
   }
 

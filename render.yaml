@@ -134,6 +134,9 @@ services:
       # (below) goes live.
       - key: CORS_ORIGINS
         sync: false
+      # Exact WebAuthn origin; deliberately independent of CORS ordering.
+      - key: OPS_ORIGIN
+        value: https://trotxi-ops-staging.onrender.com
       # Cloudflare R2 (avatars, #24) — S3-compatible object storage. The access
       # keys are secrets → set in the dashboard, never commit. All four unset ->
       # in-memory object store (no avatars persisted).
@@ -323,19 +326,41 @@ services:
   #   envVars:
   #     - fromGroup: trotxi-cron-staging
   #
-  # ---- Ops console (apps/ops, #170/#174) — uncomment when the first build lands ----
-  # Static bundle only, no server process (free plan). Uncommenting before the
-  # package has a `build` script would fail every deploy, hence the comment.
-  # After applying: set CORS_ORIGINS on trotxi-api-staging to this site's origin.
-  #
-  # - type: web
-  #   name: trotxi-ops-staging
-  #   runtime: static
-  #   repo: https://github.com/TROTXI/mobility-core
-  #   branch: main
-  #   buildCommand: corepack enable && pnpm install --frozen-lockfile && pnpm --filter @trotxi/ops run build
-  #   staticPublishPath: apps/ops/dist
-  #   autoDeploy: false
+  # ---- Ops console (apps/ops, #170/#174) ----
+  # Static bundle only: Google identity plus an origin-bound passkey protects
+  # every operational read and decision. No OAuth client secret belongs here.
+  - type: web
+    name: trotxi-ops-staging
+    runtime: static
+    repo: https://github.com/TROTXI/mobility-core
+    branch: main
+    buildCommand: corepack enable && pnpm install --frozen-lockfile && pnpm --filter @trotxi/ops run build
+    staticPublishPath: apps/ops/dist
+    autoDeploy: false
+    envVars:
+      - key: VITE_API_BASE_URL
+        value: https://trotxi-api-staging.onrender.com
+      - key: VITE_GOOGLE_CLIENT_ID
+        value: 431341307838-pc4m046v2lj18ssfnfl1g52fl5g1cg4q.apps.googleusercontent.com
+      - key: VITE_OPS_BUILD
+        value: '1'
+    headers:
+      - path: /*
+        name: X-Frame-Options
+        value: DENY
+      - path: /*
+        name: Content-Security-Policy
+        value: "frame-ancestors 'none'; base-uri 'none'; object-src 'none'"
+      - path: /*
+        name: Referrer-Policy
+        value: no-referrer
+      - path: /*
+        name: X-Content-Type-Options
+        value: nosniff
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
 
   # ---- Route learning (E4/#179/#181) — the corridor teaches us its own shape ----
   # Reads back completed runs' GPS traces and updates each route's derived path

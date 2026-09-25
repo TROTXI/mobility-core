@@ -282,7 +282,8 @@ test('MIG-01 clean install records hashes, rerun is no-op, historical drift fail
     // the configuration receipts.
     // 022 adds the encrypted transactional email outbox.
     // 023–025 add push deliveries, refund initiation and personal pauses.
-    assert.equal(tables.rows[0].n, 86);
+    // 028 adds passkeys, short-lived WebAuthn challenges and their audit events.
+    assert.equal(tables.rows[0].n, 89);
     assert.deepEqual(
       (
         await pool.query(

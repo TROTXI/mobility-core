@@ -9,6 +9,8 @@ import type { AccessConfig } from './credentials.js';
 import type { IdTokenVerifier, Provider, VerifiedIdentity } from './types.js';
 import type { AppleTokenClient } from './apple-token-types.js';
 import { normalizeDriverCode, verifyDriverPin } from './driver-pin.js';
+import type { AuthenticationResponseJSON, RegistrationResponseJSON } from '@simplewebauthn/server';
+import type { PasskeyRelyingParty, StoredPasskey } from './passkeys.js';
 
 export const authOperations = [
   'signInGoogle',
@@ -19,7 +21,30 @@ export const authOperations = [
   'getAccount',
   'listSessions',
   'revokeSession',
+  'getPasskeyStatus',
+  'startPasskeyRegistration',
+  'finishPasskeyRegistration',
+  'startPasskeyAuthentication',
+  'finishPasskeyAuthentication',
+  'resetOperatorPasskeys',
 ] as const;
+/** The only operations an admin session that has not passed the check may call. */
+export const passkeyOperations = [
+  'getPasskeyStatus',
+  'startPasskeyRegistration',
+  'finishPasskeyRegistration',
+  'startPasskeyAuthentication',
+  'finishPasskeyAuthentication',
+  'resetOperatorPasskeys',
+] as const;
+type PasskeyOperation = (typeof passkeyOperations)[number];
+/**
+ * How long a passed check lasts. The design's session card says eight hours,
+ * one shift: after that the console asks for a code again, and the session
+ * itself stays signed in.
+ */
+export const ADMIN_ELEVATION_HOURS = 8;
+const PASSKEY_CHALLENGE_SECONDS = 300;
 export const publicAuthOperations = [
   'signInGoogle',
   'signInApple',
@@ -28,9 +53,19 @@ export const publicAuthOperations = [
   'logoutSession',
 ] as const;
 export type AuthOperation = (typeof authOperations)[number];
-export class DriverLockedError extends TransportError {
-  constructor(public readonly retryAfterSeconds: number) {
-    super(423, 'driver_locked', 'Too many attempts. Please try again later.');
+/** A lockout the client can wait out. The HTTP layer turns this into Retry-After. */
+export class LockedError extends TransportError {
+  constructor(
+    code: string,
+    message: string,
+    public readonly retryAfterSeconds: number,
+  ) {
+    super(423, code, message);
+  }
+}
+export class DriverLockedError extends LockedError {
+  constructor(retryAfterSeconds: number) {
+    super('driver_locked', 'Too many attempts. Please try again later.', retryAfterSeconds);
   }
 }
 export interface AuthOptions {
@@ -44,6 +79,8 @@ export interface AuthOptions {
   apple?: IdTokenVerifier;
   appleTokens?: AppleTokenClient;
   providerEncryptionKey?: Buffer;
+  /** Standards verifier bound to the exact Ops origin and relying-party ID. */
+  passkeys?: PasskeyRelyingParty;
   // URL signing must be local; never make a network call while holding auth locks.
   avatarUrl?: (objectKey: string) => string;
 }
@@ -146,17 +183,37 @@ export class AuthService {
     if (!row || row.status !== 'active') throw denied();
   }
   // Used by transport INSIDE its transaction. A valid signature is not access.
-  readonly authorizeSession = async (client: PoolClient, actor: Actor): Promise<void> => {
+  /**
+   * Every authenticated request passes through here, and so does the second
+   * factor: an admin session that has not passed the passkey check, or
+   * passed it more than a shift ago, is refused. 403 and not 401, because the
+   * session is valid and the client must send the operator through passkey
+   * verification, not sign out.
+   *
+   * allowUnelevated is for the passkey endpoints alone, which are how an
+   * admin gets from signed in to verified.
+   */
+  readonly authorizeSession = async (
+    client: PoolClient,
+    actor: Actor,
+    options: { allowUnelevated?: boolean } = {},
+  ): Promise<void> => {
     const user = await this.user(client, actor.userId);
     const session = (
       await client.query(
-        `SELECT id FROM app.auth_sessions
-      WHERE id=$1 AND user_id=$2 AND revoked_at IS NULL AND expires_at>clock_timestamp() FOR SHARE`,
+        `SELECT id,
+          (admin_verified_at IS NOT NULL
+            AND admin_verified_at > clock_timestamp() - make_interval(hours => ${ADMIN_ELEVATION_HOURS}))
+            AS elevated
+        FROM app.auth_sessions
+        WHERE id=$1 AND user_id=$2 AND revoked_at IS NULL AND expires_at>clock_timestamp() FOR SHARE`,
         [actor.sessionId, actor.userId],
       )
     ).rows[0];
     if (!session) throw denied();
     await this.driverAllowed(client, user);
+    if (user.role === 'admin' && !session.elevated && !options.allowUnelevated)
+      fail(403, 'passkey_required', 'Use your passkey to continue.');
   };
 
   private async issue(
@@ -406,6 +463,266 @@ export class AuthService {
     });
   }
 
+  private async passkey(
+    name: PasskeyOperation,
+    actor: Actor,
+    body: any,
+    target: string | undefined,
+  ) {
+    const relyingParty = this.options.passkeys;
+    if (!relyingParty)
+      fail(503, 'passkeys_unavailable', 'Passkey authentication is not configured here.');
+    return this.transaction(async (client) => {
+      const user = await this.user(client, actor.userId, true);
+
+      if (name === 'resetOperatorPasskeys') {
+        await this.authorizeSession(client, actor);
+        if (user.role !== 'admin')
+          fail(403, 'forbidden', 'This operation is not available to your account.');
+        return this.resetPasskeys(client, actor, target);
+      }
+
+      await this.authorizeSession(client, actor, { allowUnelevated: true });
+      if (user.role !== 'admin') fail(403, 'forbidden', 'Passkeys are for operations accounts.');
+
+      const now = await this.now(client);
+      const credentials = (
+        await client.query(
+          `SELECT credential_id,public_key,signature_counter,transports
+           FROM app.admin_passkeys
+           WHERE user_id=$1 AND revoked_at IS NULL
+           ORDER BY created_at,id FOR UPDATE`,
+          [user.id],
+        )
+      ).rows;
+      const stored = credentials.map((row): StoredPasskey => ({
+        id: row.credential_id,
+        publicKey: Uint8Array.from(row.public_key),
+        counter: Number(row.signature_counter),
+        transports: row.transports,
+      }));
+      const elevated =
+        (
+          await client.query(
+            `SELECT (admin_verified_at IS NOT NULL
+              AND admin_verified_at > $2::timestamptz - make_interval(hours => ${ADMIN_ELEVATION_HOURS}))
+              AS elevated
+             FROM app.auth_sessions WHERE id=$1 AND user_id=$3`,
+            [actor.sessionId, now, actor.userId],
+          )
+        ).rows[0]?.elevated === true;
+
+      if (name === 'getPasskeyStatus') {
+        const pending =
+          (
+            await client.query(
+              `SELECT 1 FROM app.admin_passkey_challenges
+               WHERE session_id=$1 AND user_id=$2 AND purpose='registration'
+                 AND consumed_at IS NULL AND expires_at>$3 LIMIT 1`,
+              [actor.sessionId, user.id, now],
+            )
+          ).rowCount === 1;
+        return result({
+          registered: stored.length > 0,
+          passkeyCount: stored.length,
+          registrationPending: pending,
+          verified: elevated,
+        });
+      }
+
+      if (name === 'startPasskeyRegistration') {
+        if (stored.length && !elevated)
+          fail(403, 'passkey_required', 'Use an existing passkey before adding another.');
+        const options = await relyingParty.registrationOptions({
+          userId: user.id,
+          userName: user.email ?? user.id,
+          displayName: user.display_name ?? user.email ?? 'Trotxi operator',
+          credentials: stored,
+        });
+        await this.savePasskeyChallenge(client, actor, 'registration', options.challenge, now);
+        await this.passkeyEvent(client, user.id, user.id, 'registration_started');
+        return result(options);
+      }
+
+      if (name === 'finishPasskeyRegistration') {
+        if (stored.length && !elevated)
+          fail(403, 'passkey_required', 'Use an existing passkey before adding another.');
+        const challenge = await this.passkeyChallenge(client, actor, 'registration', now);
+        let registered;
+        try {
+          registered = await relyingParty.verifyRegistration(
+            body as RegistrationResponseJSON,
+            challenge,
+          );
+        } catch {
+          fail(400, 'passkey_verification_failed', 'The passkey could not be verified.');
+        }
+        await client.query(
+          `INSERT INTO app.admin_passkeys(
+             user_id,credential_id,public_key,signature_counter,transports,
+             device_type,backed_up,created_at
+           ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
+          [
+            user.id,
+            registered.id,
+            Buffer.from(registered.publicKey),
+            registered.counter,
+            registered.transports ?? [],
+            registered.deviceType,
+            registered.backedUp,
+            now,
+          ],
+        );
+        await this.consumePasskeyChallenge(client, actor, 'registration');
+        await this.elevate(client, actor, now);
+        await this.passkeyEvent(client, user.id, user.id, 'registered');
+        return result();
+      }
+
+      if (!stored.length)
+        fail(409, 'passkey_not_registered', 'Register a passkey before continuing.');
+
+      if (name === 'startPasskeyAuthentication') {
+        const options = await relyingParty.authenticationOptions(stored);
+        await this.savePasskeyChallenge(client, actor, 'authentication', options.challenge, now);
+        return result(options);
+      }
+
+      const challenge = await this.passkeyChallenge(client, actor, 'authentication', now);
+      const credentialRow = credentials.find((row) => row.credential_id === String(body?.id ?? ''));
+      if (!credentialRow)
+        fail(400, 'passkey_verification_failed', 'The passkey could not be verified.');
+      const credential: StoredPasskey = {
+        id: credentialRow.credential_id,
+        publicKey: Uint8Array.from(credentialRow.public_key),
+        counter: Number(credentialRow.signature_counter),
+        transports: credentialRow.transports,
+      };
+      let verified;
+      try {
+        verified = await relyingParty.verifyAuthentication(
+          body as AuthenticationResponseJSON,
+          challenge,
+          credential,
+        );
+      } catch {
+        fail(400, 'passkey_verification_failed', 'The passkey could not be verified.');
+      }
+      await client.query(
+        `UPDATE app.admin_passkeys
+         SET signature_counter=$2,device_type=$3,backed_up=$4,last_used_at=$5
+         WHERE user_id=$1 AND credential_id=$6 AND revoked_at IS NULL`,
+        [user.id, verified.newCounter, verified.deviceType, verified.backedUp, now, credential.id],
+      );
+      await this.consumePasskeyChallenge(client, actor, 'authentication');
+      await this.elevate(client, actor, now);
+      await this.passkeyEvent(client, user.id, user.id, 'verified');
+      return result();
+    });
+  }
+
+  private async savePasskeyChallenge(
+    client: PoolClient,
+    actor: Actor,
+    purpose: 'registration' | 'authentication',
+    challenge: string,
+    now: Date,
+  ) {
+    const expires = new Date(now.getTime() + PASSKEY_CHALLENGE_SECONDS * 1000);
+    await client.query(
+      `INSERT INTO app.admin_passkey_challenges(
+         session_id,user_id,purpose,challenge,created_at,expires_at,consumed_at
+       ) VALUES ($1,$2,$3,$4,$5,$6,NULL)
+       ON CONFLICT (session_id,purpose) DO UPDATE
+       SET user_id=EXCLUDED.user_id,challenge=EXCLUDED.challenge,
+           created_at=EXCLUDED.created_at,expires_at=EXCLUDED.expires_at,
+           consumed_at=NULL`,
+      [actor.sessionId, actor.userId, purpose, challenge, now, expires],
+    );
+  }
+
+  private async passkeyChallenge(
+    client: PoolClient,
+    actor: Actor,
+    purpose: 'registration' | 'authentication',
+    now: Date,
+  ): Promise<string> {
+    const row = (
+      await client.query(
+        `SELECT challenge FROM app.admin_passkey_challenges
+         WHERE session_id=$1 AND user_id=$2 AND purpose=$3
+           AND consumed_at IS NULL AND expires_at>$4
+         FOR UPDATE`,
+        [actor.sessionId, actor.userId, purpose, now],
+      )
+    ).rows[0];
+    if (!row) fail(409, 'passkey_challenge_missing', 'Start the passkey check again.');
+    return row.challenge;
+  }
+
+  private async consumePasskeyChallenge(
+    client: PoolClient,
+    actor: Actor,
+    purpose: 'registration' | 'authentication',
+  ) {
+    await client.query(
+      `UPDATE app.admin_passkey_challenges SET consumed_at=clock_timestamp()
+       WHERE session_id=$1 AND user_id=$2 AND purpose=$3 AND consumed_at IS NULL`,
+      [actor.sessionId, actor.userId, purpose],
+    );
+  }
+
+  private async resetPasskeys(client: PoolClient, actor: Actor, target: string | undefined) {
+    if (!target || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(target))
+      fail(400, 'invalid_request', 'Invalid account identifier.');
+    if (target.toLowerCase() === actor.userId.toLowerCase())
+      fail(403, 'self_reset_forbidden', 'Another verified administrator must reset your passkeys.');
+    const subject = (
+      await client.query(
+        'SELECT id,role FROM app.users WHERE id=$1 AND deleted_at IS NULL FOR UPDATE',
+        [target],
+      )
+    ).rows[0];
+    if (!subject) fail(404, 'not_found', 'Resource not found.');
+    if (subject.role !== 'admin')
+      fail(409, 'not_an_operator', 'Only operations accounts have passkeys to reset.');
+    const now = await this.now(client);
+    await client.query(
+      'UPDATE app.admin_passkeys SET revoked_at=COALESCE(revoked_at,$2) WHERE user_id=$1',
+      [subject.id, now],
+    );
+    await client.query(
+      `UPDATE app.admin_passkey_challenges
+       SET consumed_at=COALESCE(consumed_at,$2) WHERE user_id=$1`,
+      [subject.id, now],
+    );
+    await client.query(
+      'UPDATE app.auth_sessions SET revoked_at=COALESCE(revoked_at,$2) WHERE user_id=$1',
+      [subject.id, now],
+    );
+    await this.passkeyEvent(client, subject.id, actor.userId, 'reset');
+    return result();
+  }
+
+  private async elevate(client: PoolClient, actor: Actor, now: Date) {
+    await client.query(
+      'UPDATE app.auth_sessions SET admin_verified_at=$3 WHERE id=$1 AND user_id=$2',
+      [actor.sessionId, actor.userId, now],
+    );
+  }
+
+  private async passkeyEvent(
+    client: PoolClient,
+    userId: string,
+    actorId: string,
+    action: 'registration_started' | 'registered' | 'verified' | 'reset',
+  ) {
+    await client.query(
+      'INSERT INTO app.admin_passkey_events(user_id,actor_user_id,action) VALUES ($1,$2,$3)',
+      [userId, actorId, action],
+    );
+  }
+
   async handle(
     name: AuthOperation,
     actor: Actor | undefined,
@@ -423,6 +740,8 @@ export class AuthService {
       return result();
     }
     if (!actor) throw denied();
+    if ((passkeyOperations as readonly string[]).includes(name))
+      return this.passkey(name as PasskeyOperation, actor, body, target);
     return this.transaction(async (client) => {
       // Revocation takes the exclusive user lock first; do not upgrade a shared
       // lock after session checks (two concurrent revokers would deadlock).
