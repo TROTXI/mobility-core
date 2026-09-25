@@ -21,6 +21,22 @@ const tokens = (accessToken: string, refreshToken: string) => ({
 });
 
 describe('OpsSession', () => {
+  it('calls browser fetch with Window as its receiver by default', async () => {
+    const browserFetch = vi.fn(function (this: typeof globalThis) {
+      if (this !== globalThis) throw new TypeError('Illegal invocation');
+      return Promise.resolve(Response.json(tokens('access', 'refresh')));
+    });
+    vi.stubGlobal('fetch', browserFetch);
+    try {
+      const session = new OpsSession('https://api.example.test', undefined, new MemoryStorage());
+      await session.signInGoogle('google-id-token');
+      expect(session.signedIn).toBe(true);
+      expect(browserFetch).toHaveBeenCalledOnce();
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
   it('keeps access in memory, refresh in session storage, and sends fixed Ops metadata', async () => {
     const storage = new MemoryStorage();
     const fetcher = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {

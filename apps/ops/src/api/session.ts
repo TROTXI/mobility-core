@@ -29,7 +29,8 @@ export class OpsSession extends EventTarget {
 
   constructor(
     readonly baseUrl: string,
-    private readonly transport: typeof fetch = fetch,
+    // Browser fetch needs Window as its receiver (not this OpsSession).
+    private readonly transport: typeof fetch = (input, init) => globalThis.fetch(input, init),
     private readonly storage: Storage = sessionStorage,
   ) {
     super();
