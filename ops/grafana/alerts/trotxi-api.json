@@ -1,0 +1,137 @@
+{
+  "_comment": "Alert rules for one Trotxi API service. apply.mjs replaces $job with the service being alerted on, for example staging/trotxi-api. page = act now; notify = look today. Thresholds are pilot starting points: recalibrate after a few weeks of real traffic.",
+  "rules": [
+    {
+      "key": "silent",
+      "title": "API is not reporting",
+      "severity": "page",
+      "expr": "absent_over_time(process_memory_usage_bytes{job=\"$job\"}[3m])",
+      "above": 0,
+      "for": "2m",
+      "noData": "OK",
+      "summary": "{{ $labels.job }} has sent no metrics for about 5 minutes.",
+      "description": "The process is down, crash-looping, or cannot reach Grafana. Check the Render service events and logs first. Memory is reported every minute whether or not there is traffic, so silence here is not a quiet night. Three minutes of absence then two of confirmation: metrics arrive once a minute, so one late export never pages."
+    },
+    {
+      "key": "server-errors",
+      "title": "Server errors above 2%",
+      "severity": "page",
+      "expr": "(100 * (sum(rate(http_server_request_duration_seconds_count{job=\"$job\", http_response_status_code=~\"5..\"}[5m])) or vector(0)) / clamp_min(sum(rate(http_server_request_duration_seconds_count{job=\"$job\"}[5m])), 1e-9)) and on() (sum(rate(http_server_request_duration_seconds_count{job=\"$job\"}[5m])) > 0.02)",
+      "above": 2,
+      "for": "10m",
+      "noData": "OK",
+      "summary": "{{ humanize $values.A.Value }}% of requests on {{ $labels.job }} are failing with 5xx.",
+      "description": "Open the dashboard's 'Server errors (5xx) by route' panel to find the route, then Explore traces for it. Ignored when traffic is under about one request a minute, where one failure would be most of the sample."
+    },
+    {
+      "key": "payments-stuck",
+      "title": "Paystack payments are not being applied",
+      "severity": "page",
+      "expr": "max(trotxi_payment_inbox_oldest_ready_seconds{job=\"$job\"})",
+      "above": 900,
+      "for": "5m",
+      "noData": "OK",
+      "summary": "A Paystack event has waited {{ humanizeDuration $values.A.Value }} to be applied on {{ $labels.job }}.",
+      "description": "Riders have paid and their subscription or credit is not live. The payments maintenance job is failing or not running: check the GitHub Actions 'payments queue' workflow, then run it by hand."
+    },
+    {
+      "key": "ops-data-missing",
+      "title": "Payment and trip state is not being reported",
+      "severity": "page",
+      "expr": "absent_over_time(trotxi_payment_inbox_oldest_ready_seconds{job=\"$job\"}[5m]) and on() count_over_time(process_memory_usage_bytes{job=\"$job\"}[5m])",
+      "above": 0,
+      "for": "5m",
+      "noData": "OK",
+      "summary": "{{ $labels.job }} is running but has stopped reporting payment, purchase and trip state.",
+      "description": "The API could not read its operational state from the database, so the Paystack, purchase and GPS alerts are blind: they read no data as healthy. Check database connectivity and the API logs for the failing state query. Fires only while the process itself is reporting, so an outage pages once, as 'API is not reporting'."
+    },
+    {
+      "key": "memory",
+      "title": "Memory near the plan limit",
+      "severity": "notify",
+      "expr": "max(process_memory_usage_bytes{job=\"$job\"})",
+      "above": 209715200,
+      "for": "10m",
+      "noData": "OK",
+      "summary": "{{ $labels.job }} is using {{ humanize1024 $values.A.Value }}B of its 256 MB plan.",
+      "description": "Render stops the instance at 256 MB. If memory climbs and never falls back, suspect a leak and compare with the last deploy; if it is steady and high, the plan is too small."
+    },
+    {
+      "key": "latency",
+      "title": "Requests are slow (p95 over 1s)",
+      "severity": "notify",
+      "expr": "histogram_quantile(0.95, sum by (le) (rate(http_server_request_duration_seconds_bucket{job=\"$job\"}[5m]))) and on() (sum(rate(http_server_request_duration_seconds_count{job=\"$job\"}[5m])) > 0.02)",
+      "above": 1,
+      "for": "15m",
+      "noData": "OK",
+      "summary": "p95 latency on {{ $labels.job }} is {{ humanizeDuration $values.A.Value }}.",
+      "description": "Check 'Slowest routes' and 'Database query p95' on the dashboard. If every route is slow at once, look at event-loop delay and CPU."
+    },
+    {
+      "key": "event-loop",
+      "title": "Event loop is blocked",
+      "severity": "notify",
+      "expr": "max(nodejs_eventloop_delay_p99_seconds{job=\"$job\"})",
+      "above": 0.2,
+      "for": "10m",
+      "noData": "OK",
+      "summary": "Work on {{ $labels.job }} waits {{ humanizeDuration $values.A.Value }} for the JavaScript thread.",
+      "description": "Something synchronous and heavy is running, or the instance is short of CPU. Every request is slowed by this, whichever route it is on."
+    },
+    {
+      "key": "db-pool",
+      "title": "Requests are waiting for a database connection",
+      "severity": "notify",
+      "expr": "sum(db_client_connection_pending_requests{job=\"$job\"})",
+      "above": 0,
+      "for": "5m",
+      "noData": "OK",
+      "summary": "{{ $values.A.Value }} requests on {{ $labels.job }} are queued for a database connection.",
+      "description": "The pool is exhausted: long transactions, a lock wait, or more traffic than the pool size. Check database query p95 and the Render Postgres metrics."
+    },
+    {
+      "key": "jobs",
+      "title": "A scheduled job failed",
+      "severity": "notify",
+      "expr": "sum by (operation) (increase(trotxi_job_runs_total{job=\"$job\", outcome=\"failed\"}[30m]))",
+      "above": 0,
+      "for": "0s",
+      "noData": "OK",
+      "summary": "{{ $labels.operation }} failed on {{ $labels.job }} in the last 30 minutes.",
+      "description": "A maintenance run returned an error or had failed items inside it. The run's response in the GitHub Actions log says which items."
+    },
+    {
+      "key": "purchases",
+      "title": "A purchase has been unresolved for over an hour",
+      "severity": "notify",
+      "expr": "max(trotxi_purchases_unresolved_oldest_seconds{job=\"$job\"})",
+      "above": 3600,
+      "for": "10m",
+      "noData": "OK",
+      "summary": "The oldest unresolved purchase on {{ $labels.job }} is {{ humanizeDuration $values.A.Value }} old.",
+      "description": "That rider cannot check out again until it resolves. Look it up in Ops under Payments."
+    },
+    {
+      "key": "stale-gps",
+      "title": "A bus on a live run has stopped reporting",
+      "severity": "notify",
+      "expr": "max(trotxi_trips_stale_gps{job=\"$job\"})",
+      "above": 0,
+      "for": "10m",
+      "noData": "OK",
+      "summary": "{{ $values.A.Value }} runs in progress on {{ $labels.job }} have no recent GPS.",
+      "description": "Riders see a frozen bus. Call the driver: usually the app was closed or the phone lost signal."
+    },
+    {
+      "key": "dependencies",
+      "title": "A third-party service is failing",
+      "severity": "notify",
+      "expr": "sum by (server_address) (rate(http_client_request_duration_seconds_count{job=\"$job\", server_address!~\".*grafana\\\\.net|localhost\", http_response_status_code=~\"5..\"}[5m])) or sum by (server_address) (rate(http_client_request_duration_seconds_count{job=\"$job\", server_address!~\".*grafana\\\\.net|localhost\", error_type!=\"\"}[5m]))",
+      "above": 0.01,
+      "for": "10m",
+      "noData": "OK",
+      "summary": "Calls from {{ $labels.job }} to {{ $labels.server_address }} are failing.",
+      "description": "Paystack, Google, email, push or storage is erroring or unreachable. Check that provider's status page before changing anything here."
+    }
+  ]
+}

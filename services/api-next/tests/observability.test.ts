@@ -3,7 +3,15 @@ import test from 'node:test';
 import { Writable } from 'node:stream';
 import Fastify from 'fastify';
 import { loggerOptions } from '../src/observability/logging.js';
-import { batchFailed } from '../src/observability/metrics.js';
+import { readFile } from 'node:fs/promises';
+import { metrics } from '@opentelemetry/api';
+import {
+  AggregationTemporality,
+  InMemoryMetricExporter,
+  MeterProvider,
+  PeriodicExportingMetricReader,
+} from '@opentelemetry/sdk-metrics';
+import { batchFailed, observeProcess, recordJob } from '../src/observability/metrics.js';
 import { startTelemetry } from '../src/observability/telemetry.js';
 
 test('OBS-01 no collector configured means no telemetry, not an error', () => {
@@ -67,4 +75,67 @@ test('OBS-03 request logs keep the path and never the search, the token or a PIN
     'DR-7Q4M',
   ])
     assert.equal(written.includes(secret), false, `${secret} reached the log`);
+});
+
+test('OBS-04 job runs are labelled by operation, and memory is what the plan limit sees', async () => {
+  const exporter = new InMemoryMetricExporter(AggregationTemporality.CUMULATIVE);
+  const reader = new PeriodicExportingMetricReader({ exporter, exportIntervalMillis: 3_600_000 });
+  const provider = new MeterProvider({ readers: [reader] });
+  metrics.setGlobalMeterProvider(provider);
+  try {
+    observeProcess();
+    recordJob('runPaymentsMaintenance', 200, { inbox: { failed: 1 } });
+    await reader.forceFlush();
+    const points = new Map(
+      exporter
+        .getMetrics()
+        .flatMap((r) => r.scopeMetrics.flatMap((s) => s.metrics))
+        .map((m) => [m.descriptor.name, m.dataPoints] as const),
+    );
+    // `job` would be overwritten by the service's own job label in Prometheus,
+    // folding every scheduled job into one series.
+    assert.deepEqual(points.get('trotxi_job_runs')?.[0]?.attributes, {
+      operation: 'runPaymentsMaintenance',
+      outcome: 'failed',
+    });
+    const rss = points.get('process.memory.usage')?.[0]?.value as number;
+    assert.ok(rss > 10 * 2 ** 20 && rss < 64 * 2 ** 30, `resident memory ${rss}`);
+    assert.deepEqual(
+      points
+        .get('process.cpu.time')
+        ?.map((p) => p.attributes['cpu.mode'])
+        .sort(),
+      ['system', 'user'],
+    );
+  } finally {
+    await provider.shutdown();
+    metrics.disable();
+  }
+});
+
+test('OBS-05 every dashboard query and alert is scoped to one service', async () => {
+  const dashboard = JSON.parse(
+    await readFile(
+      new URL('../../../ops/grafana/dashboards/trotxi-api-health.json', import.meta.url),
+      'utf8',
+    ),
+  );
+  const expressions = dashboard.panels.flatMap((p: { targets?: { expr: string }[] }) =>
+    (p.targets ?? []).map((t) => t.expr),
+  );
+  assert.ok(expressions.length > 30);
+  // An unscoped query would mix staging and production on one graph.
+  for (const expr of expressions) assert.match(expr, /job="\$job"/, expr);
+
+  const { rules } = JSON.parse(
+    await readFile(new URL('../../../ops/grafana/alerts/trotxi-api.json', import.meta.url), 'utf8'),
+  );
+  assert.equal(new Set(rules.map((r: { key: string }) => r.key)).size, rules.length);
+  for (const rule of rules) {
+    assert.match(rule.expr, /job="\$job"/, rule.key);
+    assert.ok(['page', 'notify'].includes(rule.severity), rule.key);
+    // Grafana rule uids are at most 40 characters: trotxi-<environment>-<key>.
+    assert.ok(`trotxi-production-${rule.key}`.length <= 40, rule.key);
+    assert.equal(typeof rule.above, 'number', rule.key);
+  }
 });
