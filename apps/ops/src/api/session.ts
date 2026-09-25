@@ -83,10 +83,24 @@ export class OpsSession extends EventTarget {
 
   private async authorized(request: Request) {
     if (!this.accessToken) throw new ApiError(401, 'not_authenticated', 'Sign in again.');
+    // Constructing the first authenticated Request consumes a POST/PATCH body.
+    // Keep a pristine copy for a retry after rotating the access token.
+    const retry = request.clone();
     const first = await this.transport(this.withAuth(request));
-    if (first.status !== 401) return first;
-    await this.refresh();
-    return this.transport(this.withAuth(request));
+    if (first.status !== 401) return this.detectElevationExpiry(first);
+    try {
+      await this.refresh();
+    } catch (error) {
+      if (error instanceof ApiError && (error.status === 401 || error.status === 403)) this.clear();
+      throw error;
+    }
+    return this.detectElevationExpiry(await this.transport(this.withAuth(retry)));
+  }
+
+  private async detectElevationExpiry(response: Response) {
+    if (response.status === 403 && (await errorFrom(response)).code === 'passkey_required')
+      this.dispatchEvent(new Event('elevation-required'));
+    return response;
   }
 
   private withAuth(request: Request) {

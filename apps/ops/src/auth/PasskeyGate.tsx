@@ -1,4 +1,4 @@
-import { Button, MessageBar, MessageBarBody, Spinner } from '@fluentui/react-components';
+import { Button, Spinner } from '@fluentui/react-components';
 import { startAuthentication, startRegistration } from '@simplewebauthn/browser';
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import type { components } from '../generated/api';
@@ -24,6 +24,15 @@ export function PasskeyGate({ children }: { children: ReactNode }) {
   useEffect(() => {
     void load().catch((value: Error) => setError(value.message));
   }, [load]);
+
+  useEffect(() => {
+    const requireElevation = () => {
+      setError('');
+      setStatus((current) => (current ? { ...current, verified: false } : current));
+    };
+    session.addEventListener('elevation-required', requireElevation);
+    return () => session.removeEventListener('elevation-required', requireElevation);
+  }, [session]);
 
   const verify = async () => {
     setWorking(true);
@@ -68,6 +77,27 @@ export function PasskeyGate({ children }: { children: ReactNode }) {
         <Spinner size="large" />
       </AuthFrame>
     );
+  if (!status)
+    return (
+      <AuthFrame title="Secure access unavailable" copy="We could not check your passkey status.">
+        <div className="error-box" role="alert">
+          {error}
+        </div>
+        <Button
+          appearance="primary"
+          disabled={working}
+          onClick={() => {
+            setWorking(true);
+            setError('');
+            void load()
+              .catch((value: Error) => setError(value.message))
+              .finally(() => setWorking(false));
+          }}
+        >
+          Try again
+        </Button>
+      </AuthFrame>
+    );
   if (status?.verified) return children;
   return (
     <AuthFrame
@@ -79,9 +109,9 @@ export function PasskeyGate({ children }: { children: ReactNode }) {
       }
     >
       {error && (
-        <MessageBar intent="error">
-          <MessageBarBody>{error}</MessageBarBody>
-        </MessageBar>
+        <div className="error-box" role="alert">
+          {error}
+        </div>
       )}
       <Button appearance="primary" size="large" disabled={working} onClick={() => void verify()}>
         {working

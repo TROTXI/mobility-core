@@ -57,6 +57,81 @@ describe('OpsSession', () => {
     expect(session.signedIn).toBe(false);
     expect(storage.length).toBe(0);
   });
+
+  it('retries a POST with its original body and rotated bearer after access expiry', async () => {
+    const seen: { body: string; bearer: string | null }[] = [];
+    const fetcher = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const request = input instanceof Request ? input : new Request(input, init);
+      if (request.url.endsWith('/v1/auth/google')) return Response.json(tokens('old', 'refresh-1'));
+      if (request.url.endsWith('/v1/auth/refresh'))
+        return Response.json(tokens('new', 'refresh-2'));
+      seen.push({ body: await request.text(), bearer: request.headers.get('Authorization') });
+      return seen.length === 1
+        ? Response.json({ error: { code: 'token_expired' } }, { status: 401 })
+        : Response.json({ data: { ok: true } });
+    });
+    const session = new OpsSession(
+      'https://api.example.test',
+      fetcher as typeof fetch,
+      new MemoryStorage(),
+    );
+    await session.signInGoogle('google-id-token');
+    const response = await session['authorized'](
+      new Request('https://api.example.test/v1/ops/command', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reason: 'reassign' }),
+      }),
+    );
+    expect(response.status).toBe(200);
+    expect(seen).toEqual([
+      { body: '{"reason":"reassign"}', bearer: 'Bearer old' },
+      { body: '{"reason":"reassign"}', bearer: 'Bearer new' },
+    ]);
+  });
+
+  it('signs out when a revoked refresh token is refused', async () => {
+    const storage = new MemoryStorage();
+    const fetcher = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const request = input instanceof Request ? input : new Request(input, init);
+      if (request.url.endsWith('/v1/auth/google')) return Response.json(tokens('old', 'refresh-1'));
+      if (request.url.endsWith('/v1/auth/refresh'))
+        return Response.json({ error: { code: 'session_revoked' } }, { status: 401 });
+      return Response.json({ error: { code: 'token_expired' } }, { status: 401 });
+    });
+    const session = new OpsSession('https://api.example.test', fetcher as typeof fetch, storage);
+    await session.signInGoogle('google-id-token');
+    const changed = vi.fn();
+    session.addEventListener('change', changed);
+    await expect(
+      session['authorized'](new Request('https://api.example.test/v1/ops/route')),
+    ).rejects.toMatchObject({ status: 401 });
+    expect(session.signedIn).toBe(false);
+    expect(storage.length).toBe(0);
+    expect(changed).toHaveBeenCalledOnce();
+  });
+
+  it('notifies the passkey gate when elevation expires without consuming the error response', async () => {
+    const fetcher = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const request = input instanceof Request ? input : new Request(input, init);
+      if (request.url.endsWith('/v1/auth/google'))
+        return Response.json(tokens('access', 'refresh'));
+      return Response.json({ error: { code: 'passkey_required' } }, { status: 403 });
+    });
+    const session = new OpsSession(
+      'https://api.example.test',
+      fetcher as typeof fetch,
+      new MemoryStorage(),
+    );
+    await session.signInGoogle('google-id-token');
+    const required = vi.fn();
+    session.addEventListener('elevation-required', required);
+    const response = await session['authorized'](
+      new Request('https://api.example.test/v1/ops/route'),
+    );
+    expect(required).toHaveBeenCalledOnce();
+    expect((await response.json()).error.code).toBe('passkey_required');
+  });
 });
 
 class MemoryStorage implements Storage {

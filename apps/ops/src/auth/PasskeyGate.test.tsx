@@ -10,7 +10,7 @@ const { get, post, startRegistration, startAuthentication, auth } = vi.hoisted((
     post,
     startRegistration: vi.fn(),
     startAuthentication: vi.fn(),
-    auth: { session: { client: { GET: get, POST: post } } },
+    auth: { session: Object.assign(new EventTarget(), { client: { GET: get, POST: post } }) },
   };
 });
 
@@ -73,5 +73,39 @@ describe('PasskeyGate', () => {
     await waitFor(() => expect(screen.getByText('Private operations')).toBeInTheDocument());
     expect(startAuthentication).toHaveBeenCalledOnce();
     expect(startRegistration).not.toHaveBeenCalled();
+  });
+
+  it('returns to the passkey check when elevation expires while a screen is open', async () => {
+    get.mockResolvedValueOnce({
+      data: {
+        data: { registered: true, passkeyCount: 1, registrationPending: false, verified: true },
+      },
+    });
+    render(
+      <PasskeyGate>
+        <div>Private operations</div>
+      </PasskeyGate>,
+    );
+    expect(await screen.findByText('Private operations')).toBeInTheDocument();
+    auth.session.dispatchEvent(new Event('elevation-required'));
+    expect(await screen.findByRole('button', { name: 'Verify with passkey' })).toBeInTheDocument();
+    expect(screen.queryByText('Private operations')).not.toBeInTheDocument();
+  });
+
+  it('offers a retry, not passkey registration, when status loading fails', async () => {
+    get.mockRejectedValueOnce(new Error('offline')).mockResolvedValueOnce({
+      data: {
+        data: { registered: true, passkeyCount: 1, registrationPending: false, verified: false },
+      },
+    });
+    render(
+      <PasskeyGate>
+        <div>Private operations</div>
+      </PasskeyGate>,
+    );
+    expect(await screen.findByText('Secure access unavailable')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Create passkey' })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+    expect(await screen.findByRole('button', { name: 'Verify with passkey' })).toBeInTheDocument();
   });
 });
