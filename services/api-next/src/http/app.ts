@@ -105,6 +105,7 @@ export interface AppOptions extends Dependencies {
    * per-domain tests, and is not a limit once the service scales.
    */
   admit?: (subject: string) => Promise<{ count: number; resetsInSeconds: number }>;
+  admitIp?: (ip: string, bucket: string) => Promise<{ count: number; resetsInSeconds: number }>;
   minimumBuilds: {
     ops: number;
     driver: { ios: number; android: number };
@@ -378,6 +379,10 @@ export async function createTransportApp(options: AppOptions) {
       const anonymous = publicRead || publicAuth || publicConfig;
       const ops = path.startsWith('/v1/ops/');
       const scheduled = ops && maintenanceOperations.has(name);
+      const authLimited =
+        publicAuth ||
+        name === 'changeDriverPin' ||
+        (passkeyOperations as readonly string[]).includes(name);
       const response: Record<string, unknown> = {};
       for (const [status, out] of Object.entries(operation.responses)) {
         const schema = out.content?.['application/json']?.schema;
@@ -391,11 +396,7 @@ export async function createTransportApp(options: AppOptions) {
         // requests visible, but do not ship successful liveness noise to Loki.
         ...(name === 'getHealth' ? { logLevel: 'silent' as const } : {}),
         ...(name === 'createPatternVersion' ? { bodyLimit: 1048576 } : {}),
-        ...(publicAuth ||
-        name === 'changeDriverPin' ||
-        (passkeyOperations as readonly string[]).includes(name)
-          ? { config: { rateLimit: { max: authBudget, timeWindow: 60000 } } }
-          : {}),
+        ...(authLimited ? { config: { rateLimit: { max: authBudget, timeWindow: 60000 } } } : {}),
         schema: { ...(input ? { body: rootRef(input) } : {}), response },
         // Every scheduled job reports its outcome here, whichever service ran
         // it. One place, so a job added later is counted without anyone
@@ -416,6 +417,24 @@ export async function createTransportApp(options: AppOptions) {
         // A route-local onRequest auth hook would precede its appended hook.
         preValidation: async (request, reply) => {
           reply.header('Cache-Control', 'no-store');
+          // The local onRequest limiter already ran. Share the second line
+          // across replicas before doing JWT verification or resource reads.
+          if (options.admitIp && name !== 'getHealth') {
+            const buckets: [string, number][] = [['all', ipBudget]];
+            if (authLimited) buckets.push([`auth:${name}`, authBudget]);
+            for (const [bucket, maximum] of buckets) {
+              let spent;
+              try {
+                spent = await options.admitIp(request.ip, bucket);
+              } catch {
+                fail(503, 'admission_unavailable', 'Please try again later.');
+              }
+              if (spent!.count > maximum) {
+                reply.header('Retry-After', String(spent!.resetsInSeconds));
+                fail(429, 'rate_limited', 'Please wait before trying again.');
+              }
+            }
+          }
           const authorization = request.headers.authorization;
           if (!anonymous && (!authorization || !/^Bearer [^\s]{1,8192}$/.test(authorization)))
             fail(401, 'unauthenticated', 'Sign in to continue.');

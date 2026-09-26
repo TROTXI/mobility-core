@@ -18,7 +18,11 @@ class MemorySessionStorage implements SessionStorage {
   }
 }
 
-DriverApi replacementClient({Dio? dio, bool authenticate = true}) {
+DriverApi replacementClient({
+  Dio? dio,
+  bool authenticate = true,
+  DateTime Function()? now,
+}) {
   final store = ScopedTokenStore(
     scope: SessionScope(
       baseUrl: 'http://localhost',
@@ -36,6 +40,7 @@ DriverApi replacementClient({Dio? dio, bool authenticate = true}) {
     baseUrl: 'http://localhost',
     tokenStore: store,
     metadata: metadata,
+    now: now,
   );
   if (!authenticate) {
     // Repository/widget tests exercise serializers, not the OS session queue

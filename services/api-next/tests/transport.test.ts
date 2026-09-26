@@ -267,3 +267,57 @@ test('IP admission runs before verification and forged forwarded headers cannot 
     await pool.end();
   }
 });
+
+test('shared IP admission spans replicas and fails closed before verification', async () => {
+  const pool = new Pool();
+  let count = 0,
+    verified = 0;
+  let unavailable = false;
+  const options = {
+    pool,
+    coordinateReservations: rejectBookingChanges,
+    cursorSecret: Buffer.alloc(32, 9),
+    requestsPerIpPerMinute: 1,
+    admitIp: async () => {
+      if (unavailable) throw new Error('admission offline');
+      return { count: ++count, resetsInSeconds: 37 };
+    },
+    verifyAccess: async () => {
+      verified++;
+      return null;
+    },
+    authorizeSession: async () => {
+      throw new Error('unexpected database access');
+    },
+    minimumBuilds: { ops: 1, driver: { ios: 1, android: 1 }, commuter: { ios: 1, android: 1 } },
+  };
+  const a = await createTransportApp(options),
+    b = await createTransportApp(options);
+  try {
+    const first = await a.inject({
+      url: '/v1/driver/trips',
+      headers: { authorization: 'Bearer token' },
+    });
+    assert.equal(first.statusCode, 401);
+    const second = await b.inject({
+      url: '/v1/driver/trips',
+      headers: { authorization: 'Bearer token' },
+    });
+    assert.equal(second.statusCode, 429);
+    assert.equal(second.headers['retry-after'], '37');
+    assert.equal(verified, 1);
+    unavailable = true;
+    const failed = await b.inject({
+      url: '/v1/driver/trips',
+      remoteAddress: '192.0.2.9',
+      headers: { authorization: 'Bearer token' },
+    });
+    assert.equal(failed.statusCode, 503);
+    assert.equal(failed.json().error.code, 'admission_unavailable');
+    assert.equal(verified, 1);
+  } finally {
+    await a.close();
+    await b.close();
+    await pool.end();
+  }
+});

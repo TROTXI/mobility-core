@@ -57,6 +57,8 @@ class CommuterDataClient {
   late final Interceptor _admission;
   static const _generationKey = 'commuter.sessionGeneration';
   final _pending = <String, String>{};
+  final _geometries = <String, Geometry>{};
+  final _geometryReads = <String, Future<Geometry>>{};
   int? _generation;
   bool _disposed = false;
   int _activeReads = 0;
@@ -65,6 +67,8 @@ class CommuterDataClient {
     if (_disposed) throw StateError('Commuter data client is disposed');
     if (_generation != store.generation) {
       _pending.clear();
+      _geometries.clear();
+      _geometryReads.clear();
       _generation = store.generation;
     }
     return store.generation;
@@ -79,6 +83,8 @@ class CommuterDataClient {
   void dispose() {
     _disposed = true;
     _pending.clear();
+    _geometries.clear();
+    _geometryReads.clear();
     if (_activeReads == 0) client.dio.interceptors.remove(_admission);
     // A queued request must still pass admission after disposal. Keep that
     // guard installed until all requests started by this boundary settle.
@@ -194,14 +200,13 @@ class CommuterDataClient {
   /// a cached one stops working. Read [Avatar.expiresAt] and fetch again rather
   /// than holding the URL: the boarding screen a driver looks at shows this
   /// picture, and a dead link there reads as a rider with no photo.
-  Future<Avatar> avatar() async => (await _read((extra) => client
-          .getSelfApi()
-          .getAvatar(
+  Future<Avatar> avatar() async =>
+      (await _read((extra) => client.getSelfApi().getAvatar(
               xTrotxiClient: metadata.app,
               xTrotxiBuild: metadata.build,
               xTrotxiPlatform: metadata.platform,
               extra: extra)))
-      .data;
+          .data;
 
   /// Replace the rider's photo.
   ///
@@ -432,13 +437,35 @@ class CommuterDataClient {
               extra: extra)))
           .data;
 
-  Future<Geometry> geometry(String id) async =>
-      (await _read((extra) => client.getPublicApi().getGeometry(
-              id: id,
-              xTrotxiClient: metadata.app,
-              xTrotxiBuild: metadata.build,
-              extra: extra)))
-          .data;
+  Future<Geometry> geometry(String id) async {
+    final generation = sessionGeneration;
+    final cached = _geometries[id];
+    if (cached != null) return cached;
+    final existing = _geometryReads[id];
+    if (existing != null) return existing;
+    final pending = _loadGeometry(id, generation);
+    _geometryReads[id] = pending;
+    try {
+      return await pending;
+    } finally {
+      if (identical(_geometryReads[id], pending)) _geometryReads.remove(id);
+    }
+  }
+
+  Future<Geometry> _loadGeometry(String id, int generation) async {
+    final result = (await _read((extra) => client.getPublicApi().getGeometry(
+            id: id,
+            xTrotxiClient: metadata.app,
+            xTrotxiBuild: metadata.build,
+            extra: extra)))
+        .data;
+    ensureSession(generation);
+    if (result.id != id)
+      throw const ApiException(502, 'Geometry identity mismatch.');
+    if (_geometries.length >= 64) _geometries.remove(_geometries.keys.first);
+    _geometries[id] = result;
+    return result;
+  }
 
   /// Never substitute a cached location for a fresh authorization decision.
   Future<LiveTrip> liveTrip(String id) async =>

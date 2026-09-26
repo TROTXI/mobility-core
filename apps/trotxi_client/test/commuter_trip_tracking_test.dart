@@ -109,6 +109,47 @@ void main() {
     data.dispose();
   });
 
+  test(
+      'immutable geometry shares a pending read, is bounded and resets with account',
+      () async {
+    final pending = Completer<ResponseBody>();
+    final started = Completer<void>();
+    reply = (_) {
+      started.complete();
+      return pending.future;
+    };
+    final first = data.geometry('geometry');
+    final second = data.geometry('geometry');
+    await started.future;
+    expect(requests.length, 1);
+    pending.complete(json(200, {'data': geometryJson()}));
+    expect(identical(await first, await second), isTrue);
+    await data.geometry('geometry');
+    expect(requests.length, 1);
+    reply = (o) => json(200, {
+          'data': {...geometryJson(), 'id': o.path.split('/').last}
+        });
+    for (var i = 0; i < 64; i++) {
+      await data.geometry('geometry-$i');
+    }
+    await data.geometry('geometry');
+    expect(requests.length, 66, reason: 'the oldest geometry was evicted');
+    await store.saveTokens(accessToken: 'rider-b', refreshToken: 'refresh-b');
+    await data.geometry('geometry');
+    expect(requests.length, 67,
+        reason: 'geometry never persists across a login');
+  });
+
+  test('failed geometry reads are not retained for retry', () async {
+    reply = (_) => json(503, {
+          'error': {'code': 'offline', 'message': 'Unavailable'}
+        });
+    await expectLater(data.geometry('geometry'), throwsA(isA<ApiException>()));
+    reply = normal;
+    expect((await data.geometry('geometry')).id, 'geometry');
+    expect(requests.length, 2);
+  });
+
   test('trip pagination preserves the chosen service dates and route filter',
       () async {
     reply = (o) => json(

@@ -19,8 +19,118 @@ const tokens = (accessToken: string, refreshToken: string) => ({
     account,
   },
 });
+const readOptions = {
+  params: { header: { 'X-Trotxi-Client': 'ops' as const, 'X-Trotxi-Build': 1 } },
+};
 
 describe('OpsSession', () => {
+  it('does not restore a session from a refresh that completes after logout', async () => {
+    let finish!: (response: Response) => void;
+    const fetcher = vi
+      .fn()
+      .mockResolvedValueOnce(Response.json(tokens('access', 'refresh')))
+      .mockResolvedValueOnce(new Response(null, { status: 401 }))
+      .mockImplementationOnce(
+        () =>
+          new Promise<Response>((resolve) => {
+            finish = resolve;
+          }),
+      )
+      .mockResolvedValue(new Response(null, { status: 204 }));
+    const session = new OpsSession('https://api.example.test', fetcher, new MemoryStorage());
+    await session.signInGoogle('token');
+    const pending = session.client.GET('/v1/ops/vehicles', readOptions);
+    const rejected = expect(pending).rejects.toMatchObject({ code: 'session_changed' });
+    await vi.waitFor(() => expect(fetcher).toHaveBeenCalledTimes(3));
+    await session.logout();
+    finish(Response.json(tokens('late-access', 'late-refresh')));
+    await rejected;
+    expect(session.signedIn).toBe(false);
+  });
+  it('shares matching GETs, not completed responses or different queries', async () => {
+    let finish!: (response: Response) => void;
+    const fetcher = vi
+      .fn()
+      .mockResolvedValueOnce(Response.json(tokens('access', 'refresh')))
+      .mockImplementation(
+        () =>
+          new Promise<Response>((resolve) => {
+            finish = resolve;
+          }),
+      );
+    const session = new OpsSession('https://api.example.test', fetcher, new MemoryStorage());
+    await session.signInGoogle('token');
+    const first = session.client.GET('/v1/ops/vehicles', readOptions);
+    const second = session.client.GET('/v1/ops/vehicles', readOptions);
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(fetcher).toHaveBeenCalledTimes(2);
+    finish(Response.json({ data: [], page: { nextCursor: null } }));
+    const responses = await Promise.all([first, second]);
+    expect(responses.map((r) => r.data?.data)).toEqual([[], []]);
+    const fresh = session.client.GET('/v1/ops/vehicles', readOptions);
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(fetcher).toHaveBeenCalledTimes(3);
+    finish(Response.json({ data: [], page: { nextCursor: null } }));
+    await fresh;
+  });
+
+  it('blocks other screens during Retry-After without retrying mutations', async () => {
+    vi.useFakeTimers();
+    try {
+      const fetcher = vi
+        .fn()
+        .mockResolvedValueOnce(Response.json(tokens('access', 'refresh')))
+        .mockResolvedValueOnce(
+          Response.json(
+            { error: { code: 'rate_limited', message: 'Wait.' } },
+            { status: 429, headers: { 'Retry-After': '60' } },
+          ),
+        )
+        .mockResolvedValue(Response.json({ data: [], page: { nextCursor: null } }));
+      const session = new OpsSession('https://api.example.test', fetcher, new MemoryStorage());
+      await session.signInGoogle('token');
+      await session.client.GET('/v1/ops/vehicles', readOptions);
+      await expect(session.client.GET('/v1/ops/drivers', readOptions)).rejects.toMatchObject({
+        status: 429,
+      });
+      expect(fetcher).toHaveBeenCalledTimes(2);
+      vi.advanceTimersByTime(60_000);
+      await session.client.GET('/v1/ops/drivers', readOptions);
+      expect(fetcher).toHaveBeenCalledTimes(3);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('one cancelled consumer does not cancel another shared reader', async () => {
+    let finish!: (response: Response) => void;
+    const fetcher = vi
+      .fn()
+      .mockResolvedValueOnce(Response.json(tokens('access', 'refresh')))
+      .mockImplementation(
+        () =>
+          new Promise<Response>((resolve) => {
+            finish = resolve;
+          }),
+      );
+    const session = new OpsSession('https://api.example.test', fetcher, new MemoryStorage());
+    await session.signInGoogle('token');
+    const controller = new AbortController();
+    const first = session.client.GET('/v1/ops/vehicles', {
+      ...readOptions,
+      signal: controller.signal,
+    });
+    const second = session.client.GET('/v1/ops/vehicles', readOptions);
+    const cancelled = expect(first).rejects.toMatchObject({ name: 'AbortError' });
+    await Promise.resolve();
+    await Promise.resolve();
+    controller.abort();
+    finish(Response.json({ data: [], page: { nextCursor: null } }));
+    await cancelled;
+    expect((await second).data?.data).toEqual([]);
+  });
   it('calls browser fetch with Window as its receiver by default', async () => {
     const browserFetch = vi.fn(function (this: typeof globalThis) {
       if (this !== globalThis) throw new TypeError('Illegal invocation');

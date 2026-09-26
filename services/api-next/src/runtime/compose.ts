@@ -1,4 +1,5 @@
 import pg from 'pg';
+import { createHmac } from 'node:crypto';
 import type { Pool } from 'pg';
 import type { FastifyInstance } from 'fastify';
 import { createReplacementApp } from '../http/replacement.js';
@@ -163,6 +164,11 @@ export async function composeBackend(config: RuntimeConfig): Promise<Backend> {
       credentialReplayKey: config.keys.credentialReplay,
       authProviders: config.providers,
       admit: (subject) => admission.spend(subject),
+      // Do not retain raw network addresses in the disposable budget table.
+      admitIp: (ip, bucket) =>
+        admission.spend(
+          `ip:${bucket}:${createHmac('sha256', config.keys.cursorSecret).update(ip).digest('hex')}`,
+        ),
       trustProxy: config.trustProxy,
       corsOrigin: config.opsOrigin,
       requestsPerMinute: config.limits.perUser,

@@ -61,8 +61,10 @@ void main() {
   }
 
   DriverApi client(
-    void Function(RequestOptions, RequestInterceptorHandler) handler,
-  ) => replacementClient(
+    void Function(RequestOptions, RequestInterceptorHandler) handler, {
+    DateTime Function()? now,
+  }) => replacementClient(
+    now: now,
     dio: Dio(BaseOptions(baseUrl: 'http://localhost'))
       ..interceptors.add(InterceptorsWrapper(onRequest: handler)),
   );
@@ -534,7 +536,7 @@ void main() {
             ),
             true,
           );
-        }),
+        }, now: () => now),
       );
       addTearDown(publisher.dispose);
       await publisher.start('trip-1');

@@ -72,6 +72,7 @@ class DriverApi {
   final Map<String, wire.DriverTrip> trips = {};
   final Map<String, String> routeNames = {};
   final Map<String, String> _pending = {};
+  final Map<String, Future<Object?>> _reads = {};
   int? _generation;
   int get sessionGeneration => _sync();
   void ensureSession(int generation) => _check(generation);
@@ -81,6 +82,7 @@ class DriverApi {
       trips.clear();
       routeNames.clear();
       _pending.clear();
+      _reads.clear();
       _generation = store.generation;
     }
     return store.generation;
@@ -111,6 +113,33 @@ class DriverApi {
     Map<String, dynamic>? query,
   }) async {
     final generation = _sync();
+    final key = jsonEncode([generation, path, query, serializer.wireName]);
+    final existing = _reads[key];
+    if (existing != null) {
+      final result = await existing;
+      _check(generation);
+      return result as T;
+    }
+    final pending = _get(
+      path,
+      serializer,
+      query: query,
+      generation: generation,
+    );
+    _reads[key] = pending;
+    try {
+      return await pending;
+    } finally {
+      if (identical(_reads[key], pending)) _reads.remove(key);
+    }
+  }
+
+  Future<T> _get<T>(
+    String path,
+    Serializer<T> serializer, {
+    Map<String, dynamic>? query,
+    required int generation,
+  }) async {
     final Object? data;
     try {
       final response = await dio.get<Object?>(

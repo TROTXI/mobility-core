@@ -904,7 +904,53 @@ test('ASM-22 two instances share one budget, and a closed window is the worker t
   );
   assert.equal(await first.admission.sweep(100), 1);
   assert.equal(
-    (await f.owner.query('SELECT count(*)::int AS n FROM app.admission_counters')).rows[0].n,
+    (
+      await f.owner.query(
+        'SELECT count(*)::int AS n FROM app.admission_counters WHERE subject=$1',
+        [f.actor.userId],
+      )
+    ).rows[0].n,
     0,
   );
+  assert.ok(
+    (await f.owner.query("SELECT subject FROM app.admission_counters WHERE subject LIKE 'ip:%'"))
+      .rowCount! > 0,
+    'live IP budgets must survive rider-window cleanup',
+  );
+});
+
+test('ASM-24 composed replicas share hashed IP admission before authentication', async (t) => {
+  const f = await setup(t);
+  const configuration = configurationFor(f, { REPLACEMENT_REQUESTS_PER_IP_PER_MINUTE: '1' });
+  const first = await composeBackend(configuration),
+    second = await composeBackend(configuration);
+  t.after(() => first.close());
+  t.after(() => second.close());
+  const subject = `ip:all:${createHmac('sha256', configuration.keys.cursorSecret).update('192.0.2.44').digest('hex')}`;
+  let window: number | undefined;
+  const codes: number[] = [];
+  for (let i = 0; i < 12 && codes.length < 2; i++) {
+    const response = await (i % 2 ? second : first).app.inject({
+      url: '/v1/me/membership',
+      remoteAddress: '192.0.2.44',
+      headers: { authorization: 'Bearer invalid-token' },
+    });
+    const row = (
+      await f.owner.query(
+        'SELECT window_started_at,count FROM app.admission_counters WHERE subject=$1',
+        [subject],
+      )
+    ).rows[0];
+    assert.ok(row, 'runtime composition must install shared IP admission');
+    const observed = row.window_started_at.getTime();
+    if (observed !== window) {
+      window = observed;
+      codes.length = 0;
+    }
+    codes.push(response.statusCode);
+    assert.equal(Number(row.count), codes.length);
+    if (response.statusCode === 429) assert.ok(Number(response.headers['retry-after']) > 0);
+  }
+  assert.deepEqual(codes, [401, 429]);
+  assert.equal(subject.includes('192.0.2.44'), false);
 });

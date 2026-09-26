@@ -25,6 +25,12 @@ export class OpsSession extends EventTarget {
   private accessToken: string | null = null;
   private accountValue: Account | null = null;
   private refreshing: Promise<void> | null = null;
+  private epoch = 0;
+  private retryUntil = 0;
+  private reads = new Map<
+    string,
+    { promise: Promise<Response>; controller: AbortController; users: number }
+  >();
   readonly client: Client<paths>;
 
   constructor(
@@ -50,20 +56,24 @@ export class OpsSession extends EventTarget {
 
   async restore() {
     if (!this.storage.getItem(refreshKey)) return;
+    const epoch = this.epoch;
     try {
       await this.refresh();
     } catch {
-      this.clear();
+      if (epoch === this.epoch) this.clear();
     }
   }
 
   async signInGoogle(idToken: string) {
+    const epoch = this.epoch;
     const response = await this.publicRequest('/v1/auth/google', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ idToken }),
     });
-    this.save(await response.json().then(unwrap<Tokens>));
+    const tokens = await response.json().then(unwrap<Tokens>);
+    if (epoch !== this.epoch) throw new ApiError(401, 'session_changed', 'Sign in again.');
+    this.save(tokens);
   }
 
   async logout() {
@@ -83,22 +93,98 @@ export class OpsSession extends EventTarget {
   }
 
   private async authorized(request: Request) {
+    this.checkCooldown();
+    if (request.method !== 'GET') return this.sendAuthorized(request);
+    const key = JSON.stringify([this.epoch, request.url, [...request.headers]]);
+    let flight = this.reads.get(key);
+    if (!flight) {
+      const controller = new AbortController();
+      const shared = new Request(request, {
+        signal: AbortSignal.any([controller.signal, AbortSignal.timeout(30_000)]),
+      });
+      const promise = this.sendAuthorized(shared).finally(() => {
+        if (this.reads.get(key)?.promise === promise) this.reads.delete(key);
+      });
+      flight = { promise, controller, users: 0 };
+      this.reads.set(key, flight);
+    }
+    flight.users++;
+    const sharedFlight = flight;
+    try {
+      return await new Promise<Response>((resolve, reject) => {
+        const cancel = () => reject(new DOMException('Request cancelled', 'AbortError'));
+        if (request.signal.aborted) {
+          cancel();
+          return;
+        }
+        request.signal.addEventListener('abort', cancel, { once: true });
+        sharedFlight.promise
+          .then((response) => {
+            if (!request.signal.aborted) resolve(response.clone());
+          }, reject)
+          .finally(() => request.signal.removeEventListener('abort', cancel));
+      });
+    } finally {
+      if (--sharedFlight.users === 0 && this.reads.get(key) === sharedFlight) {
+        this.reads.delete(key);
+        sharedFlight.controller.abort();
+      }
+    }
+  }
+
+  private checkCooldown() {
+    const seconds = Math.ceil((this.retryUntil - Date.now()) / 1000);
+    if (seconds > 0)
+      throw new ApiError(
+        429,
+        'rate_limited',
+        `Please wait ${seconds} seconds before trying again.`,
+        String(seconds),
+      );
+  }
+
+  private async sendAuthorized(request: Request) {
     if (!this.accessToken) throw new ApiError(401, 'not_authenticated', 'Sign in again.');
+    const epoch = this.epoch;
+    const check = () => {
+      if (epoch !== this.epoch) throw new ApiError(401, 'session_changed', 'Sign in again.');
+    };
     // Constructing the first authenticated Request consumes a POST/PATCH body.
     // Keep a pristine copy for a retry after rotating the access token.
     const retry = request.clone();
     const first = await this.transport(this.withAuth(request));
+    check();
     if (first.status !== 401) return this.detectElevationExpiry(first);
     try {
       await this.refresh();
+      check();
     } catch (error) {
-      if (error instanceof ApiError && (error.status === 401 || error.status === 403)) this.clear();
+      if (
+        epoch === this.epoch &&
+        error instanceof ApiError &&
+        (error.status === 401 || error.status === 403)
+      )
+        this.clear();
       throw error;
     }
-    return this.detectElevationExpiry(await this.transport(this.withAuth(retry)));
+    const response = await this.transport(this.withAuth(retry));
+    check();
+    return this.detectElevationExpiry(response);
   }
 
   private async detectElevationExpiry(response: Response) {
+    if (response.status === 429) {
+      const header = response.headers.get('Retry-After');
+      const numeric = header === null ? NaN : Number(header);
+      const delay =
+        Number.isFinite(numeric) && numeric >= 0
+          ? numeric * 1000
+          : Date.parse(header ?? '') - Date.now();
+      this.retryUntil = Math.max(
+        this.retryUntil,
+        Date.now() + (Number.isFinite(delay) && delay >= 0 ? delay : 5000),
+      );
+    }
     if (response.status === 403 && (await errorFrom(response)).code === 'passkey_required')
       this.dispatchEvent(new Event('elevation-required'));
     return response;
@@ -114,6 +200,7 @@ export class OpsSession extends EventTarget {
   private async refresh() {
     if (this.refreshing) return this.refreshing;
     this.refreshing = (async () => {
+      const epoch = this.epoch;
       const refreshToken = this.storage.getItem(refreshKey);
       if (!refreshToken) throw new ApiError(401, 'not_authenticated', 'Sign in again.');
       const response = await this.publicRequest('/v1/auth/refresh', {
@@ -121,7 +208,9 @@ export class OpsSession extends EventTarget {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ refreshToken }),
       });
-      this.save(await response.json().then(unwrap<Tokens>));
+      const tokens = await response.json().then(unwrap<Tokens>);
+      if (epoch !== this.epoch) throw new ApiError(401, 'session_changed', 'Sign in again.');
+      this.save(tokens);
     })();
     try {
       await this.refreshing;
@@ -131,6 +220,8 @@ export class OpsSession extends EventTarget {
   }
 
   private async publicRequest(path: string, init: RequestInit) {
+    const epoch = this.epoch;
+    if (path !== '/v1/auth/logout') this.checkCooldown();
     const headers = new Headers(init.headers);
     for (const [key, value] of Object.entries(opsHeaders)) headers.set(key, String(value));
     const response = await this.transport(`${this.baseUrl}${path}`, {
@@ -138,11 +229,13 @@ export class OpsSession extends EventTarget {
       headers,
       signal: init.signal ?? AbortSignal.timeout(30_000),
     });
+    if (epoch === this.epoch) await this.detectElevationExpiry(response);
     if (!response.ok) throw await errorFrom(response);
     return response;
   }
 
   private save(tokens: Tokens) {
+    if (tokens.account.id !== this.accountValue?.id) this.resetReads();
     this.accessToken = tokens.accessToken;
     this.accountValue = tokens.account;
     this.storage.setItem(refreshKey, tokens.refreshToken);
@@ -150,10 +243,18 @@ export class OpsSession extends EventTarget {
   }
 
   private clear() {
+    this.resetReads();
     this.accessToken = null;
     this.accountValue = null;
     this.storage.removeItem(refreshKey);
     this.dispatchEvent(new Event('change'));
+  }
+
+  private resetReads() {
+    this.epoch++;
+    this.retryUntil = 0;
+    for (const flight of this.reads.values()) flight.controller.abort();
+    this.reads.clear();
   }
 }
 
