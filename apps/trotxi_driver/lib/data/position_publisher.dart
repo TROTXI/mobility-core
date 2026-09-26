@@ -8,6 +8,7 @@ import 'package:flutter/widgets.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:trotxi_driver/core/api/driver_api.dart';
 import 'position_queue.dart';
+import 'package:trotxi_driver/core/config/theme/app_colors.dart';
 
 /// Why position sharing is not running.
 enum PositionBlock {
@@ -57,6 +58,7 @@ class PositionPublisher extends ChangeNotifier {
           notificationText:
               'Sharing bus location during your active trip. Open Trotxi to finish the trip or sign out.',
           notificationChannelName: 'Active trip tracking',
+          color: AppPrimitiveColors.action,
           notificationIcon: AndroidResource(name: 'ic_trip_tracking'),
           enableWakeLock: true,
           setOngoing: true,
@@ -271,6 +273,7 @@ class PositionPublisher extends ChangeNotifier {
   String? get runId => _runId;
   bool get isPublishing => _subscription != null;
   String? _refusedRunId;
+  DateTime? _retryNotBefore;
 
   /// Start publishing only with existing location access. Permission prompts
   /// belong to device readiness, not a side effect of opening an active run.
@@ -406,6 +409,8 @@ class PositionPublisher extends ChangeNotifier {
   /// One request at a time. A failed or uncertain delivery retains its identity.
   Future<void> _drain(int generation) async {
     if (generation != _generation) return;
+    final retryAt = _retryNotBefore;
+    if (retryAt != null && _now().isBefore(retryAt)) return;
     if (_uploading) {
       _drainRequested = true;
       return;
@@ -464,6 +469,12 @@ class PositionPublisher extends ChangeNotifier {
               if (generation == _generation) _set(PositionSharing.stale);
             });
           }
+        } on RateLimitException catch (error) {
+          if (generation != _generation) return;
+          _retryNotBefore = _now().add(error.retryAfter);
+          _expiry?.cancel();
+          _set(PositionSharing.failed);
+          break;
         } on UnauthorizedException {
           if (generation != _generation) return;
           _refusedRunId = _runId;

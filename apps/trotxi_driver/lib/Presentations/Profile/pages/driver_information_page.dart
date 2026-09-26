@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:trotxi_driver/core/state/config_controller.dart';
 import 'package:trotxi_driver/core/widgets/operations_contact.dart';
+import 'package:trotxi_driver/core/config/theme/app_colors.dart';
+import 'package:trotxi_driver/core/config/theme/app_spacing.dart';
+import 'package:trotxi_driver/core/config/theme/app_typography.dart';
 
 /// Practical pilot notice. Not a substitute for published legal terms.
 const driverInformationSections = <String, String>{
@@ -25,24 +28,33 @@ class DriverInformationPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final config = context.watch<ConfigController>();
+    final colors = context.driverColors;
     return ListView(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(AppSpacing.space20),
       children: [
-        const Text(
+        Text(
           'Driver privacy & guidance',
-          style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+          style: AppTypography.heading3.copyWith(color: colors.textPrimary),
         ),
-        const Text('Pilot information · updated 26 September 2026'),
+        Text(
+          'Pilot information · updated 26 September 2026',
+          style: AppTypography.bodySmall.copyWith(color: colors.textSecondary),
+        ),
         for (final section in driverInformationSections.entries) ...[
-          const SizedBox(height: 24),
+          const SizedBox(height: AppSpacing.space24),
           Text(
             section.key,
-            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            style: AppTypography.title.copyWith(color: colors.textPrimary),
           ),
-          const SizedBox(height: 8),
-          Text(section.value),
+          const SizedBox(height: AppSpacing.space8),
+          Text(
+            section.value,
+            style: AppTypography.bodySmall.copyWith(
+              color: colors.textSecondary,
+            ),
+          ),
         ],
-        const SizedBox(height: 24),
+        const SizedBox(height: AppSpacing.space24),
         OperationsContactCard(
           contact: config.operations,
           isLoaded: config.isLoaded,

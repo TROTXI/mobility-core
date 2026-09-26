@@ -484,4 +484,76 @@ void main() {
       },
     );
   }
+
+  test(
+    'screen-lock lifecycle keeps fresh fixes uploading until stop',
+    () async {
+      final binding = TestWidgetsFlutterBinding.ensureInitialized();
+      binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+      addTearDown(
+        () => binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed),
+      );
+      final publisher = PositionPublisher(client: client(accept));
+      addTearDown(publisher.dispose);
+      await publisher.start('trip-1');
+      binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
+      final live = reaches(publisher, PositionSharing.live);
+      await fix();
+      await live;
+      expect(publisher.isPublishing, isTrue);
+      expect(publisher.queue.rows, isEmpty);
+      await publisher.stop();
+      expect(calls.last, 'cancel');
+      expect(publisher.isPublishing, isFalse);
+    },
+  );
+
+  test(
+    'GPS honours Retry-After while keeping offline fixes and their IDs',
+    () async {
+      var now = DateTime.now();
+      var requests = 0;
+      final publisher = PositionPublisher(
+        now: () => now,
+        client: client((o, h) {
+          requests++;
+          if (requests > 1) return accept(o, h);
+          h.reject(
+            DioException(
+              requestOptions: o,
+              response: Response(
+                requestOptions: o,
+                statusCode: 429,
+                headers: Headers.fromMap({
+                  'retry-after': ['120'],
+                }),
+                data: {
+                  'error': {'code': 'rate_limited', 'message': 'Wait.'},
+                },
+              ),
+            ),
+            true,
+          );
+        }),
+      );
+      addTearDown(publisher.dispose);
+      await publisher.start('trip-1');
+      final limited = reaches(publisher, PositionSharing.failed);
+      await fix(timestamp: now);
+      await limited;
+      final firstId = publisher.queue.rows.single['clientFixId'];
+      now = now.add(const Duration(seconds: 6));
+      await fix(timestamp: now);
+      await Future<void>.delayed(Duration.zero);
+      expect(requests, 1);
+      expect(publisher.queue.rows, hasLength(2));
+      expect(publisher.queue.rows.first['clientFixId'], firstId);
+      now = now.add(const Duration(seconds: 120));
+      final recovered = reaches(publisher, PositionSharing.live);
+      await fix(timestamp: now);
+      await recovered;
+      expect(requests, 4);
+      expect(publisher.queue.rows, isEmpty);
+    },
+  );
 }

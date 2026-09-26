@@ -20,6 +20,10 @@ scheduled/paid workers.
   promised. Removal from the roster, completion and logout stop the session.
   Five-second native reads support stationary buses; cached
   coordinates are never given manufactured timestamps.
+- The Android tracking notification uses the driver's existing action colour
+  token, a monochrome bus icon and generic text without rider/trip identifiers.
+  The OS decides lock-screen visibility. GPS delivery honours rate-limit
+  `Retry-After` cooldowns while preserving queued fixes and their identities.
 - Profile includes a pilot privacy/guidance notice and configured support
   contacts. A dedicated disclosure precedes the location permission request.
   See [publication limits and device checks](driver-privacy-and-guidance.md).

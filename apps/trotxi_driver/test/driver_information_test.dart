@@ -5,6 +5,7 @@ import 'package:trotxi_driver/Presentations/Profile/pages/driver_information_pag
 import 'package:trotxi_driver/core/config/theme/app_theme.dart';
 import 'package:trotxi_driver/core/state/config_controller.dart';
 import 'package:trotxi_driver/data/config_repository.dart';
+import 'package:trotxi_driver/core/config/theme/app_colors.dart';
 
 class _Config implements ConfigRepository {
   @override
@@ -48,6 +49,24 @@ void main() {
         findsOneWidget,
       );
       expect(tester.takeException(), isNull);
+      await tester.pumpWidget(
+        ChangeNotifierProvider.value(
+          value: config,
+          child: MaterialApp(
+            theme: AppTheme.darkTheme,
+            home: const Scaffold(body: DriverInformationPage()),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.scrollUntilVisible(
+        find.text('Driver privacy & guidance'),
+        -400,
+      );
+      final heading = tester.widget<Text>(
+        find.text('Driver privacy & guidance'),
+      );
+      expect(heading.style?.color, AppColors.dark.textPrimary);
     },
   );
 }

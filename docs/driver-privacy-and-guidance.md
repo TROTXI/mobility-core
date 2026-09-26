@@ -58,10 +58,19 @@ not final legal terms or a claim that legal compliance has been certified.
 
 ## Device acceptance walkthrough
 
-Local verification: 218 driver tests pass, Flutter analysis is clean, Android
+Local verification: 220 driver tests pass, Flutter analysis is clean, Android
 debug APK builds, and the merged manifest declares the location foreground
 service and permission. The iOS plist passes syntax validation. These checks
 do not establish physical-device lock-screen delivery or iOS background reliability.
+
+The tracking notification accent and privacy screen use the existing driver
+tokens. Android controls the actual notification surface and lock-screen
+visibility; iOS controls its location indicator. The installed Geolocator
+Android plugin creates its channel with low visibility (`IMPORTANCE_NONE`),
+so a notification card on the lock screen is not guaranteed. Background GPS
+and a custom lock-screen widget are different features. No custom widget is
+installed, no rider details are put in notification text, and device notification
+preferences are not overridden.
 
 On a physical Android phone and, when available, an iPhone: deny location and
 verify no trip can start; allow it, start a disposable assigned trip and check
