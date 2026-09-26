@@ -15,6 +15,8 @@ class _Publisher extends PositionPublisher {
   _Publisher() : super(client: _Client());
   String? active;
   @override
+  String? get runId => active;
+  @override
   Future<PositionBlock?> start(String runId) async {
     active = runId;
     return null;
@@ -97,24 +99,21 @@ void main() {
     },
   );
 
-  test(
-    'background pauses, foreground resumes, sign-out clears the trip',
-    () async {
-      trips.runs = [_run()];
-      controller.setSessionReady(true);
-      await _tick();
-      controller.didChangeAppLifecycleState(AppLifecycleState.paused);
-      expect(publisher.active, isNull);
-      controller.didChangeAppLifecycleState(AppLifecycleState.resumed);
-      expect(publisher.active, 'trip-1');
-      await _tick();
-      controller.setSessionReady(false);
-      expect(publisher.active, isNull);
-      controller.didChangeAppLifecycleState(AppLifecycleState.paused);
-      controller.didChangeAppLifecycleState(AppLifecycleState.resumed);
-      expect(publisher.active, isNull);
-    },
-  );
+  test('background keeps active tracking, sign-out stops it', () async {
+    trips.runs = [_run()];
+    controller.setSessionReady(true);
+    await _tick();
+    controller.didChangeAppLifecycleState(AppLifecycleState.paused);
+    expect(publisher.active, 'trip-1');
+    controller.didChangeAppLifecycleState(AppLifecycleState.resumed);
+    expect(publisher.active, 'trip-1');
+    await _tick();
+    controller.setSessionReady(false);
+    expect(publisher.active, isNull);
+    controller.didChangeAppLifecycleState(AppLifecycleState.paused);
+    controller.didChangeAppLifecycleState(AppLifecycleState.resumed);
+    expect(publisher.active, isNull);
+  });
 
   test('stale roster response cannot revive a completed trip', () async {
     controller.setSessionReady(true);
@@ -126,6 +125,26 @@ void main() {
     trips.pending!.complete([_run()]);
     await refresh;
     expect(publisher.active, isNull);
+  });
+
+  test('background roster removal stops tracking', () async {
+    trips.runs = [_run()];
+    controller.setSessionReady(true);
+    await _tick();
+    controller.didChangeAppLifecycleState(AppLifecycleState.paused);
+    trips.runs = [];
+    await controller.refresh();
+    expect(publisher.active, isNull);
+  });
+
+  test('background discovery never starts a native service', () async {
+    controller.setSessionReady(true);
+    await _tick();
+    controller.didChangeAppLifecycleState(AppLifecycleState.paused);
+    controller.observeRun(_run());
+    expect(publisher.active, isNull);
+    controller.didChangeAppLifecycleState(AppLifecycleState.resumed);
+    expect(publisher.active, 'trip-1');
   });
 
   test(

@@ -108,6 +108,32 @@ class _DeviceReadinessPageState extends State<DeviceReadinessPage>
     }
   }
 
+  Future<void> _request(DevicePermission permission) async {
+    if (permission == DevicePermission.location) {
+      final agreed = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Active trip location sharing'),
+          content: const Text(
+            'Trotxi Driver collects precise location during an active trip, including in the background or with the screen locked, so eligible riders and operations can see the bus approaching. Collection stops when the trip ends or you sign out. Android shows a tracking notification. Continue to the location permission request?',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Not now'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('Continue'),
+            ),
+          ],
+        ),
+      );
+      if (agreed != true || !mounted) return;
+    }
+    await _perform(() => widget.service.request(permission));
+  }
+
   @override
   Widget build(BuildContext context) {
     final colors = context.driverColors;
@@ -206,7 +232,7 @@ class _DeviceReadinessPageState extends State<DeviceReadinessPage>
                     state?.location,
                     state?.location == PermissionStatus.permanentlyDenied
                         ? 'In app settings, choose Location and allow access while using the app. Return here to check again.'
-                        : 'Share the bus location while a trip is open. Only while-in-use access is requested.',
+                        : 'Trotxi collects your precise location during an active trip, including when the app is in the background or the screen is locked, to show the bus approaching to eligible riders and operations. Collection stops when the trip ends or you sign out. Allow location only if you agree. While-in-use permission is requested; Android shows an active tracking notification.',
                     DevicePermission.location,
                   ),
                   const SizedBox(height: AppSpacing.space12),
@@ -308,7 +334,7 @@ class _DeviceReadinessPageState extends State<DeviceReadinessPage>
                   ? null
                   : () => blocked || !status.isDenied
                         ? _settings()
-                        : _perform(() => widget.service.request(permission)),
+                        : _request(permission),
               child: Text(
                 blocked || !status.isDenied
                     ? 'Open ${permission == DevicePermission.camera ? 'camera' : 'location'} settings'

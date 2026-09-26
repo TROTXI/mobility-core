@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:dio/dio.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:trotxi_driver/core/api/driver_api.dart';
@@ -422,4 +423,65 @@ void main() {
       expect(calls, isNot(contains('listen')));
     },
   );
+
+  test(
+    'locking during a pending start does not create a background service',
+    () async {
+      final binding = TestWidgetsFlutterBinding.ensureInitialized();
+      binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+      pending = Completer<int>();
+      final publisher = PositionPublisher(client: _UnusedClient());
+      addTearDown(publisher.dispose);
+      addTearDown(
+        () => binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed),
+      );
+      final starting = publisher.start('trip-1');
+      await Future<void>.delayed(Duration.zero);
+      binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
+      pending!.complete(LocationPermission.whileInUse.index);
+      expect(await starting, PositionBlock.notRequested);
+      expect(calls, isNot(contains('listen')));
+    },
+  );
+
+  for (final refusal in [
+    (404, 'not_found'),
+    (409, 'trip_not_active'),
+    (409, 'collection_session_expired'),
+  ]) {
+    test(
+      'server ${refusal.$2} stops collection without silently restarting',
+      () async {
+        final publisher = PositionPublisher(
+          client: client((o, h) {
+            h.reject(
+              DioException(
+                requestOptions: o,
+                response: Response(
+                  requestOptions: o,
+                  statusCode: refusal.$1,
+                  data: {
+                    'error': {
+                      'code': refusal.$2,
+                      'message': 'Tracking refused.',
+                    },
+                  },
+                ),
+              ),
+              true,
+            );
+          }),
+        );
+        addTearDown(publisher.dispose);
+        await publisher.start('trip-1');
+        final stopped = reaches(publisher, PositionSharing.idle);
+        await fix();
+        await stopped;
+        expect(publisher.isPublishing, isFalse);
+        expect(publisher.queue.rows, hasLength(1));
+        expect(await publisher.start('trip-1'), PositionBlock.unavailable);
+        expect(publisher.isPublishing, isFalse);
+      },
+    );
+  }
 }

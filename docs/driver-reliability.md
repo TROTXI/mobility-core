@@ -13,9 +13,16 @@ scheduled/paid workers.
   Vehicle registration uses the plate, falling back to the label if absent.
 - Failed public configuration reads retain the last successful backend-scoped
   cache and show a retry banner. Foreground recovery retries every 30 seconds.
-- GPS collection stays **while-in-use only**, and belongs to the signed-in trip
-  rather than a tab. Five-second native reads support stationary buses; cached
+- GPS collection belongs to the signed-in active trip rather than a tab.
+  A native session starts while the app is visible, then continues when hidden
+  or screen-locked using Android's visible location foreground service or iOS
+  background location mode. No off-duty, boot or killed-process collection is
+  promised. Removal from the roster, completion and logout stop the session.
+  Five-second native reads support stationary buses; cached
   coordinates are never given manufactured timestamps.
+- Profile includes a pilot privacy/guidance notice and configured support
+  contacts. A dedicated disclosure precedes the location permission request.
+  See [publication limits and device checks](driver-privacy-and-guidance.md).
 - GPS fixes are saved before delivery in OS secure storage, scoped by backend
   and driver. Retries retain the original capture time and fix UUID. Only a
   matching server receipt removes a fix; a receipt not accepted for live display

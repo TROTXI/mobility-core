@@ -155,6 +155,9 @@ void main() {
       await _tap(tester, 'Allow camera');
       expect(device.requests, [DevicePermission.camera]);
       await _tap(tester, 'Allow location access');
+      expect(device.requests, [DevicePermission.camera]);
+      expect(find.text('Active trip location sharing'), findsOneWidget);
+      await _tap(tester, 'Continue');
       expect(device.requests, [
         DevicePermission.camera,
         DevicePermission.location,
@@ -162,6 +165,16 @@ void main() {
       expect(device.checks, 3);
     },
   );
+
+  testWidgets('declining the location disclosure does not request permission', (
+    tester,
+  ) async {
+    final device = _Device();
+    await _pump(tester, device);
+    await _tap(tester, 'Allow location access');
+    await _tap(tester, 'Not now');
+    expect(device.requests, isEmpty);
+  });
 
   testWidgets(
     'permanent denial opens settings, never repeats permission prompt',

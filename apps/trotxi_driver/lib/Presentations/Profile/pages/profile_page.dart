@@ -17,6 +17,7 @@ import 'package:trotxi_driver/Presentations/Support/pages/incident_support_page.
 import 'package:trotxi_driver/Presentations/Work/pages/work_requests_page.dart';
 import 'package:trotxi_driver/core/state/session_controller.dart';
 import 'package:trotxi_driver/core/state/driver_notifications.dart';
+import 'driver_information_page.dart';
 
 /// Profile and settings (prototype frames 49 to 54).
 ///
@@ -103,9 +104,8 @@ class _ProfilePageState extends State<ProfilePage> {
     }
     if (picked == null || !mounted) return;
 
-    final contentType =
-        DriverProfileRepository.accepted[picked.name.split('.').last
-            .toLowerCase()];
+    final contentType = DriverProfileRepository
+        .accepted[picked.name.split('.').last.toLowerCase()];
     if (contentType == null) {
       _say('Choose a JPEG, PNG or WebP image.');
       return;
@@ -263,6 +263,14 @@ class _ProfilePageState extends State<ProfilePage> {
               page: const IncidentSupportPage(),
               colors: colors,
               danger: true,
+            ),
+            _destination(
+              context,
+              title: 'Privacy & driver guidance',
+              subtitle: 'Location sharing, your information and safe operation',
+              pageTitle: 'Privacy & driver guidance',
+              page: const DriverInformationPage(),
+              colors: colors,
             ),
           ],
         ),

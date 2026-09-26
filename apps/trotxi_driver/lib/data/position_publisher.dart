@@ -4,6 +4,7 @@ import 'package:dio/dio.dart';
 import 'package:trotxi_client/trotxi_client.dart' as wire;
 import 'package:uuid/uuid.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:trotxi_driver/core/api/driver_api.dart';
 import 'position_queue.dart';
@@ -37,11 +38,47 @@ enum PositionSharing {
   blocked,
 }
 
-/// Publishes the active trip's position while the app is in the foreground.
+/// Publishes an active trip through a native location session, including while
+/// the app is backgrounded. This is not a killed-process/reboot tracking agent.
 ///
 /// Owned by the signed-in trip lifecycle, not by a tab. Upload failures are
 /// represented as state instead of taking the driver's working screen down.
 class PositionPublisher extends ChangeNotifier {
+  /// Platform settings are explicit so native background behaviour is tested
+  /// independently of network and permission-channel mocks.
+  static LocationSettings trackingSettings(TargetPlatform platform) {
+    if (platform == TargetPlatform.android) {
+      return AndroidSettings(
+        accuracy: LocationAccuracy.high,
+        distanceFilter: 0,
+        intervalDuration: const Duration(seconds: 5),
+        foregroundNotificationConfig: const ForegroundNotificationConfig(
+          notificationTitle: 'Trotxi trip location sharing',
+          notificationText:
+              'Sharing bus location during your active trip. Open Trotxi to finish the trip or sign out.',
+          notificationChannelName: 'Active trip tracking',
+          notificationIcon: AndroidResource(name: 'ic_trip_tracking'),
+          enableWakeLock: true,
+          setOngoing: true,
+        ),
+      );
+    }
+    if (platform == TargetPlatform.iOS) {
+      return AppleSettings(
+        accuracy: LocationAccuracy.high,
+        distanceFilter: 0,
+        activityType: ActivityType.automotiveNavigation,
+        pauseLocationUpdatesAutomatically: false,
+        showBackgroundLocationIndicator: true,
+        allowBackgroundLocationUpdates: true,
+      );
+    }
+    return const LocationSettings(
+      accuracy: LocationAccuracy.high,
+      distanceFilter: 0,
+    );
+  }
+
   PositionPublisher({
     required this._client,
     DateTime Function()? now,
@@ -233,6 +270,7 @@ class PositionPublisher extends ChangeNotifier {
   /// The run currently being published for, or null when idle.
   String? get runId => _runId;
   bool get isPublishing => _subscription != null;
+  String? _refusedRunId;
 
   /// Start publishing only with existing location access. Permission prompts
   /// belong to device readiness, not a side effect of opening an active run.
@@ -241,6 +279,7 @@ class PositionPublisher extends ChangeNotifier {
   /// @returns null once publishing, or why it could not start.
   Future<PositionBlock?> start(String runId) async {
     if (_disposed) return PositionBlock.notRequested;
+    if (_refusedRunId == runId) return PositionBlock.unavailable;
     if (_runId == runId &&
         (_subscription != null || _state == PositionSharing.checking)) {
       return _block;
@@ -282,14 +321,15 @@ class PositionPublisher extends ChangeNotifier {
       }
 
       _set(PositionSharing.waiting);
+      // Permission checks can finish after the driver locks the phone. Android
+      // does not allow creating a while-in-use service from that state.
+      final lifecycle = WidgetsBinding.instance.lifecycleState;
+      if (lifecycle != null && lifecycle != AppLifecycleState.resumed) {
+        return _blocked(PositionBlock.notRequested);
+      }
       _subscription =
           Geolocator.getPositionStream(
-            locationSettings: const LocationSettings(
-              accuracy: LocationAccuracy.high,
-              // The publisher throttles captures by time, including fresh
-              // stationary readings, rather than relying on distance alone.
-              distanceFilter: 0,
-            ),
+            locationSettings: trackingSettings(defaultTargetPlatform),
           ).listen(
             (position) {
               if (generation != _generation) return;
@@ -345,9 +385,10 @@ class PositionPublisher extends ChangeNotifier {
   /// the page-14 retry action needs an explicit restart rather than a button
   /// that appears to work while doing nothing.
   Future<PositionBlock?> retry() async {
-    final runId = _runId;
+    final runId = _runId ?? _refusedRunId;
     if (runId == null) return PositionBlock.notRequested;
     await stop();
+    _refusedRunId = null;
     return start(runId);
   }
 
@@ -423,6 +464,24 @@ class PositionPublisher extends ChangeNotifier {
               if (generation == _generation) _set(PositionSharing.stale);
             });
           }
+        } on UnauthorizedException {
+          if (generation != _generation) return;
+          _refusedRunId = _runId;
+          await stop();
+          return;
+        } on ApiException catch (error) {
+          if (generation != _generation) return;
+          if (error.statusCode == 403 ||
+              error.statusCode == 404 ||
+              error.code == 'trip_not_active' ||
+              error.code == 'collection_session_expired') {
+            _refusedRunId = _runId;
+            await stop();
+            return;
+          }
+          _expiry?.cancel();
+          _set(PositionSharing.failed);
+          break;
         } catch (_) {
           if (generation != _generation) return;
           _expiry?.cancel();

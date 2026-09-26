@@ -5,7 +5,8 @@ import 'package:trotxi_driver/data/position_publisher.dart';
 import 'package:trotxi_driver/data/trips_repository.dart';
 
 /// The location lifetime is a confirmed session plus an active trip, never a
-/// particular page. No background permissions or foreground service is added.
+/// particular page. A native tracking session starts in the foreground and
+/// continues during an active trip when the screen locks or the app is hidden.
 class DriverLocationController with WidgetsBindingObserver {
   DriverLocationController({
     required this.trips,
@@ -65,7 +66,12 @@ class DriverLocationController with WidgetsBindingObserver {
   }
 
   Future<void> refresh() async {
-    if (!_ready || !_foreground || _disposed || _refreshing) return;
+    if (!_ready ||
+        (!_foreground && _active == null) ||
+        _disposed ||
+        _refreshing) {
+      return;
+    }
     _refreshing = true;
     final revision = _revision;
     try {
@@ -80,7 +86,7 @@ class DriverLocationController with WidgetsBindingObserver {
       _sync();
     } on TrotxiException {
       // A failed refresh is not evidence that the active trip ended. Keep
-      // trying foreground uploads; their acknowledgement controls the label.
+      // trying uploads; their acknowledgement controls the label.
       if (revision == _revision && !_disposed) _sync();
     } finally {
       _refreshing = false;
@@ -89,8 +95,14 @@ class DriverLocationController with WidgetsBindingObserver {
 
   void _sync() {
     final active = _active;
-    if (_ready && _foreground && active != null && !_disposed) {
-      unawaited(publisher.start(active.id));
+    if (_ready && active != null && !_disposed) {
+      // Never create/restart a location foreground service from a background
+      // roster read. Only an already established stream may continue there.
+      if (_foreground) {
+        unawaited(publisher.start(active.id));
+      } else if (publisher.runId != active.id) {
+        unawaited(publisher.stop());
+      }
     } else {
       unawaited(publisher.stop());
     }
