@@ -138,6 +138,17 @@ void main() {
   });
 
   test(
+      'refresh 429 also cools down other screen requests without clearing login',
+      () async {
+    serve((o) => o.path == '/v1/auth/refresh' ? _json(429) : _json(401));
+    expect((await _failure(dio.get('/one'))).error, isA<RateLimitException>());
+    expect((await _failure(dio.get('/two'))).error, isA<RateLimitException>());
+    expect(requests, 1);
+    expect(refreshes, 1);
+    expect(store.clears, 0);
+  });
+
+  test(
     'refreshes and retries with rotated tokens through the real interceptor chain',
     () async {
       serve(

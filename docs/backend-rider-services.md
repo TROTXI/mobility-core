@@ -173,6 +173,7 @@ Use the existing worker deployment/configuration and operator identity:
 | `node dist/worker.js push`                   | Every minute, after ask-dispatch where practical.                                        |
 | `node dist/worker.js emails`                 | Existing outbox/reminder worker; schedule separately if not already running.             |
 | `node dist/worker.js erasures`               | Existing erasure schedule also removes deleted/replaced avatars.                         |
+| `node dist/worker.js admission`              | Every five minutes when scheduling is enabled; drain expired account/IP counter batches. |
 
 Every batch is bounded. Rerun/drain batches when backlog exceeds its limit and
 alert on failures. This does **not** authorize purchasing cron services. No new

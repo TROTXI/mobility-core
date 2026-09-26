@@ -9,25 +9,96 @@ void main() {
     interceptor = ErrorInterceptor();
   });
 
-  RequestOptions options() => RequestOptions(path: '/test');
-
-  /// Runs the interceptor and captures whichever error it rejects with,
-  /// or 'passthrough' if it calls handler.next() instead.
   Object? runOnError(DioException err) {
     final result = <DioException>[];
     final passthrough = <DioException>[];
-
-    final testHandler = _TestErrorInterceptorHandler(
-      onReject: (e) => result.add(e),
-      onNext: (e) => passthrough.add(e),
-    );
-
-    interceptor.onError(err, testHandler);
-
+    interceptor.onError(
+        err,
+        _TestErrorInterceptorHandler(
+          onReject: (e) => result.add(e),
+          onNext: (e) => passthrough.add(e),
+        ));
     if (result.isNotEmpty) return result.first.error;
     if (passthrough.isNotEmpty) return 'passthrough';
     return null;
   }
+
+  test('cooldown is shared across paths, expires and resets on a new session',
+      () {
+    var epoch = 0;
+    var now = DateTime.utc(2026, 9, 26);
+    interceptor =
+        ErrorInterceptor(sessionGeneration: () => epoch, now: () => now);
+    final original = RequestOptions(path: '/v1/me');
+    interceptor.onRequest(original, _RequestHandler());
+    runOnError(DioException(
+        requestOptions: original,
+        response: Response(
+            requestOptions: original,
+            statusCode: 429,
+            headers: Headers.fromMap({
+              'retry-after': ['60']
+            }))));
+    final blocked = _RequestHandler();
+    interceptor.onRequest(RequestOptions(path: '/v1/me/reservations'), blocked);
+    expect(blocked.error?.error, isA<RateLimitException>());
+    now = now.add(const Duration(seconds: 61));
+    final resumed = _RequestHandler();
+    interceptor.onRequest(original, resumed);
+    expect(resumed.allowed, isTrue);
+    runOnError(DioException(
+        requestOptions: original,
+        response: Response(
+            requestOptions: original,
+            statusCode: 429,
+            headers: Headers.fromMap({
+              'retry-after': ['60']
+            }))));
+    epoch++;
+    final newSession = _RequestHandler();
+    interceptor.onRequest(RequestOptions(path: '/v1/me'), newSession);
+    expect(newSession.allowed, isTrue);
+  });
+
+  test('an old session refusal cannot impose a new session cooldown', () {
+    var epoch = 0;
+    interceptor = ErrorInterceptor(sessionGeneration: () => epoch);
+    final old = RequestOptions(path: '/v1/me');
+    interceptor.onRequest(old, _RequestHandler());
+    epoch++;
+    runOnError(DioException(
+        requestOptions: old,
+        response: Response(requestOptions: old, statusCode: 429)));
+    final current = _RequestHandler();
+    interceptor.onRequest(RequestOptions(path: '/v1/me'), current);
+    expect(current.allowed, isTrue);
+  });
+
+  test('HTTP-date cooldown is honoured and negative delay is not accepted', () {
+    final now = DateTime.utc(2026, 9, 26, 12);
+    interceptor = ErrorInterceptor(now: () => now);
+    final request = RequestOptions(path: '/v1/me');
+    final error = runOnError(DioException(
+        requestOptions: request,
+        response: Response(
+            requestOptions: request,
+            statusCode: 429,
+            headers: Headers.fromMap({
+              'retry-after': ['Sat, 26 Sep 2026 12:00:30 GMT']
+            })))) as RateLimitException;
+    expect(error.retryAfter, const Duration(seconds: 30));
+    final negative = runOnError(DioException(
+        requestOptions: request,
+        response: Response(
+            requestOptions: request,
+            statusCode: 429,
+            headers: Headers.fromMap({
+              'retry-after': ['-1']
+            })))) as RateLimitException;
+    expect(negative.retryAfter, const Duration(seconds: 5));
+  });
+
+  RequestOptions options() => RequestOptions(path: '/test');
 
   test('maps 401 to UnauthorizedException', () {
     final err = DioException(
@@ -181,6 +252,20 @@ void main() {
       expect(error, 'passthrough');
     },
   );
+}
+
+class _RequestHandler extends RequestInterceptorHandler {
+  bool allowed = false;
+  DioException? error;
+  @override
+  void next(RequestOptions options) {
+    allowed = true;
+  }
+
+  @override
+  void reject(DioException err, [bool callFollowingErrorInterceptor = false]) {
+    error = err;
+  }
 }
 
 /// Minimal fake handler so we can inspect what ErrorInterceptor does

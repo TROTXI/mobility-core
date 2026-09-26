@@ -4,7 +4,8 @@ import 'dart:convert';
 import 'package:crypto/crypto.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
-import 'trotxi_client.dart' show TokenStore, ConditionalTokenStore;
+import 'trotxi_client.dart'
+    show TokenStore, ConditionalTokenStore, SessionGenerationStore;
 
 /// One application, backend generation and disposable-database incarnation.
 /// A replacement build never reads or copies the old access_token/refresh_token
@@ -83,7 +84,8 @@ class SessionTokens {
 /// A token pair is a single secure-storage record, so interruption between two
 /// writes cannot combine an old refresh token with a new access token. Reads,
 /// writes and conditional rotation/clearing are serialized on this instance.
-class ScopedTokenStore implements TokenStore, ConditionalTokenStore {
+class ScopedTokenStore
+    implements TokenStore, ConditionalTokenStore, SessionGenerationStore {
   ScopedTokenStore({
     required this.scope,
     this.storage = const SecureSessionStorage(),

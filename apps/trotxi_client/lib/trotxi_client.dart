@@ -145,6 +145,11 @@ abstract class TokenStore {
   Future<void> clearTokens();
 }
 
+/// Cooldowns and reads belong to a login, not merely a transport instance.
+abstract class SessionGenerationStore {
+  int get generation;
+}
+
 /// Replacement app stores implement compare-and-write inside their storage
 /// queue. A separate read then write can otherwise clobber a newer login that
 /// arrives while the secure-storage read is completing.
@@ -253,6 +258,10 @@ class AuthInterceptor extends Interceptor {
       }
     } on DioException catch (refreshError) {
       // Surface the refresh timeout/5xx, not the original access-token 401.
+      // Refresh uses an isolated transport, but its refusal still belongs to
+      // the originating session's shared cooldown (not a later login).
+      refreshError.requestOptions.extra['trotxi.rateEpoch'] ??=
+          err.requestOptions.extra['trotxi.rateEpoch'];
       return handler.next(refreshError);
     } catch (error, stackTrace) {
       // Missing/malformed tokens or storage failures aren't proof of revocation.
@@ -388,6 +397,35 @@ class AuthInterceptor extends Interceptor {
 
 /// 2. ErrorInterceptor: Maps raw DioExceptions to typed Domain Exceptions
 class ErrorInterceptor extends Interceptor {
+  ErrorInterceptor(
+      {int Function()? sessionGeneration, DateTime Function()? now})
+      : _sessionGeneration = sessionGeneration ?? (() => 0),
+        _now = now ?? DateTime.now;
+  final int Function() _sessionGeneration;
+  final DateTime Function() _now;
+  int? _epoch;
+  DateTime? _retryAt;
+
+  void _sync() {
+    if (_epoch != _sessionGeneration()) {
+      _epoch = _sessionGeneration();
+      _retryAt = null;
+    }
+  }
+
+  @override
+  void onRequest(RequestOptions options, RequestInterceptorHandler handler) {
+    _sync();
+    options.extra['trotxi.rateEpoch'] = _epoch;
+    final remaining = _retryAt?.difference(_now()) ?? Duration.zero;
+    // Local logout still clears credentials even while the server is busy.
+    if (remaining > Duration.zero && !options.path.endsWith('/auth/logout')) {
+      return handler.reject(DioException(
+          requestOptions: options, error: RateLimitException(remaining)));
+    }
+    handler.next(options);
+  }
+
   @override
   void onError(DioException err, ErrorInterceptorHandler handler) {
     // A retry through the shared Dio has already crossed this mapper once.
@@ -455,6 +493,11 @@ class ErrorInterceptor extends Interceptor {
         );
       case 429:
         final retryAfter = _parseRetryAfter(response);
+        _sync();
+        if (err.requestOptions.extra['trotxi.rateEpoch'] == _epoch) {
+          final until = _now().add(retryAfter);
+          if (_retryAt == null || until.isAfter(_retryAt!)) _retryAt = until;
+        }
         return handler.reject(
           DioException(
             requestOptions: err.requestOptions,
@@ -503,8 +546,42 @@ class ErrorInterceptor extends Interceptor {
 
   Duration _parseRetryAfter(Response response) {
     final header = response.headers.value('retry-after');
-    final seconds = int.tryParse(header ?? '') ?? 5;
-    return Duration(seconds: seconds);
+    final seconds = int.tryParse(header ?? '');
+    if (seconds != null && seconds >= 0) return Duration(seconds: seconds);
+    // HTTP-date Retry-After is supported by servers as well as delta seconds.
+    try {
+      final match = RegExp(
+              r'^\w{3}, (\d{2}) (\w{3}) (\d{4}) (\d{2}):(\d{2}):(\d{2}) GMT$')
+          .firstMatch(header ?? '');
+      if (match == null) throw const FormatException('Invalid HTTP date');
+      const months = [
+        'Jan',
+        'Feb',
+        'Mar',
+        'Apr',
+        'May',
+        'Jun',
+        'Jul',
+        'Aug',
+        'Sep',
+        'Oct',
+        'Nov',
+        'Dec'
+      ];
+      final month = months.indexOf(match[2]!) + 1;
+      if (month == 0) throw const FormatException('Invalid month');
+      final until = DateTime.utc(
+          int.parse(match[3]!),
+          month,
+          int.parse(match[1]!),
+          int.parse(match[4]!),
+          int.parse(match[5]!),
+          int.parse(match[6]!));
+      final delay = until.difference(_now().toUtc());
+      return delay > Duration.zero ? delay : Duration.zero;
+    } catch (_) {
+      return const Duration(seconds: 5);
+    }
   }
 }
 
@@ -514,6 +591,7 @@ class TrotxiClientFactory {
     required String baseUrl,
     required TokenStore tokenStore,
     required ClientMetadata metadata,
+    DateTime Function()? now,
   }) {
     metadata.validate();
     final client = TrotxiApiClient(basePathOverride: baseUrl);
@@ -532,7 +610,11 @@ class TrotxiClientFactory {
         metadata: metadata,
       ),
     );
-    client.dio.interceptors.add(ErrorInterceptor());
+    client.dio.interceptors.add(ErrorInterceptor(
+        now: now,
+        sessionGeneration: tokenStore is SessionGenerationStore
+            ? () => (tokenStore as SessionGenerationStore).generation
+            : null));
 
     return client;
   }

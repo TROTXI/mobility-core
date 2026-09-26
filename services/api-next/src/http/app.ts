@@ -2,7 +2,7 @@ import Fastify from 'fastify';
 import cors from '@fastify/cors';
 import rateLimit from '@fastify/rate-limit';
 import multipart from '@fastify/multipart';
-import type { FastifyRequest } from 'fastify';
+import type { FastifyRequest, FastifyReply } from 'fastify';
 import { randomUUID } from 'node:crypto';
 import contract from './contract.json' with { type: 'json' };
 import { openApiDocument } from './openapi.js';
@@ -105,6 +105,7 @@ export interface AppOptions extends Dependencies {
    * per-domain tests, and is not a limit once the service scales.
    */
   admit?: (subject: string) => Promise<{ count: number; resetsInSeconds: number }>;
+  admitIp?: (ip: string, bucket: string) => Promise<{ count: number; resetsInSeconds: number }>;
   minimumBuilds: {
     ops: number;
     driver: { ios: number; android: number };
@@ -231,6 +232,23 @@ export async function createTransportApp(options: AppOptions) {
     errorResponseBuilder: () =>
       new TransportError(429, 'rate_limited', 'Please wait before trying again.'),
   });
+  async function spendIp(request: FastifyRequest, reply: FastifyReply, authName?: string) {
+    if (!options.admitIp) return;
+    const buckets: [string, number][] = [['all', ipBudget]];
+    if (authName) buckets.push([`auth:${authName}`, authBudget]);
+    for (const [bucket, maximum] of buckets) {
+      let spent;
+      try {
+        spent = await options.admitIp(request.ip, bucket);
+      } catch {
+        fail(503, 'admission_unavailable', 'Please try again later.');
+      }
+      if (spent!.count > maximum) {
+        reply.header('Retry-After', String(spent!.resetsInSeconds));
+        fail(429, 'rate_limited', 'Please wait before trying again.');
+      }
+    }
+  }
   const counters = new Map<string, { count: number; until: number }>();
   // OpenAPI components are not a JSON-Schema keyword. Adapt only reference
   // locations, retaining strict validation and every reviewed field rule.
@@ -349,6 +367,12 @@ export async function createTransportApp(options: AppOptions) {
             path,
             {
               bodyLimit: 1048576,
+              // After the early local limiter, before buffering/parsing the
+              // signed body. Use the same anonymous "all" bucket as catalogues.
+              preParsing: async (request, reply, payload) => {
+                await spendIp(request, reply);
+                return payload;
+              },
               schema: { response: { 200: { $ref: 'transport#/definitions/WebhookAck' } } },
             },
             async (request, reply) => {
@@ -378,6 +402,10 @@ export async function createTransportApp(options: AppOptions) {
       const anonymous = publicRead || publicAuth || publicConfig;
       const ops = path.startsWith('/v1/ops/');
       const scheduled = ops && maintenanceOperations.has(name);
+      const authLimited =
+        publicAuth ||
+        name === 'changeDriverPin' ||
+        (passkeyOperations as readonly string[]).includes(name);
       const response: Record<string, unknown> = {};
       for (const [status, out] of Object.entries(operation.responses)) {
         const schema = out.content?.['application/json']?.schema;
@@ -391,11 +419,7 @@ export async function createTransportApp(options: AppOptions) {
         // requests visible, but do not ship successful liveness noise to Loki.
         ...(name === 'getHealth' ? { logLevel: 'silent' as const } : {}),
         ...(name === 'createPatternVersion' ? { bodyLimit: 1048576 } : {}),
-        ...(publicAuth ||
-        name === 'changeDriverPin' ||
-        (passkeyOperations as readonly string[]).includes(name)
-          ? { config: { rateLimit: { max: authBudget, timeWindow: 60000 } } }
-          : {}),
+        ...(authLimited ? { config: { rateLimit: { max: authBudget, timeWindow: 60000 } } } : {}),
         schema: { ...(input ? { body: rootRef(input) } : {}), response },
         // Every scheduled job reports its outcome here, whichever service ran
         // it. One place, so a job added later is counted without anyone
@@ -416,6 +440,13 @@ export async function createTransportApp(options: AppOptions) {
         // A route-local onRequest auth hook would precede its appended hook.
         preValidation: async (request, reply) => {
           reply.header('Cache-Control', 'no-store');
+          // The local onRequest limiter already ran. Share the second line
+          // across replicas only for anonymous routes. Signed-in operations
+          // already have the shared account budget; do not add an IP write
+          // to GPS, boarding or Ops polling. Their early local limiter stays.
+          if (options.admitIp && anonymous && name !== 'getHealth') {
+            await spendIp(request, reply, publicAuth ? name : undefined);
+          }
           const authorization = request.headers.authorization;
           if (!anonymous && (!authorization || !/^Bearer [^\s]{1,8192}$/.test(authorization)))
             fail(401, 'unauthenticated', 'Sign in to continue.');

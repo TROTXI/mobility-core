@@ -21,7 +21,8 @@ class _Trips implements TripsRepository {
     id: 'trip-1',
     routeId: 'route-1',
     routeName: 'Madina → Circle',
-    scheduledAt: DateTime.now().add(const Duration(hours: 1)),
+    // Keep the fixture on Today's service date even just before UTC midnight.
+    scheduledAt: DateTime.now(),
     status: RunStatus.scheduled,
   );
   int starts = 0;

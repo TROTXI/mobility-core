@@ -14,6 +14,71 @@ const rejectBookingChanges = async () => {
   throw new Error('This pure-test adapter must never perform booking work');
 };
 
+test('Paystack webhook shares anonymous admission before parsing and preserves signed bytes', async () => {
+  const pool = new Pool();
+  let count = 0,
+    accepted = 0,
+    unavailable = false;
+  const raw = '{ "event" : "charge.success", "data":{} }';
+  const options: AppOptions = {
+    pool,
+    coordinateReservations: rejectBookingChanges,
+    cursorSecret: Buffer.alloc(32, 9),
+    requestsPerIpPerMinute: 1,
+    admitIp: async (_ip, bucket) => {
+      assert.equal(bucket, 'all');
+      if (unavailable) throw new Error('admission offline');
+      return { count: ++count, resetsInSeconds: 37 };
+    },
+    verifyAccess: async () => {
+      throw new Error('webhooks do not verify access tokens');
+    },
+    authorizeSession: async () => {
+      throw new Error('unexpected database access');
+    },
+    payments: {
+      acceptWebhook: async (body: Buffer, signature: unknown) => {
+        assert.equal(body.toString('utf8'), raw);
+        assert.equal(signature, 'test-signature');
+        accepted++;
+        return { received: true };
+      },
+    } as AppOptions['payments'],
+    minimumBuilds: { ops: 1, driver: { ios: 1, android: 1 }, commuter: { ios: 1, android: 1 } },
+  };
+  const a = await createTransportApp(options),
+    b = await createTransportApp(options),
+    c = await createTransportApp(options);
+  const hook = {
+    method: 'POST' as const,
+    url: '/webhooks/paystack',
+    headers: { 'content-type': 'application/json', 'x-paystack-signature': 'test-signature' },
+    payload: raw,
+  };
+  try {
+    assert.equal((await a.inject(hook)).statusCode, 200);
+    const limited = await b.inject(hook);
+    assert.equal(limited.statusCode, 429);
+    assert.equal(limited.headers['retry-after'], '37');
+    assert.equal(accepted, 1, 'limited requests never reach signature verification');
+    assert.equal(
+      (await c.inject({ url: '/v1/routes' })).statusCode,
+      429,
+      'webhook and catalogue share the same all bucket',
+    );
+    unavailable = true;
+    const failed = await b.inject({ ...hook, remoteAddress: '192.0.2.91' });
+    assert.equal(failed.statusCode, 503);
+    assert.equal(failed.json().error.code, 'admission_unavailable');
+    assert.equal(accepted, 1);
+  } finally {
+    await a.close();
+    await b.close();
+    await c.close();
+    await pool.end();
+  }
+});
+
 test('application refuses an absent or non-callable coordinator before startup or database work', async () => {
   const pool = new Pool();
   try {
@@ -264,6 +329,68 @@ test('IP admission runs before verification and forged forwarded headers cannot 
     assert.equal(verified, 1);
   } finally {
     await app.close();
+    await pool.end();
+  }
+});
+
+test('shared IP admission spans replicas and fails closed before verification', async () => {
+  const pool = new Pool();
+  let count = 0,
+    verified = 0;
+  let unavailable = false;
+  const options = {
+    pool,
+    coordinateReservations: rejectBookingChanges,
+    cursorSecret: Buffer.alloc(32, 9),
+    requestsPerIpPerMinute: 1,
+    admitIp: async () => {
+      if (unavailable) throw new Error('admission offline');
+      return { count: ++count, resetsInSeconds: 37 };
+    },
+    verifyAccess: async () => {
+      verified++;
+      return null;
+    },
+    authorizeSession: async () => {
+      throw new Error('unexpected database access');
+    },
+    minimumBuilds: { ops: 1, driver: { ios: 1, android: 1 }, commuter: { ios: 1, android: 1 } },
+  };
+  const a = await createTransportApp(options),
+    b = await createTransportApp(options);
+  try {
+    const signedIn = await a.inject({
+      url: '/v1/driver/trips',
+      remoteAddress: '192.0.2.8',
+      headers: { authorization: 'Bearer token' },
+    });
+    assert.equal(signedIn.statusCode, 401);
+    assert.equal(count, 0, 'session routes must not spend the shared IP budget');
+    assert.equal(verified, 1);
+    const first = await a.inject({
+      url: '/v1/routes',
+      headers: { authorization: 'Bearer token' },
+    });
+    assert.equal(first.statusCode, 400);
+    const second = await b.inject({
+      url: '/v1/routes',
+      headers: { authorization: 'Bearer token' },
+    });
+    assert.equal(second.statusCode, 429);
+    assert.equal(second.headers['retry-after'], '37');
+    assert.equal(verified, 1);
+    unavailable = true;
+    const failed = await b.inject({
+      url: '/v1/routes',
+      remoteAddress: '192.0.2.9',
+      headers: { authorization: 'Bearer token' },
+    });
+    assert.equal(failed.statusCode, 503);
+    assert.equal(failed.json().error.code, 'admission_unavailable');
+    assert.equal(verified, 1);
+  } finally {
+    await a.close();
+    await b.close();
     await pool.end();
   }
 });

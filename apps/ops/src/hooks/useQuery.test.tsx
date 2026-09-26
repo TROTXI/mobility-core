@@ -25,4 +25,61 @@ describe('useQuery', () => {
     unmount();
     expect(signal?.aborted).toBe(true);
   });
+
+  it('does not restart a slow request on polling ticks', async () => {
+    let finish!: (value: string) => void;
+    const loader = vi.fn(
+      () =>
+        new Promise<string>((resolve) => {
+          finish = resolve;
+        }),
+    );
+    const { result } = renderHook(() => useQuery(loader));
+    act(() => {
+      result.current.retry();
+      result.current.retry();
+    });
+    expect(loader).toHaveBeenCalledOnce();
+    await act(async () => finish('ready'));
+    expect(result.current.data).toBe('ready');
+  });
+
+  it('rejects late successes after a filter change', async () => {
+    let old!: (value: string) => void;
+    const { result, rerender } = renderHook(
+      ({ filter }) =>
+        useQuery(
+          () =>
+            filter === 'old'
+              ? new Promise<string>((resolve) => {
+                  old = resolve;
+                })
+              : Promise.resolve('new'),
+          [filter],
+        ),
+      { initialProps: { filter: 'old' } },
+    );
+    rerender({ filter: 'new' });
+    await waitFor(() => expect(result.current.data).toBe('new'));
+    await act(async () => old('stale'));
+    expect(result.current.data).toBe('new');
+  });
+
+  it('waits while hidden and reads immediately when visible', async () => {
+    const visibility = vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('hidden');
+    try {
+      const loader = vi.fn().mockResolvedValue('ready');
+      const { result } = renderHook(() => useQuery(loader));
+      act(() => result.current.retry());
+      expect(loader).not.toHaveBeenCalled();
+      expect(result.current.loading).toBe(true);
+      expect(result.current.data).toBeNull();
+      visibility.mockReturnValue('visible');
+      act(() => document.dispatchEvent(new Event('visibilitychange')));
+      await waitFor(() => expect(result.current.data).toBe('ready'));
+      expect(loader).toHaveBeenCalledOnce();
+    } finally {
+      visibility.mockRestore();
+    }
+  });
 });

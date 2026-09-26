@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:dio/dio.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:trotxi_driver/core/api/driver_api.dart';
@@ -60,8 +61,10 @@ void main() {
   }
 
   DriverApi client(
-    void Function(RequestOptions, RequestInterceptorHandler) handler,
-  ) => replacementClient(
+    void Function(RequestOptions, RequestInterceptorHandler) handler, {
+    DateTime Function()? now,
+  }) => replacementClient(
+    now: now,
     dio: Dio(BaseOptions(baseUrl: 'http://localhost'))
       ..interceptors.add(InterceptorsWrapper(onRequest: handler)),
   );
@@ -420,6 +423,212 @@ void main() {
       expect(publisher.isPublishing, isFalse);
       expect(publisher.runId, isNull);
       expect(calls, isNot(contains('listen')));
+    },
+  );
+
+  test(
+    'locking during a pending start does not create a background service',
+    () async {
+      final binding = TestWidgetsFlutterBinding.ensureInitialized();
+      binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+      pending = Completer<int>();
+      final publisher = PositionPublisher(client: _UnusedClient());
+      addTearDown(publisher.dispose);
+      addTearDown(
+        () => binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed),
+      );
+      final starting = publisher.start('trip-1');
+      await Future<void>.delayed(Duration.zero);
+      binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
+      pending!.complete(LocationPermission.whileInUse.index);
+      expect(await starting, PositionBlock.notRequested);
+      expect(calls, isNot(contains('listen')));
+    },
+  );
+
+  for (final refusal in [
+    (404, 'not_found'),
+    (409, 'trip_not_active'),
+    (409, 'collection_session_expired'),
+  ]) {
+    test(
+      'server ${refusal.$2} stops collection without silently restarting',
+      () async {
+        final publisher = PositionPublisher(
+          client: client((o, h) {
+            h.reject(
+              DioException(
+                requestOptions: o,
+                response: Response(
+                  requestOptions: o,
+                  statusCode: refusal.$1,
+                  data: {
+                    'error': {
+                      'code': refusal.$2,
+                      'message': 'Tracking refused.',
+                    },
+                  },
+                ),
+              ),
+              true,
+            );
+          }),
+        );
+        addTearDown(publisher.dispose);
+        await publisher.start('trip-1');
+        final stopped = reaches(publisher, PositionSharing.idle);
+        await fix();
+        await stopped;
+        expect(publisher.isPublishing, isFalse);
+        expect(publisher.queue.rows, hasLength(1));
+        expect(await publisher.start('trip-1'), PositionBlock.unavailable);
+        expect(publisher.isPublishing, isFalse);
+      },
+    );
+  }
+
+  for (final status in [404, 429]) {
+    test(
+      'owner switch clears GPS $status suppression for the same run',
+      () async {
+        var now = DateTime.now();
+        var requests = 0;
+        final api = client((o, h) {
+          if (++requests > 1) return accept(o, h);
+          h.reject(
+            DioException(
+              requestOptions: o,
+              response: Response(
+                requestOptions: o,
+                statusCode: status,
+                headers: Headers.fromMap({
+                  'retry-after': ['120'],
+                }),
+                data: {
+                  'error': {
+                    'code': status == 404 ? 'not_found' : 'rate_limited',
+                    'message': 'Refused.',
+                  },
+                },
+              ),
+            ),
+            true,
+          );
+        }, now: () => now);
+        final publisher = PositionPublisher(client: api, now: () => now);
+        addTearDown(publisher.dispose);
+        await api.store.saveTokens(
+          accessToken: 'driver-a',
+          refreshToken: 'refresh-a',
+        );
+        await publisher.bindOwner('driver-a');
+        await publisher.start('trip-1');
+        final refused = reaches(
+          publisher,
+          status == 404 ? PositionSharing.idle : PositionSharing.failed,
+        );
+        await fix(timestamp: now);
+        await refused;
+        if (status == 404) {
+          await publisher.bindOwner('driver-a');
+          expect(
+            await publisher.start('trip-1'),
+            PositionBlock.unavailable,
+            reason: 'rebinding the same owner must not bypass a refusal',
+          );
+        }
+        await api.store.clearTokens();
+        await publisher.bindOwner(null);
+        await api.store.saveTokens(
+          accessToken: 'driver-b',
+          refreshToken: 'refresh-b',
+        );
+        await publisher.bindOwner('driver-b');
+        expect(publisher.queue.rows, isEmpty);
+        expect(await publisher.start('trip-1'), isNull);
+        now = now.add(const Duration(seconds: 6));
+        final live = reaches(publisher, PositionSharing.live);
+        await fix(timestamp: now);
+        await live;
+        expect(
+          requests,
+          2,
+          reason: 'A cooldown must not suppress B before its 120s expiry',
+        );
+        expect(publisher.queue.rows, isEmpty);
+      },
+    );
+  }
+
+  test(
+    'screen-lock lifecycle keeps fresh fixes uploading until stop',
+    () async {
+      final binding = TestWidgetsFlutterBinding.ensureInitialized();
+      binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+      addTearDown(
+        () => binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed),
+      );
+      final publisher = PositionPublisher(client: client(accept));
+      addTearDown(publisher.dispose);
+      await publisher.start('trip-1');
+      binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
+      final live = reaches(publisher, PositionSharing.live);
+      await fix();
+      await live;
+      expect(publisher.isPublishing, isTrue);
+      expect(publisher.queue.rows, isEmpty);
+      await publisher.stop();
+      expect(calls.last, 'cancel');
+      expect(publisher.isPublishing, isFalse);
+    },
+  );
+
+  test(
+    'GPS honours Retry-After while keeping offline fixes and their IDs',
+    () async {
+      var now = DateTime.now();
+      var requests = 0;
+      final publisher = PositionPublisher(
+        now: () => now,
+        client: client((o, h) {
+          requests++;
+          if (requests > 1) return accept(o, h);
+          h.reject(
+            DioException(
+              requestOptions: o,
+              response: Response(
+                requestOptions: o,
+                statusCode: 429,
+                headers: Headers.fromMap({
+                  'retry-after': ['120'],
+                }),
+                data: {
+                  'error': {'code': 'rate_limited', 'message': 'Wait.'},
+                },
+              ),
+            ),
+            true,
+          );
+        }, now: () => now),
+      );
+      addTearDown(publisher.dispose);
+      await publisher.start('trip-1');
+      final limited = reaches(publisher, PositionSharing.failed);
+      await fix(timestamp: now);
+      await limited;
+      final firstId = publisher.queue.rows.single['clientFixId'];
+      now = now.add(const Duration(seconds: 6));
+      await fix(timestamp: now);
+      await Future<void>.delayed(Duration.zero);
+      expect(requests, 1);
+      expect(publisher.queue.rows, hasLength(2));
+      expect(publisher.queue.rows.first['clientFixId'], firstId);
+      now = now.add(const Duration(seconds: 120));
+      final recovered = reaches(publisher, PositionSharing.live);
+      await fix(timestamp: now);
+      await recovered;
+      expect(requests, 4);
+      expect(publisher.queue.rows, isEmpty);
     },
   );
 }
