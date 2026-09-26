@@ -717,7 +717,10 @@ export class PaymentRecovery {
     };
   }
   async reviews(actor: Actor, limit = 50, cursor?: string) {
-    limitOf(limit);
+    // The reviewed list contract permits 200; maintenance batches still cap
+    // at 100 through limitOf, so do not widen that shared worker limit.
+    if (!Number.isInteger(limit) || limit < 1 || limit > 200)
+      fail(400, 'invalid_limit', 'Limit must be between 1 and 200.');
     return this.tx(async (c) => {
       await this.admin(c, actor);
       const now = new Date(),

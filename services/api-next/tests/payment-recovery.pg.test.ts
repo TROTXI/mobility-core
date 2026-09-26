@@ -588,6 +588,10 @@ test('REC-14: HTTP webhook raw bytes, ops auth, schema envelopes and per-review 
   await f.send(f.dispute(p));
   const list = await app.inject({ url: '/v1/ops/payments/reviews', headers });
   assert.equal(list.statusCode, 200, list.body);
+  const maxPage = await app.inject({ url: '/v1/ops/payments/reviews?limit=200', headers });
+  assert.equal(maxPage.statusCode, 200, maxPage.body);
+  const oversizedPage = await app.inject({ url: '/v1/ops/payments/reviews?limit=201', headers });
+  assert.equal(oversizedPage.statusCode, 400, oversizedPage.body);
   const review = list.json().data[0];
   assert.equal(review.amount.amountMinor, p.cashDuePesewas);
   assert.ok(review.editToken);

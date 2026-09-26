@@ -30,30 +30,41 @@ export function Payments() {
   const [amount, setAmount] = useState('');
   const [reason, setReason] = useState('');
   const [decision, setDecision] = useState<'resolved' | 'waived'>('resolved');
-  const query = useQuery<{ purchases: Purchase[]; reviews: Review[] }>(
+  const purchasesQuery = useQuery<Purchase[]>(
     async (signal) => {
-      const [purchases, reviews] = await Promise.all([
-        session.client.GET('/v1/ops/purchases', {
-          params: { query: { limit: 200 }, header: opsHeaders },
-          signal,
-        }),
-        session.client.GET('/v1/ops/payments/reviews', {
-          params: { query: { limit: 200 }, header: opsHeaders },
-          signal,
-        }),
-      ]);
-      if (purchases.error) throw new Error(purchases.error.error.message);
-      if (reviews.error) throw new Error(reviews.error.error.message);
-      return { purchases: purchases.data.data, reviews: reviews.data.data };
+      const response = await session.client.GET('/v1/ops/purchases', {
+        params: { query: { limit: 200 }, header: opsHeaders },
+        signal,
+      });
+      if (response.error) throw new Error(response.error.error.message);
+      return response.data.data;
     },
     [session],
   );
+  const reviewsQuery = useQuery<Review[]>(
+    async (signal) => {
+      const response = await session.client.GET('/v1/ops/payments/reviews', {
+        params: { query: { limit: 200 }, header: opsHeaders },
+        signal,
+      });
+      if (response.error) throw new Error(response.error.error.message);
+      return response.data.data;
+    },
+    [session],
+  );
+  const activeQuery = tab === 'purchases' ? purchasesQuery : reviewsQuery;
   return (
     <Page
       title="Payments & credits"
       description="Provider facts, rider value and human decisions stay separate."
       actions={
-        <Button icon={<ArrowClockwiseRegular />} onClick={query.retry}>
+        <Button
+          icon={<ArrowClockwiseRegular />}
+          onClick={() => {
+            purchasesQuery.retry();
+            reviewsQuery.retry();
+          }}
+        >
           Refresh
         </Button>
       }
@@ -66,23 +77,26 @@ export function Payments() {
         <Tab value="purchases">Purchases</Tab>
         <Tab value="reviews">Manual reviews</Tab>
       </TabList>
-      {query.error && <ErrorState message={query.error} retry={query.retry} />}
-      <Panel title={tab === 'purchases' ? 'Purchase ledger' : 'Review queue'}>
-        {query.loading ? (
-          <LoadingRows />
-        ) : tab === 'purchases' ? (
-          <PurchaseRows
-            rows={query.data?.purchases ?? []}
-            onDetail={setDetailPurchase}
-            onRefund={(row) => {
-              setPurchase(row);
-              setAmount(String(row.cashDue.amountMinor / 100));
-            }}
-          />
-        ) : (
-          <ReviewRows rows={query.data?.reviews ?? []} onResolve={setReview} />
-        )}
-      </Panel>
+      {activeQuery.error ? (
+        <ErrorState message={activeQuery.error} retry={activeQuery.retry} />
+      ) : (
+        <Panel title={tab === 'purchases' ? 'Purchase ledger' : 'Review queue'}>
+          {activeQuery.loading ? (
+            <LoadingRows />
+          ) : tab === 'purchases' ? (
+            <PurchaseRows
+              rows={purchasesQuery.data ?? []}
+              onDetail={setDetailPurchase}
+              onRefund={(row) => {
+                setPurchase(row);
+                setAmount(String(row.cashDue.amountMinor / 100));
+              }}
+            />
+          ) : (
+            <ReviewRows rows={reviewsQuery.data ?? []} onResolve={setReview} />
+          )}
+        </Panel>
+      )}
       {detailPurchase && (
         <PurchaseDetail purchase={detailPurchase} onClose={() => setDetailPurchase(null)} />
       )}
@@ -109,7 +123,7 @@ export function Payments() {
             },
           });
           if (response.error) throw new Error(response.error.error.message);
-          query.retry();
+          purchasesQuery.retry();
         }}
       >
         <label>
@@ -149,7 +163,7 @@ export function Payments() {
             body: { decision, reason },
           });
           if (response.error) throw new Error(response.error.error.message);
-          query.retry();
+          reviewsQuery.retry();
         }}
       >
         <label>
