@@ -2,8 +2,8 @@
 #
 # One-time setup: render.com → New → Blueprint → connect this repo → Apply.
 # Day-to-day deploys are driven by GitHub Actions (.github/workflows/deploy.yml):
-# CI green on main → staging deploys automatically → production after a manual
-# approval in GitHub. autoDeploy is therefore off — Actions calls the Render API.
+# CI green on main → API and Ops staging deploy automatically → production after
+# a manual approval in GitHub. autoDeploy is off — Actions calls the Render API.
 databases:
   - name: trotxi-db-staging
     databaseName: trotxi
@@ -331,7 +331,7 @@ services:
     branch: main
     buildCommand: pnpm install --frozen-lockfile && pnpm --filter @trotxi/ops run build
     staticPublishPath: apps/ops/dist
-    autoDeploy: false
+    autoDeploy: false # CI-gated GitHub Actions deploys this static site with the API
     envVars:
       - key: VITE_API_BASE_URL
         value: https://trotxi-api-staging.onrender.com

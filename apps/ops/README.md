@@ -61,6 +61,10 @@ every ten seconds.
 ## Deployment
 
 `render.yaml` defines `trotxi-ops-staging` as a static site with an SPA rewrite.
-After the Blueprint creates it, set the API's existing `CORS_ORIGINS` value to
-the site's exact HTTPS origin. The backend derives the staging passkey RP/origin
-from that allowlist; no extra WebAuthn secret is needed.
+The Blueprint sets the API's `OPS_ORIGIN` to this site's exact HTTPS origin;
+the backend uses that value for both browser CORS and the passkey RP/origin.
+No extra WebAuthn secret is needed.
+
+After CI passes on `main`, `.github/workflows/deploy.yml` deploys the API and
+then this static site from the same commit. Render's own auto-deploy stays off
+so an unreviewed push cannot bypass the CI gate.
