@@ -418,8 +418,10 @@ export async function createTransportApp(options: AppOptions) {
         preValidation: async (request, reply) => {
           reply.header('Cache-Control', 'no-store');
           // The local onRequest limiter already ran. Share the second line
-          // across replicas before doing JWT verification or resource reads.
-          if (options.admitIp && name !== 'getHealth') {
+          // across replicas only for anonymous routes. Signed-in operations
+          // already have the shared account budget; do not add an IP write
+          // to GPS, boarding or Ops polling. Their early local limiter stays.
+          if (options.admitIp && anonymous && name !== 'getHealth') {
             const buckets: [string, number][] = [['all', ipBudget]];
             if (authLimited) buckets.push([`auth:${name}`, authBudget]);
             for (const [bucket, maximum] of buckets) {

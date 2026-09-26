@@ -58,6 +58,28 @@ not final legal terms or a claim that legal compliance has been certified.
 
 ## Device acceptance walkthrough
 
+### Store submission checklist
+
+Before the next Android release, complete Play Console's foreground-service
+declaration for `FOREGROUND_SERVICE_LOCATION`, explaining user-started active-trip
+tracking, its benefit and the impact of interruption. Provide the required demo
+video showing consent, starting a trip, background tracking and stopping it.
+Also review Google's background-location policy: using a foreground service
+does not automatically exempt background-equivalent collection from that policy.
+See [foreground-service declaration requirements](https://support.google.com/googleplay/android-developer/answer/13392821)
+and [background-location policy](https://support.google.com/googleplay/android-developer/answer/9799150).
+These console declarations and a physical-device video are not completed by
+adding manifest permissions or passing unit tests.
+
+When Apple developer setup is available, explain in App Review notes that
+location collection is driver-initiated in the foreground, continues only for
+the active trip using When In Use authorization/background location capability,
+and stops on completion/sign-out. The app does not request Always authorization;
+the plist description is not evidence that it does. Apple documents continued
+updates with active When In Use sessions in its
+[location authorization guidance](https://developer.apple.com/documentation/CoreLocation/requesting-authorization-to-use-location-services).
+Verify this flow on a physical iPhone before submission; Apple setup remains deferred.
+
 Local verification: 220 driver tests pass, Flutter analysis is clean, Android
 debug APK builds, and the merged manifest declares the location foreground
 service and permission. The iOS plist passes syntax validation. These checks

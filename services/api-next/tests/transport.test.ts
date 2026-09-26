@@ -294,13 +294,21 @@ test('shared IP admission spans replicas and fails closed before verification', 
   const a = await createTransportApp(options),
     b = await createTransportApp(options);
   try {
-    const first = await a.inject({
+    const signedIn = await a.inject({
       url: '/v1/driver/trips',
+      remoteAddress: '192.0.2.8',
       headers: { authorization: 'Bearer token' },
     });
-    assert.equal(first.statusCode, 401);
+    assert.equal(signedIn.statusCode, 401);
+    assert.equal(count, 0, 'session routes must not spend the shared IP budget');
+    assert.equal(verified, 1);
+    const first = await a.inject({
+      url: '/v1/routes',
+      headers: { authorization: 'Bearer token' },
+    });
+    assert.equal(first.statusCode, 400);
     const second = await b.inject({
-      url: '/v1/driver/trips',
+      url: '/v1/routes',
       headers: { authorization: 'Bearer token' },
     });
     assert.equal(second.statusCode, 429);
@@ -308,7 +316,7 @@ test('shared IP admission spans replicas and fails closed before verification', 
     assert.equal(verified, 1);
     unavailable = true;
     const failed = await b.inject({
-      url: '/v1/driver/trips',
+      url: '/v1/routes',
       remoteAddress: '192.0.2.9',
       headers: { authorization: 'Bearer token' },
     });

@@ -29,7 +29,8 @@ export function useQuery<T>(
   useEffect(() => {
     const controller = new AbortController();
     if (document.visibilityState === 'hidden') {
-      setLoading(false);
+      // A deferred first read is not a successful empty result.
+      setLoading(true);
       return;
     }
     busy.current = true;

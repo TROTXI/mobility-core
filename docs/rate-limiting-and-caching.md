@@ -11,17 +11,25 @@ Render environment overrides were inspected.
   `Retry-After` header. Fixed clock-aligned windows permit a boundary burst.
 - IP admission: 600 requests/minute by default. A bounded process-local limiter
   refuses obvious excess before parsing/authentication; a PostgreSQL second line
-  shares the budget across instances before JWT verification. It stores keyed
-  digests, not raw IP addresses. Trusted proxy configuration determines whether
-  callers are counted correctly. Health checks do not depend on shared admission.
+  shares the budget across instances for anonymous/sign-in routes only. Session
+  routes (including GPS, boarding and Ops polling) use the shared account budget
+  without an extra IP database write. IP digests use a purpose-separated HKDF
+  key derived from the cursor root, not the cursor key directly; no raw addresses
+  are stored. Trusted proxy configuration determines correct counting. Health
+  checks do not depend on shared admission.
 - Sign-in, PIN changes and passkey routes: tighter 10/minute IP route limits.
   Driver PIN failures additionally lock the credential after five failures for
   15 minutes. Boarding-code attempts have their own driver/trip budget.
-- No Redis deployment or new secret is required. Shared IP admission adds one
-  PostgreSQL round trip; sensitive authentication routes add another scoped
-  check, alongside the existing account check. Failure refuses requests with
+- No Redis deployment or new secret is required. Anonymous shared IP admission
+  adds one PostgreSQL round trip; public authentication routes add another scoped
+  check. Signed-in requests retain only their existing account check. Failure refuses requests with
   503 instead of bypassing admission. Revisit the storage if load tests identify
   it as a bottleneck.
+- Expired counter cleanup is the existing `node dist/worker.js admission` job.
+  Add it to the scheduling checklist (suggested every five minutes). Until jobs
+  are enabled, run it manually and drain bounded batches; nothing in this PR
+  schedules a paid service. Upserts reuse a subject's row, but distinct subjects
+  accumulate without cleanup.
 
 ## Caching
 
@@ -47,6 +55,10 @@ Render environment overrides were inspected.
   seconds and HTTP dates are supported; absent/invalid headers use five seconds.
   New login/logout clears the cooldown. Driver GETs share matching pending reads,
   not completed private responses. Mutations are never replayed by this mechanism.
+  Account-wide cooldown is deliberate: retrying a different endpoint cannot
+  bypass the shared account budget. This can also conservatively pause unrelated
+  calls after an endpoint/IP refusal; finer cooldowns require a server-declared
+  scope, not guessing from the URL.
 - Offline GPS storage is a durable delivery queue, not a cache of authoritative
   live positions. A matching receipt, not successful local storage, establishes
   delivery. GPS upload now respects `Retry-After` without discarding queued IDs.

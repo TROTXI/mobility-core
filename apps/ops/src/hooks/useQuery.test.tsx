@@ -72,6 +72,8 @@ describe('useQuery', () => {
       const { result } = renderHook(() => useQuery(loader));
       act(() => result.current.retry());
       expect(loader).not.toHaveBeenCalled();
+      expect(result.current.loading).toBe(true);
+      expect(result.current.data).toBeNull();
       visibility.mockReturnValue('visible');
       act(() => document.dispatchEvent(new Event('visibilitychange')));
       await waitFor(() => expect(result.current.data).toBe('ready'));

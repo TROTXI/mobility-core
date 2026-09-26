@@ -1,5 +1,5 @@
 import pg from 'pg';
-import { createHmac } from 'node:crypto';
+import { createHmac, hkdfSync } from 'node:crypto';
 import type { Pool } from 'pg';
 import type { FastifyInstance } from 'fastify';
 import { createReplacementApp } from '../http/replacement.js';
@@ -158,6 +158,9 @@ export async function composeBackend(config: RuntimeConfig): Promise<Backend> {
       return identity;
     };
     const admission = sharedAdmission(pool);
+    const ipAdmissionKey = Buffer.from(
+      hkdfSync('sha256', config.keys.cursorSecret, 'trotxi:admission:v1', 'ip-address-digest', 32),
+    );
     const app = await createReplacementApp({
       pool,
       cursorSecret: config.keys.cursorSecret,
@@ -167,7 +170,7 @@ export async function composeBackend(config: RuntimeConfig): Promise<Backend> {
       // Do not retain raw network addresses in the disposable budget table.
       admitIp: (ip, bucket) =>
         admission.spend(
-          `ip:${bucket}:${createHmac('sha256', config.keys.cursorSecret).update(ip).digest('hex')}`,
+          `ip:${bucket}:${createHmac('sha256', ipAdmissionKey).update(ip).digest('hex')}`,
         ),
       trustProxy: config.trustProxy,
       corsOrigin: config.opsOrigin,

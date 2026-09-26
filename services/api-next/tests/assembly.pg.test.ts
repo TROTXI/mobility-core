@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import type { TestContext } from 'node:test';
 import assert from 'node:assert/strict';
-import { createHash, createHmac, randomUUID } from 'node:crypto';
+import { createHash, createHmac, hkdfSync, randomUUID } from 'node:crypto';
 import pg from 'pg';
 import { setup } from './helpers/financial-fixture.js';
 import contract from '../src/http/contract.json' with { type: 'json' };
@@ -912,6 +912,7 @@ test('ASM-22 two instances share one budget, and a closed window is the worker t
     ).rows[0].n,
     0,
   );
+  await first.app.inject({ url: '/v1/routes' });
   assert.ok(
     (await f.owner.query("SELECT subject FROM app.admission_counters WHERE subject LIKE 'ip:%'"))
       .rowCount! > 0,
@@ -926,12 +927,22 @@ test('ASM-24 composed replicas share hashed IP admission before authentication',
     second = await composeBackend(configuration);
   t.after(() => first.close());
   t.after(() => second.close());
-  const subject = `ip:all:${createHmac('sha256', configuration.keys.cursorSecret).update('192.0.2.44').digest('hex')}`;
+  const ipKey = Buffer.from(
+    hkdfSync(
+      'sha256',
+      configuration.keys.cursorSecret,
+      'trotxi:admission:v1',
+      'ip-address-digest',
+      32,
+    ),
+  );
+  assert.notDeepEqual(ipKey, configuration.keys.cursorSecret);
+  const subject = `ip:all:${createHmac('sha256', ipKey).update('192.0.2.44').digest('hex')}`;
   let window: number | undefined;
   const codes: number[] = [];
   for (let i = 0; i < 12 && codes.length < 2; i++) {
     const response = await (i % 2 ? second : first).app.inject({
-      url: '/v1/me/membership',
+      url: '/v1/routes',
       remoteAddress: '192.0.2.44',
       headers: { authorization: 'Bearer invalid-token' },
     });
@@ -951,6 +962,6 @@ test('ASM-24 composed replicas share hashed IP admission before authentication',
     assert.equal(Number(row.count), codes.length);
     if (response.statusCode === 429) assert.ok(Number(response.headers['retry-after']) > 0);
   }
-  assert.deepEqual(codes, [401, 429]);
+  assert.deepEqual(codes, [400, 429]);
   assert.equal(subject.includes('192.0.2.44'), false);
 });
