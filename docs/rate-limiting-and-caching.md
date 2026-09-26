@@ -17,6 +17,9 @@ Render environment overrides were inspected.
   key derived from the cursor root, not the cursor key directly; no raw addresses
   are stored. Trusted proxy configuration determines correct counting. Health
   checks do not depend on shared admission.
+- Paystack webhooks share the anonymous `all` IP bucket too. Admission runs
+  after the local limiter but before buffering the signed body; admitted
+  requests retain the exact bytes used for signature verification.
 - Sign-in, PIN changes and passkey routes: tighter 10/minute IP route limits.
   Driver PIN failures additionally lock the credential after five failures for
   15 minutes. Boarding-code attempts have their own driver/trip budget.

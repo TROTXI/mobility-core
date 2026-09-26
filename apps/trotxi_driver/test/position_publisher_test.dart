@@ -487,6 +487,79 @@ void main() {
     );
   }
 
+  for (final status in [404, 429]) {
+    test(
+      'owner switch clears GPS $status suppression for the same run',
+      () async {
+        var now = DateTime.now();
+        var requests = 0;
+        final api = client((o, h) {
+          if (++requests > 1) return accept(o, h);
+          h.reject(
+            DioException(
+              requestOptions: o,
+              response: Response(
+                requestOptions: o,
+                statusCode: status,
+                headers: Headers.fromMap({
+                  'retry-after': ['120'],
+                }),
+                data: {
+                  'error': {
+                    'code': status == 404 ? 'not_found' : 'rate_limited',
+                    'message': 'Refused.',
+                  },
+                },
+              ),
+            ),
+            true,
+          );
+        }, now: () => now);
+        final publisher = PositionPublisher(client: api, now: () => now);
+        addTearDown(publisher.dispose);
+        await api.store.saveTokens(
+          accessToken: 'driver-a',
+          refreshToken: 'refresh-a',
+        );
+        await publisher.bindOwner('driver-a');
+        await publisher.start('trip-1');
+        final refused = reaches(
+          publisher,
+          status == 404 ? PositionSharing.idle : PositionSharing.failed,
+        );
+        await fix(timestamp: now);
+        await refused;
+        if (status == 404) {
+          await publisher.bindOwner('driver-a');
+          expect(
+            await publisher.start('trip-1'),
+            PositionBlock.unavailable,
+            reason: 'rebinding the same owner must not bypass a refusal',
+          );
+        }
+        await api.store.clearTokens();
+        await publisher.bindOwner(null);
+        await api.store.saveTokens(
+          accessToken: 'driver-b',
+          refreshToken: 'refresh-b',
+        );
+        await publisher.bindOwner('driver-b');
+        expect(publisher.queue.rows, isEmpty);
+        expect(await publisher.start('trip-1'), isNull);
+        now = now.add(const Duration(seconds: 6));
+        final live = reaches(publisher, PositionSharing.live);
+        await fix(timestamp: now);
+        await live;
+        expect(
+          requests,
+          2,
+          reason: 'A cooldown must not suppress B before its 120s expiry',
+        );
+        expect(publisher.queue.rows, isEmpty);
+      },
+    );
+  }
+
   test(
     'screen-lock lifecycle keeps fresh fixes uploading until stop',
     () async {

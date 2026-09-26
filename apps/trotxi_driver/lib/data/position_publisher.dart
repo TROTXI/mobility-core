@@ -106,12 +106,18 @@ class PositionPublisher extends ChangeNotifier {
   }
 
   String? queueError;
+  String? _boundOwner;
 
   Future<void> bindOwner(String? owner) async {
     await stop();
     await _recording;
     try {
       await queue.bind(owner);
+      if (owner != _boundOwner) {
+        _refusedRunId = null;
+        _retryNotBefore = null;
+        _boundOwner = owner;
+      }
     } catch (_) {
       queueError =
           'Saved GPS positions could not be read safely. Contact operations before continuing.';
