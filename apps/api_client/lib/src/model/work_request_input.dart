@@ -16,32 +16,28 @@ part 'work_request_input.g.dart';
 /// WorkRequestInput
 ///
 /// Properties:
-/// * [kind]
-/// * [routeId]
-/// * [fromDate]
-/// * [note]
-/// * [toDate]
+/// * [kind] 
+/// * [routeId] 
+/// * [fromDate] 
+/// * [note] 
+/// * [toDate] 
 @BuiltValue()
-abstract class WorkRequestInput
-    implements Built<WorkRequestInput, WorkRequestInputBuilder> {
+abstract class WorkRequestInput implements Built<WorkRequestInput, WorkRequestInputBuilder> {
   /// One Of [WorkRequestInputOneOf], [WorkRequestInputOneOf1]
   OneOf get oneOf;
 
   WorkRequestInput._();
 
-  factory WorkRequestInput([void updates(WorkRequestInputBuilder b)]) =
-      _$WorkRequestInput;
+  factory WorkRequestInput([void updates(WorkRequestInputBuilder b)]) = _$WorkRequestInput;
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(WorkRequestInputBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
-  static Serializer<WorkRequestInput> get serializer =>
-      _$WorkRequestInputSerializer();
+  static Serializer<WorkRequestInput> get serializer => _$WorkRequestInputSerializer();
 }
 
-class _$WorkRequestInputSerializer
-    implements PrimitiveSerializer<WorkRequestInput> {
+class _$WorkRequestInputSerializer implements PrimitiveSerializer<WorkRequestInput> {
   @override
   final Iterable<Type> types = const [WorkRequestInput, _$WorkRequestInput];
 
@@ -49,7 +45,11 @@ class _$WorkRequestInputSerializer
   final String wireName = r'WorkRequestInput';
 
   Iterable<Object?> _serializeProperties(
-      Serializers serializers, WorkRequestInput object) sync* {}
+    Serializers serializers,
+    WorkRequestInput object, {
+    FullType specifiedType = FullType.unspecified,
+  }) sync* {
+  }
 
   @override
   Object serialize(
@@ -58,8 +58,7 @@ class _$WorkRequestInputSerializer
     FullType specifiedType = FullType.unspecified,
   }) {
     final oneOf = object.oneOf;
-    return serializers.serialize(oneOf.value,
-        specifiedType: FullType(oneOf.valueType))!;
+    return serializers.serialize(oneOf.value, specifiedType: FullType(oneOf.valueType))!;
   }
 
   @override
@@ -70,29 +69,23 @@ class _$WorkRequestInputSerializer
   }) {
     final result = WorkRequestInputBuilder();
     Object? oneOfDataSrc;
-    final targetType = const FullType(OneOf, [
-      FullType(WorkRequestInputOneOf),
-      FullType(WorkRequestInputOneOf1),
-    ]);
+    final targetType = const FullType(OneOf, [FullType(WorkRequestInputOneOf), FullType(WorkRequestInputOneOf1), ]);
     oneOfDataSrc = serialized;
-    result.oneOf = serializers.deserialize(oneOfDataSrc,
-        specifiedType: targetType) as OneOf;
+    result.oneOf = serializers.deserialize(oneOfDataSrc, specifiedType: targetType) as OneOf;
     return result.build();
   }
 }
 
 class WorkRequestInputKindEnum extends EnumClass {
+
   @BuiltValueEnumConst(wireName: r'leave')
-  static const WorkRequestInputKindEnum leave =
-      _$workRequestInputKindEnum_leave;
+  static const WorkRequestInputKindEnum leave = _$workRequestInputKindEnum_leave;
 
-  static Serializer<WorkRequestInputKindEnum> get serializer =>
-      _$workRequestInputKindEnumSerializer;
+  static Serializer<WorkRequestInputKindEnum> get serializer => _$workRequestInputKindEnumSerializer;
 
-  const WorkRequestInputKindEnum._(String name) : super(name);
+  const WorkRequestInputKindEnum._(String name): super(name);
 
-  static BuiltSet<WorkRequestInputKindEnum> get values =>
-      _$workRequestInputKindEnumValues;
-  static WorkRequestInputKindEnum valueOf(String name) =>
-      _$workRequestInputKindEnumValueOf(name);
+  static BuiltSet<WorkRequestInputKindEnum> get values => _$workRequestInputKindEnumValues;
+  static WorkRequestInputKindEnum valueOf(String name) => _$workRequestInputKindEnumValueOf(name);
 }
+

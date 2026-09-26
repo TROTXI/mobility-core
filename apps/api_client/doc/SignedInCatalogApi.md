@@ -24,9 +24,9 @@ import 'package:trotxi_api_client/api.dart';
 
 final api = TrotxiApiClient().getSignedInCatalogApi();
 final String id = id_example; // String | 
-final String xTrotxiClient = xTrotxiClient_example; // String | Compatibility metadata only, never grants a role.
-final int xTrotxiBuild = 56; // int | Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
-final String xTrotxiPlatform = xTrotxiPlatform_example; // String | Required for commuter/driver, absent for ops/worker.
+final String xTrotxiClient = commuter; // String | Compatibility metadata only, never grants a role.
+final int xTrotxiBuild = 1; // int | Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
+final String xTrotxiPlatform = ios; // String | Required for commuter/driver, absent for ops/worker.
 
 try {
     final response = api.getTrip(id, xTrotxiClient, xTrotxiBuild, xTrotxiPlatform);
@@ -42,7 +42,7 @@ Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
  **id** | **String**|  | 
  **xTrotxiClient** | **String**| Compatibility metadata only, never grants a role. | 
- **xTrotxiBuild** | **int**| Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable. | 
+ **xTrotxiBuild** | **int**| Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable. | [default to 1]
  **xTrotxiPlatform** | **String**| Required for commuter/driver, absent for ops/worker. | [optional] 
 
 ### Return type
@@ -51,7 +51,7 @@ Name | Type | Description  | Notes
 
 ### Authorization
 
-No authorization required
+[bearerAuth](../README.md#bearerAuth)
 
 ### HTTP request headers
 
@@ -70,14 +70,14 @@ list Trips
 import 'package:trotxi_api_client/api.dart';
 
 final api = TrotxiApiClient().getSignedInCatalogApi();
-final String xTrotxiClient = xTrotxiClient_example; // String | Compatibility metadata only, never grants a role.
-final int xTrotxiBuild = 56; // int | Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
+final String xTrotxiClient = commuter; // String | Compatibility metadata only, never grants a role.
+final int xTrotxiBuild = 1; // int | Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
 final String cursor = cursor_example; // String | Opaque cursor bound to caller, sort and filters.
 final int limit = 56; // int | Page size. No silent truncation.
 final Date fromDate = 2013-10-20; // Date | Africa/Accra day; paired with toDate. Default last/current 7 days; maximum 31 days.
 final Date toDate = 2013-10-20; // Date | Inclusive; paired with fromDate.
 final String routeId = routeId_example; // String | Filter within caller scope; never expands authorization.
-final String xTrotxiPlatform = xTrotxiPlatform_example; // String | Required for commuter/driver, absent for ops/worker.
+final String xTrotxiPlatform = ios; // String | Required for commuter/driver, absent for ops/worker.
 
 try {
     final response = api.listTrips(xTrotxiClient, xTrotxiBuild, cursor, limit, fromDate, toDate, routeId, xTrotxiPlatform);
@@ -92,7 +92,7 @@ try {
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
  **xTrotxiClient** | **String**| Compatibility metadata only, never grants a role. | 
- **xTrotxiBuild** | **int**| Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable. | 
+ **xTrotxiBuild** | **int**| Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable. | [default to 1]
  **cursor** | **String**| Opaque cursor bound to caller, sort and filters. | [optional] 
  **limit** | **int**| Page size. No silent truncation. | [optional] [default to 50]
  **fromDate** | **Date**| Africa/Accra day; paired with toDate. Default last/current 7 days; maximum 31 days. | [optional] 
@@ -106,7 +106,7 @@ Name | Type | Description  | Notes
 
 ### Authorization
 
-No authorization required
+[bearerAuth](../README.md#bearerAuth)
 
 ### HTTP request headers
 

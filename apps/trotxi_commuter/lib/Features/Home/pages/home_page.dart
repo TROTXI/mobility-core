@@ -1,8 +1,10 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:trotxi_client/trotxi_client.dart';
 import 'package:trotxi_commuter/Features/Home/models/home_ride_lifecycle_state.dart';
+import 'package:trotxi_commuter/Features/Home/pages/home_page_provider.dart';
 import 'package:trotxi_commuter/Features/Home/widgets/BottomNavigation/commuter_navigation.dart';
 import 'package:trotxi_commuter/Features/Home/widgets/Navbar/navbar.dart';
 import 'package:trotxi_commuter/Features/Home/widgets/Tabs/home_tab.dart';
@@ -14,6 +16,12 @@ import 'package:trotxi_commuter/Features/Onboarding/pages/onboard_page.dart';
 import 'package:trotxi_commuter/core/Tokens/token_storage.dart';
 import 'package:trotxi_commuter/core/config/client_metadata.dart';
 import 'package:trotxi_commuter/core/config/theme/app_colors.dart';
+
+// NOTE: this file still uses the old `trotxi_client` package for
+// TrotxiApiClient, getSelfApi(), Account and the exceptions, while
+// home_page_provider.dart uses `trotxi_api_client`. If you get "ambiguous
+// import" errors (Date, Reservation, TrotxiClientMetadata...), add show/hide
+// to the imports or finish migrating getAccount to the new client.
 
 /// An [IndexedStack] replacement that only builds a child the first time
 /// its index becomes active, instead of building all children up front.
@@ -64,15 +72,15 @@ class _LazyIndexedStackState extends State<LazyIndexedStack> {
   }
 }
 
-class HomePage extends StatefulWidget {
+class HomePage extends ConsumerStatefulWidget {
   const HomePage({super.key, required this.client});
   final TrotxiApiClient client;
 
   @override
-  State<HomePage> createState() => _HomePageState();
+  ConsumerState<HomePage> createState() => _HomePageState();
 }
 
-class _HomePageState extends State<HomePage> {
+class _HomePageState extends ConsumerState<HomePage> {
   // Pages are indexed in the same order as CommuterDestination.values:
   // 0 = home, 1 = trips, 2 = wallet, 3 = profile.
   CommuterDestination _selected = CommuterDestination.home;
@@ -193,9 +201,29 @@ class _HomePageState extends State<HomePage> {
 
   /// Pass is no longer a persistent bottom-nav tab (CommuterDestination has
   /// no slot for it), so it's opened as a pushed screen instead.
+  ///
+  /// The pass is issued per reservation, so the id comes from today's ride
+  /// lifecycle state. Only a reserved (or already boarded) ride has one.
   void _showBoardingPass() {
+    final ride = ref.read(rideLifecycleProvider).value;
+
+    final reservationId = switch (ride) {
+      RideReserved(:final reservationId) => reservationId,
+      RideBoarded(:final reservationId) => reservationId,
+      _ => null,
+    };
+
+    if (reservationId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No active reservation for today.')),
+      );
+      return;
+    }
+
     Navigator.of(context).push(
-      MaterialPageRoute(builder: (context) => PassTab(client: widget.client)),
+      MaterialPageRoute(
+        builder: (context) => PassTab(reservationId: reservationId),
+      ),
     );
   }
 
@@ -242,7 +270,7 @@ class _HomePageState extends State<HomePage> {
       );
     }
 
-    // 3. Session Expired / Unauthorized State
+    // Session Expired / Unauthorized State
     if (_activeError is UnauthorizedException) {
       return Scaffold(
         body: Padding(
@@ -282,7 +310,7 @@ class _HomePageState extends State<HomePage> {
       );
     }
 
-    // 4. Rate Limit (429) State
+    // Rate Limit (429) State
     if (_activeError is RateLimitException) {
       final rateErr = _activeError as RateLimitException;
       return Scaffold(
@@ -338,7 +366,7 @@ class _HomePageState extends State<HomePage> {
       );
     }
 
-    // 5. Success State — _userData is guaranteed non-null past this point,
+    // Success State: _userData is guaranteed non-null past this point,
     // so it's safe to build tabs that require it (HomeTab).
     final userData = _userData!;
 

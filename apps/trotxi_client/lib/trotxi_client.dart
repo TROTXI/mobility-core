@@ -12,6 +12,7 @@ export 'package:one_of/one_of.dart' show OneOf, OneOf2;
 export 'package:trotxi_client/src/api.dart';
 export 'package:trotxi_client/src/client_metadata.dart';
 export 'package:trotxi_client/src/idempotency.dart';
+export 'package:trotxi_client/src/reservation_detail.dart';
 
 class TrotxiException implements Exception {
   final String message;

@@ -20,6 +20,7 @@ Name | Type | Description | Notes
 **status** | **String** |  | 
 **vehicleLabel** | **String** |  | 
 **vehiclePlate** | **String** |  | 
+**assignmentChangedAt** | [**DateTime**](DateTime.md) |  | [optional] 
 **startedAt** | [**DateTime**](DateTime.md) |  | 
 **completedAt** | [**DateTime**](DateTime.md) |  | 
 **currentStopOccurrenceId** | **String** |  | 

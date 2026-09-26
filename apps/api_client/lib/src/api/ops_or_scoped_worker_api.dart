@@ -4,9 +4,11 @@
 
 import 'dart:async';
 
+import 'package:built_value/json_object.dart';
 import 'package:built_value/serializer.dart';
 import 'package:dio/dio.dart';
 
+import 'package:trotxi_api_client/src/model/error_response.dart';
 import 'package:trotxi_api_client/src/model/maintenance_input.dart';
 import 'package:trotxi_api_client/src/model/maintenance_result_response.dart';
 import 'package:trotxi_api_client/src/model/payment_maintenance_result_response.dart';
@@ -14,6 +16,7 @@ import 'package:trotxi_api_client/src/model/service_day_input.dart';
 import 'package:trotxi_api_client/src/model/trip_generation_input.dart';
 
 class OpsOrScopedWorkerApi {
+
   final Dio _dio;
 
   final Serializers _serializers;
@@ -21,12 +24,12 @@ class OpsOrScopedWorkerApi {
   const OpsOrScopedWorkerApi(this._dio, this._serializers);
 
   /// run Ask Dispatch
-  ///
+  /// 
   ///
   /// Parameters:
   /// * [xTrotxiClient] - Compatibility metadata only, never grants a role.
   /// * [xTrotxiBuild] - Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
-  /// * [serviceDayInput]
+  /// * [serviceDayInput] 
   /// * [xTrotxiPlatform] - Required for commuter/driver, absent for ops/worker.
   /// * [cancelToken] - A [CancelToken] that can be used to cancel the operation
   /// * [headers] - Can be used to add additional headers to the request
@@ -37,9 +40,9 @@ class OpsOrScopedWorkerApi {
   ///
   /// Returns a [Future] containing a [Response] with a [MaintenanceResultResponse] as data
   /// Throws [DioException] if API call or serialization fails
-  Future<Response<MaintenanceResultResponse>> runAskDispatch({
+  Future<Response<MaintenanceResultResponse>> runAskDispatch({ 
     required String xTrotxiClient,
-    required int xTrotxiBuild,
+    int xTrotxiBuild = 1,
     required ServiceDayInput serviceDayInput,
     String? xTrotxiPlatform,
     CancelToken? cancelToken,
@@ -64,8 +67,7 @@ class OpsOrScopedWorkerApi {
             'type': 'http',
             'scheme': 'bearer',
             'name': 'workerAuth',
-          },
-          {
+          },{
             'type': 'http',
             'scheme': 'bearer',
             'name': 'bearerAuth',
@@ -82,9 +84,10 @@ class OpsOrScopedWorkerApi {
     try {
       const _type = FullType(ServiceDayInput);
       _bodyData = _serializers.serialize(serviceDayInput, specifiedType: _type);
-    } catch (error, stackTrace) {
+
+    } catch(error, stackTrace) {
       throw DioException(
-        requestOptions: _options.compose(
+         requestOptions: _options.compose(
           _dio.options,
           _path,
         ),
@@ -107,12 +110,11 @@ class OpsOrScopedWorkerApi {
 
     try {
       final rawResponse = _response.data;
-      _responseData = rawResponse == null
-          ? null
-          : _serializers.deserialize(
-              rawResponse,
-              specifiedType: const FullType(MaintenanceResultResponse),
-            ) as MaintenanceResultResponse;
+      _responseData = rawResponse == null ? null : _serializers.deserialize(
+        rawResponse,
+        specifiedType: const FullType(MaintenanceResultResponse),
+      ) as MaintenanceResultResponse;
+
     } catch (error, stackTrace) {
       throw DioException(
         requestOptions: _response.requestOptions,
@@ -136,12 +138,12 @@ class OpsOrScopedWorkerApi {
   }
 
   /// run Gps Retention
-  ///
+  /// 
   ///
   /// Parameters:
   /// * [xTrotxiClient] - Compatibility metadata only, never grants a role.
   /// * [xTrotxiBuild] - Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
-  /// * [maintenanceInput]
+  /// * [maintenanceInput] 
   /// * [xTrotxiPlatform] - Required for commuter/driver, absent for ops/worker.
   /// * [cancelToken] - A [CancelToken] that can be used to cancel the operation
   /// * [headers] - Can be used to add additional headers to the request
@@ -152,9 +154,9 @@ class OpsOrScopedWorkerApi {
   ///
   /// Returns a [Future] containing a [Response] with a [MaintenanceResultResponse] as data
   /// Throws [DioException] if API call or serialization fails
-  Future<Response<MaintenanceResultResponse>> runGpsRetention({
+  Future<Response<MaintenanceResultResponse>> runGpsRetention({ 
     required String xTrotxiClient,
-    required int xTrotxiBuild,
+    int xTrotxiBuild = 1,
     required MaintenanceInput maintenanceInput,
     String? xTrotxiPlatform,
     CancelToken? cancelToken,
@@ -179,8 +181,7 @@ class OpsOrScopedWorkerApi {
             'type': 'http',
             'scheme': 'bearer',
             'name': 'workerAuth',
-          },
-          {
+          },{
             'type': 'http',
             'scheme': 'bearer',
             'name': 'bearerAuth',
@@ -196,11 +197,11 @@ class OpsOrScopedWorkerApi {
 
     try {
       const _type = FullType(MaintenanceInput);
-      _bodyData =
-          _serializers.serialize(maintenanceInput, specifiedType: _type);
-    } catch (error, stackTrace) {
+      _bodyData = _serializers.serialize(maintenanceInput, specifiedType: _type);
+
+    } catch(error, stackTrace) {
       throw DioException(
-        requestOptions: _options.compose(
+         requestOptions: _options.compose(
           _dio.options,
           _path,
         ),
@@ -223,12 +224,11 @@ class OpsOrScopedWorkerApi {
 
     try {
       final rawResponse = _response.data;
-      _responseData = rawResponse == null
-          ? null
-          : _serializers.deserialize(
-              rawResponse,
-              specifiedType: const FullType(MaintenanceResultResponse),
-            ) as MaintenanceResultResponse;
+      _responseData = rawResponse == null ? null : _serializers.deserialize(
+        rawResponse,
+        specifiedType: const FullType(MaintenanceResultResponse),
+      ) as MaintenanceResultResponse;
+
     } catch (error, stackTrace) {
       throw DioException(
         requestOptions: _response.requestOptions,
@@ -252,12 +252,12 @@ class OpsOrScopedWorkerApi {
   }
 
   /// run No Shows
-  ///
+  /// 
   ///
   /// Parameters:
   /// * [xTrotxiClient] - Compatibility metadata only, never grants a role.
   /// * [xTrotxiBuild] - Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
-  /// * [serviceDayInput]
+  /// * [serviceDayInput] 
   /// * [xTrotxiPlatform] - Required for commuter/driver, absent for ops/worker.
   /// * [cancelToken] - A [CancelToken] that can be used to cancel the operation
   /// * [headers] - Can be used to add additional headers to the request
@@ -268,9 +268,9 @@ class OpsOrScopedWorkerApi {
   ///
   /// Returns a [Future] containing a [Response] with a [MaintenanceResultResponse] as data
   /// Throws [DioException] if API call or serialization fails
-  Future<Response<MaintenanceResultResponse>> runNoShows({
+  Future<Response<MaintenanceResultResponse>> runNoShows({ 
     required String xTrotxiClient,
-    required int xTrotxiBuild,
+    int xTrotxiBuild = 1,
     required ServiceDayInput serviceDayInput,
     String? xTrotxiPlatform,
     CancelToken? cancelToken,
@@ -295,8 +295,7 @@ class OpsOrScopedWorkerApi {
             'type': 'http',
             'scheme': 'bearer',
             'name': 'workerAuth',
-          },
-          {
+          },{
             'type': 'http',
             'scheme': 'bearer',
             'name': 'bearerAuth',
@@ -313,9 +312,10 @@ class OpsOrScopedWorkerApi {
     try {
       const _type = FullType(ServiceDayInput);
       _bodyData = _serializers.serialize(serviceDayInput, specifiedType: _type);
-    } catch (error, stackTrace) {
+
+    } catch(error, stackTrace) {
       throw DioException(
-        requestOptions: _options.compose(
+         requestOptions: _options.compose(
           _dio.options,
           _path,
         ),
@@ -338,12 +338,11 @@ class OpsOrScopedWorkerApi {
 
     try {
       final rawResponse = _response.data;
-      _responseData = rawResponse == null
-          ? null
-          : _serializers.deserialize(
-              rawResponse,
-              specifiedType: const FullType(MaintenanceResultResponse),
-            ) as MaintenanceResultResponse;
+      _responseData = rawResponse == null ? null : _serializers.deserialize(
+        rawResponse,
+        specifiedType: const FullType(MaintenanceResultResponse),
+      ) as MaintenanceResultResponse;
+
     } catch (error, stackTrace) {
       throw DioException(
         requestOptions: _response.requestOptions,
@@ -367,12 +366,12 @@ class OpsOrScopedWorkerApi {
   }
 
   /// run Payment Inbox
-  ///
+  /// 
   ///
   /// Parameters:
   /// * [xTrotxiClient] - Compatibility metadata only, never grants a role.
   /// * [xTrotxiBuild] - Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
-  /// * [maintenanceInput]
+  /// * [maintenanceInput] 
   /// * [xTrotxiPlatform] - Required for commuter/driver, absent for ops/worker.
   /// * [cancelToken] - A [CancelToken] that can be used to cancel the operation
   /// * [headers] - Can be used to add additional headers to the request
@@ -383,9 +382,9 @@ class OpsOrScopedWorkerApi {
   ///
   /// Returns a [Future] containing a [Response] with a [MaintenanceResultResponse] as data
   /// Throws [DioException] if API call or serialization fails
-  Future<Response<MaintenanceResultResponse>> runPaymentInbox({
+  Future<Response<MaintenanceResultResponse>> runPaymentInbox({ 
     required String xTrotxiClient,
-    required int xTrotxiBuild,
+    int xTrotxiBuild = 1,
     required MaintenanceInput maintenanceInput,
     String? xTrotxiPlatform,
     CancelToken? cancelToken,
@@ -410,8 +409,7 @@ class OpsOrScopedWorkerApi {
             'type': 'http',
             'scheme': 'bearer',
             'name': 'workerAuth',
-          },
-          {
+          },{
             'type': 'http',
             'scheme': 'bearer',
             'name': 'bearerAuth',
@@ -427,11 +425,11 @@ class OpsOrScopedWorkerApi {
 
     try {
       const _type = FullType(MaintenanceInput);
-      _bodyData =
-          _serializers.serialize(maintenanceInput, specifiedType: _type);
-    } catch (error, stackTrace) {
+      _bodyData = _serializers.serialize(maintenanceInput, specifiedType: _type);
+
+    } catch(error, stackTrace) {
       throw DioException(
-        requestOptions: _options.compose(
+         requestOptions: _options.compose(
           _dio.options,
           _path,
         ),
@@ -454,12 +452,11 @@ class OpsOrScopedWorkerApi {
 
     try {
       final rawResponse = _response.data;
-      _responseData = rawResponse == null
-          ? null
-          : _serializers.deserialize(
-              rawResponse,
-              specifiedType: const FullType(MaintenanceResultResponse),
-            ) as MaintenanceResultResponse;
+      _responseData = rawResponse == null ? null : _serializers.deserialize(
+        rawResponse,
+        specifiedType: const FullType(MaintenanceResultResponse),
+      ) as MaintenanceResultResponse;
+
     } catch (error, stackTrace) {
       throw DioException(
         requestOptions: _response.requestOptions,
@@ -483,12 +480,12 @@ class OpsOrScopedWorkerApi {
   }
 
   /// run Payment Reconciliation
-  ///
+  /// 
   ///
   /// Parameters:
   /// * [xTrotxiClient] - Compatibility metadata only, never grants a role.
   /// * [xTrotxiBuild] - Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
-  /// * [maintenanceInput]
+  /// * [maintenanceInput] 
   /// * [xTrotxiPlatform] - Required for commuter/driver, absent for ops/worker.
   /// * [cancelToken] - A [CancelToken] that can be used to cancel the operation
   /// * [headers] - Can be used to add additional headers to the request
@@ -499,9 +496,9 @@ class OpsOrScopedWorkerApi {
   ///
   /// Returns a [Future] containing a [Response] with a [MaintenanceResultResponse] as data
   /// Throws [DioException] if API call or serialization fails
-  Future<Response<MaintenanceResultResponse>> runPaymentReconciliation({
+  Future<Response<MaintenanceResultResponse>> runPaymentReconciliation({ 
     required String xTrotxiClient,
-    required int xTrotxiBuild,
+    int xTrotxiBuild = 1,
     required MaintenanceInput maintenanceInput,
     String? xTrotxiPlatform,
     CancelToken? cancelToken,
@@ -526,8 +523,7 @@ class OpsOrScopedWorkerApi {
             'type': 'http',
             'scheme': 'bearer',
             'name': 'workerAuth',
-          },
-          {
+          },{
             'type': 'http',
             'scheme': 'bearer',
             'name': 'bearerAuth',
@@ -543,11 +539,11 @@ class OpsOrScopedWorkerApi {
 
     try {
       const _type = FullType(MaintenanceInput);
-      _bodyData =
-          _serializers.serialize(maintenanceInput, specifiedType: _type);
-    } catch (error, stackTrace) {
+      _bodyData = _serializers.serialize(maintenanceInput, specifiedType: _type);
+
+    } catch(error, stackTrace) {
       throw DioException(
-        requestOptions: _options.compose(
+         requestOptions: _options.compose(
           _dio.options,
           _path,
         ),
@@ -570,12 +566,11 @@ class OpsOrScopedWorkerApi {
 
     try {
       final rawResponse = _response.data;
-      _responseData = rawResponse == null
-          ? null
-          : _serializers.deserialize(
-              rawResponse,
-              specifiedType: const FullType(MaintenanceResultResponse),
-            ) as MaintenanceResultResponse;
+      _responseData = rawResponse == null ? null : _serializers.deserialize(
+        rawResponse,
+        specifiedType: const FullType(MaintenanceResultResponse),
+      ) as MaintenanceResultResponse;
+
     } catch (error, stackTrace) {
       throw DioException(
         requestOptions: _response.requestOptions,
@@ -599,12 +594,12 @@ class OpsOrScopedWorkerApi {
   }
 
   /// run Payments
-  ///
+  /// 
   ///
   /// Parameters:
   /// * [xTrotxiClient] - Compatibility metadata only, never grants a role.
   /// * [xTrotxiBuild] - Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
-  /// * [maintenanceInput]
+  /// * [maintenanceInput] 
   /// * [xTrotxiPlatform] - Required for commuter/driver, absent for ops/worker.
   /// * [cancelToken] - A [CancelToken] that can be used to cancel the operation
   /// * [headers] - Can be used to add additional headers to the request
@@ -615,9 +610,9 @@ class OpsOrScopedWorkerApi {
   ///
   /// Returns a [Future] containing a [Response] with a [PaymentMaintenanceResultResponse] as data
   /// Throws [DioException] if API call or serialization fails
-  Future<Response<PaymentMaintenanceResultResponse>> runPayments({
+  Future<Response<PaymentMaintenanceResultResponse>> runPayments({ 
     required String xTrotxiClient,
-    required int xTrotxiBuild,
+    int xTrotxiBuild = 1,
     required MaintenanceInput maintenanceInput,
     String? xTrotxiPlatform,
     CancelToken? cancelToken,
@@ -642,8 +637,7 @@ class OpsOrScopedWorkerApi {
             'type': 'http',
             'scheme': 'bearer',
             'name': 'workerAuth',
-          },
-          {
+          },{
             'type': 'http',
             'scheme': 'bearer',
             'name': 'bearerAuth',
@@ -659,11 +653,11 @@ class OpsOrScopedWorkerApi {
 
     try {
       const _type = FullType(MaintenanceInput);
-      _bodyData =
-          _serializers.serialize(maintenanceInput, specifiedType: _type);
-    } catch (error, stackTrace) {
+      _bodyData = _serializers.serialize(maintenanceInput, specifiedType: _type);
+
+    } catch(error, stackTrace) {
       throw DioException(
-        requestOptions: _options.compose(
+         requestOptions: _options.compose(
           _dio.options,
           _path,
         ),
@@ -686,12 +680,11 @@ class OpsOrScopedWorkerApi {
 
     try {
       final rawResponse = _response.data;
-      _responseData = rawResponse == null
-          ? null
-          : _serializers.deserialize(
-              rawResponse,
-              specifiedType: const FullType(PaymentMaintenanceResultResponse),
-            ) as PaymentMaintenanceResultResponse;
+      _responseData = rawResponse == null ? null : _serializers.deserialize(
+        rawResponse,
+        specifiedType: const FullType(PaymentMaintenanceResultResponse),
+      ) as PaymentMaintenanceResultResponse;
+
     } catch (error, stackTrace) {
       throw DioException(
         requestOptions: _response.requestOptions,
@@ -715,12 +708,12 @@ class OpsOrScopedWorkerApi {
   }
 
   /// run Period Close
-  ///
+  /// 
   ///
   /// Parameters:
   /// * [xTrotxiClient] - Compatibility metadata only, never grants a role.
   /// * [xTrotxiBuild] - Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
-  /// * [maintenanceInput]
+  /// * [maintenanceInput] 
   /// * [xTrotxiPlatform] - Required for commuter/driver, absent for ops/worker.
   /// * [cancelToken] - A [CancelToken] that can be used to cancel the operation
   /// * [headers] - Can be used to add additional headers to the request
@@ -731,9 +724,9 @@ class OpsOrScopedWorkerApi {
   ///
   /// Returns a [Future] containing a [Response] with a [MaintenanceResultResponse] as data
   /// Throws [DioException] if API call or serialization fails
-  Future<Response<MaintenanceResultResponse>> runPeriodClose({
+  Future<Response<MaintenanceResultResponse>> runPeriodClose({ 
     required String xTrotxiClient,
-    required int xTrotxiBuild,
+    int xTrotxiBuild = 1,
     required MaintenanceInput maintenanceInput,
     String? xTrotxiPlatform,
     CancelToken? cancelToken,
@@ -758,8 +751,7 @@ class OpsOrScopedWorkerApi {
             'type': 'http',
             'scheme': 'bearer',
             'name': 'workerAuth',
-          },
-          {
+          },{
             'type': 'http',
             'scheme': 'bearer',
             'name': 'bearerAuth',
@@ -775,11 +767,11 @@ class OpsOrScopedWorkerApi {
 
     try {
       const _type = FullType(MaintenanceInput);
-      _bodyData =
-          _serializers.serialize(maintenanceInput, specifiedType: _type);
-    } catch (error, stackTrace) {
+      _bodyData = _serializers.serialize(maintenanceInput, specifiedType: _type);
+
+    } catch(error, stackTrace) {
       throw DioException(
-        requestOptions: _options.compose(
+         requestOptions: _options.compose(
           _dio.options,
           _path,
         ),
@@ -802,12 +794,11 @@ class OpsOrScopedWorkerApi {
 
     try {
       final rawResponse = _response.data;
-      _responseData = rawResponse == null
-          ? null
-          : _serializers.deserialize(
-              rawResponse,
-              specifiedType: const FullType(MaintenanceResultResponse),
-            ) as MaintenanceResultResponse;
+      _responseData = rawResponse == null ? null : _serializers.deserialize(
+        rawResponse,
+        specifiedType: const FullType(MaintenanceResultResponse),
+      ) as MaintenanceResultResponse;
+
     } catch (error, stackTrace) {
       throw DioException(
         requestOptions: _response.requestOptions,
@@ -831,12 +822,12 @@ class OpsOrScopedWorkerApi {
   }
 
   /// run Reservation Defaults
-  ///
+  /// 
   ///
   /// Parameters:
   /// * [xTrotxiClient] - Compatibility metadata only, never grants a role.
   /// * [xTrotxiBuild] - Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
-  /// * [serviceDayInput]
+  /// * [serviceDayInput] 
   /// * [xTrotxiPlatform] - Required for commuter/driver, absent for ops/worker.
   /// * [cancelToken] - A [CancelToken] that can be used to cancel the operation
   /// * [headers] - Can be used to add additional headers to the request
@@ -847,9 +838,9 @@ class OpsOrScopedWorkerApi {
   ///
   /// Returns a [Future] containing a [Response] with a [MaintenanceResultResponse] as data
   /// Throws [DioException] if API call or serialization fails
-  Future<Response<MaintenanceResultResponse>> runReservationDefaults({
+  Future<Response<MaintenanceResultResponse>> runReservationDefaults({ 
     required String xTrotxiClient,
-    required int xTrotxiBuild,
+    int xTrotxiBuild = 1,
     required ServiceDayInput serviceDayInput,
     String? xTrotxiPlatform,
     CancelToken? cancelToken,
@@ -874,8 +865,7 @@ class OpsOrScopedWorkerApi {
             'type': 'http',
             'scheme': 'bearer',
             'name': 'workerAuth',
-          },
-          {
+          },{
             'type': 'http',
             'scheme': 'bearer',
             'name': 'bearerAuth',
@@ -892,9 +882,10 @@ class OpsOrScopedWorkerApi {
     try {
       const _type = FullType(ServiceDayInput);
       _bodyData = _serializers.serialize(serviceDayInput, specifiedType: _type);
-    } catch (error, stackTrace) {
+
+    } catch(error, stackTrace) {
       throw DioException(
-        requestOptions: _options.compose(
+         requestOptions: _options.compose(
           _dio.options,
           _path,
         ),
@@ -917,12 +908,11 @@ class OpsOrScopedWorkerApi {
 
     try {
       final rawResponse = _response.data;
-      _responseData = rawResponse == null
-          ? null
-          : _serializers.deserialize(
-              rawResponse,
-              specifiedType: const FullType(MaintenanceResultResponse),
-            ) as MaintenanceResultResponse;
+      _responseData = rawResponse == null ? null : _serializers.deserialize(
+        rawResponse,
+        specifiedType: const FullType(MaintenanceResultResponse),
+      ) as MaintenanceResultResponse;
+
     } catch (error, stackTrace) {
       throw DioException(
         requestOptions: _response.requestOptions,
@@ -946,12 +936,12 @@ class OpsOrScopedWorkerApi {
   }
 
   /// run Route Learning
-  ///
+  /// 
   ///
   /// Parameters:
   /// * [xTrotxiClient] - Compatibility metadata only, never grants a role.
   /// * [xTrotxiBuild] - Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
-  /// * [maintenanceInput]
+  /// * [maintenanceInput] 
   /// * [xTrotxiPlatform] - Required for commuter/driver, absent for ops/worker.
   /// * [cancelToken] - A [CancelToken] that can be used to cancel the operation
   /// * [headers] - Can be used to add additional headers to the request
@@ -962,9 +952,9 @@ class OpsOrScopedWorkerApi {
   ///
   /// Returns a [Future] containing a [Response] with a [MaintenanceResultResponse] as data
   /// Throws [DioException] if API call or serialization fails
-  Future<Response<MaintenanceResultResponse>> runRouteLearning({
+  Future<Response<MaintenanceResultResponse>> runRouteLearning({ 
     required String xTrotxiClient,
-    required int xTrotxiBuild,
+    int xTrotxiBuild = 1,
     required MaintenanceInput maintenanceInput,
     String? xTrotxiPlatform,
     CancelToken? cancelToken,
@@ -989,8 +979,7 @@ class OpsOrScopedWorkerApi {
             'type': 'http',
             'scheme': 'bearer',
             'name': 'workerAuth',
-          },
-          {
+          },{
             'type': 'http',
             'scheme': 'bearer',
             'name': 'bearerAuth',
@@ -1006,11 +995,11 @@ class OpsOrScopedWorkerApi {
 
     try {
       const _type = FullType(MaintenanceInput);
-      _bodyData =
-          _serializers.serialize(maintenanceInput, specifiedType: _type);
-    } catch (error, stackTrace) {
+      _bodyData = _serializers.serialize(maintenanceInput, specifiedType: _type);
+
+    } catch(error, stackTrace) {
       throw DioException(
-        requestOptions: _options.compose(
+         requestOptions: _options.compose(
           _dio.options,
           _path,
         ),
@@ -1033,12 +1022,11 @@ class OpsOrScopedWorkerApi {
 
     try {
       final rawResponse = _response.data;
-      _responseData = rawResponse == null
-          ? null
-          : _serializers.deserialize(
-              rawResponse,
-              specifiedType: const FullType(MaintenanceResultResponse),
-            ) as MaintenanceResultResponse;
+      _responseData = rawResponse == null ? null : _serializers.deserialize(
+        rawResponse,
+        specifiedType: const FullType(MaintenanceResultResponse),
+      ) as MaintenanceResultResponse;
+
     } catch (error, stackTrace) {
       throw DioException(
         requestOptions: _response.requestOptions,
@@ -1062,12 +1050,12 @@ class OpsOrScopedWorkerApi {
   }
 
   /// run Trip Generation
-  ///
+  /// 
   ///
   /// Parameters:
   /// * [xTrotxiClient] - Compatibility metadata only, never grants a role.
   /// * [xTrotxiBuild] - Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
-  /// * [tripGenerationInput]
+  /// * [tripGenerationInput] 
   /// * [xTrotxiPlatform] - Required for commuter/driver, absent for ops/worker.
   /// * [cancelToken] - A [CancelToken] that can be used to cancel the operation
   /// * [headers] - Can be used to add additional headers to the request
@@ -1078,9 +1066,9 @@ class OpsOrScopedWorkerApi {
   ///
   /// Returns a [Future] containing a [Response] with a [MaintenanceResultResponse] as data
   /// Throws [DioException] if API call or serialization fails
-  Future<Response<MaintenanceResultResponse>> runTripGeneration({
+  Future<Response<MaintenanceResultResponse>> runTripGeneration({ 
     required String xTrotxiClient,
-    required int xTrotxiBuild,
+    int xTrotxiBuild = 1,
     required TripGenerationInput tripGenerationInput,
     String? xTrotxiPlatform,
     CancelToken? cancelToken,
@@ -1105,8 +1093,7 @@ class OpsOrScopedWorkerApi {
             'type': 'http',
             'scheme': 'bearer',
             'name': 'workerAuth',
-          },
-          {
+          },{
             'type': 'http',
             'scheme': 'bearer',
             'name': 'bearerAuth',
@@ -1122,11 +1109,11 @@ class OpsOrScopedWorkerApi {
 
     try {
       const _type = FullType(TripGenerationInput);
-      _bodyData =
-          _serializers.serialize(tripGenerationInput, specifiedType: _type);
-    } catch (error, stackTrace) {
+      _bodyData = _serializers.serialize(tripGenerationInput, specifiedType: _type);
+
+    } catch(error, stackTrace) {
       throw DioException(
-        requestOptions: _options.compose(
+         requestOptions: _options.compose(
           _dio.options,
           _path,
         ),
@@ -1149,12 +1136,11 @@ class OpsOrScopedWorkerApi {
 
     try {
       final rawResponse = _response.data;
-      _responseData = rawResponse == null
-          ? null
-          : _serializers.deserialize(
-              rawResponse,
-              specifiedType: const FullType(MaintenanceResultResponse),
-            ) as MaintenanceResultResponse;
+      _responseData = rawResponse == null ? null : _serializers.deserialize(
+        rawResponse,
+        specifiedType: const FullType(MaintenanceResultResponse),
+      ) as MaintenanceResultResponse;
+
     } catch (error, stackTrace) {
       throw DioException(
         requestOptions: _response.requestOptions,
@@ -1176,4 +1162,5 @@ class OpsOrScopedWorkerApi {
       extra: _response.extra,
     );
   }
+
 }

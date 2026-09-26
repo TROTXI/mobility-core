@@ -239,8 +239,7 @@ class _ProfileTabState extends State<ProfileTab> {
                   subtitle: 'Pickup, destination and travel preferences',
                   onTap: () => Navigator.of(context).push(
                     MaterialPageRoute(
-                      builder: (context) =>
-                          CommutePreferencesPage(client: widget.client),
+                      builder: (context) => CommutePreferencesPage(),
                     ),
                   ),
                 ),

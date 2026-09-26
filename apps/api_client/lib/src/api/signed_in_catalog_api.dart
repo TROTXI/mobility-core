@@ -4,15 +4,18 @@
 
 import 'dart:async';
 
+import 'package:built_value/json_object.dart';
 import 'package:built_value/serializer.dart';
 import 'package:dio/dio.dart';
 
 import 'package:trotxi_api_client/src/api_util.dart';
 import 'package:trotxi_api_client/src/model/date.dart';
+import 'package:trotxi_api_client/src/model/error_response.dart';
 import 'package:trotxi_api_client/src/model/trip_page.dart';
 import 'package:trotxi_api_client/src/model/trip_response.dart';
 
 class SignedInCatalogApi {
+
   final Dio _dio;
 
   final Serializers _serializers;
@@ -20,10 +23,10 @@ class SignedInCatalogApi {
   const SignedInCatalogApi(this._dio, this._serializers);
 
   /// get Trip
-  ///
+  /// 
   ///
   /// Parameters:
-  /// * [id]
+  /// * [id] 
   /// * [xTrotxiClient] - Compatibility metadata only, never grants a role.
   /// * [xTrotxiBuild] - Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
   /// * [xTrotxiPlatform] - Required for commuter/driver, absent for ops/worker.
@@ -36,10 +39,10 @@ class SignedInCatalogApi {
   ///
   /// Returns a [Future] containing a [Response] with a [TripResponse] as data
   /// Throws [DioException] if API call or serialization fails
-  Future<Response<TripResponse>> getTrip({
+  Future<Response<TripResponse>> getTrip({ 
     required String id,
     required String xTrotxiClient,
-    required int xTrotxiBuild,
+    int xTrotxiBuild = 1,
     String? xTrotxiPlatform,
     CancelToken? cancelToken,
     Map<String, dynamic>? headers,
@@ -48,10 +51,7 @@ class SignedInCatalogApi {
     ProgressCallback? onSendProgress,
     ProgressCallback? onReceiveProgress,
   }) async {
-    final _path = r'/v1/trips/{id}'.replaceAll(
-        '{' r'id' '}',
-        encodeQueryParameter(_serializers, id, const FullType(String))
-            .toString());
+    final _path = r'/v1/trips/{id}'.replaceAll('{' r'id' '}', encodeQueryParameter(_serializers, id, const FullType(String)).toString());
     final _options = Options(
       method: r'GET',
       headers: <String, dynamic>{
@@ -85,12 +85,11 @@ class SignedInCatalogApi {
 
     try {
       final rawResponse = _response.data;
-      _responseData = rawResponse == null
-          ? null
-          : _serializers.deserialize(
-              rawResponse,
-              specifiedType: const FullType(TripResponse),
-            ) as TripResponse;
+      _responseData = rawResponse == null ? null : _serializers.deserialize(
+        rawResponse,
+        specifiedType: const FullType(TripResponse),
+      ) as TripResponse;
+
     } catch (error, stackTrace) {
       throw DioException(
         requestOptions: _response.requestOptions,
@@ -114,7 +113,7 @@ class SignedInCatalogApi {
   }
 
   /// list Trips
-  ///
+  /// 
   ///
   /// Parameters:
   /// * [xTrotxiClient] - Compatibility metadata only, never grants a role.
@@ -134,9 +133,9 @@ class SignedInCatalogApi {
   ///
   /// Returns a [Future] containing a [Response] with a [TripPage] as data
   /// Throws [DioException] if API call or serialization fails
-  Future<Response<TripPage>> listTrips({
+  Future<Response<TripPage>> listTrips({ 
     required String xTrotxiClient,
-    required int xTrotxiBuild,
+    int xTrotxiBuild = 1,
     String? cursor,
     int? limit = 50,
     Date? fromDate,
@@ -173,21 +172,11 @@ class SignedInCatalogApi {
     );
 
     final _queryParameters = <String, dynamic>{
-      if (cursor != null)
-        r'cursor':
-            encodeQueryParameter(_serializers, cursor, const FullType(String)),
-      if (limit != null)
-        r'limit':
-            encodeQueryParameter(_serializers, limit, const FullType(int)),
-      if (fromDate != null)
-        r'fromDate':
-            encodeQueryParameter(_serializers, fromDate, const FullType(Date)),
-      if (toDate != null)
-        r'toDate':
-            encodeQueryParameter(_serializers, toDate, const FullType(Date)),
-      if (routeId != null)
-        r'routeId':
-            encodeQueryParameter(_serializers, routeId, const FullType(String)),
+      if (cursor != null) r'cursor': encodeQueryParameter(_serializers, cursor, const FullType(String)),
+      if (limit != null) r'limit': encodeQueryParameter(_serializers, limit, const FullType(int)),
+      if (fromDate != null) r'fromDate': encodeQueryParameter(_serializers, fromDate, const FullType(Date)),
+      if (toDate != null) r'toDate': encodeQueryParameter(_serializers, toDate, const FullType(Date)),
+      if (routeId != null) r'routeId': encodeQueryParameter(_serializers, routeId, const FullType(String)),
     };
 
     final _response = await _dio.request<Object>(
@@ -203,12 +192,11 @@ class SignedInCatalogApi {
 
     try {
       final rawResponse = _response.data;
-      _responseData = rawResponse == null
-          ? null
-          : _serializers.deserialize(
-              rawResponse,
-              specifiedType: const FullType(TripPage),
-            ) as TripPage;
+      _responseData = rawResponse == null ? null : _serializers.deserialize(
+        rawResponse,
+        specifiedType: const FullType(TripPage),
+      ) as TripPage;
+
     } catch (error, stackTrace) {
       throw DioException(
         requestOptions: _response.requestOptions,
@@ -230,4 +218,5 @@ class SignedInCatalogApi {
       extra: _response.extra,
     );
   }
+
 }

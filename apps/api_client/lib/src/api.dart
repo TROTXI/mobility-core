@@ -9,21 +9,19 @@ import 'package:trotxi_api_client/src/auth/api_key_auth.dart';
 import 'package:trotxi_api_client/src/auth/basic_auth.dart';
 import 'package:trotxi_api_client/src/auth/bearer_auth.dart';
 import 'package:trotxi_api_client/src/auth/oauth.dart';
-import 'package:trotxi_api_client/src/api/admin_api.dart';
-import 'package:trotxi_api_client/src/api/auth_api.dart';
-import 'package:trotxi_api_client/src/api/boarding_api.dart';
-import 'package:trotxi_api_client/src/api/flags_api.dart';
-import 'package:trotxi_api_client/src/api/incidents_api.dart';
-import 'package:trotxi_api_client/src/api/mobility_api.dart';
-import 'package:trotxi_api_client/src/api/payments_api.dart';
-import 'package:trotxi_api_client/src/api/reservations_api.dart';
-import 'package:trotxi_api_client/src/api/rides_api.dart';
-import 'package:trotxi_api_client/src/api/system_api.dart';
-import 'package:trotxi_api_client/src/api/users_api.dart';
-import 'package:trotxi_api_client/src/api/work_api.dart';
+import 'package:trotxi_api_client/src/api/driver_assigned_or_own_api.dart';
+import 'package:trotxi_api_client/src/api/driver_own_api.dart';
+import 'package:trotxi_api_client/src/api/live_eligible_api.dart';
+import 'package:trotxi_api_client/src/api/ops_api.dart';
+import 'package:trotxi_api_client/src/api/ops_or_scoped_worker_api.dart';
+import 'package:trotxi_api_client/src/api/provider_signature_api.dart';
+import 'package:trotxi_api_client/src/api/public_api.dart';
+import 'package:trotxi_api_client/src/api/rider_own_api.dart';
+import 'package:trotxi_api_client/src/api/self_api.dart';
+import 'package:trotxi_api_client/src/api/signed_in_catalog_api.dart';
 
 class TrotxiApiClient {
-  static const String basePath = r'http://localhost';
+  static const String basePath = r'https://trotxi-api-staging.onrender.com';
 
   final Dio dio;
   final Serializers serializers;
@@ -116,75 +114,63 @@ class TrotxiApiClient {
     }
   }
 
-  /// Get AdminApi instance, base route and serializer can be overridden by a given but be careful,
+  /// Get DriverAssignedOrOwnApi instance, base route and serializer can be overridden by a given but be careful,
   /// by doing that all interceptors will not be executed
-  AdminApi getAdminApi() {
-    return AdminApi(dio, serializers);
+  DriverAssignedOrOwnApi getDriverAssignedOrOwnApi() {
+    return DriverAssignedOrOwnApi(dio, serializers);
   }
 
-  /// Get AuthApi instance, base route and serializer can be overridden by a given but be careful,
+  /// Get DriverOwnApi instance, base route and serializer can be overridden by a given but be careful,
   /// by doing that all interceptors will not be executed
-  AuthApi getAuthApi() {
-    return AuthApi(dio, serializers);
+  DriverOwnApi getDriverOwnApi() {
+    return DriverOwnApi(dio, serializers);
   }
 
-  /// Get BoardingApi instance, base route and serializer can be overridden by a given but be careful,
+  /// Get LiveEligibleApi instance, base route and serializer can be overridden by a given but be careful,
   /// by doing that all interceptors will not be executed
-  BoardingApi getBoardingApi() {
-    return BoardingApi(dio, serializers);
+  LiveEligibleApi getLiveEligibleApi() {
+    return LiveEligibleApi(dio, serializers);
   }
 
-  /// Get FlagsApi instance, base route and serializer can be overridden by a given but be careful,
+  /// Get OpsApi instance, base route and serializer can be overridden by a given but be careful,
   /// by doing that all interceptors will not be executed
-  FlagsApi getFlagsApi() {
-    return FlagsApi(dio, serializers);
+  OpsApi getOpsApi() {
+    return OpsApi(dio, serializers);
   }
 
-  /// Get IncidentsApi instance, base route and serializer can be overridden by a given but be careful,
+  /// Get OpsOrScopedWorkerApi instance, base route and serializer can be overridden by a given but be careful,
   /// by doing that all interceptors will not be executed
-  IncidentsApi getIncidentsApi() {
-    return IncidentsApi(dio, serializers);
+  OpsOrScopedWorkerApi getOpsOrScopedWorkerApi() {
+    return OpsOrScopedWorkerApi(dio, serializers);
   }
 
-  /// Get MobilityApi instance, base route and serializer can be overridden by a given but be careful,
+  /// Get ProviderSignatureApi instance, base route and serializer can be overridden by a given but be careful,
   /// by doing that all interceptors will not be executed
-  MobilityApi getMobilityApi() {
-    return MobilityApi(dio, serializers);
+  ProviderSignatureApi getProviderSignatureApi() {
+    return ProviderSignatureApi(dio, serializers);
   }
 
-  /// Get PaymentsApi instance, base route and serializer can be overridden by a given but be careful,
+  /// Get PublicApi instance, base route and serializer can be overridden by a given but be careful,
   /// by doing that all interceptors will not be executed
-  PaymentsApi getPaymentsApi() {
-    return PaymentsApi(dio, serializers);
+  PublicApi getPublicApi() {
+    return PublicApi(dio, serializers);
   }
 
-  /// Get ReservationsApi instance, base route and serializer can be overridden by a given but be careful,
+  /// Get RiderOwnApi instance, base route and serializer can be overridden by a given but be careful,
   /// by doing that all interceptors will not be executed
-  ReservationsApi getReservationsApi() {
-    return ReservationsApi(dio, serializers);
+  RiderOwnApi getRiderOwnApi() {
+    return RiderOwnApi(dio, serializers);
   }
 
-  /// Get RidesApi instance, base route and serializer can be overridden by a given but be careful,
+  /// Get SelfApi instance, base route and serializer can be overridden by a given but be careful,
   /// by doing that all interceptors will not be executed
-  RidesApi getRidesApi() {
-    return RidesApi(dio, serializers);
+  SelfApi getSelfApi() {
+    return SelfApi(dio, serializers);
   }
 
-  /// Get SystemApi instance, base route and serializer can be overridden by a given but be careful,
+  /// Get SignedInCatalogApi instance, base route and serializer can be overridden by a given but be careful,
   /// by doing that all interceptors will not be executed
-  SystemApi getSystemApi() {
-    return SystemApi(dio, serializers);
-  }
-
-  /// Get UsersApi instance, base route and serializer can be overridden by a given but be careful,
-  /// by doing that all interceptors will not be executed
-  UsersApi getUsersApi() {
-    return UsersApi(dio, serializers);
-  }
-
-  /// Get WorkApi instance, base route and serializer can be overridden by a given but be careful,
-  /// by doing that all interceptors will not be executed
-  WorkApi getWorkApi() {
-    return WorkApi(dio, serializers);
+  SignedInCatalogApi getSignedInCatalogApi() {
+    return SignedInCatalogApi(dio, serializers);
   }
 }

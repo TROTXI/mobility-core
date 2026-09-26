@@ -252,15 +252,6 @@ class _HomeTabState extends ConsumerState<HomeTab> {
         ),
       ],
 
-      RideReleased() => [
-        _buildStatusCard(
-          icon: Icons.event_available_rounded,
-          title: 'Seat released',
-          message: 'Your seat was released back to the pool.',
-          accentColor: colors.textSecondary,
-        ),
-      ],
-
       RideOperatorCancelled() => [
         _buildStatusCard(
           icon: Icons.report_gmailerrorred_rounded,

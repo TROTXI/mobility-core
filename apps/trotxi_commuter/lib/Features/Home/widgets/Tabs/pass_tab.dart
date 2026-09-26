@@ -1,26 +1,37 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:qr_flutter/qr_flutter.dart';
-import 'package:trotxi_client/trotxi_client.dart';
+import 'package:trotxi_commuter/Features/Home/pages/home_page_provider.dart';
 import 'package:trotxi_commuter/core/config/theme/app_colors.dart';
+import 'package:trotxi_commuter/main.dart';
 
-class PassTab extends StatefulWidget {
-  const PassTab({super.key, required this.client});
-  final TrotxiApiClient client;
+/// Boarding pass for one reservation. Issues a short-lived pass via
+/// `POST /v1/me/reservations/{id}/pass`, renders its `qrToken` as a QR, and
+/// silently re-issues it shortly before `expiresAt`.
+class PassTab extends ConsumerStatefulWidget {
+  const PassTab({super.key, required this.reservationId});
+  final String reservationId;
 
   @override
-  State<PassTab> createState() => _PassTabState();
+  ConsumerState<PassTab> createState() => _PassTabState();
 }
 
-class _PassTabState extends State<PassTab> {
-  String? _passUrl;
+class _PassTabState extends ConsumerState<PassTab> with WidgetsBindingObserver {
+  /// How long before expiry we re-issue, so the scanner never sees a dead code.
+  static const _refreshLead = Duration(seconds: 3);
 
-  /// Absolute expiry moment, computed locally from the API's
-  /// `expiresInSeconds` (a TTL, not a timestamp) at the moment we fetch it.
+  /// Retry delay when a background refresh fails but the QR is still valid.
+  static const _retryDelay = Duration(seconds: 2);
+
+  String? _qrToken;
+
+  /// Absolute expiry moment, straight from the API's `expiresAt`.
   DateTime? _expiresAt;
 
   bool _loading = true;
+  bool _fetching = false;
   Object? _error;
 
   Timer? _refreshTimer;
@@ -30,76 +41,121 @@ class _PassTabState extends State<PassTab> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _fetchPass();
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _refreshTimer?.cancel();
     _tickTimer?.cancel();
     super.dispose();
   }
 
-  Future<void> _fetchPass() async {
-    setState(() {
-      _loading = true;
-      _error = null;
-    });
-
-    try {
-      final response = await widget.client.getBoardingApi().mePassGet();
-      final data = response.data;
-      if (data == null) {
-        throw StateError('mePassGet() returned no data');
-      }
-
-      // expiresInSeconds is a TTL ("expires in N seconds from now"), so
-      // anchor it to the current time to get an absolute expiry moment.
-      final expiresAt = DateTime.now().add(
-        Duration(seconds: data.expiresInSeconds),
-      );
-
-      if (!mounted) return;
-      setState(() {
-        _passUrl = data.pass;
-        _expiresAt = expiresAt;
-        _loading = false;
-      });
-
-      _scheduleRefresh();
-      _startCountdown();
-    } catch (e) {
-      if (!mounted) return;
-      setState(() {
-        _error = e;
-        _loading = false;
-      });
-      debugPrint('Error fetching boarding pass: $e');
+  /// Timers can be delayed while the app is backgrounded, so re-issue on
+  /// resume if the current pass is expired or about to be.
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state != AppLifecycleState.resumed) return;
+    final expiresAt = _expiresAt;
+    if (expiresAt == null || _timeLeft(expiresAt) <= _refreshLead) {
+      _fetchPass(silent: _qrToken != null);
     }
   }
 
-  /// Refetches a couple seconds before the current pass URL expires so the
-  /// driver's scanner is never looking at a dead code.
-  void _scheduleRefresh() {
-    _refreshTimer?.cancel();
-    final expiresAt = _expiresAt;
-    if (expiresAt == null) return;
-
-    const lead = Duration(seconds: 3);
-    final delay = expiresAt.difference(DateTime.now()) - lead;
-
-    _refreshTimer = Timer(delay.isNegative ? Duration.zero : delay, _fetchPass);
+  /// Time until [expiresAt], clamped at zero.
+  Duration _timeLeft(DateTime expiresAt) {
+    final d = expiresAt.difference(DateTime.now());
+    return d.isNegative ? Duration.zero : d;
   }
 
-  void _startCountdown() {
+  /// Issues a fresh pass. When [silent] is true (background refresh), the
+  /// existing QR stays on screen and no spinner is shown.
+  Future<void> _fetchPass({bool silent = false}) async {
+    if (_fetching) return; // never overlap requests
+    _fetching = true;
+
+    if (!silent) {
+      setState(() {
+        _loading = true;
+        _error = null;
+      });
+    }
+
+    try {
+      final api = ref.read(trotxiClientProvider).getRiderOwnApi();
+      final meta = ref.read(clientMetadataProvider);
+
+      final response = await api.issuePass(
+        id: widget.reservationId,
+        // Fresh key per issue: reusing one would replay the old pass.
+        idempotencyKey:
+            '${widget.reservationId}-${DateTime.now().microsecondsSinceEpoch}',
+        xTrotxiClient: meta.client,
+        xTrotxiBuild: meta.build,
+        xTrotxiPlatform: meta.platform,
+      );
+
+      final pass = response.data?.data;
+      if (pass == null) throw StateError('issuePass returned no data');
+
+      final expiresAt = pass.expiresAt;
+
+      if (!mounted) return;
+      setState(() {
+        _qrToken = pass.qrToken;
+        _expiresAt = expiresAt;
+        _loading = false;
+        _error = null;
+        _remaining = _timeLeft(expiresAt);
+      });
+
+      _scheduleRefresh(expiresAt);
+      _startCountdown(expiresAt);
+    } catch (e) {
+      debugPrint('Error issuing boarding pass: $e');
+      if (!mounted) return;
+
+      final expiresAt = _expiresAt;
+      final stillValid =
+          expiresAt != null && _timeLeft(expiresAt) > Duration.zero;
+
+      if (silent && stillValid) {
+        // Refresh failed but the current QR still works: keep showing it
+        // and retry shortly instead of flashing an error.
+        _refreshTimer?.cancel();
+        _refreshTimer = Timer(_retryDelay, () => _fetchPass(silent: true));
+        return;
+      }
+
+      _refreshTimer?.cancel();
+      _tickTimer?.cancel();
+      setState(() {
+        _error = e;
+        _loading = false;
+        _qrToken = null; // expired or never loaded: show the error state
+        _remaining = Duration.zero;
+      });
+    } finally {
+      _fetching = false;
+    }
+  }
+
+  void _scheduleRefresh(DateTime expiresAt) {
+    _refreshTimer?.cancel();
+    final delay = _timeLeft(expiresAt) - _refreshLead;
+    _refreshTimer = Timer(
+      delay.isNegative ? Duration.zero : delay,
+      () => _fetchPass(silent: true),
+    );
+  }
+
+  void _startCountdown(DateTime expiresAt) {
     _tickTimer?.cancel();
     _tickTimer = Timer.periodic(const Duration(seconds: 1), (_) {
-      final expiresAt = _expiresAt;
-      if (expiresAt == null || !mounted) return;
-      final remaining = expiresAt.difference(DateTime.now());
-      setState(
-        () => _remaining = remaining.isNegative ? Duration.zero : remaining,
-      );
+      if (!mounted) return;
+      setState(() => _remaining = _timeLeft(expiresAt));
     });
   }
 
@@ -117,8 +173,7 @@ class _PassTabState extends State<PassTab> {
             _PassCard(
               loading: _loading,
               error: _error,
-              passUrl: _passUrl,
-              expiresAt: _expiresAt,
+              qrToken: _qrToken,
               remaining: _remaining,
               onRetry: _fetchPass,
             ),
@@ -197,31 +252,28 @@ class _Dot extends StatelessWidget {
   }
 }
 
-/// The white card: QR section (loading / error / live QR) + expiry row.
+/// The white card: QR section (loading / error / live QR) + countdown row.
 class _PassCard extends StatelessWidget {
   const _PassCard({
     required this.loading,
     required this.error,
-    required this.passUrl,
-    required this.expiresAt,
+    required this.qrToken,
     required this.remaining,
     required this.onRetry,
   });
 
   final bool loading;
   final Object? error;
-  final String? passUrl;
-  final DateTime? expiresAt;
+  final String? qrToken;
   final Duration remaining;
   final VoidCallback onRetry;
 
   @override
   Widget build(BuildContext context) {
     // Only show a blocking loading/error state before we've ever had a
-    // pass URL. Once we have one, background refreshes happen silently
-    // and the existing QR stays on screen until the new one is ready.
-    final showLoading = loading && passUrl == null;
-    final showError = error != null && passUrl == null;
+    // token. Once we have one, background refreshes happen silently and
+    // the existing QR stays on screen until the new one is ready.
+    final token = qrToken;
 
     return ConstrainedBox(
       constraints: const BoxConstraints(maxWidth: 448),
@@ -241,14 +293,13 @@ class _PassCard extends StatelessWidget {
         ),
         child: Column(
           children: [
-            if (showLoading)
+            if (token != null)
+              _QrSection(qrToken: token)
+            else if (loading && error == null)
               const _QrLoading()
-            else if (showError)
-              _QrError(onRetry: onRetry)
             else
-              _QrSection(passUrl: passUrl!),
-            if (passUrl != null)
-              _PassMetaRow(expiresAt: expiresAt, remaining: remaining),
+              _QrError(onRetry: onRetry),
+            if (token != null) _PassMetaRow(remaining: remaining),
           ],
         ),
       ),
@@ -321,8 +372,8 @@ class _QrError extends StatelessWidget {
 
 /// QR code framed with corner brackets, plus the "scan at entry" label.
 class _QrSection extends StatelessWidget {
-  const _QrSection({required this.passUrl});
-  final String passUrl;
+  const _QrSection({required this.qrToken});
+  final String qrToken;
 
   @override
   Widget build(BuildContext context) {
@@ -340,7 +391,7 @@ class _QrSection extends StatelessWidget {
                 const _CornerBracket(alignment: Alignment.topRight),
                 const _CornerBracket(alignment: Alignment.bottomLeft),
                 const _CornerBracket(alignment: Alignment.bottomRight),
-                _QrCode(data: passUrl),
+                _QrCode(data: qrToken),
               ],
             ),
           ),
@@ -417,11 +468,10 @@ class _QrCode extends StatelessWidget {
   }
 }
 
-/// Expiry timestamp (left) and live refresh countdown (right).
+/// Live refresh countdown.
 class _PassMetaRow extends StatelessWidget {
-  const _PassMetaRow({required this.expiresAt, required this.remaining});
+  const _PassMetaRow({required this.remaining});
 
-  final DateTime? expiresAt;
   final Duration remaining;
 
   String _formatCountdown(Duration d) {
@@ -536,8 +586,8 @@ class _PassFooter extends StatelessWidget {
 /// Displays the session's 4-digit daily boarding PIN, masked by default,
 /// with an eye icon to toggle visibility.
 ///
-/// TODO: source `_pin` from the boarding-session response instead of the
-/// hardcoded value.
+/// TODO: source `_pin` from the API instead of the hardcoded value. The
+/// regenerated client has no obvious boarding-session/PIN endpoint yet.
 class _DailyPinCard extends StatefulWidget {
   const _DailyPinCard();
 

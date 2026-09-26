@@ -4,6 +4,7 @@
 
 import 'dart:async';
 
+import 'package:built_value/json_object.dart';
 import 'package:built_value/serializer.dart';
 import 'package:dio/dio.dart';
 
@@ -22,6 +23,7 @@ import 'package:trotxi_api_client/src/model/driver_edit.dart';
 import 'package:trotxi_api_client/src/model/driver_input.dart';
 import 'package:trotxi_api_client/src/model/driver_page.dart';
 import 'package:trotxi_api_client/src/model/driver_response.dart';
+import 'package:trotxi_api_client/src/model/error_response.dart';
 import 'package:trotxi_api_client/src/model/fare_input.dart';
 import 'package:trotxi_api_client/src/model/fare_page.dart';
 import 'package:trotxi_api_client/src/model/fare_response.dart';
@@ -89,6 +91,7 @@ import 'package:trotxi_api_client/src/model/vehicle_response.dart';
 import 'package:trotxi_api_client/src/model/work_decision.dart';
 
 class OpsApi {
+
   final Dio _dio;
 
   final Serializers _serializers;
@@ -96,15 +99,15 @@ class OpsApi {
   const OpsApi(this._dio, this._serializers);
 
   /// assign Trip
-  ///
+  /// 
   ///
   /// Parameters:
-  /// * [id]
+  /// * [id] 
   /// * [ifMatch] - Missing = 428; stale = 412. Completed idempotent replay is checked first after authorization.
   /// * [idempotencyKey] - Caller + operation + target scoped; payload mismatch = 409. Never log secrets.
   /// * [xTrotxiClient] - Compatibility metadata only, never grants a role.
   /// * [xTrotxiBuild] - Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
-  /// * [tripAssignment]
+  /// * [tripAssignment] 
   /// * [xTrotxiPlatform] - Required for commuter/driver, absent for ops/worker.
   /// * [cancelToken] - A [CancelToken] that can be used to cancel the operation
   /// * [headers] - Can be used to add additional headers to the request
@@ -115,12 +118,12 @@ class OpsApi {
   ///
   /// Returns a [Future] containing a [Response] with a [OpsTripResponse] as data
   /// Throws [DioException] if API call or serialization fails
-  Future<Response<OpsTripResponse>> assignTrip({
+  Future<Response<OpsTripResponse>> assignTrip({ 
     required String id,
     required String ifMatch,
     required String idempotencyKey,
     required String xTrotxiClient,
-    required int xTrotxiBuild,
+    int xTrotxiBuild = 1,
     required TripAssignment tripAssignment,
     String? xTrotxiPlatform,
     CancelToken? cancelToken,
@@ -130,10 +133,7 @@ class OpsApi {
     ProgressCallback? onSendProgress,
     ProgressCallback? onReceiveProgress,
   }) async {
-    final _path = r'/v1/ops/trips/{id}/assignment'.replaceAll(
-        '{' r'id' '}',
-        encodeQueryParameter(_serializers, id, const FullType(String))
-            .toString());
+    final _path = r'/v1/ops/trips/{id}/assignment'.replaceAll('{' r'id' '}', encodeQueryParameter(_serializers, id, const FullType(String)).toString());
     final _options = Options(
       method: r'PUT',
       headers: <String, dynamic>{
@@ -163,9 +163,10 @@ class OpsApi {
     try {
       const _type = FullType(TripAssignment);
       _bodyData = _serializers.serialize(tripAssignment, specifiedType: _type);
-    } catch (error, stackTrace) {
+
+    } catch(error, stackTrace) {
       throw DioException(
-        requestOptions: _options.compose(
+         requestOptions: _options.compose(
           _dio.options,
           _path,
         ),
@@ -188,12 +189,11 @@ class OpsApi {
 
     try {
       final rawResponse = _response.data;
-      _responseData = rawResponse == null
-          ? null
-          : _serializers.deserialize(
-              rawResponse,
-              specifiedType: const FullType(OpsTripResponse),
-            ) as OpsTripResponse;
+      _responseData = rawResponse == null ? null : _serializers.deserialize(
+        rawResponse,
+        specifiedType: const FullType(OpsTripResponse),
+      ) as OpsTripResponse;
+
     } catch (error, stackTrace) {
       throw DioException(
         requestOptions: _response.requestOptions,
@@ -217,15 +217,15 @@ class OpsApi {
   }
 
   /// cancel Trip
-  ///
+  /// 
   ///
   /// Parameters:
-  /// * [id]
+  /// * [id] 
   /// * [ifMatch] - Missing = 428; stale = 412. Completed idempotent replay is checked first after authorization.
   /// * [idempotencyKey] - Caller + operation + target scoped; payload mismatch = 409. Never log secrets.
   /// * [xTrotxiClient] - Compatibility metadata only, never grants a role.
   /// * [xTrotxiBuild] - Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
-  /// * [reasonInput]
+  /// * [reasonInput] 
   /// * [xTrotxiPlatform] - Required for commuter/driver, absent for ops/worker.
   /// * [cancelToken] - A [CancelToken] that can be used to cancel the operation
   /// * [headers] - Can be used to add additional headers to the request
@@ -236,12 +236,12 @@ class OpsApi {
   ///
   /// Returns a [Future] containing a [Response] with a [OpsTripResponse] as data
   /// Throws [DioException] if API call or serialization fails
-  Future<Response<OpsTripResponse>> cancelTrip({
+  Future<Response<OpsTripResponse>> cancelTrip({ 
     required String id,
     required String ifMatch,
     required String idempotencyKey,
     required String xTrotxiClient,
-    required int xTrotxiBuild,
+    int xTrotxiBuild = 1,
     required ReasonInput reasonInput,
     String? xTrotxiPlatform,
     CancelToken? cancelToken,
@@ -251,10 +251,7 @@ class OpsApi {
     ProgressCallback? onSendProgress,
     ProgressCallback? onReceiveProgress,
   }) async {
-    final _path = r'/v1/ops/trips/{id}/cancel'.replaceAll(
-        '{' r'id' '}',
-        encodeQueryParameter(_serializers, id, const FullType(String))
-            .toString());
+    final _path = r'/v1/ops/trips/{id}/cancel'.replaceAll('{' r'id' '}', encodeQueryParameter(_serializers, id, const FullType(String)).toString());
     final _options = Options(
       method: r'POST',
       headers: <String, dynamic>{
@@ -284,9 +281,10 @@ class OpsApi {
     try {
       const _type = FullType(ReasonInput);
       _bodyData = _serializers.serialize(reasonInput, specifiedType: _type);
-    } catch (error, stackTrace) {
+
+    } catch(error, stackTrace) {
       throw DioException(
-        requestOptions: _options.compose(
+         requestOptions: _options.compose(
           _dio.options,
           _path,
         ),
@@ -309,12 +307,11 @@ class OpsApi {
 
     try {
       final rawResponse = _response.data;
-      _responseData = rawResponse == null
-          ? null
-          : _serializers.deserialize(
-              rawResponse,
-              specifiedType: const FullType(OpsTripResponse),
-            ) as OpsTripResponse;
+      _responseData = rawResponse == null ? null : _serializers.deserialize(
+        rawResponse,
+        specifiedType: const FullType(OpsTripResponse),
+      ) as OpsTripResponse;
+
     } catch (error, stackTrace) {
       throw DioException(
         requestOptions: _response.requestOptions,
@@ -338,14 +335,14 @@ class OpsApi {
   }
 
   /// change Credential State
-  ///
+  /// 
   ///
   /// Parameters:
-  /// * [id]
+  /// * [id] 
   /// * [idempotencyKey] - Caller + operation + target scoped; payload mismatch = 409. Never log secrets.
   /// * [xTrotxiClient] - Compatibility metadata only, never grants a role.
   /// * [xTrotxiBuild] - Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
-  /// * [credentialAction]
+  /// * [credentialAction] 
   /// * [xTrotxiPlatform] - Required for commuter/driver, absent for ops/worker.
   /// * [cancelToken] - A [CancelToken] that can be used to cancel the operation
   /// * [headers] - Can be used to add additional headers to the request
@@ -356,11 +353,11 @@ class OpsApi {
   ///
   /// Returns a [Future]
   /// Throws [DioException] if API call or serialization fails
-  Future<Response<void>> changeCredentialState({
+  Future<Response<void>> changeCredentialState({ 
     required String id,
     required String idempotencyKey,
     required String xTrotxiClient,
-    required int xTrotxiBuild,
+    int xTrotxiBuild = 1,
     required CredentialAction credentialAction,
     String? xTrotxiPlatform,
     CancelToken? cancelToken,
@@ -370,10 +367,7 @@ class OpsApi {
     ProgressCallback? onSendProgress,
     ProgressCallback? onReceiveProgress,
   }) async {
-    final _path = r'/v1/ops/drivers/{id}/credentials/actions'.replaceAll(
-        '{' r'id' '}',
-        encodeQueryParameter(_serializers, id, const FullType(String))
-            .toString());
+    final _path = r'/v1/ops/drivers/{id}/credentials/actions'.replaceAll('{' r'id' '}', encodeQueryParameter(_serializers, id, const FullType(String)).toString());
     final _options = Options(
       method: r'POST',
       headers: <String, dynamic>{
@@ -401,11 +395,11 @@ class OpsApi {
 
     try {
       const _type = FullType(CredentialAction);
-      _bodyData =
-          _serializers.serialize(credentialAction, specifiedType: _type);
-    } catch (error, stackTrace) {
+      _bodyData = _serializers.serialize(credentialAction, specifiedType: _type);
+
+    } catch(error, stackTrace) {
       throw DioException(
-        requestOptions: _options.compose(
+         requestOptions: _options.compose(
           _dio.options,
           _path,
         ),
@@ -428,15 +422,15 @@ class OpsApi {
   }
 
   /// change Role
-  ///
+  /// 
   ///
   /// Parameters:
-  /// * [id]
+  /// * [id] 
   /// * [ifMatch] - Missing = 428; stale = 412. Completed idempotent replay is checked first after authorization.
   /// * [idempotencyKey] - Caller + operation + target scoped; payload mismatch = 409. Never log secrets.
   /// * [xTrotxiClient] - Compatibility metadata only, never grants a role.
   /// * [xTrotxiBuild] - Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
-  /// * [roleEdit]
+  /// * [roleEdit] 
   /// * [xTrotxiPlatform] - Required for commuter/driver, absent for ops/worker.
   /// * [cancelToken] - A [CancelToken] that can be used to cancel the operation
   /// * [headers] - Can be used to add additional headers to the request
@@ -447,12 +441,12 @@ class OpsApi {
   ///
   /// Returns a [Future] containing a [Response] with a [AccountResponse] as data
   /// Throws [DioException] if API call or serialization fails
-  Future<Response<AccountResponse>> changeRole({
+  Future<Response<AccountResponse>> changeRole({ 
     required String id,
     required String ifMatch,
     required String idempotencyKey,
     required String xTrotxiClient,
-    required int xTrotxiBuild,
+    int xTrotxiBuild = 1,
     required RoleEdit roleEdit,
     String? xTrotxiPlatform,
     CancelToken? cancelToken,
@@ -462,10 +456,7 @@ class OpsApi {
     ProgressCallback? onSendProgress,
     ProgressCallback? onReceiveProgress,
   }) async {
-    final _path = r'/v1/ops/users/{id}/role'.replaceAll(
-        '{' r'id' '}',
-        encodeQueryParameter(_serializers, id, const FullType(String))
-            .toString());
+    final _path = r'/v1/ops/users/{id}/role'.replaceAll('{' r'id' '}', encodeQueryParameter(_serializers, id, const FullType(String)).toString());
     final _options = Options(
       method: r'PATCH',
       headers: <String, dynamic>{
@@ -495,9 +486,10 @@ class OpsApi {
     try {
       const _type = FullType(RoleEdit);
       _bodyData = _serializers.serialize(roleEdit, specifiedType: _type);
-    } catch (error, stackTrace) {
+
+    } catch(error, stackTrace) {
       throw DioException(
-        requestOptions: _options.compose(
+         requestOptions: _options.compose(
           _dio.options,
           _path,
         ),
@@ -520,12 +512,11 @@ class OpsApi {
 
     try {
       final rawResponse = _response.data;
-      _responseData = rawResponse == null
-          ? null
-          : _serializers.deserialize(
-              rawResponse,
-              specifiedType: const FullType(AccountResponse),
-            ) as AccountResponse;
+      _responseData = rawResponse == null ? null : _serializers.deserialize(
+        rawResponse,
+        specifiedType: const FullType(AccountResponse),
+      ) as AccountResponse;
+
     } catch (error, stackTrace) {
       throw DioException(
         requestOptions: _response.requestOptions,
@@ -549,14 +540,14 @@ class OpsApi {
   }
 
   /// create Account Restriction
-  ///
+  /// 
   ///
   /// Parameters:
-  /// * [id]
+  /// * [id] 
   /// * [idempotencyKey] - Caller + operation + target scoped; payload mismatch = 409. Never log secrets.
   /// * [xTrotxiClient] - Compatibility metadata only, never grants a role.
   /// * [xTrotxiBuild] - Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
-  /// * [restrictionInput]
+  /// * [restrictionInput] 
   /// * [xTrotxiPlatform] - Required for commuter/driver, absent for ops/worker.
   /// * [cancelToken] - A [CancelToken] that can be used to cancel the operation
   /// * [headers] - Can be used to add additional headers to the request
@@ -567,11 +558,11 @@ class OpsApi {
   ///
   /// Returns a [Future] containing a [Response] with a [RestrictionResponse] as data
   /// Throws [DioException] if API call or serialization fails
-  Future<Response<RestrictionResponse>> createAccountRestriction({
+  Future<Response<RestrictionResponse>> createAccountRestriction({ 
     required String id,
     required String idempotencyKey,
     required String xTrotxiClient,
-    required int xTrotxiBuild,
+    int xTrotxiBuild = 1,
     required RestrictionInput restrictionInput,
     String? xTrotxiPlatform,
     CancelToken? cancelToken,
@@ -581,10 +572,7 @@ class OpsApi {
     ProgressCallback? onSendProgress,
     ProgressCallback? onReceiveProgress,
   }) async {
-    final _path = r'/v1/ops/users/{id}/restrictions'.replaceAll(
-        '{' r'id' '}',
-        encodeQueryParameter(_serializers, id, const FullType(String))
-            .toString());
+    final _path = r'/v1/ops/users/{id}/restrictions'.replaceAll('{' r'id' '}', encodeQueryParameter(_serializers, id, const FullType(String)).toString());
     final _options = Options(
       method: r'POST',
       headers: <String, dynamic>{
@@ -612,11 +600,11 @@ class OpsApi {
 
     try {
       const _type = FullType(RestrictionInput);
-      _bodyData =
-          _serializers.serialize(restrictionInput, specifiedType: _type);
-    } catch (error, stackTrace) {
+      _bodyData = _serializers.serialize(restrictionInput, specifiedType: _type);
+
+    } catch(error, stackTrace) {
       throw DioException(
-        requestOptions: _options.compose(
+         requestOptions: _options.compose(
           _dio.options,
           _path,
         ),
@@ -639,12 +627,11 @@ class OpsApi {
 
     try {
       final rawResponse = _response.data;
-      _responseData = rawResponse == null
-          ? null
-          : _serializers.deserialize(
-              rawResponse,
-              specifiedType: const FullType(RestrictionResponse),
-            ) as RestrictionResponse;
+      _responseData = rawResponse == null ? null : _serializers.deserialize(
+        rawResponse,
+        specifiedType: const FullType(RestrictionResponse),
+      ) as RestrictionResponse;
+
     } catch (error, stackTrace) {
       throw DioException(
         requestOptions: _response.requestOptions,
@@ -668,13 +655,13 @@ class OpsApi {
   }
 
   /// create Commute Slot
-  ///
+  /// 
   ///
   /// Parameters:
   /// * [idempotencyKey] - Caller + operation + target scoped; payload mismatch = 409. Never log secrets.
   /// * [xTrotxiClient] - Compatibility metadata only, never grants a role.
   /// * [xTrotxiBuild] - Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
-  /// * [commuteSlotInput]
+  /// * [commuteSlotInput] 
   /// * [xTrotxiPlatform] - Required for commuter/driver, absent for ops/worker.
   /// * [cancelToken] - A [CancelToken] that can be used to cancel the operation
   /// * [headers] - Can be used to add additional headers to the request
@@ -685,10 +672,10 @@ class OpsApi {
   ///
   /// Returns a [Future] containing a [Response] with a [CommuteSlotResponse] as data
   /// Throws [DioException] if API call or serialization fails
-  Future<Response<CommuteSlotResponse>> createCommuteSlot({
+  Future<Response<CommuteSlotResponse>> createCommuteSlot({ 
     required String idempotencyKey,
     required String xTrotxiClient,
-    required int xTrotxiBuild,
+    int xTrotxiBuild = 1,
     required CommuteSlotInput commuteSlotInput,
     String? xTrotxiPlatform,
     CancelToken? cancelToken,
@@ -726,11 +713,11 @@ class OpsApi {
 
     try {
       const _type = FullType(CommuteSlotInput);
-      _bodyData =
-          _serializers.serialize(commuteSlotInput, specifiedType: _type);
-    } catch (error, stackTrace) {
+      _bodyData = _serializers.serialize(commuteSlotInput, specifiedType: _type);
+
+    } catch(error, stackTrace) {
       throw DioException(
-        requestOptions: _options.compose(
+         requestOptions: _options.compose(
           _dio.options,
           _path,
         ),
@@ -753,12 +740,11 @@ class OpsApi {
 
     try {
       final rawResponse = _response.data;
-      _responseData = rawResponse == null
-          ? null
-          : _serializers.deserialize(
-              rawResponse,
-              specifiedType: const FullType(CommuteSlotResponse),
-            ) as CommuteSlotResponse;
+      _responseData = rawResponse == null ? null : _serializers.deserialize(
+        rawResponse,
+        specifiedType: const FullType(CommuteSlotResponse),
+      ) as CommuteSlotResponse;
+
     } catch (error, stackTrace) {
       throw DioException(
         requestOptions: _response.requestOptions,
@@ -782,13 +768,13 @@ class OpsApi {
   }
 
   /// create Driver
-  ///
+  /// 
   ///
   /// Parameters:
   /// * [idempotencyKey] - Caller + operation + target scoped; payload mismatch = 409. Never log secrets.
   /// * [xTrotxiClient] - Compatibility metadata only, never grants a role.
   /// * [xTrotxiBuild] - Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
-  /// * [driverInput]
+  /// * [driverInput] 
   /// * [xTrotxiPlatform] - Required for commuter/driver, absent for ops/worker.
   /// * [cancelToken] - A [CancelToken] that can be used to cancel the operation
   /// * [headers] - Can be used to add additional headers to the request
@@ -799,10 +785,10 @@ class OpsApi {
   ///
   /// Returns a [Future] containing a [Response] with a [DriverResponse] as data
   /// Throws [DioException] if API call or serialization fails
-  Future<Response<DriverResponse>> createDriver({
+  Future<Response<DriverResponse>> createDriver({ 
     required String idempotencyKey,
     required String xTrotxiClient,
-    required int xTrotxiBuild,
+    int xTrotxiBuild = 1,
     required DriverInput driverInput,
     String? xTrotxiPlatform,
     CancelToken? cancelToken,
@@ -841,9 +827,10 @@ class OpsApi {
     try {
       const _type = FullType(DriverInput);
       _bodyData = _serializers.serialize(driverInput, specifiedType: _type);
-    } catch (error, stackTrace) {
+
+    } catch(error, stackTrace) {
       throw DioException(
-        requestOptions: _options.compose(
+         requestOptions: _options.compose(
           _dio.options,
           _path,
         ),
@@ -866,12 +853,11 @@ class OpsApi {
 
     try {
       final rawResponse = _response.data;
-      _responseData = rawResponse == null
-          ? null
-          : _serializers.deserialize(
-              rawResponse,
-              specifiedType: const FullType(DriverResponse),
-            ) as DriverResponse;
+      _responseData = rawResponse == null ? null : _serializers.deserialize(
+        rawResponse,
+        specifiedType: const FullType(DriverResponse),
+      ) as DriverResponse;
+
     } catch (error, stackTrace) {
       throw DioException(
         requestOptions: _response.requestOptions,
@@ -895,14 +881,14 @@ class OpsApi {
   }
 
   /// create Fare
-  ///
+  /// 
   ///
   /// Parameters:
-  /// * [id]
+  /// * [id] 
   /// * [idempotencyKey] - Caller + operation + target scoped; payload mismatch = 409. Never log secrets.
   /// * [xTrotxiClient] - Compatibility metadata only, never grants a role.
   /// * [xTrotxiBuild] - Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
-  /// * [fareInput]
+  /// * [fareInput] 
   /// * [xTrotxiPlatform] - Required for commuter/driver, absent for ops/worker.
   /// * [cancelToken] - A [CancelToken] that can be used to cancel the operation
   /// * [headers] - Can be used to add additional headers to the request
@@ -913,11 +899,11 @@ class OpsApi {
   ///
   /// Returns a [Future] containing a [Response] with a [FareResponse] as data
   /// Throws [DioException] if API call or serialization fails
-  Future<Response<FareResponse>> createFare({
+  Future<Response<FareResponse>> createFare({ 
     required String id,
     required String idempotencyKey,
     required String xTrotxiClient,
-    required int xTrotxiBuild,
+    int xTrotxiBuild = 1,
     required FareInput fareInput,
     String? xTrotxiPlatform,
     CancelToken? cancelToken,
@@ -927,10 +913,7 @@ class OpsApi {
     ProgressCallback? onSendProgress,
     ProgressCallback? onReceiveProgress,
   }) async {
-    final _path = r'/v1/ops/routes/{id}/fares'.replaceAll(
-        '{' r'id' '}',
-        encodeQueryParameter(_serializers, id, const FullType(String))
-            .toString());
+    final _path = r'/v1/ops/routes/{id}/fares'.replaceAll('{' r'id' '}', encodeQueryParameter(_serializers, id, const FullType(String)).toString());
     final _options = Options(
       method: r'POST',
       headers: <String, dynamic>{
@@ -959,9 +942,10 @@ class OpsApi {
     try {
       const _type = FullType(FareInput);
       _bodyData = _serializers.serialize(fareInput, specifiedType: _type);
-    } catch (error, stackTrace) {
+
+    } catch(error, stackTrace) {
       throw DioException(
-        requestOptions: _options.compose(
+         requestOptions: _options.compose(
           _dio.options,
           _path,
         ),
@@ -984,12 +968,11 @@ class OpsApi {
 
     try {
       final rawResponse = _response.data;
-      _responseData = rawResponse == null
-          ? null
-          : _serializers.deserialize(
-              rawResponse,
-              specifiedType: const FullType(FareResponse),
-            ) as FareResponse;
+      _responseData = rawResponse == null ? null : _serializers.deserialize(
+        rawResponse,
+        specifiedType: const FullType(FareResponse),
+      ) as FareResponse;
+
     } catch (error, stackTrace) {
       throw DioException(
         requestOptions: _response.requestOptions,
@@ -1013,13 +996,13 @@ class OpsApi {
   }
 
   /// create Pattern
-  ///
+  /// 
   ///
   /// Parameters:
   /// * [idempotencyKey] - Caller + operation + target scoped; payload mismatch = 409. Never log secrets.
   /// * [xTrotxiClient] - Compatibility metadata only, never grants a role.
   /// * [xTrotxiBuild] - Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
-  /// * [patternInput]
+  /// * [patternInput] 
   /// * [xTrotxiPlatform] - Required for commuter/driver, absent for ops/worker.
   /// * [cancelToken] - A [CancelToken] that can be used to cancel the operation
   /// * [headers] - Can be used to add additional headers to the request
@@ -1030,10 +1013,10 @@ class OpsApi {
   ///
   /// Returns a [Future] containing a [Response] with a [PatternResponse] as data
   /// Throws [DioException] if API call or serialization fails
-  Future<Response<PatternResponse>> createPattern({
+  Future<Response<PatternResponse>> createPattern({ 
     required String idempotencyKey,
     required String xTrotxiClient,
-    required int xTrotxiBuild,
+    int xTrotxiBuild = 1,
     required PatternInput patternInput,
     String? xTrotxiPlatform,
     CancelToken? cancelToken,
@@ -1072,9 +1055,10 @@ class OpsApi {
     try {
       const _type = FullType(PatternInput);
       _bodyData = _serializers.serialize(patternInput, specifiedType: _type);
-    } catch (error, stackTrace) {
+
+    } catch(error, stackTrace) {
       throw DioException(
-        requestOptions: _options.compose(
+         requestOptions: _options.compose(
           _dio.options,
           _path,
         ),
@@ -1097,12 +1081,11 @@ class OpsApi {
 
     try {
       final rawResponse = _response.data;
-      _responseData = rawResponse == null
-          ? null
-          : _serializers.deserialize(
-              rawResponse,
-              specifiedType: const FullType(PatternResponse),
-            ) as PatternResponse;
+      _responseData = rawResponse == null ? null : _serializers.deserialize(
+        rawResponse,
+        specifiedType: const FullType(PatternResponse),
+      ) as PatternResponse;
+
     } catch (error, stackTrace) {
       throw DioException(
         requestOptions: _response.requestOptions,
@@ -1126,14 +1109,14 @@ class OpsApi {
   }
 
   /// create Pattern Version
-  ///
+  /// 
   ///
   /// Parameters:
-  /// * [id]
+  /// * [id] 
   /// * [idempotencyKey] - Caller + operation + target scoped; payload mismatch = 409. Never log secrets.
   /// * [xTrotxiClient] - Compatibility metadata only, never grants a role.
   /// * [xTrotxiBuild] - Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
-  /// * [patternVersionInput]
+  /// * [patternVersionInput] 
   /// * [xTrotxiPlatform] - Required for commuter/driver, absent for ops/worker.
   /// * [cancelToken] - A [CancelToken] that can be used to cancel the operation
   /// * [headers] - Can be used to add additional headers to the request
@@ -1144,11 +1127,11 @@ class OpsApi {
   ///
   /// Returns a [Future] containing a [Response] with a [PatternVersionResponse] as data
   /// Throws [DioException] if API call or serialization fails
-  Future<Response<PatternVersionResponse>> createPatternVersion({
+  Future<Response<PatternVersionResponse>> createPatternVersion({ 
     required String id,
     required String idempotencyKey,
     required String xTrotxiClient,
-    required int xTrotxiBuild,
+    int xTrotxiBuild = 1,
     required PatternVersionInput patternVersionInput,
     String? xTrotxiPlatform,
     CancelToken? cancelToken,
@@ -1158,10 +1141,7 @@ class OpsApi {
     ProgressCallback? onSendProgress,
     ProgressCallback? onReceiveProgress,
   }) async {
-    final _path = r'/v1/ops/route-patterns/{id}/versions'.replaceAll(
-        '{' r'id' '}',
-        encodeQueryParameter(_serializers, id, const FullType(String))
-            .toString());
+    final _path = r'/v1/ops/route-patterns/{id}/versions'.replaceAll('{' r'id' '}', encodeQueryParameter(_serializers, id, const FullType(String)).toString());
     final _options = Options(
       method: r'POST',
       headers: <String, dynamic>{
@@ -1189,11 +1169,11 @@ class OpsApi {
 
     try {
       const _type = FullType(PatternVersionInput);
-      _bodyData =
-          _serializers.serialize(patternVersionInput, specifiedType: _type);
-    } catch (error, stackTrace) {
+      _bodyData = _serializers.serialize(patternVersionInput, specifiedType: _type);
+
+    } catch(error, stackTrace) {
       throw DioException(
-        requestOptions: _options.compose(
+         requestOptions: _options.compose(
           _dio.options,
           _path,
         ),
@@ -1216,12 +1196,11 @@ class OpsApi {
 
     try {
       final rawResponse = _response.data;
-      _responseData = rawResponse == null
-          ? null
-          : _serializers.deserialize(
-              rawResponse,
-              specifiedType: const FullType(PatternVersionResponse),
-            ) as PatternVersionResponse;
+      _responseData = rawResponse == null ? null : _serializers.deserialize(
+        rawResponse,
+        specifiedType: const FullType(PatternVersionResponse),
+      ) as PatternVersionResponse;
+
     } catch (error, stackTrace) {
       throw DioException(
         requestOptions: _response.requestOptions,
@@ -1245,13 +1224,13 @@ class OpsApi {
   }
 
   /// create Route
-  ///
+  /// 
   ///
   /// Parameters:
   /// * [idempotencyKey] - Caller + operation + target scoped; payload mismatch = 409. Never log secrets.
   /// * [xTrotxiClient] - Compatibility metadata only, never grants a role.
   /// * [xTrotxiBuild] - Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
-  /// * [routeInput]
+  /// * [routeInput] 
   /// * [xTrotxiPlatform] - Required for commuter/driver, absent for ops/worker.
   /// * [cancelToken] - A [CancelToken] that can be used to cancel the operation
   /// * [headers] - Can be used to add additional headers to the request
@@ -1262,10 +1241,10 @@ class OpsApi {
   ///
   /// Returns a [Future] containing a [Response] with a [RouteResponse] as data
   /// Throws [DioException] if API call or serialization fails
-  Future<Response<RouteResponse>> createRoute({
+  Future<Response<RouteResponse>> createRoute({ 
     required String idempotencyKey,
     required String xTrotxiClient,
-    required int xTrotxiBuild,
+    int xTrotxiBuild = 1,
     required RouteInput routeInput,
     String? xTrotxiPlatform,
     CancelToken? cancelToken,
@@ -1304,9 +1283,10 @@ class OpsApi {
     try {
       const _type = FullType(RouteInput);
       _bodyData = _serializers.serialize(routeInput, specifiedType: _type);
-    } catch (error, stackTrace) {
+
+    } catch(error, stackTrace) {
       throw DioException(
-        requestOptions: _options.compose(
+         requestOptions: _options.compose(
           _dio.options,
           _path,
         ),
@@ -1329,12 +1309,11 @@ class OpsApi {
 
     try {
       final rawResponse = _response.data;
-      _responseData = rawResponse == null
-          ? null
-          : _serializers.deserialize(
-              rawResponse,
-              specifiedType: const FullType(RouteResponse),
-            ) as RouteResponse;
+      _responseData = rawResponse == null ? null : _serializers.deserialize(
+        rawResponse,
+        specifiedType: const FullType(RouteResponse),
+      ) as RouteResponse;
+
     } catch (error, stackTrace) {
       throw DioException(
         requestOptions: _response.requestOptions,
@@ -1358,13 +1337,13 @@ class OpsApi {
   }
 
   /// create Schedule
-  ///
+  /// 
   ///
   /// Parameters:
   /// * [idempotencyKey] - Caller + operation + target scoped; payload mismatch = 409. Never log secrets.
   /// * [xTrotxiClient] - Compatibility metadata only, never grants a role.
   /// * [xTrotxiBuild] - Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
-  /// * [scheduleInput]
+  /// * [scheduleInput] 
   /// * [xTrotxiPlatform] - Required for commuter/driver, absent for ops/worker.
   /// * [cancelToken] - A [CancelToken] that can be used to cancel the operation
   /// * [headers] - Can be used to add additional headers to the request
@@ -1375,10 +1354,10 @@ class OpsApi {
   ///
   /// Returns a [Future] containing a [Response] with a [ScheduleResponse] as data
   /// Throws [DioException] if API call or serialization fails
-  Future<Response<ScheduleResponse>> createSchedule({
+  Future<Response<ScheduleResponse>> createSchedule({ 
     required String idempotencyKey,
     required String xTrotxiClient,
-    required int xTrotxiBuild,
+    int xTrotxiBuild = 1,
     required ScheduleInput scheduleInput,
     String? xTrotxiPlatform,
     CancelToken? cancelToken,
@@ -1417,9 +1396,10 @@ class OpsApi {
     try {
       const _type = FullType(ScheduleInput);
       _bodyData = _serializers.serialize(scheduleInput, specifiedType: _type);
-    } catch (error, stackTrace) {
+
+    } catch(error, stackTrace) {
       throw DioException(
-        requestOptions: _options.compose(
+         requestOptions: _options.compose(
           _dio.options,
           _path,
         ),
@@ -1442,12 +1422,11 @@ class OpsApi {
 
     try {
       final rawResponse = _response.data;
-      _responseData = rawResponse == null
-          ? null
-          : _serializers.deserialize(
-              rawResponse,
-              specifiedType: const FullType(ScheduleResponse),
-            ) as ScheduleResponse;
+      _responseData = rawResponse == null ? null : _serializers.deserialize(
+        rawResponse,
+        specifiedType: const FullType(ScheduleResponse),
+      ) as ScheduleResponse;
+
     } catch (error, stackTrace) {
       throw DioException(
         requestOptions: _response.requestOptions,
@@ -1471,13 +1450,13 @@ class OpsApi {
   }
 
   /// create Stop
-  ///
+  /// 
   ///
   /// Parameters:
   /// * [idempotencyKey] - Caller + operation + target scoped; payload mismatch = 409. Never log secrets.
   /// * [xTrotxiClient] - Compatibility metadata only, never grants a role.
   /// * [xTrotxiBuild] - Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
-  /// * [stopInput]
+  /// * [stopInput] 
   /// * [xTrotxiPlatform] - Required for commuter/driver, absent for ops/worker.
   /// * [cancelToken] - A [CancelToken] that can be used to cancel the operation
   /// * [headers] - Can be used to add additional headers to the request
@@ -1488,10 +1467,10 @@ class OpsApi {
   ///
   /// Returns a [Future] containing a [Response] with a [StopResponse] as data
   /// Throws [DioException] if API call or serialization fails
-  Future<Response<StopResponse>> createStop({
+  Future<Response<StopResponse>> createStop({ 
     required String idempotencyKey,
     required String xTrotxiClient,
-    required int xTrotxiBuild,
+    int xTrotxiBuild = 1,
     required StopInput stopInput,
     String? xTrotxiPlatform,
     CancelToken? cancelToken,
@@ -1530,9 +1509,10 @@ class OpsApi {
     try {
       const _type = FullType(StopInput);
       _bodyData = _serializers.serialize(stopInput, specifiedType: _type);
-    } catch (error, stackTrace) {
+
+    } catch(error, stackTrace) {
       throw DioException(
-        requestOptions: _options.compose(
+         requestOptions: _options.compose(
           _dio.options,
           _path,
         ),
@@ -1555,12 +1535,11 @@ class OpsApi {
 
     try {
       final rawResponse = _response.data;
-      _responseData = rawResponse == null
-          ? null
-          : _serializers.deserialize(
-              rawResponse,
-              specifiedType: const FullType(StopResponse),
-            ) as StopResponse;
+      _responseData = rawResponse == null ? null : _serializers.deserialize(
+        rawResponse,
+        specifiedType: const FullType(StopResponse),
+      ) as StopResponse;
+
     } catch (error, stackTrace) {
       throw DioException(
         requestOptions: _response.requestOptions,
@@ -1584,13 +1563,13 @@ class OpsApi {
   }
 
   /// create Trace Hold
-  ///
+  /// 
   ///
   /// Parameters:
   /// * [idempotencyKey] - Caller + operation + target scoped; payload mismatch = 409. Never log secrets.
   /// * [xTrotxiClient] - Compatibility metadata only, never grants a role.
   /// * [xTrotxiBuild] - Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
-  /// * [traceHoldInput]
+  /// * [traceHoldInput] 
   /// * [xTrotxiPlatform] - Required for commuter/driver, absent for ops/worker.
   /// * [cancelToken] - A [CancelToken] that can be used to cancel the operation
   /// * [headers] - Can be used to add additional headers to the request
@@ -1601,10 +1580,10 @@ class OpsApi {
   ///
   /// Returns a [Future] containing a [Response] with a [TraceHoldResponse] as data
   /// Throws [DioException] if API call or serialization fails
-  Future<Response<TraceHoldResponse>> createTraceHold({
+  Future<Response<TraceHoldResponse>> createTraceHold({ 
     required String idempotencyKey,
     required String xTrotxiClient,
-    required int xTrotxiBuild,
+    int xTrotxiBuild = 1,
     required TraceHoldInput traceHoldInput,
     String? xTrotxiPlatform,
     CancelToken? cancelToken,
@@ -1643,9 +1622,10 @@ class OpsApi {
     try {
       const _type = FullType(TraceHoldInput);
       _bodyData = _serializers.serialize(traceHoldInput, specifiedType: _type);
-    } catch (error, stackTrace) {
+
+    } catch(error, stackTrace) {
       throw DioException(
-        requestOptions: _options.compose(
+         requestOptions: _options.compose(
           _dio.options,
           _path,
         ),
@@ -1668,12 +1648,11 @@ class OpsApi {
 
     try {
       final rawResponse = _response.data;
-      _responseData = rawResponse == null
-          ? null
-          : _serializers.deserialize(
-              rawResponse,
-              specifiedType: const FullType(TraceHoldResponse),
-            ) as TraceHoldResponse;
+      _responseData = rawResponse == null ? null : _serializers.deserialize(
+        rawResponse,
+        specifiedType: const FullType(TraceHoldResponse),
+      ) as TraceHoldResponse;
+
     } catch (error, stackTrace) {
       throw DioException(
         requestOptions: _response.requestOptions,
@@ -1697,13 +1676,13 @@ class OpsApi {
   }
 
   /// create Trip
-  ///
+  /// 
   ///
   /// Parameters:
   /// * [idempotencyKey] - Caller + operation + target scoped; payload mismatch = 409. Never log secrets.
   /// * [xTrotxiClient] - Compatibility metadata only, never grants a role.
   /// * [xTrotxiBuild] - Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
-  /// * [tripInput]
+  /// * [tripInput] 
   /// * [xTrotxiPlatform] - Required for commuter/driver, absent for ops/worker.
   /// * [cancelToken] - A [CancelToken] that can be used to cancel the operation
   /// * [headers] - Can be used to add additional headers to the request
@@ -1714,10 +1693,10 @@ class OpsApi {
   ///
   /// Returns a [Future] containing a [Response] with a [OpsTripResponse] as data
   /// Throws [DioException] if API call or serialization fails
-  Future<Response<OpsTripResponse>> createTrip({
+  Future<Response<OpsTripResponse>> createTrip({ 
     required String idempotencyKey,
     required String xTrotxiClient,
-    required int xTrotxiBuild,
+    int xTrotxiBuild = 1,
     required TripInput tripInput,
     String? xTrotxiPlatform,
     CancelToken? cancelToken,
@@ -1756,9 +1735,10 @@ class OpsApi {
     try {
       const _type = FullType(TripInput);
       _bodyData = _serializers.serialize(tripInput, specifiedType: _type);
-    } catch (error, stackTrace) {
+
+    } catch(error, stackTrace) {
       throw DioException(
-        requestOptions: _options.compose(
+         requestOptions: _options.compose(
           _dio.options,
           _path,
         ),
@@ -1781,12 +1761,11 @@ class OpsApi {
 
     try {
       final rawResponse = _response.data;
-      _responseData = rawResponse == null
-          ? null
-          : _serializers.deserialize(
-              rawResponse,
-              specifiedType: const FullType(OpsTripResponse),
-            ) as OpsTripResponse;
+      _responseData = rawResponse == null ? null : _serializers.deserialize(
+        rawResponse,
+        specifiedType: const FullType(OpsTripResponse),
+      ) as OpsTripResponse;
+
     } catch (error, stackTrace) {
       throw DioException(
         requestOptions: _response.requestOptions,
@@ -1810,13 +1789,13 @@ class OpsApi {
   }
 
   /// create Vehicle
-  ///
+  /// 
   ///
   /// Parameters:
   /// * [idempotencyKey] - Caller + operation + target scoped; payload mismatch = 409. Never log secrets.
   /// * [xTrotxiClient] - Compatibility metadata only, never grants a role.
   /// * [xTrotxiBuild] - Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
-  /// * [vehicleInput]
+  /// * [vehicleInput] 
   /// * [xTrotxiPlatform] - Required for commuter/driver, absent for ops/worker.
   /// * [cancelToken] - A [CancelToken] that can be used to cancel the operation
   /// * [headers] - Can be used to add additional headers to the request
@@ -1827,10 +1806,10 @@ class OpsApi {
   ///
   /// Returns a [Future] containing a [Response] with a [VehicleResponse] as data
   /// Throws [DioException] if API call or serialization fails
-  Future<Response<VehicleResponse>> createVehicle({
+  Future<Response<VehicleResponse>> createVehicle({ 
     required String idempotencyKey,
     required String xTrotxiClient,
-    required int xTrotxiBuild,
+    int xTrotxiBuild = 1,
     required VehicleInput vehicleInput,
     String? xTrotxiPlatform,
     CancelToken? cancelToken,
@@ -1869,9 +1848,10 @@ class OpsApi {
     try {
       const _type = FullType(VehicleInput);
       _bodyData = _serializers.serialize(vehicleInput, specifiedType: _type);
-    } catch (error, stackTrace) {
+
+    } catch(error, stackTrace) {
       throw DioException(
-        requestOptions: _options.compose(
+         requestOptions: _options.compose(
           _dio.options,
           _path,
         ),
@@ -1894,12 +1874,11 @@ class OpsApi {
 
     try {
       final rawResponse = _response.data;
-      _responseData = rawResponse == null
-          ? null
-          : _serializers.deserialize(
-              rawResponse,
-              specifiedType: const FullType(VehicleResponse),
-            ) as VehicleResponse;
+      _responseData = rawResponse == null ? null : _serializers.deserialize(
+        rawResponse,
+        specifiedType: const FullType(VehicleResponse),
+      ) as VehicleResponse;
+
     } catch (error, stackTrace) {
       throw DioException(
         requestOptions: _response.requestOptions,
@@ -1923,15 +1902,15 @@ class OpsApi {
   }
 
   /// decide Commute Request
-  ///
+  /// 
   ///
   /// Parameters:
-  /// * [id]
+  /// * [id] 
   /// * [ifMatch] - Missing = 428; stale = 412. Completed idempotent replay is checked first after authorization.
   /// * [idempotencyKey] - Caller + operation + target scoped; payload mismatch = 409. Never log secrets.
   /// * [xTrotxiClient] - Compatibility metadata only, never grants a role.
   /// * [xTrotxiBuild] - Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
-  /// * [commuteDecision]
+  /// * [commuteDecision] 
   /// * [xTrotxiPlatform] - Required for commuter/driver, absent for ops/worker.
   /// * [cancelToken] - A [CancelToken] that can be used to cancel the operation
   /// * [headers] - Can be used to add additional headers to the request
@@ -1942,12 +1921,12 @@ class OpsApi {
   ///
   /// Returns a [Future] containing a [Response] with a [OpsCommuteRequestResponse] as data
   /// Throws [DioException] if API call or serialization fails
-  Future<Response<OpsCommuteRequestResponse>> decideCommuteRequest({
+  Future<Response<OpsCommuteRequestResponse>> decideCommuteRequest({ 
     required String id,
     required String ifMatch,
     required String idempotencyKey,
     required String xTrotxiClient,
-    required int xTrotxiBuild,
+    int xTrotxiBuild = 1,
     required CommuteDecision commuteDecision,
     String? xTrotxiPlatform,
     CancelToken? cancelToken,
@@ -1957,10 +1936,7 @@ class OpsApi {
     ProgressCallback? onSendProgress,
     ProgressCallback? onReceiveProgress,
   }) async {
-    final _path = r'/v1/ops/commute-requests/{id}/decisions'.replaceAll(
-        '{' r'id' '}',
-        encodeQueryParameter(_serializers, id, const FullType(String))
-            .toString());
+    final _path = r'/v1/ops/commute-requests/{id}/decisions'.replaceAll('{' r'id' '}', encodeQueryParameter(_serializers, id, const FullType(String)).toString());
     final _options = Options(
       method: r'POST',
       headers: <String, dynamic>{
@@ -1990,9 +1966,10 @@ class OpsApi {
     try {
       const _type = FullType(CommuteDecision);
       _bodyData = _serializers.serialize(commuteDecision, specifiedType: _type);
-    } catch (error, stackTrace) {
+
+    } catch(error, stackTrace) {
       throw DioException(
-        requestOptions: _options.compose(
+         requestOptions: _options.compose(
           _dio.options,
           _path,
         ),
@@ -2015,12 +1992,11 @@ class OpsApi {
 
     try {
       final rawResponse = _response.data;
-      _responseData = rawResponse == null
-          ? null
-          : _serializers.deserialize(
-              rawResponse,
-              specifiedType: const FullType(OpsCommuteRequestResponse),
-            ) as OpsCommuteRequestResponse;
+      _responseData = rawResponse == null ? null : _serializers.deserialize(
+        rawResponse,
+        specifiedType: const FullType(OpsCommuteRequestResponse),
+      ) as OpsCommuteRequestResponse;
+
     } catch (error, stackTrace) {
       throw DioException(
         requestOptions: _response.requestOptions,
@@ -2044,15 +2020,15 @@ class OpsApi {
   }
 
   /// decide Driver Request
-  ///
+  /// 
   ///
   /// Parameters:
-  /// * [id]
+  /// * [id] 
   /// * [ifMatch] - Missing = 428; stale = 412. Completed idempotent replay is checked first after authorization.
   /// * [idempotencyKey] - Caller + operation + target scoped; payload mismatch = 409. Never log secrets.
   /// * [xTrotxiClient] - Compatibility metadata only, never grants a role.
   /// * [xTrotxiBuild] - Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
-  /// * [workDecision]
+  /// * [workDecision] 
   /// * [xTrotxiPlatform] - Required for commuter/driver, absent for ops/worker.
   /// * [cancelToken] - A [CancelToken] that can be used to cancel the operation
   /// * [headers] - Can be used to add additional headers to the request
@@ -2063,12 +2039,12 @@ class OpsApi {
   ///
   /// Returns a [Future] containing a [Response] with a [OpsWorkRequestResponse] as data
   /// Throws [DioException] if API call or serialization fails
-  Future<Response<OpsWorkRequestResponse>> decideDriverRequest({
+  Future<Response<OpsWorkRequestResponse>> decideDriverRequest({ 
     required String id,
     required String ifMatch,
     required String idempotencyKey,
     required String xTrotxiClient,
-    required int xTrotxiBuild,
+    int xTrotxiBuild = 1,
     required WorkDecision workDecision,
     String? xTrotxiPlatform,
     CancelToken? cancelToken,
@@ -2078,10 +2054,7 @@ class OpsApi {
     ProgressCallback? onSendProgress,
     ProgressCallback? onReceiveProgress,
   }) async {
-    final _path = r'/v1/ops/driver-requests/{id}/decisions'.replaceAll(
-        '{' r'id' '}',
-        encodeQueryParameter(_serializers, id, const FullType(String))
-            .toString());
+    final _path = r'/v1/ops/driver-requests/{id}/decisions'.replaceAll('{' r'id' '}', encodeQueryParameter(_serializers, id, const FullType(String)).toString());
     final _options = Options(
       method: r'POST',
       headers: <String, dynamic>{
@@ -2111,9 +2084,10 @@ class OpsApi {
     try {
       const _type = FullType(WorkDecision);
       _bodyData = _serializers.serialize(workDecision, specifiedType: _type);
-    } catch (error, stackTrace) {
+
+    } catch(error, stackTrace) {
       throw DioException(
-        requestOptions: _options.compose(
+         requestOptions: _options.compose(
           _dio.options,
           _path,
         ),
@@ -2136,12 +2110,11 @@ class OpsApi {
 
     try {
       final rawResponse = _response.data;
-      _responseData = rawResponse == null
-          ? null
-          : _serializers.deserialize(
-              rawResponse,
-              specifiedType: const FullType(OpsWorkRequestResponse),
-            ) as OpsWorkRequestResponse;
+      _responseData = rawResponse == null ? null : _serializers.deserialize(
+        rawResponse,
+        specifiedType: const FullType(OpsWorkRequestResponse),
+      ) as OpsWorkRequestResponse;
+
     } catch (error, stackTrace) {
       throw DioException(
         requestOptions: _response.requestOptions,
@@ -2165,15 +2138,15 @@ class OpsApi {
   }
 
   /// decide Incident
-  ///
+  /// 
   ///
   /// Parameters:
-  /// * [id]
+  /// * [id] 
   /// * [ifMatch] - Missing = 428; stale = 412. Completed idempotent replay is checked first after authorization.
   /// * [idempotencyKey] - Caller + operation + target scoped; payload mismatch = 409. Never log secrets.
   /// * [xTrotxiClient] - Compatibility metadata only, never grants a role.
   /// * [xTrotxiBuild] - Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
-  /// * [incidentDecision]
+  /// * [incidentDecision] 
   /// * [xTrotxiPlatform] - Required for commuter/driver, absent for ops/worker.
   /// * [cancelToken] - A [CancelToken] that can be used to cancel the operation
   /// * [headers] - Can be used to add additional headers to the request
@@ -2184,12 +2157,12 @@ class OpsApi {
   ///
   /// Returns a [Future] containing a [Response] with a [OpsIncidentResponse] as data
   /// Throws [DioException] if API call or serialization fails
-  Future<Response<OpsIncidentResponse>> decideIncident({
+  Future<Response<OpsIncidentResponse>> decideIncident({ 
     required String id,
     required String ifMatch,
     required String idempotencyKey,
     required String xTrotxiClient,
-    required int xTrotxiBuild,
+    int xTrotxiBuild = 1,
     required IncidentDecision incidentDecision,
     String? xTrotxiPlatform,
     CancelToken? cancelToken,
@@ -2199,10 +2172,7 @@ class OpsApi {
     ProgressCallback? onSendProgress,
     ProgressCallback? onReceiveProgress,
   }) async {
-    final _path = r'/v1/ops/incidents/{id}/decisions'.replaceAll(
-        '{' r'id' '}',
-        encodeQueryParameter(_serializers, id, const FullType(String))
-            .toString());
+    final _path = r'/v1/ops/incidents/{id}/decisions'.replaceAll('{' r'id' '}', encodeQueryParameter(_serializers, id, const FullType(String)).toString());
     final _options = Options(
       method: r'POST',
       headers: <String, dynamic>{
@@ -2231,11 +2201,11 @@ class OpsApi {
 
     try {
       const _type = FullType(IncidentDecision);
-      _bodyData =
-          _serializers.serialize(incidentDecision, specifiedType: _type);
-    } catch (error, stackTrace) {
+      _bodyData = _serializers.serialize(incidentDecision, specifiedType: _type);
+
+    } catch(error, stackTrace) {
       throw DioException(
-        requestOptions: _options.compose(
+         requestOptions: _options.compose(
           _dio.options,
           _path,
         ),
@@ -2258,12 +2228,11 @@ class OpsApi {
 
     try {
       final rawResponse = _response.data;
-      _responseData = rawResponse == null
-          ? null
-          : _serializers.deserialize(
-              rawResponse,
-              specifiedType: const FullType(OpsIncidentResponse),
-            ) as OpsIncidentResponse;
+      _responseData = rawResponse == null ? null : _serializers.deserialize(
+        rawResponse,
+        specifiedType: const FullType(OpsIncidentResponse),
+      ) as OpsIncidentResponse;
+
     } catch (error, stackTrace) {
       throw DioException(
         requestOptions: _response.requestOptions,
@@ -2287,7 +2256,7 @@ class OpsApi {
   }
 
   /// get Ops Overview
-  ///
+  /// 
   ///
   /// Parameters:
   /// * [window] - Which service window the board shows. Stated by the caller, never inferred.
@@ -2303,10 +2272,10 @@ class OpsApi {
   ///
   /// Returns a [Future] containing a [Response] with a [OpsOverviewResponse] as data
   /// Throws [DioException] if API call or serialization fails
-  Future<Response<OpsOverviewResponse>> getOpsOverview({
+  Future<Response<OpsOverviewResponse>> getOpsOverview({ 
     required String window,
     required String xTrotxiClient,
-    required int xTrotxiBuild,
+    int xTrotxiBuild = 1,
     String? xTrotxiPlatform,
     CancelToken? cancelToken,
     Map<String, dynamic>? headers,
@@ -2338,8 +2307,7 @@ class OpsApi {
     );
 
     final _queryParameters = <String, dynamic>{
-      r'window':
-          encodeQueryParameter(_serializers, window, const FullType(String)),
+      r'window': encodeQueryParameter(_serializers, window, const FullType(String)),
     };
 
     final _response = await _dio.request<Object>(
@@ -2355,12 +2323,11 @@ class OpsApi {
 
     try {
       final rawResponse = _response.data;
-      _responseData = rawResponse == null
-          ? null
-          : _serializers.deserialize(
-              rawResponse,
-              specifiedType: const FullType(OpsOverviewResponse),
-            ) as OpsOverviewResponse;
+      _responseData = rawResponse == null ? null : _serializers.deserialize(
+        rawResponse,
+        specifiedType: const FullType(OpsOverviewResponse),
+      ) as OpsOverviewResponse;
+
     } catch (error, stackTrace) {
       throw DioException(
         requestOptions: _response.requestOptions,
@@ -2384,11 +2351,11 @@ class OpsApi {
   }
 
   /// get Ops Pattern Version
-  ///
+  /// 
   ///
   /// Parameters:
-  /// * [id]
-  /// * [versionId]
+  /// * [id] 
+  /// * [versionId] 
   /// * [xTrotxiClient] - Compatibility metadata only, never grants a role.
   /// * [xTrotxiBuild] - Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
   /// * [xTrotxiPlatform] - Required for commuter/driver, absent for ops/worker.
@@ -2401,11 +2368,11 @@ class OpsApi {
   ///
   /// Returns a [Future] containing a [Response] with a [PatternVersionResponse] as data
   /// Throws [DioException] if API call or serialization fails
-  Future<Response<PatternVersionResponse>> getOpsPatternVersion({
+  Future<Response<PatternVersionResponse>> getOpsPatternVersion({ 
     required String id,
     required String versionId,
     required String xTrotxiClient,
-    required int xTrotxiBuild,
+    int xTrotxiBuild = 1,
     String? xTrotxiPlatform,
     CancelToken? cancelToken,
     Map<String, dynamic>? headers,
@@ -2414,16 +2381,7 @@ class OpsApi {
     ProgressCallback? onSendProgress,
     ProgressCallback? onReceiveProgress,
   }) async {
-    final _path = r'/v1/ops/route-patterns/{id}/versions/{versionId}'
-        .replaceAll(
-            '{' r'id' '}',
-            encodeQueryParameter(_serializers, id, const FullType(String))
-                .toString())
-        .replaceAll(
-            '{' r'versionId' '}',
-            encodeQueryParameter(
-                    _serializers, versionId, const FullType(String))
-                .toString());
+    final _path = r'/v1/ops/route-patterns/{id}/versions/{versionId}'.replaceAll('{' r'id' '}', encodeQueryParameter(_serializers, id, const FullType(String)).toString()).replaceAll('{' r'versionId' '}', encodeQueryParameter(_serializers, versionId, const FullType(String)).toString());
     final _options = Options(
       method: r'GET',
       headers: <String, dynamic>{
@@ -2457,12 +2415,11 @@ class OpsApi {
 
     try {
       final rawResponse = _response.data;
-      _responseData = rawResponse == null
-          ? null
-          : _serializers.deserialize(
-              rawResponse,
-              specifiedType: const FullType(PatternVersionResponse),
-            ) as PatternVersionResponse;
+      _responseData = rawResponse == null ? null : _serializers.deserialize(
+        rawResponse,
+        specifiedType: const FullType(PatternVersionResponse),
+      ) as PatternVersionResponse;
+
     } catch (error, stackTrace) {
       throw DioException(
         requestOptions: _response.requestOptions,
@@ -2486,10 +2443,10 @@ class OpsApi {
   }
 
   /// get Ops Purchase
-  ///
+  /// 
   ///
   /// Parameters:
-  /// * [id]
+  /// * [id] 
   /// * [xTrotxiClient] - Compatibility metadata only, never grants a role.
   /// * [xTrotxiBuild] - Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
   /// * [xTrotxiPlatform] - Required for commuter/driver, absent for ops/worker.
@@ -2502,10 +2459,10 @@ class OpsApi {
   ///
   /// Returns a [Future] containing a [Response] with a [OpsPurchaseResponse] as data
   /// Throws [DioException] if API call or serialization fails
-  Future<Response<OpsPurchaseResponse>> getOpsPurchase({
+  Future<Response<OpsPurchaseResponse>> getOpsPurchase({ 
     required String id,
     required String xTrotxiClient,
-    required int xTrotxiBuild,
+    int xTrotxiBuild = 1,
     String? xTrotxiPlatform,
     CancelToken? cancelToken,
     Map<String, dynamic>? headers,
@@ -2514,10 +2471,7 @@ class OpsApi {
     ProgressCallback? onSendProgress,
     ProgressCallback? onReceiveProgress,
   }) async {
-    final _path = r'/v1/ops/purchases/{id}'.replaceAll(
-        '{' r'id' '}',
-        encodeQueryParameter(_serializers, id, const FullType(String))
-            .toString());
+    final _path = r'/v1/ops/purchases/{id}'.replaceAll('{' r'id' '}', encodeQueryParameter(_serializers, id, const FullType(String)).toString());
     final _options = Options(
       method: r'GET',
       headers: <String, dynamic>{
@@ -2551,12 +2505,11 @@ class OpsApi {
 
     try {
       final rawResponse = _response.data;
-      _responseData = rawResponse == null
-          ? null
-          : _serializers.deserialize(
-              rawResponse,
-              specifiedType: const FullType(OpsPurchaseResponse),
-            ) as OpsPurchaseResponse;
+      _responseData = rawResponse == null ? null : _serializers.deserialize(
+        rawResponse,
+        specifiedType: const FullType(OpsPurchaseResponse),
+      ) as OpsPurchaseResponse;
+
     } catch (error, stackTrace) {
       throw DioException(
         requestOptions: _response.requestOptions,
@@ -2580,14 +2533,14 @@ class OpsApi {
   }
 
   /// initiate Refund
-  ///
+  /// 
   ///
   /// Parameters:
-  /// * [id]
+  /// * [id] 
   /// * [idempotencyKey] - Caller + operation + target scoped; payload mismatch = 409. Never log secrets.
   /// * [xTrotxiClient] - Compatibility metadata only, never grants a role.
   /// * [xTrotxiBuild] - Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
-  /// * [refundInitiationInput]
+  /// * [refundInitiationInput] 
   /// * [xTrotxiPlatform] - Required for commuter/driver, absent for ops/worker.
   /// * [cancelToken] - A [CancelToken] that can be used to cancel the operation
   /// * [headers] - Can be used to add additional headers to the request
@@ -2598,11 +2551,11 @@ class OpsApi {
   ///
   /// Returns a [Future] containing a [Response] with a [RefundInitiationResponse] as data
   /// Throws [DioException] if API call or serialization fails
-  Future<Response<RefundInitiationResponse>> initiateRefund({
+  Future<Response<RefundInitiationResponse>> initiateRefund({ 
     required String id,
     required String idempotencyKey,
     required String xTrotxiClient,
-    required int xTrotxiBuild,
+    int xTrotxiBuild = 1,
     required RefundInitiationInput refundInitiationInput,
     String? xTrotxiPlatform,
     CancelToken? cancelToken,
@@ -2612,10 +2565,7 @@ class OpsApi {
     ProgressCallback? onSendProgress,
     ProgressCallback? onReceiveProgress,
   }) async {
-    final _path = r'/v1/ops/purchases/{id}/refunds'.replaceAll(
-        '{' r'id' '}',
-        encodeQueryParameter(_serializers, id, const FullType(String))
-            .toString());
+    final _path = r'/v1/ops/purchases/{id}/refunds'.replaceAll('{' r'id' '}', encodeQueryParameter(_serializers, id, const FullType(String)).toString());
     final _options = Options(
       method: r'POST',
       headers: <String, dynamic>{
@@ -2643,11 +2593,11 @@ class OpsApi {
 
     try {
       const _type = FullType(RefundInitiationInput);
-      _bodyData =
-          _serializers.serialize(refundInitiationInput, specifiedType: _type);
-    } catch (error, stackTrace) {
+      _bodyData = _serializers.serialize(refundInitiationInput, specifiedType: _type);
+
+    } catch(error, stackTrace) {
       throw DioException(
-        requestOptions: _options.compose(
+         requestOptions: _options.compose(
           _dio.options,
           _path,
         ),
@@ -2670,12 +2620,11 @@ class OpsApi {
 
     try {
       final rawResponse = _response.data;
-      _responseData = rawResponse == null
-          ? null
-          : _serializers.deserialize(
-              rawResponse,
-              specifiedType: const FullType(RefundInitiationResponse),
-            ) as RefundInitiationResponse;
+      _responseData = rawResponse == null ? null : _serializers.deserialize(
+        rawResponse,
+        specifiedType: const FullType(RefundInitiationResponse),
+      ) as RefundInitiationResponse;
+
     } catch (error, stackTrace) {
       throw DioException(
         requestOptions: _response.requestOptions,
@@ -2699,14 +2648,14 @@ class OpsApi {
   }
 
   /// issue Driver Credential
-  ///
+  /// 
   ///
   /// Parameters:
-  /// * [id]
+  /// * [id] 
   /// * [idempotencyKey] - Caller + operation + target scoped; payload mismatch = 409. Never log secrets.
   /// * [xTrotxiClient] - Compatibility metadata only, never grants a role.
   /// * [xTrotxiBuild] - Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
-  /// * [credentialIssue]
+  /// * [credentialIssue] 
   /// * [xTrotxiPlatform] - Required for commuter/driver, absent for ops/worker.
   /// * [cancelToken] - A [CancelToken] that can be used to cancel the operation
   /// * [headers] - Can be used to add additional headers to the request
@@ -2717,11 +2666,11 @@ class OpsApi {
   ///
   /// Returns a [Future] containing a [Response] with a [CredentialSecretResponse] as data
   /// Throws [DioException] if API call or serialization fails
-  Future<Response<CredentialSecretResponse>> issueDriverCredential({
+  Future<Response<CredentialSecretResponse>> issueDriverCredential({ 
     required String id,
     required String idempotencyKey,
     required String xTrotxiClient,
-    required int xTrotxiBuild,
+    int xTrotxiBuild = 1,
     required CredentialIssue credentialIssue,
     String? xTrotxiPlatform,
     CancelToken? cancelToken,
@@ -2731,10 +2680,7 @@ class OpsApi {
     ProgressCallback? onSendProgress,
     ProgressCallback? onReceiveProgress,
   }) async {
-    final _path = r'/v1/ops/drivers/{id}/credentials'.replaceAll(
-        '{' r'id' '}',
-        encodeQueryParameter(_serializers, id, const FullType(String))
-            .toString());
+    final _path = r'/v1/ops/drivers/{id}/credentials'.replaceAll('{' r'id' '}', encodeQueryParameter(_serializers, id, const FullType(String)).toString());
     final _options = Options(
       method: r'POST',
       headers: <String, dynamic>{
@@ -2763,9 +2709,10 @@ class OpsApi {
     try {
       const _type = FullType(CredentialIssue);
       _bodyData = _serializers.serialize(credentialIssue, specifiedType: _type);
-    } catch (error, stackTrace) {
+
+    } catch(error, stackTrace) {
       throw DioException(
-        requestOptions: _options.compose(
+         requestOptions: _options.compose(
           _dio.options,
           _path,
         ),
@@ -2788,12 +2735,11 @@ class OpsApi {
 
     try {
       final rawResponse = _response.data;
-      _responseData = rawResponse == null
-          ? null
-          : _serializers.deserialize(
-              rawResponse,
-              specifiedType: const FullType(CredentialSecretResponse),
-            ) as CredentialSecretResponse;
+      _responseData = rawResponse == null ? null : _serializers.deserialize(
+        rawResponse,
+        specifiedType: const FullType(CredentialSecretResponse),
+      ) as CredentialSecretResponse;
+
     } catch (error, stackTrace) {
       throw DioException(
         requestOptions: _response.requestOptions,
@@ -2817,10 +2763,10 @@ class OpsApi {
   }
 
   /// list Commute Events
-  ///
+  /// 
   ///
   /// Parameters:
-  /// * [id]
+  /// * [id] 
   /// * [xTrotxiClient] - Compatibility metadata only, never grants a role.
   /// * [xTrotxiBuild] - Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
   /// * [cursor] - Opaque cursor bound to caller, sort and filters.
@@ -2835,10 +2781,10 @@ class OpsApi {
   ///
   /// Returns a [Future] containing a [Response] with a [DecisionEventPage] as data
   /// Throws [DioException] if API call or serialization fails
-  Future<Response<DecisionEventPage>> listCommuteEvents({
+  Future<Response<DecisionEventPage>> listCommuteEvents({ 
     required String id,
     required String xTrotxiClient,
-    required int xTrotxiBuild,
+    int xTrotxiBuild = 1,
     String? cursor,
     int? limit = 50,
     String? xTrotxiPlatform,
@@ -2849,10 +2795,7 @@ class OpsApi {
     ProgressCallback? onSendProgress,
     ProgressCallback? onReceiveProgress,
   }) async {
-    final _path = r'/v1/ops/commute-requests/{id}/events'.replaceAll(
-        '{' r'id' '}',
-        encodeQueryParameter(_serializers, id, const FullType(String))
-            .toString());
+    final _path = r'/v1/ops/commute-requests/{id}/events'.replaceAll('{' r'id' '}', encodeQueryParameter(_serializers, id, const FullType(String)).toString());
     final _options = Options(
       method: r'GET',
       headers: <String, dynamic>{
@@ -2875,12 +2818,8 @@ class OpsApi {
     );
 
     final _queryParameters = <String, dynamic>{
-      if (cursor != null)
-        r'cursor':
-            encodeQueryParameter(_serializers, cursor, const FullType(String)),
-      if (limit != null)
-        r'limit':
-            encodeQueryParameter(_serializers, limit, const FullType(int)),
+      if (cursor != null) r'cursor': encodeQueryParameter(_serializers, cursor, const FullType(String)),
+      if (limit != null) r'limit': encodeQueryParameter(_serializers, limit, const FullType(int)),
     };
 
     final _response = await _dio.request<Object>(
@@ -2896,12 +2835,11 @@ class OpsApi {
 
     try {
       final rawResponse = _response.data;
-      _responseData = rawResponse == null
-          ? null
-          : _serializers.deserialize(
-              rawResponse,
-              specifiedType: const FullType(DecisionEventPage),
-            ) as DecisionEventPage;
+      _responseData = rawResponse == null ? null : _serializers.deserialize(
+        rawResponse,
+        specifiedType: const FullType(DecisionEventPage),
+      ) as DecisionEventPage;
+
     } catch (error, stackTrace) {
       throw DioException(
         requestOptions: _response.requestOptions,
@@ -2925,7 +2863,7 @@ class OpsApi {
   }
 
   /// list Commute Slots
-  ///
+  /// 
   ///
   /// Parameters:
   /// * [xTrotxiClient] - Compatibility metadata only, never grants a role.
@@ -2943,9 +2881,9 @@ class OpsApi {
   ///
   /// Returns a [Future] containing a [Response] with a [CommuteSlotPage] as data
   /// Throws [DioException] if API call or serialization fails
-  Future<Response<CommuteSlotPage>> listCommuteSlots({
+  Future<Response<CommuteSlotPage>> listCommuteSlots({ 
     required String xTrotxiClient,
-    required int xTrotxiBuild,
+    int xTrotxiBuild = 1,
     String? cursor,
     int? limit = 50,
     String? routeId,
@@ -2980,15 +2918,9 @@ class OpsApi {
     );
 
     final _queryParameters = <String, dynamic>{
-      if (cursor != null)
-        r'cursor':
-            encodeQueryParameter(_serializers, cursor, const FullType(String)),
-      if (limit != null)
-        r'limit':
-            encodeQueryParameter(_serializers, limit, const FullType(int)),
-      if (routeId != null)
-        r'routeId':
-            encodeQueryParameter(_serializers, routeId, const FullType(String)),
+      if (cursor != null) r'cursor': encodeQueryParameter(_serializers, cursor, const FullType(String)),
+      if (limit != null) r'limit': encodeQueryParameter(_serializers, limit, const FullType(int)),
+      if (routeId != null) r'routeId': encodeQueryParameter(_serializers, routeId, const FullType(String)),
     };
 
     final _response = await _dio.request<Object>(
@@ -3004,12 +2936,11 @@ class OpsApi {
 
     try {
       final rawResponse = _response.data;
-      _responseData = rawResponse == null
-          ? null
-          : _serializers.deserialize(
-              rawResponse,
-              specifiedType: const FullType(CommuteSlotPage),
-            ) as CommuteSlotPage;
+      _responseData = rawResponse == null ? null : _serializers.deserialize(
+        rawResponse,
+        specifiedType: const FullType(CommuteSlotPage),
+      ) as CommuteSlotPage;
+
     } catch (error, stackTrace) {
       throw DioException(
         requestOptions: _response.requestOptions,
@@ -3033,10 +2964,10 @@ class OpsApi {
   }
 
   /// list Fares
-  ///
+  /// 
   ///
   /// Parameters:
-  /// * [id]
+  /// * [id] 
   /// * [xTrotxiClient] - Compatibility metadata only, never grants a role.
   /// * [xTrotxiBuild] - Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
   /// * [cursor] - Opaque cursor bound to caller, sort and filters.
@@ -3051,10 +2982,10 @@ class OpsApi {
   ///
   /// Returns a [Future] containing a [Response] with a [FarePage] as data
   /// Throws [DioException] if API call or serialization fails
-  Future<Response<FarePage>> listFares({
+  Future<Response<FarePage>> listFares({ 
     required String id,
     required String xTrotxiClient,
-    required int xTrotxiBuild,
+    int xTrotxiBuild = 1,
     String? cursor,
     int? limit = 50,
     String? xTrotxiPlatform,
@@ -3065,10 +2996,7 @@ class OpsApi {
     ProgressCallback? onSendProgress,
     ProgressCallback? onReceiveProgress,
   }) async {
-    final _path = r'/v1/ops/routes/{id}/fares'.replaceAll(
-        '{' r'id' '}',
-        encodeQueryParameter(_serializers, id, const FullType(String))
-            .toString());
+    final _path = r'/v1/ops/routes/{id}/fares'.replaceAll('{' r'id' '}', encodeQueryParameter(_serializers, id, const FullType(String)).toString());
     final _options = Options(
       method: r'GET',
       headers: <String, dynamic>{
@@ -3091,12 +3019,8 @@ class OpsApi {
     );
 
     final _queryParameters = <String, dynamic>{
-      if (cursor != null)
-        r'cursor':
-            encodeQueryParameter(_serializers, cursor, const FullType(String)),
-      if (limit != null)
-        r'limit':
-            encodeQueryParameter(_serializers, limit, const FullType(int)),
+      if (cursor != null) r'cursor': encodeQueryParameter(_serializers, cursor, const FullType(String)),
+      if (limit != null) r'limit': encodeQueryParameter(_serializers, limit, const FullType(int)),
     };
 
     final _response = await _dio.request<Object>(
@@ -3112,12 +3036,11 @@ class OpsApi {
 
     try {
       final rawResponse = _response.data;
-      _responseData = rawResponse == null
-          ? null
-          : _serializers.deserialize(
-              rawResponse,
-              specifiedType: const FullType(FarePage),
-            ) as FarePage;
+      _responseData = rawResponse == null ? null : _serializers.deserialize(
+        rawResponse,
+        specifiedType: const FullType(FarePage),
+      ) as FarePage;
+
     } catch (error, stackTrace) {
       throw DioException(
         requestOptions: _response.requestOptions,
@@ -3141,7 +3064,7 @@ class OpsApi {
   }
 
   /// list Flags
-  ///
+  /// 
   ///
   /// Parameters:
   /// * [xTrotxiClient] - Compatibility metadata only, never grants a role.
@@ -3158,9 +3081,9 @@ class OpsApi {
   ///
   /// Returns a [Future] containing a [Response] with a [FlagPage] as data
   /// Throws [DioException] if API call or serialization fails
-  Future<Response<FlagPage>> listFlags({
+  Future<Response<FlagPage>> listFlags({ 
     required String xTrotxiClient,
-    required int xTrotxiBuild,
+    int xTrotxiBuild = 1,
     String? cursor,
     int? limit = 50,
     String? xTrotxiPlatform,
@@ -3194,12 +3117,8 @@ class OpsApi {
     );
 
     final _queryParameters = <String, dynamic>{
-      if (cursor != null)
-        r'cursor':
-            encodeQueryParameter(_serializers, cursor, const FullType(String)),
-      if (limit != null)
-        r'limit':
-            encodeQueryParameter(_serializers, limit, const FullType(int)),
+      if (cursor != null) r'cursor': encodeQueryParameter(_serializers, cursor, const FullType(String)),
+      if (limit != null) r'limit': encodeQueryParameter(_serializers, limit, const FullType(int)),
     };
 
     final _response = await _dio.request<Object>(
@@ -3215,12 +3134,11 @@ class OpsApi {
 
     try {
       final rawResponse = _response.data;
-      _responseData = rawResponse == null
-          ? null
-          : _serializers.deserialize(
-              rawResponse,
-              specifiedType: const FullType(FlagPage),
-            ) as FlagPage;
+      _responseData = rawResponse == null ? null : _serializers.deserialize(
+        rawResponse,
+        specifiedType: const FullType(FlagPage),
+      ) as FlagPage;
+
     } catch (error, stackTrace) {
       throw DioException(
         requestOptions: _response.requestOptions,
@@ -3244,7 +3162,7 @@ class OpsApi {
   }
 
   /// list Minimum Versions
-  ///
+  /// 
   ///
   /// Parameters:
   /// * [xTrotxiClient] - Compatibility metadata only, never grants a role.
@@ -3261,9 +3179,9 @@ class OpsApi {
   ///
   /// Returns a [Future] containing a [Response] with a [MinimumVersionPage] as data
   /// Throws [DioException] if API call or serialization fails
-  Future<Response<MinimumVersionPage>> listMinimumVersions({
+  Future<Response<MinimumVersionPage>> listMinimumVersions({ 
     required String xTrotxiClient,
-    required int xTrotxiBuild,
+    int xTrotxiBuild = 1,
     String? cursor,
     int? limit = 50,
     String? xTrotxiPlatform,
@@ -3297,12 +3215,8 @@ class OpsApi {
     );
 
     final _queryParameters = <String, dynamic>{
-      if (cursor != null)
-        r'cursor':
-            encodeQueryParameter(_serializers, cursor, const FullType(String)),
-      if (limit != null)
-        r'limit':
-            encodeQueryParameter(_serializers, limit, const FullType(int)),
+      if (cursor != null) r'cursor': encodeQueryParameter(_serializers, cursor, const FullType(String)),
+      if (limit != null) r'limit': encodeQueryParameter(_serializers, limit, const FullType(int)),
     };
 
     final _response = await _dio.request<Object>(
@@ -3318,12 +3232,11 @@ class OpsApi {
 
     try {
       final rawResponse = _response.data;
-      _responseData = rawResponse == null
-          ? null
-          : _serializers.deserialize(
-              rawResponse,
-              specifiedType: const FullType(MinimumVersionPage),
-            ) as MinimumVersionPage;
+      _responseData = rawResponse == null ? null : _serializers.deserialize(
+        rawResponse,
+        specifiedType: const FullType(MinimumVersionPage),
+      ) as MinimumVersionPage;
+
     } catch (error, stackTrace) {
       throw DioException(
         requestOptions: _response.requestOptions,
@@ -3347,7 +3260,7 @@ class OpsApi {
   }
 
   /// list Ops Commute Requests
-  ///
+  /// 
   ///
   /// Parameters:
   /// * [xTrotxiClient] - Compatibility metadata only, never grants a role.
@@ -3365,9 +3278,9 @@ class OpsApi {
   ///
   /// Returns a [Future] containing a [Response] with a [OpsCommuteRequestPage] as data
   /// Throws [DioException] if API call or serialization fails
-  Future<Response<OpsCommuteRequestPage>> listOpsCommuteRequests({
+  Future<Response<OpsCommuteRequestPage>> listOpsCommuteRequests({ 
     required String xTrotxiClient,
-    required int xTrotxiBuild,
+    int xTrotxiBuild = 1,
     String? cursor,
     int? limit = 50,
     String? status,
@@ -3402,15 +3315,9 @@ class OpsApi {
     );
 
     final _queryParameters = <String, dynamic>{
-      if (cursor != null)
-        r'cursor':
-            encodeQueryParameter(_serializers, cursor, const FullType(String)),
-      if (limit != null)
-        r'limit':
-            encodeQueryParameter(_serializers, limit, const FullType(int)),
-      if (status != null)
-        r'status':
-            encodeQueryParameter(_serializers, status, const FullType(String)),
+      if (cursor != null) r'cursor': encodeQueryParameter(_serializers, cursor, const FullType(String)),
+      if (limit != null) r'limit': encodeQueryParameter(_serializers, limit, const FullType(int)),
+      if (status != null) r'status': encodeQueryParameter(_serializers, status, const FullType(String)),
     };
 
     final _response = await _dio.request<Object>(
@@ -3426,12 +3333,11 @@ class OpsApi {
 
     try {
       final rawResponse = _response.data;
-      _responseData = rawResponse == null
-          ? null
-          : _serializers.deserialize(
-              rawResponse,
-              specifiedType: const FullType(OpsCommuteRequestPage),
-            ) as OpsCommuteRequestPage;
+      _responseData = rawResponse == null ? null : _serializers.deserialize(
+        rawResponse,
+        specifiedType: const FullType(OpsCommuteRequestPage),
+      ) as OpsCommuteRequestPage;
+
     } catch (error, stackTrace) {
       throw DioException(
         requestOptions: _response.requestOptions,
@@ -3455,7 +3361,7 @@ class OpsApi {
   }
 
   /// list Ops Driver Requests
-  ///
+  /// 
   ///
   /// Parameters:
   /// * [xTrotxiClient] - Compatibility metadata only, never grants a role.
@@ -3473,9 +3379,9 @@ class OpsApi {
   ///
   /// Returns a [Future] containing a [Response] with a [OpsWorkRequestPage] as data
   /// Throws [DioException] if API call or serialization fails
-  Future<Response<OpsWorkRequestPage>> listOpsDriverRequests({
+  Future<Response<OpsWorkRequestPage>> listOpsDriverRequests({ 
     required String xTrotxiClient,
-    required int xTrotxiBuild,
+    int xTrotxiBuild = 1,
     String? cursor,
     int? limit = 50,
     String? status,
@@ -3510,15 +3416,9 @@ class OpsApi {
     );
 
     final _queryParameters = <String, dynamic>{
-      if (cursor != null)
-        r'cursor':
-            encodeQueryParameter(_serializers, cursor, const FullType(String)),
-      if (limit != null)
-        r'limit':
-            encodeQueryParameter(_serializers, limit, const FullType(int)),
-      if (status != null)
-        r'status':
-            encodeQueryParameter(_serializers, status, const FullType(String)),
+      if (cursor != null) r'cursor': encodeQueryParameter(_serializers, cursor, const FullType(String)),
+      if (limit != null) r'limit': encodeQueryParameter(_serializers, limit, const FullType(int)),
+      if (status != null) r'status': encodeQueryParameter(_serializers, status, const FullType(String)),
     };
 
     final _response = await _dio.request<Object>(
@@ -3534,12 +3434,11 @@ class OpsApi {
 
     try {
       final rawResponse = _response.data;
-      _responseData = rawResponse == null
-          ? null
-          : _serializers.deserialize(
-              rawResponse,
-              specifiedType: const FullType(OpsWorkRequestPage),
-            ) as OpsWorkRequestPage;
+      _responseData = rawResponse == null ? null : _serializers.deserialize(
+        rawResponse,
+        specifiedType: const FullType(OpsWorkRequestPage),
+      ) as OpsWorkRequestPage;
+
     } catch (error, stackTrace) {
       throw DioException(
         requestOptions: _response.requestOptions,
@@ -3563,7 +3462,7 @@ class OpsApi {
   }
 
   /// list Ops Drivers
-  ///
+  /// 
   ///
   /// Parameters:
   /// * [xTrotxiClient] - Compatibility metadata only, never grants a role.
@@ -3580,9 +3479,9 @@ class OpsApi {
   ///
   /// Returns a [Future] containing a [Response] with a [DriverPage] as data
   /// Throws [DioException] if API call or serialization fails
-  Future<Response<DriverPage>> listOpsDrivers({
+  Future<Response<DriverPage>> listOpsDrivers({ 
     required String xTrotxiClient,
-    required int xTrotxiBuild,
+    int xTrotxiBuild = 1,
     String? cursor,
     int? limit = 50,
     String? xTrotxiPlatform,
@@ -3616,12 +3515,8 @@ class OpsApi {
     );
 
     final _queryParameters = <String, dynamic>{
-      if (cursor != null)
-        r'cursor':
-            encodeQueryParameter(_serializers, cursor, const FullType(String)),
-      if (limit != null)
-        r'limit':
-            encodeQueryParameter(_serializers, limit, const FullType(int)),
+      if (cursor != null) r'cursor': encodeQueryParameter(_serializers, cursor, const FullType(String)),
+      if (limit != null) r'limit': encodeQueryParameter(_serializers, limit, const FullType(int)),
     };
 
     final _response = await _dio.request<Object>(
@@ -3637,12 +3532,11 @@ class OpsApi {
 
     try {
       final rawResponse = _response.data;
-      _responseData = rawResponse == null
-          ? null
-          : _serializers.deserialize(
-              rawResponse,
-              specifiedType: const FullType(DriverPage),
-            ) as DriverPage;
+      _responseData = rawResponse == null ? null : _serializers.deserialize(
+        rawResponse,
+        specifiedType: const FullType(DriverPage),
+      ) as DriverPage;
+
     } catch (error, stackTrace) {
       throw DioException(
         requestOptions: _response.requestOptions,
@@ -3666,7 +3560,7 @@ class OpsApi {
   }
 
   /// list Ops Incidents
-  ///
+  /// 
   ///
   /// Parameters:
   /// * [xTrotxiClient] - Compatibility metadata only, never grants a role.
@@ -3684,9 +3578,9 @@ class OpsApi {
   ///
   /// Returns a [Future] containing a [Response] with a [OpsIncidentPage] as data
   /// Throws [DioException] if API call or serialization fails
-  Future<Response<OpsIncidentPage>> listOpsIncidents({
+  Future<Response<OpsIncidentPage>> listOpsIncidents({ 
     required String xTrotxiClient,
-    required int xTrotxiBuild,
+    int xTrotxiBuild = 1,
     String? cursor,
     int? limit = 50,
     String? status,
@@ -3721,15 +3615,9 @@ class OpsApi {
     );
 
     final _queryParameters = <String, dynamic>{
-      if (cursor != null)
-        r'cursor':
-            encodeQueryParameter(_serializers, cursor, const FullType(String)),
-      if (limit != null)
-        r'limit':
-            encodeQueryParameter(_serializers, limit, const FullType(int)),
-      if (status != null)
-        r'status':
-            encodeQueryParameter(_serializers, status, const FullType(String)),
+      if (cursor != null) r'cursor': encodeQueryParameter(_serializers, cursor, const FullType(String)),
+      if (limit != null) r'limit': encodeQueryParameter(_serializers, limit, const FullType(int)),
+      if (status != null) r'status': encodeQueryParameter(_serializers, status, const FullType(String)),
     };
 
     final _response = await _dio.request<Object>(
@@ -3745,12 +3633,11 @@ class OpsApi {
 
     try {
       final rawResponse = _response.data;
-      _responseData = rawResponse == null
-          ? null
-          : _serializers.deserialize(
-              rawResponse,
-              specifiedType: const FullType(OpsIncidentPage),
-            ) as OpsIncidentPage;
+      _responseData = rawResponse == null ? null : _serializers.deserialize(
+        rawResponse,
+        specifiedType: const FullType(OpsIncidentPage),
+      ) as OpsIncidentPage;
+
     } catch (error, stackTrace) {
       throw DioException(
         requestOptions: _response.requestOptions,
@@ -3774,7 +3661,7 @@ class OpsApi {
   }
 
   /// list Ops Purchases
-  ///
+  /// 
   ///
   /// Parameters:
   /// * [xTrotxiClient] - Compatibility metadata only, never grants a role.
@@ -3793,9 +3680,9 @@ class OpsApi {
   ///
   /// Returns a [Future] containing a [Response] with a [OpsPurchasePage] as data
   /// Throws [DioException] if API call or serialization fails
-  Future<Response<OpsPurchasePage>> listOpsPurchases({
+  Future<Response<OpsPurchasePage>> listOpsPurchases({ 
     required String xTrotxiClient,
-    required int xTrotxiBuild,
+    int xTrotxiBuild = 1,
     String? cursor,
     int? limit = 50,
     Date? fromDate,
@@ -3831,18 +3718,10 @@ class OpsApi {
     );
 
     final _queryParameters = <String, dynamic>{
-      if (cursor != null)
-        r'cursor':
-            encodeQueryParameter(_serializers, cursor, const FullType(String)),
-      if (limit != null)
-        r'limit':
-            encodeQueryParameter(_serializers, limit, const FullType(int)),
-      if (fromDate != null)
-        r'fromDate':
-            encodeQueryParameter(_serializers, fromDate, const FullType(Date)),
-      if (toDate != null)
-        r'toDate':
-            encodeQueryParameter(_serializers, toDate, const FullType(Date)),
+      if (cursor != null) r'cursor': encodeQueryParameter(_serializers, cursor, const FullType(String)),
+      if (limit != null) r'limit': encodeQueryParameter(_serializers, limit, const FullType(int)),
+      if (fromDate != null) r'fromDate': encodeQueryParameter(_serializers, fromDate, const FullType(Date)),
+      if (toDate != null) r'toDate': encodeQueryParameter(_serializers, toDate, const FullType(Date)),
     };
 
     final _response = await _dio.request<Object>(
@@ -3858,12 +3737,11 @@ class OpsApi {
 
     try {
       final rawResponse = _response.data;
-      _responseData = rawResponse == null
-          ? null
-          : _serializers.deserialize(
-              rawResponse,
-              specifiedType: const FullType(OpsPurchasePage),
-            ) as OpsPurchasePage;
+      _responseData = rawResponse == null ? null : _serializers.deserialize(
+        rawResponse,
+        specifiedType: const FullType(OpsPurchasePage),
+      ) as OpsPurchasePage;
+
     } catch (error, stackTrace) {
       throw DioException(
         requestOptions: _response.requestOptions,
@@ -3887,7 +3765,7 @@ class OpsApi {
   }
 
   /// list Ops Routes
-  ///
+  /// 
   ///
   /// Parameters:
   /// * [xTrotxiClient] - Compatibility metadata only, never grants a role.
@@ -3904,9 +3782,9 @@ class OpsApi {
   ///
   /// Returns a [Future] containing a [Response] with a [RoutePage] as data
   /// Throws [DioException] if API call or serialization fails
-  Future<Response<RoutePage>> listOpsRoutes({
+  Future<Response<RoutePage>> listOpsRoutes({ 
     required String xTrotxiClient,
-    required int xTrotxiBuild,
+    int xTrotxiBuild = 1,
     String? cursor,
     int? limit = 50,
     String? xTrotxiPlatform,
@@ -3940,12 +3818,8 @@ class OpsApi {
     );
 
     final _queryParameters = <String, dynamic>{
-      if (cursor != null)
-        r'cursor':
-            encodeQueryParameter(_serializers, cursor, const FullType(String)),
-      if (limit != null)
-        r'limit':
-            encodeQueryParameter(_serializers, limit, const FullType(int)),
+      if (cursor != null) r'cursor': encodeQueryParameter(_serializers, cursor, const FullType(String)),
+      if (limit != null) r'limit': encodeQueryParameter(_serializers, limit, const FullType(int)),
     };
 
     final _response = await _dio.request<Object>(
@@ -3961,12 +3835,11 @@ class OpsApi {
 
     try {
       final rawResponse = _response.data;
-      _responseData = rawResponse == null
-          ? null
-          : _serializers.deserialize(
-              rawResponse,
-              specifiedType: const FullType(RoutePage),
-            ) as RoutePage;
+      _responseData = rawResponse == null ? null : _serializers.deserialize(
+        rawResponse,
+        specifiedType: const FullType(RoutePage),
+      ) as RoutePage;
+
     } catch (error, stackTrace) {
       throw DioException(
         requestOptions: _response.requestOptions,
@@ -3990,7 +3863,7 @@ class OpsApi {
   }
 
   /// list Ops Stops
-  ///
+  /// 
   ///
   /// Parameters:
   /// * [xTrotxiClient] - Compatibility metadata only, never grants a role.
@@ -4007,9 +3880,9 @@ class OpsApi {
   ///
   /// Returns a [Future] containing a [Response] with a [StopPage] as data
   /// Throws [DioException] if API call or serialization fails
-  Future<Response<StopPage>> listOpsStops({
+  Future<Response<StopPage>> listOpsStops({ 
     required String xTrotxiClient,
-    required int xTrotxiBuild,
+    int xTrotxiBuild = 1,
     String? cursor,
     int? limit = 50,
     String? xTrotxiPlatform,
@@ -4043,12 +3916,8 @@ class OpsApi {
     );
 
     final _queryParameters = <String, dynamic>{
-      if (cursor != null)
-        r'cursor':
-            encodeQueryParameter(_serializers, cursor, const FullType(String)),
-      if (limit != null)
-        r'limit':
-            encodeQueryParameter(_serializers, limit, const FullType(int)),
+      if (cursor != null) r'cursor': encodeQueryParameter(_serializers, cursor, const FullType(String)),
+      if (limit != null) r'limit': encodeQueryParameter(_serializers, limit, const FullType(int)),
     };
 
     final _response = await _dio.request<Object>(
@@ -4064,12 +3933,11 @@ class OpsApi {
 
     try {
       final rawResponse = _response.data;
-      _responseData = rawResponse == null
-          ? null
-          : _serializers.deserialize(
-              rawResponse,
-              specifiedType: const FullType(StopPage),
-            ) as StopPage;
+      _responseData = rawResponse == null ? null : _serializers.deserialize(
+        rawResponse,
+        specifiedType: const FullType(StopPage),
+      ) as StopPage;
+
     } catch (error, stackTrace) {
       throw DioException(
         requestOptions: _response.requestOptions,
@@ -4093,7 +3961,7 @@ class OpsApi {
   }
 
   /// list Ops Trips
-  ///
+  /// 
   ///
   /// Parameters:
   /// * [xTrotxiClient] - Compatibility metadata only, never grants a role.
@@ -4113,9 +3981,9 @@ class OpsApi {
   ///
   /// Returns a [Future] containing a [Response] with a [OpsTripPage] as data
   /// Throws [DioException] if API call or serialization fails
-  Future<Response<OpsTripPage>> listOpsTrips({
+  Future<Response<OpsTripPage>> listOpsTrips({ 
     required String xTrotxiClient,
-    required int xTrotxiBuild,
+    int xTrotxiBuild = 1,
     String? cursor,
     int? limit = 50,
     Date? fromDate,
@@ -4152,21 +4020,11 @@ class OpsApi {
     );
 
     final _queryParameters = <String, dynamic>{
-      if (cursor != null)
-        r'cursor':
-            encodeQueryParameter(_serializers, cursor, const FullType(String)),
-      if (limit != null)
-        r'limit':
-            encodeQueryParameter(_serializers, limit, const FullType(int)),
-      if (fromDate != null)
-        r'fromDate':
-            encodeQueryParameter(_serializers, fromDate, const FullType(Date)),
-      if (toDate != null)
-        r'toDate':
-            encodeQueryParameter(_serializers, toDate, const FullType(Date)),
-      if (routeId != null)
-        r'routeId':
-            encodeQueryParameter(_serializers, routeId, const FullType(String)),
+      if (cursor != null) r'cursor': encodeQueryParameter(_serializers, cursor, const FullType(String)),
+      if (limit != null) r'limit': encodeQueryParameter(_serializers, limit, const FullType(int)),
+      if (fromDate != null) r'fromDate': encodeQueryParameter(_serializers, fromDate, const FullType(Date)),
+      if (toDate != null) r'toDate': encodeQueryParameter(_serializers, toDate, const FullType(Date)),
+      if (routeId != null) r'routeId': encodeQueryParameter(_serializers, routeId, const FullType(String)),
     };
 
     final _response = await _dio.request<Object>(
@@ -4182,12 +4040,11 @@ class OpsApi {
 
     try {
       final rawResponse = _response.data;
-      _responseData = rawResponse == null
-          ? null
-          : _serializers.deserialize(
-              rawResponse,
-              specifiedType: const FullType(OpsTripPage),
-            ) as OpsTripPage;
+      _responseData = rawResponse == null ? null : _serializers.deserialize(
+        rawResponse,
+        specifiedType: const FullType(OpsTripPage),
+      ) as OpsTripPage;
+
     } catch (error, stackTrace) {
       throw DioException(
         requestOptions: _response.requestOptions,
@@ -4211,7 +4068,7 @@ class OpsApi {
   }
 
   /// list Ops Vehicles
-  ///
+  /// 
   ///
   /// Parameters:
   /// * [xTrotxiClient] - Compatibility metadata only, never grants a role.
@@ -4228,9 +4085,9 @@ class OpsApi {
   ///
   /// Returns a [Future] containing a [Response] with a [VehiclePage] as data
   /// Throws [DioException] if API call or serialization fails
-  Future<Response<VehiclePage>> listOpsVehicles({
+  Future<Response<VehiclePage>> listOpsVehicles({ 
     required String xTrotxiClient,
-    required int xTrotxiBuild,
+    int xTrotxiBuild = 1,
     String? cursor,
     int? limit = 50,
     String? xTrotxiPlatform,
@@ -4264,12 +4121,8 @@ class OpsApi {
     );
 
     final _queryParameters = <String, dynamic>{
-      if (cursor != null)
-        r'cursor':
-            encodeQueryParameter(_serializers, cursor, const FullType(String)),
-      if (limit != null)
-        r'limit':
-            encodeQueryParameter(_serializers, limit, const FullType(int)),
+      if (cursor != null) r'cursor': encodeQueryParameter(_serializers, cursor, const FullType(String)),
+      if (limit != null) r'limit': encodeQueryParameter(_serializers, limit, const FullType(int)),
     };
 
     final _response = await _dio.request<Object>(
@@ -4285,12 +4138,11 @@ class OpsApi {
 
     try {
       final rawResponse = _response.data;
-      _responseData = rawResponse == null
-          ? null
-          : _serializers.deserialize(
-              rawResponse,
-              specifiedType: const FullType(VehiclePage),
-            ) as VehiclePage;
+      _responseData = rawResponse == null ? null : _serializers.deserialize(
+        rawResponse,
+        specifiedType: const FullType(VehiclePage),
+      ) as VehiclePage;
+
     } catch (error, stackTrace) {
       throw DioException(
         requestOptions: _response.requestOptions,
@@ -4314,10 +4166,10 @@ class OpsApi {
   }
 
   /// list Pattern Versions
-  ///
+  /// 
   ///
   /// Parameters:
-  /// * [id]
+  /// * [id] 
   /// * [xTrotxiClient] - Compatibility metadata only, never grants a role.
   /// * [xTrotxiBuild] - Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
   /// * [cursor] - Opaque cursor bound to caller, sort and filters.
@@ -4332,10 +4184,10 @@ class OpsApi {
   ///
   /// Returns a [Future] containing a [Response] with a [PatternVersionPage] as data
   /// Throws [DioException] if API call or serialization fails
-  Future<Response<PatternVersionPage>> listPatternVersions({
+  Future<Response<PatternVersionPage>> listPatternVersions({ 
     required String id,
     required String xTrotxiClient,
-    required int xTrotxiBuild,
+    int xTrotxiBuild = 1,
     String? cursor,
     int? limit = 50,
     String? xTrotxiPlatform,
@@ -4346,10 +4198,7 @@ class OpsApi {
     ProgressCallback? onSendProgress,
     ProgressCallback? onReceiveProgress,
   }) async {
-    final _path = r'/v1/ops/route-patterns/{id}/versions'.replaceAll(
-        '{' r'id' '}',
-        encodeQueryParameter(_serializers, id, const FullType(String))
-            .toString());
+    final _path = r'/v1/ops/route-patterns/{id}/versions'.replaceAll('{' r'id' '}', encodeQueryParameter(_serializers, id, const FullType(String)).toString());
     final _options = Options(
       method: r'GET',
       headers: <String, dynamic>{
@@ -4372,12 +4221,8 @@ class OpsApi {
     );
 
     final _queryParameters = <String, dynamic>{
-      if (cursor != null)
-        r'cursor':
-            encodeQueryParameter(_serializers, cursor, const FullType(String)),
-      if (limit != null)
-        r'limit':
-            encodeQueryParameter(_serializers, limit, const FullType(int)),
+      if (cursor != null) r'cursor': encodeQueryParameter(_serializers, cursor, const FullType(String)),
+      if (limit != null) r'limit': encodeQueryParameter(_serializers, limit, const FullType(int)),
     };
 
     final _response = await _dio.request<Object>(
@@ -4393,12 +4238,11 @@ class OpsApi {
 
     try {
       final rawResponse = _response.data;
-      _responseData = rawResponse == null
-          ? null
-          : _serializers.deserialize(
-              rawResponse,
-              specifiedType: const FullType(PatternVersionPage),
-            ) as PatternVersionPage;
+      _responseData = rawResponse == null ? null : _serializers.deserialize(
+        rawResponse,
+        specifiedType: const FullType(PatternVersionPage),
+      ) as PatternVersionPage;
+
     } catch (error, stackTrace) {
       throw DioException(
         requestOptions: _response.requestOptions,
@@ -4422,7 +4266,7 @@ class OpsApi {
   }
 
   /// list Patterns
-  ///
+  /// 
   ///
   /// Parameters:
   /// * [xTrotxiClient] - Compatibility metadata only, never grants a role.
@@ -4439,9 +4283,9 @@ class OpsApi {
   ///
   /// Returns a [Future] containing a [Response] with a [PatternPage] as data
   /// Throws [DioException] if API call or serialization fails
-  Future<Response<PatternPage>> listPatterns({
+  Future<Response<PatternPage>> listPatterns({ 
     required String xTrotxiClient,
-    required int xTrotxiBuild,
+    int xTrotxiBuild = 1,
     String? cursor,
     int? limit = 50,
     String? xTrotxiPlatform,
@@ -4475,12 +4319,8 @@ class OpsApi {
     );
 
     final _queryParameters = <String, dynamic>{
-      if (cursor != null)
-        r'cursor':
-            encodeQueryParameter(_serializers, cursor, const FullType(String)),
-      if (limit != null)
-        r'limit':
-            encodeQueryParameter(_serializers, limit, const FullType(int)),
+      if (cursor != null) r'cursor': encodeQueryParameter(_serializers, cursor, const FullType(String)),
+      if (limit != null) r'limit': encodeQueryParameter(_serializers, limit, const FullType(int)),
     };
 
     final _response = await _dio.request<Object>(
@@ -4496,12 +4336,11 @@ class OpsApi {
 
     try {
       final rawResponse = _response.data;
-      _responseData = rawResponse == null
-          ? null
-          : _serializers.deserialize(
-              rawResponse,
-              specifiedType: const FullType(PatternPage),
-            ) as PatternPage;
+      _responseData = rawResponse == null ? null : _serializers.deserialize(
+        rawResponse,
+        specifiedType: const FullType(PatternPage),
+      ) as PatternPage;
+
     } catch (error, stackTrace) {
       throw DioException(
         requestOptions: _response.requestOptions,
@@ -4525,7 +4364,7 @@ class OpsApi {
   }
 
   /// list Payment Reviews
-  ///
+  /// 
   ///
   /// Parameters:
   /// * [xTrotxiClient] - Compatibility metadata only, never grants a role.
@@ -4543,9 +4382,9 @@ class OpsApi {
   ///
   /// Returns a [Future] containing a [Response] with a [PaymentReviewPage] as data
   /// Throws [DioException] if API call or serialization fails
-  Future<Response<PaymentReviewPage>> listPaymentReviews({
+  Future<Response<PaymentReviewPage>> listPaymentReviews({ 
     required String xTrotxiClient,
-    required int xTrotxiBuild,
+    int xTrotxiBuild = 1,
     String? cursor,
     int? limit = 50,
     String? status,
@@ -4580,15 +4419,9 @@ class OpsApi {
     );
 
     final _queryParameters = <String, dynamic>{
-      if (cursor != null)
-        r'cursor':
-            encodeQueryParameter(_serializers, cursor, const FullType(String)),
-      if (limit != null)
-        r'limit':
-            encodeQueryParameter(_serializers, limit, const FullType(int)),
-      if (status != null)
-        r'status':
-            encodeQueryParameter(_serializers, status, const FullType(String)),
+      if (cursor != null) r'cursor': encodeQueryParameter(_serializers, cursor, const FullType(String)),
+      if (limit != null) r'limit': encodeQueryParameter(_serializers, limit, const FullType(int)),
+      if (status != null) r'status': encodeQueryParameter(_serializers, status, const FullType(String)),
     };
 
     final _response = await _dio.request<Object>(
@@ -4604,12 +4437,11 @@ class OpsApi {
 
     try {
       final rawResponse = _response.data;
-      _responseData = rawResponse == null
-          ? null
-          : _serializers.deserialize(
-              rawResponse,
-              specifiedType: const FullType(PaymentReviewPage),
-            ) as PaymentReviewPage;
+      _responseData = rawResponse == null ? null : _serializers.deserialize(
+        rawResponse,
+        specifiedType: const FullType(PaymentReviewPage),
+      ) as PaymentReviewPage;
+
     } catch (error, stackTrace) {
       throw DioException(
         requestOptions: _response.requestOptions,
@@ -4633,7 +4465,7 @@ class OpsApi {
   }
 
   /// list Plan Pricing
-  ///
+  /// 
   ///
   /// Parameters:
   /// * [xTrotxiClient] - Compatibility metadata only, never grants a role.
@@ -4650,9 +4482,9 @@ class OpsApi {
   ///
   /// Returns a [Future] containing a [Response] with a [PlanPricingPage] as data
   /// Throws [DioException] if API call or serialization fails
-  Future<Response<PlanPricingPage>> listPlanPricing({
+  Future<Response<PlanPricingPage>> listPlanPricing({ 
     required String xTrotxiClient,
-    required int xTrotxiBuild,
+    int xTrotxiBuild = 1,
     String? cursor,
     int? limit = 50,
     String? xTrotxiPlatform,
@@ -4686,12 +4518,8 @@ class OpsApi {
     );
 
     final _queryParameters = <String, dynamic>{
-      if (cursor != null)
-        r'cursor':
-            encodeQueryParameter(_serializers, cursor, const FullType(String)),
-      if (limit != null)
-        r'limit':
-            encodeQueryParameter(_serializers, limit, const FullType(int)),
+      if (cursor != null) r'cursor': encodeQueryParameter(_serializers, cursor, const FullType(String)),
+      if (limit != null) r'limit': encodeQueryParameter(_serializers, limit, const FullType(int)),
     };
 
     final _response = await _dio.request<Object>(
@@ -4707,12 +4535,11 @@ class OpsApi {
 
     try {
       final rawResponse = _response.data;
-      _responseData = rawResponse == null
-          ? null
-          : _serializers.deserialize(
-              rawResponse,
-              specifiedType: const FullType(PlanPricingPage),
-            ) as PlanPricingPage;
+      _responseData = rawResponse == null ? null : _serializers.deserialize(
+        rawResponse,
+        specifiedType: const FullType(PlanPricingPage),
+      ) as PlanPricingPage;
+
     } catch (error, stackTrace) {
       throw DioException(
         requestOptions: _response.requestOptions,
@@ -4736,10 +4563,10 @@ class OpsApi {
   }
 
   /// list Refund Initiations
-  ///
+  /// 
   ///
   /// Parameters:
-  /// * [id]
+  /// * [id] 
   /// * [xTrotxiClient] - Compatibility metadata only, never grants a role.
   /// * [xTrotxiBuild] - Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
   /// * [xTrotxiPlatform] - Required for commuter/driver, absent for ops/worker.
@@ -4752,10 +4579,10 @@ class OpsApi {
   ///
   /// Returns a [Future] containing a [Response] with a [RefundInitiationCollectionResponse] as data
   /// Throws [DioException] if API call or serialization fails
-  Future<Response<RefundInitiationCollectionResponse>> listRefundInitiations({
+  Future<Response<RefundInitiationCollectionResponse>> listRefundInitiations({ 
     required String id,
     required String xTrotxiClient,
-    required int xTrotxiBuild,
+    int xTrotxiBuild = 1,
     String? xTrotxiPlatform,
     CancelToken? cancelToken,
     Map<String, dynamic>? headers,
@@ -4764,10 +4591,7 @@ class OpsApi {
     ProgressCallback? onSendProgress,
     ProgressCallback? onReceiveProgress,
   }) async {
-    final _path = r'/v1/ops/purchases/{id}/refunds'.replaceAll(
-        '{' r'id' '}',
-        encodeQueryParameter(_serializers, id, const FullType(String))
-            .toString());
+    final _path = r'/v1/ops/purchases/{id}/refunds'.replaceAll('{' r'id' '}', encodeQueryParameter(_serializers, id, const FullType(String)).toString());
     final _options = Options(
       method: r'GET',
       headers: <String, dynamic>{
@@ -4801,12 +4625,11 @@ class OpsApi {
 
     try {
       final rawResponse = _response.data;
-      _responseData = rawResponse == null
-          ? null
-          : _serializers.deserialize(
-              rawResponse,
-              specifiedType: const FullType(RefundInitiationCollectionResponse),
-            ) as RefundInitiationCollectionResponse;
+      _responseData = rawResponse == null ? null : _serializers.deserialize(
+        rawResponse,
+        specifiedType: const FullType(RefundInitiationCollectionResponse),
+      ) as RefundInitiationCollectionResponse;
+
     } catch (error, stackTrace) {
       throw DioException(
         requestOptions: _response.requestOptions,
@@ -4830,7 +4653,7 @@ class OpsApi {
   }
 
   /// list Schedules
-  ///
+  /// 
   ///
   /// Parameters:
   /// * [xTrotxiClient] - Compatibility metadata only, never grants a role.
@@ -4848,9 +4671,9 @@ class OpsApi {
   ///
   /// Returns a [Future] containing a [Response] with a [SchedulePage] as data
   /// Throws [DioException] if API call or serialization fails
-  Future<Response<SchedulePage>> listSchedules({
+  Future<Response<SchedulePage>> listSchedules({ 
     required String xTrotxiClient,
-    required int xTrotxiBuild,
+    int xTrotxiBuild = 1,
     String? cursor,
     int? limit = 50,
     String? routeId,
@@ -4885,15 +4708,9 @@ class OpsApi {
     );
 
     final _queryParameters = <String, dynamic>{
-      if (cursor != null)
-        r'cursor':
-            encodeQueryParameter(_serializers, cursor, const FullType(String)),
-      if (limit != null)
-        r'limit':
-            encodeQueryParameter(_serializers, limit, const FullType(int)),
-      if (routeId != null)
-        r'routeId':
-            encodeQueryParameter(_serializers, routeId, const FullType(String)),
+      if (cursor != null) r'cursor': encodeQueryParameter(_serializers, cursor, const FullType(String)),
+      if (limit != null) r'limit': encodeQueryParameter(_serializers, limit, const FullType(int)),
+      if (routeId != null) r'routeId': encodeQueryParameter(_serializers, routeId, const FullType(String)),
     };
 
     final _response = await _dio.request<Object>(
@@ -4909,12 +4726,11 @@ class OpsApi {
 
     try {
       final rawResponse = _response.data;
-      _responseData = rawResponse == null
-          ? null
-          : _serializers.deserialize(
-              rawResponse,
-              specifiedType: const FullType(SchedulePage),
-            ) as SchedulePage;
+      _responseData = rawResponse == null ? null : _serializers.deserialize(
+        rawResponse,
+        specifiedType: const FullType(SchedulePage),
+      ) as SchedulePage;
+
     } catch (error, stackTrace) {
       throw DioException(
         requestOptions: _response.requestOptions,
@@ -4938,7 +4754,7 @@ class OpsApi {
   }
 
   /// list Trace Holds
-  ///
+  /// 
   ///
   /// Parameters:
   /// * [xTrotxiClient] - Compatibility metadata only, never grants a role.
@@ -4955,9 +4771,9 @@ class OpsApi {
   ///
   /// Returns a [Future] containing a [Response] with a [TraceHoldPage] as data
   /// Throws [DioException] if API call or serialization fails
-  Future<Response<TraceHoldPage>> listTraceHolds({
+  Future<Response<TraceHoldPage>> listTraceHolds({ 
     required String xTrotxiClient,
-    required int xTrotxiBuild,
+    int xTrotxiBuild = 1,
     String? cursor,
     int? limit = 50,
     String? xTrotxiPlatform,
@@ -4991,12 +4807,8 @@ class OpsApi {
     );
 
     final _queryParameters = <String, dynamic>{
-      if (cursor != null)
-        r'cursor':
-            encodeQueryParameter(_serializers, cursor, const FullType(String)),
-      if (limit != null)
-        r'limit':
-            encodeQueryParameter(_serializers, limit, const FullType(int)),
+      if (cursor != null) r'cursor': encodeQueryParameter(_serializers, cursor, const FullType(String)),
+      if (limit != null) r'limit': encodeQueryParameter(_serializers, limit, const FullType(int)),
     };
 
     final _response = await _dio.request<Object>(
@@ -5012,12 +4824,11 @@ class OpsApi {
 
     try {
       final rawResponse = _response.data;
-      _responseData = rawResponse == null
-          ? null
-          : _serializers.deserialize(
-              rawResponse,
-              specifiedType: const FullType(TraceHoldPage),
-            ) as TraceHoldPage;
+      _responseData = rawResponse == null ? null : _serializers.deserialize(
+        rawResponse,
+        specifiedType: const FullType(TraceHoldPage),
+      ) as TraceHoldPage;
+
     } catch (error, stackTrace) {
       throw DioException(
         requestOptions: _response.requestOptions,
@@ -5041,16 +4852,16 @@ class OpsApi {
   }
 
   /// publish Pattern Version
-  ///
+  /// 
   ///
   /// Parameters:
-  /// * [id]
-  /// * [versionId]
+  /// * [id] 
+  /// * [versionId] 
   /// * [ifMatch] - Missing = 428; stale = 412. Completed idempotent replay is checked first after authorization.
   /// * [idempotencyKey] - Caller + operation + target scoped; payload mismatch = 409. Never log secrets.
   /// * [xTrotxiClient] - Compatibility metadata only, never grants a role.
   /// * [xTrotxiBuild] - Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
-  /// * [publishVersionInput]
+  /// * [publishVersionInput] 
   /// * [xTrotxiPlatform] - Required for commuter/driver, absent for ops/worker.
   /// * [cancelToken] - A [CancelToken] that can be used to cancel the operation
   /// * [headers] - Can be used to add additional headers to the request
@@ -5061,13 +4872,13 @@ class OpsApi {
   ///
   /// Returns a [Future] containing a [Response] with a [PatternVersionResponse] as data
   /// Throws [DioException] if API call or serialization fails
-  Future<Response<PatternVersionResponse>> publishPatternVersion({
+  Future<Response<PatternVersionResponse>> publishPatternVersion({ 
     required String id,
     required String versionId,
     required String ifMatch,
     required String idempotencyKey,
     required String xTrotxiClient,
-    required int xTrotxiBuild,
+    int xTrotxiBuild = 1,
     required PublishVersionInput publishVersionInput,
     String? xTrotxiPlatform,
     CancelToken? cancelToken,
@@ -5077,16 +4888,7 @@ class OpsApi {
     ProgressCallback? onSendProgress,
     ProgressCallback? onReceiveProgress,
   }) async {
-    final _path = r'/v1/ops/route-patterns/{id}/versions/{versionId}/publish'
-        .replaceAll(
-            '{' r'id' '}',
-            encodeQueryParameter(_serializers, id, const FullType(String))
-                .toString())
-        .replaceAll(
-            '{' r'versionId' '}',
-            encodeQueryParameter(
-                    _serializers, versionId, const FullType(String))
-                .toString());
+    final _path = r'/v1/ops/route-patterns/{id}/versions/{versionId}/publish'.replaceAll('{' r'id' '}', encodeQueryParameter(_serializers, id, const FullType(String)).toString()).replaceAll('{' r'versionId' '}', encodeQueryParameter(_serializers, versionId, const FullType(String)).toString());
     final _options = Options(
       method: r'POST',
       headers: <String, dynamic>{
@@ -5115,11 +4917,11 @@ class OpsApi {
 
     try {
       const _type = FullType(PublishVersionInput);
-      _bodyData =
-          _serializers.serialize(publishVersionInput, specifiedType: _type);
-    } catch (error, stackTrace) {
+      _bodyData = _serializers.serialize(publishVersionInput, specifiedType: _type);
+
+    } catch(error, stackTrace) {
       throw DioException(
-        requestOptions: _options.compose(
+         requestOptions: _options.compose(
           _dio.options,
           _path,
         ),
@@ -5142,12 +4944,11 @@ class OpsApi {
 
     try {
       final rawResponse = _response.data;
-      _responseData = rawResponse == null
-          ? null
-          : _serializers.deserialize(
-              rawResponse,
-              specifiedType: const FullType(PatternVersionResponse),
-            ) as PatternVersionResponse;
+      _responseData = rawResponse == null ? null : _serializers.deserialize(
+        rawResponse,
+        specifiedType: const FullType(PatternVersionResponse),
+      ) as PatternVersionResponse;
+
     } catch (error, stackTrace) {
       throw DioException(
         requestOptions: _response.requestOptions,
@@ -5171,16 +4972,16 @@ class OpsApi {
   }
 
   /// release Account Restriction
-  ///
+  /// 
   ///
   /// Parameters:
-  /// * [id]
-  /// * [restrictionId]
+  /// * [id] 
+  /// * [restrictionId] 
   /// * [ifMatch] - Missing = 428; stale = 412. Completed idempotent replay is checked first after authorization.
   /// * [idempotencyKey] - Caller + operation + target scoped; payload mismatch = 409. Never log secrets.
   /// * [xTrotxiClient] - Compatibility metadata only, never grants a role.
   /// * [xTrotxiBuild] - Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
-  /// * [reasonInput]
+  /// * [reasonInput] 
   /// * [xTrotxiPlatform] - Required for commuter/driver, absent for ops/worker.
   /// * [cancelToken] - A [CancelToken] that can be used to cancel the operation
   /// * [headers] - Can be used to add additional headers to the request
@@ -5191,13 +4992,13 @@ class OpsApi {
   ///
   /// Returns a [Future] containing a [Response] with a [RestrictionResponse] as data
   /// Throws [DioException] if API call or serialization fails
-  Future<Response<RestrictionResponse>> releaseAccountRestriction({
+  Future<Response<RestrictionResponse>> releaseAccountRestriction({ 
     required String id,
     required String restrictionId,
     required String ifMatch,
     required String idempotencyKey,
     required String xTrotxiClient,
-    required int xTrotxiBuild,
+    int xTrotxiBuild = 1,
     required ReasonInput reasonInput,
     String? xTrotxiPlatform,
     CancelToken? cancelToken,
@@ -5207,16 +5008,7 @@ class OpsApi {
     ProgressCallback? onSendProgress,
     ProgressCallback? onReceiveProgress,
   }) async {
-    final _path = r'/v1/ops/users/{id}/restrictions/{restrictionId}/release'
-        .replaceAll(
-            '{' r'id' '}',
-            encodeQueryParameter(_serializers, id, const FullType(String))
-                .toString())
-        .replaceAll(
-            '{' r'restrictionId' '}',
-            encodeQueryParameter(
-                    _serializers, restrictionId, const FullType(String))
-                .toString());
+    final _path = r'/v1/ops/users/{id}/restrictions/{restrictionId}/release'.replaceAll('{' r'id' '}', encodeQueryParameter(_serializers, id, const FullType(String)).toString()).replaceAll('{' r'restrictionId' '}', encodeQueryParameter(_serializers, restrictionId, const FullType(String)).toString());
     final _options = Options(
       method: r'POST',
       headers: <String, dynamic>{
@@ -5246,9 +5038,10 @@ class OpsApi {
     try {
       const _type = FullType(ReasonInput);
       _bodyData = _serializers.serialize(reasonInput, specifiedType: _type);
-    } catch (error, stackTrace) {
+
+    } catch(error, stackTrace) {
       throw DioException(
-        requestOptions: _options.compose(
+         requestOptions: _options.compose(
           _dio.options,
           _path,
         ),
@@ -5271,12 +5064,11 @@ class OpsApi {
 
     try {
       final rawResponse = _response.data;
-      _responseData = rawResponse == null
-          ? null
-          : _serializers.deserialize(
-              rawResponse,
-              specifiedType: const FullType(RestrictionResponse),
-            ) as RestrictionResponse;
+      _responseData = rawResponse == null ? null : _serializers.deserialize(
+        rawResponse,
+        specifiedType: const FullType(RestrictionResponse),
+      ) as RestrictionResponse;
+
     } catch (error, stackTrace) {
       throw DioException(
         requestOptions: _response.requestOptions,
@@ -5300,15 +5092,15 @@ class OpsApi {
   }
 
   /// release Trace Hold
-  ///
+  /// 
   ///
   /// Parameters:
-  /// * [id]
+  /// * [id] 
   /// * [ifMatch] - Missing = 428; stale = 412. Completed idempotent replay is checked first after authorization.
   /// * [idempotencyKey] - Caller + operation + target scoped; payload mismatch = 409. Never log secrets.
   /// * [xTrotxiClient] - Compatibility metadata only, never grants a role.
   /// * [xTrotxiBuild] - Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
-  /// * [reasonInput]
+  /// * [reasonInput] 
   /// * [xTrotxiPlatform] - Required for commuter/driver, absent for ops/worker.
   /// * [cancelToken] - A [CancelToken] that can be used to cancel the operation
   /// * [headers] - Can be used to add additional headers to the request
@@ -5319,12 +5111,12 @@ class OpsApi {
   ///
   /// Returns a [Future] containing a [Response] with a [TraceHoldResponse] as data
   /// Throws [DioException] if API call or serialization fails
-  Future<Response<TraceHoldResponse>> releaseTraceHold({
+  Future<Response<TraceHoldResponse>> releaseTraceHold({ 
     required String id,
     required String ifMatch,
     required String idempotencyKey,
     required String xTrotxiClient,
-    required int xTrotxiBuild,
+    int xTrotxiBuild = 1,
     required ReasonInput reasonInput,
     String? xTrotxiPlatform,
     CancelToken? cancelToken,
@@ -5334,10 +5126,7 @@ class OpsApi {
     ProgressCallback? onSendProgress,
     ProgressCallback? onReceiveProgress,
   }) async {
-    final _path = r'/v1/ops/trace-holds/{id}/release'.replaceAll(
-        '{' r'id' '}',
-        encodeQueryParameter(_serializers, id, const FullType(String))
-            .toString());
+    final _path = r'/v1/ops/trace-holds/{id}/release'.replaceAll('{' r'id' '}', encodeQueryParameter(_serializers, id, const FullType(String)).toString());
     final _options = Options(
       method: r'POST',
       headers: <String, dynamic>{
@@ -5367,9 +5156,10 @@ class OpsApi {
     try {
       const _type = FullType(ReasonInput);
       _bodyData = _serializers.serialize(reasonInput, specifiedType: _type);
-    } catch (error, stackTrace) {
+
+    } catch(error, stackTrace) {
       throw DioException(
-        requestOptions: _options.compose(
+         requestOptions: _options.compose(
           _dio.options,
           _path,
         ),
@@ -5392,12 +5182,11 @@ class OpsApi {
 
     try {
       final rawResponse = _response.data;
-      _responseData = rawResponse == null
-          ? null
-          : _serializers.deserialize(
-              rawResponse,
-              specifiedType: const FullType(TraceHoldResponse),
-            ) as TraceHoldResponse;
+      _responseData = rawResponse == null ? null : _serializers.deserialize(
+        rawResponse,
+        specifiedType: const FullType(TraceHoldResponse),
+      ) as TraceHoldResponse;
+
     } catch (error, stackTrace) {
       throw DioException(
         requestOptions: _response.requestOptions,
@@ -5421,15 +5210,15 @@ class OpsApi {
   }
 
   /// reschedule Trip
-  ///
+  /// 
   ///
   /// Parameters:
-  /// * [id]
+  /// * [id] 
   /// * [ifMatch] - Missing = 428; stale = 412. Completed idempotent replay is checked first after authorization.
   /// * [idempotencyKey] - Caller + operation + target scoped; payload mismatch = 409. Never log secrets.
   /// * [xTrotxiClient] - Compatibility metadata only, never grants a role.
   /// * [xTrotxiBuild] - Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
-  /// * [tripEdit]
+  /// * [tripEdit] 
   /// * [xTrotxiPlatform] - Required for commuter/driver, absent for ops/worker.
   /// * [cancelToken] - A [CancelToken] that can be used to cancel the operation
   /// * [headers] - Can be used to add additional headers to the request
@@ -5440,12 +5229,12 @@ class OpsApi {
   ///
   /// Returns a [Future] containing a [Response] with a [OpsTripResponse] as data
   /// Throws [DioException] if API call or serialization fails
-  Future<Response<OpsTripResponse>> rescheduleTrip({
+  Future<Response<OpsTripResponse>> rescheduleTrip({ 
     required String id,
     required String ifMatch,
     required String idempotencyKey,
     required String xTrotxiClient,
-    required int xTrotxiBuild,
+    int xTrotxiBuild = 1,
     required TripEdit tripEdit,
     String? xTrotxiPlatform,
     CancelToken? cancelToken,
@@ -5455,10 +5244,7 @@ class OpsApi {
     ProgressCallback? onSendProgress,
     ProgressCallback? onReceiveProgress,
   }) async {
-    final _path = r'/v1/ops/trips/{id}'.replaceAll(
-        '{' r'id' '}',
-        encodeQueryParameter(_serializers, id, const FullType(String))
-            .toString());
+    final _path = r'/v1/ops/trips/{id}'.replaceAll('{' r'id' '}', encodeQueryParameter(_serializers, id, const FullType(String)).toString());
     final _options = Options(
       method: r'PATCH',
       headers: <String, dynamic>{
@@ -5488,9 +5274,10 @@ class OpsApi {
     try {
       const _type = FullType(TripEdit);
       _bodyData = _serializers.serialize(tripEdit, specifiedType: _type);
-    } catch (error, stackTrace) {
+
+    } catch(error, stackTrace) {
       throw DioException(
-        requestOptions: _options.compose(
+         requestOptions: _options.compose(
           _dio.options,
           _path,
         ),
@@ -5513,12 +5300,11 @@ class OpsApi {
 
     try {
       final rawResponse = _response.data;
-      _responseData = rawResponse == null
-          ? null
-          : _serializers.deserialize(
-              rawResponse,
-              specifiedType: const FullType(OpsTripResponse),
-            ) as OpsTripResponse;
+      _responseData = rawResponse == null ? null : _serializers.deserialize(
+        rawResponse,
+        specifiedType: const FullType(OpsTripResponse),
+      ) as OpsTripResponse;
+
     } catch (error, stackTrace) {
       throw DioException(
         requestOptions: _response.requestOptions,
@@ -5542,14 +5328,14 @@ class OpsApi {
   }
 
   /// reset Driver Pin
-  ///
+  /// 
   ///
   /// Parameters:
-  /// * [id]
+  /// * [id] 
   /// * [idempotencyKey] - Caller + operation + target scoped; payload mismatch = 409. Never log secrets.
   /// * [xTrotxiClient] - Compatibility metadata only, never grants a role.
   /// * [xTrotxiBuild] - Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
-  /// * [reasonInput]
+  /// * [reasonInput] 
   /// * [xTrotxiPlatform] - Required for commuter/driver, absent for ops/worker.
   /// * [cancelToken] - A [CancelToken] that can be used to cancel the operation
   /// * [headers] - Can be used to add additional headers to the request
@@ -5560,11 +5346,11 @@ class OpsApi {
   ///
   /// Returns a [Future] containing a [Response] with a [CredentialSecretResponse] as data
   /// Throws [DioException] if API call or serialization fails
-  Future<Response<CredentialSecretResponse>> resetDriverPin({
+  Future<Response<CredentialSecretResponse>> resetDriverPin({ 
     required String id,
     required String idempotencyKey,
     required String xTrotxiClient,
-    required int xTrotxiBuild,
+    int xTrotxiBuild = 1,
     required ReasonInput reasonInput,
     String? xTrotxiPlatform,
     CancelToken? cancelToken,
@@ -5574,10 +5360,7 @@ class OpsApi {
     ProgressCallback? onSendProgress,
     ProgressCallback? onReceiveProgress,
   }) async {
-    final _path = r'/v1/ops/drivers/{id}/credentials/reset-pin'.replaceAll(
-        '{' r'id' '}',
-        encodeQueryParameter(_serializers, id, const FullType(String))
-            .toString());
+    final _path = r'/v1/ops/drivers/{id}/credentials/reset-pin'.replaceAll('{' r'id' '}', encodeQueryParameter(_serializers, id, const FullType(String)).toString());
     final _options = Options(
       method: r'POST',
       headers: <String, dynamic>{
@@ -5606,9 +5389,10 @@ class OpsApi {
     try {
       const _type = FullType(ReasonInput);
       _bodyData = _serializers.serialize(reasonInput, specifiedType: _type);
-    } catch (error, stackTrace) {
+
+    } catch(error, stackTrace) {
       throw DioException(
-        requestOptions: _options.compose(
+         requestOptions: _options.compose(
           _dio.options,
           _path,
         ),
@@ -5631,12 +5415,11 @@ class OpsApi {
 
     try {
       final rawResponse = _response.data;
-      _responseData = rawResponse == null
-          ? null
-          : _serializers.deserialize(
-              rawResponse,
-              specifiedType: const FullType(CredentialSecretResponse),
-            ) as CredentialSecretResponse;
+      _responseData = rawResponse == null ? null : _serializers.deserialize(
+        rawResponse,
+        specifiedType: const FullType(CredentialSecretResponse),
+      ) as CredentialSecretResponse;
+
     } catch (error, stackTrace) {
       throw DioException(
         requestOptions: _response.requestOptions,
@@ -5660,15 +5443,15 @@ class OpsApi {
   }
 
   /// resolve Payment Review
-  ///
+  /// 
   ///
   /// Parameters:
-  /// * [id]
+  /// * [id] 
   /// * [ifMatch] - Missing = 428; stale = 412. Completed idempotent replay is checked first after authorization.
   /// * [idempotencyKey] - Caller + operation + target scoped; payload mismatch = 409. Never log secrets.
   /// * [xTrotxiClient] - Compatibility metadata only, never grants a role.
   /// * [xTrotxiBuild] - Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
-  /// * [reviewDecision]
+  /// * [reviewDecision] 
   /// * [xTrotxiPlatform] - Required for commuter/driver, absent for ops/worker.
   /// * [cancelToken] - A [CancelToken] that can be used to cancel the operation
   /// * [headers] - Can be used to add additional headers to the request
@@ -5679,12 +5462,12 @@ class OpsApi {
   ///
   /// Returns a [Future] containing a [Response] with a [PaymentReviewResponse] as data
   /// Throws [DioException] if API call or serialization fails
-  Future<Response<PaymentReviewResponse>> resolvePaymentReview({
+  Future<Response<PaymentReviewResponse>> resolvePaymentReview({ 
     required String id,
     required String ifMatch,
     required String idempotencyKey,
     required String xTrotxiClient,
-    required int xTrotxiBuild,
+    int xTrotxiBuild = 1,
     required ReviewDecision reviewDecision,
     String? xTrotxiPlatform,
     CancelToken? cancelToken,
@@ -5694,10 +5477,7 @@ class OpsApi {
     ProgressCallback? onSendProgress,
     ProgressCallback? onReceiveProgress,
   }) async {
-    final _path = r'/v1/ops/payments/reviews/{id}/decisions'.replaceAll(
-        '{' r'id' '}',
-        encodeQueryParameter(_serializers, id, const FullType(String))
-            .toString());
+    final _path = r'/v1/ops/payments/reviews/{id}/decisions'.replaceAll('{' r'id' '}', encodeQueryParameter(_serializers, id, const FullType(String)).toString());
     final _options = Options(
       method: r'POST',
       headers: <String, dynamic>{
@@ -5727,9 +5507,10 @@ class OpsApi {
     try {
       const _type = FullType(ReviewDecision);
       _bodyData = _serializers.serialize(reviewDecision, specifiedType: _type);
-    } catch (error, stackTrace) {
+
+    } catch(error, stackTrace) {
       throw DioException(
-        requestOptions: _options.compose(
+         requestOptions: _options.compose(
           _dio.options,
           _path,
         ),
@@ -5752,12 +5533,11 @@ class OpsApi {
 
     try {
       final rawResponse = _response.data;
-      _responseData = rawResponse == null
-          ? null
-          : _serializers.deserialize(
-              rawResponse,
-              specifiedType: const FullType(PaymentReviewResponse),
-            ) as PaymentReviewResponse;
+      _responseData = rawResponse == null ? null : _serializers.deserialize(
+        rawResponse,
+        specifiedType: const FullType(PaymentReviewResponse),
+      ) as PaymentReviewResponse;
+
     } catch (error, stackTrace) {
       throw DioException(
         requestOptions: _response.requestOptions,
@@ -5781,15 +5561,15 @@ class OpsApi {
   }
 
   /// retire Commute Slot
-  ///
+  /// 
   ///
   /// Parameters:
-  /// * [id]
+  /// * [id] 
   /// * [ifMatch] - Missing = 428; stale = 412. Completed idempotent replay is checked first after authorization.
   /// * [idempotencyKey] - Caller + operation + target scoped; payload mismatch = 409. Never log secrets.
   /// * [xTrotxiClient] - Compatibility metadata only, never grants a role.
   /// * [xTrotxiBuild] - Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
-  /// * [reasonInput]
+  /// * [reasonInput] 
   /// * [xTrotxiPlatform] - Required for commuter/driver, absent for ops/worker.
   /// * [cancelToken] - A [CancelToken] that can be used to cancel the operation
   /// * [headers] - Can be used to add additional headers to the request
@@ -5800,12 +5580,12 @@ class OpsApi {
   ///
   /// Returns a [Future] containing a [Response] with a [CommuteSlotResponse] as data
   /// Throws [DioException] if API call or serialization fails
-  Future<Response<CommuteSlotResponse>> retireCommuteSlot({
+  Future<Response<CommuteSlotResponse>> retireCommuteSlot({ 
     required String id,
     required String ifMatch,
     required String idempotencyKey,
     required String xTrotxiClient,
-    required int xTrotxiBuild,
+    int xTrotxiBuild = 1,
     required ReasonInput reasonInput,
     String? xTrotxiPlatform,
     CancelToken? cancelToken,
@@ -5815,10 +5595,7 @@ class OpsApi {
     ProgressCallback? onSendProgress,
     ProgressCallback? onReceiveProgress,
   }) async {
-    final _path = r'/v1/ops/commute-slots/{id}/retire'.replaceAll(
-        '{' r'id' '}',
-        encodeQueryParameter(_serializers, id, const FullType(String))
-            .toString());
+    final _path = r'/v1/ops/commute-slots/{id}/retire'.replaceAll('{' r'id' '}', encodeQueryParameter(_serializers, id, const FullType(String)).toString());
     final _options = Options(
       method: r'POST',
       headers: <String, dynamic>{
@@ -5848,9 +5625,10 @@ class OpsApi {
     try {
       const _type = FullType(ReasonInput);
       _bodyData = _serializers.serialize(reasonInput, specifiedType: _type);
-    } catch (error, stackTrace) {
+
+    } catch(error, stackTrace) {
       throw DioException(
-        requestOptions: _options.compose(
+         requestOptions: _options.compose(
           _dio.options,
           _path,
         ),
@@ -5873,12 +5651,11 @@ class OpsApi {
 
     try {
       final rawResponse = _response.data;
-      _responseData = rawResponse == null
-          ? null
-          : _serializers.deserialize(
-              rawResponse,
-              specifiedType: const FullType(CommuteSlotResponse),
-            ) as CommuteSlotResponse;
+      _responseData = rawResponse == null ? null : _serializers.deserialize(
+        rawResponse,
+        specifiedType: const FullType(CommuteSlotResponse),
+      ) as CommuteSlotResponse;
+
     } catch (error, stackTrace) {
       throw DioException(
         requestOptions: _response.requestOptions,
@@ -5902,12 +5679,12 @@ class OpsApi {
   }
 
   /// run Personal Pause Resumes
-  ///
+  /// 
   ///
   /// Parameters:
   /// * [xTrotxiClient] - Compatibility metadata only, never grants a role.
   /// * [xTrotxiBuild] - Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
-  /// * [maintenanceInput]
+  /// * [maintenanceInput] 
   /// * [xTrotxiPlatform] - Required for commuter/driver, absent for ops/worker.
   /// * [cancelToken] - A [CancelToken] that can be used to cancel the operation
   /// * [headers] - Can be used to add additional headers to the request
@@ -5918,9 +5695,9 @@ class OpsApi {
   ///
   /// Returns a [Future] containing a [Response] with a [MaintenanceResultResponse] as data
   /// Throws [DioException] if API call or serialization fails
-  Future<Response<MaintenanceResultResponse>> runPersonalPauseResumes({
+  Future<Response<MaintenanceResultResponse>> runPersonalPauseResumes({ 
     required String xTrotxiClient,
-    required int xTrotxiBuild,
+    int xTrotxiBuild = 1,
     required MaintenanceInput maintenanceInput,
     String? xTrotxiPlatform,
     CancelToken? cancelToken,
@@ -5957,11 +5734,11 @@ class OpsApi {
 
     try {
       const _type = FullType(MaintenanceInput);
-      _bodyData =
-          _serializers.serialize(maintenanceInput, specifiedType: _type);
-    } catch (error, stackTrace) {
+      _bodyData = _serializers.serialize(maintenanceInput, specifiedType: _type);
+
+    } catch(error, stackTrace) {
       throw DioException(
-        requestOptions: _options.compose(
+         requestOptions: _options.compose(
           _dio.options,
           _path,
         ),
@@ -5984,12 +5761,11 @@ class OpsApi {
 
     try {
       final rawResponse = _response.data;
-      _responseData = rawResponse == null
-          ? null
-          : _serializers.deserialize(
-              rawResponse,
-              specifiedType: const FullType(MaintenanceResultResponse),
-            ) as MaintenanceResultResponse;
+      _responseData = rawResponse == null ? null : _serializers.deserialize(
+        rawResponse,
+        specifiedType: const FullType(MaintenanceResultResponse),
+      ) as MaintenanceResultResponse;
+
     } catch (error, stackTrace) {
       throw DioException(
         requestOptions: _response.requestOptions,
@@ -6013,15 +5789,15 @@ class OpsApi {
   }
 
   /// set Flag
-  ///
+  /// 
   ///
   /// Parameters:
-  /// * [key]
+  /// * [key] 
   /// * [ifMatch] - Missing = 428; stale = 412. Completed idempotent replay is checked first after authorization.
   /// * [idempotencyKey] - Caller + operation + target scoped; payload mismatch = 409. Never log secrets.
   /// * [xTrotxiClient] - Compatibility metadata only, never grants a role.
   /// * [xTrotxiBuild] - Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
-  /// * [flagEdit]
+  /// * [flagEdit] 
   /// * [xTrotxiPlatform] - Required for commuter/driver, absent for ops/worker.
   /// * [cancelToken] - A [CancelToken] that can be used to cancel the operation
   /// * [headers] - Can be used to add additional headers to the request
@@ -6032,12 +5808,12 @@ class OpsApi {
   ///
   /// Returns a [Future] containing a [Response] with a [FlagResponse] as data
   /// Throws [DioException] if API call or serialization fails
-  Future<Response<FlagResponse>> setFlag({
+  Future<Response<FlagResponse>> setFlag({ 
     required String key,
     required String ifMatch,
     required String idempotencyKey,
     required String xTrotxiClient,
-    required int xTrotxiBuild,
+    int xTrotxiBuild = 1,
     required FlagEdit flagEdit,
     String? xTrotxiPlatform,
     CancelToken? cancelToken,
@@ -6047,10 +5823,7 @@ class OpsApi {
     ProgressCallback? onSendProgress,
     ProgressCallback? onReceiveProgress,
   }) async {
-    final _path = r'/v1/ops/flags/{key}'.replaceAll(
-        '{' r'key' '}',
-        encodeQueryParameter(_serializers, key, const FullType(String))
-            .toString());
+    final _path = r'/v1/ops/flags/{key}'.replaceAll('{' r'key' '}', encodeQueryParameter(_serializers, key, const FullType(String)).toString());
     final _options = Options(
       method: r'PUT',
       headers: <String, dynamic>{
@@ -6080,9 +5853,10 @@ class OpsApi {
     try {
       const _type = FullType(FlagEdit);
       _bodyData = _serializers.serialize(flagEdit, specifiedType: _type);
-    } catch (error, stackTrace) {
+
+    } catch(error, stackTrace) {
       throw DioException(
-        requestOptions: _options.compose(
+         requestOptions: _options.compose(
           _dio.options,
           _path,
         ),
@@ -6105,12 +5879,11 @@ class OpsApi {
 
     try {
       final rawResponse = _response.data;
-      _responseData = rawResponse == null
-          ? null
-          : _serializers.deserialize(
-              rawResponse,
-              specifiedType: const FullType(FlagResponse),
-            ) as FlagResponse;
+      _responseData = rawResponse == null ? null : _serializers.deserialize(
+        rawResponse,
+        specifiedType: const FullType(FlagResponse),
+      ) as FlagResponse;
+
     } catch (error, stackTrace) {
       throw DioException(
         requestOptions: _response.requestOptions,
@@ -6134,16 +5907,16 @@ class OpsApi {
   }
 
   /// set Minimum Version
-  ///
+  /// 
   ///
   /// Parameters:
-  /// * [app]
-  /// * [platform]
+  /// * [app] 
+  /// * [platform] 
   /// * [ifMatch] - Missing = 428; stale = 412. Completed idempotent replay is checked first after authorization.
   /// * [idempotencyKey] - Caller + operation + target scoped; payload mismatch = 409. Never log secrets.
   /// * [xTrotxiClient] - Compatibility metadata only, never grants a role.
   /// * [xTrotxiBuild] - Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
-  /// * [minimumVersionEdit]
+  /// * [minimumVersionEdit] 
   /// * [xTrotxiPlatform] - Required for commuter/driver, absent for ops/worker.
   /// * [cancelToken] - A [CancelToken] that can be used to cancel the operation
   /// * [headers] - Can be used to add additional headers to the request
@@ -6154,13 +5927,13 @@ class OpsApi {
   ///
   /// Returns a [Future] containing a [Response] with a [MinimumVersionResponse] as data
   /// Throws [DioException] if API call or serialization fails
-  Future<Response<MinimumVersionResponse>> setMinimumVersion({
+  Future<Response<MinimumVersionResponse>> setMinimumVersion({ 
     required String app,
     required String platform,
     required String ifMatch,
     required String idempotencyKey,
     required String xTrotxiClient,
-    required int xTrotxiBuild,
+    int xTrotxiBuild = 1,
     required MinimumVersionEdit minimumVersionEdit,
     String? xTrotxiPlatform,
     CancelToken? cancelToken,
@@ -6170,15 +5943,7 @@ class OpsApi {
     ProgressCallback? onSendProgress,
     ProgressCallback? onReceiveProgress,
   }) async {
-    final _path = r'/v1/ops/min-versions/{app}/{platform}'
-        .replaceAll(
-            '{' r'app' '}',
-            encodeQueryParameter(_serializers, app, const FullType(String))
-                .toString())
-        .replaceAll(
-            '{' r'platform' '}',
-            encodeQueryParameter(_serializers, platform, const FullType(String))
-                .toString());
+    final _path = r'/v1/ops/min-versions/{app}/{platform}'.replaceAll('{' r'app' '}', encodeQueryParameter(_serializers, app, const FullType(String)).toString()).replaceAll('{' r'platform' '}', encodeQueryParameter(_serializers, platform, const FullType(String)).toString());
     final _options = Options(
       method: r'PUT',
       headers: <String, dynamic>{
@@ -6207,11 +5972,11 @@ class OpsApi {
 
     try {
       const _type = FullType(MinimumVersionEdit);
-      _bodyData =
-          _serializers.serialize(minimumVersionEdit, specifiedType: _type);
-    } catch (error, stackTrace) {
+      _bodyData = _serializers.serialize(minimumVersionEdit, specifiedType: _type);
+
+    } catch(error, stackTrace) {
       throw DioException(
-        requestOptions: _options.compose(
+         requestOptions: _options.compose(
           _dio.options,
           _path,
         ),
@@ -6234,12 +5999,11 @@ class OpsApi {
 
     try {
       final rawResponse = _response.data;
-      _responseData = rawResponse == null
-          ? null
-          : _serializers.deserialize(
-              rawResponse,
-              specifiedType: const FullType(MinimumVersionResponse),
-            ) as MinimumVersionResponse;
+      _responseData = rawResponse == null ? null : _serializers.deserialize(
+        rawResponse,
+        specifiedType: const FullType(MinimumVersionResponse),
+      ) as MinimumVersionResponse;
+
     } catch (error, stackTrace) {
       throw DioException(
         requestOptions: _response.requestOptions,
@@ -6263,15 +6027,15 @@ class OpsApi {
   }
 
   /// update Driver
-  ///
+  /// 
   ///
   /// Parameters:
-  /// * [id]
+  /// * [id] 
   /// * [ifMatch] - Missing = 428; stale = 412. Completed idempotent replay is checked first after authorization.
   /// * [idempotencyKey] - Caller + operation + target scoped; payload mismatch = 409. Never log secrets.
   /// * [xTrotxiClient] - Compatibility metadata only, never grants a role.
   /// * [xTrotxiBuild] - Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
-  /// * [driverEdit]
+  /// * [driverEdit] 
   /// * [xTrotxiPlatform] - Required for commuter/driver, absent for ops/worker.
   /// * [cancelToken] - A [CancelToken] that can be used to cancel the operation
   /// * [headers] - Can be used to add additional headers to the request
@@ -6282,12 +6046,12 @@ class OpsApi {
   ///
   /// Returns a [Future] containing a [Response] with a [DriverResponse] as data
   /// Throws [DioException] if API call or serialization fails
-  Future<Response<DriverResponse>> updateDriver({
+  Future<Response<DriverResponse>> updateDriver({ 
     required String id,
     required String ifMatch,
     required String idempotencyKey,
     required String xTrotxiClient,
-    required int xTrotxiBuild,
+    int xTrotxiBuild = 1,
     required DriverEdit driverEdit,
     String? xTrotxiPlatform,
     CancelToken? cancelToken,
@@ -6297,10 +6061,7 @@ class OpsApi {
     ProgressCallback? onSendProgress,
     ProgressCallback? onReceiveProgress,
   }) async {
-    final _path = r'/v1/ops/drivers/{id}'.replaceAll(
-        '{' r'id' '}',
-        encodeQueryParameter(_serializers, id, const FullType(String))
-            .toString());
+    final _path = r'/v1/ops/drivers/{id}'.replaceAll('{' r'id' '}', encodeQueryParameter(_serializers, id, const FullType(String)).toString());
     final _options = Options(
       method: r'PATCH',
       headers: <String, dynamic>{
@@ -6330,9 +6091,10 @@ class OpsApi {
     try {
       const _type = FullType(DriverEdit);
       _bodyData = _serializers.serialize(driverEdit, specifiedType: _type);
-    } catch (error, stackTrace) {
+
+    } catch(error, stackTrace) {
       throw DioException(
-        requestOptions: _options.compose(
+         requestOptions: _options.compose(
           _dio.options,
           _path,
         ),
@@ -6355,12 +6117,11 @@ class OpsApi {
 
     try {
       final rawResponse = _response.data;
-      _responseData = rawResponse == null
-          ? null
-          : _serializers.deserialize(
-              rawResponse,
-              specifiedType: const FullType(DriverResponse),
-            ) as DriverResponse;
+      _responseData = rawResponse == null ? null : _serializers.deserialize(
+        rawResponse,
+        specifiedType: const FullType(DriverResponse),
+      ) as DriverResponse;
+
     } catch (error, stackTrace) {
       throw DioException(
         requestOptions: _response.requestOptions,
@@ -6384,15 +6145,15 @@ class OpsApi {
   }
 
   /// update Plan Pricing
-  ///
+  /// 
   ///
   /// Parameters:
-  /// * [plan]
+  /// * [plan] 
   /// * [ifMatch] - Missing = 428; stale = 412. Completed idempotent replay is checked first after authorization.
   /// * [idempotencyKey] - Caller + operation + target scoped; payload mismatch = 409. Never log secrets.
   /// * [xTrotxiClient] - Compatibility metadata only, never grants a role.
   /// * [xTrotxiBuild] - Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
-  /// * [pricingEdit]
+  /// * [pricingEdit] 
   /// * [xTrotxiPlatform] - Required for commuter/driver, absent for ops/worker.
   /// * [cancelToken] - A [CancelToken] that can be used to cancel the operation
   /// * [headers] - Can be used to add additional headers to the request
@@ -6403,12 +6164,12 @@ class OpsApi {
   ///
   /// Returns a [Future] containing a [Response] with a [PlanPricingResponse] as data
   /// Throws [DioException] if API call or serialization fails
-  Future<Response<PlanPricingResponse>> updatePlanPricing({
+  Future<Response<PlanPricingResponse>> updatePlanPricing({ 
     required String plan,
     required String ifMatch,
     required String idempotencyKey,
     required String xTrotxiClient,
-    required int xTrotxiBuild,
+    int xTrotxiBuild = 1,
     required PricingEdit pricingEdit,
     String? xTrotxiPlatform,
     CancelToken? cancelToken,
@@ -6418,10 +6179,7 @@ class OpsApi {
     ProgressCallback? onSendProgress,
     ProgressCallback? onReceiveProgress,
   }) async {
-    final _path = r'/v1/ops/plan-pricing/{plan}'.replaceAll(
-        '{' r'plan' '}',
-        encodeQueryParameter(_serializers, plan, const FullType(String))
-            .toString());
+    final _path = r'/v1/ops/plan-pricing/{plan}'.replaceAll('{' r'plan' '}', encodeQueryParameter(_serializers, plan, const FullType(String)).toString());
     final _options = Options(
       method: r'PATCH',
       headers: <String, dynamic>{
@@ -6451,9 +6209,10 @@ class OpsApi {
     try {
       const _type = FullType(PricingEdit);
       _bodyData = _serializers.serialize(pricingEdit, specifiedType: _type);
-    } catch (error, stackTrace) {
+
+    } catch(error, stackTrace) {
       throw DioException(
-        requestOptions: _options.compose(
+         requestOptions: _options.compose(
           _dio.options,
           _path,
         ),
@@ -6476,12 +6235,11 @@ class OpsApi {
 
     try {
       final rawResponse = _response.data;
-      _responseData = rawResponse == null
-          ? null
-          : _serializers.deserialize(
-              rawResponse,
-              specifiedType: const FullType(PlanPricingResponse),
-            ) as PlanPricingResponse;
+      _responseData = rawResponse == null ? null : _serializers.deserialize(
+        rawResponse,
+        specifiedType: const FullType(PlanPricingResponse),
+      ) as PlanPricingResponse;
+
     } catch (error, stackTrace) {
       throw DioException(
         requestOptions: _response.requestOptions,
@@ -6505,15 +6263,15 @@ class OpsApi {
   }
 
   /// update Route
-  ///
+  /// 
   ///
   /// Parameters:
-  /// * [id]
+  /// * [id] 
   /// * [ifMatch] - Missing = 428; stale = 412. Completed idempotent replay is checked first after authorization.
   /// * [idempotencyKey] - Caller + operation + target scoped; payload mismatch = 409. Never log secrets.
   /// * [xTrotxiClient] - Compatibility metadata only, never grants a role.
   /// * [xTrotxiBuild] - Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
-  /// * [routeEdit]
+  /// * [routeEdit] 
   /// * [xTrotxiPlatform] - Required for commuter/driver, absent for ops/worker.
   /// * [cancelToken] - A [CancelToken] that can be used to cancel the operation
   /// * [headers] - Can be used to add additional headers to the request
@@ -6524,12 +6282,12 @@ class OpsApi {
   ///
   /// Returns a [Future] containing a [Response] with a [RouteResponse] as data
   /// Throws [DioException] if API call or serialization fails
-  Future<Response<RouteResponse>> updateRoute({
+  Future<Response<RouteResponse>> updateRoute({ 
     required String id,
     required String ifMatch,
     required String idempotencyKey,
     required String xTrotxiClient,
-    required int xTrotxiBuild,
+    int xTrotxiBuild = 1,
     required RouteEdit routeEdit,
     String? xTrotxiPlatform,
     CancelToken? cancelToken,
@@ -6539,10 +6297,7 @@ class OpsApi {
     ProgressCallback? onSendProgress,
     ProgressCallback? onReceiveProgress,
   }) async {
-    final _path = r'/v1/ops/routes/{id}'.replaceAll(
-        '{' r'id' '}',
-        encodeQueryParameter(_serializers, id, const FullType(String))
-            .toString());
+    final _path = r'/v1/ops/routes/{id}'.replaceAll('{' r'id' '}', encodeQueryParameter(_serializers, id, const FullType(String)).toString());
     final _options = Options(
       method: r'PATCH',
       headers: <String, dynamic>{
@@ -6572,9 +6327,10 @@ class OpsApi {
     try {
       const _type = FullType(RouteEdit);
       _bodyData = _serializers.serialize(routeEdit, specifiedType: _type);
-    } catch (error, stackTrace) {
+
+    } catch(error, stackTrace) {
       throw DioException(
-        requestOptions: _options.compose(
+         requestOptions: _options.compose(
           _dio.options,
           _path,
         ),
@@ -6597,12 +6353,11 @@ class OpsApi {
 
     try {
       final rawResponse = _response.data;
-      _responseData = rawResponse == null
-          ? null
-          : _serializers.deserialize(
-              rawResponse,
-              specifiedType: const FullType(RouteResponse),
-            ) as RouteResponse;
+      _responseData = rawResponse == null ? null : _serializers.deserialize(
+        rawResponse,
+        specifiedType: const FullType(RouteResponse),
+      ) as RouteResponse;
+
     } catch (error, stackTrace) {
       throw DioException(
         requestOptions: _response.requestOptions,
@@ -6626,15 +6381,15 @@ class OpsApi {
   }
 
   /// update Stop
-  ///
+  /// 
   ///
   /// Parameters:
-  /// * [id]
+  /// * [id] 
   /// * [ifMatch] - Missing = 428; stale = 412. Completed idempotent replay is checked first after authorization.
   /// * [idempotencyKey] - Caller + operation + target scoped; payload mismatch = 409. Never log secrets.
   /// * [xTrotxiClient] - Compatibility metadata only, never grants a role.
   /// * [xTrotxiBuild] - Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
-  /// * [stopEdit]
+  /// * [stopEdit] 
   /// * [xTrotxiPlatform] - Required for commuter/driver, absent for ops/worker.
   /// * [cancelToken] - A [CancelToken] that can be used to cancel the operation
   /// * [headers] - Can be used to add additional headers to the request
@@ -6645,12 +6400,12 @@ class OpsApi {
   ///
   /// Returns a [Future] containing a [Response] with a [StopResponse] as data
   /// Throws [DioException] if API call or serialization fails
-  Future<Response<StopResponse>> updateStop({
+  Future<Response<StopResponse>> updateStop({ 
     required String id,
     required String ifMatch,
     required String idempotencyKey,
     required String xTrotxiClient,
-    required int xTrotxiBuild,
+    int xTrotxiBuild = 1,
     required StopEdit stopEdit,
     String? xTrotxiPlatform,
     CancelToken? cancelToken,
@@ -6660,10 +6415,7 @@ class OpsApi {
     ProgressCallback? onSendProgress,
     ProgressCallback? onReceiveProgress,
   }) async {
-    final _path = r'/v1/ops/stops/{id}'.replaceAll(
-        '{' r'id' '}',
-        encodeQueryParameter(_serializers, id, const FullType(String))
-            .toString());
+    final _path = r'/v1/ops/stops/{id}'.replaceAll('{' r'id' '}', encodeQueryParameter(_serializers, id, const FullType(String)).toString());
     final _options = Options(
       method: r'PATCH',
       headers: <String, dynamic>{
@@ -6693,9 +6445,10 @@ class OpsApi {
     try {
       const _type = FullType(StopEdit);
       _bodyData = _serializers.serialize(stopEdit, specifiedType: _type);
-    } catch (error, stackTrace) {
+
+    } catch(error, stackTrace) {
       throw DioException(
-        requestOptions: _options.compose(
+         requestOptions: _options.compose(
           _dio.options,
           _path,
         ),
@@ -6718,12 +6471,11 @@ class OpsApi {
 
     try {
       final rawResponse = _response.data;
-      _responseData = rawResponse == null
-          ? null
-          : _serializers.deserialize(
-              rawResponse,
-              specifiedType: const FullType(StopResponse),
-            ) as StopResponse;
+      _responseData = rawResponse == null ? null : _serializers.deserialize(
+        rawResponse,
+        specifiedType: const FullType(StopResponse),
+      ) as StopResponse;
+
     } catch (error, stackTrace) {
       throw DioException(
         requestOptions: _response.requestOptions,
@@ -6747,15 +6499,15 @@ class OpsApi {
   }
 
   /// update Vehicle
-  ///
+  /// 
   ///
   /// Parameters:
-  /// * [id]
+  /// * [id] 
   /// * [ifMatch] - Missing = 428; stale = 412. Completed idempotent replay is checked first after authorization.
   /// * [idempotencyKey] - Caller + operation + target scoped; payload mismatch = 409. Never log secrets.
   /// * [xTrotxiClient] - Compatibility metadata only, never grants a role.
   /// * [xTrotxiBuild] - Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
-  /// * [vehicleEdit]
+  /// * [vehicleEdit] 
   /// * [xTrotxiPlatform] - Required for commuter/driver, absent for ops/worker.
   /// * [cancelToken] - A [CancelToken] that can be used to cancel the operation
   /// * [headers] - Can be used to add additional headers to the request
@@ -6766,12 +6518,12 @@ class OpsApi {
   ///
   /// Returns a [Future] containing a [Response] with a [VehicleResponse] as data
   /// Throws [DioException] if API call or serialization fails
-  Future<Response<VehicleResponse>> updateVehicle({
+  Future<Response<VehicleResponse>> updateVehicle({ 
     required String id,
     required String ifMatch,
     required String idempotencyKey,
     required String xTrotxiClient,
-    required int xTrotxiBuild,
+    int xTrotxiBuild = 1,
     required VehicleEdit vehicleEdit,
     String? xTrotxiPlatform,
     CancelToken? cancelToken,
@@ -6781,10 +6533,7 @@ class OpsApi {
     ProgressCallback? onSendProgress,
     ProgressCallback? onReceiveProgress,
   }) async {
-    final _path = r'/v1/ops/vehicles/{id}'.replaceAll(
-        '{' r'id' '}',
-        encodeQueryParameter(_serializers, id, const FullType(String))
-            .toString());
+    final _path = r'/v1/ops/vehicles/{id}'.replaceAll('{' r'id' '}', encodeQueryParameter(_serializers, id, const FullType(String)).toString());
     final _options = Options(
       method: r'PATCH',
       headers: <String, dynamic>{
@@ -6814,9 +6563,10 @@ class OpsApi {
     try {
       const _type = FullType(VehicleEdit);
       _bodyData = _serializers.serialize(vehicleEdit, specifiedType: _type);
-    } catch (error, stackTrace) {
+
+    } catch(error, stackTrace) {
       throw DioException(
-        requestOptions: _options.compose(
+         requestOptions: _options.compose(
           _dio.options,
           _path,
         ),
@@ -6839,12 +6589,11 @@ class OpsApi {
 
     try {
       final rawResponse = _response.data;
-      _responseData = rawResponse == null
-          ? null
-          : _serializers.deserialize(
-              rawResponse,
-              specifiedType: const FullType(VehicleResponse),
-            ) as VehicleResponse;
+      _responseData = rawResponse == null ? null : _serializers.deserialize(
+        rawResponse,
+        specifiedType: const FullType(VehicleResponse),
+      ) as VehicleResponse;
+
     } catch (error, stackTrace) {
       throw DioException(
         requestOptions: _response.requestOptions,
@@ -6866,4 +6615,5 @@ class OpsApi {
       extra: _response.extra,
     );
   }
+
 }

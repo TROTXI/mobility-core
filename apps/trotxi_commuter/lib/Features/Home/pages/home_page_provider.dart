@@ -1,9 +1,35 @@
 import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:trotxi_api_client/trotxi_api_client.dart';
 import 'package:trotxi_client/trotxi_client.dart';
 import 'package:trotxi_commuter/main.dart';
 
-typedef ReservationDto = MeReservationsGet200ResponseReservationsInner;
+typedef ReservationDto = Reservation;
+
+// =============================================================================
+// Client metadata (X-Trotxi-* headers)
+// =============================================================================
+
+final clientMetadataProvider = Provider<TrotxiClientMetadata>((ref) {
+  return TrotxiClientMetadata.forCurrentPlatform(client: 'commuter', build: 1);
+});
+
+final membershipProvider = FutureProvider.autoDispose<Membership>((ref) async {
+  final api = ref.watch(trotxiClientProvider).getRiderOwnApi();
+  final meta = ref.watch(clientMetadataProvider);
+  final response = await api.getMembership(
+    xTrotxiClient: meta.client,
+    xTrotxiBuild: meta.build,
+    xTrotxiPlatform: meta.platform,
+  );
+  final membership = response.data?.data; // MembershipResponse -> Membership
+  if (membership == null) throw StateError('Empty membership response');
+  return membership;
+});
+
+// =============================================================================
+// Status mapping
+// =============================================================================
 
 enum ReservationStatus {
   pending,
@@ -12,48 +38,33 @@ enum ReservationStatus {
   declined,
   unseated,
   noShow,
-  released,
   operatorCancelled,
 }
 
-ReservationStatus _mapStatus(
-  MeReservationsGet200ResponseReservationsInnerStatusEnum status,
-) {
-  if (status ==
-      MeReservationsGet200ResponseReservationsInnerStatusEnum.pending) {
-    return ReservationStatus.pending;
-  }
-  if (status ==
-      MeReservationsGet200ResponseReservationsInnerStatusEnum.reserved) {
+// ReservationStatusEnum is a built_value EnumClass, not a Dart enum,
+// so switches on it can't be exhaustive. Use an if-chain.
+ReservationStatus _mapStatus(ReservationStatusEnum status) {
+  if (status == ReservationStatusEnum.pending) return ReservationStatus.pending;
+  if (status == ReservationStatusEnum.reserved) {
     return ReservationStatus.reserved;
   }
-  if (status ==
-      MeReservationsGet200ResponseReservationsInnerStatusEnum.declined) {
+  if (status == ReservationStatusEnum.boarded) return ReservationStatus.boarded;
+  if (status == ReservationStatusEnum.declined) {
     return ReservationStatus.declined;
   }
-  if (status ==
-      MeReservationsGet200ResponseReservationsInnerStatusEnum.boarded) {
-    return ReservationStatus.boarded;
-  }
-  if (status ==
-      MeReservationsGet200ResponseReservationsInnerStatusEnum.noShow) {
-    return ReservationStatus.noShow;
-  }
-  if (status ==
-      MeReservationsGet200ResponseReservationsInnerStatusEnum.released) {
-    return ReservationStatus.released;
-  }
-  if (status ==
-      MeReservationsGet200ResponseReservationsInnerStatusEnum
-          .operatorCancelled) {
-    return ReservationStatus.operatorCancelled;
-  }
-  if (status ==
-      MeReservationsGet200ResponseReservationsInnerStatusEnum.unseated) {
+  if (status == ReservationStatusEnum.unseated) {
     return ReservationStatus.unseated;
+  }
+  if (status == ReservationStatusEnum.noShow) return ReservationStatus.noShow;
+  if (status == ReservationStatusEnum.operatorCancelled) {
+    return ReservationStatus.operatorCancelled;
   }
   throw StateError('Unhandled reservation status from API: $status');
 }
+
+// =============================================================================
+// Lifecycle state
+// =============================================================================
 
 class EtaPhase {
   final Duration? eta;
@@ -70,14 +81,20 @@ class RidePending extends RideLifecycleState {
 }
 
 class RideReserved extends RideLifecycleState {
+  final String reservationId;
   final String? tripId;
   final EtaPhase etaPhase;
-  const RideReserved({required this.tripId, required this.etaPhase});
+  const RideReserved({
+    required this.reservationId,
+    required this.tripId,
+    required this.etaPhase,
+  });
 }
 
 class RideBoarded extends RideLifecycleState {
-  final String tripId;
-  const RideBoarded({required this.tripId});
+  final String reservationId;
+  final String? tripId; // nullable: the API types it as String?
+  const RideBoarded({required this.reservationId, required this.tripId});
 }
 
 class RideDeclined extends RideLifecycleState {
@@ -90,10 +107,6 @@ class RideUnseated extends RideLifecycleState {
 
 class RideNoShow extends RideLifecycleState {
   const RideNoShow();
-}
-
-class RideReleased extends RideLifecycleState {
-  const RideReleased();
 }
 
 class RideOperatorCancelled extends RideLifecycleState {
@@ -109,34 +122,44 @@ abstract class ReservationRepository {
 }
 
 class DioReservationRepository implements ReservationRepository {
-  final ReservationsApi _api;
+  final RiderOwnApi _api;
+  final TrotxiClientMetadata _meta;
 
-  DioReservationRepository(this._api);
+  DioReservationRepository(this._api, this._meta);
 
   @override
   Future<ReservationDto?> fetchTodayReservation() async {
-    final today = DateTime.now().toIso8601String().split('T').first;
-    final response = await _api.meReservationsGet(from: today);
-    final reservations = response.data?.reservations;
+    // Africa/Accra is UTC+0 with no DST, so UTC is the Accra day.
+    final now = DateTime.now().toUtc();
+    final today = Date(now.year, now.month, now.day);
 
-    if (reservations == null) return null;
+    final response = await _api.listReservations(
+      xTrotxiClient: _meta.client,
+      xTrotxiBuild: _meta.build,
+      xTrotxiPlatform: _meta.platform,
+      fromDate: today,
+      toDate: today,
+    );
 
-    final wantedDirection = DateTime.now().hour < 12
-        ? MeReservationsGet200ResponseReservationsInnerDirectionEnum.morning
-        : MeReservationsGet200ResponseReservationsInnerDirectionEnum.evening;
+    final items = response.data?.data;
+    if (items == null || items.isEmpty) return null;
 
-    for (final r in reservations) {
-      if (r.travelDate == today && r.direction == wantedDirection) {
-        return r;
-      }
+    // Assumption: outbound = morning leg, return = evening leg.
+    final wanted = now.hour < 12
+        ? ReservationDirectionEnum.outbound
+        : ReservationDirectionEnum.return_;
+
+    for (final r in items) {
+      if (r.direction == wanted) return r;
     }
-    return null;
+    return items.first; // fall back to any reservation for today
   }
 }
 
 final reservationRepositoryProvider = Provider<ReservationRepository>((ref) {
   final client = ref.watch(trotxiClientProvider);
-  return DioReservationRepository(client.getReservationsApi());
+  final meta = ref.watch(clientMetadataProvider);
+  return DioReservationRepository(client.getRiderOwnApi(), meta);
 });
 
 // =============================================================================
@@ -145,28 +168,36 @@ final reservationRepositoryProvider = Provider<ReservationRepository>((ref) {
 
 class RideLifecycleNotifier extends AsyncNotifier<RideLifecycleState?> {
   @override
-  FutureOr<RideLifecycleState?> build() async {
+  Future<RideLifecycleState?> build() => _load();
+
+  Future<RideLifecycleState?> _load() async {
     final reservation = await ref
         .read(reservationRepositoryProvider)
         .fetchTodayReservation();
 
     if (reservation == null) return null;
 
-    final status = _mapStatus(reservation.status);
-
-    return switch (status) {
+    return switch (_mapStatus(reservation.status)) {
       ReservationStatus.pending => const RidePending(),
       ReservationStatus.reserved => RideReserved(
+        reservationId: reservation.id,
         tripId: reservation.tripId,
         etaPhase: const EtaPhase(isEstimated: true), // no live position yet
       ),
-      ReservationStatus.boarded => RideBoarded(tripId: reservation.tripId!),
+      ReservationStatus.boarded => RideBoarded(
+        reservationId: reservation.id,
+        tripId: reservation.tripId,
+      ),
       ReservationStatus.declined => const RideDeclined(),
       ReservationStatus.unseated => const RideUnseated(),
       ReservationStatus.noShow => const RideNoShow(),
-      ReservationStatus.released => const RideReleased(),
       ReservationStatus.operatorCancelled => const RideOperatorCancelled(),
     };
+  }
+
+  Future<void> refresh() async {
+    state = const AsyncLoading();
+    state = await AsyncValue.guard(_load);
   }
 }
 
