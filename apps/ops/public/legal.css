@@ -43,10 +43,15 @@ header {
   flex-wrap: wrap;
 }
 .brand {
-  font-size: 1.5rem;
-  font-weight: 750;
+  display: inline-flex;
   text-decoration: none;
   color: var(--ink);
+}
+.brand img {
+  display: block;
+  width: 150px;
+  max-width: 100%;
+  height: auto;
 }
 nav {
   display: flex;

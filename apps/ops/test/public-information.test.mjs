@@ -8,6 +8,20 @@ describe('public privacy and deletion pages', () => {
       const doc = new DOMParser().parseFromString(html, 'text/html');
       expect(doc.querySelectorAll('h1')).toHaveLength(1);
       expect(doc.querySelector('main#content')).not.toBeNull();
+      expect(doc.querySelector('.brand img')?.getAttribute('alt')).toBe('Trotxi');
+      expect(doc.querySelector('.brand img')?.getAttribute('src')).toBe(
+        './trotxi-wordmark-light.png',
+      );
+      expect(doc.querySelector('.brand source')?.getAttribute('srcset')).toBe(
+        './trotxi-wordmark-dark.png',
+      );
+      for (const variant of ['light', 'dark']) {
+        expect(
+          readFileSync(`public/trotxi-wordmark-${variant}.png`).equals(
+            readFileSync(`../trotxi_driver/assets/brand/trotxi-wordmark-${variant}.png`),
+          ),
+        ).toBe(true);
+      }
       expect(doc.querySelector('a.skip')?.getAttribute('href')).toBe('#content');
       expect(doc.querySelectorAll('script, iframe, form')).toHaveLength(0);
       expect(doc.querySelector('link[rel="stylesheet"]')?.getAttribute('href')).toBe('./legal.css');
