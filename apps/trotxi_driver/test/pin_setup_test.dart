@@ -197,6 +197,68 @@ void main() {
       expect(changed, 1);
     });
 
+    for (final status in [500, 502, 503, 504]) {
+      testWidgets(
+        'a first $status locks all PIN fields and preserves the retry',
+        (tester) async {
+          final auth = _Auth()
+            ..failures.add(ApiException(status, 'Server error'));
+          var changed = 0;
+          await _setup(
+            tester,
+            auth,
+            temporaryPin: null,
+            onChanged: () async => changed++,
+          );
+          await _type(tester, 'Temporary PIN', '481205');
+          await _type(tester, 'New PIN', '483920');
+          await _type(tester, 'Confirm new PIN', '483920');
+          await tester.tap(find.text('Save PIN'));
+          await tester.pumpAndSettle();
+          expect(
+            find.textContaining('may or may not have gone'),
+            findsOneWidget,
+          );
+          for (final label in ['Temporary PIN', 'New PIN', 'Confirm new PIN']) {
+            expect(
+              tester
+                  .widget<TextField>(find.widgetWithText(TextField, label))
+                  .enabled,
+              isFalse,
+            );
+          }
+        await tester.tap(find.text('Retry saving this PIN'));
+        await tester.pump();
+        await tester.pump();
+        expect(auth.changes, hasLength(2));
+          expect(auth.changes[1], auth.changes[0]);
+          expect(changed, 1);
+        },
+      );
+    }
+
+    testWidgets(
+      'a 502 followed by a revoked session keeps the outcome uncertain',
+      (tester) async {
+        final auth = _Auth()
+          ..failures.addAll([
+            const ApiException(502, 'Bad gateway'),
+            const UnauthorizedException(),
+          ]);
+        var uncertain = 0;
+        await _setup(tester, auth, onUncertain: () async => uncertain++);
+        await _type(tester, 'New PIN', '483920');
+        await _type(tester, 'Confirm new PIN', '483920');
+        await tester.tap(find.text('Save PIN'));
+        await tester.pumpAndSettle();
+      await tester.tap(find.text('Retry saving this PIN'));
+      await tester.pump();
+      await tester.pump();
+      expect(auth.changes[1], auth.changes[0]);
+        expect(uncertain, 1);
+      },
+    );
+
     testWidgets(
       'after a definite refusal the PIN can change, and a new PIN gets a new key',
       (tester) async {

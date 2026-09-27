@@ -164,6 +164,15 @@ class _PinSetupPageState extends State<PinSetupPage> {
       );
     } on ApiException catch (error) {
       // A 4xx is the server's answer; a 5xx says nothing about the outcome.
+      if (error.statusCode >= 500 && error.statusCode < 600) {
+        _uncertain = true;
+        _fail(
+          'No confirmed answer from Trotxi. The change may or may not have gone '
+          'through. Retry when you have signal: it sends the same PIN again, '
+          'which is safe.',
+        );
+        return;
+      }
       if (error.statusCode >= 400 && error.statusCode < 500) _settled();
       if (error.code == 'temporary_pin_expired') {
         setState(() => _expired = true);
