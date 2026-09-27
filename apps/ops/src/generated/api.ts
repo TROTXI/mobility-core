@@ -571,6 +571,23 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/v1/me/reservations/{id}': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** get Reservation */
+    get: operations['getReservation'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/v1/me/ride-entries': {
     parameters: {
       query?: never;
@@ -2430,10 +2447,20 @@ export interface components {
     };
     CredentialIssue: {
       code?: string;
+      emailInstructions?: boolean;
     };
     CredentialSecret: {
       code: string;
       pin: string;
+      /** Format: date-time */
+      temporaryPinExpiresAt: string;
+      email: {
+        id: string;
+        /** Format: email */
+        to: string;
+        /** @enum {string} */
+        state: 'queued';
+      } | null;
     };
     CredentialSecretResponse: {
       data: components['schemas']['CredentialSecret'];
@@ -2491,9 +2518,30 @@ export interface components {
       id: string;
       name: string;
       phone: string | null;
+      /** Format: email */
+      email: string | null;
       licenseNumber: string | null;
       userId: string | null;
       archived: boolean;
+      credential: {
+        driverCode: string;
+        /** @enum {string} */
+        status: 'active' | 'suspended';
+        mustChangePin: boolean;
+        /** Format: date-time */
+        temporaryPinExpiresAt: string | null;
+        /** Format: date-time */
+        lockedUntil: string | null;
+      } | null;
+      credentialEmail: {
+        /** @enum {string} */
+        purpose: 'onboarding' | 'pin_reset';
+        /** @enum {string} */
+        state: 'queued' | 'provider_accepted' | 'cancelled' | 'failed' | 'unknown';
+        failureCode: string | null;
+        /** Format: date-time */
+        queuedAt: string;
+      } | null;
       editToken: string;
       /** Format: date-time */
       createdAt: string;
@@ -2504,6 +2552,8 @@ export interface components {
     DriverEdit: {
       name?: string;
       phone?: string | null;
+      /** Format: email */
+      email?: string | null;
       licenseNumber?: string | null;
       userId?: string | null;
       archived?: boolean;
@@ -2511,6 +2561,8 @@ export interface components {
     DriverInput: {
       name: string;
       phone?: string;
+      /** Format: email */
+      email?: string;
       licenseNumber?: string;
       userId?: string;
     };
@@ -2533,6 +2585,8 @@ export interface components {
         /** @enum {string} */
         status: 'active' | 'suspended' | 'revoked';
         mustChangePin: boolean;
+        /** Format: date-time */
+        temporaryPinExpiresAt: string | null;
         /** Format: date-time */
         lockedUntil: string | null;
       } | null;
@@ -2558,6 +2612,8 @@ export interface components {
         name: string;
       };
       mustChangePin: boolean;
+      /** Format: date-time */
+      temporaryPinExpiresAt: string | null;
     };
     DriverTokensResponse: {
       data: components['schemas']['DriverTokens'];
@@ -3540,6 +3596,10 @@ export interface components {
       currentPin: string;
       newPin: string;
     };
+    PinResetInput: {
+      reason: string;
+      emailInstructions?: boolean;
+    };
     PlanPricing: {
       /** @enum {string} */
       plan: 'monthly' | 'annual';
@@ -3750,6 +3810,43 @@ export interface components {
     };
     ReservationDecisionResultResponse: {
       data: components['schemas']['ReservationDecisionResult'];
+    };
+    ReservationDetail: {
+      reservation: components['schemas']['Reservation'];
+      /** @description Current corridor name; the reservation does not snapshot route renames. */
+      route: {
+        id: string;
+        name: string;
+      } | null;
+      trip: {
+        id: string;
+        /**
+         * Format: date-time
+         * @description Operational scheduled departure, not a pickup-stop ETA.
+         */
+        scheduledAt: string;
+        /** @enum {string} */
+        status: 'scheduled' | 'active' | 'completed' | 'cancelled';
+        vehicleLabel: string | null;
+        vehiclePlate: string | null;
+      } | null;
+      /** @description Published stop-occurrence snapshot; null until a trip is assigned. */
+      pickupStop: {
+        occurrenceId: string;
+        name: string;
+        location: components['schemas']['Point'];
+        ordinal: number;
+      } | null;
+      /** @description Published stop-occurrence snapshot; null until a trip is assigned. */
+      dropoffStop: {
+        occurrenceId: string;
+        name: string;
+        location: components['schemas']['Point'];
+        ordinal: number;
+      } | null;
+    };
+    ReservationDetailResponse: {
+      data: components['schemas']['ReservationDetail'];
     };
     ReservationPage: {
       data: components['schemas']['Reservation'][];
@@ -6060,6 +6157,54 @@ export interface operations {
         };
         content: {
           'application/json': components['schemas']['ReservationPage'];
+        };
+      };
+      400: components['responses']['Error400'];
+      401: components['responses']['Error401'];
+      403: components['responses']['Error403'];
+      404: components['responses']['Error404'];
+      426: components['responses']['Error426'];
+      429: components['responses']['Error429'];
+      500: components['responses']['Error500'];
+      503: components['responses']['Error503'];
+    };
+  };
+  getReservation: {
+    parameters: {
+      query?: never;
+      header: {
+        /**
+         * @description Compatibility metadata only, never grants a role.
+         * @example commuter
+         */
+        'X-Trotxi-Client': 'commuter' | 'driver' | 'ops' | 'worker';
+        /**
+         * @description Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
+         * @example 1
+         */
+        'X-Trotxi-Build': number;
+        /**
+         * @description Required for commuter/driver, absent for ops/worker.
+         * @example ios
+         */
+        'X-Trotxi-Platform'?: 'ios' | 'android';
+      };
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Success */
+      200: {
+        headers: {
+          /** @description Opaque resource version; required on protected edits. */
+          ETag?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ReservationDetailResponse'];
         };
       };
       400: components['responses']['Error400'];
@@ -10068,7 +10213,7 @@ export interface operations {
     };
     requestBody: {
       content: {
-        'application/json': components['schemas']['ReasonInput'];
+        'application/json': components['schemas']['PinResetInput'];
       };
     };
     responses: {
