@@ -254,7 +254,13 @@ async function fixture(t: TestContext) {
       reason: 'Test state change',
     });
   const login = async (secret: { code: string; pin: string }) =>
-    data(await f.request('POST', '/v1/auth/driver', { ...secret, ownDevice: true }));
+    data(
+      await f.request('POST', '/v1/auth/driver', {
+        code: secret.code,
+        pin: secret.pin,
+        ownDevice: true,
+      }),
+    );
   return { ...f, ops, call, create, issue, reset, action, login };
 }
 
@@ -357,7 +363,8 @@ test('DRV-04: reset revokes all sessions atomically, replay preserves PIN and ob
       401,
     );
   assert.equal(
-    (await f.request('POST', '/v1/auth/driver', { ...old, ownDevice: true })).statusCode,
+    (await f.request('POST', '/v1/auth/driver', { code: old.code, pin: old.pin, ownDevice: true }))
+      .statusCode,
     401,
   );
   await f.login(fresh);
@@ -392,7 +399,12 @@ test('DRV-05: event failure rolls back reset, sessions and key; same-key retry s
     ).rows[0].pin_version,
     1,
   );
-  data(await f.request('GET', '/v1/me/sessions', undefined, session.accessToken));
+  // Still signed in: a temporary-PIN session may read its own record.
+  data(
+    await f.request('GET', '/v1/driver/me', undefined, session.accessToken, {
+      'x-trotxi-client': 'driver',
+    }),
+  );
   assert.equal(
     (
       await f.owner.query('SELECT count(*)::int AS n FROM app.driver_commands WHERE key_hash=$1', [
@@ -420,7 +432,13 @@ test('DRV-06: suspension, reset, unlock and activation remain distinct; revoked 
   assert.deepEqual(data(await f.reset(driver.id, key)), fresh);
   data(await f.action(driver.id, 'unlock'), 204);
   assert.equal(
-    (await f.request('POST', '/v1/auth/driver', { ...fresh, ownDevice: true })).statusCode,
+    (
+      await f.request('POST', '/v1/auth/driver', {
+        code: fresh.code,
+        pin: fresh.pin,
+        ownDevice: true,
+      })
+    ).statusCode,
     403,
   );
   data(await f.action(driver.id, 'activate'), 204);
@@ -656,7 +674,11 @@ test('DRV-13: concurrent sign-in and reset serialize on the principal; old PIN c
     session = await f.login(secret),
     blocker = await f.lockUser(session.account.id);
   const reset = f.reset(driver.id),
-    signin = f.request('POST', '/v1/auth/driver', { ...secret, ownDevice: true });
+    signin = f.request('POST', '/v1/auth/driver', {
+      code: secret.code,
+      pin: secret.pin,
+      ownDevice: true,
+    });
   try {
     await f.waitForWaiters(2);
   } finally {

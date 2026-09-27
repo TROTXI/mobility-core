@@ -14485,7 +14485,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/ReasonInput"
+                "$ref": "#/components/schemas/PinResetInput"
               }
             }
           }
@@ -18915,6 +18915,9 @@
             "type": "string",
             "minLength": 1,
             "maxLength": 32
+          },
+          "emailInstructions": {
+            "type": "boolean"
           }
         },
         "additionalProperties": false
@@ -18930,9 +18933,37 @@
           "pin": {
             "type": "string",
             "pattern": "^\\d{6}$"
+          },
+          "temporaryPinExpiresAt": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+          },
+          "email": {
+            "nullable": true,
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 128
+              },
+              "to": {
+                "type": "string",
+                "maxLength": 320,
+                "format": "email",
+                "pattern": "^(?!\\.)(?!.*\\.\\.)([A-Za-z0-9_'+\\-\\.]*)[A-Za-z0-9_+-]@([A-Za-z0-9][A-Za-z0-9\\-]*\\.)+[A-Za-z]{2,}$"
+              },
+              "state": {
+                "type": "string",
+                "enum": ["queued"]
+              }
+            },
+            "required": ["id", "to", "state"],
+            "additionalProperties": false
           }
         },
-        "required": ["code", "pin"],
+        "required": ["code", "pin", "temporaryPinExpiresAt", "email"],
         "additionalProperties": false
       },
       "CredentialSecretResponse": {
@@ -19126,6 +19157,13 @@
             "minLength": 1,
             "maxLength": 200
           },
+          "email": {
+            "nullable": true,
+            "type": "string",
+            "maxLength": 320,
+            "format": "email",
+            "pattern": "^(?!\\.)(?!.*\\.\\.)([A-Za-z0-9_'+\\-\\.]*)[A-Za-z0-9_+-]@([A-Za-z0-9][A-Za-z0-9\\-]*\\.)+[A-Za-z]{2,}$"
+          },
           "licenseNumber": {
             "nullable": true,
             "type": "string",
@@ -19140,6 +19178,71 @@
           },
           "archived": {
             "type": "boolean"
+          },
+          "credential": {
+            "nullable": true,
+            "type": "object",
+            "properties": {
+              "driverCode": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 32
+              },
+              "status": {
+                "type": "string",
+                "enum": ["active", "suspended"]
+              },
+              "mustChangePin": {
+                "type": "boolean"
+              },
+              "temporaryPinExpiresAt": {
+                "nullable": true,
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+              },
+              "lockedUntil": {
+                "nullable": true,
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+              }
+            },
+            "required": [
+              "driverCode",
+              "status",
+              "mustChangePin",
+              "temporaryPinExpiresAt",
+              "lockedUntil"
+            ],
+            "additionalProperties": false
+          },
+          "credentialEmail": {
+            "nullable": true,
+            "type": "object",
+            "properties": {
+              "purpose": {
+                "type": "string",
+                "enum": ["onboarding", "pin_reset"]
+              },
+              "state": {
+                "type": "string",
+                "enum": ["queued", "provider_accepted", "cancelled", "failed", "unknown"]
+              },
+              "failureCode": {
+                "nullable": true,
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 100
+              },
+              "queuedAt": {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+              }
+            },
+            "required": ["purpose", "state", "failureCode", "queuedAt"],
+            "additionalProperties": false
           },
           "editToken": {
             "type": "string",
@@ -19166,9 +19269,12 @@
           "id",
           "name",
           "phone",
+          "email",
           "licenseNumber",
           "userId",
           "archived",
+          "credential",
+          "credentialEmail",
           "editToken",
           "createdAt",
           "updatedAt",
@@ -19189,6 +19295,13 @@
             "type": "string",
             "minLength": 1,
             "maxLength": 200
+          },
+          "email": {
+            "nullable": true,
+            "type": "string",
+            "maxLength": 320,
+            "format": "email",
+            "pattern": "^(?!\\.)(?!.*\\.\\.)([A-Za-z0-9_'+\\-\\.]*)[A-Za-z0-9_+-]@([A-Za-z0-9][A-Za-z0-9\\-]*\\.)+[A-Za-z]{2,}$"
           },
           "licenseNumber": {
             "nullable": true,
@@ -19220,6 +19333,12 @@
             "type": "string",
             "minLength": 1,
             "maxLength": 200
+          },
+          "email": {
+            "type": "string",
+            "maxLength": 320,
+            "format": "email",
+            "pattern": "^(?!\\.)(?!.*\\.\\.)([A-Za-z0-9_'+\\-\\.]*)[A-Za-z0-9_+-]@([A-Za-z0-9][A-Za-z0-9\\-]*\\.)+[A-Za-z]{2,}$"
           },
           "licenseNumber": {
             "type": "string",
@@ -19312,6 +19431,12 @@
               "mustChangePin": {
                 "type": "boolean"
               },
+              "temporaryPinExpiresAt": {
+                "nullable": true,
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+              },
               "lockedUntil": {
                 "nullable": true,
                 "type": "string",
@@ -19319,7 +19444,13 @@
                 "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
               }
             },
-            "required": ["driverCode", "status", "mustChangePin", "lockedUntil"],
+            "required": [
+              "driverCode",
+              "status",
+              "mustChangePin",
+              "temporaryPinExpiresAt",
+              "lockedUntil"
+            ],
             "additionalProperties": false
           }
         },
@@ -19400,6 +19531,12 @@
           },
           "mustChangePin": {
             "type": "boolean"
+          },
+          "temporaryPinExpiresAt": {
+            "nullable": true,
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
           }
         },
         "required": [
@@ -19409,7 +19546,8 @@
           "refreshExpiresAt",
           "account",
           "driver",
-          "mustChangePin"
+          "mustChangePin",
+          "temporaryPinExpiresAt"
         ],
         "additionalProperties": false
       },
@@ -23313,6 +23451,20 @@
           }
         },
         "required": ["currentPin", "newPin"],
+        "additionalProperties": false
+      },
+      "PinResetInput": {
+        "type": "object",
+        "properties": {
+          "reason": {
+            "type": "string",
+            "maxLength": 2000
+          },
+          "emailInstructions": {
+            "type": "boolean"
+          }
+        },
+        "required": ["reason"],
         "additionalProperties": false
       },
       "PlanPricing": {

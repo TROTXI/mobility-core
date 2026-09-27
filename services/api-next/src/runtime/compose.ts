@@ -165,6 +165,7 @@ export async function composeBackend(config: RuntimeConfig): Promise<Backend> {
       pool,
       cursorSecret: config.keys.cursorSecret,
       credentialReplayKey: config.keys.credentialReplay,
+      ...(email ? { driverEmail: email } : {}),
       authProviders: config.providers,
       admit: (subject) => admission.spend(subject),
       // Do not retain raw network addresses in the disposable budget table.

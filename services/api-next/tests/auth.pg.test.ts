@@ -501,7 +501,9 @@ test('AUTH-08 / ID-07–08: shared-device TTL survives rotation, expired lock re
   const short = data(await f.request('POST', '/v1/auth/driver', input));
   assert.equal(short.account.role, 'driver');
   assert.equal(short.driver.id, driverId);
-  assert.equal(short.mustChangePin, true);
+  // Seeded with a private PIN: nothing operations issued is outstanding.
+  assert.equal(short.mustChangePin, false);
+  assert.equal(short.temporaryPinExpiresAt, null);
   assert.ok(Date.parse(short.refreshExpiresAt) - Date.now() < 12 * 3600000 + 1000);
   const next = data(
     await f.request('POST', '/v1/auth/refresh', { refreshToken: short.refreshToken }),
