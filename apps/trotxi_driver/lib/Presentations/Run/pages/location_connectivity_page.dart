@@ -45,6 +45,42 @@ class LocationConnectivityPage extends StatelessWidget {
                 ),
                 const SizedBox(height: AppSpacing.space16),
                 GpsIndicator(state: state, detail: _gpsDetail(positions)),
+                if (positions.uploadError != null) Text(positions.uploadError!),
+                if (positions.rejectedFixes > 0)
+                  ListTile(
+                    title: Text(
+                      '${positions.rejectedFixes} saved GPS positions were refused by Trotxi.',
+                    ),
+                    subtitle: const Text(
+                      'These positions were not accepted. Review this notice before removing the refused local copies. Other saved positions are kept.',
+                    ),
+                    trailing: TextButton(
+                      onPressed: () async {
+                        final confirmed = await showDialog<bool>(
+                          context: context,
+                          builder: (context) => AlertDialog(
+                            title: const Text('Remove refused GPS positions?'),
+                            content: const Text(
+                              'Trotxi refused these saved positions. Their local copies will be removed; all other saved positions stay queued.',
+                            ),
+                            actions: [
+                              TextButton(
+                                onPressed: () => Navigator.pop(context, false),
+                                child: const Text('Keep'),
+                              ),
+                              TextButton(
+                                onPressed: () => Navigator.pop(context, true),
+                                child: const Text('Remove refused'),
+                              ),
+                            ],
+                          ),
+                        );
+                        if (confirmed == true)
+                          await positions.acknowledgeRejections();
+                      },
+                      child: const Text('Remove refused'),
+                    ),
+                  ),
                 if (positions.expiredFixes > 0)
                   ListTile(
                     title: Text(

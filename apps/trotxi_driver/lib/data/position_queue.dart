@@ -1,6 +1,8 @@
 import 'dart:convert';
 import 'package:trotxi_client/scoped_token_store.dart';
 
+class PositionQueueFull implements Exception {}
+
 /// One encrypted, backend-scoped record in production. Writes are serialized;
 /// enqueue commits before upload and acknowledgement commits before removal.
 /// A full queue refuses new fixes instead of silently evicting unsent evidence.
@@ -20,6 +22,16 @@ class PositionQueue {
   List<Map<String, dynamic>> _rows = [];
   Future<void> _tail = Future.value();
   List<Map<String, dynamic>> get rows => List.unmodifiable(_rows);
+  int get rejectedFixes => _rows.where((row) => row['rejected'] != null).length;
+  Future<void> reject(String id, String reason) => _serial(
+    () => _save([
+      for (final row in _rows)
+        if (row['clientFixId'] == id) {...row, 'rejected': reason} else row,
+    ]),
+  );
+  Future<void> acknowledgeRejections() => _serial(
+    () => _save(_rows.where((row) => row['rejected'] == null).toList()),
+  );
   Future<T> _serial<T>(Future<T> Function() action) {
     final task = _tail.then((_) => action());
     _tail = task.then<void>((_) {}, onError: (Object _, StackTrace _) {});
@@ -76,7 +88,7 @@ class PositionQueue {
   }
 
   Future<void> add(Map<String, dynamic> row) => _serial(() async {
-    if (_rows.length >= limit) throw StateError('GPS queue is full');
+    if (_rows.length >= limit) throw PositionQueueFull();
     final next = [..._rows, Map<String, dynamic>.from(row)];
     next.sort(
       (a, b) =>
