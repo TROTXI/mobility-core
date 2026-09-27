@@ -527,6 +527,17 @@ class PositionPublisher extends ChangeNotifier {
           uploadError =
               rejectedReasons[error.code] ??
               'Trotxi refused a GPS upload (HTTP ${error.statusCode}). Retry or contact operations.';
+          if (error.code == 'collection_session_expired') {
+            // The API closed this run's collection window. Retrying these
+            // rows cannot recover them; keep them for explicit local review.
+            uploadError =
+                'This trip’s GPS collection window has expired. Review the refused saved positions before ending it.';
+            for (final row in queue.rows.where(
+              (row) => row['tripId'] == _runId && row['rejected'] == null,
+            )) {
+              await queue.reject(row['clientFixId'] as String, error.code!);
+            }
+          }
           if (rejectedReasons.containsKey(error.code)) {
             await queue.reject(saved['clientFixId'] as String, error.code!);
             _set(PositionSharing.failed);

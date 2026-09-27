@@ -538,6 +538,18 @@ void main() {
         expect(publisher.isPublishing, isFalse);
         expect(publisher.queue.rows, hasLength(1));
         expect(await publisher.start('trip-1'), PositionBlock.unavailable);
+        if (refusal.$2 == 'collection_session_expired') {
+          expect(publisher.rejectedFixes, 1);
+          await expectLater(
+            publisher.flushBeforeComplete('trip-1'),
+            throwsA(isA<ApiException>()),
+          );
+          await publisher.acknowledgeRejections();
+          await publisher.flushBeforeComplete('trip-1');
+          expect(publisher.queue.rows, isEmpty);
+        } else {
+          expect(publisher.rejectedFixes, 0);
+        }
         expect(publisher.isPublishing, isFalse);
       },
     );
