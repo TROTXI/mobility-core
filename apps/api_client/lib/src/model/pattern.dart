@@ -12,7 +12,6 @@ part 'pattern.g.dart';
 /// Pattern
 ///
 /// Properties:
-<<<<<<< HEAD
 /// * [id] 
 /// * [routeId] 
 /// * [direction] 
@@ -20,15 +19,6 @@ part 'pattern.g.dart';
 /// * [createdAt] 
 /// * [updatedAt] 
 /// * [version] 
-=======
-/// * [id]
-/// * [routeId]
-/// * [direction]
-/// * [publishedVersionId]
-/// * [createdAt]
-/// * [updatedAt]
-/// * [version]
->>>>>>> origin/main
 @BuiltValue()
 abstract class Pattern implements Built<Pattern, PatternBuilder> {
   @BuiltValueField(wireName: r'id')
@@ -92,19 +82,10 @@ class _$PatternSerializer implements PrimitiveSerializer<Pattern> {
       specifiedType: const FullType(PatternDirectionEnum),
     );
     yield r'publishedVersionId';
-<<<<<<< HEAD
     yield object.publishedVersionId == null ? null : serializers.serialize(
       object.publishedVersionId,
       specifiedType: const FullType.nullable(String),
     );
-=======
-    yield object.publishedVersionId == null
-        ? null
-        : serializers.serialize(
-            object.publishedVersionId,
-            specifiedType: const FullType.nullable(String),
-          );
->>>>>>> origin/main
     yield r'createdAt';
     yield serializers.serialize(
       object.createdAt,
@@ -128,13 +109,7 @@ class _$PatternSerializer implements PrimitiveSerializer<Pattern> {
     Pattern object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-<<<<<<< HEAD
     return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
-=======
-    return _serializeProperties(serializers, object,
-            specifiedType: specifiedType)
-        .toList();
->>>>>>> origin/main
   }
 
   void _deserializeProperties(
@@ -229,16 +204,12 @@ class _$PatternSerializer implements PrimitiveSerializer<Pattern> {
 }
 
 class PatternDirectionEnum extends EnumClass {
-<<<<<<< HEAD
 
-=======
->>>>>>> origin/main
   @BuiltValueEnumConst(wireName: r'outbound')
   static const PatternDirectionEnum outbound = _$patternDirectionEnum_outbound;
   @BuiltValueEnumConst(wireName: r'return')
   static const PatternDirectionEnum return_ = _$patternDirectionEnum_return_;
 
-<<<<<<< HEAD
   static Serializer<PatternDirectionEnum> get serializer => _$patternDirectionEnumSerializer;
 
   const PatternDirectionEnum._(String name): super(name);
@@ -247,15 +218,3 @@ class PatternDirectionEnum extends EnumClass {
   static PatternDirectionEnum valueOf(String name) => _$patternDirectionEnumValueOf(name);
 }
 
-=======
-  static Serializer<PatternDirectionEnum> get serializer =>
-      _$patternDirectionEnumSerializer;
-
-  const PatternDirectionEnum._(String name) : super(name);
-
-  static BuiltSet<PatternDirectionEnum> get values =>
-      _$patternDirectionEnumValues;
-  static PatternDirectionEnum valueOf(String name) =>
-      _$patternDirectionEnumValueOf(name);
-}
->>>>>>> origin/main

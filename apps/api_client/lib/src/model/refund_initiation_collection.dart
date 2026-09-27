@@ -13,54 +13,26 @@ part 'refund_initiation_collection.g.dart';
 /// RefundInitiationCollection
 ///
 /// Properties:
-<<<<<<< HEAD
 /// * [items] 
 @BuiltValue()
 abstract class RefundInitiationCollection implements Built<RefundInitiationCollection, RefundInitiationCollectionBuilder> {
-=======
-/// * [items]
-@BuiltValue()
-abstract class RefundInitiationCollection
-    implements
-        Built<RefundInitiationCollection, RefundInitiationCollectionBuilder> {
->>>>>>> origin/main
   @BuiltValueField(wireName: r'items')
   BuiltList<RefundInitiation> get items;
 
   RefundInitiationCollection._();
 
-<<<<<<< HEAD
   factory RefundInitiationCollection([void updates(RefundInitiationCollectionBuilder b)]) = _$RefundInitiationCollection;
-=======
-  factory RefundInitiationCollection(
-          [void updates(RefundInitiationCollectionBuilder b)]) =
-      _$RefundInitiationCollection;
->>>>>>> origin/main
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(RefundInitiationCollectionBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
-<<<<<<< HEAD
   static Serializer<RefundInitiationCollection> get serializer => _$RefundInitiationCollectionSerializer();
 }
 
 class _$RefundInitiationCollectionSerializer implements PrimitiveSerializer<RefundInitiationCollection> {
   @override
   final Iterable<Type> types = const [RefundInitiationCollection, _$RefundInitiationCollection];
-=======
-  static Serializer<RefundInitiationCollection> get serializer =>
-      _$RefundInitiationCollectionSerializer();
-}
-
-class _$RefundInitiationCollectionSerializer
-    implements PrimitiveSerializer<RefundInitiationCollection> {
-  @override
-  final Iterable<Type> types = const [
-    RefundInitiationCollection,
-    _$RefundInitiationCollection
-  ];
->>>>>>> origin/main
 
   @override
   final String wireName = r'RefundInitiationCollection';
@@ -83,13 +55,7 @@ class _$RefundInitiationCollectionSerializer
     RefundInitiationCollection object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-<<<<<<< HEAD
     return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
-=======
-    return _serializeProperties(serializers, object,
-            specifiedType: specifiedType)
-        .toList();
->>>>>>> origin/main
   }
 
   void _deserializeProperties(
@@ -107,12 +73,7 @@ class _$RefundInitiationCollectionSerializer
         case r'items':
           final valueDes = serializers.deserialize(
             value,
-<<<<<<< HEAD
             specifiedType: const FullType(BuiltList, [FullType(RefundInitiation)]),
-=======
-            specifiedType:
-                const FullType(BuiltList, [FullType(RefundInitiation)]),
->>>>>>> origin/main
           ) as BuiltList<RefundInitiation>;
           result.items.replace(valueDes);
           break;
@@ -144,7 +105,4 @@ class _$RefundInitiationCollectionSerializer
     return result.build();
   }
 }
-<<<<<<< HEAD
 
-=======
->>>>>>> origin/main

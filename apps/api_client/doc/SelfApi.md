@@ -11,13 +11,6 @@ Method | HTTP request | Description
 ------------- | ------------- | -------------
 [**deleteAvatar**](SelfApi.md#deleteavatar) | **DELETE** /v1/me/avatar | delete Avatar
 [**eraseAccount**](SelfApi.md#eraseaccount) | **DELETE** /v1/me | erase Account
-<<<<<<< HEAD
-[**getAccount**](SelfApi.md#getaccount) | **GET** /v1/me | get Account
-[**getAvatar**](SelfApi.md#getavatar) | **GET** /v1/me/avatar | get Avatar
-[**listSessions**](SelfApi.md#listsessions) | **GET** /v1/me/sessions | list Sessions
-[**registerDevice**](SelfApi.md#registerdevice) | **POST** /v1/me/devices | register Device
-[**revokeSession**](SelfApi.md#revokesession) | **DELETE** /v1/me/sessions/{id} | revoke Session
-=======
 [**finishPasskeyAuthentication**](SelfApi.md#finishpasskeyauthentication) | **POST** /v1/auth/passkeys/authentication/verification | finish Passkey Authentication
 [**finishPasskeyRegistration**](SelfApi.md#finishpasskeyregistration) | **POST** /v1/auth/passkeys/registration/verification | finish Passkey Registration
 [**getAccount**](SelfApi.md#getaccount) | **GET** /v1/me | get Account
@@ -28,7 +21,6 @@ Method | HTTP request | Description
 [**revokeSession**](SelfApi.md#revokesession) | **DELETE** /v1/me/sessions/{id} | revoke Session
 [**startPasskeyAuthentication**](SelfApi.md#startpasskeyauthentication) | **POST** /v1/auth/passkeys/authentication/options | start Passkey Authentication
 [**startPasskeyRegistration**](SelfApi.md#startpasskeyregistration) | **POST** /v1/auth/passkeys/registration/options | start Passkey Registration
->>>>>>> origin/main
 [**updateAccount**](SelfApi.md#updateaccount) | **PATCH** /v1/me | update Account
 [**uploadAvatar**](SelfApi.md#uploadavatar) | **PUT** /v1/me/avatar | upload Avatar
 
@@ -125,8 +117,6 @@ void (empty response body)
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
-<<<<<<< HEAD
-=======
 # **finishPasskeyAuthentication**
 > finishPasskeyAuthentication(xTrotxiClient, xTrotxiBuild, passkeyAuthenticationResponse, xTrotxiPlatform)
 
@@ -219,7 +209,6 @@ void (empty response body)
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
->>>>>>> origin/main
 # **getAccount**
 > AccountResponse getAccount(xTrotxiClient, xTrotxiBuild, xTrotxiPlatform)
 
@@ -310,8 +299,6 @@ Name | Type | Description  | Notes
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
-<<<<<<< HEAD
-=======
 # **getPasskeyStatus**
 > PasskeyStatusResponse getPasskeyStatus(xTrotxiClient, xTrotxiBuild, xTrotxiPlatform)
 
@@ -357,7 +344,6 @@ Name | Type | Description  | Notes
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
->>>>>>> origin/main
 # **listSessions**
 > SessionPage listSessions(xTrotxiClient, xTrotxiBuild, cursor, limit, xTrotxiPlatform)
 
@@ -504,8 +490,6 @@ void (empty response body)
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
-<<<<<<< HEAD
-=======
 # **startPasskeyAuthentication**
 > PasskeyAuthenticationOptionsResponse startPasskeyAuthentication(xTrotxiClient, xTrotxiBuild, xTrotxiPlatform)
 
@@ -596,7 +580,6 @@ Name | Type | Description  | Notes
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
->>>>>>> origin/main
 # **updateAccount**
 > AccountResponse updateAccount(idempotencyKey, xTrotxiClient, xTrotxiBuild, profileUpdate, xTrotxiPlatform)
 

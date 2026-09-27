@@ -14,18 +14,10 @@ part 'reservation_page.g.dart';
 /// ReservationPage
 ///
 /// Properties:
-<<<<<<< HEAD
 /// * [data] 
 /// * [page] 
 @BuiltValue()
 abstract class ReservationPage implements Built<ReservationPage, ReservationPageBuilder> {
-=======
-/// * [data]
-/// * [page]
-@BuiltValue()
-abstract class ReservationPage
-    implements Built<ReservationPage, ReservationPageBuilder> {
->>>>>>> origin/main
   @BuiltValueField(wireName: r'data')
   BuiltList<Reservation> get data;
 
@@ -34,30 +26,16 @@ abstract class ReservationPage
 
   ReservationPage._();
 
-<<<<<<< HEAD
   factory ReservationPage([void updates(ReservationPageBuilder b)]) = _$ReservationPage;
-=======
-  factory ReservationPage([void updates(ReservationPageBuilder b)]) =
-      _$ReservationPage;
->>>>>>> origin/main
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(ReservationPageBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
-<<<<<<< HEAD
   static Serializer<ReservationPage> get serializer => _$ReservationPageSerializer();
 }
 
 class _$ReservationPageSerializer implements PrimitiveSerializer<ReservationPage> {
-=======
-  static Serializer<ReservationPage> get serializer =>
-      _$ReservationPageSerializer();
-}
-
-class _$ReservationPageSerializer
-    implements PrimitiveSerializer<ReservationPage> {
->>>>>>> origin/main
   @override
   final Iterable<Type> types = const [ReservationPage, _$ReservationPage];
 
@@ -87,13 +65,7 @@ class _$ReservationPageSerializer
     ReservationPage object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-<<<<<<< HEAD
     return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
-=======
-    return _serializeProperties(serializers, object,
-            specifiedType: specifiedType)
-        .toList();
->>>>>>> origin/main
   }
 
   void _deserializeProperties(
@@ -150,7 +122,4 @@ class _$ReservationPageSerializer
     return result.build();
   }
 }
-<<<<<<< HEAD
 
-=======
->>>>>>> origin/main

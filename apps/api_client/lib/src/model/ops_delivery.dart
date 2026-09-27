@@ -12,15 +12,15 @@ part 'ops_delivery.g.dart';
 /// OpsDelivery
 ///
 /// Properties:
-/// * [id]
-/// * [channel]
-/// * [kind]
-/// * [userId]
-/// * [state]
-/// * [attempts]
-/// * [providerId]
-/// * [failureCode]
-/// * [createdAt]
+/// * [id] 
+/// * [channel] 
+/// * [kind] 
+/// * [userId] 
+/// * [state] 
+/// * [attempts] 
+/// * [providerId] 
+/// * [failureCode] 
+/// * [createdAt] 
 @BuiltValue()
 abstract class OpsDelivery implements Built<OpsDelivery, OpsDeliveryBuilder> {
   @BuiltValueField(wireName: r'id')
@@ -105,19 +105,15 @@ class _$OpsDeliverySerializer implements PrimitiveSerializer<OpsDelivery> {
       specifiedType: const FullType(int),
     );
     yield r'providerId';
-    yield object.providerId == null
-        ? null
-        : serializers.serialize(
-            object.providerId,
-            specifiedType: const FullType.nullable(String),
-          );
+    yield object.providerId == null ? null : serializers.serialize(
+      object.providerId,
+      specifiedType: const FullType.nullable(String),
+    );
     yield r'failureCode';
-    yield object.failureCode == null
-        ? null
-        : serializers.serialize(
-            object.failureCode,
-            specifiedType: const FullType.nullable(String),
-          );
+    yield object.failureCode == null ? null : serializers.serialize(
+      object.failureCode,
+      specifiedType: const FullType.nullable(String),
+    );
     yield r'createdAt';
     yield serializers.serialize(
       object.createdAt,
@@ -131,9 +127,7 @@ class _$OpsDeliverySerializer implements PrimitiveSerializer<OpsDelivery> {
     OpsDelivery object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    return _serializeProperties(serializers, object,
-            specifiedType: specifiedType)
-        .toList();
+    return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
   }
 
   void _deserializeProperties(
@@ -243,18 +237,17 @@ class _$OpsDeliverySerializer implements PrimitiveSerializer<OpsDelivery> {
 }
 
 class OpsDeliveryChannelEnum extends EnumClass {
+
   @BuiltValueEnumConst(wireName: r'email')
   static const OpsDeliveryChannelEnum email = _$opsDeliveryChannelEnum_email;
   @BuiltValueEnumConst(wireName: r'push')
   static const OpsDeliveryChannelEnum push = _$opsDeliveryChannelEnum_push;
 
-  static Serializer<OpsDeliveryChannelEnum> get serializer =>
-      _$opsDeliveryChannelEnumSerializer;
+  static Serializer<OpsDeliveryChannelEnum> get serializer => _$opsDeliveryChannelEnumSerializer;
 
-  const OpsDeliveryChannelEnum._(String name) : super(name);
+  const OpsDeliveryChannelEnum._(String name): super(name);
 
-  static BuiltSet<OpsDeliveryChannelEnum> get values =>
-      _$opsDeliveryChannelEnumValues;
-  static OpsDeliveryChannelEnum valueOf(String name) =>
-      _$opsDeliveryChannelEnumValueOf(name);
+  static BuiltSet<OpsDeliveryChannelEnum> get values => _$opsDeliveryChannelEnumValues;
+  static OpsDeliveryChannelEnum valueOf(String name) => _$opsDeliveryChannelEnumValueOf(name);
 }
+

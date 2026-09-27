@@ -15,10 +15,7 @@ Name | Type | Description | Notes
 **account** | [**Account**](Account.md) |  | 
 **driver** | [**DriverTokensDriver**](DriverTokensDriver.md) |  | 
 **mustChangePin** | **bool** |  | 
-<<<<<<< HEAD
-=======
 **temporaryPinExpiresAt** | [**DateTime**](DateTime.md) |  | 
->>>>>>> origin/main
 
 [[Back to Model list]](../README.md#documentation-for-models) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to README]](../README.md)
 

@@ -11,14 +11,14 @@ part 'ops_operator.g.dart';
 /// OpsOperator
 ///
 /// Properties:
-/// * [id]
-/// * [displayName]
-/// * [email]
-/// * [passkeyCount]
-/// * [activeSessions]
-/// * [lastPasskeyUsedAt]
-/// * [joinedAt]
-/// * [editToken]
+/// * [id] 
+/// * [displayName] 
+/// * [email] 
+/// * [passkeyCount] 
+/// * [activeSessions] 
+/// * [lastPasskeyUsedAt] 
+/// * [joinedAt] 
+/// * [editToken] 
 @BuiltValue()
 abstract class OpsOperator implements Built<OpsOperator, OpsOperatorBuilder> {
   @BuiltValueField(wireName: r'id')
@@ -79,12 +79,10 @@ class _$OpsOperatorSerializer implements PrimitiveSerializer<OpsOperator> {
       specifiedType: const FullType(String),
     );
     yield r'email';
-    yield object.email == null
-        ? null
-        : serializers.serialize(
-            object.email,
-            specifiedType: const FullType.nullable(String),
-          );
+    yield object.email == null ? null : serializers.serialize(
+      object.email,
+      specifiedType: const FullType.nullable(String),
+    );
     yield r'passkeyCount';
     yield serializers.serialize(
       object.passkeyCount,
@@ -96,12 +94,10 @@ class _$OpsOperatorSerializer implements PrimitiveSerializer<OpsOperator> {
       specifiedType: const FullType(int),
     );
     yield r'lastPasskeyUsedAt';
-    yield object.lastPasskeyUsedAt == null
-        ? null
-        : serializers.serialize(
-            object.lastPasskeyUsedAt,
-            specifiedType: const FullType.nullable(DateTime),
-          );
+    yield object.lastPasskeyUsedAt == null ? null : serializers.serialize(
+      object.lastPasskeyUsedAt,
+      specifiedType: const FullType.nullable(DateTime),
+    );
     yield r'joinedAt';
     yield serializers.serialize(
       object.joinedAt,
@@ -120,9 +116,7 @@ class _$OpsOperatorSerializer implements PrimitiveSerializer<OpsOperator> {
     OpsOperator object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    return _serializeProperties(serializers, object,
-            specifiedType: specifiedType)
-        .toList();
+    return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
   }
 
   void _deserializeProperties(
@@ -223,3 +217,4 @@ class _$OpsOperatorSerializer implements PrimitiveSerializer<OpsOperator> {
     return result.build();
   }
 }
+

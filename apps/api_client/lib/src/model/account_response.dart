@@ -12,45 +12,24 @@ part 'account_response.g.dart';
 /// AccountResponse
 ///
 /// Properties:
-<<<<<<< HEAD
 /// * [data] 
 @BuiltValue()
 abstract class AccountResponse implements Built<AccountResponse, AccountResponseBuilder> {
-=======
-/// * [data]
-@BuiltValue()
-abstract class AccountResponse
-    implements Built<AccountResponse, AccountResponseBuilder> {
->>>>>>> origin/main
   @BuiltValueField(wireName: r'data')
   Account get data;
 
   AccountResponse._();
 
-<<<<<<< HEAD
   factory AccountResponse([void updates(AccountResponseBuilder b)]) = _$AccountResponse;
-=======
-  factory AccountResponse([void updates(AccountResponseBuilder b)]) =
-      _$AccountResponse;
->>>>>>> origin/main
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(AccountResponseBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
-<<<<<<< HEAD
   static Serializer<AccountResponse> get serializer => _$AccountResponseSerializer();
 }
 
 class _$AccountResponseSerializer implements PrimitiveSerializer<AccountResponse> {
-=======
-  static Serializer<AccountResponse> get serializer =>
-      _$AccountResponseSerializer();
-}
-
-class _$AccountResponseSerializer
-    implements PrimitiveSerializer<AccountResponse> {
->>>>>>> origin/main
   @override
   final Iterable<Type> types = const [AccountResponse, _$AccountResponse];
 
@@ -75,13 +54,7 @@ class _$AccountResponseSerializer
     AccountResponse object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-<<<<<<< HEAD
     return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
-=======
-    return _serializeProperties(serializers, object,
-            specifiedType: specifiedType)
-        .toList();
->>>>>>> origin/main
   }
 
   void _deserializeProperties(
@@ -131,7 +104,4 @@ class _$AccountResponseSerializer
     return result.build();
   }
 }
-<<<<<<< HEAD
 
-=======
->>>>>>> origin/main

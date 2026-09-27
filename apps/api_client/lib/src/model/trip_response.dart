@@ -12,16 +12,9 @@ part 'trip_response.g.dart';
 /// TripResponse
 ///
 /// Properties:
-<<<<<<< HEAD
 /// * [data] 
 @BuiltValue()
 abstract class TripResponse implements Built<TripResponse, TripResponseBuilder> {
-=======
-/// * [data]
-@BuiltValue()
-abstract class TripResponse
-    implements Built<TripResponse, TripResponseBuilder> {
->>>>>>> origin/main
   @BuiltValueField(wireName: r'data')
   Trip get data;
 
@@ -61,13 +54,7 @@ class _$TripResponseSerializer implements PrimitiveSerializer<TripResponse> {
     TripResponse object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-<<<<<<< HEAD
     return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
-=======
-    return _serializeProperties(serializers, object,
-            specifiedType: specifiedType)
-        .toList();
->>>>>>> origin/main
   }
 
   void _deserializeProperties(
@@ -117,7 +104,4 @@ class _$TripResponseSerializer implements PrimitiveSerializer<TripResponse> {
     return result.build();
   }
 }
-<<<<<<< HEAD
 
-=======
->>>>>>> origin/main

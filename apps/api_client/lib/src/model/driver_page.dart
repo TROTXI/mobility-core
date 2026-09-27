@@ -14,13 +14,8 @@ part 'driver_page.g.dart';
 /// DriverPage
 ///
 /// Properties:
-<<<<<<< HEAD
 /// * [data] 
 /// * [page] 
-=======
-/// * [data]
-/// * [page]
->>>>>>> origin/main
 @BuiltValue()
 abstract class DriverPage implements Built<DriverPage, DriverPageBuilder> {
   @BuiltValueField(wireName: r'data')
@@ -70,13 +65,7 @@ class _$DriverPageSerializer implements PrimitiveSerializer<DriverPage> {
     DriverPage object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-<<<<<<< HEAD
     return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
-=======
-    return _serializeProperties(serializers, object,
-            specifiedType: specifiedType)
-        .toList();
->>>>>>> origin/main
   }
 
   void _deserializeProperties(
@@ -133,7 +122,4 @@ class _$DriverPageSerializer implements PrimitiveSerializer<DriverPage> {
     return result.build();
   }
 }
-<<<<<<< HEAD
 
-=======
->>>>>>> origin/main

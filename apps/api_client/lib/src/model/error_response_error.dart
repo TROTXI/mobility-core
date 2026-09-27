@@ -13,22 +13,12 @@ part 'error_response_error.g.dart';
 /// ErrorResponseError
 ///
 /// Properties:
-<<<<<<< HEAD
 /// * [code] 
 /// * [message] 
 /// * [requestId] 
 /// * [fieldErrors] 
 @BuiltValue()
 abstract class ErrorResponseError implements Built<ErrorResponseError, ErrorResponseErrorBuilder> {
-=======
-/// * [code]
-/// * [message]
-/// * [requestId]
-/// * [fieldErrors]
-@BuiltValue()
-abstract class ErrorResponseError
-    implements Built<ErrorResponseError, ErrorResponseErrorBuilder> {
->>>>>>> origin/main
   @BuiltValueField(wireName: r'code')
   String get code;
 
@@ -43,30 +33,16 @@ abstract class ErrorResponseError
 
   ErrorResponseError._();
 
-<<<<<<< HEAD
   factory ErrorResponseError([void updates(ErrorResponseErrorBuilder b)]) = _$ErrorResponseError;
-=======
-  factory ErrorResponseError([void updates(ErrorResponseErrorBuilder b)]) =
-      _$ErrorResponseError;
->>>>>>> origin/main
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(ErrorResponseErrorBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
-<<<<<<< HEAD
   static Serializer<ErrorResponseError> get serializer => _$ErrorResponseErrorSerializer();
 }
 
 class _$ErrorResponseErrorSerializer implements PrimitiveSerializer<ErrorResponseError> {
-=======
-  static Serializer<ErrorResponseError> get serializer =>
-      _$ErrorResponseErrorSerializer();
-}
-
-class _$ErrorResponseErrorSerializer
-    implements PrimitiveSerializer<ErrorResponseError> {
->>>>>>> origin/main
   @override
   final Iterable<Type> types = const [ErrorResponseError, _$ErrorResponseError];
 
@@ -97,12 +73,7 @@ class _$ErrorResponseErrorSerializer
       yield r'fieldErrors';
       yield serializers.serialize(
         object.fieldErrors,
-<<<<<<< HEAD
         specifiedType: const FullType(BuiltList, [FullType(ErrorResponseErrorFieldErrorsInner)]),
-=======
-        specifiedType: const FullType(
-            BuiltList, [FullType(ErrorResponseErrorFieldErrorsInner)]),
->>>>>>> origin/main
       );
     }
   }
@@ -113,13 +84,7 @@ class _$ErrorResponseErrorSerializer
     ErrorResponseError object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-<<<<<<< HEAD
     return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
-=======
-    return _serializeProperties(serializers, object,
-            specifiedType: specifiedType)
-        .toList();
->>>>>>> origin/main
   }
 
   void _deserializeProperties(
@@ -158,12 +123,7 @@ class _$ErrorResponseErrorSerializer
         case r'fieldErrors':
           final valueDes = serializers.deserialize(
             value,
-<<<<<<< HEAD
             specifiedType: const FullType(BuiltList, [FullType(ErrorResponseErrorFieldErrorsInner)]),
-=======
-            specifiedType: const FullType(
-                BuiltList, [FullType(ErrorResponseErrorFieldErrorsInner)]),
->>>>>>> origin/main
           ) as BuiltList<ErrorResponseErrorFieldErrorsInner>;
           result.fieldErrors.replace(valueDes);
           break;
@@ -195,7 +155,4 @@ class _$ErrorResponseErrorSerializer
     return result.build();
   }
 }
-<<<<<<< HEAD
 
-=======
->>>>>>> origin/main

@@ -11,17 +11,10 @@ part 'route_edit.g.dart';
 /// RouteEdit
 ///
 /// Properties:
-<<<<<<< HEAD
 /// * [name] 
 /// * [description] 
 /// * [acceptsDriverRequests] 
 /// * [archived] 
-=======
-/// * [name]
-/// * [description]
-/// * [acceptsDriverRequests]
-/// * [archived]
->>>>>>> origin/main
 @BuiltValue()
 abstract class RouteEdit implements Built<RouteEdit, RouteEditBuilder> {
   @BuiltValueField(wireName: r'name')
@@ -95,13 +88,7 @@ class _$RouteEditSerializer implements PrimitiveSerializer<RouteEdit> {
     RouteEdit object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-<<<<<<< HEAD
     return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
-=======
-    return _serializeProperties(serializers, object,
-            specifiedType: specifiedType)
-        .toList();
->>>>>>> origin/main
   }
 
   void _deserializeProperties(
@@ -173,7 +160,4 @@ class _$RouteEditSerializer implements PrimitiveSerializer<RouteEdit> {
     return result.build();
   }
 }
-<<<<<<< HEAD
 
-=======
->>>>>>> origin/main

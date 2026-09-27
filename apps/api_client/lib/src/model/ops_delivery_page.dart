@@ -14,11 +14,10 @@ part 'ops_delivery_page.g.dart';
 /// OpsDeliveryPage
 ///
 /// Properties:
-/// * [data]
-/// * [page]
+/// * [data] 
+/// * [page] 
 @BuiltValue()
-abstract class OpsDeliveryPage
-    implements Built<OpsDeliveryPage, OpsDeliveryPageBuilder> {
+abstract class OpsDeliveryPage implements Built<OpsDeliveryPage, OpsDeliveryPageBuilder> {
   @BuiltValueField(wireName: r'data')
   BuiltList<OpsDelivery> get data;
 
@@ -27,19 +26,16 @@ abstract class OpsDeliveryPage
 
   OpsDeliveryPage._();
 
-  factory OpsDeliveryPage([void updates(OpsDeliveryPageBuilder b)]) =
-      _$OpsDeliveryPage;
+  factory OpsDeliveryPage([void updates(OpsDeliveryPageBuilder b)]) = _$OpsDeliveryPage;
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(OpsDeliveryPageBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
-  static Serializer<OpsDeliveryPage> get serializer =>
-      _$OpsDeliveryPageSerializer();
+  static Serializer<OpsDeliveryPage> get serializer => _$OpsDeliveryPageSerializer();
 }
 
-class _$OpsDeliveryPageSerializer
-    implements PrimitiveSerializer<OpsDeliveryPage> {
+class _$OpsDeliveryPageSerializer implements PrimitiveSerializer<OpsDeliveryPage> {
   @override
   final Iterable<Type> types = const [OpsDeliveryPage, _$OpsDeliveryPage];
 
@@ -69,9 +65,7 @@ class _$OpsDeliveryPageSerializer
     OpsDeliveryPage object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    return _serializeProperties(serializers, object,
-            specifiedType: specifiedType)
-        .toList();
+    return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
   }
 
   void _deserializeProperties(
@@ -128,3 +122,4 @@ class _$OpsDeliveryPageSerializer
     return result.build();
   }
 }
+

@@ -12,34 +12,26 @@ part 'ops_rider_summary_response.g.dart';
 /// OpsRiderSummaryResponse
 ///
 /// Properties:
-/// * [data]
+/// * [data] 
 @BuiltValue()
-abstract class OpsRiderSummaryResponse
-    implements Built<OpsRiderSummaryResponse, OpsRiderSummaryResponseBuilder> {
+abstract class OpsRiderSummaryResponse implements Built<OpsRiderSummaryResponse, OpsRiderSummaryResponseBuilder> {
   @BuiltValueField(wireName: r'data')
   OpsRiderSummary get data;
 
   OpsRiderSummaryResponse._();
 
-  factory OpsRiderSummaryResponse(
-          [void updates(OpsRiderSummaryResponseBuilder b)]) =
-      _$OpsRiderSummaryResponse;
+  factory OpsRiderSummaryResponse([void updates(OpsRiderSummaryResponseBuilder b)]) = _$OpsRiderSummaryResponse;
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(OpsRiderSummaryResponseBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
-  static Serializer<OpsRiderSummaryResponse> get serializer =>
-      _$OpsRiderSummaryResponseSerializer();
+  static Serializer<OpsRiderSummaryResponse> get serializer => _$OpsRiderSummaryResponseSerializer();
 }
 
-class _$OpsRiderSummaryResponseSerializer
-    implements PrimitiveSerializer<OpsRiderSummaryResponse> {
+class _$OpsRiderSummaryResponseSerializer implements PrimitiveSerializer<OpsRiderSummaryResponse> {
   @override
-  final Iterable<Type> types = const [
-    OpsRiderSummaryResponse,
-    _$OpsRiderSummaryResponse
-  ];
+  final Iterable<Type> types = const [OpsRiderSummaryResponse, _$OpsRiderSummaryResponse];
 
   @override
   final String wireName = r'OpsRiderSummaryResponse';
@@ -62,9 +54,7 @@ class _$OpsRiderSummaryResponseSerializer
     OpsRiderSummaryResponse object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    return _serializeProperties(serializers, object,
-            specifiedType: specifiedType)
-        .toList();
+    return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
   }
 
   void _deserializeProperties(
@@ -114,3 +104,4 @@ class _$OpsRiderSummaryResponseSerializer
     return result.build();
   }
 }
+

@@ -14,7 +14,6 @@ void main() {
       // TODO
     });
 
-<<<<<<< HEAD
     // create Personal Pause
     //
     //Future<PersonalPauseResponse> createPersonalPause(String idempotencyKey, String xTrotxiClient, int xTrotxiBuild, PersonalPauseInput personalPauseInput, { String xTrotxiPlatform }) async
@@ -22,8 +21,6 @@ void main() {
       // TODO
     });
 
-=======
->>>>>>> origin/main
     // create Purchase
     //
     //Future<PurchaseResponse> createPurchase(String idempotencyKey, String xTrotxiClient, int xTrotxiBuild, PurchaseInput purchaseInput, { String xTrotxiPlatform }) async
@@ -45,7 +42,6 @@ void main() {
       // TODO
     });
 
-<<<<<<< HEAD
     // get Personal Pause
     //
     //Future<OptionalPersonalPauseResponse> getPersonalPause(String xTrotxiClient, int xTrotxiBuild, { String xTrotxiPlatform }) async
@@ -53,8 +49,6 @@ void main() {
       // TODO
     });
 
-=======
->>>>>>> origin/main
     // get Purchase
     //
     //Future<PurchaseResponse> getPurchase(String id, String xTrotxiClient, int xTrotxiBuild, { String xTrotxiPlatform }) async
@@ -76,7 +70,6 @@ void main() {
       // TODO
     });
 
-<<<<<<< HEAD
     // list Credit Entries
     //
     //Future<CreditEntryPage> listCreditEntries(String xTrotxiClient, int xTrotxiBuild, { String cursor, int limit, Date fromDate, Date toDate, String xTrotxiPlatform }) async
@@ -84,8 +77,6 @@ void main() {
       // TODO
     });
 
-=======
->>>>>>> origin/main
     // list Purchases
     //
     //Future<PurchasePage> listPurchases(String xTrotxiClient, int xTrotxiBuild, { String cursor, int limit, Date fromDate, Date toDate, String xTrotxiPlatform }) async
@@ -100,7 +91,6 @@ void main() {
       // TODO
     });
 
-<<<<<<< HEAD
     // list Ride Entries
     //
     //Future<RideEntryPage> listRideEntries(String xTrotxiClient, int xTrotxiBuild, { String cursor, int limit, Date fromDate, Date toDate, String xTrotxiPlatform }) async
@@ -129,8 +119,6 @@ void main() {
       // TODO
     });
 
-=======
->>>>>>> origin/main
     // withdraw Commute Request
     //
     //Future<CommuteRequestResponse> withdrawCommuteRequest(String id, String idempotencyKey, String xTrotxiClient, int xTrotxiBuild, { String xTrotxiPlatform }) async

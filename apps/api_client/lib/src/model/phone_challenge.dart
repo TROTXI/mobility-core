@@ -11,12 +11,11 @@ part 'phone_challenge.g.dart';
 /// PhoneChallenge
 ///
 /// Properties:
-/// * [challengeId]
-/// * [expiresAt]
-/// * [resendAfterSeconds]
+/// * [challengeId] 
+/// * [expiresAt] 
+/// * [resendAfterSeconds] 
 @BuiltValue()
-abstract class PhoneChallenge
-    implements Built<PhoneChallenge, PhoneChallengeBuilder> {
+abstract class PhoneChallenge implements Built<PhoneChallenge, PhoneChallengeBuilder> {
   @BuiltValueField(wireName: r'challengeId')
   String get challengeId;
 
@@ -28,19 +27,16 @@ abstract class PhoneChallenge
 
   PhoneChallenge._();
 
-  factory PhoneChallenge([void updates(PhoneChallengeBuilder b)]) =
-      _$PhoneChallenge;
+  factory PhoneChallenge([void updates(PhoneChallengeBuilder b)]) = _$PhoneChallenge;
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(PhoneChallengeBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
-  static Serializer<PhoneChallenge> get serializer =>
-      _$PhoneChallengeSerializer();
+  static Serializer<PhoneChallenge> get serializer => _$PhoneChallengeSerializer();
 }
 
-class _$PhoneChallengeSerializer
-    implements PrimitiveSerializer<PhoneChallenge> {
+class _$PhoneChallengeSerializer implements PrimitiveSerializer<PhoneChallenge> {
   @override
   final Iterable<Type> types = const [PhoneChallenge, _$PhoneChallenge];
 
@@ -75,9 +71,7 @@ class _$PhoneChallengeSerializer
     PhoneChallenge object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    return _serializeProperties(serializers, object,
-            specifiedType: specifiedType)
-        .toList();
+    return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
   }
 
   void _deserializeProperties(
@@ -141,3 +135,4 @@ class _$PhoneChallengeSerializer
     return result.build();
   }
 }
+

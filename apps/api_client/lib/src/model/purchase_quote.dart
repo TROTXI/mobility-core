@@ -13,7 +13,6 @@ part 'purchase_quote.g.dart';
 /// PurchaseQuote
 ///
 /// Properties:
-<<<<<<< HEAD
 /// * [routeId] 
 /// * [plan] 
 /// * [ridesGranted] 
@@ -28,23 +27,6 @@ part 'purchase_quote.g.dart';
 /// * [quotedAt] 
 @BuiltValue()
 abstract class PurchaseQuote implements Built<PurchaseQuote, PurchaseQuoteBuilder> {
-=======
-/// * [routeId]
-/// * [plan]
-/// * [ridesGranted]
-/// * [fare]
-/// * [price]
-/// * [availableCredit]
-/// * [appliedCredit]
-/// * [cashDue]
-/// * [minimumCashDue]
-/// * [renewalMode]
-/// * [binding]
-/// * [quotedAt]
-@BuiltValue()
-abstract class PurchaseQuote
-    implements Built<PurchaseQuote, PurchaseQuoteBuilder> {
->>>>>>> origin/main
   @BuiltValueField(wireName: r'routeId')
   String get routeId;
 
@@ -85,23 +67,13 @@ abstract class PurchaseQuote
 
   PurchaseQuote._();
 
-<<<<<<< HEAD
   factory PurchaseQuote([void updates(PurchaseQuoteBuilder b)]) = _$PurchaseQuote;
-=======
-  factory PurchaseQuote([void updates(PurchaseQuoteBuilder b)]) =
-      _$PurchaseQuote;
->>>>>>> origin/main
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(PurchaseQuoteBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
-<<<<<<< HEAD
   static Serializer<PurchaseQuote> get serializer => _$PurchaseQuoteSerializer();
-=======
-  static Serializer<PurchaseQuote> get serializer =>
-      _$PurchaseQuoteSerializer();
->>>>>>> origin/main
 }
 
 class _$PurchaseQuoteSerializer implements PrimitiveSerializer<PurchaseQuote> {
@@ -184,13 +156,7 @@ class _$PurchaseQuoteSerializer implements PrimitiveSerializer<PurchaseQuote> {
     PurchaseQuote object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-<<<<<<< HEAD
     return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
-=======
-    return _serializeProperties(serializers, object,
-            specifiedType: specifiedType)
-        .toList();
->>>>>>> origin/main
   }
 
   void _deserializeProperties(
@@ -319,16 +285,12 @@ class _$PurchaseQuoteSerializer implements PrimitiveSerializer<PurchaseQuote> {
 }
 
 class PurchaseQuotePlanEnum extends EnumClass {
-<<<<<<< HEAD
 
-=======
->>>>>>> origin/main
   @BuiltValueEnumConst(wireName: r'monthly')
   static const PurchaseQuotePlanEnum monthly = _$purchaseQuotePlanEnum_monthly;
   @BuiltValueEnumConst(wireName: r'annual')
   static const PurchaseQuotePlanEnum annual = _$purchaseQuotePlanEnum_annual;
 
-<<<<<<< HEAD
   static Serializer<PurchaseQuotePlanEnum> get serializer => _$purchaseQuotePlanEnumSerializer;
 
   const PurchaseQuotePlanEnum._(String name): super(name);
@@ -350,31 +312,3 @@ class PurchaseQuoteRenewalModeEnum extends EnumClass {
   static PurchaseQuoteRenewalModeEnum valueOf(String name) => _$purchaseQuoteRenewalModeEnumValueOf(name);
 }
 
-=======
-  static Serializer<PurchaseQuotePlanEnum> get serializer =>
-      _$purchaseQuotePlanEnumSerializer;
-
-  const PurchaseQuotePlanEnum._(String name) : super(name);
-
-  static BuiltSet<PurchaseQuotePlanEnum> get values =>
-      _$purchaseQuotePlanEnumValues;
-  static PurchaseQuotePlanEnum valueOf(String name) =>
-      _$purchaseQuotePlanEnumValueOf(name);
-}
-
-class PurchaseQuoteRenewalModeEnum extends EnumClass {
-  @BuiltValueEnumConst(wireName: r'manual')
-  static const PurchaseQuoteRenewalModeEnum manual =
-      _$purchaseQuoteRenewalModeEnum_manual;
-
-  static Serializer<PurchaseQuoteRenewalModeEnum> get serializer =>
-      _$purchaseQuoteRenewalModeEnumSerializer;
-
-  const PurchaseQuoteRenewalModeEnum._(String name) : super(name);
-
-  static BuiltSet<PurchaseQuoteRenewalModeEnum> get values =>
-      _$purchaseQuoteRenewalModeEnumValues;
-  static PurchaseQuoteRenewalModeEnum valueOf(String name) =>
-      _$purchaseQuoteRenewalModeEnumValueOf(name);
-}
->>>>>>> origin/main

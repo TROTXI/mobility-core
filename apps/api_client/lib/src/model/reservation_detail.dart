@@ -15,14 +15,13 @@ part 'reservation_detail.g.dart';
 /// ReservationDetail
 ///
 /// Properties:
-/// * [reservation]
-/// * [route]
-/// * [trip]
-/// * [pickupStop]
-/// * [dropoffStop]
+/// * [reservation] 
+/// * [route] 
+/// * [trip] 
+/// * [pickupStop] 
+/// * [dropoffStop] 
 @BuiltValue()
-abstract class ReservationDetail
-    implements Built<ReservationDetail, ReservationDetailBuilder> {
+abstract class ReservationDetail implements Built<ReservationDetail, ReservationDetailBuilder> {
   @BuiltValueField(wireName: r'reservation')
   Reservation get reservation;
 
@@ -40,19 +39,16 @@ abstract class ReservationDetail
 
   ReservationDetail._();
 
-  factory ReservationDetail([void updates(ReservationDetailBuilder b)]) =
-      _$ReservationDetail;
+  factory ReservationDetail([void updates(ReservationDetailBuilder b)]) = _$ReservationDetail;
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(ReservationDetailBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
-  static Serializer<ReservationDetail> get serializer =>
-      _$ReservationDetailSerializer();
+  static Serializer<ReservationDetail> get serializer => _$ReservationDetailSerializer();
 }
 
-class _$ReservationDetailSerializer
-    implements PrimitiveSerializer<ReservationDetail> {
+class _$ReservationDetailSerializer implements PrimitiveSerializer<ReservationDetail> {
   @override
   final Iterable<Type> types = const [ReservationDetail, _$ReservationDetail];
 
@@ -70,33 +66,25 @@ class _$ReservationDetailSerializer
       specifiedType: const FullType(Reservation),
     );
     yield r'route';
-    yield object.route == null
-        ? null
-        : serializers.serialize(
-            object.route,
-            specifiedType: const FullType.nullable(ReservationDetailRoute),
-          );
+    yield object.route == null ? null : serializers.serialize(
+      object.route,
+      specifiedType: const FullType.nullable(ReservationDetailRoute),
+    );
     yield r'trip';
-    yield object.trip == null
-        ? null
-        : serializers.serialize(
-            object.trip,
-            specifiedType: const FullType.nullable(ReservationDetailTrip),
-          );
+    yield object.trip == null ? null : serializers.serialize(
+      object.trip,
+      specifiedType: const FullType.nullable(ReservationDetailTrip),
+    );
     yield r'pickupStop';
-    yield object.pickupStop == null
-        ? null
-        : serializers.serialize(
-            object.pickupStop,
-            specifiedType: const FullType.nullable(ReservationDetailPickupStop),
-          );
+    yield object.pickupStop == null ? null : serializers.serialize(
+      object.pickupStop,
+      specifiedType: const FullType.nullable(ReservationDetailPickupStop),
+    );
     yield r'dropoffStop';
-    yield object.dropoffStop == null
-        ? null
-        : serializers.serialize(
-            object.dropoffStop,
-            specifiedType: const FullType.nullable(ReservationDetailPickupStop),
-          );
+    yield object.dropoffStop == null ? null : serializers.serialize(
+      object.dropoffStop,
+      specifiedType: const FullType.nullable(ReservationDetailPickupStop),
+    );
   }
 
   @override
@@ -105,9 +93,7 @@ class _$ReservationDetailSerializer
     ReservationDetail object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    return _serializeProperties(serializers, object,
-            specifiedType: specifiedType)
-        .toList();
+    return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
   }
 
   void _deserializeProperties(
@@ -189,3 +175,4 @@ class _$ReservationDetailSerializer
     return result.build();
   }
 }
+

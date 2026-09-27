@@ -13,22 +13,12 @@ part 'personal_pause_preview.g.dart';
 /// PersonalPausePreview
 ///
 /// Properties:
-<<<<<<< HEAD
 /// * [startDate] 
 /// * [resumeDate] 
 /// * [projectedEndsAt] 
 /// * [cancelledReservationIds] 
 @BuiltValue()
 abstract class PersonalPausePreview implements Built<PersonalPausePreview, PersonalPausePreviewBuilder> {
-=======
-/// * [startDate]
-/// * [resumeDate]
-/// * [projectedEndsAt]
-/// * [cancelledReservationIds]
-@BuiltValue()
-abstract class PersonalPausePreview
-    implements Built<PersonalPausePreview, PersonalPausePreviewBuilder> {
->>>>>>> origin/main
   @BuiltValueField(wireName: r'startDate')
   Date get startDate;
 
@@ -43,37 +33,18 @@ abstract class PersonalPausePreview
 
   PersonalPausePreview._();
 
-<<<<<<< HEAD
   factory PersonalPausePreview([void updates(PersonalPausePreviewBuilder b)]) = _$PersonalPausePreview;
-=======
-  factory PersonalPausePreview([void updates(PersonalPausePreviewBuilder b)]) =
-      _$PersonalPausePreview;
->>>>>>> origin/main
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(PersonalPausePreviewBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
-<<<<<<< HEAD
   static Serializer<PersonalPausePreview> get serializer => _$PersonalPausePreviewSerializer();
 }
 
 class _$PersonalPausePreviewSerializer implements PrimitiveSerializer<PersonalPausePreview> {
   @override
   final Iterable<Type> types = const [PersonalPausePreview, _$PersonalPausePreview];
-=======
-  static Serializer<PersonalPausePreview> get serializer =>
-      _$PersonalPausePreviewSerializer();
-}
-
-class _$PersonalPausePreviewSerializer
-    implements PrimitiveSerializer<PersonalPausePreview> {
-  @override
-  final Iterable<Type> types = const [
-    PersonalPausePreview,
-    _$PersonalPausePreview
-  ];
->>>>>>> origin/main
 
   @override
   final String wireName = r'PersonalPausePreview';
@@ -111,13 +82,7 @@ class _$PersonalPausePreviewSerializer
     PersonalPausePreview object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-<<<<<<< HEAD
     return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
-=======
-    return _serializeProperties(serializers, object,
-            specifiedType: specifiedType)
-        .toList();
->>>>>>> origin/main
   }
 
   void _deserializeProperties(
@@ -188,7 +153,4 @@ class _$PersonalPausePreviewSerializer
     return result.build();
   }
 }
-<<<<<<< HEAD
 
-=======
->>>>>>> origin/main

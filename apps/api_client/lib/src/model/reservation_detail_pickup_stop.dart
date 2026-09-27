@@ -12,14 +12,12 @@ part 'reservation_detail_pickup_stop.g.dart';
 /// Published stop-occurrence snapshot; null until a trip is assigned.
 ///
 /// Properties:
-/// * [occurrenceId]
-/// * [name]
-/// * [location]
-/// * [ordinal]
+/// * [occurrenceId] 
+/// * [name] 
+/// * [location] 
+/// * [ordinal] 
 @BuiltValue()
-abstract class ReservationDetailPickupStop
-    implements
-        Built<ReservationDetailPickupStop, ReservationDetailPickupStopBuilder> {
+abstract class ReservationDetailPickupStop implements Built<ReservationDetailPickupStop, ReservationDetailPickupStopBuilder> {
   @BuiltValueField(wireName: r'occurrenceId')
   String get occurrenceId;
 
@@ -34,25 +32,18 @@ abstract class ReservationDetailPickupStop
 
   ReservationDetailPickupStop._();
 
-  factory ReservationDetailPickupStop(
-          [void updates(ReservationDetailPickupStopBuilder b)]) =
-      _$ReservationDetailPickupStop;
+  factory ReservationDetailPickupStop([void updates(ReservationDetailPickupStopBuilder b)]) = _$ReservationDetailPickupStop;
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(ReservationDetailPickupStopBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
-  static Serializer<ReservationDetailPickupStop> get serializer =>
-      _$ReservationDetailPickupStopSerializer();
+  static Serializer<ReservationDetailPickupStop> get serializer => _$ReservationDetailPickupStopSerializer();
 }
 
-class _$ReservationDetailPickupStopSerializer
-    implements PrimitiveSerializer<ReservationDetailPickupStop> {
+class _$ReservationDetailPickupStopSerializer implements PrimitiveSerializer<ReservationDetailPickupStop> {
   @override
-  final Iterable<Type> types = const [
-    ReservationDetailPickupStop,
-    _$ReservationDetailPickupStop
-  ];
+  final Iterable<Type> types = const [ReservationDetailPickupStop, _$ReservationDetailPickupStop];
 
   @override
   final String wireName = r'ReservationDetailPickupStop';
@@ -90,9 +81,7 @@ class _$ReservationDetailPickupStopSerializer
     ReservationDetailPickupStop object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    return _serializeProperties(serializers, object,
-            specifiedType: specifiedType)
-        .toList();
+    return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
   }
 
   void _deserializeProperties(
@@ -163,3 +152,4 @@ class _$ReservationDetailPickupStopSerializer
     return result.build();
   }
 }
+

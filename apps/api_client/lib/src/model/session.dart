@@ -11,17 +11,10 @@ part 'session.g.dart';
 /// Session
 ///
 /// Properties:
-<<<<<<< HEAD
 /// * [id] 
 /// * [createdAt] 
 /// * [expiresAt] 
 /// * [current] 
-=======
-/// * [id]
-/// * [createdAt]
-/// * [expiresAt]
-/// * [current]
->>>>>>> origin/main
 @BuiltValue()
 abstract class Session implements Built<Session, SessionBuilder> {
   @BuiltValueField(wireName: r'id')
@@ -87,13 +80,7 @@ class _$SessionSerializer implements PrimitiveSerializer<Session> {
     Session object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-<<<<<<< HEAD
     return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
-=======
-    return _serializeProperties(serializers, object,
-            specifiedType: specifiedType)
-        .toList();
->>>>>>> origin/main
   }
 
   void _deserializeProperties(
@@ -164,7 +151,4 @@ class _$SessionSerializer implements PrimitiveSerializer<Session> {
     return result.build();
   }
 }
-<<<<<<< HEAD
 
-=======
->>>>>>> origin/main

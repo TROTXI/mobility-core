@@ -12,19 +12,11 @@ part 'ride_entry.g.dart';
 /// RideEntry
 ///
 /// Properties:
-<<<<<<< HEAD
 /// * [id] 
 /// * [deltaRides] 
 /// * [reason] 
 /// * [billingPeriodId] 
 /// * [createdAt] 
-=======
-/// * [id]
-/// * [deltaRides]
-/// * [reason]
-/// * [billingPeriodId]
-/// * [createdAt]
->>>>>>> origin/main
 @BuiltValue()
 abstract class RideEntry implements Built<RideEntry, RideEntryBuilder> {
   @BuiltValueField(wireName: r'id')
@@ -99,13 +91,7 @@ class _$RideEntrySerializer implements PrimitiveSerializer<RideEntry> {
     RideEntry object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-<<<<<<< HEAD
     return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
-=======
-    return _serializeProperties(serializers, object,
-            specifiedType: specifiedType)
-        .toList();
->>>>>>> origin/main
   }
 
   void _deserializeProperties(
@@ -185,15 +171,9 @@ class _$RideEntrySerializer implements PrimitiveSerializer<RideEntry> {
 }
 
 class RideEntryReasonEnum extends EnumClass {
-<<<<<<< HEAD
 
   @BuiltValueEnumConst(wireName: r'allocation')
   static const RideEntryReasonEnum allocation = _$rideEntryReasonEnum_allocation;
-=======
-  @BuiltValueEnumConst(wireName: r'allocation')
-  static const RideEntryReasonEnum allocation =
-      _$rideEntryReasonEnum_allocation;
->>>>>>> origin/main
   @BuiltValueEnumConst(wireName: r'boarding')
   static const RideEntryReasonEnum boarding = _$rideEntryReasonEnum_boarding;
   @BuiltValueEnumConst(wireName: r'no_show')
@@ -205,7 +185,6 @@ class RideEntryReasonEnum extends EnumClass {
   @BuiltValueEnumConst(wireName: r'converted')
   static const RideEntryReasonEnum converted = _$rideEntryReasonEnum_converted;
 
-<<<<<<< HEAD
   static Serializer<RideEntryReasonEnum> get serializer => _$rideEntryReasonEnumSerializer;
 
   const RideEntryReasonEnum._(String name): super(name);
@@ -214,15 +193,3 @@ class RideEntryReasonEnum extends EnumClass {
   static RideEntryReasonEnum valueOf(String name) => _$rideEntryReasonEnumValueOf(name);
 }
 
-=======
-  static Serializer<RideEntryReasonEnum> get serializer =>
-      _$rideEntryReasonEnumSerializer;
-
-  const RideEntryReasonEnum._(String name) : super(name);
-
-  static BuiltSet<RideEntryReasonEnum> get values =>
-      _$rideEntryReasonEnumValues;
-  static RideEntryReasonEnum valueOf(String name) =>
-      _$rideEntryReasonEnumValueOf(name);
-}
->>>>>>> origin/main

@@ -11,10 +11,7 @@ Name | Type | Description | Notes
 **driverCode** | **String** |  | 
 **status** | **String** |  | 
 **mustChangePin** | **bool** |  | 
-<<<<<<< HEAD
-=======
 **temporaryPinExpiresAt** | [**DateTime**](DateTime.md) |  | 
->>>>>>> origin/main
 **lockedUntil** | [**DateTime**](DateTime.md) |  | 
 
 [[Back to Model list]](../README.md#documentation-for-models) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to README]](../README.md)

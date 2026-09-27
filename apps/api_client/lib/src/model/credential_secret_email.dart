@@ -12,12 +12,11 @@ part 'credential_secret_email.g.dart';
 /// CredentialSecretEmail
 ///
 /// Properties:
-/// * [id]
-/// * [to]
-/// * [state]
+/// * [id] 
+/// * [to] 
+/// * [state] 
 @BuiltValue()
-abstract class CredentialSecretEmail
-    implements Built<CredentialSecretEmail, CredentialSecretEmailBuilder> {
+abstract class CredentialSecretEmail implements Built<CredentialSecretEmail, CredentialSecretEmailBuilder> {
   @BuiltValueField(wireName: r'id')
   String get id;
 
@@ -30,24 +29,18 @@ abstract class CredentialSecretEmail
 
   CredentialSecretEmail._();
 
-  factory CredentialSecretEmail(
-      [void updates(CredentialSecretEmailBuilder b)]) = _$CredentialSecretEmail;
+  factory CredentialSecretEmail([void updates(CredentialSecretEmailBuilder b)]) = _$CredentialSecretEmail;
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(CredentialSecretEmailBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
-  static Serializer<CredentialSecretEmail> get serializer =>
-      _$CredentialSecretEmailSerializer();
+  static Serializer<CredentialSecretEmail> get serializer => _$CredentialSecretEmailSerializer();
 }
 
-class _$CredentialSecretEmailSerializer
-    implements PrimitiveSerializer<CredentialSecretEmail> {
+class _$CredentialSecretEmailSerializer implements PrimitiveSerializer<CredentialSecretEmail> {
   @override
-  final Iterable<Type> types = const [
-    CredentialSecretEmail,
-    _$CredentialSecretEmail
-  ];
+  final Iterable<Type> types = const [CredentialSecretEmail, _$CredentialSecretEmail];
 
   @override
   final String wireName = r'CredentialSecretEmail';
@@ -80,9 +73,7 @@ class _$CredentialSecretEmailSerializer
     CredentialSecretEmail object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    return _serializeProperties(serializers, object,
-            specifiedType: specifiedType)
-        .toList();
+    return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
   }
 
   void _deserializeProperties(
@@ -148,17 +139,15 @@ class _$CredentialSecretEmailSerializer
 }
 
 class CredentialSecretEmailStateEnum extends EnumClass {
+
   @BuiltValueEnumConst(wireName: r'queued')
-  static const CredentialSecretEmailStateEnum queued =
-      _$credentialSecretEmailStateEnum_queued;
+  static const CredentialSecretEmailStateEnum queued = _$credentialSecretEmailStateEnum_queued;
 
-  static Serializer<CredentialSecretEmailStateEnum> get serializer =>
-      _$credentialSecretEmailStateEnumSerializer;
+  static Serializer<CredentialSecretEmailStateEnum> get serializer => _$credentialSecretEmailStateEnumSerializer;
 
-  const CredentialSecretEmailStateEnum._(String name) : super(name);
+  const CredentialSecretEmailStateEnum._(String name): super(name);
 
-  static BuiltSet<CredentialSecretEmailStateEnum> get values =>
-      _$credentialSecretEmailStateEnumValues;
-  static CredentialSecretEmailStateEnum valueOf(String name) =>
-      _$credentialSecretEmailStateEnumValueOf(name);
+  static BuiltSet<CredentialSecretEmailStateEnum> get values => _$credentialSecretEmailStateEnumValues;
+  static CredentialSecretEmailStateEnum valueOf(String name) => _$credentialSecretEmailStateEnumValueOf(name);
 }
+

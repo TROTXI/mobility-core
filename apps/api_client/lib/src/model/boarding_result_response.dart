@@ -12,53 +12,26 @@ part 'boarding_result_response.g.dart';
 /// BoardingResultResponse
 ///
 /// Properties:
-<<<<<<< HEAD
 /// * [data] 
 @BuiltValue()
 abstract class BoardingResultResponse implements Built<BoardingResultResponse, BoardingResultResponseBuilder> {
-=======
-/// * [data]
-@BuiltValue()
-abstract class BoardingResultResponse
-    implements Built<BoardingResultResponse, BoardingResultResponseBuilder> {
->>>>>>> origin/main
   @BuiltValueField(wireName: r'data')
   BoardingResult get data;
 
   BoardingResultResponse._();
 
-<<<<<<< HEAD
   factory BoardingResultResponse([void updates(BoardingResultResponseBuilder b)]) = _$BoardingResultResponse;
-=======
-  factory BoardingResultResponse(
-          [void updates(BoardingResultResponseBuilder b)]) =
-      _$BoardingResultResponse;
->>>>>>> origin/main
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(BoardingResultResponseBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
-<<<<<<< HEAD
   static Serializer<BoardingResultResponse> get serializer => _$BoardingResultResponseSerializer();
 }
 
 class _$BoardingResultResponseSerializer implements PrimitiveSerializer<BoardingResultResponse> {
   @override
   final Iterable<Type> types = const [BoardingResultResponse, _$BoardingResultResponse];
-=======
-  static Serializer<BoardingResultResponse> get serializer =>
-      _$BoardingResultResponseSerializer();
-}
-
-class _$BoardingResultResponseSerializer
-    implements PrimitiveSerializer<BoardingResultResponse> {
-  @override
-  final Iterable<Type> types = const [
-    BoardingResultResponse,
-    _$BoardingResultResponse
-  ];
->>>>>>> origin/main
 
   @override
   final String wireName = r'BoardingResultResponse';
@@ -81,13 +54,7 @@ class _$BoardingResultResponseSerializer
     BoardingResultResponse object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-<<<<<<< HEAD
     return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
-=======
-    return _serializeProperties(serializers, object,
-            specifiedType: specifiedType)
-        .toList();
->>>>>>> origin/main
   }
 
   void _deserializeProperties(
@@ -137,7 +104,4 @@ class _$BoardingResultResponseSerializer
     return result.build();
   }
 }
-<<<<<<< HEAD
 
-=======
->>>>>>> origin/main

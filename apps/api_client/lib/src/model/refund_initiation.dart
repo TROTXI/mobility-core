@@ -13,7 +13,6 @@ part 'refund_initiation.g.dart';
 /// RefundInitiation
 ///
 /// Properties:
-<<<<<<< HEAD
 /// * [id] 
 /// * [purchaseId] 
 /// * [amount] 
@@ -23,18 +22,6 @@ part 'refund_initiation.g.dart';
 /// * [createdAt] 
 @BuiltValue()
 abstract class RefundInitiation implements Built<RefundInitiation, RefundInitiationBuilder> {
-=======
-/// * [id]
-/// * [purchaseId]
-/// * [amount]
-/// * [reason]
-/// * [state]
-/// * [providerRefundId]
-/// * [createdAt]
-@BuiltValue()
-abstract class RefundInitiation
-    implements Built<RefundInitiation, RefundInitiationBuilder> {
->>>>>>> origin/main
   @BuiltValueField(wireName: r'id')
   String get id;
 
@@ -59,30 +46,16 @@ abstract class RefundInitiation
 
   RefundInitiation._();
 
-<<<<<<< HEAD
   factory RefundInitiation([void updates(RefundInitiationBuilder b)]) = _$RefundInitiation;
-=======
-  factory RefundInitiation([void updates(RefundInitiationBuilder b)]) =
-      _$RefundInitiation;
->>>>>>> origin/main
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(RefundInitiationBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
-<<<<<<< HEAD
   static Serializer<RefundInitiation> get serializer => _$RefundInitiationSerializer();
 }
 
 class _$RefundInitiationSerializer implements PrimitiveSerializer<RefundInitiation> {
-=======
-  static Serializer<RefundInitiation> get serializer =>
-      _$RefundInitiationSerializer();
-}
-
-class _$RefundInitiationSerializer
-    implements PrimitiveSerializer<RefundInitiation> {
->>>>>>> origin/main
   @override
   final Iterable<Type> types = const [RefundInitiation, _$RefundInitiation];
 
@@ -120,19 +93,10 @@ class _$RefundInitiationSerializer
       specifiedType: const FullType(RefundInitiationStateEnum),
     );
     yield r'providerRefundId';
-<<<<<<< HEAD
     yield object.providerRefundId == null ? null : serializers.serialize(
       object.providerRefundId,
       specifiedType: const FullType.nullable(String),
     );
-=======
-    yield object.providerRefundId == null
-        ? null
-        : serializers.serialize(
-            object.providerRefundId,
-            specifiedType: const FullType.nullable(String),
-          );
->>>>>>> origin/main
     yield r'createdAt';
     yield serializers.serialize(
       object.createdAt,
@@ -146,13 +110,7 @@ class _$RefundInitiationSerializer
     RefundInitiation object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-<<<<<<< HEAD
     return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
-=======
-    return _serializeProperties(serializers, object,
-            specifiedType: specifiedType)
-        .toList();
->>>>>>> origin/main
   }
 
   void _deserializeProperties(
@@ -247,7 +205,6 @@ class _$RefundInitiationSerializer
 }
 
 class RefundInitiationStateEnum extends EnumClass {
-<<<<<<< HEAD
 
   @BuiltValueEnumConst(wireName: r'submitting')
   static const RefundInitiationStateEnum submitting = _$refundInitiationStateEnum_submitting;
@@ -264,25 +221,3 @@ class RefundInitiationStateEnum extends EnumClass {
   static RefundInitiationStateEnum valueOf(String name) => _$refundInitiationStateEnumValueOf(name);
 }
 
-=======
-  @BuiltValueEnumConst(wireName: r'submitting')
-  static const RefundInitiationStateEnum submitting =
-      _$refundInitiationStateEnum_submitting;
-  @BuiltValueEnumConst(wireName: r'accepted')
-  static const RefundInitiationStateEnum accepted =
-      _$refundInitiationStateEnum_accepted;
-  @BuiltValueEnumConst(wireName: r'unknown')
-  static const RefundInitiationStateEnum unknown =
-      _$refundInitiationStateEnum_unknown;
-
-  static Serializer<RefundInitiationStateEnum> get serializer =>
-      _$refundInitiationStateEnumSerializer;
-
-  const RefundInitiationStateEnum._(String name) : super(name);
-
-  static BuiltSet<RefundInitiationStateEnum> get values =>
-      _$refundInitiationStateEnumValues;
-  static RefundInitiationStateEnum valueOf(String name) =>
-      _$refundInitiationStateEnumValueOf(name);
-}
->>>>>>> origin/main

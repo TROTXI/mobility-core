@@ -13,7 +13,6 @@ part 'maintenance_result.g.dart';
 /// MaintenanceResult
 ///
 /// Properties:
-<<<<<<< HEAD
 /// * [considered] 
 /// * [succeeded] 
 /// * [blocked] 
@@ -21,16 +20,6 @@ part 'maintenance_result.g.dart';
 /// * [failures] 
 @BuiltValue()
 abstract class MaintenanceResult implements Built<MaintenanceResult, MaintenanceResultBuilder> {
-=======
-/// * [considered]
-/// * [succeeded]
-/// * [blocked]
-/// * [failed]
-/// * [failures]
-@BuiltValue()
-abstract class MaintenanceResult
-    implements Built<MaintenanceResult, MaintenanceResultBuilder> {
->>>>>>> origin/main
   @BuiltValueField(wireName: r'considered')
   int get considered;
 
@@ -48,30 +37,16 @@ abstract class MaintenanceResult
 
   MaintenanceResult._();
 
-<<<<<<< HEAD
   factory MaintenanceResult([void updates(MaintenanceResultBuilder b)]) = _$MaintenanceResult;
-=======
-  factory MaintenanceResult([void updates(MaintenanceResultBuilder b)]) =
-      _$MaintenanceResult;
->>>>>>> origin/main
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(MaintenanceResultBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
-<<<<<<< HEAD
   static Serializer<MaintenanceResult> get serializer => _$MaintenanceResultSerializer();
 }
 
 class _$MaintenanceResultSerializer implements PrimitiveSerializer<MaintenanceResult> {
-=======
-  static Serializer<MaintenanceResult> get serializer =>
-      _$MaintenanceResultSerializer();
-}
-
-class _$MaintenanceResultSerializer
-    implements PrimitiveSerializer<MaintenanceResult> {
->>>>>>> origin/main
   @override
   final Iterable<Type> types = const [MaintenanceResult, _$MaintenanceResult];
 
@@ -106,12 +81,7 @@ class _$MaintenanceResultSerializer
     yield r'failures';
     yield serializers.serialize(
       object.failures,
-<<<<<<< HEAD
       specifiedType: const FullType(BuiltList, [FullType(MaintenanceResultFailuresInner)]),
-=======
-      specifiedType:
-          const FullType(BuiltList, [FullType(MaintenanceResultFailuresInner)]),
->>>>>>> origin/main
     );
   }
 
@@ -121,13 +91,7 @@ class _$MaintenanceResultSerializer
     MaintenanceResult object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-<<<<<<< HEAD
     return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
-=======
-    return _serializeProperties(serializers, object,
-            specifiedType: specifiedType)
-        .toList();
->>>>>>> origin/main
   }
 
   void _deserializeProperties(
@@ -173,12 +137,7 @@ class _$MaintenanceResultSerializer
         case r'failures':
           final valueDes = serializers.deserialize(
             value,
-<<<<<<< HEAD
             specifiedType: const FullType(BuiltList, [FullType(MaintenanceResultFailuresInner)]),
-=======
-            specifiedType: const FullType(
-                BuiltList, [FullType(MaintenanceResultFailuresInner)]),
->>>>>>> origin/main
           ) as BuiltList<MaintenanceResultFailuresInner>;
           result.failures.replace(valueDes);
           break;
@@ -210,7 +169,4 @@ class _$MaintenanceResultSerializer
     return result.build();
   }
 }
-<<<<<<< HEAD
 
-=======
->>>>>>> origin/main

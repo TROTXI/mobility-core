@@ -12,20 +12,11 @@ part 'trip_generation_input.g.dart';
 /// TripGenerationInput
 ///
 /// Properties:
-<<<<<<< HEAD
 /// * [serviceDate] 
 /// * [routeId] 
 /// * [limit] 
 @BuiltValue()
 abstract class TripGenerationInput implements Built<TripGenerationInput, TripGenerationInputBuilder> {
-=======
-/// * [serviceDate]
-/// * [routeId]
-/// * [limit]
-@BuiltValue()
-abstract class TripGenerationInput
-    implements Built<TripGenerationInput, TripGenerationInputBuilder> {
->>>>>>> origin/main
   @BuiltValueField(wireName: r'serviceDate')
   Date get serviceDate;
 
@@ -37,7 +28,6 @@ abstract class TripGenerationInput
 
   TripGenerationInput._();
 
-<<<<<<< HEAD
   factory TripGenerationInput([void updates(TripGenerationInputBuilder b)]) = _$TripGenerationInput;
 
   @BuiltValueHook(initializeBuilder: true)
@@ -51,26 +41,6 @@ abstract class TripGenerationInput
 class _$TripGenerationInputSerializer implements PrimitiveSerializer<TripGenerationInput> {
   @override
   final Iterable<Type> types = const [TripGenerationInput, _$TripGenerationInput];
-=======
-  factory TripGenerationInput([void updates(TripGenerationInputBuilder b)]) =
-      _$TripGenerationInput;
-
-  @BuiltValueHook(initializeBuilder: true)
-  static void _defaults(TripGenerationInputBuilder b) => b..limit = 100;
-
-  @BuiltValueSerializer(custom: true)
-  static Serializer<TripGenerationInput> get serializer =>
-      _$TripGenerationInputSerializer();
-}
-
-class _$TripGenerationInputSerializer
-    implements PrimitiveSerializer<TripGenerationInput> {
-  @override
-  final Iterable<Type> types = const [
-    TripGenerationInput,
-    _$TripGenerationInput
-  ];
->>>>>>> origin/main
 
   @override
   final String wireName = r'TripGenerationInput';
@@ -105,13 +75,7 @@ class _$TripGenerationInputSerializer
     TripGenerationInput object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-<<<<<<< HEAD
     return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
-=======
-    return _serializeProperties(serializers, object,
-            specifiedType: specifiedType)
-        .toList();
->>>>>>> origin/main
   }
 
   void _deserializeProperties(
@@ -175,7 +139,4 @@ class _$TripGenerationInputSerializer
     return result.build();
   }
 }
-<<<<<<< HEAD
 
-=======
->>>>>>> origin/main

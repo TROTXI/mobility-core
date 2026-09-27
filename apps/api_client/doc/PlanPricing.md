@@ -13,10 +13,7 @@ Name | Type | Description | Notes
 **priceMultiplierBp** | **int** |  | 
 **takeRateBp** | **int** |  | 
 **creditPerRide** | [**Money**](Money.md) |  | 
-<<<<<<< HEAD
-=======
 **editToken** | **String** |  | 
->>>>>>> origin/main
 **version** | **int** |  | 
 
 [[Back to Model list]](../README.md#documentation-for-models) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to README]](../README.md)

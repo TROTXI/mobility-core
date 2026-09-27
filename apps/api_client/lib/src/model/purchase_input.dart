@@ -13,22 +13,12 @@ part 'purchase_input.g.dart';
 /// PurchaseInput
 ///
 /// Properties:
-<<<<<<< HEAD
 /// * [plan] 
 /// * [routeId] 
 /// * [legs] 
 /// * [useCredit] 
 @BuiltValue()
 abstract class PurchaseInput implements Built<PurchaseInput, PurchaseInputBuilder> {
-=======
-/// * [plan]
-/// * [routeId]
-/// * [legs]
-/// * [useCredit]
-@BuiltValue()
-abstract class PurchaseInput
-    implements Built<PurchaseInput, PurchaseInputBuilder> {
->>>>>>> origin/main
   @BuiltValueField(wireName: r'plan')
   PurchaseInputPlanEnum get plan;
   // enum planEnum {  monthly,  annual,  };
@@ -44,23 +34,13 @@ abstract class PurchaseInput
 
   PurchaseInput._();
 
-<<<<<<< HEAD
   factory PurchaseInput([void updates(PurchaseInputBuilder b)]) = _$PurchaseInput;
-=======
-  factory PurchaseInput([void updates(PurchaseInputBuilder b)]) =
-      _$PurchaseInput;
->>>>>>> origin/main
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(PurchaseInputBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
-<<<<<<< HEAD
   static Serializer<PurchaseInput> get serializer => _$PurchaseInputSerializer();
-=======
-  static Serializer<PurchaseInput> get serializer =>
-      _$PurchaseInputSerializer();
->>>>>>> origin/main
 }
 
 class _$PurchaseInputSerializer implements PrimitiveSerializer<PurchaseInput> {
@@ -103,13 +83,7 @@ class _$PurchaseInputSerializer implements PrimitiveSerializer<PurchaseInput> {
     PurchaseInput object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-<<<<<<< HEAD
     return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
-=======
-    return _serializeProperties(serializers, object,
-            specifiedType: specifiedType)
-        .toList();
->>>>>>> origin/main
   }
 
   void _deserializeProperties(
@@ -182,16 +156,12 @@ class _$PurchaseInputSerializer implements PrimitiveSerializer<PurchaseInput> {
 }
 
 class PurchaseInputPlanEnum extends EnumClass {
-<<<<<<< HEAD
 
-=======
->>>>>>> origin/main
   @BuiltValueEnumConst(wireName: r'monthly')
   static const PurchaseInputPlanEnum monthly = _$purchaseInputPlanEnum_monthly;
   @BuiltValueEnumConst(wireName: r'annual')
   static const PurchaseInputPlanEnum annual = _$purchaseInputPlanEnum_annual;
 
-<<<<<<< HEAD
   static Serializer<PurchaseInputPlanEnum> get serializer => _$purchaseInputPlanEnumSerializer;
 
   const PurchaseInputPlanEnum._(String name): super(name);
@@ -200,15 +170,3 @@ class PurchaseInputPlanEnum extends EnumClass {
   static PurchaseInputPlanEnum valueOf(String name) => _$purchaseInputPlanEnumValueOf(name);
 }
 
-=======
-  static Serializer<PurchaseInputPlanEnum> get serializer =>
-      _$purchaseInputPlanEnumSerializer;
-
-  const PurchaseInputPlanEnum._(String name) : super(name);
-
-  static BuiltSet<PurchaseInputPlanEnum> get values =>
-      _$purchaseInputPlanEnumValues;
-  static PurchaseInputPlanEnum valueOf(String name) =>
-      _$purchaseInputPlanEnumValueOf(name);
-}
->>>>>>> origin/main

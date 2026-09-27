@@ -12,18 +12,10 @@ part 'commute_decision_one_of4.g.dart';
 /// CommuteDecisionOneOf4
 ///
 /// Properties:
-<<<<<<< HEAD
 /// * [action] 
 /// * [note] 
 @BuiltValue()
 abstract class CommuteDecisionOneOf4 implements Built<CommuteDecisionOneOf4, CommuteDecisionOneOf4Builder> {
-=======
-/// * [action]
-/// * [note]
-@BuiltValue()
-abstract class CommuteDecisionOneOf4
-    implements Built<CommuteDecisionOneOf4, CommuteDecisionOneOf4Builder> {
->>>>>>> origin/main
   @BuiltValueField(wireName: r'action')
   CommuteDecisionOneOf4ActionEnum get action;
   // enum actionEnum {  apply,  };
@@ -33,37 +25,18 @@ abstract class CommuteDecisionOneOf4
 
   CommuteDecisionOneOf4._();
 
-<<<<<<< HEAD
   factory CommuteDecisionOneOf4([void updates(CommuteDecisionOneOf4Builder b)]) = _$CommuteDecisionOneOf4;
-=======
-  factory CommuteDecisionOneOf4(
-      [void updates(CommuteDecisionOneOf4Builder b)]) = _$CommuteDecisionOneOf4;
->>>>>>> origin/main
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(CommuteDecisionOneOf4Builder b) => b;
 
   @BuiltValueSerializer(custom: true)
-<<<<<<< HEAD
   static Serializer<CommuteDecisionOneOf4> get serializer => _$CommuteDecisionOneOf4Serializer();
 }
 
 class _$CommuteDecisionOneOf4Serializer implements PrimitiveSerializer<CommuteDecisionOneOf4> {
   @override
   final Iterable<Type> types = const [CommuteDecisionOneOf4, _$CommuteDecisionOneOf4];
-=======
-  static Serializer<CommuteDecisionOneOf4> get serializer =>
-      _$CommuteDecisionOneOf4Serializer();
-}
-
-class _$CommuteDecisionOneOf4Serializer
-    implements PrimitiveSerializer<CommuteDecisionOneOf4> {
-  @override
-  final Iterable<Type> types = const [
-    CommuteDecisionOneOf4,
-    _$CommuteDecisionOneOf4
-  ];
->>>>>>> origin/main
 
   @override
   final String wireName = r'CommuteDecisionOneOf4';
@@ -91,13 +64,7 @@ class _$CommuteDecisionOneOf4Serializer
     CommuteDecisionOneOf4 object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-<<<<<<< HEAD
     return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
-=======
-    return _serializeProperties(serializers, object,
-            specifiedType: specifiedType)
-        .toList();
->>>>>>> origin/main
   }
 
   void _deserializeProperties(
@@ -156,7 +123,6 @@ class _$CommuteDecisionOneOf4Serializer
 }
 
 class CommuteDecisionOneOf4ActionEnum extends EnumClass {
-<<<<<<< HEAD
 
   @BuiltValueEnumConst(wireName: r'apply')
   static const CommuteDecisionOneOf4ActionEnum apply = _$commuteDecisionOneOf4ActionEnum_apply;
@@ -169,19 +135,3 @@ class CommuteDecisionOneOf4ActionEnum extends EnumClass {
   static CommuteDecisionOneOf4ActionEnum valueOf(String name) => _$commuteDecisionOneOf4ActionEnumValueOf(name);
 }
 
-=======
-  @BuiltValueEnumConst(wireName: r'apply')
-  static const CommuteDecisionOneOf4ActionEnum apply =
-      _$commuteDecisionOneOf4ActionEnum_apply;
-
-  static Serializer<CommuteDecisionOneOf4ActionEnum> get serializer =>
-      _$commuteDecisionOneOf4ActionEnumSerializer;
-
-  const CommuteDecisionOneOf4ActionEnum._(String name) : super(name);
-
-  static BuiltSet<CommuteDecisionOneOf4ActionEnum> get values =>
-      _$commuteDecisionOneOf4ActionEnumValues;
-  static CommuteDecisionOneOf4ActionEnum valueOf(String name) =>
-      _$commuteDecisionOneOf4ActionEnumValueOf(name);
-}
->>>>>>> origin/main

@@ -18,21 +18,19 @@ part 'passkey_registration_options.g.dart';
 /// PasskeyRegistrationOptions
 ///
 /// Properties:
-/// * [rp]
-/// * [user]
-/// * [challenge]
-/// * [pubKeyCredParams]
-/// * [timeout]
-/// * [excludeCredentials]
-/// * [authenticatorSelection]
-/// * [hints]
-/// * [attestation]
-/// * [attestationFormats]
-/// * [extensions]
+/// * [rp] 
+/// * [user] 
+/// * [challenge] 
+/// * [pubKeyCredParams] 
+/// * [timeout] 
+/// * [excludeCredentials] 
+/// * [authenticatorSelection] 
+/// * [hints] 
+/// * [attestation] 
+/// * [attestationFormats] 
+/// * [extensions] 
 @BuiltValue()
-abstract class PasskeyRegistrationOptions
-    implements
-        Built<PasskeyRegistrationOptions, PasskeyRegistrationOptionsBuilder> {
+abstract class PasskeyRegistrationOptions implements Built<PasskeyRegistrationOptions, PasskeyRegistrationOptionsBuilder> {
   @BuiltValueField(wireName: r'rp')
   PasskeyRegistrationOptionsRp get rp;
 
@@ -43,15 +41,13 @@ abstract class PasskeyRegistrationOptions
   String get challenge;
 
   @BuiltValueField(wireName: r'pubKeyCredParams')
-  BuiltList<PasskeyRegistrationOptionsPubKeyCredParamsInner>
-      get pubKeyCredParams;
+  BuiltList<PasskeyRegistrationOptionsPubKeyCredParamsInner> get pubKeyCredParams;
 
   @BuiltValueField(wireName: r'timeout')
   num? get timeout;
 
   @BuiltValueField(wireName: r'excludeCredentials')
-  BuiltList<PasskeyAuthenticationOptionsAllowCredentialsInner>?
-      get excludeCredentials;
+  BuiltList<PasskeyAuthenticationOptionsAllowCredentialsInner>? get excludeCredentials;
 
   @BuiltValueField(wireName: r'authenticatorSelection')
   PasskeyRegistrationOptionsAuthenticatorSelection? get authenticatorSelection;
@@ -71,25 +67,18 @@ abstract class PasskeyRegistrationOptions
 
   PasskeyRegistrationOptions._();
 
-  factory PasskeyRegistrationOptions(
-          [void updates(PasskeyRegistrationOptionsBuilder b)]) =
-      _$PasskeyRegistrationOptions;
+  factory PasskeyRegistrationOptions([void updates(PasskeyRegistrationOptionsBuilder b)]) = _$PasskeyRegistrationOptions;
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(PasskeyRegistrationOptionsBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
-  static Serializer<PasskeyRegistrationOptions> get serializer =>
-      _$PasskeyRegistrationOptionsSerializer();
+  static Serializer<PasskeyRegistrationOptions> get serializer => _$PasskeyRegistrationOptionsSerializer();
 }
 
-class _$PasskeyRegistrationOptionsSerializer
-    implements PrimitiveSerializer<PasskeyRegistrationOptions> {
+class _$PasskeyRegistrationOptionsSerializer implements PrimitiveSerializer<PasskeyRegistrationOptions> {
   @override
-  final Iterable<Type> types = const [
-    PasskeyRegistrationOptions,
-    _$PasskeyRegistrationOptions
-  ];
+  final Iterable<Type> types = const [PasskeyRegistrationOptions, _$PasskeyRegistrationOptions];
 
   @override
   final String wireName = r'PasskeyRegistrationOptions';
@@ -117,8 +106,7 @@ class _$PasskeyRegistrationOptionsSerializer
     yield r'pubKeyCredParams';
     yield serializers.serialize(
       object.pubKeyCredParams,
-      specifiedType: const FullType(BuiltList,
-          [FullType(PasskeyRegistrationOptionsPubKeyCredParamsInner)]),
+      specifiedType: const FullType(BuiltList, [FullType(PasskeyRegistrationOptionsPubKeyCredParamsInner)]),
     );
     if (object.timeout != null) {
       yield r'timeout';
@@ -131,16 +119,14 @@ class _$PasskeyRegistrationOptionsSerializer
       yield r'excludeCredentials';
       yield serializers.serialize(
         object.excludeCredentials,
-        specifiedType: const FullType(BuiltList,
-            [FullType(PasskeyAuthenticationOptionsAllowCredentialsInner)]),
+        specifiedType: const FullType(BuiltList, [FullType(PasskeyAuthenticationOptionsAllowCredentialsInner)]),
       );
     }
     if (object.authenticatorSelection != null) {
       yield r'authenticatorSelection';
       yield serializers.serialize(
         object.authenticatorSelection,
-        specifiedType:
-            const FullType(PasskeyRegistrationOptionsAuthenticatorSelection),
+        specifiedType: const FullType(PasskeyRegistrationOptionsAuthenticatorSelection),
       );
     }
     if (object.hints != null) {
@@ -154,8 +140,7 @@ class _$PasskeyRegistrationOptionsSerializer
       yield r'attestation';
       yield serializers.serialize(
         object.attestation,
-        specifiedType:
-            const FullType(PasskeyRegistrationOptionsAttestationEnum),
+        specifiedType: const FullType(PasskeyRegistrationOptionsAttestationEnum),
       );
     }
     if (object.attestationFormats != null) {
@@ -169,8 +154,7 @@ class _$PasskeyRegistrationOptionsSerializer
       yield r'extensions';
       yield serializers.serialize(
         object.extensions,
-        specifiedType: const FullType(
-            BuiltMap, [FullType(String), FullType.nullable(JsonObject)]),
+        specifiedType: const FullType(BuiltMap, [FullType(String), FullType.nullable(JsonObject)]),
       );
     }
   }
@@ -181,9 +165,7 @@ class _$PasskeyRegistrationOptionsSerializer
     PasskeyRegistrationOptions object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    return _serializeProperties(serializers, object,
-            specifiedType: specifiedType)
-        .toList();
+    return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
   }
 
   void _deserializeProperties(
@@ -222,8 +204,7 @@ class _$PasskeyRegistrationOptionsSerializer
         case r'pubKeyCredParams':
           final valueDes = serializers.deserialize(
             value,
-            specifiedType: const FullType(BuiltList,
-                [FullType(PasskeyRegistrationOptionsPubKeyCredParamsInner)]),
+            specifiedType: const FullType(BuiltList, [FullType(PasskeyRegistrationOptionsPubKeyCredParamsInner)]),
           ) as BuiltList<PasskeyRegistrationOptionsPubKeyCredParamsInner>;
           result.pubKeyCredParams.replace(valueDes);
           break;
@@ -237,16 +218,14 @@ class _$PasskeyRegistrationOptionsSerializer
         case r'excludeCredentials':
           final valueDes = serializers.deserialize(
             value,
-            specifiedType: const FullType(BuiltList,
-                [FullType(PasskeyAuthenticationOptionsAllowCredentialsInner)]),
+            specifiedType: const FullType(BuiltList, [FullType(PasskeyAuthenticationOptionsAllowCredentialsInner)]),
           ) as BuiltList<PasskeyAuthenticationOptionsAllowCredentialsInner>;
           result.excludeCredentials.replace(valueDes);
           break;
         case r'authenticatorSelection':
           final valueDes = serializers.deserialize(
             value,
-            specifiedType: const FullType(
-                PasskeyRegistrationOptionsAuthenticatorSelection),
+            specifiedType: const FullType(PasskeyRegistrationOptionsAuthenticatorSelection),
           ) as PasskeyRegistrationOptionsAuthenticatorSelection;
           result.authenticatorSelection.replace(valueDes);
           break;
@@ -260,8 +239,7 @@ class _$PasskeyRegistrationOptionsSerializer
         case r'attestation':
           final valueDes = serializers.deserialize(
             value,
-            specifiedType:
-                const FullType(PasskeyRegistrationOptionsAttestationEnum),
+            specifiedType: const FullType(PasskeyRegistrationOptionsAttestationEnum),
           ) as PasskeyRegistrationOptionsAttestationEnum;
           result.attestation = valueDes;
           break;
@@ -275,8 +253,7 @@ class _$PasskeyRegistrationOptionsSerializer
         case r'extensions':
           final valueDes = serializers.deserialize(
             value,
-            specifiedType: const FullType(
-                BuiltMap, [FullType(String), FullType.nullable(JsonObject)]),
+            specifiedType: const FullType(BuiltMap, [FullType(String), FullType.nullable(JsonObject)]),
           ) as BuiltMap<String, JsonObject?>;
           result.extensions.replace(valueDes);
           break;
@@ -310,26 +287,21 @@ class _$PasskeyRegistrationOptionsSerializer
 }
 
 class PasskeyRegistrationOptionsAttestationEnum extends EnumClass {
+
   @BuiltValueEnumConst(wireName: r'direct')
-  static const PasskeyRegistrationOptionsAttestationEnum direct =
-      _$passkeyRegistrationOptionsAttestationEnum_direct;
+  static const PasskeyRegistrationOptionsAttestationEnum direct = _$passkeyRegistrationOptionsAttestationEnum_direct;
   @BuiltValueEnumConst(wireName: r'enterprise')
-  static const PasskeyRegistrationOptionsAttestationEnum enterprise =
-      _$passkeyRegistrationOptionsAttestationEnum_enterprise;
+  static const PasskeyRegistrationOptionsAttestationEnum enterprise = _$passkeyRegistrationOptionsAttestationEnum_enterprise;
   @BuiltValueEnumConst(wireName: r'indirect')
-  static const PasskeyRegistrationOptionsAttestationEnum indirect =
-      _$passkeyRegistrationOptionsAttestationEnum_indirect;
+  static const PasskeyRegistrationOptionsAttestationEnum indirect = _$passkeyRegistrationOptionsAttestationEnum_indirect;
   @BuiltValueEnumConst(wireName: r'none')
-  static const PasskeyRegistrationOptionsAttestationEnum none =
-      _$passkeyRegistrationOptionsAttestationEnum_none;
+  static const PasskeyRegistrationOptionsAttestationEnum none = _$passkeyRegistrationOptionsAttestationEnum_none;
 
-  static Serializer<PasskeyRegistrationOptionsAttestationEnum> get serializer =>
-      _$passkeyRegistrationOptionsAttestationEnumSerializer;
+  static Serializer<PasskeyRegistrationOptionsAttestationEnum> get serializer => _$passkeyRegistrationOptionsAttestationEnumSerializer;
 
-  const PasskeyRegistrationOptionsAttestationEnum._(String name) : super(name);
+  const PasskeyRegistrationOptionsAttestationEnum._(String name): super(name);
 
-  static BuiltSet<PasskeyRegistrationOptionsAttestationEnum> get values =>
-      _$passkeyRegistrationOptionsAttestationEnumValues;
-  static PasskeyRegistrationOptionsAttestationEnum valueOf(String name) =>
-      _$passkeyRegistrationOptionsAttestationEnumValueOf(name);
+  static BuiltSet<PasskeyRegistrationOptionsAttestationEnum> get values => _$passkeyRegistrationOptionsAttestationEnumValues;
+  static PasskeyRegistrationOptionsAttestationEnum valueOf(String name) => _$passkeyRegistrationOptionsAttestationEnumValueOf(name);
 }
+

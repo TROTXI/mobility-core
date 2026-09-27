@@ -11,13 +11,8 @@ part 'pin_change.g.dart';
 /// PinChange
 ///
 /// Properties:
-<<<<<<< HEAD
 /// * [currentPin] 
 /// * [newPin] 
-=======
-/// * [currentPin]
-/// * [newPin]
->>>>>>> origin/main
 @BuiltValue()
 abstract class PinChange implements Built<PinChange, PinChangeBuilder> {
   @BuiltValueField(wireName: r'currentPin')
@@ -67,13 +62,7 @@ class _$PinChangeSerializer implements PrimitiveSerializer<PinChange> {
     PinChange object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-<<<<<<< HEAD
     return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
-=======
-    return _serializeProperties(serializers, object,
-            specifiedType: specifiedType)
-        .toList();
->>>>>>> origin/main
   }
 
   void _deserializeProperties(
@@ -130,7 +119,4 @@ class _$PinChangeSerializer implements PrimitiveSerializer<PinChange> {
     return result.build();
   }
 }
-<<<<<<< HEAD
 
-=======
->>>>>>> origin/main

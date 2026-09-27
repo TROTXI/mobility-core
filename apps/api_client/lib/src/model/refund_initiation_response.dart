@@ -12,54 +12,26 @@ part 'refund_initiation_response.g.dart';
 /// RefundInitiationResponse
 ///
 /// Properties:
-<<<<<<< HEAD
 /// * [data] 
 @BuiltValue()
 abstract class RefundInitiationResponse implements Built<RefundInitiationResponse, RefundInitiationResponseBuilder> {
-=======
-/// * [data]
-@BuiltValue()
-abstract class RefundInitiationResponse
-    implements
-        Built<RefundInitiationResponse, RefundInitiationResponseBuilder> {
->>>>>>> origin/main
   @BuiltValueField(wireName: r'data')
   RefundInitiation get data;
 
   RefundInitiationResponse._();
 
-<<<<<<< HEAD
   factory RefundInitiationResponse([void updates(RefundInitiationResponseBuilder b)]) = _$RefundInitiationResponse;
-=======
-  factory RefundInitiationResponse(
-          [void updates(RefundInitiationResponseBuilder b)]) =
-      _$RefundInitiationResponse;
->>>>>>> origin/main
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(RefundInitiationResponseBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
-<<<<<<< HEAD
   static Serializer<RefundInitiationResponse> get serializer => _$RefundInitiationResponseSerializer();
 }
 
 class _$RefundInitiationResponseSerializer implements PrimitiveSerializer<RefundInitiationResponse> {
   @override
   final Iterable<Type> types = const [RefundInitiationResponse, _$RefundInitiationResponse];
-=======
-  static Serializer<RefundInitiationResponse> get serializer =>
-      _$RefundInitiationResponseSerializer();
-}
-
-class _$RefundInitiationResponseSerializer
-    implements PrimitiveSerializer<RefundInitiationResponse> {
-  @override
-  final Iterable<Type> types = const [
-    RefundInitiationResponse,
-    _$RefundInitiationResponse
-  ];
->>>>>>> origin/main
 
   @override
   final String wireName = r'RefundInitiationResponse';
@@ -82,13 +54,7 @@ class _$RefundInitiationResponseSerializer
     RefundInitiationResponse object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-<<<<<<< HEAD
     return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
-=======
-    return _serializeProperties(serializers, object,
-            specifiedType: specifiedType)
-        .toList();
->>>>>>> origin/main
   }
 
   void _deserializeProperties(
@@ -138,7 +104,4 @@ class _$RefundInitiationResponseSerializer
     return result.build();
   }
 }
-<<<<<<< HEAD
 
-=======
->>>>>>> origin/main

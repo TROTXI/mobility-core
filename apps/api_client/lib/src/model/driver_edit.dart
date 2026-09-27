@@ -11,20 +11,12 @@ part 'driver_edit.g.dart';
 /// DriverEdit
 ///
 /// Properties:
-<<<<<<< HEAD
 /// * [name] 
 /// * [phone] 
+/// * [email] 
 /// * [licenseNumber] 
 /// * [userId] 
 /// * [archived] 
-=======
-/// * [name]
-/// * [phone]
-/// * [email]
-/// * [licenseNumber]
-/// * [userId]
-/// * [archived]
->>>>>>> origin/main
 @BuiltValue()
 abstract class DriverEdit implements Built<DriverEdit, DriverEditBuilder> {
   @BuiltValueField(wireName: r'name')
@@ -33,12 +25,9 @@ abstract class DriverEdit implements Built<DriverEdit, DriverEditBuilder> {
   @BuiltValueField(wireName: r'phone')
   String? get phone;
 
-<<<<<<< HEAD
-=======
   @BuiltValueField(wireName: r'email')
   String? get email;
 
->>>>>>> origin/main
   @BuiltValueField(wireName: r'licenseNumber')
   String? get licenseNumber;
 
@@ -85,8 +74,6 @@ class _$DriverEditSerializer implements PrimitiveSerializer<DriverEdit> {
         specifiedType: const FullType.nullable(String),
       );
     }
-<<<<<<< HEAD
-=======
     if (object.email != null) {
       yield r'email';
       yield serializers.serialize(
@@ -94,7 +81,6 @@ class _$DriverEditSerializer implements PrimitiveSerializer<DriverEdit> {
         specifiedType: const FullType.nullable(String),
       );
     }
->>>>>>> origin/main
     if (object.licenseNumber != null) {
       yield r'licenseNumber';
       yield serializers.serialize(
@@ -124,13 +110,7 @@ class _$DriverEditSerializer implements PrimitiveSerializer<DriverEdit> {
     DriverEdit object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-<<<<<<< HEAD
     return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
-=======
-    return _serializeProperties(serializers, object,
-            specifiedType: specifiedType)
-        .toList();
->>>>>>> origin/main
   }
 
   void _deserializeProperties(
@@ -160,8 +140,6 @@ class _$DriverEditSerializer implements PrimitiveSerializer<DriverEdit> {
           if (valueDes == null) continue;
           result.phone = valueDes;
           break;
-<<<<<<< HEAD
-=======
         case r'email':
           final valueDes = serializers.deserialize(
             value,
@@ -170,7 +148,6 @@ class _$DriverEditSerializer implements PrimitiveSerializer<DriverEdit> {
           if (valueDes == null) continue;
           result.email = valueDes;
           break;
->>>>>>> origin/main
         case r'licenseNumber':
           final valueDes = serializers.deserialize(
             value,
@@ -222,7 +199,4 @@ class _$DriverEditSerializer implements PrimitiveSerializer<DriverEdit> {
     return result.build();
   }
 }
-<<<<<<< HEAD
 
-=======
->>>>>>> origin/main

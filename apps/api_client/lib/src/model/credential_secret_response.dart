@@ -12,54 +12,26 @@ part 'credential_secret_response.g.dart';
 /// CredentialSecretResponse
 ///
 /// Properties:
-<<<<<<< HEAD
 /// * [data] 
 @BuiltValue()
 abstract class CredentialSecretResponse implements Built<CredentialSecretResponse, CredentialSecretResponseBuilder> {
-=======
-/// * [data]
-@BuiltValue()
-abstract class CredentialSecretResponse
-    implements
-        Built<CredentialSecretResponse, CredentialSecretResponseBuilder> {
->>>>>>> origin/main
   @BuiltValueField(wireName: r'data')
   CredentialSecret get data;
 
   CredentialSecretResponse._();
 
-<<<<<<< HEAD
   factory CredentialSecretResponse([void updates(CredentialSecretResponseBuilder b)]) = _$CredentialSecretResponse;
-=======
-  factory CredentialSecretResponse(
-          [void updates(CredentialSecretResponseBuilder b)]) =
-      _$CredentialSecretResponse;
->>>>>>> origin/main
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(CredentialSecretResponseBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
-<<<<<<< HEAD
   static Serializer<CredentialSecretResponse> get serializer => _$CredentialSecretResponseSerializer();
 }
 
 class _$CredentialSecretResponseSerializer implements PrimitiveSerializer<CredentialSecretResponse> {
   @override
   final Iterable<Type> types = const [CredentialSecretResponse, _$CredentialSecretResponse];
-=======
-  static Serializer<CredentialSecretResponse> get serializer =>
-      _$CredentialSecretResponseSerializer();
-}
-
-class _$CredentialSecretResponseSerializer
-    implements PrimitiveSerializer<CredentialSecretResponse> {
-  @override
-  final Iterable<Type> types = const [
-    CredentialSecretResponse,
-    _$CredentialSecretResponse
-  ];
->>>>>>> origin/main
 
   @override
   final String wireName = r'CredentialSecretResponse';
@@ -82,13 +54,7 @@ class _$CredentialSecretResponseSerializer
     CredentialSecretResponse object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-<<<<<<< HEAD
     return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
-=======
-    return _serializeProperties(serializers, object,
-            specifiedType: specifiedType)
-        .toList();
->>>>>>> origin/main
   }
 
   void _deserializeProperties(
@@ -138,7 +104,4 @@ class _$CredentialSecretResponseSerializer
     return result.build();
   }
 }
-<<<<<<< HEAD
 
-=======
->>>>>>> origin/main

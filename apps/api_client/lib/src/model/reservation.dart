@@ -13,7 +13,6 @@ part 'reservation.g.dart';
 /// Reservation
 ///
 /// Properties:
-<<<<<<< HEAD
 /// * [id] 
 /// * [tripId] 
 /// * [travelDate] 
@@ -25,19 +24,6 @@ part 'reservation.g.dart';
 /// * [createdAt] 
 /// * [updatedAt] 
 /// * [version] 
-=======
-/// * [id]
-/// * [tripId]
-/// * [travelDate]
-/// * [direction]
-/// * [status]
-/// * [pickupOccurrenceId]
-/// * [dropoffOccurrenceId]
-/// * [source_]
-/// * [createdAt]
-/// * [updatedAt]
-/// * [version]
->>>>>>> origin/main
 @BuiltValue()
 abstract class Reservation implements Built<Reservation, ReservationBuilder> {
   @BuiltValueField(wireName: r'id')
@@ -105,19 +91,10 @@ class _$ReservationSerializer implements PrimitiveSerializer<Reservation> {
       specifiedType: const FullType(String),
     );
     yield r'tripId';
-<<<<<<< HEAD
     yield object.tripId == null ? null : serializers.serialize(
       object.tripId,
       specifiedType: const FullType.nullable(String),
     );
-=======
-    yield object.tripId == null
-        ? null
-        : serializers.serialize(
-            object.tripId,
-            specifiedType: const FullType.nullable(String),
-          );
->>>>>>> origin/main
     yield r'travelDate';
     yield serializers.serialize(
       object.travelDate,
@@ -134,7 +111,6 @@ class _$ReservationSerializer implements PrimitiveSerializer<Reservation> {
       specifiedType: const FullType(ReservationStatusEnum),
     );
     yield r'pickupOccurrenceId';
-<<<<<<< HEAD
     yield object.pickupOccurrenceId == null ? null : serializers.serialize(
       object.pickupOccurrenceId,
       specifiedType: const FullType.nullable(String),
@@ -144,21 +120,6 @@ class _$ReservationSerializer implements PrimitiveSerializer<Reservation> {
       object.dropoffOccurrenceId,
       specifiedType: const FullType.nullable(String),
     );
-=======
-    yield object.pickupOccurrenceId == null
-        ? null
-        : serializers.serialize(
-            object.pickupOccurrenceId,
-            specifiedType: const FullType.nullable(String),
-          );
-    yield r'dropoffOccurrenceId';
-    yield object.dropoffOccurrenceId == null
-        ? null
-        : serializers.serialize(
-            object.dropoffOccurrenceId,
-            specifiedType: const FullType.nullable(String),
-          );
->>>>>>> origin/main
     yield r'source';
     yield serializers.serialize(
       object.source_,
@@ -187,13 +148,7 @@ class _$ReservationSerializer implements PrimitiveSerializer<Reservation> {
     Reservation object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-<<<<<<< HEAD
     return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
-=======
-    return _serializeProperties(serializers, object,
-            specifiedType: specifiedType)
-        .toList();
->>>>>>> origin/main
   }
 
   void _deserializeProperties(
@@ -318,7 +273,6 @@ class _$ReservationSerializer implements PrimitiveSerializer<Reservation> {
 }
 
 class ReservationDirectionEnum extends EnumClass {
-<<<<<<< HEAD
 
   @BuiltValueEnumConst(wireName: r'outbound')
   static const ReservationDirectionEnum outbound = _$reservationDirectionEnum_outbound;
@@ -343,44 +297,11 @@ class ReservationStatusEnum extends EnumClass {
   static const ReservationStatusEnum declined = _$reservationStatusEnum_declined;
   @BuiltValueEnumConst(wireName: r'unseated')
   static const ReservationStatusEnum unseated = _$reservationStatusEnum_unseated;
-=======
-  @BuiltValueEnumConst(wireName: r'outbound')
-  static const ReservationDirectionEnum outbound =
-      _$reservationDirectionEnum_outbound;
-  @BuiltValueEnumConst(wireName: r'return')
-  static const ReservationDirectionEnum return_ =
-      _$reservationDirectionEnum_return_;
-
-  static Serializer<ReservationDirectionEnum> get serializer =>
-      _$reservationDirectionEnumSerializer;
-
-  const ReservationDirectionEnum._(String name) : super(name);
-
-  static BuiltSet<ReservationDirectionEnum> get values =>
-      _$reservationDirectionEnumValues;
-  static ReservationDirectionEnum valueOf(String name) =>
-      _$reservationDirectionEnumValueOf(name);
-}
-
-class ReservationStatusEnum extends EnumClass {
-  @BuiltValueEnumConst(wireName: r'pending')
-  static const ReservationStatusEnum pending = _$reservationStatusEnum_pending;
-  @BuiltValueEnumConst(wireName: r'reserved')
-  static const ReservationStatusEnum reserved =
-      _$reservationStatusEnum_reserved;
-  @BuiltValueEnumConst(wireName: r'declined')
-  static const ReservationStatusEnum declined =
-      _$reservationStatusEnum_declined;
-  @BuiltValueEnumConst(wireName: r'unseated')
-  static const ReservationStatusEnum unseated =
-      _$reservationStatusEnum_unseated;
->>>>>>> origin/main
   @BuiltValueEnumConst(wireName: r'boarded')
   static const ReservationStatusEnum boarded = _$reservationStatusEnum_boarded;
   @BuiltValueEnumConst(wireName: r'no_show')
   static const ReservationStatusEnum noShow = _$reservationStatusEnum_noShow;
   @BuiltValueEnumConst(wireName: r'operator_cancelled')
-<<<<<<< HEAD
   static const ReservationStatusEnum operatorCancelled = _$reservationStatusEnum_operatorCancelled;
 
   static Serializer<ReservationStatusEnum> get serializer => _$reservationStatusEnumSerializer;
@@ -406,37 +327,3 @@ class ReservationSource_Enum extends EnumClass {
   static ReservationSource_Enum valueOf(String name) => _$reservationSourceEnumValueOf(name);
 }
 
-=======
-  static const ReservationStatusEnum operatorCancelled =
-      _$reservationStatusEnum_operatorCancelled;
-
-  static Serializer<ReservationStatusEnum> get serializer =>
-      _$reservationStatusEnumSerializer;
-
-  const ReservationStatusEnum._(String name) : super(name);
-
-  static BuiltSet<ReservationStatusEnum> get values =>
-      _$reservationStatusEnumValues;
-  static ReservationStatusEnum valueOf(String name) =>
-      _$reservationStatusEnumValueOf(name);
-}
-
-class ReservationSource_Enum extends EnumClass {
-  @BuiltValueEnumConst(wireName: r'confirmation')
-  static const ReservationSource_Enum confirmation =
-      _$reservationSourceEnum_confirmation;
-  @BuiltValueEnumConst(wireName: r'default')
-  static const ReservationSource_Enum default_ =
-      _$reservationSourceEnum_default_;
-
-  static Serializer<ReservationSource_Enum> get serializer =>
-      _$reservationSourceEnumSerializer;
-
-  const ReservationSource_Enum._(String name) : super(name);
-
-  static BuiltSet<ReservationSource_Enum> get values =>
-      _$reservationSourceEnumValues;
-  static ReservationSource_Enum valueOf(String name) =>
-      _$reservationSourceEnumValueOf(name);
-}
->>>>>>> origin/main

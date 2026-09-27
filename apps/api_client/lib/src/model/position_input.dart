@@ -11,7 +11,6 @@ part 'position_input.g.dart';
 /// PositionInput
 ///
 /// Properties:
-<<<<<<< HEAD
 /// * [clientFixId] 
 /// * [capturedAt] 
 /// * [latitude] 
@@ -19,16 +18,6 @@ part 'position_input.g.dart';
 /// * [accuracyMeters] 
 @BuiltValue()
 abstract class PositionInput implements Built<PositionInput, PositionInputBuilder> {
-=======
-/// * [clientFixId]
-/// * [capturedAt]
-/// * [latitude]
-/// * [longitude]
-/// * [accuracyMeters]
-@BuiltValue()
-abstract class PositionInput
-    implements Built<PositionInput, PositionInputBuilder> {
->>>>>>> origin/main
   @BuiltValueField(wireName: r'clientFixId')
   String get clientFixId;
 
@@ -46,23 +35,13 @@ abstract class PositionInput
 
   PositionInput._();
 
-<<<<<<< HEAD
   factory PositionInput([void updates(PositionInputBuilder b)]) = _$PositionInput;
-=======
-  factory PositionInput([void updates(PositionInputBuilder b)]) =
-      _$PositionInput;
->>>>>>> origin/main
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(PositionInputBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
-<<<<<<< HEAD
   static Serializer<PositionInput> get serializer => _$PositionInputSerializer();
-=======
-  static Serializer<PositionInput> get serializer =>
-      _$PositionInputSerializer();
->>>>>>> origin/main
 }
 
 class _$PositionInputSerializer implements PrimitiveSerializer<PositionInput> {
@@ -112,13 +91,7 @@ class _$PositionInputSerializer implements PrimitiveSerializer<PositionInput> {
     PositionInput object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-<<<<<<< HEAD
     return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
-=======
-    return _serializeProperties(serializers, object,
-            specifiedType: specifiedType)
-        .toList();
->>>>>>> origin/main
   }
 
   void _deserializeProperties(
@@ -196,7 +169,4 @@ class _$PositionInputSerializer implements PrimitiveSerializer<PositionInput> {
     return result.build();
   }
 }
-<<<<<<< HEAD
 
-=======
->>>>>>> origin/main

@@ -13,7 +13,6 @@ part 'driver_tokens.g.dart';
 /// DriverTokens
 ///
 /// Properties:
-<<<<<<< HEAD
 /// * [accessToken] 
 /// * [refreshToken] 
 /// * [accessExpiresAt] 
@@ -21,21 +20,9 @@ part 'driver_tokens.g.dart';
 /// * [account] 
 /// * [driver] 
 /// * [mustChangePin] 
+/// * [temporaryPinExpiresAt] 
 @BuiltValue()
 abstract class DriverTokens implements Built<DriverTokens, DriverTokensBuilder> {
-=======
-/// * [accessToken]
-/// * [refreshToken]
-/// * [accessExpiresAt]
-/// * [refreshExpiresAt]
-/// * [account]
-/// * [driver]
-/// * [mustChangePin]
-/// * [temporaryPinExpiresAt]
-@BuiltValue()
-abstract class DriverTokens
-    implements Built<DriverTokens, DriverTokensBuilder> {
->>>>>>> origin/main
   @BuiltValueField(wireName: r'accessToken')
   String get accessToken;
 
@@ -57,12 +44,9 @@ abstract class DriverTokens
   @BuiltValueField(wireName: r'mustChangePin')
   bool get mustChangePin;
 
-<<<<<<< HEAD
-=======
   @BuiltValueField(wireName: r'temporaryPinExpiresAt')
   DateTime? get temporaryPinExpiresAt;
 
->>>>>>> origin/main
   DriverTokens._();
 
   factory DriverTokens([void updates(DriverTokensBuilder b)]) = _$DriverTokens;
@@ -121,16 +105,11 @@ class _$DriverTokensSerializer implements PrimitiveSerializer<DriverTokens> {
       object.mustChangePin,
       specifiedType: const FullType(bool),
     );
-<<<<<<< HEAD
-=======
     yield r'temporaryPinExpiresAt';
-    yield object.temporaryPinExpiresAt == null
-        ? null
-        : serializers.serialize(
-            object.temporaryPinExpiresAt,
-            specifiedType: const FullType.nullable(DateTime),
-          );
->>>>>>> origin/main
+    yield object.temporaryPinExpiresAt == null ? null : serializers.serialize(
+      object.temporaryPinExpiresAt,
+      specifiedType: const FullType.nullable(DateTime),
+    );
   }
 
   @override
@@ -139,13 +118,7 @@ class _$DriverTokensSerializer implements PrimitiveSerializer<DriverTokens> {
     DriverTokens object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-<<<<<<< HEAD
     return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
-=======
-    return _serializeProperties(serializers, object,
-            specifiedType: specifiedType)
-        .toList();
->>>>>>> origin/main
   }
 
   void _deserializeProperties(
@@ -209,8 +182,6 @@ class _$DriverTokensSerializer implements PrimitiveSerializer<DriverTokens> {
           ) as bool;
           result.mustChangePin = valueDes;
           break;
-<<<<<<< HEAD
-=======
         case r'temporaryPinExpiresAt':
           final valueDes = serializers.deserialize(
             value,
@@ -219,7 +190,6 @@ class _$DriverTokensSerializer implements PrimitiveSerializer<DriverTokens> {
           if (valueDes == null) continue;
           result.temporaryPinExpiresAt = valueDes;
           break;
->>>>>>> origin/main
         default:
           unhandled.add(key);
           unhandled.add(value);
@@ -248,7 +218,4 @@ class _$DriverTokensSerializer implements PrimitiveSerializer<DriverTokens> {
     return result.build();
   }
 }
-<<<<<<< HEAD
 
-=======
->>>>>>> origin/main

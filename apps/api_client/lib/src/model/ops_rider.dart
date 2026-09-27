@@ -13,18 +13,18 @@ part 'ops_rider.g.dart';
 /// OpsRider
 ///
 /// Properties:
-/// * [id]
-/// * [displayName]
-/// * [phone]
-/// * [email]
-/// * [role]
-/// * [status]
-/// * [plan]
-/// * [routeName]
-/// * [ridesLeft]
-/// * [availableCredit]
-/// * [joinedAt]
-/// * [editToken]
+/// * [id] 
+/// * [displayName] 
+/// * [phone] 
+/// * [email] 
+/// * [role] 
+/// * [status] 
+/// * [plan] 
+/// * [routeName] 
+/// * [ridesLeft] 
+/// * [availableCredit] 
+/// * [joinedAt] 
+/// * [editToken] 
 @BuiltValue()
 abstract class OpsRider implements Built<OpsRider, OpsRiderBuilder> {
   @BuiltValueField(wireName: r'id')
@@ -100,19 +100,15 @@ class _$OpsRiderSerializer implements PrimitiveSerializer<OpsRider> {
       specifiedType: const FullType(String),
     );
     yield r'phone';
-    yield object.phone == null
-        ? null
-        : serializers.serialize(
-            object.phone,
-            specifiedType: const FullType.nullable(String),
-          );
+    yield object.phone == null ? null : serializers.serialize(
+      object.phone,
+      specifiedType: const FullType.nullable(String),
+    );
     yield r'email';
-    yield object.email == null
-        ? null
-        : serializers.serialize(
-            object.email,
-            specifiedType: const FullType.nullable(String),
-          );
+    yield object.email == null ? null : serializers.serialize(
+      object.email,
+      specifiedType: const FullType.nullable(String),
+    );
     yield r'role';
     yield serializers.serialize(
       object.role,
@@ -124,26 +120,20 @@ class _$OpsRiderSerializer implements PrimitiveSerializer<OpsRider> {
       specifiedType: const FullType(OpsRiderStatusEnum),
     );
     yield r'plan';
-    yield object.plan == null
-        ? null
-        : serializers.serialize(
-            object.plan,
-            specifiedType: const FullType.nullable(OpsRiderPlanEnum),
-          );
+    yield object.plan == null ? null : serializers.serialize(
+      object.plan,
+      specifiedType: const FullType.nullable(OpsRiderPlanEnum),
+    );
     yield r'routeName';
-    yield object.routeName == null
-        ? null
-        : serializers.serialize(
-            object.routeName,
-            specifiedType: const FullType.nullable(String),
-          );
+    yield object.routeName == null ? null : serializers.serialize(
+      object.routeName,
+      specifiedType: const FullType.nullable(String),
+    );
     yield r'ridesLeft';
-    yield object.ridesLeft == null
-        ? null
-        : serializers.serialize(
-            object.ridesLeft,
-            specifiedType: const FullType.nullable(int),
-          );
+    yield object.ridesLeft == null ? null : serializers.serialize(
+      object.ridesLeft,
+      specifiedType: const FullType.nullable(int),
+    );
     yield r'availableCredit';
     yield serializers.serialize(
       object.availableCredit,
@@ -167,9 +157,7 @@ class _$OpsRiderSerializer implements PrimitiveSerializer<OpsRider> {
     OpsRider object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    return _serializeProperties(serializers, object,
-            specifiedType: specifiedType)
-        .toList();
+    return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
   }
 
   void _deserializeProperties(
@@ -303,6 +291,7 @@ class _$OpsRiderSerializer implements PrimitiveSerializer<OpsRider> {
 }
 
 class OpsRiderRoleEnum extends EnumClass {
+
   @BuiltValueEnumConst(wireName: r'commuter')
   static const OpsRiderRoleEnum commuter = _$opsRiderRoleEnum_commuter;
   @BuiltValueEnumConst(wireName: r'driver')
@@ -310,17 +299,16 @@ class OpsRiderRoleEnum extends EnumClass {
   @BuiltValueEnumConst(wireName: r'admin')
   static const OpsRiderRoleEnum admin = _$opsRiderRoleEnum_admin;
 
-  static Serializer<OpsRiderRoleEnum> get serializer =>
-      _$opsRiderRoleEnumSerializer;
+  static Serializer<OpsRiderRoleEnum> get serializer => _$opsRiderRoleEnumSerializer;
 
-  const OpsRiderRoleEnum._(String name) : super(name);
+  const OpsRiderRoleEnum._(String name): super(name);
 
   static BuiltSet<OpsRiderRoleEnum> get values => _$opsRiderRoleEnumValues;
-  static OpsRiderRoleEnum valueOf(String name) =>
-      _$opsRiderRoleEnumValueOf(name);
+  static OpsRiderRoleEnum valueOf(String name) => _$opsRiderRoleEnumValueOf(name);
 }
 
 class OpsRiderStatusEnum extends EnumClass {
+
   @BuiltValueEnumConst(wireName: r'active')
   static const OpsRiderStatusEnum active = _$opsRiderStatusEnum_active;
   @BuiltValueEnumConst(wireName: r'paused')
@@ -330,28 +318,26 @@ class OpsRiderStatusEnum extends EnumClass {
   @BuiltValueEnumConst(wireName: r'none')
   static const OpsRiderStatusEnum none = _$opsRiderStatusEnum_none;
 
-  static Serializer<OpsRiderStatusEnum> get serializer =>
-      _$opsRiderStatusEnumSerializer;
+  static Serializer<OpsRiderStatusEnum> get serializer => _$opsRiderStatusEnumSerializer;
 
-  const OpsRiderStatusEnum._(String name) : super(name);
+  const OpsRiderStatusEnum._(String name): super(name);
 
   static BuiltSet<OpsRiderStatusEnum> get values => _$opsRiderStatusEnumValues;
-  static OpsRiderStatusEnum valueOf(String name) =>
-      _$opsRiderStatusEnumValueOf(name);
+  static OpsRiderStatusEnum valueOf(String name) => _$opsRiderStatusEnumValueOf(name);
 }
 
 class OpsRiderPlanEnum extends EnumClass {
+
   @BuiltValueEnumConst(wireName: r'monthly')
   static const OpsRiderPlanEnum monthly = _$opsRiderPlanEnum_monthly;
   @BuiltValueEnumConst(wireName: r'annual')
   static const OpsRiderPlanEnum annual = _$opsRiderPlanEnum_annual;
 
-  static Serializer<OpsRiderPlanEnum> get serializer =>
-      _$opsRiderPlanEnumSerializer;
+  static Serializer<OpsRiderPlanEnum> get serializer => _$opsRiderPlanEnumSerializer;
 
-  const OpsRiderPlanEnum._(String name) : super(name);
+  const OpsRiderPlanEnum._(String name): super(name);
 
   static BuiltSet<OpsRiderPlanEnum> get values => _$opsRiderPlanEnumValues;
-  static OpsRiderPlanEnum valueOf(String name) =>
-      _$opsRiderPlanEnumValueOf(name);
+  static OpsRiderPlanEnum valueOf(String name) => _$opsRiderPlanEnumValueOf(name);
 }
+

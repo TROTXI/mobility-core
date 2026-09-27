@@ -12,45 +12,24 @@ part 'membership_response.g.dart';
 /// MembershipResponse
 ///
 /// Properties:
-<<<<<<< HEAD
 /// * [data] 
 @BuiltValue()
 abstract class MembershipResponse implements Built<MembershipResponse, MembershipResponseBuilder> {
-=======
-/// * [data]
-@BuiltValue()
-abstract class MembershipResponse
-    implements Built<MembershipResponse, MembershipResponseBuilder> {
->>>>>>> origin/main
   @BuiltValueField(wireName: r'data')
   Membership get data;
 
   MembershipResponse._();
 
-<<<<<<< HEAD
   factory MembershipResponse([void updates(MembershipResponseBuilder b)]) = _$MembershipResponse;
-=======
-  factory MembershipResponse([void updates(MembershipResponseBuilder b)]) =
-      _$MembershipResponse;
->>>>>>> origin/main
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(MembershipResponseBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
-<<<<<<< HEAD
   static Serializer<MembershipResponse> get serializer => _$MembershipResponseSerializer();
 }
 
 class _$MembershipResponseSerializer implements PrimitiveSerializer<MembershipResponse> {
-=======
-  static Serializer<MembershipResponse> get serializer =>
-      _$MembershipResponseSerializer();
-}
-
-class _$MembershipResponseSerializer
-    implements PrimitiveSerializer<MembershipResponse> {
->>>>>>> origin/main
   @override
   final Iterable<Type> types = const [MembershipResponse, _$MembershipResponse];
 
@@ -75,13 +54,7 @@ class _$MembershipResponseSerializer
     MembershipResponse object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-<<<<<<< HEAD
     return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
-=======
-    return _serializeProperties(serializers, object,
-            specifiedType: specifiedType)
-        .toList();
->>>>>>> origin/main
   }
 
   void _deserializeProperties(
@@ -131,7 +104,4 @@ class _$MembershipResponseSerializer
     return result.build();
   }
 }
-<<<<<<< HEAD
 
-=======
->>>>>>> origin/main

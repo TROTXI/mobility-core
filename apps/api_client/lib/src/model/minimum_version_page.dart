@@ -14,18 +14,10 @@ part 'minimum_version_page.g.dart';
 /// MinimumVersionPage
 ///
 /// Properties:
-<<<<<<< HEAD
 /// * [data] 
 /// * [page] 
 @BuiltValue()
 abstract class MinimumVersionPage implements Built<MinimumVersionPage, MinimumVersionPageBuilder> {
-=======
-/// * [data]
-/// * [page]
-@BuiltValue()
-abstract class MinimumVersionPage
-    implements Built<MinimumVersionPage, MinimumVersionPageBuilder> {
->>>>>>> origin/main
   @BuiltValueField(wireName: r'data')
   BuiltList<MinimumVersion> get data;
 
@@ -34,30 +26,16 @@ abstract class MinimumVersionPage
 
   MinimumVersionPage._();
 
-<<<<<<< HEAD
   factory MinimumVersionPage([void updates(MinimumVersionPageBuilder b)]) = _$MinimumVersionPage;
-=======
-  factory MinimumVersionPage([void updates(MinimumVersionPageBuilder b)]) =
-      _$MinimumVersionPage;
->>>>>>> origin/main
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(MinimumVersionPageBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
-<<<<<<< HEAD
   static Serializer<MinimumVersionPage> get serializer => _$MinimumVersionPageSerializer();
 }
 
 class _$MinimumVersionPageSerializer implements PrimitiveSerializer<MinimumVersionPage> {
-=======
-  static Serializer<MinimumVersionPage> get serializer =>
-      _$MinimumVersionPageSerializer();
-}
-
-class _$MinimumVersionPageSerializer
-    implements PrimitiveSerializer<MinimumVersionPage> {
->>>>>>> origin/main
   @override
   final Iterable<Type> types = const [MinimumVersionPage, _$MinimumVersionPage];
 
@@ -87,13 +65,7 @@ class _$MinimumVersionPageSerializer
     MinimumVersionPage object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-<<<<<<< HEAD
     return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
-=======
-    return _serializeProperties(serializers, object,
-            specifiedType: specifiedType)
-        .toList();
->>>>>>> origin/main
   }
 
   void _deserializeProperties(
@@ -111,12 +83,7 @@ class _$MinimumVersionPageSerializer
         case r'data':
           final valueDes = serializers.deserialize(
             value,
-<<<<<<< HEAD
             specifiedType: const FullType(BuiltList, [FullType(MinimumVersion)]),
-=======
-            specifiedType:
-                const FullType(BuiltList, [FullType(MinimumVersion)]),
->>>>>>> origin/main
           ) as BuiltList<MinimumVersion>;
           result.data.replace(valueDes);
           break;
@@ -155,7 +122,4 @@ class _$MinimumVersionPageSerializer
     return result.build();
   }
 }
-<<<<<<< HEAD
 
-=======
->>>>>>> origin/main

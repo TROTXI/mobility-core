@@ -14,20 +14,11 @@ part 'commute_slot_input.g.dart';
 /// CommuteSlotInput
 ///
 /// Properties:
-<<<<<<< HEAD
 /// * [routeId] 
 /// * [legs] 
 /// * [availableFrom] 
 @BuiltValue()
 abstract class CommuteSlotInput implements Built<CommuteSlotInput, CommuteSlotInputBuilder> {
-=======
-/// * [routeId]
-/// * [legs]
-/// * [availableFrom]
-@BuiltValue()
-abstract class CommuteSlotInput
-    implements Built<CommuteSlotInput, CommuteSlotInputBuilder> {
->>>>>>> origin/main
   @BuiltValueField(wireName: r'routeId')
   String get routeId;
 
@@ -39,30 +30,16 @@ abstract class CommuteSlotInput
 
   CommuteSlotInput._();
 
-<<<<<<< HEAD
   factory CommuteSlotInput([void updates(CommuteSlotInputBuilder b)]) = _$CommuteSlotInput;
-=======
-  factory CommuteSlotInput([void updates(CommuteSlotInputBuilder b)]) =
-      _$CommuteSlotInput;
->>>>>>> origin/main
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(CommuteSlotInputBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
-<<<<<<< HEAD
   static Serializer<CommuteSlotInput> get serializer => _$CommuteSlotInputSerializer();
 }
 
 class _$CommuteSlotInputSerializer implements PrimitiveSerializer<CommuteSlotInput> {
-=======
-  static Serializer<CommuteSlotInput> get serializer =>
-      _$CommuteSlotInputSerializer();
-}
-
-class _$CommuteSlotInputSerializer
-    implements PrimitiveSerializer<CommuteSlotInput> {
->>>>>>> origin/main
   @override
   final Iterable<Type> types = const [CommuteSlotInput, _$CommuteSlotInput];
 
@@ -97,13 +74,7 @@ class _$CommuteSlotInputSerializer
     CommuteSlotInput object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-<<<<<<< HEAD
     return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
-=======
-    return _serializeProperties(serializers, object,
-            specifiedType: specifiedType)
-        .toList();
->>>>>>> origin/main
   }
 
   void _deserializeProperties(
@@ -167,7 +138,4 @@ class _$CommuteSlotInputSerializer
     return result.build();
   }
 }
-<<<<<<< HEAD
 
-=======
->>>>>>> origin/main

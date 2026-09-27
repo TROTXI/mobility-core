@@ -12,45 +12,24 @@ part 'schedule_response.g.dart';
 /// ScheduleResponse
 ///
 /// Properties:
-<<<<<<< HEAD
 /// * [data] 
 @BuiltValue()
 abstract class ScheduleResponse implements Built<ScheduleResponse, ScheduleResponseBuilder> {
-=======
-/// * [data]
-@BuiltValue()
-abstract class ScheduleResponse
-    implements Built<ScheduleResponse, ScheduleResponseBuilder> {
->>>>>>> origin/main
   @BuiltValueField(wireName: r'data')
   Schedule get data;
 
   ScheduleResponse._();
 
-<<<<<<< HEAD
   factory ScheduleResponse([void updates(ScheduleResponseBuilder b)]) = _$ScheduleResponse;
-=======
-  factory ScheduleResponse([void updates(ScheduleResponseBuilder b)]) =
-      _$ScheduleResponse;
->>>>>>> origin/main
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(ScheduleResponseBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
-<<<<<<< HEAD
   static Serializer<ScheduleResponse> get serializer => _$ScheduleResponseSerializer();
 }
 
 class _$ScheduleResponseSerializer implements PrimitiveSerializer<ScheduleResponse> {
-=======
-  static Serializer<ScheduleResponse> get serializer =>
-      _$ScheduleResponseSerializer();
-}
-
-class _$ScheduleResponseSerializer
-    implements PrimitiveSerializer<ScheduleResponse> {
->>>>>>> origin/main
   @override
   final Iterable<Type> types = const [ScheduleResponse, _$ScheduleResponse];
 
@@ -75,13 +54,7 @@ class _$ScheduleResponseSerializer
     ScheduleResponse object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-<<<<<<< HEAD
     return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
-=======
-    return _serializeProperties(serializers, object,
-            specifiedType: specifiedType)
-        .toList();
->>>>>>> origin/main
   }
 
   void _deserializeProperties(
@@ -131,7 +104,4 @@ class _$ScheduleResponseSerializer
     return result.build();
   }
 }
-<<<<<<< HEAD
 
-=======
->>>>>>> origin/main

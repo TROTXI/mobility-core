@@ -3,13 +3,9 @@
 //
 
 // ignore_for_file: unused_element
-<<<<<<< HEAD
-import 'package:built_collection/built_collection.dart';
-=======
 import 'package:trotxi_api_client/src/model/date.dart';
 import 'package:built_collection/built_collection.dart';
 import 'package:trotxi_api_client/src/model/ops_overview_tiles.dart';
->>>>>>> origin/main
 import 'package:trotxi_api_client/src/model/ops_overview_trips_inner.dart';
 import 'package:built_value/built_value.dart';
 import 'package:built_value/serializer.dart';
@@ -19,19 +15,12 @@ part 'ops_overview.g.dart';
 /// OpsOverview
 ///
 /// Properties:
-<<<<<<< HEAD
 /// * [generatedAt] 
 /// * [window] 
+/// * [serviceDate] 
 /// * [staleFixAfterSeconds] 
+/// * [tiles] 
 /// * [trips] 
-=======
-/// * [generatedAt]
-/// * [window]
-/// * [serviceDate]
-/// * [staleFixAfterSeconds]
-/// * [tiles]
-/// * [trips]
->>>>>>> origin/main
 @BuiltValue()
 abstract class OpsOverview implements Built<OpsOverview, OpsOverviewBuilder> {
   @BuiltValueField(wireName: r'generatedAt')
@@ -41,11 +30,6 @@ abstract class OpsOverview implements Built<OpsOverview, OpsOverviewBuilder> {
   OpsOverviewWindowEnum get window;
   // enum windowEnum {  morning,  evening,  };
 
-<<<<<<< HEAD
-  @BuiltValueField(wireName: r'staleFixAfterSeconds')
-  int get staleFixAfterSeconds;
-
-=======
   @BuiltValueField(wireName: r'serviceDate')
   Date get serviceDate;
 
@@ -55,7 +39,6 @@ abstract class OpsOverview implements Built<OpsOverview, OpsOverviewBuilder> {
   @BuiltValueField(wireName: r'tiles')
   OpsOverviewTiles get tiles;
 
->>>>>>> origin/main
   @BuiltValueField(wireName: r'trips')
   BuiltList<OpsOverviewTripsInner> get trips;
 
@@ -92,25 +75,16 @@ class _$OpsOverviewSerializer implements PrimitiveSerializer<OpsOverview> {
       object.window,
       specifiedType: const FullType(OpsOverviewWindowEnum),
     );
-<<<<<<< HEAD
-=======
     yield r'serviceDate';
     yield serializers.serialize(
       object.serviceDate,
       specifiedType: const FullType(Date),
     );
->>>>>>> origin/main
     yield r'staleFixAfterSeconds';
     yield serializers.serialize(
       object.staleFixAfterSeconds,
       specifiedType: const FullType(int),
     );
-<<<<<<< HEAD
-    yield r'trips';
-    yield serializers.serialize(
-      object.trips,
-      specifiedType: const FullType(BuiltList, [FullType(OpsOverviewTripsInner)]),
-=======
     yield r'tiles';
     yield serializers.serialize(
       object.tiles,
@@ -119,9 +93,7 @@ class _$OpsOverviewSerializer implements PrimitiveSerializer<OpsOverview> {
     yield r'trips';
     yield serializers.serialize(
       object.trips,
-      specifiedType:
-          const FullType(BuiltList, [FullType(OpsOverviewTripsInner)]),
->>>>>>> origin/main
+      specifiedType: const FullType(BuiltList, [FullType(OpsOverviewTripsInner)]),
     );
   }
 
@@ -131,13 +103,7 @@ class _$OpsOverviewSerializer implements PrimitiveSerializer<OpsOverview> {
     OpsOverview object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-<<<<<<< HEAD
     return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
-=======
-    return _serializeProperties(serializers, object,
-            specifiedType: specifiedType)
-        .toList();
->>>>>>> origin/main
   }
 
   void _deserializeProperties(
@@ -166,8 +132,6 @@ class _$OpsOverviewSerializer implements PrimitiveSerializer<OpsOverview> {
           ) as OpsOverviewWindowEnum;
           result.window = valueDes;
           break;
-<<<<<<< HEAD
-=======
         case r'serviceDate':
           final valueDes = serializers.deserialize(
             value,
@@ -175,7 +139,6 @@ class _$OpsOverviewSerializer implements PrimitiveSerializer<OpsOverview> {
           ) as Date;
           result.serviceDate = valueDes;
           break;
->>>>>>> origin/main
         case r'staleFixAfterSeconds':
           final valueDes = serializers.deserialize(
             value,
@@ -183,12 +146,6 @@ class _$OpsOverviewSerializer implements PrimitiveSerializer<OpsOverview> {
           ) as int;
           result.staleFixAfterSeconds = valueDes;
           break;
-<<<<<<< HEAD
-        case r'trips':
-          final valueDes = serializers.deserialize(
-            value,
-            specifiedType: const FullType(BuiltList, [FullType(OpsOverviewTripsInner)]),
-=======
         case r'tiles':
           final valueDes = serializers.deserialize(
             value,
@@ -199,9 +156,7 @@ class _$OpsOverviewSerializer implements PrimitiveSerializer<OpsOverview> {
         case r'trips':
           final valueDes = serializers.deserialize(
             value,
-            specifiedType:
-                const FullType(BuiltList, [FullType(OpsOverviewTripsInner)]),
->>>>>>> origin/main
+            specifiedType: const FullType(BuiltList, [FullType(OpsOverviewTripsInner)]),
           ) as BuiltList<OpsOverviewTripsInner>;
           result.trips.replace(valueDes);
           break;
@@ -235,16 +190,12 @@ class _$OpsOverviewSerializer implements PrimitiveSerializer<OpsOverview> {
 }
 
 class OpsOverviewWindowEnum extends EnumClass {
-<<<<<<< HEAD
 
-=======
->>>>>>> origin/main
   @BuiltValueEnumConst(wireName: r'morning')
   static const OpsOverviewWindowEnum morning = _$opsOverviewWindowEnum_morning;
   @BuiltValueEnumConst(wireName: r'evening')
   static const OpsOverviewWindowEnum evening = _$opsOverviewWindowEnum_evening;
 
-<<<<<<< HEAD
   static Serializer<OpsOverviewWindowEnum> get serializer => _$opsOverviewWindowEnumSerializer;
 
   const OpsOverviewWindowEnum._(String name): super(name);
@@ -253,15 +204,3 @@ class OpsOverviewWindowEnum extends EnumClass {
   static OpsOverviewWindowEnum valueOf(String name) => _$opsOverviewWindowEnumValueOf(name);
 }
 
-=======
-  static Serializer<OpsOverviewWindowEnum> get serializer =>
-      _$opsOverviewWindowEnumSerializer;
-
-  const OpsOverviewWindowEnum._(String name) : super(name);
-
-  static BuiltSet<OpsOverviewWindowEnum> get values =>
-      _$opsOverviewWindowEnumValues;
-  static OpsOverviewWindowEnum valueOf(String name) =>
-      _$opsOverviewWindowEnumValueOf(name);
-}
->>>>>>> origin/main

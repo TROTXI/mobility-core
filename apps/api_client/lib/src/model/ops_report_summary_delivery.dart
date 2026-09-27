@@ -11,12 +11,10 @@ part 'ops_report_summary_delivery.g.dart';
 /// OpsReportSummaryDelivery
 ///
 /// Properties:
-/// * [pending]
-/// * [failed]
+/// * [pending] 
+/// * [failed] 
 @BuiltValue()
-abstract class OpsReportSummaryDelivery
-    implements
-        Built<OpsReportSummaryDelivery, OpsReportSummaryDeliveryBuilder> {
+abstract class OpsReportSummaryDelivery implements Built<OpsReportSummaryDelivery, OpsReportSummaryDeliveryBuilder> {
   @BuiltValueField(wireName: r'pending')
   int get pending;
 
@@ -25,25 +23,18 @@ abstract class OpsReportSummaryDelivery
 
   OpsReportSummaryDelivery._();
 
-  factory OpsReportSummaryDelivery(
-          [void updates(OpsReportSummaryDeliveryBuilder b)]) =
-      _$OpsReportSummaryDelivery;
+  factory OpsReportSummaryDelivery([void updates(OpsReportSummaryDeliveryBuilder b)]) = _$OpsReportSummaryDelivery;
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(OpsReportSummaryDeliveryBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
-  static Serializer<OpsReportSummaryDelivery> get serializer =>
-      _$OpsReportSummaryDeliverySerializer();
+  static Serializer<OpsReportSummaryDelivery> get serializer => _$OpsReportSummaryDeliverySerializer();
 }
 
-class _$OpsReportSummaryDeliverySerializer
-    implements PrimitiveSerializer<OpsReportSummaryDelivery> {
+class _$OpsReportSummaryDeliverySerializer implements PrimitiveSerializer<OpsReportSummaryDelivery> {
   @override
-  final Iterable<Type> types = const [
-    OpsReportSummaryDelivery,
-    _$OpsReportSummaryDelivery
-  ];
+  final Iterable<Type> types = const [OpsReportSummaryDelivery, _$OpsReportSummaryDelivery];
 
   @override
   final String wireName = r'OpsReportSummaryDelivery';
@@ -71,9 +62,7 @@ class _$OpsReportSummaryDeliverySerializer
     OpsReportSummaryDelivery object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    return _serializeProperties(serializers, object,
-            specifiedType: specifiedType)
-        .toList();
+    return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
   }
 
   void _deserializeProperties(
@@ -130,3 +119,4 @@ class _$OpsReportSummaryDeliverySerializer
     return result.build();
   }
 }
+

@@ -28,11 +28,6 @@ Method | HTTP request | Description
 [**decideCommuteRequest**](OpsApi.md#decidecommuterequest) | **POST** /v1/ops/commute-requests/{id}/decisions | decide Commute Request
 [**decideDriverRequest**](OpsApi.md#decidedriverrequest) | **POST** /v1/ops/driver-requests/{id}/decisions | decide Driver Request
 [**decideIncident**](OpsApi.md#decideincident) | **POST** /v1/ops/incidents/{id}/decisions | decide Incident
-<<<<<<< HEAD
-[**getOpsOverview**](OpsApi.md#getopsoverview) | **GET** /v1/ops/overview | get Ops Overview
-[**getOpsPatternVersion**](OpsApi.md#getopspatternversion) | **GET** /v1/ops/route-patterns/{id}/versions/{versionId} | get Ops Pattern Version
-[**getOpsPurchase**](OpsApi.md#getopspurchase) | **GET** /v1/ops/purchases/{id} | get Ops Purchase
-=======
 [**getOpsManifest**](OpsApi.md#getopsmanifest) | **GET** /v1/ops/trips/{id}/manifest | get Ops Manifest
 [**getOpsOverview**](OpsApi.md#getopsoverview) | **GET** /v1/ops/overview | get Ops Overview
 [**getOpsPatternVersion**](OpsApi.md#getopspatternversion) | **GET** /v1/ops/route-patterns/{id}/versions/{versionId} | get Ops Pattern Version
@@ -40,7 +35,6 @@ Method | HTTP request | Description
 [**getOpsReportSummary**](OpsApi.md#getopsreportsummary) | **GET** /v1/ops/reports/summary | get Ops Report Summary
 [**getOpsRiderDetail**](OpsApi.md#getopsriderdetail) | **GET** /v1/ops/riders/{id} | get Ops Rider Detail
 [**getOpsRiderSummary**](OpsApi.md#getopsridersummary) | **GET** /v1/ops/riders/summary | get Ops Rider Summary
->>>>>>> origin/main
 [**initiateRefund**](OpsApi.md#initiaterefund) | **POST** /v1/ops/purchases/{id}/refunds | initiate Refund
 [**issueDriverCredential**](OpsApi.md#issuedrivercredential) | **POST** /v1/ops/drivers/{id}/credentials | issue Driver Credential
 [**listCommuteEvents**](OpsApi.md#listcommuteevents) | **GET** /v1/ops/commute-requests/{id}/events | list Commute Events
@@ -48,13 +42,6 @@ Method | HTTP request | Description
 [**listFares**](OpsApi.md#listfares) | **GET** /v1/ops/routes/{id}/fares | list Fares
 [**listFlags**](OpsApi.md#listflags) | **GET** /v1/ops/flags | list Flags
 [**listMinimumVersions**](OpsApi.md#listminimumversions) | **GET** /v1/ops/min-versions | list Minimum Versions
-<<<<<<< HEAD
-[**listOpsCommuteRequests**](OpsApi.md#listopscommuterequests) | **GET** /v1/ops/commute-requests | list Ops Commute Requests
-[**listOpsDriverRequests**](OpsApi.md#listopsdriverrequests) | **GET** /v1/ops/driver-requests | list Ops Driver Requests
-[**listOpsDrivers**](OpsApi.md#listopsdrivers) | **GET** /v1/ops/drivers | list Ops Drivers
-[**listOpsIncidents**](OpsApi.md#listopsincidents) | **GET** /v1/ops/incidents | list Ops Incidents
-[**listOpsPurchases**](OpsApi.md#listopspurchases) | **GET** /v1/ops/purchases | list Ops Purchases
-=======
 [**listOpsAuditEvents**](OpsApi.md#listopsauditevents) | **GET** /v1/ops/audit-events | list Ops Audit Events
 [**listOpsCommuteRequests**](OpsApi.md#listopscommuterequests) | **GET** /v1/ops/commute-requests | list Ops Commute Requests
 [**listOpsDeliveries**](OpsApi.md#listopsdeliveries) | **GET** /v1/ops/deliveries | list Ops Deliveries
@@ -64,7 +51,6 @@ Method | HTTP request | Description
 [**listOpsOperators**](OpsApi.md#listopsoperators) | **GET** /v1/ops/operators | list Ops Operators
 [**listOpsPurchases**](OpsApi.md#listopspurchases) | **GET** /v1/ops/purchases | list Ops Purchases
 [**listOpsRiders**](OpsApi.md#listopsriders) | **GET** /v1/ops/riders | list Ops Riders
->>>>>>> origin/main
 [**listOpsRoutes**](OpsApi.md#listopsroutes) | **GET** /v1/ops/routes | list Ops Routes
 [**listOpsStops**](OpsApi.md#listopsstops) | **GET** /v1/ops/stops | list Ops Stops
 [**listOpsTrips**](OpsApi.md#listopstrips) | **GET** /v1/ops/trips | list Ops Trips
@@ -81,10 +67,7 @@ Method | HTTP request | Description
 [**releaseTraceHold**](OpsApi.md#releasetracehold) | **POST** /v1/ops/trace-holds/{id}/release | release Trace Hold
 [**rescheduleTrip**](OpsApi.md#rescheduletrip) | **PATCH** /v1/ops/trips/{id} | reschedule Trip
 [**resetDriverPin**](OpsApi.md#resetdriverpin) | **POST** /v1/ops/drivers/{id}/credentials/reset-pin | reset Driver Pin
-<<<<<<< HEAD
-=======
 [**resetOperatorPasskeys**](OpsApi.md#resetoperatorpasskeys) | **POST** /v1/ops/users/{id}/passkeys/reset | reset Operator Passkeys
->>>>>>> origin/main
 [**resolvePaymentReview**](OpsApi.md#resolvepaymentreview) | **POST** /v1/ops/payments/reviews/{id}/decisions | resolve Payment Review
 [**retireCommuteSlot**](OpsApi.md#retirecommuteslot) | **POST** /v1/ops/commute-slots/{id}/retire | retire Commute Slot
 [**runPersonalPauseResumes**](OpsApi.md#runpersonalpauseresumes) | **POST** /v1/ops/maintenance/personal-pause-resumes | run Personal Pause Resumes
@@ -1059,10 +1042,6 @@ Name | Type | Description  | Notes
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
-<<<<<<< HEAD
-# **getOpsOverview**
-> OpsOverviewResponse getOpsOverview(window, xTrotxiClient, xTrotxiBuild, xTrotxiPlatform)
-=======
 # **getOpsManifest**
 > ManifestResponse getOpsManifest(id, xTrotxiClient, xTrotxiBuild, xTrotxiPlatform)
 
@@ -1112,7 +1091,6 @@ Name | Type | Description  | Notes
 
 # **getOpsOverview**
 > OpsOverviewResponse getOpsOverview(window, xTrotxiClient, xTrotxiBuild, date, xTrotxiPlatform)
->>>>>>> origin/main
 
 get Ops Overview
 
@@ -1124,18 +1102,11 @@ final api = TrotxiApiClient().getOpsApi();
 final String window = window_example; // String | Which service window the board shows. Stated by the caller, never inferred.
 final String xTrotxiClient = ops; // String | Compatibility metadata only, never grants a role.
 final int xTrotxiBuild = 1; // int | Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
-<<<<<<< HEAD
-final String xTrotxiPlatform = xTrotxiPlatform_example; // String | Required for commuter/driver, absent for ops/worker.
-
-try {
-    final response = api.getOpsOverview(window, xTrotxiClient, xTrotxiBuild, xTrotxiPlatform);
-=======
 final Date date = 2013-10-20; // Date | Service day to show. Defaults to today in Accra; set it to review a past day.
 final String xTrotxiPlatform = xTrotxiPlatform_example; // String | Required for commuter/driver, absent for ops/worker.
 
 try {
     final response = api.getOpsOverview(window, xTrotxiClient, xTrotxiBuild, date, xTrotxiPlatform);
->>>>>>> origin/main
     print(response);
 } on DioException catch (e) {
     print('Exception when calling OpsApi->getOpsOverview: $e\n');
@@ -1149,10 +1120,7 @@ Name | Type | Description  | Notes
  **window** | **String**| Which service window the board shows. Stated by the caller, never inferred. | 
  **xTrotxiClient** | **String**| Compatibility metadata only, never grants a role. | 
  **xTrotxiBuild** | **int**| Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable. | [default to 1]
-<<<<<<< HEAD
-=======
  **date** | **Date**| Service day to show. Defaults to today in Accra; set it to review a past day. | [optional] 
->>>>>>> origin/main
  **xTrotxiPlatform** | **String**| Required for commuter/driver, absent for ops/worker. | [optional] 
 
 ### Return type
@@ -1266,8 +1234,6 @@ Name | Type | Description  | Notes
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
-<<<<<<< HEAD
-=======
 # **getOpsReportSummary**
 > OpsReportSummaryResponse getOpsReportSummary(xTrotxiClient, xTrotxiBuild, fromDate, toDate, xTrotxiPlatform)
 
@@ -1409,7 +1375,6 @@ Name | Type | Description  | Notes
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
->>>>>>> origin/main
 # **initiateRefund**
 > RefundInitiationResponse initiateRefund(id, idempotencyKey, xTrotxiClient, xTrotxiBuild, refundInitiationInput, xTrotxiPlatform)
 
@@ -1763,8 +1728,6 @@ Name | Type | Description  | Notes
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
-<<<<<<< HEAD
-=======
 # **listOpsAuditEvents**
 > OpsAuditEventPage listOpsAuditEvents(xTrotxiClient, xTrotxiBuild, cursor, limit, area, xTrotxiPlatform)
 
@@ -1816,7 +1779,6 @@ Name | Type | Description  | Notes
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
->>>>>>> origin/main
 # **listOpsCommuteRequests**
 > OpsCommuteRequestPage listOpsCommuteRequests(xTrotxiClient, xTrotxiBuild, cursor, limit, status, xTrotxiPlatform)
 
@@ -1868,8 +1830,6 @@ Name | Type | Description  | Notes
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
-<<<<<<< HEAD
-=======
 # **listOpsDeliveries**
 > OpsDeliveryPage listOpsDeliveries(xTrotxiClient, xTrotxiBuild, cursor, limit, channel, state, xTrotxiPlatform)
 
@@ -1923,7 +1883,6 @@ Name | Type | Description  | Notes
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
->>>>>>> origin/main
 # **listOpsDriverRequests**
 > OpsWorkRequestPage listOpsDriverRequests(xTrotxiClient, xTrotxiBuild, cursor, limit, status, xTrotxiPlatform)
 
@@ -2075,8 +2034,6 @@ Name | Type | Description  | Notes
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
-<<<<<<< HEAD
-=======
 # **listOpsOperators**
 > OpsOperatorPage listOpsOperators(xTrotxiClient, xTrotxiBuild, cursor, limit, xTrotxiPlatform)
 
@@ -2126,7 +2083,6 @@ Name | Type | Description  | Notes
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
->>>>>>> origin/main
 # **listOpsPurchases**
 > OpsPurchasePage listOpsPurchases(xTrotxiClient, xTrotxiBuild, cursor, limit, fromDate, toDate, xTrotxiPlatform)
 
@@ -2180,8 +2136,6 @@ Name | Type | Description  | Notes
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
-<<<<<<< HEAD
-=======
 # **listOpsRiders**
 > OpsRiderPage listOpsRiders(xTrotxiClient, xTrotxiBuild, cursor, limit, q, xTrotxiPlatform)
 
@@ -2233,7 +2187,6 @@ Name | Type | Description  | Notes
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
->>>>>>> origin/main
 # **listOpsRoutes**
 > RoutePage listOpsRoutes(xTrotxiClient, xTrotxiBuild, cursor, limit, xTrotxiPlatform)
 
@@ -3000,11 +2953,7 @@ Name | Type | Description  | Notes
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **resetDriverPin**
-<<<<<<< HEAD
-> CredentialSecretResponse resetDriverPin(id, idempotencyKey, xTrotxiClient, xTrotxiBuild, reasonInput, xTrotxiPlatform)
-=======
 > CredentialSecretResponse resetDriverPin(id, idempotencyKey, xTrotxiClient, xTrotxiBuild, pinResetInput, xTrotxiPlatform)
->>>>>>> origin/main
 
 reset Driver Pin
 
@@ -3017,19 +2966,11 @@ final String id = id_example; // String |
 final String idempotencyKey = idempotencyKey_example; // String | Caller + operation + target scoped; payload mismatch = 409. Never log secrets.
 final String xTrotxiClient = ops; // String | Compatibility metadata only, never grants a role.
 final int xTrotxiBuild = 1; // int | Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
-<<<<<<< HEAD
-final ReasonInput reasonInput = ; // ReasonInput | 
-final String xTrotxiPlatform = xTrotxiPlatform_example; // String | Required for commuter/driver, absent for ops/worker.
-
-try {
-    final response = api.resetDriverPin(id, idempotencyKey, xTrotxiClient, xTrotxiBuild, reasonInput, xTrotxiPlatform);
-=======
 final PinResetInput pinResetInput = ; // PinResetInput | 
 final String xTrotxiPlatform = xTrotxiPlatform_example; // String | Required for commuter/driver, absent for ops/worker.
 
 try {
     final response = api.resetDriverPin(id, idempotencyKey, xTrotxiClient, xTrotxiBuild, pinResetInput, xTrotxiPlatform);
->>>>>>> origin/main
     print(response);
 } on DioException catch (e) {
     print('Exception when calling OpsApi->resetDriverPin: $e\n');
@@ -3044,11 +2985,7 @@ Name | Type | Description  | Notes
  **idempotencyKey** | **String**| Caller + operation + target scoped; payload mismatch = 409. Never log secrets. | 
  **xTrotxiClient** | **String**| Compatibility metadata only, never grants a role. | 
  **xTrotxiBuild** | **int**| Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable. | [default to 1]
-<<<<<<< HEAD
- **reasonInput** | [**ReasonInput**](ReasonInput.md)|  | 
-=======
  **pinResetInput** | [**PinResetInput**](PinResetInput.md)|  | 
->>>>>>> origin/main
  **xTrotxiPlatform** | **String**| Required for commuter/driver, absent for ops/worker. | [optional] 
 
 ### Return type
@@ -3066,8 +3003,6 @@ Name | Type | Description  | Notes
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
-<<<<<<< HEAD
-=======
 # **resetOperatorPasskeys**
 > resetOperatorPasskeys(id, xTrotxiClient, xTrotxiBuild, xTrotxiPlatform)
 
@@ -3114,7 +3049,6 @@ void (empty response body)
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
->>>>>>> origin/main
 # **resolvePaymentReview**
 > PaymentReviewResponse resolvePaymentReview(id, ifMatch, idempotencyKey, xTrotxiClient, xTrotxiBuild, reviewDecision, xTrotxiPlatform)
 

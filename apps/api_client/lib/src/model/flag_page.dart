@@ -14,13 +14,8 @@ part 'flag_page.g.dart';
 /// FlagPage
 ///
 /// Properties:
-<<<<<<< HEAD
 /// * [data] 
 /// * [page] 
-=======
-/// * [data]
-/// * [page]
->>>>>>> origin/main
 @BuiltValue()
 abstract class FlagPage implements Built<FlagPage, FlagPageBuilder> {
   @BuiltValueField(wireName: r'data')
@@ -70,13 +65,7 @@ class _$FlagPageSerializer implements PrimitiveSerializer<FlagPage> {
     FlagPage object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-<<<<<<< HEAD
     return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
-=======
-    return _serializeProperties(serializers, object,
-            specifiedType: specifiedType)
-        .toList();
->>>>>>> origin/main
   }
 
   void _deserializeProperties(
@@ -133,7 +122,4 @@ class _$FlagPageSerializer implements PrimitiveSerializer<FlagPage> {
     return result.build();
   }
 }
-<<<<<<< HEAD
 
-=======
->>>>>>> origin/main

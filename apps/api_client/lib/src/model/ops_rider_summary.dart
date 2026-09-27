@@ -12,17 +12,16 @@ part 'ops_rider_summary.g.dart';
 /// OpsRiderSummary
 ///
 /// Properties:
-/// * [generatedAt]
-/// * [active]
-/// * [paused]
-/// * [lapsed]
-/// * [monthly]
-/// * [annual]
-/// * [creditOutstanding]
-/// * [averageRidesUsed]
+/// * [generatedAt] 
+/// * [active] 
+/// * [paused] 
+/// * [lapsed] 
+/// * [monthly] 
+/// * [annual] 
+/// * [creditOutstanding] 
+/// * [averageRidesUsed] 
 @BuiltValue()
-abstract class OpsRiderSummary
-    implements Built<OpsRiderSummary, OpsRiderSummaryBuilder> {
+abstract class OpsRiderSummary implements Built<OpsRiderSummary, OpsRiderSummaryBuilder> {
   @BuiltValueField(wireName: r'generatedAt')
   DateTime get generatedAt;
 
@@ -49,19 +48,16 @@ abstract class OpsRiderSummary
 
   OpsRiderSummary._();
 
-  factory OpsRiderSummary([void updates(OpsRiderSummaryBuilder b)]) =
-      _$OpsRiderSummary;
+  factory OpsRiderSummary([void updates(OpsRiderSummaryBuilder b)]) = _$OpsRiderSummary;
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(OpsRiderSummaryBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
-  static Serializer<OpsRiderSummary> get serializer =>
-      _$OpsRiderSummarySerializer();
+  static Serializer<OpsRiderSummary> get serializer => _$OpsRiderSummarySerializer();
 }
 
-class _$OpsRiderSummarySerializer
-    implements PrimitiveSerializer<OpsRiderSummary> {
+class _$OpsRiderSummarySerializer implements PrimitiveSerializer<OpsRiderSummary> {
   @override
   final Iterable<Type> types = const [OpsRiderSummary, _$OpsRiderSummary];
 
@@ -109,12 +105,10 @@ class _$OpsRiderSummarySerializer
       specifiedType: const FullType(Money),
     );
     yield r'averageRidesUsed';
-    yield object.averageRidesUsed == null
-        ? null
-        : serializers.serialize(
-            object.averageRidesUsed,
-            specifiedType: const FullType.nullable(num),
-          );
+    yield object.averageRidesUsed == null ? null : serializers.serialize(
+      object.averageRidesUsed,
+      specifiedType: const FullType.nullable(num),
+    );
   }
 
   @override
@@ -123,9 +117,7 @@ class _$OpsRiderSummarySerializer
     OpsRiderSummary object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    return _serializeProperties(serializers, object,
-            specifiedType: specifiedType)
-        .toList();
+    return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
   }
 
   void _deserializeProperties(
@@ -225,3 +217,4 @@ class _$OpsRiderSummarySerializer
     return result.build();
   }
 }
+

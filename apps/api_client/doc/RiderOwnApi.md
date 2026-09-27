@@ -16,10 +16,7 @@ Method | HTTP request | Description
 [**getMembership**](RiderOwnApi.md#getmembership) | **GET** /v1/me/membership | get Membership
 [**getPersonalPause**](RiderOwnApi.md#getpersonalpause) | **GET** /v1/me/membership/pause | get Personal Pause
 [**getPurchase**](RiderOwnApi.md#getpurchase) | **GET** /v1/me/purchases/{id} | get Purchase
-<<<<<<< HEAD
-=======
 [**getReservation**](RiderOwnApi.md#getreservation) | **GET** /v1/me/reservations/{id} | get Reservation
->>>>>>> origin/main
 [**issuePass**](RiderOwnApi.md#issuepass) | **POST** /v1/me/reservations/{id}/pass | issue Pass
 [**listCommuteRequests**](RiderOwnApi.md#listcommuterequests) | **GET** /v1/me/commute-requests | list Commute Requests
 [**listCreditEntries**](RiderOwnApi.md#listcreditentries) | **GET** /v1/me/credit-entries | list Credit Entries
@@ -365,8 +362,6 @@ Name | Type | Description  | Notes
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
-<<<<<<< HEAD
-=======
 # **getReservation**
 > ReservationDetailResponse getReservation(id, xTrotxiClient, xTrotxiBuild, xTrotxiPlatform)
 
@@ -414,7 +409,6 @@ Name | Type | Description  | Notes
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
->>>>>>> origin/main
 # **issuePass**
 > PassResponse issuePass(id, idempotencyKey, xTrotxiClient, xTrotxiBuild, xTrotxiPlatform)
 

@@ -11,20 +11,19 @@ part 'ops_overview_tiles.g.dart';
 /// OpsOverviewTiles
 ///
 /// Properties:
-/// * [trips]
-/// * [inProgress]
-/// * [completed]
-/// * [cancelled]
-/// * [seatCapacity]
-/// * [seatsConfirmed]
-/// * [boarded]
-/// * [noShows]
-/// * [awaitingResolution]
-/// * [staleGps]
-/// * [unassigned]
+/// * [trips] 
+/// * [inProgress] 
+/// * [completed] 
+/// * [cancelled] 
+/// * [seatCapacity] 
+/// * [seatsConfirmed] 
+/// * [boarded] 
+/// * [noShows] 
+/// * [awaitingResolution] 
+/// * [staleGps] 
+/// * [unassigned] 
 @BuiltValue()
-abstract class OpsOverviewTiles
-    implements Built<OpsOverviewTiles, OpsOverviewTilesBuilder> {
+abstract class OpsOverviewTiles implements Built<OpsOverviewTiles, OpsOverviewTilesBuilder> {
   @BuiltValueField(wireName: r'trips')
   int get trips;
 
@@ -60,19 +59,16 @@ abstract class OpsOverviewTiles
 
   OpsOverviewTiles._();
 
-  factory OpsOverviewTiles([void updates(OpsOverviewTilesBuilder b)]) =
-      _$OpsOverviewTiles;
+  factory OpsOverviewTiles([void updates(OpsOverviewTilesBuilder b)]) = _$OpsOverviewTiles;
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(OpsOverviewTilesBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
-  static Serializer<OpsOverviewTiles> get serializer =>
-      _$OpsOverviewTilesSerializer();
+  static Serializer<OpsOverviewTiles> get serializer => _$OpsOverviewTilesSerializer();
 }
 
-class _$OpsOverviewTilesSerializer
-    implements PrimitiveSerializer<OpsOverviewTiles> {
+class _$OpsOverviewTilesSerializer implements PrimitiveSerializer<OpsOverviewTiles> {
   @override
   final Iterable<Type> types = const [OpsOverviewTiles, _$OpsOverviewTiles];
 
@@ -147,9 +143,7 @@ class _$OpsOverviewTilesSerializer
     OpsOverviewTiles object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    return _serializeProperties(serializers, object,
-            specifiedType: specifiedType)
-        .toList();
+    return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
   }
 
   void _deserializeProperties(
@@ -269,3 +263,4 @@ class _$OpsOverviewTilesSerializer
     return result.build();
   }
 }
+

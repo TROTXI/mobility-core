@@ -12,7 +12,6 @@ part 'membership_coverage.g.dart';
 /// MembershipCoverage
 ///
 /// Properties:
-<<<<<<< HEAD
 /// * [id] 
 /// * [startsAt] 
 /// * [endsAt] 
@@ -21,17 +20,6 @@ part 'membership_coverage.g.dart';
 /// * [renewalMode] 
 @BuiltValue()
 abstract class MembershipCoverage implements Built<MembershipCoverage, MembershipCoverageBuilder> {
-=======
-/// * [id]
-/// * [startsAt]
-/// * [endsAt]
-/// * [state]
-/// * [paused]
-/// * [renewalMode]
-@BuiltValue()
-abstract class MembershipCoverage
-    implements Built<MembershipCoverage, MembershipCoverageBuilder> {
->>>>>>> origin/main
   @BuiltValueField(wireName: r'id')
   String get id;
 
@@ -54,30 +42,16 @@ abstract class MembershipCoverage
 
   MembershipCoverage._();
 
-<<<<<<< HEAD
   factory MembershipCoverage([void updates(MembershipCoverageBuilder b)]) = _$MembershipCoverage;
-=======
-  factory MembershipCoverage([void updates(MembershipCoverageBuilder b)]) =
-      _$MembershipCoverage;
->>>>>>> origin/main
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(MembershipCoverageBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
-<<<<<<< HEAD
   static Serializer<MembershipCoverage> get serializer => _$MembershipCoverageSerializer();
 }
 
 class _$MembershipCoverageSerializer implements PrimitiveSerializer<MembershipCoverage> {
-=======
-  static Serializer<MembershipCoverage> get serializer =>
-      _$MembershipCoverageSerializer();
-}
-
-class _$MembershipCoverageSerializer
-    implements PrimitiveSerializer<MembershipCoverage> {
->>>>>>> origin/main
   @override
   final Iterable<Type> types = const [MembershipCoverage, _$MembershipCoverage];
 
@@ -100,19 +74,10 @@ class _$MembershipCoverageSerializer
       specifiedType: const FullType(DateTime),
     );
     yield r'endsAt';
-<<<<<<< HEAD
     yield object.endsAt == null ? null : serializers.serialize(
       object.endsAt,
       specifiedType: const FullType.nullable(DateTime),
     );
-=======
-    yield object.endsAt == null
-        ? null
-        : serializers.serialize(
-            object.endsAt,
-            specifiedType: const FullType.nullable(DateTime),
-          );
->>>>>>> origin/main
     yield r'state';
     yield serializers.serialize(
       object.state,
@@ -136,13 +101,7 @@ class _$MembershipCoverageSerializer
     MembershipCoverage object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-<<<<<<< HEAD
     return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
-=======
-    return _serializeProperties(serializers, object,
-            specifiedType: specifiedType)
-        .toList();
->>>>>>> origin/main
   }
 
   void _deserializeProperties(
@@ -230,7 +189,6 @@ class _$MembershipCoverageSerializer
 }
 
 class MembershipCoverageStateEnum extends EnumClass {
-<<<<<<< HEAD
 
   @BuiltValueEnumConst(wireName: r'open')
   static const MembershipCoverageStateEnum open = _$membershipCoverageStateEnum_open;
@@ -260,41 +218,3 @@ class MembershipCoverageRenewalModeEnum extends EnumClass {
   static MembershipCoverageRenewalModeEnum valueOf(String name) => _$membershipCoverageRenewalModeEnumValueOf(name);
 }
 
-=======
-  @BuiltValueEnumConst(wireName: r'open')
-  static const MembershipCoverageStateEnum open =
-      _$membershipCoverageStateEnum_open;
-  @BuiltValueEnumConst(wireName: r'closed')
-  static const MembershipCoverageStateEnum closed =
-      _$membershipCoverageStateEnum_closed;
-  @BuiltValueEnumConst(wireName: r'reversed')
-  static const MembershipCoverageStateEnum reversed =
-      _$membershipCoverageStateEnum_reversed;
-
-  static Serializer<MembershipCoverageStateEnum> get serializer =>
-      _$membershipCoverageStateEnumSerializer;
-
-  const MembershipCoverageStateEnum._(String name) : super(name);
-
-  static BuiltSet<MembershipCoverageStateEnum> get values =>
-      _$membershipCoverageStateEnumValues;
-  static MembershipCoverageStateEnum valueOf(String name) =>
-      _$membershipCoverageStateEnumValueOf(name);
-}
-
-class MembershipCoverageRenewalModeEnum extends EnumClass {
-  @BuiltValueEnumConst(wireName: r'manual')
-  static const MembershipCoverageRenewalModeEnum manual =
-      _$membershipCoverageRenewalModeEnum_manual;
-
-  static Serializer<MembershipCoverageRenewalModeEnum> get serializer =>
-      _$membershipCoverageRenewalModeEnumSerializer;
-
-  const MembershipCoverageRenewalModeEnum._(String name) : super(name);
-
-  static BuiltSet<MembershipCoverageRenewalModeEnum> get values =>
-      _$membershipCoverageRenewalModeEnumValues;
-  static MembershipCoverageRenewalModeEnum valueOf(String name) =>
-      _$membershipCoverageRenewalModeEnumValueOf(name);
-}
->>>>>>> origin/main

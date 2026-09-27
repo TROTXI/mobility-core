@@ -11,23 +11,11 @@ part 'credential_issue.g.dart';
 /// CredentialIssue
 ///
 /// Properties:
-<<<<<<< HEAD
 /// * [code] 
+/// * [emailInstructions] 
+/// * [smsInstructions] 
 @BuiltValue()
 abstract class CredentialIssue implements Built<CredentialIssue, CredentialIssueBuilder> {
-  @BuiltValueField(wireName: r'code')
-  String? get code;
-
-  CredentialIssue._();
-
-  factory CredentialIssue([void updates(CredentialIssueBuilder b)]) = _$CredentialIssue;
-=======
-/// * [code]
-/// * [emailInstructions]
-/// * [smsInstructions]
-@BuiltValue()
-abstract class CredentialIssue
-    implements Built<CredentialIssue, CredentialIssueBuilder> {
   @BuiltValueField(wireName: r'code')
   String? get code;
 
@@ -39,27 +27,16 @@ abstract class CredentialIssue
 
   CredentialIssue._();
 
-  factory CredentialIssue([void updates(CredentialIssueBuilder b)]) =
-      _$CredentialIssue;
->>>>>>> origin/main
+  factory CredentialIssue([void updates(CredentialIssueBuilder b)]) = _$CredentialIssue;
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(CredentialIssueBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
-<<<<<<< HEAD
   static Serializer<CredentialIssue> get serializer => _$CredentialIssueSerializer();
 }
 
 class _$CredentialIssueSerializer implements PrimitiveSerializer<CredentialIssue> {
-=======
-  static Serializer<CredentialIssue> get serializer =>
-      _$CredentialIssueSerializer();
-}
-
-class _$CredentialIssueSerializer
-    implements PrimitiveSerializer<CredentialIssue> {
->>>>>>> origin/main
   @override
   final Iterable<Type> types = const [CredentialIssue, _$CredentialIssue];
 
@@ -78,8 +55,6 @@ class _$CredentialIssueSerializer
         specifiedType: const FullType(String),
       );
     }
-<<<<<<< HEAD
-=======
     if (object.emailInstructions != null) {
       yield r'emailInstructions';
       yield serializers.serialize(
@@ -94,7 +69,6 @@ class _$CredentialIssueSerializer
         specifiedType: const FullType(bool),
       );
     }
->>>>>>> origin/main
   }
 
   @override
@@ -103,13 +77,7 @@ class _$CredentialIssueSerializer
     CredentialIssue object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-<<<<<<< HEAD
     return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
-=======
-    return _serializeProperties(serializers, object,
-            specifiedType: specifiedType)
-        .toList();
->>>>>>> origin/main
   }
 
   void _deserializeProperties(
@@ -131,8 +99,6 @@ class _$CredentialIssueSerializer
           ) as String;
           result.code = valueDes;
           break;
-<<<<<<< HEAD
-=======
         case r'emailInstructions':
           final valueDes = serializers.deserialize(
             value,
@@ -147,7 +113,6 @@ class _$CredentialIssueSerializer
           ) as bool;
           result.smsInstructions = valueDes;
           break;
->>>>>>> origin/main
         default:
           unhandled.add(key);
           unhandled.add(value);
@@ -176,7 +141,4 @@ class _$CredentialIssueSerializer
     return result.build();
   }
 }
-<<<<<<< HEAD
 
-=======
->>>>>>> origin/main

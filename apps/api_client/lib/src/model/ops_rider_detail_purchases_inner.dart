@@ -13,16 +13,13 @@ part 'ops_rider_detail_purchases_inner.g.dart';
 /// OpsRiderDetailPurchasesInner
 ///
 /// Properties:
-/// * [id]
-/// * [plan]
-/// * [state]
-/// * [cashDue]
-/// * [createdAt]
+/// * [id] 
+/// * [plan] 
+/// * [state] 
+/// * [cashDue] 
+/// * [createdAt] 
 @BuiltValue()
-abstract class OpsRiderDetailPurchasesInner
-    implements
-        Built<OpsRiderDetailPurchasesInner,
-            OpsRiderDetailPurchasesInnerBuilder> {
+abstract class OpsRiderDetailPurchasesInner implements Built<OpsRiderDetailPurchasesInner, OpsRiderDetailPurchasesInnerBuilder> {
   @BuiltValueField(wireName: r'id')
   String get id;
 
@@ -41,25 +38,18 @@ abstract class OpsRiderDetailPurchasesInner
 
   OpsRiderDetailPurchasesInner._();
 
-  factory OpsRiderDetailPurchasesInner(
-          [void updates(OpsRiderDetailPurchasesInnerBuilder b)]) =
-      _$OpsRiderDetailPurchasesInner;
+  factory OpsRiderDetailPurchasesInner([void updates(OpsRiderDetailPurchasesInnerBuilder b)]) = _$OpsRiderDetailPurchasesInner;
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(OpsRiderDetailPurchasesInnerBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
-  static Serializer<OpsRiderDetailPurchasesInner> get serializer =>
-      _$OpsRiderDetailPurchasesInnerSerializer();
+  static Serializer<OpsRiderDetailPurchasesInner> get serializer => _$OpsRiderDetailPurchasesInnerSerializer();
 }
 
-class _$OpsRiderDetailPurchasesInnerSerializer
-    implements PrimitiveSerializer<OpsRiderDetailPurchasesInner> {
+class _$OpsRiderDetailPurchasesInnerSerializer implements PrimitiveSerializer<OpsRiderDetailPurchasesInner> {
   @override
-  final Iterable<Type> types = const [
-    OpsRiderDetailPurchasesInner,
-    _$OpsRiderDetailPurchasesInner
-  ];
+  final Iterable<Type> types = const [OpsRiderDetailPurchasesInner, _$OpsRiderDetailPurchasesInner];
 
   @override
   final String wireName = r'OpsRiderDetailPurchasesInner';
@@ -102,9 +92,7 @@ class _$OpsRiderDetailPurchasesInnerSerializer
     OpsRiderDetailPurchasesInner object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    return _serializeProperties(serializers, object,
-            specifiedType: specifiedType)
-        .toList();
+    return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
   }
 
   void _deserializeProperties(
@@ -184,20 +172,17 @@ class _$OpsRiderDetailPurchasesInnerSerializer
 }
 
 class OpsRiderDetailPurchasesInnerPlanEnum extends EnumClass {
+
   @BuiltValueEnumConst(wireName: r'monthly')
-  static const OpsRiderDetailPurchasesInnerPlanEnum monthly =
-      _$opsRiderDetailPurchasesInnerPlanEnum_monthly;
+  static const OpsRiderDetailPurchasesInnerPlanEnum monthly = _$opsRiderDetailPurchasesInnerPlanEnum_monthly;
   @BuiltValueEnumConst(wireName: r'annual')
-  static const OpsRiderDetailPurchasesInnerPlanEnum annual =
-      _$opsRiderDetailPurchasesInnerPlanEnum_annual;
+  static const OpsRiderDetailPurchasesInnerPlanEnum annual = _$opsRiderDetailPurchasesInnerPlanEnum_annual;
 
-  static Serializer<OpsRiderDetailPurchasesInnerPlanEnum> get serializer =>
-      _$opsRiderDetailPurchasesInnerPlanEnumSerializer;
+  static Serializer<OpsRiderDetailPurchasesInnerPlanEnum> get serializer => _$opsRiderDetailPurchasesInnerPlanEnumSerializer;
 
-  const OpsRiderDetailPurchasesInnerPlanEnum._(String name) : super(name);
+  const OpsRiderDetailPurchasesInnerPlanEnum._(String name): super(name);
 
-  static BuiltSet<OpsRiderDetailPurchasesInnerPlanEnum> get values =>
-      _$opsRiderDetailPurchasesInnerPlanEnumValues;
-  static OpsRiderDetailPurchasesInnerPlanEnum valueOf(String name) =>
-      _$opsRiderDetailPurchasesInnerPlanEnumValueOf(name);
+  static BuiltSet<OpsRiderDetailPurchasesInnerPlanEnum> get values => _$opsRiderDetailPurchasesInnerPlanEnumValues;
+  static OpsRiderDetailPurchasesInnerPlanEnum valueOf(String name) => _$opsRiderDetailPurchasesInnerPlanEnumValueOf(name);
 }
+

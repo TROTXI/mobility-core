@@ -14,16 +14,14 @@ part 'passkey_registration_response.g.dart';
 /// PasskeyRegistrationResponse
 ///
 /// Properties:
-/// * [id]
-/// * [rawId]
-/// * [authenticatorAttachment]
-/// * [clientExtensionResults]
-/// * [type]
-/// * [response]
+/// * [id] 
+/// * [rawId] 
+/// * [authenticatorAttachment] 
+/// * [clientExtensionResults] 
+/// * [type] 
+/// * [response] 
 @BuiltValue()
-abstract class PasskeyRegistrationResponse
-    implements
-        Built<PasskeyRegistrationResponse, PasskeyRegistrationResponseBuilder> {
+abstract class PasskeyRegistrationResponse implements Built<PasskeyRegistrationResponse, PasskeyRegistrationResponseBuilder> {
   @BuiltValueField(wireName: r'id')
   String get id;
 
@@ -31,8 +29,7 @@ abstract class PasskeyRegistrationResponse
   String get rawId;
 
   @BuiltValueField(wireName: r'authenticatorAttachment')
-  PasskeyRegistrationResponseAuthenticatorAttachmentEnum?
-      get authenticatorAttachment;
+  PasskeyRegistrationResponseAuthenticatorAttachmentEnum? get authenticatorAttachment;
   // enum authenticatorAttachmentEnum {  cross-platform,  platform,  };
 
   @BuiltValueField(wireName: r'clientExtensionResults')
@@ -47,25 +44,18 @@ abstract class PasskeyRegistrationResponse
 
   PasskeyRegistrationResponse._();
 
-  factory PasskeyRegistrationResponse(
-          [void updates(PasskeyRegistrationResponseBuilder b)]) =
-      _$PasskeyRegistrationResponse;
+  factory PasskeyRegistrationResponse([void updates(PasskeyRegistrationResponseBuilder b)]) = _$PasskeyRegistrationResponse;
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(PasskeyRegistrationResponseBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
-  static Serializer<PasskeyRegistrationResponse> get serializer =>
-      _$PasskeyRegistrationResponseSerializer();
+  static Serializer<PasskeyRegistrationResponse> get serializer => _$PasskeyRegistrationResponseSerializer();
 }
 
-class _$PasskeyRegistrationResponseSerializer
-    implements PrimitiveSerializer<PasskeyRegistrationResponse> {
+class _$PasskeyRegistrationResponseSerializer implements PrimitiveSerializer<PasskeyRegistrationResponse> {
   @override
-  final Iterable<Type> types = const [
-    PasskeyRegistrationResponse,
-    _$PasskeyRegistrationResponse
-  ];
+  final Iterable<Type> types = const [PasskeyRegistrationResponse, _$PasskeyRegistrationResponse];
 
   @override
   final String wireName = r'PasskeyRegistrationResponse';
@@ -89,15 +79,13 @@ class _$PasskeyRegistrationResponseSerializer
       yield r'authenticatorAttachment';
       yield serializers.serialize(
         object.authenticatorAttachment,
-        specifiedType: const FullType.nullable(
-            PasskeyRegistrationResponseAuthenticatorAttachmentEnum),
+        specifiedType: const FullType.nullable(PasskeyRegistrationResponseAuthenticatorAttachmentEnum),
       );
     }
     yield r'clientExtensionResults';
     yield serializers.serialize(
       object.clientExtensionResults,
-      specifiedType: const FullType(
-          BuiltMap, [FullType(String), FullType.nullable(JsonObject)]),
+      specifiedType: const FullType(BuiltMap, [FullType(String), FullType.nullable(JsonObject)]),
     );
     yield r'type';
     yield serializers.serialize(
@@ -117,9 +105,7 @@ class _$PasskeyRegistrationResponseSerializer
     PasskeyRegistrationResponse object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    return _serializeProperties(serializers, object,
-            specifiedType: specifiedType)
-        .toList();
+    return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
   }
 
   void _deserializeProperties(
@@ -151,8 +137,7 @@ class _$PasskeyRegistrationResponseSerializer
         case r'authenticatorAttachment':
           final valueDes = serializers.deserialize(
             value,
-            specifiedType: const FullType.nullable(
-                PasskeyRegistrationResponseAuthenticatorAttachmentEnum),
+            specifiedType: const FullType.nullable(PasskeyRegistrationResponseAuthenticatorAttachmentEnum),
           ) as PasskeyRegistrationResponseAuthenticatorAttachmentEnum?;
           if (valueDes == null) continue;
           result.authenticatorAttachment = valueDes;
@@ -160,8 +145,7 @@ class _$PasskeyRegistrationResponseSerializer
         case r'clientExtensionResults':
           final valueDes = serializers.deserialize(
             value,
-            specifiedType: const FullType(
-                BuiltMap, [FullType(String), FullType.nullable(JsonObject)]),
+            specifiedType: const FullType(BuiltMap, [FullType(String), FullType.nullable(JsonObject)]),
           ) as BuiltMap<String, JsonObject?>;
           result.clientExtensionResults.replace(valueDes);
           break;
@@ -209,41 +193,30 @@ class _$PasskeyRegistrationResponseSerializer
 }
 
 class PasskeyRegistrationResponseAuthenticatorAttachmentEnum extends EnumClass {
+
   @BuiltValueEnumConst(wireName: r'cross-platform')
-  static const PasskeyRegistrationResponseAuthenticatorAttachmentEnum
-      crossPlatform =
-      _$passkeyRegistrationResponseAuthenticatorAttachmentEnum_crossPlatform;
+  static const PasskeyRegistrationResponseAuthenticatorAttachmentEnum crossPlatform = _$passkeyRegistrationResponseAuthenticatorAttachmentEnum_crossPlatform;
   @BuiltValueEnumConst(wireName: r'platform')
-  static const PasskeyRegistrationResponseAuthenticatorAttachmentEnum platform =
-      _$passkeyRegistrationResponseAuthenticatorAttachmentEnum_platform;
+  static const PasskeyRegistrationResponseAuthenticatorAttachmentEnum platform = _$passkeyRegistrationResponseAuthenticatorAttachmentEnum_platform;
 
-  static Serializer<PasskeyRegistrationResponseAuthenticatorAttachmentEnum>
-      get serializer =>
-          _$passkeyRegistrationResponseAuthenticatorAttachmentEnumSerializer;
+  static Serializer<PasskeyRegistrationResponseAuthenticatorAttachmentEnum> get serializer => _$passkeyRegistrationResponseAuthenticatorAttachmentEnumSerializer;
 
-  const PasskeyRegistrationResponseAuthenticatorAttachmentEnum._(String name)
-      : super(name);
+  const PasskeyRegistrationResponseAuthenticatorAttachmentEnum._(String name): super(name);
 
-  static BuiltSet<PasskeyRegistrationResponseAuthenticatorAttachmentEnum>
-      get values =>
-          _$passkeyRegistrationResponseAuthenticatorAttachmentEnumValues;
-  static PasskeyRegistrationResponseAuthenticatorAttachmentEnum valueOf(
-          String name) =>
-      _$passkeyRegistrationResponseAuthenticatorAttachmentEnumValueOf(name);
+  static BuiltSet<PasskeyRegistrationResponseAuthenticatorAttachmentEnum> get values => _$passkeyRegistrationResponseAuthenticatorAttachmentEnumValues;
+  static PasskeyRegistrationResponseAuthenticatorAttachmentEnum valueOf(String name) => _$passkeyRegistrationResponseAuthenticatorAttachmentEnumValueOf(name);
 }
 
 class PasskeyRegistrationResponseTypeEnum extends EnumClass {
+
   @BuiltValueEnumConst(wireName: r'public-key')
-  static const PasskeyRegistrationResponseTypeEnum publicKey =
-      _$passkeyRegistrationResponseTypeEnum_publicKey;
+  static const PasskeyRegistrationResponseTypeEnum publicKey = _$passkeyRegistrationResponseTypeEnum_publicKey;
 
-  static Serializer<PasskeyRegistrationResponseTypeEnum> get serializer =>
-      _$passkeyRegistrationResponseTypeEnumSerializer;
+  static Serializer<PasskeyRegistrationResponseTypeEnum> get serializer => _$passkeyRegistrationResponseTypeEnumSerializer;
 
-  const PasskeyRegistrationResponseTypeEnum._(String name) : super(name);
+  const PasskeyRegistrationResponseTypeEnum._(String name): super(name);
 
-  static BuiltSet<PasskeyRegistrationResponseTypeEnum> get values =>
-      _$passkeyRegistrationResponseTypeEnumValues;
-  static PasskeyRegistrationResponseTypeEnum valueOf(String name) =>
-      _$passkeyRegistrationResponseTypeEnumValueOf(name);
+  static BuiltSet<PasskeyRegistrationResponseTypeEnum> get values => _$passkeyRegistrationResponseTypeEnumValues;
+  static PasskeyRegistrationResponseTypeEnum valueOf(String name) => _$passkeyRegistrationResponseTypeEnumValueOf(name);
 }
+

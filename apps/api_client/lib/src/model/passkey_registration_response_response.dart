@@ -12,17 +12,14 @@ part 'passkey_registration_response_response.g.dart';
 /// PasskeyRegistrationResponseResponse
 ///
 /// Properties:
-/// * [clientDataJSON]
-/// * [attestationObject]
-/// * [authenticatorData]
-/// * [transports]
-/// * [publicKeyAlgorithm]
-/// * [publicKey]
+/// * [clientDataJSON] 
+/// * [attestationObject] 
+/// * [authenticatorData] 
+/// * [transports] 
+/// * [publicKeyAlgorithm] 
+/// * [publicKey] 
 @BuiltValue()
-abstract class PasskeyRegistrationResponseResponse
-    implements
-        Built<PasskeyRegistrationResponseResponse,
-            PasskeyRegistrationResponseResponseBuilder> {
+abstract class PasskeyRegistrationResponseResponse implements Built<PasskeyRegistrationResponseResponse, PasskeyRegistrationResponseResponseBuilder> {
   @BuiltValueField(wireName: r'clientDataJSON')
   String get clientDataJSON;
 
@@ -43,25 +40,18 @@ abstract class PasskeyRegistrationResponseResponse
 
   PasskeyRegistrationResponseResponse._();
 
-  factory PasskeyRegistrationResponseResponse(
-          [void updates(PasskeyRegistrationResponseResponseBuilder b)]) =
-      _$PasskeyRegistrationResponseResponse;
+  factory PasskeyRegistrationResponseResponse([void updates(PasskeyRegistrationResponseResponseBuilder b)]) = _$PasskeyRegistrationResponseResponse;
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(PasskeyRegistrationResponseResponseBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
-  static Serializer<PasskeyRegistrationResponseResponse> get serializer =>
-      _$PasskeyRegistrationResponseResponseSerializer();
+  static Serializer<PasskeyRegistrationResponseResponse> get serializer => _$PasskeyRegistrationResponseResponseSerializer();
 }
 
-class _$PasskeyRegistrationResponseResponseSerializer
-    implements PrimitiveSerializer<PasskeyRegistrationResponseResponse> {
+class _$PasskeyRegistrationResponseResponseSerializer implements PrimitiveSerializer<PasskeyRegistrationResponseResponse> {
   @override
-  final Iterable<Type> types = const [
-    PasskeyRegistrationResponseResponse,
-    _$PasskeyRegistrationResponseResponse
-  ];
+  final Iterable<Type> types = const [PasskeyRegistrationResponseResponse, _$PasskeyRegistrationResponseResponse];
 
   @override
   final String wireName = r'PasskeyRegistrationResponseResponse';
@@ -117,9 +107,7 @@ class _$PasskeyRegistrationResponseResponseSerializer
     PasskeyRegistrationResponseResponse object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    return _serializeProperties(serializers, object,
-            specifiedType: specifiedType)
-        .toList();
+    return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
   }
 
   void _deserializeProperties(
@@ -204,3 +192,4 @@ class _$PasskeyRegistrationResponseResponseSerializer
     return result.build();
   }
 }
+

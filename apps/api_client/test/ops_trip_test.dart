@@ -32,14 +32,11 @@ void main() {
       // TODO
     });
 
-<<<<<<< HEAD
     // String patternId
     test('to test the property `patternId`', () async {
       // TODO
     });
 
-=======
->>>>>>> origin/main
     // String patternVersionId
     test('to test the property `patternVersionId`', () async {
       // TODO
@@ -65,7 +62,6 @@ void main() {
       // TODO
     });
 
-<<<<<<< HEAD
     // String vehiclePlate
     test('to test the property `vehiclePlate`', () async {
       // TODO
@@ -76,8 +72,6 @@ void main() {
       // TODO
     });
 
-=======
->>>>>>> origin/main
     // DateTime startedAt
     test('to test the property `startedAt`', () async {
       // TODO

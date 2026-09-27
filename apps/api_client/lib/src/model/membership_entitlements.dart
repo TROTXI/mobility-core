@@ -12,22 +12,12 @@ part 'membership_entitlements.g.dart';
 /// MembershipEntitlements
 ///
 /// Properties:
-<<<<<<< HEAD
 /// * [remainingRides] 
 /// * [credit] 
 /// * [heldCredit] 
 /// * [availableCredit] 
 @BuiltValue()
 abstract class MembershipEntitlements implements Built<MembershipEntitlements, MembershipEntitlementsBuilder> {
-=======
-/// * [remainingRides]
-/// * [credit]
-/// * [heldCredit]
-/// * [availableCredit]
-@BuiltValue()
-abstract class MembershipEntitlements
-    implements Built<MembershipEntitlements, MembershipEntitlementsBuilder> {
->>>>>>> origin/main
   @BuiltValueField(wireName: r'remainingRides')
   int get remainingRides;
 
@@ -42,38 +32,18 @@ abstract class MembershipEntitlements
 
   MembershipEntitlements._();
 
-<<<<<<< HEAD
   factory MembershipEntitlements([void updates(MembershipEntitlementsBuilder b)]) = _$MembershipEntitlements;
-=======
-  factory MembershipEntitlements(
-          [void updates(MembershipEntitlementsBuilder b)]) =
-      _$MembershipEntitlements;
->>>>>>> origin/main
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(MembershipEntitlementsBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
-<<<<<<< HEAD
   static Serializer<MembershipEntitlements> get serializer => _$MembershipEntitlementsSerializer();
 }
 
 class _$MembershipEntitlementsSerializer implements PrimitiveSerializer<MembershipEntitlements> {
   @override
   final Iterable<Type> types = const [MembershipEntitlements, _$MembershipEntitlements];
-=======
-  static Serializer<MembershipEntitlements> get serializer =>
-      _$MembershipEntitlementsSerializer();
-}
-
-class _$MembershipEntitlementsSerializer
-    implements PrimitiveSerializer<MembershipEntitlements> {
-  @override
-  final Iterable<Type> types = const [
-    MembershipEntitlements,
-    _$MembershipEntitlements
-  ];
->>>>>>> origin/main
 
   @override
   final String wireName = r'MembershipEntitlements';
@@ -111,13 +81,7 @@ class _$MembershipEntitlementsSerializer
     MembershipEntitlements object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-<<<<<<< HEAD
     return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
-=======
-    return _serializeProperties(serializers, object,
-            specifiedType: specifiedType)
-        .toList();
->>>>>>> origin/main
   }
 
   void _deserializeProperties(
@@ -188,7 +152,4 @@ class _$MembershipEntitlementsSerializer
     return result.build();
   }
 }
-<<<<<<< HEAD
 
-=======
->>>>>>> origin/main

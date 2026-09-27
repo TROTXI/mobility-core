@@ -14,18 +14,10 @@ part 'plan_pricing_page.g.dart';
 /// PlanPricingPage
 ///
 /// Properties:
-<<<<<<< HEAD
 /// * [data] 
 /// * [page] 
 @BuiltValue()
 abstract class PlanPricingPage implements Built<PlanPricingPage, PlanPricingPageBuilder> {
-=======
-/// * [data]
-/// * [page]
-@BuiltValue()
-abstract class PlanPricingPage
-    implements Built<PlanPricingPage, PlanPricingPageBuilder> {
->>>>>>> origin/main
   @BuiltValueField(wireName: r'data')
   BuiltList<PlanPricing> get data;
 
@@ -34,30 +26,16 @@ abstract class PlanPricingPage
 
   PlanPricingPage._();
 
-<<<<<<< HEAD
   factory PlanPricingPage([void updates(PlanPricingPageBuilder b)]) = _$PlanPricingPage;
-=======
-  factory PlanPricingPage([void updates(PlanPricingPageBuilder b)]) =
-      _$PlanPricingPage;
->>>>>>> origin/main
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(PlanPricingPageBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
-<<<<<<< HEAD
   static Serializer<PlanPricingPage> get serializer => _$PlanPricingPageSerializer();
 }
 
 class _$PlanPricingPageSerializer implements PrimitiveSerializer<PlanPricingPage> {
-=======
-  static Serializer<PlanPricingPage> get serializer =>
-      _$PlanPricingPageSerializer();
-}
-
-class _$PlanPricingPageSerializer
-    implements PrimitiveSerializer<PlanPricingPage> {
->>>>>>> origin/main
   @override
   final Iterable<Type> types = const [PlanPricingPage, _$PlanPricingPage];
 
@@ -87,13 +65,7 @@ class _$PlanPricingPageSerializer
     PlanPricingPage object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-<<<<<<< HEAD
     return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
-=======
-    return _serializeProperties(serializers, object,
-            specifiedType: specifiedType)
-        .toList();
->>>>>>> origin/main
   }
 
   void _deserializeProperties(
@@ -150,7 +122,4 @@ class _$PlanPricingPageSerializer
     return result.build();
   }
 }
-<<<<<<< HEAD
 
-=======
->>>>>>> origin/main

@@ -12,55 +12,26 @@ part 'personal_pause_preview_response.g.dart';
 /// PersonalPausePreviewResponse
 ///
 /// Properties:
-<<<<<<< HEAD
 /// * [data] 
 @BuiltValue()
 abstract class PersonalPausePreviewResponse implements Built<PersonalPausePreviewResponse, PersonalPausePreviewResponseBuilder> {
-=======
-/// * [data]
-@BuiltValue()
-abstract class PersonalPausePreviewResponse
-    implements
-        Built<PersonalPausePreviewResponse,
-            PersonalPausePreviewResponseBuilder> {
->>>>>>> origin/main
   @BuiltValueField(wireName: r'data')
   PersonalPausePreview get data;
 
   PersonalPausePreviewResponse._();
 
-<<<<<<< HEAD
   factory PersonalPausePreviewResponse([void updates(PersonalPausePreviewResponseBuilder b)]) = _$PersonalPausePreviewResponse;
-=======
-  factory PersonalPausePreviewResponse(
-          [void updates(PersonalPausePreviewResponseBuilder b)]) =
-      _$PersonalPausePreviewResponse;
->>>>>>> origin/main
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(PersonalPausePreviewResponseBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
-<<<<<<< HEAD
   static Serializer<PersonalPausePreviewResponse> get serializer => _$PersonalPausePreviewResponseSerializer();
 }
 
 class _$PersonalPausePreviewResponseSerializer implements PrimitiveSerializer<PersonalPausePreviewResponse> {
   @override
   final Iterable<Type> types = const [PersonalPausePreviewResponse, _$PersonalPausePreviewResponse];
-=======
-  static Serializer<PersonalPausePreviewResponse> get serializer =>
-      _$PersonalPausePreviewResponseSerializer();
-}
-
-class _$PersonalPausePreviewResponseSerializer
-    implements PrimitiveSerializer<PersonalPausePreviewResponse> {
-  @override
-  final Iterable<Type> types = const [
-    PersonalPausePreviewResponse,
-    _$PersonalPausePreviewResponse
-  ];
->>>>>>> origin/main
 
   @override
   final String wireName = r'PersonalPausePreviewResponse';
@@ -83,13 +54,7 @@ class _$PersonalPausePreviewResponseSerializer
     PersonalPausePreviewResponse object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-<<<<<<< HEAD
     return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
-=======
-    return _serializeProperties(serializers, object,
-            specifiedType: specifiedType)
-        .toList();
->>>>>>> origin/main
   }
 
   void _deserializeProperties(
@@ -139,7 +104,4 @@ class _$PersonalPausePreviewResponseSerializer
     return result.build();
   }
 }
-<<<<<<< HEAD
 
-=======
->>>>>>> origin/main

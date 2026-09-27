@@ -13,22 +13,12 @@ part 'incident_input.g.dart';
 /// IncidentInput
 ///
 /// Properties:
-<<<<<<< HEAD
 /// * [tripId] 
 /// * [category] 
 /// * [note] 
 /// * [location] 
 @BuiltValue()
 abstract class IncidentInput implements Built<IncidentInput, IncidentInputBuilder> {
-=======
-/// * [tripId]
-/// * [category]
-/// * [note]
-/// * [location]
-@BuiltValue()
-abstract class IncidentInput
-    implements Built<IncidentInput, IncidentInputBuilder> {
->>>>>>> origin/main
   @BuiltValueField(wireName: r'tripId')
   String? get tripId;
 
@@ -44,23 +34,13 @@ abstract class IncidentInput
 
   IncidentInput._();
 
-<<<<<<< HEAD
   factory IncidentInput([void updates(IncidentInputBuilder b)]) = _$IncidentInput;
-=======
-  factory IncidentInput([void updates(IncidentInputBuilder b)]) =
-      _$IncidentInput;
->>>>>>> origin/main
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(IncidentInputBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
-<<<<<<< HEAD
   static Serializer<IncidentInput> get serializer => _$IncidentInputSerializer();
-=======
-  static Serializer<IncidentInput> get serializer =>
-      _$IncidentInputSerializer();
->>>>>>> origin/main
 }
 
 class _$IncidentInputSerializer implements PrimitiveSerializer<IncidentInput> {
@@ -109,13 +89,7 @@ class _$IncidentInputSerializer implements PrimitiveSerializer<IncidentInput> {
     IncidentInput object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-<<<<<<< HEAD
     return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
-=======
-    return _serializeProperties(serializers, object,
-            specifiedType: specifiedType)
-        .toList();
->>>>>>> origin/main
   }
 
   void _deserializeProperties(
@@ -188,7 +162,6 @@ class _$IncidentInputSerializer implements PrimitiveSerializer<IncidentInput> {
 }
 
 class IncidentInputCategoryEnum extends EnumClass {
-<<<<<<< HEAD
 
   @BuiltValueEnumConst(wireName: r'vehicle')
   static const IncidentInputCategoryEnum vehicle = _$incidentInputCategoryEnum_vehicle;
@@ -209,31 +182,3 @@ class IncidentInputCategoryEnum extends EnumClass {
   static IncidentInputCategoryEnum valueOf(String name) => _$incidentInputCategoryEnumValueOf(name);
 }
 
-=======
-  @BuiltValueEnumConst(wireName: r'vehicle')
-  static const IncidentInputCategoryEnum vehicle =
-      _$incidentInputCategoryEnum_vehicle;
-  @BuiltValueEnumConst(wireName: r'collision')
-  static const IncidentInputCategoryEnum collision =
-      _$incidentInputCategoryEnum_collision;
-  @BuiltValueEnumConst(wireName: r'passenger_safety')
-  static const IncidentInputCategoryEnum passengerSafety =
-      _$incidentInputCategoryEnum_passengerSafety;
-  @BuiltValueEnumConst(wireName: r'route_blocked')
-  static const IncidentInputCategoryEnum routeBlocked =
-      _$incidentInputCategoryEnum_routeBlocked;
-  @BuiltValueEnumConst(wireName: r'other')
-  static const IncidentInputCategoryEnum other =
-      _$incidentInputCategoryEnum_other;
-
-  static Serializer<IncidentInputCategoryEnum> get serializer =>
-      _$incidentInputCategoryEnumSerializer;
-
-  const IncidentInputCategoryEnum._(String name) : super(name);
-
-  static BuiltSet<IncidentInputCategoryEnum> get values =>
-      _$incidentInputCategoryEnumValues;
-  static IncidentInputCategoryEnum valueOf(String name) =>
-      _$incidentInputCategoryEnumValueOf(name);
-}
->>>>>>> origin/main

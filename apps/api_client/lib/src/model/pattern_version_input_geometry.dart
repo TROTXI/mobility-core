@@ -13,19 +13,10 @@ part 'pattern_version_input_geometry.g.dart';
 /// PatternVersionInputGeometry
 ///
 /// Properties:
-<<<<<<< HEAD
 /// * [points] 
 /// * [stopDistancesMeters] 
 @BuiltValue()
 abstract class PatternVersionInputGeometry implements Built<PatternVersionInputGeometry, PatternVersionInputGeometryBuilder> {
-=======
-/// * [points]
-/// * [stopDistancesMeters]
-@BuiltValue()
-abstract class PatternVersionInputGeometry
-    implements
-        Built<PatternVersionInputGeometry, PatternVersionInputGeometryBuilder> {
->>>>>>> origin/main
   @BuiltValueField(wireName: r'points')
   BuiltList<Point> get points;
 
@@ -34,38 +25,18 @@ abstract class PatternVersionInputGeometry
 
   PatternVersionInputGeometry._();
 
-<<<<<<< HEAD
   factory PatternVersionInputGeometry([void updates(PatternVersionInputGeometryBuilder b)]) = _$PatternVersionInputGeometry;
-=======
-  factory PatternVersionInputGeometry(
-          [void updates(PatternVersionInputGeometryBuilder b)]) =
-      _$PatternVersionInputGeometry;
->>>>>>> origin/main
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(PatternVersionInputGeometryBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
-<<<<<<< HEAD
   static Serializer<PatternVersionInputGeometry> get serializer => _$PatternVersionInputGeometrySerializer();
 }
 
 class _$PatternVersionInputGeometrySerializer implements PrimitiveSerializer<PatternVersionInputGeometry> {
   @override
   final Iterable<Type> types = const [PatternVersionInputGeometry, _$PatternVersionInputGeometry];
-=======
-  static Serializer<PatternVersionInputGeometry> get serializer =>
-      _$PatternVersionInputGeometrySerializer();
-}
-
-class _$PatternVersionInputGeometrySerializer
-    implements PrimitiveSerializer<PatternVersionInputGeometry> {
-  @override
-  final Iterable<Type> types = const [
-    PatternVersionInputGeometry,
-    _$PatternVersionInputGeometry
-  ];
->>>>>>> origin/main
 
   @override
   final String wireName = r'PatternVersionInputGeometry';
@@ -93,13 +64,7 @@ class _$PatternVersionInputGeometrySerializer
     PatternVersionInputGeometry object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-<<<<<<< HEAD
     return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
-=======
-    return _serializeProperties(serializers, object,
-            specifiedType: specifiedType)
-        .toList();
->>>>>>> origin/main
   }
 
   void _deserializeProperties(
@@ -156,7 +121,4 @@ class _$PatternVersionInputGeometrySerializer
     return result.build();
   }
 }
-<<<<<<< HEAD
 
-=======
->>>>>>> origin/main

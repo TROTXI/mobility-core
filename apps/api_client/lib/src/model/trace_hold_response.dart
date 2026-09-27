@@ -12,45 +12,24 @@ part 'trace_hold_response.g.dart';
 /// TraceHoldResponse
 ///
 /// Properties:
-<<<<<<< HEAD
 /// * [data] 
 @BuiltValue()
 abstract class TraceHoldResponse implements Built<TraceHoldResponse, TraceHoldResponseBuilder> {
-=======
-/// * [data]
-@BuiltValue()
-abstract class TraceHoldResponse
-    implements Built<TraceHoldResponse, TraceHoldResponseBuilder> {
->>>>>>> origin/main
   @BuiltValueField(wireName: r'data')
   TraceHold get data;
 
   TraceHoldResponse._();
 
-<<<<<<< HEAD
   factory TraceHoldResponse([void updates(TraceHoldResponseBuilder b)]) = _$TraceHoldResponse;
-=======
-  factory TraceHoldResponse([void updates(TraceHoldResponseBuilder b)]) =
-      _$TraceHoldResponse;
->>>>>>> origin/main
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(TraceHoldResponseBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
-<<<<<<< HEAD
   static Serializer<TraceHoldResponse> get serializer => _$TraceHoldResponseSerializer();
 }
 
 class _$TraceHoldResponseSerializer implements PrimitiveSerializer<TraceHoldResponse> {
-=======
-  static Serializer<TraceHoldResponse> get serializer =>
-      _$TraceHoldResponseSerializer();
-}
-
-class _$TraceHoldResponseSerializer
-    implements PrimitiveSerializer<TraceHoldResponse> {
->>>>>>> origin/main
   @override
   final Iterable<Type> types = const [TraceHoldResponse, _$TraceHoldResponse];
 
@@ -75,13 +54,7 @@ class _$TraceHoldResponseSerializer
     TraceHoldResponse object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-<<<<<<< HEAD
     return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
-=======
-    return _serializeProperties(serializers, object,
-            specifiedType: specifiedType)
-        .toList();
->>>>>>> origin/main
   }
 
   void _deserializeProperties(
@@ -131,7 +104,4 @@ class _$TraceHoldResponseSerializer
     return result.build();
   }
 }
-<<<<<<< HEAD
 
-=======
->>>>>>> origin/main

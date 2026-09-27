@@ -12,36 +12,26 @@ part 'passkey_registration_options_response.g.dart';
 /// PasskeyRegistrationOptionsResponse
 ///
 /// Properties:
-/// * [data]
+/// * [data] 
 @BuiltValue()
-abstract class PasskeyRegistrationOptionsResponse
-    implements
-        Built<PasskeyRegistrationOptionsResponse,
-            PasskeyRegistrationOptionsResponseBuilder> {
+abstract class PasskeyRegistrationOptionsResponse implements Built<PasskeyRegistrationOptionsResponse, PasskeyRegistrationOptionsResponseBuilder> {
   @BuiltValueField(wireName: r'data')
   PasskeyRegistrationOptions get data;
 
   PasskeyRegistrationOptionsResponse._();
 
-  factory PasskeyRegistrationOptionsResponse(
-          [void updates(PasskeyRegistrationOptionsResponseBuilder b)]) =
-      _$PasskeyRegistrationOptionsResponse;
+  factory PasskeyRegistrationOptionsResponse([void updates(PasskeyRegistrationOptionsResponseBuilder b)]) = _$PasskeyRegistrationOptionsResponse;
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(PasskeyRegistrationOptionsResponseBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
-  static Serializer<PasskeyRegistrationOptionsResponse> get serializer =>
-      _$PasskeyRegistrationOptionsResponseSerializer();
+  static Serializer<PasskeyRegistrationOptionsResponse> get serializer => _$PasskeyRegistrationOptionsResponseSerializer();
 }
 
-class _$PasskeyRegistrationOptionsResponseSerializer
-    implements PrimitiveSerializer<PasskeyRegistrationOptionsResponse> {
+class _$PasskeyRegistrationOptionsResponseSerializer implements PrimitiveSerializer<PasskeyRegistrationOptionsResponse> {
   @override
-  final Iterable<Type> types = const [
-    PasskeyRegistrationOptionsResponse,
-    _$PasskeyRegistrationOptionsResponse
-  ];
+  final Iterable<Type> types = const [PasskeyRegistrationOptionsResponse, _$PasskeyRegistrationOptionsResponse];
 
   @override
   final String wireName = r'PasskeyRegistrationOptionsResponse';
@@ -64,9 +54,7 @@ class _$PasskeyRegistrationOptionsResponseSerializer
     PasskeyRegistrationOptionsResponse object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    return _serializeProperties(serializers, object,
-            specifiedType: specifiedType)
-        .toList();
+    return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
   }
 
   void _deserializeProperties(
@@ -116,3 +104,4 @@ class _$PasskeyRegistrationOptionsResponseSerializer
     return result.build();
   }
 }
+

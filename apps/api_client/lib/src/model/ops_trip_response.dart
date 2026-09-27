@@ -12,45 +12,24 @@ part 'ops_trip_response.g.dart';
 /// OpsTripResponse
 ///
 /// Properties:
-<<<<<<< HEAD
 /// * [data] 
 @BuiltValue()
 abstract class OpsTripResponse implements Built<OpsTripResponse, OpsTripResponseBuilder> {
-=======
-/// * [data]
-@BuiltValue()
-abstract class OpsTripResponse
-    implements Built<OpsTripResponse, OpsTripResponseBuilder> {
->>>>>>> origin/main
   @BuiltValueField(wireName: r'data')
   OpsTrip get data;
 
   OpsTripResponse._();
 
-<<<<<<< HEAD
   factory OpsTripResponse([void updates(OpsTripResponseBuilder b)]) = _$OpsTripResponse;
-=======
-  factory OpsTripResponse([void updates(OpsTripResponseBuilder b)]) =
-      _$OpsTripResponse;
->>>>>>> origin/main
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(OpsTripResponseBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
-<<<<<<< HEAD
   static Serializer<OpsTripResponse> get serializer => _$OpsTripResponseSerializer();
 }
 
 class _$OpsTripResponseSerializer implements PrimitiveSerializer<OpsTripResponse> {
-=======
-  static Serializer<OpsTripResponse> get serializer =>
-      _$OpsTripResponseSerializer();
-}
-
-class _$OpsTripResponseSerializer
-    implements PrimitiveSerializer<OpsTripResponse> {
->>>>>>> origin/main
   @override
   final Iterable<Type> types = const [OpsTripResponse, _$OpsTripResponse];
 
@@ -75,13 +54,7 @@ class _$OpsTripResponseSerializer
     OpsTripResponse object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-<<<<<<< HEAD
     return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
-=======
-    return _serializeProperties(serializers, object,
-            specifiedType: specifiedType)
-        .toList();
->>>>>>> origin/main
   }
 
   void _deserializeProperties(
@@ -131,7 +104,4 @@ class _$OpsTripResponseSerializer
     return result.build();
   }
 }
-<<<<<<< HEAD
 
-=======
->>>>>>> origin/main

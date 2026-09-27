@@ -11,11 +11,10 @@ part 'reservation_detail_route.g.dart';
 /// Current corridor name; the reservation does not snapshot route renames.
 ///
 /// Properties:
-/// * [id]
-/// * [name]
+/// * [id] 
+/// * [name] 
 @BuiltValue()
-abstract class ReservationDetailRoute
-    implements Built<ReservationDetailRoute, ReservationDetailRouteBuilder> {
+abstract class ReservationDetailRoute implements Built<ReservationDetailRoute, ReservationDetailRouteBuilder> {
   @BuiltValueField(wireName: r'id')
   String get id;
 
@@ -24,25 +23,18 @@ abstract class ReservationDetailRoute
 
   ReservationDetailRoute._();
 
-  factory ReservationDetailRoute(
-          [void updates(ReservationDetailRouteBuilder b)]) =
-      _$ReservationDetailRoute;
+  factory ReservationDetailRoute([void updates(ReservationDetailRouteBuilder b)]) = _$ReservationDetailRoute;
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(ReservationDetailRouteBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
-  static Serializer<ReservationDetailRoute> get serializer =>
-      _$ReservationDetailRouteSerializer();
+  static Serializer<ReservationDetailRoute> get serializer => _$ReservationDetailRouteSerializer();
 }
 
-class _$ReservationDetailRouteSerializer
-    implements PrimitiveSerializer<ReservationDetailRoute> {
+class _$ReservationDetailRouteSerializer implements PrimitiveSerializer<ReservationDetailRoute> {
   @override
-  final Iterable<Type> types = const [
-    ReservationDetailRoute,
-    _$ReservationDetailRoute
-  ];
+  final Iterable<Type> types = const [ReservationDetailRoute, _$ReservationDetailRoute];
 
   @override
   final String wireName = r'ReservationDetailRoute';
@@ -70,9 +62,7 @@ class _$ReservationDetailRouteSerializer
     ReservationDetailRoute object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    return _serializeProperties(serializers, object,
-            specifiedType: specifiedType)
-        .toList();
+    return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
   }
 
   void _deserializeProperties(
@@ -129,3 +119,4 @@ class _$ReservationDetailRouteSerializer
     return result.build();
   }
 }
+

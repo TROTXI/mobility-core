@@ -14,7 +14,6 @@ part 'live_trip.g.dart';
 /// LiveTrip
 ///
 /// Properties:
-<<<<<<< HEAD
 /// * [tripId] 
 /// * [patternVersionId] 
 /// * [geometryId] 
@@ -23,16 +22,6 @@ part 'live_trip.g.dart';
 /// * [position] 
 /// * [etas] 
 /// * [serverTime] 
-=======
-/// * [tripId]
-/// * [patternVersionId]
-/// * [geometryId]
-/// * [riderPickupOccurrenceId]
-/// * [state]
-/// * [position]
-/// * [etas]
-/// * [serverTime]
->>>>>>> origin/main
 @BuiltValue()
 abstract class LiveTrip implements Built<LiveTrip, LiveTripBuilder> {
   @BuiltValueField(wireName: r'tripId')
@@ -94,7 +83,6 @@ class _$LiveTripSerializer implements PrimitiveSerializer<LiveTrip> {
       specifiedType: const FullType(String),
     );
     yield r'geometryId';
-<<<<<<< HEAD
     yield object.geometryId == null ? null : serializers.serialize(
       object.geometryId,
       specifiedType: const FullType.nullable(String),
@@ -104,40 +92,16 @@ class _$LiveTripSerializer implements PrimitiveSerializer<LiveTrip> {
       object.riderPickupOccurrenceId,
       specifiedType: const FullType.nullable(String),
     );
-=======
-    yield object.geometryId == null
-        ? null
-        : serializers.serialize(
-            object.geometryId,
-            specifiedType: const FullType.nullable(String),
-          );
-    yield r'riderPickupOccurrenceId';
-    yield object.riderPickupOccurrenceId == null
-        ? null
-        : serializers.serialize(
-            object.riderPickupOccurrenceId,
-            specifiedType: const FullType.nullable(String),
-          );
->>>>>>> origin/main
     yield r'state';
     yield serializers.serialize(
       object.state,
       specifiedType: const FullType(LiveTripStateEnum),
     );
     yield r'position';
-<<<<<<< HEAD
     yield object.position == null ? null : serializers.serialize(
       object.position,
       specifiedType: const FullType.nullable(LiveTripPosition),
     );
-=======
-    yield object.position == null
-        ? null
-        : serializers.serialize(
-            object.position,
-            specifiedType: const FullType.nullable(LiveTripPosition),
-          );
->>>>>>> origin/main
     yield r'etas';
     yield serializers.serialize(
       object.etas,
@@ -156,13 +120,7 @@ class _$LiveTripSerializer implements PrimitiveSerializer<LiveTrip> {
     LiveTrip object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-<<<<<<< HEAD
     return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
-=======
-    return _serializeProperties(serializers, object,
-            specifiedType: specifiedType)
-        .toList();
->>>>>>> origin/main
   }
 
   void _deserializeProperties(
@@ -266,10 +224,7 @@ class _$LiveTripSerializer implements PrimitiveSerializer<LiveTrip> {
 }
 
 class LiveTripStateEnum extends EnumClass {
-<<<<<<< HEAD
 
-=======
->>>>>>> origin/main
   @BuiltValueEnumConst(wireName: r'not_started')
   static const LiveTripStateEnum notStarted = _$liveTripStateEnum_notStarted;
   @BuiltValueEnumConst(wireName: r'awaiting_fix')
@@ -281,7 +236,6 @@ class LiveTripStateEnum extends EnumClass {
   @BuiltValueEnumConst(wireName: r'ended')
   static const LiveTripStateEnum ended = _$liveTripStateEnum_ended;
 
-<<<<<<< HEAD
   static Serializer<LiveTripStateEnum> get serializer => _$liveTripStateEnumSerializer;
 
   const LiveTripStateEnum._(String name): super(name);
@@ -290,14 +244,3 @@ class LiveTripStateEnum extends EnumClass {
   static LiveTripStateEnum valueOf(String name) => _$liveTripStateEnumValueOf(name);
 }
 
-=======
-  static Serializer<LiveTripStateEnum> get serializer =>
-      _$liveTripStateEnumSerializer;
-
-  const LiveTripStateEnum._(String name) : super(name);
-
-  static BuiltSet<LiveTripStateEnum> get values => _$liveTripStateEnumValues;
-  static LiveTripStateEnum valueOf(String name) =>
-      _$liveTripStateEnumValueOf(name);
-}
->>>>>>> origin/main

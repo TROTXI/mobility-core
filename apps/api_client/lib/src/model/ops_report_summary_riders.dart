@@ -11,13 +11,12 @@ part 'ops_report_summary_riders.g.dart';
 /// OpsReportSummaryRiders
 ///
 /// Properties:
-/// * [total]
-/// * [active]
-/// * [paused]
-/// * [restricted]
+/// * [total] 
+/// * [active] 
+/// * [paused] 
+/// * [restricted] 
 @BuiltValue()
-abstract class OpsReportSummaryRiders
-    implements Built<OpsReportSummaryRiders, OpsReportSummaryRidersBuilder> {
+abstract class OpsReportSummaryRiders implements Built<OpsReportSummaryRiders, OpsReportSummaryRidersBuilder> {
   @BuiltValueField(wireName: r'total')
   int get total;
 
@@ -32,25 +31,18 @@ abstract class OpsReportSummaryRiders
 
   OpsReportSummaryRiders._();
 
-  factory OpsReportSummaryRiders(
-          [void updates(OpsReportSummaryRidersBuilder b)]) =
-      _$OpsReportSummaryRiders;
+  factory OpsReportSummaryRiders([void updates(OpsReportSummaryRidersBuilder b)]) = _$OpsReportSummaryRiders;
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(OpsReportSummaryRidersBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
-  static Serializer<OpsReportSummaryRiders> get serializer =>
-      _$OpsReportSummaryRidersSerializer();
+  static Serializer<OpsReportSummaryRiders> get serializer => _$OpsReportSummaryRidersSerializer();
 }
 
-class _$OpsReportSummaryRidersSerializer
-    implements PrimitiveSerializer<OpsReportSummaryRiders> {
+class _$OpsReportSummaryRidersSerializer implements PrimitiveSerializer<OpsReportSummaryRiders> {
   @override
-  final Iterable<Type> types = const [
-    OpsReportSummaryRiders,
-    _$OpsReportSummaryRiders
-  ];
+  final Iterable<Type> types = const [OpsReportSummaryRiders, _$OpsReportSummaryRiders];
 
   @override
   final String wireName = r'OpsReportSummaryRiders';
@@ -88,9 +80,7 @@ class _$OpsReportSummaryRidersSerializer
     OpsReportSummaryRiders object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    return _serializeProperties(serializers, object,
-            specifiedType: specifiedType)
-        .toList();
+    return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
   }
 
   void _deserializeProperties(
@@ -161,3 +151,4 @@ class _$OpsReportSummaryRidersSerializer
     return result.build();
   }
 }
+

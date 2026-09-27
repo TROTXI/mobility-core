@@ -12,7 +12,6 @@ part 'trace_hold.g.dart';
 /// TraceHold
 ///
 /// Properties:
-<<<<<<< HEAD
 /// * [incidentId] 
 /// * [tripId] 
 /// * [receivedFrom] 
@@ -25,20 +24,6 @@ part 'trace_hold.g.dart';
 /// * [createdAt] 
 /// * [updatedAt] 
 /// * [version] 
-=======
-/// * [incidentId]
-/// * [tripId]
-/// * [receivedFrom]
-/// * [receivedTo]
-/// * [reason]
-/// * [reviewAt]
-/// * [id]
-/// * [state]
-/// * [editToken]
-/// * [createdAt]
-/// * [updatedAt]
-/// * [version]
->>>>>>> origin/main
 @BuiltValue()
 abstract class TraceHold implements Built<TraceHold, TraceHoldBuilder> {
   @BuiltValueField(wireName: r'incidentId')
@@ -169,13 +154,7 @@ class _$TraceHoldSerializer implements PrimitiveSerializer<TraceHold> {
     TraceHold object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-<<<<<<< HEAD
     return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
-=======
-    return _serializeProperties(serializers, object,
-            specifiedType: specifiedType)
-        .toList();
->>>>>>> origin/main
   }
 
   void _deserializeProperties(
@@ -304,16 +283,12 @@ class _$TraceHoldSerializer implements PrimitiveSerializer<TraceHold> {
 }
 
 class TraceHoldStateEnum extends EnumClass {
-<<<<<<< HEAD
 
-=======
->>>>>>> origin/main
   @BuiltValueEnumConst(wireName: r'active')
   static const TraceHoldStateEnum active = _$traceHoldStateEnum_active;
   @BuiltValueEnumConst(wireName: r'released')
   static const TraceHoldStateEnum released = _$traceHoldStateEnum_released;
 
-<<<<<<< HEAD
   static Serializer<TraceHoldStateEnum> get serializer => _$traceHoldStateEnumSerializer;
 
   const TraceHoldStateEnum._(String name): super(name);
@@ -322,14 +297,3 @@ class TraceHoldStateEnum extends EnumClass {
   static TraceHoldStateEnum valueOf(String name) => _$traceHoldStateEnumValueOf(name);
 }
 
-=======
-  static Serializer<TraceHoldStateEnum> get serializer =>
-      _$traceHoldStateEnumSerializer;
-
-  const TraceHoldStateEnum._(String name) : super(name);
-
-  static BuiltSet<TraceHoldStateEnum> get values => _$traceHoldStateEnumValues;
-  static TraceHoldStateEnum valueOf(String name) =>
-      _$traceHoldStateEnumValueOf(name);
-}
->>>>>>> origin/main

@@ -14,22 +14,16 @@ import 'package:trotxi_api_client/src/model/avatar_response.dart';
 import 'package:trotxi_api_client/src/model/device_input.dart';
 import 'package:trotxi_api_client/src/model/device_response.dart';
 import 'package:trotxi_api_client/src/model/error_response.dart';
-<<<<<<< HEAD
-=======
 import 'package:trotxi_api_client/src/model/passkey_authentication_options_response.dart';
 import 'package:trotxi_api_client/src/model/passkey_authentication_response.dart';
 import 'package:trotxi_api_client/src/model/passkey_registration_options_response.dart';
 import 'package:trotxi_api_client/src/model/passkey_registration_response.dart';
 import 'package:trotxi_api_client/src/model/passkey_status_response.dart';
->>>>>>> origin/main
 import 'package:trotxi_api_client/src/model/profile_update.dart';
 import 'package:trotxi_api_client/src/model/session_page.dart';
 
 class SelfApi {
-<<<<<<< HEAD
 
-=======
->>>>>>> origin/main
   final Dio _dio;
 
   final Serializers _serializers;
@@ -37,11 +31,7 @@ class SelfApi {
   const SelfApi(this._dio, this._serializers);
 
   /// delete Avatar
-<<<<<<< HEAD
   /// 
-=======
-  ///
->>>>>>> origin/main
   ///
   /// Parameters:
   /// * [idempotencyKey] - Caller + operation + target scoped; payload mismatch = 409. Never log secrets.
@@ -57,11 +47,7 @@ class SelfApi {
   ///
   /// Returns a [Future]
   /// Throws [DioException] if API call or serialization fails
-<<<<<<< HEAD
   Future<Response<void>> deleteAvatar({ 
-=======
-  Future<Response<void>> deleteAvatar({
->>>>>>> origin/main
     required String idempotencyKey,
     required String xTrotxiClient,
     int xTrotxiBuild = 1,
@@ -108,11 +94,7 @@ class SelfApi {
   }
 
   /// erase Account
-<<<<<<< HEAD
   /// 
-=======
-  ///
->>>>>>> origin/main
   ///
   /// Parameters:
   /// * [idempotencyKey] - Caller + operation + target scoped; payload mismatch = 409. Never log secrets.
@@ -128,11 +110,7 @@ class SelfApi {
   ///
   /// Returns a [Future]
   /// Throws [DioException] if API call or serialization fails
-<<<<<<< HEAD
   Future<Response<void>> eraseAccount({ 
-=======
-  Future<Response<void>> eraseAccount({
->>>>>>> origin/main
     required String idempotencyKey,
     required String xTrotxiClient,
     int xTrotxiBuild = 1,
@@ -178,17 +156,13 @@ class SelfApi {
     return _response;
   }
 
-<<<<<<< HEAD
-  /// get Account
-  /// 
-=======
   /// finish Passkey Authentication
-  ///
+  /// 
   ///
   /// Parameters:
   /// * [xTrotxiClient] - Compatibility metadata only, never grants a role.
   /// * [xTrotxiBuild] - Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
-  /// * [passkeyAuthenticationResponse]
+  /// * [passkeyAuthenticationResponse] 
   /// * [xTrotxiPlatform] - Required for commuter/driver, absent for ops/worker.
   /// * [cancelToken] - A [CancelToken] that can be used to cancel the operation
   /// * [headers] - Can be used to add additional headers to the request
@@ -199,7 +173,7 @@ class SelfApi {
   ///
   /// Returns a [Future]
   /// Throws [DioException] if API call or serialization fails
-  Future<Response<void>> finishPasskeyAuthentication({
+  Future<Response<void>> finishPasskeyAuthentication({ 
     required String xTrotxiClient,
     int xTrotxiBuild = 1,
     required PasskeyAuthenticationResponse passkeyAuthenticationResponse,
@@ -238,11 +212,11 @@ class SelfApi {
 
     try {
       const _type = FullType(PasskeyAuthenticationResponse);
-      _bodyData = _serializers.serialize(passkeyAuthenticationResponse,
-          specifiedType: _type);
-    } catch (error, stackTrace) {
+      _bodyData = _serializers.serialize(passkeyAuthenticationResponse, specifiedType: _type);
+
+    } catch(error, stackTrace) {
       throw DioException(
-        requestOptions: _options.compose(
+         requestOptions: _options.compose(
           _dio.options,
           _path,
         ),
@@ -265,12 +239,12 @@ class SelfApi {
   }
 
   /// finish Passkey Registration
-  ///
+  /// 
   ///
   /// Parameters:
   /// * [xTrotxiClient] - Compatibility metadata only, never grants a role.
   /// * [xTrotxiBuild] - Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
-  /// * [passkeyRegistrationResponse]
+  /// * [passkeyRegistrationResponse] 
   /// * [xTrotxiPlatform] - Required for commuter/driver, absent for ops/worker.
   /// * [cancelToken] - A [CancelToken] that can be used to cancel the operation
   /// * [headers] - Can be used to add additional headers to the request
@@ -281,7 +255,7 @@ class SelfApi {
   ///
   /// Returns a [Future]
   /// Throws [DioException] if API call or serialization fails
-  Future<Response<void>> finishPasskeyRegistration({
+  Future<Response<void>> finishPasskeyRegistration({ 
     required String xTrotxiClient,
     int xTrotxiBuild = 1,
     required PasskeyRegistrationResponse passkeyRegistrationResponse,
@@ -320,11 +294,11 @@ class SelfApi {
 
     try {
       const _type = FullType(PasskeyRegistrationResponse);
-      _bodyData = _serializers.serialize(passkeyRegistrationResponse,
-          specifiedType: _type);
-    } catch (error, stackTrace) {
+      _bodyData = _serializers.serialize(passkeyRegistrationResponse, specifiedType: _type);
+
+    } catch(error, stackTrace) {
       throw DioException(
-        requestOptions: _options.compose(
+         requestOptions: _options.compose(
           _dio.options,
           _path,
         ),
@@ -347,8 +321,7 @@ class SelfApi {
   }
 
   /// get Account
-  ///
->>>>>>> origin/main
+  /// 
   ///
   /// Parameters:
   /// * [xTrotxiClient] - Compatibility metadata only, never grants a role.
@@ -363,11 +336,7 @@ class SelfApi {
   ///
   /// Returns a [Future] containing a [Response] with a [AccountResponse] as data
   /// Throws [DioException] if API call or serialization fails
-<<<<<<< HEAD
   Future<Response<AccountResponse>> getAccount({ 
-=======
-  Future<Response<AccountResponse>> getAccount({
->>>>>>> origin/main
     required String xTrotxiClient,
     int xTrotxiBuild = 1,
     String? xTrotxiPlatform,
@@ -412,20 +381,11 @@ class SelfApi {
 
     try {
       final rawResponse = _response.data;
-<<<<<<< HEAD
       _responseData = rawResponse == null ? null : _serializers.deserialize(
         rawResponse,
         specifiedType: const FullType(AccountResponse),
       ) as AccountResponse;
 
-=======
-      _responseData = rawResponse == null
-          ? null
-          : _serializers.deserialize(
-              rawResponse,
-              specifiedType: const FullType(AccountResponse),
-            ) as AccountResponse;
->>>>>>> origin/main
     } catch (error, stackTrace) {
       throw DioException(
         requestOptions: _response.requestOptions,
@@ -449,11 +409,7 @@ class SelfApi {
   }
 
   /// get Avatar
-<<<<<<< HEAD
   /// 
-=======
-  ///
->>>>>>> origin/main
   ///
   /// Parameters:
   /// * [xTrotxiClient] - Compatibility metadata only, never grants a role.
@@ -468,11 +424,7 @@ class SelfApi {
   ///
   /// Returns a [Future] containing a [Response] with a [AvatarResponse] as data
   /// Throws [DioException] if API call or serialization fails
-<<<<<<< HEAD
   Future<Response<AvatarResponse>> getAvatar({ 
-=======
-  Future<Response<AvatarResponse>> getAvatar({
->>>>>>> origin/main
     required String xTrotxiClient,
     int xTrotxiBuild = 1,
     String? xTrotxiPlatform,
@@ -517,20 +469,11 @@ class SelfApi {
 
     try {
       final rawResponse = _response.data;
-<<<<<<< HEAD
       _responseData = rawResponse == null ? null : _serializers.deserialize(
         rawResponse,
         specifiedType: const FullType(AvatarResponse),
       ) as AvatarResponse;
 
-=======
-      _responseData = rawResponse == null
-          ? null
-          : _serializers.deserialize(
-              rawResponse,
-              specifiedType: const FullType(AvatarResponse),
-            ) as AvatarResponse;
->>>>>>> origin/main
     } catch (error, stackTrace) {
       throw DioException(
         requestOptions: _response.requestOptions,
@@ -553,12 +496,8 @@ class SelfApi {
     );
   }
 
-<<<<<<< HEAD
-  /// list Sessions
-  /// 
-=======
   /// get Passkey Status
-  ///
+  /// 
   ///
   /// Parameters:
   /// * [xTrotxiClient] - Compatibility metadata only, never grants a role.
@@ -573,7 +512,7 @@ class SelfApi {
   ///
   /// Returns a [Future] containing a [Response] with a [PasskeyStatusResponse] as data
   /// Throws [DioException] if API call or serialization fails
-  Future<Response<PasskeyStatusResponse>> getPasskeyStatus({
+  Future<Response<PasskeyStatusResponse>> getPasskeyStatus({ 
     required String xTrotxiClient,
     int xTrotxiBuild = 1,
     String? xTrotxiPlatform,
@@ -618,12 +557,11 @@ class SelfApi {
 
     try {
       final rawResponse = _response.data;
-      _responseData = rawResponse == null
-          ? null
-          : _serializers.deserialize(
-              rawResponse,
-              specifiedType: const FullType(PasskeyStatusResponse),
-            ) as PasskeyStatusResponse;
+      _responseData = rawResponse == null ? null : _serializers.deserialize(
+        rawResponse,
+        specifiedType: const FullType(PasskeyStatusResponse),
+      ) as PasskeyStatusResponse;
+
     } catch (error, stackTrace) {
       throw DioException(
         requestOptions: _response.requestOptions,
@@ -647,8 +585,7 @@ class SelfApi {
   }
 
   /// list Sessions
-  ///
->>>>>>> origin/main
+  /// 
   ///
   /// Parameters:
   /// * [xTrotxiClient] - Compatibility metadata only, never grants a role.
@@ -665,11 +602,7 @@ class SelfApi {
   ///
   /// Returns a [Future] containing a [Response] with a [SessionPage] as data
   /// Throws [DioException] if API call or serialization fails
-<<<<<<< HEAD
   Future<Response<SessionPage>> listSessions({ 
-=======
-  Future<Response<SessionPage>> listSessions({
->>>>>>> origin/main
     required String xTrotxiClient,
     int xTrotxiBuild = 1,
     String? cursor,
@@ -705,17 +638,8 @@ class SelfApi {
     );
 
     final _queryParameters = <String, dynamic>{
-<<<<<<< HEAD
       if (cursor != null) r'cursor': encodeQueryParameter(_serializers, cursor, const FullType(String)),
       if (limit != null) r'limit': encodeQueryParameter(_serializers, limit, const FullType(int)),
-=======
-      if (cursor != null)
-        r'cursor':
-            encodeQueryParameter(_serializers, cursor, const FullType(String)),
-      if (limit != null)
-        r'limit':
-            encodeQueryParameter(_serializers, limit, const FullType(int)),
->>>>>>> origin/main
     };
 
     final _response = await _dio.request<Object>(
@@ -731,20 +655,11 @@ class SelfApi {
 
     try {
       final rawResponse = _response.data;
-<<<<<<< HEAD
       _responseData = rawResponse == null ? null : _serializers.deserialize(
         rawResponse,
         specifiedType: const FullType(SessionPage),
       ) as SessionPage;
 
-=======
-      _responseData = rawResponse == null
-          ? null
-          : _serializers.deserialize(
-              rawResponse,
-              specifiedType: const FullType(SessionPage),
-            ) as SessionPage;
->>>>>>> origin/main
     } catch (error, stackTrace) {
       throw DioException(
         requestOptions: _response.requestOptions,
@@ -768,21 +683,13 @@ class SelfApi {
   }
 
   /// register Device
-<<<<<<< HEAD
   /// 
-=======
-  ///
->>>>>>> origin/main
   ///
   /// Parameters:
   /// * [idempotencyKey] - Caller + operation + target scoped; payload mismatch = 409. Never log secrets.
   /// * [xTrotxiClient] - Compatibility metadata only, never grants a role.
   /// * [xTrotxiBuild] - Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
-<<<<<<< HEAD
   /// * [deviceInput] 
-=======
-  /// * [deviceInput]
->>>>>>> origin/main
   /// * [xTrotxiPlatform] - Required for commuter/driver, absent for ops/worker.
   /// * [cancelToken] - A [CancelToken] that can be used to cancel the operation
   /// * [headers] - Can be used to add additional headers to the request
@@ -793,11 +700,7 @@ class SelfApi {
   ///
   /// Returns a [Future] containing a [Response] with a [DeviceResponse] as data
   /// Throws [DioException] if API call or serialization fails
-<<<<<<< HEAD
   Future<Response<DeviceResponse>> registerDevice({ 
-=======
-  Future<Response<DeviceResponse>> registerDevice({
->>>>>>> origin/main
     required String idempotencyKey,
     required String xTrotxiClient,
     int xTrotxiBuild = 1,
@@ -839,16 +742,10 @@ class SelfApi {
     try {
       const _type = FullType(DeviceInput);
       _bodyData = _serializers.serialize(deviceInput, specifiedType: _type);
-<<<<<<< HEAD
 
     } catch(error, stackTrace) {
       throw DioException(
          requestOptions: _options.compose(
-=======
-    } catch (error, stackTrace) {
-      throw DioException(
-        requestOptions: _options.compose(
->>>>>>> origin/main
           _dio.options,
           _path,
         ),
@@ -871,20 +768,11 @@ class SelfApi {
 
     try {
       final rawResponse = _response.data;
-<<<<<<< HEAD
       _responseData = rawResponse == null ? null : _serializers.deserialize(
         rawResponse,
         specifiedType: const FullType(DeviceResponse),
       ) as DeviceResponse;
 
-=======
-      _responseData = rawResponse == null
-          ? null
-          : _serializers.deserialize(
-              rawResponse,
-              specifiedType: const FullType(DeviceResponse),
-            ) as DeviceResponse;
->>>>>>> origin/main
     } catch (error, stackTrace) {
       throw DioException(
         requestOptions: _response.requestOptions,
@@ -908,17 +796,10 @@ class SelfApi {
   }
 
   /// revoke Session
-<<<<<<< HEAD
   /// 
   ///
   /// Parameters:
   /// * [id] 
-=======
-  ///
-  ///
-  /// Parameters:
-  /// * [id]
->>>>>>> origin/main
   /// * [idempotencyKey] - Caller + operation + target scoped; payload mismatch = 409. Never log secrets.
   /// * [xTrotxiClient] - Compatibility metadata only, never grants a role.
   /// * [xTrotxiBuild] - Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
@@ -932,11 +813,7 @@ class SelfApi {
   ///
   /// Returns a [Future]
   /// Throws [DioException] if API call or serialization fails
-<<<<<<< HEAD
   Future<Response<void>> revokeSession({ 
-=======
-  Future<Response<void>> revokeSession({
->>>>>>> origin/main
     required String id,
     required String idempotencyKey,
     required String xTrotxiClient,
@@ -949,14 +826,7 @@ class SelfApi {
     ProgressCallback? onSendProgress,
     ProgressCallback? onReceiveProgress,
   }) async {
-<<<<<<< HEAD
     final _path = r'/v1/me/sessions/{id}'.replaceAll('{' r'id' '}', encodeQueryParameter(_serializers, id, const FullType(String)).toString());
-=======
-    final _path = r'/v1/me/sessions/{id}'.replaceAll(
-        '{' r'id' '}',
-        encodeQueryParameter(_serializers, id, const FullType(String))
-            .toString());
->>>>>>> origin/main
     final _options = Options(
       method: r'DELETE',
       headers: <String, dynamic>{
@@ -990,12 +860,8 @@ class SelfApi {
     return _response;
   }
 
-<<<<<<< HEAD
-  /// update Account
-  /// 
-=======
   /// start Passkey Authentication
-  ///
+  /// 
   ///
   /// Parameters:
   /// * [xTrotxiClient] - Compatibility metadata only, never grants a role.
@@ -1010,8 +876,7 @@ class SelfApi {
   ///
   /// Returns a [Future] containing a [Response] with a [PasskeyAuthenticationOptionsResponse] as data
   /// Throws [DioException] if API call or serialization fails
-  Future<Response<PasskeyAuthenticationOptionsResponse>>
-      startPasskeyAuthentication({
+  Future<Response<PasskeyAuthenticationOptionsResponse>> startPasskeyAuthentication({ 
     required String xTrotxiClient,
     int xTrotxiBuild = 1,
     String? xTrotxiPlatform,
@@ -1056,13 +921,11 @@ class SelfApi {
 
     try {
       final rawResponse = _response.data;
-      _responseData = rawResponse == null
-          ? null
-          : _serializers.deserialize(
-              rawResponse,
-              specifiedType:
-                  const FullType(PasskeyAuthenticationOptionsResponse),
-            ) as PasskeyAuthenticationOptionsResponse;
+      _responseData = rawResponse == null ? null : _serializers.deserialize(
+        rawResponse,
+        specifiedType: const FullType(PasskeyAuthenticationOptionsResponse),
+      ) as PasskeyAuthenticationOptionsResponse;
+
     } catch (error, stackTrace) {
       throw DioException(
         requestOptions: _response.requestOptions,
@@ -1086,7 +949,7 @@ class SelfApi {
   }
 
   /// start Passkey Registration
-  ///
+  /// 
   ///
   /// Parameters:
   /// * [xTrotxiClient] - Compatibility metadata only, never grants a role.
@@ -1101,8 +964,7 @@ class SelfApi {
   ///
   /// Returns a [Future] containing a [Response] with a [PasskeyRegistrationOptionsResponse] as data
   /// Throws [DioException] if API call or serialization fails
-  Future<Response<PasskeyRegistrationOptionsResponse>>
-      startPasskeyRegistration({
+  Future<Response<PasskeyRegistrationOptionsResponse>> startPasskeyRegistration({ 
     required String xTrotxiClient,
     int xTrotxiBuild = 1,
     String? xTrotxiPlatform,
@@ -1147,12 +1009,11 @@ class SelfApi {
 
     try {
       final rawResponse = _response.data;
-      _responseData = rawResponse == null
-          ? null
-          : _serializers.deserialize(
-              rawResponse,
-              specifiedType: const FullType(PasskeyRegistrationOptionsResponse),
-            ) as PasskeyRegistrationOptionsResponse;
+      _responseData = rawResponse == null ? null : _serializers.deserialize(
+        rawResponse,
+        specifiedType: const FullType(PasskeyRegistrationOptionsResponse),
+      ) as PasskeyRegistrationOptionsResponse;
+
     } catch (error, stackTrace) {
       throw DioException(
         requestOptions: _response.requestOptions,
@@ -1176,18 +1037,13 @@ class SelfApi {
   }
 
   /// update Account
-  ///
->>>>>>> origin/main
+  /// 
   ///
   /// Parameters:
   /// * [idempotencyKey] - Caller + operation + target scoped; payload mismatch = 409. Never log secrets.
   /// * [xTrotxiClient] - Compatibility metadata only, never grants a role.
   /// * [xTrotxiBuild] - Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
-<<<<<<< HEAD
   /// * [profileUpdate] 
-=======
-  /// * [profileUpdate]
->>>>>>> origin/main
   /// * [xTrotxiPlatform] - Required for commuter/driver, absent for ops/worker.
   /// * [cancelToken] - A [CancelToken] that can be used to cancel the operation
   /// * [headers] - Can be used to add additional headers to the request
@@ -1198,11 +1054,7 @@ class SelfApi {
   ///
   /// Returns a [Future] containing a [Response] with a [AccountResponse] as data
   /// Throws [DioException] if API call or serialization fails
-<<<<<<< HEAD
   Future<Response<AccountResponse>> updateAccount({ 
-=======
-  Future<Response<AccountResponse>> updateAccount({
->>>>>>> origin/main
     required String idempotencyKey,
     required String xTrotxiClient,
     int xTrotxiBuild = 1,
@@ -1244,16 +1096,10 @@ class SelfApi {
     try {
       const _type = FullType(ProfileUpdate);
       _bodyData = _serializers.serialize(profileUpdate, specifiedType: _type);
-<<<<<<< HEAD
 
     } catch(error, stackTrace) {
       throw DioException(
          requestOptions: _options.compose(
-=======
-    } catch (error, stackTrace) {
-      throw DioException(
-        requestOptions: _options.compose(
->>>>>>> origin/main
           _dio.options,
           _path,
         ),
@@ -1276,20 +1122,11 @@ class SelfApi {
 
     try {
       final rawResponse = _response.data;
-<<<<<<< HEAD
       _responseData = rawResponse == null ? null : _serializers.deserialize(
         rawResponse,
         specifiedType: const FullType(AccountResponse),
       ) as AccountResponse;
 
-=======
-      _responseData = rawResponse == null
-          ? null
-          : _serializers.deserialize(
-              rawResponse,
-              specifiedType: const FullType(AccountResponse),
-            ) as AccountResponse;
->>>>>>> origin/main
     } catch (error, stackTrace) {
       throw DioException(
         requestOptions: _response.requestOptions,
@@ -1313,21 +1150,13 @@ class SelfApi {
   }
 
   /// upload Avatar
-<<<<<<< HEAD
   /// 
-=======
-  ///
->>>>>>> origin/main
   ///
   /// Parameters:
   /// * [idempotencyKey] - Caller + operation + target scoped; payload mismatch = 409. Never log secrets.
   /// * [xTrotxiClient] - Compatibility metadata only, never grants a role.
   /// * [xTrotxiBuild] - Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
-<<<<<<< HEAD
   /// * [file] 
-=======
-  /// * [file]
->>>>>>> origin/main
   /// * [xTrotxiPlatform] - Required for commuter/driver, absent for ops/worker.
   /// * [cancelToken] - A [CancelToken] that can be used to cancel the operation
   /// * [headers] - Can be used to add additional headers to the request
@@ -1338,11 +1167,7 @@ class SelfApi {
   ///
   /// Returns a [Future] containing a [Response] with a [AvatarResponse] as data
   /// Throws [DioException] if API call or serialization fails
-<<<<<<< HEAD
   Future<Response<AvatarResponse>> uploadAvatar({ 
-=======
-  Future<Response<AvatarResponse>> uploadAvatar({
->>>>>>> origin/main
     required String idempotencyKey,
     required String xTrotxiClient,
     int xTrotxiBuild = 1,
@@ -1385,16 +1210,10 @@ class SelfApi {
       _bodyData = FormData.fromMap(<String, dynamic>{
         r'file': file,
       });
-<<<<<<< HEAD
 
     } catch(error, stackTrace) {
       throw DioException(
          requestOptions: _options.compose(
-=======
-    } catch (error, stackTrace) {
-      throw DioException(
-        requestOptions: _options.compose(
->>>>>>> origin/main
           _dio.options,
           _path,
         ),
@@ -1417,20 +1236,11 @@ class SelfApi {
 
     try {
       final rawResponse = _response.data;
-<<<<<<< HEAD
       _responseData = rawResponse == null ? null : _serializers.deserialize(
         rawResponse,
         specifiedType: const FullType(AvatarResponse),
       ) as AvatarResponse;
 
-=======
-      _responseData = rawResponse == null
-          ? null
-          : _serializers.deserialize(
-              rawResponse,
-              specifiedType: const FullType(AvatarResponse),
-            ) as AvatarResponse;
->>>>>>> origin/main
     } catch (error, stackTrace) {
       throw DioException(
         requestOptions: _response.requestOptions,
@@ -1452,8 +1262,5 @@ class SelfApi {
       extra: _response.extra,
     );
   }
-<<<<<<< HEAD
 
-=======
->>>>>>> origin/main
 }

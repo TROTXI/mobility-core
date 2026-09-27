@@ -12,14 +12,11 @@ part 'passkey_authentication_options_allow_credentials_inner.g.dart';
 /// PasskeyAuthenticationOptionsAllowCredentialsInner
 ///
 /// Properties:
-/// * [id]
-/// * [type]
-/// * [transports]
+/// * [id] 
+/// * [type] 
+/// * [transports] 
 @BuiltValue()
-abstract class PasskeyAuthenticationOptionsAllowCredentialsInner
-    implements
-        Built<PasskeyAuthenticationOptionsAllowCredentialsInner,
-            PasskeyAuthenticationOptionsAllowCredentialsInnerBuilder> {
+abstract class PasskeyAuthenticationOptionsAllowCredentialsInner implements Built<PasskeyAuthenticationOptionsAllowCredentialsInner, PasskeyAuthenticationOptionsAllowCredentialsInnerBuilder> {
   @BuiltValueField(wireName: r'id')
   String get id;
 
@@ -32,30 +29,18 @@ abstract class PasskeyAuthenticationOptionsAllowCredentialsInner
 
   PasskeyAuthenticationOptionsAllowCredentialsInner._();
 
-  factory PasskeyAuthenticationOptionsAllowCredentialsInner(
-          [void updates(
-              PasskeyAuthenticationOptionsAllowCredentialsInnerBuilder b)]) =
-      _$PasskeyAuthenticationOptionsAllowCredentialsInner;
+  factory PasskeyAuthenticationOptionsAllowCredentialsInner([void updates(PasskeyAuthenticationOptionsAllowCredentialsInnerBuilder b)]) = _$PasskeyAuthenticationOptionsAllowCredentialsInner;
 
   @BuiltValueHook(initializeBuilder: true)
-  static void _defaults(
-          PasskeyAuthenticationOptionsAllowCredentialsInnerBuilder b) =>
-      b;
+  static void _defaults(PasskeyAuthenticationOptionsAllowCredentialsInnerBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
-  static Serializer<PasskeyAuthenticationOptionsAllowCredentialsInner>
-      get serializer =>
-          _$PasskeyAuthenticationOptionsAllowCredentialsInnerSerializer();
+  static Serializer<PasskeyAuthenticationOptionsAllowCredentialsInner> get serializer => _$PasskeyAuthenticationOptionsAllowCredentialsInnerSerializer();
 }
 
-class _$PasskeyAuthenticationOptionsAllowCredentialsInnerSerializer
-    implements
-        PrimitiveSerializer<PasskeyAuthenticationOptionsAllowCredentialsInner> {
+class _$PasskeyAuthenticationOptionsAllowCredentialsInnerSerializer implements PrimitiveSerializer<PasskeyAuthenticationOptionsAllowCredentialsInner> {
   @override
-  final Iterable<Type> types = const [
-    PasskeyAuthenticationOptionsAllowCredentialsInner,
-    _$PasskeyAuthenticationOptionsAllowCredentialsInner
-  ];
+  final Iterable<Type> types = const [PasskeyAuthenticationOptionsAllowCredentialsInner, _$PasskeyAuthenticationOptionsAllowCredentialsInner];
 
   @override
   final String wireName = r'PasskeyAuthenticationOptionsAllowCredentialsInner';
@@ -73,8 +58,7 @@ class _$PasskeyAuthenticationOptionsAllowCredentialsInnerSerializer
     yield r'type';
     yield serializers.serialize(
       object.type,
-      specifiedType: const FullType(
-          PasskeyAuthenticationOptionsAllowCredentialsInnerTypeEnum),
+      specifiedType: const FullType(PasskeyAuthenticationOptionsAllowCredentialsInnerTypeEnum),
     );
     if (object.transports != null) {
       yield r'transports';
@@ -91,9 +75,7 @@ class _$PasskeyAuthenticationOptionsAllowCredentialsInnerSerializer
     PasskeyAuthenticationOptionsAllowCredentialsInner object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    return _serializeProperties(serializers, object,
-            specifiedType: specifiedType)
-        .toList();
+    return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
   }
 
   void _deserializeProperties(
@@ -118,8 +100,7 @@ class _$PasskeyAuthenticationOptionsAllowCredentialsInnerSerializer
         case r'type':
           final valueDes = serializers.deserialize(
             value,
-            specifiedType: const FullType(
-                PasskeyAuthenticationOptionsAllowCredentialsInnerTypeEnum),
+            specifiedType: const FullType(PasskeyAuthenticationOptionsAllowCredentialsInnerTypeEnum),
           ) as PasskeyAuthenticationOptionsAllowCredentialsInnerTypeEnum;
           result.type = valueDes;
           break;
@@ -159,24 +140,16 @@ class _$PasskeyAuthenticationOptionsAllowCredentialsInnerSerializer
   }
 }
 
-class PasskeyAuthenticationOptionsAllowCredentialsInnerTypeEnum
-    extends EnumClass {
+class PasskeyAuthenticationOptionsAllowCredentialsInnerTypeEnum extends EnumClass {
+
   @BuiltValueEnumConst(wireName: r'public-key')
-  static const PasskeyAuthenticationOptionsAllowCredentialsInnerTypeEnum
-      publicKey =
-      _$passkeyAuthenticationOptionsAllowCredentialsInnerTypeEnum_publicKey;
+  static const PasskeyAuthenticationOptionsAllowCredentialsInnerTypeEnum publicKey = _$passkeyAuthenticationOptionsAllowCredentialsInnerTypeEnum_publicKey;
 
-  static Serializer<PasskeyAuthenticationOptionsAllowCredentialsInnerTypeEnum>
-      get serializer =>
-          _$passkeyAuthenticationOptionsAllowCredentialsInnerTypeEnumSerializer;
+  static Serializer<PasskeyAuthenticationOptionsAllowCredentialsInnerTypeEnum> get serializer => _$passkeyAuthenticationOptionsAllowCredentialsInnerTypeEnumSerializer;
 
-  const PasskeyAuthenticationOptionsAllowCredentialsInnerTypeEnum._(String name)
-      : super(name);
+  const PasskeyAuthenticationOptionsAllowCredentialsInnerTypeEnum._(String name): super(name);
 
-  static BuiltSet<PasskeyAuthenticationOptionsAllowCredentialsInnerTypeEnum>
-      get values =>
-          _$passkeyAuthenticationOptionsAllowCredentialsInnerTypeEnumValues;
-  static PasskeyAuthenticationOptionsAllowCredentialsInnerTypeEnum valueOf(
-          String name) =>
-      _$passkeyAuthenticationOptionsAllowCredentialsInnerTypeEnumValueOf(name);
+  static BuiltSet<PasskeyAuthenticationOptionsAllowCredentialsInnerTypeEnum> get values => _$passkeyAuthenticationOptionsAllowCredentialsInnerTypeEnumValues;
+  static PasskeyAuthenticationOptionsAllowCredentialsInnerTypeEnum valueOf(String name) => _$passkeyAuthenticationOptionsAllowCredentialsInnerTypeEnumValueOf(name);
 }
+

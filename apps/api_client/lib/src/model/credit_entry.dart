@@ -12,19 +12,11 @@ part 'credit_entry.g.dart';
 /// CreditEntry
 ///
 /// Properties:
-<<<<<<< HEAD
 /// * [id] 
 /// * [deltaMinor] 
 /// * [currency] 
 /// * [reason] 
 /// * [createdAt] 
-=======
-/// * [id]
-/// * [deltaMinor]
-/// * [currency]
-/// * [reason]
-/// * [createdAt]
->>>>>>> origin/main
 @BuiltValue()
 abstract class CreditEntry implements Built<CreditEntry, CreditEntryBuilder> {
   @BuiltValueField(wireName: r'id')
@@ -100,13 +92,7 @@ class _$CreditEntrySerializer implements PrimitiveSerializer<CreditEntry> {
     CreditEntry object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-<<<<<<< HEAD
     return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
-=======
-    return _serializeProperties(serializers, object,
-            specifiedType: specifiedType)
-        .toList();
->>>>>>> origin/main
   }
 
   void _deserializeProperties(
@@ -186,7 +172,6 @@ class _$CreditEntrySerializer implements PrimitiveSerializer<CreditEntry> {
 }
 
 class CreditEntryCurrencyEnum extends EnumClass {
-<<<<<<< HEAD
 
   @BuiltValueEnumConst(wireName: r'GHS')
   static const CreditEntryCurrencyEnum GHS = _$creditEntryCurrencyEnum_GHS;
@@ -220,46 +205,3 @@ class CreditEntryReasonEnum extends EnumClass {
   static CreditEntryReasonEnum valueOf(String name) => _$creditEntryReasonEnumValueOf(name);
 }
 
-=======
-  @BuiltValueEnumConst(wireName: r'GHS')
-  static const CreditEntryCurrencyEnum GHS = _$creditEntryCurrencyEnum_GHS;
-
-  static Serializer<CreditEntryCurrencyEnum> get serializer =>
-      _$creditEntryCurrencyEnumSerializer;
-
-  const CreditEntryCurrencyEnum._(String name) : super(name);
-
-  static BuiltSet<CreditEntryCurrencyEnum> get values =>
-      _$creditEntryCurrencyEnumValues;
-  static CreditEntryCurrencyEnum valueOf(String name) =>
-      _$creditEntryCurrencyEnumValueOf(name);
-}
-
-class CreditEntryReasonEnum extends EnumClass {
-  @BuiltValueEnumConst(wireName: r'month_end_conversion')
-  static const CreditEntryReasonEnum monthEndConversion =
-      _$creditEntryReasonEnum_monthEndConversion;
-  @BuiltValueEnumConst(wireName: r'purchase_applied')
-  static const CreditEntryReasonEnum purchaseApplied =
-      _$creditEntryReasonEnum_purchaseApplied;
-  @BuiltValueEnumConst(wireName: r'refund_restored')
-  static const CreditEntryReasonEnum refundRestored =
-      _$creditEntryReasonEnum_refundRestored;
-  @BuiltValueEnumConst(wireName: r'conversion_reversed')
-  static const CreditEntryReasonEnum conversionReversed =
-      _$creditEntryReasonEnum_conversionReversed;
-  @BuiltValueEnumConst(wireName: r'adjustment')
-  static const CreditEntryReasonEnum adjustment =
-      _$creditEntryReasonEnum_adjustment;
-
-  static Serializer<CreditEntryReasonEnum> get serializer =>
-      _$creditEntryReasonEnumSerializer;
-
-  const CreditEntryReasonEnum._(String name) : super(name);
-
-  static BuiltSet<CreditEntryReasonEnum> get values =>
-      _$creditEntryReasonEnumValues;
-  static CreditEntryReasonEnum valueOf(String name) =>
-      _$creditEntryReasonEnumValueOf(name);
-}
->>>>>>> origin/main

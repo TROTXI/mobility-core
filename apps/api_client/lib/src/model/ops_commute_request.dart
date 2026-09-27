@@ -14,7 +14,6 @@ part 'ops_commute_request.g.dart';
 /// OpsCommuteRequest
 ///
 /// Properties:
-<<<<<<< HEAD
 /// * [id] 
 /// * [status] 
 /// * [requested] 
@@ -30,24 +29,6 @@ part 'ops_commute_request.g.dart';
 /// * [editToken] 
 @BuiltValue()
 abstract class OpsCommuteRequest implements Built<OpsCommuteRequest, OpsCommuteRequestBuilder> {
-=======
-/// * [id]
-/// * [status]
-/// * [requested]
-/// * [effectiveDate]
-/// * [paused]
-/// * [decisionNote]
-/// * [createdAt]
-/// * [updatedAt]
-/// * [version]
-/// * [riderId]
-/// * [slotId]
-/// * [decidedBy]
-/// * [editToken]
-@BuiltValue()
-abstract class OpsCommuteRequest
-    implements Built<OpsCommuteRequest, OpsCommuteRequestBuilder> {
->>>>>>> origin/main
   @BuiltValueField(wireName: r'id')
   String get id;
 
@@ -90,30 +71,16 @@ abstract class OpsCommuteRequest
 
   OpsCommuteRequest._();
 
-<<<<<<< HEAD
   factory OpsCommuteRequest([void updates(OpsCommuteRequestBuilder b)]) = _$OpsCommuteRequest;
-=======
-  factory OpsCommuteRequest([void updates(OpsCommuteRequestBuilder b)]) =
-      _$OpsCommuteRequest;
->>>>>>> origin/main
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(OpsCommuteRequestBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
-<<<<<<< HEAD
   static Serializer<OpsCommuteRequest> get serializer => _$OpsCommuteRequestSerializer();
 }
 
 class _$OpsCommuteRequestSerializer implements PrimitiveSerializer<OpsCommuteRequest> {
-=======
-  static Serializer<OpsCommuteRequest> get serializer =>
-      _$OpsCommuteRequestSerializer();
-}
-
-class _$OpsCommuteRequestSerializer
-    implements PrimitiveSerializer<OpsCommuteRequest> {
->>>>>>> origin/main
   @override
   final Iterable<Type> types = const [OpsCommuteRequest, _$OpsCommuteRequest];
 
@@ -141,38 +108,20 @@ class _$OpsCommuteRequestSerializer
       specifiedType: const FullType(CommuteRequestInput),
     );
     yield r'effectiveDate';
-<<<<<<< HEAD
     yield object.effectiveDate == null ? null : serializers.serialize(
       object.effectiveDate,
       specifiedType: const FullType.nullable(Date),
     );
-=======
-    yield object.effectiveDate == null
-        ? null
-        : serializers.serialize(
-            object.effectiveDate,
-            specifiedType: const FullType.nullable(Date),
-          );
->>>>>>> origin/main
     yield r'paused';
     yield serializers.serialize(
       object.paused,
       specifiedType: const FullType(bool),
     );
     yield r'decisionNote';
-<<<<<<< HEAD
     yield object.decisionNote == null ? null : serializers.serialize(
       object.decisionNote,
       specifiedType: const FullType.nullable(String),
     );
-=======
-    yield object.decisionNote == null
-        ? null
-        : serializers.serialize(
-            object.decisionNote,
-            specifiedType: const FullType.nullable(String),
-          );
->>>>>>> origin/main
     yield r'createdAt';
     yield serializers.serialize(
       object.createdAt,
@@ -194,7 +143,6 @@ class _$OpsCommuteRequestSerializer
       specifiedType: const FullType(String),
     );
     yield r'slotId';
-<<<<<<< HEAD
     yield object.slotId == null ? null : serializers.serialize(
       object.slotId,
       specifiedType: const FullType.nullable(String),
@@ -204,21 +152,6 @@ class _$OpsCommuteRequestSerializer
       object.decidedBy,
       specifiedType: const FullType.nullable(String),
     );
-=======
-    yield object.slotId == null
-        ? null
-        : serializers.serialize(
-            object.slotId,
-            specifiedType: const FullType.nullable(String),
-          );
-    yield r'decidedBy';
-    yield object.decidedBy == null
-        ? null
-        : serializers.serialize(
-            object.decidedBy,
-            specifiedType: const FullType.nullable(String),
-          );
->>>>>>> origin/main
     yield r'editToken';
     yield serializers.serialize(
       object.editToken,
@@ -232,13 +165,7 @@ class _$OpsCommuteRequestSerializer
     OpsCommuteRequest object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-<<<<<<< HEAD
     return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
-=======
-    return _serializeProperties(serializers, object,
-            specifiedType: specifiedType)
-        .toList();
->>>>>>> origin/main
   }
 
   void _deserializeProperties(
@@ -378,7 +305,6 @@ class _$OpsCommuteRequestSerializer
 }
 
 class OpsCommuteRequestStatusEnum extends EnumClass {
-<<<<<<< HEAD
 
   @BuiltValueEnumConst(wireName: r'submitted')
   static const OpsCommuteRequestStatusEnum submitted = _$opsCommuteRequestStatusEnum_submitted;
@@ -401,34 +327,3 @@ class OpsCommuteRequestStatusEnum extends EnumClass {
   static OpsCommuteRequestStatusEnum valueOf(String name) => _$opsCommuteRequestStatusEnumValueOf(name);
 }
 
-=======
-  @BuiltValueEnumConst(wireName: r'submitted')
-  static const OpsCommuteRequestStatusEnum submitted =
-      _$opsCommuteRequestStatusEnum_submitted;
-  @BuiltValueEnumConst(wireName: r'waitlisted')
-  static const OpsCommuteRequestStatusEnum waitlisted =
-      _$opsCommuteRequestStatusEnum_waitlisted;
-  @BuiltValueEnumConst(wireName: r'approved')
-  static const OpsCommuteRequestStatusEnum approved =
-      _$opsCommuteRequestStatusEnum_approved;
-  @BuiltValueEnumConst(wireName: r'applied')
-  static const OpsCommuteRequestStatusEnum applied =
-      _$opsCommuteRequestStatusEnum_applied;
-  @BuiltValueEnumConst(wireName: r'rejected')
-  static const OpsCommuteRequestStatusEnum rejected =
-      _$opsCommuteRequestStatusEnum_rejected;
-  @BuiltValueEnumConst(wireName: r'cancelled')
-  static const OpsCommuteRequestStatusEnum cancelled =
-      _$opsCommuteRequestStatusEnum_cancelled;
-
-  static Serializer<OpsCommuteRequestStatusEnum> get serializer =>
-      _$opsCommuteRequestStatusEnumSerializer;
-
-  const OpsCommuteRequestStatusEnum._(String name) : super(name);
-
-  static BuiltSet<OpsCommuteRequestStatusEnum> get values =>
-      _$opsCommuteRequestStatusEnumValues;
-  static OpsCommuteRequestStatusEnum valueOf(String name) =>
-      _$opsCommuteRequestStatusEnumValueOf(name);
-}
->>>>>>> origin/main

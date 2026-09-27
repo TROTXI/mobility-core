@@ -14,13 +14,8 @@ part 'session_page.g.dart';
 /// SessionPage
 ///
 /// Properties:
-<<<<<<< HEAD
 /// * [data] 
 /// * [page] 
-=======
-/// * [data]
-/// * [page]
->>>>>>> origin/main
 @BuiltValue()
 abstract class SessionPage implements Built<SessionPage, SessionPageBuilder> {
   @BuiltValueField(wireName: r'data')
@@ -70,13 +65,7 @@ class _$SessionPageSerializer implements PrimitiveSerializer<SessionPage> {
     SessionPage object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-<<<<<<< HEAD
     return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
-=======
-    return _serializeProperties(serializers, object,
-            specifiedType: specifiedType)
-        .toList();
->>>>>>> origin/main
   }
 
   void _deserializeProperties(
@@ -133,7 +122,4 @@ class _$SessionPageSerializer implements PrimitiveSerializer<SessionPage> {
     return result.build();
   }
 }
-<<<<<<< HEAD
 
-=======
->>>>>>> origin/main

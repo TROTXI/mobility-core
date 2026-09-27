@@ -12,53 +12,26 @@ part 'minimum_version_response.g.dart';
 /// MinimumVersionResponse
 ///
 /// Properties:
-<<<<<<< HEAD
 /// * [data] 
 @BuiltValue()
 abstract class MinimumVersionResponse implements Built<MinimumVersionResponse, MinimumVersionResponseBuilder> {
-=======
-/// * [data]
-@BuiltValue()
-abstract class MinimumVersionResponse
-    implements Built<MinimumVersionResponse, MinimumVersionResponseBuilder> {
->>>>>>> origin/main
   @BuiltValueField(wireName: r'data')
   MinimumVersion get data;
 
   MinimumVersionResponse._();
 
-<<<<<<< HEAD
   factory MinimumVersionResponse([void updates(MinimumVersionResponseBuilder b)]) = _$MinimumVersionResponse;
-=======
-  factory MinimumVersionResponse(
-          [void updates(MinimumVersionResponseBuilder b)]) =
-      _$MinimumVersionResponse;
->>>>>>> origin/main
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(MinimumVersionResponseBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
-<<<<<<< HEAD
   static Serializer<MinimumVersionResponse> get serializer => _$MinimumVersionResponseSerializer();
 }
 
 class _$MinimumVersionResponseSerializer implements PrimitiveSerializer<MinimumVersionResponse> {
   @override
   final Iterable<Type> types = const [MinimumVersionResponse, _$MinimumVersionResponse];
-=======
-  static Serializer<MinimumVersionResponse> get serializer =>
-      _$MinimumVersionResponseSerializer();
-}
-
-class _$MinimumVersionResponseSerializer
-    implements PrimitiveSerializer<MinimumVersionResponse> {
-  @override
-  final Iterable<Type> types = const [
-    MinimumVersionResponse,
-    _$MinimumVersionResponse
-  ];
->>>>>>> origin/main
 
   @override
   final String wireName = r'MinimumVersionResponse';
@@ -81,13 +54,7 @@ class _$MinimumVersionResponseSerializer
     MinimumVersionResponse object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-<<<<<<< HEAD
     return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
-=======
-    return _serializeProperties(serializers, object,
-            specifiedType: specifiedType)
-        .toList();
->>>>>>> origin/main
   }
 
   void _deserializeProperties(
@@ -137,7 +104,4 @@ class _$MinimumVersionResponseSerializer
     return result.build();
   }
 }
-<<<<<<< HEAD
 
-=======
->>>>>>> origin/main

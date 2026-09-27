@@ -11,19 +11,10 @@ part 'geometry_stop_distances_inner.g.dart';
 /// GeometryStopDistancesInner
 ///
 /// Properties:
-<<<<<<< HEAD
 /// * [stopOccurrenceId] 
 /// * [distanceMeters] 
 @BuiltValue()
 abstract class GeometryStopDistancesInner implements Built<GeometryStopDistancesInner, GeometryStopDistancesInnerBuilder> {
-=======
-/// * [stopOccurrenceId]
-/// * [distanceMeters]
-@BuiltValue()
-abstract class GeometryStopDistancesInner
-    implements
-        Built<GeometryStopDistancesInner, GeometryStopDistancesInnerBuilder> {
->>>>>>> origin/main
   @BuiltValueField(wireName: r'stopOccurrenceId')
   String get stopOccurrenceId;
 
@@ -32,38 +23,18 @@ abstract class GeometryStopDistancesInner
 
   GeometryStopDistancesInner._();
 
-<<<<<<< HEAD
   factory GeometryStopDistancesInner([void updates(GeometryStopDistancesInnerBuilder b)]) = _$GeometryStopDistancesInner;
-=======
-  factory GeometryStopDistancesInner(
-          [void updates(GeometryStopDistancesInnerBuilder b)]) =
-      _$GeometryStopDistancesInner;
->>>>>>> origin/main
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(GeometryStopDistancesInnerBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
-<<<<<<< HEAD
   static Serializer<GeometryStopDistancesInner> get serializer => _$GeometryStopDistancesInnerSerializer();
 }
 
 class _$GeometryStopDistancesInnerSerializer implements PrimitiveSerializer<GeometryStopDistancesInner> {
   @override
   final Iterable<Type> types = const [GeometryStopDistancesInner, _$GeometryStopDistancesInner];
-=======
-  static Serializer<GeometryStopDistancesInner> get serializer =>
-      _$GeometryStopDistancesInnerSerializer();
-}
-
-class _$GeometryStopDistancesInnerSerializer
-    implements PrimitiveSerializer<GeometryStopDistancesInner> {
-  @override
-  final Iterable<Type> types = const [
-    GeometryStopDistancesInner,
-    _$GeometryStopDistancesInner
-  ];
->>>>>>> origin/main
 
   @override
   final String wireName = r'GeometryStopDistancesInner';
@@ -91,13 +62,7 @@ class _$GeometryStopDistancesInnerSerializer
     GeometryStopDistancesInner object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-<<<<<<< HEAD
     return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
-=======
-    return _serializeProperties(serializers, object,
-            specifiedType: specifiedType)
-        .toList();
->>>>>>> origin/main
   }
 
   void _deserializeProperties(
@@ -154,7 +119,4 @@ class _$GeometryStopDistancesInnerSerializer
     return result.build();
   }
 }
-<<<<<<< HEAD
 
-=======
->>>>>>> origin/main

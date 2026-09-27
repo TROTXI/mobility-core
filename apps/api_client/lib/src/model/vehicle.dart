@@ -11,7 +11,6 @@ part 'vehicle.g.dart';
 /// Vehicle
 ///
 /// Properties:
-<<<<<<< HEAD
 /// * [plate] 
 /// * [label] 
 /// * [make] 
@@ -23,19 +22,6 @@ part 'vehicle.g.dart';
 /// * [createdAt] 
 /// * [updatedAt] 
 /// * [version] 
-=======
-/// * [plate]
-/// * [label]
-/// * [make]
-/// * [colour]
-/// * [capacity]
-/// * [id]
-/// * [archived]
-/// * [editToken]
-/// * [createdAt]
-/// * [updatedAt]
-/// * [version]
->>>>>>> origin/main
 @BuiltValue()
 abstract class Vehicle implements Built<Vehicle, VehicleBuilder> {
   @BuiltValueField(wireName: r'plate')
@@ -100,7 +86,6 @@ class _$VehicleSerializer implements PrimitiveSerializer<Vehicle> {
       specifiedType: const FullType(String),
     );
     yield r'label';
-<<<<<<< HEAD
     yield object.label == null ? null : serializers.serialize(
       object.label,
       specifiedType: const FullType.nullable(String),
@@ -115,28 +100,6 @@ class _$VehicleSerializer implements PrimitiveSerializer<Vehicle> {
       object.colour,
       specifiedType: const FullType.nullable(String),
     );
-=======
-    yield object.label == null
-        ? null
-        : serializers.serialize(
-            object.label,
-            specifiedType: const FullType.nullable(String),
-          );
-    yield r'make';
-    yield object.make == null
-        ? null
-        : serializers.serialize(
-            object.make,
-            specifiedType: const FullType.nullable(String),
-          );
-    yield r'colour';
-    yield object.colour == null
-        ? null
-        : serializers.serialize(
-            object.colour,
-            specifiedType: const FullType.nullable(String),
-          );
->>>>>>> origin/main
     yield r'capacity';
     yield serializers.serialize(
       object.capacity,
@@ -180,13 +143,7 @@ class _$VehicleSerializer implements PrimitiveSerializer<Vehicle> {
     Vehicle object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-<<<<<<< HEAD
     return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
-=======
-    return _serializeProperties(serializers, object,
-            specifiedType: specifiedType)
-        .toList();
->>>>>>> origin/main
   }
 
   void _deserializeProperties(
@@ -309,7 +266,4 @@ class _$VehicleSerializer implements PrimitiveSerializer<Vehicle> {
     return result.build();
   }
 }
-<<<<<<< HEAD
 
-=======
->>>>>>> origin/main

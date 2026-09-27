@@ -12,54 +12,26 @@ part 'ops_commute_request_response.g.dart';
 /// OpsCommuteRequestResponse
 ///
 /// Properties:
-<<<<<<< HEAD
 /// * [data] 
 @BuiltValue()
 abstract class OpsCommuteRequestResponse implements Built<OpsCommuteRequestResponse, OpsCommuteRequestResponseBuilder> {
-=======
-/// * [data]
-@BuiltValue()
-abstract class OpsCommuteRequestResponse
-    implements
-        Built<OpsCommuteRequestResponse, OpsCommuteRequestResponseBuilder> {
->>>>>>> origin/main
   @BuiltValueField(wireName: r'data')
   OpsCommuteRequest get data;
 
   OpsCommuteRequestResponse._();
 
-<<<<<<< HEAD
   factory OpsCommuteRequestResponse([void updates(OpsCommuteRequestResponseBuilder b)]) = _$OpsCommuteRequestResponse;
-=======
-  factory OpsCommuteRequestResponse(
-          [void updates(OpsCommuteRequestResponseBuilder b)]) =
-      _$OpsCommuteRequestResponse;
->>>>>>> origin/main
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(OpsCommuteRequestResponseBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
-<<<<<<< HEAD
   static Serializer<OpsCommuteRequestResponse> get serializer => _$OpsCommuteRequestResponseSerializer();
 }
 
 class _$OpsCommuteRequestResponseSerializer implements PrimitiveSerializer<OpsCommuteRequestResponse> {
   @override
   final Iterable<Type> types = const [OpsCommuteRequestResponse, _$OpsCommuteRequestResponse];
-=======
-  static Serializer<OpsCommuteRequestResponse> get serializer =>
-      _$OpsCommuteRequestResponseSerializer();
-}
-
-class _$OpsCommuteRequestResponseSerializer
-    implements PrimitiveSerializer<OpsCommuteRequestResponse> {
-  @override
-  final Iterable<Type> types = const [
-    OpsCommuteRequestResponse,
-    _$OpsCommuteRequestResponse
-  ];
->>>>>>> origin/main
 
   @override
   final String wireName = r'OpsCommuteRequestResponse';
@@ -82,13 +54,7 @@ class _$OpsCommuteRequestResponseSerializer
     OpsCommuteRequestResponse object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-<<<<<<< HEAD
     return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
-=======
-    return _serializeProperties(serializers, object,
-            specifiedType: specifiedType)
-        .toList();
->>>>>>> origin/main
   }
 
   void _deserializeProperties(
@@ -138,7 +104,4 @@ class _$OpsCommuteRequestResponseSerializer
     return result.build();
   }
 }
-<<<<<<< HEAD
 
-=======
->>>>>>> origin/main

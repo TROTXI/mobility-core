@@ -14,18 +14,10 @@ part 'work_request_page.g.dart';
 /// WorkRequestPage
 ///
 /// Properties:
-<<<<<<< HEAD
 /// * [data] 
 /// * [page] 
 @BuiltValue()
 abstract class WorkRequestPage implements Built<WorkRequestPage, WorkRequestPageBuilder> {
-=======
-/// * [data]
-/// * [page]
-@BuiltValue()
-abstract class WorkRequestPage
-    implements Built<WorkRequestPage, WorkRequestPageBuilder> {
->>>>>>> origin/main
   @BuiltValueField(wireName: r'data')
   BuiltList<WorkRequest> get data;
 
@@ -34,30 +26,16 @@ abstract class WorkRequestPage
 
   WorkRequestPage._();
 
-<<<<<<< HEAD
   factory WorkRequestPage([void updates(WorkRequestPageBuilder b)]) = _$WorkRequestPage;
-=======
-  factory WorkRequestPage([void updates(WorkRequestPageBuilder b)]) =
-      _$WorkRequestPage;
->>>>>>> origin/main
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(WorkRequestPageBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
-<<<<<<< HEAD
   static Serializer<WorkRequestPage> get serializer => _$WorkRequestPageSerializer();
 }
 
 class _$WorkRequestPageSerializer implements PrimitiveSerializer<WorkRequestPage> {
-=======
-  static Serializer<WorkRequestPage> get serializer =>
-      _$WorkRequestPageSerializer();
-}
-
-class _$WorkRequestPageSerializer
-    implements PrimitiveSerializer<WorkRequestPage> {
->>>>>>> origin/main
   @override
   final Iterable<Type> types = const [WorkRequestPage, _$WorkRequestPage];
 
@@ -87,13 +65,7 @@ class _$WorkRequestPageSerializer
     WorkRequestPage object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-<<<<<<< HEAD
     return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
-=======
-    return _serializeProperties(serializers, object,
-            specifiedType: specifiedType)
-        .toList();
->>>>>>> origin/main
   }
 
   void _deserializeProperties(
@@ -150,7 +122,4 @@ class _$WorkRequestPageSerializer
     return result.build();
   }
 }
-<<<<<<< HEAD
 
-=======
->>>>>>> origin/main

@@ -29,18 +29,12 @@ import 'package:trotxi_api_client/src/model/purchase_quote_response.dart';
 import 'package:trotxi_api_client/src/model/purchase_response.dart';
 import 'package:trotxi_api_client/src/model/reservation_decision.dart';
 import 'package:trotxi_api_client/src/model/reservation_decision_result_response.dart';
-<<<<<<< HEAD
-=======
 import 'package:trotxi_api_client/src/model/reservation_detail_response.dart';
->>>>>>> origin/main
 import 'package:trotxi_api_client/src/model/reservation_page.dart';
 import 'package:trotxi_api_client/src/model/ride_entry_page.dart';
 
 class RiderOwnApi {
-<<<<<<< HEAD
 
-=======
->>>>>>> origin/main
   final Dio _dio;
 
   final Serializers _serializers;
@@ -48,21 +42,13 @@ class RiderOwnApi {
   const RiderOwnApi(this._dio, this._serializers);
 
   /// create Commute Request
-<<<<<<< HEAD
   /// 
-=======
-  ///
->>>>>>> origin/main
   ///
   /// Parameters:
   /// * [idempotencyKey] - Caller + operation + target scoped; payload mismatch = 409. Never log secrets.
   /// * [xTrotxiClient] - Compatibility metadata only, never grants a role.
   /// * [xTrotxiBuild] - Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
-<<<<<<< HEAD
   /// * [commuteRequestInput] 
-=======
-  /// * [commuteRequestInput]
->>>>>>> origin/main
   /// * [xTrotxiPlatform] - Required for commuter/driver, absent for ops/worker.
   /// * [cancelToken] - A [CancelToken] that can be used to cancel the operation
   /// * [headers] - Can be used to add additional headers to the request
@@ -73,11 +59,7 @@ class RiderOwnApi {
   ///
   /// Returns a [Future] containing a [Response] with a [CommuteRequestResponse] as data
   /// Throws [DioException] if API call or serialization fails
-<<<<<<< HEAD
   Future<Response<CommuteRequestResponse>> createCommuteRequest({ 
-=======
-  Future<Response<CommuteRequestResponse>> createCommuteRequest({
->>>>>>> origin/main
     required String idempotencyKey,
     required String xTrotxiClient,
     int xTrotxiBuild = 1,
@@ -118,19 +100,11 @@ class RiderOwnApi {
 
     try {
       const _type = FullType(CommuteRequestInput);
-<<<<<<< HEAD
       _bodyData = _serializers.serialize(commuteRequestInput, specifiedType: _type);
 
     } catch(error, stackTrace) {
       throw DioException(
          requestOptions: _options.compose(
-=======
-      _bodyData =
-          _serializers.serialize(commuteRequestInput, specifiedType: _type);
-    } catch (error, stackTrace) {
-      throw DioException(
-        requestOptions: _options.compose(
->>>>>>> origin/main
           _dio.options,
           _path,
         ),
@@ -153,20 +127,11 @@ class RiderOwnApi {
 
     try {
       final rawResponse = _response.data;
-<<<<<<< HEAD
       _responseData = rawResponse == null ? null : _serializers.deserialize(
         rawResponse,
         specifiedType: const FullType(CommuteRequestResponse),
       ) as CommuteRequestResponse;
 
-=======
-      _responseData = rawResponse == null
-          ? null
-          : _serializers.deserialize(
-              rawResponse,
-              specifiedType: const FullType(CommuteRequestResponse),
-            ) as CommuteRequestResponse;
->>>>>>> origin/main
     } catch (error, stackTrace) {
       throw DioException(
         requestOptions: _response.requestOptions,
@@ -190,21 +155,13 @@ class RiderOwnApi {
   }
 
   /// create Personal Pause
-<<<<<<< HEAD
   /// 
-=======
-  ///
->>>>>>> origin/main
   ///
   /// Parameters:
   /// * [idempotencyKey] - Caller + operation + target scoped; payload mismatch = 409. Never log secrets.
   /// * [xTrotxiClient] - Compatibility metadata only, never grants a role.
   /// * [xTrotxiBuild] - Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
-<<<<<<< HEAD
   /// * [personalPauseInput] 
-=======
-  /// * [personalPauseInput]
->>>>>>> origin/main
   /// * [xTrotxiPlatform] - Required for commuter/driver, absent for ops/worker.
   /// * [cancelToken] - A [CancelToken] that can be used to cancel the operation
   /// * [headers] - Can be used to add additional headers to the request
@@ -215,11 +172,7 @@ class RiderOwnApi {
   ///
   /// Returns a [Future] containing a [Response] with a [PersonalPauseResponse] as data
   /// Throws [DioException] if API call or serialization fails
-<<<<<<< HEAD
   Future<Response<PersonalPauseResponse>> createPersonalPause({ 
-=======
-  Future<Response<PersonalPauseResponse>> createPersonalPause({
->>>>>>> origin/main
     required String idempotencyKey,
     required String xTrotxiClient,
     int xTrotxiBuild = 1,
@@ -260,19 +213,11 @@ class RiderOwnApi {
 
     try {
       const _type = FullType(PersonalPauseInput);
-<<<<<<< HEAD
       _bodyData = _serializers.serialize(personalPauseInput, specifiedType: _type);
 
     } catch(error, stackTrace) {
       throw DioException(
          requestOptions: _options.compose(
-=======
-      _bodyData =
-          _serializers.serialize(personalPauseInput, specifiedType: _type);
-    } catch (error, stackTrace) {
-      throw DioException(
-        requestOptions: _options.compose(
->>>>>>> origin/main
           _dio.options,
           _path,
         ),
@@ -295,20 +240,11 @@ class RiderOwnApi {
 
     try {
       final rawResponse = _response.data;
-<<<<<<< HEAD
       _responseData = rawResponse == null ? null : _serializers.deserialize(
         rawResponse,
         specifiedType: const FullType(PersonalPauseResponse),
       ) as PersonalPauseResponse;
 
-=======
-      _responseData = rawResponse == null
-          ? null
-          : _serializers.deserialize(
-              rawResponse,
-              specifiedType: const FullType(PersonalPauseResponse),
-            ) as PersonalPauseResponse;
->>>>>>> origin/main
     } catch (error, stackTrace) {
       throw DioException(
         requestOptions: _response.requestOptions,
@@ -332,21 +268,13 @@ class RiderOwnApi {
   }
 
   /// create Purchase
-<<<<<<< HEAD
   /// 
-=======
-  ///
->>>>>>> origin/main
   ///
   /// Parameters:
   /// * [idempotencyKey] - Caller + operation + target scoped; payload mismatch = 409. Never log secrets.
   /// * [xTrotxiClient] - Compatibility metadata only, never grants a role.
   /// * [xTrotxiBuild] - Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
-<<<<<<< HEAD
   /// * [purchaseInput] 
-=======
-  /// * [purchaseInput]
->>>>>>> origin/main
   /// * [xTrotxiPlatform] - Required for commuter/driver, absent for ops/worker.
   /// * [cancelToken] - A [CancelToken] that can be used to cancel the operation
   /// * [headers] - Can be used to add additional headers to the request
@@ -357,11 +285,7 @@ class RiderOwnApi {
   ///
   /// Returns a [Future] containing a [Response] with a [PurchaseResponse] as data
   /// Throws [DioException] if API call or serialization fails
-<<<<<<< HEAD
   Future<Response<PurchaseResponse>> createPurchase({ 
-=======
-  Future<Response<PurchaseResponse>> createPurchase({
->>>>>>> origin/main
     required String idempotencyKey,
     required String xTrotxiClient,
     int xTrotxiBuild = 1,
@@ -403,16 +327,10 @@ class RiderOwnApi {
     try {
       const _type = FullType(PurchaseInput);
       _bodyData = _serializers.serialize(purchaseInput, specifiedType: _type);
-<<<<<<< HEAD
 
     } catch(error, stackTrace) {
       throw DioException(
          requestOptions: _options.compose(
-=======
-    } catch (error, stackTrace) {
-      throw DioException(
-        requestOptions: _options.compose(
->>>>>>> origin/main
           _dio.options,
           _path,
         ),
@@ -435,20 +353,11 @@ class RiderOwnApi {
 
     try {
       final rawResponse = _response.data;
-<<<<<<< HEAD
       _responseData = rawResponse == null ? null : _serializers.deserialize(
         rawResponse,
         specifiedType: const FullType(PurchaseResponse),
       ) as PurchaseResponse;
 
-=======
-      _responseData = rawResponse == null
-          ? null
-          : _serializers.deserialize(
-              rawResponse,
-              specifiedType: const FullType(PurchaseResponse),
-            ) as PurchaseResponse;
->>>>>>> origin/main
     } catch (error, stackTrace) {
       throw DioException(
         requestOptions: _response.requestOptions,
@@ -472,21 +381,13 @@ class RiderOwnApi {
   }
 
   /// decide Reservation
-<<<<<<< HEAD
   /// 
-=======
-  ///
->>>>>>> origin/main
   ///
   /// Parameters:
   /// * [idempotencyKey] - Caller + operation + target scoped; payload mismatch = 409. Never log secrets.
   /// * [xTrotxiClient] - Compatibility metadata only, never grants a role.
   /// * [xTrotxiBuild] - Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
-<<<<<<< HEAD
   /// * [reservationDecision] 
-=======
-  /// * [reservationDecision]
->>>>>>> origin/main
   /// * [xTrotxiPlatform] - Required for commuter/driver, absent for ops/worker.
   /// * [cancelToken] - A [CancelToken] that can be used to cancel the operation
   /// * [headers] - Can be used to add additional headers to the request
@@ -497,11 +398,7 @@ class RiderOwnApi {
   ///
   /// Returns a [Future] containing a [Response] with a [ReservationDecisionResultResponse] as data
   /// Throws [DioException] if API call or serialization fails
-<<<<<<< HEAD
   Future<Response<ReservationDecisionResultResponse>> decideReservation({ 
-=======
-  Future<Response<ReservationDecisionResultResponse>> decideReservation({
->>>>>>> origin/main
     required String idempotencyKey,
     required String xTrotxiClient,
     int xTrotxiBuild = 1,
@@ -542,19 +439,11 @@ class RiderOwnApi {
 
     try {
       const _type = FullType(ReservationDecision);
-<<<<<<< HEAD
       _bodyData = _serializers.serialize(reservationDecision, specifiedType: _type);
 
     } catch(error, stackTrace) {
       throw DioException(
          requestOptions: _options.compose(
-=======
-      _bodyData =
-          _serializers.serialize(reservationDecision, specifiedType: _type);
-    } catch (error, stackTrace) {
-      throw DioException(
-        requestOptions: _options.compose(
->>>>>>> origin/main
           _dio.options,
           _path,
         ),
@@ -577,20 +466,11 @@ class RiderOwnApi {
 
     try {
       final rawResponse = _response.data;
-<<<<<<< HEAD
       _responseData = rawResponse == null ? null : _serializers.deserialize(
         rawResponse,
         specifiedType: const FullType(ReservationDecisionResultResponse),
       ) as ReservationDecisionResultResponse;
 
-=======
-      _responseData = rawResponse == null
-          ? null
-          : _serializers.deserialize(
-              rawResponse,
-              specifiedType: const FullType(ReservationDecisionResultResponse),
-            ) as ReservationDecisionResultResponse;
->>>>>>> origin/main
     } catch (error, stackTrace) {
       throw DioException(
         requestOptions: _response.requestOptions,
@@ -614,11 +494,7 @@ class RiderOwnApi {
   }
 
   /// get Membership
-<<<<<<< HEAD
   /// 
-=======
-  ///
->>>>>>> origin/main
   ///
   /// Parameters:
   /// * [xTrotxiClient] - Compatibility metadata only, never grants a role.
@@ -633,11 +509,7 @@ class RiderOwnApi {
   ///
   /// Returns a [Future] containing a [Response] with a [MembershipResponse] as data
   /// Throws [DioException] if API call or serialization fails
-<<<<<<< HEAD
   Future<Response<MembershipResponse>> getMembership({ 
-=======
-  Future<Response<MembershipResponse>> getMembership({
->>>>>>> origin/main
     required String xTrotxiClient,
     int xTrotxiBuild = 1,
     String? xTrotxiPlatform,
@@ -682,20 +554,11 @@ class RiderOwnApi {
 
     try {
       final rawResponse = _response.data;
-<<<<<<< HEAD
       _responseData = rawResponse == null ? null : _serializers.deserialize(
         rawResponse,
         specifiedType: const FullType(MembershipResponse),
       ) as MembershipResponse;
 
-=======
-      _responseData = rawResponse == null
-          ? null
-          : _serializers.deserialize(
-              rawResponse,
-              specifiedType: const FullType(MembershipResponse),
-            ) as MembershipResponse;
->>>>>>> origin/main
     } catch (error, stackTrace) {
       throw DioException(
         requestOptions: _response.requestOptions,
@@ -719,11 +582,7 @@ class RiderOwnApi {
   }
 
   /// get Personal Pause
-<<<<<<< HEAD
   /// 
-=======
-  ///
->>>>>>> origin/main
   ///
   /// Parameters:
   /// * [xTrotxiClient] - Compatibility metadata only, never grants a role.
@@ -738,11 +597,7 @@ class RiderOwnApi {
   ///
   /// Returns a [Future] containing a [Response] with a [OptionalPersonalPauseResponse] as data
   /// Throws [DioException] if API call or serialization fails
-<<<<<<< HEAD
   Future<Response<OptionalPersonalPauseResponse>> getPersonalPause({ 
-=======
-  Future<Response<OptionalPersonalPauseResponse>> getPersonalPause({
->>>>>>> origin/main
     required String xTrotxiClient,
     int xTrotxiBuild = 1,
     String? xTrotxiPlatform,
@@ -787,20 +642,11 @@ class RiderOwnApi {
 
     try {
       final rawResponse = _response.data;
-<<<<<<< HEAD
       _responseData = rawResponse == null ? null : _serializers.deserialize(
         rawResponse,
         specifiedType: const FullType(OptionalPersonalPauseResponse),
       ) as OptionalPersonalPauseResponse;
 
-=======
-      _responseData = rawResponse == null
-          ? null
-          : _serializers.deserialize(
-              rawResponse,
-              specifiedType: const FullType(OptionalPersonalPauseResponse),
-            ) as OptionalPersonalPauseResponse;
->>>>>>> origin/main
     } catch (error, stackTrace) {
       throw DioException(
         requestOptions: _response.requestOptions,
@@ -824,17 +670,10 @@ class RiderOwnApi {
   }
 
   /// get Purchase
-<<<<<<< HEAD
   /// 
   ///
   /// Parameters:
   /// * [id] 
-=======
-  ///
-  ///
-  /// Parameters:
-  /// * [id]
->>>>>>> origin/main
   /// * [xTrotxiClient] - Compatibility metadata only, never grants a role.
   /// * [xTrotxiBuild] - Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
   /// * [xTrotxiPlatform] - Required for commuter/driver, absent for ops/worker.
@@ -847,11 +686,7 @@ class RiderOwnApi {
   ///
   /// Returns a [Future] containing a [Response] with a [PurchaseResponse] as data
   /// Throws [DioException] if API call or serialization fails
-<<<<<<< HEAD
   Future<Response<PurchaseResponse>> getPurchase({ 
-=======
-  Future<Response<PurchaseResponse>> getPurchase({
->>>>>>> origin/main
     required String id,
     required String xTrotxiClient,
     int xTrotxiBuild = 1,
@@ -863,14 +698,7 @@ class RiderOwnApi {
     ProgressCallback? onSendProgress,
     ProgressCallback? onReceiveProgress,
   }) async {
-<<<<<<< HEAD
     final _path = r'/v1/me/purchases/{id}'.replaceAll('{' r'id' '}', encodeQueryParameter(_serializers, id, const FullType(String)).toString());
-=======
-    final _path = r'/v1/me/purchases/{id}'.replaceAll(
-        '{' r'id' '}',
-        encodeQueryParameter(_serializers, id, const FullType(String))
-            .toString());
->>>>>>> origin/main
     final _options = Options(
       method: r'GET',
       headers: <String, dynamic>{
@@ -904,20 +732,11 @@ class RiderOwnApi {
 
     try {
       final rawResponse = _response.data;
-<<<<<<< HEAD
       _responseData = rawResponse == null ? null : _serializers.deserialize(
         rawResponse,
         specifiedType: const FullType(PurchaseResponse),
       ) as PurchaseResponse;
 
-=======
-      _responseData = rawResponse == null
-          ? null
-          : _serializers.deserialize(
-              rawResponse,
-              specifiedType: const FullType(PurchaseResponse),
-            ) as PurchaseResponse;
->>>>>>> origin/main
     } catch (error, stackTrace) {
       throw DioException(
         requestOptions: _response.requestOptions,
@@ -940,18 +759,11 @@ class RiderOwnApi {
     );
   }
 
-<<<<<<< HEAD
-  /// issue Pass
+  /// get Reservation
   /// 
   ///
   /// Parameters:
   /// * [id] 
-=======
-  /// get Reservation
-  ///
-  ///
-  /// Parameters:
-  /// * [id]
   /// * [xTrotxiClient] - Compatibility metadata only, never grants a role.
   /// * [xTrotxiBuild] - Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
   /// * [xTrotxiPlatform] - Required for commuter/driver, absent for ops/worker.
@@ -964,7 +776,7 @@ class RiderOwnApi {
   ///
   /// Returns a [Future] containing a [Response] with a [ReservationDetailResponse] as data
   /// Throws [DioException] if API call or serialization fails
-  Future<Response<ReservationDetailResponse>> getReservation({
+  Future<Response<ReservationDetailResponse>> getReservation({ 
     required String id,
     required String xTrotxiClient,
     int xTrotxiBuild = 1,
@@ -976,10 +788,7 @@ class RiderOwnApi {
     ProgressCallback? onSendProgress,
     ProgressCallback? onReceiveProgress,
   }) async {
-    final _path = r'/v1/me/reservations/{id}'.replaceAll(
-        '{' r'id' '}',
-        encodeQueryParameter(_serializers, id, const FullType(String))
-            .toString());
+    final _path = r'/v1/me/reservations/{id}'.replaceAll('{' r'id' '}', encodeQueryParameter(_serializers, id, const FullType(String)).toString());
     final _options = Options(
       method: r'GET',
       headers: <String, dynamic>{
@@ -1013,12 +822,11 @@ class RiderOwnApi {
 
     try {
       final rawResponse = _response.data;
-      _responseData = rawResponse == null
-          ? null
-          : _serializers.deserialize(
-              rawResponse,
-              specifiedType: const FullType(ReservationDetailResponse),
-            ) as ReservationDetailResponse;
+      _responseData = rawResponse == null ? null : _serializers.deserialize(
+        rawResponse,
+        specifiedType: const FullType(ReservationDetailResponse),
+      ) as ReservationDetailResponse;
+
     } catch (error, stackTrace) {
       throw DioException(
         requestOptions: _response.requestOptions,
@@ -1042,11 +850,10 @@ class RiderOwnApi {
   }
 
   /// issue Pass
-  ///
+  /// 
   ///
   /// Parameters:
-  /// * [id]
->>>>>>> origin/main
+  /// * [id] 
   /// * [idempotencyKey] - Caller + operation + target scoped; payload mismatch = 409. Never log secrets.
   /// * [xTrotxiClient] - Compatibility metadata only, never grants a role.
   /// * [xTrotxiBuild] - Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
@@ -1060,11 +867,7 @@ class RiderOwnApi {
   ///
   /// Returns a [Future] containing a [Response] with a [PassResponse] as data
   /// Throws [DioException] if API call or serialization fails
-<<<<<<< HEAD
   Future<Response<PassResponse>> issuePass({ 
-=======
-  Future<Response<PassResponse>> issuePass({
->>>>>>> origin/main
     required String id,
     required String idempotencyKey,
     required String xTrotxiClient,
@@ -1077,14 +880,7 @@ class RiderOwnApi {
     ProgressCallback? onSendProgress,
     ProgressCallback? onReceiveProgress,
   }) async {
-<<<<<<< HEAD
     final _path = r'/v1/me/reservations/{id}/pass'.replaceAll('{' r'id' '}', encodeQueryParameter(_serializers, id, const FullType(String)).toString());
-=======
-    final _path = r'/v1/me/reservations/{id}/pass'.replaceAll(
-        '{' r'id' '}',
-        encodeQueryParameter(_serializers, id, const FullType(String))
-            .toString());
->>>>>>> origin/main
     final _options = Options(
       method: r'POST',
       headers: <String, dynamic>{
@@ -1119,20 +915,11 @@ class RiderOwnApi {
 
     try {
       final rawResponse = _response.data;
-<<<<<<< HEAD
       _responseData = rawResponse == null ? null : _serializers.deserialize(
         rawResponse,
         specifiedType: const FullType(PassResponse),
       ) as PassResponse;
 
-=======
-      _responseData = rawResponse == null
-          ? null
-          : _serializers.deserialize(
-              rawResponse,
-              specifiedType: const FullType(PassResponse),
-            ) as PassResponse;
->>>>>>> origin/main
     } catch (error, stackTrace) {
       throw DioException(
         requestOptions: _response.requestOptions,
@@ -1156,11 +943,7 @@ class RiderOwnApi {
   }
 
   /// list Commute Requests
-<<<<<<< HEAD
   /// 
-=======
-  ///
->>>>>>> origin/main
   ///
   /// Parameters:
   /// * [xTrotxiClient] - Compatibility metadata only, never grants a role.
@@ -1178,11 +961,7 @@ class RiderOwnApi {
   ///
   /// Returns a [Future] containing a [Response] with a [CommuteRequestPage] as data
   /// Throws [DioException] if API call or serialization fails
-<<<<<<< HEAD
   Future<Response<CommuteRequestPage>> listCommuteRequests({ 
-=======
-  Future<Response<CommuteRequestPage>> listCommuteRequests({
->>>>>>> origin/main
     required String xTrotxiClient,
     int xTrotxiBuild = 1,
     String? cursor,
@@ -1219,21 +998,9 @@ class RiderOwnApi {
     );
 
     final _queryParameters = <String, dynamic>{
-<<<<<<< HEAD
       if (cursor != null) r'cursor': encodeQueryParameter(_serializers, cursor, const FullType(String)),
       if (limit != null) r'limit': encodeQueryParameter(_serializers, limit, const FullType(int)),
       if (status != null) r'status': encodeQueryParameter(_serializers, status, const FullType(String)),
-=======
-      if (cursor != null)
-        r'cursor':
-            encodeQueryParameter(_serializers, cursor, const FullType(String)),
-      if (limit != null)
-        r'limit':
-            encodeQueryParameter(_serializers, limit, const FullType(int)),
-      if (status != null)
-        r'status':
-            encodeQueryParameter(_serializers, status, const FullType(String)),
->>>>>>> origin/main
     };
 
     final _response = await _dio.request<Object>(
@@ -1249,20 +1016,11 @@ class RiderOwnApi {
 
     try {
       final rawResponse = _response.data;
-<<<<<<< HEAD
       _responseData = rawResponse == null ? null : _serializers.deserialize(
         rawResponse,
         specifiedType: const FullType(CommuteRequestPage),
       ) as CommuteRequestPage;
 
-=======
-      _responseData = rawResponse == null
-          ? null
-          : _serializers.deserialize(
-              rawResponse,
-              specifiedType: const FullType(CommuteRequestPage),
-            ) as CommuteRequestPage;
->>>>>>> origin/main
     } catch (error, stackTrace) {
       throw DioException(
         requestOptions: _response.requestOptions,
@@ -1286,11 +1044,7 @@ class RiderOwnApi {
   }
 
   /// list Credit Entries
-<<<<<<< HEAD
   /// 
-=======
-  ///
->>>>>>> origin/main
   ///
   /// Parameters:
   /// * [xTrotxiClient] - Compatibility metadata only, never grants a role.
@@ -1309,11 +1063,7 @@ class RiderOwnApi {
   ///
   /// Returns a [Future] containing a [Response] with a [CreditEntryPage] as data
   /// Throws [DioException] if API call or serialization fails
-<<<<<<< HEAD
   Future<Response<CreditEntryPage>> listCreditEntries({ 
-=======
-  Future<Response<CreditEntryPage>> listCreditEntries({
->>>>>>> origin/main
     required String xTrotxiClient,
     int xTrotxiBuild = 1,
     String? cursor,
@@ -1351,25 +1101,10 @@ class RiderOwnApi {
     );
 
     final _queryParameters = <String, dynamic>{
-<<<<<<< HEAD
       if (cursor != null) r'cursor': encodeQueryParameter(_serializers, cursor, const FullType(String)),
       if (limit != null) r'limit': encodeQueryParameter(_serializers, limit, const FullType(int)),
       if (fromDate != null) r'fromDate': encodeQueryParameter(_serializers, fromDate, const FullType(Date)),
       if (toDate != null) r'toDate': encodeQueryParameter(_serializers, toDate, const FullType(Date)),
-=======
-      if (cursor != null)
-        r'cursor':
-            encodeQueryParameter(_serializers, cursor, const FullType(String)),
-      if (limit != null)
-        r'limit':
-            encodeQueryParameter(_serializers, limit, const FullType(int)),
-      if (fromDate != null)
-        r'fromDate':
-            encodeQueryParameter(_serializers, fromDate, const FullType(Date)),
-      if (toDate != null)
-        r'toDate':
-            encodeQueryParameter(_serializers, toDate, const FullType(Date)),
->>>>>>> origin/main
     };
 
     final _response = await _dio.request<Object>(
@@ -1385,20 +1120,11 @@ class RiderOwnApi {
 
     try {
       final rawResponse = _response.data;
-<<<<<<< HEAD
       _responseData = rawResponse == null ? null : _serializers.deserialize(
         rawResponse,
         specifiedType: const FullType(CreditEntryPage),
       ) as CreditEntryPage;
 
-=======
-      _responseData = rawResponse == null
-          ? null
-          : _serializers.deserialize(
-              rawResponse,
-              specifiedType: const FullType(CreditEntryPage),
-            ) as CreditEntryPage;
->>>>>>> origin/main
     } catch (error, stackTrace) {
       throw DioException(
         requestOptions: _response.requestOptions,
@@ -1422,11 +1148,7 @@ class RiderOwnApi {
   }
 
   /// list Purchases
-<<<<<<< HEAD
   /// 
-=======
-  ///
->>>>>>> origin/main
   ///
   /// Parameters:
   /// * [xTrotxiClient] - Compatibility metadata only, never grants a role.
@@ -1445,11 +1167,7 @@ class RiderOwnApi {
   ///
   /// Returns a [Future] containing a [Response] with a [PurchasePage] as data
   /// Throws [DioException] if API call or serialization fails
-<<<<<<< HEAD
   Future<Response<PurchasePage>> listPurchases({ 
-=======
-  Future<Response<PurchasePage>> listPurchases({
->>>>>>> origin/main
     required String xTrotxiClient,
     int xTrotxiBuild = 1,
     String? cursor,
@@ -1487,25 +1205,10 @@ class RiderOwnApi {
     );
 
     final _queryParameters = <String, dynamic>{
-<<<<<<< HEAD
       if (cursor != null) r'cursor': encodeQueryParameter(_serializers, cursor, const FullType(String)),
       if (limit != null) r'limit': encodeQueryParameter(_serializers, limit, const FullType(int)),
       if (fromDate != null) r'fromDate': encodeQueryParameter(_serializers, fromDate, const FullType(Date)),
       if (toDate != null) r'toDate': encodeQueryParameter(_serializers, toDate, const FullType(Date)),
-=======
-      if (cursor != null)
-        r'cursor':
-            encodeQueryParameter(_serializers, cursor, const FullType(String)),
-      if (limit != null)
-        r'limit':
-            encodeQueryParameter(_serializers, limit, const FullType(int)),
-      if (fromDate != null)
-        r'fromDate':
-            encodeQueryParameter(_serializers, fromDate, const FullType(Date)),
-      if (toDate != null)
-        r'toDate':
-            encodeQueryParameter(_serializers, toDate, const FullType(Date)),
->>>>>>> origin/main
     };
 
     final _response = await _dio.request<Object>(
@@ -1521,20 +1224,11 @@ class RiderOwnApi {
 
     try {
       final rawResponse = _response.data;
-<<<<<<< HEAD
       _responseData = rawResponse == null ? null : _serializers.deserialize(
         rawResponse,
         specifiedType: const FullType(PurchasePage),
       ) as PurchasePage;
 
-=======
-      _responseData = rawResponse == null
-          ? null
-          : _serializers.deserialize(
-              rawResponse,
-              specifiedType: const FullType(PurchasePage),
-            ) as PurchasePage;
->>>>>>> origin/main
     } catch (error, stackTrace) {
       throw DioException(
         requestOptions: _response.requestOptions,
@@ -1558,11 +1252,7 @@ class RiderOwnApi {
   }
 
   /// list Reservations
-<<<<<<< HEAD
   /// 
-=======
-  ///
->>>>>>> origin/main
   ///
   /// Parameters:
   /// * [xTrotxiClient] - Compatibility metadata only, never grants a role.
@@ -1581,11 +1271,7 @@ class RiderOwnApi {
   ///
   /// Returns a [Future] containing a [Response] with a [ReservationPage] as data
   /// Throws [DioException] if API call or serialization fails
-<<<<<<< HEAD
   Future<Response<ReservationPage>> listReservations({ 
-=======
-  Future<Response<ReservationPage>> listReservations({
->>>>>>> origin/main
     required String xTrotxiClient,
     int xTrotxiBuild = 1,
     String? cursor,
@@ -1623,25 +1309,10 @@ class RiderOwnApi {
     );
 
     final _queryParameters = <String, dynamic>{
-<<<<<<< HEAD
       if (cursor != null) r'cursor': encodeQueryParameter(_serializers, cursor, const FullType(String)),
       if (limit != null) r'limit': encodeQueryParameter(_serializers, limit, const FullType(int)),
       if (fromDate != null) r'fromDate': encodeQueryParameter(_serializers, fromDate, const FullType(Date)),
       if (toDate != null) r'toDate': encodeQueryParameter(_serializers, toDate, const FullType(Date)),
-=======
-      if (cursor != null)
-        r'cursor':
-            encodeQueryParameter(_serializers, cursor, const FullType(String)),
-      if (limit != null)
-        r'limit':
-            encodeQueryParameter(_serializers, limit, const FullType(int)),
-      if (fromDate != null)
-        r'fromDate':
-            encodeQueryParameter(_serializers, fromDate, const FullType(Date)),
-      if (toDate != null)
-        r'toDate':
-            encodeQueryParameter(_serializers, toDate, const FullType(Date)),
->>>>>>> origin/main
     };
 
     final _response = await _dio.request<Object>(
@@ -1657,20 +1328,11 @@ class RiderOwnApi {
 
     try {
       final rawResponse = _response.data;
-<<<<<<< HEAD
       _responseData = rawResponse == null ? null : _serializers.deserialize(
         rawResponse,
         specifiedType: const FullType(ReservationPage),
       ) as ReservationPage;
 
-=======
-      _responseData = rawResponse == null
-          ? null
-          : _serializers.deserialize(
-              rawResponse,
-              specifiedType: const FullType(ReservationPage),
-            ) as ReservationPage;
->>>>>>> origin/main
     } catch (error, stackTrace) {
       throw DioException(
         requestOptions: _response.requestOptions,
@@ -1694,11 +1356,7 @@ class RiderOwnApi {
   }
 
   /// list Ride Entries
-<<<<<<< HEAD
   /// 
-=======
-  ///
->>>>>>> origin/main
   ///
   /// Parameters:
   /// * [xTrotxiClient] - Compatibility metadata only, never grants a role.
@@ -1717,11 +1375,7 @@ class RiderOwnApi {
   ///
   /// Returns a [Future] containing a [Response] with a [RideEntryPage] as data
   /// Throws [DioException] if API call or serialization fails
-<<<<<<< HEAD
   Future<Response<RideEntryPage>> listRideEntries({ 
-=======
-  Future<Response<RideEntryPage>> listRideEntries({
->>>>>>> origin/main
     required String xTrotxiClient,
     int xTrotxiBuild = 1,
     String? cursor,
@@ -1759,25 +1413,10 @@ class RiderOwnApi {
     );
 
     final _queryParameters = <String, dynamic>{
-<<<<<<< HEAD
       if (cursor != null) r'cursor': encodeQueryParameter(_serializers, cursor, const FullType(String)),
       if (limit != null) r'limit': encodeQueryParameter(_serializers, limit, const FullType(int)),
       if (fromDate != null) r'fromDate': encodeQueryParameter(_serializers, fromDate, const FullType(Date)),
       if (toDate != null) r'toDate': encodeQueryParameter(_serializers, toDate, const FullType(Date)),
-=======
-      if (cursor != null)
-        r'cursor':
-            encodeQueryParameter(_serializers, cursor, const FullType(String)),
-      if (limit != null)
-        r'limit':
-            encodeQueryParameter(_serializers, limit, const FullType(int)),
-      if (fromDate != null)
-        r'fromDate':
-            encodeQueryParameter(_serializers, fromDate, const FullType(Date)),
-      if (toDate != null)
-        r'toDate':
-            encodeQueryParameter(_serializers, toDate, const FullType(Date)),
->>>>>>> origin/main
     };
 
     final _response = await _dio.request<Object>(
@@ -1793,20 +1432,11 @@ class RiderOwnApi {
 
     try {
       final rawResponse = _response.data;
-<<<<<<< HEAD
       _responseData = rawResponse == null ? null : _serializers.deserialize(
         rawResponse,
         specifiedType: const FullType(RideEntryPage),
       ) as RideEntryPage;
 
-=======
-      _responseData = rawResponse == null
-          ? null
-          : _serializers.deserialize(
-              rawResponse,
-              specifiedType: const FullType(RideEntryPage),
-            ) as RideEntryPage;
->>>>>>> origin/main
     } catch (error, stackTrace) {
       throw DioException(
         requestOptions: _response.requestOptions,
@@ -1830,20 +1460,12 @@ class RiderOwnApi {
   }
 
   /// preview Personal Pause
-<<<<<<< HEAD
   /// 
-=======
-  ///
->>>>>>> origin/main
   ///
   /// Parameters:
   /// * [xTrotxiClient] - Compatibility metadata only, never grants a role.
   /// * [xTrotxiBuild] - Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
-<<<<<<< HEAD
   /// * [personalPauseInput] 
-=======
-  /// * [personalPauseInput]
->>>>>>> origin/main
   /// * [xTrotxiPlatform] - Required for commuter/driver, absent for ops/worker.
   /// * [cancelToken] - A [CancelToken] that can be used to cancel the operation
   /// * [headers] - Can be used to add additional headers to the request
@@ -1854,11 +1476,7 @@ class RiderOwnApi {
   ///
   /// Returns a [Future] containing a [Response] with a [PersonalPausePreviewResponse] as data
   /// Throws [DioException] if API call or serialization fails
-<<<<<<< HEAD
   Future<Response<PersonalPausePreviewResponse>> previewPersonalPause({ 
-=======
-  Future<Response<PersonalPausePreviewResponse>> previewPersonalPause({
->>>>>>> origin/main
     required String xTrotxiClient,
     int xTrotxiBuild = 1,
     required PersonalPauseInput personalPauseInput,
@@ -1897,19 +1515,11 @@ class RiderOwnApi {
 
     try {
       const _type = FullType(PersonalPauseInput);
-<<<<<<< HEAD
       _bodyData = _serializers.serialize(personalPauseInput, specifiedType: _type);
 
     } catch(error, stackTrace) {
       throw DioException(
          requestOptions: _options.compose(
-=======
-      _bodyData =
-          _serializers.serialize(personalPauseInput, specifiedType: _type);
-    } catch (error, stackTrace) {
-      throw DioException(
-        requestOptions: _options.compose(
->>>>>>> origin/main
           _dio.options,
           _path,
         ),
@@ -1932,20 +1542,11 @@ class RiderOwnApi {
 
     try {
       final rawResponse = _response.data;
-<<<<<<< HEAD
       _responseData = rawResponse == null ? null : _serializers.deserialize(
         rawResponse,
         specifiedType: const FullType(PersonalPausePreviewResponse),
       ) as PersonalPausePreviewResponse;
 
-=======
-      _responseData = rawResponse == null
-          ? null
-          : _serializers.deserialize(
-              rawResponse,
-              specifiedType: const FullType(PersonalPausePreviewResponse),
-            ) as PersonalPausePreviewResponse;
->>>>>>> origin/main
     } catch (error, stackTrace) {
       throw DioException(
         requestOptions: _response.requestOptions,
@@ -1969,20 +1570,12 @@ class RiderOwnApi {
   }
 
   /// preview Purchase
-<<<<<<< HEAD
   /// 
-=======
-  ///
->>>>>>> origin/main
   ///
   /// Parameters:
   /// * [xTrotxiClient] - Compatibility metadata only, never grants a role.
   /// * [xTrotxiBuild] - Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
-<<<<<<< HEAD
   /// * [purchaseQuoteInput] 
-=======
-  /// * [purchaseQuoteInput]
->>>>>>> origin/main
   /// * [xTrotxiPlatform] - Required for commuter/driver, absent for ops/worker.
   /// * [cancelToken] - A [CancelToken] that can be used to cancel the operation
   /// * [headers] - Can be used to add additional headers to the request
@@ -1993,11 +1586,7 @@ class RiderOwnApi {
   ///
   /// Returns a [Future] containing a [Response] with a [PurchaseQuoteResponse] as data
   /// Throws [DioException] if API call or serialization fails
-<<<<<<< HEAD
   Future<Response<PurchaseQuoteResponse>> previewPurchase({ 
-=======
-  Future<Response<PurchaseQuoteResponse>> previewPurchase({
->>>>>>> origin/main
     required String xTrotxiClient,
     int xTrotxiBuild = 1,
     required PurchaseQuoteInput purchaseQuoteInput,
@@ -2036,19 +1625,11 @@ class RiderOwnApi {
 
     try {
       const _type = FullType(PurchaseQuoteInput);
-<<<<<<< HEAD
       _bodyData = _serializers.serialize(purchaseQuoteInput, specifiedType: _type);
 
     } catch(error, stackTrace) {
       throw DioException(
          requestOptions: _options.compose(
-=======
-      _bodyData =
-          _serializers.serialize(purchaseQuoteInput, specifiedType: _type);
-    } catch (error, stackTrace) {
-      throw DioException(
-        requestOptions: _options.compose(
->>>>>>> origin/main
           _dio.options,
           _path,
         ),
@@ -2071,20 +1652,11 @@ class RiderOwnApi {
 
     try {
       final rawResponse = _response.data;
-<<<<<<< HEAD
       _responseData = rawResponse == null ? null : _serializers.deserialize(
         rawResponse,
         specifiedType: const FullType(PurchaseQuoteResponse),
       ) as PurchaseQuoteResponse;
 
-=======
-      _responseData = rawResponse == null
-          ? null
-          : _serializers.deserialize(
-              rawResponse,
-              specifiedType: const FullType(PurchaseQuoteResponse),
-            ) as PurchaseQuoteResponse;
->>>>>>> origin/main
     } catch (error, stackTrace) {
       throw DioException(
         requestOptions: _response.requestOptions,
@@ -2108,7 +1680,6 @@ class RiderOwnApi {
   }
 
   /// resume Personal Pause
-<<<<<<< HEAD
   /// 
   ///
   /// Parameters:
@@ -2117,16 +1688,6 @@ class RiderOwnApi {
   /// * [xTrotxiClient] - Compatibility metadata only, never grants a role.
   /// * [xTrotxiBuild] - Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
   /// * [personalResumeInput] 
-=======
-  ///
-  ///
-  /// Parameters:
-  /// * [id]
-  /// * [idempotencyKey] - Caller + operation + target scoped; payload mismatch = 409. Never log secrets.
-  /// * [xTrotxiClient] - Compatibility metadata only, never grants a role.
-  /// * [xTrotxiBuild] - Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
-  /// * [personalResumeInput]
->>>>>>> origin/main
   /// * [xTrotxiPlatform] - Required for commuter/driver, absent for ops/worker.
   /// * [cancelToken] - A [CancelToken] that can be used to cancel the operation
   /// * [headers] - Can be used to add additional headers to the request
@@ -2137,11 +1698,7 @@ class RiderOwnApi {
   ///
   /// Returns a [Future] containing a [Response] with a [PersonalPauseResponse] as data
   /// Throws [DioException] if API call or serialization fails
-<<<<<<< HEAD
   Future<Response<PersonalPauseResponse>> resumePersonalPause({ 
-=======
-  Future<Response<PersonalPauseResponse>> resumePersonalPause({
->>>>>>> origin/main
     required String id,
     required String idempotencyKey,
     required String xTrotxiClient,
@@ -2155,14 +1712,7 @@ class RiderOwnApi {
     ProgressCallback? onSendProgress,
     ProgressCallback? onReceiveProgress,
   }) async {
-<<<<<<< HEAD
     final _path = r'/v1/me/membership/pauses/{id}/resume'.replaceAll('{' r'id' '}', encodeQueryParameter(_serializers, id, const FullType(String)).toString());
-=======
-    final _path = r'/v1/me/membership/pauses/{id}/resume'.replaceAll(
-        '{' r'id' '}',
-        encodeQueryParameter(_serializers, id, const FullType(String))
-            .toString());
->>>>>>> origin/main
     final _options = Options(
       method: r'POST',
       headers: <String, dynamic>{
@@ -2190,19 +1740,11 @@ class RiderOwnApi {
 
     try {
       const _type = FullType(PersonalResumeInput);
-<<<<<<< HEAD
       _bodyData = _serializers.serialize(personalResumeInput, specifiedType: _type);
 
     } catch(error, stackTrace) {
       throw DioException(
          requestOptions: _options.compose(
-=======
-      _bodyData =
-          _serializers.serialize(personalResumeInput, specifiedType: _type);
-    } catch (error, stackTrace) {
-      throw DioException(
-        requestOptions: _options.compose(
->>>>>>> origin/main
           _dio.options,
           _path,
         ),
@@ -2225,20 +1767,11 @@ class RiderOwnApi {
 
     try {
       final rawResponse = _response.data;
-<<<<<<< HEAD
       _responseData = rawResponse == null ? null : _serializers.deserialize(
         rawResponse,
         specifiedType: const FullType(PersonalPauseResponse),
       ) as PersonalPauseResponse;
 
-=======
-      _responseData = rawResponse == null
-          ? null
-          : _serializers.deserialize(
-              rawResponse,
-              specifiedType: const FullType(PersonalPauseResponse),
-            ) as PersonalPauseResponse;
->>>>>>> origin/main
     } catch (error, stackTrace) {
       throw DioException(
         requestOptions: _response.requestOptions,
@@ -2262,17 +1795,10 @@ class RiderOwnApi {
   }
 
   /// withdraw Commute Request
-<<<<<<< HEAD
   /// 
   ///
   /// Parameters:
   /// * [id] 
-=======
-  ///
-  ///
-  /// Parameters:
-  /// * [id]
->>>>>>> origin/main
   /// * [idempotencyKey] - Caller + operation + target scoped; payload mismatch = 409. Never log secrets.
   /// * [xTrotxiClient] - Compatibility metadata only, never grants a role.
   /// * [xTrotxiBuild] - Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
@@ -2286,11 +1812,7 @@ class RiderOwnApi {
   ///
   /// Returns a [Future] containing a [Response] with a [CommuteRequestResponse] as data
   /// Throws [DioException] if API call or serialization fails
-<<<<<<< HEAD
   Future<Response<CommuteRequestResponse>> withdrawCommuteRequest({ 
-=======
-  Future<Response<CommuteRequestResponse>> withdrawCommuteRequest({
->>>>>>> origin/main
     required String id,
     required String idempotencyKey,
     required String xTrotxiClient,
@@ -2303,14 +1825,7 @@ class RiderOwnApi {
     ProgressCallback? onSendProgress,
     ProgressCallback? onReceiveProgress,
   }) async {
-<<<<<<< HEAD
     final _path = r'/v1/me/commute-requests/{id}/withdraw'.replaceAll('{' r'id' '}', encodeQueryParameter(_serializers, id, const FullType(String)).toString());
-=======
-    final _path = r'/v1/me/commute-requests/{id}/withdraw'.replaceAll(
-        '{' r'id' '}',
-        encodeQueryParameter(_serializers, id, const FullType(String))
-            .toString());
->>>>>>> origin/main
     final _options = Options(
       method: r'POST',
       headers: <String, dynamic>{
@@ -2345,20 +1860,11 @@ class RiderOwnApi {
 
     try {
       final rawResponse = _response.data;
-<<<<<<< HEAD
       _responseData = rawResponse == null ? null : _serializers.deserialize(
         rawResponse,
         specifiedType: const FullType(CommuteRequestResponse),
       ) as CommuteRequestResponse;
 
-=======
-      _responseData = rawResponse == null
-          ? null
-          : _serializers.deserialize(
-              rawResponse,
-              specifiedType: const FullType(CommuteRequestResponse),
-            ) as CommuteRequestResponse;
->>>>>>> origin/main
     } catch (error, stackTrace) {
       throw DioException(
         requestOptions: _response.requestOptions,
@@ -2380,8 +1886,5 @@ class RiderOwnApi {
       extra: _response.extra,
     );
   }
-<<<<<<< HEAD
 
-=======
->>>>>>> origin/main
 }

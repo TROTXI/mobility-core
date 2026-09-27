@@ -13,21 +13,12 @@ part 'manifest.g.dart';
 /// Manifest
 ///
 /// Properties:
-<<<<<<< HEAD
 /// * [tripId] 
 /// * [revision] 
 /// * [generatedAt] 
 /// * [expiresAt] 
 /// * [complete] 
 /// * [riders] 
-=======
-/// * [tripId]
-/// * [revision]
-/// * [generatedAt]
-/// * [expiresAt]
-/// * [complete]
-/// * [riders]
->>>>>>> origin/main
 @BuiltValue()
 abstract class Manifest implements Built<Manifest, ManifestBuilder> {
   @BuiltValueField(wireName: r'tripId')
@@ -109,13 +100,7 @@ class _$ManifestSerializer implements PrimitiveSerializer<Manifest> {
     Manifest object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-<<<<<<< HEAD
     return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
-=======
-    return _serializeProperties(serializers, object,
-            specifiedType: specifiedType)
-        .toList();
->>>>>>> origin/main
   }
 
   void _deserializeProperties(
@@ -200,7 +185,4 @@ class _$ManifestSerializer implements PrimitiveSerializer<Manifest> {
     return result.build();
   }
 }
-<<<<<<< HEAD
 
-=======
->>>>>>> origin/main

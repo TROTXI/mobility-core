@@ -12,53 +12,26 @@ part 'position_receipt_response.g.dart';
 /// PositionReceiptResponse
 ///
 /// Properties:
-<<<<<<< HEAD
 /// * [data] 
 @BuiltValue()
 abstract class PositionReceiptResponse implements Built<PositionReceiptResponse, PositionReceiptResponseBuilder> {
-=======
-/// * [data]
-@BuiltValue()
-abstract class PositionReceiptResponse
-    implements Built<PositionReceiptResponse, PositionReceiptResponseBuilder> {
->>>>>>> origin/main
   @BuiltValueField(wireName: r'data')
   PositionReceipt get data;
 
   PositionReceiptResponse._();
 
-<<<<<<< HEAD
   factory PositionReceiptResponse([void updates(PositionReceiptResponseBuilder b)]) = _$PositionReceiptResponse;
-=======
-  factory PositionReceiptResponse(
-          [void updates(PositionReceiptResponseBuilder b)]) =
-      _$PositionReceiptResponse;
->>>>>>> origin/main
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(PositionReceiptResponseBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
-<<<<<<< HEAD
   static Serializer<PositionReceiptResponse> get serializer => _$PositionReceiptResponseSerializer();
 }
 
 class _$PositionReceiptResponseSerializer implements PrimitiveSerializer<PositionReceiptResponse> {
   @override
   final Iterable<Type> types = const [PositionReceiptResponse, _$PositionReceiptResponse];
-=======
-  static Serializer<PositionReceiptResponse> get serializer =>
-      _$PositionReceiptResponseSerializer();
-}
-
-class _$PositionReceiptResponseSerializer
-    implements PrimitiveSerializer<PositionReceiptResponse> {
-  @override
-  final Iterable<Type> types = const [
-    PositionReceiptResponse,
-    _$PositionReceiptResponse
-  ];
->>>>>>> origin/main
 
   @override
   final String wireName = r'PositionReceiptResponse';
@@ -81,13 +54,7 @@ class _$PositionReceiptResponseSerializer
     PositionReceiptResponse object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-<<<<<<< HEAD
     return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
-=======
-    return _serializeProperties(serializers, object,
-            specifiedType: specifiedType)
-        .toList();
->>>>>>> origin/main
   }
 
   void _deserializeProperties(
@@ -137,7 +104,4 @@ class _$PositionReceiptResponseSerializer
     return result.build();
   }
 }
-<<<<<<< HEAD
 
-=======
->>>>>>> origin/main

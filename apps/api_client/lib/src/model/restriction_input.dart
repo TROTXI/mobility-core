@@ -11,18 +11,10 @@ part 'restriction_input.g.dart';
 /// RestrictionInput
 ///
 /// Properties:
-<<<<<<< HEAD
 /// * [reason] 
 /// * [reviewAt] 
 @BuiltValue()
 abstract class RestrictionInput implements Built<RestrictionInput, RestrictionInputBuilder> {
-=======
-/// * [reason]
-/// * [reviewAt]
-@BuiltValue()
-abstract class RestrictionInput
-    implements Built<RestrictionInput, RestrictionInputBuilder> {
->>>>>>> origin/main
   @BuiltValueField(wireName: r'reason')
   String get reason;
 
@@ -31,30 +23,16 @@ abstract class RestrictionInput
 
   RestrictionInput._();
 
-<<<<<<< HEAD
   factory RestrictionInput([void updates(RestrictionInputBuilder b)]) = _$RestrictionInput;
-=======
-  factory RestrictionInput([void updates(RestrictionInputBuilder b)]) =
-      _$RestrictionInput;
->>>>>>> origin/main
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(RestrictionInputBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
-<<<<<<< HEAD
   static Serializer<RestrictionInput> get serializer => _$RestrictionInputSerializer();
 }
 
 class _$RestrictionInputSerializer implements PrimitiveSerializer<RestrictionInput> {
-=======
-  static Serializer<RestrictionInput> get serializer =>
-      _$RestrictionInputSerializer();
-}
-
-class _$RestrictionInputSerializer
-    implements PrimitiveSerializer<RestrictionInput> {
->>>>>>> origin/main
   @override
   final Iterable<Type> types = const [RestrictionInput, _$RestrictionInput];
 
@@ -84,13 +62,7 @@ class _$RestrictionInputSerializer
     RestrictionInput object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-<<<<<<< HEAD
     return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
-=======
-    return _serializeProperties(serializers, object,
-            specifiedType: specifiedType)
-        .toList();
->>>>>>> origin/main
   }
 
   void _deserializeProperties(
@@ -147,7 +119,4 @@ class _$RestrictionInputSerializer
     return result.build();
   }
 }
-<<<<<<< HEAD
 
-=======
->>>>>>> origin/main

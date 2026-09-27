@@ -12,53 +12,26 @@ part 'pattern_version_response.g.dart';
 /// PatternVersionResponse
 ///
 /// Properties:
-<<<<<<< HEAD
 /// * [data] 
 @BuiltValue()
 abstract class PatternVersionResponse implements Built<PatternVersionResponse, PatternVersionResponseBuilder> {
-=======
-/// * [data]
-@BuiltValue()
-abstract class PatternVersionResponse
-    implements Built<PatternVersionResponse, PatternVersionResponseBuilder> {
->>>>>>> origin/main
   @BuiltValueField(wireName: r'data')
   PatternVersion get data;
 
   PatternVersionResponse._();
 
-<<<<<<< HEAD
   factory PatternVersionResponse([void updates(PatternVersionResponseBuilder b)]) = _$PatternVersionResponse;
-=======
-  factory PatternVersionResponse(
-          [void updates(PatternVersionResponseBuilder b)]) =
-      _$PatternVersionResponse;
->>>>>>> origin/main
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(PatternVersionResponseBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
-<<<<<<< HEAD
   static Serializer<PatternVersionResponse> get serializer => _$PatternVersionResponseSerializer();
 }
 
 class _$PatternVersionResponseSerializer implements PrimitiveSerializer<PatternVersionResponse> {
   @override
   final Iterable<Type> types = const [PatternVersionResponse, _$PatternVersionResponse];
-=======
-  static Serializer<PatternVersionResponse> get serializer =>
-      _$PatternVersionResponseSerializer();
-}
-
-class _$PatternVersionResponseSerializer
-    implements PrimitiveSerializer<PatternVersionResponse> {
-  @override
-  final Iterable<Type> types = const [
-    PatternVersionResponse,
-    _$PatternVersionResponse
-  ];
->>>>>>> origin/main
 
   @override
   final String wireName = r'PatternVersionResponse';
@@ -81,13 +54,7 @@ class _$PatternVersionResponseSerializer
     PatternVersionResponse object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-<<<<<<< HEAD
     return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
-=======
-    return _serializeProperties(serializers, object,
-            specifiedType: specifiedType)
-        .toList();
->>>>>>> origin/main
   }
 
   void _deserializeProperties(
@@ -137,7 +104,4 @@ class _$PatternVersionResponseSerializer
     return result.build();
   }
 }
-<<<<<<< HEAD
 
-=======
->>>>>>> origin/main

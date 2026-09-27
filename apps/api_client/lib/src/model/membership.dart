@@ -16,21 +16,12 @@ part 'membership.g.dart';
 /// Membership
 ///
 /// Properties:
-<<<<<<< HEAD
 /// * [membership] 
 /// * [coverage] 
 /// * [lastCoverageEndedAt] 
 /// * [access] 
 /// * [commute] 
 /// * [entitlements] 
-=======
-/// * [membership]
-/// * [coverage]
-/// * [lastCoverageEndedAt]
-/// * [access]
-/// * [commute]
-/// * [entitlements]
->>>>>>> origin/main
 @BuiltValue()
 abstract class Membership implements Built<Membership, MembershipBuilder> {
   @BuiltValueField(wireName: r'membership')
@@ -75,7 +66,6 @@ class _$MembershipSerializer implements PrimitiveSerializer<Membership> {
     FullType specifiedType = FullType.unspecified,
   }) sync* {
     yield r'membership';
-<<<<<<< HEAD
     yield object.membership == null ? null : serializers.serialize(
       object.membership,
       specifiedType: const FullType.nullable(MembershipMembership),
@@ -90,47 +80,16 @@ class _$MembershipSerializer implements PrimitiveSerializer<Membership> {
       object.lastCoverageEndedAt,
       specifiedType: const FullType.nullable(DateTime),
     );
-=======
-    yield object.membership == null
-        ? null
-        : serializers.serialize(
-            object.membership,
-            specifiedType: const FullType.nullable(MembershipMembership),
-          );
-    yield r'coverage';
-    yield object.coverage == null
-        ? null
-        : serializers.serialize(
-            object.coverage,
-            specifiedType: const FullType.nullable(MembershipCoverage),
-          );
-    yield r'lastCoverageEndedAt';
-    yield object.lastCoverageEndedAt == null
-        ? null
-        : serializers.serialize(
-            object.lastCoverageEndedAt,
-            specifiedType: const FullType.nullable(DateTime),
-          );
->>>>>>> origin/main
     yield r'access';
     yield serializers.serialize(
       object.access,
       specifiedType: const FullType(MembershipAccess),
     );
     yield r'commute';
-<<<<<<< HEAD
     yield object.commute == null ? null : serializers.serialize(
       object.commute,
       specifiedType: const FullType.nullable(MembershipCommute),
     );
-=======
-    yield object.commute == null
-        ? null
-        : serializers.serialize(
-            object.commute,
-            specifiedType: const FullType.nullable(MembershipCommute),
-          );
->>>>>>> origin/main
     yield r'entitlements';
     yield serializers.serialize(
       object.entitlements,
@@ -144,13 +103,7 @@ class _$MembershipSerializer implements PrimitiveSerializer<Membership> {
     Membership object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-<<<<<<< HEAD
     return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
-=======
-    return _serializeProperties(serializers, object,
-            specifiedType: specifiedType)
-        .toList();
->>>>>>> origin/main
   }
 
   void _deserializeProperties(
@@ -239,7 +192,4 @@ class _$MembershipSerializer implements PrimitiveSerializer<Membership> {
     return result.build();
   }
 }
-<<<<<<< HEAD
 
-=======
->>>>>>> origin/main

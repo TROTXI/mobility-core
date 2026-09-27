@@ -14,11 +14,10 @@ part 'ops_audit_event_page.g.dart';
 /// OpsAuditEventPage
 ///
 /// Properties:
-/// * [data]
-/// * [page]
+/// * [data] 
+/// * [page] 
 @BuiltValue()
-abstract class OpsAuditEventPage
-    implements Built<OpsAuditEventPage, OpsAuditEventPageBuilder> {
+abstract class OpsAuditEventPage implements Built<OpsAuditEventPage, OpsAuditEventPageBuilder> {
   @BuiltValueField(wireName: r'data')
   BuiltList<OpsAuditEvent> get data;
 
@@ -27,19 +26,16 @@ abstract class OpsAuditEventPage
 
   OpsAuditEventPage._();
 
-  factory OpsAuditEventPage([void updates(OpsAuditEventPageBuilder b)]) =
-      _$OpsAuditEventPage;
+  factory OpsAuditEventPage([void updates(OpsAuditEventPageBuilder b)]) = _$OpsAuditEventPage;
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(OpsAuditEventPageBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
-  static Serializer<OpsAuditEventPage> get serializer =>
-      _$OpsAuditEventPageSerializer();
+  static Serializer<OpsAuditEventPage> get serializer => _$OpsAuditEventPageSerializer();
 }
 
-class _$OpsAuditEventPageSerializer
-    implements PrimitiveSerializer<OpsAuditEventPage> {
+class _$OpsAuditEventPageSerializer implements PrimitiveSerializer<OpsAuditEventPage> {
   @override
   final Iterable<Type> types = const [OpsAuditEventPage, _$OpsAuditEventPage];
 
@@ -69,9 +65,7 @@ class _$OpsAuditEventPageSerializer
     OpsAuditEventPage object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    return _serializeProperties(serializers, object,
-            specifiedType: specifiedType)
-        .toList();
+    return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
   }
 
   void _deserializeProperties(
@@ -128,3 +122,4 @@ class _$OpsAuditEventPageSerializer
     return result.build();
   }
 }
+

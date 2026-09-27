@@ -70,7 +70,6 @@ void main() {
       // TODO
     });
 
-<<<<<<< HEAD
     // run Trip Generation
     //
     //Future<MaintenanceResultResponse> runTripGeneration(String xTrotxiClient, int xTrotxiBuild, TripGenerationInput tripGenerationInput, { String xTrotxiPlatform }) async
@@ -78,7 +77,5 @@ void main() {
       // TODO
     });
 
-=======
->>>>>>> origin/main
   });
 }

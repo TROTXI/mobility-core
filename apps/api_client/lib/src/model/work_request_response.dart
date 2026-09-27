@@ -12,52 +12,26 @@ part 'work_request_response.g.dart';
 /// WorkRequestResponse
 ///
 /// Properties:
-<<<<<<< HEAD
 /// * [data] 
 @BuiltValue()
 abstract class WorkRequestResponse implements Built<WorkRequestResponse, WorkRequestResponseBuilder> {
-=======
-/// * [data]
-@BuiltValue()
-abstract class WorkRequestResponse
-    implements Built<WorkRequestResponse, WorkRequestResponseBuilder> {
->>>>>>> origin/main
   @BuiltValueField(wireName: r'data')
   WorkRequest get data;
 
   WorkRequestResponse._();
 
-<<<<<<< HEAD
   factory WorkRequestResponse([void updates(WorkRequestResponseBuilder b)]) = _$WorkRequestResponse;
-=======
-  factory WorkRequestResponse([void updates(WorkRequestResponseBuilder b)]) =
-      _$WorkRequestResponse;
->>>>>>> origin/main
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(WorkRequestResponseBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
-<<<<<<< HEAD
   static Serializer<WorkRequestResponse> get serializer => _$WorkRequestResponseSerializer();
 }
 
 class _$WorkRequestResponseSerializer implements PrimitiveSerializer<WorkRequestResponse> {
   @override
   final Iterable<Type> types = const [WorkRequestResponse, _$WorkRequestResponse];
-=======
-  static Serializer<WorkRequestResponse> get serializer =>
-      _$WorkRequestResponseSerializer();
-}
-
-class _$WorkRequestResponseSerializer
-    implements PrimitiveSerializer<WorkRequestResponse> {
-  @override
-  final Iterable<Type> types = const [
-    WorkRequestResponse,
-    _$WorkRequestResponse
-  ];
->>>>>>> origin/main
 
   @override
   final String wireName = r'WorkRequestResponse';
@@ -80,13 +54,7 @@ class _$WorkRequestResponseSerializer
     WorkRequestResponse object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-<<<<<<< HEAD
     return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
-=======
-    return _serializeProperties(serializers, object,
-            specifiedType: specifiedType)
-        .toList();
->>>>>>> origin/main
   }
 
   void _deserializeProperties(
@@ -136,7 +104,4 @@ class _$WorkRequestResponseSerializer
     return result.build();
   }
 }
-<<<<<<< HEAD
 
-=======
->>>>>>> origin/main

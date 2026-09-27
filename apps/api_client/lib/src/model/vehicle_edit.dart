@@ -11,21 +11,12 @@ part 'vehicle_edit.g.dart';
 /// VehicleEdit
 ///
 /// Properties:
-<<<<<<< HEAD
 /// * [plate] 
 /// * [label] 
 /// * [make] 
 /// * [colour] 
 /// * [capacity] 
 /// * [archived] 
-=======
-/// * [plate]
-/// * [label]
-/// * [make]
-/// * [colour]
-/// * [capacity]
-/// * [archived]
->>>>>>> origin/main
 @BuiltValue()
 abstract class VehicleEdit implements Built<VehicleEdit, VehicleEditBuilder> {
   @BuiltValueField(wireName: r'plate')
@@ -119,13 +110,7 @@ class _$VehicleEditSerializer implements PrimitiveSerializer<VehicleEdit> {
     VehicleEdit object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-<<<<<<< HEAD
     return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
-=======
-    return _serializeProperties(serializers, object,
-            specifiedType: specifiedType)
-        .toList();
->>>>>>> origin/main
   }
 
   void _deserializeProperties(
@@ -213,7 +198,4 @@ class _$VehicleEditSerializer implements PrimitiveSerializer<VehicleEdit> {
     return result.build();
   }
 }
-<<<<<<< HEAD
 
-=======
->>>>>>> origin/main

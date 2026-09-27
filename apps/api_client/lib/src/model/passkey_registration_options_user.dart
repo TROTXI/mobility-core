@@ -11,14 +11,11 @@ part 'passkey_registration_options_user.g.dart';
 /// PasskeyRegistrationOptionsUser
 ///
 /// Properties:
-/// * [id]
-/// * [name]
-/// * [displayName]
+/// * [id] 
+/// * [name] 
+/// * [displayName] 
 @BuiltValue()
-abstract class PasskeyRegistrationOptionsUser
-    implements
-        Built<PasskeyRegistrationOptionsUser,
-            PasskeyRegistrationOptionsUserBuilder> {
+abstract class PasskeyRegistrationOptionsUser implements Built<PasskeyRegistrationOptionsUser, PasskeyRegistrationOptionsUserBuilder> {
   @BuiltValueField(wireName: r'id')
   String get id;
 
@@ -30,25 +27,18 @@ abstract class PasskeyRegistrationOptionsUser
 
   PasskeyRegistrationOptionsUser._();
 
-  factory PasskeyRegistrationOptionsUser(
-          [void updates(PasskeyRegistrationOptionsUserBuilder b)]) =
-      _$PasskeyRegistrationOptionsUser;
+  factory PasskeyRegistrationOptionsUser([void updates(PasskeyRegistrationOptionsUserBuilder b)]) = _$PasskeyRegistrationOptionsUser;
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(PasskeyRegistrationOptionsUserBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
-  static Serializer<PasskeyRegistrationOptionsUser> get serializer =>
-      _$PasskeyRegistrationOptionsUserSerializer();
+  static Serializer<PasskeyRegistrationOptionsUser> get serializer => _$PasskeyRegistrationOptionsUserSerializer();
 }
 
-class _$PasskeyRegistrationOptionsUserSerializer
-    implements PrimitiveSerializer<PasskeyRegistrationOptionsUser> {
+class _$PasskeyRegistrationOptionsUserSerializer implements PrimitiveSerializer<PasskeyRegistrationOptionsUser> {
   @override
-  final Iterable<Type> types = const [
-    PasskeyRegistrationOptionsUser,
-    _$PasskeyRegistrationOptionsUser
-  ];
+  final Iterable<Type> types = const [PasskeyRegistrationOptionsUser, _$PasskeyRegistrationOptionsUser];
 
   @override
   final String wireName = r'PasskeyRegistrationOptionsUser';
@@ -81,9 +71,7 @@ class _$PasskeyRegistrationOptionsUserSerializer
     PasskeyRegistrationOptionsUser object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    return _serializeProperties(serializers, object,
-            specifiedType: specifiedType)
-        .toList();
+    return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
   }
 
   void _deserializeProperties(
@@ -147,3 +135,4 @@ class _$PasskeyRegistrationOptionsUserSerializer
     return result.build();
   }
 }
+

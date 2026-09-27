@@ -12,13 +12,12 @@ part 'driver_credential_sms.g.dart';
 /// DriverCredentialSms
 ///
 /// Properties:
-/// * [purpose]
-/// * [state]
-/// * [failureCode]
-/// * [queuedAt]
+/// * [purpose] 
+/// * [state] 
+/// * [failureCode] 
+/// * [queuedAt] 
 @BuiltValue()
-abstract class DriverCredentialSms
-    implements Built<DriverCredentialSms, DriverCredentialSmsBuilder> {
+abstract class DriverCredentialSms implements Built<DriverCredentialSms, DriverCredentialSmsBuilder> {
   @BuiltValueField(wireName: r'purpose')
   DriverCredentialSmsPurposeEnum get purpose;
   // enum purposeEnum {  onboarding,  pin_reset,  };
@@ -35,24 +34,18 @@ abstract class DriverCredentialSms
 
   DriverCredentialSms._();
 
-  factory DriverCredentialSms([void updates(DriverCredentialSmsBuilder b)]) =
-      _$DriverCredentialSms;
+  factory DriverCredentialSms([void updates(DriverCredentialSmsBuilder b)]) = _$DriverCredentialSms;
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(DriverCredentialSmsBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
-  static Serializer<DriverCredentialSms> get serializer =>
-      _$DriverCredentialSmsSerializer();
+  static Serializer<DriverCredentialSms> get serializer => _$DriverCredentialSmsSerializer();
 }
 
-class _$DriverCredentialSmsSerializer
-    implements PrimitiveSerializer<DriverCredentialSms> {
+class _$DriverCredentialSmsSerializer implements PrimitiveSerializer<DriverCredentialSms> {
   @override
-  final Iterable<Type> types = const [
-    DriverCredentialSms,
-    _$DriverCredentialSms
-  ];
+  final Iterable<Type> types = const [DriverCredentialSms, _$DriverCredentialSms];
 
   @override
   final String wireName = r'DriverCredentialSms';
@@ -73,12 +66,10 @@ class _$DriverCredentialSmsSerializer
       specifiedType: const FullType(DriverCredentialSmsStateEnum),
     );
     yield r'failureCode';
-    yield object.failureCode == null
-        ? null
-        : serializers.serialize(
-            object.failureCode,
-            specifiedType: const FullType.nullable(String),
-          );
+    yield object.failureCode == null ? null : serializers.serialize(
+      object.failureCode,
+      specifiedType: const FullType.nullable(String),
+    );
     yield r'queuedAt';
     yield serializers.serialize(
       object.queuedAt,
@@ -92,9 +83,7 @@ class _$DriverCredentialSmsSerializer
     DriverCredentialSms object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    return _serializeProperties(serializers, object,
-            specifiedType: specifiedType)
-        .toList();
+    return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
   }
 
   void _deserializeProperties(
@@ -168,51 +157,40 @@ class _$DriverCredentialSmsSerializer
 }
 
 class DriverCredentialSmsPurposeEnum extends EnumClass {
+
   @BuiltValueEnumConst(wireName: r'onboarding')
-  static const DriverCredentialSmsPurposeEnum onboarding =
-      _$driverCredentialSmsPurposeEnum_onboarding;
+  static const DriverCredentialSmsPurposeEnum onboarding = _$driverCredentialSmsPurposeEnum_onboarding;
   @BuiltValueEnumConst(wireName: r'pin_reset')
-  static const DriverCredentialSmsPurposeEnum pinReset =
-      _$driverCredentialSmsPurposeEnum_pinReset;
+  static const DriverCredentialSmsPurposeEnum pinReset = _$driverCredentialSmsPurposeEnum_pinReset;
 
-  static Serializer<DriverCredentialSmsPurposeEnum> get serializer =>
-      _$driverCredentialSmsPurposeEnumSerializer;
+  static Serializer<DriverCredentialSmsPurposeEnum> get serializer => _$driverCredentialSmsPurposeEnumSerializer;
 
-  const DriverCredentialSmsPurposeEnum._(String name) : super(name);
+  const DriverCredentialSmsPurposeEnum._(String name): super(name);
 
-  static BuiltSet<DriverCredentialSmsPurposeEnum> get values =>
-      _$driverCredentialSmsPurposeEnumValues;
-  static DriverCredentialSmsPurposeEnum valueOf(String name) =>
-      _$driverCredentialSmsPurposeEnumValueOf(name);
+  static BuiltSet<DriverCredentialSmsPurposeEnum> get values => _$driverCredentialSmsPurposeEnumValues;
+  static DriverCredentialSmsPurposeEnum valueOf(String name) => _$driverCredentialSmsPurposeEnumValueOf(name);
 }
 
 class DriverCredentialSmsStateEnum extends EnumClass {
+
   @BuiltValueEnumConst(wireName: r'queued')
-  static const DriverCredentialSmsStateEnum queued =
-      _$driverCredentialSmsStateEnum_queued;
+  static const DriverCredentialSmsStateEnum queued = _$driverCredentialSmsStateEnum_queued;
   @BuiltValueEnumConst(wireName: r'sending')
-  static const DriverCredentialSmsStateEnum sending =
-      _$driverCredentialSmsStateEnum_sending;
+  static const DriverCredentialSmsStateEnum sending = _$driverCredentialSmsStateEnum_sending;
   @BuiltValueEnumConst(wireName: r'provider_accepted')
-  static const DriverCredentialSmsStateEnum providerAccepted =
-      _$driverCredentialSmsStateEnum_providerAccepted;
+  static const DriverCredentialSmsStateEnum providerAccepted = _$driverCredentialSmsStateEnum_providerAccepted;
   @BuiltValueEnumConst(wireName: r'cancelled')
-  static const DriverCredentialSmsStateEnum cancelled =
-      _$driverCredentialSmsStateEnum_cancelled;
+  static const DriverCredentialSmsStateEnum cancelled = _$driverCredentialSmsStateEnum_cancelled;
   @BuiltValueEnumConst(wireName: r'failed')
-  static const DriverCredentialSmsStateEnum failed =
-      _$driverCredentialSmsStateEnum_failed;
+  static const DriverCredentialSmsStateEnum failed = _$driverCredentialSmsStateEnum_failed;
   @BuiltValueEnumConst(wireName: r'unknown')
-  static const DriverCredentialSmsStateEnum unknown =
-      _$driverCredentialSmsStateEnum_unknown;
+  static const DriverCredentialSmsStateEnum unknown = _$driverCredentialSmsStateEnum_unknown;
 
-  static Serializer<DriverCredentialSmsStateEnum> get serializer =>
-      _$driverCredentialSmsStateEnumSerializer;
+  static Serializer<DriverCredentialSmsStateEnum> get serializer => _$driverCredentialSmsStateEnumSerializer;
 
-  const DriverCredentialSmsStateEnum._(String name) : super(name);
+  const DriverCredentialSmsStateEnum._(String name): super(name);
 
-  static BuiltSet<DriverCredentialSmsStateEnum> get values =>
-      _$driverCredentialSmsStateEnumValues;
-  static DriverCredentialSmsStateEnum valueOf(String name) =>
-      _$driverCredentialSmsStateEnumValueOf(name);
+  static BuiltSet<DriverCredentialSmsStateEnum> get values => _$driverCredentialSmsStateEnumValues;
+  static DriverCredentialSmsStateEnum valueOf(String name) => _$driverCredentialSmsStateEnumValueOf(name);
 }
+

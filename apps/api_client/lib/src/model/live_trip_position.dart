@@ -12,22 +12,12 @@ part 'live_trip_position.g.dart';
 /// LiveTripPosition
 ///
 /// Properties:
-<<<<<<< HEAD
 /// * [location] 
 /// * [capturedAt] 
 /// * [receivedAt] 
 /// * [ageSeconds] 
 @BuiltValue()
 abstract class LiveTripPosition implements Built<LiveTripPosition, LiveTripPositionBuilder> {
-=======
-/// * [location]
-/// * [capturedAt]
-/// * [receivedAt]
-/// * [ageSeconds]
-@BuiltValue()
-abstract class LiveTripPosition
-    implements Built<LiveTripPosition, LiveTripPositionBuilder> {
->>>>>>> origin/main
   @BuiltValueField(wireName: r'location')
   Point get location;
 
@@ -42,30 +32,16 @@ abstract class LiveTripPosition
 
   LiveTripPosition._();
 
-<<<<<<< HEAD
   factory LiveTripPosition([void updates(LiveTripPositionBuilder b)]) = _$LiveTripPosition;
-=======
-  factory LiveTripPosition([void updates(LiveTripPositionBuilder b)]) =
-      _$LiveTripPosition;
->>>>>>> origin/main
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(LiveTripPositionBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
-<<<<<<< HEAD
   static Serializer<LiveTripPosition> get serializer => _$LiveTripPositionSerializer();
 }
 
 class _$LiveTripPositionSerializer implements PrimitiveSerializer<LiveTripPosition> {
-=======
-  static Serializer<LiveTripPosition> get serializer =>
-      _$LiveTripPositionSerializer();
-}
-
-class _$LiveTripPositionSerializer
-    implements PrimitiveSerializer<LiveTripPosition> {
->>>>>>> origin/main
   @override
   final Iterable<Type> types = const [LiveTripPosition, _$LiveTripPosition];
 
@@ -105,13 +81,7 @@ class _$LiveTripPositionSerializer
     LiveTripPosition object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-<<<<<<< HEAD
     return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
-=======
-    return _serializeProperties(serializers, object,
-            specifiedType: specifiedType)
-        .toList();
->>>>>>> origin/main
   }
 
   void _deserializeProperties(
@@ -182,7 +152,4 @@ class _$LiveTripPositionSerializer
     return result.build();
   }
 }
-<<<<<<< HEAD
 
-=======
->>>>>>> origin/main

@@ -12,7 +12,6 @@ part 'manifest_rider.g.dart';
 /// ManifestRider
 ///
 /// Properties:
-<<<<<<< HEAD
 /// * [reservationId] 
 /// * [displayName] 
 /// * [avatarUrl] 
@@ -21,17 +20,6 @@ part 'manifest_rider.g.dart';
 /// * [dropoffOccurrenceId] 
 @BuiltValue()
 abstract class ManifestRider implements Built<ManifestRider, ManifestRiderBuilder> {
-=======
-/// * [reservationId]
-/// * [displayName]
-/// * [avatarUrl]
-/// * [status]
-/// * [pickupOccurrenceId]
-/// * [dropoffOccurrenceId]
-@BuiltValue()
-abstract class ManifestRider
-    implements Built<ManifestRider, ManifestRiderBuilder> {
->>>>>>> origin/main
   @BuiltValueField(wireName: r'reservationId')
   String get reservationId;
 
@@ -53,23 +41,13 @@ abstract class ManifestRider
 
   ManifestRider._();
 
-<<<<<<< HEAD
   factory ManifestRider([void updates(ManifestRiderBuilder b)]) = _$ManifestRider;
-=======
-  factory ManifestRider([void updates(ManifestRiderBuilder b)]) =
-      _$ManifestRider;
->>>>>>> origin/main
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(ManifestRiderBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
-<<<<<<< HEAD
   static Serializer<ManifestRider> get serializer => _$ManifestRiderSerializer();
-=======
-  static Serializer<ManifestRider> get serializer =>
-      _$ManifestRiderSerializer();
->>>>>>> origin/main
 }
 
 class _$ManifestRiderSerializer implements PrimitiveSerializer<ManifestRider> {
@@ -95,19 +73,10 @@ class _$ManifestRiderSerializer implements PrimitiveSerializer<ManifestRider> {
       specifiedType: const FullType(String),
     );
     yield r'avatarUrl';
-<<<<<<< HEAD
     yield object.avatarUrl == null ? null : serializers.serialize(
       object.avatarUrl,
       specifiedType: const FullType.nullable(String),
     );
-=======
-    yield object.avatarUrl == null
-        ? null
-        : serializers.serialize(
-            object.avatarUrl,
-            specifiedType: const FullType.nullable(String),
-          );
->>>>>>> origin/main
     yield r'status';
     yield serializers.serialize(
       object.status,
@@ -131,13 +100,7 @@ class _$ManifestRiderSerializer implements PrimitiveSerializer<ManifestRider> {
     ManifestRider object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-<<<<<<< HEAD
     return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
-=======
-    return _serializeProperties(serializers, object,
-            specifiedType: specifiedType)
-        .toList();
->>>>>>> origin/main
   }
 
   void _deserializeProperties(
@@ -225,7 +188,6 @@ class _$ManifestRiderSerializer implements PrimitiveSerializer<ManifestRider> {
 }
 
 class ManifestRiderStatusEnum extends EnumClass {
-<<<<<<< HEAD
 
   @BuiltValueEnumConst(wireName: r'pending')
   static const ManifestRiderStatusEnum pending = _$manifestRiderStatusEnum_pending;
@@ -250,37 +212,3 @@ class ManifestRiderStatusEnum extends EnumClass {
   static ManifestRiderStatusEnum valueOf(String name) => _$manifestRiderStatusEnumValueOf(name);
 }
 
-=======
-  @BuiltValueEnumConst(wireName: r'pending')
-  static const ManifestRiderStatusEnum pending =
-      _$manifestRiderStatusEnum_pending;
-  @BuiltValueEnumConst(wireName: r'reserved')
-  static const ManifestRiderStatusEnum reserved =
-      _$manifestRiderStatusEnum_reserved;
-  @BuiltValueEnumConst(wireName: r'declined')
-  static const ManifestRiderStatusEnum declined =
-      _$manifestRiderStatusEnum_declined;
-  @BuiltValueEnumConst(wireName: r'unseated')
-  static const ManifestRiderStatusEnum unseated =
-      _$manifestRiderStatusEnum_unseated;
-  @BuiltValueEnumConst(wireName: r'boarded')
-  static const ManifestRiderStatusEnum boarded =
-      _$manifestRiderStatusEnum_boarded;
-  @BuiltValueEnumConst(wireName: r'no_show')
-  static const ManifestRiderStatusEnum noShow =
-      _$manifestRiderStatusEnum_noShow;
-  @BuiltValueEnumConst(wireName: r'operator_cancelled')
-  static const ManifestRiderStatusEnum operatorCancelled =
-      _$manifestRiderStatusEnum_operatorCancelled;
-
-  static Serializer<ManifestRiderStatusEnum> get serializer =>
-      _$manifestRiderStatusEnumSerializer;
-
-  const ManifestRiderStatusEnum._(String name) : super(name);
-
-  static BuiltSet<ManifestRiderStatusEnum> get values =>
-      _$manifestRiderStatusEnumValues;
-  static ManifestRiderStatusEnum valueOf(String name) =>
-      _$manifestRiderStatusEnumValueOf(name);
-}
->>>>>>> origin/main

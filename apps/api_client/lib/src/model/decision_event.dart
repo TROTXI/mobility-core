@@ -11,22 +11,12 @@ part 'decision_event.g.dart';
 /// DecisionEvent
 ///
 /// Properties:
-<<<<<<< HEAD
 /// * [id] 
 /// * [action] 
 /// * [note] 
 /// * [occurredAt] 
 @BuiltValue()
 abstract class DecisionEvent implements Built<DecisionEvent, DecisionEventBuilder> {
-=======
-/// * [id]
-/// * [action]
-/// * [note]
-/// * [occurredAt]
-@BuiltValue()
-abstract class DecisionEvent
-    implements Built<DecisionEvent, DecisionEventBuilder> {
->>>>>>> origin/main
   @BuiltValueField(wireName: r'id')
   String get id;
 
@@ -41,23 +31,13 @@ abstract class DecisionEvent
 
   DecisionEvent._();
 
-<<<<<<< HEAD
   factory DecisionEvent([void updates(DecisionEventBuilder b)]) = _$DecisionEvent;
-=======
-  factory DecisionEvent([void updates(DecisionEventBuilder b)]) =
-      _$DecisionEvent;
->>>>>>> origin/main
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(DecisionEventBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
-<<<<<<< HEAD
   static Serializer<DecisionEvent> get serializer => _$DecisionEventSerializer();
-=======
-  static Serializer<DecisionEvent> get serializer =>
-      _$DecisionEventSerializer();
->>>>>>> origin/main
 }
 
 class _$DecisionEventSerializer implements PrimitiveSerializer<DecisionEvent> {
@@ -83,19 +63,10 @@ class _$DecisionEventSerializer implements PrimitiveSerializer<DecisionEvent> {
       specifiedType: const FullType(String),
     );
     yield r'note';
-<<<<<<< HEAD
     yield object.note == null ? null : serializers.serialize(
       object.note,
       specifiedType: const FullType.nullable(String),
     );
-=======
-    yield object.note == null
-        ? null
-        : serializers.serialize(
-            object.note,
-            specifiedType: const FullType.nullable(String),
-          );
->>>>>>> origin/main
     yield r'occurredAt';
     yield serializers.serialize(
       object.occurredAt,
@@ -109,13 +80,7 @@ class _$DecisionEventSerializer implements PrimitiveSerializer<DecisionEvent> {
     DecisionEvent object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-<<<<<<< HEAD
     return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
-=======
-    return _serializeProperties(serializers, object,
-            specifiedType: specifiedType)
-        .toList();
->>>>>>> origin/main
   }
 
   void _deserializeProperties(
@@ -187,7 +152,4 @@ class _$DecisionEventSerializer implements PrimitiveSerializer<DecisionEvent> {
     return result.build();
   }
 }
-<<<<<<< HEAD
 
-=======
->>>>>>> origin/main

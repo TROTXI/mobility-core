@@ -12,54 +12,26 @@ part 'maintenance_result_response.g.dart';
 /// MaintenanceResultResponse
 ///
 /// Properties:
-<<<<<<< HEAD
 /// * [data] 
 @BuiltValue()
 abstract class MaintenanceResultResponse implements Built<MaintenanceResultResponse, MaintenanceResultResponseBuilder> {
-=======
-/// * [data]
-@BuiltValue()
-abstract class MaintenanceResultResponse
-    implements
-        Built<MaintenanceResultResponse, MaintenanceResultResponseBuilder> {
->>>>>>> origin/main
   @BuiltValueField(wireName: r'data')
   MaintenanceResult get data;
 
   MaintenanceResultResponse._();
 
-<<<<<<< HEAD
   factory MaintenanceResultResponse([void updates(MaintenanceResultResponseBuilder b)]) = _$MaintenanceResultResponse;
-=======
-  factory MaintenanceResultResponse(
-          [void updates(MaintenanceResultResponseBuilder b)]) =
-      _$MaintenanceResultResponse;
->>>>>>> origin/main
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(MaintenanceResultResponseBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
-<<<<<<< HEAD
   static Serializer<MaintenanceResultResponse> get serializer => _$MaintenanceResultResponseSerializer();
 }
 
 class _$MaintenanceResultResponseSerializer implements PrimitiveSerializer<MaintenanceResultResponse> {
   @override
   final Iterable<Type> types = const [MaintenanceResultResponse, _$MaintenanceResultResponse];
-=======
-  static Serializer<MaintenanceResultResponse> get serializer =>
-      _$MaintenanceResultResponseSerializer();
-}
-
-class _$MaintenanceResultResponseSerializer
-    implements PrimitiveSerializer<MaintenanceResultResponse> {
-  @override
-  final Iterable<Type> types = const [
-    MaintenanceResultResponse,
-    _$MaintenanceResultResponse
-  ];
->>>>>>> origin/main
 
   @override
   final String wireName = r'MaintenanceResultResponse';
@@ -82,13 +54,7 @@ class _$MaintenanceResultResponseSerializer
     MaintenanceResultResponse object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-<<<<<<< HEAD
     return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
-=======
-    return _serializeProperties(serializers, object,
-            specifiedType: specifiedType)
-        .toList();
->>>>>>> origin/main
   }
 
   void _deserializeProperties(
@@ -138,7 +104,4 @@ class _$MaintenanceResultResponseSerializer
     return result.build();
   }
 }
-<<<<<<< HEAD
 
-=======
->>>>>>> origin/main

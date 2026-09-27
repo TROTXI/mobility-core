@@ -13,22 +13,12 @@ part 'reservation_decision.g.dart';
 /// ReservationDecision
 ///
 /// Properties:
-<<<<<<< HEAD
 /// * [travelDate] 
 /// * [direction] 
 /// * [decision] 
 /// * [tripId] 
 @BuiltValue()
 abstract class ReservationDecision implements Built<ReservationDecision, ReservationDecisionBuilder> {
-=======
-/// * [travelDate]
-/// * [direction]
-/// * [decision]
-/// * [tripId]
-@BuiltValue()
-abstract class ReservationDecision
-    implements Built<ReservationDecision, ReservationDecisionBuilder> {
->>>>>>> origin/main
   @BuiltValueField(wireName: r'travelDate')
   Date get travelDate;
 
@@ -45,37 +35,18 @@ abstract class ReservationDecision
 
   ReservationDecision._();
 
-<<<<<<< HEAD
   factory ReservationDecision([void updates(ReservationDecisionBuilder b)]) = _$ReservationDecision;
-=======
-  factory ReservationDecision([void updates(ReservationDecisionBuilder b)]) =
-      _$ReservationDecision;
->>>>>>> origin/main
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(ReservationDecisionBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
-<<<<<<< HEAD
   static Serializer<ReservationDecision> get serializer => _$ReservationDecisionSerializer();
 }
 
 class _$ReservationDecisionSerializer implements PrimitiveSerializer<ReservationDecision> {
   @override
   final Iterable<Type> types = const [ReservationDecision, _$ReservationDecision];
-=======
-  static Serializer<ReservationDecision> get serializer =>
-      _$ReservationDecisionSerializer();
-}
-
-class _$ReservationDecisionSerializer
-    implements PrimitiveSerializer<ReservationDecision> {
-  @override
-  final Iterable<Type> types = const [
-    ReservationDecision,
-    _$ReservationDecision
-  ];
->>>>>>> origin/main
 
   @override
   final String wireName = r'ReservationDecision';
@@ -115,13 +86,7 @@ class _$ReservationDecisionSerializer
     ReservationDecision object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-<<<<<<< HEAD
     return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
-=======
-    return _serializeProperties(serializers, object,
-            specifiedType: specifiedType)
-        .toList();
->>>>>>> origin/main
   }
 
   void _deserializeProperties(
@@ -194,7 +159,6 @@ class _$ReservationDecisionSerializer
 }
 
 class ReservationDecisionDirectionEnum extends EnumClass {
-<<<<<<< HEAD
 
   @BuiltValueEnumConst(wireName: r'outbound')
   static const ReservationDecisionDirectionEnum outbound = _$reservationDecisionDirectionEnum_outbound;
@@ -224,41 +188,3 @@ class ReservationDecisionDecisionEnum extends EnumClass {
   static ReservationDecisionDecisionEnum valueOf(String name) => _$reservationDecisionDecisionEnumValueOf(name);
 }
 
-=======
-  @BuiltValueEnumConst(wireName: r'outbound')
-  static const ReservationDecisionDirectionEnum outbound =
-      _$reservationDecisionDirectionEnum_outbound;
-  @BuiltValueEnumConst(wireName: r'return')
-  static const ReservationDecisionDirectionEnum return_ =
-      _$reservationDecisionDirectionEnum_return_;
-
-  static Serializer<ReservationDecisionDirectionEnum> get serializer =>
-      _$reservationDecisionDirectionEnumSerializer;
-
-  const ReservationDecisionDirectionEnum._(String name) : super(name);
-
-  static BuiltSet<ReservationDecisionDirectionEnum> get values =>
-      _$reservationDecisionDirectionEnumValues;
-  static ReservationDecisionDirectionEnum valueOf(String name) =>
-      _$reservationDecisionDirectionEnumValueOf(name);
-}
-
-class ReservationDecisionDecisionEnum extends EnumClass {
-  @BuiltValueEnumConst(wireName: r'confirm')
-  static const ReservationDecisionDecisionEnum confirm =
-      _$reservationDecisionDecisionEnum_confirm;
-  @BuiltValueEnumConst(wireName: r'decline')
-  static const ReservationDecisionDecisionEnum decline =
-      _$reservationDecisionDecisionEnum_decline;
-
-  static Serializer<ReservationDecisionDecisionEnum> get serializer =>
-      _$reservationDecisionDecisionEnumSerializer;
-
-  const ReservationDecisionDecisionEnum._(String name) : super(name);
-
-  static BuiltSet<ReservationDecisionDecisionEnum> get values =>
-      _$reservationDecisionDecisionEnumValues;
-  static ReservationDecisionDecisionEnum valueOf(String name) =>
-      _$reservationDecisionDecisionEnumValueOf(name);
-}
->>>>>>> origin/main

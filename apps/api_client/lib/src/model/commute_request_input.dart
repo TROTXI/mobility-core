@@ -14,7 +14,6 @@ part 'commute_request_input.g.dart';
 /// CommuteRequestInput
 ///
 /// Properties:
-<<<<<<< HEAD
 /// * [routeId] 
 /// * [legs] 
 /// * [requestedDate] 
@@ -22,16 +21,6 @@ part 'commute_request_input.g.dart';
 /// * [note] 
 @BuiltValue()
 abstract class CommuteRequestInput implements Built<CommuteRequestInput, CommuteRequestInputBuilder> {
-=======
-/// * [routeId]
-/// * [legs]
-/// * [requestedDate]
-/// * [pauseIfWaitlisted]
-/// * [note]
-@BuiltValue()
-abstract class CommuteRequestInput
-    implements Built<CommuteRequestInput, CommuteRequestInputBuilder> {
->>>>>>> origin/main
   @BuiltValueField(wireName: r'routeId')
   String get routeId;
 
@@ -49,7 +38,6 @@ abstract class CommuteRequestInput
 
   CommuteRequestInput._();
 
-<<<<<<< HEAD
   factory CommuteRequestInput([void updates(CommuteRequestInputBuilder b)]) = _$CommuteRequestInput;
 
   @BuiltValueHook(initializeBuilder: true)
@@ -63,27 +51,6 @@ abstract class CommuteRequestInput
 class _$CommuteRequestInputSerializer implements PrimitiveSerializer<CommuteRequestInput> {
   @override
   final Iterable<Type> types = const [CommuteRequestInput, _$CommuteRequestInput];
-=======
-  factory CommuteRequestInput([void updates(CommuteRequestInputBuilder b)]) =
-      _$CommuteRequestInput;
-
-  @BuiltValueHook(initializeBuilder: true)
-  static void _defaults(CommuteRequestInputBuilder b) =>
-      b..pauseIfWaitlisted = false;
-
-  @BuiltValueSerializer(custom: true)
-  static Serializer<CommuteRequestInput> get serializer =>
-      _$CommuteRequestInputSerializer();
-}
-
-class _$CommuteRequestInputSerializer
-    implements PrimitiveSerializer<CommuteRequestInput> {
-  @override
-  final Iterable<Type> types = const [
-    CommuteRequestInput,
-    _$CommuteRequestInput
-  ];
->>>>>>> origin/main
 
   @override
   final String wireName = r'CommuteRequestInput';
@@ -128,13 +95,7 @@ class _$CommuteRequestInputSerializer
     CommuteRequestInput object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-<<<<<<< HEAD
     return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
-=======
-    return _serializeProperties(serializers, object,
-            specifiedType: specifiedType)
-        .toList();
->>>>>>> origin/main
   }
 
   void _deserializeProperties(
@@ -212,7 +173,4 @@ class _$CommuteRequestInputSerializer
     return result.build();
   }
 }
-<<<<<<< HEAD
 
-=======
->>>>>>> origin/main

@@ -12,36 +12,26 @@ part 'passkey_authentication_options_response.g.dart';
 /// PasskeyAuthenticationOptionsResponse
 ///
 /// Properties:
-/// * [data]
+/// * [data] 
 @BuiltValue()
-abstract class PasskeyAuthenticationOptionsResponse
-    implements
-        Built<PasskeyAuthenticationOptionsResponse,
-            PasskeyAuthenticationOptionsResponseBuilder> {
+abstract class PasskeyAuthenticationOptionsResponse implements Built<PasskeyAuthenticationOptionsResponse, PasskeyAuthenticationOptionsResponseBuilder> {
   @BuiltValueField(wireName: r'data')
   PasskeyAuthenticationOptions get data;
 
   PasskeyAuthenticationOptionsResponse._();
 
-  factory PasskeyAuthenticationOptionsResponse(
-          [void updates(PasskeyAuthenticationOptionsResponseBuilder b)]) =
-      _$PasskeyAuthenticationOptionsResponse;
+  factory PasskeyAuthenticationOptionsResponse([void updates(PasskeyAuthenticationOptionsResponseBuilder b)]) = _$PasskeyAuthenticationOptionsResponse;
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(PasskeyAuthenticationOptionsResponseBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
-  static Serializer<PasskeyAuthenticationOptionsResponse> get serializer =>
-      _$PasskeyAuthenticationOptionsResponseSerializer();
+  static Serializer<PasskeyAuthenticationOptionsResponse> get serializer => _$PasskeyAuthenticationOptionsResponseSerializer();
 }
 
-class _$PasskeyAuthenticationOptionsResponseSerializer
-    implements PrimitiveSerializer<PasskeyAuthenticationOptionsResponse> {
+class _$PasskeyAuthenticationOptionsResponseSerializer implements PrimitiveSerializer<PasskeyAuthenticationOptionsResponse> {
   @override
-  final Iterable<Type> types = const [
-    PasskeyAuthenticationOptionsResponse,
-    _$PasskeyAuthenticationOptionsResponse
-  ];
+  final Iterable<Type> types = const [PasskeyAuthenticationOptionsResponse, _$PasskeyAuthenticationOptionsResponse];
 
   @override
   final String wireName = r'PasskeyAuthenticationOptionsResponse';
@@ -64,9 +54,7 @@ class _$PasskeyAuthenticationOptionsResponseSerializer
     PasskeyAuthenticationOptionsResponse object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    return _serializeProperties(serializers, object,
-            specifiedType: specifiedType)
-        .toList();
+    return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
   }
 
   void _deserializeProperties(
@@ -116,3 +104,4 @@ class _$PasskeyAuthenticationOptionsResponseSerializer
     return result.build();
   }
 }
+

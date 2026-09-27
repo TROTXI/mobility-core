@@ -12,52 +12,26 @@ part 'restriction_response.g.dart';
 /// RestrictionResponse
 ///
 /// Properties:
-<<<<<<< HEAD
 /// * [data] 
 @BuiltValue()
 abstract class RestrictionResponse implements Built<RestrictionResponse, RestrictionResponseBuilder> {
-=======
-/// * [data]
-@BuiltValue()
-abstract class RestrictionResponse
-    implements Built<RestrictionResponse, RestrictionResponseBuilder> {
->>>>>>> origin/main
   @BuiltValueField(wireName: r'data')
   Restriction get data;
 
   RestrictionResponse._();
 
-<<<<<<< HEAD
   factory RestrictionResponse([void updates(RestrictionResponseBuilder b)]) = _$RestrictionResponse;
-=======
-  factory RestrictionResponse([void updates(RestrictionResponseBuilder b)]) =
-      _$RestrictionResponse;
->>>>>>> origin/main
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(RestrictionResponseBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
-<<<<<<< HEAD
   static Serializer<RestrictionResponse> get serializer => _$RestrictionResponseSerializer();
 }
 
 class _$RestrictionResponseSerializer implements PrimitiveSerializer<RestrictionResponse> {
   @override
   final Iterable<Type> types = const [RestrictionResponse, _$RestrictionResponse];
-=======
-  static Serializer<RestrictionResponse> get serializer =>
-      _$RestrictionResponseSerializer();
-}
-
-class _$RestrictionResponseSerializer
-    implements PrimitiveSerializer<RestrictionResponse> {
-  @override
-  final Iterable<Type> types = const [
-    RestrictionResponse,
-    _$RestrictionResponse
-  ];
->>>>>>> origin/main
 
   @override
   final String wireName = r'RestrictionResponse';
@@ -80,13 +54,7 @@ class _$RestrictionResponseSerializer
     RestrictionResponse object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-<<<<<<< HEAD
     return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
-=======
-    return _serializeProperties(serializers, object,
-            specifiedType: specifiedType)
-        .toList();
->>>>>>> origin/main
   }
 
   void _deserializeProperties(
@@ -136,7 +104,4 @@ class _$RestrictionResponseSerializer
     return result.build();
   }
 }
-<<<<<<< HEAD
 
-=======
->>>>>>> origin/main

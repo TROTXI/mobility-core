@@ -12,7 +12,6 @@ part 'stop_occurrence.g.dart';
 /// StopOccurrence
 ///
 /// Properties:
-<<<<<<< HEAD
 /// * [id] 
 /// * [stopId] 
 /// * [ordinal] 
@@ -20,16 +19,6 @@ part 'stop_occurrence.g.dart';
 /// * [location] 
 @BuiltValue()
 abstract class StopOccurrence implements Built<StopOccurrence, StopOccurrenceBuilder> {
-=======
-/// * [id]
-/// * [stopId]
-/// * [ordinal]
-/// * [name]
-/// * [location]
-@BuiltValue()
-abstract class StopOccurrence
-    implements Built<StopOccurrence, StopOccurrenceBuilder> {
->>>>>>> origin/main
   @BuiltValueField(wireName: r'id')
   String get id;
 
@@ -47,30 +36,16 @@ abstract class StopOccurrence
 
   StopOccurrence._();
 
-<<<<<<< HEAD
   factory StopOccurrence([void updates(StopOccurrenceBuilder b)]) = _$StopOccurrence;
-=======
-  factory StopOccurrence([void updates(StopOccurrenceBuilder b)]) =
-      _$StopOccurrence;
->>>>>>> origin/main
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(StopOccurrenceBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
-<<<<<<< HEAD
   static Serializer<StopOccurrence> get serializer => _$StopOccurrenceSerializer();
 }
 
 class _$StopOccurrenceSerializer implements PrimitiveSerializer<StopOccurrence> {
-=======
-  static Serializer<StopOccurrence> get serializer =>
-      _$StopOccurrenceSerializer();
-}
-
-class _$StopOccurrenceSerializer
-    implements PrimitiveSerializer<StopOccurrence> {
->>>>>>> origin/main
   @override
   final Iterable<Type> types = const [StopOccurrence, _$StopOccurrence];
 
@@ -115,13 +90,7 @@ class _$StopOccurrenceSerializer
     StopOccurrence object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-<<<<<<< HEAD
     return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
-=======
-    return _serializeProperties(serializers, object,
-            specifiedType: specifiedType)
-        .toList();
->>>>>>> origin/main
   }
 
   void _deserializeProperties(
@@ -199,7 +168,4 @@ class _$StopOccurrenceSerializer
     return result.build();
   }
 }
-<<<<<<< HEAD
 
-=======
->>>>>>> origin/main

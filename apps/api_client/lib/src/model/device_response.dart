@@ -12,45 +12,24 @@ part 'device_response.g.dart';
 /// DeviceResponse
 ///
 /// Properties:
-<<<<<<< HEAD
 /// * [data] 
 @BuiltValue()
 abstract class DeviceResponse implements Built<DeviceResponse, DeviceResponseBuilder> {
-=======
-/// * [data]
-@BuiltValue()
-abstract class DeviceResponse
-    implements Built<DeviceResponse, DeviceResponseBuilder> {
->>>>>>> origin/main
   @BuiltValueField(wireName: r'data')
   Device get data;
 
   DeviceResponse._();
 
-<<<<<<< HEAD
   factory DeviceResponse([void updates(DeviceResponseBuilder b)]) = _$DeviceResponse;
-=======
-  factory DeviceResponse([void updates(DeviceResponseBuilder b)]) =
-      _$DeviceResponse;
->>>>>>> origin/main
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(DeviceResponseBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
-<<<<<<< HEAD
   static Serializer<DeviceResponse> get serializer => _$DeviceResponseSerializer();
 }
 
 class _$DeviceResponseSerializer implements PrimitiveSerializer<DeviceResponse> {
-=======
-  static Serializer<DeviceResponse> get serializer =>
-      _$DeviceResponseSerializer();
-}
-
-class _$DeviceResponseSerializer
-    implements PrimitiveSerializer<DeviceResponse> {
->>>>>>> origin/main
   @override
   final Iterable<Type> types = const [DeviceResponse, _$DeviceResponse];
 
@@ -75,13 +54,7 @@ class _$DeviceResponseSerializer
     DeviceResponse object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-<<<<<<< HEAD
     return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
-=======
-    return _serializeProperties(serializers, object,
-            specifiedType: specifiedType)
-        .toList();
->>>>>>> origin/main
   }
 
   void _deserializeProperties(
@@ -131,7 +104,4 @@ class _$DeviceResponseSerializer
     return result.build();
   }
 }
-<<<<<<< HEAD
 
-=======
->>>>>>> origin/main

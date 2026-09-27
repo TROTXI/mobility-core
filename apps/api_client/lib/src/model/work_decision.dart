@@ -12,18 +12,10 @@ part 'work_decision.g.dart';
 /// WorkDecision
 ///
 /// Properties:
-<<<<<<< HEAD
 /// * [status] 
 /// * [decisionNote] 
 @BuiltValue()
 abstract class WorkDecision implements Built<WorkDecision, WorkDecisionBuilder> {
-=======
-/// * [status]
-/// * [decisionNote]
-@BuiltValue()
-abstract class WorkDecision
-    implements Built<WorkDecision, WorkDecisionBuilder> {
->>>>>>> origin/main
   @BuiltValueField(wireName: r'status')
   WorkDecisionStatusEnum get status;
   // enum statusEnum {  approved,  declined,  };
@@ -72,13 +64,7 @@ class _$WorkDecisionSerializer implements PrimitiveSerializer<WorkDecision> {
     WorkDecision object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-<<<<<<< HEAD
     return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
-=======
-    return _serializeProperties(serializers, object,
-            specifiedType: specifiedType)
-        .toList();
->>>>>>> origin/main
   }
 
   void _deserializeProperties(
@@ -137,7 +123,6 @@ class _$WorkDecisionSerializer implements PrimitiveSerializer<WorkDecision> {
 }
 
 class WorkDecisionStatusEnum extends EnumClass {
-<<<<<<< HEAD
 
   @BuiltValueEnumConst(wireName: r'approved')
   static const WorkDecisionStatusEnum approved = _$workDecisionStatusEnum_approved;
@@ -152,22 +137,3 @@ class WorkDecisionStatusEnum extends EnumClass {
   static WorkDecisionStatusEnum valueOf(String name) => _$workDecisionStatusEnumValueOf(name);
 }
 
-=======
-  @BuiltValueEnumConst(wireName: r'approved')
-  static const WorkDecisionStatusEnum approved =
-      _$workDecisionStatusEnum_approved;
-  @BuiltValueEnumConst(wireName: r'declined')
-  static const WorkDecisionStatusEnum declined =
-      _$workDecisionStatusEnum_declined;
-
-  static Serializer<WorkDecisionStatusEnum> get serializer =>
-      _$workDecisionStatusEnumSerializer;
-
-  const WorkDecisionStatusEnum._(String name) : super(name);
-
-  static BuiltSet<WorkDecisionStatusEnum> get values =>
-      _$workDecisionStatusEnumValues;
-  static WorkDecisionStatusEnum valueOf(String name) =>
-      _$workDecisionStatusEnumValueOf(name);
-}
->>>>>>> origin/main

@@ -12,12 +12,11 @@ part 'credential_secret_sms.g.dart';
 /// CredentialSecretSms
 ///
 /// Properties:
-/// * [id]
-/// * [to]
-/// * [state]
+/// * [id] 
+/// * [to] 
+/// * [state] 
 @BuiltValue()
-abstract class CredentialSecretSms
-    implements Built<CredentialSecretSms, CredentialSecretSmsBuilder> {
+abstract class CredentialSecretSms implements Built<CredentialSecretSms, CredentialSecretSmsBuilder> {
   @BuiltValueField(wireName: r'id')
   String get id;
 
@@ -30,24 +29,18 @@ abstract class CredentialSecretSms
 
   CredentialSecretSms._();
 
-  factory CredentialSecretSms([void updates(CredentialSecretSmsBuilder b)]) =
-      _$CredentialSecretSms;
+  factory CredentialSecretSms([void updates(CredentialSecretSmsBuilder b)]) = _$CredentialSecretSms;
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(CredentialSecretSmsBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
-  static Serializer<CredentialSecretSms> get serializer =>
-      _$CredentialSecretSmsSerializer();
+  static Serializer<CredentialSecretSms> get serializer => _$CredentialSecretSmsSerializer();
 }
 
-class _$CredentialSecretSmsSerializer
-    implements PrimitiveSerializer<CredentialSecretSms> {
+class _$CredentialSecretSmsSerializer implements PrimitiveSerializer<CredentialSecretSms> {
   @override
-  final Iterable<Type> types = const [
-    CredentialSecretSms,
-    _$CredentialSecretSms
-  ];
+  final Iterable<Type> types = const [CredentialSecretSms, _$CredentialSecretSms];
 
   @override
   final String wireName = r'CredentialSecretSms';
@@ -80,9 +73,7 @@ class _$CredentialSecretSmsSerializer
     CredentialSecretSms object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    return _serializeProperties(serializers, object,
-            specifiedType: specifiedType)
-        .toList();
+    return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
   }
 
   void _deserializeProperties(
@@ -148,17 +139,15 @@ class _$CredentialSecretSmsSerializer
 }
 
 class CredentialSecretSmsStateEnum extends EnumClass {
+
   @BuiltValueEnumConst(wireName: r'queued')
-  static const CredentialSecretSmsStateEnum queued =
-      _$credentialSecretSmsStateEnum_queued;
+  static const CredentialSecretSmsStateEnum queued = _$credentialSecretSmsStateEnum_queued;
 
-  static Serializer<CredentialSecretSmsStateEnum> get serializer =>
-      _$credentialSecretSmsStateEnumSerializer;
+  static Serializer<CredentialSecretSmsStateEnum> get serializer => _$credentialSecretSmsStateEnumSerializer;
 
-  const CredentialSecretSmsStateEnum._(String name) : super(name);
+  const CredentialSecretSmsStateEnum._(String name): super(name);
 
-  static BuiltSet<CredentialSecretSmsStateEnum> get values =>
-      _$credentialSecretSmsStateEnumValues;
-  static CredentialSecretSmsStateEnum valueOf(String name) =>
-      _$credentialSecretSmsStateEnumValueOf(name);
+  static BuiltSet<CredentialSecretSmsStateEnum> get values => _$credentialSecretSmsStateEnumValues;
+  static CredentialSecretSmsStateEnum valueOf(String name) => _$credentialSecretSmsStateEnumValueOf(name);
 }
+

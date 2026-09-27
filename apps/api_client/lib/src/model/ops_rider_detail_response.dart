@@ -12,34 +12,26 @@ part 'ops_rider_detail_response.g.dart';
 /// OpsRiderDetailResponse
 ///
 /// Properties:
-/// * [data]
+/// * [data] 
 @BuiltValue()
-abstract class OpsRiderDetailResponse
-    implements Built<OpsRiderDetailResponse, OpsRiderDetailResponseBuilder> {
+abstract class OpsRiderDetailResponse implements Built<OpsRiderDetailResponse, OpsRiderDetailResponseBuilder> {
   @BuiltValueField(wireName: r'data')
   OpsRiderDetail get data;
 
   OpsRiderDetailResponse._();
 
-  factory OpsRiderDetailResponse(
-          [void updates(OpsRiderDetailResponseBuilder b)]) =
-      _$OpsRiderDetailResponse;
+  factory OpsRiderDetailResponse([void updates(OpsRiderDetailResponseBuilder b)]) = _$OpsRiderDetailResponse;
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(OpsRiderDetailResponseBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
-  static Serializer<OpsRiderDetailResponse> get serializer =>
-      _$OpsRiderDetailResponseSerializer();
+  static Serializer<OpsRiderDetailResponse> get serializer => _$OpsRiderDetailResponseSerializer();
 }
 
-class _$OpsRiderDetailResponseSerializer
-    implements PrimitiveSerializer<OpsRiderDetailResponse> {
+class _$OpsRiderDetailResponseSerializer implements PrimitiveSerializer<OpsRiderDetailResponse> {
   @override
-  final Iterable<Type> types = const [
-    OpsRiderDetailResponse,
-    _$OpsRiderDetailResponse
-  ];
+  final Iterable<Type> types = const [OpsRiderDetailResponse, _$OpsRiderDetailResponse];
 
   @override
   final String wireName = r'OpsRiderDetailResponse';
@@ -62,9 +54,7 @@ class _$OpsRiderDetailResponseSerializer
     OpsRiderDetailResponse object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    return _serializeProperties(serializers, object,
-            specifiedType: specifiedType)
-        .toList();
+    return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
   }
 
   void _deserializeProperties(
@@ -114,3 +104,4 @@ class _$OpsRiderDetailResponseSerializer
     return result.build();
   }
 }
+
