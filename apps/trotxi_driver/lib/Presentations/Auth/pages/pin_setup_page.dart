@@ -83,7 +83,15 @@ class _PinSetupPageState extends State<PinSetupPage> {
 
   String get _currentPin => widget.temporaryPin ?? _current.text;
 
+  /// A retry after no answer resends exactly what was sent, under the same
+  /// key. If the first request went through, the server has already revoked
+  /// this session and only that PIN works, so letting the driver edit it
+  /// here would point them at a PIN that was never set. The fields stay
+  /// locked until the server answers definitely.
+  bool get _locked => _uncertain;
+
   Future<void> _submit() async {
+    if (_locked) return _send();
     final problem = widget.temporaryPin == null && _current.text.length != 6
         ? 'Enter the six-digit temporary PIN from operations.'
         : pinProblem(_next.text) ??
@@ -102,6 +110,15 @@ class _PinSetupPageState extends State<PinSetupPage> {
       _key = const Uuid().v4();
       _keyFor = fingerprint;
     }
+    await _send();
+  }
+
+  /// A definite refusal proves the change did not apply: had it applied, the
+  /// session would be revoked and this would be a 401. The PIN can be edited
+  /// again.
+  void _settled() => _uncertain = false;
+
+  Future<void> _send() async {
     FocusScope.of(context).unfocus();
     setState(() {
       _working = true;
@@ -119,7 +136,7 @@ class _PinSetupPageState extends State<PinSetupPage> {
       _uncertain = true;
       _fail(
         'No answer from Trotxi. The change may or may not have gone through. '
-        'Try again when you have signal; it is safe to repeat.',
+        'Retry when you have signal: it sends the same PIN again, which is safe.',
       );
     } on UnauthorizedException {
       // Only reachable once the session is gone. After an unanswered attempt
@@ -130,10 +147,12 @@ class _PinSetupPageState extends State<PinSetupPage> {
         _fail('Your session has ended. Sign in again with your temporary PIN.');
       }
     } on InvalidCredentialsException {
+      _settled();
       _fail(
         'The temporary PIN is not right. Check the email or ask operations.',
       );
     } on CredentialLockedException catch (error) {
+      _settled();
       final minutes = (error.retryAfter.inSeconds / 60).ceil();
       _fail(
         'Too many wrong PINs. Try again in $minutes '
@@ -144,6 +163,8 @@ class _PinSetupPageState extends State<PinSetupPage> {
         'Too many attempts. Wait ${error.retryAfter.inSeconds} seconds, then try again.',
       );
     } on ApiException catch (error) {
+      // A 4xx is the server's answer; a 5xx says nothing about the outcome.
+      if (error.statusCode >= 400 && error.statusCode < 500) _settled();
       if (error.code == 'temporary_pin_expired') {
         setState(() => _expired = true);
       }
@@ -201,17 +222,17 @@ class _PinSetupPageState extends State<PinSetupPage> {
                     _PinField(
                       label: 'Temporary PIN',
                       controller: _current,
-                      enabled: !_working && !_expired,
+                      enabled: !_working && !_expired && !_locked,
                     ),
                   _PinField(
                     label: 'New PIN',
                     controller: _next,
-                    enabled: !_working && !_expired,
+                    enabled: !_working && !_expired && !_locked,
                   ),
                   _PinField(
                     label: 'Confirm new PIN',
                     controller: _confirm,
-                    enabled: !_working && !_expired,
+                    enabled: !_working && !_expired && !_locked,
                     onSubmitted: (_) => _submit(),
                   ),
                   if (_error != null) ...[
@@ -247,7 +268,7 @@ class _PinSetupPageState extends State<PinSetupPage> {
                               semanticsLabel: 'Saving your PIN',
                             ),
                           )
-                        : const Text('Save PIN'),
+                        : Text(_locked ? 'Retry saving this PIN' : 'Save PIN'),
                   ),
                   const SizedBox(height: AppSpacing.space12),
                   TextButton(

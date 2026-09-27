@@ -249,10 +249,15 @@ async function resetPins(baseUrl: string): Promise<void> {
   let agreed: { label: string; secret: string } | null = null;
   for (const candidate of candidates) {
     const pin = generatePin();
-    await q('UPDATE app.driver_credentials SET pin_hash=$2 WHERE driver_id=$1', [
-      first.driver_id,
-      hashDriverPin(pin, candidate.secret),
-    ]);
+    // A private PIN with no deadline and a clean counter, so the probe is
+    // judged on the derivation alone: not refused as an expired temporary
+    // PIN (migration 029) or locked out by earlier wrong candidates.
+    await q(
+      `UPDATE app.driver_credentials SET pin_hash=$2, must_change_pin=false,
+         temporary_pin_expires_at=NULL, failed_attempts=0, locked_until=NULL
+       WHERE driver_id=$1`,
+      [first.driver_id, hashDriverPin(pin, candidate.secret)],
+    );
     if (await signsIn(baseUrl, first.driver_code, pin)) {
       agreed = candidate;
       process.stdout.write(`The service verifies with JWT_SECRET ${candidate.label}.\n`);
@@ -271,7 +276,8 @@ async function resetPins(baseUrl: string): Promise<void> {
     const pin = generatePin();
     await q(
       `UPDATE app.driver_credentials
-       SET pin_hash=$2, must_change_pin=false, failed_attempts=0, locked_until=NULL,
+       SET pin_hash=$2, must_change_pin=false, temporary_pin_expires_at=NULL,
+           failed_attempts=0, locked_until=NULL,
            pin_version=pin_version+1, pin_set_at=clock_timestamp(), updated_at=clock_timestamp()
        WHERE driver_id=$1`,
       [row.driver_id, hashDriverPin(pin, agreed.secret)],

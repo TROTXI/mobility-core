@@ -178,29 +178,51 @@ void main() {
         find.textContaining('may or may not have gone through'),
         findsOneWidget,
       );
-      await tester.tap(find.text('Save PIN'));
+      // Locked: the PIN that may already be set cannot be edited away.
+      for (final label in ['New PIN', 'Confirm new PIN']) {
+        expect(
+          tester
+              .widget<TextField>(find.widgetWithText(TextField, label))
+              .enabled,
+          isFalse,
+        );
+      }
+      await tester.tap(find.text('Retry saving this PIN'));
       await tester.pump();
       await tester.pump();
       expect(auth.changes, hasLength(2));
+      expect(auth.changes[1].next, '483920');
       expect(auth.changes[0].key, auth.changes[1].key);
       expect(auth.changes[0].current, '481205');
       expect(changed, 1);
     });
 
-    testWidgets('changing the PIN starts a new request key', (tester) async {
-      final auth = _Auth()..failures.add(const OfflineException());
-      await _setup(tester, auth);
-      await _type(tester, 'New PIN', '483920');
-      await _type(tester, 'Confirm new PIN', '483920');
-      await tester.tap(find.text('Save PIN'));
-      await tester.pumpAndSettle();
-      await _type(tester, 'New PIN', '572914');
-      await _type(tester, 'Confirm new PIN', '572914');
-      await tester.tap(find.text('Save PIN'));
-      await tester.pump();
-      await tester.pump();
-      expect(auth.changes[0].key, isNot(auth.changes[1].key));
-    });
+    testWidgets(
+      'after a definite refusal the PIN can change, and a new PIN gets a new key',
+      (tester) async {
+        final auth = _Auth()
+          ..failures.add(
+            const ApiException(
+              400,
+              'Choose a different PIN that is not repeated or sequential digits.',
+              code: 'weak_pin',
+            ),
+          );
+        await _setup(tester, auth);
+        await _type(tester, 'New PIN', '483920');
+        await _type(tester, 'Confirm new PIN', '483920');
+        await tester.tap(find.text('Save PIN'));
+        await tester.pumpAndSettle();
+        // A 4xx is an answer: nothing was applied, so editing is safe again.
+        await _type(tester, 'New PIN', '572914');
+        await _type(tester, 'Confirm new PIN', '572914');
+        await tester.tap(find.text('Save PIN'));
+        await tester.pump();
+        await tester.pump();
+        expect(auth.changes[1].next, '572914');
+        expect(auth.changes[0].key, isNot(auth.changes[1].key));
+      },
+    );
 
     testWidgets(
       'a session gone after an unanswered change is treated as uncertain',
@@ -216,7 +238,7 @@ void main() {
         await _type(tester, 'Confirm new PIN', '483920');
         await tester.tap(find.text('Save PIN'));
         await tester.pumpAndSettle();
-        await tester.tap(find.text('Save PIN'));
+        await tester.tap(find.text('Retry saving this PIN'));
         await tester.pump();
         await tester.pump();
         expect(uncertain, 1);
