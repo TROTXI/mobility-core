@@ -183,6 +183,12 @@ named('Session', obj({ id, createdAt: instant, expiresAt: instant, current: z.bo
 named('DeviceInput', obj({ token: text(4096), platform: z.enum(['ios', 'android']) }));
 named('Device', obj({ id, platform: z.enum(['ios', 'android']), updatedAt: instant }));
 named('GoogleSignIn', obj({ idToken: text(8192) }));
+named('PhoneSignInRequest', obj({ phone: text(32) }));
+named('PhoneSignInVerify', obj({ challengeId: z.uuid(), code: z.string().regex(/^\d{6}$/) }));
+named(
+  'PhoneChallenge',
+  obj({ challengeId: z.uuid(), expiresAt: instant, resendAfterSeconds: z.int().min(60).max(60) }),
+);
 named(
   'AppleSignIn',
   obj({
@@ -1403,6 +1409,14 @@ for (const provider of ['google', 'apple', 'driver'])
     provider === 'driver' ? 'DriverTokens' : 'Tokens',
     { retry: 'credential', sensitive: true },
   );
+post('/v1/auth/phone/request', 'requestPhoneSignIn', 'PhoneSignInRequest', 'PhoneChallenge', {
+  retry: 'credential',
+  sensitive: true,
+});
+post('/v1/auth/phone/verify', 'verifyPhoneSignIn', 'PhoneSignInVerify', 'Tokens', {
+  retry: 'credential',
+  sensitive: true,
+});
 post('/v1/auth/refresh', 'refreshSession', 'RefreshInput', 'Tokens', {
   retry: 'credential',
   sensitive: true,

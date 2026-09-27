@@ -11,8 +11,11 @@ import type { AppleTokenClient } from './apple-token-types.js';
 import { normalizeDriverCode, verifyDriverPin } from './driver-pin.js';
 import type { AuthenticationResponseJSON, RegistrationResponseJSON } from '@simplewebauthn/server';
 import type { PasskeyRelyingParty, StoredPasskey } from './passkeys.js';
+import type { PhoneOtp } from './phone-otp.js';
 
 export const authOperations = [
+  'requestPhoneSignIn',
+  'verifyPhoneSignIn',
   'signInGoogle',
   'signInApple',
   'signInDriver',
@@ -46,6 +49,8 @@ type PasskeyOperation = (typeof passkeyOperations)[number];
 export const ADMIN_ELEVATION_HOURS = 8;
 const PASSKEY_CHALLENGE_SECONDS = 300;
 export const publicAuthOperations = [
+  'requestPhoneSignIn',
+  'verifyPhoneSignIn',
   'signInGoogle',
   'signInApple',
   'signInDriver',
@@ -69,6 +74,7 @@ export class DriverLockedError extends LockedError {
   }
 }
 export interface AuthOptions {
+  phoneOtp?: PhoneOtp;
   pool: Pool;
   access: AccessConfig;
   pinSecret: string;
@@ -753,6 +759,28 @@ export class AuthService {
     target: string | undefined,
     key: string | undefined,
   ) {
+    if (name === 'requestPhoneSignIn' || name === 'verifyPhoneSignIn') {
+      if (!this.options.phoneOtp)
+        fail(503, 'phone_signin_unavailable', 'Phone sign-in is not configured yet.');
+      if (name === 'requestPhoneSignIn')
+        return result(await this.options.phoneOtp.request(body.phone));
+      const tokens = await this.transaction(async (client) => {
+        const userId = await this.options.phoneOtp!.verify(client, body.challengeId, body.code);
+        if (!userId) return null;
+        return this.newSession(
+          client,
+          await this.user(client, userId),
+          this.options.refreshTtlDays * 86400000,
+        );
+      });
+      if (!tokens)
+        fail(
+          401,
+          'invalid_otp',
+          'This code is invalid, expired or already used. Request a new code.',
+        );
+      return result(tokens);
+    }
     if (name === 'signInGoogle' || name === 'signInApple')
       return result(await this.social(name === 'signInGoogle' ? 'google' : 'apple', body));
     if (name === 'signInDriver') return result(await this.driver(body));

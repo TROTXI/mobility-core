@@ -10,6 +10,8 @@ import pg from 'pg';
 import { createLocalJWKSet, exportJWK, generateKeyPair, SignJWT } from 'jose';
 import { createReplacementApp } from '../src/http/replacement.js';
 import { AuthService } from '../src/auth/service.js';
+import { PhoneOtp } from '../src/auth/phone-otp.js';
+import type { SmsSender } from '../src/notifications/mnotify.js';
 import type { AuthOptions } from '../src/auth/service.js';
 import { GoogleIdTokenVerifier } from '../src/auth/id-token-verifier.google.js';
 import { AppleIdTokenVerifier } from '../src/auth/id-token-verifier.apple.js';
@@ -141,10 +143,222 @@ after(async () => {
     await admin.end();
   }
 });
+test('PHONE-01: verified phone creates a separate commuter, never adopts Google profile or funding', async (t) => {
+  const sent: string[] = [];
+  const { owner, request, sign } = await setup(
+    t,
+    1000,
+    {},
+    {
+      send: async (_phone, message) => {
+        sent.push(message);
+        return 'test-receipt';
+      },
+    },
+  );
+  const googleAccount = await sign('phone-profile-google');
+  await owner.query('UPDATE app.users SET phone=$1 WHERE id=$2', [
+    '+233241234567',
+    googleAccount.account.id,
+  ]);
+  const requested = await request('POST', '/v1/auth/phone/request', { phone: '0241234567' });
+  assert.equal(requested.statusCode, 200, requested.body);
+  const { challengeId } = requested.json().data;
+  const code = sent[0]!.match(/\b(\d{6})\b/)![1]!;
+  const stored = (
+    await owner.query('SELECT * FROM app.phone_otp_challenges WHERE id=$1', [challengeId])
+  ).rows[0];
+  assert.ok(!JSON.stringify(stored).includes('241234567'));
+  assert.notEqual(stored.code_hash, code);
+  const verified = await request('POST', '/v1/auth/phone/verify', { challengeId, code });
+  assert.equal(verified.statusCode, 200, verified.body);
+  const account = verified.json().data.account;
+  assert.notEqual(account.id, googleAccount.account.id);
+  assert.equal(account.role, 'commuter');
+  assert.equal(account.phone, '+233241234567');
+  assert.equal(
+    (
+      await owner.query('SELECT count(*)::int AS n FROM app.memberships WHERE user_id=$1', [
+        account.id,
+      ])
+    ).rows[0].n,
+    0,
+  );
+  const replay = await request('POST', '/v1/auth/phone/verify', { challengeId, code });
+  assert.equal(replay.statusCode, 401, replay.body);
+  const scrubbed = (
+    await owner.query('SELECT * FROM app.phone_otp_challenges WHERE id=$1', [challengeId])
+  ).rows[0];
+  assert.equal(scrubbed.code_hash, null);
+  assert.equal(scrubbed.phone_ciphertext, null);
+  assert.equal(
+    (await request('POST', '/v1/auth/phone/request', { phone: '+233241234567' })).statusCode,
+    429,
+  );
+});
+
+test('PHONE-02: five incorrect guesses commit and exhaust the challenge', async (t) => {
+  let code = '';
+  const { owner, request } = await setup(
+    t,
+    1000,
+    {},
+    {
+      send: async (_phone, message) => {
+        code = message.match(/\b(\d{6})\b/)![1]!;
+        return 'test-receipt';
+      },
+    },
+  );
+  const requested = await request('POST', '/v1/auth/phone/request', { phone: '0241234567' });
+  assert.equal(requested.statusCode, 200, requested.body);
+  const { challengeId } = requested.json().data;
+  const wrong = code === '000000' ? '000001' : '000000';
+  for (let i = 0; i < 5; i++) {
+    assert.equal(
+      (await request('POST', '/v1/auth/phone/verify', { challengeId, code: wrong })).statusCode,
+      401,
+    );
+  }
+  assert.equal(
+    (await owner.query('SELECT attempts FROM app.phone_otp_challenges WHERE id=$1', [challengeId]))
+      .rows[0].attempts,
+    5,
+  );
+  assert.equal(
+    (await request('POST', '/v1/auth/phone/verify', { challengeId, code })).statusCode,
+    401,
+  );
+  assert.equal(
+    (await owner.query("SELECT count(*)::int AS n FROM app.auth_identities WHERE provider='phone'"))
+      .rows[0].n,
+    0,
+  );
+});
+
+test('PHONE-03: expired, uncertain-send and wrong-client challenges cannot sign in', async (t) => {
+  let code = '',
+    reject = false;
+  const { owner, request } = await setup(
+    t,
+    1000,
+    {},
+    {
+      send: async (_phone, message) => {
+        code = message.match(/\b(\d{6})\b/)![1]!;
+        if (reject) throw new Error('uncertain provider response');
+        return 'test-receipt';
+      },
+    },
+  );
+  assert.equal(
+    (
+      await request('POST', '/v1/auth/phone/request', { phone: '0241234567' }, undefined, {
+        'x-trotxi-client': 'ops',
+      })
+    ).statusCode,
+    403,
+  );
+  const requested = await request('POST', '/v1/auth/phone/request', { phone: '0241234567' });
+  const { challengeId } = requested.json().data;
+  // Owner-only test clock fixture. The runtime cannot alter an OTP's lifetime.
+  const fixture = await owner.connect();
+  try {
+    await fixture.query('BEGIN');
+    await fixture.query('SET LOCAL session_replication_role=replica');
+    await fixture.query(
+      "UPDATE app.phone_otp_challenges SET created_at=statement_timestamp()-interval '6 minutes', expires_at=statement_timestamp()-interval '1 minute' WHERE id=$1",
+      [challengeId],
+    );
+    await fixture.query('COMMIT');
+  } finally {
+    fixture.release();
+  }
+  assert.equal(
+    (await request('POST', '/v1/auth/phone/verify', { challengeId, code })).statusCode,
+    401,
+  );
+  reject = true;
+  const failed = await request('POST', '/v1/auth/phone/request', { phone: '0541234567' });
+  assert.equal(failed.statusCode, 503, failed.body);
+  const row = (await owner.query("SELECT * FROM app.phone_otp_challenges WHERE state='failed'"))
+    .rows[0];
+  assert.equal(row.code_hash, null);
+  assert.equal(row.phone_ciphertext, null);
+  assert.equal(
+    (await request('POST', '/v1/auth/phone/verify', { challengeId: row.id, code })).statusCode,
+    401,
+  );
+});
+
+test('PHONE-04: concurrent verification consumes once; later OTP reopens the same phone account', async (t) => {
+  let code = '';
+  const { owner, runtime, request } = await setup(
+    t,
+    1000,
+    {},
+    {
+      send: async (_phone, message) => {
+        code = message.match(/\b(\d{6})\b/)![1]!;
+        return 'test-receipt';
+      },
+    },
+  );
+  const first = await request('POST', '/v1/auth/phone/request', { phone: '0241234567' });
+  assert.equal(first.statusCode, 200, first.body);
+  const { challengeId } = first.json().data;
+  const race = await Promise.all(
+    [1, 2].map(() => request('POST', '/v1/auth/phone/verify', { challengeId, code })),
+  );
+  assert.deepEqual(race.map((r) => r.statusCode).sort(), [200, 401]);
+  const accountId = race.find((r) => r.statusCode === 200)!.json().data.account.id;
+  await assert.rejects(
+    runtime.query('UPDATE app.phone_otp_challenges SET attempts=0 WHERE id=$1', [challengeId]),
+    /phone_otp_immutable/,
+  );
+  await assert.rejects(
+    runtime.query(
+      "UPDATE app.phone_otp_challenges SET created_at=created_at-interval '1 day' WHERE id=$1",
+      [challengeId],
+    ),
+    /phone_otp_immutable/,
+  );
+  await assert.rejects(
+    runtime.query('DELETE FROM app.phone_otp_challenges WHERE id=$1', [challengeId]),
+    /phone_otp_window_live/,
+  );
+  const fixture = await owner.connect();
+  try {
+    await fixture.query('BEGIN');
+    await fixture.query('SET LOCAL session_replication_role=replica');
+    await fixture.query(
+      "UPDATE app.phone_otp_challenges SET created_at=created_at-interval '61 seconds',expires_at=expires_at-interval '61 seconds' WHERE id=$1",
+      [challengeId],
+    );
+    await fixture.query('COMMIT');
+  } finally {
+    fixture.release();
+  }
+  const second = await request('POST', '/v1/auth/phone/request', { phone: '+233241234567' });
+  assert.equal(second.statusCode, 200, second.body);
+  const again = await request('POST', '/v1/auth/phone/verify', {
+    challengeId: second.json().data.challengeId,
+    code,
+  });
+  assert.equal(again.statusCode, 200, again.body);
+  assert.equal(again.json().data.account.id, accountId);
+  assert.equal(
+    (await owner.query("SELECT count(*)::int AS n FROM app.auth_identities WHERE provider='phone'"))
+      .rows[0].n,
+    1,
+  );
+});
+
 async function setup(
   t: TestContext,
   authBudget = 1000,
   providers: Partial<Pick<AuthOptions, 'google' | 'apple'>> = {},
+  sms?: SmsSender,
 ) {
   const n = ++serial,
     name = `trotxi_harness_${run}_auth_${n}`,
@@ -184,6 +398,7 @@ async function setup(
       revoke: async () => {},
     },
     ...providers,
+    ...(sms ? { phoneOtp: new PhoneOtp(runtime, sms, encryptionKey, true) } : {}),
   };
   const service = new AuthService({
     ...identity,

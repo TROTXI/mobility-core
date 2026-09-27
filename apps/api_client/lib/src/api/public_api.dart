@@ -20,6 +20,9 @@ import 'package:trotxi_api_client/src/model/google_sign_in.dart';
 import 'package:trotxi_api_client/src/model/health.dart';
 import 'package:trotxi_api_client/src/model/pattern_response.dart';
 import 'package:trotxi_api_client/src/model/pattern_version_response.dart';
+import 'package:trotxi_api_client/src/model/phone_challenge_response.dart';
+import 'package:trotxi_api_client/src/model/phone_sign_in_request.dart';
+import 'package:trotxi_api_client/src/model/phone_sign_in_verify.dart';
 import 'package:trotxi_api_client/src/model/refresh_input.dart';
 import 'package:trotxi_api_client/src/model/root.dart';
 import 'package:trotxi_api_client/src/model/route_page.dart';
@@ -1147,6 +1150,111 @@ class PublicApi {
     );
   }
 
+  /// request Phone Sign In
+  ///
+  ///
+  /// Parameters:
+  /// * [xTrotxiClient] - Compatibility metadata only, never grants a role.
+  /// * [xTrotxiBuild] - Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
+  /// * [phoneSignInRequest]
+  /// * [xTrotxiPlatform] - Required for commuter/driver, absent for ops/worker.
+  /// * [cancelToken] - A [CancelToken] that can be used to cancel the operation
+  /// * [headers] - Can be used to add additional headers to the request
+  /// * [extras] - Can be used to add flags to the request
+  /// * [validateStatus] - A [ValidateStatus] callback that can be used to determine request success based on the HTTP status of the response
+  /// * [onSendProgress] - A [ProgressCallback] that can be used to get the send progress
+  /// * [onReceiveProgress] - A [ProgressCallback] that can be used to get the receive progress
+  ///
+  /// Returns a [Future] containing a [Response] with a [PhoneChallengeResponse] as data
+  /// Throws [DioException] if API call or serialization fails
+  Future<Response<PhoneChallengeResponse>> requestPhoneSignIn({
+    required String xTrotxiClient,
+    int xTrotxiBuild = 1,
+    required PhoneSignInRequest phoneSignInRequest,
+    String? xTrotxiPlatform,
+    CancelToken? cancelToken,
+    Map<String, dynamic>? headers,
+    Map<String, dynamic>? extra,
+    ValidateStatus? validateStatus,
+    ProgressCallback? onSendProgress,
+    ProgressCallback? onReceiveProgress,
+  }) async {
+    final _path = r'/v1/auth/phone/request';
+    final _options = Options(
+      method: r'POST',
+      headers: <String, dynamic>{
+        r'X-Trotxi-Client': xTrotxiClient,
+        r'X-Trotxi-Build': xTrotxiBuild,
+        if (xTrotxiPlatform != null) r'X-Trotxi-Platform': xTrotxiPlatform,
+        ...?headers,
+      },
+      extra: <String, dynamic>{
+        'secure': <Map<String, String>>[],
+        ...?extra,
+      },
+      contentType: 'application/json',
+      validateStatus: validateStatus,
+    );
+
+    dynamic _bodyData;
+
+    try {
+      const _type = FullType(PhoneSignInRequest);
+      _bodyData =
+          _serializers.serialize(phoneSignInRequest, specifiedType: _type);
+    } catch (error, stackTrace) {
+      throw DioException(
+        requestOptions: _options.compose(
+          _dio.options,
+          _path,
+        ),
+        type: DioExceptionType.unknown,
+        error: error,
+        stackTrace: stackTrace,
+      );
+    }
+
+    final _response = await _dio.request<Object>(
+      _path,
+      data: _bodyData,
+      options: _options,
+      cancelToken: cancelToken,
+      onSendProgress: onSendProgress,
+      onReceiveProgress: onReceiveProgress,
+    );
+
+    PhoneChallengeResponse? _responseData;
+
+    try {
+      final rawResponse = _response.data;
+      _responseData = rawResponse == null
+          ? null
+          : _serializers.deserialize(
+              rawResponse,
+              specifiedType: const FullType(PhoneChallengeResponse),
+            ) as PhoneChallengeResponse;
+    } catch (error, stackTrace) {
+      throw DioException(
+        requestOptions: _response.requestOptions,
+        response: _response,
+        type: DioExceptionType.unknown,
+        error: error,
+        stackTrace: stackTrace,
+      );
+    }
+
+    return Response<PhoneChallengeResponse>(
+      data: _responseData,
+      headers: _response.headers,
+      isRedirect: _response.isRedirect,
+      requestOptions: _response.requestOptions,
+      redirects: _response.redirects,
+      statusCode: _response.statusCode,
+      statusMessage: _response.statusMessage,
+      extra: _response.extra,
+    );
+  }
+
   /// sign In Apple
   ///
   ///
@@ -1406,6 +1514,111 @@ class PublicApi {
     try {
       const _type = FullType(GoogleSignIn);
       _bodyData = _serializers.serialize(googleSignIn, specifiedType: _type);
+    } catch (error, stackTrace) {
+      throw DioException(
+        requestOptions: _options.compose(
+          _dio.options,
+          _path,
+        ),
+        type: DioExceptionType.unknown,
+        error: error,
+        stackTrace: stackTrace,
+      );
+    }
+
+    final _response = await _dio.request<Object>(
+      _path,
+      data: _bodyData,
+      options: _options,
+      cancelToken: cancelToken,
+      onSendProgress: onSendProgress,
+      onReceiveProgress: onReceiveProgress,
+    );
+
+    TokensResponse? _responseData;
+
+    try {
+      final rawResponse = _response.data;
+      _responseData = rawResponse == null
+          ? null
+          : _serializers.deserialize(
+              rawResponse,
+              specifiedType: const FullType(TokensResponse),
+            ) as TokensResponse;
+    } catch (error, stackTrace) {
+      throw DioException(
+        requestOptions: _response.requestOptions,
+        response: _response,
+        type: DioExceptionType.unknown,
+        error: error,
+        stackTrace: stackTrace,
+      );
+    }
+
+    return Response<TokensResponse>(
+      data: _responseData,
+      headers: _response.headers,
+      isRedirect: _response.isRedirect,
+      requestOptions: _response.requestOptions,
+      redirects: _response.redirects,
+      statusCode: _response.statusCode,
+      statusMessage: _response.statusMessage,
+      extra: _response.extra,
+    );
+  }
+
+  /// verify Phone Sign In
+  ///
+  ///
+  /// Parameters:
+  /// * [xTrotxiClient] - Compatibility metadata only, never grants a role.
+  /// * [xTrotxiBuild] - Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
+  /// * [phoneSignInVerify]
+  /// * [xTrotxiPlatform] - Required for commuter/driver, absent for ops/worker.
+  /// * [cancelToken] - A [CancelToken] that can be used to cancel the operation
+  /// * [headers] - Can be used to add additional headers to the request
+  /// * [extras] - Can be used to add flags to the request
+  /// * [validateStatus] - A [ValidateStatus] callback that can be used to determine request success based on the HTTP status of the response
+  /// * [onSendProgress] - A [ProgressCallback] that can be used to get the send progress
+  /// * [onReceiveProgress] - A [ProgressCallback] that can be used to get the receive progress
+  ///
+  /// Returns a [Future] containing a [Response] with a [TokensResponse] as data
+  /// Throws [DioException] if API call or serialization fails
+  Future<Response<TokensResponse>> verifyPhoneSignIn({
+    required String xTrotxiClient,
+    int xTrotxiBuild = 1,
+    required PhoneSignInVerify phoneSignInVerify,
+    String? xTrotxiPlatform,
+    CancelToken? cancelToken,
+    Map<String, dynamic>? headers,
+    Map<String, dynamic>? extra,
+    ValidateStatus? validateStatus,
+    ProgressCallback? onSendProgress,
+    ProgressCallback? onReceiveProgress,
+  }) async {
+    final _path = r'/v1/auth/phone/verify';
+    final _options = Options(
+      method: r'POST',
+      headers: <String, dynamic>{
+        r'X-Trotxi-Client': xTrotxiClient,
+        r'X-Trotxi-Build': xTrotxiBuild,
+        if (xTrotxiPlatform != null) r'X-Trotxi-Platform': xTrotxiPlatform,
+        ...?headers,
+      },
+      extra: <String, dynamic>{
+        'secure': <Map<String, String>>[],
+        ...?extra,
+      },
+      contentType: 'application/json',
+      validateStatus: validateStatus,
+    );
+
+    dynamic _bodyData;
+
+    try {
+      const _type = FullType(PhoneSignInVerify);
+      _bodyData =
+          _serializers.serialize(phoneSignInVerify, specifiedType: _type);
     } catch (error, stackTrace) {
       throw DioException(
         requestOptions: _options.compose(

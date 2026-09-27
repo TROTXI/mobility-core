@@ -53,6 +53,7 @@ export interface RuntimeConfig {
   paystack: { secretKey: string };
   /** Optional until email is provisioned; no extra encryption or sender secrets. */
   email?: { apiKey: string; staging: boolean };
+  sms?: { apiKey: string; sender: string; staging: boolean };
   firebaseServiceAccount?: string;
   avatars: {
     accountId: string;
@@ -278,6 +279,15 @@ export function readConfiguration(env: Env = process.env): RuntimeConfig {
       : {}),
     ...(optional(env, 'RESEND_API_KEY')
       ? { email: { apiKey: required(env, 'RESEND_API_KEY'), staging: deployment === 'staging' } }
+      : {}),
+    ...(optional(env, 'MNOTIFY_API_KEY')
+      ? {
+          sms: {
+            apiKey: required(env, 'MNOTIFY_API_KEY'),
+            sender: withDefault(env, 'MNOTIFY_SENDER', 'TROTXI'),
+            staging: deployment === 'staging',
+          },
+        }
       : {}),
     databaseUrl,
     poolSize: integerOr(env, 'REPLACEMENT_POOL_SIZE', 8, 1, 100),

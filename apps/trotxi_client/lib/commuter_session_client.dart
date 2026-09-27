@@ -74,6 +74,38 @@ class CommuterSessionClient {
             );
       });
 
+  Future<PhoneChallenge> requestPhoneCode(String phone) async {
+    try {
+      final generation = store.generation;
+      final response = await client.getPublicApi().requestPhoneSignIn(
+            xTrotxiClient: metadata.app,
+            xTrotxiBuild: metadata.build,
+            xTrotxiPlatform: metadata.platform,
+            phoneSignInRequest: PhoneSignInRequest((b) => b.phone = phone),
+          );
+      if (generation != store.generation) throw _superseded;
+      if (response.data == null)
+        throw const ApiException(
+            502, 'Code request returned an invalid response.');
+      return response.data!.data;
+    } on DioException catch (error) {
+      throw _unwrap(error);
+    }
+  }
+
+  Future<Account> signInPhone(String challengeId, String code) =>
+      _signIn((check) async {
+        check();
+        return client.getPublicApi().verifyPhoneSignIn(
+              xTrotxiClient: metadata.app,
+              xTrotxiBuild: metadata.build,
+              xTrotxiPlatform: metadata.platform,
+              phoneSignInVerify: PhoneSignInVerify((b) => b
+                ..challengeId = challengeId
+                ..code = code),
+            );
+      });
+
   Future<Account> signInApple(
           {required Future<AppleCredential> Function() obtainCredential}) =>
       _signIn((check) async {

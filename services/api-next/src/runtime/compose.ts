@@ -23,6 +23,8 @@ import { R2ObjectStore } from './avatars.js';
 import { sharedAdmission } from './admission.js';
 import { TransactionalEmail } from '../notifications/email.js';
 import { ResendSender } from '../notifications/resend.js';
+import { MnotifySender } from '../notifications/mnotify.js';
+import { PhoneOtp } from '../auth/phone-otp.js';
 import { FcmSender } from '../notifications/fcm.js';
 import { PushNotifications } from '../notifications/push.js';
 import type { RuntimeConfig } from './config.js';
@@ -198,6 +200,16 @@ export async function composeBackend(config: RuntimeConfig): Promise<Backend> {
         ...(config.apple ? { apple: new AppleIdTokenVerifier(config.apple.clientIds) } : {}),
         ...(appleTokens ? { appleTokens } : {}),
         avatarUrl: signAvatar,
+        ...(config.sms
+          ? {
+              phoneOtp: new PhoneOtp(
+                pool,
+                new MnotifySender(config.sms.apiKey, config.sms.sender),
+                config.keys.device,
+                config.sms.staging,
+              ),
+            }
+          : {}),
       },
       boarding: {
         proofKey: config.keys.boardingProof,
