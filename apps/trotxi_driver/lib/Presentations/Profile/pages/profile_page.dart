@@ -25,9 +25,10 @@ import 'driver_information_page.dart';
 /// Assignment alerts reflect device permission and actual API registration;
 /// general notification preferences remain outside this driver's workflow.
 class ProfilePage extends StatefulWidget {
-  const ProfilePage({super.key, this.onPhotoChanged});
+  const ProfilePage({super.key, this.onPhotoChanged, this.imagePicker});
 
   final ValueChanged<String?>? onPhotoChanged;
+  final ImagePicker? imagePicker;
 
   @override
   State<ProfilePage> createState() => _ProfilePageState();
@@ -38,6 +39,7 @@ class _ProfilePageState extends State<ProfilePage> {
   bool? _locationServices;
   String? _photoUrl;
   bool _uploading = false;
+  int _photoRevision = 0;
 
   @override
   void initState() {
@@ -50,11 +52,12 @@ class _ProfilePageState extends State<ProfilePage> {
   /// card falls back to initials, which is what it drew before there were
   /// photos at all.
   Future<void> _readPhoto() async {
+    final revision = _photoRevision;
     try {
       final account = await DriverProfileRepository(
         context.read<DriverApi>(),
       ).account();
-      if (mounted) {
+      if (mounted && revision == _photoRevision) {
         setState(() => _photoUrl = account.avatarUrl);
         widget.onPhotoChanged?.call(account.avatarUrl);
       }
@@ -96,7 +99,7 @@ class _ProfilePageState extends State<ProfilePage> {
 
     final XFile? picked;
     try {
-      picked = await ImagePicker().pickImage(
+      picked = await (widget.imagePicker ?? ImagePicker()).pickImage(
         source: source,
         maxWidth: 1024,
         maxHeight: 1024,
@@ -118,6 +121,8 @@ class _ProfilePageState extends State<ProfilePage> {
     }
 
     final repository = DriverProfileRepository(context.read<DriverApi>());
+    // A read started before this upload must never restore the old picture.
+    ++_photoRevision;
     setState(() => _uploading = true);
     try {
       final Uint8List bytes = await picked.readAsBytes();
