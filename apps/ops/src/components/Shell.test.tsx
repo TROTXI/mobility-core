@@ -27,6 +27,9 @@ describe('Ops navigation', () => {
       </FluentProvider>,
     );
     expect(screen.getByText('Home screen')).toBeInTheDocument();
+    const home = screen.getByRole('link', { name: 'Trotxi operations home' });
+    expect(home.querySelector('img')).toHaveAttribute('src', '/trotxi-wordmark-light.png');
+    expect(home.querySelector('img')).toHaveAttribute('alt', '');
     expect(screen.queryByRole('link', { name: 'Payments' })).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'More sections' }));
     fireEvent.click(await screen.findByRole('menuitem', { name: 'Payments' }));

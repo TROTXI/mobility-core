@@ -43,6 +43,10 @@ describe('PasskeyGate', () => {
       </PasskeyGate>,
     );
     expect(await screen.findByText('Create secure access')).toBeInTheDocument();
+    expect(screen.getByRole('img', { name: 'Trotxi' })).toHaveAttribute(
+      'src',
+      '/trotxi-wordmark-dark.png',
+    );
     expect(screen.queryByText('Private operations')).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Create passkey' }));
     await waitFor(() => expect(screen.getByText('Private operations')).toBeInTheDocument());
