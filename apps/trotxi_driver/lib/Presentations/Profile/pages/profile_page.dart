@@ -547,12 +547,13 @@ class _Card extends StatelessWidget {
   final AppColors colors;
 
   @override
-  Widget build(BuildContext context) => Container(
-    decoration: BoxDecoration(
-      color: colors.surface,
+  Widget build(BuildContext context) => Material(
+    color: colors.surface,
+    shape: RoundedRectangleBorder(
       borderRadius: AppRadii.circular(AppRadii.lg),
-      border: Border.all(color: colors.border),
+      side: BorderSide(color: colors.border),
     ),
+    clipBehavior: Clip.antiAlias,
     child: child,
   );
 }
