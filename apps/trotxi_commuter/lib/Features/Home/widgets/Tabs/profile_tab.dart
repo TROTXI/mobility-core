@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'package:trotxi_client/trotxi_client.dart';
+import 'package:trotxi_commuter/Features/Home/widgets/Tabs/avatar_editing.dart';
 import 'package:trotxi_commuter/Features/Home/widgets/Tabs/commuter_preference.dart';
 import 'package:trotxi_commuter/Features/Home/widgets/Tabs/personal_info.dart';
 import 'package:trotxi_commuter/Features/Home/widgets/Tabs/profile_notification.dart';
@@ -21,7 +22,7 @@ class ProfileTab extends StatefulWidget {
   State<ProfileTab> createState() => _ProfileTabState();
 }
 
-class _ProfileTabState extends State<ProfileTab> {
+class _ProfileTabState extends State<ProfileTab> with AvatarEditing<ProfileTab> {
   Account? _user;
   bool _loading = true;
   Object? _error;
@@ -94,6 +95,18 @@ class _ProfileTabState extends State<ProfileTab> {
       );
       debugPrint('Error updating display name: $e');
     }
+  }
+
+  Future<void> _editAvatar() async {
+    final user = _user;
+    if (user == null) return;
+
+    final hasAvatar = user.avatarUrl != null && user.avatarUrl!.isNotEmpty;
+    final outcome = await editAvatar(client: widget.client, hasAvatar: hasAvatar);
+    if (outcome == null || !mounted) return;
+    setState(
+      () => _user = user.rebuild((b) => b..avatarUrl = outcome.avatarUrl),
+    );
   }
 
   Future<void> _confirmSignOut(BuildContext context) async {
@@ -223,7 +236,9 @@ class _ProfileTabState extends State<ProfileTab> {
                     displayName: _user?.displayName,
                     phone: _user?.phone,
                     avatarUrl: _user?.avatarUrl,
+                    avatarBusy: avatarBusy,
                     onEdit: _editDisplayName,
+                    onEditAvatar: _user == null ? null : _editAvatar,
                   ),
                 const SizedBox(height: 28),
                 _buildSectionTitle(context, 'Account'),
@@ -337,13 +352,17 @@ class _ProfileHeader extends StatelessWidget {
     required this.displayName,
     required this.phone,
     required this.avatarUrl,
+    required this.avatarBusy,
     required this.onEdit,
+    required this.onEditAvatar,
   });
 
   final String? displayName;
   final String? phone;
   final String? avatarUrl;
+  final bool avatarBusy;
   final VoidCallback onEdit;
+  final VoidCallback? onEditAvatar;
 
   String get _initials {
     final trimmed = displayName?.trim() ?? '';
@@ -375,30 +394,83 @@ class _ProfileHeader extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          Container(
-            width: 58,
-            height: 58,
-            clipBehavior: Clip.antiAlias,
-            decoration: BoxDecoration(
-              color: hasAvatar ? null : colors.actionPrimaryDefault,
-              shape: BoxShape.circle,
-              image: hasAvatar
-                  ? DecorationImage(
-                      image: NetworkImage(avatarUrl!),
-                      fit: BoxFit.cover,
+          GestureDetector(
+            onTap: onEditAvatar == null || avatarBusy ? null : onEditAvatar,
+            child: SizedBox(
+              width: 58,
+              height: 58,
+              child: Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  Container(
+                    width: 58,
+                    height: 58,
+                    clipBehavior: Clip.antiAlias,
+                    decoration: BoxDecoration(
+                      color: hasAvatar ? null : colors.actionPrimaryDefault,
+                      shape: BoxShape.circle,
+                      image: hasAvatar
+                          ? DecorationImage(
+                              image: NetworkImage(avatarUrl!),
+                              fit: BoxFit.cover,
+                            )
+                          : null,
+                    ),
+                    child: hasAvatar
+                        ? null
+                        : Center(
+                            child: Text(
+                              _initials,
+                              style: AppTypography.title.copyWith(
+                                color: colors.actionOnPrimary,
+                              ),
+                            ),
+                          ),
+                  ),
+                  if (avatarBusy)
+                    Positioned.fill(
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(
+                          color: Colors.black.withValues(alpha: 0.35),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Center(
+                          child: SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                      ),
                     )
-                  : null,
-            ),
-            child: hasAvatar
-                ? null
-                : Center(
-                    child: Text(
-                      _initials,
-                      style: AppTypography.title.copyWith(
-                        color: colors.actionOnPrimary,
+                  else if (onEditAvatar != null)
+                    Positioned(
+                      right: -2,
+                      bottom: -2,
+                      child: Container(
+                        width: 22,
+                        height: 22,
+                        decoration: BoxDecoration(
+                          color: colors.actionPrimaryDefault,
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: colors.surfaceElevated,
+                            width: 2,
+                          ),
+                        ),
+                        child: Icon(
+                          Icons.photo_camera_rounded,
+                          size: 12,
+                          color: colors.actionOnPrimary,
+                        ),
                       ),
                     ),
-                  ),
+                ],
+              ),
+            ),
           ),
           const SizedBox(width: 16),
           Expanded(

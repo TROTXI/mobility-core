@@ -4,14 +4,13 @@ import 'package:trotxi_commuter/core/config/client_metadata.dart';
 import 'package:trotxi_commuter/core/config/layout/responsive_layout.dart';
 import 'package:trotxi_commuter/core/config/theme/app_colors.dart';
 import 'package:trotxi_commuter/core/config/theme/app_typography.dart';
+import 'package:trotxi_commuter/Features/Home/widgets/Tabs/avatar_editing.dart';
 
 /// Full-page "Personal information" editor, pushed from ProfileTab's
 /// "Personal information" row.
 ///
-/// `displayName` is the only field actually editable — it's the one field
-/// `ProfileUpdate` supports. Avatar editing is deferred until there's real
-/// backend support (`POST /v1/me/avatar` exists, but the generated client
-/// method has no way to attach file data yet).
+/// `displayName` is editable via `PATCH /v1/me`, and the avatar via
+/// `PUT`/`DELETE /v1/me/avatar` — both live on the generated `SelfApi`.
 class PersonalInfoPage extends StatefulWidget {
   const PersonalInfoPage({
     super.key,
@@ -26,11 +25,14 @@ class PersonalInfoPage extends StatefulWidget {
   State<PersonalInfoPage> createState() => _PersonalInfoPageState();
 }
 
-class _PersonalInfoPageState extends State<PersonalInfoPage> {
+class _PersonalInfoPageState extends State<PersonalInfoPage>
+    with AvatarEditing<PersonalInfoPage> {
   late final TextEditingController _nameController = TextEditingController(
     text: widget.initialUser.displayName,
   );
   bool _saving = false;
+
+  late String? _avatarUrl = widget.initialUser.avatarUrl;
 
   @override
   void dispose() {
@@ -52,9 +54,14 @@ class _PersonalInfoPageState extends State<PersonalInfoPage> {
     return (parts[0][0] + parts[1][0]).toUpperCase();
   }
 
-  void _onChangePhoto() {
-    // TODO: wire up avatar upload once the API supports it.
-    debugPrint('Change photo tapped');
+  Future<void> _onChangePhoto() async {
+    final hasAvatar = _avatarUrl != null && _avatarUrl!.isNotEmpty;
+    final outcome = await editAvatar(
+      client: widget.client,
+      hasAvatar: hasAvatar,
+    );
+    if (outcome == null || !mounted) return;
+    setState(() => _avatarUrl = outcome.avatarUrl);
   }
 
   Future<void> _onSave() async {
@@ -210,41 +217,68 @@ class _PersonalInfoPageState extends State<PersonalInfoPage> {
 
   Widget _buildAvatarSection(BuildContext context) {
     final colors = context.appColors;
-    final avatarUrl = widget.initialUser.avatarUrl;
+    final avatarUrl = _avatarUrl;
     final hasAvatar = avatarUrl != null && avatarUrl.isNotEmpty;
 
     return Column(
       children: [
-        Container(
+        SizedBox(
           width: 76,
           height: 76,
-          clipBehavior: Clip.antiAlias,
-          decoration: BoxDecoration(
-            color: hasAvatar
-                ? null
-                : colors.actionPrimaryDefault.withValues(alpha: 0.12),
-            shape: BoxShape.circle,
-            image: hasAvatar
-                ? DecorationImage(
-                    image: NetworkImage(avatarUrl),
-                    fit: BoxFit.cover,
-                  )
-                : null,
-          ),
-          child: hasAvatar
-              ? null
-              : Center(
-                  child: Text(
-                    _initials,
-                    style: AppTypography.heading3.copyWith(
-                      color: colors.actionPrimaryDefault,
+          child: Stack(
+            children: [
+              Container(
+                width: 76,
+                height: 76,
+                clipBehavior: Clip.antiAlias,
+                decoration: BoxDecoration(
+                  color: hasAvatar
+                      ? null
+                      : colors.actionPrimaryDefault.withValues(alpha: 0.12),
+                  shape: BoxShape.circle,
+                  image: hasAvatar
+                      ? DecorationImage(
+                          image: NetworkImage(avatarUrl),
+                          fit: BoxFit.cover,
+                        )
+                      : null,
+                ),
+                child: hasAvatar
+                    ? null
+                    : Center(
+                        child: Text(
+                          _initials,
+                          style: AppTypography.heading3.copyWith(
+                            color: colors.actionPrimaryDefault,
+                          ),
+                        ),
+                      ),
+              ),
+              if (avatarBusy)
+                Positioned.fill(
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      color: Colors.black.withValues(alpha: 0.35),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Center(
+                      child: SizedBox(
+                        width: 22,
+                        height: 22,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2.5,
+                          color: Colors.white,
+                        ),
+                      ),
                     ),
                   ),
                 ),
+            ],
+          ),
         ),
         const SizedBox(height: 12),
         GestureDetector(
-          onTap: _onChangePhoto,
+          onTap: avatarBusy ? null : _onChangePhoto,
           child: Text(
             'Change photo',
             style: AppTypography.label.copyWith(
