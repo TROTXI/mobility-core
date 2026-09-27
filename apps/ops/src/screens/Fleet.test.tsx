@@ -115,6 +115,10 @@ describe('Driver onboarding in Fleet', () => {
     expect(
       await within(dialog()).findByText(/was created, but issuing sign-in details failed/),
     ).toBeInTheDocument();
+    // What the retry will use is what is shown: the details can no longer
+    // be edited here, so a corrected address cannot be silently ignored.
+    expect(field(/Email for sign-in/)).toBeDisabled();
+    expect(field(/^Name/)).toBeDisabled();
     fireEvent.click(within(dialog()).getByRole('button', { name: 'Retry sign-in details' }));
     await screen.findByText(/queued for email/);
 

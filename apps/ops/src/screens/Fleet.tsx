@@ -393,25 +393,36 @@ export function Fleet({ view = 'drivers' }: { view?: 'drivers' | 'vehicles' }) {
       >
         {created && (
           <p className="dialog-note" role="status">
-            {created.name} was created. Retrying issues the sign-in details only; the driver is not
-            created again.
+            {created.name} was created. Retrying issues the sign-in details only, to the details
+            shown, which are now fixed; the driver is not created again. To correct them, cancel and
+            use Edit driver, then issue from the driver panel.
           </p>
         )}
         {(mode === 'driver-create' || mode === 'driver-edit') && (
           <>
             <label>
               Name
-              <input required value={name} onChange={(event) => setName(event.target.value)} />
+              <input
+                required
+                value={name}
+                disabled={!!created}
+                onChange={(event) => setName(event.target.value)}
+              />
             </label>
             <label>
               Phone
-              <input value={phone} onChange={(event) => setPhone(event.target.value)} />
+              <input
+                value={phone}
+                disabled={!!created}
+                onChange={(event) => setPhone(event.target.value)}
+              />
             </label>
             <label>
               Email for sign-in instructions
               <input
                 type="email"
                 value={email}
+                disabled={!!created}
                 onChange={(event) => setEmail(event.target.value)}
               />
             </label>
@@ -421,11 +432,19 @@ export function Fleet({ view = 'drivers' }: { view?: 'drivers' | 'vehicles' }) {
             </p>
             <label>
               Licence number
-              <input value={license} onChange={(event) => setLicense(event.target.value)} />
+              <input
+                value={license}
+                disabled={!!created}
+                onChange={(event) => setLicense(event.target.value)}
+              />
             </label>
             <label>
               Linked user ID (optional)
-              <input value={userId} onChange={(event) => setUserId(event.target.value)} />
+              <input
+                value={userId}
+                disabled={!!created}
+                onChange={(event) => setUserId(event.target.value)}
+              />
             </label>
             {mode === 'driver-edit' && (
               <label className="check-row">
