@@ -140,6 +140,7 @@ void main() {
       // TODO
     });
 
+<<<<<<< HEAD
     // get Ops Overview
     //
     //Future<OpsOverviewResponse> getOpsOverview(String window, String xTrotxiClient, int xTrotxiBuild, { String xTrotxiPlatform }) async
@@ -147,6 +148,8 @@ void main() {
       // TODO
     });
 
+=======
+>>>>>>> origin/main
     // get Ops Pattern Version
     //
     //Future<PatternVersionResponse> getOpsPatternVersion(String id, String versionId, String xTrotxiClient, int xTrotxiBuild, { String xTrotxiPlatform }) async
@@ -161,6 +164,7 @@ void main() {
       // TODO
     });
 
+<<<<<<< HEAD
     // initiate Refund
     //
     //Future<RefundInitiationResponse> initiateRefund(String id, String idempotencyKey, String xTrotxiClient, int xTrotxiBuild, RefundInitiationInput refundInitiationInput, { String xTrotxiPlatform }) async
@@ -168,6 +172,8 @@ void main() {
       // TODO
     });
 
+=======
+>>>>>>> origin/main
     // issue Driver Credential
     //
     //Future<CredentialSecretResponse> issueDriverCredential(String id, String idempotencyKey, String xTrotxiClient, int xTrotxiBuild, CredentialIssue credentialIssue, { String xTrotxiPlatform }) async
@@ -301,6 +307,7 @@ void main() {
       // TODO
     });
 
+<<<<<<< HEAD
     // list Refund Initiations
     //
     //Future<RefundInitiationCollectionResponse> listRefundInitiations(String id, String xTrotxiClient, int xTrotxiBuild, { String xTrotxiPlatform }) async
@@ -308,6 +315,8 @@ void main() {
       // TODO
     });
 
+=======
+>>>>>>> origin/main
     // list Schedules
     //
     //Future<SchedulePage> listSchedules(String xTrotxiClient, int xTrotxiBuild, { String cursor, int limit, String routeId, String xTrotxiPlatform }) async
@@ -371,6 +380,7 @@ void main() {
       // TODO
     });
 
+<<<<<<< HEAD
     // run Personal Pause Resumes
     //
     //Future<MaintenanceResultResponse> runPersonalPauseResumes(String xTrotxiClient, int xTrotxiBuild, MaintenanceInput maintenanceInput, { String xTrotxiPlatform }) async
@@ -378,6 +388,8 @@ void main() {
       // TODO
     });
 
+=======
+>>>>>>> origin/main
     // set Flag
     //
     //Future<FlagResponse> setFlag(String key, String ifMatch, String idempotencyKey, String xTrotxiClient, int xTrotxiBuild, FlagEdit flagEdit, { String xTrotxiPlatform }) async

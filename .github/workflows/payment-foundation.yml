@@ -1,0 +1,61 @@
+name: Financial foundation
+
+on:
+  pull_request:
+  push:
+    branches: [main, codex/backend-replacement]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: financial-foundation-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  financial-foundation:
+    name: Financial foundation (Postgres)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgis/postgis:16-3.4
+        env:
+          POSTGRES_USER: harness
+          POSTGRES_PASSWORD: harness-ci-only
+          POSTGRES_DB: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U harness -d postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    env:
+      HARNESS_ADMIN_DATABASE_URL: postgres://harness:harness-ci-only@127.0.0.1:5432/postgres
+      HARNESS_ALLOW_CREATE_DATABASES: '1'
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @trotxi/api-next typecheck
+      - run: pnpm --filter @trotxi/api-next build
+      - name: Contiguous SQL installation and domain service, not full payment comparison
+        working-directory: services/api-next
+        env:
+          REPLACEMENT_EVIDENCE_DIR: ${{ github.workspace }}/.harness-artifacts/financial-foundation
+        run: |
+          mkdir -p ../../.harness-artifacts/financial-foundation
+          node --import tsx --test --test-reporter=spec --test-reporter-destination=stdout --test-reporter=junit --test-reporter-destination=../../.harness-artifacts/financial-foundation/tests.xml tests/payment-foundation.pg.test.ts tests/payment-recovery.pg.test.ts tests/membership.pg.test.ts tests/boarding.pg.test.ts tests/payment-terms.test.ts tests/payment-provider.test.ts
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: financial-foundation-evidence
+          path: .harness-artifacts/financial-foundation/
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 14

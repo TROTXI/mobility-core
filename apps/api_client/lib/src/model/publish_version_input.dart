@@ -11,10 +11,18 @@ part 'publish_version_input.g.dart';
 /// PublishVersionInput
 ///
 /// Properties:
+<<<<<<< HEAD
 /// * [reason] 
 /// * [effectiveFrom] 
 @BuiltValue()
 abstract class PublishVersionInput implements Built<PublishVersionInput, PublishVersionInputBuilder> {
+=======
+/// * [reason]
+/// * [effectiveFrom]
+@BuiltValue()
+abstract class PublishVersionInput
+    implements Built<PublishVersionInput, PublishVersionInputBuilder> {
+>>>>>>> origin/main
   @BuiltValueField(wireName: r'reason')
   String get reason;
 
@@ -23,18 +31,37 @@ abstract class PublishVersionInput implements Built<PublishVersionInput, Publish
 
   PublishVersionInput._();
 
+<<<<<<< HEAD
   factory PublishVersionInput([void updates(PublishVersionInputBuilder b)]) = _$PublishVersionInput;
+=======
+  factory PublishVersionInput([void updates(PublishVersionInputBuilder b)]) =
+      _$PublishVersionInput;
+>>>>>>> origin/main
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(PublishVersionInputBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
+<<<<<<< HEAD
   static Serializer<PublishVersionInput> get serializer => _$PublishVersionInputSerializer();
 }
 
 class _$PublishVersionInputSerializer implements PrimitiveSerializer<PublishVersionInput> {
   @override
   final Iterable<Type> types = const [PublishVersionInput, _$PublishVersionInput];
+=======
+  static Serializer<PublishVersionInput> get serializer =>
+      _$PublishVersionInputSerializer();
+}
+
+class _$PublishVersionInputSerializer
+    implements PrimitiveSerializer<PublishVersionInput> {
+  @override
+  final Iterable<Type> types = const [
+    PublishVersionInput,
+    _$PublishVersionInput
+  ];
+>>>>>>> origin/main
 
   @override
   final String wireName = r'PublishVersionInput';
@@ -62,7 +89,13 @@ class _$PublishVersionInputSerializer implements PrimitiveSerializer<PublishVers
     PublishVersionInput object, {
     FullType specifiedType = FullType.unspecified,
   }) {
+<<<<<<< HEAD
     return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+=======
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
+>>>>>>> origin/main
   }
 
   void _deserializeProperties(
@@ -119,4 +152,7 @@ class _$PublishVersionInputSerializer implements PrimitiveSerializer<PublishVers
     return result.build();
   }
 }
+<<<<<<< HEAD
 
+=======
+>>>>>>> origin/main

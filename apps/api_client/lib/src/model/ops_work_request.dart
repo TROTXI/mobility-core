@@ -13,6 +13,7 @@ part 'ops_work_request.g.dart';
 /// OpsWorkRequest
 ///
 /// Properties:
+<<<<<<< HEAD
 /// * [id] 
 /// * [request] 
 /// * [status] 
@@ -25,6 +26,21 @@ part 'ops_work_request.g.dart';
 /// * [editToken] 
 @BuiltValue()
 abstract class OpsWorkRequest implements Built<OpsWorkRequest, OpsWorkRequestBuilder> {
+=======
+/// * [id]
+/// * [request]
+/// * [status]
+/// * [decisionNote]
+/// * [createdAt]
+/// * [updatedAt]
+/// * [version]
+/// * [driverId]
+/// * [decidedBy]
+/// * [editToken]
+@BuiltValue()
+abstract class OpsWorkRequest
+    implements Built<OpsWorkRequest, OpsWorkRequestBuilder> {
+>>>>>>> origin/main
   @BuiltValueField(wireName: r'id')
   String get id;
 
@@ -58,16 +74,30 @@ abstract class OpsWorkRequest implements Built<OpsWorkRequest, OpsWorkRequestBui
 
   OpsWorkRequest._();
 
+<<<<<<< HEAD
   factory OpsWorkRequest([void updates(OpsWorkRequestBuilder b)]) = _$OpsWorkRequest;
+=======
+  factory OpsWorkRequest([void updates(OpsWorkRequestBuilder b)]) =
+      _$OpsWorkRequest;
+>>>>>>> origin/main
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(OpsWorkRequestBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
+<<<<<<< HEAD
   static Serializer<OpsWorkRequest> get serializer => _$OpsWorkRequestSerializer();
 }
 
 class _$OpsWorkRequestSerializer implements PrimitiveSerializer<OpsWorkRequest> {
+=======
+  static Serializer<OpsWorkRequest> get serializer =>
+      _$OpsWorkRequestSerializer();
+}
+
+class _$OpsWorkRequestSerializer
+    implements PrimitiveSerializer<OpsWorkRequest> {
+>>>>>>> origin/main
   @override
   final Iterable<Type> types = const [OpsWorkRequest, _$OpsWorkRequest];
 
@@ -95,10 +125,19 @@ class _$OpsWorkRequestSerializer implements PrimitiveSerializer<OpsWorkRequest> 
       specifiedType: const FullType(OpsWorkRequestStatusEnum),
     );
     yield r'decisionNote';
+<<<<<<< HEAD
     yield object.decisionNote == null ? null : serializers.serialize(
       object.decisionNote,
       specifiedType: const FullType.nullable(String),
     );
+=======
+    yield object.decisionNote == null
+        ? null
+        : serializers.serialize(
+            object.decisionNote,
+            specifiedType: const FullType.nullable(String),
+          );
+>>>>>>> origin/main
     yield r'createdAt';
     yield serializers.serialize(
       object.createdAt,
@@ -120,10 +159,19 @@ class _$OpsWorkRequestSerializer implements PrimitiveSerializer<OpsWorkRequest> 
       specifiedType: const FullType(String),
     );
     yield r'decidedBy';
+<<<<<<< HEAD
     yield object.decidedBy == null ? null : serializers.serialize(
       object.decidedBy,
       specifiedType: const FullType.nullable(String),
     );
+=======
+    yield object.decidedBy == null
+        ? null
+        : serializers.serialize(
+            object.decidedBy,
+            specifiedType: const FullType.nullable(String),
+          );
+>>>>>>> origin/main
     yield r'editToken';
     yield serializers.serialize(
       object.editToken,
@@ -137,7 +185,13 @@ class _$OpsWorkRequestSerializer implements PrimitiveSerializer<OpsWorkRequest> 
     OpsWorkRequest object, {
     FullType specifiedType = FullType.unspecified,
   }) {
+<<<<<<< HEAD
     return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+=======
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
+>>>>>>> origin/main
   }
 
   void _deserializeProperties(
@@ -254,6 +308,7 @@ class _$OpsWorkRequestSerializer implements PrimitiveSerializer<OpsWorkRequest> 
 }
 
 class OpsWorkRequestStatusEnum extends EnumClass {
+<<<<<<< HEAD
 
   @BuiltValueEnumConst(wireName: r'pending')
   static const OpsWorkRequestStatusEnum pending = _$opsWorkRequestStatusEnum_pending;
@@ -272,3 +327,28 @@ class OpsWorkRequestStatusEnum extends EnumClass {
   static OpsWorkRequestStatusEnum valueOf(String name) => _$opsWorkRequestStatusEnumValueOf(name);
 }
 
+=======
+  @BuiltValueEnumConst(wireName: r'pending')
+  static const OpsWorkRequestStatusEnum pending =
+      _$opsWorkRequestStatusEnum_pending;
+  @BuiltValueEnumConst(wireName: r'approved')
+  static const OpsWorkRequestStatusEnum approved =
+      _$opsWorkRequestStatusEnum_approved;
+  @BuiltValueEnumConst(wireName: r'declined')
+  static const OpsWorkRequestStatusEnum declined =
+      _$opsWorkRequestStatusEnum_declined;
+  @BuiltValueEnumConst(wireName: r'withdrawn')
+  static const OpsWorkRequestStatusEnum withdrawn =
+      _$opsWorkRequestStatusEnum_withdrawn;
+
+  static Serializer<OpsWorkRequestStatusEnum> get serializer =>
+      _$opsWorkRequestStatusEnumSerializer;
+
+  const OpsWorkRequestStatusEnum._(String name) : super(name);
+
+  static BuiltSet<OpsWorkRequestStatusEnum> get values =>
+      _$opsWorkRequestStatusEnumValues;
+  static OpsWorkRequestStatusEnum valueOf(String name) =>
+      _$opsWorkRequestStatusEnumValueOf(name);
+}
+>>>>>>> origin/main

@@ -14,10 +14,18 @@ part 'ops_work_request_page.g.dart';
 /// OpsWorkRequestPage
 ///
 /// Properties:
+<<<<<<< HEAD
 /// * [data] 
 /// * [page] 
 @BuiltValue()
 abstract class OpsWorkRequestPage implements Built<OpsWorkRequestPage, OpsWorkRequestPageBuilder> {
+=======
+/// * [data]
+/// * [page]
+@BuiltValue()
+abstract class OpsWorkRequestPage
+    implements Built<OpsWorkRequestPage, OpsWorkRequestPageBuilder> {
+>>>>>>> origin/main
   @BuiltValueField(wireName: r'data')
   BuiltList<OpsWorkRequest> get data;
 
@@ -26,16 +34,30 @@ abstract class OpsWorkRequestPage implements Built<OpsWorkRequestPage, OpsWorkRe
 
   OpsWorkRequestPage._();
 
+<<<<<<< HEAD
   factory OpsWorkRequestPage([void updates(OpsWorkRequestPageBuilder b)]) = _$OpsWorkRequestPage;
+=======
+  factory OpsWorkRequestPage([void updates(OpsWorkRequestPageBuilder b)]) =
+      _$OpsWorkRequestPage;
+>>>>>>> origin/main
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(OpsWorkRequestPageBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
+<<<<<<< HEAD
   static Serializer<OpsWorkRequestPage> get serializer => _$OpsWorkRequestPageSerializer();
 }
 
 class _$OpsWorkRequestPageSerializer implements PrimitiveSerializer<OpsWorkRequestPage> {
+=======
+  static Serializer<OpsWorkRequestPage> get serializer =>
+      _$OpsWorkRequestPageSerializer();
+}
+
+class _$OpsWorkRequestPageSerializer
+    implements PrimitiveSerializer<OpsWorkRequestPage> {
+>>>>>>> origin/main
   @override
   final Iterable<Type> types = const [OpsWorkRequestPage, _$OpsWorkRequestPage];
 
@@ -65,7 +87,13 @@ class _$OpsWorkRequestPageSerializer implements PrimitiveSerializer<OpsWorkReque
     OpsWorkRequestPage object, {
     FullType specifiedType = FullType.unspecified,
   }) {
+<<<<<<< HEAD
     return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+=======
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
+>>>>>>> origin/main
   }
 
   void _deserializeProperties(
@@ -83,7 +111,12 @@ class _$OpsWorkRequestPageSerializer implements PrimitiveSerializer<OpsWorkReque
         case r'data':
           final valueDes = serializers.deserialize(
             value,
+<<<<<<< HEAD
             specifiedType: const FullType(BuiltList, [FullType(OpsWorkRequest)]),
+=======
+            specifiedType:
+                const FullType(BuiltList, [FullType(OpsWorkRequest)]),
+>>>>>>> origin/main
           ) as BuiltList<OpsWorkRequest>;
           result.data.replace(valueDes);
           break;
@@ -122,4 +155,7 @@ class _$OpsWorkRequestPageSerializer implements PrimitiveSerializer<OpsWorkReque
     return result.build();
   }
 }
+<<<<<<< HEAD
 
+=======
+>>>>>>> origin/main

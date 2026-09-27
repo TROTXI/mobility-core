@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:trotxi_client/trotxi_client.dart';
+import 'package:trotxi_driver/core/api/driver_api.dart';
 import 'package:trotxi_driver/core/config/corridor_time.dart';
 import 'package:trotxi_driver/core/config/theme/app_colors.dart';
 import 'package:trotxi_driver/core/config/theme/app_radii.dart';
@@ -112,7 +112,7 @@ class _RunSummaryPageState extends State<RunSummaryPage> {
                   ),
                   const SizedBox(height: AppSpacing.space4),
                   Text(
-                    'Boarding is closed and the final position is saved.',
+                    'Boarding is closed for this run.',
                     textAlign: TextAlign.center,
                     style: AppTypography.screenContext.copyWith(
                       color: colors.textSecondary,
@@ -166,7 +166,9 @@ class _RunSummaryPageState extends State<RunSummaryPage> {
               if (summary.boarded > 0)
                 _Record(
                   heading: 'Boarded by',
-                  value: '${summary.byQr} scanned · ${summary.byPin} by code',
+                  value:
+                      '${summary.byQr} scanned · ${summary.byPin} by code · '
+                      '${summary.byPhoto} from manifest',
                   note:
                       'Riders who never boarded stay on the manifest as not '
                       'boarded, and nothing has been deducted for them. The '
@@ -204,7 +206,7 @@ class _RunSummaryPageState extends State<RunSummaryPage> {
   /// @returns the grid's stop figure.
   static String _stops(RunDetail? detail) {
     if (detail == null || detail.stops.isEmpty) return '—';
-    return '${detail.currentStopSeq ?? 0} / ${detail.stops.length}';
+    return '${detail.currentStopNumber ?? 0} / ${detail.stops.length}';
   }
 
   /// A duration as whole minutes, which is the only precision a driver cares

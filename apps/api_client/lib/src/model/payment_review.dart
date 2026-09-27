@@ -13,6 +13,7 @@ part 'payment_review.g.dart';
 /// PaymentReview
 ///
 /// Properties:
+<<<<<<< HEAD
 /// * [id] 
 /// * [kind] 
 /// * [editToken] 
@@ -23,6 +24,19 @@ part 'payment_review.g.dart';
 /// * [updatedAt] 
 @BuiltValue()
 abstract class PaymentReview implements Built<PaymentReview, PaymentReviewBuilder> {
+=======
+/// * [id]
+/// * [kind]
+/// * [editToken]
+/// * [purchaseId]
+/// * [status]
+/// * [amount]
+/// * [reason]
+/// * [updatedAt]
+@BuiltValue()
+abstract class PaymentReview
+    implements Built<PaymentReview, PaymentReviewBuilder> {
+>>>>>>> origin/main
   @BuiltValueField(wireName: r'id')
   String get id;
 
@@ -50,13 +64,23 @@ abstract class PaymentReview implements Built<PaymentReview, PaymentReviewBuilde
 
   PaymentReview._();
 
+<<<<<<< HEAD
   factory PaymentReview([void updates(PaymentReviewBuilder b)]) = _$PaymentReview;
+=======
+  factory PaymentReview([void updates(PaymentReviewBuilder b)]) =
+      _$PaymentReview;
+>>>>>>> origin/main
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(PaymentReviewBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
+<<<<<<< HEAD
   static Serializer<PaymentReview> get serializer => _$PaymentReviewSerializer();
+=======
+  static Serializer<PaymentReview> get serializer =>
+      _$PaymentReviewSerializer();
+>>>>>>> origin/main
 }
 
 class _$PaymentReviewSerializer implements PrimitiveSerializer<PaymentReview> {
@@ -102,10 +126,19 @@ class _$PaymentReviewSerializer implements PrimitiveSerializer<PaymentReview> {
       specifiedType: const FullType(Money),
     );
     yield r'reason';
+<<<<<<< HEAD
     yield object.reason == null ? null : serializers.serialize(
       object.reason,
       specifiedType: const FullType.nullable(String),
     );
+=======
+    yield object.reason == null
+        ? null
+        : serializers.serialize(
+            object.reason,
+            specifiedType: const FullType.nullable(String),
+          );
+>>>>>>> origin/main
     yield r'updatedAt';
     yield serializers.serialize(
       object.updatedAt,
@@ -119,7 +152,13 @@ class _$PaymentReviewSerializer implements PrimitiveSerializer<PaymentReview> {
     PaymentReview object, {
     FullType specifiedType = FullType.unspecified,
   }) {
+<<<<<<< HEAD
     return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+=======
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
+>>>>>>> origin/main
   }
 
   void _deserializeProperties(
@@ -221,12 +260,16 @@ class _$PaymentReviewSerializer implements PrimitiveSerializer<PaymentReview> {
 }
 
 class PaymentReviewKindEnum extends EnumClass {
+<<<<<<< HEAD
 
+=======
+>>>>>>> origin/main
   @BuiltValueEnumConst(wireName: r'refund')
   static const PaymentReviewKindEnum refund = _$paymentReviewKindEnum_refund;
   @BuiltValueEnumConst(wireName: r'dispute')
   static const PaymentReviewKindEnum dispute = _$paymentReviewKindEnum_dispute;
   @BuiltValueEnumConst(wireName: r'manual_review')
+<<<<<<< HEAD
   static const PaymentReviewKindEnum manualReview = _$paymentReviewKindEnum_manualReview;
 
   static Serializer<PaymentReviewKindEnum> get serializer => _$paymentReviewKindEnumSerializer;
@@ -237,3 +280,18 @@ class PaymentReviewKindEnum extends EnumClass {
   static PaymentReviewKindEnum valueOf(String name) => _$paymentReviewKindEnumValueOf(name);
 }
 
+=======
+  static const PaymentReviewKindEnum manualReview =
+      _$paymentReviewKindEnum_manualReview;
+
+  static Serializer<PaymentReviewKindEnum> get serializer =>
+      _$paymentReviewKindEnumSerializer;
+
+  const PaymentReviewKindEnum._(String name) : super(name);
+
+  static BuiltSet<PaymentReviewKindEnum> get values =>
+      _$paymentReviewKindEnumValues;
+  static PaymentReviewKindEnum valueOf(String name) =>
+      _$paymentReviewKindEnumValueOf(name);
+}
+>>>>>>> origin/main

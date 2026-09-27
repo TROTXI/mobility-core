@@ -12,26 +12,55 @@ part 'optional_personal_pause_response.g.dart';
 /// OptionalPersonalPauseResponse
 ///
 /// Properties:
+<<<<<<< HEAD
 /// * [data] 
 @BuiltValue()
 abstract class OptionalPersonalPauseResponse implements Built<OptionalPersonalPauseResponse, OptionalPersonalPauseResponseBuilder> {
+=======
+/// * [data]
+@BuiltValue()
+abstract class OptionalPersonalPauseResponse
+    implements
+        Built<OptionalPersonalPauseResponse,
+            OptionalPersonalPauseResponseBuilder> {
+>>>>>>> origin/main
   @BuiltValueField(wireName: r'data')
   OptionalPersonalPause? get data;
 
   OptionalPersonalPauseResponse._();
 
+<<<<<<< HEAD
   factory OptionalPersonalPauseResponse([void updates(OptionalPersonalPauseResponseBuilder b)]) = _$OptionalPersonalPauseResponse;
+=======
+  factory OptionalPersonalPauseResponse(
+          [void updates(OptionalPersonalPauseResponseBuilder b)]) =
+      _$OptionalPersonalPauseResponse;
+>>>>>>> origin/main
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(OptionalPersonalPauseResponseBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
+<<<<<<< HEAD
   static Serializer<OptionalPersonalPauseResponse> get serializer => _$OptionalPersonalPauseResponseSerializer();
 }
 
 class _$OptionalPersonalPauseResponseSerializer implements PrimitiveSerializer<OptionalPersonalPauseResponse> {
   @override
   final Iterable<Type> types = const [OptionalPersonalPauseResponse, _$OptionalPersonalPauseResponse];
+=======
+  static Serializer<OptionalPersonalPauseResponse> get serializer =>
+      _$OptionalPersonalPauseResponseSerializer();
+}
+
+class _$OptionalPersonalPauseResponseSerializer
+    implements PrimitiveSerializer<OptionalPersonalPauseResponse> {
+  @override
+  final Iterable<Type> types = const [
+    OptionalPersonalPauseResponse,
+    _$OptionalPersonalPauseResponse
+  ];
+>>>>>>> origin/main
 
   @override
   final String wireName = r'OptionalPersonalPauseResponse';
@@ -42,10 +71,19 @@ class _$OptionalPersonalPauseResponseSerializer implements PrimitiveSerializer<O
     FullType specifiedType = FullType.unspecified,
   }) sync* {
     yield r'data';
+<<<<<<< HEAD
     yield object.data == null ? null : serializers.serialize(
       object.data,
       specifiedType: const FullType.nullable(OptionalPersonalPause),
     );
+=======
+    yield object.data == null
+        ? null
+        : serializers.serialize(
+            object.data,
+            specifiedType: const FullType.nullable(OptionalPersonalPause),
+          );
+>>>>>>> origin/main
   }
 
   @override
@@ -54,7 +92,13 @@ class _$OptionalPersonalPauseResponseSerializer implements PrimitiveSerializer<O
     OptionalPersonalPauseResponse object, {
     FullType specifiedType = FullType.unspecified,
   }) {
+<<<<<<< HEAD
     return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+=======
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
+>>>>>>> origin/main
   }
 
   void _deserializeProperties(
@@ -105,4 +149,7 @@ class _$OptionalPersonalPauseResponseSerializer implements PrimitiveSerializer<O
     return result.build();
   }
 }
+<<<<<<< HEAD
 
+=======
+>>>>>>> origin/main

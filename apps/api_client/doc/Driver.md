@@ -8,6 +8,7 @@ import 'package:trotxi_api_client/api.dart';
 ## Properties
 Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
+<<<<<<< HEAD
 **id** | **String** |  | 
 **name** | **String** |  | 
 **phone** | **String** |  | 
@@ -18,6 +19,22 @@ Name | Type | Description | Notes
 **createdAt** | [**DateTime**](DateTime.md) |  | 
 **updatedAt** | [**DateTime**](DateTime.md) |  | 
 **version** | **int** |  | 
+=======
+**id** | **String** |  |
+**name** | **String** |  |
+**phone** | **String** |  |
+**email** | **String** |  |
+**licenseNumber** | **String** |  |
+**userId** | **String** |  |
+**archived** | **bool** |  |
+**credential** | [**DriverCredential**](DriverCredential.md) |  |
+**credentialEmail** | [**DriverCredentialEmail**](DriverCredentialEmail.md) |  |
+**credentialSms** | [**DriverCredentialSms**](DriverCredentialSms.md) |  | [optional]
+**editToken** | **String** |  |
+**createdAt** | [**DateTime**](DateTime.md) |  |
+**updatedAt** | [**DateTime**](DateTime.md) |  |
+**version** | **int** |  |
+>>>>>>> origin/main
 
 [[Back to Model list]](../README.md#documentation-for-models) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to README]](../README.md)
 

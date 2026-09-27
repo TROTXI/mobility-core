@@ -16,11 +16,19 @@ part 'bootstrap.g.dart';
 /// Bootstrap
 ///
 /// Properties:
+<<<<<<< HEAD
 /// * [serverTime] 
 /// * [applications] 
 /// * [operations] 
 /// * [mapTiles] 
 /// * [flags] 
+=======
+/// * [serverTime]
+/// * [applications]
+/// * [operations]
+/// * [mapTiles]
+/// * [flags]
+>>>>>>> origin/main
 @BuiltValue()
 abstract class Bootstrap implements Built<Bootstrap, BootstrapBuilder> {
   @BuiltValueField(wireName: r'serverTime')
@@ -69,7 +77,12 @@ class _$BootstrapSerializer implements PrimitiveSerializer<Bootstrap> {
     yield r'applications';
     yield serializers.serialize(
       object.applications,
+<<<<<<< HEAD
       specifiedType: const FullType(BuiltList, [FullType(BootstrapApplicationsInner)]),
+=======
+      specifiedType:
+          const FullType(BuiltList, [FullType(BootstrapApplicationsInner)]),
+>>>>>>> origin/main
     );
     yield r'operations';
     yield serializers.serialize(
@@ -94,7 +107,13 @@ class _$BootstrapSerializer implements PrimitiveSerializer<Bootstrap> {
     Bootstrap object, {
     FullType specifiedType = FullType.unspecified,
   }) {
+<<<<<<< HEAD
     return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+=======
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
+>>>>>>> origin/main
   }
 
   void _deserializeProperties(
@@ -119,7 +138,12 @@ class _$BootstrapSerializer implements PrimitiveSerializer<Bootstrap> {
         case r'applications':
           final valueDes = serializers.deserialize(
             value,
+<<<<<<< HEAD
             specifiedType: const FullType(BuiltList, [FullType(BootstrapApplicationsInner)]),
+=======
+            specifiedType: const FullType(
+                BuiltList, [FullType(BootstrapApplicationsInner)]),
+>>>>>>> origin/main
           ) as BuiltList<BootstrapApplicationsInner>;
           result.applications.replace(valueDes);
           break;
@@ -140,7 +164,12 @@ class _$BootstrapSerializer implements PrimitiveSerializer<Bootstrap> {
         case r'flags':
           final valueDes = serializers.deserialize(
             value,
+<<<<<<< HEAD
             specifiedType: const FullType(BuiltList, [FullType(BootstrapFlagsInner)]),
+=======
+            specifiedType:
+                const FullType(BuiltList, [FullType(BootstrapFlagsInner)]),
+>>>>>>> origin/main
           ) as BuiltList<BootstrapFlagsInner>;
           result.flags.replace(valueDes);
           break;
@@ -172,4 +201,7 @@ class _$BootstrapSerializer implements PrimitiveSerializer<Bootstrap> {
     return result.build();
   }
 }
+<<<<<<< HEAD
 
+=======
+>>>>>>> origin/main

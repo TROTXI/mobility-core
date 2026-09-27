@@ -12,10 +12,18 @@ part 'personal_pause_input.g.dart';
 /// PersonalPauseInput
 ///
 /// Properties:
+<<<<<<< HEAD
 /// * [startDate] 
 /// * [resumeDate] 
 @BuiltValue()
 abstract class PersonalPauseInput implements Built<PersonalPauseInput, PersonalPauseInputBuilder> {
+=======
+/// * [startDate]
+/// * [resumeDate]
+@BuiltValue()
+abstract class PersonalPauseInput
+    implements Built<PersonalPauseInput, PersonalPauseInputBuilder> {
+>>>>>>> origin/main
   @BuiltValueField(wireName: r'startDate')
   Date get startDate;
 
@@ -24,16 +32,30 @@ abstract class PersonalPauseInput implements Built<PersonalPauseInput, PersonalP
 
   PersonalPauseInput._();
 
+<<<<<<< HEAD
   factory PersonalPauseInput([void updates(PersonalPauseInputBuilder b)]) = _$PersonalPauseInput;
+=======
+  factory PersonalPauseInput([void updates(PersonalPauseInputBuilder b)]) =
+      _$PersonalPauseInput;
+>>>>>>> origin/main
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(PersonalPauseInputBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
+<<<<<<< HEAD
   static Serializer<PersonalPauseInput> get serializer => _$PersonalPauseInputSerializer();
 }
 
 class _$PersonalPauseInputSerializer implements PrimitiveSerializer<PersonalPauseInput> {
+=======
+  static Serializer<PersonalPauseInput> get serializer =>
+      _$PersonalPauseInputSerializer();
+}
+
+class _$PersonalPauseInputSerializer
+    implements PrimitiveSerializer<PersonalPauseInput> {
+>>>>>>> origin/main
   @override
   final Iterable<Type> types = const [PersonalPauseInput, _$PersonalPauseInput];
 
@@ -63,7 +85,13 @@ class _$PersonalPauseInputSerializer implements PrimitiveSerializer<PersonalPaus
     PersonalPauseInput object, {
     FullType specifiedType = FullType.unspecified,
   }) {
+<<<<<<< HEAD
     return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+=======
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
+>>>>>>> origin/main
   }
 
   void _deserializeProperties(
@@ -120,4 +148,7 @@ class _$PersonalPauseInputSerializer implements PrimitiveSerializer<PersonalPaus
     return result.build();
   }
 }
+<<<<<<< HEAD
 
+=======
+>>>>>>> origin/main

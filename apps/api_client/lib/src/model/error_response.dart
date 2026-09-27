@@ -12,21 +12,38 @@ part 'error_response.g.dart';
 /// ErrorResponse
 ///
 /// Properties:
+<<<<<<< HEAD
 /// * [error] 
 @BuiltValue()
 abstract class ErrorResponse implements Built<ErrorResponse, ErrorResponseBuilder> {
+=======
+/// * [error]
+@BuiltValue()
+abstract class ErrorResponse
+    implements Built<ErrorResponse, ErrorResponseBuilder> {
+>>>>>>> origin/main
   @BuiltValueField(wireName: r'error')
   ErrorResponseError get error;
 
   ErrorResponse._();
 
+<<<<<<< HEAD
   factory ErrorResponse([void updates(ErrorResponseBuilder b)]) = _$ErrorResponse;
+=======
+  factory ErrorResponse([void updates(ErrorResponseBuilder b)]) =
+      _$ErrorResponse;
+>>>>>>> origin/main
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(ErrorResponseBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
+<<<<<<< HEAD
   static Serializer<ErrorResponse> get serializer => _$ErrorResponseSerializer();
+=======
+  static Serializer<ErrorResponse> get serializer =>
+      _$ErrorResponseSerializer();
+>>>>>>> origin/main
 }
 
 class _$ErrorResponseSerializer implements PrimitiveSerializer<ErrorResponse> {
@@ -54,7 +71,13 @@ class _$ErrorResponseSerializer implements PrimitiveSerializer<ErrorResponse> {
     ErrorResponse object, {
     FullType specifiedType = FullType.unspecified,
   }) {
+<<<<<<< HEAD
     return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+=======
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
+>>>>>>> origin/main
   }
 
   void _deserializeProperties(
@@ -104,4 +127,7 @@ class _$ErrorResponseSerializer implements PrimitiveSerializer<ErrorResponse> {
     return result.build();
   }
 }
+<<<<<<< HEAD
 
+=======
+>>>>>>> origin/main

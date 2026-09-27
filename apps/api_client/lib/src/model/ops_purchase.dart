@@ -15,6 +15,7 @@ part 'ops_purchase.g.dart';
 /// OpsPurchase
 ///
 /// Properties:
+<<<<<<< HEAD
 /// * [id] 
 /// * [plan] 
 /// * [state] 
@@ -28,6 +29,21 @@ part 'ops_purchase.g.dart';
 /// * [createdAt] 
 /// * [riderId] 
 /// * [attempts] 
+=======
+/// * [id]
+/// * [plan]
+/// * [state]
+/// * [collectionState]
+/// * [price]
+/// * [appliedCredit]
+/// * [cashDue]
+/// * [checkout]
+/// * [billingPeriodId]
+/// * [failureCode]
+/// * [createdAt]
+/// * [riderId]
+/// * [attempts]
+>>>>>>> origin/main
 @BuiltValue()
 abstract class OpsPurchase implements Built<OpsPurchase, OpsPurchaseBuilder> {
   @BuiltValueField(wireName: r'id')
@@ -131,6 +147,7 @@ class _$OpsPurchaseSerializer implements PrimitiveSerializer<OpsPurchase> {
       specifiedType: const FullType(Money),
     );
     yield r'checkout';
+<<<<<<< HEAD
     yield object.checkout == null ? null : serializers.serialize(
       object.checkout,
       specifiedType: const FullType.nullable(OpsPurchaseCheckout),
@@ -145,6 +162,28 @@ class _$OpsPurchaseSerializer implements PrimitiveSerializer<OpsPurchase> {
       object.failureCode,
       specifiedType: const FullType.nullable(String),
     );
+=======
+    yield object.checkout == null
+        ? null
+        : serializers.serialize(
+            object.checkout,
+            specifiedType: const FullType.nullable(OpsPurchaseCheckout),
+          );
+    yield r'billingPeriodId';
+    yield object.billingPeriodId == null
+        ? null
+        : serializers.serialize(
+            object.billingPeriodId,
+            specifiedType: const FullType.nullable(String),
+          );
+    yield r'failureCode';
+    yield object.failureCode == null
+        ? null
+        : serializers.serialize(
+            object.failureCode,
+            specifiedType: const FullType.nullable(String),
+          );
+>>>>>>> origin/main
     yield r'createdAt';
     yield serializers.serialize(
       object.createdAt,
@@ -158,7 +197,12 @@ class _$OpsPurchaseSerializer implements PrimitiveSerializer<OpsPurchase> {
     yield r'attempts';
     yield serializers.serialize(
       object.attempts,
+<<<<<<< HEAD
       specifiedType: const FullType(BuiltList, [FullType(OpsPurchaseAttemptsInner)]),
+=======
+      specifiedType:
+          const FullType(BuiltList, [FullType(OpsPurchaseAttemptsInner)]),
+>>>>>>> origin/main
     );
   }
 
@@ -168,7 +212,13 @@ class _$OpsPurchaseSerializer implements PrimitiveSerializer<OpsPurchase> {
     OpsPurchase object, {
     FullType specifiedType = FullType.unspecified,
   }) {
+<<<<<<< HEAD
     return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+=======
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
+>>>>>>> origin/main
   }
 
   void _deserializeProperties(
@@ -273,7 +323,12 @@ class _$OpsPurchaseSerializer implements PrimitiveSerializer<OpsPurchase> {
         case r'attempts':
           final valueDes = serializers.deserialize(
             value,
+<<<<<<< HEAD
             specifiedType: const FullType(BuiltList, [FullType(OpsPurchaseAttemptsInner)]),
+=======
+            specifiedType:
+                const FullType(BuiltList, [FullType(OpsPurchaseAttemptsInner)]),
+>>>>>>> origin/main
           ) as BuiltList<OpsPurchaseAttemptsInner>;
           result.attempts.replace(valueDes);
           break;
@@ -307,12 +362,16 @@ class _$OpsPurchaseSerializer implements PrimitiveSerializer<OpsPurchase> {
 }
 
 class OpsPurchasePlanEnum extends EnumClass {
+<<<<<<< HEAD
 
+=======
+>>>>>>> origin/main
   @BuiltValueEnumConst(wireName: r'monthly')
   static const OpsPurchasePlanEnum monthly = _$opsPurchasePlanEnum_monthly;
   @BuiltValueEnumConst(wireName: r'annual')
   static const OpsPurchasePlanEnum annual = _$opsPurchasePlanEnum_annual;
 
+<<<<<<< HEAD
   static Serializer<OpsPurchasePlanEnum> get serializer => _$opsPurchasePlanEnumSerializer;
 
   const OpsPurchasePlanEnum._(String name): super(name);
@@ -363,3 +422,70 @@ class OpsPurchaseCollectionStateEnum extends EnumClass {
   static OpsPurchaseCollectionStateEnum valueOf(String name) => _$opsPurchaseCollectionStateEnumValueOf(name);
 }
 
+=======
+  static Serializer<OpsPurchasePlanEnum> get serializer =>
+      _$opsPurchasePlanEnumSerializer;
+
+  const OpsPurchasePlanEnum._(String name) : super(name);
+
+  static BuiltSet<OpsPurchasePlanEnum> get values =>
+      _$opsPurchasePlanEnumValues;
+  static OpsPurchasePlanEnum valueOf(String name) =>
+      _$opsPurchasePlanEnumValueOf(name);
+}
+
+class OpsPurchaseStateEnum extends EnumClass {
+  @BuiltValueEnumConst(wireName: r'awaiting_payment')
+  static const OpsPurchaseStateEnum awaitingPayment =
+      _$opsPurchaseStateEnum_awaitingPayment;
+  @BuiltValueEnumConst(wireName: r'processing')
+  static const OpsPurchaseStateEnum processing =
+      _$opsPurchaseStateEnum_processing;
+  @BuiltValueEnumConst(wireName: r'fulfilled')
+  static const OpsPurchaseStateEnum fulfilled =
+      _$opsPurchaseStateEnum_fulfilled;
+  @BuiltValueEnumConst(wireName: r'failed')
+  static const OpsPurchaseStateEnum failed = _$opsPurchaseStateEnum_failed;
+  @BuiltValueEnumConst(wireName: r'cancelled')
+  static const OpsPurchaseStateEnum cancelled =
+      _$opsPurchaseStateEnum_cancelled;
+  @BuiltValueEnumConst(wireName: r'review_required')
+  static const OpsPurchaseStateEnum reviewRequired =
+      _$opsPurchaseStateEnum_reviewRequired;
+
+  static Serializer<OpsPurchaseStateEnum> get serializer =>
+      _$opsPurchaseStateEnumSerializer;
+
+  const OpsPurchaseStateEnum._(String name) : super(name);
+
+  static BuiltSet<OpsPurchaseStateEnum> get values =>
+      _$opsPurchaseStateEnumValues;
+  static OpsPurchaseStateEnum valueOf(String name) =>
+      _$opsPurchaseStateEnumValueOf(name);
+}
+
+class OpsPurchaseCollectionStateEnum extends EnumClass {
+  @BuiltValueEnumConst(wireName: r'pending')
+  static const OpsPurchaseCollectionStateEnum pending =
+      _$opsPurchaseCollectionStateEnum_pending;
+  @BuiltValueEnumConst(wireName: r'successful')
+  static const OpsPurchaseCollectionStateEnum successful =
+      _$opsPurchaseCollectionStateEnum_successful;
+  @BuiltValueEnumConst(wireName: r'failed')
+  static const OpsPurchaseCollectionStateEnum failed =
+      _$opsPurchaseCollectionStateEnum_failed;
+  @BuiltValueEnumConst(wireName: r'unknown')
+  static const OpsPurchaseCollectionStateEnum unknown =
+      _$opsPurchaseCollectionStateEnum_unknown;
+
+  static Serializer<OpsPurchaseCollectionStateEnum> get serializer =>
+      _$opsPurchaseCollectionStateEnumSerializer;
+
+  const OpsPurchaseCollectionStateEnum._(String name) : super(name);
+
+  static BuiltSet<OpsPurchaseCollectionStateEnum> get values =>
+      _$opsPurchaseCollectionStateEnumValues;
+  static OpsPurchaseCollectionStateEnum valueOf(String name) =>
+      _$opsPurchaseCollectionStateEnumValueOf(name);
+}
+>>>>>>> origin/main

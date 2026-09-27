@@ -1,0 +1,396 @@
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import contract from '../src/http/contract.json' with { type: 'json' };
+import { readFile } from 'node:fs/promises';
+import { openApiDocument } from '../src/http/openapi.js';
+import { Pool } from 'pg';
+import { canonical, tripEditToken } from '../src/transport/service.js';
+import { cursorCodec } from '../src/transport/cursor.js';
+import { createTransportApp } from '../src/http/app.js';
+import type { AppOptions } from '../src/http/app.js';
+import { TransportError } from '../src/transport/errors.js';
+
+const rejectBookingChanges = async () => {
+  throw new Error('This pure-test adapter must never perform booking work');
+};
+
+test('Paystack webhook shares anonymous admission before parsing and preserves signed bytes', async () => {
+  const pool = new Pool();
+  let count = 0,
+    accepted = 0,
+    unavailable = false;
+  const raw = '{ "event" : "charge.success", "data":{} }';
+  const options: AppOptions = {
+    pool,
+    coordinateReservations: rejectBookingChanges,
+    cursorSecret: Buffer.alloc(32, 9),
+    requestsPerIpPerMinute: 1,
+    admitIp: async (_ip, bucket) => {
+      assert.equal(bucket, 'all');
+      if (unavailable) throw new Error('admission offline');
+      return { count: ++count, resetsInSeconds: 37 };
+    },
+    verifyAccess: async () => {
+      throw new Error('webhooks do not verify access tokens');
+    },
+    authorizeSession: async () => {
+      throw new Error('unexpected database access');
+    },
+    payments: {
+      acceptWebhook: async (body: Buffer, signature: unknown) => {
+        assert.equal(body.toString('utf8'), raw);
+        assert.equal(signature, 'test-signature');
+        accepted++;
+        return { received: true };
+      },
+    } as AppOptions['payments'],
+    minimumBuilds: { ops: 1, driver: { ios: 1, android: 1 }, commuter: { ios: 1, android: 1 } },
+  };
+  const a = await createTransportApp(options),
+    b = await createTransportApp(options),
+    c = await createTransportApp(options);
+  const hook = {
+    method: 'POST' as const,
+    url: '/webhooks/paystack',
+    headers: { 'content-type': 'application/json', 'x-paystack-signature': 'test-signature' },
+    payload: raw,
+  };
+  try {
+    assert.equal((await a.inject(hook)).statusCode, 200);
+    const limited = await b.inject(hook);
+    assert.equal(limited.statusCode, 429);
+    assert.equal(limited.headers['retry-after'], '37');
+    assert.equal(accepted, 1, 'limited requests never reach signature verification');
+    assert.equal(
+      (await c.inject({ url: '/v1/routes' })).statusCode,
+      429,
+      'webhook and catalogue share the same all bucket',
+    );
+    unavailable = true;
+    const failed = await b.inject({ ...hook, remoteAddress: '192.0.2.91' });
+    assert.equal(failed.statusCode, 503);
+    assert.equal(failed.json().error.code, 'admission_unavailable');
+    assert.equal(accepted, 1);
+  } finally {
+    await a.close();
+    await b.close();
+    await c.close();
+    await pool.end();
+  }
+});
+
+test('application refuses an absent or non-callable coordinator before startup or database work', async () => {
+  const pool = new Pool();
+  try {
+    for (const coordinateReservations of [undefined, null, false, {}]) {
+      await assert.rejects(
+        createTransportApp({
+          pool,
+          cursorSecret: Buffer.alloc(32, 9),
+          verifyAccess: async () => {
+            throw new Error('must not verify access');
+          },
+          authorizeSession: async () => {
+            throw new Error('must not query session');
+          },
+          minimumBuilds: {
+            ops: 1,
+            driver: { ios: 1, android: 1 },
+            commuter: { ios: 1, android: 1 },
+          },
+          // Deliberately bypass TS as a JS/misconfigured bootstrap caller could.
+          coordinateReservations,
+        } as AppOptions),
+        /^Error: Transactional reservation coordinator required before application startup$/,
+      );
+    }
+    assert.equal(pool.totalCount, 0);
+  } finally {
+    await pool.end();
+  }
+});
+
+test('command normalization is property-order independent but distinguishes changed input', () => {
+  assert.equal(
+    canonical({ b: [2, 1], a: { z: false, x: null } }),
+    canonical({ a: { x: null, z: false }, b: [2, 1] }),
+  );
+  assert.notEqual(canonical({ a: 1 }), canonical({ a: 2 }));
+  assert.notEqual(tripEditToken({ id: 'a', version: 1 }), tripEditToken({ id: 'b', version: 1 }));
+});
+test('cursor fits the contract, preserves PostgreSQL microseconds, and binds owner/filter and expiry', () => {
+  const codec = cursorCodec(Buffer.alloc(32, 4)),
+    now = new Date('2026-09-15T12:00:00Z');
+  const id = '11111111-1111-4111-8111-111111111111',
+    time = '2026-09-15T06:30:00.123456Z';
+  const token = codec.encode(time, id, 'caller-1:route-a', now);
+  assert.ok(token.length <= 128);
+  assert.deepEqual(codec.decode(token, 'caller-1:route-a', now), { time, id });
+  const invalid = (fn: () => unknown) =>
+    assert.throws(fn, (e: unknown) => e instanceof TransportError && e.code === 'invalid_cursor');
+  invalid(() => codec.decode(token, 'caller-2:route-a', now));
+  invalid(() => codec.decode(token, 'caller-1:route-b', now));
+  invalid(() => codec.decode(token, 'caller-1:route-a', new Date(now.getTime() + 86400000)));
+  invalid(() => codec.decode(token.slice(0, -3) + 'abc', 'caller-1:route-a', now));
+  invalid(() => codec.decode('bad', 'caller-1:route-a', now));
+});
+test('HTTP factory compiles reviewed schemas and has no unauthenticated or guessed-header fallback', async () => {
+  const pool = new Pool();
+  const app = await createTransportApp({
+    pool,
+    coordinateReservations: rejectBookingChanges,
+    cursorSecret: Buffer.alloc(32, 9),
+    verifyAccess: async () => null,
+    authorizeSession: async () => {
+      throw new Error('must not query a session without verified access');
+    },
+    minimumBuilds: { ops: 1, driver: { ios: 1, android: 1 }, commuter: { ios: 1, android: 1 } },
+  });
+  try {
+    await app.ready();
+    const response = await app.inject({
+      method: 'GET',
+      url: '/v1/driver/trips',
+      headers: { 'x-user-id': 'spoofed', 'x-user-role': 'admin' },
+    });
+    assert.equal(response.statusCode, 401);
+    assert.equal(response.json().error.code, 'unauthenticated');
+    assert.equal(response.headers['cache-control'], 'no-store');
+  } finally {
+    await app.close();
+    await pool.end();
+  }
+});
+
+test('only the Ops website origin passes a browser preflight, and a real request is still authenticated', async () => {
+  const pool = new Pool();
+  const ops = 'https://trotxi-ops-staging.onrender.com';
+  const app = await createTransportApp({
+    pool,
+    coordinateReservations: rejectBookingChanges,
+    cursorSecret: Buffer.alloc(32, 9),
+    verifyAccess: async () => null,
+    authorizeSession: async () => {
+      throw new Error('must not query a session without verified access');
+    },
+    minimumBuilds: { ops: 1, driver: { ios: 1, android: 1 }, commuter: { ios: 1, android: 1 } },
+    corsOrigin: ops,
+  });
+  const preflight = (origin: string) =>
+    app.inject({
+      method: 'OPTIONS',
+      url: '/v1/auth/google',
+      headers: {
+        origin,
+        'access-control-request-method': 'POST',
+        'access-control-request-headers': 'content-type,x-trotxi-client,x-trotxi-build',
+      },
+    });
+  try {
+    await app.ready();
+    // The sign-in call the Ops website makes first. Without this the browser
+    // never sends it, and sign-in fails after Google has already said yes.
+    const allowed = await preflight(ops);
+    assert.equal(allowed.statusCode, 204);
+    assert.equal(allowed.headers['access-control-allow-origin'], ops);
+    assert.match(String(allowed.headers['access-control-allow-headers']), /X-Trotxi-Client/);
+    assert.equal(allowed.headers['access-control-allow-credentials'], undefined);
+
+    const other = await preflight('https://evil.example');
+    assert.equal(other.headers['access-control-allow-origin'], undefined);
+
+    // CORS is a browser rule, not access control: the real request is judged
+    // exactly as before.
+    const real = await app.inject({
+      method: 'GET',
+      url: '/v1/ops/trips',
+      headers: { origin: ops, 'x-trotxi-client': 'ops', 'x-trotxi-build': '1' },
+    });
+    assert.equal(real.statusCode, 401);
+    assert.equal(real.headers['access-control-allow-origin'], ops);
+    assert.match(String(real.headers['access-control-expose-headers']), /ETag/);
+  } finally {
+    await app.close();
+    await pool.end();
+  }
+});
+
+test('the service describes itself at /docs, from the contract it routes from', async () => {
+  const pool = new Pool();
+  const app = await createTransportApp({
+    pool,
+    coordinateReservations: rejectBookingChanges,
+    cursorSecret: Buffer.alloc(32, 9),
+    verifyAccess: async () => null,
+    authorizeSession: async () => {
+      throw new Error('describing the surface must not touch a session');
+    },
+    minimumBuilds: { ops: 1, driver: { ios: 1, android: 1 }, commuter: { ios: 1, android: 1 } },
+  });
+  try {
+    const response = await app.inject({ method: 'GET', url: '/docs/json' });
+    assert.equal(response.statusCode, 200);
+    const spec = response.json();
+    assert.equal(spec.openapi, '3.0.3');
+    assert.ok(spec.info.title && spec.info.version, 'OpenAPI requires both');
+    assert.ok(spec.servers[0].url.length, 'a server the reader can actually call');
+
+    // This factory deliberately has no membership/auth adapters. Documentation
+    // must reflect actual registration, not every possible composition.
+    assert.equal(spec.paths['/v1/me/membership'], undefined);
+    assert.equal(spec.paths['/v1/auth/apple'], undefined);
+    assert.ok(spec.paths['/v1/ops/trips'].get, 'the ops trip list');
+    for (const [path, methods] of Object.entries(spec.paths))
+      for (const method of Object.keys(methods as object))
+        assert.ok(
+          app.hasRoute({
+            method: method.toUpperCase() as 'GET',
+            url: path.replaceAll(/\{([^}]+)\}/g, ':$1'),
+          }),
+        );
+    assert.equal(spec.components.securitySchemes.bearerAuth.scheme, 'bearer');
+    assert.equal(spec.components.schemas.PlanPricing.properties.ridesPerPeriod.minimum, 0);
+    assert.equal(
+      spec.components.schemas.PlanPricing.properties.ridesPerPeriod.exclusiveMinimum,
+      true,
+    );
+
+    const page = await app.inject({ method: 'GET', url: '/docs' });
+    assert.equal(page.statusCode, 200);
+    assert.match(page.headers['content-type'] as string, /text\/html/);
+    assert.match(page.body, /spec-url="\/docs\/json"/);
+
+    // Both are deliberately open, which is what the old service did. If that
+    // is ever tightened, this is the line that should fail and be changed on
+    // purpose rather than the surface quietly closing or opening.
+    assert.equal(
+      (await app.inject({ method: 'GET', url: '/docs/json', headers: {} })).statusCode,
+      200,
+      'no authorization header required',
+    );
+  } finally {
+    await app.close();
+    await pool.end();
+  }
+});
+
+test('documentation round-trips to the generator-facing OpenAPI, including security and bounds', async () => {
+  const published = JSON.parse(
+    await readFile(
+      new URL('../../../docs/design/contracts/replacement.openapi.json', import.meta.url),
+      'utf8',
+    ),
+  );
+  const enabled = new Set(
+    Object.values(contract.paths).flatMap((methods) =>
+      Object.values(methods).map((operation) => operation.operationId),
+    ),
+  );
+  const document = openApiDocument('https://example.test:8443', enabled);
+  assert.deepEqual(document.components, published.components);
+  assert.deepEqual(document.paths, published.paths);
+  assert.equal(document.paths['/v1/me/membership'].get['x-implementation-status'], undefined);
+  assert.equal(published.servers[0].url, 'https://trotxi-api-staging.onrender.com');
+  assert.equal(document.servers[0]?.url, 'https://example.test:8443');
+});
+
+test('IP admission runs before verification and forged forwarded headers cannot evade it', async () => {
+  const pool = new Pool();
+  let verified = 0;
+  const app = await createTransportApp({
+    pool,
+    coordinateReservations: rejectBookingChanges,
+    cursorSecret: Buffer.alloc(32, 9),
+    requestsPerIpPerMinute: 1,
+    verifyAccess: async () => {
+      verified++;
+      return null;
+    },
+    authorizeSession: async () => {
+      throw new Error('must not access the database');
+    },
+    minimumBuilds: { ops: 1, driver: { ios: 1, android: 1 }, commuter: { ios: 1, android: 1 } },
+  });
+  try {
+    const first = await app.inject({
+      method: 'GET',
+      url: '/v1/driver/trips',
+      headers: { authorization: 'Bearer invalid-one' },
+    });
+    assert.equal(first.statusCode, 401);
+    const second = await app.inject({
+      method: 'GET',
+      url: '/v1/ops/trips',
+      headers: { authorization: 'Bearer invalid-two', 'x-forwarded-for': '192.0.2.3' },
+    });
+    assert.equal(second.statusCode, 429);
+    assert.equal(second.json().error.code, 'rate_limited');
+    assert.ok(Number(second.headers['retry-after']) > 0);
+    assert.equal(verified, 1);
+  } finally {
+    await app.close();
+    await pool.end();
+  }
+});
+
+test('shared IP admission spans replicas and fails closed before verification', async () => {
+  const pool = new Pool();
+  let count = 0,
+    verified = 0;
+  let unavailable = false;
+  const options = {
+    pool,
+    coordinateReservations: rejectBookingChanges,
+    cursorSecret: Buffer.alloc(32, 9),
+    requestsPerIpPerMinute: 1,
+    admitIp: async () => {
+      if (unavailable) throw new Error('admission offline');
+      return { count: ++count, resetsInSeconds: 37 };
+    },
+    verifyAccess: async () => {
+      verified++;
+      return null;
+    },
+    authorizeSession: async () => {
+      throw new Error('unexpected database access');
+    },
+    minimumBuilds: { ops: 1, driver: { ios: 1, android: 1 }, commuter: { ios: 1, android: 1 } },
+  };
+  const a = await createTransportApp(options),
+    b = await createTransportApp(options);
+  try {
+    const signedIn = await a.inject({
+      url: '/v1/driver/trips',
+      remoteAddress: '192.0.2.8',
+      headers: { authorization: 'Bearer token' },
+    });
+    assert.equal(signedIn.statusCode, 401);
+    assert.equal(count, 0, 'session routes must not spend the shared IP budget');
+    assert.equal(verified, 1);
+    const first = await a.inject({
+      url: '/v1/routes',
+      headers: { authorization: 'Bearer token' },
+    });
+    assert.equal(first.statusCode, 400);
+    const second = await b.inject({
+      url: '/v1/routes',
+      headers: { authorization: 'Bearer token' },
+    });
+    assert.equal(second.statusCode, 429);
+    assert.equal(second.headers['retry-after'], '37');
+    assert.equal(verified, 1);
+    unavailable = true;
+    const failed = await b.inject({
+      url: '/v1/routes',
+      remoteAddress: '192.0.2.9',
+      headers: { authorization: 'Bearer token' },
+    });
+    assert.equal(failed.statusCode, 503);
+    assert.equal(failed.json().error.code, 'admission_unavailable');
+    assert.equal(verified, 1);
+  } finally {
+    await a.close();
+    await b.close();
+    await pool.end();
+  }
+});

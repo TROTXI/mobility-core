@@ -14,8 +14,13 @@ part 'route_page.g.dart';
 /// RoutePage
 ///
 /// Properties:
+<<<<<<< HEAD
 /// * [data] 
 /// * [page] 
+=======
+/// * [data]
+/// * [page]
+>>>>>>> origin/main
 @BuiltValue()
 abstract class RoutePage implements Built<RoutePage, RoutePageBuilder> {
   @BuiltValueField(wireName: r'data')
@@ -65,7 +70,13 @@ class _$RoutePageSerializer implements PrimitiveSerializer<RoutePage> {
     RoutePage object, {
     FullType specifiedType = FullType.unspecified,
   }) {
+<<<<<<< HEAD
     return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+=======
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
+>>>>>>> origin/main
   }
 
   void _deserializeProperties(
@@ -122,4 +133,7 @@ class _$RoutePageSerializer implements PrimitiveSerializer<RoutePage> {
     return result.build();
   }
 }
+<<<<<<< HEAD
 
+=======
+>>>>>>> origin/main

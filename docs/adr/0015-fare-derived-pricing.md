@@ -172,3 +172,18 @@ of Ghanaian transport fares. Ops enters them; the effective dating is what makes
 that safe.
 
 Refs: ADR-0014 · #103 · #104 · #162 · `strategy/docs/hybrid-subscription-model.md`
+
+## Current implementation — 2026-09-12
+
+Migration 027 and the pricing module implement effective-dated corridor fares,
+ops-editable monthly/annual plan levers and checkout/subscription snapshots.
+Credit netting landed in migration 030, with a minimum 100-pesewa Paystack
+charge. Fare bands are not implemented: current checkout derives directly from
+the selected `routeId`. Seeded values remain placeholders until operations
+approves the commercial configuration.
+
+Migration 039 makes the snapshot period-specific rather than relying on the
+mutable subscription pointer. Checkout reserves the exact available Ride Credit
+under a rider lock; fulfilment captures that hold. Period close reads the
+immutable period's `credit_pesewas_per_ride`, so a later price or credit-rate
+change cannot revalue rides sold earlier.

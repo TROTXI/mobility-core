@@ -12,26 +12,52 @@ part 'ops_purchase_response.g.dart';
 /// OpsPurchaseResponse
 ///
 /// Properties:
+<<<<<<< HEAD
 /// * [data] 
 @BuiltValue()
 abstract class OpsPurchaseResponse implements Built<OpsPurchaseResponse, OpsPurchaseResponseBuilder> {
+=======
+/// * [data]
+@BuiltValue()
+abstract class OpsPurchaseResponse
+    implements Built<OpsPurchaseResponse, OpsPurchaseResponseBuilder> {
+>>>>>>> origin/main
   @BuiltValueField(wireName: r'data')
   OpsPurchase get data;
 
   OpsPurchaseResponse._();
 
+<<<<<<< HEAD
   factory OpsPurchaseResponse([void updates(OpsPurchaseResponseBuilder b)]) = _$OpsPurchaseResponse;
+=======
+  factory OpsPurchaseResponse([void updates(OpsPurchaseResponseBuilder b)]) =
+      _$OpsPurchaseResponse;
+>>>>>>> origin/main
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(OpsPurchaseResponseBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
+<<<<<<< HEAD
   static Serializer<OpsPurchaseResponse> get serializer => _$OpsPurchaseResponseSerializer();
 }
 
 class _$OpsPurchaseResponseSerializer implements PrimitiveSerializer<OpsPurchaseResponse> {
   @override
   final Iterable<Type> types = const [OpsPurchaseResponse, _$OpsPurchaseResponse];
+=======
+  static Serializer<OpsPurchaseResponse> get serializer =>
+      _$OpsPurchaseResponseSerializer();
+}
+
+class _$OpsPurchaseResponseSerializer
+    implements PrimitiveSerializer<OpsPurchaseResponse> {
+  @override
+  final Iterable<Type> types = const [
+    OpsPurchaseResponse,
+    _$OpsPurchaseResponse
+  ];
+>>>>>>> origin/main
 
   @override
   final String wireName = r'OpsPurchaseResponse';
@@ -54,7 +80,13 @@ class _$OpsPurchaseResponseSerializer implements PrimitiveSerializer<OpsPurchase
     OpsPurchaseResponse object, {
     FullType specifiedType = FullType.unspecified,
   }) {
+<<<<<<< HEAD
     return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+=======
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
+>>>>>>> origin/main
   }
 
   void _deserializeProperties(
@@ -104,4 +136,7 @@ class _$OpsPurchaseResponseSerializer implements PrimitiveSerializer<OpsPurchase
     return result.build();
   }
 }
+<<<<<<< HEAD
 
+=======
+>>>>>>> origin/main

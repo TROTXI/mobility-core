@@ -68,3 +68,10 @@ app.withTypeProvider<ZodTypeProvider>().post(
   review we expect schemas on anything taking input or returning a body.
 - Migrating to **zod 4** later means bumping `fastify-type-provider-zod` to v7+;
   that would supersede the version note here.
+
+## Current implementation — 2026-09-12
+
+Every current product route is present in `GET /docs/json`, including pricing,
+driver credentials, direct boarding actions, route learning, incidents and work
+requests. `apps/api_client` is generated from that document and wrapped by
+`apps/trotxi_client` under ADR-0013.

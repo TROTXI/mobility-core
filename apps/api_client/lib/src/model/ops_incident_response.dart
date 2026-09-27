@@ -12,26 +12,52 @@ part 'ops_incident_response.g.dart';
 /// OpsIncidentResponse
 ///
 /// Properties:
+<<<<<<< HEAD
 /// * [data] 
 @BuiltValue()
 abstract class OpsIncidentResponse implements Built<OpsIncidentResponse, OpsIncidentResponseBuilder> {
+=======
+/// * [data]
+@BuiltValue()
+abstract class OpsIncidentResponse
+    implements Built<OpsIncidentResponse, OpsIncidentResponseBuilder> {
+>>>>>>> origin/main
   @BuiltValueField(wireName: r'data')
   OpsIncident get data;
 
   OpsIncidentResponse._();
 
+<<<<<<< HEAD
   factory OpsIncidentResponse([void updates(OpsIncidentResponseBuilder b)]) = _$OpsIncidentResponse;
+=======
+  factory OpsIncidentResponse([void updates(OpsIncidentResponseBuilder b)]) =
+      _$OpsIncidentResponse;
+>>>>>>> origin/main
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(OpsIncidentResponseBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
+<<<<<<< HEAD
   static Serializer<OpsIncidentResponse> get serializer => _$OpsIncidentResponseSerializer();
 }
 
 class _$OpsIncidentResponseSerializer implements PrimitiveSerializer<OpsIncidentResponse> {
   @override
   final Iterable<Type> types = const [OpsIncidentResponse, _$OpsIncidentResponse];
+=======
+  static Serializer<OpsIncidentResponse> get serializer =>
+      _$OpsIncidentResponseSerializer();
+}
+
+class _$OpsIncidentResponseSerializer
+    implements PrimitiveSerializer<OpsIncidentResponse> {
+  @override
+  final Iterable<Type> types = const [
+    OpsIncidentResponse,
+    _$OpsIncidentResponse
+  ];
+>>>>>>> origin/main
 
   @override
   final String wireName = r'OpsIncidentResponse';
@@ -54,7 +80,13 @@ class _$OpsIncidentResponseSerializer implements PrimitiveSerializer<OpsIncident
     OpsIncidentResponse object, {
     FullType specifiedType = FullType.unspecified,
   }) {
+<<<<<<< HEAD
     return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+=======
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
+>>>>>>> origin/main
   }
 
   void _deserializeProperties(
@@ -104,4 +136,7 @@ class _$OpsIncidentResponseSerializer implements PrimitiveSerializer<OpsIncident
     return result.build();
   }
 }
+<<<<<<< HEAD
 
+=======
+>>>>>>> origin/main

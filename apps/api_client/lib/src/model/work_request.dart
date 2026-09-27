@@ -13,6 +13,7 @@ part 'work_request.g.dart';
 /// WorkRequest
 ///
 /// Properties:
+<<<<<<< HEAD
 /// * [id] 
 /// * [request] 
 /// * [status] 
@@ -20,6 +21,15 @@ part 'work_request.g.dart';
 /// * [createdAt] 
 /// * [updatedAt] 
 /// * [version] 
+=======
+/// * [id]
+/// * [request]
+/// * [status]
+/// * [decisionNote]
+/// * [createdAt]
+/// * [updatedAt]
+/// * [version]
+>>>>>>> origin/main
 @BuiltValue()
 abstract class WorkRequest implements Built<WorkRequest, WorkRequestBuilder> {
   @BuiltValueField(wireName: r'id')
@@ -83,10 +93,19 @@ class _$WorkRequestSerializer implements PrimitiveSerializer<WorkRequest> {
       specifiedType: const FullType(WorkRequestStatusEnum),
     );
     yield r'decisionNote';
+<<<<<<< HEAD
     yield object.decisionNote == null ? null : serializers.serialize(
       object.decisionNote,
       specifiedType: const FullType.nullable(String),
     );
+=======
+    yield object.decisionNote == null
+        ? null
+        : serializers.serialize(
+            object.decisionNote,
+            specifiedType: const FullType.nullable(String),
+          );
+>>>>>>> origin/main
     yield r'createdAt';
     yield serializers.serialize(
       object.createdAt,
@@ -110,7 +129,13 @@ class _$WorkRequestSerializer implements PrimitiveSerializer<WorkRequest> {
     WorkRequest object, {
     FullType specifiedType = FullType.unspecified,
   }) {
+<<<<<<< HEAD
     return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+=======
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
+>>>>>>> origin/main
   }
 
   void _deserializeProperties(
@@ -205,6 +230,7 @@ class _$WorkRequestSerializer implements PrimitiveSerializer<WorkRequest> {
 }
 
 class WorkRequestStatusEnum extends EnumClass {
+<<<<<<< HEAD
 
   @BuiltValueEnumConst(wireName: r'pending')
   static const WorkRequestStatusEnum pending = _$workRequestStatusEnum_pending;
@@ -223,3 +249,27 @@ class WorkRequestStatusEnum extends EnumClass {
   static WorkRequestStatusEnum valueOf(String name) => _$workRequestStatusEnumValueOf(name);
 }
 
+=======
+  @BuiltValueEnumConst(wireName: r'pending')
+  static const WorkRequestStatusEnum pending = _$workRequestStatusEnum_pending;
+  @BuiltValueEnumConst(wireName: r'approved')
+  static const WorkRequestStatusEnum approved =
+      _$workRequestStatusEnum_approved;
+  @BuiltValueEnumConst(wireName: r'declined')
+  static const WorkRequestStatusEnum declined =
+      _$workRequestStatusEnum_declined;
+  @BuiltValueEnumConst(wireName: r'withdrawn')
+  static const WorkRequestStatusEnum withdrawn =
+      _$workRequestStatusEnum_withdrawn;
+
+  static Serializer<WorkRequestStatusEnum> get serializer =>
+      _$workRequestStatusEnumSerializer;
+
+  const WorkRequestStatusEnum._(String name) : super(name);
+
+  static BuiltSet<WorkRequestStatusEnum> get values =>
+      _$workRequestStatusEnumValues;
+  static WorkRequestStatusEnum valueOf(String name) =>
+      _$workRequestStatusEnumValueOf(name);
+}
+>>>>>>> origin/main

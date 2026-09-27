@@ -14,8 +14,13 @@ part 'fare_page.g.dart';
 /// FarePage
 ///
 /// Properties:
+<<<<<<< HEAD
 /// * [data] 
 /// * [page] 
+=======
+/// * [data]
+/// * [page]
+>>>>>>> origin/main
 @BuiltValue()
 abstract class FarePage implements Built<FarePage, FarePageBuilder> {
   @BuiltValueField(wireName: r'data')
@@ -65,7 +70,13 @@ class _$FarePageSerializer implements PrimitiveSerializer<FarePage> {
     FarePage object, {
     FullType specifiedType = FullType.unspecified,
   }) {
+<<<<<<< HEAD
     return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+=======
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
+>>>>>>> origin/main
   }
 
   void _deserializeProperties(
@@ -122,4 +133,7 @@ class _$FarePageSerializer implements PrimitiveSerializer<FarePage> {
     return result.build();
   }
 }
+<<<<<<< HEAD
 
+=======
+>>>>>>> origin/main

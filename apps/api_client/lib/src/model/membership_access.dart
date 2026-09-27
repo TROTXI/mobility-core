@@ -13,10 +13,18 @@ part 'membership_access.g.dart';
 /// MembershipAccess
 ///
 /// Properties:
+<<<<<<< HEAD
 /// * [canReserve] 
 /// * [blocks] 
 @BuiltValue()
 abstract class MembershipAccess implements Built<MembershipAccess, MembershipAccessBuilder> {
+=======
+/// * [canReserve]
+/// * [blocks]
+@BuiltValue()
+abstract class MembershipAccess
+    implements Built<MembershipAccess, MembershipAccessBuilder> {
+>>>>>>> origin/main
   @BuiltValueField(wireName: r'canReserve')
   bool get canReserve;
 
@@ -25,16 +33,30 @@ abstract class MembershipAccess implements Built<MembershipAccess, MembershipAcc
 
   MembershipAccess._();
 
+<<<<<<< HEAD
   factory MembershipAccess([void updates(MembershipAccessBuilder b)]) = _$MembershipAccess;
+=======
+  factory MembershipAccess([void updates(MembershipAccessBuilder b)]) =
+      _$MembershipAccess;
+>>>>>>> origin/main
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(MembershipAccessBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
+<<<<<<< HEAD
   static Serializer<MembershipAccess> get serializer => _$MembershipAccessSerializer();
 }
 
 class _$MembershipAccessSerializer implements PrimitiveSerializer<MembershipAccess> {
+=======
+  static Serializer<MembershipAccess> get serializer =>
+      _$MembershipAccessSerializer();
+}
+
+class _$MembershipAccessSerializer
+    implements PrimitiveSerializer<MembershipAccess> {
+>>>>>>> origin/main
   @override
   final Iterable<Type> types = const [MembershipAccess, _$MembershipAccess];
 
@@ -64,7 +86,13 @@ class _$MembershipAccessSerializer implements PrimitiveSerializer<MembershipAcce
     MembershipAccess object, {
     FullType specifiedType = FullType.unspecified,
   }) {
+<<<<<<< HEAD
     return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+=======
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
+>>>>>>> origin/main
   }
 
   void _deserializeProperties(
@@ -121,4 +149,7 @@ class _$MembershipAccessSerializer implements PrimitiveSerializer<MembershipAcce
     return result.build();
   }
 }
+<<<<<<< HEAD
 
+=======
+>>>>>>> origin/main

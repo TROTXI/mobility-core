@@ -71,7 +71,15 @@ Serializers _$serializers = (Serializers().toBuilder()
       ..add(CredentialActionActionEnum.serializer)
       ..add(CredentialIssue.serializer)
       ..add(CredentialSecret.serializer)
+<<<<<<< HEAD
       ..add(CredentialSecretResponse.serializer)
+=======
+      ..add(CredentialSecretEmail.serializer)
+      ..add(CredentialSecretEmailStateEnum.serializer)
+      ..add(CredentialSecretResponse.serializer)
+      ..add(CredentialSecretSms.serializer)
+      ..add(CredentialSecretSmsStateEnum.serializer)
+>>>>>>> origin/main
       ..add(CreditEntry.serializer)
       ..add(CreditEntryCurrencyEnum.serializer)
       ..add(CreditEntryPage.serializer)
@@ -84,6 +92,17 @@ Serializers _$serializers = (Serializers().toBuilder()
       ..add(DevicePlatformEnum.serializer)
       ..add(DeviceResponse.serializer)
       ..add(Driver.serializer)
+<<<<<<< HEAD
+=======
+      ..add(DriverCredential.serializer)
+      ..add(DriverCredentialEmail.serializer)
+      ..add(DriverCredentialEmailPurposeEnum.serializer)
+      ..add(DriverCredentialEmailStateEnum.serializer)
+      ..add(DriverCredentialSms.serializer)
+      ..add(DriverCredentialSmsPurposeEnum.serializer)
+      ..add(DriverCredentialSmsStateEnum.serializer)
+      ..add(DriverCredentialStatusEnum.serializer)
+>>>>>>> origin/main
       ..add(DriverEdit.serializer)
       ..add(DriverInput.serializer)
       ..add(DriverPage.serializer)
@@ -162,17 +181,37 @@ Serializers _$serializers = (Serializers().toBuilder()
       ..add(MinimumVersionResponse.serializer)
       ..add(Money.serializer)
       ..add(MoneyCurrencyEnum.serializer)
+<<<<<<< HEAD
+=======
+      ..add(OpsAuditEvent.serializer)
+      ..add(OpsAuditEventAreaEnum.serializer)
+      ..add(OpsAuditEventPage.serializer)
+>>>>>>> origin/main
       ..add(OpsCommuteRequest.serializer)
       ..add(OpsCommuteRequestPage.serializer)
       ..add(OpsCommuteRequestResponse.serializer)
       ..add(OpsCommuteRequestStatusEnum.serializer)
+<<<<<<< HEAD
+=======
+      ..add(OpsDelivery.serializer)
+      ..add(OpsDeliveryChannelEnum.serializer)
+      ..add(OpsDeliveryPage.serializer)
+>>>>>>> origin/main
       ..add(OpsIncident.serializer)
       ..add(OpsIncidentCategoryEnum.serializer)
       ..add(OpsIncidentPage.serializer)
       ..add(OpsIncidentResponse.serializer)
       ..add(OpsIncidentStatusEnum.serializer)
+<<<<<<< HEAD
       ..add(OpsOverview.serializer)
       ..add(OpsOverviewResponse.serializer)
+=======
+      ..add(OpsOperator.serializer)
+      ..add(OpsOperatorPage.serializer)
+      ..add(OpsOverview.serializer)
+      ..add(OpsOverviewResponse.serializer)
+      ..add(OpsOverviewTiles.serializer)
+>>>>>>> origin/main
       ..add(OpsOverviewTripsInner.serializer)
       ..add(OpsOverviewTripsInnerBadgeEnum.serializer)
       ..add(OpsOverviewTripsInnerStatusEnum.serializer)
@@ -189,6 +228,30 @@ Serializers _$serializers = (Serializers().toBuilder()
       ..add(OpsPurchasePlanEnum.serializer)
       ..add(OpsPurchaseResponse.serializer)
       ..add(OpsPurchaseStateEnum.serializer)
+<<<<<<< HEAD
+=======
+      ..add(OpsReportSummary.serializer)
+      ..add(OpsReportSummaryDelivery.serializer)
+      ..add(OpsReportSummaryPayments.serializer)
+      ..add(OpsReportSummaryResponse.serializer)
+      ..add(OpsReportSummaryRiders.serializer)
+      ..add(OpsReportSummaryTrips.serializer)
+      ..add(OpsRider.serializer)
+      ..add(OpsRiderDetail.serializer)
+      ..add(OpsRiderDetailMembership.serializer)
+      ..add(OpsRiderDetailMembershipLifecycleEnum.serializer)
+      ..add(OpsRiderDetailPurchasesInner.serializer)
+      ..add(OpsRiderDetailPurchasesInnerPlanEnum.serializer)
+      ..add(OpsRiderDetailReservationsInner.serializer)
+      ..add(OpsRiderDetailReservationsInnerDirectionEnum.serializer)
+      ..add(OpsRiderDetailResponse.serializer)
+      ..add(OpsRiderPage.serializer)
+      ..add(OpsRiderPlanEnum.serializer)
+      ..add(OpsRiderRoleEnum.serializer)
+      ..add(OpsRiderStatusEnum.serializer)
+      ..add(OpsRiderSummary.serializer)
+      ..add(OpsRiderSummaryResponse.serializer)
+>>>>>>> origin/main
       ..add(OpsTrip.serializer)
       ..add(OpsTripDirectionEnum.serializer)
       ..add(OpsTripPage.serializer)
@@ -204,6 +267,40 @@ Serializers _$serializers = (Serializers().toBuilder()
       ..add(OptionalPersonalPauseStatusEnum.serializer)
       ..add(Pass.serializer)
       ..add(PassResponse.serializer)
+<<<<<<< HEAD
+=======
+      ..add(PasskeyAuthenticationOptions.serializer)
+      ..add(PasskeyAuthenticationOptionsAllowCredentialsInner.serializer)
+      ..add(
+          PasskeyAuthenticationOptionsAllowCredentialsInnerTypeEnum.serializer)
+      ..add(PasskeyAuthenticationOptionsResponse.serializer)
+      ..add(PasskeyAuthenticationOptionsUserVerificationEnum.serializer)
+      ..add(PasskeyAuthenticationResponse.serializer)
+      ..add(PasskeyAuthenticationResponseAuthenticatorAttachmentEnum.serializer)
+      ..add(PasskeyAuthenticationResponseResponse.serializer)
+      ..add(PasskeyAuthenticationResponseTypeEnum.serializer)
+      ..add(PasskeyRegistrationOptions.serializer)
+      ..add(PasskeyRegistrationOptionsAttestationEnum.serializer)
+      ..add(PasskeyRegistrationOptionsAuthenticatorSelection.serializer)
+      ..add(
+          PasskeyRegistrationOptionsAuthenticatorSelectionAuthenticatorAttachmentEnum
+              .serializer)
+      ..add(PasskeyRegistrationOptionsAuthenticatorSelectionResidentKeyEnum
+          .serializer)
+      ..add(PasskeyRegistrationOptionsAuthenticatorSelectionUserVerificationEnum
+          .serializer)
+      ..add(PasskeyRegistrationOptionsPubKeyCredParamsInner.serializer)
+      ..add(PasskeyRegistrationOptionsPubKeyCredParamsInnerTypeEnum.serializer)
+      ..add(PasskeyRegistrationOptionsResponse.serializer)
+      ..add(PasskeyRegistrationOptionsRp.serializer)
+      ..add(PasskeyRegistrationOptionsUser.serializer)
+      ..add(PasskeyRegistrationResponse.serializer)
+      ..add(PasskeyRegistrationResponseAuthenticatorAttachmentEnum.serializer)
+      ..add(PasskeyRegistrationResponseResponse.serializer)
+      ..add(PasskeyRegistrationResponseTypeEnum.serializer)
+      ..add(PasskeyStatus.serializer)
+      ..add(PasskeyStatusResponse.serializer)
+>>>>>>> origin/main
       ..add(Pattern.serializer)
       ..add(PatternDirectionEnum.serializer)
       ..add(PatternInput.serializer)
@@ -230,7 +327,16 @@ Serializers _$serializers = (Serializers().toBuilder()
       ..add(PersonalPauseResponse.serializer)
       ..add(PersonalPauseStatusEnum.serializer)
       ..add(PersonalResumeInput.serializer)
+<<<<<<< HEAD
       ..add(PinChange.serializer)
+=======
+      ..add(PhoneChallenge.serializer)
+      ..add(PhoneChallengeResponse.serializer)
+      ..add(PhoneSignInRequest.serializer)
+      ..add(PhoneSignInVerify.serializer)
+      ..add(PinChange.serializer)
+      ..add(PinResetInput.serializer)
+>>>>>>> origin/main
       ..add(PlanPricing.serializer)
       ..add(PlanPricingPage.serializer)
       ..add(PlanPricingPlanEnum.serializer)
@@ -272,6 +378,15 @@ Serializers _$serializers = (Serializers().toBuilder()
       ..add(ReservationDecisionResult.serializer)
       ..add(ReservationDecisionResultPass.serializer)
       ..add(ReservationDecisionResultResponse.serializer)
+<<<<<<< HEAD
+=======
+      ..add(ReservationDetail.serializer)
+      ..add(ReservationDetailPickupStop.serializer)
+      ..add(ReservationDetailResponse.serializer)
+      ..add(ReservationDetailRoute.serializer)
+      ..add(ReservationDetailTrip.serializer)
+      ..add(ReservationDetailTripStatusEnum.serializer)
+>>>>>>> origin/main
       ..add(ReservationDirectionEnum.serializer)
       ..add(ReservationPage.serializer)
       ..add(ReservationSource_Enum.serializer)
@@ -366,6 +481,7 @@ Serializers _$serializers = (Serializers().toBuilder()
           const FullType(
               BuiltList, const [const FullType(BootstrapFlagsInner)]),
           () => ListBuilder<BootstrapFlagsInner>())
+<<<<<<< HEAD
       ..addBuilderFactory(
           const FullType(BuiltList, const [const FullType(CommuteLeg)]),
           () => ListBuilder<CommuteLeg>())
@@ -539,6 +655,260 @@ Serializers _$serializers = (Serializers().toBuilder()
             const FullType(String),
             const FullType.nullable(JsonObject)
           ]),
+=======
+      ..addBuilderFactory(
+          const FullType(BuiltList, const [const FullType(CommuteLeg)]),
+          () => ListBuilder<CommuteLeg>())
+      ..addBuilderFactory(
+          const FullType(BuiltList, const [const FullType(CommuteLeg)]),
+          () => ListBuilder<CommuteLeg>())
+      ..addBuilderFactory(
+          const FullType(BuiltList, const [const FullType(CommuteLeg)]),
+          () => ListBuilder<CommuteLeg>())
+      ..addBuilderFactory(
+          const FullType(BuiltList, const [const FullType(CommuteLeg)]),
+          () => ListBuilder<CommuteLeg>())
+      ..addBuilderFactory(
+          const FullType(BuiltList, const [const FullType(CommuteLegView)]),
+          () => ListBuilder<CommuteLegView>())
+      ..addBuilderFactory(
+          const FullType(BuiltList, const [const FullType(CommuteRequest)]),
+          () => ListBuilder<CommuteRequest>())
+      ..addBuilderFactory(
+          const FullType(BuiltList, const [const FullType(CommuteSlot)]),
+          () => ListBuilder<CommuteSlot>())
+      ..addBuilderFactory(
+          const FullType(BuiltList, const [const FullType(CreditEntry)]),
+          () => ListBuilder<CreditEntry>())
+      ..addBuilderFactory(
+          const FullType(BuiltList, const [const FullType(DecisionEvent)]),
+          () => ListBuilder<DecisionEvent>())
+      ..addBuilderFactory(
+          const FullType(BuiltList, const [const FullType(Driver)]),
+          () => ListBuilder<Driver>())
+      ..addBuilderFactory(
+          const FullType(BuiltList, const [const FullType(DriverTrip)]),
+          () => ListBuilder<DriverTrip>())
+      ..addBuilderFactory(
+          const FullType(BuiltList,
+              const [const FullType(ErrorResponseErrorFieldErrorsInner)]),
+          () => ListBuilder<ErrorResponseErrorFieldErrorsInner>())
+      ..addBuilderFactory(
+          const FullType(BuiltList, const [const FullType(Fare)]),
+          () => ListBuilder<Fare>())
+      ..addBuilderFactory(
+          const FullType(BuiltList, const [const FullType(Flag)]),
+          () => ListBuilder<Flag>())
+      ..addBuilderFactory(
+          const FullType(BuiltList, const [const FullType(Incident)]),
+          () => ListBuilder<Incident>())
+      ..addBuilderFactory(
+          const FullType(BuiltList,
+              const [const FullType(MaintenanceResultFailuresInner)]),
+          () => ListBuilder<MaintenanceResultFailuresInner>())
+      ..addBuilderFactory(
+          const FullType(BuiltList, const [const FullType(ManifestRider)]),
+          () => ListBuilder<ManifestRider>())
+      ..addBuilderFactory(
+          const FullType(BuiltList, const [const FullType(MinimumVersion)]),
+          () => ListBuilder<MinimumVersion>())
+      ..addBuilderFactory(
+          const FullType(BuiltList, const [const FullType(OpsAuditEvent)]),
+          () => ListBuilder<OpsAuditEvent>())
+      ..addBuilderFactory(
+          const FullType(BuiltList, const [const FullType(OpsCommuteRequest)]),
+          () => ListBuilder<OpsCommuteRequest>())
+      ..addBuilderFactory(
+          const FullType(BuiltList, const [const FullType(OpsDelivery)]),
+          () => ListBuilder<OpsDelivery>())
+      ..addBuilderFactory(
+          const FullType(BuiltList, const [const FullType(OpsIncident)]),
+          () => ListBuilder<OpsIncident>())
+      ..addBuilderFactory(
+          const FullType(BuiltList, const [const FullType(OpsOperator)]),
+          () => ListBuilder<OpsOperator>())
+      ..addBuilderFactory(
+          const FullType(
+              BuiltList, const [const FullType(OpsOverviewTripsInner)]),
+          () => ListBuilder<OpsOverviewTripsInner>())
+      ..addBuilderFactory(
+          const FullType(BuiltList, const [const FullType(OpsPurchase)]),
+          () => ListBuilder<OpsPurchase>())
+      ..addBuilderFactory(
+          const FullType(
+              BuiltList, const [const FullType(OpsPurchaseAttemptsInner)]),
+          () => ListBuilder<OpsPurchaseAttemptsInner>())
+      ..addBuilderFactory(
+          const FullType(BuiltList, const [const FullType(OpsRider)]),
+          () => ListBuilder<OpsRider>())
+      ..addBuilderFactory(
+          const FullType(BuiltList, const [const FullType(OpsTrip)]),
+          () => ListBuilder<OpsTrip>())
+      ..addBuilderFactory(
+          const FullType(BuiltList, const [const FullType(OpsWorkRequest)]),
+          () => ListBuilder<OpsWorkRequest>())
+      ..addBuilderFactory(
+          const FullType(BuiltList, const [
+            const FullType(PasskeyAuthenticationOptionsAllowCredentialsInner)
+          ]),
+          () =>
+              ListBuilder<PasskeyAuthenticationOptionsAllowCredentialsInner>())
+      ..addBuilderFactory(
+          const FullType(BuiltList, const [const FullType(String)]),
+          () => ListBuilder<String>())
+      ..addBuilderFactory(
+          const FullType(BuiltMap, const [
+            const FullType(String),
+            const FullType.nullable(JsonObject)
+          ]),
+          () => MapBuilder<String, JsonObject?>())
+      ..addBuilderFactory(
+          const FullType(BuiltList, const [
+            const FullType(PasskeyRegistrationOptionsPubKeyCredParamsInner)
+          ]),
+          () => ListBuilder<PasskeyRegistrationOptionsPubKeyCredParamsInner>())
+      ..addBuilderFactory(
+          const FullType(BuiltList, const [
+            const FullType(PasskeyAuthenticationOptionsAllowCredentialsInner)
+          ]),
+          () =>
+              ListBuilder<PasskeyAuthenticationOptionsAllowCredentialsInner>())
+      ..addBuilderFactory(
+          const FullType(BuiltList, const [const FullType(String)]),
+          () => ListBuilder<String>())
+      ..addBuilderFactory(
+          const FullType(BuiltList, const [const FullType(String)]),
+          () => ListBuilder<String>())
+      ..addBuilderFactory(
+          const FullType(BuiltMap, const [
+            const FullType(String),
+            const FullType.nullable(JsonObject)
+          ]),
+          () => MapBuilder<String, JsonObject?>())
+      ..addBuilderFactory(
+          const FullType(BuiltList, const [const FullType(Pattern)]),
+          () => ListBuilder<Pattern>())
+      ..addBuilderFactory(
+          const FullType(BuiltList, const [const FullType(PatternVersion)]),
+          () => ListBuilder<PatternVersion>())
+      ..addBuilderFactory(
+          const FullType(
+              BuiltList, const [const FullType(PatternVersionInputStopsInner)]),
+          () => ListBuilder<PatternVersionInputStopsInner>())
+      ..addBuilderFactory(
+          const FullType(BuiltList, const [const FullType(PaymentReview)]),
+          () => ListBuilder<PaymentReview>())
+      ..addBuilderFactory(
+          const FullType(BuiltList, const [const FullType(PlanPricing)]),
+          () => ListBuilder<PlanPricing>())
+      ..addBuilderFactory(
+          const FullType(BuiltList, const [const FullType(Point)]),
+          () => ListBuilder<Point>())
+      ..addBuilderFactory(
+          const FullType(
+              BuiltList, const [const FullType(GeometryStopDistancesInner)]),
+          () => ListBuilder<GeometryStopDistancesInner>())
+      ..addBuilderFactory(
+          const FullType(BuiltList, const [const FullType(Point)]),
+          () => ListBuilder<Point>())
+      ..addBuilderFactory(
+          const FullType(BuiltList, const [const FullType(num)]),
+          () => ListBuilder<num>())
+      ..addBuilderFactory(
+          const FullType(BuiltList, const [const FullType(Purchase)]),
+          () => ListBuilder<Purchase>())
+      ..addBuilderFactory(
+          const FullType(BuiltList, const [const FullType(RefundInitiation)]),
+          () => ListBuilder<RefundInitiation>())
+      ..addBuilderFactory(
+          const FullType(BuiltList, const [const FullType(Reservation)]),
+          () => ListBuilder<Reservation>())
+      ..addBuilderFactory(
+          const FullType(BuiltList, const [const FullType(Restriction)]),
+          () => ListBuilder<Restriction>())
+      ..addBuilderFactory(
+          const FullType(BuiltList,
+              const [const FullType(OpsRiderDetailReservationsInner)]),
+          () => ListBuilder<OpsRiderDetailReservationsInner>())
+      ..addBuilderFactory(
+          const FullType(
+              BuiltList, const [const FullType(OpsRiderDetailPurchasesInner)]),
+          () => ListBuilder<OpsRiderDetailPurchasesInner>())
+      ..addBuilderFactory(
+          const FullType(BuiltList, const [const FullType(RideEntry)]),
+          () => ListBuilder<RideEntry>())
+      ..addBuilderFactory(
+          const FullType(BuiltList, const [const FullType(Route)]),
+          () => ListBuilder<Route>())
+      ..addBuilderFactory(
+          const FullType(BuiltList, const [const FullType(Schedule)]),
+          () => ListBuilder<Schedule>())
+      ..addBuilderFactory(
+          const FullType(BuiltList, const [const FullType(Session)]),
+          () => ListBuilder<Session>())
+      ..addBuilderFactory(
+          const FullType(BuiltList, const [const FullType(Stop)]),
+          () => ListBuilder<Stop>())
+      ..addBuilderFactory(
+          const FullType(BuiltList, const [const FullType(StopEta)]),
+          () => ListBuilder<StopEta>())
+      ..addBuilderFactory(
+          const FullType(BuiltList, const [const FullType(StopOccurrence)]),
+          () => ListBuilder<StopOccurrence>())
+      ..addBuilderFactory(
+          const FullType(BuiltList, const [const FullType(StopOccurrence)]),
+          () => ListBuilder<StopOccurrence>())
+      ..addBuilderFactory(
+          const FullType(BuiltList, const [const FullType(StopOccurrence)]),
+          () => ListBuilder<StopOccurrence>())
+      ..addBuilderFactory(
+          const FullType(BuiltList, const [const FullType(String)]),
+          () => ListBuilder<String>())
+      ..addBuilderFactory(
+          const FullType(BuiltList, const [const FullType(String)]),
+          () => ListBuilder<String>())
+      ..addBuilderFactory(
+          const FullType(BuiltList, const [const FullType(String)]),
+          () => ListBuilder<String>())
+      ..addBuilderFactory(
+          const FullType(BuiltList, const [const FullType(String)]),
+          () => ListBuilder<String>())
+      ..addBuilderFactory(
+          const FullType(BuiltList, const [const FullType(TraceHold)]),
+          () => ListBuilder<TraceHold>())
+      ..addBuilderFactory(
+          const FullType(BuiltList, const [const FullType(Trip)]),
+          () => ListBuilder<Trip>())
+      ..addBuilderFactory(
+          const FullType(BuiltList, const [const FullType(Vehicle)]),
+          () => ListBuilder<Vehicle>())
+      ..addBuilderFactory(
+          const FullType(BuiltList, const [const FullType(WorkRequest)]),
+          () => ListBuilder<WorkRequest>())
+      ..addBuilderFactory(
+          const FullType(BuiltList, const [const FullType(int)]),
+          () => ListBuilder<int>())
+      ..addBuilderFactory(
+          const FullType(BuiltList, const [const FullType(int)]),
+          () => ListBuilder<int>())
+      ..addBuilderFactory(
+          const FullType(BuiltMap, const [
+            const FullType(String),
+            const FullType.nullable(JsonObject)
+          ]),
+          () => MapBuilder<String, JsonObject?>())
+      ..addBuilderFactory(
+          const FullType(BuiltMap, const [
+            const FullType(String),
+            const FullType.nullable(JsonObject)
+          ]),
+          () => MapBuilder<String, JsonObject?>())
+      ..addBuilderFactory(
+          const FullType(BuiltMap, const [
+            const FullType(String),
+            const FullType.nullable(JsonObject)
+          ]),
+>>>>>>> origin/main
           () => MapBuilder<String, JsonObject?>()))
     .build();
 

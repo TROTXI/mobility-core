@@ -9,6 +9,7 @@ export 'package:maplibre_gl/maplibre_gl.dart'
     show
         CameraPosition,
         CameraUpdate,
+        Circle,
         CircleOptions,
         LatLng,
         LatLngBounds,
@@ -19,3 +20,4 @@ export 'package:maplibre_gl/maplibre_gl.dart'
 export 'src/map_attribution.dart';
 export 'src/map_style.dart';
 export 'src/trotxi_map_view.dart';
+export 'src/vehicle_marker.dart';

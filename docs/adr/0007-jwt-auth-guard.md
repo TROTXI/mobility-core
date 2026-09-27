@@ -108,3 +108,10 @@ const token = await app.jwt.signAccessToken({ userId, role });
 - Slices 2 (sign-in + refresh) and 3 (JWKS caching, refresh-reuse detection,
   auth rate limiting — [#23](https://github.com/TROTXI/mobility-core/issues/23))
   build directly on these decorators and the token service.
+
+## Current implementation — 2026-09-12
+
+The follow-on slices are live: Google and Apple ID-token verification, rotating
+refresh sessions with reuse detection, device-session management, account
+erasure and ops-issued driver code/PIN authentication. Trip, boarding and
+driver-support endpoints add assignment/ownership checks after RBAC.

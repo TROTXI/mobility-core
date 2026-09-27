@@ -12,26 +12,55 @@ part 'refund_initiation_collection_response.g.dart';
 /// RefundInitiationCollectionResponse
 ///
 /// Properties:
+<<<<<<< HEAD
 /// * [data] 
 @BuiltValue()
 abstract class RefundInitiationCollectionResponse implements Built<RefundInitiationCollectionResponse, RefundInitiationCollectionResponseBuilder> {
+=======
+/// * [data]
+@BuiltValue()
+abstract class RefundInitiationCollectionResponse
+    implements
+        Built<RefundInitiationCollectionResponse,
+            RefundInitiationCollectionResponseBuilder> {
+>>>>>>> origin/main
   @BuiltValueField(wireName: r'data')
   RefundInitiationCollection get data;
 
   RefundInitiationCollectionResponse._();
 
+<<<<<<< HEAD
   factory RefundInitiationCollectionResponse([void updates(RefundInitiationCollectionResponseBuilder b)]) = _$RefundInitiationCollectionResponse;
+=======
+  factory RefundInitiationCollectionResponse(
+          [void updates(RefundInitiationCollectionResponseBuilder b)]) =
+      _$RefundInitiationCollectionResponse;
+>>>>>>> origin/main
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(RefundInitiationCollectionResponseBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
+<<<<<<< HEAD
   static Serializer<RefundInitiationCollectionResponse> get serializer => _$RefundInitiationCollectionResponseSerializer();
 }
 
 class _$RefundInitiationCollectionResponseSerializer implements PrimitiveSerializer<RefundInitiationCollectionResponse> {
   @override
   final Iterable<Type> types = const [RefundInitiationCollectionResponse, _$RefundInitiationCollectionResponse];
+=======
+  static Serializer<RefundInitiationCollectionResponse> get serializer =>
+      _$RefundInitiationCollectionResponseSerializer();
+}
+
+class _$RefundInitiationCollectionResponseSerializer
+    implements PrimitiveSerializer<RefundInitiationCollectionResponse> {
+  @override
+  final Iterable<Type> types = const [
+    RefundInitiationCollectionResponse,
+    _$RefundInitiationCollectionResponse
+  ];
+>>>>>>> origin/main
 
   @override
   final String wireName = r'RefundInitiationCollectionResponse';
@@ -54,7 +83,13 @@ class _$RefundInitiationCollectionResponseSerializer implements PrimitiveSeriali
     RefundInitiationCollectionResponse object, {
     FullType specifiedType = FullType.unspecified,
   }) {
+<<<<<<< HEAD
     return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+=======
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
+>>>>>>> origin/main
   }
 
   void _deserializeProperties(
@@ -104,4 +139,7 @@ class _$RefundInitiationCollectionResponseSerializer implements PrimitiveSeriali
     return result.build();
   }
 }
+<<<<<<< HEAD
 
+=======
+>>>>>>> origin/main

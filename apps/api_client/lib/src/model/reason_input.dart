@@ -11,7 +11,11 @@ part 'reason_input.g.dart';
 /// ReasonInput
 ///
 /// Properties:
+<<<<<<< HEAD
 /// * [reason] 
+=======
+/// * [reason]
+>>>>>>> origin/main
 @BuiltValue()
 abstract class ReasonInput implements Built<ReasonInput, ReasonInputBuilder> {
   @BuiltValueField(wireName: r'reason')
@@ -53,7 +57,13 @@ class _$ReasonInputSerializer implements PrimitiveSerializer<ReasonInput> {
     ReasonInput object, {
     FullType specifiedType = FullType.unspecified,
   }) {
+<<<<<<< HEAD
     return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+=======
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
+>>>>>>> origin/main
   }
 
   void _deserializeProperties(
@@ -103,4 +113,7 @@ class _$ReasonInputSerializer implements PrimitiveSerializer<ReasonInput> {
     return result.build();
   }
 }
+<<<<<<< HEAD
 
+=======
+>>>>>>> origin/main

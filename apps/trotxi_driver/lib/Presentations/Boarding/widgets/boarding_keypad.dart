@@ -6,26 +6,16 @@ import 'package:trotxi_driver/core/config/theme/app_typography.dart';
 
 /// The keys a boarding code can be built from (Boarding / Code / Entry).
 ///
-/// Digits first, then the letters the code alphabet uses. I, L, O and U are
-/// absent for the reason they are absent from the generator: they are the ones
-/// people misread aloud or mistype off a phone screen, and a code is read out
-/// across a door with an engine running.
-///
-/// 0 and 1 ARE here, even though the generator stopped issuing them. Codes
-/// minted before the alphanumeric switch are four digits and include both, and
-/// a rider still holding one must be able to board. The verify endpoints accept
-/// them for the same reason.
+/// Digits first, then all letters from the replacement API's base32 alphabet
+/// (A–Z and 2–7). I/L/O/U are valid issued characters, not interchangeable with
+/// digits. The test checks the actual replacement generator to prevent drift.
 const boardingKeys = [
-  '0',
-  '1',
   '2',
   '3',
   '4',
   '5',
   '6',
   '7',
-  '8',
-  '9',
   'A',
   'B',
   'C',
@@ -34,15 +24,19 @@ const boardingKeys = [
   'F',
   'G',
   'H',
+  'I',
   'J',
   'K',
+  'L',
   'M',
   'N',
+  'O',
   'P',
   'Q',
   'R',
   'S',
   'T',
+  'U',
   'V',
   'W',
   'X',
@@ -54,7 +48,7 @@ const boardingKeys = [
 ///
 /// Not the system keyboard, and the difference is operational rather than
 /// cosmetic. The system keyboard takes half the screen, autocorrects, offers
-/// every character including the four this alphabet excludes, and puts the keys
+/// characters outside the code alphabet, and puts the keys
 /// where QWERTY puts them rather than where the code's own alphabet does. A
 /// driver holding a door with one hand gets a fixed grid of large targets.
 class BoardingKeypad extends StatelessWidget {
@@ -87,18 +81,17 @@ class BoardingKeypad extends StatelessWidget {
 
     return Column(
       children: [
-        // Ten digits across, then the letters in rows of eight. The widths come
-        // out close to the file's 28 for a digit and 36 for a letter on a
-        // 390-wide phone, and stay proportional on anything else.
+        // Six valid digits, then letters in rows of eight. The final short
+        // row keeps equal key widths; no character is silently clipped.
         _KeyRow(
-          keys: boardingKeys.sublist(0, 10),
+          keys: boardingKeys.sublist(0, 6),
           onKey: onKey,
           enabled: enabled,
           colors: colors,
         ),
         const SizedBox(height: AppSpacing.space8),
         _KeyRow(
-          keys: boardingKeys.sublist(10, 18),
+          keys: boardingKeys.sublist(6, 14),
           slots: 8,
           onKey: onKey,
           enabled: enabled,
@@ -106,7 +99,7 @@ class BoardingKeypad extends StatelessWidget {
         ),
         const SizedBox(height: AppSpacing.space8),
         _KeyRow(
-          keys: boardingKeys.sublist(18, 26),
+          keys: boardingKeys.sublist(14, 22),
           slots: 8,
           onKey: onKey,
           enabled: enabled,
@@ -114,7 +107,15 @@ class BoardingKeypad extends StatelessWidget {
         ),
         const SizedBox(height: AppSpacing.space8),
         _KeyRow(
-          keys: boardingKeys.sublist(26),
+          keys: boardingKeys.sublist(22, 30),
+          slots: 8,
+          onKey: onKey,
+          enabled: enabled,
+          colors: colors,
+        ),
+        const SizedBox(height: AppSpacing.space8),
+        _KeyRow(
+          keys: boardingKeys.sublist(30),
           slots: 8,
           onKey: onKey,
           enabled: enabled,

@@ -1,0 +1,143 @@
+# Puts a week of believable service into the staging database, or links real
+# Google accounts to what is already there. Manual only.
+#
+# Nothing has to be handed to anyone: the database comes from
+# STAGING_DATABASE_URL, and the PIN secret is derived from the service's own
+# JWT_SECRET, read through the Render API. Driver PINs print in the run log,
+# which is the only place they exist.
+name: Seed staging
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: 'check reads only. seed writes the catalogue. link attaches Google accounts. reset-pins reissues driver PINs and proves them against the live service.'
+        type: choice
+        options: [check, seed, extend, link, reset-pins, enroll, inspect, maintenance]
+        default: check
+      subjects:
+        description: 'Google subject ids, comma separated. First takes the operations account, the rest take riders.'
+        type: string
+        default: ''
+      email:
+        description: 'inspect reads this address. enrol restricted to it; blank enrols every commuter without a membership.'
+        type: string
+        default: ''
+
+concurrency: seed-staging
+
+jobs:
+  seed:
+    name: ${{ inputs.mode }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+
+      # The PIN secret is not a repo secret. It is derived from the service's
+      # JWT_SECRET exactly the way the running service derives it, so a seeded
+      # PIN verifies against the same hash the sign-in path checks.
+      - name: Derive the service's PIN secret
+        env:
+          RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+          SERVICE_ID: ${{ vars.RENDER_STAGING_SERVICE_ID }}
+        run: |
+          if [ -z "$SERVICE_ID" ]; then
+            echo '::error::RENDER_STAGING_SERVICE_ID is not set.'; exit 1
+          fi
+          api() { curl -fsS -H "Authorization: Bearer ${RENDER_API_KEY}" "https://api.render.com/v1$1"; }
+          pick() { jq -r '.. | objects | select(.key? == "JWT_SECRET") | .value' 2>/dev/null; }
+
+          # The service env-vars endpoint returns only what is set directly on
+          # the service. A JWT_SECRET the service inherits from an env group is
+          # not in there, which is exactly how the first attempt derived a
+          # secret the service does not verify with. Collect both.
+          # Names and counts only, never values. The first attempt found one
+          # JWT_SECRET and the service verified with none of its derivations, so
+          # what this reads and what the service starts from are different
+          # things, and guessing which has cost two runs already.
+          echo "service: $(api "/services/${SERVICE_ID}" | jq -r '.name // .service.name // "?"') ($SERVICE_ID)"
+          api "/services/${SERVICE_ID}/env-vars?limit=100" \
+            | jq -r '[.. | objects | select(.key?) | .key] | "service-level keys: " + (join(", "))'
+
+          groups=$(api "/env-groups?limit=100" | jq -r '.. | objects | select(.id? and .name?) | "\(.id)\t\(.name)"' | sort -u)
+          if [ -z "$groups" ]; then
+            echo 'env groups visible to this API key: none'
+          else
+            echo "env groups visible to this API key:"
+            printf '%s\n' "$groups" | while IFS=$'\t' read -r id name; do
+              keys=$(api "/env-groups/${id}" | jq -r '[.. | objects | select(.key?) | .key] | join(", ")')
+              echo "  $name ($id): ${keys:-no readable keys}"
+            done
+          fi
+
+          {
+            api "/services/${SERVICE_ID}/env-vars?limit=100" | pick
+            printf '%s\n' "$groups" | cut -f1 | while read -r id; do
+              [ -n "$id" ] && api "/env-groups/${id}" | pick
+            done
+          } | grep -v '^$' | sort -u > /tmp/jwt-candidates
+
+          count=$(wc -l < /tmp/jwt-candidates | tr -d ' ')
+          if [ "$count" = "0" ]; then
+            echo '::error::No JWT_SECRET found on the service or in any env group.'
+            exit 1
+          fi
+          echo "Found $count distinct JWT_SECRET value(s) across the service and its env groups."
+          while IFS= read -r value; do echo "::add-mask::$value"; done < /tmp/jwt-candidates
+          jwt=$(head -1 /tmp/jwt-candidates)
+          echo "::add-mask::$jwt"
+          pin=$(JWT="$jwt" node --input-type=module -e '
+            import { hkdfSync } from "node:crypto";
+            process.stdout.write(Buffer.from(
+              hkdfSync("sha256", process.env.JWT, "trotxi:replacement:staging:v1", "PIN_SECRET", 32),
+            ).toString("base64"));
+          ')
+          echo "::add-mask::$pin"
+          echo "REPLACEMENT_PIN_SECRET=$pin" >> "$GITHUB_ENV"
+          # Same derivation, different purpose: maintenance mints an operator
+          # session and the service verifies it with this key.
+          access=$(JWT="$jwt" node --input-type=module -e '
+            import { hkdfSync } from "node:crypto";
+            process.stdout.write(Buffer.from(
+              hkdfSync("sha256", process.env.JWT, "trotxi:replacement:staging:v1", "ACCESS_SECRET", 32),
+            ).toString("base64"));
+          ')
+          echo "::add-mask::$access"
+          echo "REPLACEMENT_ACCESS_SECRET=$access" >> "$GITHUB_ENV"
+          # reset-pins needs the raw value so it can try the derivations the
+          # service might be using and let the service pick.
+          echo "SEED_JWT_SECRETS<<TROTXI_EOF" >> "$GITHUB_ENV"
+          cat /tmp/jwt-candidates >> "$GITHUB_ENV"
+          echo "TROTXI_EOF" >> "$GITHUB_ENV"
+          rm -f /tmp/jwt-candidates
+
+      - name: Run
+        working-directory: services/api-next
+        env:
+          REPLACEMENT_DATABASE_URL: ${{ secrets.STAGING_DATABASE_URL }}
+          SEED_LINK_SUBJECTS: ${{ inputs.subjects }}
+          SEED_STAGING: ${{ inputs.mode == 'seed' && 'yes' || '' }}
+          SEED_LINK_ONLY: ${{ inputs.mode == 'link' && 'yes' || '' }}
+          SEED_RESET_PINS: ${{ inputs.mode == 'reset-pins' && 'yes' || '' }}
+          SEED_ENROLL: ${{ inputs.mode == 'enroll' && 'yes' || '' }}
+          SEED_EXTEND: ${{ inputs.mode == 'extend' && 'yes' || '' }}
+          SEED_ENROLL_EMAIL: ${{ inputs.email }}
+          SEED_INSPECT_EMAIL: ${{ inputs.mode == 'inspect' && inputs.email || '' }}
+          SEED_MAINTENANCE: ${{ inputs.mode == 'maintenance' && 'yes' || '' }}
+          SEED_STAGING_URL: ${{ vars.STAGING_URL }}
+        run: node --import tsx scripts/seed-staging.ts
+
+      - name: What the driver app needs
+        if: inputs.mode == 'seed'
+        run: |
+          echo 'The driver codes and PINs above are the only copy: the table'
+          echo 'stores a keyed hash and nothing else. Save them now.'
+          echo 'To make an account reachable from an app later, re-run this'
+          echo 'workflow in link mode with real Google subject ids.'

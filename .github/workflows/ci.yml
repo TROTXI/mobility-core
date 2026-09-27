@@ -3,8 +3,9 @@ name: CI
 on:
   push:
     branches: [main]
+  # Branch filters apply to the PR base. Run stacked PRs too, not only PRs that
+  # already target main, so each layer receives the same merge gate.
   pull_request:
-    branches: [main]
 
 permissions:
   contents: read
@@ -16,6 +17,101 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
+  api-postgres:
+    # The API's database suites, split three ways by their measured run time
+    # (about 150s of test work each) so a failure shows in about a minute rather
+    # than after the whole set. A new .pg.test.ts file needs adding to one part.
+    name: API (Postgres) ${{ matrix.part }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      # Every part runs to the end, so one push shows every failure at once.
+      fail-fast: false
+      matrix:
+        include:
+          - part: 1 of 3
+            slug: part-1
+            files: >-
+              tests/assembly.pg.test.ts tests/gps.pg.test.ts tests/config.pg.test.ts
+              tests/pricing.pg.test.ts tests/overview.pg.test.ts tests/riders.pg.test.ts
+              tests/operations.pg.test.ts tests/payment-foundation.pg.test.ts
+              tests/refund-initiation.pg.test.ts tests/trip-generation.pg.test.ts
+          - part: 2 of 3
+            slug: part-2
+            files: >-
+              tests/transport-commands.pg.test.ts tests/driver-credentials.pg.test.ts
+              tests/catalog.pg.test.ts tests/fleet.pg.test.ts
+              tests/account-recovery.pg.test.ts tests/email.pg.test.ts tests/boarding.pg.test.ts
+              tests/payment-recovery.pg.test.ts
+          - part: 3 of 3
+            slug: part-3
+            files: >-
+              tests/transport.pg.test.ts tests/auth.pg.test.ts tests/account.pg.test.ts
+              tests/trips.pg.test.ts tests/personal-pauses.pg.test.ts tests/push.pg.test.ts
+              tests/membership.pg.test.ts
+    services:
+      postgres:
+        image: postgis/postgis:16-3.4
+        env:
+          POSTGRES_USER: harness
+          POSTGRES_PASSWORD: harness-ci-only
+          POSTGRES_DB: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U harness -d postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    env:
+      HARNESS_ADMIN_DATABASE_URL: postgres://harness:harness-ci-only@127.0.0.1:5432/postgres
+      HARNESS_ALLOW_CREATE_DATABASES: '1'
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Database suites
+        env:
+          REPLACEMENT_EVIDENCE_DIR: ${{ github.workspace }}/.harness-artifacts/api
+        run: |
+          mkdir -p .harness-artifacts/api
+          cd services/api-next
+          node --import tsx --test --test-reporter=spec --test-reporter-destination=stdout --test-reporter=junit --test-reporter-destination=../../.harness-artifacts/api/tests.xml ${{ matrix.files }}
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: api-postgres-${{ matrix.slug }}
+          path: .harness-artifacts/api/
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 14
+
+  design-contracts:
+    name: Redesign contract (design only)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Validate design source and generated review artifacts
+        run: |
+          node docs/design/scripts/build-invariants.mjs
+          node docs/design/scripts/build-contract.mjs
+          node docs/design/scripts/build-transport-contract.mjs
+          node --test docs/design/scripts/contract.test.mjs
+          git diff --exit-code -- docs/design/contracts/target.openapi.json docs/design/contracts/replacement.openapi.json docs/design/contracts/examples.json docs/design/contracts/endpoint-inventory.json docs/design/stage-1-invariants.md docs/design/stage-1-endpoints.md docs/design/stage-2-operation-scope.md services/api-next/src/http/contract.json
+
   format:
     name: Format (Prettier)
     runs-on: ubuntu-latest
@@ -84,8 +180,7 @@ jobs:
   # Recursive on purpose: every workspace package that defines one of these
   # scripts is gated automatically — a new package (e.g. apps/ops, #170) cannot
   # merge with zero coverage just because nobody edited this file. Packages
-  # without a script are skipped (--if-present); Playwright stays in the e2e
-  # job because @trotxi/e2e's `test` needs the Postgres service container.
+  # without a script are skipped (--if-present).
   node:
     name: Node packages (workspace)
     runs-on: ubuntu-latest
@@ -104,85 +199,6 @@ jobs:
       - run: pnpm -r --if-present run test:coverage
       - run: pnpm -r --if-present run build
 
-  migrations:
-    name: Migrations (Postgres)
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    services:
-      postgres:
-        image: postgis/postgis:16-3.4
-        env:
-          POSTGRES_USER: trotxi
-          POSTGRES_PASSWORD: trotxi
-          POSTGRES_DB: trotxi
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd "pg_isready -U trotxi"
-          --health-interval 5s
-          --health-timeout 5s
-          --health-retries 20
-    env:
-      DATABASE_URL: postgres://trotxi:trotxi@localhost:5432/trotxi
-    steps:
-      - uses: actions/checkout@v7
-      - uses: pnpm/action-setup@v6
-      - uses: actions/setup-node@v7
-        with:
-          node-version: 24
-          cache: pnpm
-
-      - run: pnpm install --frozen-lockfile
-      # Ordering guard (#184): migrate.ts sorts on the full filename, so two
-      # migrations sharing a number run in alphabetical order of their
-      # description. Catch that before it silently decides a dependency.
-      - run: services/api/scripts/check-migration-prefixes.sh
-      - run: pnpm --filter @trotxi/api run migrate
-      # Idempotency: a second run must be a clean no-op.
-      - run: pnpm --filter @trotxi/api run migrate
-
-  e2e:
-    name: E2E (Playwright)
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    # Real Postgres so the suite exercises the Pg adapters end-to-end; the e2e
-    # globalSetup migrates + seeds it. Specs self-skip the DB-backed cases when
-    # DATABASE_URL is unset (local zero-infra runs).
-    services:
-      postgres:
-        image: postgis/postgis:16-3.4
-        env:
-          POSTGRES_USER: trotxi
-          POSTGRES_PASSWORD: trotxi
-          POSTGRES_DB: trotxi
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd "pg_isready -U trotxi"
-          --health-interval 5s
-          --health-timeout 5s
-          --health-retries 20
-    env:
-      DATABASE_URL: postgres://trotxi:trotxi@localhost:5432/trotxi
-    steps:
-      - uses: actions/checkout@v7
-      - uses: pnpm/action-setup@v6
-      - uses: actions/setup-node@v7
-        with:
-          node-version: 24
-          cache: pnpm
-
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm --filter @trotxi/e2e test
-
-      - uses: actions/upload-artifact@v7
-        if: failure()
-        with:
-          name: playwright-report
-          path: e2e/playwright-report/
-          retention-days: 7
-
-  #Flutter jobs activate when the first app lands in apps/ — see apps/README.md.
   flutter:
     name: Flutter (${{ matrix.app }})
     runs-on: ubuntu-latest
@@ -190,7 +206,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        app: [trotxi_commuter, trotxi_driver]
+        app: [trotxi_client, trotxi_commuter, trotxi_driver, trotxi_map]
     defaults:
       run:
         working-directory: apps/${{ matrix.app }}
@@ -203,3 +219,9 @@ jobs:
       - run: flutter pub get
       - run: flutter analyze
       - run: flutter test
+      - name: Rider API client serialization
+        if: matrix.app == 'trotxi_client'
+        working-directory: apps/api_client
+        run: |
+          dart pub get
+          dart test test/rider_services_serialization_test.dart test/reservation_detail_serialization_test.dart

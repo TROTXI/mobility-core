@@ -11,14 +11,22 @@ part 'maintenance_input.g.dart';
 /// MaintenanceInput
 ///
 /// Properties:
+<<<<<<< HEAD
 /// * [limit] 
 @BuiltValue()
 abstract class MaintenanceInput implements Built<MaintenanceInput, MaintenanceInputBuilder> {
+=======
+/// * [limit]
+@BuiltValue()
+abstract class MaintenanceInput
+    implements Built<MaintenanceInput, MaintenanceInputBuilder> {
+>>>>>>> origin/main
   @BuiltValueField(wireName: r'limit')
   int get limit;
 
   MaintenanceInput._();
 
+<<<<<<< HEAD
   factory MaintenanceInput([void updates(MaintenanceInputBuilder b)]) = _$MaintenanceInput;
 
   @BuiltValueHook(initializeBuilder: true)
@@ -30,6 +38,21 @@ abstract class MaintenanceInput implements Built<MaintenanceInput, MaintenanceIn
 }
 
 class _$MaintenanceInputSerializer implements PrimitiveSerializer<MaintenanceInput> {
+=======
+  factory MaintenanceInput([void updates(MaintenanceInputBuilder b)]) =
+      _$MaintenanceInput;
+
+  @BuiltValueHook(initializeBuilder: true)
+  static void _defaults(MaintenanceInputBuilder b) => b..limit = 100;
+
+  @BuiltValueSerializer(custom: true)
+  static Serializer<MaintenanceInput> get serializer =>
+      _$MaintenanceInputSerializer();
+}
+
+class _$MaintenanceInputSerializer
+    implements PrimitiveSerializer<MaintenanceInput> {
+>>>>>>> origin/main
   @override
   final Iterable<Type> types = const [MaintenanceInput, _$MaintenanceInput];
 
@@ -54,7 +77,13 @@ class _$MaintenanceInputSerializer implements PrimitiveSerializer<MaintenanceInp
     MaintenanceInput object, {
     FullType specifiedType = FullType.unspecified,
   }) {
+<<<<<<< HEAD
     return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+=======
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
+>>>>>>> origin/main
   }
 
   void _deserializeProperties(
@@ -104,4 +133,7 @@ class _$MaintenanceInputSerializer implements PrimitiveSerializer<MaintenanceInp
     return result.build();
   }
 }
+<<<<<<< HEAD
 
+=======
+>>>>>>> origin/main

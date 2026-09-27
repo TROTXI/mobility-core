@@ -11,6 +11,7 @@ part 'trace_hold_input.g.dart';
 /// TraceHoldInput
 ///
 /// Properties:
+<<<<<<< HEAD
 /// * [incidentId] 
 /// * [tripId] 
 /// * [receivedFrom] 
@@ -19,6 +20,17 @@ part 'trace_hold_input.g.dart';
 /// * [reviewAt] 
 @BuiltValue()
 abstract class TraceHoldInput implements Built<TraceHoldInput, TraceHoldInputBuilder> {
+=======
+/// * [incidentId]
+/// * [tripId]
+/// * [receivedFrom]
+/// * [receivedTo]
+/// * [reason]
+/// * [reviewAt]
+@BuiltValue()
+abstract class TraceHoldInput
+    implements Built<TraceHoldInput, TraceHoldInputBuilder> {
+>>>>>>> origin/main
   @BuiltValueField(wireName: r'incidentId')
   String get incidentId;
 
@@ -39,16 +51,30 @@ abstract class TraceHoldInput implements Built<TraceHoldInput, TraceHoldInputBui
 
   TraceHoldInput._();
 
+<<<<<<< HEAD
   factory TraceHoldInput([void updates(TraceHoldInputBuilder b)]) = _$TraceHoldInput;
+=======
+  factory TraceHoldInput([void updates(TraceHoldInputBuilder b)]) =
+      _$TraceHoldInput;
+>>>>>>> origin/main
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(TraceHoldInputBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
+<<<<<<< HEAD
   static Serializer<TraceHoldInput> get serializer => _$TraceHoldInputSerializer();
 }
 
 class _$TraceHoldInputSerializer implements PrimitiveSerializer<TraceHoldInput> {
+=======
+  static Serializer<TraceHoldInput> get serializer =>
+      _$TraceHoldInputSerializer();
+}
+
+class _$TraceHoldInputSerializer
+    implements PrimitiveSerializer<TraceHoldInput> {
+>>>>>>> origin/main
   @override
   final Iterable<Type> types = const [TraceHoldInput, _$TraceHoldInput];
 
@@ -98,7 +124,13 @@ class _$TraceHoldInputSerializer implements PrimitiveSerializer<TraceHoldInput> 
     TraceHoldInput object, {
     FullType specifiedType = FullType.unspecified,
   }) {
+<<<<<<< HEAD
     return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+=======
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
+>>>>>>> origin/main
   }
 
   void _deserializeProperties(
@@ -183,4 +215,7 @@ class _$TraceHoldInputSerializer implements PrimitiveSerializer<TraceHoldInput> 
     return result.build();
   }
 }
+<<<<<<< HEAD
 
+=======
+>>>>>>> origin/main

@@ -13,12 +13,22 @@ part 'service_day_input.g.dart';
 /// ServiceDayInput
 ///
 /// Properties:
+<<<<<<< HEAD
 /// * [travelDate] 
 /// * [direction] 
 /// * [limit] 
 /// * [routeId] 
 @BuiltValue()
 abstract class ServiceDayInput implements Built<ServiceDayInput, ServiceDayInputBuilder> {
+=======
+/// * [travelDate]
+/// * [direction]
+/// * [limit]
+/// * [routeId]
+@BuiltValue()
+abstract class ServiceDayInput
+    implements Built<ServiceDayInput, ServiceDayInputBuilder> {
+>>>>>>> origin/main
   @BuiltValueField(wireName: r'travelDate')
   Date get travelDate;
 
@@ -34,6 +44,7 @@ abstract class ServiceDayInput implements Built<ServiceDayInput, ServiceDayInput
 
   ServiceDayInput._();
 
+<<<<<<< HEAD
   factory ServiceDayInput([void updates(ServiceDayInputBuilder b)]) = _$ServiceDayInput;
 
   @BuiltValueHook(initializeBuilder: true)
@@ -45,6 +56,21 @@ abstract class ServiceDayInput implements Built<ServiceDayInput, ServiceDayInput
 }
 
 class _$ServiceDayInputSerializer implements PrimitiveSerializer<ServiceDayInput> {
+=======
+  factory ServiceDayInput([void updates(ServiceDayInputBuilder b)]) =
+      _$ServiceDayInput;
+
+  @BuiltValueHook(initializeBuilder: true)
+  static void _defaults(ServiceDayInputBuilder b) => b..limit = 100;
+
+  @BuiltValueSerializer(custom: true)
+  static Serializer<ServiceDayInput> get serializer =>
+      _$ServiceDayInputSerializer();
+}
+
+class _$ServiceDayInputSerializer
+    implements PrimitiveSerializer<ServiceDayInput> {
+>>>>>>> origin/main
   @override
   final Iterable<Type> types = const [ServiceDayInput, _$ServiceDayInput];
 
@@ -86,7 +112,13 @@ class _$ServiceDayInputSerializer implements PrimitiveSerializer<ServiceDayInput
     ServiceDayInput object, {
     FullType specifiedType = FullType.unspecified,
   }) {
+<<<<<<< HEAD
     return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+=======
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
+>>>>>>> origin/main
   }
 
   void _deserializeProperties(
@@ -159,6 +191,7 @@ class _$ServiceDayInputSerializer implements PrimitiveSerializer<ServiceDayInput
 }
 
 class ServiceDayInputDirectionEnum extends EnumClass {
+<<<<<<< HEAD
 
   @BuiltValueEnumConst(wireName: r'outbound')
   static const ServiceDayInputDirectionEnum outbound = _$serviceDayInputDirectionEnum_outbound;
@@ -173,3 +206,22 @@ class ServiceDayInputDirectionEnum extends EnumClass {
   static ServiceDayInputDirectionEnum valueOf(String name) => _$serviceDayInputDirectionEnumValueOf(name);
 }
 
+=======
+  @BuiltValueEnumConst(wireName: r'outbound')
+  static const ServiceDayInputDirectionEnum outbound =
+      _$serviceDayInputDirectionEnum_outbound;
+  @BuiltValueEnumConst(wireName: r'return')
+  static const ServiceDayInputDirectionEnum return_ =
+      _$serviceDayInputDirectionEnum_return_;
+
+  static Serializer<ServiceDayInputDirectionEnum> get serializer =>
+      _$serviceDayInputDirectionEnumSerializer;
+
+  const ServiceDayInputDirectionEnum._(String name) : super(name);
+
+  static BuiltSet<ServiceDayInputDirectionEnum> get values =>
+      _$serviceDayInputDirectionEnumValues;
+  static ServiceDayInputDirectionEnum valueOf(String name) =>
+      _$serviceDayInputDirectionEnumValueOf(name);
+}
+>>>>>>> origin/main

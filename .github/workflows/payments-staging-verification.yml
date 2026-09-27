@@ -1,0 +1,88 @@
+name: Payments staging verification
+
+on:
+  workflow_dispatch:
+    inputs:
+      phase:
+        description: 'audit-contract reports ledger state and initializes an unpaid test transaction; setup creates a fixture'
+        type: choice
+        default: audit-contract
+        options: [audit-contract, setup, verify-delivery, replay]
+      fixture_id:
+        description: 'Fixture UUID from setup (required for verify-delivery/replay; blank setup creates a new one)'
+        type: string
+        default: ''
+
+permissions:
+  contents: read
+
+concurrency:
+  group: payments-staging-verification
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    # Only reviewed main code may consume the staging environment credentials.
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: staging
+    env:
+      SMOKE_PHASE: ${{ inputs.phase }}
+      FIXTURE_ID: ${{ inputs.fixture_id }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Load only the staging test credentials
+        run: node services/api/scripts/load-staging-payment-env.mjs
+        env:
+          RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+          RENDER_STAGING_SERVICE_ID: ${{ vars.RENDER_STAGING_SERVICE_ID }}
+      - name: Prepare trusted database CA
+        env:
+          STAGING_DATABASE_CA_CERT: ${{ secrets.STAGING_DATABASE_CA_CERT }}
+          DATABASE_URL: ${{ secrets.STAGING_DATABASE_URL }}
+        run: |
+          node --input-type=module <<'NODE'
+          import { writeFileSync, appendFileSync } from 'node:fs';
+          const connection = new URL(process.env.DATABASE_URL);
+          for (const key of ['sslmode', 'ssl', 'sslcert', 'sslkey', 'sslrootcert']) connection.searchParams.delete(key);
+          const url = connection.toString();
+          console.log(`::add-mask::${url}`);
+          appendFileSync(process.env.GITHUB_ENV, `PAYMENTS_AUDIT_DATABASE_URL=${url}\n`);
+          const path = `${process.env.RUNNER_TEMP}/staging-payment-root.crt`;
+          if (process.env.STAGING_DATABASE_CA_CERT) {
+            writeFileSync(path, process.env.STAGING_DATABASE_CA_CERT, { mode: 0o600 });
+            appendFileSync(process.env.GITHUB_ENV, `PGSSLROOTCERT=${path}\n`);
+          } else {
+            appendFileSync(process.env.GITHUB_ENV, 'PGSSLROOTCERT=/etc/ssl/certs/ca-certificates.crt\n');
+          }
+          NODE
+      - name: Read-only staging audit report (inspect returned rows)
+        run: psql "$PAYMENTS_AUDIT_DATABASE_URL" -X --set ON_ERROR_STOP=1 --file services/api/scripts/payments-audit.sql
+        env:
+          PGSSLMODE: verify-full
+          PGOPTIONS: -c default_transaction_read_only=on -c statement_timeout=30000
+      - name: Paystack sandbox adapter contract
+        if: inputs.phase == 'audit-contract'
+        run: pnpm --filter @trotxi/api exec vitest run tests/paystack.sandbox.test.ts --testTimeout=30000
+        env:
+          RUN_PAYSTACK_SANDBOX: '1'
+      - name: Staging payment verification
+        if: inputs.phase != 'audit-contract'
+        run: node services/api/scripts/payments-staging-smoke.mjs
+        env:
+          DATABASE_URL: ${{ secrets.STAGING_DATABASE_URL }}
+          API_BASE_URL: ${{ vars.STAGING_URL }}
+          STAGING_DATABASE_CA_CERT: ${{ secrets.STAGING_DATABASE_CA_CERT }}
+      - name: Read-only audit report after verification (inspect returned rows)
+        if: success() && inputs.phase != 'audit-contract'
+        run: psql "$PAYMENTS_AUDIT_DATABASE_URL" -X --set ON_ERROR_STOP=1 --file services/api/scripts/payments-audit.sql
+        env:
+          PGSSLMODE: verify-full
+          PGOPTIONS: -c default_transaction_read_only=on -c statement_timeout=30000

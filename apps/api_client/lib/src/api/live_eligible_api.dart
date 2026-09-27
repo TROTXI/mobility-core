@@ -4,27 +4,54 @@
 
 import 'dart:async';
 
+<<<<<<< HEAD
 import 'package:built_value/json_object.dart';
 import 'package:built_value/serializer.dart';
 import 'package:dio/dio.dart';
 
+=======
+import 'package:built_value/serializer.dart';
+import 'package:dio/dio.dart';
+
+<<<<<<<< HEAD:apps/api_client/lib/src/api/rides_api.dart
+import 'package:trotxi_api_client/src/model/me_rides_get200_response.dart';
+
+class RidesApi {
+========
+>>>>>>> origin/main
 import 'package:trotxi_api_client/src/api_util.dart';
 import 'package:trotxi_api_client/src/model/error_response.dart';
 import 'package:trotxi_api_client/src/model/live_trip_response.dart';
 
 class LiveEligibleApi {
+<<<<<<< HEAD
 
+=======
+>>>>>>>> origin/main:apps/api_client/lib/src/api/live_eligible_api.dart
+>>>>>>> origin/main
   final Dio _dio;
 
   final Serializers _serializers;
 
   const LiveEligibleApi(this._dio, this._serializers);
 
+<<<<<<< HEAD
   /// get Live Trip
   /// 
   ///
   /// Parameters:
   /// * [id] 
+=======
+<<<<<<<< HEAD:apps/api_client/lib/src/api/rides_api.dart
+  /// Remaining ride entitlement + Ride Credit balance
+========
+  /// get Live Trip
+>>>>>>>> origin/main:apps/api_client/lib/src/api/live_eligible_api.dart
+  ///
+  ///
+  /// Parameters:
+  /// * [id]
+>>>>>>> origin/main
   /// * [xTrotxiClient] - Compatibility metadata only, never grants a role.
   /// * [xTrotxiBuild] - Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
   /// * [xTrotxiPlatform] - Required for commuter/driver, absent for ops/worker.
@@ -37,11 +64,22 @@ class LiveEligibleApi {
   ///
   /// Returns a [Future] containing a [Response] with a [LiveTripResponse] as data
   /// Throws [DioException] if API call or serialization fails
+<<<<<<< HEAD
   Future<Response<LiveTripResponse>> getLiveTrip({ 
+=======
+<<<<<<<< HEAD:apps/api_client/lib/src/api/rides_api.dart
+  Future<Response<MeRidesGet200Response>> meRidesGet({
+========
+  Future<Response<LiveTripResponse>> getLiveTrip({
+>>>>>>> origin/main
     required String id,
     required String xTrotxiClient,
     int xTrotxiBuild = 1,
     String? xTrotxiPlatform,
+<<<<<<< HEAD
+=======
+>>>>>>>> origin/main:apps/api_client/lib/src/api/live_eligible_api.dart
+>>>>>>> origin/main
     CancelToken? cancelToken,
     Map<String, dynamic>? headers,
     Map<String, dynamic>? extra,
@@ -49,7 +87,14 @@ class LiveEligibleApi {
     ProgressCallback? onSendProgress,
     ProgressCallback? onReceiveProgress,
   }) async {
+<<<<<<< HEAD
     final _path = r'/v1/trips/{id}/live'.replaceAll('{' r'id' '}', encodeQueryParameter(_serializers, id, const FullType(String)).toString());
+=======
+    final _path = r'/v1/trips/{id}/live'.replaceAll(
+        '{' r'id' '}',
+        encodeQueryParameter(_serializers, id, const FullType(String))
+            .toString());
+>>>>>>> origin/main
     final _options = Options(
       method: r'GET',
       headers: <String, dynamic>{
@@ -83,11 +128,25 @@ class LiveEligibleApi {
 
     try {
       final rawResponse = _response.data;
+<<<<<<< HEAD
       _responseData = rawResponse == null ? null : _serializers.deserialize(
         rawResponse,
         specifiedType: const FullType(LiveTripResponse),
       ) as LiveTripResponse;
 
+=======
+      _responseData = rawResponse == null
+          ? null
+          : _serializers.deserialize(
+              rawResponse,
+<<<<<<<< HEAD:apps/api_client/lib/src/api/rides_api.dart
+              specifiedType: const FullType(MeRidesGet200Response),
+            ) as MeRidesGet200Response;
+========
+              specifiedType: const FullType(LiveTripResponse),
+            ) as LiveTripResponse;
+>>>>>>>> origin/main:apps/api_client/lib/src/api/live_eligible_api.dart
+>>>>>>> origin/main
     } catch (error, stackTrace) {
       throw DioException(
         requestOptions: _response.requestOptions,
@@ -109,5 +168,8 @@ class LiveEligibleApi {
       extra: _response.extra,
     );
   }
+<<<<<<< HEAD
 
+=======
+>>>>>>> origin/main
 }

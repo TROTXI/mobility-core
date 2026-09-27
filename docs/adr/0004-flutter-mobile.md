@@ -30,3 +30,11 @@ Technical grounds:
   plugins (`mobile_scanner`, `geolocator`); we accept that dependency.
 - App size is larger than native baseline — acceptable for our distribution
   model.
+
+## Current implementation — 2026-09-12
+
+Both `apps/trotxi_commuter` and `apps/trotxi_driver` exist. They share a
+generated OpenAPI package, a handwritten Dio/auth wrapper and a MapLibre map
+package. The driver app implements the assigned-run, map, GPS, manifest,
+boarding, incident and work-request flows. ADR-0016 defines its shared state
+pattern; commuter adoption remains incremental.

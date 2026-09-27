@@ -14,10 +14,18 @@ part 'decision_event_page.g.dart';
 /// DecisionEventPage
 ///
 /// Properties:
+<<<<<<< HEAD
 /// * [data] 
 /// * [page] 
 @BuiltValue()
 abstract class DecisionEventPage implements Built<DecisionEventPage, DecisionEventPageBuilder> {
+=======
+/// * [data]
+/// * [page]
+@BuiltValue()
+abstract class DecisionEventPage
+    implements Built<DecisionEventPage, DecisionEventPageBuilder> {
+>>>>>>> origin/main
   @BuiltValueField(wireName: r'data')
   BuiltList<DecisionEvent> get data;
 
@@ -26,16 +34,30 @@ abstract class DecisionEventPage implements Built<DecisionEventPage, DecisionEve
 
   DecisionEventPage._();
 
+<<<<<<< HEAD
   factory DecisionEventPage([void updates(DecisionEventPageBuilder b)]) = _$DecisionEventPage;
+=======
+  factory DecisionEventPage([void updates(DecisionEventPageBuilder b)]) =
+      _$DecisionEventPage;
+>>>>>>> origin/main
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(DecisionEventPageBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
+<<<<<<< HEAD
   static Serializer<DecisionEventPage> get serializer => _$DecisionEventPageSerializer();
 }
 
 class _$DecisionEventPageSerializer implements PrimitiveSerializer<DecisionEventPage> {
+=======
+  static Serializer<DecisionEventPage> get serializer =>
+      _$DecisionEventPageSerializer();
+}
+
+class _$DecisionEventPageSerializer
+    implements PrimitiveSerializer<DecisionEventPage> {
+>>>>>>> origin/main
   @override
   final Iterable<Type> types = const [DecisionEventPage, _$DecisionEventPage];
 
@@ -65,7 +87,13 @@ class _$DecisionEventPageSerializer implements PrimitiveSerializer<DecisionEvent
     DecisionEventPage object, {
     FullType specifiedType = FullType.unspecified,
   }) {
+<<<<<<< HEAD
     return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+=======
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
+>>>>>>> origin/main
   }
 
   void _deserializeProperties(
@@ -122,4 +150,7 @@ class _$DecisionEventPageSerializer implements PrimitiveSerializer<DecisionEvent
     return result.build();
   }
 }
+<<<<<<< HEAD
 
+=======
+>>>>>>> origin/main

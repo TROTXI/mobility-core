@@ -17,11 +17,14 @@ void main() {
       // TODO
     });
 
+<<<<<<< HEAD
     // String email
     test('to test the property `email`', () async {
       // TODO
     });
 
+=======
+>>>>>>> origin/main
     // String phone
     test('to test the property `phone`', () async {
       // TODO

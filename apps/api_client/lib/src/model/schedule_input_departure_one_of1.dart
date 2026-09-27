@@ -12,10 +12,20 @@ part 'schedule_input_departure_one_of1.g.dart';
 /// ScheduleInputDepartureOneOf1
 ///
 /// Properties:
+<<<<<<< HEAD
 /// * [kind] 
 /// * [departureId] 
 @BuiltValue()
 abstract class ScheduleInputDepartureOneOf1 implements Built<ScheduleInputDepartureOneOf1, ScheduleInputDepartureOneOf1Builder> {
+=======
+/// * [kind]
+/// * [departureId]
+@BuiltValue()
+abstract class ScheduleInputDepartureOneOf1
+    implements
+        Built<ScheduleInputDepartureOneOf1,
+            ScheduleInputDepartureOneOf1Builder> {
+>>>>>>> origin/main
   @BuiltValueField(wireName: r'kind')
   ScheduleInputDepartureOneOf1KindEnum get kind;
   // enum kindEnum {  existing,  };
@@ -25,18 +35,38 @@ abstract class ScheduleInputDepartureOneOf1 implements Built<ScheduleInputDepart
 
   ScheduleInputDepartureOneOf1._();
 
+<<<<<<< HEAD
   factory ScheduleInputDepartureOneOf1([void updates(ScheduleInputDepartureOneOf1Builder b)]) = _$ScheduleInputDepartureOneOf1;
+=======
+  factory ScheduleInputDepartureOneOf1(
+          [void updates(ScheduleInputDepartureOneOf1Builder b)]) =
+      _$ScheduleInputDepartureOneOf1;
+>>>>>>> origin/main
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(ScheduleInputDepartureOneOf1Builder b) => b;
 
   @BuiltValueSerializer(custom: true)
+<<<<<<< HEAD
   static Serializer<ScheduleInputDepartureOneOf1> get serializer => _$ScheduleInputDepartureOneOf1Serializer();
 }
 
 class _$ScheduleInputDepartureOneOf1Serializer implements PrimitiveSerializer<ScheduleInputDepartureOneOf1> {
   @override
   final Iterable<Type> types = const [ScheduleInputDepartureOneOf1, _$ScheduleInputDepartureOneOf1];
+=======
+  static Serializer<ScheduleInputDepartureOneOf1> get serializer =>
+      _$ScheduleInputDepartureOneOf1Serializer();
+}
+
+class _$ScheduleInputDepartureOneOf1Serializer
+    implements PrimitiveSerializer<ScheduleInputDepartureOneOf1> {
+  @override
+  final Iterable<Type> types = const [
+    ScheduleInputDepartureOneOf1,
+    _$ScheduleInputDepartureOneOf1
+  ];
+>>>>>>> origin/main
 
   @override
   final String wireName = r'ScheduleInputDepartureOneOf1';
@@ -64,7 +94,13 @@ class _$ScheduleInputDepartureOneOf1Serializer implements PrimitiveSerializer<Sc
     ScheduleInputDepartureOneOf1 object, {
     FullType specifiedType = FullType.unspecified,
   }) {
+<<<<<<< HEAD
     return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+=======
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
+>>>>>>> origin/main
   }
 
   void _deserializeProperties(
@@ -123,6 +159,7 @@ class _$ScheduleInputDepartureOneOf1Serializer implements PrimitiveSerializer<Sc
 }
 
 class ScheduleInputDepartureOneOf1KindEnum extends EnumClass {
+<<<<<<< HEAD
 
   @BuiltValueEnumConst(wireName: r'existing')
   static const ScheduleInputDepartureOneOf1KindEnum existing = _$scheduleInputDepartureOneOf1KindEnum_existing;
@@ -135,3 +172,19 @@ class ScheduleInputDepartureOneOf1KindEnum extends EnumClass {
   static ScheduleInputDepartureOneOf1KindEnum valueOf(String name) => _$scheduleInputDepartureOneOf1KindEnumValueOf(name);
 }
 
+=======
+  @BuiltValueEnumConst(wireName: r'existing')
+  static const ScheduleInputDepartureOneOf1KindEnum existing =
+      _$scheduleInputDepartureOneOf1KindEnum_existing;
+
+  static Serializer<ScheduleInputDepartureOneOf1KindEnum> get serializer =>
+      _$scheduleInputDepartureOneOf1KindEnumSerializer;
+
+  const ScheduleInputDepartureOneOf1KindEnum._(String name) : super(name);
+
+  static BuiltSet<ScheduleInputDepartureOneOf1KindEnum> get values =>
+      _$scheduleInputDepartureOneOf1KindEnumValues;
+  static ScheduleInputDepartureOneOf1KindEnum valueOf(String name) =>
+      _$scheduleInputDepartureOneOf1KindEnumValueOf(name);
+}
+>>>>>>> origin/main

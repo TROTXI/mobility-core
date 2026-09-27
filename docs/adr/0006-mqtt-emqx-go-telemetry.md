@@ -30,3 +30,9 @@ Technical grounds:
   will tell us). The client contract is engine-agnostic from day one.
 - EMQX runs in local docker-compose from the start so the path can be
   prototyped any time.
+
+## Current implementation — 2026-09-12
+
+Still deferred. EMQX remains in local Compose, but no production publisher,
+Go processor or WebSocket gateway exists. HTTP position reporting/polling is
+the supported pilot path and its stored traces now power route learning.

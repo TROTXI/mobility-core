@@ -12,10 +12,18 @@ part 'pattern_input.g.dart';
 /// PatternInput
 ///
 /// Properties:
+<<<<<<< HEAD
 /// * [routeId] 
 /// * [direction] 
 @BuiltValue()
 abstract class PatternInput implements Built<PatternInput, PatternInputBuilder> {
+=======
+/// * [routeId]
+/// * [direction]
+@BuiltValue()
+abstract class PatternInput
+    implements Built<PatternInput, PatternInputBuilder> {
+>>>>>>> origin/main
   @BuiltValueField(wireName: r'routeId')
   String get routeId;
 
@@ -64,7 +72,13 @@ class _$PatternInputSerializer implements PrimitiveSerializer<PatternInput> {
     PatternInput object, {
     FullType specifiedType = FullType.unspecified,
   }) {
+<<<<<<< HEAD
     return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+=======
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
+>>>>>>> origin/main
   }
 
   void _deserializeProperties(
@@ -123,6 +137,7 @@ class _$PatternInputSerializer implements PrimitiveSerializer<PatternInput> {
 }
 
 class PatternInputDirectionEnum extends EnumClass {
+<<<<<<< HEAD
 
   @BuiltValueEnumConst(wireName: r'outbound')
   static const PatternInputDirectionEnum outbound = _$patternInputDirectionEnum_outbound;
@@ -137,3 +152,22 @@ class PatternInputDirectionEnum extends EnumClass {
   static PatternInputDirectionEnum valueOf(String name) => _$patternInputDirectionEnumValueOf(name);
 }
 
+=======
+  @BuiltValueEnumConst(wireName: r'outbound')
+  static const PatternInputDirectionEnum outbound =
+      _$patternInputDirectionEnum_outbound;
+  @BuiltValueEnumConst(wireName: r'return')
+  static const PatternInputDirectionEnum return_ =
+      _$patternInputDirectionEnum_return_;
+
+  static Serializer<PatternInputDirectionEnum> get serializer =>
+      _$patternInputDirectionEnumSerializer;
+
+  const PatternInputDirectionEnum._(String name) : super(name);
+
+  static BuiltSet<PatternInputDirectionEnum> get values =>
+      _$patternInputDirectionEnumValues;
+  static PatternInputDirectionEnum valueOf(String name) =>
+      _$patternInputDirectionEnumValueOf(name);
+}
+>>>>>>> origin/main

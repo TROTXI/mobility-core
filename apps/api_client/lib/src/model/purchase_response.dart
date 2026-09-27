@@ -12,24 +12,45 @@ part 'purchase_response.g.dart';
 /// PurchaseResponse
 ///
 /// Properties:
+<<<<<<< HEAD
 /// * [data] 
 @BuiltValue()
 abstract class PurchaseResponse implements Built<PurchaseResponse, PurchaseResponseBuilder> {
+=======
+/// * [data]
+@BuiltValue()
+abstract class PurchaseResponse
+    implements Built<PurchaseResponse, PurchaseResponseBuilder> {
+>>>>>>> origin/main
   @BuiltValueField(wireName: r'data')
   Purchase get data;
 
   PurchaseResponse._();
 
+<<<<<<< HEAD
   factory PurchaseResponse([void updates(PurchaseResponseBuilder b)]) = _$PurchaseResponse;
+=======
+  factory PurchaseResponse([void updates(PurchaseResponseBuilder b)]) =
+      _$PurchaseResponse;
+>>>>>>> origin/main
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(PurchaseResponseBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
+<<<<<<< HEAD
   static Serializer<PurchaseResponse> get serializer => _$PurchaseResponseSerializer();
 }
 
 class _$PurchaseResponseSerializer implements PrimitiveSerializer<PurchaseResponse> {
+=======
+  static Serializer<PurchaseResponse> get serializer =>
+      _$PurchaseResponseSerializer();
+}
+
+class _$PurchaseResponseSerializer
+    implements PrimitiveSerializer<PurchaseResponse> {
+>>>>>>> origin/main
   @override
   final Iterable<Type> types = const [PurchaseResponse, _$PurchaseResponse];
 
@@ -54,7 +75,13 @@ class _$PurchaseResponseSerializer implements PrimitiveSerializer<PurchaseRespon
     PurchaseResponse object, {
     FullType specifiedType = FullType.unspecified,
   }) {
+<<<<<<< HEAD
     return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+=======
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
+>>>>>>> origin/main
   }
 
   void _deserializeProperties(
@@ -104,4 +131,7 @@ class _$PurchaseResponseSerializer implements PrimitiveSerializer<PurchaseRespon
     return result.build();
   }
 }
+<<<<<<< HEAD
 
+=======
+>>>>>>> origin/main

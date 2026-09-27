@@ -12,24 +12,45 @@ part 'pattern_response.g.dart';
 /// PatternResponse
 ///
 /// Properties:
+<<<<<<< HEAD
 /// * [data] 
 @BuiltValue()
 abstract class PatternResponse implements Built<PatternResponse, PatternResponseBuilder> {
+=======
+/// * [data]
+@BuiltValue()
+abstract class PatternResponse
+    implements Built<PatternResponse, PatternResponseBuilder> {
+>>>>>>> origin/main
   @BuiltValueField(wireName: r'data')
   Pattern get data;
 
   PatternResponse._();
 
+<<<<<<< HEAD
   factory PatternResponse([void updates(PatternResponseBuilder b)]) = _$PatternResponse;
+=======
+  factory PatternResponse([void updates(PatternResponseBuilder b)]) =
+      _$PatternResponse;
+>>>>>>> origin/main
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(PatternResponseBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
+<<<<<<< HEAD
   static Serializer<PatternResponse> get serializer => _$PatternResponseSerializer();
 }
 
 class _$PatternResponseSerializer implements PrimitiveSerializer<PatternResponse> {
+=======
+  static Serializer<PatternResponse> get serializer =>
+      _$PatternResponseSerializer();
+}
+
+class _$PatternResponseSerializer
+    implements PrimitiveSerializer<PatternResponse> {
+>>>>>>> origin/main
   @override
   final Iterable<Type> types = const [PatternResponse, _$PatternResponse];
 
@@ -54,7 +75,13 @@ class _$PatternResponseSerializer implements PrimitiveSerializer<PatternResponse
     PatternResponse object, {
     FullType specifiedType = FullType.unspecified,
   }) {
+<<<<<<< HEAD
     return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+=======
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
+>>>>>>> origin/main
   }
 
   void _deserializeProperties(
@@ -104,4 +131,7 @@ class _$PatternResponseSerializer implements PrimitiveSerializer<PatternResponse
     return result.build();
   }
 }
+<<<<<<< HEAD
 
+=======
+>>>>>>> origin/main

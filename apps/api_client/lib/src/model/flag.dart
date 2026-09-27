@@ -11,11 +11,20 @@ part 'flag.g.dart';
 /// Flag
 ///
 /// Properties:
+<<<<<<< HEAD
 /// * [key] 
 /// * [enabled] 
 /// * [rolloutPercentage] 
 /// * [description] 
 /// * [version] 
+=======
+/// * [key]
+/// * [enabled]
+/// * [rolloutPercentage]
+/// * [description]
+/// * [version]
+/// * [editToken]
+>>>>>>> origin/main
 @BuiltValue()
 abstract class Flag implements Built<Flag, FlagBuilder> {
   @BuiltValueField(wireName: r'key')
@@ -33,6 +42,12 @@ abstract class Flag implements Built<Flag, FlagBuilder> {
   @BuiltValueField(wireName: r'version')
   int get version;
 
+<<<<<<< HEAD
+=======
+  @BuiltValueField(wireName: r'editToken')
+  String get editToken;
+
+>>>>>>> origin/main
   Flag._();
 
   factory Flag([void updates(FlagBuilder b)]) = _$Flag;
@@ -81,6 +96,14 @@ class _$FlagSerializer implements PrimitiveSerializer<Flag> {
       object.version,
       specifiedType: const FullType(int),
     );
+<<<<<<< HEAD
+=======
+    yield r'editToken';
+    yield serializers.serialize(
+      object.editToken,
+      specifiedType: const FullType(String),
+    );
+>>>>>>> origin/main
   }
 
   @override
@@ -89,7 +112,13 @@ class _$FlagSerializer implements PrimitiveSerializer<Flag> {
     Flag object, {
     FullType specifiedType = FullType.unspecified,
   }) {
+<<<<<<< HEAD
     return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+=======
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
+>>>>>>> origin/main
   }
 
   void _deserializeProperties(
@@ -139,6 +168,16 @@ class _$FlagSerializer implements PrimitiveSerializer<Flag> {
           ) as int;
           result.version = valueDes;
           break;
+<<<<<<< HEAD
+=======
+        case r'editToken':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType(String),
+          ) as String;
+          result.editToken = valueDes;
+          break;
+>>>>>>> origin/main
         default:
           unhandled.add(key);
           unhandled.add(value);
@@ -167,4 +206,7 @@ class _$FlagSerializer implements PrimitiveSerializer<Flag> {
     return result.build();
   }
 }
+<<<<<<< HEAD
 
+=======
+>>>>>>> origin/main

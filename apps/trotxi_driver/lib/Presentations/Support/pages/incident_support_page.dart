@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
-import 'package:trotxi_client/trotxi_client.dart';
+import 'package:trotxi_driver/core/api/driver_api.dart';
 import 'package:trotxi_driver/core/config/corridor_time.dart';
 import 'package:trotxi_driver/core/config/theme/app_colors.dart';
 import 'package:trotxi_driver/core/config/theme/app_radii.dart';
@@ -90,7 +90,10 @@ class IncidentSupportPage extends StatelessWidget {
           child: Column(
             children: [
               ListTile(
-                leading: Icon(Icons.support_agent_outlined, color: colors.action),
+                leading: Icon(
+                  Icons.support_agent_outlined,
+                  color: colors.action,
+                ),
                 title: Text(
                   'Operations support',
                   style: AppTypography.body.copyWith(color: colors.textPrimary),
@@ -144,7 +147,9 @@ class IncidentSupportPage extends StatelessWidget {
                 ),
                 trailing: const Icon(Icons.chevron_right),
                 onTap: () => Navigator.of(context).push(
-                  MaterialPageRoute<void>(builder: (_) => const MyReportsPage()),
+                  MaterialPageRoute<void>(
+                    builder: (_) => const MyReportsPage(),
+                  ),
                 ),
               ),
             ],
@@ -430,7 +435,9 @@ class _ReportIncidentPageState extends State<ReportIncidentPage> {
   /// category that needs the note.
   bool get _canSend {
     if (_selected == null || _sending) return false;
-    if (_selected == IncidentCategory.other) return _note.text.trim().isNotEmpty;
+    if (_selected == IncidentCategory.other) {
+      return _note.text.trim().isNotEmpty;
+    }
     return true;
   }
 
@@ -548,11 +555,7 @@ class _ReportIncidentPageState extends State<ReportIncidentPage> {
 
 /// One line of the "attached to this report" summary.
 class _Attached extends StatelessWidget {
-  const _Attached({
-    required this.label,
-    required this.value,
-    required this.ok,
-  });
+  const _Attached({required this.label, required this.value, required this.ok});
 
   final String label;
   final String value;
@@ -744,7 +747,10 @@ class _Message extends StatelessWidget {
             ),
             if (onRetry != null) ...[
               const SizedBox(height: AppSpacing.space16),
-              OutlinedButton(onPressed: onRetry, child: const Text('Try again')),
+              OutlinedButton(
+                onPressed: onRetry,
+                child: const Text('Try again'),
+              ),
             ],
           ],
         ),

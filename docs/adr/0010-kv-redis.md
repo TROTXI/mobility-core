@@ -37,3 +37,9 @@ Scope and guarantees:
   store is unavailable, so a Redis outage degrades rather than downs the API.
 - The pub/sub seam for the telemetry path (ADR-0002) can extend this client
   later rather than introducing a separate dependency.
+
+## Current implementation — 2026-09-12
+
+KV backs generic rate limits, boarding-pass single-use, PIN/code attempt budgets
+and the latest trip-position cache. Those consumers fail open on KV loss; driver
+credential lockout deliberately lives in PostgreSQL and fails closed.

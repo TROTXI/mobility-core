@@ -13,6 +13,7 @@ part 'ops_overview_trips_inner.g.dart';
 /// OpsOverviewTripsInner
 ///
 /// Properties:
+<<<<<<< HEAD
 /// * [tripId] 
 /// * [scheduledAt] 
 /// * [status] 
@@ -31,6 +32,29 @@ part 'ops_overview_trips_inner.g.dart';
 /// * [badge] 
 @BuiltValue()
 abstract class OpsOverviewTripsInner implements Built<OpsOverviewTripsInner, OpsOverviewTripsInnerBuilder> {
+=======
+/// * [tripId]
+/// * [scheduledAt]
+/// * [status]
+/// * [routeName]
+/// * [driverId]
+/// * [driverName]
+/// * [vehicleId]
+/// * [vehicleLabel]
+/// * [vehiclePlate]
+/// * [capacity]
+/// * [confirmed]
+/// * [boarded]
+/// * [noShow]
+/// * [reserved]
+/// * [lastFixAt]
+/// * [fixAgeSeconds]
+/// * [lastPosition]
+/// * [badge]
+@BuiltValue()
+abstract class OpsOverviewTripsInner
+    implements Built<OpsOverviewTripsInner, OpsOverviewTripsInnerBuilder> {
+>>>>>>> origin/main
   @BuiltValueField(wireName: r'tripId')
   String get tripId;
 
@@ -56,6 +80,12 @@ abstract class OpsOverviewTripsInner implements Built<OpsOverviewTripsInner, Ops
   @BuiltValueField(wireName: r'vehicleLabel')
   String? get vehicleLabel;
 
+<<<<<<< HEAD
+=======
+  @BuiltValueField(wireName: r'vehiclePlate')
+  String? get vehiclePlate;
+
+>>>>>>> origin/main
   @BuiltValueField(wireName: r'capacity')
   int? get capacity;
 
@@ -68,6 +98,12 @@ abstract class OpsOverviewTripsInner implements Built<OpsOverviewTripsInner, Ops
   @BuiltValueField(wireName: r'noShow')
   int get noShow;
 
+<<<<<<< HEAD
+=======
+  @BuiltValueField(wireName: r'reserved')
+  int get reserved;
+
+>>>>>>> origin/main
   @BuiltValueField(wireName: r'lastFixAt')
   DateTime? get lastFixAt;
 
@@ -83,18 +119,37 @@ abstract class OpsOverviewTripsInner implements Built<OpsOverviewTripsInner, Ops
 
   OpsOverviewTripsInner._();
 
+<<<<<<< HEAD
   factory OpsOverviewTripsInner([void updates(OpsOverviewTripsInnerBuilder b)]) = _$OpsOverviewTripsInner;
+=======
+  factory OpsOverviewTripsInner(
+      [void updates(OpsOverviewTripsInnerBuilder b)]) = _$OpsOverviewTripsInner;
+>>>>>>> origin/main
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(OpsOverviewTripsInnerBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
+<<<<<<< HEAD
   static Serializer<OpsOverviewTripsInner> get serializer => _$OpsOverviewTripsInnerSerializer();
 }
 
 class _$OpsOverviewTripsInnerSerializer implements PrimitiveSerializer<OpsOverviewTripsInner> {
   @override
   final Iterable<Type> types = const [OpsOverviewTripsInner, _$OpsOverviewTripsInner];
+=======
+  static Serializer<OpsOverviewTripsInner> get serializer =>
+      _$OpsOverviewTripsInnerSerializer();
+}
+
+class _$OpsOverviewTripsInnerSerializer
+    implements PrimitiveSerializer<OpsOverviewTripsInner> {
+  @override
+  final Iterable<Type> types = const [
+    OpsOverviewTripsInner,
+    _$OpsOverviewTripsInner
+  ];
+>>>>>>> origin/main
 
   @override
   final String wireName = r'OpsOverviewTripsInner';
@@ -120,6 +175,7 @@ class _$OpsOverviewTripsInnerSerializer implements PrimitiveSerializer<OpsOvervi
       specifiedType: const FullType(OpsOverviewTripsInnerStatusEnum),
     );
     yield r'routeName';
+<<<<<<< HEAD
     yield object.routeName == null ? null : serializers.serialize(
       object.routeName,
       specifiedType: const FullType.nullable(String),
@@ -149,6 +205,56 @@ class _$OpsOverviewTripsInnerSerializer implements PrimitiveSerializer<OpsOvervi
       object.capacity,
       specifiedType: const FullType.nullable(int),
     );
+=======
+    yield object.routeName == null
+        ? null
+        : serializers.serialize(
+            object.routeName,
+            specifiedType: const FullType.nullable(String),
+          );
+    yield r'driverId';
+    yield object.driverId == null
+        ? null
+        : serializers.serialize(
+            object.driverId,
+            specifiedType: const FullType.nullable(String),
+          );
+    yield r'driverName';
+    yield object.driverName == null
+        ? null
+        : serializers.serialize(
+            object.driverName,
+            specifiedType: const FullType.nullable(String),
+          );
+    yield r'vehicleId';
+    yield object.vehicleId == null
+        ? null
+        : serializers.serialize(
+            object.vehicleId,
+            specifiedType: const FullType.nullable(String),
+          );
+    yield r'vehicleLabel';
+    yield object.vehicleLabel == null
+        ? null
+        : serializers.serialize(
+            object.vehicleLabel,
+            specifiedType: const FullType.nullable(String),
+          );
+    yield r'vehiclePlate';
+    yield object.vehiclePlate == null
+        ? null
+        : serializers.serialize(
+            object.vehiclePlate,
+            specifiedType: const FullType.nullable(String),
+          );
+    yield r'capacity';
+    yield object.capacity == null
+        ? null
+        : serializers.serialize(
+            object.capacity,
+            specifiedType: const FullType.nullable(int),
+          );
+>>>>>>> origin/main
     yield r'confirmed';
     yield serializers.serialize(
       object.confirmed,
@@ -164,6 +270,7 @@ class _$OpsOverviewTripsInnerSerializer implements PrimitiveSerializer<OpsOvervi
       object.noShow,
       specifiedType: const FullType(int),
     );
+<<<<<<< HEAD
     yield r'lastFixAt';
     yield object.lastFixAt == null ? null : serializers.serialize(
       object.lastFixAt,
@@ -179,6 +286,34 @@ class _$OpsOverviewTripsInnerSerializer implements PrimitiveSerializer<OpsOvervi
       object.lastPosition,
       specifiedType: const FullType.nullable(IncidentLocation),
     );
+=======
+    yield r'reserved';
+    yield serializers.serialize(
+      object.reserved,
+      specifiedType: const FullType(int),
+    );
+    yield r'lastFixAt';
+    yield object.lastFixAt == null
+        ? null
+        : serializers.serialize(
+            object.lastFixAt,
+            specifiedType: const FullType.nullable(DateTime),
+          );
+    yield r'fixAgeSeconds';
+    yield object.fixAgeSeconds == null
+        ? null
+        : serializers.serialize(
+            object.fixAgeSeconds,
+            specifiedType: const FullType.nullable(int),
+          );
+    yield r'lastPosition';
+    yield object.lastPosition == null
+        ? null
+        : serializers.serialize(
+            object.lastPosition,
+            specifiedType: const FullType.nullable(IncidentLocation),
+          );
+>>>>>>> origin/main
     yield r'badge';
     yield serializers.serialize(
       object.badge,
@@ -192,7 +327,13 @@ class _$OpsOverviewTripsInnerSerializer implements PrimitiveSerializer<OpsOvervi
     OpsOverviewTripsInner object, {
     FullType specifiedType = FullType.unspecified,
   }) {
+<<<<<<< HEAD
     return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+=======
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
+>>>>>>> origin/main
   }
 
   void _deserializeProperties(
@@ -268,6 +409,17 @@ class _$OpsOverviewTripsInnerSerializer implements PrimitiveSerializer<OpsOvervi
           if (valueDes == null) continue;
           result.vehicleLabel = valueDes;
           break;
+<<<<<<< HEAD
+=======
+        case r'vehiclePlate':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType.nullable(String),
+          ) as String?;
+          if (valueDes == null) continue;
+          result.vehiclePlate = valueDes;
+          break;
+>>>>>>> origin/main
         case r'capacity':
           final valueDes = serializers.deserialize(
             value,
@@ -297,6 +449,16 @@ class _$OpsOverviewTripsInnerSerializer implements PrimitiveSerializer<OpsOvervi
           ) as int;
           result.noShow = valueDes;
           break;
+<<<<<<< HEAD
+=======
+        case r'reserved':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType(int),
+          ) as int;
+          result.reserved = valueDes;
+          break;
+>>>>>>> origin/main
         case r'lastFixAt':
           final valueDes = serializers.deserialize(
             value,
@@ -358,6 +520,7 @@ class _$OpsOverviewTripsInnerSerializer implements PrimitiveSerializer<OpsOvervi
 }
 
 class OpsOverviewTripsInnerStatusEnum extends EnumClass {
+<<<<<<< HEAD
 
   @BuiltValueEnumConst(wireName: r'scheduled')
   static const OpsOverviewTripsInnerStatusEnum scheduled = _$opsOverviewTripsInnerStatusEnum_scheduled;
@@ -393,3 +556,50 @@ class OpsOverviewTripsInnerBadgeEnum extends EnumClass {
   static OpsOverviewTripsInnerBadgeEnum valueOf(String name) => _$opsOverviewTripsInnerBadgeEnumValueOf(name);
 }
 
+=======
+  @BuiltValueEnumConst(wireName: r'scheduled')
+  static const OpsOverviewTripsInnerStatusEnum scheduled =
+      _$opsOverviewTripsInnerStatusEnum_scheduled;
+  @BuiltValueEnumConst(wireName: r'active')
+  static const OpsOverviewTripsInnerStatusEnum active =
+      _$opsOverviewTripsInnerStatusEnum_active;
+  @BuiltValueEnumConst(wireName: r'completed')
+  static const OpsOverviewTripsInnerStatusEnum completed =
+      _$opsOverviewTripsInnerStatusEnum_completed;
+  @BuiltValueEnumConst(wireName: r'cancelled')
+  static const OpsOverviewTripsInnerStatusEnum cancelled =
+      _$opsOverviewTripsInnerStatusEnum_cancelled;
+
+  static Serializer<OpsOverviewTripsInnerStatusEnum> get serializer =>
+      _$opsOverviewTripsInnerStatusEnumSerializer;
+
+  const OpsOverviewTripsInnerStatusEnum._(String name) : super(name);
+
+  static BuiltSet<OpsOverviewTripsInnerStatusEnum> get values =>
+      _$opsOverviewTripsInnerStatusEnumValues;
+  static OpsOverviewTripsInnerStatusEnum valueOf(String name) =>
+      _$opsOverviewTripsInnerStatusEnumValueOf(name);
+}
+
+class OpsOverviewTripsInnerBadgeEnum extends EnumClass {
+  @BuiltValueEnumConst(wireName: r'on_time')
+  static const OpsOverviewTripsInnerBadgeEnum onTime =
+      _$opsOverviewTripsInnerBadgeEnum_onTime;
+  @BuiltValueEnumConst(wireName: r'stale_gps')
+  static const OpsOverviewTripsInnerBadgeEnum staleGps =
+      _$opsOverviewTripsInnerBadgeEnum_staleGps;
+  @BuiltValueEnumConst(wireName: r'unassigned')
+  static const OpsOverviewTripsInnerBadgeEnum unassigned =
+      _$opsOverviewTripsInnerBadgeEnum_unassigned;
+
+  static Serializer<OpsOverviewTripsInnerBadgeEnum> get serializer =>
+      _$opsOverviewTripsInnerBadgeEnumSerializer;
+
+  const OpsOverviewTripsInnerBadgeEnum._(String name) : super(name);
+
+  static BuiltSet<OpsOverviewTripsInnerBadgeEnum> get values =>
+      _$opsOverviewTripsInnerBadgeEnumValues;
+  static OpsOverviewTripsInnerBadgeEnum valueOf(String name) =>
+      _$opsOverviewTripsInnerBadgeEnumValueOf(name);
+}
+>>>>>>> origin/main

@@ -12,26 +12,52 @@ part 'payment_review_response.g.dart';
 /// PaymentReviewResponse
 ///
 /// Properties:
+<<<<<<< HEAD
 /// * [data] 
 @BuiltValue()
 abstract class PaymentReviewResponse implements Built<PaymentReviewResponse, PaymentReviewResponseBuilder> {
+=======
+/// * [data]
+@BuiltValue()
+abstract class PaymentReviewResponse
+    implements Built<PaymentReviewResponse, PaymentReviewResponseBuilder> {
+>>>>>>> origin/main
   @BuiltValueField(wireName: r'data')
   PaymentReview get data;
 
   PaymentReviewResponse._();
 
+<<<<<<< HEAD
   factory PaymentReviewResponse([void updates(PaymentReviewResponseBuilder b)]) = _$PaymentReviewResponse;
+=======
+  factory PaymentReviewResponse(
+      [void updates(PaymentReviewResponseBuilder b)]) = _$PaymentReviewResponse;
+>>>>>>> origin/main
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(PaymentReviewResponseBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
+<<<<<<< HEAD
   static Serializer<PaymentReviewResponse> get serializer => _$PaymentReviewResponseSerializer();
 }
 
 class _$PaymentReviewResponseSerializer implements PrimitiveSerializer<PaymentReviewResponse> {
   @override
   final Iterable<Type> types = const [PaymentReviewResponse, _$PaymentReviewResponse];
+=======
+  static Serializer<PaymentReviewResponse> get serializer =>
+      _$PaymentReviewResponseSerializer();
+}
+
+class _$PaymentReviewResponseSerializer
+    implements PrimitiveSerializer<PaymentReviewResponse> {
+  @override
+  final Iterable<Type> types = const [
+    PaymentReviewResponse,
+    _$PaymentReviewResponse
+  ];
+>>>>>>> origin/main
 
   @override
   final String wireName = r'PaymentReviewResponse';
@@ -54,7 +80,13 @@ class _$PaymentReviewResponseSerializer implements PrimitiveSerializer<PaymentRe
     PaymentReviewResponse object, {
     FullType specifiedType = FullType.unspecified,
   }) {
+<<<<<<< HEAD
     return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+=======
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
+>>>>>>> origin/main
   }
 
   void _deserializeProperties(
@@ -104,4 +136,7 @@ class _$PaymentReviewResponseSerializer implements PrimitiveSerializer<PaymentRe
     return result.build();
   }
 }
+<<<<<<< HEAD
 
+=======
+>>>>>>> origin/main

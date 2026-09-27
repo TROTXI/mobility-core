@@ -11,9 +11,9 @@ fi
 pnpm exec lint-staged || exit 1
 
 # Only lint + typecheck the API when its source is actually staged.
-if git diff --cached --name-only | grep -q '^services/api/.*\.\(ts\|js\)$'; then
-  echo "→ linting + typechecking services/api ..."
-  pnpm --filter @trotxi/api run lint && pnpm --filter @trotxi/api run typecheck || {
+if git diff --cached --name-only | grep -q '^services/api-next/.*\.ts$'; then
+  echo "→ typechecking services/api-next ..."
+  pnpm --filter @trotxi/api-next run typecheck || {
     echo "✗ pre-commit checks failed — fix the above, or 'git commit --no-verify' to bypass."
     exit 1
   }

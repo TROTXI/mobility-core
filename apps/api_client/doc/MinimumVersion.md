@@ -14,6 +14,10 @@ Name | Type | Description | Notes
 **apiMajor** | **int** |  | 
 **storeUrl** | **String** |  | 
 **version** | **int** |  | 
+<<<<<<< HEAD
+=======
+**editToken** | **String** |  | 
+>>>>>>> origin/main
 
 [[Back to Model list]](../README.md#documentation-for-models) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to README]](../README.md)
 

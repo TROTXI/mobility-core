@@ -14,6 +14,7 @@ part 'membership_commute.g.dart';
 /// MembershipCommute
 ///
 /// Properties:
+<<<<<<< HEAD
 /// * [id] 
 /// * [routeId] 
 /// * [routeName] 
@@ -22,6 +23,17 @@ part 'membership_commute.g.dart';
 /// * [legs] 
 @BuiltValue()
 abstract class MembershipCommute implements Built<MembershipCommute, MembershipCommuteBuilder> {
+=======
+/// * [id]
+/// * [routeId]
+/// * [routeName]
+/// * [effectiveFrom]
+/// * [effectiveTo]
+/// * [legs]
+@BuiltValue()
+abstract class MembershipCommute
+    implements Built<MembershipCommute, MembershipCommuteBuilder> {
+>>>>>>> origin/main
   @BuiltValueField(wireName: r'id')
   String get id;
 
@@ -42,16 +54,30 @@ abstract class MembershipCommute implements Built<MembershipCommute, MembershipC
 
   MembershipCommute._();
 
+<<<<<<< HEAD
   factory MembershipCommute([void updates(MembershipCommuteBuilder b)]) = _$MembershipCommute;
+=======
+  factory MembershipCommute([void updates(MembershipCommuteBuilder b)]) =
+      _$MembershipCommute;
+>>>>>>> origin/main
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(MembershipCommuteBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
+<<<<<<< HEAD
   static Serializer<MembershipCommute> get serializer => _$MembershipCommuteSerializer();
 }
 
 class _$MembershipCommuteSerializer implements PrimitiveSerializer<MembershipCommute> {
+=======
+  static Serializer<MembershipCommute> get serializer =>
+      _$MembershipCommuteSerializer();
+}
+
+class _$MembershipCommuteSerializer
+    implements PrimitiveSerializer<MembershipCommute> {
+>>>>>>> origin/main
   @override
   final Iterable<Type> types = const [MembershipCommute, _$MembershipCommute];
 
@@ -84,10 +110,19 @@ class _$MembershipCommuteSerializer implements PrimitiveSerializer<MembershipCom
       specifiedType: const FullType(Date),
     );
     yield r'effectiveTo';
+<<<<<<< HEAD
     yield object.effectiveTo == null ? null : serializers.serialize(
       object.effectiveTo,
       specifiedType: const FullType.nullable(Date),
     );
+=======
+    yield object.effectiveTo == null
+        ? null
+        : serializers.serialize(
+            object.effectiveTo,
+            specifiedType: const FullType.nullable(Date),
+          );
+>>>>>>> origin/main
     yield r'legs';
     yield serializers.serialize(
       object.legs,
@@ -101,7 +136,13 @@ class _$MembershipCommuteSerializer implements PrimitiveSerializer<MembershipCom
     MembershipCommute object, {
     FullType specifiedType = FullType.unspecified,
   }) {
+<<<<<<< HEAD
     return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+=======
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
+>>>>>>> origin/main
   }
 
   void _deserializeProperties(
@@ -155,7 +196,12 @@ class _$MembershipCommuteSerializer implements PrimitiveSerializer<MembershipCom
         case r'legs':
           final valueDes = serializers.deserialize(
             value,
+<<<<<<< HEAD
             specifiedType: const FullType(BuiltList, [FullType(CommuteLegView)]),
+=======
+            specifiedType:
+                const FullType(BuiltList, [FullType(CommuteLegView)]),
+>>>>>>> origin/main
           ) as BuiltList<CommuteLegView>;
           result.legs.replace(valueDes);
           break;
@@ -187,4 +233,7 @@ class _$MembershipCommuteSerializer implements PrimitiveSerializer<MembershipCom
     return result.build();
   }
 }
+<<<<<<< HEAD
 
+=======
+>>>>>>> origin/main

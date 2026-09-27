@@ -21,6 +21,7 @@ void main() {
       // TODO
     });
 
+<<<<<<< HEAD
     // get Driver Self
     //
     //Future<DriverSelfResponse> getDriverSelf(String xTrotxiClient, int xTrotxiBuild, { String xTrotxiPlatform }) async
@@ -28,6 +29,8 @@ void main() {
       // TODO
     });
 
+=======
+>>>>>>> origin/main
     // list Driver Available Routes
     //
     //Future<RoutePage> listDriverAvailableRoutes(String xTrotxiClient, int xTrotxiBuild, { String cursor, int limit, String xTrotxiPlatform }) async

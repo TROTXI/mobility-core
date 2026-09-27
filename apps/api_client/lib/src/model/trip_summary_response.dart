@@ -12,26 +12,52 @@ part 'trip_summary_response.g.dart';
 /// TripSummaryResponse
 ///
 /// Properties:
+<<<<<<< HEAD
 /// * [data] 
 @BuiltValue()
 abstract class TripSummaryResponse implements Built<TripSummaryResponse, TripSummaryResponseBuilder> {
+=======
+/// * [data]
+@BuiltValue()
+abstract class TripSummaryResponse
+    implements Built<TripSummaryResponse, TripSummaryResponseBuilder> {
+>>>>>>> origin/main
   @BuiltValueField(wireName: r'data')
   TripSummary get data;
 
   TripSummaryResponse._();
 
+<<<<<<< HEAD
   factory TripSummaryResponse([void updates(TripSummaryResponseBuilder b)]) = _$TripSummaryResponse;
+=======
+  factory TripSummaryResponse([void updates(TripSummaryResponseBuilder b)]) =
+      _$TripSummaryResponse;
+>>>>>>> origin/main
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(TripSummaryResponseBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
+<<<<<<< HEAD
   static Serializer<TripSummaryResponse> get serializer => _$TripSummaryResponseSerializer();
 }
 
 class _$TripSummaryResponseSerializer implements PrimitiveSerializer<TripSummaryResponse> {
   @override
   final Iterable<Type> types = const [TripSummaryResponse, _$TripSummaryResponse];
+=======
+  static Serializer<TripSummaryResponse> get serializer =>
+      _$TripSummaryResponseSerializer();
+}
+
+class _$TripSummaryResponseSerializer
+    implements PrimitiveSerializer<TripSummaryResponse> {
+  @override
+  final Iterable<Type> types = const [
+    TripSummaryResponse,
+    _$TripSummaryResponse
+  ];
+>>>>>>> origin/main
 
   @override
   final String wireName = r'TripSummaryResponse';
@@ -54,7 +80,13 @@ class _$TripSummaryResponseSerializer implements PrimitiveSerializer<TripSummary
     TripSummaryResponse object, {
     FullType specifiedType = FullType.unspecified,
   }) {
+<<<<<<< HEAD
     return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+=======
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
+>>>>>>> origin/main
   }
 
   void _deserializeProperties(
@@ -104,4 +136,7 @@ class _$TripSummaryResponseSerializer implements PrimitiveSerializer<TripSummary
     return result.build();
   }
 }
+<<<<<<< HEAD
 
+=======
+>>>>>>> origin/main

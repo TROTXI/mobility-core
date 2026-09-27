@@ -1,6 +1,9 @@
 import 'dart:async';
+import 'package:trotxi_driver/core/state/foreground_refresh.dart';
+import 'package:trotxi_driver/core/api/driver_api.dart';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:trotxi_driver/core/config/theme/app_colors.dart';
 import 'package:trotxi_driver/core/config/theme/app_radii.dart';
@@ -51,24 +54,90 @@ class _RunMapState extends State<RunMap> {
   RouteShape? _shape;
   VehicleFix? _vehicle;
   bool _framed = false;
+  ForegroundRefresh? _refresh;
+  int _revision = 0;
+  bool _drawing = false;
+  bool _redraw = false;
+  int _mapEpoch = 0;
+  int? _drawnRoute;
+  late final VehicleMarker _marker = VehicleMarker(
+    options: (point, fresh) {
+      final colors = context.driverColors;
+      return CircleOptions(
+        geometry: point,
+        circleRadius: 9,
+        circleColor: _hex(fresh ? colors.live : colors.textSecondary),
+        circleStrokeColor: _hex(colors.surface),
+        circleStrokeWidth: 3,
+      );
+    },
+  );
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) => _load());
+    _refresh = ForegroundRefresh(() async {
+      if (mounted && widget.isActive) await _load();
+    });
+  }
+
+  @override
+  void didUpdateWidget(RunMap oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.runId != widget.runId ||
+        oldWidget.isActive != widget.isActive) {
+      _revision++;
+      _vehicle = null;
+      _marker.clear();
+      if (oldWidget.runId != widget.runId) {
+        _shape = null;
+        _framed = false;
+        _drawnRoute = null;
+      }
+      unawaited(_load());
+    }
+  }
+
+  @override
+  void dispose() {
+    _revision++;
+    _refresh?.dispose();
+    _marker.dispose();
+    super.dispose();
   }
 
   /// Fetch the corridor and, on a live run, where the bus is.
   Future<void> _load() async {
-    final maps = context.read<RouteMapRepository>();
-    final shape = await maps.shapeFor(widget.routeId);
-    final vehicle = widget.isActive ? await maps.vehicleOn(widget.runId) : null;
     if (!mounted) return;
-    setState(() {
-      _shape = shape;
-      _vehicle = vehicle;
-    });
-    await _draw();
+    final revision = ++_revision;
+    final maps = context.read<RouteMapRepository>();
+    try {
+      final shape = await maps.shapeFor(widget.runId);
+      final vehicle = widget.isActive
+          ? await maps.vehicleOn(widget.runId)
+          : null;
+      if (!mounted || revision != _revision) return;
+      setState(() {
+        _shape = shape;
+        _vehicle = vehicle;
+      });
+      if (vehicle == null) {
+        _marker.clear();
+      } else {
+        _marker.accept(
+          vehicle.position,
+          vehicle.receivedAt ?? vehicle.recordedAt,
+          fresh: vehicle.age <= const Duration(seconds: 30),
+        );
+      }
+      await _draw();
+    } on TrotxiException {
+      if (mounted && revision == _revision) {
+        _marker.clear();
+        setState(() => _vehicle = null);
+      }
+    }
   }
 
   /// Put the corridor and the vehicle on the map.
@@ -77,9 +146,47 @@ class _RunMapState extends State<RunMap> {
   /// all annotations when the style changes — so a theme flip mid-run would
   /// otherwise leave an empty basemap.
   Future<void> _draw() async {
+    if (_drawing) {
+      _redraw = true;
+      return;
+    }
+    _drawing = true;
+    try {
+      await _drawNow();
+    } on PlatformException {
+      // The native map can disappear during a theme change/navigation.
+    } finally {
+      _drawing = false;
+      if (_redraw && mounted) {
+        _redraw = false;
+        unawaited(_draw());
+      }
+    }
+  }
+
+  Future<void> _drawNow() async {
     final controller = _controller;
     final shape = _shape;
     if (controller == null || shape == null || !mounted) return;
+    final signature = Object.hash(
+      widget.runId,
+      shape.source,
+      Object.hashAll(
+        shape.points.map((p) => Object.hash(p.latitude, p.longitude)),
+      ),
+      Object.hashAll(
+        shape.stops.map(
+          (s) => Object.hash(
+            s.id,
+            s.seq,
+            s.position.latitude,
+            s.position.longitude,
+          ),
+        ),
+      ),
+    );
+    if (_drawnRoute == signature) return;
+    final epoch = _mapEpoch;
 
     final colors = context.driverColors;
     await controller.clearLines();
@@ -111,18 +218,9 @@ class _RunMapState extends State<RunMap> {
       );
     }
 
-    final vehicle = _vehicle;
-    if (vehicle != null) {
-      await controller.addCircle(
-        CircleOptions(
-          geometry: vehicle.position,
-          circleRadius: 9,
-          circleColor: _hex(colors.live),
-          circleStrokeColor: _hex(colors.surface),
-          circleStrokeWidth: 3,
-        ),
-      );
-    }
+    if (epoch != _mapEpoch || !mounted) return;
+    _drawnRoute = signature;
+    _marker.attach(controller);
 
     // Framed once. Re-framing on every redraw would fight a driver who has
     // panned the map to look at something.
@@ -174,10 +272,15 @@ class _RunMapState extends State<RunMap> {
                   const LatLng(5.6037, -0.187),
               interactive: false,
               onMapReady: (controller) {
+                _mapEpoch++;
                 _controller = controller;
+              },
+              onStyleReloaded: (controller) {
+                _mapEpoch++;
+                _controller = controller;
+                _drawnRoute = null;
                 unawaited(_draw());
               },
-              onStyleReloaded: (_) => unawaited(_draw()),
             ),
 
             // Both notes sit bottom-left, clear of the attribution's own line

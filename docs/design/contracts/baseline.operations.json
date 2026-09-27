@@ -1,0 +1,1625 @@
+{
+  "baselineCommit": "43cdae0b437e70ca146704eb4201a2325c9d9327",
+  "fullSpecSha256": "4a885df00a3fcf59e3f20049ded240df04ee20bea61bccdfa6d081498629e39f",
+  "paths": {
+    "/": {
+      "get": {
+        "tags": ["system"],
+        "security": [],
+        "responses": {
+          "200": {}
+        }
+      }
+    },
+    "/admin/ask-dispatch": {
+      "post": {
+        "tags": ["admin"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {},
+          "401": {},
+          "403": {},
+          "503": {}
+        }
+      }
+    },
+    "/admin/close-subscription-periods": {
+      "post": {
+        "tags": ["admin"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {},
+          "401": {},
+          "403": {},
+          "503": {}
+        }
+      }
+    },
+    "/admin/commute-requests": {
+      "get": {
+        "tags": ["commute"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {},
+          "401": {},
+          "403": {},
+          "404": {},
+          "409": {},
+          "429": {},
+          "503": {}
+        }
+      }
+    },
+    "/admin/commute-requests/{id}/decision": {
+      "post": {
+        "tags": ["commute"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {},
+          "401": {},
+          "403": {},
+          "404": {},
+          "409": {},
+          "429": {},
+          "503": {}
+        }
+      }
+    },
+    "/admin/commute-requests/{id}/events": {
+      "get": {
+        "tags": ["commute"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {},
+          "401": {},
+          "403": {},
+          "404": {},
+          "409": {},
+          "429": {},
+          "503": {}
+        }
+      }
+    },
+    "/admin/commute-slots": {
+      "get": {
+        "tags": ["commute"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {},
+          "401": {},
+          "403": {},
+          "404": {},
+          "409": {},
+          "429": {},
+          "503": {}
+        }
+      },
+      "post": {
+        "tags": ["commute"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {},
+          "401": {},
+          "403": {},
+          "404": {},
+          "409": {},
+          "429": {},
+          "503": {}
+        }
+      }
+    },
+    "/admin/commute-slots/{id}/retire": {
+      "post": {
+        "tags": ["commute"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {},
+          "401": {},
+          "403": {},
+          "404": {},
+          "409": {},
+          "429": {},
+          "503": {}
+        }
+      }
+    },
+    "/admin/convert-credits": {
+      "post": {
+        "tags": ["admin"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {},
+          "401": {},
+          "403": {},
+          "503": {}
+        }
+      }
+    },
+    "/admin/driver-requests": {
+      "get": {
+        "tags": ["admin"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {},
+          "401": {},
+          "403": {},
+          "503": {}
+        }
+      }
+    },
+    "/admin/driver-requests/{id}": {
+      "patch": {
+        "tags": ["admin"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {},
+          "401": {},
+          "403": {},
+          "404": {},
+          "503": {}
+        }
+      }
+    },
+    "/admin/drivers": {
+      "get": {
+        "tags": ["admin"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {},
+          "401": {},
+          "403": {},
+          "503": {}
+        }
+      },
+      "post": {
+        "tags": ["admin"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {},
+          "401": {},
+          "403": {},
+          "404": {},
+          "503": {}
+        }
+      }
+    },
+    "/admin/drivers/{id}": {
+      "patch": {
+        "tags": ["admin"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {},
+          "401": {},
+          "403": {},
+          "404": {},
+          "503": {}
+        }
+      }
+    },
+    "/admin/drivers/{id}/credentials": {
+      "patch": {
+        "tags": ["admin"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "204": {},
+          "400": {},
+          "401": {},
+          "403": {},
+          "404": {},
+          "503": {}
+        }
+      },
+      "post": {
+        "tags": ["admin"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "201": {},
+          "401": {},
+          "403": {},
+          "404": {},
+          "409": {},
+          "503": {}
+        }
+      }
+    },
+    "/admin/drivers/{id}/credentials/reset-pin": {
+      "post": {
+        "tags": ["admin"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {},
+          "401": {},
+          "403": {},
+          "404": {},
+          "503": {}
+        }
+      }
+    },
+    "/admin/expire-subscriptions": {
+      "post": {
+        "tags": ["admin"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {},
+          "401": {},
+          "403": {},
+          "503": {}
+        }
+      }
+    },
+    "/admin/flags": {
+      "get": {
+        "tags": ["admin"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {},
+          "401": {},
+          "403": {},
+          "503": {}
+        }
+      }
+    },
+    "/admin/flags/{key}": {
+      "put": {
+        "tags": ["admin"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {},
+          "401": {},
+          "403": {},
+          "503": {}
+        }
+      }
+    },
+    "/admin/incidents": {
+      "get": {
+        "tags": ["admin"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {},
+          "401": {},
+          "403": {},
+          "503": {}
+        }
+      }
+    },
+    "/admin/incidents/{id}": {
+      "patch": {
+        "tags": ["admin"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {},
+          "401": {},
+          "403": {},
+          "404": {},
+          "503": {}
+        }
+      }
+    },
+    "/admin/learn-routes": {
+      "post": {
+        "tags": ["admin"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {},
+          "401": {},
+          "403": {},
+          "429": {},
+          "503": {}
+        }
+      }
+    },
+    "/admin/min-versions": {
+      "get": {
+        "tags": ["admin"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {},
+          "401": {},
+          "403": {},
+          "503": {}
+        }
+      }
+    },
+    "/admin/min-versions/{platform}": {
+      "put": {
+        "tags": ["admin"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {},
+          "401": {},
+          "403": {},
+          "503": {}
+        }
+      }
+    },
+    "/admin/payments/maintenance": {
+      "post": {
+        "tags": ["admin", "payments"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {},
+          "401": {},
+          "403": {},
+          "503": {}
+        }
+      }
+    },
+    "/admin/payments/process-webhooks": {
+      "post": {
+        "tags": ["admin", "payments"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {},
+          "401": {},
+          "403": {},
+          "503": {}
+        }
+      }
+    },
+    "/admin/payments/reconcile": {
+      "post": {
+        "tags": ["admin", "payments"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {},
+          "401": {},
+          "403": {},
+          "503": {}
+        }
+      }
+    },
+    "/admin/payments/reviews": {
+      "get": {
+        "tags": ["admin", "payments"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {},
+          "401": {},
+          "403": {},
+          "503": {}
+        }
+      }
+    },
+    "/admin/plan-pricing": {
+      "get": {
+        "tags": ["admin"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {},
+          "401": {},
+          "403": {},
+          "503": {}
+        }
+      }
+    },
+    "/admin/plan-pricing/{plan}": {
+      "patch": {
+        "tags": ["admin"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {},
+          "401": {},
+          "403": {},
+          "404": {},
+          "503": {}
+        }
+      }
+    },
+    "/admin/resolve-defaults": {
+      "post": {
+        "tags": ["admin"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {},
+          "401": {},
+          "403": {},
+          "503": {}
+        }
+      }
+    },
+    "/admin/resolve-no-shows": {
+      "post": {
+        "tags": ["admin"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {},
+          "401": {},
+          "403": {}
+        }
+      }
+    },
+    "/admin/routes": {
+      "get": {
+        "tags": ["admin"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {},
+          "401": {},
+          "403": {},
+          "503": {}
+        }
+      },
+      "post": {
+        "tags": ["admin"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {},
+          "401": {},
+          "403": {},
+          "503": {}
+        }
+      }
+    },
+    "/admin/routes/{id}": {
+      "patch": {
+        "tags": ["admin"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {},
+          "401": {},
+          "403": {},
+          "404": {},
+          "503": {}
+        }
+      }
+    },
+    "/admin/routes/{id}/fare": {
+      "put": {
+        "tags": ["admin"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {},
+          "401": {},
+          "403": {},
+          "503": {}
+        }
+      }
+    },
+    "/admin/routes/{id}/fares": {
+      "get": {
+        "tags": ["admin"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {},
+          "401": {},
+          "403": {},
+          "503": {}
+        }
+      }
+    },
+    "/admin/routes/{id}/stops": {
+      "post": {
+        "tags": ["admin"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {},
+          "401": {},
+          "403": {},
+          "404": {},
+          "409": {},
+          "503": {}
+        }
+      }
+    },
+    "/admin/stops": {
+      "get": {
+        "tags": ["admin"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {},
+          "401": {},
+          "403": {},
+          "503": {}
+        }
+      },
+      "post": {
+        "tags": ["admin"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {},
+          "401": {},
+          "403": {},
+          "503": {}
+        }
+      }
+    },
+    "/admin/stops/{id}": {
+      "patch": {
+        "tags": ["admin"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {},
+          "401": {},
+          "403": {},
+          "404": {},
+          "503": {}
+        }
+      }
+    },
+    "/admin/trips": {
+      "get": {
+        "tags": ["admin"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {},
+          "401": {},
+          "403": {},
+          "503": {}
+        }
+      },
+      "post": {
+        "tags": ["admin"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {},
+          "401": {},
+          "403": {},
+          "404": {},
+          "503": {}
+        }
+      }
+    },
+    "/admin/trips/{id}": {
+      "patch": {
+        "tags": ["admin"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {},
+          "401": {},
+          "403": {},
+          "404": {},
+          "503": {}
+        }
+      }
+    },
+    "/admin/trips/{id}/assignment": {
+      "put": {
+        "tags": ["admin"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {},
+          "401": {},
+          "403": {},
+          "404": {},
+          "409": {},
+          "503": {}
+        }
+      }
+    },
+    "/admin/users/{id}/role": {
+      "patch": {
+        "tags": ["admin"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {},
+          "401": {},
+          "403": {},
+          "404": {},
+          "503": {}
+        }
+      }
+    },
+    "/admin/vehicles": {
+      "get": {
+        "tags": ["admin"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {},
+          "401": {},
+          "403": {},
+          "503": {}
+        }
+      },
+      "post": {
+        "tags": ["admin"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {},
+          "401": {},
+          "403": {},
+          "503": {}
+        }
+      }
+    },
+    "/admin/vehicles/{id}": {
+      "patch": {
+        "tags": ["admin"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {},
+          "401": {},
+          "403": {},
+          "404": {},
+          "503": {}
+        }
+      }
+    },
+    "/auth/apple": {
+      "post": {
+        "tags": ["auth"],
+        "security": [],
+        "responses": {
+          "200": {},
+          "401": {},
+          "429": {},
+          "503": {}
+        }
+      }
+    },
+    "/auth/driver": {
+      "post": {
+        "tags": ["auth"],
+        "security": [],
+        "responses": {
+          "200": {},
+          "401": {},
+          "403": {},
+          "423": {},
+          "429": {},
+          "503": {}
+        }
+      }
+    },
+    "/auth/driver/pin": {
+      "post": {
+        "tags": ["auth"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "204": {},
+          "400": {},
+          "401": {},
+          "403": {},
+          "404": {},
+          "429": {},
+          "503": {}
+        }
+      }
+    },
+    "/auth/google": {
+      "post": {
+        "tags": ["auth"],
+        "security": [],
+        "responses": {
+          "200": {},
+          "401": {},
+          "429": {},
+          "503": {}
+        }
+      }
+    },
+    "/auth/logout": {
+      "post": {
+        "tags": ["auth"],
+        "security": [],
+        "responses": {
+          "204": {},
+          "429": {}
+        }
+      }
+    },
+    "/auth/refresh": {
+      "post": {
+        "tags": ["auth"],
+        "security": [],
+        "responses": {
+          "200": {},
+          "401": {},
+          "429": {},
+          "503": {}
+        }
+      }
+    },
+    "/boarding/board": {
+      "post": {
+        "tags": ["boarding"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {},
+          "401": {},
+          "403": {}
+        }
+      }
+    },
+    "/boarding/manifest": {
+      "get": {
+        "tags": ["boarding"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {},
+          "401": {},
+          "403": {},
+          "404": {},
+          "503": {}
+        }
+      }
+    },
+    "/boarding/no-show": {
+      "post": {
+        "tags": ["boarding"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {},
+          "401": {},
+          "403": {}
+        }
+      }
+    },
+    "/boarding/scan": {
+      "post": {
+        "tags": ["boarding"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {},
+          "401": {},
+          "403": {}
+        }
+      }
+    },
+    "/boarding/verify-code": {
+      "post": {
+        "tags": ["boarding"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {},
+          "400": {},
+          "401": {},
+          "403": {}
+        }
+      }
+    },
+    "/boarding/verify-pin": {
+      "post": {
+        "tags": ["boarding"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {},
+          "400": {},
+          "401": {},
+          "403": {}
+        }
+      }
+    },
+    "/flags": {
+      "get": {
+        "tags": ["flags"],
+        "security": [],
+        "responses": {
+          "200": {},
+          "429": {}
+        }
+      }
+    },
+    "/healthz": {
+      "get": {
+        "tags": ["system"],
+        "security": [],
+        "responses": {
+          "200": {}
+        }
+      }
+    },
+    "/me": {
+      "delete": {
+        "tags": ["users"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "204": {},
+          "401": {},
+          "429": {},
+          "503": {}
+        }
+      },
+      "get": {
+        "tags": ["auth"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {},
+          "401": {},
+          "404": {},
+          "429": {}
+        }
+      },
+      "patch": {
+        "tags": ["auth"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {},
+          "401": {},
+          "404": {},
+          "429": {},
+          "503": {}
+        }
+      }
+    },
+    "/me/avatar": {
+      "get": {
+        "tags": ["auth"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {},
+          "401": {},
+          "404": {},
+          "429": {},
+          "503": {}
+        }
+      },
+      "post": {
+        "tags": ["auth"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {},
+          "400": {},
+          "401": {},
+          "404": {},
+          "413": {},
+          "429": {},
+          "503": {}
+        }
+      }
+    },
+    "/me/commute-requests": {
+      "get": {
+        "tags": ["commute"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {},
+          "401": {},
+          "403": {},
+          "404": {},
+          "409": {},
+          "429": {},
+          "503": {}
+        }
+      },
+      "post": {
+        "tags": ["commute"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {},
+          "401": {},
+          "403": {},
+          "404": {},
+          "409": {},
+          "429": {},
+          "503": {}
+        }
+      }
+    },
+    "/me/commute-requests/{id}/withdraw": {
+      "post": {
+        "tags": ["commute"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {},
+          "401": {},
+          "403": {},
+          "404": {},
+          "409": {},
+          "429": {},
+          "503": {}
+        }
+      }
+    },
+    "/me/devices": {
+      "post": {
+        "tags": ["auth"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {},
+          "401": {}
+        }
+      }
+    },
+    "/me/incidents": {
+      "get": {
+        "tags": ["incidents"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {},
+          "401": {},
+          "403": {},
+          "429": {},
+          "503": {}
+        }
+      },
+      "post": {
+        "tags": ["incidents"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "201": {},
+          "401": {},
+          "403": {},
+          "404": {},
+          "429": {},
+          "503": {}
+        }
+      }
+    },
+    "/me/pass": {
+      "get": {
+        "tags": ["boarding"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {},
+          "401": {}
+        }
+      }
+    },
+    "/me/reservations": {
+      "get": {
+        "tags": ["reservations"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {},
+          "401": {},
+          "429": {},
+          "503": {}
+        }
+      },
+      "post": {
+        "tags": ["reservations"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {},
+          "401": {},
+          "402": {},
+          "409": {},
+          "429": {},
+          "503": {}
+        }
+      }
+    },
+    "/me/rides": {
+      "get": {
+        "tags": ["rides"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {},
+          "401": {},
+          "429": {},
+          "503": {}
+        }
+      }
+    },
+    "/me/sessions": {
+      "get": {
+        "tags": ["auth"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {},
+          "401": {},
+          "429": {}
+        }
+      }
+    },
+    "/me/sessions/{id}": {
+      "delete": {
+        "tags": ["auth"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "204": {},
+          "401": {},
+          "429": {}
+        }
+      }
+    },
+    "/me/subscription": {
+      "get": {
+        "tags": ["subscriptions"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {},
+          "401": {},
+          "429": {},
+          "503": {}
+        }
+      }
+    },
+    "/me/trips": {
+      "get": {
+        "tags": ["mobility"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {},
+          "401": {},
+          "403": {},
+          "503": {}
+        }
+      }
+    },
+    "/me/work/requests": {
+      "get": {
+        "tags": ["work"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {},
+          "401": {},
+          "403": {},
+          "429": {},
+          "503": {}
+        }
+      },
+      "post": {
+        "tags": ["work"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "201": {},
+          "401": {},
+          "403": {},
+          "404": {},
+          "409": {},
+          "429": {},
+          "503": {}
+        }
+      }
+    },
+    "/me/work/requests/{id}/withdraw": {
+      "post": {
+        "tags": ["work"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {},
+          "401": {},
+          "403": {},
+          "404": {},
+          "429": {},
+          "503": {}
+        }
+      }
+    },
+    "/me/work/routes": {
+      "get": {
+        "tags": ["work"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {},
+          "401": {},
+          "403": {},
+          "429": {},
+          "503": {}
+        }
+      }
+    },
+    "/payments/subscribe": {
+      "post": {
+        "tags": ["payments"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {},
+          "400": {},
+          "401": {},
+          "409": {},
+          "429": {},
+          "503": {}
+        }
+      }
+    },
+    "/readyz": {
+      "get": {
+        "tags": ["system"],
+        "security": [],
+        "responses": {
+          "200": {},
+          "503": {}
+        }
+      }
+    },
+    "/routes": {
+      "get": {
+        "tags": ["mobility"],
+        "security": [],
+        "responses": {
+          "200": {},
+          "429": {}
+        }
+      }
+    },
+    "/routes/{id}": {
+      "get": {
+        "tags": ["mobility"],
+        "security": [],
+        "responses": {
+          "200": {},
+          "404": {},
+          "429": {}
+        }
+      }
+    },
+    "/routes/{id}/geometry": {
+      "get": {
+        "tags": ["mobility"],
+        "security": [],
+        "responses": {
+          "200": {},
+          "404": {},
+          "429": {},
+          "503": {}
+        }
+      }
+    },
+    "/trips": {
+      "get": {
+        "tags": ["mobility"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {},
+          "401": {},
+          "429": {},
+          "503": {}
+        }
+      }
+    },
+    "/trips/{id}": {
+      "get": {
+        "tags": ["mobility"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {},
+          "401": {},
+          "404": {},
+          "429": {},
+          "503": {}
+        }
+      }
+    },
+    "/trips/{id}/arrive": {
+      "post": {
+        "tags": ["mobility"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {},
+          "401": {},
+          "403": {},
+          "404": {},
+          "409": {},
+          "503": {}
+        }
+      }
+    },
+    "/trips/{id}/complete": {
+      "post": {
+        "tags": ["mobility"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {},
+          "401": {},
+          "403": {},
+          "404": {},
+          "409": {},
+          "503": {}
+        }
+      }
+    },
+    "/trips/{id}/position": {
+      "get": {
+        "tags": ["mobility"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {},
+          "401": {},
+          "404": {},
+          "409": {},
+          "429": {},
+          "503": {}
+        }
+      },
+      "post": {
+        "tags": ["mobility"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {},
+          "401": {},
+          "403": {},
+          "404": {},
+          "409": {},
+          "429": {},
+          "503": {}
+        }
+      }
+    },
+    "/trips/{id}/start": {
+      "post": {
+        "tags": ["mobility"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {},
+          "401": {},
+          "403": {},
+          "404": {},
+          "409": {},
+          "503": {}
+        }
+      }
+    },
+    "/trips/{id}/summary": {
+      "get": {
+        "tags": ["mobility"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {},
+          "401": {},
+          "403": {},
+          "404": {},
+          "503": {}
+        }
+      }
+    },
+    "/version": {
+      "get": {
+        "tags": ["system"],
+        "security": [],
+        "responses": {
+          "200": {}
+        }
+      }
+    },
+    "/webhooks/paystack": {
+      "post": {
+        "tags": ["payments"],
+        "security": [],
+        "responses": {
+          "200": {},
+          "401": {},
+          "503": {}
+        }
+      }
+    }
+  }
+}

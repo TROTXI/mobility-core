@@ -12,12 +12,22 @@ part 'boarding_result.g.dart';
 /// BoardingResult
 ///
 /// Properties:
+<<<<<<< HEAD
 /// * [reservationId] 
 /// * [status] 
 /// * [alreadyApplied] 
 /// * [chargedRides] 
 @BuiltValue()
 abstract class BoardingResult implements Built<BoardingResult, BoardingResultBuilder> {
+=======
+/// * [reservationId]
+/// * [status]
+/// * [alreadyApplied]
+/// * [chargedRides]
+@BuiltValue()
+abstract class BoardingResult
+    implements Built<BoardingResult, BoardingResultBuilder> {
+>>>>>>> origin/main
   @BuiltValueField(wireName: r'reservationId')
   String get reservationId;
 
@@ -33,16 +43,30 @@ abstract class BoardingResult implements Built<BoardingResult, BoardingResultBui
 
   BoardingResult._();
 
+<<<<<<< HEAD
   factory BoardingResult([void updates(BoardingResultBuilder b)]) = _$BoardingResult;
+=======
+  factory BoardingResult([void updates(BoardingResultBuilder b)]) =
+      _$BoardingResult;
+>>>>>>> origin/main
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(BoardingResultBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
+<<<<<<< HEAD
   static Serializer<BoardingResult> get serializer => _$BoardingResultSerializer();
 }
 
 class _$BoardingResultSerializer implements PrimitiveSerializer<BoardingResult> {
+=======
+  static Serializer<BoardingResult> get serializer =>
+      _$BoardingResultSerializer();
+}
+
+class _$BoardingResultSerializer
+    implements PrimitiveSerializer<BoardingResult> {
+>>>>>>> origin/main
   @override
   final Iterable<Type> types = const [BoardingResult, _$BoardingResult];
 
@@ -82,7 +106,13 @@ class _$BoardingResultSerializer implements PrimitiveSerializer<BoardingResult> 
     BoardingResult object, {
     FullType specifiedType = FullType.unspecified,
   }) {
+<<<<<<< HEAD
     return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+=======
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
+>>>>>>> origin/main
   }
 
   void _deserializeProperties(
@@ -155,6 +185,7 @@ class _$BoardingResultSerializer implements PrimitiveSerializer<BoardingResult> 
 }
 
 class BoardingResultStatusEnum extends EnumClass {
+<<<<<<< HEAD
 
   @BuiltValueEnumConst(wireName: r'boarded')
   static const BoardingResultStatusEnum boarded = _$boardingResultStatusEnum_boarded;
@@ -169,3 +200,22 @@ class BoardingResultStatusEnum extends EnumClass {
   static BoardingResultStatusEnum valueOf(String name) => _$boardingResultStatusEnumValueOf(name);
 }
 
+=======
+  @BuiltValueEnumConst(wireName: r'boarded')
+  static const BoardingResultStatusEnum boarded =
+      _$boardingResultStatusEnum_boarded;
+  @BuiltValueEnumConst(wireName: r'no_show')
+  static const BoardingResultStatusEnum noShow =
+      _$boardingResultStatusEnum_noShow;
+
+  static Serializer<BoardingResultStatusEnum> get serializer =>
+      _$boardingResultStatusEnumSerializer;
+
+  const BoardingResultStatusEnum._(String name) : super(name);
+
+  static BuiltSet<BoardingResultStatusEnum> get values =>
+      _$boardingResultStatusEnumValues;
+  static BoardingResultStatusEnum valueOf(String name) =>
+      _$boardingResultStatusEnumValueOf(name);
+}
+>>>>>>> origin/main

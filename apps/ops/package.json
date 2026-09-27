@@ -2,5 +2,40 @@
   "name": "@trotxi/ops",
   "version": "0.1.0",
   "private": true,
-  "description": "Trotxi ops console — the dispatcher's web app (#170). Seam only: no scripts yet, so the workspace-wide CI gates (#172) skip this package until the scaffold adds typecheck/lint/build."
+  "description": "Trotxi operations console for dispatch, support and platform control.",
+  "type": "module",
+  "scripts": {
+    "codegen": "openapi-typescript ../../docs/design/contracts/replacement.openapi.json -o src/generated/api.ts",
+    "dev": "vite",
+    "build": "tsc --noEmit -p tsconfig.app.json && tsc --noEmit -p tsconfig.node.json && vite build",
+    "typecheck": "tsc --noEmit -p tsconfig.app.json --pretty false && tsc --noEmit -p tsconfig.node.json --pretty false",
+    "lint": "tsc --noEmit -p tsconfig.app.json --pretty false && tsc --noEmit -p tsconfig.node.json --pretty false",
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage.enabled --coverage.provider=v8",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@fluentui/react-components": "9.74.9",
+    "@fluentui/react-icons": "^2.0.341",
+    "@simplewebauthn/browser": "^14.0.0",
+    "maplibre-gl": "^6.11.1",
+    "openapi-fetch": "^0.17.0",
+    "pmtiles": "^4.5.0",
+    "react": "19.3.0",
+    "react-dom": "19.3.0",
+    "react-router-dom": "^7.18.4"
+  },
+  "devDependencies": {
+    "@testing-library/jest-dom": "^7.0.1",
+    "@testing-library/react": "^16.3.3",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^6.1.1",
+    "@vitest/coverage-v8": "5.0.1",
+    "jsdom": "^30.1.1",
+    "openapi-typescript": "^7.13.0",
+    "typescript": "^6.0.3",
+    "vite": "8.3.0",
+    "vitest": "^5.0.1"
+  }
 }

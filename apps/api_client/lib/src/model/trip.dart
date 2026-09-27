@@ -13,6 +13,7 @@ part 'trip.g.dart';
 /// Trip
 ///
 /// Properties:
+<<<<<<< HEAD
 /// * [id] 
 /// * [departureId] 
 /// * [serviceDate] 
@@ -24,6 +25,19 @@ part 'trip.g.dart';
 /// * [scheduledAt] 
 /// * [status] 
 /// * [vehicleLabel] 
+=======
+/// * [id]
+/// * [departureId]
+/// * [serviceDate]
+/// * [runNumber]
+/// * [routeId]
+/// * [patternId]
+/// * [patternVersionId]
+/// * [direction]
+/// * [scheduledAt]
+/// * [status]
+/// * [vehicleLabel]
+>>>>>>> origin/main
 @BuiltValue()
 abstract class Trip implements Built<Trip, TripBuilder> {
   @BuiltValueField(wireName: r'id')
@@ -136,10 +150,19 @@ class _$TripSerializer implements PrimitiveSerializer<Trip> {
       specifiedType: const FullType(TripStatusEnum),
     );
     yield r'vehicleLabel';
+<<<<<<< HEAD
     yield object.vehicleLabel == null ? null : serializers.serialize(
       object.vehicleLabel,
       specifiedType: const FullType.nullable(String),
     );
+=======
+    yield object.vehicleLabel == null
+        ? null
+        : serializers.serialize(
+            object.vehicleLabel,
+            specifiedType: const FullType.nullable(String),
+          );
+>>>>>>> origin/main
   }
 
   @override
@@ -148,7 +171,13 @@ class _$TripSerializer implements PrimitiveSerializer<Trip> {
     Trip object, {
     FullType specifiedType = FullType.unspecified,
   }) {
+<<<<<<< HEAD
     return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+=======
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
+>>>>>>> origin/main
   }
 
   void _deserializeProperties(
@@ -271,6 +300,7 @@ class _$TripSerializer implements PrimitiveSerializer<Trip> {
 }
 
 class TripRunNumberEnum extends EnumClass {
+<<<<<<< HEAD
 
   @BuiltValueEnumConst(wireNumber: 1)
   static const TripRunNumberEnum number1 = _$tripRunNumberEnum_number1;
@@ -285,11 +315,28 @@ class TripRunNumberEnum extends EnumClass {
 
 class TripDirectionEnum extends EnumClass {
 
+=======
+  @BuiltValueEnumConst(wireNumber: 1)
+  static const TripRunNumberEnum number1 = _$tripRunNumberEnum_number1;
+
+  static Serializer<TripRunNumberEnum> get serializer =>
+      _$tripRunNumberEnumSerializer;
+
+  const TripRunNumberEnum._(String name) : super(name);
+
+  static BuiltSet<TripRunNumberEnum> get values => _$tripRunNumberEnumValues;
+  static TripRunNumberEnum valueOf(String name) =>
+      _$tripRunNumberEnumValueOf(name);
+}
+
+class TripDirectionEnum extends EnumClass {
+>>>>>>> origin/main
   @BuiltValueEnumConst(wireName: r'outbound')
   static const TripDirectionEnum outbound = _$tripDirectionEnum_outbound;
   @BuiltValueEnumConst(wireName: r'return')
   static const TripDirectionEnum return_ = _$tripDirectionEnum_return_;
 
+<<<<<<< HEAD
   static Serializer<TripDirectionEnum> get serializer => _$tripDirectionEnumSerializer;
 
   const TripDirectionEnum._(String name): super(name);
@@ -300,6 +347,19 @@ class TripDirectionEnum extends EnumClass {
 
 class TripStatusEnum extends EnumClass {
 
+=======
+  static Serializer<TripDirectionEnum> get serializer =>
+      _$tripDirectionEnumSerializer;
+
+  const TripDirectionEnum._(String name) : super(name);
+
+  static BuiltSet<TripDirectionEnum> get values => _$tripDirectionEnumValues;
+  static TripDirectionEnum valueOf(String name) =>
+      _$tripDirectionEnumValueOf(name);
+}
+
+class TripStatusEnum extends EnumClass {
+>>>>>>> origin/main
   @BuiltValueEnumConst(wireName: r'scheduled')
   static const TripStatusEnum scheduled = _$tripStatusEnum_scheduled;
   @BuiltValueEnumConst(wireName: r'active')
@@ -309,11 +369,21 @@ class TripStatusEnum extends EnumClass {
   @BuiltValueEnumConst(wireName: r'cancelled')
   static const TripStatusEnum cancelled = _$tripStatusEnum_cancelled;
 
+<<<<<<< HEAD
   static Serializer<TripStatusEnum> get serializer => _$tripStatusEnumSerializer;
 
   const TripStatusEnum._(String name): super(name);
+=======
+  static Serializer<TripStatusEnum> get serializer =>
+      _$tripStatusEnumSerializer;
+
+  const TripStatusEnum._(String name) : super(name);
+>>>>>>> origin/main
 
   static BuiltSet<TripStatusEnum> get values => _$tripStatusEnumValues;
   static TripStatusEnum valueOf(String name) => _$tripStatusEnumValueOf(name);
 }
+<<<<<<< HEAD
 
+=======
+>>>>>>> origin/main

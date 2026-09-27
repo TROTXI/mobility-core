@@ -71,7 +71,9 @@ class _Accepted extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final riders = data?.riders ?? const [];
-    final index = riders.indexWhere((r) => r.userId == result.riderId);
+    final index = riders.indexWhere(
+      (r) => r.reservationId == result.reservationId,
+    );
     final rider = index >= 0 ? riders[index] : null;
     final run = data?.run;
 
@@ -141,7 +143,7 @@ class _Accepted extends StatelessWidget {
             data?.currentStopName == null
                 ? 'Boarded on ${run.routeName}'
                 : 'Boarded at ${data!.currentStopName} · Stop '
-                      '${data!.currentStopSeq} of ${data!.stops.length}',
+                      '${data!.currentStopNumber} of ${data!.stops.length}',
             style: AppTypography.tileCaption.copyWith(
               fontSize: 12,
               color: colors.textSecondary,

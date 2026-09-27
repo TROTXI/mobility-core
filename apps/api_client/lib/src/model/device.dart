@@ -12,9 +12,15 @@ part 'device.g.dart';
 /// Device
 ///
 /// Properties:
+<<<<<<< HEAD
 /// * [id] 
 /// * [platform] 
 /// * [updatedAt] 
+=======
+/// * [id]
+/// * [platform]
+/// * [updatedAt]
+>>>>>>> origin/main
 @BuiltValue()
 abstract class Device implements Built<Device, DeviceBuilder> {
   @BuiltValueField(wireName: r'id')
@@ -73,7 +79,13 @@ class _$DeviceSerializer implements PrimitiveSerializer<Device> {
     Device object, {
     FullType specifiedType = FullType.unspecified,
   }) {
+<<<<<<< HEAD
     return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+=======
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
+>>>>>>> origin/main
   }
 
   void _deserializeProperties(
@@ -139,12 +151,16 @@ class _$DeviceSerializer implements PrimitiveSerializer<Device> {
 }
 
 class DevicePlatformEnum extends EnumClass {
+<<<<<<< HEAD
 
+=======
+>>>>>>> origin/main
   @BuiltValueEnumConst(wireName: r'ios')
   static const DevicePlatformEnum ios = _$devicePlatformEnum_ios;
   @BuiltValueEnumConst(wireName: r'android')
   static const DevicePlatformEnum android = _$devicePlatformEnum_android;
 
+<<<<<<< HEAD
   static Serializer<DevicePlatformEnum> get serializer => _$devicePlatformEnumSerializer;
 
   const DevicePlatformEnum._(String name): super(name);
@@ -153,3 +169,14 @@ class DevicePlatformEnum extends EnumClass {
   static DevicePlatformEnum valueOf(String name) => _$devicePlatformEnumValueOf(name);
 }
 
+=======
+  static Serializer<DevicePlatformEnum> get serializer =>
+      _$devicePlatformEnumSerializer;
+
+  const DevicePlatformEnum._(String name) : super(name);
+
+  static BuiltSet<DevicePlatformEnum> get values => _$devicePlatformEnumValues;
+  static DevicePlatformEnum valueOf(String name) =>
+      _$devicePlatformEnumValueOf(name);
+}
+>>>>>>> origin/main

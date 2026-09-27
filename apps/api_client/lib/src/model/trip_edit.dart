@@ -11,7 +11,11 @@ part 'trip_edit.g.dart';
 /// TripEdit
 ///
 /// Properties:
+<<<<<<< HEAD
 /// * [scheduledAt] 
+=======
+/// * [scheduledAt]
+>>>>>>> origin/main
 @BuiltValue()
 abstract class TripEdit implements Built<TripEdit, TripEditBuilder> {
   @BuiltValueField(wireName: r'scheduledAt')
@@ -53,7 +57,13 @@ class _$TripEditSerializer implements PrimitiveSerializer<TripEdit> {
     TripEdit object, {
     FullType specifiedType = FullType.unspecified,
   }) {
+<<<<<<< HEAD
     return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+=======
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
+>>>>>>> origin/main
   }
 
   void _deserializeProperties(
@@ -103,4 +113,7 @@ class _$TripEditSerializer implements PrimitiveSerializer<TripEdit> {
     return result.build();
   }
 }
+<<<<<<< HEAD
 
+=======
+>>>>>>> origin/main

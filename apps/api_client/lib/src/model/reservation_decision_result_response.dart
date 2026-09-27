@@ -12,26 +12,55 @@ part 'reservation_decision_result_response.g.dart';
 /// ReservationDecisionResultResponse
 ///
 /// Properties:
+<<<<<<< HEAD
 /// * [data] 
 @BuiltValue()
 abstract class ReservationDecisionResultResponse implements Built<ReservationDecisionResultResponse, ReservationDecisionResultResponseBuilder> {
+=======
+/// * [data]
+@BuiltValue()
+abstract class ReservationDecisionResultResponse
+    implements
+        Built<ReservationDecisionResultResponse,
+            ReservationDecisionResultResponseBuilder> {
+>>>>>>> origin/main
   @BuiltValueField(wireName: r'data')
   ReservationDecisionResult get data;
 
   ReservationDecisionResultResponse._();
 
+<<<<<<< HEAD
   factory ReservationDecisionResultResponse([void updates(ReservationDecisionResultResponseBuilder b)]) = _$ReservationDecisionResultResponse;
+=======
+  factory ReservationDecisionResultResponse(
+          [void updates(ReservationDecisionResultResponseBuilder b)]) =
+      _$ReservationDecisionResultResponse;
+>>>>>>> origin/main
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(ReservationDecisionResultResponseBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
+<<<<<<< HEAD
   static Serializer<ReservationDecisionResultResponse> get serializer => _$ReservationDecisionResultResponseSerializer();
 }
 
 class _$ReservationDecisionResultResponseSerializer implements PrimitiveSerializer<ReservationDecisionResultResponse> {
   @override
   final Iterable<Type> types = const [ReservationDecisionResultResponse, _$ReservationDecisionResultResponse];
+=======
+  static Serializer<ReservationDecisionResultResponse> get serializer =>
+      _$ReservationDecisionResultResponseSerializer();
+}
+
+class _$ReservationDecisionResultResponseSerializer
+    implements PrimitiveSerializer<ReservationDecisionResultResponse> {
+  @override
+  final Iterable<Type> types = const [
+    ReservationDecisionResultResponse,
+    _$ReservationDecisionResultResponse
+  ];
+>>>>>>> origin/main
 
   @override
   final String wireName = r'ReservationDecisionResultResponse';
@@ -54,7 +83,13 @@ class _$ReservationDecisionResultResponseSerializer implements PrimitiveSerializ
     ReservationDecisionResultResponse object, {
     FullType specifiedType = FullType.unspecified,
   }) {
+<<<<<<< HEAD
     return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+=======
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
+>>>>>>> origin/main
   }
 
   void _deserializeProperties(
@@ -104,4 +139,7 @@ class _$ReservationDecisionResultResponseSerializer implements PrimitiveSerializ
     return result.build();
   }
 }
+<<<<<<< HEAD
 
+=======
+>>>>>>> origin/main

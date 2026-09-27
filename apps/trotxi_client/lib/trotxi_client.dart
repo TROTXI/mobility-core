@@ -57,9 +57,23 @@ class AccountSuspendedException extends TrotxiException {
 /// valid has expired: telling a driver "please log in again" while they are
 /// staring at the log-in screen is the wrong sentence.
 class InvalidCredentialsException extends TrotxiException {
+<<<<<<< HEAD
   const InvalidCredentialsException(
       [String message = 'Check your details and try again.'])
       : super(message);
+=======
+  const InvalidCredentialsException([
+    String message = 'Check your details and try again.',
+  ]) : super(message);
+}
+
+/// The server will not serve this build (HTTP 426). Per app and platform, so a
+/// commuter release being too old says nothing about the driver app. Nothing
+/// the rider can do in the app except update it.
+class UpgradeRequiredException extends TrotxiException {
+  const UpgradeRequiredException()
+      : super('Please update the app to continue.');
+>>>>>>> origin/main
 }
 
 class OfflineException extends TrotxiException {
@@ -88,6 +102,7 @@ class UnsupportedBuildException extends TrotxiException {
 class ApiException extends TrotxiException {
   final int statusCode;
 
+<<<<<<< HEAD
   /// The API's own `error.code` when it sent one (`client_metadata_required`,
   /// `client_upgrade_required`, ...). That string is usually the only thing
   /// that says *why* a 400 was a 400, so it is worth carrying.
@@ -99,9 +114,76 @@ class ApiException extends TrotxiException {
   @override
   String toString() =>
       'ApiException($statusCode${code == null ? '' : ' $code'}): $message';
+=======
+  /// Stable backend reason, so callers need not branch on translated prose.
+  final String? code;
+  const ApiException(this.statusCode, String message, {this.code})
+      : super(message);
+>>>>>>> origin/main
 }
 
 /// Interface for app-level storage of JWT tokens
+/// Which application is calling, and which build of it.
+///
+/// The replacement contract validates this before it authorizes anything, so a
+/// request without it is refused whoever sent it. It is transport, not an
+/// argument every call site should have to remember.
+class ClientMetadata {
+  const ClientMetadata({required this.app, required this.build, this.platform})
+      : assert(build > 0, 'A build number is a positive integer'),
+        assert(
+          app == 'ops' || app == 'worker' || platform != null,
+          'commuter and driver builds ship on a platform and must say which',
+        );
+
+  /// `commuter`, `driver`, `ops` or `worker`.
+  final String app;
+
+  /// The build number of this release, which the server compares to its floor.
+  final int build;
+
+  /// `ios` or `android`. Absent for `ops` and `worker`, which have no store build.
+  final String? platform;
+
+  /// Runs in release builds too; constructor assertions are not a wire guard.
+  void validate() {
+    if (!const ['commuter', 'driver', 'ops', 'worker'].contains(app) ||
+        build < 1 ||
+        build > 999999999 ||
+        ((app == 'ops' || app == 'worker')
+            ? platform != null
+            : !const ['ios', 'android'].contains(platform))) {
+      throw ArgumentError('Invalid replacement client metadata');
+    }
+  }
+}
+
+/// Puts the metadata on every request. The server reads it before it reads the
+/// token, so this has to run whether or not the caller is signed in.
+class MetadataInterceptor extends Interceptor {
+  MetadataInterceptor(this._metadata) {
+    _metadata.validate();
+  }
+  final ClientMetadata _metadata;
+
+  @override
+  void onRequest(RequestOptions options, RequestInterceptorHandler handler) {
+    // A request cannot accidentally retain headers from another app/platform.
+    // Rebuild rather than remove/reinsert entries in Dio's custom equality
+    // map: that sequence throws in the current Linux/Dart CI runtime.
+    // Generated calls already supply these headers, so this is a real path.
+    const owned = {'x-trotxi-client', 'x-trotxi-build', 'x-trotxi-platform'};
+    options.headers = <String, dynamic>{
+      for (final entry in options.headers.entries)
+        if (!owned.contains(entry.key.toLowerCase())) entry.key: entry.value,
+      'x-trotxi-client': _metadata.app,
+      'x-trotxi-build': '${_metadata.build}',
+      if (_metadata.platform != null) 'x-trotxi-platform': _metadata.platform,
+    };
+    handler.next(options);
+  }
+}
+
 abstract class TokenStore {
   Future<String?> getAccessToken();
   Future<String?> getRefreshToken();
@@ -112,22 +194,50 @@ abstract class TokenStore {
   Future<void> clearTokens();
 }
 
+/// Cooldowns and reads belong to a login, not merely a transport instance.
+abstract class SessionGenerationStore {
+  int get generation;
+}
+
+/// Replacement app stores implement compare-and-write inside their storage
+/// queue. A separate read then write can otherwise clobber a newer login that
+/// arrives while the secure-storage read is completing.
+abstract class ConditionalTokenStore implements TokenStore {
+  Future<bool> saveTokensIfRefreshMatches({
+    required String expectedRefreshToken,
+    required String accessToken,
+    required String refreshToken,
+  });
+  Future<bool> clearTokensIfRefreshMatches(String expectedRefreshToken);
+}
+
 /// 1. AuthInterceptor: Handles Bearer injection & Automatic 401 Token Refresh
-class AuthInterceptor extends QueuedInterceptor {
+class AuthInterceptor extends Interceptor {
   final Dio _dio;
   final TokenStore _tokenStore;
+<<<<<<< HEAD
   final TrotxiClientMetadata _metadata;
+=======
+  final ClientMetadata _metadata;
+  static const _retried = 'trotxi.auth.retried';
+>>>>>>> origin/main
 
   /// The "whiteboard": null when no refresh is in progress. The first 401
   /// to arrive starts a refresh and writes its Future here; any 401 that
   /// arrives while this is non-null just awaits the same Future instead
   /// of starting a redundant refresh of its own.
   Future<String>? _refreshFuture;
+  String? _rotatedFrom;
+  String? _rotatedTo;
 
   AuthInterceptor({
     required Dio dio,
     required TokenStore tokenStore,
+<<<<<<< HEAD
     required TrotxiClientMetadata metadata,
+=======
+    required ClientMetadata metadata,
+>>>>>>> origin/main
   })  : _dio = dio,
         _tokenStore = tokenStore,
         _metadata = metadata;
@@ -149,15 +259,32 @@ class AuthInterceptor extends QueuedInterceptor {
     DioException err,
     ErrorInterceptorHandler handler,
   ) async {
-    // Only attempt refresh on genuine HTTP 401 status codes
-    if (err.response?.statusCode != 401) {
+    // A retry re-enters this interceptor. Never refresh twice for one request,
+    // or queue onError while awaiting a retry that needs that same queue.
+    if (err.response?.statusCode != 401 ||
+        err.requestOptions.extra[_retried] == true) {
       return handler.next(err);
     }
 
     // Guard: Prevent infinite loops if the refresh call itself returns 401
     final requestPath = err.requestOptions.path;
+<<<<<<< HEAD
     if (_isRefreshPath(requestPath)) {
       await _tokenStore.clearTokens();
+=======
+    if (Uri.parse(requestPath).path == '/v1/auth/refresh') {
+      Object? payload = err.requestOptions.data;
+      if (payload is String) {
+        try {
+          payload = jsonDecode(payload);
+        } on FormatException {
+          payload = null;
+        }
+      }
+      if (payload is Map && payload['refreshToken'] is String) {
+        await _clearIfCurrent(payload['refreshToken'] as String);
+      }
+>>>>>>> origin/main
       return handler.next(err);
     }
 
@@ -165,25 +292,68 @@ class AuthInterceptor extends QueuedInterceptor {
     // session expired. Refreshing makes no sense (there is no session yet), and
     // clearing tokens on the way past would sign out a driver who mistyped a
     // PIN while already signed in on the same handset.
-    if (_isSignInPath(requestPath)) {
+    if (_isSignInPath(requestPath) || isWrongCurrentPin(err)) {
       return handler.next(err);
     }
 
+    late final String newAccessToken;
     try {
-      // Single-flight: if a refresh is already in progress, await that
-      // one instead of starting a new one. First caller creates the
-      // Future and stores it; every concurrent caller reuses it.
-      final newAccessToken = await (_refreshFuture ??= _refreshTokens());
+      final currentToken = await _tokenStore.getAccessToken();
+      // A delayed 401 may belong to a token another request already rotated.
+      if (_refreshFuture != null) {
+        newAccessToken = await _refreshFuture!;
+      } else if (currentToken != null &&
+          currentToken.isNotEmpty &&
+          err.requestOptions.headers['Authorization'] !=
+              'Bearer $currentToken') {
+        // Do not replay an old session's operation under an unrelated new login.
+        if (currentToken != _rotatedTo ||
+            err.requestOptions.headers['Authorization'] !=
+                'Bearer $_rotatedFrom') {
+          throw StateError('Session changed while the request was in flight');
+        }
+        newAccessToken = currentToken;
+      } else {
+        newAccessToken = await (_refreshFuture ??= _refreshTokens(
+          currentToken,
+        ));
+      }
+    } on DioException catch (refreshError) {
+      // Surface the refresh timeout/5xx, not the original access-token 401.
+      // Refresh uses an isolated transport, but its refusal still belongs to
+      // the originating session's shared cooldown (not a later login).
+      refreshError.requestOptions.extra['trotxi.rateEpoch'] ??=
+          err.requestOptions.extra['trotxi.rateEpoch'];
+      return handler.next(refreshError);
+    } catch (error, stackTrace) {
+      // Missing/malformed tokens or storage failures aren't proof of revocation.
+      return handler.next(
+        DioException(
+          requestOptions: err.requestOptions,
+          error: const ApiException(
+            0,
+            'Unable to restore the session. Please retry.',
+          ),
+          stackTrace: stackTrace,
+        ),
+      );
+    }
 
-      // Clone and retry the original failed request with the new access token
-      final requestOptions = err.requestOptions;
-      requestOptions.headers['Authorization'] = 'Bearer $newAccessToken';
-
-      final clonedResponse = await _dio.fetch(requestOptions);
-      return handler.resolve(clonedResponse);
-    } catch (refreshError) {
-      await _tokenStore.clearTokens();
-      return handler.next(err);
+    final retry = err.requestOptions.copyWith(
+      headers: {
+        ...err.requestOptions.headers,
+        'Authorization': 'Bearer $newAccessToken',
+      },
+      extra: {...err.requestOptions.extra, _retried: true},
+      data: err.requestOptions.data is FormData
+          ? (err.requestOptions.data as FormData).clone()
+          : err.requestOptions.data,
+    );
+    try {
+      return handler.resolve(await _dio.fetch(retry));
+    } on DioException catch (retryError) {
+      // Keep newly saved tokens even if the retried operation fails.
+      return handler.next(retryError);
     }
   }
 
@@ -193,6 +363,7 @@ class AuthInterceptor extends QueuedInterceptor {
 
   /// Whether a path is one of the sign-in routes, where a 401 is a rejected
   /// credential rather than an expired session.
+<<<<<<< HEAD
   ///
   /// Matched exactly: `/v1/auth/driver/pin` is a *signed-in* PIN change, so a
   /// 401 there really is an expired session and must reach the refresh below.
@@ -200,6 +371,22 @@ class AuthInterceptor extends QueuedInterceptor {
     final route = _routePath(path);
     return route.endsWith('/v1/auth/google') ||
         route.endsWith('/v1/auth/driver');
+=======
+  /// A PIN change refused because the current PIN was wrong. The session is
+  /// fine; refreshing it or calling it expired would both be wrong.
+  static bool isWrongCurrentPin(DioException err) =>
+      err.response?.statusCode == 401 &&
+      Uri.parse(err.requestOptions.path).path == '/v1/auth/driver/pin' &&
+      ErrorInterceptor._fieldOf(err.response!, 'code') ==
+          'invalid_driver_credentials';
+
+  static bool _isSignInPath(String path) {
+    return const {
+      '/v1/auth/driver',
+      '/v1/auth/google',
+      '/v1/auth/apple',
+    }.contains(Uri.parse(path).path);
+>>>>>>> origin/main
   }
 
   /// Whether a path is the refresh route itself, where a 401 means the
@@ -209,7 +396,7 @@ class AuthInterceptor extends QueuedInterceptor {
 
   /// Performs the actual refresh call. Only ever invoked once per batch of
   /// concurrent 401s, via the `_refreshFuture ??=` guard in onError.
-  Future<String> _refreshTokens() async {
+  Future<String> _refreshTokens(String? previousAccessToken) async {
     try {
       final refreshToken = await _tokenStore.getRefreshToken();
       if (refreshToken == null || refreshToken.isEmpty) {
@@ -219,16 +406,23 @@ class AuthInterceptor extends QueuedInterceptor {
       // An isolated client for the refresh call: it must not pick up this
       // interceptor, or a 401 here would recurse back into a refresh.
       final refreshClient = TrotxiApiClient(
-        basePathOverride: _dio.options.baseUrl,
+        // Keep configured transport/TLS/timeouts, but do not recurse through
+        // auth or map away the refresh endpoint's HTTP status.
+        dio: _dio.clone(interceptors: Interceptors()),
+        interceptors: [],
       );
       refreshClient.dio.options.connectTimeout = _dio.options.connectTimeout;
       refreshClient.dio.options.receiveTimeout = _dio.options.receiveTimeout;
 
+<<<<<<< HEAD
       // Construct the generated built_value request model
+=======
+>>>>>>> origin/main
       final refreshRequest = RefreshInput(
         (b) => b..refreshToken = refreshToken,
       );
 
+<<<<<<< HEAD
       // POST /v1/auth/refresh. Like every /v1 route it wants the client
       // metadata headers; without them the API answers 400, not 401, so the
       // session would look unrecoverable when it is merely unidentified.
@@ -238,20 +432,57 @@ class AuthInterceptor extends QueuedInterceptor {
             xTrotxiPlatform: _metadata.platform,
             refreshInput: refreshRequest,
           );
+=======
+      // This client carries no interceptors, so the metadata the server checks
+      // before it authorizes anything has to be passed explicitly here.
+      late final Response<TokensResponse> response;
+      try {
+        response = await refreshClient.getPublicApi().refreshSession(
+              refreshInput: refreshRequest,
+              xTrotxiClient: _metadata.app,
+              xTrotxiBuild: _metadata.build,
+              xTrotxiPlatform: _metadata.platform,
+            );
+      } on DioException catch (error) {
+        // One clear per shared refresh, only on authoritative rejection. Do not
+        // clear a newer login that replaced this credential while we waited.
+        if (error.response?.statusCode == 401) {
+          await _clearIfCurrent(refreshToken);
+        }
+        rethrow;
+      }
+>>>>>>> origin/main
 
       final tokens = response.data?.data;
       final newAccessToken = tokens?.accessToken;
       final newRefreshToken = tokens?.refreshToken;
 
-      if (newAccessToken == null || newRefreshToken == null) {
+      if (newAccessToken == null ||
+          newAccessToken.isEmpty ||
+          newRefreshToken == null ||
+          newRefreshToken.isEmpty) {
         throw StateError('Refresh response missing tokens');
       }
 
-      // Store new credentials
-      await _tokenStore.saveTokens(
-        accessToken: newAccessToken,
-        refreshToken: newRefreshToken,
-      );
+      final store = _tokenStore;
+      if (store is ConditionalTokenStore) {
+        final saved = await store.saveTokensIfRefreshMatches(
+          expectedRefreshToken: refreshToken,
+          accessToken: newAccessToken,
+          refreshToken: newRefreshToken,
+        );
+        if (!saved) throw StateError('Session changed while refreshing');
+      } else {
+        if (await store.getRefreshToken() != refreshToken) {
+          throw StateError('Session changed while refreshing');
+        }
+        await store.saveTokens(
+          accessToken: newAccessToken,
+          refreshToken: newRefreshToken,
+        );
+      }
+      _rotatedFrom = previousAccessToken;
+      _rotatedTo = newAccessToken;
 
       return newAccessToken;
     } finally {
@@ -261,12 +492,52 @@ class AuthInterceptor extends QueuedInterceptor {
       _refreshFuture = null;
     }
   }
+
+  Future<void> _clearIfCurrent(String refreshToken) async {
+    final store = _tokenStore;
+    if (store is ConditionalTokenStore) {
+      await store.clearTokensIfRefreshMatches(refreshToken);
+    } else if (await store.getRefreshToken() == refreshToken) {
+      await store.clearTokens();
+    }
+  }
 }
 
 /// 2. ErrorInterceptor: Maps raw DioExceptions to typed Domain Exceptions
 class ErrorInterceptor extends Interceptor {
+  ErrorInterceptor(
+      {int Function()? sessionGeneration, DateTime Function()? now})
+      : _sessionGeneration = sessionGeneration ?? (() => 0),
+        _now = now ?? DateTime.now;
+  final int Function() _sessionGeneration;
+  final DateTime Function() _now;
+  int? _epoch;
+  DateTime? _retryAt;
+
+  void _sync() {
+    if (_epoch != _sessionGeneration()) {
+      _epoch = _sessionGeneration();
+      _retryAt = null;
+    }
+  }
+
+  @override
+  void onRequest(RequestOptions options, RequestInterceptorHandler handler) {
+    _sync();
+    options.extra['trotxi.rateEpoch'] = _epoch;
+    final remaining = _retryAt?.difference(_now()) ?? Duration.zero;
+    // Local logout still clears credentials even while the server is busy.
+    if (remaining > Duration.zero && !options.path.endsWith('/auth/logout')) {
+      return handler.reject(DioException(
+          requestOptions: options, error: RateLimitException(remaining)));
+    }
+    handler.next(options);
+  }
+
   @override
   void onError(DioException err, ErrorInterceptorHandler handler) {
+    // A retry through the shared Dio has already crossed this mapper once.
+    if (err.error is TrotxiException) return handler.next(err);
     final response = err.response;
 
     if (response == null) {
@@ -281,7 +552,9 @@ class ErrorInterceptor extends Interceptor {
       }
       if (err.type == DioExceptionType.connectionError ||
           err.type == DioExceptionType.unknown ||
-          err.type == DioExceptionType.connectionTimeout) {
+          err.type == DioExceptionType.connectionTimeout ||
+          err.type == DioExceptionType.sendTimeout ||
+          err.type == DioExceptionType.receiveTimeout) {
         return handler.reject(
           DioException(
             requestOptions: err.requestOptions,
@@ -299,13 +572,32 @@ class ErrorInterceptor extends Interceptor {
         return handler.reject(
           DioException(
             requestOptions: err.requestOptions,
+<<<<<<< HEAD
             error: isSignIn
                 ? _rejectedCredentialsFor(err.requestOptions.path)
+=======
+            error: AuthInterceptor.isWrongCurrentPin(err)
+                ? InvalidCredentialsException(
+                    _messageOf(response) ?? 'Current PIN is incorrect.')
+                : isSignIn
+                ? InvalidCredentialsException(
+                    _messageOf(response) ??
+                        (Uri.parse(err.requestOptions.path).path ==
+                                '/v1/auth/driver'
+                            ? 'Invalid driver code or PIN.'
+                            : 'Unable to sign in. Please try again.'),
+                  )
+>>>>>>> origin/main
                 : const UnauthorizedException(),
           ),
         );
       case 403:
-        if (isSignIn) {
+        // Only a suspension is a suspension. An expired temporary PIN is also
+        // a 403 here, and telling that driver their account is suspended
+        // would send them to the wrong conversation with operations.
+        if (Uri.parse(err.requestOptions.path).path == '/v1/auth/driver' &&
+            (_fieldOf(response, 'code') ?? 'driver_suspended') ==
+                'driver_suspended') {
           return handler.reject(
             DioException(
               requestOptions: err.requestOptions,
@@ -325,11 +617,21 @@ class ErrorInterceptor extends Interceptor {
         return handler.reject(
           DioException(
             requestOptions: err.requestOptions,
+<<<<<<< HEAD
             error: const UnsupportedBuildException(),
+=======
+            error: const UpgradeRequiredException(),
+            response: response,
+>>>>>>> origin/main
           ),
         );
       case 429:
         final retryAfter = _parseRetryAfter(response);
+        _sync();
+        if (err.requestOptions.extra['trotxi.rateEpoch'] == _epoch) {
+          final until = _now().add(retryAfter);
+          if (_retryAt == null || until.isAfter(_retryAt!)) _retryAt = until;
+        }
         return handler.reject(
           DioException(
             requestOptions: err.requestOptions,
@@ -346,13 +648,20 @@ class ErrorInterceptor extends Interceptor {
         requestOptions: err.requestOptions,
         error: ApiException(
           response.statusCode ?? 0,
+<<<<<<< HEAD
           failure?.message ?? response.statusMessage ?? 'Unknown error',
           code: failure?.code,
+=======
+          _messageOf(response) ?? response.statusMessage ?? 'Unknown error',
+          code: _fieldOf(response, 'code'),
+>>>>>>> origin/main
         ),
+        response: response,
       ),
     );
   }
 
+<<<<<<< HEAD
   /// The API answers every failure with
   /// `{"error": {"code": ..., "message": ..., "requestId": ...}}`.
   ///
@@ -367,12 +676,28 @@ class ErrorInterceptor extends Interceptor {
       try {
         body = jsonDecode(body);
       } catch (_) {
+=======
+  /// Every refusal carries `{ error: { code, message, requestId } }`, and the
+  /// message is written to be shown. Falling back to the status line loses
+  /// that, so read the envelope first.
+  static String? _messageOf(Response response) {
+    return _fieldOf(response, 'message');
+  }
+
+  static String? _fieldOf(Response response, String field) {
+    Object? body = response.data;
+    if (body is String) {
+      try {
+        body = jsonDecode(body);
+      } on FormatException {
+>>>>>>> origin/main
         return null;
       }
     }
     if (body is! Map) return null;
     final error = body['error'];
     if (error is! Map) return null;
+<<<<<<< HEAD
     final code = error['code'];
     final message = error['message'];
     return _ApiFailure(
@@ -390,12 +715,50 @@ class ErrorInterceptor extends Interceptor {
             'Google could not sign you in. Please try again.',
           )
         : const InvalidCredentialsException('Invalid driver code or PIN.');
+=======
+    final message = error[field];
+    return message is String && message.isNotEmpty ? message : null;
+>>>>>>> origin/main
   }
 
   Duration _parseRetryAfter(Response response) {
     final header = response.headers.value('retry-after');
-    final seconds = int.tryParse(header ?? '') ?? 5;
-    return Duration(seconds: seconds);
+    final seconds = int.tryParse(header ?? '');
+    if (seconds != null && seconds >= 0) return Duration(seconds: seconds);
+    // HTTP-date Retry-After is supported by servers as well as delta seconds.
+    try {
+      final match = RegExp(
+              r'^\w{3}, (\d{2}) (\w{3}) (\d{4}) (\d{2}):(\d{2}):(\d{2}) GMT$')
+          .firstMatch(header ?? '');
+      if (match == null) throw const FormatException('Invalid HTTP date');
+      const months = [
+        'Jan',
+        'Feb',
+        'Mar',
+        'Apr',
+        'May',
+        'Jun',
+        'Jul',
+        'Aug',
+        'Sep',
+        'Oct',
+        'Nov',
+        'Dec'
+      ];
+      final month = months.indexOf(match[2]!) + 1;
+      if (month == 0) throw const FormatException('Invalid month');
+      final until = DateTime.utc(
+          int.parse(match[3]!),
+          month,
+          int.parse(match[1]!),
+          int.parse(match[4]!),
+          int.parse(match[5]!),
+          int.parse(match[6]!));
+      final delay = until.difference(_now().toUtc());
+      return delay > Duration.zero ? delay : Duration.zero;
+    } catch (_) {
+      return const Duration(seconds: 5);
+    }
   }
 }
 
@@ -423,11 +786,21 @@ class TrotxiClientFactory {
   static TrotxiApiClient create({
     required String baseUrl,
     required TokenStore tokenStore,
+<<<<<<< HEAD
     required TrotxiClientMetadata metadata,
+=======
+    required ClientMetadata metadata,
+    DateTime Function()? now,
+>>>>>>> origin/main
   }) {
+    metadata.validate();
     final client = TrotxiApiClient(basePathOverride: baseUrl);
     client.dio.options.connectTimeout = _connectTimeout;
     client.dio.options.receiveTimeout = _receiveTimeout;
+
+    // Metadata first: the server validates it before it authorizes anything,
+    // so a request that reaches auth without it has already been refused.
+    client.dio.interceptors.add(MetadataInterceptor(metadata));
 
     // CRITICAL: AuthInterceptor MUST come BEFORE ErrorInterceptor.
     // Otherwise ErrorInterceptor transforms 401s to UnauthorizedException
@@ -439,6 +812,7 @@ class TrotxiClientFactory {
     ));
 
     client.dio.interceptors.add(
+<<<<<<< HEAD
       LogInterceptor(
         request: true,
         requestHeader: true,
@@ -446,9 +820,19 @@ class TrotxiClientFactory {
         responseHeader: true,
         responseBody: true,
         error: true,
+=======
+      AuthInterceptor(
+        dio: client.dio,
+        tokenStore: tokenStore,
+        metadata: metadata,
+>>>>>>> origin/main
       ),
     );
-    client.dio.interceptors.add(ErrorInterceptor());
+    client.dio.interceptors.add(ErrorInterceptor(
+        now: now,
+        sessionGeneration: tokenStore is SessionGenerationStore
+            ? () => (tokenStore as SessionGenerationStore).generation
+            : null));
 
     return client;
   }

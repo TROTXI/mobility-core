@@ -11,12 +11,22 @@ part 'bootstrap_operations.g.dart';
 /// BootstrapOperations
 ///
 /// Properties:
+<<<<<<< HEAD
 /// * [phone] 
 /// * [whatsapp] 
 /// * [email] 
 /// * [hours] 
 @BuiltValue()
 abstract class BootstrapOperations implements Built<BootstrapOperations, BootstrapOperationsBuilder> {
+=======
+/// * [phone]
+/// * [whatsapp]
+/// * [email]
+/// * [hours]
+@BuiltValue()
+abstract class BootstrapOperations
+    implements Built<BootstrapOperations, BootstrapOperationsBuilder> {
+>>>>>>> origin/main
   @BuiltValueField(wireName: r'phone')
   String? get phone;
 
@@ -31,18 +41,37 @@ abstract class BootstrapOperations implements Built<BootstrapOperations, Bootstr
 
   BootstrapOperations._();
 
+<<<<<<< HEAD
   factory BootstrapOperations([void updates(BootstrapOperationsBuilder b)]) = _$BootstrapOperations;
+=======
+  factory BootstrapOperations([void updates(BootstrapOperationsBuilder b)]) =
+      _$BootstrapOperations;
+>>>>>>> origin/main
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(BootstrapOperationsBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
+<<<<<<< HEAD
   static Serializer<BootstrapOperations> get serializer => _$BootstrapOperationsSerializer();
 }
 
 class _$BootstrapOperationsSerializer implements PrimitiveSerializer<BootstrapOperations> {
   @override
   final Iterable<Type> types = const [BootstrapOperations, _$BootstrapOperations];
+=======
+  static Serializer<BootstrapOperations> get serializer =>
+      _$BootstrapOperationsSerializer();
+}
+
+class _$BootstrapOperationsSerializer
+    implements PrimitiveSerializer<BootstrapOperations> {
+  @override
+  final Iterable<Type> types = const [
+    BootstrapOperations,
+    _$BootstrapOperations
+  ];
+>>>>>>> origin/main
 
   @override
   final String wireName = r'BootstrapOperations';
@@ -53,6 +82,7 @@ class _$BootstrapOperationsSerializer implements PrimitiveSerializer<BootstrapOp
     FullType specifiedType = FullType.unspecified,
   }) sync* {
     yield r'phone';
+<<<<<<< HEAD
     yield object.phone == null ? null : serializers.serialize(
       object.phone,
       specifiedType: const FullType.nullable(String),
@@ -72,6 +102,35 @@ class _$BootstrapOperationsSerializer implements PrimitiveSerializer<BootstrapOp
       object.hours,
       specifiedType: const FullType.nullable(String),
     );
+=======
+    yield object.phone == null
+        ? null
+        : serializers.serialize(
+            object.phone,
+            specifiedType: const FullType.nullable(String),
+          );
+    yield r'whatsapp';
+    yield object.whatsapp == null
+        ? null
+        : serializers.serialize(
+            object.whatsapp,
+            specifiedType: const FullType.nullable(String),
+          );
+    yield r'email';
+    yield object.email == null
+        ? null
+        : serializers.serialize(
+            object.email,
+            specifiedType: const FullType.nullable(String),
+          );
+    yield r'hours';
+    yield object.hours == null
+        ? null
+        : serializers.serialize(
+            object.hours,
+            specifiedType: const FullType.nullable(String),
+          );
+>>>>>>> origin/main
   }
 
   @override
@@ -80,7 +139,13 @@ class _$BootstrapOperationsSerializer implements PrimitiveSerializer<BootstrapOp
     BootstrapOperations object, {
     FullType specifiedType = FullType.unspecified,
   }) {
+<<<<<<< HEAD
     return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+=======
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
+>>>>>>> origin/main
   }
 
   void _deserializeProperties(
@@ -155,4 +220,7 @@ class _$BootstrapOperationsSerializer implements PrimitiveSerializer<BootstrapOp
     return result.build();
   }
 }
+<<<<<<< HEAD
 
+=======
+>>>>>>> origin/main

@@ -12,24 +12,45 @@ part 'driver_trip_response.g.dart';
 /// DriverTripResponse
 ///
 /// Properties:
+<<<<<<< HEAD
 /// * [data] 
 @BuiltValue()
 abstract class DriverTripResponse implements Built<DriverTripResponse, DriverTripResponseBuilder> {
+=======
+/// * [data]
+@BuiltValue()
+abstract class DriverTripResponse
+    implements Built<DriverTripResponse, DriverTripResponseBuilder> {
+>>>>>>> origin/main
   @BuiltValueField(wireName: r'data')
   DriverTrip get data;
 
   DriverTripResponse._();
 
+<<<<<<< HEAD
   factory DriverTripResponse([void updates(DriverTripResponseBuilder b)]) = _$DriverTripResponse;
+=======
+  factory DriverTripResponse([void updates(DriverTripResponseBuilder b)]) =
+      _$DriverTripResponse;
+>>>>>>> origin/main
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(DriverTripResponseBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
+<<<<<<< HEAD
   static Serializer<DriverTripResponse> get serializer => _$DriverTripResponseSerializer();
 }
 
 class _$DriverTripResponseSerializer implements PrimitiveSerializer<DriverTripResponse> {
+=======
+  static Serializer<DriverTripResponse> get serializer =>
+      _$DriverTripResponseSerializer();
+}
+
+class _$DriverTripResponseSerializer
+    implements PrimitiveSerializer<DriverTripResponse> {
+>>>>>>> origin/main
   @override
   final Iterable<Type> types = const [DriverTripResponse, _$DriverTripResponse];
 
@@ -54,7 +75,13 @@ class _$DriverTripResponseSerializer implements PrimitiveSerializer<DriverTripRe
     DriverTripResponse object, {
     FullType specifiedType = FullType.unspecified,
   }) {
+<<<<<<< HEAD
     return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+=======
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
+>>>>>>> origin/main
   }
 
   void _deserializeProperties(
@@ -104,4 +131,7 @@ class _$DriverTripResponseSerializer implements PrimitiveSerializer<DriverTripRe
     return result.build();
   }
 }
+<<<<<<< HEAD
 
+=======
+>>>>>>> origin/main

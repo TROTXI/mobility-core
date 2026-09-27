@@ -12,26 +12,52 @@ part 'commute_slot_response.g.dart';
 /// CommuteSlotResponse
 ///
 /// Properties:
+<<<<<<< HEAD
 /// * [data] 
 @BuiltValue()
 abstract class CommuteSlotResponse implements Built<CommuteSlotResponse, CommuteSlotResponseBuilder> {
+=======
+/// * [data]
+@BuiltValue()
+abstract class CommuteSlotResponse
+    implements Built<CommuteSlotResponse, CommuteSlotResponseBuilder> {
+>>>>>>> origin/main
   @BuiltValueField(wireName: r'data')
   CommuteSlot get data;
 
   CommuteSlotResponse._();
 
+<<<<<<< HEAD
   factory CommuteSlotResponse([void updates(CommuteSlotResponseBuilder b)]) = _$CommuteSlotResponse;
+=======
+  factory CommuteSlotResponse([void updates(CommuteSlotResponseBuilder b)]) =
+      _$CommuteSlotResponse;
+>>>>>>> origin/main
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(CommuteSlotResponseBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
+<<<<<<< HEAD
   static Serializer<CommuteSlotResponse> get serializer => _$CommuteSlotResponseSerializer();
 }
 
 class _$CommuteSlotResponseSerializer implements PrimitiveSerializer<CommuteSlotResponse> {
   @override
   final Iterable<Type> types = const [CommuteSlotResponse, _$CommuteSlotResponse];
+=======
+  static Serializer<CommuteSlotResponse> get serializer =>
+      _$CommuteSlotResponseSerializer();
+}
+
+class _$CommuteSlotResponseSerializer
+    implements PrimitiveSerializer<CommuteSlotResponse> {
+  @override
+  final Iterable<Type> types = const [
+    CommuteSlotResponse,
+    _$CommuteSlotResponse
+  ];
+>>>>>>> origin/main
 
   @override
   final String wireName = r'CommuteSlotResponse';
@@ -54,7 +80,13 @@ class _$CommuteSlotResponseSerializer implements PrimitiveSerializer<CommuteSlot
     CommuteSlotResponse object, {
     FullType specifiedType = FullType.unspecified,
   }) {
+<<<<<<< HEAD
     return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+=======
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
+>>>>>>> origin/main
   }
 
   void _deserializeProperties(
@@ -104,4 +136,7 @@ class _$CommuteSlotResponseSerializer implements PrimitiveSerializer<CommuteSlot
     return result.build();
   }
 }
+<<<<<<< HEAD
 
+=======
+>>>>>>> origin/main

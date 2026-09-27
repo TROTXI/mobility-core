@@ -6,17 +6,20 @@ import 'package:trotxi_driver/core/config/theme/app_theme.dart';
 import 'package:trotxi_driver/core/state/run_controller.dart';
 import 'package:trotxi_driver/data/trips_repository.dart';
 
-ManifestRider _rider(String id, {String? name, bool standby = false}) =>
-    ManifestRider(
-      reservationId: 'res-$id',
-      userId: id,
-      name: name ?? 'Rider $id',
-      avatarUrl: null,
-      boarded: false,
-      direction: 'morning',
-      source: standby ? 'standby' : 'confirmation',
-      noShow: false,
-    );
+ManifestRider _rider(
+  String id, {
+  String? name,
+  String? avatarUrl,
+  bool standby = false,
+}) => ManifestRider(
+  reservationId: 'res-$id',
+  name: name ?? 'Rider $id',
+  avatarUrl: avatarUrl,
+  boarded: false,
+  direction: 'morning',
+  source: standby ? 'standby' : 'confirmation',
+  noShow: false,
+);
 
 RunDetail _detail() => RunDetail(
   run: DriverRun(
@@ -27,8 +30,21 @@ RunDetail _detail() => RunDetail(
     status: RunStatus.active,
     currentStopSeq: 3,
   ),
-  riders: [_rider('u1'), _rider('u2', name: 'Ama Owusu'), _rider('u3')],
-  stops: const ['Madina', 'Shiashie', 'Circle', 'Kaneshie'],
+  riders: [
+    _rider('u1'),
+    _rider(
+      'u2',
+      name: 'Ama Owusu',
+      avatarUrl: 'https://images.example.test/riders/u2.jpg',
+    ),
+    _rider('u3'),
+  ],
+  stops: const [
+    DriverStop(seq: 1, name: 'Madina'),
+    DriverStop(seq: 2, name: 'Shiashie'),
+    DriverStop(seq: 3, name: 'Circle'),
+    DriverStop(seq: 4, name: 'Kaneshie'),
+  ],
 );
 
 Future<void> _pump(WidgetTester tester, BoardingResult result) {
@@ -64,7 +80,7 @@ void main() {
       const BoardingResult(
         outcome: BoardingOutcome.ok,
         riderName: 'Ama Owusu',
-        riderId: 'u2',
+        reservationId: 'res-u2',
         deducted: true,
       ),
     );
@@ -73,6 +89,12 @@ void main() {
     expect(find.text('#2'), findsOneWidget);
     expect(find.textContaining('SEAT'), findsNothing);
     expect(find.text('Ama Owusu'), findsOneWidget);
+    final photo = tester.widget<Image>(find.byType(Image));
+    expect(photo.image, isA<NetworkImage>());
+    expect(
+      (photo.image as NetworkImage).url,
+      'https://images.example.test/riders/u2.jpg',
+    );
     expect(find.text('1 deducted'), findsOneWidget);
     expect(find.text('Boarded at Circle · Stop 3 of 4'), findsOneWidget);
   });
@@ -87,7 +109,7 @@ void main() {
       const BoardingResult(
         outcome: BoardingOutcome.ok,
         riderName: 'Kofi Mensah',
-        riderId: 'unknown',
+        reservationId: 'unknown',
         deducted: true,
       ),
     );
@@ -109,7 +131,7 @@ void main() {
     await tester.pump();
 
     expect(find.text('Signed out'), findsOneWidget);
-    expect(find.textContaining('Their pass is fine'), findsOneWidget);
+    expect(find.textContaining('check their pass again'), findsOneWidget);
   });
 
   testWidgets('an already-boarded rider is not an error', (tester) async {

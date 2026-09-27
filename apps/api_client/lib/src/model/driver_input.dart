@@ -11,10 +11,18 @@ part 'driver_input.g.dart';
 /// DriverInput
 ///
 /// Properties:
+<<<<<<< HEAD
 /// * [name] 
 /// * [phone] 
 /// * [licenseNumber] 
 /// * [userId] 
+=======
+/// * [name]
+/// * [phone]
+/// * [email]
+/// * [licenseNumber]
+/// * [userId]
+>>>>>>> origin/main
 @BuiltValue()
 abstract class DriverInput implements Built<DriverInput, DriverInputBuilder> {
   @BuiltValueField(wireName: r'name')
@@ -23,6 +31,12 @@ abstract class DriverInput implements Built<DriverInput, DriverInputBuilder> {
   @BuiltValueField(wireName: r'phone')
   String? get phone;
 
+<<<<<<< HEAD
+=======
+  @BuiltValueField(wireName: r'email')
+  String? get email;
+
+>>>>>>> origin/main
   @BuiltValueField(wireName: r'licenseNumber')
   String? get licenseNumber;
 
@@ -64,6 +78,16 @@ class _$DriverInputSerializer implements PrimitiveSerializer<DriverInput> {
         specifiedType: const FullType(String),
       );
     }
+<<<<<<< HEAD
+=======
+    if (object.email != null) {
+      yield r'email';
+      yield serializers.serialize(
+        object.email,
+        specifiedType: const FullType(String),
+      );
+    }
+>>>>>>> origin/main
     if (object.licenseNumber != null) {
       yield r'licenseNumber';
       yield serializers.serialize(
@@ -86,7 +110,13 @@ class _$DriverInputSerializer implements PrimitiveSerializer<DriverInput> {
     DriverInput object, {
     FullType specifiedType = FullType.unspecified,
   }) {
+<<<<<<< HEAD
     return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+=======
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
+>>>>>>> origin/main
   }
 
   void _deserializeProperties(
@@ -115,6 +145,16 @@ class _$DriverInputSerializer implements PrimitiveSerializer<DriverInput> {
           ) as String;
           result.phone = valueDes;
           break;
+<<<<<<< HEAD
+=======
+        case r'email':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType(String),
+          ) as String;
+          result.email = valueDes;
+          break;
+>>>>>>> origin/main
         case r'licenseNumber':
           final valueDes = serializers.deserialize(
             value,
@@ -157,4 +197,7 @@ class _$DriverInputSerializer implements PrimitiveSerializer<DriverInput> {
     return result.build();
   }
 }
+<<<<<<< HEAD
 
+=======
+>>>>>>> origin/main

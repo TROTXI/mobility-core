@@ -1,6 +1,5 @@
 packages:
   - 'services/*'
-  - 'e2e'
   # Explicit path, not `apps/*`: the rest of apps/ is Flutter (pubspec, not
   # package.json) and must stay invisible to pnpm. Next Node package under
   # apps/ gets its own line here.

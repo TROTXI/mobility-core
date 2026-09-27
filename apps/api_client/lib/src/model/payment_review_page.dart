@@ -14,10 +14,18 @@ part 'payment_review_page.g.dart';
 /// PaymentReviewPage
 ///
 /// Properties:
+<<<<<<< HEAD
 /// * [data] 
 /// * [page] 
 @BuiltValue()
 abstract class PaymentReviewPage implements Built<PaymentReviewPage, PaymentReviewPageBuilder> {
+=======
+/// * [data]
+/// * [page]
+@BuiltValue()
+abstract class PaymentReviewPage
+    implements Built<PaymentReviewPage, PaymentReviewPageBuilder> {
+>>>>>>> origin/main
   @BuiltValueField(wireName: r'data')
   BuiltList<PaymentReview> get data;
 
@@ -26,16 +34,30 @@ abstract class PaymentReviewPage implements Built<PaymentReviewPage, PaymentRevi
 
   PaymentReviewPage._();
 
+<<<<<<< HEAD
   factory PaymentReviewPage([void updates(PaymentReviewPageBuilder b)]) = _$PaymentReviewPage;
+=======
+  factory PaymentReviewPage([void updates(PaymentReviewPageBuilder b)]) =
+      _$PaymentReviewPage;
+>>>>>>> origin/main
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(PaymentReviewPageBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
+<<<<<<< HEAD
   static Serializer<PaymentReviewPage> get serializer => _$PaymentReviewPageSerializer();
 }
 
 class _$PaymentReviewPageSerializer implements PrimitiveSerializer<PaymentReviewPage> {
+=======
+  static Serializer<PaymentReviewPage> get serializer =>
+      _$PaymentReviewPageSerializer();
+}
+
+class _$PaymentReviewPageSerializer
+    implements PrimitiveSerializer<PaymentReviewPage> {
+>>>>>>> origin/main
   @override
   final Iterable<Type> types = const [PaymentReviewPage, _$PaymentReviewPage];
 
@@ -65,7 +87,13 @@ class _$PaymentReviewPageSerializer implements PrimitiveSerializer<PaymentReview
     PaymentReviewPage object, {
     FullType specifiedType = FullType.unspecified,
   }) {
+<<<<<<< HEAD
     return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+=======
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
+>>>>>>> origin/main
   }
 
   void _deserializeProperties(
@@ -122,4 +150,7 @@ class _$PaymentReviewPageSerializer implements PrimitiveSerializer<PaymentReview
     return result.build();
   }
 }
+<<<<<<< HEAD
 
+=======
+>>>>>>> origin/main

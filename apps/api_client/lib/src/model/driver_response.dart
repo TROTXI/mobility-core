@@ -12,24 +12,45 @@ part 'driver_response.g.dart';
 /// DriverResponse
 ///
 /// Properties:
+<<<<<<< HEAD
 /// * [data] 
 @BuiltValue()
 abstract class DriverResponse implements Built<DriverResponse, DriverResponseBuilder> {
+=======
+/// * [data]
+@BuiltValue()
+abstract class DriverResponse
+    implements Built<DriverResponse, DriverResponseBuilder> {
+>>>>>>> origin/main
   @BuiltValueField(wireName: r'data')
   Driver get data;
 
   DriverResponse._();
 
+<<<<<<< HEAD
   factory DriverResponse([void updates(DriverResponseBuilder b)]) = _$DriverResponse;
+=======
+  factory DriverResponse([void updates(DriverResponseBuilder b)]) =
+      _$DriverResponse;
+>>>>>>> origin/main
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(DriverResponseBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
+<<<<<<< HEAD
   static Serializer<DriverResponse> get serializer => _$DriverResponseSerializer();
 }
 
 class _$DriverResponseSerializer implements PrimitiveSerializer<DriverResponse> {
+=======
+  static Serializer<DriverResponse> get serializer =>
+      _$DriverResponseSerializer();
+}
+
+class _$DriverResponseSerializer
+    implements PrimitiveSerializer<DriverResponse> {
+>>>>>>> origin/main
   @override
   final Iterable<Type> types = const [DriverResponse, _$DriverResponse];
 
@@ -54,7 +75,13 @@ class _$DriverResponseSerializer implements PrimitiveSerializer<DriverResponse> 
     DriverResponse object, {
     FullType specifiedType = FullType.unspecified,
   }) {
+<<<<<<< HEAD
     return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+=======
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
+>>>>>>> origin/main
   }
 
   void _deserializeProperties(
@@ -104,4 +131,7 @@ class _$DriverResponseSerializer implements PrimitiveSerializer<DriverResponse> 
     return result.build();
   }
 }
+<<<<<<< HEAD
 
+=======
+>>>>>>> origin/main

@@ -171,6 +171,11 @@ class _$MinimumVersion extends MinimumVersion {
   final String storeUrl;
   @override
   final int version;
+<<<<<<< HEAD
+=======
+  @override
+  final String editToken;
+>>>>>>> origin/main
 
   factory _$MinimumVersion([void Function(MinimumVersionBuilder)? updates]) =>
       (MinimumVersionBuilder()..update(updates))._build();
@@ -181,7 +186,12 @@ class _$MinimumVersion extends MinimumVersion {
       required this.minSupportedBuild,
       required this.apiMajor,
       required this.storeUrl,
+<<<<<<< HEAD
       required this.version})
+=======
+      required this.version,
+      required this.editToken})
+>>>>>>> origin/main
       : super._();
   @override
   MinimumVersion rebuild(void Function(MinimumVersionBuilder) updates) =>
@@ -199,7 +209,12 @@ class _$MinimumVersion extends MinimumVersion {
         minSupportedBuild == other.minSupportedBuild &&
         apiMajor == other.apiMajor &&
         storeUrl == other.storeUrl &&
+<<<<<<< HEAD
         version == other.version;
+=======
+        version == other.version &&
+        editToken == other.editToken;
+>>>>>>> origin/main
   }
 
   @override
@@ -211,6 +226,10 @@ class _$MinimumVersion extends MinimumVersion {
     _$hash = $jc(_$hash, apiMajor.hashCode);
     _$hash = $jc(_$hash, storeUrl.hashCode);
     _$hash = $jc(_$hash, version.hashCode);
+<<<<<<< HEAD
+=======
+    _$hash = $jc(_$hash, editToken.hashCode);
+>>>>>>> origin/main
     _$hash = $jf(_$hash);
     return _$hash;
   }
@@ -223,7 +242,12 @@ class _$MinimumVersion extends MinimumVersion {
           ..add('minSupportedBuild', minSupportedBuild)
           ..add('apiMajor', apiMajor)
           ..add('storeUrl', storeUrl)
+<<<<<<< HEAD
           ..add('version', version))
+=======
+          ..add('version', version)
+          ..add('editToken', editToken))
+>>>>>>> origin/main
         .toString();
   }
 }
@@ -259,6 +283,13 @@ class MinimumVersionBuilder
   int? get version => _$this._version;
   set version(int? version) => _$this._version = version;
 
+<<<<<<< HEAD
+=======
+  String? _editToken;
+  String? get editToken => _$this._editToken;
+  set editToken(String? editToken) => _$this._editToken = editToken;
+
+>>>>>>> origin/main
   MinimumVersionBuilder() {
     MinimumVersion._defaults(this);
   }
@@ -272,6 +303,10 @@ class MinimumVersionBuilder
       _apiMajor = $v.apiMajor;
       _storeUrl = $v.storeUrl;
       _version = $v.version;
+<<<<<<< HEAD
+=======
+      _editToken = $v.editToken;
+>>>>>>> origin/main
       _$v = null;
     }
     return this;
@@ -305,6 +340,11 @@ class MinimumVersionBuilder
               storeUrl, r'MinimumVersion', 'storeUrl'),
           version: BuiltValueNullFieldError.checkNotNull(
               version, r'MinimumVersion', 'version'),
+<<<<<<< HEAD
+=======
+          editToken: BuiltValueNullFieldError.checkNotNull(
+              editToken, r'MinimumVersion', 'editToken'),
+>>>>>>> origin/main
         );
     replace(_$result);
     return _$result;

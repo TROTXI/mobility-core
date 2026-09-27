@@ -5,6 +5,9 @@
 .vscode/
 .idea/
 
+# Disposable redesign baseline, synthetic evidence and test-run outputs
+.harness-artifacts/
+
 # Node
 node_modules/
 dist/

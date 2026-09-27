@@ -1,16 +1,14 @@
 /// What a boarding attempt came back as.
 ///
-/// The API answers `ok | invalid | expired | reused` for a scan and
-/// `ok | invalid | not_found | already_boarded` for a code, and the prototype
-/// draws each differently because each means something different to a driver
-/// standing at a door with a queue behind them. Collapsing them into
-/// "accepted / rejected" throws away exactly the information that tells them
-/// what to do next.
+/// View outcomes, not a copy of the wire enum. The replacement returns a
+/// reservation-keyed result or a stable error code. Its shared invalid-proof
+/// code does not distinguish malformed, expired, foreign or ambiguous proofs;
+/// the repository must not invent those distinctions from an HTTP status.
 enum BoardingOutcome {
   /// Boarded, ride debited.
   ok,
 
-  /// Not a genuine QR pass.
+  /// QR proof refused; may be expired, malformed or for another trip.
   invalid,
 
   /// Typed with nobody selected, and no seat on this run holds that code
@@ -64,25 +62,30 @@ class BoardingResult {
   const BoardingResult({
     required this.outcome,
     this.riderName,
-    this.riderId,
+    this.reservationId,
     this.deducted = false,
+    this.failureMessage,
   });
 
   final BoardingOutcome outcome;
 
-  /// Null when the pass was forged or unreadable, which is itself the signal:
-  /// there is nobody to show the driver.
+  /// Optional view label. The replacement resolves it from the manifest using
+  /// reservationId, not from a user ID or a preselected rider.
   final String? riderName;
-  final String? riderId;
+  final String? reservationId;
+
+  /// A reviewed business refusal, without guessing that the seat is absent.
+  final String? failureMessage;
 
   /// Whether this attempt actually consumed a ride.
   final bool deducted;
 
   bool get isAccepted => outcome == BoardingOutcome.ok;
 
-  /// Whether showing the pass again could work. "Expired" can; "invalid" and
-  /// "reused" cannot, and offering a retry on those wastes everyone's time.
+  /// The replacement reports expired and malformed QR proofs with the same
+  /// code. A refreshed pass must therefore be retryable; reused is not.
   bool get isRetryable =>
+      outcome == BoardingOutcome.invalid ||
       outcome == BoardingOutcome.expired ||
       outcome == BoardingOutcome.offline ||
       outcome == BoardingOutcome.failed;
@@ -103,7 +106,7 @@ class BoardingResult {
     BoardingOutcome.reused => 'Already scanned',
     BoardingOutcome.alreadyBoarded => 'Already boarded',
     BoardingOutcome.noReservation => 'No reservation found',
-    BoardingOutcome.forbidden => 'Not your run',
+    BoardingOutcome.forbidden => 'Run unavailable',
     BoardingOutcome.ambiguous => 'Two riders, one code',
     BoardingOutcome.offline => 'No connection',
     BoardingOutcome.sessionExpired => 'Signed out',
@@ -111,37 +114,38 @@ class BoardingResult {
   };
 
   /// What to do about it.
-  String get detail => switch (outcome) {
-    BoardingOutcome.ok => 'Ride counted. Wave them on.',
-    BoardingOutcome.invalid =>
-      'This is not a valid pass. Check the manifest and board them by code instead.',
-    BoardingOutcome.codeNotFound =>
-      'Nobody on this run has that code. Ask them to read it again — or find '
-          'them on the manifest and board them from there.',
-    BoardingOutcome.codeMismatch =>
-      'That is not this rider’s code. Ask them to read it again.',
-    BoardingOutcome.expired =>
-      'Passes rotate every minute. Ask the rider to refresh and show it again.',
-    BoardingOutcome.reused =>
-      'This pass has already been used on this run. Check the manifest before boarding.',
-    BoardingOutcome.alreadyBoarded =>
-      'This seat is already aboard. Nothing to do.',
-    BoardingOutcome.noReservation =>
-      'This rider has no confirmed seat on this run. Check the manifest.',
-    BoardingOutcome.forbidden =>
-      'This run is assigned to another driver, so you cannot board its riders.',
-    BoardingOutcome.ambiguous =>
-      'Two seats on this run hold that code, so we will not guess which. Find '
-          'the rider on the manifest and board them there.',
-    BoardingOutcome.offline =>
-      'Boarding needs a connection. Try again once you have signal.',
-    BoardingOutcome.sessionExpired =>
-      'Your session has ended, so this could not be checked. Sign in again, then '
-          'board this rider. Their pass is fine.',
-    BoardingOutcome.failed =>
-      'Something went wrong our end, so this could not be checked. Try again, and '
-          'board by code if it keeps failing.',
-  };
+  String get detail =>
+      failureMessage ??
+      switch (outcome) {
+        BoardingOutcome.ok => 'Ride counted. Wave them on.',
+        BoardingOutcome.invalid =>
+          'Ask the rider to refresh their pass. If it still fails, check the manifest and use code or photo boarding.',
+        BoardingOutcome.codeNotFound =>
+          'This code could not identify one reservation on this run. Ask them to read it again — or find '
+              'them on the manifest and board them from there.',
+        BoardingOutcome.codeMismatch =>
+          'That is not this rider’s code. Ask them to read it again.',
+        BoardingOutcome.expired =>
+          'Passes rotate every minute. Ask the rider to refresh and show it again.',
+        BoardingOutcome.reused =>
+          'This pass has already been used on this run. Check the manifest before boarding.',
+        BoardingOutcome.alreadyBoarded =>
+          'This seat is already aboard. Nothing to do.',
+        BoardingOutcome.noReservation =>
+          'This rider has no confirmed seat on this run. Check the manifest.',
+        BoardingOutcome.forbidden =>
+          'This run is not available to you. Reload your assigned runs or contact operations.',
+        BoardingOutcome.ambiguous =>
+          'Two seats on this run hold that code, so we will not guess which. Find '
+              'the rider on the manifest and board them there.',
+        BoardingOutcome.offline =>
+          'Boarding needs a connection. Try again once you have signal.',
+        BoardingOutcome.sessionExpired =>
+          'Your session has ended, so this could not be checked. Sign in again, then '
+              'check their pass again.',
+        BoardingOutcome.failed =>
+          'Boarding could not be completed. Refresh the manifest and retry, or contact operations if it keeps failing.',
+      };
 }
 
 /// What marking a rider a no-show came back as (#227).

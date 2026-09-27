@@ -1,125 +1,69 @@
-# Ride entitlements & credits
+# Ride entitlements and Ride Credits
 
-**Owner:** Godfred Awuku · **Last updated:** 2026-07-08 · **Issue:** #100 (epic E1) · #104 (E5)
+**Owner:** Godfred Awuku · **Last verified:** 2026-09-12
 
-The money core of the **Hybrid Subscription Model** (ADR-0014). A subscription
-buys a **ride entitlement** (a count of rides for the period); unused rides
-become **Ride Credits** (pesewas) that reduce the next renewal. Both are modelled
-as **append-only, idempotent ledgers** — the same no-lost-update pattern the old
-token wallet used (system-design §4.1), reused twice.
+**Status:** Period-scoped allocation, boarding/no-show deduction, atomic
+period-end conversion, balance reporting, checkout holds and renewal capture
+are implemented.
 
-> **Scope (E1):** the two ledgers, allocation-on-subscription, and `GET /me/rides`.
-> **E5 (built):** month-end **credit conversion** — unused rides → Ride Credits.
-> Deferred: plan tiers/prices (E1b); **credit-netted renewal + auto-renew (E5b,
-> #104)** — applying credit to reduce a renewal charge, incl. the "credit covers
-> the whole fee" (zero-charge) edge.
+## Ledgers
 
----
+The Hybrid Subscription Model uses two append-only ledgers:
 
-## Concepts
+- Entitlement ledger in ride counts. Allocation is positive; boarding,
+  no-show, conversion and refund revocation are negative.
+- Ride Credit ledger in pesewas. Period conversion, compensation, loyalty and
+  refund restoration are positive; renewal capture is negative.
 
-- **Entitlement ledger — ride counts.** `remainingRides = SUM(delta_rides)`.
-  `+N` on allocation, `-1` on boarding/no-show, `+1` on operator-cancel return.
-- **Credit ledger — pesewas.** `balance = SUM(delta_pesewas)`. Credit is granted
-  (month-end conversion, compensation, loyalty) and spent against a renewal.
-- **Exactly-once.** Every append carries a unique `idempotency_key`; a retry is a
-  no-op. Allocation is keyed by the payment reference, so a re-delivered Paystack
-  webhook never double-allocates.
-- **Allocation happens on payment.** The Paystack `charge.success` webhook, on
-  activating a subscription, also allocates the period's rides — one flow, both
-  idempotent.
+Balances are sums of immutable entries. Every write has a unique idempotency
+key. New entitlement mutations carry `subscription_period_id`, so one period
+cannot consume or convert another period's rides.
 
----
+`credit_holds` is deliberately not a balance ledger. Checkout reserves available
+credit there, success captures the exact hold into the ledger, and terminal
+failure releases it. A rider lock prevents concurrent checkouts from promising
+the same credit twice.
 
 ## API
 
-#### `GET /me/rides`
+| Endpoint                                 | Role                | Behaviour                                                     |
+| ---------------------------------------- | ------------------- | ------------------------------------------------------------- |
+| `GET /me/rides`                          | authenticated rider | Current ride and Ride Credit balances plus renewal time       |
+| `GET /me/subscription`                   | authenticated rider | Current membership, pinned route and next renewal date        |
+| `POST /admin/close-subscription-periods` | admin               | Canonical atomic conversion and close                         |
+| `POST /admin/convert-credits`            | admin               | Legacy alias to the canonical close in production wiring      |
+| `POST /admin/expire-subscriptions`       | admin               | Legacy alias to the same canonical close in production wiring |
 
-The rider's balance (replaces the removed wallet `GET /me/balance`; FE #35).
+`GET /me/subscription` keeps service status and voluntary pause state separate:
+a membership can be both `suspended` and `paused`. Its `renewsAt` is null while
+paused because the final date is calculated when the rider resumes. Expired and
+cancelled rows are historical, not current, and return `subscribed: false`.
 
-- **Auth:** `Bearer`. **Rate limit:** per user.
-- **200:** `{ "remainingRides": 44, "creditPesewas": 0 }`
-- **401** · **429** · **503** not configured
+## Lifecycle
 
-#### `POST /admin/convert-credits` (E5)
+1. Fulfilment creates an immutable period and appends
+   `alloc:<payment-reference>` within the same transaction.
+2. Boarding/no-show appends `-1` against the reservation's funding period.
+3. Once the period ended and all its seats are terminal, close computes that
+   period's ledger sum and applies its frozen `creditPesewasPerRide`.
+4. The same transaction grants `close-credit:<period-id>`, retires rides with
+   `close-rides:<period-id>`, closes the period and expires the membership.
+5. Rider-initiated renewal reserves that balance, reuses the subscription, and
+   creates the next immutable period after Paystack success.
 
-Month-end job: convert **every active rider's** unused rides to Ride Credits.
-A Render cron hits this with an admin token at each period end.
+This replaces the former two-job expiry/conversion ordering hazard and the
+global rider balance calculation that could convert old rides at a later
+period's rate.
 
-- **Auth:** `Bearer` **admin**. **Rate limit:** per user.
-- **200:** `{ "riders": <n>, "ridesConverted": <n>, "creditPesewas": <n> }`
-- **401** · **403** (non-admin) · **503** (no subscription store wired)
+## Deferred
 
----
+- Provider-initiated automatic renewal.
+- Standby ride purchases.
+- Operator settlement ledger and payout execution.
 
-## Credit conversion (E5)
+## Code
 
-At period end a rider's remaining rides are worth a credit toward their next
-renewal; the rides are then **retired** so they don't carry forward.
-
-- `creditPesewas = remainingRides × creditPesewasPerRide`, keyed by the rider's
-  subscription id (the ending period) — re-running is a no-op.
-- **Credit is granted before the rides are retired**, so a crash mid-way
-  converges exactly-once: a retry re-reads the full remaining, recomputes the
-  identical amount, no-ops the already-granted credit, and applies the debit.
-- `creditPesewasPerRide` is a **placeholder** (`PLACEHOLDER_CREDIT_PESEWAS_PER_RIDE
-= 45`, ~ fee ÷ rides) until E5 pricing is decided (#104) — same posture as
-  `PLACEHOLDER_RIDES_PER_PERIOD`.
-- **Not yet built (E5b):** applying the accrued credit to _reduce_ a renewal
-  charge, and card auto-renew.
-
-## Data
-
-```
-entitlement_ledger(id, user_id, delta_rides, reason, ref_type, ref_id,
-  idempotency_key unique, created_at)
-  -- reason ∈ allocation | boarding | no_show | returned | refund | converted
-credit_ledger(id, user_id, delta_pesewas, reason, ref_type, ref_id,
-  idempotency_key unique, created_at)
-  -- reason ∈ month_end_conversion | compensation | loyalty | renewal_applied
-```
-
-`remainingRides(user) = SUM(delta_rides)` · `balancePesewas(user) = SUM(delta_pesewas)`.
-
-## How allocation works
-
-```
-POST /payments/subscribe → Paystack checkout → charge.success webhook:
-  activate subscription (idempotent, one-active-per-user index)
-  allocate rides       (idempotent, key = alloc:<payment reference>)
-  mark payment paid
-```
-
-The rides granted per period is a **placeholder constant**
-(`PLACEHOLDER_RIDES_PER_PERIOD = 44`) until the `plans` table lands (E1b) — the
-same posture as `SUBSCRIPTION_FEES_PESEWAS`.
-
-## Security / integrity notes
-
-- **Derived balances, never a mutable counter** — no lost updates under
-  concurrency; full audit trail.
-- **Server-authoritative** — allocation amount comes from the server, keyed to a
-  verified (signed) Paystack webhook.
-- **Idempotent everywhere** — safe to replay activation, allocation, and future
-  deductions.
-
-## Where the code lives
-
-```
-services/api/src/modules/entitlements/
-  entitlement-ledger.repository.ts(.pg)  # ride counts (append-only)
-  credit-ledger.repository.ts(.pg)       # Ride Credit pesewas (append-only)
-  entitlements.routes.ts                 # GET /me/rides
-  entitlements.schema.ts
-  credit.service.ts                      # E5 conversion (unused rides → credit)
-  credit.routes.ts                       # POST /admin/convert-credits
-services/api/src/modules/payments/payments.service.ts  # allocation on webhook
-services/api/src/db/migrations/011_entitlement_ledger.sql · 012_credit_ledger.sql
-services/api/src/db/migrations/020_entitlement_converted.sql  # 'converted' reason
-```
-
-## Related
-
-- [ADR-0014 — Hybrid Subscription Model](../adr/0014-hybrid-subscription-model.md)
-- [ADR-0011 — append-only ledger pattern](../adr/0011-token-ledger.md) (reused here)
-- `strategy/docs/hybrid-subscription-model.md` (epics E1–E7)
+- `services/api/src/modules/entitlements/`
+- `services/api/src/modules/payments/payment-lifecycle.ts`
+- `services/api/src/modules/payments/payment-lifecycle.pg.ts`
+- migration `039`

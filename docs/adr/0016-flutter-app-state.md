@@ -80,3 +80,12 @@ screens holding four copies of the same run.
   `ChangeNotifierProvider` in the driver app; the controller class itself is
   unchanged, which is the point and what makes the commuter app's later move
   a small one.
+
+## Current implementation — 2026-09-12
+
+The driver app now uses provider-scoped `SessionController`, `TodayController`,
+`RunController`, `ConfigController` and `AppThemeController`, with `Loadable<T>`
+for async state. The active-run controller is shared across trip, manifest,
+boarding and completion screens. The commuter app still uses its existing
+screen-local state and handwritten theme scope until its lifecycle work adopts
+this pattern.

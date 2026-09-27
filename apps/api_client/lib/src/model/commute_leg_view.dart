@@ -12,6 +12,7 @@ part 'commute_leg_view.g.dart';
 /// CommuteLegView
 ///
 /// Properties:
+<<<<<<< HEAD
 /// * [direction] 
 /// * [scheduleId] 
 /// * [patternVersionId] 
@@ -23,6 +24,20 @@ part 'commute_leg_view.g.dart';
 /// * [dropoffName] 
 @BuiltValue()
 abstract class CommuteLegView implements Built<CommuteLegView, CommuteLegViewBuilder> {
+=======
+/// * [direction]
+/// * [scheduleId]
+/// * [patternVersionId]
+/// * [pickupOccurrenceId]
+/// * [dropoffOccurrenceId]
+/// * [localDeparture]
+/// * [timeZone]
+/// * [pickupName]
+/// * [dropoffName]
+@BuiltValue()
+abstract class CommuteLegView
+    implements Built<CommuteLegView, CommuteLegViewBuilder> {
+>>>>>>> origin/main
   @BuiltValueField(wireName: r'direction')
   CommuteLegViewDirectionEnum get direction;
   // enum directionEnum {  outbound,  return,  };
@@ -54,16 +69,30 @@ abstract class CommuteLegView implements Built<CommuteLegView, CommuteLegViewBui
 
   CommuteLegView._();
 
+<<<<<<< HEAD
   factory CommuteLegView([void updates(CommuteLegViewBuilder b)]) = _$CommuteLegView;
+=======
+  factory CommuteLegView([void updates(CommuteLegViewBuilder b)]) =
+      _$CommuteLegView;
+>>>>>>> origin/main
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(CommuteLegViewBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
+<<<<<<< HEAD
   static Serializer<CommuteLegView> get serializer => _$CommuteLegViewSerializer();
 }
 
 class _$CommuteLegViewSerializer implements PrimitiveSerializer<CommuteLegView> {
+=======
+  static Serializer<CommuteLegView> get serializer =>
+      _$CommuteLegViewSerializer();
+}
+
+class _$CommuteLegViewSerializer
+    implements PrimitiveSerializer<CommuteLegView> {
+>>>>>>> origin/main
   @override
   final Iterable<Type> types = const [CommuteLegView, _$CommuteLegView];
 
@@ -128,7 +157,13 @@ class _$CommuteLegViewSerializer implements PrimitiveSerializer<CommuteLegView> 
     CommuteLegView object, {
     FullType specifiedType = FullType.unspecified,
   }) {
+<<<<<<< HEAD
     return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+=======
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
+>>>>>>> origin/main
   }
 
   void _deserializeProperties(
@@ -236,6 +271,7 @@ class _$CommuteLegViewSerializer implements PrimitiveSerializer<CommuteLegView> 
 }
 
 class CommuteLegViewDirectionEnum extends EnumClass {
+<<<<<<< HEAD
 
   @BuiltValueEnumConst(wireName: r'outbound')
   static const CommuteLegViewDirectionEnum outbound = _$commuteLegViewDirectionEnum_outbound;
@@ -263,3 +299,38 @@ class CommuteLegViewTimeZoneEnum extends EnumClass {
   static CommuteLegViewTimeZoneEnum valueOf(String name) => _$commuteLegViewTimeZoneEnumValueOf(name);
 }
 
+=======
+  @BuiltValueEnumConst(wireName: r'outbound')
+  static const CommuteLegViewDirectionEnum outbound =
+      _$commuteLegViewDirectionEnum_outbound;
+  @BuiltValueEnumConst(wireName: r'return')
+  static const CommuteLegViewDirectionEnum return_ =
+      _$commuteLegViewDirectionEnum_return_;
+
+  static Serializer<CommuteLegViewDirectionEnum> get serializer =>
+      _$commuteLegViewDirectionEnumSerializer;
+
+  const CommuteLegViewDirectionEnum._(String name) : super(name);
+
+  static BuiltSet<CommuteLegViewDirectionEnum> get values =>
+      _$commuteLegViewDirectionEnumValues;
+  static CommuteLegViewDirectionEnum valueOf(String name) =>
+      _$commuteLegViewDirectionEnumValueOf(name);
+}
+
+class CommuteLegViewTimeZoneEnum extends EnumClass {
+  @BuiltValueEnumConst(wireName: r'Africa/Accra')
+  static const CommuteLegViewTimeZoneEnum africaSlashAccra =
+      _$commuteLegViewTimeZoneEnum_africaSlashAccra;
+
+  static Serializer<CommuteLegViewTimeZoneEnum> get serializer =>
+      _$commuteLegViewTimeZoneEnumSerializer;
+
+  const CommuteLegViewTimeZoneEnum._(String name) : super(name);
+
+  static BuiltSet<CommuteLegViewTimeZoneEnum> get values =>
+      _$commuteLegViewTimeZoneEnumValues;
+  static CommuteLegViewTimeZoneEnum valueOf(String name) =>
+      _$commuteLegViewTimeZoneEnumValueOf(name);
+}
+>>>>>>> origin/main

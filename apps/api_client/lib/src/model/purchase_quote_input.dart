@@ -12,11 +12,20 @@ part 'purchase_quote_input.g.dart';
 /// PurchaseQuoteInput
 ///
 /// Properties:
+<<<<<<< HEAD
 /// * [plan] 
 /// * [routeId] 
 /// * [useCredit] 
 @BuiltValue()
 abstract class PurchaseQuoteInput implements Built<PurchaseQuoteInput, PurchaseQuoteInputBuilder> {
+=======
+/// * [plan]
+/// * [routeId]
+/// * [useCredit]
+@BuiltValue()
+abstract class PurchaseQuoteInput
+    implements Built<PurchaseQuoteInput, PurchaseQuoteInputBuilder> {
+>>>>>>> origin/main
   @BuiltValueField(wireName: r'plan')
   PurchaseQuoteInputPlanEnum get plan;
   // enum planEnum {  monthly,  annual,  };
@@ -29,16 +38,30 @@ abstract class PurchaseQuoteInput implements Built<PurchaseQuoteInput, PurchaseQ
 
   PurchaseQuoteInput._();
 
+<<<<<<< HEAD
   factory PurchaseQuoteInput([void updates(PurchaseQuoteInputBuilder b)]) = _$PurchaseQuoteInput;
+=======
+  factory PurchaseQuoteInput([void updates(PurchaseQuoteInputBuilder b)]) =
+      _$PurchaseQuoteInput;
+>>>>>>> origin/main
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(PurchaseQuoteInputBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
+<<<<<<< HEAD
   static Serializer<PurchaseQuoteInput> get serializer => _$PurchaseQuoteInputSerializer();
 }
 
 class _$PurchaseQuoteInputSerializer implements PrimitiveSerializer<PurchaseQuoteInput> {
+=======
+  static Serializer<PurchaseQuoteInput> get serializer =>
+      _$PurchaseQuoteInputSerializer();
+}
+
+class _$PurchaseQuoteInputSerializer
+    implements PrimitiveSerializer<PurchaseQuoteInput> {
+>>>>>>> origin/main
   @override
   final Iterable<Type> types = const [PurchaseQuoteInput, _$PurchaseQuoteInput];
 
@@ -73,7 +96,13 @@ class _$PurchaseQuoteInputSerializer implements PrimitiveSerializer<PurchaseQuot
     PurchaseQuoteInput object, {
     FullType specifiedType = FullType.unspecified,
   }) {
+<<<<<<< HEAD
     return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+=======
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
+>>>>>>> origin/main
   }
 
   void _deserializeProperties(
@@ -139,6 +168,7 @@ class _$PurchaseQuoteInputSerializer implements PrimitiveSerializer<PurchaseQuot
 }
 
 class PurchaseQuoteInputPlanEnum extends EnumClass {
+<<<<<<< HEAD
 
   @BuiltValueEnumConst(wireName: r'monthly')
   static const PurchaseQuoteInputPlanEnum monthly = _$purchaseQuoteInputPlanEnum_monthly;
@@ -153,3 +183,22 @@ class PurchaseQuoteInputPlanEnum extends EnumClass {
   static PurchaseQuoteInputPlanEnum valueOf(String name) => _$purchaseQuoteInputPlanEnumValueOf(name);
 }
 
+=======
+  @BuiltValueEnumConst(wireName: r'monthly')
+  static const PurchaseQuoteInputPlanEnum monthly =
+      _$purchaseQuoteInputPlanEnum_monthly;
+  @BuiltValueEnumConst(wireName: r'annual')
+  static const PurchaseQuoteInputPlanEnum annual =
+      _$purchaseQuoteInputPlanEnum_annual;
+
+  static Serializer<PurchaseQuoteInputPlanEnum> get serializer =>
+      _$purchaseQuoteInputPlanEnumSerializer;
+
+  const PurchaseQuoteInputPlanEnum._(String name) : super(name);
+
+  static BuiltSet<PurchaseQuoteInputPlanEnum> get values =>
+      _$purchaseQuoteInputPlanEnumValues;
+  static PurchaseQuoteInputPlanEnum valueOf(String name) =>
+      _$purchaseQuoteInputPlanEnumValueOf(name);
+}
+>>>>>>> origin/main

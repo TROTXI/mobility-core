@@ -14,10 +14,18 @@ part 'credit_entry_page.g.dart';
 /// CreditEntryPage
 ///
 /// Properties:
+<<<<<<< HEAD
 /// * [data] 
 /// * [page] 
 @BuiltValue()
 abstract class CreditEntryPage implements Built<CreditEntryPage, CreditEntryPageBuilder> {
+=======
+/// * [data]
+/// * [page]
+@BuiltValue()
+abstract class CreditEntryPage
+    implements Built<CreditEntryPage, CreditEntryPageBuilder> {
+>>>>>>> origin/main
   @BuiltValueField(wireName: r'data')
   BuiltList<CreditEntry> get data;
 
@@ -26,16 +34,30 @@ abstract class CreditEntryPage implements Built<CreditEntryPage, CreditEntryPage
 
   CreditEntryPage._();
 
+<<<<<<< HEAD
   factory CreditEntryPage([void updates(CreditEntryPageBuilder b)]) = _$CreditEntryPage;
+=======
+  factory CreditEntryPage([void updates(CreditEntryPageBuilder b)]) =
+      _$CreditEntryPage;
+>>>>>>> origin/main
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(CreditEntryPageBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
+<<<<<<< HEAD
   static Serializer<CreditEntryPage> get serializer => _$CreditEntryPageSerializer();
 }
 
 class _$CreditEntryPageSerializer implements PrimitiveSerializer<CreditEntryPage> {
+=======
+  static Serializer<CreditEntryPage> get serializer =>
+      _$CreditEntryPageSerializer();
+}
+
+class _$CreditEntryPageSerializer
+    implements PrimitiveSerializer<CreditEntryPage> {
+>>>>>>> origin/main
   @override
   final Iterable<Type> types = const [CreditEntryPage, _$CreditEntryPage];
 
@@ -65,7 +87,13 @@ class _$CreditEntryPageSerializer implements PrimitiveSerializer<CreditEntryPage
     CreditEntryPage object, {
     FullType specifiedType = FullType.unspecified,
   }) {
+<<<<<<< HEAD
     return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+=======
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
+>>>>>>> origin/main
   }
 
   void _deserializeProperties(
@@ -122,4 +150,7 @@ class _$CreditEntryPageSerializer implements PrimitiveSerializer<CreditEntryPage
     return result.build();
   }
 }
+<<<<<<< HEAD
 
+=======
+>>>>>>> origin/main

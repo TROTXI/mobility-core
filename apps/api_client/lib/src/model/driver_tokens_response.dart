@@ -12,26 +12,52 @@ part 'driver_tokens_response.g.dart';
 /// DriverTokensResponse
 ///
 /// Properties:
+<<<<<<< HEAD
 /// * [data] 
 @BuiltValue()
 abstract class DriverTokensResponse implements Built<DriverTokensResponse, DriverTokensResponseBuilder> {
+=======
+/// * [data]
+@BuiltValue()
+abstract class DriverTokensResponse
+    implements Built<DriverTokensResponse, DriverTokensResponseBuilder> {
+>>>>>>> origin/main
   @BuiltValueField(wireName: r'data')
   DriverTokens get data;
 
   DriverTokensResponse._();
 
+<<<<<<< HEAD
   factory DriverTokensResponse([void updates(DriverTokensResponseBuilder b)]) = _$DriverTokensResponse;
+=======
+  factory DriverTokensResponse([void updates(DriverTokensResponseBuilder b)]) =
+      _$DriverTokensResponse;
+>>>>>>> origin/main
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(DriverTokensResponseBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
+<<<<<<< HEAD
   static Serializer<DriverTokensResponse> get serializer => _$DriverTokensResponseSerializer();
 }
 
 class _$DriverTokensResponseSerializer implements PrimitiveSerializer<DriverTokensResponse> {
   @override
   final Iterable<Type> types = const [DriverTokensResponse, _$DriverTokensResponse];
+=======
+  static Serializer<DriverTokensResponse> get serializer =>
+      _$DriverTokensResponseSerializer();
+}
+
+class _$DriverTokensResponseSerializer
+    implements PrimitiveSerializer<DriverTokensResponse> {
+  @override
+  final Iterable<Type> types = const [
+    DriverTokensResponse,
+    _$DriverTokensResponse
+  ];
+>>>>>>> origin/main
 
   @override
   final String wireName = r'DriverTokensResponse';
@@ -54,7 +80,13 @@ class _$DriverTokensResponseSerializer implements PrimitiveSerializer<DriverToke
     DriverTokensResponse object, {
     FullType specifiedType = FullType.unspecified,
   }) {
+<<<<<<< HEAD
     return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+=======
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
+>>>>>>> origin/main
   }
 
   void _deserializeProperties(
@@ -104,4 +136,7 @@ class _$DriverTokensResponseSerializer implements PrimitiveSerializer<DriverToke
     return result.build();
   }
 }
+<<<<<<< HEAD
 
+=======
+>>>>>>> origin/main

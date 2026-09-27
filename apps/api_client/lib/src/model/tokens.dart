@@ -12,11 +12,19 @@ part 'tokens.g.dart';
 /// Tokens
 ///
 /// Properties:
+<<<<<<< HEAD
 /// * [accessToken] 
 /// * [refreshToken] 
 /// * [accessExpiresAt] 
 /// * [refreshExpiresAt] 
 /// * [account] 
+=======
+/// * [accessToken]
+/// * [refreshToken]
+/// * [accessExpiresAt]
+/// * [refreshExpiresAt]
+/// * [account]
+>>>>>>> origin/main
 @BuiltValue()
 abstract class Tokens implements Built<Tokens, TokensBuilder> {
   @BuiltValueField(wireName: r'accessToken')
@@ -90,7 +98,13 @@ class _$TokensSerializer implements PrimitiveSerializer<Tokens> {
     Tokens object, {
     FullType specifiedType = FullType.unspecified,
   }) {
+<<<<<<< HEAD
     return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+=======
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
+>>>>>>> origin/main
   }
 
   void _deserializeProperties(
@@ -168,4 +182,7 @@ class _$TokensSerializer implements PrimitiveSerializer<Tokens> {
     return result.build();
   }
 }
+<<<<<<< HEAD
 
+=======
+>>>>>>> origin/main

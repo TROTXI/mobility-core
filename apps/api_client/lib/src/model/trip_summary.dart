@@ -12,6 +12,7 @@ part 'trip_summary.g.dart';
 /// TripSummary
 ///
 /// Properties:
+<<<<<<< HEAD
 /// * [tripId] 
 /// * [status] 
 /// * [boarded] 
@@ -20,6 +21,16 @@ part 'trip_summary.g.dart';
 /// * [scanned] 
 /// * [codeVerified] 
 /// * [photoVerified] 
+=======
+/// * [tripId]
+/// * [status]
+/// * [boarded]
+/// * [noShows]
+/// * [unseated]
+/// * [scanned]
+/// * [codeVerified]
+/// * [photoVerified]
+>>>>>>> origin/main
 @BuiltValue()
 abstract class TripSummary implements Built<TripSummary, TripSummaryBuilder> {
   @BuiltValueField(wireName: r'tripId')
@@ -118,7 +129,13 @@ class _$TripSummarySerializer implements PrimitiveSerializer<TripSummary> {
     TripSummary object, {
     FullType specifiedType = FullType.unspecified,
   }) {
+<<<<<<< HEAD
     return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+=======
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
+>>>>>>> origin/main
   }
 
   void _deserializeProperties(
@@ -219,6 +236,7 @@ class _$TripSummarySerializer implements PrimitiveSerializer<TripSummary> {
 }
 
 class TripSummaryStatusEnum extends EnumClass {
+<<<<<<< HEAD
 
   @BuiltValueEnumConst(wireName: r'scheduled')
   static const TripSummaryStatusEnum scheduled = _$tripSummaryStatusEnum_scheduled;
@@ -237,3 +255,27 @@ class TripSummaryStatusEnum extends EnumClass {
   static TripSummaryStatusEnum valueOf(String name) => _$tripSummaryStatusEnumValueOf(name);
 }
 
+=======
+  @BuiltValueEnumConst(wireName: r'scheduled')
+  static const TripSummaryStatusEnum scheduled =
+      _$tripSummaryStatusEnum_scheduled;
+  @BuiltValueEnumConst(wireName: r'active')
+  static const TripSummaryStatusEnum active = _$tripSummaryStatusEnum_active;
+  @BuiltValueEnumConst(wireName: r'completed')
+  static const TripSummaryStatusEnum completed =
+      _$tripSummaryStatusEnum_completed;
+  @BuiltValueEnumConst(wireName: r'cancelled')
+  static const TripSummaryStatusEnum cancelled =
+      _$tripSummaryStatusEnum_cancelled;
+
+  static Serializer<TripSummaryStatusEnum> get serializer =>
+      _$tripSummaryStatusEnumSerializer;
+
+  const TripSummaryStatusEnum._(String name) : super(name);
+
+  static BuiltSet<TripSummaryStatusEnum> get values =>
+      _$tripSummaryStatusEnumValues;
+  static TripSummaryStatusEnum valueOf(String name) =>
+      _$tripSummaryStatusEnumValueOf(name);
+}
+>>>>>>> origin/main

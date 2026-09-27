@@ -51,7 +51,9 @@ class DriverStatTile extends StatelessWidget {
         children: [
           Text(
             label.toUpperCase(),
-            style: AppTypography.tileLabel.copyWith(color: colors.textSecondary),
+            style: AppTypography.tileLabel.copyWith(
+              color: colors.textSecondary,
+            ),
           ),
           const SizedBox(height: 2),
           Text(
@@ -132,7 +134,9 @@ class NextStopCard extends StatelessWidget {
         children: [
           Text(
             label.toUpperCase(),
-            style: AppTypography.tileLabel.copyWith(color: colors.textSecondary),
+            style: AppTypography.tileLabel.copyWith(
+              color: colors.textSecondary,
+            ),
           ),
           const SizedBox(height: 6),
           Text(
@@ -157,9 +161,7 @@ class NextStopCard extends StatelessWidget {
                 style: FilledButton.styleFrom(
                   backgroundColor: colors.action,
                   foregroundColor: colors.onAction,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 18,
-                  ),
+                  padding: const EdgeInsets.symmetric(horizontal: 18),
                   textStyle: AppTypography.tileLabel.copyWith(
                     fontSize: 12,
                     letterSpacing: 0.3,
@@ -184,7 +186,7 @@ class NextStopCard extends StatelessWidget {
 /// accuracy when GPS is weak, queued offline or disabled". Four states, each
 /// with its own dot, its own words, and its own chip — not one line that says
 /// "sharing" whatever is happening underneath.
-enum GpsState { live, weak, queued, disabled }
+enum GpsState { live, weak, queued, disabled, waiting, stale, failed }
 
 /// Telemetry status (Components / GPS & Connectivity).
 class GpsIndicator extends StatelessWidget {
@@ -204,12 +206,17 @@ class GpsIndicator extends StatelessWidget {
       GpsState.weak => colors.warning,
       GpsState.queued => colors.info,
       GpsState.disabled => colors.danger,
+      GpsState.waiting => colors.info,
+      GpsState.stale || GpsState.failed => colors.warning,
     };
     final (title, chip) = switch (state) {
       GpsState.live => ('Location sharing live', 'LIVE'),
       GpsState.weak => ('Weak GPS signal', 'WEAK GPS'),
       GpsState.queued => ('Offline — storing updates', 'QUEUED'),
-      GpsState.disabled => ('Location is turned off', 'ACTION'),
+      GpsState.disabled => ('Location sharing stopped', 'ACTION'),
+      GpsState.waiting => ('Waiting for location confirmation', 'WAITING'),
+      GpsState.stale => ('Location is not current', 'STALE'),
+      GpsState.failed => ('Location update not confirmed', 'RETRYING'),
     };
 
     return Container(
@@ -237,7 +244,9 @@ class GpsIndicator extends StatelessWidget {
               children: [
                 Text(
                   title,
-                  style: AppTypography.label.copyWith(color: colors.textPrimary),
+                  style: AppTypography.label.copyWith(
+                    color: colors.textPrimary,
+                  ),
                 ),
                 if (detail != null)
                   Text(
@@ -261,7 +270,9 @@ class GpsIndicator extends StatelessWidget {
             ),
             child: Text(
               chip,
-              style: AppTypography.chipLabel.copyWith(color: colors.textInverse),
+              style: AppTypography.chipLabel.copyWith(
+                color: colors.textInverse,
+              ),
             ),
           ),
         ],

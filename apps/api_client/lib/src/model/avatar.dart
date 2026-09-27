@@ -11,8 +11,13 @@ part 'avatar.g.dart';
 /// Avatar
 ///
 /// Properties:
+<<<<<<< HEAD
 /// * [url] 
 /// * [expiresAt] 
+=======
+/// * [url]
+/// * [expiresAt]
+>>>>>>> origin/main
 @BuiltValue()
 abstract class Avatar implements Built<Avatar, AvatarBuilder> {
   @BuiltValueField(wireName: r'url')
@@ -62,7 +67,13 @@ class _$AvatarSerializer implements PrimitiveSerializer<Avatar> {
     Avatar object, {
     FullType specifiedType = FullType.unspecified,
   }) {
+<<<<<<< HEAD
     return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+=======
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
+>>>>>>> origin/main
   }
 
   void _deserializeProperties(
@@ -119,4 +130,7 @@ class _$AvatarSerializer implements PrimitiveSerializer<Avatar> {
     return result.build();
   }
 }
+<<<<<<< HEAD
 
+=======
+>>>>>>> origin/main

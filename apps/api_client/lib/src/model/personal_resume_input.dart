@@ -12,26 +12,52 @@ part 'personal_resume_input.g.dart';
 /// PersonalResumeInput
 ///
 /// Properties:
+<<<<<<< HEAD
 /// * [resumeDate] 
 @BuiltValue()
 abstract class PersonalResumeInput implements Built<PersonalResumeInput, PersonalResumeInputBuilder> {
+=======
+/// * [resumeDate]
+@BuiltValue()
+abstract class PersonalResumeInput
+    implements Built<PersonalResumeInput, PersonalResumeInputBuilder> {
+>>>>>>> origin/main
   @BuiltValueField(wireName: r'resumeDate')
   Date get resumeDate;
 
   PersonalResumeInput._();
 
+<<<<<<< HEAD
   factory PersonalResumeInput([void updates(PersonalResumeInputBuilder b)]) = _$PersonalResumeInput;
+=======
+  factory PersonalResumeInput([void updates(PersonalResumeInputBuilder b)]) =
+      _$PersonalResumeInput;
+>>>>>>> origin/main
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(PersonalResumeInputBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
+<<<<<<< HEAD
   static Serializer<PersonalResumeInput> get serializer => _$PersonalResumeInputSerializer();
 }
 
 class _$PersonalResumeInputSerializer implements PrimitiveSerializer<PersonalResumeInput> {
   @override
   final Iterable<Type> types = const [PersonalResumeInput, _$PersonalResumeInput];
+=======
+  static Serializer<PersonalResumeInput> get serializer =>
+      _$PersonalResumeInputSerializer();
+}
+
+class _$PersonalResumeInputSerializer
+    implements PrimitiveSerializer<PersonalResumeInput> {
+  @override
+  final Iterable<Type> types = const [
+    PersonalResumeInput,
+    _$PersonalResumeInput
+  ];
+>>>>>>> origin/main
 
   @override
   final String wireName = r'PersonalResumeInput';
@@ -54,7 +80,13 @@ class _$PersonalResumeInputSerializer implements PrimitiveSerializer<PersonalRes
     PersonalResumeInput object, {
     FullType specifiedType = FullType.unspecified,
   }) {
+<<<<<<< HEAD
     return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+=======
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
+>>>>>>> origin/main
   }
 
   void _deserializeProperties(
@@ -104,4 +136,7 @@ class _$PersonalResumeInputSerializer implements PrimitiveSerializer<PersonalRes
     return result.build();
   }
 }
+<<<<<<< HEAD
 
+=======
+>>>>>>> origin/main

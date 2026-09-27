@@ -12,11 +12,20 @@ part 'minimum_version_edit.g.dart';
 /// MinimumVersionEdit
 ///
 /// Properties:
+<<<<<<< HEAD
 /// * [minSupportedBuild] 
 /// * [apiMajor] 
 /// * [storeUrl] 
 @BuiltValue()
 abstract class MinimumVersionEdit implements Built<MinimumVersionEdit, MinimumVersionEditBuilder> {
+=======
+/// * [minSupportedBuild]
+/// * [apiMajor]
+/// * [storeUrl]
+@BuiltValue()
+abstract class MinimumVersionEdit
+    implements Built<MinimumVersionEdit, MinimumVersionEditBuilder> {
+>>>>>>> origin/main
   @BuiltValueField(wireName: r'minSupportedBuild')
   int get minSupportedBuild;
 
@@ -29,16 +38,30 @@ abstract class MinimumVersionEdit implements Built<MinimumVersionEdit, MinimumVe
 
   MinimumVersionEdit._();
 
+<<<<<<< HEAD
   factory MinimumVersionEdit([void updates(MinimumVersionEditBuilder b)]) = _$MinimumVersionEdit;
+=======
+  factory MinimumVersionEdit([void updates(MinimumVersionEditBuilder b)]) =
+      _$MinimumVersionEdit;
+>>>>>>> origin/main
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(MinimumVersionEditBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
+<<<<<<< HEAD
   static Serializer<MinimumVersionEdit> get serializer => _$MinimumVersionEditSerializer();
 }
 
 class _$MinimumVersionEditSerializer implements PrimitiveSerializer<MinimumVersionEdit> {
+=======
+  static Serializer<MinimumVersionEdit> get serializer =>
+      _$MinimumVersionEditSerializer();
+}
+
+class _$MinimumVersionEditSerializer
+    implements PrimitiveSerializer<MinimumVersionEdit> {
+>>>>>>> origin/main
   @override
   final Iterable<Type> types = const [MinimumVersionEdit, _$MinimumVersionEdit];
 
@@ -73,7 +96,13 @@ class _$MinimumVersionEditSerializer implements PrimitiveSerializer<MinimumVersi
     MinimumVersionEdit object, {
     FullType specifiedType = FullType.unspecified,
   }) {
+<<<<<<< HEAD
     return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+=======
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
+>>>>>>> origin/main
   }
 
   void _deserializeProperties(
@@ -139,6 +168,7 @@ class _$MinimumVersionEditSerializer implements PrimitiveSerializer<MinimumVersi
 }
 
 class MinimumVersionEditApiMajorEnum extends EnumClass {
+<<<<<<< HEAD
 
   @BuiltValueEnumConst(wireNumber: 1)
   static const MinimumVersionEditApiMajorEnum number1 = _$minimumVersionEditApiMajorEnum_number1;
@@ -151,3 +181,19 @@ class MinimumVersionEditApiMajorEnum extends EnumClass {
   static MinimumVersionEditApiMajorEnum valueOf(String name) => _$minimumVersionEditApiMajorEnumValueOf(name);
 }
 
+=======
+  @BuiltValueEnumConst(wireNumber: 1)
+  static const MinimumVersionEditApiMajorEnum number1 =
+      _$minimumVersionEditApiMajorEnum_number1;
+
+  static Serializer<MinimumVersionEditApiMajorEnum> get serializer =>
+      _$minimumVersionEditApiMajorEnumSerializer;
+
+  const MinimumVersionEditApiMajorEnum._(String name) : super(name);
+
+  static BuiltSet<MinimumVersionEditApiMajorEnum> get values =>
+      _$minimumVersionEditApiMajorEnumValues;
+  static MinimumVersionEditApiMajorEnum valueOf(String name) =>
+      _$minimumVersionEditApiMajorEnumValueOf(name);
+}
+>>>>>>> origin/main

@@ -12,11 +12,22 @@ part 'pattern_version_input_stops_inner.g.dart';
 /// PatternVersionInputStopsInner
 ///
 /// Properties:
+<<<<<<< HEAD
 /// * [stopId] 
 /// * [name] 
 /// * [location] 
 @BuiltValue()
 abstract class PatternVersionInputStopsInner implements Built<PatternVersionInputStopsInner, PatternVersionInputStopsInnerBuilder> {
+=======
+/// * [stopId]
+/// * [name]
+/// * [location]
+@BuiltValue()
+abstract class PatternVersionInputStopsInner
+    implements
+        Built<PatternVersionInputStopsInner,
+            PatternVersionInputStopsInnerBuilder> {
+>>>>>>> origin/main
   @BuiltValueField(wireName: r'stopId')
   String get stopId;
 
@@ -28,18 +39,38 @@ abstract class PatternVersionInputStopsInner implements Built<PatternVersionInpu
 
   PatternVersionInputStopsInner._();
 
+<<<<<<< HEAD
   factory PatternVersionInputStopsInner([void updates(PatternVersionInputStopsInnerBuilder b)]) = _$PatternVersionInputStopsInner;
+=======
+  factory PatternVersionInputStopsInner(
+          [void updates(PatternVersionInputStopsInnerBuilder b)]) =
+      _$PatternVersionInputStopsInner;
+>>>>>>> origin/main
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(PatternVersionInputStopsInnerBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
+<<<<<<< HEAD
   static Serializer<PatternVersionInputStopsInner> get serializer => _$PatternVersionInputStopsInnerSerializer();
 }
 
 class _$PatternVersionInputStopsInnerSerializer implements PrimitiveSerializer<PatternVersionInputStopsInner> {
   @override
   final Iterable<Type> types = const [PatternVersionInputStopsInner, _$PatternVersionInputStopsInner];
+=======
+  static Serializer<PatternVersionInputStopsInner> get serializer =>
+      _$PatternVersionInputStopsInnerSerializer();
+}
+
+class _$PatternVersionInputStopsInnerSerializer
+    implements PrimitiveSerializer<PatternVersionInputStopsInner> {
+  @override
+  final Iterable<Type> types = const [
+    PatternVersionInputStopsInner,
+    _$PatternVersionInputStopsInner
+  ];
+>>>>>>> origin/main
 
   @override
   final String wireName = r'PatternVersionInputStopsInner';
@@ -72,7 +103,13 @@ class _$PatternVersionInputStopsInnerSerializer implements PrimitiveSerializer<P
     PatternVersionInputStopsInner object, {
     FullType specifiedType = FullType.unspecified,
   }) {
+<<<<<<< HEAD
     return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+=======
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
+>>>>>>> origin/main
   }
 
   void _deserializeProperties(
@@ -136,4 +173,7 @@ class _$PatternVersionInputStopsInnerSerializer implements PrimitiveSerializer<P
     return result.build();
   }
 }
+<<<<<<< HEAD
 
+=======
+>>>>>>> origin/main

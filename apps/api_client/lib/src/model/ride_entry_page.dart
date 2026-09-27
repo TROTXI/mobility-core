@@ -14,10 +14,18 @@ part 'ride_entry_page.g.dart';
 /// RideEntryPage
 ///
 /// Properties:
+<<<<<<< HEAD
 /// * [data] 
 /// * [page] 
 @BuiltValue()
 abstract class RideEntryPage implements Built<RideEntryPage, RideEntryPageBuilder> {
+=======
+/// * [data]
+/// * [page]
+@BuiltValue()
+abstract class RideEntryPage
+    implements Built<RideEntryPage, RideEntryPageBuilder> {
+>>>>>>> origin/main
   @BuiltValueField(wireName: r'data')
   BuiltList<RideEntry> get data;
 
@@ -26,13 +34,23 @@ abstract class RideEntryPage implements Built<RideEntryPage, RideEntryPageBuilde
 
   RideEntryPage._();
 
+<<<<<<< HEAD
   factory RideEntryPage([void updates(RideEntryPageBuilder b)]) = _$RideEntryPage;
+=======
+  factory RideEntryPage([void updates(RideEntryPageBuilder b)]) =
+      _$RideEntryPage;
+>>>>>>> origin/main
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(RideEntryPageBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
+<<<<<<< HEAD
   static Serializer<RideEntryPage> get serializer => _$RideEntryPageSerializer();
+=======
+  static Serializer<RideEntryPage> get serializer =>
+      _$RideEntryPageSerializer();
+>>>>>>> origin/main
 }
 
 class _$RideEntryPageSerializer implements PrimitiveSerializer<RideEntryPage> {
@@ -65,7 +83,13 @@ class _$RideEntryPageSerializer implements PrimitiveSerializer<RideEntryPage> {
     RideEntryPage object, {
     FullType specifiedType = FullType.unspecified,
   }) {
+<<<<<<< HEAD
     return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+=======
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
+>>>>>>> origin/main
   }
 
   void _deserializeProperties(
@@ -122,4 +146,7 @@ class _$RideEntryPageSerializer implements PrimitiveSerializer<RideEntryPage> {
     return result.build();
   }
 }
+<<<<<<< HEAD
 
+=======
+>>>>>>> origin/main

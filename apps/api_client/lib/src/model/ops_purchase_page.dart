@@ -14,10 +14,18 @@ part 'ops_purchase_page.g.dart';
 /// OpsPurchasePage
 ///
 /// Properties:
+<<<<<<< HEAD
 /// * [data] 
 /// * [page] 
 @BuiltValue()
 abstract class OpsPurchasePage implements Built<OpsPurchasePage, OpsPurchasePageBuilder> {
+=======
+/// * [data]
+/// * [page]
+@BuiltValue()
+abstract class OpsPurchasePage
+    implements Built<OpsPurchasePage, OpsPurchasePageBuilder> {
+>>>>>>> origin/main
   @BuiltValueField(wireName: r'data')
   BuiltList<OpsPurchase> get data;
 
@@ -26,16 +34,30 @@ abstract class OpsPurchasePage implements Built<OpsPurchasePage, OpsPurchasePage
 
   OpsPurchasePage._();
 
+<<<<<<< HEAD
   factory OpsPurchasePage([void updates(OpsPurchasePageBuilder b)]) = _$OpsPurchasePage;
+=======
+  factory OpsPurchasePage([void updates(OpsPurchasePageBuilder b)]) =
+      _$OpsPurchasePage;
+>>>>>>> origin/main
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(OpsPurchasePageBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
+<<<<<<< HEAD
   static Serializer<OpsPurchasePage> get serializer => _$OpsPurchasePageSerializer();
 }
 
 class _$OpsPurchasePageSerializer implements PrimitiveSerializer<OpsPurchasePage> {
+=======
+  static Serializer<OpsPurchasePage> get serializer =>
+      _$OpsPurchasePageSerializer();
+}
+
+class _$OpsPurchasePageSerializer
+    implements PrimitiveSerializer<OpsPurchasePage> {
+>>>>>>> origin/main
   @override
   final Iterable<Type> types = const [OpsPurchasePage, _$OpsPurchasePage];
 
@@ -65,7 +87,13 @@ class _$OpsPurchasePageSerializer implements PrimitiveSerializer<OpsPurchasePage
     OpsPurchasePage object, {
     FullType specifiedType = FullType.unspecified,
   }) {
+<<<<<<< HEAD
     return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+=======
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
+>>>>>>> origin/main
   }
 
   void _deserializeProperties(
@@ -122,4 +150,7 @@ class _$OpsPurchasePageSerializer implements PrimitiveSerializer<OpsPurchasePage
     return result.build();
   }
 }
+<<<<<<< HEAD
 
+=======
+>>>>>>> origin/main

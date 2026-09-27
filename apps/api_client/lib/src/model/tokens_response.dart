@@ -12,24 +12,45 @@ part 'tokens_response.g.dart';
 /// TokensResponse
 ///
 /// Properties:
+<<<<<<< HEAD
 /// * [data] 
 @BuiltValue()
 abstract class TokensResponse implements Built<TokensResponse, TokensResponseBuilder> {
+=======
+/// * [data]
+@BuiltValue()
+abstract class TokensResponse
+    implements Built<TokensResponse, TokensResponseBuilder> {
+>>>>>>> origin/main
   @BuiltValueField(wireName: r'data')
   Tokens get data;
 
   TokensResponse._();
 
+<<<<<<< HEAD
   factory TokensResponse([void updates(TokensResponseBuilder b)]) = _$TokensResponse;
+=======
+  factory TokensResponse([void updates(TokensResponseBuilder b)]) =
+      _$TokensResponse;
+>>>>>>> origin/main
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(TokensResponseBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
+<<<<<<< HEAD
   static Serializer<TokensResponse> get serializer => _$TokensResponseSerializer();
 }
 
 class _$TokensResponseSerializer implements PrimitiveSerializer<TokensResponse> {
+=======
+  static Serializer<TokensResponse> get serializer =>
+      _$TokensResponseSerializer();
+}
+
+class _$TokensResponseSerializer
+    implements PrimitiveSerializer<TokensResponse> {
+>>>>>>> origin/main
   @override
   final Iterable<Type> types = const [TokensResponse, _$TokensResponse];
 
@@ -54,7 +75,13 @@ class _$TokensResponseSerializer implements PrimitiveSerializer<TokensResponse> 
     TokensResponse object, {
     FullType specifiedType = FullType.unspecified,
   }) {
+<<<<<<< HEAD
     return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+=======
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
+>>>>>>> origin/main
   }
 
   void _deserializeProperties(
@@ -104,4 +131,7 @@ class _$TokensResponseSerializer implements PrimitiveSerializer<TokensResponse> 
     return result.build();
   }
 }
+<<<<<<< HEAD
 
+=======
+>>>>>>> origin/main

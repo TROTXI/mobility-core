@@ -37,6 +37,9 @@ dependencies:
   cupertino_icons: ^1.0.8
   trotxi_client:
     path: ../trotxi_client
+  built_value: ^8.12.6
+  uuid: ^4.5.3
+  package_info_plus: ^10.2.1
   # The shared map surface (#180): renderer, style swap and attribution, built
   # once so this app and the rider app do not grow two integrations against the
   # same tile server.
@@ -51,10 +54,14 @@ dependencies:
   intl: ^0.20.3
   mobile_scanner: ^7.4.1
   geolocator: ^14.0.3
+  permission_handler: ^12.0.3
   # Dialling operations (#234). The recovery screen, incident support and the
   # emergency control all end in a phone call, and there is no in-app substitute
   # for one — a driver at a roadside needs a person, not a queue.
   url_launcher: ^6.3.1
+  firebase_messaging: ^16.7.0
+  image_picker: ^1.1.2
+  crypto: ^3.0.7
 dev_dependencies:
   flutter_test:
     sdk: flutter

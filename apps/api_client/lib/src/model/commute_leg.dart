@@ -12,11 +12,19 @@ part 'commute_leg.g.dart';
 /// CommuteLeg
 ///
 /// Properties:
+<<<<<<< HEAD
 /// * [direction] 
 /// * [scheduleId] 
 /// * [patternVersionId] 
 /// * [pickupOccurrenceId] 
 /// * [dropoffOccurrenceId] 
+=======
+/// * [direction]
+/// * [scheduleId]
+/// * [patternVersionId]
+/// * [pickupOccurrenceId]
+/// * [dropoffOccurrenceId]
+>>>>>>> origin/main
 @BuiltValue()
 abstract class CommuteLeg implements Built<CommuteLeg, CommuteLegBuilder> {
   @BuiltValueField(wireName: r'direction')
@@ -91,7 +99,13 @@ class _$CommuteLegSerializer implements PrimitiveSerializer<CommuteLeg> {
     CommuteLeg object, {
     FullType specifiedType = FullType.unspecified,
   }) {
+<<<<<<< HEAD
     return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+=======
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
+>>>>>>> origin/main
   }
 
   void _deserializeProperties(
@@ -171,6 +185,7 @@ class _$CommuteLegSerializer implements PrimitiveSerializer<CommuteLeg> {
 }
 
 class CommuteLegDirectionEnum extends EnumClass {
+<<<<<<< HEAD
 
   @BuiltValueEnumConst(wireName: r'outbound')
   static const CommuteLegDirectionEnum outbound = _$commuteLegDirectionEnum_outbound;
@@ -185,3 +200,22 @@ class CommuteLegDirectionEnum extends EnumClass {
   static CommuteLegDirectionEnum valueOf(String name) => _$commuteLegDirectionEnumValueOf(name);
 }
 
+=======
+  @BuiltValueEnumConst(wireName: r'outbound')
+  static const CommuteLegDirectionEnum outbound =
+      _$commuteLegDirectionEnum_outbound;
+  @BuiltValueEnumConst(wireName: r'return')
+  static const CommuteLegDirectionEnum return_ =
+      _$commuteLegDirectionEnum_return_;
+
+  static Serializer<CommuteLegDirectionEnum> get serializer =>
+      _$commuteLegDirectionEnumSerializer;
+
+  const CommuteLegDirectionEnum._(String name) : super(name);
+
+  static BuiltSet<CommuteLegDirectionEnum> get values =>
+      _$commuteLegDirectionEnumValues;
+  static CommuteLegDirectionEnum valueOf(String name) =>
+      _$commuteLegDirectionEnumValueOf(name);
+}
+>>>>>>> origin/main

@@ -17,11 +17,14 @@ void main() {
       // TODO
     });
 
+<<<<<<< HEAD
     // String patternId
     test('to test the property `patternId`', () async {
       // TODO
     });
 
+=======
+>>>>>>> origin/main
     // String patternVersionId
     test('to test the property `patternVersionId`', () async {
       // TODO

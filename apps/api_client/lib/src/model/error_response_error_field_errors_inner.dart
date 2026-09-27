@@ -11,10 +11,20 @@ part 'error_response_error_field_errors_inner.g.dart';
 /// ErrorResponseErrorFieldErrorsInner
 ///
 /// Properties:
+<<<<<<< HEAD
 /// * [field] 
 /// * [code] 
 @BuiltValue()
 abstract class ErrorResponseErrorFieldErrorsInner implements Built<ErrorResponseErrorFieldErrorsInner, ErrorResponseErrorFieldErrorsInnerBuilder> {
+=======
+/// * [field]
+/// * [code]
+@BuiltValue()
+abstract class ErrorResponseErrorFieldErrorsInner
+    implements
+        Built<ErrorResponseErrorFieldErrorsInner,
+            ErrorResponseErrorFieldErrorsInnerBuilder> {
+>>>>>>> origin/main
   @BuiltValueField(wireName: r'field')
   String get field;
 
@@ -23,18 +33,38 @@ abstract class ErrorResponseErrorFieldErrorsInner implements Built<ErrorResponse
 
   ErrorResponseErrorFieldErrorsInner._();
 
+<<<<<<< HEAD
   factory ErrorResponseErrorFieldErrorsInner([void updates(ErrorResponseErrorFieldErrorsInnerBuilder b)]) = _$ErrorResponseErrorFieldErrorsInner;
+=======
+  factory ErrorResponseErrorFieldErrorsInner(
+          [void updates(ErrorResponseErrorFieldErrorsInnerBuilder b)]) =
+      _$ErrorResponseErrorFieldErrorsInner;
+>>>>>>> origin/main
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(ErrorResponseErrorFieldErrorsInnerBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
+<<<<<<< HEAD
   static Serializer<ErrorResponseErrorFieldErrorsInner> get serializer => _$ErrorResponseErrorFieldErrorsInnerSerializer();
 }
 
 class _$ErrorResponseErrorFieldErrorsInnerSerializer implements PrimitiveSerializer<ErrorResponseErrorFieldErrorsInner> {
   @override
   final Iterable<Type> types = const [ErrorResponseErrorFieldErrorsInner, _$ErrorResponseErrorFieldErrorsInner];
+=======
+  static Serializer<ErrorResponseErrorFieldErrorsInner> get serializer =>
+      _$ErrorResponseErrorFieldErrorsInnerSerializer();
+}
+
+class _$ErrorResponseErrorFieldErrorsInnerSerializer
+    implements PrimitiveSerializer<ErrorResponseErrorFieldErrorsInner> {
+  @override
+  final Iterable<Type> types = const [
+    ErrorResponseErrorFieldErrorsInner,
+    _$ErrorResponseErrorFieldErrorsInner
+  ];
+>>>>>>> origin/main
 
   @override
   final String wireName = r'ErrorResponseErrorFieldErrorsInner';
@@ -62,7 +92,13 @@ class _$ErrorResponseErrorFieldErrorsInnerSerializer implements PrimitiveSeriali
     ErrorResponseErrorFieldErrorsInner object, {
     FullType specifiedType = FullType.unspecified,
   }) {
+<<<<<<< HEAD
     return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+=======
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
+>>>>>>> origin/main
   }
 
   void _deserializeProperties(
@@ -119,4 +155,7 @@ class _$ErrorResponseErrorFieldErrorsInnerSerializer implements PrimitiveSeriali
     return result.build();
   }
 }
+<<<<<<< HEAD
 
+=======
+>>>>>>> origin/main

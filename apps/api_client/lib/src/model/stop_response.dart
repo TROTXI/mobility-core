@@ -12,9 +12,16 @@ part 'stop_response.g.dart';
 /// StopResponse
 ///
 /// Properties:
+<<<<<<< HEAD
 /// * [data] 
 @BuiltValue()
 abstract class StopResponse implements Built<StopResponse, StopResponseBuilder> {
+=======
+/// * [data]
+@BuiltValue()
+abstract class StopResponse
+    implements Built<StopResponse, StopResponseBuilder> {
+>>>>>>> origin/main
   @BuiltValueField(wireName: r'data')
   Stop get data;
 
@@ -54,7 +61,13 @@ class _$StopResponseSerializer implements PrimitiveSerializer<StopResponse> {
     StopResponse object, {
     FullType specifiedType = FullType.unspecified,
   }) {
+<<<<<<< HEAD
     return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+=======
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
+>>>>>>> origin/main
   }
 
   void _deserializeProperties(
@@ -104,4 +117,7 @@ class _$StopResponseSerializer implements PrimitiveSerializer<StopResponse> {
     return result.build();
   }
 }
+<<<<<<< HEAD
 
+=======
+>>>>>>> origin/main

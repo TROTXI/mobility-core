@@ -12,26 +12,52 @@ part 'purchase_quote_response.g.dart';
 /// PurchaseQuoteResponse
 ///
 /// Properties:
+<<<<<<< HEAD
 /// * [data] 
 @BuiltValue()
 abstract class PurchaseQuoteResponse implements Built<PurchaseQuoteResponse, PurchaseQuoteResponseBuilder> {
+=======
+/// * [data]
+@BuiltValue()
+abstract class PurchaseQuoteResponse
+    implements Built<PurchaseQuoteResponse, PurchaseQuoteResponseBuilder> {
+>>>>>>> origin/main
   @BuiltValueField(wireName: r'data')
   PurchaseQuote get data;
 
   PurchaseQuoteResponse._();
 
+<<<<<<< HEAD
   factory PurchaseQuoteResponse([void updates(PurchaseQuoteResponseBuilder b)]) = _$PurchaseQuoteResponse;
+=======
+  factory PurchaseQuoteResponse(
+      [void updates(PurchaseQuoteResponseBuilder b)]) = _$PurchaseQuoteResponse;
+>>>>>>> origin/main
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(PurchaseQuoteResponseBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
+<<<<<<< HEAD
   static Serializer<PurchaseQuoteResponse> get serializer => _$PurchaseQuoteResponseSerializer();
 }
 
 class _$PurchaseQuoteResponseSerializer implements PrimitiveSerializer<PurchaseQuoteResponse> {
   @override
   final Iterable<Type> types = const [PurchaseQuoteResponse, _$PurchaseQuoteResponse];
+=======
+  static Serializer<PurchaseQuoteResponse> get serializer =>
+      _$PurchaseQuoteResponseSerializer();
+}
+
+class _$PurchaseQuoteResponseSerializer
+    implements PrimitiveSerializer<PurchaseQuoteResponse> {
+  @override
+  final Iterable<Type> types = const [
+    PurchaseQuoteResponse,
+    _$PurchaseQuoteResponse
+  ];
+>>>>>>> origin/main
 
   @override
   final String wireName = r'PurchaseQuoteResponse';
@@ -54,7 +80,13 @@ class _$PurchaseQuoteResponseSerializer implements PrimitiveSerializer<PurchaseQ
     PurchaseQuoteResponse object, {
     FullType specifiedType = FullType.unspecified,
   }) {
+<<<<<<< HEAD
     return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+=======
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
+>>>>>>> origin/main
   }
 
   void _deserializeProperties(
@@ -104,4 +136,7 @@ class _$PurchaseQuoteResponseSerializer implements PrimitiveSerializer<PurchaseQ
     return result.build();
   }
 }
+<<<<<<< HEAD
 
+=======
+>>>>>>> origin/main

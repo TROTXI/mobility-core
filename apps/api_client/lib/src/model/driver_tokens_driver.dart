@@ -11,10 +11,18 @@ part 'driver_tokens_driver.g.dart';
 /// DriverTokensDriver
 ///
 /// Properties:
+<<<<<<< HEAD
 /// * [id] 
 /// * [name] 
 @BuiltValue()
 abstract class DriverTokensDriver implements Built<DriverTokensDriver, DriverTokensDriverBuilder> {
+=======
+/// * [id]
+/// * [name]
+@BuiltValue()
+abstract class DriverTokensDriver
+    implements Built<DriverTokensDriver, DriverTokensDriverBuilder> {
+>>>>>>> origin/main
   @BuiltValueField(wireName: r'id')
   String get id;
 
@@ -23,16 +31,30 @@ abstract class DriverTokensDriver implements Built<DriverTokensDriver, DriverTok
 
   DriverTokensDriver._();
 
+<<<<<<< HEAD
   factory DriverTokensDriver([void updates(DriverTokensDriverBuilder b)]) = _$DriverTokensDriver;
+=======
+  factory DriverTokensDriver([void updates(DriverTokensDriverBuilder b)]) =
+      _$DriverTokensDriver;
+>>>>>>> origin/main
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(DriverTokensDriverBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
+<<<<<<< HEAD
   static Serializer<DriverTokensDriver> get serializer => _$DriverTokensDriverSerializer();
 }
 
 class _$DriverTokensDriverSerializer implements PrimitiveSerializer<DriverTokensDriver> {
+=======
+  static Serializer<DriverTokensDriver> get serializer =>
+      _$DriverTokensDriverSerializer();
+}
+
+class _$DriverTokensDriverSerializer
+    implements PrimitiveSerializer<DriverTokensDriver> {
+>>>>>>> origin/main
   @override
   final Iterable<Type> types = const [DriverTokensDriver, _$DriverTokensDriver];
 
@@ -62,7 +84,13 @@ class _$DriverTokensDriverSerializer implements PrimitiveSerializer<DriverTokens
     DriverTokensDriver object, {
     FullType specifiedType = FullType.unspecified,
   }) {
+<<<<<<< HEAD
     return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+=======
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
+>>>>>>> origin/main
   }
 
   void _deserializeProperties(
@@ -119,4 +147,7 @@ class _$DriverTokensDriverSerializer implements PrimitiveSerializer<DriverTokens
     return result.build();
   }
 }
+<<<<<<< HEAD
 
+=======
+>>>>>>> origin/main

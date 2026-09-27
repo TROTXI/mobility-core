@@ -12,6 +12,11 @@ class _$DriverInput extends DriverInput {
   @override
   final String? phone;
   @override
+<<<<<<< HEAD
+=======
+  final String? email;
+  @override
+>>>>>>> origin/main
   final String? licenseNumber;
   @override
   final String? userId;
@@ -20,7 +25,15 @@ class _$DriverInput extends DriverInput {
       (DriverInputBuilder()..update(updates))._build();
 
   _$DriverInput._(
+<<<<<<< HEAD
       {required this.name, this.phone, this.licenseNumber, this.userId})
+=======
+      {required this.name,
+      this.phone,
+      this.email,
+      this.licenseNumber,
+      this.userId})
+>>>>>>> origin/main
       : super._();
   @override
   DriverInput rebuild(void Function(DriverInputBuilder) updates) =>
@@ -35,6 +48,10 @@ class _$DriverInput extends DriverInput {
     return other is DriverInput &&
         name == other.name &&
         phone == other.phone &&
+<<<<<<< HEAD
+=======
+        email == other.email &&
+>>>>>>> origin/main
         licenseNumber == other.licenseNumber &&
         userId == other.userId;
   }
@@ -44,6 +61,10 @@ class _$DriverInput extends DriverInput {
     var _$hash = 0;
     _$hash = $jc(_$hash, name.hashCode);
     _$hash = $jc(_$hash, phone.hashCode);
+<<<<<<< HEAD
+=======
+    _$hash = $jc(_$hash, email.hashCode);
+>>>>>>> origin/main
     _$hash = $jc(_$hash, licenseNumber.hashCode);
     _$hash = $jc(_$hash, userId.hashCode);
     _$hash = $jf(_$hash);
@@ -55,6 +76,10 @@ class _$DriverInput extends DriverInput {
     return (newBuiltValueToStringHelper(r'DriverInput')
           ..add('name', name)
           ..add('phone', phone)
+<<<<<<< HEAD
+=======
+          ..add('email', email)
+>>>>>>> origin/main
           ..add('licenseNumber', licenseNumber)
           ..add('userId', userId))
         .toString();
@@ -72,6 +97,13 @@ class DriverInputBuilder implements Builder<DriverInput, DriverInputBuilder> {
   String? get phone => _$this._phone;
   set phone(String? phone) => _$this._phone = phone;
 
+<<<<<<< HEAD
+=======
+  String? _email;
+  String? get email => _$this._email;
+  set email(String? email) => _$this._email = email;
+
+>>>>>>> origin/main
   String? _licenseNumber;
   String? get licenseNumber => _$this._licenseNumber;
   set licenseNumber(String? licenseNumber) =>
@@ -90,6 +122,10 @@ class DriverInputBuilder implements Builder<DriverInput, DriverInputBuilder> {
     if ($v != null) {
       _name = $v.name;
       _phone = $v.phone;
+<<<<<<< HEAD
+=======
+      _email = $v.email;
+>>>>>>> origin/main
       _licenseNumber = $v.licenseNumber;
       _userId = $v.userId;
       _$v = null;
@@ -116,6 +152,10 @@ class DriverInputBuilder implements Builder<DriverInput, DriverInputBuilder> {
           name: BuiltValueNullFieldError.checkNotNull(
               name, r'DriverInput', 'name'),
           phone: phone,
+<<<<<<< HEAD
+=======
+          email: email,
+>>>>>>> origin/main
           licenseNumber: licenseNumber,
           userId: userId,
         );

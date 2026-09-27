@@ -1,0 +1,723 @@
+[
+  {
+    "current": "DELETE /me",
+    "target": "DELETE /v1/me",
+    "decision": "replace; remove old path",
+    "consumer": "both apps",
+    "baselineResponses": ["204", "401", "429", "503"]
+  },
+  {
+    "current": "DELETE /me/sessions/{id}",
+    "target": "DELETE /v1/me/sessions/{id}",
+    "decision": "replace; remove old path",
+    "consumer": "rider/catalog",
+    "baselineResponses": ["204", "401", "429"]
+  },
+  {
+    "current": "GET /",
+    "target": "GET /",
+    "decision": "keep stable boundary",
+    "consumer": "infrastructure",
+    "baselineResponses": ["200"]
+  },
+  {
+    "current": "GET /admin/commute-requests",
+    "target": "GET /v1/ops/commute-requests",
+    "decision": "replace; remove old path",
+    "consumer": "ops/scripts",
+    "baselineResponses": ["200", "401", "403", "404", "409", "429", "503"]
+  },
+  {
+    "current": "GET /admin/commute-requests/{id}/events",
+    "target": "GET /v1/ops/commute-requests/{id}/events",
+    "decision": "replace; remove old path",
+    "consumer": "ops/scripts",
+    "baselineResponses": ["200", "401", "403", "404", "409", "429", "503"]
+  },
+  {
+    "current": "GET /admin/commute-slots",
+    "target": "GET /v1/ops/commute-slots",
+    "decision": "replace; remove old path",
+    "consumer": "ops/scripts",
+    "baselineResponses": ["200", "401", "403", "404", "409", "429", "503"]
+  },
+  {
+    "current": "GET /admin/driver-requests",
+    "target": "GET /v1/ops/driver-requests",
+    "decision": "replace; remove old path",
+    "consumer": "ops/scripts",
+    "baselineResponses": ["200", "401", "403", "503"]
+  },
+  {
+    "current": "GET /admin/drivers",
+    "target": "GET /v1/ops/drivers",
+    "decision": "replace; remove old path",
+    "consumer": "ops/scripts",
+    "baselineResponses": ["200", "401", "403", "503"]
+  },
+  {
+    "current": "GET /admin/flags",
+    "target": "GET /v1/ops/flags",
+    "decision": "replace; remove old path",
+    "consumer": "ops/scripts",
+    "baselineResponses": ["200", "401", "403", "503"]
+  },
+  {
+    "current": "GET /admin/incidents",
+    "target": "GET /v1/ops/incidents",
+    "decision": "replace; remove old path",
+    "consumer": "ops/scripts",
+    "baselineResponses": ["200", "401", "403", "503"]
+  },
+  {
+    "current": "GET /admin/min-versions",
+    "target": "GET /v1/ops/min-versions",
+    "decision": "replace; remove old path",
+    "consumer": "ops/scripts",
+    "baselineResponses": ["200", "401", "403", "503"]
+  },
+  {
+    "current": "GET /admin/payments/reviews",
+    "target": "GET /v1/ops/payments/reviews",
+    "decision": "replace; remove old path",
+    "consumer": "ops/scripts",
+    "baselineResponses": ["200", "401", "403", "503"]
+  },
+  {
+    "current": "GET /admin/plan-pricing",
+    "target": "GET /v1/ops/plan-pricing",
+    "decision": "replace; remove old path",
+    "consumer": "ops/scripts",
+    "baselineResponses": ["200", "401", "403", "503"]
+  },
+  {
+    "current": "GET /admin/routes",
+    "target": "GET /v1/ops/routes",
+    "decision": "replace; remove old path",
+    "consumer": "ops/scripts",
+    "baselineResponses": ["200", "401", "403", "503"]
+  },
+  {
+    "current": "GET /admin/routes/{id}/fares",
+    "target": "GET /v1/ops/routes/{id}/fares",
+    "decision": "replace; remove old path",
+    "consumer": "ops/scripts",
+    "baselineResponses": ["200", "401", "403", "503"]
+  },
+  {
+    "current": "GET /admin/stops",
+    "target": "GET /v1/ops/stops",
+    "decision": "replace; remove old path",
+    "consumer": "ops/scripts",
+    "baselineResponses": ["200", "401", "403", "503"]
+  },
+  {
+    "current": "GET /admin/trips",
+    "target": "GET /v1/ops/trips",
+    "decision": "replace; remove old path",
+    "consumer": "ops/scripts",
+    "baselineResponses": ["200", "401", "403", "503"]
+  },
+  {
+    "current": "GET /admin/vehicles",
+    "target": "GET /v1/ops/vehicles",
+    "decision": "replace; remove old path",
+    "consumer": "ops/scripts",
+    "baselineResponses": ["200", "401", "403", "503"]
+  },
+  {
+    "current": "GET /boarding/manifest",
+    "target": "GET /v1/driver/trips/{id}/manifest",
+    "decision": "replace; remove old path",
+    "consumer": "driver",
+    "baselineResponses": ["200", "401", "403", "404", "503"]
+  },
+  {
+    "current": "GET /flags",
+    "target": "GET /flags",
+    "decision": "keep stable boundary",
+    "consumer": "both apps",
+    "baselineResponses": ["200", "429"]
+  },
+  {
+    "current": "GET /healthz",
+    "target": "GET /healthz",
+    "decision": "keep stable boundary",
+    "consumer": "infrastructure",
+    "baselineResponses": ["200"]
+  },
+  {
+    "current": "GET /me",
+    "target": "GET /v1/me",
+    "decision": "replace; remove old path",
+    "consumer": "both apps",
+    "baselineResponses": ["200", "401", "404", "429"]
+  },
+  {
+    "current": "GET /me/avatar",
+    "target": "GET /v1/me/avatar",
+    "decision": "replace; remove old path",
+    "consumer": "both apps",
+    "baselineResponses": ["200", "401", "404", "429", "503"]
+  },
+  {
+    "current": "GET /me/commute-requests",
+    "target": "GET /v1/me/commute-requests",
+    "decision": "replace; remove old path",
+    "consumer": "rider/catalog",
+    "baselineResponses": ["200", "401", "403", "404", "409", "429", "503"]
+  },
+  {
+    "current": "GET /me/incidents",
+    "target": "GET /v1/driver/incidents",
+    "decision": "replace; remove old path",
+    "consumer": "driver",
+    "baselineResponses": ["200", "401", "403", "429", "503"]
+  },
+  {
+    "current": "GET /me/pass",
+    "target": "POST /v1/me/reservations/{id}/pass",
+    "decision": "replace; remove old path",
+    "consumer": "rider/catalog",
+    "baselineResponses": ["200", "401"]
+  },
+  {
+    "current": "GET /me/reservations",
+    "target": "GET /v1/me/reservations",
+    "decision": "replace; remove old path",
+    "consumer": "rider/catalog",
+    "baselineResponses": ["200", "401", "429", "503"]
+  },
+  {
+    "current": "GET /me/rides",
+    "target": "GET /v1/me/membership",
+    "decision": "replace; remove old path",
+    "consumer": "rider/catalog",
+    "baselineResponses": ["200", "401", "429", "503"]
+  },
+  {
+    "current": "GET /me/sessions",
+    "target": "GET /v1/me/sessions",
+    "decision": "replace; remove old path",
+    "consumer": "rider/catalog",
+    "baselineResponses": ["200", "401", "429"]
+  },
+  {
+    "current": "GET /me/subscription",
+    "target": "GET /v1/me/membership",
+    "decision": "replace; remove old path",
+    "consumer": "rider/catalog",
+    "baselineResponses": ["200", "401", "429", "503"]
+  },
+  {
+    "current": "GET /me/trips",
+    "target": "GET /v1/driver/trips",
+    "decision": "replace; remove old path",
+    "consumer": "driver",
+    "baselineResponses": ["200", "401", "403", "503"]
+  },
+  {
+    "current": "GET /me/work/requests",
+    "target": "GET /v1/driver/requests",
+    "decision": "replace; remove old path",
+    "consumer": "driver",
+    "baselineResponses": ["200", "401", "403", "429", "503"]
+  },
+  {
+    "current": "GET /me/work/routes",
+    "target": "GET /v1/driver/available-routes",
+    "decision": "replace; remove old path",
+    "consumer": "driver",
+    "baselineResponses": ["200", "401", "403", "429", "503"]
+  },
+  {
+    "current": "GET /readyz",
+    "target": "GET /readyz",
+    "decision": "keep stable boundary",
+    "consumer": "infrastructure",
+    "baselineResponses": ["200", "503"]
+  },
+  {
+    "current": "GET /routes",
+    "target": "GET /v1/routes",
+    "decision": "replace; remove old path",
+    "consumer": "rider/catalog",
+    "baselineResponses": ["200", "429"]
+  },
+  {
+    "current": "GET /routes/{id}",
+    "target": "GET /v1/routes/{id}",
+    "decision": "replace; remove old path",
+    "consumer": "rider/catalog",
+    "baselineResponses": ["200", "404", "429"]
+  },
+  {
+    "current": "GET /routes/{id}/geometry",
+    "target": "GET /v1/route-geometries/{id}",
+    "decision": "replace; remove old path",
+    "consumer": "rider/catalog",
+    "baselineResponses": ["200", "404", "429", "503"]
+  },
+  {
+    "current": "GET /trips",
+    "target": "GET /v1/trips",
+    "decision": "replace; remove old path",
+    "consumer": "rider/catalog",
+    "baselineResponses": ["200", "401", "429", "503"]
+  },
+  {
+    "current": "GET /trips/{id}",
+    "target": "GET /v1/trips/{id}",
+    "decision": "replace; remove old path",
+    "consumer": "rider/catalog",
+    "baselineResponses": ["200", "401", "404", "429", "503"]
+  },
+  {
+    "current": "GET /trips/{id}/position",
+    "target": "GET /v1/trips/{id}/live",
+    "decision": "replace; remove old path",
+    "consumer": "rider/catalog",
+    "baselineResponses": ["200", "401", "404", "409", "429", "503"]
+  },
+  {
+    "current": "GET /trips/{id}/summary",
+    "target": "GET /v1/driver/trips/{id}/summary",
+    "decision": "replace; remove old path",
+    "consumer": "driver",
+    "baselineResponses": ["200", "401", "403", "404", "503"]
+  },
+  {
+    "current": "GET /version",
+    "target": "GET /version",
+    "decision": "keep stable boundary",
+    "consumer": "infrastructure",
+    "baselineResponses": ["200"]
+  },
+  {
+    "current": "PATCH /admin/driver-requests/{id}",
+    "target": "POST /v1/ops/driver-requests/{id}/decisions",
+    "decision": "replace; remove old path",
+    "consumer": "ops/scripts",
+    "baselineResponses": ["200", "401", "403", "404", "503"]
+  },
+  {
+    "current": "PATCH /admin/drivers/{id}",
+    "target": "PATCH /v1/ops/drivers/{id}",
+    "decision": "replace; remove old path",
+    "consumer": "ops/scripts",
+    "baselineResponses": ["200", "401", "403", "404", "503"]
+  },
+  {
+    "current": "PATCH /admin/drivers/{id}/credentials",
+    "target": "POST /v1/ops/drivers/{id}/credentials/actions",
+    "decision": "replace; remove old path",
+    "consumer": "ops/scripts",
+    "baselineResponses": ["204", "400", "401", "403", "404", "503"]
+  },
+  {
+    "current": "PATCH /admin/incidents/{id}",
+    "target": "POST /v1/ops/incidents/{id}/decisions",
+    "decision": "replace; remove old path",
+    "consumer": "ops/scripts",
+    "baselineResponses": ["200", "401", "403", "404", "503"]
+  },
+  {
+    "current": "PATCH /admin/plan-pricing/{plan}",
+    "target": "PATCH /v1/ops/plan-pricing/{plan}",
+    "decision": "replace; remove old path",
+    "consumer": "ops/scripts",
+    "baselineResponses": ["200", "401", "403", "404", "503"]
+  },
+  {
+    "current": "PATCH /admin/routes/{id}",
+    "target": "PATCH /v1/ops/routes/{id}",
+    "decision": "replace; remove old path",
+    "consumer": "ops/scripts",
+    "baselineResponses": ["200", "401", "403", "404", "503"]
+  },
+  {
+    "current": "PATCH /admin/stops/{id}",
+    "target": "PATCH /v1/ops/stops/{id}",
+    "decision": "replace; remove old path",
+    "consumer": "ops/scripts",
+    "baselineResponses": ["200", "401", "403", "404", "503"]
+  },
+  {
+    "current": "PATCH /admin/trips/{id}",
+    "target": "PATCH /v1/ops/trips/{id}",
+    "decision": "replace; remove old path",
+    "consumer": "ops/scripts",
+    "baselineResponses": ["200", "401", "403", "404", "503"]
+  },
+  {
+    "current": "PATCH /admin/users/{id}/role",
+    "target": "PATCH /v1/ops/users/{id}/role",
+    "decision": "replace; remove old path",
+    "consumer": "ops/scripts",
+    "baselineResponses": ["200", "401", "403", "404", "503"]
+  },
+  {
+    "current": "PATCH /admin/vehicles/{id}",
+    "target": "PATCH /v1/ops/vehicles/{id}",
+    "decision": "replace; remove old path",
+    "consumer": "ops/scripts",
+    "baselineResponses": ["200", "401", "403", "404", "503"]
+  },
+  {
+    "current": "PATCH /me",
+    "target": "PATCH /v1/me",
+    "decision": "replace; remove old path",
+    "consumer": "both apps",
+    "baselineResponses": ["200", "401", "404", "429", "503"]
+  },
+  {
+    "current": "POST /admin/ask-dispatch",
+    "target": "POST /v1/ops/maintenance/ask-dispatch",
+    "decision": "replace; remove old path",
+    "consumer": "ops/scripts",
+    "baselineResponses": ["200", "401", "403", "503"]
+  },
+  {
+    "current": "POST /admin/close-subscription-periods",
+    "target": "POST /v1/ops/maintenance/period-close",
+    "decision": "replace; remove old path",
+    "consumer": "ops/scripts",
+    "baselineResponses": ["200", "401", "403", "503"]
+  },
+  {
+    "current": "POST /admin/commute-requests/{id}/decision",
+    "target": "POST /v1/ops/commute-requests/{id}/decisions",
+    "decision": "replace; remove old path",
+    "consumer": "ops/scripts",
+    "baselineResponses": ["200", "401", "403", "404", "409", "429", "503"]
+  },
+  {
+    "current": "POST /admin/commute-slots",
+    "target": "POST /v1/ops/commute-slots",
+    "decision": "replace; remove old path",
+    "consumer": "ops/scripts",
+    "baselineResponses": ["200", "401", "403", "404", "409", "429", "503"]
+  },
+  {
+    "current": "POST /admin/commute-slots/{id}/retire",
+    "target": "POST /v1/ops/commute-slots/{id}/retire",
+    "decision": "replace; remove old path",
+    "consumer": "ops/scripts",
+    "baselineResponses": ["200", "401", "403", "404", "409", "429", "503"]
+  },
+  {
+    "current": "POST /admin/convert-credits",
+    "target": "POST /v1/ops/maintenance/period-close",
+    "decision": "replace; remove old path",
+    "consumer": "ops/scripts",
+    "baselineResponses": ["200", "401", "403", "503"]
+  },
+  {
+    "current": "POST /admin/drivers",
+    "target": "POST /v1/ops/drivers",
+    "decision": "replace; remove old path",
+    "consumer": "ops/scripts",
+    "baselineResponses": ["200", "401", "403", "404", "503"]
+  },
+  {
+    "current": "POST /admin/drivers/{id}/credentials",
+    "target": "POST /v1/ops/drivers/{id}/credentials",
+    "decision": "replace; remove old path",
+    "consumer": "ops/scripts",
+    "baselineResponses": ["201", "401", "403", "404", "409", "503"]
+  },
+  {
+    "current": "POST /admin/drivers/{id}/credentials/reset-pin",
+    "target": "POST /v1/ops/drivers/{id}/credentials/reset-pin",
+    "decision": "replace; remove old path",
+    "consumer": "ops/scripts",
+    "baselineResponses": ["200", "401", "403", "404", "503"]
+  },
+  {
+    "current": "POST /admin/expire-subscriptions",
+    "target": "POST /v1/ops/maintenance/period-close",
+    "decision": "replace; remove old path",
+    "consumer": "ops/scripts",
+    "baselineResponses": ["200", "401", "403", "503"]
+  },
+  {
+    "current": "POST /admin/learn-routes",
+    "target": "POST /v1/ops/maintenance/route-learning",
+    "decision": "replace; remove old path",
+    "consumer": "ops/scripts",
+    "baselineResponses": ["200", "401", "403", "429", "503"]
+  },
+  {
+    "current": "POST /admin/payments/maintenance",
+    "target": "POST /v1/ops/maintenance/payments",
+    "decision": "replace; remove old path",
+    "consumer": "ops/scripts",
+    "baselineResponses": ["200", "401", "403", "503"]
+  },
+  {
+    "current": "POST /admin/payments/process-webhooks",
+    "target": "POST /v1/ops/maintenance/payment-inbox",
+    "decision": "replace; remove old path",
+    "consumer": "ops/scripts",
+    "baselineResponses": ["200", "401", "403", "503"]
+  },
+  {
+    "current": "POST /admin/payments/reconcile",
+    "target": "POST /v1/ops/maintenance/payment-reconciliation",
+    "decision": "replace; remove old path",
+    "consumer": "ops/scripts",
+    "baselineResponses": ["200", "401", "403", "503"]
+  },
+  {
+    "current": "POST /admin/resolve-defaults",
+    "target": "POST /v1/ops/maintenance/reservation-defaults",
+    "decision": "replace; remove old path",
+    "consumer": "ops/scripts",
+    "baselineResponses": ["200", "401", "403", "503"]
+  },
+  {
+    "current": "POST /admin/resolve-no-shows",
+    "target": "POST /v1/ops/maintenance/no-shows",
+    "decision": "replace; remove old path",
+    "consumer": "ops/scripts",
+    "baselineResponses": ["200", "401", "403"]
+  },
+  {
+    "current": "POST /admin/routes",
+    "target": "POST /v1/ops/routes",
+    "decision": "replace; remove old path",
+    "consumer": "ops/scripts",
+    "baselineResponses": ["200", "401", "403", "503"]
+  },
+  {
+    "current": "POST /admin/routes/{id}/stops",
+    "target": "POST /v1/ops/route-patterns/{id}/versions",
+    "decision": "replace; remove old path",
+    "consumer": "ops/scripts",
+    "baselineResponses": ["200", "401", "403", "404", "409", "503"]
+  },
+  {
+    "current": "POST /admin/stops",
+    "target": "POST /v1/ops/stops",
+    "decision": "replace; remove old path",
+    "consumer": "ops/scripts",
+    "baselineResponses": ["200", "401", "403", "503"]
+  },
+  {
+    "current": "POST /admin/trips",
+    "target": "POST /v1/ops/trips",
+    "decision": "replace; remove old path",
+    "consumer": "ops/scripts",
+    "baselineResponses": ["200", "401", "403", "404", "503"]
+  },
+  {
+    "current": "POST /admin/vehicles",
+    "target": "POST /v1/ops/vehicles",
+    "decision": "replace; remove old path",
+    "consumer": "ops/scripts",
+    "baselineResponses": ["200", "401", "403", "503"]
+  },
+  {
+    "current": "POST /auth/apple",
+    "target": "POST /v1/auth/apple",
+    "decision": "replace; remove old path",
+    "consumer": "both apps",
+    "baselineResponses": ["200", "401", "429", "503"]
+  },
+  {
+    "current": "POST /auth/driver",
+    "target": "POST /v1/auth/driver",
+    "decision": "replace; remove old path",
+    "consumer": "both apps",
+    "baselineResponses": ["200", "401", "403", "423", "429", "503"]
+  },
+  {
+    "current": "POST /auth/driver/pin",
+    "target": "POST /v1/auth/driver/pin",
+    "decision": "replace; remove old path",
+    "consumer": "both apps",
+    "baselineResponses": ["204", "400", "401", "403", "404", "429", "503"]
+  },
+  {
+    "current": "POST /auth/google",
+    "target": "POST /v1/auth/google",
+    "decision": "replace; remove old path",
+    "consumer": "both apps",
+    "baselineResponses": ["200", "401", "429", "503"]
+  },
+  {
+    "current": "POST /auth/logout",
+    "target": "POST /v1/auth/logout",
+    "decision": "replace; remove old path",
+    "consumer": "both apps",
+    "baselineResponses": ["204", "429"]
+  },
+  {
+    "current": "POST /auth/refresh",
+    "target": "POST /v1/auth/refresh",
+    "decision": "replace; remove old path",
+    "consumer": "both apps",
+    "baselineResponses": ["200", "401", "429", "503"]
+  },
+  {
+    "current": "POST /boarding/board",
+    "target": "POST /v1/driver/trips/{id}/boardings",
+    "decision": "replace; remove old path",
+    "consumer": "driver",
+    "baselineResponses": ["200", "401", "403"]
+  },
+  {
+    "current": "POST /boarding/no-show",
+    "target": "POST /v1/driver/trips/{id}/reservations/{reservationId}/no-show",
+    "decision": "replace; remove old path",
+    "consumer": "driver",
+    "baselineResponses": ["200", "401", "403"]
+  },
+  {
+    "current": "POST /boarding/scan",
+    "target": "POST /v1/driver/trips/{id}/boardings",
+    "decision": "replace; remove old path",
+    "consumer": "driver",
+    "baselineResponses": ["200", "401", "403"]
+  },
+  {
+    "current": "POST /boarding/verify-code",
+    "target": "POST /v1/driver/trips/{id}/boardings",
+    "decision": "replace; remove old path",
+    "consumer": "driver",
+    "baselineResponses": ["200", "400", "401", "403"]
+  },
+  {
+    "current": "POST /boarding/verify-pin",
+    "target": "POST /v1/driver/trips/{id}/boardings",
+    "decision": "replace; remove old path",
+    "consumer": "driver",
+    "baselineResponses": ["200", "400", "401", "403"]
+  },
+  {
+    "current": "POST /me/avatar",
+    "target": "PUT /v1/me/avatar",
+    "decision": "replace; remove old path",
+    "consumer": "both apps",
+    "baselineResponses": ["200", "400", "401", "404", "413", "429", "503"]
+  },
+  {
+    "current": "POST /me/commute-requests",
+    "target": "POST /v1/me/commute-requests",
+    "decision": "replace; remove old path",
+    "consumer": "rider/catalog",
+    "baselineResponses": ["200", "401", "403", "404", "409", "429", "503"]
+  },
+  {
+    "current": "POST /me/commute-requests/{id}/withdraw",
+    "target": "POST /v1/me/commute-requests/{id}/withdraw",
+    "decision": "replace; remove old path",
+    "consumer": "rider/catalog",
+    "baselineResponses": ["200", "401", "403", "404", "409", "429", "503"]
+  },
+  {
+    "current": "POST /me/devices",
+    "target": "POST /v1/me/devices",
+    "decision": "replace; remove old path",
+    "consumer": "both apps",
+    "baselineResponses": ["200", "401"]
+  },
+  {
+    "current": "POST /me/incidents",
+    "target": "POST /v1/driver/incidents",
+    "decision": "replace; remove old path",
+    "consumer": "driver",
+    "baselineResponses": ["201", "401", "403", "404", "429", "503"]
+  },
+  {
+    "current": "POST /me/reservations",
+    "target": "POST /v1/me/reservation-decisions",
+    "decision": "replace; remove old path",
+    "consumer": "rider/catalog",
+    "baselineResponses": ["200", "401", "402", "409", "429", "503"]
+  },
+  {
+    "current": "POST /me/work/requests",
+    "target": "POST /v1/driver/requests",
+    "decision": "replace; remove old path",
+    "consumer": "driver",
+    "baselineResponses": ["201", "401", "403", "404", "409", "429", "503"]
+  },
+  {
+    "current": "POST /me/work/requests/{id}/withdraw",
+    "target": "POST /v1/driver/requests/{id}/withdraw",
+    "decision": "replace; remove old path",
+    "consumer": "driver",
+    "baselineResponses": ["200", "401", "403", "404", "429", "503"]
+  },
+  {
+    "current": "POST /payments/subscribe",
+    "target": "POST /v1/me/purchases",
+    "decision": "replace; remove old path",
+    "consumer": "rider/catalog",
+    "baselineResponses": ["200", "400", "401", "409", "429", "503"]
+  },
+  {
+    "current": "POST /trips/{id}/arrive",
+    "target": "POST /v1/driver/trips/{id}/arrivals",
+    "decision": "replace; remove old path",
+    "consumer": "driver",
+    "baselineResponses": ["200", "401", "403", "404", "409", "503"]
+  },
+  {
+    "current": "POST /trips/{id}/complete",
+    "target": "POST /v1/driver/trips/{id}/complete",
+    "decision": "replace; remove old path",
+    "consumer": "driver",
+    "baselineResponses": ["200", "401", "403", "404", "409", "503"]
+  },
+  {
+    "current": "POST /trips/{id}/position",
+    "target": "POST /v1/driver/trips/{id}/positions",
+    "decision": "replace; remove old path",
+    "consumer": "rider/catalog",
+    "baselineResponses": ["200", "401", "403", "404", "409", "429", "503"]
+  },
+  {
+    "current": "POST /trips/{id}/start",
+    "target": "POST /v1/driver/trips/{id}/start",
+    "decision": "replace; remove old path",
+    "consumer": "driver",
+    "baselineResponses": ["200", "401", "403", "404", "409", "503"]
+  },
+  {
+    "current": "POST /webhooks/paystack",
+    "target": "POST /webhooks/paystack",
+    "decision": "keep stable boundary",
+    "consumer": "Paystack",
+    "baselineResponses": ["200", "401", "503"]
+  },
+  {
+    "current": "PUT /admin/flags/{key}",
+    "target": "PUT /v1/ops/flags/{key}",
+    "decision": "replace; remove old path",
+    "consumer": "ops/scripts",
+    "baselineResponses": ["200", "401", "403", "503"]
+  },
+  {
+    "current": "PUT /admin/min-versions/{platform}",
+    "target": "PUT /v1/ops/min-versions/{app}/{platform}",
+    "decision": "replace; remove old path",
+    "consumer": "ops/scripts",
+    "baselineResponses": ["200", "401", "403", "503"]
+  },
+  {
+    "current": "PUT /admin/routes/{id}/fare",
+    "target": "POST /v1/ops/routes/{id}/fares",
+    "decision": "replace; remove old path",
+    "consumer": "ops/scripts",
+    "baselineResponses": ["200", "401", "403", "503"]
+  },
+  {
+    "current": "PUT /admin/trips/{id}/assignment",
+    "target": "PUT /v1/ops/trips/{id}/assignment",
+    "decision": "replace; remove old path",
+    "consumer": "ops/scripts",
+    "baselineResponses": ["200", "401", "403", "404", "409", "503"]
+  }
+]

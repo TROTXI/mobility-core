@@ -11,10 +11,18 @@ part 'incident_location.g.dart';
 /// IncidentLocation
 ///
 /// Properties:
+<<<<<<< HEAD
 /// * [latitude] 
 /// * [longitude] 
 @BuiltValue()
 abstract class IncidentLocation implements Built<IncidentLocation, IncidentLocationBuilder> {
+=======
+/// * [latitude]
+/// * [longitude]
+@BuiltValue()
+abstract class IncidentLocation
+    implements Built<IncidentLocation, IncidentLocationBuilder> {
+>>>>>>> origin/main
   @BuiltValueField(wireName: r'latitude')
   num get latitude;
 
@@ -23,16 +31,30 @@ abstract class IncidentLocation implements Built<IncidentLocation, IncidentLocat
 
   IncidentLocation._();
 
+<<<<<<< HEAD
   factory IncidentLocation([void updates(IncidentLocationBuilder b)]) = _$IncidentLocation;
+=======
+  factory IncidentLocation([void updates(IncidentLocationBuilder b)]) =
+      _$IncidentLocation;
+>>>>>>> origin/main
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(IncidentLocationBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
+<<<<<<< HEAD
   static Serializer<IncidentLocation> get serializer => _$IncidentLocationSerializer();
 }
 
 class _$IncidentLocationSerializer implements PrimitiveSerializer<IncidentLocation> {
+=======
+  static Serializer<IncidentLocation> get serializer =>
+      _$IncidentLocationSerializer();
+}
+
+class _$IncidentLocationSerializer
+    implements PrimitiveSerializer<IncidentLocation> {
+>>>>>>> origin/main
   @override
   final Iterable<Type> types = const [IncidentLocation, _$IncidentLocation];
 
@@ -62,7 +84,13 @@ class _$IncidentLocationSerializer implements PrimitiveSerializer<IncidentLocati
     IncidentLocation object, {
     FullType specifiedType = FullType.unspecified,
   }) {
+<<<<<<< HEAD
     return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+=======
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
+>>>>>>> origin/main
   }
 
   void _deserializeProperties(
@@ -119,4 +147,7 @@ class _$IncidentLocationSerializer implements PrimitiveSerializer<IncidentLocati
     return result.build();
   }
 }
+<<<<<<< HEAD
 
+=======
+>>>>>>> origin/main

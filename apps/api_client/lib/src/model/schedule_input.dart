@@ -14,6 +14,7 @@ part 'schedule_input.g.dart';
 /// ScheduleInput
 ///
 /// Properties:
+<<<<<<< HEAD
 /// * [departure] 
 /// * [patternVersionId] 
 /// * [serviceWindow] 
@@ -24,6 +25,19 @@ part 'schedule_input.g.dart';
 /// * [effectiveTo] 
 @BuiltValue()
 abstract class ScheduleInput implements Built<ScheduleInput, ScheduleInputBuilder> {
+=======
+/// * [departure]
+/// * [patternVersionId]
+/// * [serviceWindow]
+/// * [localDeparture]
+/// * [timeZone]
+/// * [weekdays]
+/// * [effectiveFrom]
+/// * [effectiveTo]
+@BuiltValue()
+abstract class ScheduleInput
+    implements Built<ScheduleInput, ScheduleInputBuilder> {
+>>>>>>> origin/main
   @BuiltValueField(wireName: r'departure')
   ScheduleInputDeparture get departure;
 
@@ -52,13 +66,23 @@ abstract class ScheduleInput implements Built<ScheduleInput, ScheduleInputBuilde
 
   ScheduleInput._();
 
+<<<<<<< HEAD
   factory ScheduleInput([void updates(ScheduleInputBuilder b)]) = _$ScheduleInput;
+=======
+  factory ScheduleInput([void updates(ScheduleInputBuilder b)]) =
+      _$ScheduleInput;
+>>>>>>> origin/main
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(ScheduleInputBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
+<<<<<<< HEAD
   static Serializer<ScheduleInput> get serializer => _$ScheduleInputSerializer();
+=======
+  static Serializer<ScheduleInput> get serializer =>
+      _$ScheduleInputSerializer();
+>>>>>>> origin/main
 }
 
 class _$ScheduleInputSerializer implements PrimitiveSerializer<ScheduleInput> {
@@ -109,10 +133,19 @@ class _$ScheduleInputSerializer implements PrimitiveSerializer<ScheduleInput> {
       specifiedType: const FullType(Date),
     );
     yield r'effectiveTo';
+<<<<<<< HEAD
     yield object.effectiveTo == null ? null : serializers.serialize(
       object.effectiveTo,
       specifiedType: const FullType.nullable(Date),
     );
+=======
+    yield object.effectiveTo == null
+        ? null
+        : serializers.serialize(
+            object.effectiveTo,
+            specifiedType: const FullType.nullable(Date),
+          );
+>>>>>>> origin/main
   }
 
   @override
@@ -121,7 +154,13 @@ class _$ScheduleInputSerializer implements PrimitiveSerializer<ScheduleInput> {
     ScheduleInput object, {
     FullType specifiedType = FullType.unspecified,
   }) {
+<<<<<<< HEAD
     return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+=======
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
+>>>>>>> origin/main
   }
 
   void _deserializeProperties(
@@ -223,6 +262,7 @@ class _$ScheduleInputSerializer implements PrimitiveSerializer<ScheduleInput> {
 }
 
 class ScheduleInputServiceWindowEnum extends EnumClass {
+<<<<<<< HEAD
 
   @BuiltValueEnumConst(wireName: r'morning')
   static const ScheduleInputServiceWindowEnum morning = _$scheduleInputServiceWindowEnum_morning;
@@ -250,3 +290,38 @@ class ScheduleInputTimeZoneEnum extends EnumClass {
   static ScheduleInputTimeZoneEnum valueOf(String name) => _$scheduleInputTimeZoneEnumValueOf(name);
 }
 
+=======
+  @BuiltValueEnumConst(wireName: r'morning')
+  static const ScheduleInputServiceWindowEnum morning =
+      _$scheduleInputServiceWindowEnum_morning;
+  @BuiltValueEnumConst(wireName: r'evening')
+  static const ScheduleInputServiceWindowEnum evening =
+      _$scheduleInputServiceWindowEnum_evening;
+
+  static Serializer<ScheduleInputServiceWindowEnum> get serializer =>
+      _$scheduleInputServiceWindowEnumSerializer;
+
+  const ScheduleInputServiceWindowEnum._(String name) : super(name);
+
+  static BuiltSet<ScheduleInputServiceWindowEnum> get values =>
+      _$scheduleInputServiceWindowEnumValues;
+  static ScheduleInputServiceWindowEnum valueOf(String name) =>
+      _$scheduleInputServiceWindowEnumValueOf(name);
+}
+
+class ScheduleInputTimeZoneEnum extends EnumClass {
+  @BuiltValueEnumConst(wireName: r'Africa/Accra')
+  static const ScheduleInputTimeZoneEnum africaSlashAccra =
+      _$scheduleInputTimeZoneEnum_africaSlashAccra;
+
+  static Serializer<ScheduleInputTimeZoneEnum> get serializer =>
+      _$scheduleInputTimeZoneEnumSerializer;
+
+  const ScheduleInputTimeZoneEnum._(String name) : super(name);
+
+  static BuiltSet<ScheduleInputTimeZoneEnum> get values =>
+      _$scheduleInputTimeZoneEnumValues;
+  static ScheduleInputTimeZoneEnum valueOf(String name) =>
+      _$scheduleInputTimeZoneEnumValueOf(name);
+}
+>>>>>>> origin/main

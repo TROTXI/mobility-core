@@ -14,10 +14,18 @@ part 'commute_slot_page.g.dart';
 /// CommuteSlotPage
 ///
 /// Properties:
+<<<<<<< HEAD
 /// * [data] 
 /// * [page] 
 @BuiltValue()
 abstract class CommuteSlotPage implements Built<CommuteSlotPage, CommuteSlotPageBuilder> {
+=======
+/// * [data]
+/// * [page]
+@BuiltValue()
+abstract class CommuteSlotPage
+    implements Built<CommuteSlotPage, CommuteSlotPageBuilder> {
+>>>>>>> origin/main
   @BuiltValueField(wireName: r'data')
   BuiltList<CommuteSlot> get data;
 
@@ -26,16 +34,30 @@ abstract class CommuteSlotPage implements Built<CommuteSlotPage, CommuteSlotPage
 
   CommuteSlotPage._();
 
+<<<<<<< HEAD
   factory CommuteSlotPage([void updates(CommuteSlotPageBuilder b)]) = _$CommuteSlotPage;
+=======
+  factory CommuteSlotPage([void updates(CommuteSlotPageBuilder b)]) =
+      _$CommuteSlotPage;
+>>>>>>> origin/main
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(CommuteSlotPageBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
+<<<<<<< HEAD
   static Serializer<CommuteSlotPage> get serializer => _$CommuteSlotPageSerializer();
 }
 
 class _$CommuteSlotPageSerializer implements PrimitiveSerializer<CommuteSlotPage> {
+=======
+  static Serializer<CommuteSlotPage> get serializer =>
+      _$CommuteSlotPageSerializer();
+}
+
+class _$CommuteSlotPageSerializer
+    implements PrimitiveSerializer<CommuteSlotPage> {
+>>>>>>> origin/main
   @override
   final Iterable<Type> types = const [CommuteSlotPage, _$CommuteSlotPage];
 
@@ -65,7 +87,13 @@ class _$CommuteSlotPageSerializer implements PrimitiveSerializer<CommuteSlotPage
     CommuteSlotPage object, {
     FullType specifiedType = FullType.unspecified,
   }) {
+<<<<<<< HEAD
     return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+=======
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
+>>>>>>> origin/main
   }
 
   void _deserializeProperties(
@@ -122,4 +150,7 @@ class _$CommuteSlotPageSerializer implements PrimitiveSerializer<CommuteSlotPage
     return result.build();
   }
 }
+<<<<<<< HEAD
 
+=======
+>>>>>>> origin/main

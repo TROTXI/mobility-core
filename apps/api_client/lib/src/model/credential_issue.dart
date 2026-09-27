@@ -11,6 +11,7 @@ part 'credential_issue.g.dart';
 /// CredentialIssue
 ///
 /// Properties:
+<<<<<<< HEAD
 /// * [code] 
 @BuiltValue()
 abstract class CredentialIssue implements Built<CredentialIssue, CredentialIssueBuilder> {
@@ -20,15 +21,45 @@ abstract class CredentialIssue implements Built<CredentialIssue, CredentialIssue
   CredentialIssue._();
 
   factory CredentialIssue([void updates(CredentialIssueBuilder b)]) = _$CredentialIssue;
+=======
+/// * [code]
+/// * [emailInstructions]
+/// * [smsInstructions]
+@BuiltValue()
+abstract class CredentialIssue
+    implements Built<CredentialIssue, CredentialIssueBuilder> {
+  @BuiltValueField(wireName: r'code')
+  String? get code;
+
+  @BuiltValueField(wireName: r'emailInstructions')
+  bool? get emailInstructions;
+
+  @BuiltValueField(wireName: r'smsInstructions')
+  bool? get smsInstructions;
+
+  CredentialIssue._();
+
+  factory CredentialIssue([void updates(CredentialIssueBuilder b)]) =
+      _$CredentialIssue;
+>>>>>>> origin/main
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(CredentialIssueBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
+<<<<<<< HEAD
   static Serializer<CredentialIssue> get serializer => _$CredentialIssueSerializer();
 }
 
 class _$CredentialIssueSerializer implements PrimitiveSerializer<CredentialIssue> {
+=======
+  static Serializer<CredentialIssue> get serializer =>
+      _$CredentialIssueSerializer();
+}
+
+class _$CredentialIssueSerializer
+    implements PrimitiveSerializer<CredentialIssue> {
+>>>>>>> origin/main
   @override
   final Iterable<Type> types = const [CredentialIssue, _$CredentialIssue];
 
@@ -47,6 +78,23 @@ class _$CredentialIssueSerializer implements PrimitiveSerializer<CredentialIssue
         specifiedType: const FullType(String),
       );
     }
+<<<<<<< HEAD
+=======
+    if (object.emailInstructions != null) {
+      yield r'emailInstructions';
+      yield serializers.serialize(
+        object.emailInstructions,
+        specifiedType: const FullType(bool),
+      );
+    }
+    if (object.smsInstructions != null) {
+      yield r'smsInstructions';
+      yield serializers.serialize(
+        object.smsInstructions,
+        specifiedType: const FullType(bool),
+      );
+    }
+>>>>>>> origin/main
   }
 
   @override
@@ -55,7 +103,13 @@ class _$CredentialIssueSerializer implements PrimitiveSerializer<CredentialIssue
     CredentialIssue object, {
     FullType specifiedType = FullType.unspecified,
   }) {
+<<<<<<< HEAD
     return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+=======
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
+>>>>>>> origin/main
   }
 
   void _deserializeProperties(
@@ -77,6 +131,23 @@ class _$CredentialIssueSerializer implements PrimitiveSerializer<CredentialIssue
           ) as String;
           result.code = valueDes;
           break;
+<<<<<<< HEAD
+=======
+        case r'emailInstructions':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType(bool),
+          ) as bool;
+          result.emailInstructions = valueDes;
+          break;
+        case r'smsInstructions':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType(bool),
+          ) as bool;
+          result.smsInstructions = valueDes;
+          break;
+>>>>>>> origin/main
         default:
           unhandled.add(key);
           unhandled.add(value);
@@ -105,4 +176,7 @@ class _$CredentialIssueSerializer implements PrimitiveSerializer<CredentialIssue
     return result.build();
   }
 }
+<<<<<<< HEAD
 
+=======
+>>>>>>> origin/main

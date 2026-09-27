@@ -11,11 +11,20 @@ part 'bootstrap_flags_inner.g.dart';
 /// BootstrapFlagsInner
 ///
 /// Properties:
+<<<<<<< HEAD
 /// * [key] 
 /// * [enabled] 
 /// * [rolloutPercentage] 
 @BuiltValue()
 abstract class BootstrapFlagsInner implements Built<BootstrapFlagsInner, BootstrapFlagsInnerBuilder> {
+=======
+/// * [key]
+/// * [enabled]
+/// * [rolloutPercentage]
+@BuiltValue()
+abstract class BootstrapFlagsInner
+    implements Built<BootstrapFlagsInner, BootstrapFlagsInnerBuilder> {
+>>>>>>> origin/main
   @BuiltValueField(wireName: r'key')
   String get key;
 
@@ -27,18 +36,37 @@ abstract class BootstrapFlagsInner implements Built<BootstrapFlagsInner, Bootstr
 
   BootstrapFlagsInner._();
 
+<<<<<<< HEAD
   factory BootstrapFlagsInner([void updates(BootstrapFlagsInnerBuilder b)]) = _$BootstrapFlagsInner;
+=======
+  factory BootstrapFlagsInner([void updates(BootstrapFlagsInnerBuilder b)]) =
+      _$BootstrapFlagsInner;
+>>>>>>> origin/main
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(BootstrapFlagsInnerBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
+<<<<<<< HEAD
   static Serializer<BootstrapFlagsInner> get serializer => _$BootstrapFlagsInnerSerializer();
 }
 
 class _$BootstrapFlagsInnerSerializer implements PrimitiveSerializer<BootstrapFlagsInner> {
   @override
   final Iterable<Type> types = const [BootstrapFlagsInner, _$BootstrapFlagsInner];
+=======
+  static Serializer<BootstrapFlagsInner> get serializer =>
+      _$BootstrapFlagsInnerSerializer();
+}
+
+class _$BootstrapFlagsInnerSerializer
+    implements PrimitiveSerializer<BootstrapFlagsInner> {
+  @override
+  final Iterable<Type> types = const [
+    BootstrapFlagsInner,
+    _$BootstrapFlagsInner
+  ];
+>>>>>>> origin/main
 
   @override
   final String wireName = r'BootstrapFlagsInner';
@@ -71,7 +99,13 @@ class _$BootstrapFlagsInnerSerializer implements PrimitiveSerializer<BootstrapFl
     BootstrapFlagsInner object, {
     FullType specifiedType = FullType.unspecified,
   }) {
+<<<<<<< HEAD
     return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+=======
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
+>>>>>>> origin/main
   }
 
   void _deserializeProperties(
@@ -135,4 +169,7 @@ class _$BootstrapFlagsInnerSerializer implements PrimitiveSerializer<BootstrapFl
     return result.build();
   }
 }
+<<<<<<< HEAD
 
+=======
+>>>>>>> origin/main

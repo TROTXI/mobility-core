@@ -29,3 +29,11 @@ Technical grounds:
 - Redis is a cache/bridge only — never a source of truth.
 - Analytics workloads (ClickHouse) and event streaming (Kafka) are explicitly
   post-MVP; we do not build them speculatively.
+
+## Current implementation — 2026-09-12
+
+The schema is at migration 038. PostgreSQL stores identities, sessions, fleet,
+trips, PostGIS positions, payments, subscriptions, reservations, incidents and
+driver requests. Financial truth now consists of ride-entitlement and Ride
+Credit ledgers under ADR-0014; the superseded token wallet was dropped by
+migration 021.

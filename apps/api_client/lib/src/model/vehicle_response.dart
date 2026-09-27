@@ -12,24 +12,45 @@ part 'vehicle_response.g.dart';
 /// VehicleResponse
 ///
 /// Properties:
+<<<<<<< HEAD
 /// * [data] 
 @BuiltValue()
 abstract class VehicleResponse implements Built<VehicleResponse, VehicleResponseBuilder> {
+=======
+/// * [data]
+@BuiltValue()
+abstract class VehicleResponse
+    implements Built<VehicleResponse, VehicleResponseBuilder> {
+>>>>>>> origin/main
   @BuiltValueField(wireName: r'data')
   Vehicle get data;
 
   VehicleResponse._();
 
+<<<<<<< HEAD
   factory VehicleResponse([void updates(VehicleResponseBuilder b)]) = _$VehicleResponse;
+=======
+  factory VehicleResponse([void updates(VehicleResponseBuilder b)]) =
+      _$VehicleResponse;
+>>>>>>> origin/main
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(VehicleResponseBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
+<<<<<<< HEAD
   static Serializer<VehicleResponse> get serializer => _$VehicleResponseSerializer();
 }
 
 class _$VehicleResponseSerializer implements PrimitiveSerializer<VehicleResponse> {
+=======
+  static Serializer<VehicleResponse> get serializer =>
+      _$VehicleResponseSerializer();
+}
+
+class _$VehicleResponseSerializer
+    implements PrimitiveSerializer<VehicleResponse> {
+>>>>>>> origin/main
   @override
   final Iterable<Type> types = const [VehicleResponse, _$VehicleResponse];
 
@@ -54,7 +75,13 @@ class _$VehicleResponseSerializer implements PrimitiveSerializer<VehicleResponse
     VehicleResponse object, {
     FullType specifiedType = FullType.unspecified,
   }) {
+<<<<<<< HEAD
     return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+=======
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
+>>>>>>> origin/main
   }
 
   void _deserializeProperties(
@@ -104,4 +131,7 @@ class _$VehicleResponseSerializer implements PrimitiveSerializer<VehicleResponse
     return result.build();
   }
 }
+<<<<<<< HEAD
 
+=======
+>>>>>>> origin/main

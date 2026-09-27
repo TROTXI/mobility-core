@@ -1,5 +1,6 @@
-import 'package:dio/dio.dart';
-import 'package:trotxi_client/trotxi_client.dart';
+import 'dart:convert';
+import 'package:trotxi_client/trotxi_client.dart' as wire;
+import 'package:trotxi_driver/core/api/driver_api.dart';
 import 'package:trotxi_map/trotxi_map.dart';
 
 /// How to reach the control room (#234).
@@ -52,49 +53,60 @@ class AppConfig {
 /// Public on purpose: the screen that needs the operations number most is
 /// "Can't sign in?", which is reached while signed out.
 class ConfigRepository {
-  ConfigRepository({required this._client});
+  ConfigRepository({required this.client});
+  final DriverApi client;
+  String get _cacheKey => '${client.store.scope.storageKey}.public-config';
+  Future<AppConfig?> cached() async {
+    final raw = await client.store.storage.read(_cacheKey);
+    if (raw == null) return null;
+    final config = client.client.serializers.deserializeWith(
+      wire.Bootstrap.serializer,
+      jsonDecode(raw),
+    );
+    return config == null ? null : _view(config);
+  }
 
-  final TrotxiApiClient _client;
-
-  /// Fetch the client configuration.
-  ///
-  /// @returns the configuration, or [AppConfig.empty] when it cannot be read.
-  ///   Never throws: a driver who cannot reach the network still has to be able
-  ///   to open the sign-in screen, and an empty config degrades to hiding the
-  ///   contact controls rather than failing the page.
   Future<AppConfig> load() async {
+    final config = await client.get('/flags', wire.Bootstrap.serializer);
     try {
-      final response = await _client.getFlagsApi().flagsGet();
-      final ops = response.data?.operations;
-      final tiles = response.data?.mapTiles;
-      return AppConfig(
-        operations: OperationsContact(
-          phone: _clean(ops?.phone),
-          whatsapp: _clean(ops?.whatsapp),
-          email: _clean(ops?.email),
-          hours: _clean(ops?.hours),
-        ),
-        mapStyle: TrotxiMapStyle(
-          lightUrl: _clean(tiles?.styleUrl),
-          darkUrl: _clean(tiles?.darkStyleUrl),
-          // The credit travels with the URL because it is a licence condition.
-          // Falling back to the constant keeps the map legal to draw if the
-          // field is ever missing.
-          attribution: _clean(tiles?.attribution) ?? TrotxiMapStyle.none.attribution,
+      await client.store.storage.write(
+        _cacheKey,
+        jsonEncode(
+          client.client.serializers.serializeWith(
+            wire.Bootstrap.serializer,
+            config,
+          ),
         ),
       );
-    } on DioException {
-      return AppConfig.empty;
+    } catch (_) {
+      // Cache failure must not discard a successful network response.
     }
+    return _view(config);
   }
 
-  /// Treat an empty string as absent — an operator who cleared a field in the
-  /// dashboard means the same thing as one who never set it.
-  ///
-  /// @param value - the raw field.
-  /// @returns the value, or null when there is nothing usable in it.
-  static String? _clean(String? value) {
-    final trimmed = value?.trim();
-    return (trimmed == null || trimmed.isEmpty) ? null : trimmed;
+  AppConfig _view(wire.Bootstrap config) {
+    for (final app in config.applications) {
+      if (app.app.name == 'driver' &&
+          app.platform.name == client.metadata.platform &&
+          client.metadata.build < app.minSupportedBuild) {
+        client.upgradeRequired.value = true;
+      }
+    }
+    return AppConfig(
+      operations: OperationsContact(
+        phone: _clean(config.operations.phone),
+        whatsapp: _clean(config.operations.whatsapp),
+        email: _clean(config.operations.email),
+        hours: _clean(config.operations.hours),
+      ),
+      mapStyle: TrotxiMapStyle(
+        lightUrl: _clean(config.mapTiles.styleUrl),
+        darkUrl: _clean(config.mapTiles.darkStyleUrl),
+        attribution: config.mapTiles.attribution,
+      ),
+    );
   }
+
+  static String? _clean(String? value) =>
+      value == null || value.trim().isEmpty ? null : value.trim();
 }

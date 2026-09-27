@@ -11,10 +11,18 @@ part 'trip_assignment.g.dart';
 /// TripAssignment
 ///
 /// Properties:
+<<<<<<< HEAD
 /// * [driverId] 
 /// * [vehicleId] 
 @BuiltValue()
 abstract class TripAssignment implements Built<TripAssignment, TripAssignmentBuilder> {
+=======
+/// * [driverId]
+/// * [vehicleId]
+@BuiltValue()
+abstract class TripAssignment
+    implements Built<TripAssignment, TripAssignmentBuilder> {
+>>>>>>> origin/main
   @BuiltValueField(wireName: r'driverId')
   String? get driverId;
 
@@ -23,16 +31,30 @@ abstract class TripAssignment implements Built<TripAssignment, TripAssignmentBui
 
   TripAssignment._();
 
+<<<<<<< HEAD
   factory TripAssignment([void updates(TripAssignmentBuilder b)]) = _$TripAssignment;
+=======
+  factory TripAssignment([void updates(TripAssignmentBuilder b)]) =
+      _$TripAssignment;
+>>>>>>> origin/main
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(TripAssignmentBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
+<<<<<<< HEAD
   static Serializer<TripAssignment> get serializer => _$TripAssignmentSerializer();
 }
 
 class _$TripAssignmentSerializer implements PrimitiveSerializer<TripAssignment> {
+=======
+  static Serializer<TripAssignment> get serializer =>
+      _$TripAssignmentSerializer();
+}
+
+class _$TripAssignmentSerializer
+    implements PrimitiveSerializer<TripAssignment> {
+>>>>>>> origin/main
   @override
   final Iterable<Type> types = const [TripAssignment, _$TripAssignment];
 
@@ -45,6 +67,7 @@ class _$TripAssignmentSerializer implements PrimitiveSerializer<TripAssignment> 
     FullType specifiedType = FullType.unspecified,
   }) sync* {
     yield r'driverId';
+<<<<<<< HEAD
     yield object.driverId == null ? null : serializers.serialize(
       object.driverId,
       specifiedType: const FullType.nullable(String),
@@ -54,6 +77,21 @@ class _$TripAssignmentSerializer implements PrimitiveSerializer<TripAssignment> 
       object.vehicleId,
       specifiedType: const FullType.nullable(String),
     );
+=======
+    yield object.driverId == null
+        ? null
+        : serializers.serialize(
+            object.driverId,
+            specifiedType: const FullType.nullable(String),
+          );
+    yield r'vehicleId';
+    yield object.vehicleId == null
+        ? null
+        : serializers.serialize(
+            object.vehicleId,
+            specifiedType: const FullType.nullable(String),
+          );
+>>>>>>> origin/main
   }
 
   @override
@@ -62,7 +100,13 @@ class _$TripAssignmentSerializer implements PrimitiveSerializer<TripAssignment> 
     TripAssignment object, {
     FullType specifiedType = FullType.unspecified,
   }) {
+<<<<<<< HEAD
     return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+=======
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
+>>>>>>> origin/main
   }
 
   void _deserializeProperties(
@@ -121,4 +165,7 @@ class _$TripAssignmentSerializer implements PrimitiveSerializer<TripAssignment> 
     return result.build();
   }
 }
+<<<<<<< HEAD
 
+=======
+>>>>>>> origin/main

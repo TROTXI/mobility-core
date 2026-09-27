@@ -7,7 +7,6 @@ import 'package:trotxi_driver/core/state/run_controller.dart';
 
 ManifestRider _rider({String id = 'r1', bool standby = false}) => ManifestRider(
   reservationId: id,
-  userId: 'u-$id',
   name: 'Ama Owusu',
   avatarUrl: null,
   boarded: false,
@@ -18,7 +17,11 @@ ManifestRider _rider({String id = 'r1', bool standby = false}) => ManifestRider(
 
 RunDetail _detail({
   String? plate = 'GT 4821-22',
-  List<String> stops = const ['Madina', 'Shiashie', 'Circle'],
+  List<DriverStop> stops = const [
+    DriverStop(seq: 0, name: 'Madina'),
+    DriverStop(seq: 1, name: 'Shiashie'),
+    DriverStop(seq: 2, name: 'Circle'),
+  ],
   int riders = 3,
   int standby = 1,
   DateTime? at,
@@ -31,8 +34,7 @@ RunDetail _detail({
     status: RunStatus.scheduled,
   ),
   riders: [
-    for (var i = 0; i < riders; i++)
-      _rider(id: 'r$i', standby: i < standby),
+    for (var i = 0; i < riders; i++) _rider(id: 'r$i', standby: i < standby),
   ],
   stops: stops,
   vehicleRegistration: plate,
@@ -59,6 +61,16 @@ Future<void> _pump(WidgetTester tester, RunDetail detail, {Brightness? b}) {
 }
 
 void main() {
+  testWidgets('multi-hour lateness shows hours and minutes', (tester) async {
+    await _pump(
+      tester,
+      _detail(
+        at: DateTime.now().subtract(const Duration(hours: 14, minutes: 14)),
+      ),
+    );
+    expect(find.text('14H 14MIN BEHIND SCHEDULE'), findsOneWidget);
+    expect(find.textContaining('854 MIN'), findsNothing);
+  });
   testWidgets('the check reports the run, not a fixed green', (tester) async {
     // The frames draw all three rows green. A pre-trip check that always says
     // ready is a decoration, and the morning it matters is the morning a van
@@ -95,14 +107,14 @@ void main() {
     expect(find.textContaining('DEPARTS IN'), findsNothing);
   });
 
-  testWidgets('standby seats are split out of the confirmed count', (
+  testWidgets('confirmed total does not invent a standby breakdown', (
     tester,
   ) async {
     await _pump(tester, _detail(riders: 5, standby: 2));
     await tester.pump();
 
-    expect(find.text('3 booked'), findsOneWidget);
-    expect(find.text('2 standby'), findsOneWidget);
+    expect(find.text('5 booked'), findsOneWidget);
+    expect(find.textContaining('standby'), findsNothing);
     expect(find.text('5 riders'), findsNWidgets(2));
   });
 }

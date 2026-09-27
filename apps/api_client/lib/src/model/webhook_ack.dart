@@ -11,7 +11,11 @@ part 'webhook_ack.g.dart';
 /// WebhookAck
 ///
 /// Properties:
+<<<<<<< HEAD
 /// * [received] 
+=======
+/// * [received]
+>>>>>>> origin/main
 @BuiltValue()
 abstract class WebhookAck implements Built<WebhookAck, WebhookAckBuilder> {
   @BuiltValueField(wireName: r'received')
@@ -53,7 +57,13 @@ class _$WebhookAckSerializer implements PrimitiveSerializer<WebhookAck> {
     WebhookAck object, {
     FullType specifiedType = FullType.unspecified,
   }) {
+<<<<<<< HEAD
     return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+=======
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
+>>>>>>> origin/main
   }
 
   void _deserializeProperties(
@@ -103,4 +113,7 @@ class _$WebhookAckSerializer implements PrimitiveSerializer<WebhookAck> {
     return result.build();
   }
 }
+<<<<<<< HEAD
 
+=======
+>>>>>>> origin/main

@@ -98,6 +98,16 @@ void main() {
       // TODO
     });
 
+<<<<<<< HEAD
+=======
+    // sign In Apple
+    //
+    //Future<TokensResponse> signInApple(String xTrotxiClient, int xTrotxiBuild, AppleSignIn appleSignIn, { String xTrotxiPlatform }) async
+    test('test signInApple', () async {
+      // TODO
+    });
+
+>>>>>>> origin/main
     // sign In Driver
     //
     //Future<DriverTokensResponse> signInDriver(String xTrotxiClient, int xTrotxiBuild, DriverSignIn driverSignIn, { String xTrotxiPlatform }) async

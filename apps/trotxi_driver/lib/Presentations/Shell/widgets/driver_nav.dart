@@ -54,68 +54,81 @@ class DriverNav extends StatelessWidget {
 
     return SafeArea(
       top: false,
-      child: Container(
-        margin: const EdgeInsets.all(AppSpacing.space12),
-        padding: const EdgeInsets.symmetric(
-          horizontal: AppSpacing.space8,
-          vertical: AppSpacing.space8,
-        ),
-        decoration: BoxDecoration(
-          // Surface plus a hairline, at radius 38 (Components / Driver phone
-          // navigation). White with no border was the earlier build's guess and
-          // left the bar floating with no edge against a near-white page.
-          color: colors.surfaceSelected,
-          borderRadius: AppRadii.circular(AppRadii.navBar),
-          border: Border.all(color: colors.border),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-          children: [
-            _Item(
-              tab: DriverTab.today,
-              icon: Icons.home_outlined,
-              label: 'Today',
-              current: current,
-              onSelect: onSelect,
-              colors: colors,
+      child: Center(
+        // Scaffold gives bottomNavigationBar loose access to the full screen
+        // height. Without a height factor Center expands into all of it and
+        // vertically centres the bar, covering the page it is meant to sit
+        // beneath. Shrink-wrap the vertical axis while retaining the tablet
+        // width cap.
+        heightFactor: 1,
+        child: ConstrainedBox(
+          // Page 21 keeps the mount navigation within easy reach instead of
+          // stretching five targets across the full windscreen width.
+          constraints: const BoxConstraints(maxWidth: 760),
+          child: Container(
+            margin: const EdgeInsets.all(AppSpacing.space12),
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.space8,
+              vertical: AppSpacing.space8,
             ),
-            _Item(
-              tab: DriverTab.trip,
-              icon: Icons.route_outlined,
-              label: 'Trip',
-              current: current,
-              onSelect: onSelect,
-              colors: colors,
-              enabled: hasRun,
-              alert: tripHasAlert,
+            decoration: BoxDecoration(
+              // Surface plus a hairline, at radius 38 (Components / Driver phone
+              // navigation). White with no border was the earlier build's guess and
+              // left the bar floating with no edge against a near-white page.
+              color: colors.surfaceSelected,
+              borderRadius: AppRadii.circular(AppRadii.navBar),
+              border: Border.all(color: colors.border),
             ),
-            _Item(
-              tab: DriverTab.scan,
-              icon: Icons.qr_code_scanner,
-              label: 'Scan',
-              current: current,
-              onSelect: onSelect,
-              colors: colors,
-              enabled: canScan,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                _Item(
+                  tab: DriverTab.today,
+                  icon: Icons.home_outlined,
+                  label: 'Today',
+                  current: current,
+                  onSelect: onSelect,
+                  colors: colors,
+                ),
+                _Item(
+                  tab: DriverTab.trip,
+                  icon: Icons.route_outlined,
+                  label: 'Trip',
+                  current: current,
+                  onSelect: onSelect,
+                  colors: colors,
+                  enabled: hasRun,
+                  alert: tripHasAlert,
+                ),
+                _Item(
+                  tab: DriverTab.scan,
+                  icon: Icons.qr_code_scanner,
+                  label: 'Scan',
+                  current: current,
+                  onSelect: onSelect,
+                  colors: colors,
+                  enabled: canScan,
+                ),
+                _Item(
+                  tab: DriverTab.manifest,
+                  icon: Icons.list_alt_outlined,
+                  label: 'Manifest',
+                  current: current,
+                  onSelect: onSelect,
+                  colors: colors,
+                  enabled: hasRun,
+                ),
+                _Item(
+                  tab: DriverTab.me,
+                  icon: Icons.person_outline,
+                  label: 'Me',
+                  current: current,
+                  onSelect: onSelect,
+                  colors: colors,
+                ),
+              ],
             ),
-            _Item(
-              tab: DriverTab.manifest,
-              icon: Icons.list_alt_outlined,
-              label: 'Manifest',
-              current: current,
-              onSelect: onSelect,
-              colors: colors,
-              enabled: hasRun,
-            ),
-            _Item(
-              tab: DriverTab.me,
-              icon: Icons.person_outline,
-              label: 'Me',
-              current: current,
-              onSelect: onSelect,
-              colors: colors,
-            ),
-          ],
+          ),
         ),
       ),
     );
