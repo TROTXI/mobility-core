@@ -3,8 +3,16 @@
 Pilot pages are static files in `apps/ops/public`. The existing Ops build copies
 them into its deployment; they do not require Ops access or JavaScript.
 
-- `/privacy.html`
-- `/delete-account.html`
+- `/privacy`
+- `/delete-account`
+
+Render rewrites these clean public paths to the static `.html` files before
+the Ops SPA fallback. The `.html` URLs remain working compatibility links.
+Ops staging is Blueprint-managed: confirm its Blueprint sync applies these
+rules when the change merges, then check both clean URLs after deployment.
+For a service that is not Blueprint-managed, add the same two
+rewrite rules in Render's Redirects/Rewrites settings; deploying files alone
+does not apply `render.yaml` settings.
 
 Both mobile apps link to these pages on the existing Ops staging hostname.
 No new hosting service, environment variable or secret is required.
