@@ -114,7 +114,7 @@ Future<void> _pump(WidgetTester tester, _Auth auth) async {
 void main() {
   for (final operatorIssued in [true, false]) {
     testWidgets(
-      'sign-in reaches Today without PIN setup, operator-issued=$operatorIssued',
+      'sign-in reaches Today, through PIN setup only when operations issued the PIN, operator-issued=$operatorIssued',
       (tester) async {
         final auth = _Auth(operatorIssued);
         await _pump(tester, auth);
@@ -127,6 +127,12 @@ void main() {
         expect(find.text('Today test destination'), findsNothing);
         await tester.tap(find.text('Yes, link account'));
         await tester.pumpAndSettle();
+        if (operatorIssued) {
+          // A temporary PIN goes to setup; the server refuses work until then.
+          expect(find.text('Choose your PIN'), findsOneWidget);
+          expect(find.text('Today test destination'), findsNothing);
+          return;
+        }
         expect(find.text('Account linked'), findsOneWidget);
         await tester.scrollUntilVisible(
           find.text('Continue'),

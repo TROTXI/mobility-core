@@ -199,6 +199,12 @@ void main() {
         );
         expect(controller.stage, SessionStage.confirming);
         controller.confirm();
+        if (operatorIssued) {
+          // A temporary PIN from operations must be replaced first; the
+          // server refuses assigned work until it is.
+          expect(controller.stage, SessionStage.pinSetup);
+          return;
+        }
         expect(controller.stage, SessionStage.linked);
         controller.completeLinking();
         expect(controller.stage, SessionStage.readiness);

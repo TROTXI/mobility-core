@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:trotxi_driver/core/api/driver_api.dart';
 import 'package:trotxi_driver/Presentations/Auth/models/sign_in_state.dart';
 import 'package:trotxi_driver/Presentations/Auth/pages/cant_sign_in_page.dart';
+import 'package:trotxi_driver/Presentations/Auth/pages/forgot_pin_page.dart';
 import 'package:trotxi_driver/core/widgets/driver_note.dart';
 import 'package:trotxi_driver/core/widgets/trotxi_wordmark.dart';
 import 'package:trotxi_driver/core/config/theme/app_colors.dart';
@@ -33,9 +34,22 @@ import 'package:trotxi_driver/data/driver_auth_repository.dart';
 /// entered code, thickens the PIN field's border and adds one line underneath.
 /// A driver who mistypes should not lose what they got right.
 class SignInPage extends StatefulWidget {
-  const SignInPage({super.key, required this.auth, required this.onSignedIn});
+  const SignInPage({
+    super.key,
+    required this.auth,
+    required this.onSignedIn,
+    this.onTemporaryPin,
+    this.notice,
+  });
 
   final DriverAuthRepository auth;
+
+  /// Receives the PIN just typed when the server says it is temporary, so PIN
+  /// setup need not ask for it again. Memory only; nothing is stored.
+  final ValueChanged<String>? onTemporaryPin;
+
+  /// One line from the session, such as "PIN changed", shown above the form.
+  final String? notice;
 
   /// Called once a session exists. The caller shows account confirmation
   /// before opening the driver's assigned runs.
@@ -107,6 +121,9 @@ class _SignInPageState extends State<SignInPage> {
         rememberDevice: _rememberDevice,
       );
       if (!mounted) return;
+      if (session.mustChangePin == true) {
+        widget.onTemporaryPin?.call(_pinController.text);
+      }
       widget.onSignedIn(session);
     } on InvalidCredentialsException {
       _fail(const SignInState(status: SignInStatus.invalidCredentials));
@@ -187,6 +204,11 @@ class _SignInPageState extends State<SignInPage> {
                       ),
                     ),
                     const SizedBox(height: AppSpacing.space40),
+
+                    if (widget.notice != null) ...[
+                      DriverNote(title: 'Signed out', body: widget.notice!),
+                      const SizedBox(height: AppSpacing.space24),
+                    ],
 
                     _FieldLabel('Driver code'),
                     const SizedBox(height: AppSpacing.space8),
@@ -308,20 +330,37 @@ class _SignInPageState extends State<SignInPage> {
                     ),
                     const SizedBox(height: AppSpacing.space16),
 
-                    Center(
-                      child: TextButton(
-                        onPressed: () => Navigator.of(context).push(
-                          MaterialPageRoute<void>(
-                            builder: (_) => const CantSignInPage(),
+                    Wrap(
+                      alignment: WrapAlignment.center,
+                      spacing: AppSpacing.space8,
+                      children: [
+                        TextButton(
+                          onPressed: () => Navigator.of(context).push(
+                            MaterialPageRoute<void>(
+                              builder: (_) => const ForgotPinPage(),
+                            ),
+                          ),
+                          child: Text(
+                            'Forgot PIN?',
+                            style: AppTypography.fieldLabel.copyWith(
+                              color: colors.textPrimary,
+                            ),
                           ),
                         ),
-                        child: Text(
-                          "Can't sign in?",
-                          style: AppTypography.fieldLabel.copyWith(
-                            color: colors.textPrimary,
+                        TextButton(
+                          onPressed: () => Navigator.of(context).push(
+                            MaterialPageRoute<void>(
+                              builder: (_) => const CantSignInPage(),
+                            ),
+                          ),
+                          child: Text(
+                            "Can't sign in?",
+                            style: AppTypography.fieldLabel.copyWith(
+                              color: colors.textPrimary,
+                            ),
                           ),
                         ),
-                      ),
+                      ],
                     ),
                     const SizedBox(height: AppSpacing.space16),
 
@@ -334,7 +373,8 @@ class _SignInPageState extends State<SignInPage> {
                     const SizedBox(height: AppSpacing.space20),
 
                     Text(
-                      'Your PIN is encrypted and is never shown to operations.',
+                      'Your PIN is stored only as a one-way hash. Operations can '
+                      'issue a temporary PIN but can never see the one you choose.',
                       textAlign: TextAlign.center,
                       style: AppTypography.footnote.copyWith(
                         color: colors.textMuted,
