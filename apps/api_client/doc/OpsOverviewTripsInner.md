@@ -16,10 +16,12 @@ Name | Type | Description | Notes
 **driverName** | **String** |  | 
 **vehicleId** | **String** |  | 
 **vehicleLabel** | **String** |  | 
+**vehiclePlate** | **String** |  | 
 **capacity** | **int** |  | 
 **confirmed** | **int** |  | 
 **boarded** | **int** |  | 
 **noShow** | **int** |  | 
+**reserved** | **int** |  | 
 **lastFixAt** | [**DateTime**](DateTime.md) |  | 
 **fixAgeSeconds** | **int** |  | 
 **lastPosition** | [**IncidentLocation**](IncidentLocation.md) |  | 

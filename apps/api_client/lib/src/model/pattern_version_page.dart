@@ -14,10 +14,11 @@ part 'pattern_version_page.g.dart';
 /// PatternVersionPage
 ///
 /// Properties:
-/// * [data] 
-/// * [page] 
+/// * [data]
+/// * [page]
 @BuiltValue()
-abstract class PatternVersionPage implements Built<PatternVersionPage, PatternVersionPageBuilder> {
+abstract class PatternVersionPage
+    implements Built<PatternVersionPage, PatternVersionPageBuilder> {
   @BuiltValueField(wireName: r'data')
   BuiltList<PatternVersion> get data;
 
@@ -26,16 +27,19 @@ abstract class PatternVersionPage implements Built<PatternVersionPage, PatternVe
 
   PatternVersionPage._();
 
-  factory PatternVersionPage([void updates(PatternVersionPageBuilder b)]) = _$PatternVersionPage;
+  factory PatternVersionPage([void updates(PatternVersionPageBuilder b)]) =
+      _$PatternVersionPage;
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(PatternVersionPageBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
-  static Serializer<PatternVersionPage> get serializer => _$PatternVersionPageSerializer();
+  static Serializer<PatternVersionPage> get serializer =>
+      _$PatternVersionPageSerializer();
 }
 
-class _$PatternVersionPageSerializer implements PrimitiveSerializer<PatternVersionPage> {
+class _$PatternVersionPageSerializer
+    implements PrimitiveSerializer<PatternVersionPage> {
   @override
   final Iterable<Type> types = const [PatternVersionPage, _$PatternVersionPage];
 
@@ -65,7 +69,9 @@ class _$PatternVersionPageSerializer implements PrimitiveSerializer<PatternVersi
     PatternVersionPage object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
   }
 
   void _deserializeProperties(
@@ -83,7 +89,8 @@ class _$PatternVersionPageSerializer implements PrimitiveSerializer<PatternVersi
         case r'data':
           final valueDes = serializers.deserialize(
             value,
-            specifiedType: const FullType(BuiltList, [FullType(PatternVersion)]),
+            specifiedType:
+                const FullType(BuiltList, [FullType(PatternVersion)]),
           ) as BuiltList<PatternVersion>;
           result.data.replace(valueDes);
           break;
@@ -122,4 +129,3 @@ class _$PatternVersionPageSerializer implements PrimitiveSerializer<PatternVersi
     return result.build();
   }
 }
-

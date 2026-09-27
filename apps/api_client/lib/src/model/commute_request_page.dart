@@ -14,10 +14,11 @@ part 'commute_request_page.g.dart';
 /// CommuteRequestPage
 ///
 /// Properties:
-/// * [data] 
-/// * [page] 
+/// * [data]
+/// * [page]
 @BuiltValue()
-abstract class CommuteRequestPage implements Built<CommuteRequestPage, CommuteRequestPageBuilder> {
+abstract class CommuteRequestPage
+    implements Built<CommuteRequestPage, CommuteRequestPageBuilder> {
   @BuiltValueField(wireName: r'data')
   BuiltList<CommuteRequest> get data;
 
@@ -26,16 +27,19 @@ abstract class CommuteRequestPage implements Built<CommuteRequestPage, CommuteRe
 
   CommuteRequestPage._();
 
-  factory CommuteRequestPage([void updates(CommuteRequestPageBuilder b)]) = _$CommuteRequestPage;
+  factory CommuteRequestPage([void updates(CommuteRequestPageBuilder b)]) =
+      _$CommuteRequestPage;
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(CommuteRequestPageBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
-  static Serializer<CommuteRequestPage> get serializer => _$CommuteRequestPageSerializer();
+  static Serializer<CommuteRequestPage> get serializer =>
+      _$CommuteRequestPageSerializer();
 }
 
-class _$CommuteRequestPageSerializer implements PrimitiveSerializer<CommuteRequestPage> {
+class _$CommuteRequestPageSerializer
+    implements PrimitiveSerializer<CommuteRequestPage> {
   @override
   final Iterable<Type> types = const [CommuteRequestPage, _$CommuteRequestPage];
 
@@ -65,7 +69,9 @@ class _$CommuteRequestPageSerializer implements PrimitiveSerializer<CommuteReque
     CommuteRequestPage object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
   }
 
   void _deserializeProperties(
@@ -83,7 +89,8 @@ class _$CommuteRequestPageSerializer implements PrimitiveSerializer<CommuteReque
         case r'data':
           final valueDes = serializers.deserialize(
             value,
-            specifiedType: const FullType(BuiltList, [FullType(CommuteRequest)]),
+            specifiedType:
+                const FullType(BuiltList, [FullType(CommuteRequest)]),
           ) as BuiltList<CommuteRequest>;
           result.data.replace(valueDes);
           break;
@@ -122,4 +129,3 @@ class _$CommuteRequestPageSerializer implements PrimitiveSerializer<CommuteReque
     return result.build();
   }
 }
-

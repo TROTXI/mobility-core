@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:trotxi_driver/Presentations/Auth/pages/account_linked_page.dart';
 import 'package:trotxi_driver/Presentations/Auth/pages/confirm_account_page.dart';
+import 'package:trotxi_driver/Presentations/Auth/pages/pin_setup_page.dart';
 import 'package:trotxi_driver/Presentations/Auth/pages/sign_in_page.dart';
 import 'package:trotxi_driver/Presentations/Onboarding/pages/first_launch_page.dart';
 import 'package:trotxi_driver/Presentations/Readiness/pages/device_readiness_page.dart';
@@ -141,6 +142,15 @@ class _AuthGateState extends State<AuthGate> {
       SessionStage.signedOut => SignInPage(
         auth: auth,
         onSignedIn: session.onSignedIn,
+        onTemporaryPin: session.holdTemporaryPin,
+        notice: session.notice,
+      ),
+      SessionStage.pinSetup => PinSetupPage(
+        temporaryPin: session.temporaryPin,
+        changePin: auth.changePin,
+        onChanged: session.onPinChanged,
+        onUncertain: session.onPinChangeUncertain,
+        onSignOut: session.signOut,
       ),
       SessionStage.confirming => ConfirmAccountPage(
         session: session.session!,

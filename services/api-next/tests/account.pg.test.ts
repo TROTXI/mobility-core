@@ -574,7 +574,7 @@ test('ACC-11 erasure closes a driver record too', async (t) => {
   const f = await fixture(t);
   await f.owner.query("UPDATE app.users SET role='driver' WHERE id=$1", [f.actor.userId]);
   await f.owner.query(
-    "INSERT INTO app.drivers(user_id,name,phone,license_number) VALUES ($1,'Kwesi','+233555000111','GH-LIC-9911')",
+    "INSERT INTO app.drivers(user_id,name,phone,email,license_number) VALUES ($1,'Kwesi','+233555000111','kwesi.driver@example.test','GH-LIC-9911')",
     [f.actor.userId],
   );
   assert.equal((await f.call('DELETE', '/v1/me')).statusCode, 204);
@@ -582,6 +582,7 @@ test('ACC-11 erasure closes a driver record too', async (t) => {
     await f.owner.query('SELECT * FROM app.drivers WHERE user_id=$1', [f.actor.userId])
   ).rows[0];
   assert.equal(driver.phone, null);
+  assert.equal(driver.email, null, 'the contact email goes with the rest');
   assert.equal(driver.license_number, null);
   assert.notEqual(driver.name, 'Kwesi');
   assert.ok(driver.archived_at);

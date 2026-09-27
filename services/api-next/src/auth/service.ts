@@ -171,16 +171,20 @@ export class AuthService {
     if (!row) throw denied();
     return row;
   }
-  private async driverAllowed(client: PoolClient, user: User) {
-    if (user.role !== 'driver') return;
+  private async driverAllowed(
+    client: PoolClient,
+    user: User,
+  ): Promise<{ must_change_pin: boolean } | undefined> {
+    if (user.role !== 'driver') return undefined;
     const row = (
       await client.query(
-        `SELECT c.status FROM app.drivers d JOIN app.driver_credentials c ON c.driver_id=d.id
+        `SELECT c.status, c.must_change_pin FROM app.drivers d JOIN app.driver_credentials c ON c.driver_id=d.id
       WHERE d.user_id=$1 AND d.archived_at IS NULL FOR SHARE OF d,c`,
         [user.id],
       )
     ).rows[0];
     if (!row || row.status !== 'active') throw denied();
+    return row;
   }
   // Used by transport INSIDE its transaction. A valid signature is not access.
   /**
@@ -192,11 +196,16 @@ export class AuthService {
    *
    * allowUnelevated is for the passkey endpoints alone, which are how an
    * admin gets from signed in to verified.
+   *
+   * The same holds for a driver on an operations-issued temporary PIN: the
+   * session is real, but it reaches nothing operational until the driver has
+   * set a private PIN. allowPinSetup is for reading their own record and
+   * changing the PIN, the only two things that session is for.
    */
   readonly authorizeSession = async (
     client: PoolClient,
     actor: Actor,
-    options: { allowUnelevated?: boolean } = {},
+    options: { allowUnelevated?: boolean; allowPinSetup?: boolean } = {},
   ): Promise<void> => {
     const user = await this.user(client, actor.userId);
     const session = (
@@ -211,7 +220,9 @@ export class AuthService {
       )
     ).rows[0];
     if (!session) throw denied();
-    await this.driverAllowed(client, user);
+    const driver = await this.driverAllowed(client, user);
+    if (driver?.must_change_pin && !options.allowPinSetup)
+      fail(403, 'pin_change_required', 'Set your own PIN before you continue.');
     if (user.role === 'admin' && !session.elevated && !options.allowUnelevated)
       fail(403, 'passkey_required', 'Use your passkey to continue.');
   };
@@ -378,6 +389,14 @@ export class AuthService {
         'UPDATE app.driver_credentials SET failed_attempts=0,locked_until=NULL,updated_at=$2 WHERE driver_id=$1',
         [row.driver_id, now],
       );
+      // Checked only once the PIN is right, so the answer tells nobody else
+      // anything. An expired temporary PIN opens no session at all.
+      if (row.must_change_pin && row.temporary_pin_expires_at <= now)
+        return new TransportError(
+          403,
+          'temporary_pin_expired',
+          'Your temporary PIN has expired. Ask Trotxi operations for a new one.',
+        );
       const tokens = await this.newSession(
         client,
         user,
@@ -390,6 +409,9 @@ export class AuthService {
         ...tokens,
         driver: { id: row.driver_id, name: row.name },
         mustChangePin: row.must_change_pin,
+        temporaryPinExpiresAt: row.temporary_pin_expires_at
+          ? new Date(row.temporary_pin_expires_at).toISOString()
+          : null,
       };
     });
     // Expected rejection follows COMMIT, so lockout counters cannot roll back.
@@ -746,7 +768,10 @@ export class AuthService {
       // Revocation takes the exclusive user lock first; do not upgrade a shared
       // lock after session checks (two concurrent revokers would deadlock).
       if (name === 'revokeSession') await this.user(client, actor.userId, true);
-      await this.authorizeSession(client, actor);
+      // Reading who you are is part of setting up: the app restores a
+      // temporary-PIN session through this read before sending the driver to
+      // choose a PIN. Everything else here waits for the private PIN.
+      await this.authorizeSession(client, actor, { allowPinSetup: name === 'getAccount' });
       if (name === 'getAccount') return result(this.account(await this.user(client, actor.userId)));
       if (name === 'listSessions') {
         const limit = query.limit === undefined ? 50 : Number(query.limit);

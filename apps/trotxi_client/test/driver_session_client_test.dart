@@ -195,7 +195,8 @@ void main() {
 
   for (final entry in <int, Matcher>{
     401: isA<InvalidCredentialsException>(),
-    403: isA<AccountSuspendedException>(),
+    // Only code driver_suspended is a suspension; other 403s keep their reason.
+    403: isA<ApiException>(),
     423: isA<CredentialLockedException>(),
     426: isA<UpgradeRequiredException>(),
     503: isA<ApiException>(),

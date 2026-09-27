@@ -8,6 +8,8 @@ import { fail, mapDatabaseError, TransportError } from '../transport/errors.js';
 import { AuthService, DriverLockedError } from './service.js';
 import { credentialReplay } from './secret-replay.js';
 import { hashToken } from './credentials.js';
+import { cancelCredentialMail } from '../notifications/email.js';
+import type { DriverCredentialEmail } from '../notifications/email.js';
 import {
   generateDriverCode,
   generatePin,
@@ -33,11 +35,49 @@ type Row = {
   user_id: string | null;
   name: string;
   phone: string | null;
+  email: string | null;
   license_number: string | null;
   archived_at: Date | null;
   version: number;
   created_at: Date;
   updated_at: Date;
+};
+/** A driver as ops sees it: the row plus its credential and latest credential email. */
+type OpsRow = Row & {
+  driver_code: string | null;
+  credential_status: string | null;
+  must_change_pin: boolean | null;
+  temporary_pin_expires_at: Date | null;
+  locked_until: Date | null;
+  mail_kind: string | null;
+  mail_state: string | null;
+  mail_failure: string | null;
+  mail_created_at: Date | null;
+  cursor_time?: string;
+};
+/**
+ * How long an operations-issued PIN works. Long enough for an emailed PIN to be
+ * read the next working day; short enough that a forgotten email is not a
+ * standing credential. Distinct from the five-minute receipt replay window,
+ * which only governs how long ops can re-read the response.
+ */
+export const TEMPORARY_PIN_HOURS = 72;
+const OPS_DRIVER = `SELECT d.*, c.driver_code, c.status AS credential_status, c.must_change_pin,
+    c.temporary_pin_expires_at, c.locked_until,
+    m.kind AS mail_kind, m.state AS mail_state, m.failure_code AS mail_failure, m.created_at AS mail_created_at,
+    to_char(d.created_at AT TIME ZONE 'UTC','YYYY-MM-DD"T"HH24:MI:SS.US"Z"') AS cursor_time
+  FROM app.drivers d
+  LEFT JOIN app.driver_credentials c ON c.driver_id = d.id
+  LEFT JOIN LATERAL (
+    SELECT kind, state, failure_code, created_at FROM app.email_outbox e
+    WHERE e.user_id = d.user_id AND e.kind IN ('driver_credentials_issued','driver_pin_reset')
+    ORDER BY e.created_at DESC, e.id DESC LIMIT 1) m ON true`;
+const MAIL_STATE: Record<string, string> = {
+  pending: 'queued',
+  accepted: 'provider_accepted',
+  cancelled: 'cancelled',
+  failed: 'failed',
+  unknown: 'unknown',
 };
 type Output = { status: number; body: unknown; headers: Record<string, string> };
 export interface DriverOptions {
@@ -46,22 +86,48 @@ export interface DriverOptions {
   pinSecret: string;
   replayKey: Buffer;
   cursorSecret: Buffer;
+  /** Absent where email is not configured; a request to email is then refused. */
+  email?: DriverCredentialEmail;
 }
 const secretOperation = (op: string) => op === 'issueDriverCredential' || op === 'resetDriverPin';
 const editToken = (row: Row) => `"driver:${row.id}:${row.version}"`;
-function view(row: Row) {
+const iso = (value: Date | null) => (value ? new Date(value).toISOString() : null);
+function view(row: OpsRow) {
   return {
     id: row.id,
     userId: row.user_id,
     name: row.name,
     phone: row.phone,
+    email: row.email,
     licenseNumber: row.license_number,
     archived: row.archived_at !== null,
+    credential: row.driver_code
+      ? {
+          driverCode: row.driver_code,
+          status: row.credential_status,
+          mustChangePin: row.must_change_pin,
+          temporaryPinExpiresAt: iso(row.temporary_pin_expires_at),
+          lockedUntil: iso(row.locked_until),
+        }
+      : null,
+    // Queued is not sent, and provider-accepted is not delivered. There is no
+    // delivery confirmation to report, so none is claimed.
+    credentialEmail: row.mail_kind
+      ? {
+          purpose: row.mail_kind === 'driver_pin_reset' ? 'pin_reset' : 'onboarding',
+          state: MAIL_STATE[row.mail_state!],
+          failureCode: row.mail_failure,
+          queuedAt: iso(row.mail_created_at),
+        }
+      : null,
     version: row.version,
     editToken: editToken(row),
     createdAt: row.created_at.toISOString(),
     updatedAt: row.updated_at.toISOString(),
   };
+}
+async function opsDriver(client: PoolClient, id: string): Promise<OpsRow> {
+  return (await client.query<OpsRow>(`${OPS_DRIVER} WHERE d.id=$1`, [id])).rows[0]!;
 }
 const success = (status = 204, body?: unknown, headers: Record<string, string> = {}): Output => ({
   status,
@@ -96,7 +162,9 @@ export class DriverService {
     }
   }
   private async authorize(client: PoolClient, actor: Actor, self: boolean) {
-    await this.options.auth.authorizeSession(client, actor);
+    // A driver still on a temporary PIN may read their own record and change
+    // the PIN, and nothing else. Ops routes get no such allowance.
+    await this.options.auth.authorizeSession(client, actor, { allowPinSetup: self });
     const user = (
       await client.query('SELECT role FROM app.users WHERE id=$1 AND deleted_at IS NULL', [
         actor.userId,
@@ -134,7 +202,7 @@ export class DriverService {
       const row = (
         await client.query(
           `SELECT d.id, d.name, d.phone, d.license_number,
-             c.driver_code, c.status, c.must_change_pin, c.locked_until
+             c.driver_code, c.status, c.must_change_pin, c.temporary_pin_expires_at, c.locked_until
            FROM app.drivers d
            LEFT JOIN app.driver_credentials c ON c.driver_id = d.id
            WHERE d.user_id = $1 AND d.archived_at IS NULL`,
@@ -159,6 +227,7 @@ export class DriverService {
                   driverCode: row.driver_code,
                   status: row.status,
                   mustChangePin: row.must_change_pin,
+                  temporaryPinExpiresAt: iso(row.temporary_pin_expires_at),
                   lockedUntil: row.locked_until ? new Date(row.locked_until).toISOString() : null,
                 }
               : null,
@@ -183,9 +252,9 @@ export class DriverService {
         context = `drivers:${actor.userId}`;
       const cursor = query.cursor ? this.cursor.decode(query.cursor, context, now) : null;
       const rows = (
-        await client.query(
-          `SELECT *,to_char(created_at AT TIME ZONE 'UTC','YYYY-MM-DD"T"HH24:MI:SS.US"Z"') AS cursor_time
-        FROM app.drivers WHERE ($1::timestamptz IS NULL OR (created_at,id)>($1::timestamptz,$2::uuid)) ORDER BY created_at,id LIMIT $3`,
+        await client.query<OpsRow>(
+          `${OPS_DRIVER} WHERE ($1::timestamptz IS NULL OR (d.created_at,d.id)>($1::timestamptz,$2::uuid))
+          ORDER BY d.created_at,d.id LIMIT $3`,
           [cursor?.time ?? null, cursor?.id ?? null, limit + 1],
         )
       ).rows;
@@ -196,7 +265,7 @@ export class DriverService {
         page: {
           nextCursor:
             rows.length > limit
-              ? this.cursor.encode(last.cursor_time, last.id, context, now)
+              ? this.cursor.encode(last!.cursor_time!, last!.id, context, now)
               : null,
         },
       });
@@ -239,6 +308,7 @@ export class DriverService {
     const body = { ...input };
     if (typeof body.userId === 'string') body.userId = catalogId(body.userId);
     if (typeof body.code === 'string') body.code = normalizeDriverCode(body.code);
+    if (typeof body.email === 'string') body.email = body.email.trim();
     const keyHash = hashToken(key),
       inputHash = this.replay.digest(canonical(body));
     const output = await this.transaction(async (client) => {
@@ -337,19 +407,28 @@ export class DriverService {
       }
       let response: Output,
         pinVersion: number | null = null;
+      const commandId = randomUUID();
+      const wantsEmail = secretOperation(op) && body.emailInstructions === true;
+      const temporaryUntil = new Date(now.getTime() + TEMPORARY_PIN_HOURS * 3600000);
       if (create) {
         const name = String(body.name).trim();
         if (!name) fail(400, 'invalid_request', 'Driver name is required.');
         if (typeof body.userId === 'string') await this.linkedUser(client, body.userId);
         driver = (
           await client.query<Row>(
-            'INSERT INTO app.drivers(name,phone,license_number,user_id) VALUES ($1,$2,$3,$4) RETURNING *',
-            [name, body.phone ?? null, body.licenseNumber ?? null, body.userId ?? null],
+            'INSERT INTO app.drivers(name,phone,email,license_number,user_id) VALUES ($1,$2,$3,$4,$5) RETURNING *',
+            [
+              name,
+              body.phone ?? null,
+              body.email ?? null,
+              body.licenseNumber ?? null,
+              body.userId ?? null,
+            ],
           )
         ).rows[0]!;
         response = success(
           201,
-          { data: view(driver) },
+          { data: view(await opsDriver(client, driver.id)) },
           { ETag: editToken(driver), Location: `/v1/ops/drivers/${driver.id}` },
         );
       } else if (op === 'updateDriver') {
@@ -378,6 +457,7 @@ export class DriverService {
         for (const [field, column] of Object.entries({
           name: 'name',
           phone: 'phone',
+          email: 'email',
           licenseNumber: 'license_number',
           userId: 'user_id',
           archived: 'archived_at',
@@ -392,7 +472,8 @@ export class DriverService {
           values.push(value);
           sets.push(`${column}=$${values.length}`);
         }
-        const oldUser = driver!.user_id;
+        const oldUser = driver!.user_id,
+          oldEmail = driver!.email;
         driver = (
           await client.query<Row>(
             `UPDATE app.drivers SET ${sets.join(',')},version=version+1,updated_at=clock_timestamp() WHERE id=$1 RETURNING *`,
@@ -401,7 +482,18 @@ export class DriverService {
         ).rows[0]!;
         if (oldUser && (driver.archived_at || oldUser !== driver.user_id))
           await this.revoke(client, oldUser, now);
-        response = success(200, { data: view(driver) }, { ETag: editToken(driver) });
+        // Waiting credential mail was written for this driver, account and
+        // address. Any of those changing makes it the wrong message to send.
+        if (
+          oldUser &&
+          (driver.archived_at || oldUser !== driver.user_id || oldEmail !== driver.email)
+        )
+          await cancelCredentialMail(client, oldUser);
+        response = success(
+          200,
+          { data: view(await opsDriver(client, driver.id)) },
+          { ETag: editToken(driver) },
+        );
       } else {
         if (driver!.archived_at) fail(409, 'driver_archived', 'This driver is archived.');
         let credential = (
@@ -409,6 +501,20 @@ export class DriverService {
             driver!.id,
           ])
         ).rows[0];
+        if (wantsEmail) {
+          if (!driver!.email)
+            fail(
+              409,
+              'driver_email_missing',
+              "Add the driver's email address before emailing sign-in details.",
+            );
+          if (!this.options.email)
+            fail(
+              503,
+              'email_unavailable',
+              'Email delivery is not configured here. Issue without email and give the driver the details another way.',
+            );
+        }
         if (op === 'issueDriverCredential') {
           if (credential) fail(409, 'credential_exists', 'This driver already has a credential.');
           if (driver!.user_id) await this.linkedUser(client, driver!.user_id);
@@ -437,12 +543,14 @@ export class DriverService {
           for (let attempt = 0; attempt < 5; attempt++) {
             credential = (
               await client.query(
-                `INSERT INTO app.driver_credentials(driver_id,driver_code,pin_hash) VALUES ($1,$2,$3)
+                `INSERT INTO app.driver_credentials(driver_id,driver_code,pin_hash,must_change_pin,temporary_pin_expires_at)
+                VALUES ($1,$2,$3,true,$4)
               ON CONFLICT(driver_code) DO NOTHING RETURNING *`,
                 [
                   driver!.id,
                   provided ?? generateDriverCode(),
                   hashDriverPin(pin, this.options.pinSecret),
+                  temporaryUntil,
                 ],
               )
             ).rows[0];
@@ -458,7 +566,21 @@ export class DriverService {
           pinVersion = credential.pin_version;
           response = success(
             201,
-            { data: { code: credential.driver_code, pin } },
+            {
+              data: {
+                code: credential.driver_code,
+                pin,
+                temporaryPinExpiresAt: temporaryUntil.toISOString(),
+                email: await this.mail(client, wantsEmail, 'driver_credentials_issued', {
+                  driver: driver!,
+                  commandId,
+                  code: credential.driver_code,
+                  pin,
+                  pinVersion: credential.pin_version,
+                  expiresAt: temporaryUntil,
+                }),
+              },
+            },
             { Location: `/v1/ops/drivers/${driver!.id}/credentials` },
           );
         } else {
@@ -481,6 +603,18 @@ export class DriverService {
             response = success();
           } else {
             if (op === 'changeDriverPin') {
+              // An expired temporary PIN is not a credential any more; only a
+              // fresh one from operations gets the driver back in.
+              if (
+                credential.must_change_pin &&
+                credential.temporary_pin_expires_at &&
+                credential.temporary_pin_expires_at <= now
+              )
+                return new TransportError(
+                  403,
+                  'temporary_pin_expired',
+                  'Your temporary PIN has expired. Ask Trotxi operations for a new one.',
+                );
               if (credential.locked_until && credential.locked_until > now)
                 return new DriverLockedError(
                   Math.max(
@@ -526,27 +660,45 @@ export class DriverService {
               pin = generatePin();
             credential = (
               await client.query(
-                `UPDATE app.driver_credentials SET pin_hash=$2,must_change_pin=$3,pin_version=pin_version+1,
-              failed_attempts=0,locked_until=NULL,pin_set_at=$4,updated_at=$4 WHERE driver_id=$1 RETURNING *`,
+                `UPDATE app.driver_credentials SET pin_hash=$2,must_change_pin=$3,temporary_pin_expires_at=$5,
+              pin_version=pin_version+1,failed_attempts=0,locked_until=NULL,pin_set_at=$4,updated_at=$4
+              WHERE driver_id=$1 RETURNING *`,
                 [
                   driver!.id,
                   hashDriverPin(pin, this.options.pinSecret),
                   op === 'resetDriverPin',
                   now,
+                  op === 'resetDriverPin' ? temporaryUntil : null,
                 ],
               )
             ).rows[0];
             // Baseline revokes ALL sessions, including the one changing its PIN.
             await this.revoke(client, driver!.user_id, now);
+            // Whatever credential mail is still waiting now describes a PIN
+            // that no longer works.
+            await cancelCredentialMail(client, driver!.user_id);
             if (op === 'resetDriverPin') {
               pinVersion = credential.pin_version;
-              response = success(200, { data: { code: credential.driver_code, pin } });
+              response = success(200, {
+                data: {
+                  code: credential.driver_code,
+                  pin,
+                  temporaryPinExpiresAt: temporaryUntil.toISOString(),
+                  email: await this.mail(client, wantsEmail, 'driver_pin_reset', {
+                    driver: driver!,
+                    commandId,
+                    code: credential.driver_code,
+                    pin,
+                    pinVersion: credential.pin_version,
+                    expiresAt: temporaryUntil,
+                  }),
+                },
+              });
             } else response = success();
           }
         }
       }
-      const commandId = randomUUID(),
-        scope = canonical([actor.userId, op, target, keyHash, inputHash, commandId]);
+      const scope = canonical([actor.userId, op, target, keyHash, inputHash, commandId]);
       const expires = new Date(now.getTime() + (secretOperation(op) ? 300000 : 7 * 86400000));
       await client.query(
         `INSERT INTO app.driver_commands(id,actor_user_id,driver_id,operation,target,key_hash,input_hash,response_status,response_body,response_headers,secret_ciphertext,pin_version,created_at,replay_expires_at)
@@ -582,7 +734,47 @@ export class DriverService {
     });
     // Authentication failures with durable counters commit, but occupy no receipt.
     if (output instanceof TransportError) throw output;
+    // The credential and its email are committed. Send it now rather than at
+    // the next worker run; the worker still retries anything this misses.
+    // Not awaited: operations does not wait on the email provider.
+    const queued = (output.body as { data?: { email?: { id?: string } | null } } | undefined)?.data
+      ?.email?.id;
+    if (queued && this.options.email?.sendQueued)
+      void this.options.email.sendQueued(queued).catch(() => undefined);
     return output;
+  }
+  /**
+   * Queue the credential email in this transaction, or say none was requested.
+   * The receipt keeps this answer sealed with the secret, so a replay reports
+   * the same message instead of queuing another.
+   */
+  private async mail(
+    client: PoolClient,
+    wanted: boolean,
+    kind: 'driver_credentials_issued' | 'driver_pin_reset',
+    input: {
+      driver: Row;
+      commandId: string;
+      code: string;
+      pin: string;
+      pinVersion: number;
+      expiresAt: Date;
+    },
+  ) {
+    if (!wanted) return null;
+    const id = await this.options.email!.queueCredential(client, {
+      kind,
+      userId: input.driver.user_id!,
+      driverId: input.driver.id,
+      commandId: input.commandId,
+      to: input.driver.email!,
+      name: input.driver.name,
+      code: input.code,
+      pin: input.pin,
+      pinVersion: input.pinVersion,
+      expiresAt: input.expiresAt,
+    });
+    return { id, to: input.driver.email!, state: 'queued' as const };
   }
   private async revoke(client: PoolClient, userId: string, now: Date) {
     await client.query(

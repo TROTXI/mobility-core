@@ -13,12 +13,13 @@ part 'work_request_input_one_of.g.dart';
 /// WorkRequestInputOneOf
 ///
 /// Properties:
-/// * [kind] 
-/// * [routeId] 
-/// * [fromDate] 
-/// * [note] 
+/// * [kind]
+/// * [routeId]
+/// * [fromDate]
+/// * [note]
 @BuiltValue()
-abstract class WorkRequestInputOneOf implements Built<WorkRequestInputOneOf, WorkRequestInputOneOfBuilder> {
+abstract class WorkRequestInputOneOf
+    implements Built<WorkRequestInputOneOf, WorkRequestInputOneOfBuilder> {
   @BuiltValueField(wireName: r'kind')
   WorkRequestInputOneOfKindEnum get kind;
   // enum kindEnum {  route_change,  };
@@ -34,18 +35,24 @@ abstract class WorkRequestInputOneOf implements Built<WorkRequestInputOneOf, Wor
 
   WorkRequestInputOneOf._();
 
-  factory WorkRequestInputOneOf([void updates(WorkRequestInputOneOfBuilder b)]) = _$WorkRequestInputOneOf;
+  factory WorkRequestInputOneOf(
+      [void updates(WorkRequestInputOneOfBuilder b)]) = _$WorkRequestInputOneOf;
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(WorkRequestInputOneOfBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
-  static Serializer<WorkRequestInputOneOf> get serializer => _$WorkRequestInputOneOfSerializer();
+  static Serializer<WorkRequestInputOneOf> get serializer =>
+      _$WorkRequestInputOneOfSerializer();
 }
 
-class _$WorkRequestInputOneOfSerializer implements PrimitiveSerializer<WorkRequestInputOneOf> {
+class _$WorkRequestInputOneOfSerializer
+    implements PrimitiveSerializer<WorkRequestInputOneOf> {
   @override
-  final Iterable<Type> types = const [WorkRequestInputOneOf, _$WorkRequestInputOneOf];
+  final Iterable<Type> types = const [
+    WorkRequestInputOneOf,
+    _$WorkRequestInputOneOf
+  ];
 
   @override
   final String wireName = r'WorkRequestInputOneOf';
@@ -87,7 +94,9 @@ class _$WorkRequestInputOneOfSerializer implements PrimitiveSerializer<WorkReque
     WorkRequestInputOneOf object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
   }
 
   void _deserializeProperties(
@@ -160,15 +169,17 @@ class _$WorkRequestInputOneOfSerializer implements PrimitiveSerializer<WorkReque
 }
 
 class WorkRequestInputOneOfKindEnum extends EnumClass {
-
   @BuiltValueEnumConst(wireName: r'route_change')
-  static const WorkRequestInputOneOfKindEnum routeChange = _$workRequestInputOneOfKindEnum_routeChange;
+  static const WorkRequestInputOneOfKindEnum routeChange =
+      _$workRequestInputOneOfKindEnum_routeChange;
 
-  static Serializer<WorkRequestInputOneOfKindEnum> get serializer => _$workRequestInputOneOfKindEnumSerializer;
+  static Serializer<WorkRequestInputOneOfKindEnum> get serializer =>
+      _$workRequestInputOneOfKindEnumSerializer;
 
-  const WorkRequestInputOneOfKindEnum._(String name): super(name);
+  const WorkRequestInputOneOfKindEnum._(String name) : super(name);
 
-  static BuiltSet<WorkRequestInputOneOfKindEnum> get values => _$workRequestInputOneOfKindEnumValues;
-  static WorkRequestInputOneOfKindEnum valueOf(String name) => _$workRequestInputOneOfKindEnumValueOf(name);
+  static BuiltSet<WorkRequestInputOneOfKindEnum> get values =>
+      _$workRequestInputOneOfKindEnumValues;
+  static WorkRequestInputOneOfKindEnum valueOf(String name) =>
+      _$workRequestInputOneOfKindEnumValueOf(name);
 }
-

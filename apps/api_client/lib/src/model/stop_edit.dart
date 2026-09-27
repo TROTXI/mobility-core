@@ -12,9 +12,9 @@ part 'stop_edit.g.dart';
 /// StopEdit
 ///
 /// Properties:
-/// * [name] 
-/// * [location] 
-/// * [archived] 
+/// * [name]
+/// * [location]
+/// * [archived]
 @BuiltValue()
 abstract class StopEdit implements Built<StopEdit, StopEditBuilder> {
   @BuiltValueField(wireName: r'name')
@@ -78,7 +78,9 @@ class _$StopEditSerializer implements PrimitiveSerializer<StopEdit> {
     StopEdit object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
   }
 
   void _deserializeProperties(
@@ -142,4 +144,3 @@ class _$StopEditSerializer implements PrimitiveSerializer<StopEdit> {
     return result.build();
   }
 }
-

@@ -11,13 +11,14 @@ part 'position_input.g.dart';
 /// PositionInput
 ///
 /// Properties:
-/// * [clientFixId] 
-/// * [capturedAt] 
-/// * [latitude] 
-/// * [longitude] 
-/// * [accuracyMeters] 
+/// * [clientFixId]
+/// * [capturedAt]
+/// * [latitude]
+/// * [longitude]
+/// * [accuracyMeters]
 @BuiltValue()
-abstract class PositionInput implements Built<PositionInput, PositionInputBuilder> {
+abstract class PositionInput
+    implements Built<PositionInput, PositionInputBuilder> {
   @BuiltValueField(wireName: r'clientFixId')
   String get clientFixId;
 
@@ -35,13 +36,15 @@ abstract class PositionInput implements Built<PositionInput, PositionInputBuilde
 
   PositionInput._();
 
-  factory PositionInput([void updates(PositionInputBuilder b)]) = _$PositionInput;
+  factory PositionInput([void updates(PositionInputBuilder b)]) =
+      _$PositionInput;
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(PositionInputBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
-  static Serializer<PositionInput> get serializer => _$PositionInputSerializer();
+  static Serializer<PositionInput> get serializer =>
+      _$PositionInputSerializer();
 }
 
 class _$PositionInputSerializer implements PrimitiveSerializer<PositionInput> {
@@ -91,7 +94,9 @@ class _$PositionInputSerializer implements PrimitiveSerializer<PositionInput> {
     PositionInput object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
   }
 
   void _deserializeProperties(
@@ -169,4 +174,3 @@ class _$PositionInputSerializer implements PrimitiveSerializer<PositionInput> {
     return result.build();
   }
 }
-

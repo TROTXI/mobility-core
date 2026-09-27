@@ -14,10 +14,11 @@ part 'commute_slot_page.g.dart';
 /// CommuteSlotPage
 ///
 /// Properties:
-/// * [data] 
-/// * [page] 
+/// * [data]
+/// * [page]
 @BuiltValue()
-abstract class CommuteSlotPage implements Built<CommuteSlotPage, CommuteSlotPageBuilder> {
+abstract class CommuteSlotPage
+    implements Built<CommuteSlotPage, CommuteSlotPageBuilder> {
   @BuiltValueField(wireName: r'data')
   BuiltList<CommuteSlot> get data;
 
@@ -26,16 +27,19 @@ abstract class CommuteSlotPage implements Built<CommuteSlotPage, CommuteSlotPage
 
   CommuteSlotPage._();
 
-  factory CommuteSlotPage([void updates(CommuteSlotPageBuilder b)]) = _$CommuteSlotPage;
+  factory CommuteSlotPage([void updates(CommuteSlotPageBuilder b)]) =
+      _$CommuteSlotPage;
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(CommuteSlotPageBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
-  static Serializer<CommuteSlotPage> get serializer => _$CommuteSlotPageSerializer();
+  static Serializer<CommuteSlotPage> get serializer =>
+      _$CommuteSlotPageSerializer();
 }
 
-class _$CommuteSlotPageSerializer implements PrimitiveSerializer<CommuteSlotPage> {
+class _$CommuteSlotPageSerializer
+    implements PrimitiveSerializer<CommuteSlotPage> {
   @override
   final Iterable<Type> types = const [CommuteSlotPage, _$CommuteSlotPage];
 
@@ -65,7 +69,9 @@ class _$CommuteSlotPageSerializer implements PrimitiveSerializer<CommuteSlotPage
     CommuteSlotPage object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
   }
 
   void _deserializeProperties(
@@ -122,4 +128,3 @@ class _$CommuteSlotPageSerializer implements PrimitiveSerializer<CommuteSlotPage
     return result.build();
   }
 }
-

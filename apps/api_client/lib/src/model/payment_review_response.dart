@@ -12,26 +12,33 @@ part 'payment_review_response.g.dart';
 /// PaymentReviewResponse
 ///
 /// Properties:
-/// * [data] 
+/// * [data]
 @BuiltValue()
-abstract class PaymentReviewResponse implements Built<PaymentReviewResponse, PaymentReviewResponseBuilder> {
+abstract class PaymentReviewResponse
+    implements Built<PaymentReviewResponse, PaymentReviewResponseBuilder> {
   @BuiltValueField(wireName: r'data')
   PaymentReview get data;
 
   PaymentReviewResponse._();
 
-  factory PaymentReviewResponse([void updates(PaymentReviewResponseBuilder b)]) = _$PaymentReviewResponse;
+  factory PaymentReviewResponse(
+      [void updates(PaymentReviewResponseBuilder b)]) = _$PaymentReviewResponse;
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(PaymentReviewResponseBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
-  static Serializer<PaymentReviewResponse> get serializer => _$PaymentReviewResponseSerializer();
+  static Serializer<PaymentReviewResponse> get serializer =>
+      _$PaymentReviewResponseSerializer();
 }
 
-class _$PaymentReviewResponseSerializer implements PrimitiveSerializer<PaymentReviewResponse> {
+class _$PaymentReviewResponseSerializer
+    implements PrimitiveSerializer<PaymentReviewResponse> {
   @override
-  final Iterable<Type> types = const [PaymentReviewResponse, _$PaymentReviewResponse];
+  final Iterable<Type> types = const [
+    PaymentReviewResponse,
+    _$PaymentReviewResponse
+  ];
 
   @override
   final String wireName = r'PaymentReviewResponse';
@@ -54,7 +61,9 @@ class _$PaymentReviewResponseSerializer implements PrimitiveSerializer<PaymentRe
     PaymentReviewResponse object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
   }
 
   void _deserializeProperties(
@@ -104,4 +113,3 @@ class _$PaymentReviewResponseSerializer implements PrimitiveSerializer<PaymentRe
     return result.build();
   }
 }
-

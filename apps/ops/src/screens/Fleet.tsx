@@ -1,6 +1,6 @@
 import { Button, Input, Tab, TabList } from '@fluentui/react-components';
 import { AddRegular, ArrowClockwiseRegular, SearchRegular } from '@fluentui/react-icons';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import type { components } from '../generated/api';
 import { useAuth } from '../auth/AuthContext';
@@ -11,6 +11,39 @@ import { ActionDialog } from '../components/ActionDialog';
 
 type Driver = components['schemas']['Driver'];
 type Vehicle = components['schemas']['Vehicle'];
+type CredentialSecret = components['schemas']['CredentialSecret'];
+/**
+ * What ops is shown after issuing or resetting. When the PIN was emailed it is
+ * never held here at all; when it was not, it is shown once and dropped.
+ */
+type Issued = {
+  code: string;
+  pin: string | null;
+  emailedTo: string | null;
+  expiresAt: string;
+};
+
+/** Plain words for each sign-in email state. Nothing here confirms delivery. */
+export const EMAIL_STATE: Record<string, string> = {
+  queued: 'Queued. Waiting for the email worker; not sent yet.',
+  provider_accepted: 'Accepted by the email provider. Delivery to the inbox is not confirmed.',
+  cancelled: 'Cancelled. The PIN in it was replaced, or the address changed, before it was sent.',
+  failed:
+    'Rejected by the email provider. Check the address, then reset the PIN to send a new one.',
+  unknown: 'Outcome unknown after retries. Reset the PIN to send a fresh one.',
+};
+
+export function pinState(driver: Driver): string {
+  const credential = driver.credential;
+  if (!credential) return 'Not issued';
+  if (credential.status === 'suspended') return 'Suspended';
+  if (!credential.mustChangePin) return 'Private PIN set';
+  const until = credential.temporaryPinExpiresAt;
+  if (until && Date.parse(until) <= Date.now()) return 'Temporary PIN expired';
+  return until
+    ? `Temporary PIN until ${new Date(until).toLocaleString('en-GB', { timeZone: 'UTC' })} UTC`
+    : 'Temporary PIN';
+}
 type Mode =
   | 'driver-create'
   | 'driver-edit'
@@ -42,7 +75,16 @@ export function Fleet({ view = 'drivers' }: { view?: 'drivers' | 'vehicles' }) {
     'unlock',
   );
   const [reason, setReason] = useState('');
-  const [issuedSecret, setIssuedSecret] = useState<{ code: string; pin: string } | null>(null);
+  const [email, setEmail] = useState('');
+  const [onboardNow, setOnboardNow] = useState(true);
+  const [emailInstructions, setEmailInstructions] = useState(true);
+  const [issuedSecret, setIssuedSecret] = useState<Issued | null>(null);
+  // One key per dialog opening, reused by every retry of it: an uncertain
+  // network result can be retried without creating a second driver or PIN.
+  const [keys, setKeys] = useState({ primary: '', issue: '' });
+  // A driver created by this dialog whose onboarding step then failed. The
+  // retry continues from here instead of creating the driver again.
+  const [created, setCreated] = useState<Driver | null>(null);
 
   const query = useQuery<{ drivers: Driver[]; vehicles: Vehicle[] }>(
     async (signal) => {
@@ -65,9 +107,18 @@ export function Fleet({ view = 'drivers' }: { view?: 'drivers' | 'vehicles' }) {
     [session],
   );
 
+  // Keep the open driver in step with the register: after issuing or editing,
+  // its PIN state and edit token come from the refreshed row, not a stale copy.
+  const freshDrivers = query.data?.drivers;
+  useEffect(() => {
+    setSelectedDriver((current) =>
+      current ? (freshDrivers?.find((driver) => driver.id === current.id) ?? current) : current,
+    );
+  }, [freshDrivers]);
+
   const needle = search.trim().toLowerCase();
   const drivers = (query.data?.drivers ?? []).filter((driver) =>
-    [driver.name, driver.phone, driver.licenseNumber, driver.userId].some((value) =>
+    [driver.name, driver.phone, driver.email, driver.licenseNumber, driver.userId].some((value) =>
       value?.toLowerCase().includes(needle),
     ),
   );
@@ -81,15 +132,21 @@ export function Fleet({ view = 'drivers' }: { view?: 'drivers' | 'vehicles' }) {
     setMode(next);
     setReason('');
     setIssuedSecret(null);
+    setCreated(null);
+    setKeys({ primary: crypto.randomUUID(), issue: crypto.randomUUID() });
+    setEmailInstructions(next === 'driver-create' || !!selectedDriver?.email);
     if (next === 'driver-create') {
       setName('');
       setPhone('');
+      setEmail('');
+      setOnboardNow(true);
       setLicense('');
       setUserId('');
       setArchived(false);
     } else if (next === 'driver-edit' && selectedDriver) {
       setName(selectedDriver.name);
       setPhone(selectedDriver.phone ?? '');
+      setEmail(selectedDriver.email ?? '');
       setLicense(selectedDriver.licenseNumber ?? '');
       setUserId(selectedDriver.userId ?? '');
       setArchived(selectedDriver.archived);
@@ -171,7 +228,15 @@ export function Fleet({ view = 'drivers' }: { view?: 'drivers' | 'vehicles' }) {
         {query.loading ? (
           <LoadingRows />
         ) : tab === 'drivers' ? (
-          <DriverTable rows={drivers} selected={selectedDriver?.id} onSelect={setSelectedDriver} />
+          <DriverTable
+            rows={drivers}
+            selected={selectedDriver?.id}
+            onSelect={(driver) => {
+              setSelectedDriver(driver);
+              // A PIN shown for one driver never lingers beside another.
+              setIssuedSecret(null);
+            }}
+          />
         ) : (
           <VehicleTable
             rows={vehicles}
@@ -186,19 +251,43 @@ export function Fleet({ view = 'drivers' }: { view?: 'drivers' | 'vehicles' }) {
           <DrawerHeader title={selectedDriver.name} onClose={() => setSelectedDriver(null)} />
           <dl className="detail-grid">
             <Detail label="Phone" value={selectedDriver.phone ?? 'Not supplied'} />
+            <Detail label="Email" value={selectedDriver.email ?? 'Not supplied'} />
             <Detail label="Licence" value={selectedDriver.licenseNumber ?? 'Not supplied'} />
             <Detail
               label="App account"
               value={selectedDriver.userId ? 'Linked' : 'Invite pending'}
             />
             <Detail label="State" value={selectedDriver.archived ? 'Archived' : 'Operating'} />
+            <Detail
+              label="Driver code"
+              value={selectedDriver.credential?.driverCode ?? 'Not issued'}
+            />
+            <Detail label="PIN" value={pinState(selectedDriver)} />
+            <Detail
+              label="Sign-in email"
+              value={
+                selectedDriver.credentialEmail
+                  ? `${selectedDriver.credentialEmail.purpose === 'pin_reset' ? 'PIN reset' : 'Onboarding'}: ${EMAIL_STATE[selectedDriver.credentialEmail.state]}`
+                  : 'None sent'
+              }
+            />
           </dl>
+          <p className="dialog-note">
+            Old sign-in details are never resent: if an email did not arrive, reset the PIN. That
+            cancels the old message and emails a new temporary PIN. Operations never sees the PIN a
+            driver chooses.
+          </p>
           <div className="drawer-actions">
             <Button appearance="primary" onClick={() => open('driver-edit')}>
               Edit driver
             </Button>
-            <Button onClick={() => open('credential-issue')}>Issue credential</Button>
-            <Button onClick={() => open('credential-reset')}>Reset PIN</Button>
+            {selectedDriver.credential ? (
+              <Button onClick={() => open('credential-reset')}>
+                Reset PIN and email instructions
+              </Button>
+            ) : (
+              <Button onClick={() => open('credential-issue')}>Issue sign-in details</Button>
+            )}
             <Button onClick={() => open('credential-state')}>Credential state</Button>
           </div>
         </aside>
@@ -232,18 +321,38 @@ export function Fleet({ view = 'drivers' }: { view?: 'drivers' | 'vehicles' }) {
 
       {issuedSecret && (
         <div className="secret-reveal" role="status">
-          <div>
-            <span className="eyebrow">Show once</span>
-            <strong>Driver code {issuedSecret.code}</strong>
-            <strong>PIN {issuedSecret.pin}</strong>
-          </div>
-          <Button
-            onClick={() =>
-              navigator.clipboard.writeText(`${issuedSecret.code} ${issuedSecret.pin}`)
-            }
-          >
-            Copy
-          </Button>
+          {issuedSecret.emailedTo ? (
+            <div>
+              <span className="eyebrow">Email queued</span>
+              <strong>Driver code {issuedSecret.code}</strong>
+              <span>
+                The temporary PIN is queued for email to {issuedSecret.emailedTo}. Queued is not
+                sent: check the sign-in email status on the driver.
+              </span>
+            </div>
+          ) : (
+            <div>
+              <span className="eyebrow">Show once</span>
+              <strong>Driver code {issuedSecret.code}</strong>
+              <strong>Temporary PIN {issuedSecret.pin}</strong>
+              <span>
+                Give it to the driver directly. It works until{' '}
+                {new Date(issuedSecret.expiresAt).toLocaleString('en-GB', { timeZone: 'UTC' })} UTC,
+                and the driver must choose their own PIN after signing in.
+              </span>
+            </div>
+          )}
+          {issuedSecret.pin && (
+            <Button
+              onClick={() =>
+                void navigator.clipboard
+                  .writeText(`${issuedSecret.code} ${issuedSecret.pin}`)
+                  .catch(() => undefined)
+              }
+            >
+              Copy
+            </Button>
+          )}
           <Button appearance="subtle" onClick={() => setIssuedSecret(null)}>
             Dismiss
           </Button>
@@ -254,36 +363,88 @@ export function Fleet({ view = 'drivers' }: { view?: 'drivers' | 'vehicles' }) {
         open={mode !== null}
         title={title(mode)}
         confirmLabel={
-          mode?.includes('edit') ? 'Save' : mode?.includes('credential') ? 'Apply' : 'Create'
+          mode?.includes('edit')
+            ? 'Save'
+            : mode === 'driver-create'
+              ? created
+                ? 'Retry sign-in details'
+                : onboardNow
+                  ? 'Create and issue'
+                  : 'Create'
+              : mode?.includes('credential')
+                ? 'Apply'
+                : 'Create'
         }
         danger={
           (mode?.includes('edit') && archived) ||
           (mode === 'credential-state' && credentialAction === 'suspend')
         }
-        onClose={() => setMode(null)}
+        onClose={() => {
+          setMode(null);
+          // A driver created before onboarding failed is real: refresh so it
+          // shows, rather than leaving ops to create it again.
+          if (created) query.retry();
+        }}
         onConfirm={async () => {
           await submit();
           setMode(null);
           query.retry();
         }}
       >
+        {created && (
+          <p className="dialog-note" role="status">
+            {created.name} was created. Retrying issues the sign-in details only, to the details
+            shown, which are now fixed; the driver is not created again. To correct them, cancel and
+            use Edit driver, then issue from the driver panel.
+          </p>
+        )}
         {(mode === 'driver-create' || mode === 'driver-edit') && (
           <>
             <label>
               Name
-              <input required value={name} onChange={(event) => setName(event.target.value)} />
+              <input
+                required
+                value={name}
+                disabled={!!created}
+                onChange={(event) => setName(event.target.value)}
+              />
             </label>
             <label>
               Phone
-              <input value={phone} onChange={(event) => setPhone(event.target.value)} />
+              <input
+                value={phone}
+                disabled={!!created}
+                onChange={(event) => setPhone(event.target.value)}
+              />
             </label>
             <label>
+              Email for sign-in instructions
+              <input
+                type="email"
+                value={email}
+                disabled={!!created}
+                onChange={(event) => setEmail(event.target.value)}
+              />
+            </label>
+            <p className="dialog-note">
+              Operations uses this address to send the driver code and temporary PIN. It is not a
+              sign-in method and does not change the driver&apos;s account email.
+            </p>
+            <label>
               Licence number
-              <input value={license} onChange={(event) => setLicense(event.target.value)} />
+              <input
+                value={license}
+                disabled={!!created}
+                onChange={(event) => setLicense(event.target.value)}
+              />
             </label>
             <label>
               Linked user ID (optional)
-              <input value={userId} onChange={(event) => setUserId(event.target.value)} />
+              <input
+                value={userId}
+                disabled={!!created}
+                onChange={(event) => setUserId(event.target.value)}
+              />
             </label>
             {mode === 'driver-edit' && (
               <label className="check-row">
@@ -294,6 +455,30 @@ export function Fleet({ view = 'drivers' }: { view?: 'drivers' | 'vehicles' }) {
                 />
                 Archive driver
               </label>
+            )}
+            {mode === 'driver-create' && (
+              <>
+                <label className="check-row">
+                  <input
+                    type="checkbox"
+                    checked={onboardNow}
+                    disabled={!!created}
+                    onChange={(event) => setOnboardNow(event.target.checked)}
+                  />
+                  Issue a driver code and temporary PIN now
+                </label>
+                {onboardNow && (
+                  <label className="check-row">
+                    <input
+                      type="checkbox"
+                      checked={emailInstructions && !!email}
+                      disabled={!email}
+                      onChange={(event) => setEmailInstructions(event.target.checked)}
+                    />
+                    Email the sign-in instructions to this address
+                  </label>
+                )}
+              </>
             )}
           </>
         )}
@@ -345,8 +530,14 @@ export function Fleet({ view = 'drivers' }: { view?: 'drivers' | 'vehicles' }) {
         {mode === 'credential-issue' && (
           <>
             <p className="dialog-note">
-              Leave the code blank to generate both the driver code and a six-digit PIN.
+              Leave the code blank to generate both the driver code and a six-digit temporary PIN.
+              The driver must choose their own PIN after signing in.
             </p>
+            <EmailChoice
+              email={selectedDriver?.email ?? null}
+              checked={emailInstructions}
+              onChange={setEmailInstructions}
+            />
             <label>
               Preferred code (optional)
               <input
@@ -357,15 +548,26 @@ export function Fleet({ view = 'drivers' }: { view?: 'drivers' | 'vehicles' }) {
           </>
         )}
         {mode === 'credential-reset' && (
-          <label>
-            Reason
-            <textarea
-              rows={3}
-              required
-              value={reason}
-              onChange={(event) => setReason(event.target.value)}
+          <>
+            <p className="dialog-note">
+              The current PIN stops working, every signed-in device is signed out, and any earlier
+              sign-in email still waiting is cancelled. A suspended driver stays suspended.
+            </p>
+            <label>
+              Reason (kept in the audit log)
+              <textarea
+                rows={3}
+                required
+                value={reason}
+                onChange={(event) => setReason(event.target.value)}
+              />
+            </label>
+            <EmailChoice
+              email={selectedDriver?.email ?? null}
+              checked={emailInstructions}
+              onChange={setEmailInstructions}
             />
-          </label>
+          </>
         )}
         {mode === 'credential-state' && (
           <>
@@ -397,20 +599,61 @@ export function Fleet({ view = 'drivers' }: { view?: 'drivers' | 'vehicles' }) {
     </Page>
   );
 
+  function reveal(secret: CredentialSecret) {
+    setIssuedSecret({
+      code: secret.code,
+      pin: secret.email ? null : secret.pin,
+      emailedTo: secret.email?.to ?? null,
+      expiresAt: secret.temporaryPinExpiresAt,
+    });
+  }
+
+  async function issue(driver: Driver) {
+    const wantsEmail = emailInstructions && !!driver.email;
+    const response = await session.client.POST('/v1/ops/drivers/{id}/credentials', {
+      params: {
+        path: { id: driver.id },
+        header: { ...opsHeaders, 'Idempotency-Key': keys.issue },
+      },
+      body: {
+        ...(credentialCode && mode === 'credential-issue' ? { code: credentialCode } : {}),
+        ...(wantsEmail ? { emailInstructions: true } : {}),
+      },
+    });
+    if (response.error) throw new Error(response.error.error.message);
+    reveal(response.data.data);
+  }
+
   async function submit() {
-    const key = crypto.randomUUID();
-    const mutation = { ...opsHeaders, 'Idempotency-Key': key };
+    const mutation = { ...opsHeaders, 'Idempotency-Key': keys.primary };
     if (mode === 'driver-create') {
-      const response = await session.client.POST('/v1/ops/drivers', {
-        params: { header: mutation },
-        body: {
-          name,
-          ...(phone ? { phone } : {}),
-          ...(license ? { licenseNumber: license } : {}),
-          ...(userId ? { userId } : {}),
-        },
-      });
-      if (response.error) throw new Error(response.error.error.message);
+      let driver = created;
+      if (!driver) {
+        const response = await session.client.POST('/v1/ops/drivers', {
+          params: { header: mutation },
+          body: {
+            name,
+            ...(phone ? { phone } : {}),
+            ...(email ? { email } : {}),
+            ...(license ? { licenseNumber: license } : {}),
+            ...(userId ? { userId } : {}),
+          },
+        });
+        if (response.error) throw new Error(response.error.error.message);
+        driver = response.data.data;
+        setSelectedDriver(driver);
+      }
+      if (!onboardNow) return;
+      try {
+        await issue(driver);
+      } catch (error) {
+        setCreated(driver);
+        throw new Error(
+          `${driver.name} was created, but issuing sign-in details failed: ${
+            error instanceof Error ? error.message : 'unknown error'
+          } Retry to issue them.`,
+        );
+      }
     } else if (mode === 'driver-edit' && selectedDriver) {
       const response = await session.client.PATCH('/v1/ops/drivers/{id}', {
         params: {
@@ -420,6 +663,7 @@ export function Fleet({ view = 'drivers' }: { view?: 'drivers' | 'vehicles' }) {
         body: {
           name,
           phone: phone || null,
+          email: email || null,
           licenseNumber: license || null,
           userId: userId || null,
           archived,
@@ -449,19 +693,15 @@ export function Fleet({ view = 'drivers' }: { view?: 'drivers' | 'vehicles' }) {
       });
       if (response.error) throw new Error(response.error.error.message);
     } else if (mode === 'credential-issue' && selectedDriver) {
-      const response = await session.client.POST('/v1/ops/drivers/{id}/credentials', {
-        params: { path: { id: selectedDriver.id }, header: mutation },
-        body: credentialCode ? { code: credentialCode } : {},
-      });
-      if (response.error) throw new Error(response.error.error.message);
-      setIssuedSecret(response.data.data);
+      await issue(selectedDriver);
     } else if (mode === 'credential-reset' && selectedDriver) {
+      const wantsEmail = emailInstructions && !!selectedDriver.email;
       const response = await session.client.POST('/v1/ops/drivers/{id}/credentials/reset-pin', {
         params: { path: { id: selectedDriver.id }, header: mutation },
-        body: { reason },
+        body: { reason, ...(wantsEmail ? { emailInstructions: true } : {}) },
       });
       if (response.error) throw new Error(response.error.error.message);
-      setIssuedSecret(response.data.data);
+      reveal(response.data.data);
     } else if (mode === 'credential-state' && selectedDriver) {
       const response = await session.client.POST('/v1/ops/drivers/{id}/credentials/actions', {
         params: { path: { id: selectedDriver.id }, header: mutation },
@@ -491,6 +731,7 @@ function DriverTable({
             <th>Phone</th>
             <th>Licence</th>
             <th>Account</th>
+            <th>Sign-in</th>
             <th>Status</th>
             <th />
           </tr>
@@ -506,6 +747,19 @@ function DriverTable({
               <td>{row.licenseNumber ?? '—'}</td>
               <td>
                 <StatusBadge value={row.userId ? 'linked' : 'invite'} />
+              </td>
+              <td>
+                <StatusBadge
+                  value={
+                    !row.credential
+                      ? 'not_issued'
+                      : row.credential.status === 'suspended'
+                        ? 'suspended'
+                        : row.credential.mustChangePin
+                          ? 'temporary_pin'
+                          : 'pin_set'
+                  }
+                />
               </td>
               <td>
                 <StatusBadge value={row.archived ? 'archived' : 'operating'} />
@@ -613,4 +867,33 @@ function title(mode: Mode | null) {
       'vehicle-edit': 'Edit vehicle',
     } satisfies Record<Mode, string>
   )[mode];
+}
+
+/** Offer email only where there is an address to send to, and say why not. */
+function EmailChoice({
+  email,
+  checked,
+  onChange,
+}: {
+  email: string | null;
+  checked: boolean;
+  onChange: (value: boolean) => void;
+}) {
+  if (!email)
+    return (
+      <p className="dialog-note">
+        This driver has no email address. Add one with Edit driver to email the details; otherwise
+        the temporary PIN is shown here once.
+      </p>
+    );
+  return (
+    <label className="check-row">
+      <input
+        type="checkbox"
+        checked={checked}
+        onChange={(event) => onChange(event.target.checked)}
+      />
+      Email the driver code and temporary PIN to {email}
+    </label>
+  );
 }

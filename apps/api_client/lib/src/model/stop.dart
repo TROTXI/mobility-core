@@ -12,14 +12,14 @@ part 'stop.g.dart';
 /// Stop
 ///
 /// Properties:
-/// * [id] 
-/// * [name] 
-/// * [location] 
-/// * [archived] 
-/// * [editToken] 
-/// * [createdAt] 
-/// * [updatedAt] 
-/// * [version] 
+/// * [id]
+/// * [name]
+/// * [location]
+/// * [archived]
+/// * [editToken]
+/// * [createdAt]
+/// * [updatedAt]
+/// * [version]
 @BuiltValue()
 abstract class Stop implements Built<Stop, StopBuilder> {
   @BuiltValueField(wireName: r'id')
@@ -117,7 +117,9 @@ class _$StopSerializer implements PrimitiveSerializer<Stop> {
     Stop object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
   }
 
   void _deserializeProperties(
@@ -216,4 +218,3 @@ class _$StopSerializer implements PrimitiveSerializer<Stop> {
     return result.build();
   }
 }
-

@@ -11,10 +11,11 @@ part 'publish_version_input.g.dart';
 /// PublishVersionInput
 ///
 /// Properties:
-/// * [reason] 
-/// * [effectiveFrom] 
+/// * [reason]
+/// * [effectiveFrom]
 @BuiltValue()
-abstract class PublishVersionInput implements Built<PublishVersionInput, PublishVersionInputBuilder> {
+abstract class PublishVersionInput
+    implements Built<PublishVersionInput, PublishVersionInputBuilder> {
   @BuiltValueField(wireName: r'reason')
   String get reason;
 
@@ -23,18 +24,24 @@ abstract class PublishVersionInput implements Built<PublishVersionInput, Publish
 
   PublishVersionInput._();
 
-  factory PublishVersionInput([void updates(PublishVersionInputBuilder b)]) = _$PublishVersionInput;
+  factory PublishVersionInput([void updates(PublishVersionInputBuilder b)]) =
+      _$PublishVersionInput;
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(PublishVersionInputBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
-  static Serializer<PublishVersionInput> get serializer => _$PublishVersionInputSerializer();
+  static Serializer<PublishVersionInput> get serializer =>
+      _$PublishVersionInputSerializer();
 }
 
-class _$PublishVersionInputSerializer implements PrimitiveSerializer<PublishVersionInput> {
+class _$PublishVersionInputSerializer
+    implements PrimitiveSerializer<PublishVersionInput> {
   @override
-  final Iterable<Type> types = const [PublishVersionInput, _$PublishVersionInput];
+  final Iterable<Type> types = const [
+    PublishVersionInput,
+    _$PublishVersionInput
+  ];
 
   @override
   final String wireName = r'PublishVersionInput';
@@ -62,7 +69,9 @@ class _$PublishVersionInputSerializer implements PrimitiveSerializer<PublishVers
     PublishVersionInput object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
   }
 
   void _deserializeProperties(
@@ -119,4 +128,3 @@ class _$PublishVersionInputSerializer implements PrimitiveSerializer<PublishVers
     return result.build();
   }
 }
-

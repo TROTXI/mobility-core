@@ -14,8 +14,8 @@ part 'stop_page.g.dart';
 /// StopPage
 ///
 /// Properties:
-/// * [data] 
-/// * [page] 
+/// * [data]
+/// * [page]
 @BuiltValue()
 abstract class StopPage implements Built<StopPage, StopPageBuilder> {
   @BuiltValueField(wireName: r'data')
@@ -65,7 +65,9 @@ class _$StopPageSerializer implements PrimitiveSerializer<StopPage> {
     StopPage object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
   }
 
   void _deserializeProperties(
@@ -122,4 +124,3 @@ class _$StopPageSerializer implements PrimitiveSerializer<StopPage> {
     return result.build();
   }
 }
-

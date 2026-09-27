@@ -14,10 +14,11 @@ part 'purchase_page.g.dart';
 /// PurchasePage
 ///
 /// Properties:
-/// * [data] 
-/// * [page] 
+/// * [data]
+/// * [page]
 @BuiltValue()
-abstract class PurchasePage implements Built<PurchasePage, PurchasePageBuilder> {
+abstract class PurchasePage
+    implements Built<PurchasePage, PurchasePageBuilder> {
   @BuiltValueField(wireName: r'data')
   BuiltList<Purchase> get data;
 
@@ -65,7 +66,9 @@ class _$PurchasePageSerializer implements PrimitiveSerializer<PurchasePage> {
     PurchasePage object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
   }
 
   void _deserializeProperties(
@@ -122,4 +125,3 @@ class _$PurchasePageSerializer implements PrimitiveSerializer<PurchasePage> {
     return result.build();
   }
 }
-

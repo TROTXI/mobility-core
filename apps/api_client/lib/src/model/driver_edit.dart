@@ -11,11 +11,12 @@ part 'driver_edit.g.dart';
 /// DriverEdit
 ///
 /// Properties:
-/// * [name] 
-/// * [phone] 
-/// * [licenseNumber] 
-/// * [userId] 
-/// * [archived] 
+/// * [name]
+/// * [phone]
+/// * [email]
+/// * [licenseNumber]
+/// * [userId]
+/// * [archived]
 @BuiltValue()
 abstract class DriverEdit implements Built<DriverEdit, DriverEditBuilder> {
   @BuiltValueField(wireName: r'name')
@@ -23,6 +24,9 @@ abstract class DriverEdit implements Built<DriverEdit, DriverEditBuilder> {
 
   @BuiltValueField(wireName: r'phone')
   String? get phone;
+
+  @BuiltValueField(wireName: r'email')
+  String? get email;
 
   @BuiltValueField(wireName: r'licenseNumber')
   String? get licenseNumber;
@@ -70,6 +74,13 @@ class _$DriverEditSerializer implements PrimitiveSerializer<DriverEdit> {
         specifiedType: const FullType.nullable(String),
       );
     }
+    if (object.email != null) {
+      yield r'email';
+      yield serializers.serialize(
+        object.email,
+        specifiedType: const FullType.nullable(String),
+      );
+    }
     if (object.licenseNumber != null) {
       yield r'licenseNumber';
       yield serializers.serialize(
@@ -99,7 +110,9 @@ class _$DriverEditSerializer implements PrimitiveSerializer<DriverEdit> {
     DriverEdit object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
   }
 
   void _deserializeProperties(
@@ -128,6 +141,14 @@ class _$DriverEditSerializer implements PrimitiveSerializer<DriverEdit> {
           ) as String?;
           if (valueDes == null) continue;
           result.phone = valueDes;
+          break;
+        case r'email':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType.nullable(String),
+          ) as String?;
+          if (valueDes == null) continue;
+          result.email = valueDes;
           break;
         case r'licenseNumber':
           final valueDes = serializers.deserialize(
@@ -180,4 +201,3 @@ class _$DriverEditSerializer implements PrimitiveSerializer<DriverEdit> {
     return result.build();
   }
 }
-

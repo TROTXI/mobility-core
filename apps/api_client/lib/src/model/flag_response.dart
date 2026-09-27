@@ -12,9 +12,10 @@ part 'flag_response.g.dart';
 /// FlagResponse
 ///
 /// Properties:
-/// * [data] 
+/// * [data]
 @BuiltValue()
-abstract class FlagResponse implements Built<FlagResponse, FlagResponseBuilder> {
+abstract class FlagResponse
+    implements Built<FlagResponse, FlagResponseBuilder> {
   @BuiltValueField(wireName: r'data')
   Flag get data;
 
@@ -54,7 +55,9 @@ class _$FlagResponseSerializer implements PrimitiveSerializer<FlagResponse> {
     FlagResponse object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
   }
 
   void _deserializeProperties(
@@ -104,4 +107,3 @@ class _$FlagResponseSerializer implements PrimitiveSerializer<FlagResponse> {
     return result.build();
   }
 }
-

@@ -14,10 +14,11 @@ part 'pattern_version_input.g.dart';
 /// PatternVersionInput
 ///
 /// Properties:
-/// * [stops] 
-/// * [geometry] 
+/// * [stops]
+/// * [geometry]
 @BuiltValue()
-abstract class PatternVersionInput implements Built<PatternVersionInput, PatternVersionInputBuilder> {
+abstract class PatternVersionInput
+    implements Built<PatternVersionInput, PatternVersionInputBuilder> {
   @BuiltValueField(wireName: r'stops')
   BuiltList<PatternVersionInputStopsInner> get stops;
 
@@ -26,18 +27,24 @@ abstract class PatternVersionInput implements Built<PatternVersionInput, Pattern
 
   PatternVersionInput._();
 
-  factory PatternVersionInput([void updates(PatternVersionInputBuilder b)]) = _$PatternVersionInput;
+  factory PatternVersionInput([void updates(PatternVersionInputBuilder b)]) =
+      _$PatternVersionInput;
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(PatternVersionInputBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
-  static Serializer<PatternVersionInput> get serializer => _$PatternVersionInputSerializer();
+  static Serializer<PatternVersionInput> get serializer =>
+      _$PatternVersionInputSerializer();
 }
 
-class _$PatternVersionInputSerializer implements PrimitiveSerializer<PatternVersionInput> {
+class _$PatternVersionInputSerializer
+    implements PrimitiveSerializer<PatternVersionInput> {
   @override
-  final Iterable<Type> types = const [PatternVersionInput, _$PatternVersionInput];
+  final Iterable<Type> types = const [
+    PatternVersionInput,
+    _$PatternVersionInput
+  ];
 
   @override
   final String wireName = r'PatternVersionInput';
@@ -50,7 +57,8 @@ class _$PatternVersionInputSerializer implements PrimitiveSerializer<PatternVers
     yield r'stops';
     yield serializers.serialize(
       object.stops,
-      specifiedType: const FullType(BuiltList, [FullType(PatternVersionInputStopsInner)]),
+      specifiedType:
+          const FullType(BuiltList, [FullType(PatternVersionInputStopsInner)]),
     );
     yield r'geometry';
     yield serializers.serialize(
@@ -65,7 +73,9 @@ class _$PatternVersionInputSerializer implements PrimitiveSerializer<PatternVers
     PatternVersionInput object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
   }
 
   void _deserializeProperties(
@@ -83,7 +93,8 @@ class _$PatternVersionInputSerializer implements PrimitiveSerializer<PatternVers
         case r'stops':
           final valueDes = serializers.deserialize(
             value,
-            specifiedType: const FullType(BuiltList, [FullType(PatternVersionInputStopsInner)]),
+            specifiedType: const FullType(
+                BuiltList, [FullType(PatternVersionInputStopsInner)]),
           ) as BuiltList<PatternVersionInputStopsInner>;
           result.stops.replace(valueDes);
           break;
@@ -122,4 +133,3 @@ class _$PatternVersionInputSerializer implements PrimitiveSerializer<PatternVers
     return result.build();
   }
 }
-

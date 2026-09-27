@@ -50,10 +50,10 @@ import 'package:trotxi_api_client/trotxi_api_client.dart';
 final api = TrotxiApiClient().getDriverAssignedOrOwnApi();
 final String id = id_example; // String | 
 final String idempotencyKey = idempotencyKey_example; // String | Caller + operation + target scoped; payload mismatch = 409. Never log secrets.
-final String xTrotxiClient = xTrotxiClient_example; // String | Compatibility metadata only, never grants a role.
-final int xTrotxiBuild = 56; // int | Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
+final String xTrotxiClient = driver; // String | Compatibility metadata only, never grants a role.
+final int xTrotxiBuild = 1; // int | Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
 final BoardingInput boardingInput = ; // BoardingInput | 
-final String xTrotxiPlatform = xTrotxiPlatform_example; // String | Required for commuter/driver, absent for ops/worker.
+final String xTrotxiPlatform = ios; // String | Required for commuter/driver, absent for ops/worker.
 
 try {
     final response = await api.boardRider(id, idempotencyKey, xTrotxiClient, xTrotxiBuild, boardingInput, xTrotxiPlatform);
@@ -107,9 +107,13 @@ Class | Method | HTTP request | Description
 [*OpsApi*](doc/OpsApi.md) | [**decideCommuteRequest**](doc/OpsApi.md#decidecommuterequest) | **POST** /v1/ops/commute-requests/{id}/decisions | decide Commute Request
 [*OpsApi*](doc/OpsApi.md) | [**decideDriverRequest**](doc/OpsApi.md#decidedriverrequest) | **POST** /v1/ops/driver-requests/{id}/decisions | decide Driver Request
 [*OpsApi*](doc/OpsApi.md) | [**decideIncident**](doc/OpsApi.md#decideincident) | **POST** /v1/ops/incidents/{id}/decisions | decide Incident
+[*OpsApi*](doc/OpsApi.md) | [**getOpsManifest**](doc/OpsApi.md#getopsmanifest) | **GET** /v1/ops/trips/{id}/manifest | get Ops Manifest
 [*OpsApi*](doc/OpsApi.md) | [**getOpsOverview**](doc/OpsApi.md#getopsoverview) | **GET** /v1/ops/overview | get Ops Overview
 [*OpsApi*](doc/OpsApi.md) | [**getOpsPatternVersion**](doc/OpsApi.md#getopspatternversion) | **GET** /v1/ops/route-patterns/{id}/versions/{versionId} | get Ops Pattern Version
 [*OpsApi*](doc/OpsApi.md) | [**getOpsPurchase**](doc/OpsApi.md#getopspurchase) | **GET** /v1/ops/purchases/{id} | get Ops Purchase
+[*OpsApi*](doc/OpsApi.md) | [**getOpsReportSummary**](doc/OpsApi.md#getopsreportsummary) | **GET** /v1/ops/reports/summary | get Ops Report Summary
+[*OpsApi*](doc/OpsApi.md) | [**getOpsRiderDetail**](doc/OpsApi.md#getopsriderdetail) | **GET** /v1/ops/riders/{id} | get Ops Rider Detail
+[*OpsApi*](doc/OpsApi.md) | [**getOpsRiderSummary**](doc/OpsApi.md#getopsridersummary) | **GET** /v1/ops/riders/summary | get Ops Rider Summary
 [*OpsApi*](doc/OpsApi.md) | [**initiateRefund**](doc/OpsApi.md#initiaterefund) | **POST** /v1/ops/purchases/{id}/refunds | initiate Refund
 [*OpsApi*](doc/OpsApi.md) | [**issueDriverCredential**](doc/OpsApi.md#issuedrivercredential) | **POST** /v1/ops/drivers/{id}/credentials | issue Driver Credential
 [*OpsApi*](doc/OpsApi.md) | [**listCommuteEvents**](doc/OpsApi.md#listcommuteevents) | **GET** /v1/ops/commute-requests/{id}/events | list Commute Events
@@ -117,11 +121,15 @@ Class | Method | HTTP request | Description
 [*OpsApi*](doc/OpsApi.md) | [**listFares**](doc/OpsApi.md#listfares) | **GET** /v1/ops/routes/{id}/fares | list Fares
 [*OpsApi*](doc/OpsApi.md) | [**listFlags**](doc/OpsApi.md#listflags) | **GET** /v1/ops/flags | list Flags
 [*OpsApi*](doc/OpsApi.md) | [**listMinimumVersions**](doc/OpsApi.md#listminimumversions) | **GET** /v1/ops/min-versions | list Minimum Versions
+[*OpsApi*](doc/OpsApi.md) | [**listOpsAuditEvents**](doc/OpsApi.md#listopsauditevents) | **GET** /v1/ops/audit-events | list Ops Audit Events
 [*OpsApi*](doc/OpsApi.md) | [**listOpsCommuteRequests**](doc/OpsApi.md#listopscommuterequests) | **GET** /v1/ops/commute-requests | list Ops Commute Requests
+[*OpsApi*](doc/OpsApi.md) | [**listOpsDeliveries**](doc/OpsApi.md#listopsdeliveries) | **GET** /v1/ops/deliveries | list Ops Deliveries
 [*OpsApi*](doc/OpsApi.md) | [**listOpsDriverRequests**](doc/OpsApi.md#listopsdriverrequests) | **GET** /v1/ops/driver-requests | list Ops Driver Requests
 [*OpsApi*](doc/OpsApi.md) | [**listOpsDrivers**](doc/OpsApi.md#listopsdrivers) | **GET** /v1/ops/drivers | list Ops Drivers
 [*OpsApi*](doc/OpsApi.md) | [**listOpsIncidents**](doc/OpsApi.md#listopsincidents) | **GET** /v1/ops/incidents | list Ops Incidents
+[*OpsApi*](doc/OpsApi.md) | [**listOpsOperators**](doc/OpsApi.md#listopsoperators) | **GET** /v1/ops/operators | list Ops Operators
 [*OpsApi*](doc/OpsApi.md) | [**listOpsPurchases**](doc/OpsApi.md#listopspurchases) | **GET** /v1/ops/purchases | list Ops Purchases
+[*OpsApi*](doc/OpsApi.md) | [**listOpsRiders**](doc/OpsApi.md#listopsriders) | **GET** /v1/ops/riders | list Ops Riders
 [*OpsApi*](doc/OpsApi.md) | [**listOpsRoutes**](doc/OpsApi.md#listopsroutes) | **GET** /v1/ops/routes | list Ops Routes
 [*OpsApi*](doc/OpsApi.md) | [**listOpsStops**](doc/OpsApi.md#listopsstops) | **GET** /v1/ops/stops | list Ops Stops
 [*OpsApi*](doc/OpsApi.md) | [**listOpsTrips**](doc/OpsApi.md#listopstrips) | **GET** /v1/ops/trips | list Ops Trips
@@ -138,6 +146,7 @@ Class | Method | HTTP request | Description
 [*OpsApi*](doc/OpsApi.md) | [**releaseTraceHold**](doc/OpsApi.md#releasetracehold) | **POST** /v1/ops/trace-holds/{id}/release | release Trace Hold
 [*OpsApi*](doc/OpsApi.md) | [**rescheduleTrip**](doc/OpsApi.md#rescheduletrip) | **PATCH** /v1/ops/trips/{id} | reschedule Trip
 [*OpsApi*](doc/OpsApi.md) | [**resetDriverPin**](doc/OpsApi.md#resetdriverpin) | **POST** /v1/ops/drivers/{id}/credentials/reset-pin | reset Driver Pin
+[*OpsApi*](doc/OpsApi.md) | [**resetOperatorPasskeys**](doc/OpsApi.md#resetoperatorpasskeys) | **POST** /v1/ops/users/{id}/passkeys/reset | reset Operator Passkeys
 [*OpsApi*](doc/OpsApi.md) | [**resolvePaymentReview**](doc/OpsApi.md#resolvepaymentreview) | **POST** /v1/ops/payments/reviews/{id}/decisions | resolve Payment Review
 [*OpsApi*](doc/OpsApi.md) | [**retireCommuteSlot**](doc/OpsApi.md#retirecommuteslot) | **POST** /v1/ops/commute-slots/{id}/retire | retire Commute Slot
 [*OpsApi*](doc/OpsApi.md) | [**runPersonalPauseResumes**](doc/OpsApi.md#runpersonalpauseresumes) | **POST** /v1/ops/maintenance/personal-pause-resumes | run Personal Pause Resumes
@@ -182,6 +191,7 @@ Class | Method | HTTP request | Description
 [*RiderOwnApi*](doc/RiderOwnApi.md) | [**getMembership**](doc/RiderOwnApi.md#getmembership) | **GET** /v1/me/membership | get Membership
 [*RiderOwnApi*](doc/RiderOwnApi.md) | [**getPersonalPause**](doc/RiderOwnApi.md#getpersonalpause) | **GET** /v1/me/membership/pause | get Personal Pause
 [*RiderOwnApi*](doc/RiderOwnApi.md) | [**getPurchase**](doc/RiderOwnApi.md#getpurchase) | **GET** /v1/me/purchases/{id} | get Purchase
+[*RiderOwnApi*](doc/RiderOwnApi.md) | [**getReservation**](doc/RiderOwnApi.md#getreservation) | **GET** /v1/me/reservations/{id} | get Reservation
 [*RiderOwnApi*](doc/RiderOwnApi.md) | [**issuePass**](doc/RiderOwnApi.md#issuepass) | **POST** /v1/me/reservations/{id}/pass | issue Pass
 [*RiderOwnApi*](doc/RiderOwnApi.md) | [**listCommuteRequests**](doc/RiderOwnApi.md#listcommuterequests) | **GET** /v1/me/commute-requests | list Commute Requests
 [*RiderOwnApi*](doc/RiderOwnApi.md) | [**listCreditEntries**](doc/RiderOwnApi.md#listcreditentries) | **GET** /v1/me/credit-entries | list Credit Entries
@@ -194,11 +204,16 @@ Class | Method | HTTP request | Description
 [*RiderOwnApi*](doc/RiderOwnApi.md) | [**withdrawCommuteRequest**](doc/RiderOwnApi.md#withdrawcommuterequest) | **POST** /v1/me/commute-requests/{id}/withdraw | withdraw Commute Request
 [*SelfApi*](doc/SelfApi.md) | [**deleteAvatar**](doc/SelfApi.md#deleteavatar) | **DELETE** /v1/me/avatar | delete Avatar
 [*SelfApi*](doc/SelfApi.md) | [**eraseAccount**](doc/SelfApi.md#eraseaccount) | **DELETE** /v1/me | erase Account
+[*SelfApi*](doc/SelfApi.md) | [**finishPasskeyAuthentication**](doc/SelfApi.md#finishpasskeyauthentication) | **POST** /v1/auth/passkeys/authentication/verification | finish Passkey Authentication
+[*SelfApi*](doc/SelfApi.md) | [**finishPasskeyRegistration**](doc/SelfApi.md#finishpasskeyregistration) | **POST** /v1/auth/passkeys/registration/verification | finish Passkey Registration
 [*SelfApi*](doc/SelfApi.md) | [**getAccount**](doc/SelfApi.md#getaccount) | **GET** /v1/me | get Account
 [*SelfApi*](doc/SelfApi.md) | [**getAvatar**](doc/SelfApi.md#getavatar) | **GET** /v1/me/avatar | get Avatar
+[*SelfApi*](doc/SelfApi.md) | [**getPasskeyStatus**](doc/SelfApi.md#getpasskeystatus) | **GET** /v1/auth/passkeys | get Passkey Status
 [*SelfApi*](doc/SelfApi.md) | [**listSessions**](doc/SelfApi.md#listsessions) | **GET** /v1/me/sessions | list Sessions
 [*SelfApi*](doc/SelfApi.md) | [**registerDevice**](doc/SelfApi.md#registerdevice) | **POST** /v1/me/devices | register Device
 [*SelfApi*](doc/SelfApi.md) | [**revokeSession**](doc/SelfApi.md#revokesession) | **DELETE** /v1/me/sessions/{id} | revoke Session
+[*SelfApi*](doc/SelfApi.md) | [**startPasskeyAuthentication**](doc/SelfApi.md#startpasskeyauthentication) | **POST** /v1/auth/passkeys/authentication/options | start Passkey Authentication
+[*SelfApi*](doc/SelfApi.md) | [**startPasskeyRegistration**](doc/SelfApi.md#startpasskeyregistration) | **POST** /v1/auth/passkeys/registration/options | start Passkey Registration
 [*SelfApi*](doc/SelfApi.md) | [**updateAccount**](doc/SelfApi.md#updateaccount) | **PATCH** /v1/me | update Account
 [*SelfApi*](doc/SelfApi.md) | [**uploadAvatar**](doc/SelfApi.md#uploadavatar) | **PUT** /v1/me/avatar | upload Avatar
 [*SignedInCatalogApi*](doc/SignedInCatalogApi.md) | [**getTrip**](doc/SignedInCatalogApi.md#gettrip) | **GET** /v1/trips/{id} | get Trip
@@ -248,6 +263,7 @@ Class | Method | HTTP request | Description
  - [CredentialAction](doc/CredentialAction.md)
  - [CredentialIssue](doc/CredentialIssue.md)
  - [CredentialSecret](doc/CredentialSecret.md)
+ - [CredentialSecretEmail](doc/CredentialSecretEmail.md)
  - [CredentialSecretResponse](doc/CredentialSecretResponse.md)
  - [CreditEntry](doc/CreditEntry.md)
  - [CreditEntryPage](doc/CreditEntryPage.md)
@@ -257,6 +273,8 @@ Class | Method | HTTP request | Description
  - [DeviceInput](doc/DeviceInput.md)
  - [DeviceResponse](doc/DeviceResponse.md)
  - [Driver](doc/Driver.md)
+ - [DriverCredential](doc/DriverCredential.md)
+ - [DriverCredentialEmail](doc/DriverCredentialEmail.md)
  - [DriverEdit](doc/DriverEdit.md)
  - [DriverInput](doc/DriverInput.md)
  - [DriverPage](doc/DriverPage.md)
@@ -315,14 +333,21 @@ Class | Method | HTTP request | Description
  - [MinimumVersionPage](doc/MinimumVersionPage.md)
  - [MinimumVersionResponse](doc/MinimumVersionResponse.md)
  - [Money](doc/Money.md)
+ - [OpsAuditEvent](doc/OpsAuditEvent.md)
+ - [OpsAuditEventPage](doc/OpsAuditEventPage.md)
  - [OpsCommuteRequest](doc/OpsCommuteRequest.md)
  - [OpsCommuteRequestPage](doc/OpsCommuteRequestPage.md)
  - [OpsCommuteRequestResponse](doc/OpsCommuteRequestResponse.md)
+ - [OpsDelivery](doc/OpsDelivery.md)
+ - [OpsDeliveryPage](doc/OpsDeliveryPage.md)
  - [OpsIncident](doc/OpsIncident.md)
  - [OpsIncidentPage](doc/OpsIncidentPage.md)
  - [OpsIncidentResponse](doc/OpsIncidentResponse.md)
+ - [OpsOperator](doc/OpsOperator.md)
+ - [OpsOperatorPage](doc/OpsOperatorPage.md)
  - [OpsOverview](doc/OpsOverview.md)
  - [OpsOverviewResponse](doc/OpsOverviewResponse.md)
+ - [OpsOverviewTiles](doc/OpsOverviewTiles.md)
  - [OpsOverviewTripsInner](doc/OpsOverviewTripsInner.md)
  - [OpsPurchase](doc/OpsPurchase.md)
  - [OpsPurchaseAttemptsInner](doc/OpsPurchaseAttemptsInner.md)
@@ -330,6 +355,21 @@ Class | Method | HTTP request | Description
  - [OpsPurchaseCheckout](doc/OpsPurchaseCheckout.md)
  - [OpsPurchasePage](doc/OpsPurchasePage.md)
  - [OpsPurchaseResponse](doc/OpsPurchaseResponse.md)
+ - [OpsReportSummary](doc/OpsReportSummary.md)
+ - [OpsReportSummaryDelivery](doc/OpsReportSummaryDelivery.md)
+ - [OpsReportSummaryPayments](doc/OpsReportSummaryPayments.md)
+ - [OpsReportSummaryResponse](doc/OpsReportSummaryResponse.md)
+ - [OpsReportSummaryRiders](doc/OpsReportSummaryRiders.md)
+ - [OpsReportSummaryTrips](doc/OpsReportSummaryTrips.md)
+ - [OpsRider](doc/OpsRider.md)
+ - [OpsRiderDetail](doc/OpsRiderDetail.md)
+ - [OpsRiderDetailMembership](doc/OpsRiderDetailMembership.md)
+ - [OpsRiderDetailPurchasesInner](doc/OpsRiderDetailPurchasesInner.md)
+ - [OpsRiderDetailReservationsInner](doc/OpsRiderDetailReservationsInner.md)
+ - [OpsRiderDetailResponse](doc/OpsRiderDetailResponse.md)
+ - [OpsRiderPage](doc/OpsRiderPage.md)
+ - [OpsRiderSummary](doc/OpsRiderSummary.md)
+ - [OpsRiderSummaryResponse](doc/OpsRiderSummaryResponse.md)
  - [OpsTrip](doc/OpsTrip.md)
  - [OpsTripPage](doc/OpsTripPage.md)
  - [OpsTripResponse](doc/OpsTripResponse.md)
@@ -340,6 +380,21 @@ Class | Method | HTTP request | Description
  - [OptionalPersonalPauseResponse](doc/OptionalPersonalPauseResponse.md)
  - [Pass](doc/Pass.md)
  - [PassResponse](doc/PassResponse.md)
+ - [PasskeyAuthenticationOptions](doc/PasskeyAuthenticationOptions.md)
+ - [PasskeyAuthenticationOptionsAllowCredentialsInner](doc/PasskeyAuthenticationOptionsAllowCredentialsInner.md)
+ - [PasskeyAuthenticationOptionsResponse](doc/PasskeyAuthenticationOptionsResponse.md)
+ - [PasskeyAuthenticationResponse](doc/PasskeyAuthenticationResponse.md)
+ - [PasskeyAuthenticationResponseResponse](doc/PasskeyAuthenticationResponseResponse.md)
+ - [PasskeyRegistrationOptions](doc/PasskeyRegistrationOptions.md)
+ - [PasskeyRegistrationOptionsAuthenticatorSelection](doc/PasskeyRegistrationOptionsAuthenticatorSelection.md)
+ - [PasskeyRegistrationOptionsPubKeyCredParamsInner](doc/PasskeyRegistrationOptionsPubKeyCredParamsInner.md)
+ - [PasskeyRegistrationOptionsResponse](doc/PasskeyRegistrationOptionsResponse.md)
+ - [PasskeyRegistrationOptionsRp](doc/PasskeyRegistrationOptionsRp.md)
+ - [PasskeyRegistrationOptionsUser](doc/PasskeyRegistrationOptionsUser.md)
+ - [PasskeyRegistrationResponse](doc/PasskeyRegistrationResponse.md)
+ - [PasskeyRegistrationResponseResponse](doc/PasskeyRegistrationResponseResponse.md)
+ - [PasskeyStatus](doc/PasskeyStatus.md)
+ - [PasskeyStatusResponse](doc/PasskeyStatusResponse.md)
  - [Pattern](doc/Pattern.md)
  - [PatternInput](doc/PatternInput.md)
  - [PatternPage](doc/PatternPage.md)
@@ -362,6 +417,7 @@ Class | Method | HTTP request | Description
  - [PersonalPauseResponse](doc/PersonalPauseResponse.md)
  - [PersonalResumeInput](doc/PersonalResumeInput.md)
  - [PinChange](doc/PinChange.md)
+ - [PinResetInput](doc/PinResetInput.md)
  - [PlanPricing](doc/PlanPricing.md)
  - [PlanPricingPage](doc/PlanPricingPage.md)
  - [PlanPricingResponse](doc/PlanPricingResponse.md)
@@ -392,6 +448,11 @@ Class | Method | HTTP request | Description
  - [ReservationDecisionResult](doc/ReservationDecisionResult.md)
  - [ReservationDecisionResultPass](doc/ReservationDecisionResultPass.md)
  - [ReservationDecisionResultResponse](doc/ReservationDecisionResultResponse.md)
+ - [ReservationDetail](doc/ReservationDetail.md)
+ - [ReservationDetailPickupStop](doc/ReservationDetailPickupStop.md)
+ - [ReservationDetailResponse](doc/ReservationDetailResponse.md)
+ - [ReservationDetailRoute](doc/ReservationDetailRoute.md)
+ - [ReservationDetailTrip](doc/ReservationDetailTrip.md)
  - [ReservationPage](doc/ReservationPage.md)
  - [Restriction](doc/Restriction.md)
  - [RestrictionInput](doc/RestrictionInput.md)

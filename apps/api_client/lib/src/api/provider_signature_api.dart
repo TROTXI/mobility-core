@@ -13,7 +13,6 @@ import 'package:trotxi_api_client/src/model/receive_paystack_webhook_request.dar
 import 'package:trotxi_api_client/src/model/webhook_ack.dart';
 
 class ProviderSignatureApi {
-
   final Dio _dio;
 
   final Serializers _serializers;
@@ -21,10 +20,10 @@ class ProviderSignatureApi {
   const ProviderSignatureApi(this._dio, this._serializers);
 
   /// receive Paystack Webhook
-  /// 
+  ///
   ///
   /// Parameters:
-  /// * [xPaystackSignature] 
+  /// * [xPaystackSignature]
   /// * [receivePaystackWebhookRequest] - Provider-controlled JSON. HMAC exact raw bytes BEFORE parsing. Persist signed unknown events for inspection, not guessed fulfilment.
   /// * [cancelToken] - A [CancelToken] that can be used to cancel the operation
   /// * [headers] - Can be used to add additional headers to the request
@@ -35,7 +34,7 @@ class ProviderSignatureApi {
   ///
   /// Returns a [Future] containing a [Response] with a [WebhookAck] as data
   /// Throws [DioException] if API call or serialization fails
-  Future<Response<WebhookAck>> receivePaystackWebhook({ 
+  Future<Response<WebhookAck>> receivePaystackWebhook({
     required String xPaystackSignature,
     required ReceivePaystackWebhookRequest receivePaystackWebhookRequest,
     CancelToken? cancelToken,
@@ -64,11 +63,11 @@ class ProviderSignatureApi {
 
     try {
       const _type = FullType(ReceivePaystackWebhookRequest);
-      _bodyData = _serializers.serialize(receivePaystackWebhookRequest, specifiedType: _type);
-
-    } catch(error, stackTrace) {
+      _bodyData = _serializers.serialize(receivePaystackWebhookRequest,
+          specifiedType: _type);
+    } catch (error, stackTrace) {
       throw DioException(
-         requestOptions: _options.compose(
+        requestOptions: _options.compose(
           _dio.options,
           _path,
         ),
@@ -91,11 +90,12 @@ class ProviderSignatureApi {
 
     try {
       final rawResponse = _response.data;
-      _responseData = rawResponse == null ? null : _serializers.deserialize(
-        rawResponse,
-        specifiedType: const FullType(WebhookAck),
-      ) as WebhookAck;
-
+      _responseData = rawResponse == null
+          ? null
+          : _serializers.deserialize(
+              rawResponse,
+              specifiedType: const FullType(WebhookAck),
+            ) as WebhookAck;
     } catch (error, stackTrace) {
       throw DioException(
         requestOptions: _response.requestOptions,
@@ -117,5 +117,4 @@ class ProviderSignatureApi {
       extra: _response.extra,
     );
   }
-
 }

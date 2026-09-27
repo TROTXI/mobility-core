@@ -11,8 +11,8 @@ part 'point.g.dart';
 /// Point
 ///
 /// Properties:
-/// * [latitude] 
-/// * [longitude] 
+/// * [latitude]
+/// * [longitude]
 @BuiltValue()
 abstract class Point implements Built<Point, PointBuilder> {
   @BuiltValueField(wireName: r'latitude')
@@ -62,7 +62,9 @@ class _$PointSerializer implements PrimitiveSerializer<Point> {
     Point object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
   }
 
   void _deserializeProperties(
@@ -119,4 +121,3 @@ class _$PointSerializer implements PrimitiveSerializer<Point> {
     return result.build();
   }
 }
-

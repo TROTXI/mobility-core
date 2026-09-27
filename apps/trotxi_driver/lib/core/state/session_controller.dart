@@ -16,6 +16,10 @@ enum SessionStage {
   /// Signed in, waiting for the driver to confirm the account is theirs.
   confirming,
 
+  /// Signed in with a temporary PIN from operations. The server refuses all
+  /// assigned work until the driver chooses a private PIN here.
+  pinSetup,
+
   /// Identity confirmed; acknowledge that this device is now linked.
   linked,
 
@@ -41,9 +45,20 @@ class SessionController extends ChangeNotifier {
 
   SessionStage _stage = SessionStage.restoring;
   DriverSession? _session;
+  String? _temporaryPin;
+  String? _notice;
 
   SessionStage get stage => _stage;
   DriverSession? get session => _session;
+
+  /// The temporary PIN just typed at sign-in, held in memory only so the setup
+  /// screen need not ask for it twice. Never written to storage; dropped as
+  /// soon as the driver leaves setup. Null after a restored session.
+  String? get temporaryPin => _temporaryPin;
+
+  /// One line for the sign-in screen after the session ended on purpose, such
+  /// as a successful PIN change. Cleared by the next sign-in.
+  String? get notice => _notice;
 
   bool _busy = false;
   int _revision = 0;
@@ -67,6 +82,7 @@ class SessionController extends ChangeNotifier {
     _revision++;
     if (_stage == SessionStage.signedOut) return;
     _session = null;
+    _temporaryPin = null;
     _set(SessionStage.signedOut);
   }
 
@@ -97,7 +113,13 @@ class SessionController extends ChangeNotifier {
       final driver = await _auth.currentDriver();
       if (revision == _revision && driver != null) {
         _session = driver;
-        notifyListeners();
+        // The server refuses work to a temporary PIN whatever this app does;
+        // going to setup is how a reopened app stays useful, not the guard.
+        if (driver.mustChangePin == true) {
+          _set(SessionStage.pinSetup);
+        } else {
+          notifyListeners();
+        }
       }
     } on TrotxiException {
       // Offline/5xx do not revoke a session; only the store's conditional
@@ -115,13 +137,53 @@ class SessionController extends ChangeNotifier {
   void onSignedIn(DriverSession session) {
     _revision++;
     _session = session;
+    _notice = null;
+    if (session.mustChangePin != true) _temporaryPin = null;
     _set(SessionStage.confirming);
   }
 
-  /// The driver confirmed the account is theirs. PIN recovery is managed by
-  /// operations through "Can't sign in?", not a forced self-service screen.
+  /// Keep the temporary PIN for the setup screen. Called by sign-in only when
+  /// the server said this PIN must be changed.
+  void holdTemporaryPin(String pin) {
+    _temporaryPin = pin;
+  }
+
+  /// The driver confirmed the account is theirs. A temporary PIN from
+  /// operations goes to PIN setup first; the server requires it either way.
   void confirm() {
-    _set(SessionStage.linked);
+    _set(
+      _session?.mustChangePin == true
+          ? SessionStage.pinSetup
+          : SessionStage.linked,
+    );
+  }
+
+  /// The new PIN is set. The server signs out every session when a PIN
+  /// changes, this one included, so the app clears its copy and asks the
+  /// driver to sign in with the PIN they just chose.
+  Future<void> onPinChanged() =>
+      _endSetup('PIN changed. Sign in with your driver code and your new PIN.');
+
+  /// A change may have gone through without the answer arriving, and the
+  /// session was then refused: the driver cannot know which PIN works now.
+  Future<void> onPinChangeUncertain() => _endSetup(
+    'Your session ended before the PIN change was confirmed. Try your new PIN '
+    'first; if it is refused, sign in with your temporary PIN.',
+  );
+
+  Future<void> _endSetup(String notice) async {
+    _revision++;
+    _temporaryPin = null;
+    try {
+      await _auth.signOut();
+    } catch (_) {
+      // The server has already revoked the session; a local clear that failed
+      // still leaves nothing usable behind, and the next request says so.
+    }
+    _session = null;
+    _notice = notice;
+    _set(SessionStage.signedOut);
+    notifyListeners();
   }
 
   /// Finish the link acknowledgement and review device readiness.
@@ -159,6 +221,7 @@ class SessionController extends ChangeNotifier {
       _busy = false;
       if (cleared && (_session == previous || _session == null)) {
         _session = null;
+        _temporaryPin = null;
         _set(SessionStage.signedOut);
       }
       // _set only notifies on a stage CHANGE, and signing out from the

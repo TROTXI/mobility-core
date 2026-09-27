@@ -12,26 +12,36 @@ part 'refund_initiation_collection_response.g.dart';
 /// RefundInitiationCollectionResponse
 ///
 /// Properties:
-/// * [data] 
+/// * [data]
 @BuiltValue()
-abstract class RefundInitiationCollectionResponse implements Built<RefundInitiationCollectionResponse, RefundInitiationCollectionResponseBuilder> {
+abstract class RefundInitiationCollectionResponse
+    implements
+        Built<RefundInitiationCollectionResponse,
+            RefundInitiationCollectionResponseBuilder> {
   @BuiltValueField(wireName: r'data')
   RefundInitiationCollection get data;
 
   RefundInitiationCollectionResponse._();
 
-  factory RefundInitiationCollectionResponse([void updates(RefundInitiationCollectionResponseBuilder b)]) = _$RefundInitiationCollectionResponse;
+  factory RefundInitiationCollectionResponse(
+          [void updates(RefundInitiationCollectionResponseBuilder b)]) =
+      _$RefundInitiationCollectionResponse;
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(RefundInitiationCollectionResponseBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
-  static Serializer<RefundInitiationCollectionResponse> get serializer => _$RefundInitiationCollectionResponseSerializer();
+  static Serializer<RefundInitiationCollectionResponse> get serializer =>
+      _$RefundInitiationCollectionResponseSerializer();
 }
 
-class _$RefundInitiationCollectionResponseSerializer implements PrimitiveSerializer<RefundInitiationCollectionResponse> {
+class _$RefundInitiationCollectionResponseSerializer
+    implements PrimitiveSerializer<RefundInitiationCollectionResponse> {
   @override
-  final Iterable<Type> types = const [RefundInitiationCollectionResponse, _$RefundInitiationCollectionResponse];
+  final Iterable<Type> types = const [
+    RefundInitiationCollectionResponse,
+    _$RefundInitiationCollectionResponse
+  ];
 
   @override
   final String wireName = r'RefundInitiationCollectionResponse';
@@ -54,7 +64,9 @@ class _$RefundInitiationCollectionResponseSerializer implements PrimitiveSeriali
     RefundInitiationCollectionResponse object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
   }
 
   void _deserializeProperties(
@@ -104,4 +116,3 @@ class _$RefundInitiationCollectionResponseSerializer implements PrimitiveSeriali
     return result.build();
   }
 }
-

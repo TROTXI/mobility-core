@@ -12,10 +12,11 @@ part 'membership_membership.g.dart';
 /// MembershipMembership
 ///
 /// Properties:
-/// * [id] 
-/// * [lifecycle] 
+/// * [id]
+/// * [lifecycle]
 @BuiltValue()
-abstract class MembershipMembership implements Built<MembershipMembership, MembershipMembershipBuilder> {
+abstract class MembershipMembership
+    implements Built<MembershipMembership, MembershipMembershipBuilder> {
   @BuiltValueField(wireName: r'id')
   String get id;
 
@@ -25,18 +26,24 @@ abstract class MembershipMembership implements Built<MembershipMembership, Membe
 
   MembershipMembership._();
 
-  factory MembershipMembership([void updates(MembershipMembershipBuilder b)]) = _$MembershipMembership;
+  factory MembershipMembership([void updates(MembershipMembershipBuilder b)]) =
+      _$MembershipMembership;
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(MembershipMembershipBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
-  static Serializer<MembershipMembership> get serializer => _$MembershipMembershipSerializer();
+  static Serializer<MembershipMembership> get serializer =>
+      _$MembershipMembershipSerializer();
 }
 
-class _$MembershipMembershipSerializer implements PrimitiveSerializer<MembershipMembership> {
+class _$MembershipMembershipSerializer
+    implements PrimitiveSerializer<MembershipMembership> {
   @override
-  final Iterable<Type> types = const [MembershipMembership, _$MembershipMembership];
+  final Iterable<Type> types = const [
+    MembershipMembership,
+    _$MembershipMembership
+  ];
 
   @override
   final String wireName = r'MembershipMembership';
@@ -64,7 +71,9 @@ class _$MembershipMembershipSerializer implements PrimitiveSerializer<Membership
     MembershipMembership object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
   }
 
   void _deserializeProperties(
@@ -123,17 +132,20 @@ class _$MembershipMembershipSerializer implements PrimitiveSerializer<Membership
 }
 
 class MembershipMembershipLifecycleEnum extends EnumClass {
-
   @BuiltValueEnumConst(wireName: r'open')
-  static const MembershipMembershipLifecycleEnum open = _$membershipMembershipLifecycleEnum_open;
+  static const MembershipMembershipLifecycleEnum open =
+      _$membershipMembershipLifecycleEnum_open;
   @BuiltValueEnumConst(wireName: r'ended')
-  static const MembershipMembershipLifecycleEnum ended = _$membershipMembershipLifecycleEnum_ended;
+  static const MembershipMembershipLifecycleEnum ended =
+      _$membershipMembershipLifecycleEnum_ended;
 
-  static Serializer<MembershipMembershipLifecycleEnum> get serializer => _$membershipMembershipLifecycleEnumSerializer;
+  static Serializer<MembershipMembershipLifecycleEnum> get serializer =>
+      _$membershipMembershipLifecycleEnumSerializer;
 
-  const MembershipMembershipLifecycleEnum._(String name): super(name);
+  const MembershipMembershipLifecycleEnum._(String name) : super(name);
 
-  static BuiltSet<MembershipMembershipLifecycleEnum> get values => _$membershipMembershipLifecycleEnumValues;
-  static MembershipMembershipLifecycleEnum valueOf(String name) => _$membershipMembershipLifecycleEnumValueOf(name);
+  static BuiltSet<MembershipMembershipLifecycleEnum> get values =>
+      _$membershipMembershipLifecycleEnumValues;
+  static MembershipMembershipLifecycleEnum valueOf(String name) =>
+      _$membershipMembershipLifecycleEnumValueOf(name);
 }
-

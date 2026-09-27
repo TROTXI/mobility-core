@@ -14,17 +14,18 @@ part 'commute_request.g.dart';
 /// CommuteRequest
 ///
 /// Properties:
-/// * [id] 
-/// * [status] 
-/// * [requested] 
-/// * [effectiveDate] 
-/// * [paused] 
-/// * [decisionNote] 
-/// * [createdAt] 
-/// * [updatedAt] 
-/// * [version] 
+/// * [id]
+/// * [status]
+/// * [requested]
+/// * [effectiveDate]
+/// * [paused]
+/// * [decisionNote]
+/// * [createdAt]
+/// * [updatedAt]
+/// * [version]
 @BuiltValue()
-abstract class CommuteRequest implements Built<CommuteRequest, CommuteRequestBuilder> {
+abstract class CommuteRequest
+    implements Built<CommuteRequest, CommuteRequestBuilder> {
   @BuiltValueField(wireName: r'id')
   String get id;
 
@@ -55,16 +56,19 @@ abstract class CommuteRequest implements Built<CommuteRequest, CommuteRequestBui
 
   CommuteRequest._();
 
-  factory CommuteRequest([void updates(CommuteRequestBuilder b)]) = _$CommuteRequest;
+  factory CommuteRequest([void updates(CommuteRequestBuilder b)]) =
+      _$CommuteRequest;
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(CommuteRequestBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
-  static Serializer<CommuteRequest> get serializer => _$CommuteRequestSerializer();
+  static Serializer<CommuteRequest> get serializer =>
+      _$CommuteRequestSerializer();
 }
 
-class _$CommuteRequestSerializer implements PrimitiveSerializer<CommuteRequest> {
+class _$CommuteRequestSerializer
+    implements PrimitiveSerializer<CommuteRequest> {
   @override
   final Iterable<Type> types = const [CommuteRequest, _$CommuteRequest];
 
@@ -92,20 +96,24 @@ class _$CommuteRequestSerializer implements PrimitiveSerializer<CommuteRequest> 
       specifiedType: const FullType(CommuteRequestInput),
     );
     yield r'effectiveDate';
-    yield object.effectiveDate == null ? null : serializers.serialize(
-      object.effectiveDate,
-      specifiedType: const FullType.nullable(Date),
-    );
+    yield object.effectiveDate == null
+        ? null
+        : serializers.serialize(
+            object.effectiveDate,
+            specifiedType: const FullType.nullable(Date),
+          );
     yield r'paused';
     yield serializers.serialize(
       object.paused,
       specifiedType: const FullType(bool),
     );
     yield r'decisionNote';
-    yield object.decisionNote == null ? null : serializers.serialize(
-      object.decisionNote,
-      specifiedType: const FullType.nullable(String),
-    );
+    yield object.decisionNote == null
+        ? null
+        : serializers.serialize(
+            object.decisionNote,
+            specifiedType: const FullType.nullable(String),
+          );
     yield r'createdAt';
     yield serializers.serialize(
       object.createdAt,
@@ -129,7 +137,9 @@ class _$CommuteRequestSerializer implements PrimitiveSerializer<CommuteRequest> 
     CommuteRequest object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
   }
 
   void _deserializeProperties(
@@ -239,25 +249,32 @@ class _$CommuteRequestSerializer implements PrimitiveSerializer<CommuteRequest> 
 }
 
 class CommuteRequestStatusEnum extends EnumClass {
-
   @BuiltValueEnumConst(wireName: r'submitted')
-  static const CommuteRequestStatusEnum submitted = _$commuteRequestStatusEnum_submitted;
+  static const CommuteRequestStatusEnum submitted =
+      _$commuteRequestStatusEnum_submitted;
   @BuiltValueEnumConst(wireName: r'waitlisted')
-  static const CommuteRequestStatusEnum waitlisted = _$commuteRequestStatusEnum_waitlisted;
+  static const CommuteRequestStatusEnum waitlisted =
+      _$commuteRequestStatusEnum_waitlisted;
   @BuiltValueEnumConst(wireName: r'approved')
-  static const CommuteRequestStatusEnum approved = _$commuteRequestStatusEnum_approved;
+  static const CommuteRequestStatusEnum approved =
+      _$commuteRequestStatusEnum_approved;
   @BuiltValueEnumConst(wireName: r'applied')
-  static const CommuteRequestStatusEnum applied = _$commuteRequestStatusEnum_applied;
+  static const CommuteRequestStatusEnum applied =
+      _$commuteRequestStatusEnum_applied;
   @BuiltValueEnumConst(wireName: r'rejected')
-  static const CommuteRequestStatusEnum rejected = _$commuteRequestStatusEnum_rejected;
+  static const CommuteRequestStatusEnum rejected =
+      _$commuteRequestStatusEnum_rejected;
   @BuiltValueEnumConst(wireName: r'cancelled')
-  static const CommuteRequestStatusEnum cancelled = _$commuteRequestStatusEnum_cancelled;
+  static const CommuteRequestStatusEnum cancelled =
+      _$commuteRequestStatusEnum_cancelled;
 
-  static Serializer<CommuteRequestStatusEnum> get serializer => _$commuteRequestStatusEnumSerializer;
+  static Serializer<CommuteRequestStatusEnum> get serializer =>
+      _$commuteRequestStatusEnumSerializer;
 
-  const CommuteRequestStatusEnum._(String name): super(name);
+  const CommuteRequestStatusEnum._(String name) : super(name);
 
-  static BuiltSet<CommuteRequestStatusEnum> get values => _$commuteRequestStatusEnumValues;
-  static CommuteRequestStatusEnum valueOf(String name) => _$commuteRequestStatusEnumValueOf(name);
+  static BuiltSet<CommuteRequestStatusEnum> get values =>
+      _$commuteRequestStatusEnumValues;
+  static CommuteRequestStatusEnum valueOf(String name) =>
+      _$commuteRequestStatusEnumValueOf(name);
 }
-

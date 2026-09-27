@@ -12,14 +12,16 @@ part 'minimum_version.g.dart';
 /// MinimumVersion
 ///
 /// Properties:
-/// * [app] 
-/// * [platform] 
-/// * [minSupportedBuild] 
-/// * [apiMajor] 
-/// * [storeUrl] 
-/// * [version] 
+/// * [app]
+/// * [platform]
+/// * [minSupportedBuild]
+/// * [apiMajor]
+/// * [storeUrl]
+/// * [version]
+/// * [editToken]
 @BuiltValue()
-abstract class MinimumVersion implements Built<MinimumVersion, MinimumVersionBuilder> {
+abstract class MinimumVersion
+    implements Built<MinimumVersion, MinimumVersionBuilder> {
   @BuiltValueField(wireName: r'app')
   MinimumVersionAppEnum get app;
   // enum appEnum {  commuter,  driver,  };
@@ -41,18 +43,24 @@ abstract class MinimumVersion implements Built<MinimumVersion, MinimumVersionBui
   @BuiltValueField(wireName: r'version')
   int get version;
 
+  @BuiltValueField(wireName: r'editToken')
+  String get editToken;
+
   MinimumVersion._();
 
-  factory MinimumVersion([void updates(MinimumVersionBuilder b)]) = _$MinimumVersion;
+  factory MinimumVersion([void updates(MinimumVersionBuilder b)]) =
+      _$MinimumVersion;
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(MinimumVersionBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
-  static Serializer<MinimumVersion> get serializer => _$MinimumVersionSerializer();
+  static Serializer<MinimumVersion> get serializer =>
+      _$MinimumVersionSerializer();
 }
 
-class _$MinimumVersionSerializer implements PrimitiveSerializer<MinimumVersion> {
+class _$MinimumVersionSerializer
+    implements PrimitiveSerializer<MinimumVersion> {
   @override
   final Iterable<Type> types = const [MinimumVersion, _$MinimumVersion];
 
@@ -94,6 +102,11 @@ class _$MinimumVersionSerializer implements PrimitiveSerializer<MinimumVersion> 
       object.version,
       specifiedType: const FullType(int),
     );
+    yield r'editToken';
+    yield serializers.serialize(
+      object.editToken,
+      specifiedType: const FullType(String),
+    );
   }
 
   @override
@@ -102,7 +115,9 @@ class _$MinimumVersionSerializer implements PrimitiveSerializer<MinimumVersion> 
     MinimumVersion object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
   }
 
   void _deserializeProperties(
@@ -159,6 +174,13 @@ class _$MinimumVersionSerializer implements PrimitiveSerializer<MinimumVersion> 
           ) as int;
           result.version = valueDes;
           break;
+        case r'editToken':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType(String),
+          ) as String;
+          result.editToken = valueDes;
+          break;
         default:
           unhandled.add(key);
           unhandled.add(value);
@@ -189,45 +211,54 @@ class _$MinimumVersionSerializer implements PrimitiveSerializer<MinimumVersion> 
 }
 
 class MinimumVersionAppEnum extends EnumClass {
-
   @BuiltValueEnumConst(wireName: r'commuter')
-  static const MinimumVersionAppEnum commuter = _$minimumVersionAppEnum_commuter;
+  static const MinimumVersionAppEnum commuter =
+      _$minimumVersionAppEnum_commuter;
   @BuiltValueEnumConst(wireName: r'driver')
   static const MinimumVersionAppEnum driver = _$minimumVersionAppEnum_driver;
 
-  static Serializer<MinimumVersionAppEnum> get serializer => _$minimumVersionAppEnumSerializer;
+  static Serializer<MinimumVersionAppEnum> get serializer =>
+      _$minimumVersionAppEnumSerializer;
 
-  const MinimumVersionAppEnum._(String name): super(name);
+  const MinimumVersionAppEnum._(String name) : super(name);
 
-  static BuiltSet<MinimumVersionAppEnum> get values => _$minimumVersionAppEnumValues;
-  static MinimumVersionAppEnum valueOf(String name) => _$minimumVersionAppEnumValueOf(name);
+  static BuiltSet<MinimumVersionAppEnum> get values =>
+      _$minimumVersionAppEnumValues;
+  static MinimumVersionAppEnum valueOf(String name) =>
+      _$minimumVersionAppEnumValueOf(name);
 }
 
 class MinimumVersionPlatformEnum extends EnumClass {
-
   @BuiltValueEnumConst(wireName: r'ios')
-  static const MinimumVersionPlatformEnum ios = _$minimumVersionPlatformEnum_ios;
+  static const MinimumVersionPlatformEnum ios =
+      _$minimumVersionPlatformEnum_ios;
   @BuiltValueEnumConst(wireName: r'android')
-  static const MinimumVersionPlatformEnum android = _$minimumVersionPlatformEnum_android;
+  static const MinimumVersionPlatformEnum android =
+      _$minimumVersionPlatformEnum_android;
 
-  static Serializer<MinimumVersionPlatformEnum> get serializer => _$minimumVersionPlatformEnumSerializer;
+  static Serializer<MinimumVersionPlatformEnum> get serializer =>
+      _$minimumVersionPlatformEnumSerializer;
 
-  const MinimumVersionPlatformEnum._(String name): super(name);
+  const MinimumVersionPlatformEnum._(String name) : super(name);
 
-  static BuiltSet<MinimumVersionPlatformEnum> get values => _$minimumVersionPlatformEnumValues;
-  static MinimumVersionPlatformEnum valueOf(String name) => _$minimumVersionPlatformEnumValueOf(name);
+  static BuiltSet<MinimumVersionPlatformEnum> get values =>
+      _$minimumVersionPlatformEnumValues;
+  static MinimumVersionPlatformEnum valueOf(String name) =>
+      _$minimumVersionPlatformEnumValueOf(name);
 }
 
 class MinimumVersionApiMajorEnum extends EnumClass {
-
   @BuiltValueEnumConst(wireNumber: 1)
-  static const MinimumVersionApiMajorEnum number1 = _$minimumVersionApiMajorEnum_number1;
+  static const MinimumVersionApiMajorEnum number1 =
+      _$minimumVersionApiMajorEnum_number1;
 
-  static Serializer<MinimumVersionApiMajorEnum> get serializer => _$minimumVersionApiMajorEnumSerializer;
+  static Serializer<MinimumVersionApiMajorEnum> get serializer =>
+      _$minimumVersionApiMajorEnumSerializer;
 
-  const MinimumVersionApiMajorEnum._(String name): super(name);
+  const MinimumVersionApiMajorEnum._(String name) : super(name);
 
-  static BuiltSet<MinimumVersionApiMajorEnum> get values => _$minimumVersionApiMajorEnumValues;
-  static MinimumVersionApiMajorEnum valueOf(String name) => _$minimumVersionApiMajorEnumValueOf(name);
+  static BuiltSet<MinimumVersionApiMajorEnum> get values =>
+      _$minimumVersionApiMajorEnumValues;
+  static MinimumVersionApiMajorEnum valueOf(String name) =>
+      _$minimumVersionApiMajorEnumValueOf(name);
 }
-

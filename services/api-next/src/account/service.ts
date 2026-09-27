@@ -593,10 +593,11 @@ export class AccountService {
           `INSERT INTO app.erasure_tasks(user_id,kind,reference) VALUES ($1,'avatar_object',$2) ON CONFLICT DO NOTHING`,
           [user.id, objectKey],
         );
-      // A driver's own record carries a name, a phone number and a licence.
-      // Closing the account closes that too, or erasure is only half done.
+      // A driver's own record carries a name, a phone number, a contact email
+      // and a licence. Closing the account closes that too, or erasure is only
+      // half done.
       await c.query(
-        `UPDATE app.drivers SET name='Erased driver',phone=NULL,license_number=NULL,
+        `UPDATE app.drivers SET name='Erased driver',phone=NULL,email=NULL,license_number=NULL,
           archived_at=coalesce(archived_at,clock_timestamp()) WHERE user_id=$1`,
         [user.id],
       );

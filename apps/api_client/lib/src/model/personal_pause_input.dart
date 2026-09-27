@@ -12,10 +12,11 @@ part 'personal_pause_input.g.dart';
 /// PersonalPauseInput
 ///
 /// Properties:
-/// * [startDate] 
-/// * [resumeDate] 
+/// * [startDate]
+/// * [resumeDate]
 @BuiltValue()
-abstract class PersonalPauseInput implements Built<PersonalPauseInput, PersonalPauseInputBuilder> {
+abstract class PersonalPauseInput
+    implements Built<PersonalPauseInput, PersonalPauseInputBuilder> {
   @BuiltValueField(wireName: r'startDate')
   Date get startDate;
 
@@ -24,16 +25,19 @@ abstract class PersonalPauseInput implements Built<PersonalPauseInput, PersonalP
 
   PersonalPauseInput._();
 
-  factory PersonalPauseInput([void updates(PersonalPauseInputBuilder b)]) = _$PersonalPauseInput;
+  factory PersonalPauseInput([void updates(PersonalPauseInputBuilder b)]) =
+      _$PersonalPauseInput;
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(PersonalPauseInputBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
-  static Serializer<PersonalPauseInput> get serializer => _$PersonalPauseInputSerializer();
+  static Serializer<PersonalPauseInput> get serializer =>
+      _$PersonalPauseInputSerializer();
 }
 
-class _$PersonalPauseInputSerializer implements PrimitiveSerializer<PersonalPauseInput> {
+class _$PersonalPauseInputSerializer
+    implements PrimitiveSerializer<PersonalPauseInput> {
   @override
   final Iterable<Type> types = const [PersonalPauseInput, _$PersonalPauseInput];
 
@@ -63,7 +67,9 @@ class _$PersonalPauseInputSerializer implements PrimitiveSerializer<PersonalPaus
     PersonalPauseInput object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
   }
 
   void _deserializeProperties(
@@ -120,4 +126,3 @@ class _$PersonalPauseInputSerializer implements PrimitiveSerializer<PersonalPaus
     return result.build();
   }
 }
-

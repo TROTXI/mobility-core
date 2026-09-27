@@ -3,6 +3,7 @@
 //
 
 // ignore_for_file: unused_element
+import 'package:trotxi_api_client/src/model/credential_secret_email.dart';
 import 'package:built_value/built_value.dart';
 import 'package:built_value/serializer.dart';
 
@@ -11,28 +12,40 @@ part 'credential_secret.g.dart';
 /// CredentialSecret
 ///
 /// Properties:
-/// * [code] 
-/// * [pin] 
+/// * [code]
+/// * [pin]
+/// * [temporaryPinExpiresAt]
+/// * [email]
 @BuiltValue()
-abstract class CredentialSecret implements Built<CredentialSecret, CredentialSecretBuilder> {
+abstract class CredentialSecret
+    implements Built<CredentialSecret, CredentialSecretBuilder> {
   @BuiltValueField(wireName: r'code')
   String get code;
 
   @BuiltValueField(wireName: r'pin')
   String get pin;
 
+  @BuiltValueField(wireName: r'temporaryPinExpiresAt')
+  DateTime get temporaryPinExpiresAt;
+
+  @BuiltValueField(wireName: r'email')
+  CredentialSecretEmail? get email;
+
   CredentialSecret._();
 
-  factory CredentialSecret([void updates(CredentialSecretBuilder b)]) = _$CredentialSecret;
+  factory CredentialSecret([void updates(CredentialSecretBuilder b)]) =
+      _$CredentialSecret;
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(CredentialSecretBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
-  static Serializer<CredentialSecret> get serializer => _$CredentialSecretSerializer();
+  static Serializer<CredentialSecret> get serializer =>
+      _$CredentialSecretSerializer();
 }
 
-class _$CredentialSecretSerializer implements PrimitiveSerializer<CredentialSecret> {
+class _$CredentialSecretSerializer
+    implements PrimitiveSerializer<CredentialSecret> {
   @override
   final Iterable<Type> types = const [CredentialSecret, _$CredentialSecret];
 
@@ -54,6 +67,18 @@ class _$CredentialSecretSerializer implements PrimitiveSerializer<CredentialSecr
       object.pin,
       specifiedType: const FullType(String),
     );
+    yield r'temporaryPinExpiresAt';
+    yield serializers.serialize(
+      object.temporaryPinExpiresAt,
+      specifiedType: const FullType(DateTime),
+    );
+    yield r'email';
+    yield object.email == null
+        ? null
+        : serializers.serialize(
+            object.email,
+            specifiedType: const FullType.nullable(CredentialSecretEmail),
+          );
   }
 
   @override
@@ -62,7 +87,9 @@ class _$CredentialSecretSerializer implements PrimitiveSerializer<CredentialSecr
     CredentialSecret object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
   }
 
   void _deserializeProperties(
@@ -90,6 +117,21 @@ class _$CredentialSecretSerializer implements PrimitiveSerializer<CredentialSecr
             specifiedType: const FullType(String),
           ) as String;
           result.pin = valueDes;
+          break;
+        case r'temporaryPinExpiresAt':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType(DateTime),
+          ) as DateTime;
+          result.temporaryPinExpiresAt = valueDes;
+          break;
+        case r'email':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType.nullable(CredentialSecretEmail),
+          ) as CredentialSecretEmail?;
+          if (valueDes == null) continue;
+          result.email.replace(valueDes);
           break;
         default:
           unhandled.add(key);
@@ -119,4 +161,3 @@ class _$CredentialSecretSerializer implements PrimitiveSerializer<CredentialSecr
     return result.build();
   }
 }
-

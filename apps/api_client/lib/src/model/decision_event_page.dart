@@ -14,10 +14,11 @@ part 'decision_event_page.g.dart';
 /// DecisionEventPage
 ///
 /// Properties:
-/// * [data] 
-/// * [page] 
+/// * [data]
+/// * [page]
 @BuiltValue()
-abstract class DecisionEventPage implements Built<DecisionEventPage, DecisionEventPageBuilder> {
+abstract class DecisionEventPage
+    implements Built<DecisionEventPage, DecisionEventPageBuilder> {
   @BuiltValueField(wireName: r'data')
   BuiltList<DecisionEvent> get data;
 
@@ -26,16 +27,19 @@ abstract class DecisionEventPage implements Built<DecisionEventPage, DecisionEve
 
   DecisionEventPage._();
 
-  factory DecisionEventPage([void updates(DecisionEventPageBuilder b)]) = _$DecisionEventPage;
+  factory DecisionEventPage([void updates(DecisionEventPageBuilder b)]) =
+      _$DecisionEventPage;
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(DecisionEventPageBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
-  static Serializer<DecisionEventPage> get serializer => _$DecisionEventPageSerializer();
+  static Serializer<DecisionEventPage> get serializer =>
+      _$DecisionEventPageSerializer();
 }
 
-class _$DecisionEventPageSerializer implements PrimitiveSerializer<DecisionEventPage> {
+class _$DecisionEventPageSerializer
+    implements PrimitiveSerializer<DecisionEventPage> {
   @override
   final Iterable<Type> types = const [DecisionEventPage, _$DecisionEventPage];
 
@@ -65,7 +69,9 @@ class _$DecisionEventPageSerializer implements PrimitiveSerializer<DecisionEvent
     DecisionEventPage object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
   }
 
   void _deserializeProperties(
@@ -122,4 +128,3 @@ class _$DecisionEventPageSerializer implements PrimitiveSerializer<DecisionEvent
     return result.build();
   }
 }
-

@@ -14,10 +14,11 @@ part 'ops_purchase_page.g.dart';
 /// OpsPurchasePage
 ///
 /// Properties:
-/// * [data] 
-/// * [page] 
+/// * [data]
+/// * [page]
 @BuiltValue()
-abstract class OpsPurchasePage implements Built<OpsPurchasePage, OpsPurchasePageBuilder> {
+abstract class OpsPurchasePage
+    implements Built<OpsPurchasePage, OpsPurchasePageBuilder> {
   @BuiltValueField(wireName: r'data')
   BuiltList<OpsPurchase> get data;
 
@@ -26,16 +27,19 @@ abstract class OpsPurchasePage implements Built<OpsPurchasePage, OpsPurchasePage
 
   OpsPurchasePage._();
 
-  factory OpsPurchasePage([void updates(OpsPurchasePageBuilder b)]) = _$OpsPurchasePage;
+  factory OpsPurchasePage([void updates(OpsPurchasePageBuilder b)]) =
+      _$OpsPurchasePage;
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(OpsPurchasePageBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
-  static Serializer<OpsPurchasePage> get serializer => _$OpsPurchasePageSerializer();
+  static Serializer<OpsPurchasePage> get serializer =>
+      _$OpsPurchasePageSerializer();
 }
 
-class _$OpsPurchasePageSerializer implements PrimitiveSerializer<OpsPurchasePage> {
+class _$OpsPurchasePageSerializer
+    implements PrimitiveSerializer<OpsPurchasePage> {
   @override
   final Iterable<Type> types = const [OpsPurchasePage, _$OpsPurchasePage];
 
@@ -65,7 +69,9 @@ class _$OpsPurchasePageSerializer implements PrimitiveSerializer<OpsPurchasePage
     OpsPurchasePage object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
   }
 
   void _deserializeProperties(
@@ -122,4 +128,3 @@ class _$OpsPurchasePageSerializer implements PrimitiveSerializer<OpsPurchasePage
     return result.build();
   }
 }
-

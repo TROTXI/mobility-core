@@ -11,14 +11,15 @@ part 'trace_hold_input.g.dart';
 /// TraceHoldInput
 ///
 /// Properties:
-/// * [incidentId] 
-/// * [tripId] 
-/// * [receivedFrom] 
-/// * [receivedTo] 
-/// * [reason] 
-/// * [reviewAt] 
+/// * [incidentId]
+/// * [tripId]
+/// * [receivedFrom]
+/// * [receivedTo]
+/// * [reason]
+/// * [reviewAt]
 @BuiltValue()
-abstract class TraceHoldInput implements Built<TraceHoldInput, TraceHoldInputBuilder> {
+abstract class TraceHoldInput
+    implements Built<TraceHoldInput, TraceHoldInputBuilder> {
   @BuiltValueField(wireName: r'incidentId')
   String get incidentId;
 
@@ -39,16 +40,19 @@ abstract class TraceHoldInput implements Built<TraceHoldInput, TraceHoldInputBui
 
   TraceHoldInput._();
 
-  factory TraceHoldInput([void updates(TraceHoldInputBuilder b)]) = _$TraceHoldInput;
+  factory TraceHoldInput([void updates(TraceHoldInputBuilder b)]) =
+      _$TraceHoldInput;
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(TraceHoldInputBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
-  static Serializer<TraceHoldInput> get serializer => _$TraceHoldInputSerializer();
+  static Serializer<TraceHoldInput> get serializer =>
+      _$TraceHoldInputSerializer();
 }
 
-class _$TraceHoldInputSerializer implements PrimitiveSerializer<TraceHoldInput> {
+class _$TraceHoldInputSerializer
+    implements PrimitiveSerializer<TraceHoldInput> {
   @override
   final Iterable<Type> types = const [TraceHoldInput, _$TraceHoldInput];
 
@@ -98,7 +102,9 @@ class _$TraceHoldInputSerializer implements PrimitiveSerializer<TraceHoldInput> 
     TraceHoldInput object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
   }
 
   void _deserializeProperties(
@@ -183,4 +189,3 @@ class _$TraceHoldInputSerializer implements PrimitiveSerializer<TraceHoldInput> 
     return result.build();
   }
 }
-

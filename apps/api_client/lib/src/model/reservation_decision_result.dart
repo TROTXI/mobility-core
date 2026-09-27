@@ -13,10 +13,12 @@ part 'reservation_decision_result.g.dart';
 /// ReservationDecisionResult
 ///
 /// Properties:
-/// * [reservation] 
-/// * [pass] 
+/// * [reservation]
+/// * [pass]
 @BuiltValue()
-abstract class ReservationDecisionResult implements Built<ReservationDecisionResult, ReservationDecisionResultBuilder> {
+abstract class ReservationDecisionResult
+    implements
+        Built<ReservationDecisionResult, ReservationDecisionResultBuilder> {
   @BuiltValueField(wireName: r'reservation')
   Reservation get reservation;
 
@@ -25,18 +27,25 @@ abstract class ReservationDecisionResult implements Built<ReservationDecisionRes
 
   ReservationDecisionResult._();
 
-  factory ReservationDecisionResult([void updates(ReservationDecisionResultBuilder b)]) = _$ReservationDecisionResult;
+  factory ReservationDecisionResult(
+          [void updates(ReservationDecisionResultBuilder b)]) =
+      _$ReservationDecisionResult;
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(ReservationDecisionResultBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
-  static Serializer<ReservationDecisionResult> get serializer => _$ReservationDecisionResultSerializer();
+  static Serializer<ReservationDecisionResult> get serializer =>
+      _$ReservationDecisionResultSerializer();
 }
 
-class _$ReservationDecisionResultSerializer implements PrimitiveSerializer<ReservationDecisionResult> {
+class _$ReservationDecisionResultSerializer
+    implements PrimitiveSerializer<ReservationDecisionResult> {
   @override
-  final Iterable<Type> types = const [ReservationDecisionResult, _$ReservationDecisionResult];
+  final Iterable<Type> types = const [
+    ReservationDecisionResult,
+    _$ReservationDecisionResult
+  ];
 
   @override
   final String wireName = r'ReservationDecisionResult';
@@ -52,10 +61,13 @@ class _$ReservationDecisionResultSerializer implements PrimitiveSerializer<Reser
       specifiedType: const FullType(Reservation),
     );
     yield r'pass';
-    yield object.pass == null ? null : serializers.serialize(
-      object.pass,
-      specifiedType: const FullType.nullable(ReservationDecisionResultPass),
-    );
+    yield object.pass == null
+        ? null
+        : serializers.serialize(
+            object.pass,
+            specifiedType:
+                const FullType.nullable(ReservationDecisionResultPass),
+          );
   }
 
   @override
@@ -64,7 +76,9 @@ class _$ReservationDecisionResultSerializer implements PrimitiveSerializer<Reser
     ReservationDecisionResult object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
   }
 
   void _deserializeProperties(
@@ -89,7 +103,8 @@ class _$ReservationDecisionResultSerializer implements PrimitiveSerializer<Reser
         case r'pass':
           final valueDes = serializers.deserialize(
             value,
-            specifiedType: const FullType.nullable(ReservationDecisionResultPass),
+            specifiedType:
+                const FullType.nullable(ReservationDecisionResultPass),
           ) as ReservationDecisionResultPass?;
           if (valueDes == null) continue;
           result.pass.replace(valueDes);
@@ -122,4 +137,3 @@ class _$ReservationDecisionResultSerializer implements PrimitiveSerializer<Reser
     return result.build();
   }
 }
-

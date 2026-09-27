@@ -11,14 +11,15 @@ part 'position_receipt.g.dart';
 /// PositionReceipt
 ///
 /// Properties:
-/// * [clientFixId] 
-/// * [receivedAt] 
-/// * [capturedAt] 
-/// * [effectiveCapturedAt] 
-/// * [acceptedForLive] 
-/// * [clockAdjusted] 
+/// * [clientFixId]
+/// * [receivedAt]
+/// * [capturedAt]
+/// * [effectiveCapturedAt]
+/// * [acceptedForLive]
+/// * [clockAdjusted]
 @BuiltValue()
-abstract class PositionReceipt implements Built<PositionReceipt, PositionReceiptBuilder> {
+abstract class PositionReceipt
+    implements Built<PositionReceipt, PositionReceiptBuilder> {
   @BuiltValueField(wireName: r'clientFixId')
   String get clientFixId;
 
@@ -39,16 +40,19 @@ abstract class PositionReceipt implements Built<PositionReceipt, PositionReceipt
 
   PositionReceipt._();
 
-  factory PositionReceipt([void updates(PositionReceiptBuilder b)]) = _$PositionReceipt;
+  factory PositionReceipt([void updates(PositionReceiptBuilder b)]) =
+      _$PositionReceipt;
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(PositionReceiptBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
-  static Serializer<PositionReceipt> get serializer => _$PositionReceiptSerializer();
+  static Serializer<PositionReceipt> get serializer =>
+      _$PositionReceiptSerializer();
 }
 
-class _$PositionReceiptSerializer implements PrimitiveSerializer<PositionReceipt> {
+class _$PositionReceiptSerializer
+    implements PrimitiveSerializer<PositionReceipt> {
   @override
   final Iterable<Type> types = const [PositionReceipt, _$PositionReceipt];
 
@@ -98,7 +102,9 @@ class _$PositionReceiptSerializer implements PrimitiveSerializer<PositionReceipt
     PositionReceipt object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
   }
 
   void _deserializeProperties(
@@ -183,4 +189,3 @@ class _$PositionReceiptSerializer implements PrimitiveSerializer<PositionReceipt
     return result.build();
   }
 }
-

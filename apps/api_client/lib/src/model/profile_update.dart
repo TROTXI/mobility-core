@@ -11,21 +11,24 @@ part 'profile_update.g.dart';
 /// ProfileUpdate
 ///
 /// Properties:
-/// * [displayName] 
+/// * [displayName]
 @BuiltValue()
-abstract class ProfileUpdate implements Built<ProfileUpdate, ProfileUpdateBuilder> {
+abstract class ProfileUpdate
+    implements Built<ProfileUpdate, ProfileUpdateBuilder> {
   @BuiltValueField(wireName: r'displayName')
   String get displayName;
 
   ProfileUpdate._();
 
-  factory ProfileUpdate([void updates(ProfileUpdateBuilder b)]) = _$ProfileUpdate;
+  factory ProfileUpdate([void updates(ProfileUpdateBuilder b)]) =
+      _$ProfileUpdate;
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(ProfileUpdateBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
-  static Serializer<ProfileUpdate> get serializer => _$ProfileUpdateSerializer();
+  static Serializer<ProfileUpdate> get serializer =>
+      _$ProfileUpdateSerializer();
 }
 
 class _$ProfileUpdateSerializer implements PrimitiveSerializer<ProfileUpdate> {
@@ -53,7 +56,9 @@ class _$ProfileUpdateSerializer implements PrimitiveSerializer<ProfileUpdate> {
     ProfileUpdate object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
   }
 
   void _deserializeProperties(
@@ -103,4 +108,3 @@ class _$ProfileUpdateSerializer implements PrimitiveSerializer<ProfileUpdate> {
     return result.build();
   }
 }
-

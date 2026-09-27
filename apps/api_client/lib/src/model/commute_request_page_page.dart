@@ -11,26 +11,34 @@ part 'commute_request_page_page.g.dart';
 /// CommuteRequestPagePage
 ///
 /// Properties:
-/// * [nextCursor] 
+/// * [nextCursor]
 @BuiltValue()
-abstract class CommuteRequestPagePage implements Built<CommuteRequestPagePage, CommuteRequestPagePageBuilder> {
+abstract class CommuteRequestPagePage
+    implements Built<CommuteRequestPagePage, CommuteRequestPagePageBuilder> {
   @BuiltValueField(wireName: r'nextCursor')
   String? get nextCursor;
 
   CommuteRequestPagePage._();
 
-  factory CommuteRequestPagePage([void updates(CommuteRequestPagePageBuilder b)]) = _$CommuteRequestPagePage;
+  factory CommuteRequestPagePage(
+          [void updates(CommuteRequestPagePageBuilder b)]) =
+      _$CommuteRequestPagePage;
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(CommuteRequestPagePageBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
-  static Serializer<CommuteRequestPagePage> get serializer => _$CommuteRequestPagePageSerializer();
+  static Serializer<CommuteRequestPagePage> get serializer =>
+      _$CommuteRequestPagePageSerializer();
 }
 
-class _$CommuteRequestPagePageSerializer implements PrimitiveSerializer<CommuteRequestPagePage> {
+class _$CommuteRequestPagePageSerializer
+    implements PrimitiveSerializer<CommuteRequestPagePage> {
   @override
-  final Iterable<Type> types = const [CommuteRequestPagePage, _$CommuteRequestPagePage];
+  final Iterable<Type> types = const [
+    CommuteRequestPagePage,
+    _$CommuteRequestPagePage
+  ];
 
   @override
   final String wireName = r'CommuteRequestPagePage';
@@ -41,10 +49,12 @@ class _$CommuteRequestPagePageSerializer implements PrimitiveSerializer<CommuteR
     FullType specifiedType = FullType.unspecified,
   }) sync* {
     yield r'nextCursor';
-    yield object.nextCursor == null ? null : serializers.serialize(
-      object.nextCursor,
-      specifiedType: const FullType.nullable(String),
-    );
+    yield object.nextCursor == null
+        ? null
+        : serializers.serialize(
+            object.nextCursor,
+            specifiedType: const FullType.nullable(String),
+          );
   }
 
   @override
@@ -53,7 +63,9 @@ class _$CommuteRequestPagePageSerializer implements PrimitiveSerializer<CommuteR
     CommuteRequestPagePage object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
   }
 
   void _deserializeProperties(
@@ -104,4 +116,3 @@ class _$CommuteRequestPagePageSerializer implements PrimitiveSerializer<CommuteR
     return result.build();
   }
 }
-

@@ -14,8 +14,8 @@ part 'pattern_page.g.dart';
 /// PatternPage
 ///
 /// Properties:
-/// * [data] 
-/// * [page] 
+/// * [data]
+/// * [page]
 @BuiltValue()
 abstract class PatternPage implements Built<PatternPage, PatternPageBuilder> {
   @BuiltValueField(wireName: r'data')
@@ -65,7 +65,9 @@ class _$PatternPageSerializer implements PrimitiveSerializer<PatternPage> {
     PatternPage object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
   }
 
   void _deserializeProperties(
@@ -122,4 +124,3 @@ class _$PatternPageSerializer implements PrimitiveSerializer<PatternPage> {
     return result.build();
   }
 }
-

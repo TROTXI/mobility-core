@@ -209,7 +209,13 @@ named(
 );
 named(
   'DriverTokens',
-  schemas.Tokens.extend({ driver: obj({ id, name: text() }), mustChangePin: z.boolean() }),
+  schemas.Tokens.extend({
+    driver: obj({ id, name: text() }),
+    // An operations-issued PIN: the session reaches only the driver's own
+    // record and PIN change until the driver sets a private PIN.
+    mustChangePin: z.boolean(),
+    temporaryPinExpiresAt: instant.nullable(),
+  }),
 );
 named(
   'PinChange',
@@ -844,11 +850,15 @@ named(
   }),
 );
 named('WorkDecision', obj({ status: z.enum(['approved', 'declined']), decisionNote: note }));
+// Where operations emails sign-in instructions. Not a verified identity and
+// never used to sign in or recover an account.
+const driverEmail = z.email().max(320);
 named(
   'DriverInput',
   obj({
     name: text(),
     phone: text().optional(),
+    email: driverEmail.optional(),
     licenseNumber: text().optional(),
     userId: id.optional(),
   }),
@@ -859,9 +869,25 @@ named(
     id,
     name: text(),
     phone: text().nullable(),
+    email: driverEmail.nullable(),
     licenseNumber: text().nullable(),
     userId: id.nullable(),
     archived: z.boolean(),
+    credential: obj({
+      driverCode: text(32),
+      status: z.enum(['active', 'suspended']),
+      mustChangePin: z.boolean(),
+      temporaryPinExpiresAt: instant.nullable(),
+      lockedUntil: instant.nullable(),
+    }).nullable(),
+    // The latest sign-in email for this driver. queued is not sent and
+    // provider_accepted is not delivered; nothing here confirms delivery.
+    credentialEmail: obj({
+      purpose: z.enum(['onboarding', 'pin_reset']),
+      state: z.enum(['queued', 'provider_accepted', 'cancelled', 'failed', 'unknown']),
+      failureCode: text(100).nullable(),
+      queuedAt: instant,
+    }).nullable(),
     editToken: text(128),
     ...audit,
   }),
@@ -871,6 +897,7 @@ named(
   obj({
     name: text().optional(),
     phone: text().nullable().optional(),
+    email: driverEmail.nullable().optional(),
     licenseNumber: text().nullable().optional(),
     userId: id.nullable().optional(),
     archived: z.boolean().optional(),
@@ -907,8 +934,21 @@ named(
 );
 named('RoleEdit', obj({ role, reason: note }));
 // Preserve existing ops-generated codes when omitted; an explicit code is optional.
-named('CredentialIssue', obj({ code: text(32).optional() }));
-named('CredentialSecret', obj({ code: text(32), pin: z.string().regex(/^\d{6}$/) }));
+named(
+  'CredentialIssue',
+  obj({ code: text(32).optional(), emailInstructions: z.boolean().optional() }),
+);
+named('PinResetInput', obj({ reason: note, emailInstructions: z.boolean().optional() }));
+named(
+  'CredentialSecret',
+  obj({
+    code: text(32),
+    pin: z.string().regex(/^\d{6}$/),
+    temporaryPinExpiresAt: instant,
+    // Present when email was requested: the message is queued, not yet sent.
+    email: obj({ id, to: driverEmail, state: z.enum(['queued']) }).nullable(),
+  }),
+);
 named('CredentialAction', obj({ action: z.enum(['suspend', 'activate', 'unlock']), reason: note }));
 named('FareInput', obj({ amount: money, effectiveFrom: instant, note: note.optional() }));
 named('Fare', schemas.FareInput.extend({ id, routeId: id, effectiveTo: instant.nullable() }));
@@ -1323,6 +1363,7 @@ named(
       driverCode: text(32),
       status: z.enum(['active', 'suspended', 'revoked']),
       mustChangePin: z.boolean(),
+      temporaryPinExpiresAt: instant.nullable(),
       lockedUntil: instant.nullable(),
     }).nullable(),
   }),
@@ -1658,7 +1699,7 @@ post(
 post(
   '/v1/ops/drivers/{id}/credentials/reset-pin',
   'resetDriverPin',
-  'ReasonInput',
+  'PinResetInput',
   'CredentialSecret',
   { sensitive: true },
 );

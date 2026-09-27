@@ -13,15 +13,15 @@ part 'incident.g.dart';
 /// Incident
 ///
 /// Properties:
-/// * [id] 
-/// * [tripId] 
-/// * [vehicleId] 
-/// * [category] 
-/// * [note] 
-/// * [location] 
-/// * [status] 
-/// * [resolution] 
-/// * [createdAt] 
+/// * [id]
+/// * [tripId]
+/// * [vehicleId]
+/// * [category]
+/// * [note]
+/// * [location]
+/// * [status]
+/// * [resolution]
+/// * [createdAt]
 @BuiltValue()
 abstract class Incident implements Built<Incident, IncidentBuilder> {
   @BuiltValueField(wireName: r'id')
@@ -82,40 +82,50 @@ class _$IncidentSerializer implements PrimitiveSerializer<Incident> {
       specifiedType: const FullType(String),
     );
     yield r'tripId';
-    yield object.tripId == null ? null : serializers.serialize(
-      object.tripId,
-      specifiedType: const FullType.nullable(String),
-    );
+    yield object.tripId == null
+        ? null
+        : serializers.serialize(
+            object.tripId,
+            specifiedType: const FullType.nullable(String),
+          );
     yield r'vehicleId';
-    yield object.vehicleId == null ? null : serializers.serialize(
-      object.vehicleId,
-      specifiedType: const FullType.nullable(String),
-    );
+    yield object.vehicleId == null
+        ? null
+        : serializers.serialize(
+            object.vehicleId,
+            specifiedType: const FullType.nullable(String),
+          );
     yield r'category';
     yield serializers.serialize(
       object.category,
       specifiedType: const FullType(IncidentCategoryEnum),
     );
     yield r'note';
-    yield object.note == null ? null : serializers.serialize(
-      object.note,
-      specifiedType: const FullType.nullable(String),
-    );
+    yield object.note == null
+        ? null
+        : serializers.serialize(
+            object.note,
+            specifiedType: const FullType.nullable(String),
+          );
     yield r'location';
-    yield object.location == null ? null : serializers.serialize(
-      object.location,
-      specifiedType: const FullType.nullable(IncidentLocation),
-    );
+    yield object.location == null
+        ? null
+        : serializers.serialize(
+            object.location,
+            specifiedType: const FullType.nullable(IncidentLocation),
+          );
     yield r'status';
     yield serializers.serialize(
       object.status,
       specifiedType: const FullType(IncidentStatusEnum),
     );
     yield r'resolution';
-    yield object.resolution == null ? null : serializers.serialize(
-      object.resolution,
-      specifiedType: const FullType.nullable(String),
-    );
+    yield object.resolution == null
+        ? null
+        : serializers.serialize(
+            object.resolution,
+            specifiedType: const FullType.nullable(String),
+          );
     yield r'createdAt';
     yield serializers.serialize(
       object.createdAt,
@@ -129,7 +139,9 @@ class _$IncidentSerializer implements PrimitiveSerializer<Incident> {
     Incident object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
   }
 
   void _deserializeProperties(
@@ -242,40 +254,46 @@ class _$IncidentSerializer implements PrimitiveSerializer<Incident> {
 }
 
 class IncidentCategoryEnum extends EnumClass {
-
   @BuiltValueEnumConst(wireName: r'vehicle')
   static const IncidentCategoryEnum vehicle = _$incidentCategoryEnum_vehicle;
   @BuiltValueEnumConst(wireName: r'collision')
-  static const IncidentCategoryEnum collision = _$incidentCategoryEnum_collision;
+  static const IncidentCategoryEnum collision =
+      _$incidentCategoryEnum_collision;
   @BuiltValueEnumConst(wireName: r'passenger_safety')
-  static const IncidentCategoryEnum passengerSafety = _$incidentCategoryEnum_passengerSafety;
+  static const IncidentCategoryEnum passengerSafety =
+      _$incidentCategoryEnum_passengerSafety;
   @BuiltValueEnumConst(wireName: r'route_blocked')
-  static const IncidentCategoryEnum routeBlocked = _$incidentCategoryEnum_routeBlocked;
+  static const IncidentCategoryEnum routeBlocked =
+      _$incidentCategoryEnum_routeBlocked;
   @BuiltValueEnumConst(wireName: r'other')
   static const IncidentCategoryEnum other = _$incidentCategoryEnum_other;
 
-  static Serializer<IncidentCategoryEnum> get serializer => _$incidentCategoryEnumSerializer;
+  static Serializer<IncidentCategoryEnum> get serializer =>
+      _$incidentCategoryEnumSerializer;
 
-  const IncidentCategoryEnum._(String name): super(name);
+  const IncidentCategoryEnum._(String name) : super(name);
 
-  static BuiltSet<IncidentCategoryEnum> get values => _$incidentCategoryEnumValues;
-  static IncidentCategoryEnum valueOf(String name) => _$incidentCategoryEnumValueOf(name);
+  static BuiltSet<IncidentCategoryEnum> get values =>
+      _$incidentCategoryEnumValues;
+  static IncidentCategoryEnum valueOf(String name) =>
+      _$incidentCategoryEnumValueOf(name);
 }
 
 class IncidentStatusEnum extends EnumClass {
-
   @BuiltValueEnumConst(wireName: r'open')
   static const IncidentStatusEnum open = _$incidentStatusEnum_open;
   @BuiltValueEnumConst(wireName: r'acknowledged')
-  static const IncidentStatusEnum acknowledged = _$incidentStatusEnum_acknowledged;
+  static const IncidentStatusEnum acknowledged =
+      _$incidentStatusEnum_acknowledged;
   @BuiltValueEnumConst(wireName: r'resolved')
   static const IncidentStatusEnum resolved = _$incidentStatusEnum_resolved;
 
-  static Serializer<IncidentStatusEnum> get serializer => _$incidentStatusEnumSerializer;
+  static Serializer<IncidentStatusEnum> get serializer =>
+      _$incidentStatusEnumSerializer;
 
-  const IncidentStatusEnum._(String name): super(name);
+  const IncidentStatusEnum._(String name) : super(name);
 
   static BuiltSet<IncidentStatusEnum> get values => _$incidentStatusEnumValues;
-  static IncidentStatusEnum valueOf(String name) => _$incidentStatusEnumValueOf(name);
+  static IncidentStatusEnum valueOf(String name) =>
+      _$incidentStatusEnumValueOf(name);
 }
-

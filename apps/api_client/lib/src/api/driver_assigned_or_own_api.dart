@@ -22,7 +22,6 @@ import 'package:trotxi_api_client/src/model/position_receipt_response.dart';
 import 'package:trotxi_api_client/src/model/trip_summary_response.dart';
 
 class DriverAssignedOrOwnApi {
-
   final Dio _dio;
 
   final Serializers _serializers;
@@ -30,14 +29,14 @@ class DriverAssignedOrOwnApi {
   const DriverAssignedOrOwnApi(this._dio, this._serializers);
 
   /// board Rider
-  /// 
+  ///
   ///
   /// Parameters:
-  /// * [id] 
+  /// * [id]
   /// * [idempotencyKey] - Caller + operation + target scoped; payload mismatch = 409. Never log secrets.
   /// * [xTrotxiClient] - Compatibility metadata only, never grants a role.
   /// * [xTrotxiBuild] - Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
-  /// * [boardingInput] 
+  /// * [boardingInput]
   /// * [xTrotxiPlatform] - Required for commuter/driver, absent for ops/worker.
   /// * [cancelToken] - A [CancelToken] that can be used to cancel the operation
   /// * [headers] - Can be used to add additional headers to the request
@@ -48,11 +47,11 @@ class DriverAssignedOrOwnApi {
   ///
   /// Returns a [Future] containing a [Response] with a [BoardingResultResponse] as data
   /// Throws [DioException] if API call or serialization fails
-  Future<Response<BoardingResultResponse>> boardRider({ 
+  Future<Response<BoardingResultResponse>> boardRider({
     required String id,
     required String idempotencyKey,
     required String xTrotxiClient,
-    required int xTrotxiBuild,
+    int xTrotxiBuild = 1,
     required BoardingInput boardingInput,
     String? xTrotxiPlatform,
     CancelToken? cancelToken,
@@ -62,7 +61,10 @@ class DriverAssignedOrOwnApi {
     ProgressCallback? onSendProgress,
     ProgressCallback? onReceiveProgress,
   }) async {
-    final _path = r'/v1/driver/trips/{id}/boardings'.replaceAll('{' r'id' '}', encodeQueryParameter(_serializers, id, const FullType(String)).toString());
+    final _path = r'/v1/driver/trips/{id}/boardings'.replaceAll(
+        '{' r'id' '}',
+        encodeQueryParameter(_serializers, id, const FullType(String))
+            .toString());
     final _options = Options(
       method: r'POST',
       headers: <String, dynamic>{
@@ -91,10 +93,9 @@ class DriverAssignedOrOwnApi {
     try {
       const _type = FullType(BoardingInput);
       _bodyData = _serializers.serialize(boardingInput, specifiedType: _type);
-
-    } catch(error, stackTrace) {
+    } catch (error, stackTrace) {
       throw DioException(
-         requestOptions: _options.compose(
+        requestOptions: _options.compose(
           _dio.options,
           _path,
         ),
@@ -117,11 +118,12 @@ class DriverAssignedOrOwnApi {
 
     try {
       final rawResponse = _response.data;
-      _responseData = rawResponse == null ? null : _serializers.deserialize(
-        rawResponse,
-        specifiedType: const FullType(BoardingResultResponse),
-      ) as BoardingResultResponse;
-
+      _responseData = rawResponse == null
+          ? null
+          : _serializers.deserialize(
+              rawResponse,
+              specifiedType: const FullType(BoardingResultResponse),
+            ) as BoardingResultResponse;
     } catch (error, stackTrace) {
       throw DioException(
         requestOptions: _response.requestOptions,
@@ -145,10 +147,10 @@ class DriverAssignedOrOwnApi {
   }
 
   /// complete Trip
-  /// 
+  ///
   ///
   /// Parameters:
-  /// * [id] 
+  /// * [id]
   /// * [idempotencyKey] - Caller + operation + target scoped; payload mismatch = 409. Never log secrets.
   /// * [xTrotxiClient] - Compatibility metadata only, never grants a role.
   /// * [xTrotxiBuild] - Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
@@ -162,11 +164,11 @@ class DriverAssignedOrOwnApi {
   ///
   /// Returns a [Future] containing a [Response] with a [DriverTripResponse] as data
   /// Throws [DioException] if API call or serialization fails
-  Future<Response<DriverTripResponse>> completeTrip({ 
+  Future<Response<DriverTripResponse>> completeTrip({
     required String id,
     required String idempotencyKey,
     required String xTrotxiClient,
-    required int xTrotxiBuild,
+    int xTrotxiBuild = 1,
     String? xTrotxiPlatform,
     CancelToken? cancelToken,
     Map<String, dynamic>? headers,
@@ -175,7 +177,10 @@ class DriverAssignedOrOwnApi {
     ProgressCallback? onSendProgress,
     ProgressCallback? onReceiveProgress,
   }) async {
-    final _path = r'/v1/driver/trips/{id}/complete'.replaceAll('{' r'id' '}', encodeQueryParameter(_serializers, id, const FullType(String)).toString());
+    final _path = r'/v1/driver/trips/{id}/complete'.replaceAll(
+        '{' r'id' '}',
+        encodeQueryParameter(_serializers, id, const FullType(String))
+            .toString());
     final _options = Options(
       method: r'POST',
       headers: <String, dynamic>{
@@ -210,11 +215,12 @@ class DriverAssignedOrOwnApi {
 
     try {
       final rawResponse = _response.data;
-      _responseData = rawResponse == null ? null : _serializers.deserialize(
-        rawResponse,
-        specifiedType: const FullType(DriverTripResponse),
-      ) as DriverTripResponse;
-
+      _responseData = rawResponse == null
+          ? null
+          : _serializers.deserialize(
+              rawResponse,
+              specifiedType: const FullType(DriverTripResponse),
+            ) as DriverTripResponse;
     } catch (error, stackTrace) {
       throw DioException(
         requestOptions: _response.requestOptions,
@@ -238,10 +244,10 @@ class DriverAssignedOrOwnApi {
   }
 
   /// get Manifest
-  /// 
+  ///
   ///
   /// Parameters:
-  /// * [id] 
+  /// * [id]
   /// * [xTrotxiClient] - Compatibility metadata only, never grants a role.
   /// * [xTrotxiBuild] - Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
   /// * [xTrotxiPlatform] - Required for commuter/driver, absent for ops/worker.
@@ -254,10 +260,10 @@ class DriverAssignedOrOwnApi {
   ///
   /// Returns a [Future] containing a [Response] with a [ManifestResponse] as data
   /// Throws [DioException] if API call or serialization fails
-  Future<Response<ManifestResponse>> getManifest({ 
+  Future<Response<ManifestResponse>> getManifest({
     required String id,
     required String xTrotxiClient,
-    required int xTrotxiBuild,
+    int xTrotxiBuild = 1,
     String? xTrotxiPlatform,
     CancelToken? cancelToken,
     Map<String, dynamic>? headers,
@@ -266,7 +272,10 @@ class DriverAssignedOrOwnApi {
     ProgressCallback? onSendProgress,
     ProgressCallback? onReceiveProgress,
   }) async {
-    final _path = r'/v1/driver/trips/{id}/manifest'.replaceAll('{' r'id' '}', encodeQueryParameter(_serializers, id, const FullType(String)).toString());
+    final _path = r'/v1/driver/trips/{id}/manifest'.replaceAll(
+        '{' r'id' '}',
+        encodeQueryParameter(_serializers, id, const FullType(String))
+            .toString());
     final _options = Options(
       method: r'GET',
       headers: <String, dynamic>{
@@ -300,11 +309,12 @@ class DriverAssignedOrOwnApi {
 
     try {
       final rawResponse = _response.data;
-      _responseData = rawResponse == null ? null : _serializers.deserialize(
-        rawResponse,
-        specifiedType: const FullType(ManifestResponse),
-      ) as ManifestResponse;
-
+      _responseData = rawResponse == null
+          ? null
+          : _serializers.deserialize(
+              rawResponse,
+              specifiedType: const FullType(ManifestResponse),
+            ) as ManifestResponse;
     } catch (error, stackTrace) {
       throw DioException(
         requestOptions: _response.requestOptions,
@@ -328,10 +338,10 @@ class DriverAssignedOrOwnApi {
   }
 
   /// get Trip Summary
-  /// 
+  ///
   ///
   /// Parameters:
-  /// * [id] 
+  /// * [id]
   /// * [xTrotxiClient] - Compatibility metadata only, never grants a role.
   /// * [xTrotxiBuild] - Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
   /// * [xTrotxiPlatform] - Required for commuter/driver, absent for ops/worker.
@@ -344,10 +354,10 @@ class DriverAssignedOrOwnApi {
   ///
   /// Returns a [Future] containing a [Response] with a [TripSummaryResponse] as data
   /// Throws [DioException] if API call or serialization fails
-  Future<Response<TripSummaryResponse>> getTripSummary({ 
+  Future<Response<TripSummaryResponse>> getTripSummary({
     required String id,
     required String xTrotxiClient,
-    required int xTrotxiBuild,
+    int xTrotxiBuild = 1,
     String? xTrotxiPlatform,
     CancelToken? cancelToken,
     Map<String, dynamic>? headers,
@@ -356,7 +366,10 @@ class DriverAssignedOrOwnApi {
     ProgressCallback? onSendProgress,
     ProgressCallback? onReceiveProgress,
   }) async {
-    final _path = r'/v1/driver/trips/{id}/summary'.replaceAll('{' r'id' '}', encodeQueryParameter(_serializers, id, const FullType(String)).toString());
+    final _path = r'/v1/driver/trips/{id}/summary'.replaceAll(
+        '{' r'id' '}',
+        encodeQueryParameter(_serializers, id, const FullType(String))
+            .toString());
     final _options = Options(
       method: r'GET',
       headers: <String, dynamic>{
@@ -390,11 +403,12 @@ class DriverAssignedOrOwnApi {
 
     try {
       final rawResponse = _response.data;
-      _responseData = rawResponse == null ? null : _serializers.deserialize(
-        rawResponse,
-        specifiedType: const FullType(TripSummaryResponse),
-      ) as TripSummaryResponse;
-
+      _responseData = rawResponse == null
+          ? null
+          : _serializers.deserialize(
+              rawResponse,
+              specifiedType: const FullType(TripSummaryResponse),
+            ) as TripSummaryResponse;
     } catch (error, stackTrace) {
       throw DioException(
         requestOptions: _response.requestOptions,
@@ -418,7 +432,7 @@ class DriverAssignedOrOwnApi {
   }
 
   /// list Driver Trips
-  /// 
+  ///
   ///
   /// Parameters:
   /// * [xTrotxiClient] - Compatibility metadata only, never grants a role.
@@ -438,9 +452,9 @@ class DriverAssignedOrOwnApi {
   ///
   /// Returns a [Future] containing a [Response] with a [DriverTripPage] as data
   /// Throws [DioException] if API call or serialization fails
-  Future<Response<DriverTripPage>> listDriverTrips({ 
+  Future<Response<DriverTripPage>> listDriverTrips({
     required String xTrotxiClient,
-    required int xTrotxiBuild,
+    int xTrotxiBuild = 1,
     String? cursor,
     int? limit = 50,
     Date? fromDate,
@@ -477,11 +491,21 @@ class DriverAssignedOrOwnApi {
     );
 
     final _queryParameters = <String, dynamic>{
-      if (cursor != null) r'cursor': encodeQueryParameter(_serializers, cursor, const FullType(String)),
-      if (limit != null) r'limit': encodeQueryParameter(_serializers, limit, const FullType(int)),
-      if (fromDate != null) r'fromDate': encodeQueryParameter(_serializers, fromDate, const FullType(Date)),
-      if (toDate != null) r'toDate': encodeQueryParameter(_serializers, toDate, const FullType(Date)),
-      if (routeId != null) r'routeId': encodeQueryParameter(_serializers, routeId, const FullType(String)),
+      if (cursor != null)
+        r'cursor':
+            encodeQueryParameter(_serializers, cursor, const FullType(String)),
+      if (limit != null)
+        r'limit':
+            encodeQueryParameter(_serializers, limit, const FullType(int)),
+      if (fromDate != null)
+        r'fromDate':
+            encodeQueryParameter(_serializers, fromDate, const FullType(Date)),
+      if (toDate != null)
+        r'toDate':
+            encodeQueryParameter(_serializers, toDate, const FullType(Date)),
+      if (routeId != null)
+        r'routeId':
+            encodeQueryParameter(_serializers, routeId, const FullType(String)),
     };
 
     final _response = await _dio.request<Object>(
@@ -497,11 +521,12 @@ class DriverAssignedOrOwnApi {
 
     try {
       final rawResponse = _response.data;
-      _responseData = rawResponse == null ? null : _serializers.deserialize(
-        rawResponse,
-        specifiedType: const FullType(DriverTripPage),
-      ) as DriverTripPage;
-
+      _responseData = rawResponse == null
+          ? null
+          : _serializers.deserialize(
+              rawResponse,
+              specifiedType: const FullType(DriverTripPage),
+            ) as DriverTripPage;
     } catch (error, stackTrace) {
       throw DioException(
         requestOptions: _response.requestOptions,
@@ -525,11 +550,11 @@ class DriverAssignedOrOwnApi {
   }
 
   /// mark No Show
-  /// 
+  ///
   ///
   /// Parameters:
-  /// * [id] 
-  /// * [reservationId] 
+  /// * [id]
+  /// * [reservationId]
   /// * [idempotencyKey] - Caller + operation + target scoped; payload mismatch = 409. Never log secrets.
   /// * [xTrotxiClient] - Compatibility metadata only, never grants a role.
   /// * [xTrotxiBuild] - Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
@@ -543,12 +568,12 @@ class DriverAssignedOrOwnApi {
   ///
   /// Returns a [Future] containing a [Response] with a [BoardingResultResponse] as data
   /// Throws [DioException] if API call or serialization fails
-  Future<Response<BoardingResultResponse>> markNoShow({ 
+  Future<Response<BoardingResultResponse>> markNoShow({
     required String id,
     required String reservationId,
     required String idempotencyKey,
     required String xTrotxiClient,
-    required int xTrotxiBuild,
+    int xTrotxiBuild = 1,
     String? xTrotxiPlatform,
     CancelToken? cancelToken,
     Map<String, dynamic>? headers,
@@ -557,7 +582,16 @@ class DriverAssignedOrOwnApi {
     ProgressCallback? onSendProgress,
     ProgressCallback? onReceiveProgress,
   }) async {
-    final _path = r'/v1/driver/trips/{id}/reservations/{reservationId}/no-show'.replaceAll('{' r'id' '}', encodeQueryParameter(_serializers, id, const FullType(String)).toString()).replaceAll('{' r'reservationId' '}', encodeQueryParameter(_serializers, reservationId, const FullType(String)).toString());
+    final _path = r'/v1/driver/trips/{id}/reservations/{reservationId}/no-show'
+        .replaceAll(
+            '{' r'id' '}',
+            encodeQueryParameter(_serializers, id, const FullType(String))
+                .toString())
+        .replaceAll(
+            '{' r'reservationId' '}',
+            encodeQueryParameter(
+                    _serializers, reservationId, const FullType(String))
+                .toString());
     final _options = Options(
       method: r'POST',
       headers: <String, dynamic>{
@@ -592,11 +626,12 @@ class DriverAssignedOrOwnApi {
 
     try {
       final rawResponse = _response.data;
-      _responseData = rawResponse == null ? null : _serializers.deserialize(
-        rawResponse,
-        specifiedType: const FullType(BoardingResultResponse),
-      ) as BoardingResultResponse;
-
+      _responseData = rawResponse == null
+          ? null
+          : _serializers.deserialize(
+              rawResponse,
+              specifiedType: const FullType(BoardingResultResponse),
+            ) as BoardingResultResponse;
     } catch (error, stackTrace) {
       throw DioException(
         requestOptions: _response.requestOptions,
@@ -620,15 +655,15 @@ class DriverAssignedOrOwnApi {
   }
 
   /// record Arrival
-  /// 
+  ///
   ///
   /// Parameters:
-  /// * [id] 
+  /// * [id]
   /// * [ifMatch] - Missing = 428; stale = 412. Completed idempotent replay is checked first after authorization.
   /// * [idempotencyKey] - Caller + operation + target scoped; payload mismatch = 409. Never log secrets.
   /// * [xTrotxiClient] - Compatibility metadata only, never grants a role.
   /// * [xTrotxiBuild] - Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
-  /// * [arrivalInput] 
+  /// * [arrivalInput]
   /// * [xTrotxiPlatform] - Required for commuter/driver, absent for ops/worker.
   /// * [cancelToken] - A [CancelToken] that can be used to cancel the operation
   /// * [headers] - Can be used to add additional headers to the request
@@ -639,12 +674,12 @@ class DriverAssignedOrOwnApi {
   ///
   /// Returns a [Future] containing a [Response] with a [DriverTripResponse] as data
   /// Throws [DioException] if API call or serialization fails
-  Future<Response<DriverTripResponse>> recordArrival({ 
+  Future<Response<DriverTripResponse>> recordArrival({
     required String id,
     required String ifMatch,
     required String idempotencyKey,
     required String xTrotxiClient,
-    required int xTrotxiBuild,
+    int xTrotxiBuild = 1,
     required ArrivalInput arrivalInput,
     String? xTrotxiPlatform,
     CancelToken? cancelToken,
@@ -654,7 +689,10 @@ class DriverAssignedOrOwnApi {
     ProgressCallback? onSendProgress,
     ProgressCallback? onReceiveProgress,
   }) async {
-    final _path = r'/v1/driver/trips/{id}/arrivals'.replaceAll('{' r'id' '}', encodeQueryParameter(_serializers, id, const FullType(String)).toString());
+    final _path = r'/v1/driver/trips/{id}/arrivals'.replaceAll(
+        '{' r'id' '}',
+        encodeQueryParameter(_serializers, id, const FullType(String))
+            .toString());
     final _options = Options(
       method: r'POST',
       headers: <String, dynamic>{
@@ -684,10 +722,9 @@ class DriverAssignedOrOwnApi {
     try {
       const _type = FullType(ArrivalInput);
       _bodyData = _serializers.serialize(arrivalInput, specifiedType: _type);
-
-    } catch(error, stackTrace) {
+    } catch (error, stackTrace) {
       throw DioException(
-         requestOptions: _options.compose(
+        requestOptions: _options.compose(
           _dio.options,
           _path,
         ),
@@ -710,11 +747,12 @@ class DriverAssignedOrOwnApi {
 
     try {
       final rawResponse = _response.data;
-      _responseData = rawResponse == null ? null : _serializers.deserialize(
-        rawResponse,
-        specifiedType: const FullType(DriverTripResponse),
-      ) as DriverTripResponse;
-
+      _responseData = rawResponse == null
+          ? null
+          : _serializers.deserialize(
+              rawResponse,
+              specifiedType: const FullType(DriverTripResponse),
+            ) as DriverTripResponse;
     } catch (error, stackTrace) {
       throw DioException(
         requestOptions: _response.requestOptions,
@@ -738,13 +776,13 @@ class DriverAssignedOrOwnApi {
   }
 
   /// record Position
-  /// 
+  ///
   ///
   /// Parameters:
-  /// * [id] 
+  /// * [id]
   /// * [xTrotxiClient] - Compatibility metadata only, never grants a role.
   /// * [xTrotxiBuild] - Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
-  /// * [positionInput] 
+  /// * [positionInput]
   /// * [xTrotxiPlatform] - Required for commuter/driver, absent for ops/worker.
   /// * [cancelToken] - A [CancelToken] that can be used to cancel the operation
   /// * [headers] - Can be used to add additional headers to the request
@@ -755,10 +793,10 @@ class DriverAssignedOrOwnApi {
   ///
   /// Returns a [Future] containing a [Response] with a [PositionReceiptResponse] as data
   /// Throws [DioException] if API call or serialization fails
-  Future<Response<PositionReceiptResponse>> recordPosition({ 
+  Future<Response<PositionReceiptResponse>> recordPosition({
     required String id,
     required String xTrotxiClient,
-    required int xTrotxiBuild,
+    int xTrotxiBuild = 1,
     required PositionInput positionInput,
     String? xTrotxiPlatform,
     CancelToken? cancelToken,
@@ -768,7 +806,10 @@ class DriverAssignedOrOwnApi {
     ProgressCallback? onSendProgress,
     ProgressCallback? onReceiveProgress,
   }) async {
-    final _path = r'/v1/driver/trips/{id}/positions'.replaceAll('{' r'id' '}', encodeQueryParameter(_serializers, id, const FullType(String)).toString());
+    final _path = r'/v1/driver/trips/{id}/positions'.replaceAll(
+        '{' r'id' '}',
+        encodeQueryParameter(_serializers, id, const FullType(String))
+            .toString());
     final _options = Options(
       method: r'POST',
       headers: <String, dynamic>{
@@ -796,10 +837,9 @@ class DriverAssignedOrOwnApi {
     try {
       const _type = FullType(PositionInput);
       _bodyData = _serializers.serialize(positionInput, specifiedType: _type);
-
-    } catch(error, stackTrace) {
+    } catch (error, stackTrace) {
       throw DioException(
-         requestOptions: _options.compose(
+        requestOptions: _options.compose(
           _dio.options,
           _path,
         ),
@@ -822,11 +862,12 @@ class DriverAssignedOrOwnApi {
 
     try {
       final rawResponse = _response.data;
-      _responseData = rawResponse == null ? null : _serializers.deserialize(
-        rawResponse,
-        specifiedType: const FullType(PositionReceiptResponse),
-      ) as PositionReceiptResponse;
-
+      _responseData = rawResponse == null
+          ? null
+          : _serializers.deserialize(
+              rawResponse,
+              specifiedType: const FullType(PositionReceiptResponse),
+            ) as PositionReceiptResponse;
     } catch (error, stackTrace) {
       throw DioException(
         requestOptions: _response.requestOptions,
@@ -850,10 +891,10 @@ class DriverAssignedOrOwnApi {
   }
 
   /// start Trip
-  /// 
+  ///
   ///
   /// Parameters:
-  /// * [id] 
+  /// * [id]
   /// * [idempotencyKey] - Caller + operation + target scoped; payload mismatch = 409. Never log secrets.
   /// * [xTrotxiClient] - Compatibility metadata only, never grants a role.
   /// * [xTrotxiBuild] - Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
@@ -867,11 +908,11 @@ class DriverAssignedOrOwnApi {
   ///
   /// Returns a [Future] containing a [Response] with a [DriverTripResponse] as data
   /// Throws [DioException] if API call or serialization fails
-  Future<Response<DriverTripResponse>> startTrip({ 
+  Future<Response<DriverTripResponse>> startTrip({
     required String id,
     required String idempotencyKey,
     required String xTrotxiClient,
-    required int xTrotxiBuild,
+    int xTrotxiBuild = 1,
     String? xTrotxiPlatform,
     CancelToken? cancelToken,
     Map<String, dynamic>? headers,
@@ -880,7 +921,10 @@ class DriverAssignedOrOwnApi {
     ProgressCallback? onSendProgress,
     ProgressCallback? onReceiveProgress,
   }) async {
-    final _path = r'/v1/driver/trips/{id}/start'.replaceAll('{' r'id' '}', encodeQueryParameter(_serializers, id, const FullType(String)).toString());
+    final _path = r'/v1/driver/trips/{id}/start'.replaceAll(
+        '{' r'id' '}',
+        encodeQueryParameter(_serializers, id, const FullType(String))
+            .toString());
     final _options = Options(
       method: r'POST',
       headers: <String, dynamic>{
@@ -915,11 +959,12 @@ class DriverAssignedOrOwnApi {
 
     try {
       final rawResponse = _response.data;
-      _responseData = rawResponse == null ? null : _serializers.deserialize(
-        rawResponse,
-        specifiedType: const FullType(DriverTripResponse),
-      ) as DriverTripResponse;
-
+      _responseData = rawResponse == null
+          ? null
+          : _serializers.deserialize(
+              rawResponse,
+              specifiedType: const FullType(DriverTripResponse),
+            ) as DriverTripResponse;
     } catch (error, stackTrace) {
       throw DioException(
         requestOptions: _response.requestOptions,
@@ -941,5 +986,4 @@ class DriverAssignedOrOwnApi {
       extra: _response.extra,
     );
   }
-
 }

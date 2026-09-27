@@ -12,9 +12,9 @@ part 'fare_input.g.dart';
 /// FareInput
 ///
 /// Properties:
-/// * [amount] 
-/// * [effectiveFrom] 
-/// * [note] 
+/// * [amount]
+/// * [effectiveFrom]
+/// * [note]
 @BuiltValue()
 abstract class FareInput implements Built<FareInput, FareInputBuilder> {
   @BuiltValueField(wireName: r'amount')
@@ -74,7 +74,9 @@ class _$FareInputSerializer implements PrimitiveSerializer<FareInput> {
     FareInput object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
   }
 
   void _deserializeProperties(
@@ -138,4 +140,3 @@ class _$FareInputSerializer implements PrimitiveSerializer<FareInput> {
     return result.build();
   }
 }
-

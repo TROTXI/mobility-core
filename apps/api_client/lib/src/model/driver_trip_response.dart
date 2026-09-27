@@ -12,24 +12,28 @@ part 'driver_trip_response.g.dart';
 /// DriverTripResponse
 ///
 /// Properties:
-/// * [data] 
+/// * [data]
 @BuiltValue()
-abstract class DriverTripResponse implements Built<DriverTripResponse, DriverTripResponseBuilder> {
+abstract class DriverTripResponse
+    implements Built<DriverTripResponse, DriverTripResponseBuilder> {
   @BuiltValueField(wireName: r'data')
   DriverTrip get data;
 
   DriverTripResponse._();
 
-  factory DriverTripResponse([void updates(DriverTripResponseBuilder b)]) = _$DriverTripResponse;
+  factory DriverTripResponse([void updates(DriverTripResponseBuilder b)]) =
+      _$DriverTripResponse;
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(DriverTripResponseBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
-  static Serializer<DriverTripResponse> get serializer => _$DriverTripResponseSerializer();
+  static Serializer<DriverTripResponse> get serializer =>
+      _$DriverTripResponseSerializer();
 }
 
-class _$DriverTripResponseSerializer implements PrimitiveSerializer<DriverTripResponse> {
+class _$DriverTripResponseSerializer
+    implements PrimitiveSerializer<DriverTripResponse> {
   @override
   final Iterable<Type> types = const [DriverTripResponse, _$DriverTripResponse];
 
@@ -54,7 +58,9 @@ class _$DriverTripResponseSerializer implements PrimitiveSerializer<DriverTripRe
     DriverTripResponse object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
   }
 
   void _deserializeProperties(
@@ -104,4 +110,3 @@ class _$DriverTripResponseSerializer implements PrimitiveSerializer<DriverTripRe
     return result.build();
   }
 }
-

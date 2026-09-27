@@ -15,6 +15,7 @@ Name | Type | Description | Notes
 **account** | [**Account**](Account.md) |  | 
 **driver** | [**DriverTokensDriver**](DriverTokensDriver.md) |  | 
 **mustChangePin** | **bool** |  | 
+**temporaryPinExpiresAt** | [**DateTime**](DateTime.md) |  | 
 
 [[Back to Model list]](../README.md#documentation-for-models) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to README]](../README.md)
 

@@ -14,10 +14,11 @@ part 'credit_entry_page.g.dart';
 /// CreditEntryPage
 ///
 /// Properties:
-/// * [data] 
-/// * [page] 
+/// * [data]
+/// * [page]
 @BuiltValue()
-abstract class CreditEntryPage implements Built<CreditEntryPage, CreditEntryPageBuilder> {
+abstract class CreditEntryPage
+    implements Built<CreditEntryPage, CreditEntryPageBuilder> {
   @BuiltValueField(wireName: r'data')
   BuiltList<CreditEntry> get data;
 
@@ -26,16 +27,19 @@ abstract class CreditEntryPage implements Built<CreditEntryPage, CreditEntryPage
 
   CreditEntryPage._();
 
-  factory CreditEntryPage([void updates(CreditEntryPageBuilder b)]) = _$CreditEntryPage;
+  factory CreditEntryPage([void updates(CreditEntryPageBuilder b)]) =
+      _$CreditEntryPage;
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(CreditEntryPageBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
-  static Serializer<CreditEntryPage> get serializer => _$CreditEntryPageSerializer();
+  static Serializer<CreditEntryPage> get serializer =>
+      _$CreditEntryPageSerializer();
 }
 
-class _$CreditEntryPageSerializer implements PrimitiveSerializer<CreditEntryPage> {
+class _$CreditEntryPageSerializer
+    implements PrimitiveSerializer<CreditEntryPage> {
   @override
   final Iterable<Type> types = const [CreditEntryPage, _$CreditEntryPage];
 
@@ -65,7 +69,9 @@ class _$CreditEntryPageSerializer implements PrimitiveSerializer<CreditEntryPage
     CreditEntryPage object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
   }
 
   void _deserializeProperties(
@@ -122,4 +128,3 @@ class _$CreditEntryPageSerializer implements PrimitiveSerializer<CreditEntryPage
     return result.build();
   }
 }
-

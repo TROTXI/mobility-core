@@ -14,10 +14,11 @@ part 'incident_page.g.dart';
 /// IncidentPage
 ///
 /// Properties:
-/// * [data] 
-/// * [page] 
+/// * [data]
+/// * [page]
 @BuiltValue()
-abstract class IncidentPage implements Built<IncidentPage, IncidentPageBuilder> {
+abstract class IncidentPage
+    implements Built<IncidentPage, IncidentPageBuilder> {
   @BuiltValueField(wireName: r'data')
   BuiltList<Incident> get data;
 
@@ -65,7 +66,9 @@ class _$IncidentPageSerializer implements PrimitiveSerializer<IncidentPage> {
     IncidentPage object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
   }
 
   void _deserializeProperties(
@@ -122,4 +125,3 @@ class _$IncidentPageSerializer implements PrimitiveSerializer<IncidentPage> {
     return result.build();
   }
 }
-

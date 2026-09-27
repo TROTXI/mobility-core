@@ -12,10 +12,11 @@ part 'boarding_input_one_of2.g.dart';
 /// BoardingInputOneOf2
 ///
 /// Properties:
-/// * [kind] 
-/// * [reservationId] 
+/// * [kind]
+/// * [reservationId]
 @BuiltValue()
-abstract class BoardingInputOneOf2 implements Built<BoardingInputOneOf2, BoardingInputOneOf2Builder> {
+abstract class BoardingInputOneOf2
+    implements Built<BoardingInputOneOf2, BoardingInputOneOf2Builder> {
   @BuiltValueField(wireName: r'kind')
   BoardingInputOneOf2KindEnum get kind;
   // enum kindEnum {  photo,  };
@@ -25,18 +26,24 @@ abstract class BoardingInputOneOf2 implements Built<BoardingInputOneOf2, Boardin
 
   BoardingInputOneOf2._();
 
-  factory BoardingInputOneOf2([void updates(BoardingInputOneOf2Builder b)]) = _$BoardingInputOneOf2;
+  factory BoardingInputOneOf2([void updates(BoardingInputOneOf2Builder b)]) =
+      _$BoardingInputOneOf2;
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(BoardingInputOneOf2Builder b) => b;
 
   @BuiltValueSerializer(custom: true)
-  static Serializer<BoardingInputOneOf2> get serializer => _$BoardingInputOneOf2Serializer();
+  static Serializer<BoardingInputOneOf2> get serializer =>
+      _$BoardingInputOneOf2Serializer();
 }
 
-class _$BoardingInputOneOf2Serializer implements PrimitiveSerializer<BoardingInputOneOf2> {
+class _$BoardingInputOneOf2Serializer
+    implements PrimitiveSerializer<BoardingInputOneOf2> {
   @override
-  final Iterable<Type> types = const [BoardingInputOneOf2, _$BoardingInputOneOf2];
+  final Iterable<Type> types = const [
+    BoardingInputOneOf2,
+    _$BoardingInputOneOf2
+  ];
 
   @override
   final String wireName = r'BoardingInputOneOf2';
@@ -64,7 +71,9 @@ class _$BoardingInputOneOf2Serializer implements PrimitiveSerializer<BoardingInp
     BoardingInputOneOf2 object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
   }
 
   void _deserializeProperties(
@@ -123,15 +132,17 @@ class _$BoardingInputOneOf2Serializer implements PrimitiveSerializer<BoardingInp
 }
 
 class BoardingInputOneOf2KindEnum extends EnumClass {
-
   @BuiltValueEnumConst(wireName: r'photo')
-  static const BoardingInputOneOf2KindEnum photo = _$boardingInputOneOf2KindEnum_photo;
+  static const BoardingInputOneOf2KindEnum photo =
+      _$boardingInputOneOf2KindEnum_photo;
 
-  static Serializer<BoardingInputOneOf2KindEnum> get serializer => _$boardingInputOneOf2KindEnumSerializer;
+  static Serializer<BoardingInputOneOf2KindEnum> get serializer =>
+      _$boardingInputOneOf2KindEnumSerializer;
 
-  const BoardingInputOneOf2KindEnum._(String name): super(name);
+  const BoardingInputOneOf2KindEnum._(String name) : super(name);
 
-  static BuiltSet<BoardingInputOneOf2KindEnum> get values => _$boardingInputOneOf2KindEnumValues;
-  static BoardingInputOneOf2KindEnum valueOf(String name) => _$boardingInputOneOf2KindEnumValueOf(name);
+  static BuiltSet<BoardingInputOneOf2KindEnum> get values =>
+      _$boardingInputOneOf2KindEnumValues;
+  static BoardingInputOneOf2KindEnum valueOf(String name) =>
+      _$boardingInputOneOf2KindEnumValueOf(name);
 }
-

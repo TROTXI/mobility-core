@@ -12,24 +12,28 @@ part 'live_trip_response.g.dart';
 /// LiveTripResponse
 ///
 /// Properties:
-/// * [data] 
+/// * [data]
 @BuiltValue()
-abstract class LiveTripResponse implements Built<LiveTripResponse, LiveTripResponseBuilder> {
+abstract class LiveTripResponse
+    implements Built<LiveTripResponse, LiveTripResponseBuilder> {
   @BuiltValueField(wireName: r'data')
   LiveTrip get data;
 
   LiveTripResponse._();
 
-  factory LiveTripResponse([void updates(LiveTripResponseBuilder b)]) = _$LiveTripResponse;
+  factory LiveTripResponse([void updates(LiveTripResponseBuilder b)]) =
+      _$LiveTripResponse;
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(LiveTripResponseBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
-  static Serializer<LiveTripResponse> get serializer => _$LiveTripResponseSerializer();
+  static Serializer<LiveTripResponse> get serializer =>
+      _$LiveTripResponseSerializer();
 }
 
-class _$LiveTripResponseSerializer implements PrimitiveSerializer<LiveTripResponse> {
+class _$LiveTripResponseSerializer
+    implements PrimitiveSerializer<LiveTripResponse> {
   @override
   final Iterable<Type> types = const [LiveTripResponse, _$LiveTripResponse];
 
@@ -54,7 +58,9 @@ class _$LiveTripResponseSerializer implements PrimitiveSerializer<LiveTripRespon
     LiveTripResponse object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
   }
 
   void _deserializeProperties(
@@ -104,4 +110,3 @@ class _$LiveTripResponseSerializer implements PrimitiveSerializer<LiveTripRespon
     return result.build();
   }
 }
-

@@ -11,10 +11,12 @@ part 'geometry_stop_distances_inner.g.dart';
 /// GeometryStopDistancesInner
 ///
 /// Properties:
-/// * [stopOccurrenceId] 
-/// * [distanceMeters] 
+/// * [stopOccurrenceId]
+/// * [distanceMeters]
 @BuiltValue()
-abstract class GeometryStopDistancesInner implements Built<GeometryStopDistancesInner, GeometryStopDistancesInnerBuilder> {
+abstract class GeometryStopDistancesInner
+    implements
+        Built<GeometryStopDistancesInner, GeometryStopDistancesInnerBuilder> {
   @BuiltValueField(wireName: r'stopOccurrenceId')
   String get stopOccurrenceId;
 
@@ -23,18 +25,25 @@ abstract class GeometryStopDistancesInner implements Built<GeometryStopDistances
 
   GeometryStopDistancesInner._();
 
-  factory GeometryStopDistancesInner([void updates(GeometryStopDistancesInnerBuilder b)]) = _$GeometryStopDistancesInner;
+  factory GeometryStopDistancesInner(
+          [void updates(GeometryStopDistancesInnerBuilder b)]) =
+      _$GeometryStopDistancesInner;
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(GeometryStopDistancesInnerBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
-  static Serializer<GeometryStopDistancesInner> get serializer => _$GeometryStopDistancesInnerSerializer();
+  static Serializer<GeometryStopDistancesInner> get serializer =>
+      _$GeometryStopDistancesInnerSerializer();
 }
 
-class _$GeometryStopDistancesInnerSerializer implements PrimitiveSerializer<GeometryStopDistancesInner> {
+class _$GeometryStopDistancesInnerSerializer
+    implements PrimitiveSerializer<GeometryStopDistancesInner> {
   @override
-  final Iterable<Type> types = const [GeometryStopDistancesInner, _$GeometryStopDistancesInner];
+  final Iterable<Type> types = const [
+    GeometryStopDistancesInner,
+    _$GeometryStopDistancesInner
+  ];
 
   @override
   final String wireName = r'GeometryStopDistancesInner';
@@ -62,7 +71,9 @@ class _$GeometryStopDistancesInnerSerializer implements PrimitiveSerializer<Geom
     GeometryStopDistancesInner object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
   }
 
   void _deserializeProperties(
@@ -119,4 +130,3 @@ class _$GeometryStopDistancesInnerSerializer implements PrimitiveSerializer<Geom
     return result.build();
   }
 }
-

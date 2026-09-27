@@ -14,15 +14,15 @@ part 'commute_slot.g.dart';
 /// CommuteSlot
 ///
 /// Properties:
-/// * [routeId] 
-/// * [legs] 
-/// * [availableFrom] 
-/// * [id] 
-/// * [editToken] 
-/// * [state] 
-/// * [createdAt] 
-/// * [updatedAt] 
-/// * [version] 
+/// * [routeId]
+/// * [legs]
+/// * [availableFrom]
+/// * [id]
+/// * [editToken]
+/// * [state]
+/// * [createdAt]
+/// * [updatedAt]
+/// * [version]
 @BuiltValue()
 abstract class CommuteSlot implements Built<CommuteSlot, CommuteSlotBuilder> {
   @BuiltValueField(wireName: r'routeId')
@@ -129,7 +129,9 @@ class _$CommuteSlotSerializer implements PrimitiveSerializer<CommuteSlot> {
     CommuteSlot object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
   }
 
   void _deserializeProperties(
@@ -237,9 +239,9 @@ class _$CommuteSlotSerializer implements PrimitiveSerializer<CommuteSlot> {
 }
 
 class CommuteSlotStateEnum extends EnumClass {
-
   @BuiltValueEnumConst(wireName: r'available')
-  static const CommuteSlotStateEnum available = _$commuteSlotStateEnum_available;
+  static const CommuteSlotStateEnum available =
+      _$commuteSlotStateEnum_available;
   @BuiltValueEnumConst(wireName: r'held')
   static const CommuteSlotStateEnum held = _$commuteSlotStateEnum_held;
   @BuiltValueEnumConst(wireName: r'assigned')
@@ -247,11 +249,13 @@ class CommuteSlotStateEnum extends EnumClass {
   @BuiltValueEnumConst(wireName: r'retired')
   static const CommuteSlotStateEnum retired = _$commuteSlotStateEnum_retired;
 
-  static Serializer<CommuteSlotStateEnum> get serializer => _$commuteSlotStateEnumSerializer;
+  static Serializer<CommuteSlotStateEnum> get serializer =>
+      _$commuteSlotStateEnumSerializer;
 
-  const CommuteSlotStateEnum._(String name): super(name);
+  const CommuteSlotStateEnum._(String name) : super(name);
 
-  static BuiltSet<CommuteSlotStateEnum> get values => _$commuteSlotStateEnumValues;
-  static CommuteSlotStateEnum valueOf(String name) => _$commuteSlotStateEnumValueOf(name);
+  static BuiltSet<CommuteSlotStateEnum> get values =>
+      _$commuteSlotStateEnumValues;
+  static CommuteSlotStateEnum valueOf(String name) =>
+      _$commuteSlotStateEnumValueOf(name);
 }
-

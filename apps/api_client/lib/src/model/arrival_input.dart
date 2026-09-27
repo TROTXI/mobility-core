@@ -11,10 +11,11 @@ part 'arrival_input.g.dart';
 /// ArrivalInput
 ///
 /// Properties:
-/// * [stopOccurrenceId] 
-/// * [correction] 
+/// * [stopOccurrenceId]
+/// * [correction]
 @BuiltValue()
-abstract class ArrivalInput implements Built<ArrivalInput, ArrivalInputBuilder> {
+abstract class ArrivalInput
+    implements Built<ArrivalInput, ArrivalInputBuilder> {
   @BuiltValueField(wireName: r'stopOccurrenceId')
   String get stopOccurrenceId;
 
@@ -26,8 +27,7 @@ abstract class ArrivalInput implements Built<ArrivalInput, ArrivalInputBuilder> 
   factory ArrivalInput([void updates(ArrivalInputBuilder b)]) = _$ArrivalInput;
 
   @BuiltValueHook(initializeBuilder: true)
-  static void _defaults(ArrivalInputBuilder b) => b
-      ..correction = false;
+  static void _defaults(ArrivalInputBuilder b) => b..correction = false;
 
   @BuiltValueSerializer(custom: true)
   static Serializer<ArrivalInput> get serializer => _$ArrivalInputSerializer();
@@ -63,7 +63,9 @@ class _$ArrivalInputSerializer implements PrimitiveSerializer<ArrivalInput> {
     ArrivalInput object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
   }
 
   void _deserializeProperties(
@@ -120,4 +122,3 @@ class _$ArrivalInputSerializer implements PrimitiveSerializer<ArrivalInput> {
     return result.build();
   }
 }
-

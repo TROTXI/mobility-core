@@ -71,6 +71,8 @@ Serializers _$serializers = (Serializers().toBuilder()
       ..add(CredentialActionActionEnum.serializer)
       ..add(CredentialIssue.serializer)
       ..add(CredentialSecret.serializer)
+      ..add(CredentialSecretEmail.serializer)
+      ..add(CredentialSecretEmailStateEnum.serializer)
       ..add(CredentialSecretResponse.serializer)
       ..add(CreditEntry.serializer)
       ..add(CreditEntryCurrencyEnum.serializer)
@@ -84,6 +86,11 @@ Serializers _$serializers = (Serializers().toBuilder()
       ..add(DevicePlatformEnum.serializer)
       ..add(DeviceResponse.serializer)
       ..add(Driver.serializer)
+      ..add(DriverCredential.serializer)
+      ..add(DriverCredentialEmail.serializer)
+      ..add(DriverCredentialEmailPurposeEnum.serializer)
+      ..add(DriverCredentialEmailStateEnum.serializer)
+      ..add(DriverCredentialStatusEnum.serializer)
       ..add(DriverEdit.serializer)
       ..add(DriverInput.serializer)
       ..add(DriverPage.serializer)
@@ -162,17 +169,26 @@ Serializers _$serializers = (Serializers().toBuilder()
       ..add(MinimumVersionResponse.serializer)
       ..add(Money.serializer)
       ..add(MoneyCurrencyEnum.serializer)
+      ..add(OpsAuditEvent.serializer)
+      ..add(OpsAuditEventAreaEnum.serializer)
+      ..add(OpsAuditEventPage.serializer)
       ..add(OpsCommuteRequest.serializer)
       ..add(OpsCommuteRequestPage.serializer)
       ..add(OpsCommuteRequestResponse.serializer)
       ..add(OpsCommuteRequestStatusEnum.serializer)
+      ..add(OpsDelivery.serializer)
+      ..add(OpsDeliveryChannelEnum.serializer)
+      ..add(OpsDeliveryPage.serializer)
       ..add(OpsIncident.serializer)
       ..add(OpsIncidentCategoryEnum.serializer)
       ..add(OpsIncidentPage.serializer)
       ..add(OpsIncidentResponse.serializer)
       ..add(OpsIncidentStatusEnum.serializer)
+      ..add(OpsOperator.serializer)
+      ..add(OpsOperatorPage.serializer)
       ..add(OpsOverview.serializer)
       ..add(OpsOverviewResponse.serializer)
+      ..add(OpsOverviewTiles.serializer)
       ..add(OpsOverviewTripsInner.serializer)
       ..add(OpsOverviewTripsInnerBadgeEnum.serializer)
       ..add(OpsOverviewTripsInnerStatusEnum.serializer)
@@ -189,6 +205,27 @@ Serializers _$serializers = (Serializers().toBuilder()
       ..add(OpsPurchasePlanEnum.serializer)
       ..add(OpsPurchaseResponse.serializer)
       ..add(OpsPurchaseStateEnum.serializer)
+      ..add(OpsReportSummary.serializer)
+      ..add(OpsReportSummaryDelivery.serializer)
+      ..add(OpsReportSummaryPayments.serializer)
+      ..add(OpsReportSummaryResponse.serializer)
+      ..add(OpsReportSummaryRiders.serializer)
+      ..add(OpsReportSummaryTrips.serializer)
+      ..add(OpsRider.serializer)
+      ..add(OpsRiderDetail.serializer)
+      ..add(OpsRiderDetailMembership.serializer)
+      ..add(OpsRiderDetailMembershipLifecycleEnum.serializer)
+      ..add(OpsRiderDetailPurchasesInner.serializer)
+      ..add(OpsRiderDetailPurchasesInnerPlanEnum.serializer)
+      ..add(OpsRiderDetailReservationsInner.serializer)
+      ..add(OpsRiderDetailReservationsInnerDirectionEnum.serializer)
+      ..add(OpsRiderDetailResponse.serializer)
+      ..add(OpsRiderPage.serializer)
+      ..add(OpsRiderPlanEnum.serializer)
+      ..add(OpsRiderRoleEnum.serializer)
+      ..add(OpsRiderStatusEnum.serializer)
+      ..add(OpsRiderSummary.serializer)
+      ..add(OpsRiderSummaryResponse.serializer)
       ..add(OpsTrip.serializer)
       ..add(OpsTripDirectionEnum.serializer)
       ..add(OpsTripPage.serializer)
@@ -204,6 +241,37 @@ Serializers _$serializers = (Serializers().toBuilder()
       ..add(OptionalPersonalPauseStatusEnum.serializer)
       ..add(Pass.serializer)
       ..add(PassResponse.serializer)
+      ..add(PasskeyAuthenticationOptions.serializer)
+      ..add(PasskeyAuthenticationOptionsAllowCredentialsInner.serializer)
+      ..add(
+          PasskeyAuthenticationOptionsAllowCredentialsInnerTypeEnum.serializer)
+      ..add(PasskeyAuthenticationOptionsResponse.serializer)
+      ..add(PasskeyAuthenticationOptionsUserVerificationEnum.serializer)
+      ..add(PasskeyAuthenticationResponse.serializer)
+      ..add(PasskeyAuthenticationResponseAuthenticatorAttachmentEnum.serializer)
+      ..add(PasskeyAuthenticationResponseResponse.serializer)
+      ..add(PasskeyAuthenticationResponseTypeEnum.serializer)
+      ..add(PasskeyRegistrationOptions.serializer)
+      ..add(PasskeyRegistrationOptionsAttestationEnum.serializer)
+      ..add(PasskeyRegistrationOptionsAuthenticatorSelection.serializer)
+      ..add(
+          PasskeyRegistrationOptionsAuthenticatorSelectionAuthenticatorAttachmentEnum
+              .serializer)
+      ..add(PasskeyRegistrationOptionsAuthenticatorSelectionResidentKeyEnum
+          .serializer)
+      ..add(PasskeyRegistrationOptionsAuthenticatorSelectionUserVerificationEnum
+          .serializer)
+      ..add(PasskeyRegistrationOptionsPubKeyCredParamsInner.serializer)
+      ..add(PasskeyRegistrationOptionsPubKeyCredParamsInnerTypeEnum.serializer)
+      ..add(PasskeyRegistrationOptionsResponse.serializer)
+      ..add(PasskeyRegistrationOptionsRp.serializer)
+      ..add(PasskeyRegistrationOptionsUser.serializer)
+      ..add(PasskeyRegistrationResponse.serializer)
+      ..add(PasskeyRegistrationResponseAuthenticatorAttachmentEnum.serializer)
+      ..add(PasskeyRegistrationResponseResponse.serializer)
+      ..add(PasskeyRegistrationResponseTypeEnum.serializer)
+      ..add(PasskeyStatus.serializer)
+      ..add(PasskeyStatusResponse.serializer)
       ..add(Pattern.serializer)
       ..add(PatternDirectionEnum.serializer)
       ..add(PatternInput.serializer)
@@ -231,6 +299,7 @@ Serializers _$serializers = (Serializers().toBuilder()
       ..add(PersonalPauseStatusEnum.serializer)
       ..add(PersonalResumeInput.serializer)
       ..add(PinChange.serializer)
+      ..add(PinResetInput.serializer)
       ..add(PlanPricing.serializer)
       ..add(PlanPricingPage.serializer)
       ..add(PlanPricingPlanEnum.serializer)
@@ -429,11 +498,20 @@ Serializers _$serializers = (Serializers().toBuilder()
           const FullType(BuiltList, const [const FullType(MinimumVersion)]),
           () => ListBuilder<MinimumVersion>())
       ..addBuilderFactory(
+          const FullType(BuiltList, const [const FullType(OpsAuditEvent)]),
+          () => ListBuilder<OpsAuditEvent>())
+      ..addBuilderFactory(
           const FullType(BuiltList, const [const FullType(OpsCommuteRequest)]),
           () => ListBuilder<OpsCommuteRequest>())
       ..addBuilderFactory(
+          const FullType(BuiltList, const [const FullType(OpsDelivery)]),
+          () => ListBuilder<OpsDelivery>())
+      ..addBuilderFactory(
           const FullType(BuiltList, const [const FullType(OpsIncident)]),
           () => ListBuilder<OpsIncident>())
+      ..addBuilderFactory(
+          const FullType(BuiltList, const [const FullType(OpsOperator)]),
+          () => ListBuilder<OpsOperator>())
       ..addBuilderFactory(
           const FullType(
               BuiltList, const [const FullType(OpsOverviewTripsInner)]),
@@ -446,11 +524,52 @@ Serializers _$serializers = (Serializers().toBuilder()
               BuiltList, const [const FullType(OpsPurchaseAttemptsInner)]),
           () => ListBuilder<OpsPurchaseAttemptsInner>())
       ..addBuilderFactory(
+          const FullType(BuiltList, const [const FullType(OpsRider)]),
+          () => ListBuilder<OpsRider>())
+      ..addBuilderFactory(
           const FullType(BuiltList, const [const FullType(OpsTrip)]),
           () => ListBuilder<OpsTrip>())
       ..addBuilderFactory(
           const FullType(BuiltList, const [const FullType(OpsWorkRequest)]),
           () => ListBuilder<OpsWorkRequest>())
+      ..addBuilderFactory(
+          const FullType(BuiltList, const [
+            const FullType(PasskeyAuthenticationOptionsAllowCredentialsInner)
+          ]),
+          () =>
+              ListBuilder<PasskeyAuthenticationOptionsAllowCredentialsInner>())
+      ..addBuilderFactory(
+          const FullType(BuiltList, const [const FullType(String)]),
+          () => ListBuilder<String>())
+      ..addBuilderFactory(
+          const FullType(BuiltMap, const [
+            const FullType(String),
+            const FullType.nullable(JsonObject)
+          ]),
+          () => MapBuilder<String, JsonObject?>())
+      ..addBuilderFactory(
+          const FullType(BuiltList, const [
+            const FullType(PasskeyRegistrationOptionsPubKeyCredParamsInner)
+          ]),
+          () => ListBuilder<PasskeyRegistrationOptionsPubKeyCredParamsInner>())
+      ..addBuilderFactory(
+          const FullType(BuiltList, const [
+            const FullType(PasskeyAuthenticationOptionsAllowCredentialsInner)
+          ]),
+          () =>
+              ListBuilder<PasskeyAuthenticationOptionsAllowCredentialsInner>())
+      ..addBuilderFactory(
+          const FullType(BuiltList, const [const FullType(String)]),
+          () => ListBuilder<String>())
+      ..addBuilderFactory(
+          const FullType(BuiltList, const [const FullType(String)]),
+          () => ListBuilder<String>())
+      ..addBuilderFactory(
+          const FullType(BuiltMap, const [
+            const FullType(String),
+            const FullType.nullable(JsonObject)
+          ]),
+          () => MapBuilder<String, JsonObject?>())
       ..addBuilderFactory(
           const FullType(BuiltList, const [const FullType(Pattern)]),
           () => ListBuilder<Pattern>())
@@ -490,6 +609,17 @@ Serializers _$serializers = (Serializers().toBuilder()
           const FullType(BuiltList, const [const FullType(Reservation)]),
           () => ListBuilder<Reservation>())
       ..addBuilderFactory(
+          const FullType(BuiltList, const [const FullType(Restriction)]),
+          () => ListBuilder<Restriction>())
+      ..addBuilderFactory(
+          const FullType(BuiltList,
+              const [const FullType(OpsRiderDetailReservationsInner)]),
+          () => ListBuilder<OpsRiderDetailReservationsInner>())
+      ..addBuilderFactory(
+          const FullType(
+              BuiltList, const [const FullType(OpsRiderDetailPurchasesInner)]),
+          () => ListBuilder<OpsRiderDetailPurchasesInner>())
+      ..addBuilderFactory(
           const FullType(BuiltList, const [const FullType(RideEntry)]),
           () => ListBuilder<RideEntry>())
       ..addBuilderFactory(
@@ -523,6 +653,12 @@ Serializers _$serializers = (Serializers().toBuilder()
           const FullType(BuiltList, const [const FullType(String)]),
           () => ListBuilder<String>())
       ..addBuilderFactory(
+          const FullType(BuiltList, const [const FullType(String)]),
+          () => ListBuilder<String>())
+      ..addBuilderFactory(
+          const FullType(BuiltList, const [const FullType(String)]),
+          () => ListBuilder<String>())
+      ..addBuilderFactory(
           const FullType(BuiltList, const [const FullType(TraceHold)]),
           () => ListBuilder<TraceHold>())
       ..addBuilderFactory(
@@ -540,6 +676,18 @@ Serializers _$serializers = (Serializers().toBuilder()
       ..addBuilderFactory(
           const FullType(BuiltList, const [const FullType(int)]),
           () => ListBuilder<int>())
+      ..addBuilderFactory(
+          const FullType(BuiltMap, const [
+            const FullType(String),
+            const FullType.nullable(JsonObject)
+          ]),
+          () => MapBuilder<String, JsonObject?>())
+      ..addBuilderFactory(
+          const FullType(BuiltMap, const [
+            const FullType(String),
+            const FullType.nullable(JsonObject)
+          ]),
+          () => MapBuilder<String, JsonObject?>())
       ..addBuilderFactory(
           const FullType(BuiltMap, const [
             const FullType(String),

@@ -12,26 +12,33 @@ part 'commute_slot_response.g.dart';
 /// CommuteSlotResponse
 ///
 /// Properties:
-/// * [data] 
+/// * [data]
 @BuiltValue()
-abstract class CommuteSlotResponse implements Built<CommuteSlotResponse, CommuteSlotResponseBuilder> {
+abstract class CommuteSlotResponse
+    implements Built<CommuteSlotResponse, CommuteSlotResponseBuilder> {
   @BuiltValueField(wireName: r'data')
   CommuteSlot get data;
 
   CommuteSlotResponse._();
 
-  factory CommuteSlotResponse([void updates(CommuteSlotResponseBuilder b)]) = _$CommuteSlotResponse;
+  factory CommuteSlotResponse([void updates(CommuteSlotResponseBuilder b)]) =
+      _$CommuteSlotResponse;
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(CommuteSlotResponseBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
-  static Serializer<CommuteSlotResponse> get serializer => _$CommuteSlotResponseSerializer();
+  static Serializer<CommuteSlotResponse> get serializer =>
+      _$CommuteSlotResponseSerializer();
 }
 
-class _$CommuteSlotResponseSerializer implements PrimitiveSerializer<CommuteSlotResponse> {
+class _$CommuteSlotResponseSerializer
+    implements PrimitiveSerializer<CommuteSlotResponse> {
   @override
-  final Iterable<Type> types = const [CommuteSlotResponse, _$CommuteSlotResponse];
+  final Iterable<Type> types = const [
+    CommuteSlotResponse,
+    _$CommuteSlotResponse
+  ];
 
   @override
   final String wireName = r'CommuteSlotResponse';
@@ -54,7 +61,9 @@ class _$CommuteSlotResponseSerializer implements PrimitiveSerializer<CommuteSlot
     CommuteSlotResponse object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
   }
 
   void _deserializeProperties(
@@ -104,4 +113,3 @@ class _$CommuteSlotResponseSerializer implements PrimitiveSerializer<CommuteSlot
     return result.build();
   }
 }
-

@@ -23,6 +23,47 @@ void main() {
     return null;
   }
 
+  test('a driver 403 is a suspension only when the server says so', () {
+    Object? signIn(Map<String, dynamic> error) {
+      final request = RequestOptions(path: '/v1/auth/driver');
+      return runOnError(DioException(
+          requestOptions: request,
+          response: Response(
+              requestOptions: request,
+              statusCode: 403,
+              data: {'error': error})));
+    }
+
+    expect(
+        signIn({'code': 'driver_suspended', 'message': 'Suspended.'}),
+        isA<AccountSuspendedException>());
+    final expired = signIn({
+      'code': 'temporary_pin_expired',
+      'message': 'Your temporary PIN has expired. Ask Trotxi operations for a new one.'
+    });
+    expect(expired, isA<ApiException>());
+    expect((expired as ApiException).code, 'temporary_pin_expired');
+    expect(expired, isNot(isA<AccountSuspendedException>()));
+  });
+
+  test('a wrong current PIN on a PIN change is not an expired session', () {
+    Object? change(String code) {
+      final request = RequestOptions(path: '/v1/auth/driver/pin');
+      return runOnError(DioException(
+          requestOptions: request,
+          response: Response(
+              requestOptions: request,
+              statusCode: 401,
+              data: {
+                'error': {'code': code, 'message': 'Current PIN is incorrect.'}
+              })));
+    }
+
+    expect(change('invalid_driver_credentials'),
+        isA<InvalidCredentialsException>());
+    expect(change('unauthenticated'), isA<UnauthorizedException>());
+  });
+
   test('cooldown is shared across paths, expires and resets on a new session',
       () {
     var epoch = 0;

@@ -12,7 +12,7 @@ part 'health.g.dart';
 /// Health
 ///
 /// Properties:
-/// * [status] 
+/// * [status]
 @BuiltValue()
 abstract class Health implements Built<Health, HealthBuilder> {
   @BuiltValueField(wireName: r'status')
@@ -55,7 +55,9 @@ class _$HealthSerializer implements PrimitiveSerializer<Health> {
     Health object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
   }
 
   void _deserializeProperties(
@@ -107,17 +109,17 @@ class _$HealthSerializer implements PrimitiveSerializer<Health> {
 }
 
 class HealthStatusEnum extends EnumClass {
-
   @BuiltValueEnumConst(wireName: r'ok')
   static const HealthStatusEnum ok = _$healthStatusEnum_ok;
   @BuiltValueEnumConst(wireName: r'unavailable')
   static const HealthStatusEnum unavailable = _$healthStatusEnum_unavailable;
 
-  static Serializer<HealthStatusEnum> get serializer => _$healthStatusEnumSerializer;
+  static Serializer<HealthStatusEnum> get serializer =>
+      _$healthStatusEnumSerializer;
 
-  const HealthStatusEnum._(String name): super(name);
+  const HealthStatusEnum._(String name) : super(name);
 
   static BuiltSet<HealthStatusEnum> get values => _$healthStatusEnumValues;
-  static HealthStatusEnum valueOf(String name) => _$healthStatusEnumValueOf(name);
+  static HealthStatusEnum valueOf(String name) =>
+      _$healthStatusEnumValueOf(name);
 }
-

@@ -12,26 +12,34 @@ part 'boarding_result_response.g.dart';
 /// BoardingResultResponse
 ///
 /// Properties:
-/// * [data] 
+/// * [data]
 @BuiltValue()
-abstract class BoardingResultResponse implements Built<BoardingResultResponse, BoardingResultResponseBuilder> {
+abstract class BoardingResultResponse
+    implements Built<BoardingResultResponse, BoardingResultResponseBuilder> {
   @BuiltValueField(wireName: r'data')
   BoardingResult get data;
 
   BoardingResultResponse._();
 
-  factory BoardingResultResponse([void updates(BoardingResultResponseBuilder b)]) = _$BoardingResultResponse;
+  factory BoardingResultResponse(
+          [void updates(BoardingResultResponseBuilder b)]) =
+      _$BoardingResultResponse;
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(BoardingResultResponseBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
-  static Serializer<BoardingResultResponse> get serializer => _$BoardingResultResponseSerializer();
+  static Serializer<BoardingResultResponse> get serializer =>
+      _$BoardingResultResponseSerializer();
 }
 
-class _$BoardingResultResponseSerializer implements PrimitiveSerializer<BoardingResultResponse> {
+class _$BoardingResultResponseSerializer
+    implements PrimitiveSerializer<BoardingResultResponse> {
   @override
-  final Iterable<Type> types = const [BoardingResultResponse, _$BoardingResultResponse];
+  final Iterable<Type> types = const [
+    BoardingResultResponse,
+    _$BoardingResultResponse
+  ];
 
   @override
   final String wireName = r'BoardingResultResponse';
@@ -54,7 +62,9 @@ class _$BoardingResultResponseSerializer implements PrimitiveSerializer<Boarding
     BoardingResultResponse object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
   }
 
   void _deserializeProperties(
@@ -104,4 +114,3 @@ class _$BoardingResultResponseSerializer implements PrimitiveSerializer<Boarding
     return result.build();
   }
 }
-

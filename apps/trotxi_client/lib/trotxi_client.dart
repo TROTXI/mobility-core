@@ -230,7 +230,7 @@ class AuthInterceptor extends Interceptor {
     // session expired. Refreshing makes no sense (there is no session yet), and
     // clearing tokens on the way past would sign out a driver who mistyped a
     // PIN while already signed in on the same handset.
-    if (_isSignInPath(requestPath)) {
+    if (_isSignInPath(requestPath) || isWrongCurrentPin(err)) {
       return handler.next(err);
     }
 
@@ -297,6 +297,14 @@ class AuthInterceptor extends Interceptor {
 
   /// Whether a path is one of the sign-in routes, where a 401 is a rejected
   /// credential rather than an expired session.
+  /// A PIN change refused because the current PIN was wrong. The session is
+  /// fine; refreshing it or calling it expired would both be wrong.
+  static bool isWrongCurrentPin(DioException err) =>
+      err.response?.statusCode == 401 &&
+      Uri.parse(err.requestOptions.path).path == '/v1/auth/driver/pin' &&
+      ErrorInterceptor._fieldOf(err.response!, 'code') ==
+          'invalid_driver_credentials';
+
   static bool _isSignInPath(String path) {
     return const {
       '/v1/auth/driver',
@@ -455,7 +463,10 @@ class ErrorInterceptor extends Interceptor {
         return handler.reject(
           DioException(
             requestOptions: err.requestOptions,
-            error: isSignIn
+            error: AuthInterceptor.isWrongCurrentPin(err)
+                ? InvalidCredentialsException(
+                    _messageOf(response) ?? 'Current PIN is incorrect.')
+                : isSignIn
                 ? InvalidCredentialsException(
                     _messageOf(response) ??
                         (Uri.parse(err.requestOptions.path).path ==
@@ -467,7 +478,12 @@ class ErrorInterceptor extends Interceptor {
           ),
         );
       case 403:
-        if (Uri.parse(err.requestOptions.path).path == '/v1/auth/driver') {
+        // Only a suspension is a suspension. An expired temporary PIN is also
+        // a 403 here, and telling that driver their account is suspended
+        // would send them to the wrong conversation with operations.
+        if (Uri.parse(err.requestOptions.path).path == '/v1/auth/driver' &&
+            (_fieldOf(response, 'code') ?? 'driver_suspended') ==
+                'driver_suspended') {
           return handler.reject(
             DioException(
               requestOptions: err.requestOptions,

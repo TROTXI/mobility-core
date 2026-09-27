@@ -13,10 +13,13 @@ part 'receive_paystack_webhook_request.g.dart';
 /// ReceivePaystackWebhookRequest
 ///
 /// Properties:
-/// * [event] 
-/// * [data] 
+/// * [event]
+/// * [data]
 @BuiltValue()
-abstract class ReceivePaystackWebhookRequest implements Built<ReceivePaystackWebhookRequest, ReceivePaystackWebhookRequestBuilder> {
+abstract class ReceivePaystackWebhookRequest
+    implements
+        Built<ReceivePaystackWebhookRequest,
+            ReceivePaystackWebhookRequestBuilder> {
   @BuiltValueField(wireName: r'event')
   String get event;
 
@@ -25,18 +28,25 @@ abstract class ReceivePaystackWebhookRequest implements Built<ReceivePaystackWeb
 
   ReceivePaystackWebhookRequest._();
 
-  factory ReceivePaystackWebhookRequest([void updates(ReceivePaystackWebhookRequestBuilder b)]) = _$ReceivePaystackWebhookRequest;
+  factory ReceivePaystackWebhookRequest(
+          [void updates(ReceivePaystackWebhookRequestBuilder b)]) =
+      _$ReceivePaystackWebhookRequest;
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(ReceivePaystackWebhookRequestBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
-  static Serializer<ReceivePaystackWebhookRequest> get serializer => _$ReceivePaystackWebhookRequestSerializer();
+  static Serializer<ReceivePaystackWebhookRequest> get serializer =>
+      _$ReceivePaystackWebhookRequestSerializer();
 }
 
-class _$ReceivePaystackWebhookRequestSerializer implements PrimitiveSerializer<ReceivePaystackWebhookRequest> {
+class _$ReceivePaystackWebhookRequestSerializer
+    implements PrimitiveSerializer<ReceivePaystackWebhookRequest> {
   @override
-  final Iterable<Type> types = const [ReceivePaystackWebhookRequest, _$ReceivePaystackWebhookRequest];
+  final Iterable<Type> types = const [
+    ReceivePaystackWebhookRequest,
+    _$ReceivePaystackWebhookRequest
+  ];
 
   @override
   final String wireName = r'ReceivePaystackWebhookRequest';
@@ -54,7 +64,8 @@ class _$ReceivePaystackWebhookRequestSerializer implements PrimitiveSerializer<R
     yield r'data';
     yield serializers.serialize(
       object.data,
-      specifiedType: const FullType(BuiltMap, [FullType(String), FullType.nullable(JsonObject)]),
+      specifiedType: const FullType(
+          BuiltMap, [FullType(String), FullType.nullable(JsonObject)]),
     );
   }
 
@@ -64,7 +75,9 @@ class _$ReceivePaystackWebhookRequestSerializer implements PrimitiveSerializer<R
     ReceivePaystackWebhookRequest object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
   }
 
   void _deserializeProperties(
@@ -89,7 +102,8 @@ class _$ReceivePaystackWebhookRequestSerializer implements PrimitiveSerializer<R
         case r'data':
           final valueDes = serializers.deserialize(
             value,
-            specifiedType: const FullType(BuiltMap, [FullType(String), FullType.nullable(JsonObject)]),
+            specifiedType: const FullType(
+                BuiltMap, [FullType(String), FullType.nullable(JsonObject)]),
           ) as BuiltMap<String, JsonObject?>;
           result.data.replace(valueDes);
           break;
@@ -121,4 +135,3 @@ class _$ReceivePaystackWebhookRequestSerializer implements PrimitiveSerializer<R
     return result.build();
   }
 }
-

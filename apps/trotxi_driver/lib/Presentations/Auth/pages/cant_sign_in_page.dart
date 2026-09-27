@@ -46,15 +46,17 @@ class CantSignInPage extends StatelessWidget {
               number: '2',
               title: 'Check your PIN',
               detail:
-                  'Six digits, issued by operations. If you have changed it, use the '
-                  'one you chose rather than the one on your slip.',
+                  'Six digits. Once you have chosen your own PIN, use that one, not '
+                  'the temporary PIN from operations. A temporary PIN stops working '
+                  'after 72 hours.',
             ),
             const _Step(
               number: '3',
               title: 'Ask operations for a new PIN',
               detail:
-                  'They can issue one over the phone once they have confirmed who you '
-                  'are. Your old PIN stops working straight away.',
+                  'Once they have confirmed who you are, they issue a temporary PIN, '
+                  'by email if your record has an address. Your old PIN stops working '
+                  'straight away, and you choose a new one after signing in.',
             ),
             const _Step(
               number: '4',

@@ -12,18 +12,18 @@ part 'trace_hold.g.dart';
 /// TraceHold
 ///
 /// Properties:
-/// * [incidentId] 
-/// * [tripId] 
-/// * [receivedFrom] 
-/// * [receivedTo] 
-/// * [reason] 
-/// * [reviewAt] 
-/// * [id] 
-/// * [state] 
-/// * [editToken] 
-/// * [createdAt] 
-/// * [updatedAt] 
-/// * [version] 
+/// * [incidentId]
+/// * [tripId]
+/// * [receivedFrom]
+/// * [receivedTo]
+/// * [reason]
+/// * [reviewAt]
+/// * [id]
+/// * [state]
+/// * [editToken]
+/// * [createdAt]
+/// * [updatedAt]
+/// * [version]
 @BuiltValue()
 abstract class TraceHold implements Built<TraceHold, TraceHoldBuilder> {
   @BuiltValueField(wireName: r'incidentId')
@@ -154,7 +154,9 @@ class _$TraceHoldSerializer implements PrimitiveSerializer<TraceHold> {
     TraceHold object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
   }
 
   void _deserializeProperties(
@@ -283,17 +285,17 @@ class _$TraceHoldSerializer implements PrimitiveSerializer<TraceHold> {
 }
 
 class TraceHoldStateEnum extends EnumClass {
-
   @BuiltValueEnumConst(wireName: r'active')
   static const TraceHoldStateEnum active = _$traceHoldStateEnum_active;
   @BuiltValueEnumConst(wireName: r'released')
   static const TraceHoldStateEnum released = _$traceHoldStateEnum_released;
 
-  static Serializer<TraceHoldStateEnum> get serializer => _$traceHoldStateEnumSerializer;
+  static Serializer<TraceHoldStateEnum> get serializer =>
+      _$traceHoldStateEnumSerializer;
 
-  const TraceHoldStateEnum._(String name): super(name);
+  const TraceHoldStateEnum._(String name) : super(name);
 
   static BuiltSet<TraceHoldStateEnum> get values => _$traceHoldStateEnumValues;
-  static TraceHoldStateEnum valueOf(String name) => _$traceHoldStateEnumValueOf(name);
+  static TraceHoldStateEnum valueOf(String name) =>
+      _$traceHoldStateEnumValueOf(name);
 }
-

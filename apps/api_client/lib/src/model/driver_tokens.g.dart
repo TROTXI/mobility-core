@@ -21,6 +21,8 @@ class _$DriverTokens extends DriverTokens {
   final DriverTokensDriver driver;
   @override
   final bool mustChangePin;
+  @override
+  final DateTime? temporaryPinExpiresAt;
 
   factory _$DriverTokens([void Function(DriverTokensBuilder)? updates]) =>
       (DriverTokensBuilder()..update(updates))._build();
@@ -32,7 +34,8 @@ class _$DriverTokens extends DriverTokens {
       required this.refreshExpiresAt,
       required this.account,
       required this.driver,
-      required this.mustChangePin})
+      required this.mustChangePin,
+      this.temporaryPinExpiresAt})
       : super._();
   @override
   DriverTokens rebuild(void Function(DriverTokensBuilder) updates) =>
@@ -51,7 +54,8 @@ class _$DriverTokens extends DriverTokens {
         refreshExpiresAt == other.refreshExpiresAt &&
         account == other.account &&
         driver == other.driver &&
-        mustChangePin == other.mustChangePin;
+        mustChangePin == other.mustChangePin &&
+        temporaryPinExpiresAt == other.temporaryPinExpiresAt;
   }
 
   @override
@@ -64,6 +68,7 @@ class _$DriverTokens extends DriverTokens {
     _$hash = $jc(_$hash, account.hashCode);
     _$hash = $jc(_$hash, driver.hashCode);
     _$hash = $jc(_$hash, mustChangePin.hashCode);
+    _$hash = $jc(_$hash, temporaryPinExpiresAt.hashCode);
     _$hash = $jf(_$hash);
     return _$hash;
   }
@@ -77,7 +82,8 @@ class _$DriverTokens extends DriverTokens {
           ..add('refreshExpiresAt', refreshExpiresAt)
           ..add('account', account)
           ..add('driver', driver)
-          ..add('mustChangePin', mustChangePin))
+          ..add('mustChangePin', mustChangePin)
+          ..add('temporaryPinExpiresAt', temporaryPinExpiresAt))
         .toString();
   }
 }
@@ -118,6 +124,11 @@ class DriverTokensBuilder
   set mustChangePin(bool? mustChangePin) =>
       _$this._mustChangePin = mustChangePin;
 
+  DateTime? _temporaryPinExpiresAt;
+  DateTime? get temporaryPinExpiresAt => _$this._temporaryPinExpiresAt;
+  set temporaryPinExpiresAt(DateTime? temporaryPinExpiresAt) =>
+      _$this._temporaryPinExpiresAt = temporaryPinExpiresAt;
+
   DriverTokensBuilder() {
     DriverTokens._defaults(this);
   }
@@ -132,6 +143,7 @@ class DriverTokensBuilder
       _account = $v.account.toBuilder();
       _driver = $v.driver.toBuilder();
       _mustChangePin = $v.mustChangePin;
+      _temporaryPinExpiresAt = $v.temporaryPinExpiresAt;
       _$v = null;
     }
     return this;
@@ -167,6 +179,7 @@ class DriverTokensBuilder
             driver: driver.build(),
             mustChangePin: BuiltValueNullFieldError.checkNotNull(
                 mustChangePin, r'DriverTokens', 'mustChangePin'),
+            temporaryPinExpiresAt: temporaryPinExpiresAt,
           );
     } catch (_) {
       late String _$failedField;

@@ -11,10 +11,13 @@ part 'maintenance_result_failures_inner.g.dart';
 /// MaintenanceResultFailuresInner
 ///
 /// Properties:
-/// * [resourceId] 
-/// * [reason] 
+/// * [resourceId]
+/// * [reason]
 @BuiltValue()
-abstract class MaintenanceResultFailuresInner implements Built<MaintenanceResultFailuresInner, MaintenanceResultFailuresInnerBuilder> {
+abstract class MaintenanceResultFailuresInner
+    implements
+        Built<MaintenanceResultFailuresInner,
+            MaintenanceResultFailuresInnerBuilder> {
   @BuiltValueField(wireName: r'resourceId')
   String get resourceId;
 
@@ -23,18 +26,25 @@ abstract class MaintenanceResultFailuresInner implements Built<MaintenanceResult
 
   MaintenanceResultFailuresInner._();
 
-  factory MaintenanceResultFailuresInner([void updates(MaintenanceResultFailuresInnerBuilder b)]) = _$MaintenanceResultFailuresInner;
+  factory MaintenanceResultFailuresInner(
+          [void updates(MaintenanceResultFailuresInnerBuilder b)]) =
+      _$MaintenanceResultFailuresInner;
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(MaintenanceResultFailuresInnerBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
-  static Serializer<MaintenanceResultFailuresInner> get serializer => _$MaintenanceResultFailuresInnerSerializer();
+  static Serializer<MaintenanceResultFailuresInner> get serializer =>
+      _$MaintenanceResultFailuresInnerSerializer();
 }
 
-class _$MaintenanceResultFailuresInnerSerializer implements PrimitiveSerializer<MaintenanceResultFailuresInner> {
+class _$MaintenanceResultFailuresInnerSerializer
+    implements PrimitiveSerializer<MaintenanceResultFailuresInner> {
   @override
-  final Iterable<Type> types = const [MaintenanceResultFailuresInner, _$MaintenanceResultFailuresInner];
+  final Iterable<Type> types = const [
+    MaintenanceResultFailuresInner,
+    _$MaintenanceResultFailuresInner
+  ];
 
   @override
   final String wireName = r'MaintenanceResultFailuresInner';
@@ -62,7 +72,9 @@ class _$MaintenanceResultFailuresInnerSerializer implements PrimitiveSerializer<
     MaintenanceResultFailuresInner object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
   }
 
   void _deserializeProperties(
@@ -119,4 +131,3 @@ class _$MaintenanceResultFailuresInnerSerializer implements PrimitiveSerializer<
     return result.build();
   }
 }
-

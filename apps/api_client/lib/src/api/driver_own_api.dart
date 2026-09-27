@@ -21,7 +21,6 @@ import 'package:trotxi_api_client/src/model/work_request_page.dart';
 import 'package:trotxi_api_client/src/model/work_request_response.dart';
 
 class DriverOwnApi {
-
   final Dio _dio;
 
   final Serializers _serializers;
@@ -29,13 +28,13 @@ class DriverOwnApi {
   const DriverOwnApi(this._dio, this._serializers);
 
   /// change Driver Pin
-  /// 
+  ///
   ///
   /// Parameters:
   /// * [idempotencyKey] - Caller + operation + target scoped; payload mismatch = 409. Never log secrets.
   /// * [xTrotxiClient] - Compatibility metadata only, never grants a role.
   /// * [xTrotxiBuild] - Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
-  /// * [pinChange] 
+  /// * [pinChange]
   /// * [xTrotxiPlatform] - Required for commuter/driver, absent for ops/worker.
   /// * [cancelToken] - A [CancelToken] that can be used to cancel the operation
   /// * [headers] - Can be used to add additional headers to the request
@@ -46,10 +45,10 @@ class DriverOwnApi {
   ///
   /// Returns a [Future]
   /// Throws [DioException] if API call or serialization fails
-  Future<Response<void>> changeDriverPin({ 
+  Future<Response<void>> changeDriverPin({
     required String idempotencyKey,
     required String xTrotxiClient,
-    required int xTrotxiBuild,
+    int xTrotxiBuild = 1,
     required PinChange pinChange,
     String? xTrotxiPlatform,
     CancelToken? cancelToken,
@@ -88,10 +87,9 @@ class DriverOwnApi {
     try {
       const _type = FullType(PinChange);
       _bodyData = _serializers.serialize(pinChange, specifiedType: _type);
-
-    } catch(error, stackTrace) {
+    } catch (error, stackTrace) {
       throw DioException(
-         requestOptions: _options.compose(
+        requestOptions: _options.compose(
           _dio.options,
           _path,
         ),
@@ -114,13 +112,13 @@ class DriverOwnApi {
   }
 
   /// create Driver Request
-  /// 
+  ///
   ///
   /// Parameters:
   /// * [idempotencyKey] - Caller + operation + target scoped; payload mismatch = 409. Never log secrets.
   /// * [xTrotxiClient] - Compatibility metadata only, never grants a role.
   /// * [xTrotxiBuild] - Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
-  /// * [workRequestInput] 
+  /// * [workRequestInput]
   /// * [xTrotxiPlatform] - Required for commuter/driver, absent for ops/worker.
   /// * [cancelToken] - A [CancelToken] that can be used to cancel the operation
   /// * [headers] - Can be used to add additional headers to the request
@@ -131,10 +129,10 @@ class DriverOwnApi {
   ///
   /// Returns a [Future] containing a [Response] with a [WorkRequestResponse] as data
   /// Throws [DioException] if API call or serialization fails
-  Future<Response<WorkRequestResponse>> createDriverRequest({ 
+  Future<Response<WorkRequestResponse>> createDriverRequest({
     required String idempotencyKey,
     required String xTrotxiClient,
-    required int xTrotxiBuild,
+    int xTrotxiBuild = 1,
     required WorkRequestInput workRequestInput,
     String? xTrotxiPlatform,
     CancelToken? cancelToken,
@@ -172,11 +170,11 @@ class DriverOwnApi {
 
     try {
       const _type = FullType(WorkRequestInput);
-      _bodyData = _serializers.serialize(workRequestInput, specifiedType: _type);
-
-    } catch(error, stackTrace) {
+      _bodyData =
+          _serializers.serialize(workRequestInput, specifiedType: _type);
+    } catch (error, stackTrace) {
       throw DioException(
-         requestOptions: _options.compose(
+        requestOptions: _options.compose(
           _dio.options,
           _path,
         ),
@@ -199,11 +197,12 @@ class DriverOwnApi {
 
     try {
       final rawResponse = _response.data;
-      _responseData = rawResponse == null ? null : _serializers.deserialize(
-        rawResponse,
-        specifiedType: const FullType(WorkRequestResponse),
-      ) as WorkRequestResponse;
-
+      _responseData = rawResponse == null
+          ? null
+          : _serializers.deserialize(
+              rawResponse,
+              specifiedType: const FullType(WorkRequestResponse),
+            ) as WorkRequestResponse;
     } catch (error, stackTrace) {
       throw DioException(
         requestOptions: _response.requestOptions,
@@ -227,7 +226,7 @@ class DriverOwnApi {
   }
 
   /// get Driver Self
-  /// 
+  ///
   ///
   /// Parameters:
   /// * [xTrotxiClient] - Compatibility metadata only, never grants a role.
@@ -242,9 +241,9 @@ class DriverOwnApi {
   ///
   /// Returns a [Future] containing a [Response] with a [DriverSelfResponse] as data
   /// Throws [DioException] if API call or serialization fails
-  Future<Response<DriverSelfResponse>> getDriverSelf({ 
+  Future<Response<DriverSelfResponse>> getDriverSelf({
     required String xTrotxiClient,
-    required int xTrotxiBuild,
+    int xTrotxiBuild = 1,
     String? xTrotxiPlatform,
     CancelToken? cancelToken,
     Map<String, dynamic>? headers,
@@ -287,11 +286,12 @@ class DriverOwnApi {
 
     try {
       final rawResponse = _response.data;
-      _responseData = rawResponse == null ? null : _serializers.deserialize(
-        rawResponse,
-        specifiedType: const FullType(DriverSelfResponse),
-      ) as DriverSelfResponse;
-
+      _responseData = rawResponse == null
+          ? null
+          : _serializers.deserialize(
+              rawResponse,
+              specifiedType: const FullType(DriverSelfResponse),
+            ) as DriverSelfResponse;
     } catch (error, stackTrace) {
       throw DioException(
         requestOptions: _response.requestOptions,
@@ -315,7 +315,7 @@ class DriverOwnApi {
   }
 
   /// list Driver Available Routes
-  /// 
+  ///
   ///
   /// Parameters:
   /// * [xTrotxiClient] - Compatibility metadata only, never grants a role.
@@ -332,9 +332,9 @@ class DriverOwnApi {
   ///
   /// Returns a [Future] containing a [Response] with a [RoutePage] as data
   /// Throws [DioException] if API call or serialization fails
-  Future<Response<RoutePage>> listDriverAvailableRoutes({ 
+  Future<Response<RoutePage>> listDriverAvailableRoutes({
     required String xTrotxiClient,
-    required int xTrotxiBuild,
+    int xTrotxiBuild = 1,
     String? cursor,
     int? limit = 50,
     String? xTrotxiPlatform,
@@ -368,8 +368,12 @@ class DriverOwnApi {
     );
 
     final _queryParameters = <String, dynamic>{
-      if (cursor != null) r'cursor': encodeQueryParameter(_serializers, cursor, const FullType(String)),
-      if (limit != null) r'limit': encodeQueryParameter(_serializers, limit, const FullType(int)),
+      if (cursor != null)
+        r'cursor':
+            encodeQueryParameter(_serializers, cursor, const FullType(String)),
+      if (limit != null)
+        r'limit':
+            encodeQueryParameter(_serializers, limit, const FullType(int)),
     };
 
     final _response = await _dio.request<Object>(
@@ -385,11 +389,12 @@ class DriverOwnApi {
 
     try {
       final rawResponse = _response.data;
-      _responseData = rawResponse == null ? null : _serializers.deserialize(
-        rawResponse,
-        specifiedType: const FullType(RoutePage),
-      ) as RoutePage;
-
+      _responseData = rawResponse == null
+          ? null
+          : _serializers.deserialize(
+              rawResponse,
+              specifiedType: const FullType(RoutePage),
+            ) as RoutePage;
     } catch (error, stackTrace) {
       throw DioException(
         requestOptions: _response.requestOptions,
@@ -413,7 +418,7 @@ class DriverOwnApi {
   }
 
   /// list Driver Incidents
-  /// 
+  ///
   ///
   /// Parameters:
   /// * [xTrotxiClient] - Compatibility metadata only, never grants a role.
@@ -431,9 +436,9 @@ class DriverOwnApi {
   ///
   /// Returns a [Future] containing a [Response] with a [IncidentPage] as data
   /// Throws [DioException] if API call or serialization fails
-  Future<Response<IncidentPage>> listDriverIncidents({ 
+  Future<Response<IncidentPage>> listDriverIncidents({
     required String xTrotxiClient,
-    required int xTrotxiBuild,
+    int xTrotxiBuild = 1,
     String? cursor,
     int? limit = 50,
     String? status,
@@ -468,9 +473,15 @@ class DriverOwnApi {
     );
 
     final _queryParameters = <String, dynamic>{
-      if (cursor != null) r'cursor': encodeQueryParameter(_serializers, cursor, const FullType(String)),
-      if (limit != null) r'limit': encodeQueryParameter(_serializers, limit, const FullType(int)),
-      if (status != null) r'status': encodeQueryParameter(_serializers, status, const FullType(String)),
+      if (cursor != null)
+        r'cursor':
+            encodeQueryParameter(_serializers, cursor, const FullType(String)),
+      if (limit != null)
+        r'limit':
+            encodeQueryParameter(_serializers, limit, const FullType(int)),
+      if (status != null)
+        r'status':
+            encodeQueryParameter(_serializers, status, const FullType(String)),
     };
 
     final _response = await _dio.request<Object>(
@@ -486,11 +497,12 @@ class DriverOwnApi {
 
     try {
       final rawResponse = _response.data;
-      _responseData = rawResponse == null ? null : _serializers.deserialize(
-        rawResponse,
-        specifiedType: const FullType(IncidentPage),
-      ) as IncidentPage;
-
+      _responseData = rawResponse == null
+          ? null
+          : _serializers.deserialize(
+              rawResponse,
+              specifiedType: const FullType(IncidentPage),
+            ) as IncidentPage;
     } catch (error, stackTrace) {
       throw DioException(
         requestOptions: _response.requestOptions,
@@ -514,7 +526,7 @@ class DriverOwnApi {
   }
 
   /// list Driver Requests
-  /// 
+  ///
   ///
   /// Parameters:
   /// * [xTrotxiClient] - Compatibility metadata only, never grants a role.
@@ -532,9 +544,9 @@ class DriverOwnApi {
   ///
   /// Returns a [Future] containing a [Response] with a [WorkRequestPage] as data
   /// Throws [DioException] if API call or serialization fails
-  Future<Response<WorkRequestPage>> listDriverRequests({ 
+  Future<Response<WorkRequestPage>> listDriverRequests({
     required String xTrotxiClient,
-    required int xTrotxiBuild,
+    int xTrotxiBuild = 1,
     String? cursor,
     int? limit = 50,
     String? status,
@@ -569,9 +581,15 @@ class DriverOwnApi {
     );
 
     final _queryParameters = <String, dynamic>{
-      if (cursor != null) r'cursor': encodeQueryParameter(_serializers, cursor, const FullType(String)),
-      if (limit != null) r'limit': encodeQueryParameter(_serializers, limit, const FullType(int)),
-      if (status != null) r'status': encodeQueryParameter(_serializers, status, const FullType(String)),
+      if (cursor != null)
+        r'cursor':
+            encodeQueryParameter(_serializers, cursor, const FullType(String)),
+      if (limit != null)
+        r'limit':
+            encodeQueryParameter(_serializers, limit, const FullType(int)),
+      if (status != null)
+        r'status':
+            encodeQueryParameter(_serializers, status, const FullType(String)),
     };
 
     final _response = await _dio.request<Object>(
@@ -587,11 +605,12 @@ class DriverOwnApi {
 
     try {
       final rawResponse = _response.data;
-      _responseData = rawResponse == null ? null : _serializers.deserialize(
-        rawResponse,
-        specifiedType: const FullType(WorkRequestPage),
-      ) as WorkRequestPage;
-
+      _responseData = rawResponse == null
+          ? null
+          : _serializers.deserialize(
+              rawResponse,
+              specifiedType: const FullType(WorkRequestPage),
+            ) as WorkRequestPage;
     } catch (error, stackTrace) {
       throw DioException(
         requestOptions: _response.requestOptions,
@@ -615,13 +634,13 @@ class DriverOwnApi {
   }
 
   /// report Incident
-  /// 
+  ///
   ///
   /// Parameters:
   /// * [idempotencyKey] - Caller + operation + target scoped; payload mismatch = 409. Never log secrets.
   /// * [xTrotxiClient] - Compatibility metadata only, never grants a role.
   /// * [xTrotxiBuild] - Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
-  /// * [incidentInput] 
+  /// * [incidentInput]
   /// * [xTrotxiPlatform] - Required for commuter/driver, absent for ops/worker.
   /// * [cancelToken] - A [CancelToken] that can be used to cancel the operation
   /// * [headers] - Can be used to add additional headers to the request
@@ -632,10 +651,10 @@ class DriverOwnApi {
   ///
   /// Returns a [Future] containing a [Response] with a [IncidentResponse] as data
   /// Throws [DioException] if API call or serialization fails
-  Future<Response<IncidentResponse>> reportIncident({ 
+  Future<Response<IncidentResponse>> reportIncident({
     required String idempotencyKey,
     required String xTrotxiClient,
-    required int xTrotxiBuild,
+    int xTrotxiBuild = 1,
     required IncidentInput incidentInput,
     String? xTrotxiPlatform,
     CancelToken? cancelToken,
@@ -674,10 +693,9 @@ class DriverOwnApi {
     try {
       const _type = FullType(IncidentInput);
       _bodyData = _serializers.serialize(incidentInput, specifiedType: _type);
-
-    } catch(error, stackTrace) {
+    } catch (error, stackTrace) {
       throw DioException(
-         requestOptions: _options.compose(
+        requestOptions: _options.compose(
           _dio.options,
           _path,
         ),
@@ -700,11 +718,12 @@ class DriverOwnApi {
 
     try {
       final rawResponse = _response.data;
-      _responseData = rawResponse == null ? null : _serializers.deserialize(
-        rawResponse,
-        specifiedType: const FullType(IncidentResponse),
-      ) as IncidentResponse;
-
+      _responseData = rawResponse == null
+          ? null
+          : _serializers.deserialize(
+              rawResponse,
+              specifiedType: const FullType(IncidentResponse),
+            ) as IncidentResponse;
     } catch (error, stackTrace) {
       throw DioException(
         requestOptions: _response.requestOptions,
@@ -728,10 +747,10 @@ class DriverOwnApi {
   }
 
   /// withdraw Driver Request
-  /// 
+  ///
   ///
   /// Parameters:
-  /// * [id] 
+  /// * [id]
   /// * [idempotencyKey] - Caller + operation + target scoped; payload mismatch = 409. Never log secrets.
   /// * [xTrotxiClient] - Compatibility metadata only, never grants a role.
   /// * [xTrotxiBuild] - Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
@@ -745,11 +764,11 @@ class DriverOwnApi {
   ///
   /// Returns a [Future] containing a [Response] with a [WorkRequestResponse] as data
   /// Throws [DioException] if API call or serialization fails
-  Future<Response<WorkRequestResponse>> withdrawDriverRequest({ 
+  Future<Response<WorkRequestResponse>> withdrawDriverRequest({
     required String id,
     required String idempotencyKey,
     required String xTrotxiClient,
-    required int xTrotxiBuild,
+    int xTrotxiBuild = 1,
     String? xTrotxiPlatform,
     CancelToken? cancelToken,
     Map<String, dynamic>? headers,
@@ -758,7 +777,10 @@ class DriverOwnApi {
     ProgressCallback? onSendProgress,
     ProgressCallback? onReceiveProgress,
   }) async {
-    final _path = r'/v1/driver/requests/{id}/withdraw'.replaceAll('{' r'id' '}', encodeQueryParameter(_serializers, id, const FullType(String)).toString());
+    final _path = r'/v1/driver/requests/{id}/withdraw'.replaceAll(
+        '{' r'id' '}',
+        encodeQueryParameter(_serializers, id, const FullType(String))
+            .toString());
     final _options = Options(
       method: r'POST',
       headers: <String, dynamic>{
@@ -793,11 +815,12 @@ class DriverOwnApi {
 
     try {
       final rawResponse = _response.data;
-      _responseData = rawResponse == null ? null : _serializers.deserialize(
-        rawResponse,
-        specifiedType: const FullType(WorkRequestResponse),
-      ) as WorkRequestResponse;
-
+      _responseData = rawResponse == null
+          ? null
+          : _serializers.deserialize(
+              rawResponse,
+              specifiedType: const FullType(WorkRequestResponse),
+            ) as WorkRequestResponse;
     } catch (error, stackTrace) {
       throw DioException(
         requestOptions: _response.requestOptions,
@@ -819,5 +842,4 @@ class DriverOwnApi {
       extra: _response.extra,
     );
   }
-
 }

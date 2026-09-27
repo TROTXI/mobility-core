@@ -13,15 +13,16 @@ part 'refund_initiation.g.dart';
 /// RefundInitiation
 ///
 /// Properties:
-/// * [id] 
-/// * [purchaseId] 
-/// * [amount] 
-/// * [reason] 
-/// * [state] 
-/// * [providerRefundId] 
-/// * [createdAt] 
+/// * [id]
+/// * [purchaseId]
+/// * [amount]
+/// * [reason]
+/// * [state]
+/// * [providerRefundId]
+/// * [createdAt]
 @BuiltValue()
-abstract class RefundInitiation implements Built<RefundInitiation, RefundInitiationBuilder> {
+abstract class RefundInitiation
+    implements Built<RefundInitiation, RefundInitiationBuilder> {
   @BuiltValueField(wireName: r'id')
   String get id;
 
@@ -46,16 +47,19 @@ abstract class RefundInitiation implements Built<RefundInitiation, RefundInitiat
 
   RefundInitiation._();
 
-  factory RefundInitiation([void updates(RefundInitiationBuilder b)]) = _$RefundInitiation;
+  factory RefundInitiation([void updates(RefundInitiationBuilder b)]) =
+      _$RefundInitiation;
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(RefundInitiationBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
-  static Serializer<RefundInitiation> get serializer => _$RefundInitiationSerializer();
+  static Serializer<RefundInitiation> get serializer =>
+      _$RefundInitiationSerializer();
 }
 
-class _$RefundInitiationSerializer implements PrimitiveSerializer<RefundInitiation> {
+class _$RefundInitiationSerializer
+    implements PrimitiveSerializer<RefundInitiation> {
   @override
   final Iterable<Type> types = const [RefundInitiation, _$RefundInitiation];
 
@@ -93,10 +97,12 @@ class _$RefundInitiationSerializer implements PrimitiveSerializer<RefundInitiati
       specifiedType: const FullType(RefundInitiationStateEnum),
     );
     yield r'providerRefundId';
-    yield object.providerRefundId == null ? null : serializers.serialize(
-      object.providerRefundId,
-      specifiedType: const FullType.nullable(String),
-    );
+    yield object.providerRefundId == null
+        ? null
+        : serializers.serialize(
+            object.providerRefundId,
+            specifiedType: const FullType.nullable(String),
+          );
     yield r'createdAt';
     yield serializers.serialize(
       object.createdAt,
@@ -110,7 +116,9 @@ class _$RefundInitiationSerializer implements PrimitiveSerializer<RefundInitiati
     RefundInitiation object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
   }
 
   void _deserializeProperties(
@@ -205,19 +213,23 @@ class _$RefundInitiationSerializer implements PrimitiveSerializer<RefundInitiati
 }
 
 class RefundInitiationStateEnum extends EnumClass {
-
   @BuiltValueEnumConst(wireName: r'submitting')
-  static const RefundInitiationStateEnum submitting = _$refundInitiationStateEnum_submitting;
+  static const RefundInitiationStateEnum submitting =
+      _$refundInitiationStateEnum_submitting;
   @BuiltValueEnumConst(wireName: r'accepted')
-  static const RefundInitiationStateEnum accepted = _$refundInitiationStateEnum_accepted;
+  static const RefundInitiationStateEnum accepted =
+      _$refundInitiationStateEnum_accepted;
   @BuiltValueEnumConst(wireName: r'unknown')
-  static const RefundInitiationStateEnum unknown = _$refundInitiationStateEnum_unknown;
+  static const RefundInitiationStateEnum unknown =
+      _$refundInitiationStateEnum_unknown;
 
-  static Serializer<RefundInitiationStateEnum> get serializer => _$refundInitiationStateEnumSerializer;
+  static Serializer<RefundInitiationStateEnum> get serializer =>
+      _$refundInitiationStateEnumSerializer;
 
-  const RefundInitiationStateEnum._(String name): super(name);
+  const RefundInitiationStateEnum._(String name) : super(name);
 
-  static BuiltSet<RefundInitiationStateEnum> get values => _$refundInitiationStateEnumValues;
-  static RefundInitiationStateEnum valueOf(String name) => _$refundInitiationStateEnumValueOf(name);
+  static BuiltSet<RefundInitiationStateEnum> get values =>
+      _$refundInitiationStateEnumValues;
+  static RefundInitiationStateEnum valueOf(String name) =>
+      _$refundInitiationStateEnumValueOf(name);
 }
-

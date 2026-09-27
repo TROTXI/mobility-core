@@ -12,8 +12,8 @@ part 'stop_input.g.dart';
 /// StopInput
 ///
 /// Properties:
-/// * [name] 
-/// * [location] 
+/// * [name]
+/// * [location]
 @BuiltValue()
 abstract class StopInput implements Built<StopInput, StopInputBuilder> {
   @BuiltValueField(wireName: r'name')
@@ -63,7 +63,9 @@ class _$StopInputSerializer implements PrimitiveSerializer<StopInput> {
     StopInput object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
   }
 
   void _deserializeProperties(
@@ -120,4 +122,3 @@ class _$StopInputSerializer implements PrimitiveSerializer<StopInput> {
     return result.build();
   }
 }
-

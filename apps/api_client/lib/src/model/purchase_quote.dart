@@ -13,20 +13,21 @@ part 'purchase_quote.g.dart';
 /// PurchaseQuote
 ///
 /// Properties:
-/// * [routeId] 
-/// * [plan] 
-/// * [ridesGranted] 
-/// * [fare] 
-/// * [price] 
-/// * [availableCredit] 
-/// * [appliedCredit] 
-/// * [cashDue] 
-/// * [minimumCashDue] 
-/// * [renewalMode] 
-/// * [binding] 
-/// * [quotedAt] 
+/// * [routeId]
+/// * [plan]
+/// * [ridesGranted]
+/// * [fare]
+/// * [price]
+/// * [availableCredit]
+/// * [appliedCredit]
+/// * [cashDue]
+/// * [minimumCashDue]
+/// * [renewalMode]
+/// * [binding]
+/// * [quotedAt]
 @BuiltValue()
-abstract class PurchaseQuote implements Built<PurchaseQuote, PurchaseQuoteBuilder> {
+abstract class PurchaseQuote
+    implements Built<PurchaseQuote, PurchaseQuoteBuilder> {
   @BuiltValueField(wireName: r'routeId')
   String get routeId;
 
@@ -67,13 +68,15 @@ abstract class PurchaseQuote implements Built<PurchaseQuote, PurchaseQuoteBuilde
 
   PurchaseQuote._();
 
-  factory PurchaseQuote([void updates(PurchaseQuoteBuilder b)]) = _$PurchaseQuote;
+  factory PurchaseQuote([void updates(PurchaseQuoteBuilder b)]) =
+      _$PurchaseQuote;
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(PurchaseQuoteBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
-  static Serializer<PurchaseQuote> get serializer => _$PurchaseQuoteSerializer();
+  static Serializer<PurchaseQuote> get serializer =>
+      _$PurchaseQuoteSerializer();
 }
 
 class _$PurchaseQuoteSerializer implements PrimitiveSerializer<PurchaseQuote> {
@@ -156,7 +159,9 @@ class _$PurchaseQuoteSerializer implements PrimitiveSerializer<PurchaseQuote> {
     PurchaseQuote object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
   }
 
   void _deserializeProperties(
@@ -285,30 +290,34 @@ class _$PurchaseQuoteSerializer implements PrimitiveSerializer<PurchaseQuote> {
 }
 
 class PurchaseQuotePlanEnum extends EnumClass {
-
   @BuiltValueEnumConst(wireName: r'monthly')
   static const PurchaseQuotePlanEnum monthly = _$purchaseQuotePlanEnum_monthly;
   @BuiltValueEnumConst(wireName: r'annual')
   static const PurchaseQuotePlanEnum annual = _$purchaseQuotePlanEnum_annual;
 
-  static Serializer<PurchaseQuotePlanEnum> get serializer => _$purchaseQuotePlanEnumSerializer;
+  static Serializer<PurchaseQuotePlanEnum> get serializer =>
+      _$purchaseQuotePlanEnumSerializer;
 
-  const PurchaseQuotePlanEnum._(String name): super(name);
+  const PurchaseQuotePlanEnum._(String name) : super(name);
 
-  static BuiltSet<PurchaseQuotePlanEnum> get values => _$purchaseQuotePlanEnumValues;
-  static PurchaseQuotePlanEnum valueOf(String name) => _$purchaseQuotePlanEnumValueOf(name);
+  static BuiltSet<PurchaseQuotePlanEnum> get values =>
+      _$purchaseQuotePlanEnumValues;
+  static PurchaseQuotePlanEnum valueOf(String name) =>
+      _$purchaseQuotePlanEnumValueOf(name);
 }
 
 class PurchaseQuoteRenewalModeEnum extends EnumClass {
-
   @BuiltValueEnumConst(wireName: r'manual')
-  static const PurchaseQuoteRenewalModeEnum manual = _$purchaseQuoteRenewalModeEnum_manual;
+  static const PurchaseQuoteRenewalModeEnum manual =
+      _$purchaseQuoteRenewalModeEnum_manual;
 
-  static Serializer<PurchaseQuoteRenewalModeEnum> get serializer => _$purchaseQuoteRenewalModeEnumSerializer;
+  static Serializer<PurchaseQuoteRenewalModeEnum> get serializer =>
+      _$purchaseQuoteRenewalModeEnumSerializer;
 
-  const PurchaseQuoteRenewalModeEnum._(String name): super(name);
+  const PurchaseQuoteRenewalModeEnum._(String name) : super(name);
 
-  static BuiltSet<PurchaseQuoteRenewalModeEnum> get values => _$purchaseQuoteRenewalModeEnumValues;
-  static PurchaseQuoteRenewalModeEnum valueOf(String name) => _$purchaseQuoteRenewalModeEnumValueOf(name);
+  static BuiltSet<PurchaseQuoteRenewalModeEnum> get values =>
+      _$purchaseQuoteRenewalModeEnumValues;
+  static PurchaseQuoteRenewalModeEnum valueOf(String name) =>
+      _$purchaseQuoteRenewalModeEnumValueOf(name);
 }
-

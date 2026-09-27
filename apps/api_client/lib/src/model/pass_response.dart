@@ -12,9 +12,10 @@ part 'pass_response.g.dart';
 /// PassResponse
 ///
 /// Properties:
-/// * [data] 
+/// * [data]
 @BuiltValue()
-abstract class PassResponse implements Built<PassResponse, PassResponseBuilder> {
+abstract class PassResponse
+    implements Built<PassResponse, PassResponseBuilder> {
   @BuiltValueField(wireName: r'data')
   Pass get data;
 
@@ -54,7 +55,9 @@ class _$PassResponseSerializer implements PrimitiveSerializer<PassResponse> {
     PassResponse object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
   }
 
   void _deserializeProperties(
@@ -104,4 +107,3 @@ class _$PassResponseSerializer implements PrimitiveSerializer<PassResponse> {
     return result.build();
   }
 }
-

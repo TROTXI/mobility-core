@@ -3,6 +3,7 @@ import type { AuthOptions } from '../auth/service.js';
 import { createTransportApp } from './app.js';
 import type { AppOptions } from './app.js';
 import { DriverService } from '../auth/driver-service.js';
+import type { DriverCredentialEmail } from '../notifications/email.js';
 import { BoardingService } from '../boarding/service.js';
 import type { BoardingOptions } from '../boarding/service.js';
 
@@ -22,6 +23,8 @@ export function createReplacementApp(
   > & {
     identity: Omit<AuthOptions, 'pool' | 'cursorSecret'>;
     credentialReplayKey: Buffer;
+    /** Where driver sign-in details are emailed. Absent: email is refused, not faked. */
+    driverEmail?: DriverCredentialEmail;
     boarding?: Omit<BoardingOptions, 'pool' | 'authorizeSession'>;
     /**
      * Services that need the session authorizer identity owns. They are built
@@ -55,6 +58,7 @@ export function createReplacementApp(
     pinSecret: options.identity.pinSecret,
     replayKey: options.credentialReplayKey,
     cursorSecret: options.cursorSecret,
+    ...(options.driverEmail ? { email: options.driverEmail } : {}),
   });
   if (
     options.boarding &&

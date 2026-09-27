@@ -12,12 +12,14 @@ part 'driver_self_credential.g.dart';
 /// DriverSelfCredential
 ///
 /// Properties:
-/// * [driverCode] 
-/// * [status] 
-/// * [mustChangePin] 
-/// * [lockedUntil] 
+/// * [driverCode]
+/// * [status]
+/// * [mustChangePin]
+/// * [temporaryPinExpiresAt]
+/// * [lockedUntil]
 @BuiltValue()
-abstract class DriverSelfCredential implements Built<DriverSelfCredential, DriverSelfCredentialBuilder> {
+abstract class DriverSelfCredential
+    implements Built<DriverSelfCredential, DriverSelfCredentialBuilder> {
   @BuiltValueField(wireName: r'driverCode')
   String get driverCode;
 
@@ -28,23 +30,32 @@ abstract class DriverSelfCredential implements Built<DriverSelfCredential, Drive
   @BuiltValueField(wireName: r'mustChangePin')
   bool get mustChangePin;
 
+  @BuiltValueField(wireName: r'temporaryPinExpiresAt')
+  DateTime? get temporaryPinExpiresAt;
+
   @BuiltValueField(wireName: r'lockedUntil')
   DateTime? get lockedUntil;
 
   DriverSelfCredential._();
 
-  factory DriverSelfCredential([void updates(DriverSelfCredentialBuilder b)]) = _$DriverSelfCredential;
+  factory DriverSelfCredential([void updates(DriverSelfCredentialBuilder b)]) =
+      _$DriverSelfCredential;
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(DriverSelfCredentialBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
-  static Serializer<DriverSelfCredential> get serializer => _$DriverSelfCredentialSerializer();
+  static Serializer<DriverSelfCredential> get serializer =>
+      _$DriverSelfCredentialSerializer();
 }
 
-class _$DriverSelfCredentialSerializer implements PrimitiveSerializer<DriverSelfCredential> {
+class _$DriverSelfCredentialSerializer
+    implements PrimitiveSerializer<DriverSelfCredential> {
   @override
-  final Iterable<Type> types = const [DriverSelfCredential, _$DriverSelfCredential];
+  final Iterable<Type> types = const [
+    DriverSelfCredential,
+    _$DriverSelfCredential
+  ];
 
   @override
   final String wireName = r'DriverSelfCredential';
@@ -69,11 +80,20 @@ class _$DriverSelfCredentialSerializer implements PrimitiveSerializer<DriverSelf
       object.mustChangePin,
       specifiedType: const FullType(bool),
     );
+    yield r'temporaryPinExpiresAt';
+    yield object.temporaryPinExpiresAt == null
+        ? null
+        : serializers.serialize(
+            object.temporaryPinExpiresAt,
+            specifiedType: const FullType.nullable(DateTime),
+          );
     yield r'lockedUntil';
-    yield object.lockedUntil == null ? null : serializers.serialize(
-      object.lockedUntil,
-      specifiedType: const FullType.nullable(DateTime),
-    );
+    yield object.lockedUntil == null
+        ? null
+        : serializers.serialize(
+            object.lockedUntil,
+            specifiedType: const FullType.nullable(DateTime),
+          );
   }
 
   @override
@@ -82,7 +102,9 @@ class _$DriverSelfCredentialSerializer implements PrimitiveSerializer<DriverSelf
     DriverSelfCredential object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
   }
 
   void _deserializeProperties(
@@ -117,6 +139,14 @@ class _$DriverSelfCredentialSerializer implements PrimitiveSerializer<DriverSelf
             specifiedType: const FullType(bool),
           ) as bool;
           result.mustChangePin = valueDes;
+          break;
+        case r'temporaryPinExpiresAt':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType.nullable(DateTime),
+          ) as DateTime?;
+          if (valueDes == null) continue;
+          result.temporaryPinExpiresAt = valueDes;
           break;
         case r'lockedUntil':
           final valueDes = serializers.deserialize(
@@ -156,19 +186,23 @@ class _$DriverSelfCredentialSerializer implements PrimitiveSerializer<DriverSelf
 }
 
 class DriverSelfCredentialStatusEnum extends EnumClass {
-
   @BuiltValueEnumConst(wireName: r'active')
-  static const DriverSelfCredentialStatusEnum active = _$driverSelfCredentialStatusEnum_active;
+  static const DriverSelfCredentialStatusEnum active =
+      _$driverSelfCredentialStatusEnum_active;
   @BuiltValueEnumConst(wireName: r'suspended')
-  static const DriverSelfCredentialStatusEnum suspended = _$driverSelfCredentialStatusEnum_suspended;
+  static const DriverSelfCredentialStatusEnum suspended =
+      _$driverSelfCredentialStatusEnum_suspended;
   @BuiltValueEnumConst(wireName: r'revoked')
-  static const DriverSelfCredentialStatusEnum revoked = _$driverSelfCredentialStatusEnum_revoked;
+  static const DriverSelfCredentialStatusEnum revoked =
+      _$driverSelfCredentialStatusEnum_revoked;
 
-  static Serializer<DriverSelfCredentialStatusEnum> get serializer => _$driverSelfCredentialStatusEnumSerializer;
+  static Serializer<DriverSelfCredentialStatusEnum> get serializer =>
+      _$driverSelfCredentialStatusEnumSerializer;
 
-  const DriverSelfCredentialStatusEnum._(String name): super(name);
+  const DriverSelfCredentialStatusEnum._(String name) : super(name);
 
-  static BuiltSet<DriverSelfCredentialStatusEnum> get values => _$driverSelfCredentialStatusEnumValues;
-  static DriverSelfCredentialStatusEnum valueOf(String name) => _$driverSelfCredentialStatusEnumValueOf(name);
+  static BuiltSet<DriverSelfCredentialStatusEnum> get values =>
+      _$driverSelfCredentialStatusEnumValues;
+  static DriverSelfCredentialStatusEnum valueOf(String name) =>
+      _$driverSelfCredentialStatusEnumValueOf(name);
 }
-

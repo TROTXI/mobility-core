@@ -14,17 +14,17 @@ part 'purchase.g.dart';
 /// Purchase
 ///
 /// Properties:
-/// * [id] 
-/// * [plan] 
-/// * [state] 
-/// * [collectionState] 
-/// * [price] 
-/// * [appliedCredit] 
-/// * [cashDue] 
-/// * [checkout] 
-/// * [billingPeriodId] 
-/// * [failureCode] 
-/// * [createdAt] 
+/// * [id]
+/// * [plan]
+/// * [state]
+/// * [collectionState]
+/// * [price]
+/// * [appliedCredit]
+/// * [cashDue]
+/// * [checkout]
+/// * [billingPeriodId]
+/// * [failureCode]
+/// * [createdAt]
 @BuiltValue()
 abstract class Purchase implements Built<Purchase, PurchaseBuilder> {
   @BuiltValueField(wireName: r'id')
@@ -122,20 +122,26 @@ class _$PurchaseSerializer implements PrimitiveSerializer<Purchase> {
       specifiedType: const FullType(Money),
     );
     yield r'checkout';
-    yield object.checkout == null ? null : serializers.serialize(
-      object.checkout,
-      specifiedType: const FullType.nullable(OpsPurchaseCheckout),
-    );
+    yield object.checkout == null
+        ? null
+        : serializers.serialize(
+            object.checkout,
+            specifiedType: const FullType.nullable(OpsPurchaseCheckout),
+          );
     yield r'billingPeriodId';
-    yield object.billingPeriodId == null ? null : serializers.serialize(
-      object.billingPeriodId,
-      specifiedType: const FullType.nullable(String),
-    );
+    yield object.billingPeriodId == null
+        ? null
+        : serializers.serialize(
+            object.billingPeriodId,
+            specifiedType: const FullType.nullable(String),
+          );
     yield r'failureCode';
-    yield object.failureCode == null ? null : serializers.serialize(
-      object.failureCode,
-      specifiedType: const FullType.nullable(String),
-    );
+    yield object.failureCode == null
+        ? null
+        : serializers.serialize(
+            object.failureCode,
+            specifiedType: const FullType.nullable(String),
+          );
     yield r'createdAt';
     yield serializers.serialize(
       object.createdAt,
@@ -149,7 +155,9 @@ class _$PurchaseSerializer implements PrimitiveSerializer<Purchase> {
     Purchase object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
   }
 
   void _deserializeProperties(
@@ -274,24 +282,25 @@ class _$PurchaseSerializer implements PrimitiveSerializer<Purchase> {
 }
 
 class PurchasePlanEnum extends EnumClass {
-
   @BuiltValueEnumConst(wireName: r'monthly')
   static const PurchasePlanEnum monthly = _$purchasePlanEnum_monthly;
   @BuiltValueEnumConst(wireName: r'annual')
   static const PurchasePlanEnum annual = _$purchasePlanEnum_annual;
 
-  static Serializer<PurchasePlanEnum> get serializer => _$purchasePlanEnumSerializer;
+  static Serializer<PurchasePlanEnum> get serializer =>
+      _$purchasePlanEnumSerializer;
 
-  const PurchasePlanEnum._(String name): super(name);
+  const PurchasePlanEnum._(String name) : super(name);
 
   static BuiltSet<PurchasePlanEnum> get values => _$purchasePlanEnumValues;
-  static PurchasePlanEnum valueOf(String name) => _$purchasePlanEnumValueOf(name);
+  static PurchasePlanEnum valueOf(String name) =>
+      _$purchasePlanEnumValueOf(name);
 }
 
 class PurchaseStateEnum extends EnumClass {
-
   @BuiltValueEnumConst(wireName: r'awaiting_payment')
-  static const PurchaseStateEnum awaitingPayment = _$purchaseStateEnum_awaitingPayment;
+  static const PurchaseStateEnum awaitingPayment =
+      _$purchaseStateEnum_awaitingPayment;
   @BuiltValueEnumConst(wireName: r'processing')
   static const PurchaseStateEnum processing = _$purchaseStateEnum_processing;
   @BuiltValueEnumConst(wireName: r'fulfilled')
@@ -301,32 +310,40 @@ class PurchaseStateEnum extends EnumClass {
   @BuiltValueEnumConst(wireName: r'cancelled')
   static const PurchaseStateEnum cancelled = _$purchaseStateEnum_cancelled;
   @BuiltValueEnumConst(wireName: r'review_required')
-  static const PurchaseStateEnum reviewRequired = _$purchaseStateEnum_reviewRequired;
+  static const PurchaseStateEnum reviewRequired =
+      _$purchaseStateEnum_reviewRequired;
 
-  static Serializer<PurchaseStateEnum> get serializer => _$purchaseStateEnumSerializer;
+  static Serializer<PurchaseStateEnum> get serializer =>
+      _$purchaseStateEnumSerializer;
 
-  const PurchaseStateEnum._(String name): super(name);
+  const PurchaseStateEnum._(String name) : super(name);
 
   static BuiltSet<PurchaseStateEnum> get values => _$purchaseStateEnumValues;
-  static PurchaseStateEnum valueOf(String name) => _$purchaseStateEnumValueOf(name);
+  static PurchaseStateEnum valueOf(String name) =>
+      _$purchaseStateEnumValueOf(name);
 }
 
 class PurchaseCollectionStateEnum extends EnumClass {
-
   @BuiltValueEnumConst(wireName: r'pending')
-  static const PurchaseCollectionStateEnum pending = _$purchaseCollectionStateEnum_pending;
+  static const PurchaseCollectionStateEnum pending =
+      _$purchaseCollectionStateEnum_pending;
   @BuiltValueEnumConst(wireName: r'successful')
-  static const PurchaseCollectionStateEnum successful = _$purchaseCollectionStateEnum_successful;
+  static const PurchaseCollectionStateEnum successful =
+      _$purchaseCollectionStateEnum_successful;
   @BuiltValueEnumConst(wireName: r'failed')
-  static const PurchaseCollectionStateEnum failed = _$purchaseCollectionStateEnum_failed;
+  static const PurchaseCollectionStateEnum failed =
+      _$purchaseCollectionStateEnum_failed;
   @BuiltValueEnumConst(wireName: r'unknown')
-  static const PurchaseCollectionStateEnum unknown = _$purchaseCollectionStateEnum_unknown;
+  static const PurchaseCollectionStateEnum unknown =
+      _$purchaseCollectionStateEnum_unknown;
 
-  static Serializer<PurchaseCollectionStateEnum> get serializer => _$purchaseCollectionStateEnumSerializer;
+  static Serializer<PurchaseCollectionStateEnum> get serializer =>
+      _$purchaseCollectionStateEnumSerializer;
 
-  const PurchaseCollectionStateEnum._(String name): super(name);
+  const PurchaseCollectionStateEnum._(String name) : super(name);
 
-  static BuiltSet<PurchaseCollectionStateEnum> get values => _$purchaseCollectionStateEnumValues;
-  static PurchaseCollectionStateEnum valueOf(String name) => _$purchaseCollectionStateEnumValueOf(name);
+  static BuiltSet<PurchaseCollectionStateEnum> get values =>
+      _$purchaseCollectionStateEnumValues;
+  static PurchaseCollectionStateEnum valueOf(String name) =>
+      _$purchaseCollectionStateEnumValueOf(name);
 }
-

@@ -10,10 +10,60 @@ const payloadSchema = z
     subject: z.string().min(1).max(200),
     text: z.string().min(1).max(8000),
     periodEnd: z.iso.datetime().optional(),
+    // Credential mail only: which credential version the message describes.
+    driverId: z.uuid().optional(),
+    pinVersion: z.number().int().positive().optional(),
   })
   .strict();
 type Payload = z.infer<typeof payloadSchema>;
-type Kind = 'subscription_active' | 'subscription_expiring' | 'erasure_requested';
+type Kind =
+  | 'subscription_active'
+  | 'subscription_expiring'
+  | 'erasure_requested'
+  | 'driver_credentials_issued'
+  | 'driver_pin_reset';
+export const credentialKinds = ['driver_credentials_issued', 'driver_pin_reset'] as const;
+export type CredentialKind = (typeof credentialKinds)[number];
+/** What a queued credential message is for, bound to one credential version. */
+export interface CredentialMail {
+  kind: CredentialKind;
+  userId: string;
+  driverId: string;
+  commandId: string;
+  to: string;
+  name: string;
+  code: string;
+  pin: string;
+  pinVersion: number;
+  expiresAt: Date;
+}
+/**
+ * Queue-time contract the driver service depends on. Absent when email is not
+ * configured, so a request for delivery is refused instead of pretended.
+ */
+export interface DriverCredentialEmail {
+  queueCredential(c: PoolClient, mail: CredentialMail): Promise<string>;
+  /**
+   * Try one queued message now, after its transaction has committed. The
+   * same checks and retries as the worker apply; a failure leaves it queued.
+   */
+  sendQueued?(id: string): Promise<void>;
+}
+/**
+ * Any credential message still waiting describes a PIN that is about to stop
+ * being current, or an address that is about to change. Cancelled in the
+ * caller's transaction, before that change commits. Plain SQL on purpose: it
+ * must run even where email sending is not configured.
+ */
+export async function cancelCredentialMail(c: PoolClient, userId: string): Promise<number> {
+  const result = await c.query(
+    `UPDATE app.email_outbox SET state='cancelled',payload_ciphertext=NULL,claim_id=NULL,
+      lease_until=NULL,failure_code='stale_credential'
+    WHERE user_id=$1 AND state='pending' AND kind = ANY($2::text[])`,
+    [userId, credentialKinds],
+  );
+  return result.rowCount ?? 0;
+}
 export type EmailStats = {
   considered: number;
   accepted: number;
@@ -67,23 +117,80 @@ export class TransactionalEmail {
     text: string,
     subject: string,
     suffix = '',
-    periodEnd?: string,
-  ) {
-    if (!email || !z.email().safeParse(email).success) return;
+    extra: { periodEnd?: string; driverId?: string; pinVersion?: number; expiresAt?: Date } = {},
+  ): Promise<string | undefined> {
+    if (!email || !z.email().safeParse(email).success) return undefined;
     const id = randomUUID();
+    // Staging mail says so, in words that fit what the message is about.
+    const stagingNote = kind.startsWith('driver_')
+      ? 'This is a Trotxi staging test account. It is not for live operations.\n\n'
+      : 'This is a Trotxi staging test. No real payment was taken.\n\n';
+    const { expiresAt, ...bound } = extra;
     const payload = payloadSchema.parse({
       from: 'Trotxi <hello@notifications.trotxi.com>',
       to: email,
       subject: `${this.options.staging ? '[STAGING TEST] ' : ''}${subject}`,
-      text: `${this.options.staging ? 'This is a Trotxi staging test. No real payment was taken.\n\n' : ''}${text}`,
-      ...(periodEnd ? { periodEnd } : {}),
+      text: `${this.options.staging ? stagingNote : ''}${text}`,
+      ...Object.fromEntries(Object.entries(bound).filter(([, value]) => value !== undefined)),
     });
-    await c.query(
-      `INSERT INTO app.email_outbox(id,user_id,kind,source_id,dedupe_key,payload_ciphertext)
-      VALUES($1,$2,$3,$4,$5,$6) ON CONFLICT(dedupe_key) DO NOTHING`,
-      [id, userId, kind, source, `${kind}:${source}${suffix}`, this.seal(payload, id)],
+    const inserted = await c.query(
+      `INSERT INTO app.email_outbox(id,user_id,kind,source_id,dedupe_key,payload_ciphertext,expires_at)
+      VALUES($1,$2,$3,$4,$5,$6,COALESCE($7::timestamptz,transaction_timestamp()+interval '7 days'))
+      ON CONFLICT(dedupe_key) DO NOTHING RETURNING id`,
+      [
+        id,
+        userId,
+        kind,
+        source,
+        `${kind}:${source}${suffix}`,
+        this.seal(payload, id),
+        expiresAt ?? null,
+      ],
     );
+    return inserted.rows[0]?.id as string | undefined;
   }
+  /**
+   * Queued inside the transaction that issues or resets the credential, so a
+   * rollback leaves neither. The PIN exists only inside the encrypted payload;
+   * the row carries the command as its source, which makes a replayed command
+   * find the message it already queued rather than add a second one. The
+   * message expires with the temporary PIN it describes.
+   */
+  queueCredential = async (c: PoolClient, mail: CredentialMail): Promise<string> => {
+    const reset = mail.kind === 'driver_pin_reset';
+    const until = mail.expiresAt.toISOString().replace(/\.\d{3}Z$/, 'Z');
+    const text = [
+      `Hello ${mail.name},`,
+      '',
+      reset
+        ? 'Trotxi operations has reset your driver PIN. Your previous PIN no longer works, and any device that was signed in has been signed out.'
+        : 'Trotxi operations has set up your driver account.',
+      '',
+      'Sign in to the Trotxi Driver app with:',
+      `Driver code: ${mail.code}`,
+      `Temporary PIN: ${mail.pin}`,
+      '',
+      `This temporary PIN works until ${until} (UTC). After signing in, the app asks you to choose your own six-digit PIN before you can start work. Operations cannot see the PIN you choose.`,
+      '',
+      'Keep this email private and delete it once you have set your own PIN. Trotxi will never ask you to reply with your PIN.',
+      '',
+      'If the temporary PIN has expired, or you did not expect this email, contact Trotxi operations and ask for a new temporary PIN.',
+    ].join('\n');
+    const id = await this.enqueue(
+      c,
+      mail.userId,
+      mail.kind,
+      mail.commandId,
+      mail.to,
+      text,
+      reset ? 'Your new temporary Trotxi driver PIN' : 'Your Trotxi driver sign-in details',
+      '',
+      { driverId: mail.driverId, pinVersion: mail.pinVersion, expiresAt: mail.expiresAt },
+    );
+    if (!id) throw new Error('Credential email was not queued');
+    return id;
+  };
+
   // Invoked inside fulfilment's existing transaction, after allocation. A
   // rollback leaves neither the membership effect nor a queued notification.
   subscriptionActive = async (c: PoolClient, userId: string, purchaseId: string) => {
@@ -170,7 +277,7 @@ export class TransactionalEmail {
             `Your current coverage ends at ${p.effective_ends_at.toISOString()}. Open Trotxi to review your membership and renew. Renewal is manual; no automatic charge will be taken.`,
             'Your Trotxi coverage ends soon',
             `:${p.epoch}`,
-            p.effective_ends_at.toISOString(),
+            { periodEnd: p.effective_ends_at.toISOString() },
           );
         await c.query('COMMIT');
       } catch (error) {
@@ -185,7 +292,17 @@ export class TransactionalEmail {
     if (!Number.isInteger(limit) || limit < 1 || limit > 100)
       throw new Error('Email batch must be between 1 and 100');
   }
-  async drain(limit = 100): Promise<EmailStats> {
+  /**
+   * Deliver one message as soon as the transaction that queued it has
+   * committed, instead of waiting for the next worker run. It goes through
+   * the same claim, recheck and retry path as the worker, so a message that
+   * became stale in the meantime is cancelled, and one the provider refuses
+   * for now stays queued for the worker.
+   */
+  sendQueued = async (id: string): Promise<void> => {
+    await this.drain(1, id);
+  };
+  async drain(limit = 100, only?: string): Promise<EmailStats> {
     this.bound(limit);
     const stats: EmailStats = {
       considered: 0,
@@ -202,14 +319,14 @@ export class TransactionalEmail {
       const row = (
         await this.options.pool.query(
           `WITH candidate AS (
-        SELECT id FROM app.email_outbox WHERE state='pending'
+        SELECT id FROM app.email_outbox WHERE state='pending' AND ($2::uuid IS NULL OR id=$2)
           AND (next_attempt_at<=clock_timestamp() OR expires_at<=clock_timestamp())
           AND (lease_until IS NULL OR lease_until<clock_timestamp())
         ORDER BY next_attempt_at,created_at,id FOR UPDATE SKIP LOCKED LIMIT 1)
         UPDATE app.email_outbox e SET claim_id=$1,lease_until=clock_timestamp()+interval '1 minute',
           first_attempt_at=COALESCE(first_attempt_at,clock_timestamp())
         FROM candidate c WHERE e.id=c.id RETURNING e.*`,
-          [claimId],
+          [claimId, only ?? null],
         )
       ).rows[0];
       if (!row) break;
@@ -269,9 +386,25 @@ export class TransactionalEmail {
                   [row.source_id, payload.periodEnd],
                 )
               ).rowCount;
-            if (!eligible) await terminal('cancelled', 'stale_reminder');
+            let stale: 'stale_reminder' | 'stale_credential' = 'stale_reminder';
+            if ((credentialKinds as readonly string[]).includes(row.kind)) {
+              // Still the credential, driver and address this message was
+              // written for, and the temporary PIN in it still works.
+              stale = 'stale_credential';
+              eligible = !!(
+                await c.query(
+                  `SELECT 1 FROM app.drivers d JOIN app.driver_credentials cr ON cr.driver_id=d.id
+                  WHERE d.id=$1 AND d.user_id=$2 AND d.archived_at IS NULL AND d.email=$3
+                    AND cr.pin_version=$4 AND cr.must_change_pin
+                    AND cr.temporary_pin_expires_at>clock_timestamp()
+                  FOR SHARE OF d, cr`,
+                  [payload.driverId, row.user_id, payload.to, payload.pinVersion],
+                )
+              ).rowCount;
+            }
+            if (!eligible) await terminal('cancelled', stale);
             else {
-              const { periodEnd: _, ...message } = payload;
+              const { periodEnd: _, driverId: _d, pinVersion: _v, ...message } = payload;
               await c.query('UPDATE app.email_outbox SET attempts=attempts+1 WHERE id=$1', [
                 row.id,
               ]);

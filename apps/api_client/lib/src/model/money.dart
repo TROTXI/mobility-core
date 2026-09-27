@@ -12,8 +12,8 @@ part 'money.g.dart';
 /// Money
 ///
 /// Properties:
-/// * [amountMinor] 
-/// * [currency] 
+/// * [amountMinor]
+/// * [currency]
 @BuiltValue()
 abstract class Money implements Built<Money, MoneyBuilder> {
   @BuiltValueField(wireName: r'amountMinor')
@@ -64,7 +64,9 @@ class _$MoneySerializer implements PrimitiveSerializer<Money> {
     Money object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
   }
 
   void _deserializeProperties(
@@ -123,15 +125,15 @@ class _$MoneySerializer implements PrimitiveSerializer<Money> {
 }
 
 class MoneyCurrencyEnum extends EnumClass {
-
   @BuiltValueEnumConst(wireName: r'GHS')
   static const MoneyCurrencyEnum GHS = _$moneyCurrencyEnum_GHS;
 
-  static Serializer<MoneyCurrencyEnum> get serializer => _$moneyCurrencyEnumSerializer;
+  static Serializer<MoneyCurrencyEnum> get serializer =>
+      _$moneyCurrencyEnumSerializer;
 
-  const MoneyCurrencyEnum._(String name): super(name);
+  const MoneyCurrencyEnum._(String name) : super(name);
 
   static BuiltSet<MoneyCurrencyEnum> get values => _$moneyCurrencyEnumValues;
-  static MoneyCurrencyEnum valueOf(String name) => _$moneyCurrencyEnumValueOf(name);
+  static MoneyCurrencyEnum valueOf(String name) =>
+      _$moneyCurrencyEnumValueOf(name);
 }
-

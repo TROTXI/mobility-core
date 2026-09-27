@@ -10,7 +10,9 @@ Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
 **generatedAt** | [**DateTime**](DateTime.md) |  | 
 **window** | **String** |  | 
+**serviceDate** | [**Date**](Date.md) |  | 
 **staleFixAfterSeconds** | **int** |  | 
+**tiles** | [**OpsOverviewTiles**](OpsOverviewTiles.md) |  | 
 **trips** | [**BuiltList&lt;OpsOverviewTripsInner&gt;**](OpsOverviewTripsInner.md) |  | 
 
 [[Back to Model list]](../README.md#documentation-for-models) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to README]](../README.md)

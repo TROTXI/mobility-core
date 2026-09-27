@@ -12,8 +12,8 @@ part 'device_input.g.dart';
 /// DeviceInput
 ///
 /// Properties:
-/// * [token] 
-/// * [platform] 
+/// * [token]
+/// * [platform]
 @BuiltValue()
 abstract class DeviceInput implements Built<DeviceInput, DeviceInputBuilder> {
   @BuiltValueField(wireName: r'token')
@@ -64,7 +64,9 @@ class _$DeviceInputSerializer implements PrimitiveSerializer<DeviceInput> {
     DeviceInput object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
   }
 
   void _deserializeProperties(
@@ -123,17 +125,19 @@ class _$DeviceInputSerializer implements PrimitiveSerializer<DeviceInput> {
 }
 
 class DeviceInputPlatformEnum extends EnumClass {
-
   @BuiltValueEnumConst(wireName: r'ios')
   static const DeviceInputPlatformEnum ios = _$deviceInputPlatformEnum_ios;
   @BuiltValueEnumConst(wireName: r'android')
-  static const DeviceInputPlatformEnum android = _$deviceInputPlatformEnum_android;
+  static const DeviceInputPlatformEnum android =
+      _$deviceInputPlatformEnum_android;
 
-  static Serializer<DeviceInputPlatformEnum> get serializer => _$deviceInputPlatformEnumSerializer;
+  static Serializer<DeviceInputPlatformEnum> get serializer =>
+      _$deviceInputPlatformEnumSerializer;
 
-  const DeviceInputPlatformEnum._(String name): super(name);
+  const DeviceInputPlatformEnum._(String name) : super(name);
 
-  static BuiltSet<DeviceInputPlatformEnum> get values => _$deviceInputPlatformEnumValues;
-  static DeviceInputPlatformEnum valueOf(String name) => _$deviceInputPlatformEnumValueOf(name);
+  static BuiltSet<DeviceInputPlatformEnum> get values =>
+      _$deviceInputPlatformEnumValues;
+  static DeviceInputPlatformEnum valueOf(String name) =>
+      _$deviceInputPlatformEnumValueOf(name);
 }
-

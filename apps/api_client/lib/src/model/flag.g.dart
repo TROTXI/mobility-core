@@ -17,6 +17,8 @@ class _$Flag extends Flag {
   final String description;
   @override
   final int version;
+  @override
+  final String editToken;
 
   factory _$Flag([void Function(FlagBuilder)? updates]) =>
       (FlagBuilder()..update(updates))._build();
@@ -26,7 +28,8 @@ class _$Flag extends Flag {
       required this.enabled,
       required this.rolloutPercentage,
       required this.description,
-      required this.version})
+      required this.version,
+      required this.editToken})
       : super._();
   @override
   Flag rebuild(void Function(FlagBuilder) updates) =>
@@ -43,7 +46,8 @@ class _$Flag extends Flag {
         enabled == other.enabled &&
         rolloutPercentage == other.rolloutPercentage &&
         description == other.description &&
-        version == other.version;
+        version == other.version &&
+        editToken == other.editToken;
   }
 
   @override
@@ -54,6 +58,7 @@ class _$Flag extends Flag {
     _$hash = $jc(_$hash, rolloutPercentage.hashCode);
     _$hash = $jc(_$hash, description.hashCode);
     _$hash = $jc(_$hash, version.hashCode);
+    _$hash = $jc(_$hash, editToken.hashCode);
     _$hash = $jf(_$hash);
     return _$hash;
   }
@@ -65,7 +70,8 @@ class _$Flag extends Flag {
           ..add('enabled', enabled)
           ..add('rolloutPercentage', rolloutPercentage)
           ..add('description', description)
-          ..add('version', version))
+          ..add('version', version)
+          ..add('editToken', editToken))
         .toString();
   }
 }
@@ -94,6 +100,10 @@ class FlagBuilder implements Builder<Flag, FlagBuilder> {
   int? get version => _$this._version;
   set version(int? version) => _$this._version = version;
 
+  String? _editToken;
+  String? get editToken => _$this._editToken;
+  set editToken(String? editToken) => _$this._editToken = editToken;
+
   FlagBuilder() {
     Flag._defaults(this);
   }
@@ -106,6 +116,7 @@ class FlagBuilder implements Builder<Flag, FlagBuilder> {
       _rolloutPercentage = $v.rolloutPercentage;
       _description = $v.description;
       _version = $v.version;
+      _editToken = $v.editToken;
       _$v = null;
     }
     return this;
@@ -136,6 +147,8 @@ class FlagBuilder implements Builder<Flag, FlagBuilder> {
               description, r'Flag', 'description'),
           version: BuiltValueNullFieldError.checkNotNull(
               version, r'Flag', 'version'),
+          editToken: BuiltValueNullFieldError.checkNotNull(
+              editToken, r'Flag', 'editToken'),
         );
     replace(_$result);
     return _$result;

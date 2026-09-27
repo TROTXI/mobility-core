@@ -16,6 +16,9 @@ import { GoogleIdTokenVerifier } from '../src/auth/id-token-verifier.google.js';
 import { AppleIdTokenVerifier } from '../src/auth/id-token-verifier.apple.js';
 import { hashToken } from '../src/auth/credentials.js';
 import { TransportError } from '../src/transport/errors.js';
+import { TransactionalEmail } from '../src/notifications/email.js';
+import { EmailSendError } from '../src/notifications/resend.js';
+import type { EmailMessage } from '../src/notifications/resend.js';
 import { grantRuntime, migrate, readMigrations } from '../src/db/migrate.js';
 
 const value = process.env.HARNESS_ADMIN_DATABASE_URL;
@@ -97,6 +100,8 @@ async function setup(
   t: TestContext,
   authBudget = 1000,
   providers: Partial<Pick<AuthOptions, 'google' | 'apple'>> = {},
+  emailEnabled = true,
+  sendImmediately = false,
 ) {
   const n = ++serial,
     name = `trotxi_harness_${run}_driver_${n}`,
@@ -141,7 +146,34 @@ async function setup(
     pool: runtime,
     cursorSecret: Buffer.alloc(32, 6),
   });
+  // A real outbox and worker with a recording provider: nothing leaves the
+  // machine. failNext makes the next send fail the way Resend can.
+  const sent: { message: EmailMessage; key: string }[] = [];
+  const mailer = { failNext: null as EmailSendError | null };
+  const email = new TransactionalEmail({
+    pool: runtime,
+    encryptionKey: Buffer.alloc(32, 4),
+    staging: true,
+    sender: {
+      send: async (message, key) => {
+        if (mailer.failNext) {
+          const error = mailer.failNext;
+          mailer.failNext = null;
+          throw error;
+        }
+        sent.push({ message, key });
+        return `provider-${sent.length}`;
+      },
+    },
+  });
   const app = await createReplacementApp({
+    // Queue-only by default, so tests drive the worker explicitly and can
+    // observe a message while it waits. Production also sends right away.
+    ...(emailEnabled
+      ? {
+          driverEmail: sendImmediately ? email : { queueCredential: email.queueCredential },
+        }
+      : {}),
     credentialReplayKey: Buffer.alloc(32, 9),
     pool: runtime,
     cursorSecret: Buffer.alloc(32, 6),
@@ -213,6 +245,9 @@ async function setup(
     runtime,
     service,
     app,
+    email,
+    sent,
+    mailer,
     request,
     sign,
     lockUser,
@@ -225,8 +260,8 @@ const data = (response: { statusCode: number; body: string; json(): any }, statu
   return status === 204 ? undefined : response.json().data;
 };
 
-async function fixture(t: TestContext) {
-  const f = await setup(t),
+async function fixture(t: TestContext, emailEnabled = true, sendImmediately = false) {
+  const f = await setup(t, 1000, {}, emailEnabled, sendImmediately),
     ops = await f.sign('operator');
   await f.owner.query("UPDATE app.users SET role='admin' WHERE id=$1", [ops.account.id]);
   // A verified operator. The second factor itself is tested in auth.pg.test.ts;
@@ -246,15 +281,26 @@ async function fixture(t: TestContext) {
     data(await call('POST', '/v1/ops/drivers', body), 201);
   const issue = async (id: string, key = randomUUID(), body: Record<string, unknown> = {}) =>
     call('POST', `/v1/ops/drivers/${id}/credentials`, body, key);
-  const reset = async (id: string, key = randomUUID()) =>
-    call('POST', `/v1/ops/drivers/${id}/credentials/reset-pin`, { reason: 'Test reset' }, key);
+  const reset = async (id: string, key = randomUUID(), extra: Record<string, unknown> = {}) =>
+    call(
+      'POST',
+      `/v1/ops/drivers/${id}/credentials/reset-pin`,
+      { reason: 'Test reset', ...extra },
+      key,
+    );
   const action = async (id: string, action: string) =>
     call('POST', `/v1/ops/drivers/${id}/credentials/actions`, {
       action,
       reason: 'Test state change',
     });
   const login = async (secret: { code: string; pin: string }) =>
-    data(await f.request('POST', '/v1/auth/driver', { ...secret, ownDevice: true }));
+    data(
+      await f.request('POST', '/v1/auth/driver', {
+        code: secret.code,
+        pin: secret.pin,
+        ownDevice: true,
+      }),
+    );
   return { ...f, ops, call, create, issue, reset, action, login };
 }
 
@@ -357,7 +403,8 @@ test('DRV-04: reset revokes all sessions atomically, replay preserves PIN and ob
       401,
     );
   assert.equal(
-    (await f.request('POST', '/v1/auth/driver', { ...old, ownDevice: true })).statusCode,
+    (await f.request('POST', '/v1/auth/driver', { code: old.code, pin: old.pin, ownDevice: true }))
+      .statusCode,
     401,
   );
   await f.login(fresh);
@@ -392,7 +439,12 @@ test('DRV-05: event failure rolls back reset, sessions and key; same-key retry s
     ).rows[0].pin_version,
     1,
   );
-  data(await f.request('GET', '/v1/me/sessions', undefined, session.accessToken));
+  // Still signed in: a temporary-PIN session may read its own record.
+  data(
+    await f.request('GET', '/v1/driver/me', undefined, session.accessToken, {
+      'x-trotxi-client': 'driver',
+    }),
+  );
   assert.equal(
     (
       await f.owner.query('SELECT count(*)::int AS n FROM app.driver_commands WHERE key_hash=$1', [
@@ -420,7 +472,13 @@ test('DRV-06: suspension, reset, unlock and activation remain distinct; revoked 
   assert.deepEqual(data(await f.reset(driver.id, key)), fresh);
   data(await f.action(driver.id, 'unlock'), 204);
   assert.equal(
-    (await f.request('POST', '/v1/auth/driver', { ...fresh, ownDevice: true })).statusCode,
+    (
+      await f.request('POST', '/v1/auth/driver', {
+        code: fresh.code,
+        pin: fresh.pin,
+        ownDevice: true,
+      })
+    ).statusCode,
     403,
   );
   data(await f.action(driver.id, 'activate'), 204);
@@ -656,7 +714,11 @@ test('DRV-13: concurrent sign-in and reset serialize on the principal; old PIN c
     session = await f.login(secret),
     blocker = await f.lockUser(session.account.id);
   const reset = f.reset(driver.id),
-    signin = f.request('POST', '/v1/auth/driver', { ...secret, ownDevice: true });
+    signin = f.request('POST', '/v1/auth/driver', {
+      code: secret.code,
+      pin: secret.pin,
+      ownDevice: true,
+    });
   try {
     await f.waitForWaiters(2);
   } finally {
@@ -947,4 +1009,459 @@ test('DRV-21: a suspended driver is refused this read too, not told why', async 
   });
   assert.equal(refused.statusCode, 401, refused.body);
   assert.equal(refused.json().error.code, 'unauthenticated');
+});
+
+// ---- Email onboarding and temporary PINs (migration 029) -------------------
+
+const asDriver = { 'x-trotxi-client': 'driver' };
+const outbox = async (f: { owner: pg.Pool }, userId: string) =>
+  (
+    await f.owner.query(
+      `SELECT id,kind,state,failure_code,payload_ciphertext,source_id,expires_at
+       FROM app.email_outbox WHERE user_id=$1 ORDER BY created_at,id`,
+      [userId],
+    )
+  ).rows;
+
+test('DRV-30: onboarding queues one encrypted email with the credential, replay adds none, the worker sends it once', async (t) => {
+  const f = await fixture(t),
+    driver = await f.create({ name: 'Ama Mensah', email: 'ama.driver@example.test' }),
+    key = randomUUID();
+  assert.equal(driver.email, 'ama.driver@example.test');
+  assert.equal(driver.credential, null);
+  const secret = data(await f.issue(driver.id, key, { emailInstructions: true }), 201);
+  assert.match(secret.code, /^DR-[A-Z2-9]{4}$/);
+  assert.equal(secret.email.state, 'queued', 'queued, never "sent"');
+  assert.equal(secret.email.to, 'ama.driver@example.test');
+  const hours = (Date.parse(secret.temporaryPinExpiresAt) - Date.now()) / 3600000;
+  assert.ok(hours > 71.9 && hours <= 72, `temporary PIN window ${hours}h`);
+  // Same key, same answer, and still exactly one message.
+  assert.deepEqual(data(await f.issue(driver.id, key, { emailInstructions: true }), 201), secret);
+  const listed = data(await f.call('GET', '/v1/ops/drivers')).find(
+    (row: { id: string }) => row.id === driver.id,
+  );
+  const userId = listed.userId;
+  const rows = await outbox(f, userId);
+  assert.equal(rows.length, 1);
+  assert.equal(rows[0].kind, 'driver_credentials_issued');
+  assert.equal(rows[0].state, 'pending');
+  assert.equal(new Date(rows[0].expires_at).toISOString(), secret.temporaryPinExpiresAt);
+  // The PIN exists only inside the ciphertext: not in the outbox row, the
+  // receipt or the audit event.
+  const everything = JSON.stringify([
+    rows,
+    (await f.owner.query('SELECT * FROM app.driver_commands WHERE driver_id=$1', [driver.id])).rows,
+    (await f.owner.query('SELECT * FROM app.driver_events WHERE driver_id=$1', [driver.id])).rows,
+  ]);
+  assert.ok(!everything.includes(secret.pin), 'PIN stored in plaintext');
+  assert.deepEqual(listed.credential, {
+    driverCode: secret.code,
+    status: 'active',
+    mustChangePin: true,
+    temporaryPinExpiresAt: secret.temporaryPinExpiresAt,
+    lockedUntil: null,
+  });
+  assert.equal(listed.credentialEmail.purpose, 'onboarding');
+  assert.equal(listed.credentialEmail.state, 'queued');
+
+  const stats = await f.email.drain(10);
+  assert.equal(stats.accepted, 1);
+  assert.equal(f.sent.length, 1);
+  const { message, key: providerKey } = f.sent[0]!;
+  assert.equal(message.to, 'ama.driver@example.test');
+  assert.equal(providerKey, `trotxi-email/${rows[0].id}`);
+  assert.match(message.subject, /^\[STAGING TEST\] Your Trotxi driver sign-in details$/);
+  assert.ok(message.text.includes(`Driver code: ${secret.code}`));
+  assert.ok(message.text.includes(`Temporary PIN: ${secret.pin}`));
+  assert.ok(message.text.includes('choose your own six-digit PIN'));
+  assert.ok(!message.text.includes('No real payment'), 'driver mail has its own staging note');
+  assert.ok(!('driverId' in message) && !('pinVersion' in message), 'binding stays internal');
+  const after = (await outbox(f, userId))[0];
+  assert.equal(after.state, 'accepted');
+  assert.equal(after.payload_ciphertext, null, 'payload scrubbed once accepted');
+  const shown = data(await f.call('GET', '/v1/ops/drivers')).find(
+    (row: { id: string }) => row.id === driver.id,
+  );
+  assert.equal(shown.credentialEmail.state, 'provider_accepted');
+});
+
+test('DRV-31: email is refused without an address or a configured sender, and nothing is issued', async (t) => {
+  const f = await fixture(t),
+    bare = await f.create({ name: 'No Address' });
+  const missing = await f.issue(bare.id, randomUUID(), { emailInstructions: true });
+  assert.equal(missing.statusCode, 409, missing.body);
+  assert.equal(missing.json().error.code, 'driver_email_missing');
+  assert.equal(
+    (await f.owner.query('SELECT 1 FROM app.driver_credentials WHERE driver_id=$1', [bare.id]))
+      .rowCount,
+    0,
+  );
+  const invalid = await f.call('POST', '/v1/ops/drivers', { name: 'Bad', email: 'not-an-address' });
+  assert.equal(invalid.statusCode, 400, invalid.body);
+  // Without email, issue works exactly as before and says no email was queued.
+  const plain = data(await f.issue(bare.id), 201);
+  assert.equal(plain.email, null);
+
+  const g = await fixture(t, false),
+    driver = await g.create({ name: 'Unconfigured', email: 'u.driver@example.test' });
+  const refused = await g.issue(driver.id, randomUUID(), { emailInstructions: true });
+  assert.equal(refused.statusCode, 503, refused.body);
+  assert.equal(refused.json().error.code, 'email_unavailable');
+  assert.equal(
+    (await g.owner.query('SELECT 1 FROM app.driver_credentials WHERE driver_id=$1', [driver.id]))
+      .rowCount,
+    0,
+    'no credential without the email that was asked for',
+  );
+});
+
+test('DRV-32: a failed issue leaves neither the credential nor its email', async (t) => {
+  const f = await fixture(t),
+    driver = await f.create({ name: 'Rollback', email: 'r.driver@example.test' }),
+    key = randomUUID();
+  await f.owner.query(
+    "CREATE FUNCTION app.test_fail_issue_event() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW.operation='issueDriverCredential' THEN RAISE EXCEPTION 'injected'; END IF; RETURN NEW; END $$; CREATE TRIGGER test_fail_issue_event BEFORE INSERT ON app.driver_events FOR EACH ROW EXECUTE FUNCTION app.test_fail_issue_event()",
+  );
+  assert.equal((await f.issue(driver.id, key, { emailInstructions: true })).statusCode, 500);
+  assert.equal(
+    (await f.owner.query('SELECT count(*)::int AS n FROM app.email_outbox')).rows[0].n,
+    0,
+  );
+  assert.equal(
+    (await f.owner.query('SELECT 1 FROM app.driver_credentials WHERE driver_id=$1', [driver.id]))
+      .rowCount,
+    0,
+  );
+  await f.owner.query('DROP TRIGGER test_fail_issue_event ON app.driver_events');
+  data(await f.issue(driver.id, key, { emailInstructions: true }), 201);
+  assert.equal(
+    (await f.owner.query('SELECT count(*)::int AS n FROM app.email_outbox')).rows[0].n,
+    1,
+  );
+});
+
+test('DRV-33: a reset, PIN change or address change cancels mail that would deliver an obsolete PIN', async (t) => {
+  const f = await fixture(t),
+    driver = await f.create({ name: 'Kofi Asare', email: 'kofi.driver@example.test' });
+  const first = data(await f.issue(driver.id, randomUUID(), { emailInstructions: true }), 201);
+  const userId = (await f.owner.query('SELECT user_id FROM app.drivers WHERE id=$1', [driver.id]))
+    .rows[0].user_id;
+  const reset = data(await f.reset(driver.id, randomUUID(), { emailInstructions: true }));
+  assert.notEqual(reset.pin, first.pin);
+  let rows = await outbox(f, userId);
+  assert.deepEqual(
+    rows.map((r) => [r.kind, r.state, r.failure_code]),
+    [
+      ['driver_credentials_issued', 'cancelled', 'stale_credential'],
+      ['driver_pin_reset', 'pending', null],
+    ],
+  );
+  assert.equal(rows[0].payload_ciphertext, null, 'the cancelled PIN is scrubbed');
+
+  // Address edited while the reset mail waits: it was written for the old one.
+  const current = data(await f.call('GET', '/v1/ops/drivers')).find(
+    (row: { id: string }) => row.id === driver.id,
+  );
+  data(
+    await f.call(
+      'PATCH',
+      `/v1/ops/drivers/${driver.id}`,
+      { email: 'kofi.new@example.test' },
+      randomUUID(),
+      {
+        'if-match': current.editToken,
+      },
+    ),
+  );
+  rows = await outbox(f, userId);
+  assert.equal(rows[1].state, 'cancelled');
+  assert.equal(rows[1].failure_code, 'stale_credential');
+
+  // A fresh reset to the new address, then the driver sets a private PIN
+  // before the worker runs: the waiting mail must not go out.
+  const again = data(await f.reset(driver.id, randomUUID(), { emailInstructions: true }));
+  assert.equal(again.email.to, 'kofi.new@example.test');
+  const session = await f.login(again);
+  const change = await f.request(
+    'POST',
+    '/v1/auth/driver/pin',
+    { currentPin: again.pin, newPin: '572914' },
+    session.accessToken,
+    { ...asDriver, 'idempotency-key': randomUUID() },
+  );
+  assert.equal(change.statusCode, 204, change.body);
+  rows = await outbox(f, userId);
+  assert.deepEqual(
+    rows.map((r) => r.state),
+    ['cancelled', 'cancelled', 'cancelled'],
+  );
+  assert.equal((await f.email.drain(10)).accepted, 0);
+  assert.equal(f.sent.length, 0);
+});
+
+test('DRV-34: the worker rechecks the credential version before sending, and erasure cancels', async (t) => {
+  const f = await fixture(t),
+    driver = await f.create({ name: 'Race', email: 'race.driver@example.test' });
+  data(await f.issue(driver.id, randomUUID(), { emailInstructions: true }), 201);
+  const userId = (await f.owner.query('SELECT user_id FROM app.drivers WHERE id=$1', [driver.id]))
+    .rows[0].user_id;
+  // A change the cancellation did not see (another writer, a restored
+  // backup): the version moved, the mail is still pending.
+  await f.owner.query(
+    'UPDATE app.driver_credentials SET pin_version=pin_version+1 WHERE driver_id=$1',
+    [driver.id],
+  );
+  const stats = await f.email.drain(10);
+  assert.equal(stats.cancelled, 1);
+  assert.equal(f.sent.length, 0);
+  assert.equal((await outbox(f, userId))[0].failure_code, 'stale_credential');
+
+  const other = await f.create({ name: 'Erased', email: 'erased.driver@example.test' });
+  data(await f.issue(other.id, randomUUID(), { emailInstructions: true }), 201);
+  const otherUser = (await f.owner.query('SELECT user_id FROM app.drivers WHERE id=$1', [other.id]))
+    .rows[0].user_id;
+  await f.owner.query('UPDATE app.users SET deleted_at=clock_timestamp() WHERE id=$1', [otherUser]);
+  const [erased] = await outbox(f, otherUser);
+  assert.equal(erased.state, 'cancelled');
+  assert.equal(erased.failure_code, 'account_closed');
+});
+
+test('DRV-35: a temporary PIN reaches only setup, the change revokes it, and the private PIN reaches work', async (t) => {
+  const f = await fixture(t),
+    driver = await f.create({ name: 'Setup Driver' }),
+    secret = data(await f.issue(driver.id), 201),
+    session = await f.login(secret);
+  assert.equal(session.mustChangePin, true);
+  assert.equal(session.temporaryPinExpiresAt, secret.temporaryPinExpiresAt);
+  const blocked = await f.request(
+    'GET',
+    '/v1/driver/trips',
+    undefined,
+    session.accessToken,
+    asDriver,
+  );
+  assert.equal(blocked.statusCode, 403, blocked.body);
+  assert.equal(blocked.json().error.code, 'pin_change_required');
+  const self = data(
+    await f.request('GET', '/v1/driver/me', undefined, session.accessToken, asDriver),
+  );
+  assert.equal(self.credential.mustChangePin, true);
+  // Identifying the account is allowed too: it is how a restored app finds
+  // out it must send the driver to PIN setup. Sessions management is not.
+  data(await f.request('GET', '/v1/me', undefined, session.accessToken, asDriver));
+  assert.equal(
+    (await f.request('GET', '/v1/me/sessions', undefined, session.accessToken, asDriver))
+      .statusCode,
+    403,
+  );
+  assert.equal(self.credential.temporaryPinExpiresAt, secret.temporaryPinExpiresAt);
+  // Restoring the session later changes nothing: the rule is on the server.
+  const refreshed = data(
+    await f.request('POST', '/v1/auth/refresh', { refreshToken: session.refreshToken }),
+  );
+  assert.equal(
+    (await f.request('GET', '/v1/driver/trips', undefined, refreshed.accessToken, asDriver))
+      .statusCode,
+    403,
+  );
+  const key = randomUUID(),
+    body = { currentPin: secret.pin, newPin: '483920' };
+  const change = await f.request('POST', '/v1/auth/driver/pin', body, refreshed.accessToken, {
+    ...asDriver,
+    'idempotency-key': key,
+  });
+  assert.equal(change.statusCode, 204, change.body);
+  // The change revokes every session, including the one that made it.
+  assert.equal(
+    (await f.request('GET', '/v1/driver/me', undefined, refreshed.accessToken, asDriver))
+      .statusCode,
+    401,
+  );
+  const fresh = await f.login({ code: secret.code, pin: '483920' });
+  assert.equal(fresh.mustChangePin, false);
+  assert.equal(fresh.temporaryPinExpiresAt, null);
+  const trips = await f.request('GET', '/v1/driver/trips', undefined, fresh.accessToken, asDriver);
+  assert.equal(trips.statusCode, 200, trips.body);
+  // Ops never sees the private PIN: nothing it can read carries it.
+  const listed = JSON.stringify(data(await f.call('GET', '/v1/ops/drivers')));
+  assert.ok(!listed.includes('483920'));
+});
+
+test('DRV-36: an expired temporary PIN opens no session and cannot be changed; a reset issues a new window', async (t) => {
+  const f = await fixture(t),
+    driver = await f.create({ name: 'Late Driver' }),
+    secret = data(await f.issue(driver.id), 201),
+    session = await f.login(secret);
+  await f.owner.query(
+    "UPDATE app.driver_credentials SET temporary_pin_expires_at=clock_timestamp()-interval '1 minute' WHERE driver_id=$1",
+    [driver.id],
+  );
+  const signIn = await f.request('POST', '/v1/auth/driver', {
+    code: secret.code,
+    pin: secret.pin,
+    ownDevice: true,
+  });
+  assert.equal(signIn.statusCode, 403, signIn.body);
+  assert.equal(signIn.json().error.code, 'temporary_pin_expired');
+  const change = await f.request(
+    'POST',
+    '/v1/auth/driver/pin',
+    { currentPin: secret.pin, newPin: '483920' },
+    session.accessToken,
+    { ...asDriver, 'idempotency-key': randomUUID() },
+  );
+  assert.equal(change.statusCode, 403, change.body);
+  assert.equal(change.json().error.code, 'temporary_pin_expired');
+  // A wrong PIN is still just wrong: expiry is only revealed to the right one.
+  const wrong = await f.request('POST', '/v1/auth/driver', {
+    code: secret.code,
+    pin: secret.pin === '111111' ? '222222' : '111111',
+    ownDevice: true,
+  });
+  assert.equal(wrong.statusCode, 401);
+  const renewed = data(await f.reset(driver.id));
+  assert.ok(Date.parse(renewed.temporaryPinExpiresAt) > Date.now() + 71 * 3600000);
+  assert.equal((await f.login(renewed)).mustChangePin, true);
+});
+
+test('DRV-37: only a verified operator issues or resets; drivers and commuters cannot', async (t) => {
+  const f = await fixture(t),
+    driver = await f.create({ name: 'Guarded', email: 'guarded@example.test' }),
+    secret = data(await f.issue(driver.id), 201),
+    temporary = await f.login(secret);
+  data(
+    await f.request(
+      'POST',
+      '/v1/auth/driver/pin',
+      { currentPin: secret.pin, newPin: '759302' },
+      temporary.accessToken,
+      { ...asDriver, 'idempotency-key': randomUUID() },
+    ),
+    204,
+  );
+  const self = await f.login({ code: secret.code, pin: '759302' });
+  const rider = await f.sign('rider-guard');
+  for (const token of [self.accessToken, rider.accessToken]) {
+    const refused = await f.request(
+      'POST',
+      `/v1/ops/drivers/${driver.id}/credentials/reset-pin`,
+      { reason: 'not mine', emailInstructions: true },
+      token,
+      { 'idempotency-key': randomUUID() },
+    );
+    assert.equal(refused.statusCode, 403, refused.body);
+  }
+  // An admin whose passkey check has lapsed is sent to verify, not let through.
+  await f.owner.query('UPDATE app.auth_sessions SET admin_verified_at=NULL WHERE user_id=$1', [
+    f.ops.account.id,
+  ]);
+  const unverified = await f.reset(driver.id, randomUUID(), { emailInstructions: true });
+  assert.equal(unverified.statusCode, 403);
+  assert.equal(unverified.json().error.code, 'passkey_required');
+  assert.equal(
+    (await f.owner.query('SELECT count(*)::int AS n FROM app.email_outbox')).rows[0].n,
+    0,
+  );
+});
+
+test('DRV-38: a failed send retries with the same provider idempotency key', async (t) => {
+  const f = await fixture(t),
+    driver = await f.create({ name: 'Retry', email: 'retry.driver@example.test' });
+  data(await f.issue(driver.id, randomUUID(), { emailInstructions: true }), 201);
+  f.mailer.failNext = new EmailSendError(true);
+  const first = await f.email.drain(10);
+  assert.equal(first.retried, 1);
+  const [row] = (
+    await f.owner.query("SELECT id FROM app.email_outbox WHERE kind='driver_credentials_issued'")
+  ).rows;
+  await f.owner.query(
+    "UPDATE app.email_outbox SET next_attempt_at=clock_timestamp()-interval '1 second' WHERE id=$1",
+    [row.id],
+  );
+  assert.equal((await f.email.drain(10)).accepted, 1);
+  assert.equal(f.sent.length, 1);
+  assert.equal(f.sent[0]!.key, `trotxi-email/${row.id}`);
+});
+
+test('DRV-39: upgrading to 029 keeps drivers and PINs, and gives outstanding temporary PINs a deadline', async (t) => {
+  const n = ++serial,
+    name = `trotxi_harness_${run}_driver_${n}`;
+  await admin.query(`CREATE DATABASE "${name}"`);
+  owned.push(name);
+  const db = new URL(url);
+  db.pathname = `/${name}`;
+  const owner = new pg.Pool({ connectionString: db.href, max: 2 });
+  t.after(() => owner.end());
+  const before = migrations.filter((m) => m.name < '029');
+  assert.ok(before.length < migrations.length);
+  await migrate(owner, before);
+  const temp = (
+    await owner.query("INSERT INTO app.drivers(name) VALUES ('Legacy Temp') RETURNING id")
+  ).rows[0].id;
+  const kept = (
+    await owner.query("INSERT INTO app.drivers(name) VALUES ('Legacy Private') RETURNING id")
+  ).rows[0].id;
+  // Before 029 the column defaulted to true: an issued, still-temporary PIN.
+  await owner.query(
+    "INSERT INTO app.driver_credentials(driver_id,driver_code,pin_hash) VALUES ($1,'DR-AAAA',$2)",
+    [temp, 'a'.repeat(64)],
+  );
+  await owner.query(
+    "INSERT INTO app.driver_credentials(driver_id,driver_code,pin_hash,must_change_pin) VALUES ($1,'DR-BBBB',$2,false)",
+    [kept, 'b'.repeat(64)],
+  );
+  await migrate(owner, migrations);
+  const rows = (
+    await owner.query(
+      'SELECT driver_id,pin_hash,must_change_pin,temporary_pin_expires_at FROM app.driver_credentials ORDER BY driver_code',
+    )
+  ).rows;
+  assert.equal(rows.length, 2);
+  assert.equal(rows[0].pin_hash, 'a'.repeat(64));
+  assert.equal(rows[0].must_change_pin, true);
+  const hours = (new Date(rows[0].temporary_pin_expires_at).getTime() - Date.now()) / 3600000;
+  assert.ok(hours > 71.9 && hours <= 72, `legacy temporary PIN window ${hours}h`);
+  assert.equal(rows[1].pin_hash, 'b'.repeat(64));
+  assert.equal(rows[1].temporary_pin_expires_at, null);
+  assert.equal((await owner.query('SELECT count(*)::int AS n FROM app.drivers')).rows[0].n, 2);
+});
+
+test('DRV-40: the credential email is sent straight after the issue commits, without the worker', async (t) => {
+  const f = await fixture(t, true, true),
+    driver = await f.create({ name: 'Now Driver', email: 'now.driver@example.test' });
+  const secret = data(await f.issue(driver.id, randomUUID(), { emailInstructions: true }), 201);
+  assert.equal(secret.email.state, 'queued', 'the response still says queued, not sent');
+  // Sent in the background once the transaction committed; no worker run.
+  const end = Date.now() + 5000;
+  while (!f.sent.length && Date.now() < end) await delay(20);
+  assert.equal(f.sent.length, 1);
+  assert.ok(f.sent[0]!.message.text.includes(`Temporary PIN: ${secret.pin}`));
+  const [row] = (
+    await f.owner.query(
+      "SELECT id,state FROM app.email_outbox WHERE kind='driver_credentials_issued'",
+    )
+  ).rows;
+  assert.equal(row.state, 'accepted');
+  assert.equal(f.sent[0]!.key, `trotxi-email/${row.id}`);
+  // The worker finds nothing left to do, so nothing is sent twice.
+  assert.equal((await f.email.drain(10)).considered, 0);
+  assert.equal(f.sent.length, 1);
+
+  // A provider failure leaves it queued for the worker, with the same key.
+  const other = await f.create({ name: 'Later Driver', email: 'later.driver@example.test' });
+  f.mailer.failNext = new EmailSendError(true);
+  data(await f.issue(other.id, randomUUID(), { emailInstructions: true }), 201);
+  const waitFor = Date.now() + 5000;
+  let pending;
+  while (Date.now() < waitFor) {
+    pending = (
+      await f.owner.query(
+        "SELECT state,attempts FROM app.email_outbox WHERE kind='driver_credentials_issued' ORDER BY created_at DESC LIMIT 1",
+      )
+    ).rows[0];
+    if (pending.attempts > 0) break;
+    await delay(20);
+  }
+  assert.equal(pending.state, 'pending', 'still queued after a failed first attempt');
+  assert.equal(f.sent.length, 1);
 });

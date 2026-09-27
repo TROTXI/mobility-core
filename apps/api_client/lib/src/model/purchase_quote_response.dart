@@ -12,26 +12,33 @@ part 'purchase_quote_response.g.dart';
 /// PurchaseQuoteResponse
 ///
 /// Properties:
-/// * [data] 
+/// * [data]
 @BuiltValue()
-abstract class PurchaseQuoteResponse implements Built<PurchaseQuoteResponse, PurchaseQuoteResponseBuilder> {
+abstract class PurchaseQuoteResponse
+    implements Built<PurchaseQuoteResponse, PurchaseQuoteResponseBuilder> {
   @BuiltValueField(wireName: r'data')
   PurchaseQuote get data;
 
   PurchaseQuoteResponse._();
 
-  factory PurchaseQuoteResponse([void updates(PurchaseQuoteResponseBuilder b)]) = _$PurchaseQuoteResponse;
+  factory PurchaseQuoteResponse(
+      [void updates(PurchaseQuoteResponseBuilder b)]) = _$PurchaseQuoteResponse;
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(PurchaseQuoteResponseBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
-  static Serializer<PurchaseQuoteResponse> get serializer => _$PurchaseQuoteResponseSerializer();
+  static Serializer<PurchaseQuoteResponse> get serializer =>
+      _$PurchaseQuoteResponseSerializer();
 }
 
-class _$PurchaseQuoteResponseSerializer implements PrimitiveSerializer<PurchaseQuoteResponse> {
+class _$PurchaseQuoteResponseSerializer
+    implements PrimitiveSerializer<PurchaseQuoteResponse> {
   @override
-  final Iterable<Type> types = const [PurchaseQuoteResponse, _$PurchaseQuoteResponse];
+  final Iterable<Type> types = const [
+    PurchaseQuoteResponse,
+    _$PurchaseQuoteResponse
+  ];
 
   @override
   final String wireName = r'PurchaseQuoteResponse';
@@ -54,7 +61,9 @@ class _$PurchaseQuoteResponseSerializer implements PrimitiveSerializer<PurchaseQ
     PurchaseQuoteResponse object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
   }
 
   void _deserializeProperties(
@@ -104,4 +113,3 @@ class _$PurchaseQuoteResponseSerializer implements PrimitiveSerializer<PurchaseQ
     return result.build();
   }
 }
-

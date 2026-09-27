@@ -14,21 +14,22 @@ part 'ops_commute_request.g.dart';
 /// OpsCommuteRequest
 ///
 /// Properties:
-/// * [id] 
-/// * [status] 
-/// * [requested] 
-/// * [effectiveDate] 
-/// * [paused] 
-/// * [decisionNote] 
-/// * [createdAt] 
-/// * [updatedAt] 
-/// * [version] 
-/// * [riderId] 
-/// * [slotId] 
-/// * [decidedBy] 
-/// * [editToken] 
+/// * [id]
+/// * [status]
+/// * [requested]
+/// * [effectiveDate]
+/// * [paused]
+/// * [decisionNote]
+/// * [createdAt]
+/// * [updatedAt]
+/// * [version]
+/// * [riderId]
+/// * [slotId]
+/// * [decidedBy]
+/// * [editToken]
 @BuiltValue()
-abstract class OpsCommuteRequest implements Built<OpsCommuteRequest, OpsCommuteRequestBuilder> {
+abstract class OpsCommuteRequest
+    implements Built<OpsCommuteRequest, OpsCommuteRequestBuilder> {
   @BuiltValueField(wireName: r'id')
   String get id;
 
@@ -71,16 +72,19 @@ abstract class OpsCommuteRequest implements Built<OpsCommuteRequest, OpsCommuteR
 
   OpsCommuteRequest._();
 
-  factory OpsCommuteRequest([void updates(OpsCommuteRequestBuilder b)]) = _$OpsCommuteRequest;
+  factory OpsCommuteRequest([void updates(OpsCommuteRequestBuilder b)]) =
+      _$OpsCommuteRequest;
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(OpsCommuteRequestBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
-  static Serializer<OpsCommuteRequest> get serializer => _$OpsCommuteRequestSerializer();
+  static Serializer<OpsCommuteRequest> get serializer =>
+      _$OpsCommuteRequestSerializer();
 }
 
-class _$OpsCommuteRequestSerializer implements PrimitiveSerializer<OpsCommuteRequest> {
+class _$OpsCommuteRequestSerializer
+    implements PrimitiveSerializer<OpsCommuteRequest> {
   @override
   final Iterable<Type> types = const [OpsCommuteRequest, _$OpsCommuteRequest];
 
@@ -108,20 +112,24 @@ class _$OpsCommuteRequestSerializer implements PrimitiveSerializer<OpsCommuteReq
       specifiedType: const FullType(CommuteRequestInput),
     );
     yield r'effectiveDate';
-    yield object.effectiveDate == null ? null : serializers.serialize(
-      object.effectiveDate,
-      specifiedType: const FullType.nullable(Date),
-    );
+    yield object.effectiveDate == null
+        ? null
+        : serializers.serialize(
+            object.effectiveDate,
+            specifiedType: const FullType.nullable(Date),
+          );
     yield r'paused';
     yield serializers.serialize(
       object.paused,
       specifiedType: const FullType(bool),
     );
     yield r'decisionNote';
-    yield object.decisionNote == null ? null : serializers.serialize(
-      object.decisionNote,
-      specifiedType: const FullType.nullable(String),
-    );
+    yield object.decisionNote == null
+        ? null
+        : serializers.serialize(
+            object.decisionNote,
+            specifiedType: const FullType.nullable(String),
+          );
     yield r'createdAt';
     yield serializers.serialize(
       object.createdAt,
@@ -143,15 +151,19 @@ class _$OpsCommuteRequestSerializer implements PrimitiveSerializer<OpsCommuteReq
       specifiedType: const FullType(String),
     );
     yield r'slotId';
-    yield object.slotId == null ? null : serializers.serialize(
-      object.slotId,
-      specifiedType: const FullType.nullable(String),
-    );
+    yield object.slotId == null
+        ? null
+        : serializers.serialize(
+            object.slotId,
+            specifiedType: const FullType.nullable(String),
+          );
     yield r'decidedBy';
-    yield object.decidedBy == null ? null : serializers.serialize(
-      object.decidedBy,
-      specifiedType: const FullType.nullable(String),
-    );
+    yield object.decidedBy == null
+        ? null
+        : serializers.serialize(
+            object.decidedBy,
+            specifiedType: const FullType.nullable(String),
+          );
     yield r'editToken';
     yield serializers.serialize(
       object.editToken,
@@ -165,7 +177,9 @@ class _$OpsCommuteRequestSerializer implements PrimitiveSerializer<OpsCommuteReq
     OpsCommuteRequest object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
   }
 
   void _deserializeProperties(
@@ -305,25 +319,32 @@ class _$OpsCommuteRequestSerializer implements PrimitiveSerializer<OpsCommuteReq
 }
 
 class OpsCommuteRequestStatusEnum extends EnumClass {
-
   @BuiltValueEnumConst(wireName: r'submitted')
-  static const OpsCommuteRequestStatusEnum submitted = _$opsCommuteRequestStatusEnum_submitted;
+  static const OpsCommuteRequestStatusEnum submitted =
+      _$opsCommuteRequestStatusEnum_submitted;
   @BuiltValueEnumConst(wireName: r'waitlisted')
-  static const OpsCommuteRequestStatusEnum waitlisted = _$opsCommuteRequestStatusEnum_waitlisted;
+  static const OpsCommuteRequestStatusEnum waitlisted =
+      _$opsCommuteRequestStatusEnum_waitlisted;
   @BuiltValueEnumConst(wireName: r'approved')
-  static const OpsCommuteRequestStatusEnum approved = _$opsCommuteRequestStatusEnum_approved;
+  static const OpsCommuteRequestStatusEnum approved =
+      _$opsCommuteRequestStatusEnum_approved;
   @BuiltValueEnumConst(wireName: r'applied')
-  static const OpsCommuteRequestStatusEnum applied = _$opsCommuteRequestStatusEnum_applied;
+  static const OpsCommuteRequestStatusEnum applied =
+      _$opsCommuteRequestStatusEnum_applied;
   @BuiltValueEnumConst(wireName: r'rejected')
-  static const OpsCommuteRequestStatusEnum rejected = _$opsCommuteRequestStatusEnum_rejected;
+  static const OpsCommuteRequestStatusEnum rejected =
+      _$opsCommuteRequestStatusEnum_rejected;
   @BuiltValueEnumConst(wireName: r'cancelled')
-  static const OpsCommuteRequestStatusEnum cancelled = _$opsCommuteRequestStatusEnum_cancelled;
+  static const OpsCommuteRequestStatusEnum cancelled =
+      _$opsCommuteRequestStatusEnum_cancelled;
 
-  static Serializer<OpsCommuteRequestStatusEnum> get serializer => _$opsCommuteRequestStatusEnumSerializer;
+  static Serializer<OpsCommuteRequestStatusEnum> get serializer =>
+      _$opsCommuteRequestStatusEnumSerializer;
 
-  const OpsCommuteRequestStatusEnum._(String name): super(name);
+  const OpsCommuteRequestStatusEnum._(String name) : super(name);
 
-  static BuiltSet<OpsCommuteRequestStatusEnum> get values => _$opsCommuteRequestStatusEnumValues;
-  static OpsCommuteRequestStatusEnum valueOf(String name) => _$opsCommuteRequestStatusEnumValueOf(name);
+  static BuiltSet<OpsCommuteRequestStatusEnum> get values =>
+      _$opsCommuteRequestStatusEnumValues;
+  static OpsCommuteRequestStatusEnum valueOf(String name) =>
+      _$opsCommuteRequestStatusEnumValueOf(name);
 }
-

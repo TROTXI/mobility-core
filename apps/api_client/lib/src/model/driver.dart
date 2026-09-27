@@ -3,6 +3,8 @@
 //
 
 // ignore_for_file: unused_element
+import 'package:trotxi_api_client/src/model/driver_credential.dart';
+import 'package:trotxi_api_client/src/model/driver_credential_email.dart';
 import 'package:built_value/built_value.dart';
 import 'package:built_value/serializer.dart';
 
@@ -11,16 +13,19 @@ part 'driver.g.dart';
 /// Driver
 ///
 /// Properties:
-/// * [id] 
-/// * [name] 
-/// * [phone] 
-/// * [licenseNumber] 
-/// * [userId] 
-/// * [archived] 
-/// * [editToken] 
-/// * [createdAt] 
-/// * [updatedAt] 
-/// * [version] 
+/// * [id]
+/// * [name]
+/// * [phone]
+/// * [email]
+/// * [licenseNumber]
+/// * [userId]
+/// * [archived]
+/// * [credential]
+/// * [credentialEmail]
+/// * [editToken]
+/// * [createdAt]
+/// * [updatedAt]
+/// * [version]
 @BuiltValue()
 abstract class Driver implements Built<Driver, DriverBuilder> {
   @BuiltValueField(wireName: r'id')
@@ -32,6 +37,9 @@ abstract class Driver implements Built<Driver, DriverBuilder> {
   @BuiltValueField(wireName: r'phone')
   String? get phone;
 
+  @BuiltValueField(wireName: r'email')
+  String? get email;
+
   @BuiltValueField(wireName: r'licenseNumber')
   String? get licenseNumber;
 
@@ -40,6 +48,12 @@ abstract class Driver implements Built<Driver, DriverBuilder> {
 
   @BuiltValueField(wireName: r'archived')
   bool get archived;
+
+  @BuiltValueField(wireName: r'credential')
+  DriverCredential? get credential;
+
+  @BuiltValueField(wireName: r'credentialEmail')
+  DriverCredentialEmail? get credentialEmail;
 
   @BuiltValueField(wireName: r'editToken')
   String get editToken;
@@ -87,25 +101,52 @@ class _$DriverSerializer implements PrimitiveSerializer<Driver> {
       specifiedType: const FullType(String),
     );
     yield r'phone';
-    yield object.phone == null ? null : serializers.serialize(
-      object.phone,
-      specifiedType: const FullType.nullable(String),
-    );
+    yield object.phone == null
+        ? null
+        : serializers.serialize(
+            object.phone,
+            specifiedType: const FullType.nullable(String),
+          );
+    yield r'email';
+    yield object.email == null
+        ? null
+        : serializers.serialize(
+            object.email,
+            specifiedType: const FullType.nullable(String),
+          );
     yield r'licenseNumber';
-    yield object.licenseNumber == null ? null : serializers.serialize(
-      object.licenseNumber,
-      specifiedType: const FullType.nullable(String),
-    );
+    yield object.licenseNumber == null
+        ? null
+        : serializers.serialize(
+            object.licenseNumber,
+            specifiedType: const FullType.nullable(String),
+          );
     yield r'userId';
-    yield object.userId == null ? null : serializers.serialize(
-      object.userId,
-      specifiedType: const FullType.nullable(String),
-    );
+    yield object.userId == null
+        ? null
+        : serializers.serialize(
+            object.userId,
+            specifiedType: const FullType.nullable(String),
+          );
     yield r'archived';
     yield serializers.serialize(
       object.archived,
       specifiedType: const FullType(bool),
     );
+    yield r'credential';
+    yield object.credential == null
+        ? null
+        : serializers.serialize(
+            object.credential,
+            specifiedType: const FullType.nullable(DriverCredential),
+          );
+    yield r'credentialEmail';
+    yield object.credentialEmail == null
+        ? null
+        : serializers.serialize(
+            object.credentialEmail,
+            specifiedType: const FullType.nullable(DriverCredentialEmail),
+          );
     yield r'editToken';
     yield serializers.serialize(
       object.editToken,
@@ -134,7 +175,9 @@ class _$DriverSerializer implements PrimitiveSerializer<Driver> {
     Driver object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
   }
 
   void _deserializeProperties(
@@ -171,6 +214,14 @@ class _$DriverSerializer implements PrimitiveSerializer<Driver> {
           if (valueDes == null) continue;
           result.phone = valueDes;
           break;
+        case r'email':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType.nullable(String),
+          ) as String?;
+          if (valueDes == null) continue;
+          result.email = valueDes;
+          break;
         case r'licenseNumber':
           final valueDes = serializers.deserialize(
             value,
@@ -193,6 +244,22 @@ class _$DriverSerializer implements PrimitiveSerializer<Driver> {
             specifiedType: const FullType(bool),
           ) as bool;
           result.archived = valueDes;
+          break;
+        case r'credential':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType.nullable(DriverCredential),
+          ) as DriverCredential?;
+          if (valueDes == null) continue;
+          result.credential.replace(valueDes);
+          break;
+        case r'credentialEmail':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType.nullable(DriverCredentialEmail),
+          ) as DriverCredentialEmail?;
+          if (valueDes == null) continue;
+          result.credentialEmail.replace(valueDes);
           break;
         case r'editToken':
           final valueDes = serializers.deserialize(
@@ -250,4 +317,3 @@ class _$DriverSerializer implements PrimitiveSerializer<Driver> {
     return result.build();
   }
 }
-
