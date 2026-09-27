@@ -133,9 +133,17 @@ message made obsolete in the meantime is cancelled rather than sent.
 
 The email worker is the safety net for anything that first attempt misses:
 Resend unavailable, a timeout, or the API restarting mid-send. Those stay
-queued with their retry time. The worker is not scheduled anywhere yet, and no
-paid scheduled job is enabled by this change, so until it is, a missed send
-waits for a manual run:
+queued with their retry time. The existing GitHub Actions payments/email
+maintenance schedule retries up to 100 due outbox messages every 15 minutes
+once this branch is merged into the default branch. GitHub may delay runs.
+It reuses the existing staging database secret and reads the API's existing
+JWT and Resend keys through the current Render integration: no new secrets
+or paid service. Payment-job failure does not skip email retries. Logs contain
+counts only; the existing expiry, stale-credential checks and provider
+idempotency keys apply. This schedule only retries queued messages; it does
+not prepare new subscription reminders.
+
+For a manual run (which also prepares due subscription reminders):
 
 ```sh
 node dist/worker.js emails
@@ -222,7 +230,8 @@ Verified locally:
 Not verified:
 
 - A real email through Resend. No email was sent while building this.
-- The worker on staging: it is not scheduled, and no manual run was made.
+- The scheduled retry workflow in GitHub Actions: it starts after merge into
+  the default branch; no live run was made while implementing this change.
 - The flow on a physical phone.
 
 The canonical Dart API client (`apps/api_client`) and its built-value

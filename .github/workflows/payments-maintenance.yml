@@ -1,4 +1,5 @@
-# Drains the Paystack webhook inbox and reconciles stale attempts.
+# Drains the Paystack webhook inbox, reconciles stale attempts, and retries
+# due transactional emails missed by the API's immediate send.
 #
 # This is not a backstop. acceptWebhook stores and acknowledges only, and says
 # so: "Durable acknowledgement only. Processing happens in the bounded worker."
@@ -12,7 +13,7 @@
 #
 # Prints counts only, never an address or an amount, which matters because
 # this repository is public and so are these logs.
-name: Payments maintenance
+name: Payments and email maintenance
 
 on:
   schedule:
@@ -37,21 +38,27 @@ jobs:
 
       # Same derivation the service performs at boot, and the same one
       # seed-staging.yml uses. Keep the two in step.
-      - name: Derive the operator signing key
+      - name: Read existing staging keys and derive the operator signing key
         env:
           RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
           SERVICE_ID: ${{ vars.RENDER_STAGING_SERVICE_ID }}
         run: |
-          if [ -z "$SERVICE_ID" ]; then
-            echo '::error::RENDER_STAGING_SERVICE_ID is not set.'; exit 1
+          if [ "$SERVICE_ID" != 'srv-d8suhkn7f7vs73bigd40' ]; then
+            echo '::error::RENDER_STAGING_SERVICE_ID must identify the existing staging API.'; exit 1
           fi
           api() { curl -fsS -H "Authorization: Bearer ${RENDER_API_KEY}" "https://api.render.com/v1$1"; }
-          jwt=$(api "/services/${SERVICE_ID}/env-vars?limit=100" \
-            | jq -r '.. | objects | select(.key? == "JWT_SECRET") | .value' | head -1)
+          settings=$(api "/services/${SERVICE_ID}/env-vars?limit=100")
+          jwt=$(printf '%s' "$settings" | jq -r '.. | objects | select(.key? == "JWT_SECRET") | .value' | head -1)
           if [ -z "$jwt" ]; then
             echo '::error::No JWT_SECRET on the service.'; exit 1
           fi
           echo "::add-mask::$jwt"
+          resend=$(printf '%s' "$settings" | jq -r '.. | objects | select(.key? == "RESEND_API_KEY") | .value' | head -1)
+          if [ -n "$resend" ]; then
+            echo "::add-mask::$resend"
+            echo "RESEND_API_KEY=$resend" >> "$GITHUB_ENV"
+          fi
+          echo "JWT_SECRET=$jwt" >> "$GITHUB_ENV"
           access=$(JWT="$jwt" node --input-type=module -e '
             import { hkdfSync } from "node:crypto";
             process.stdout.write(Buffer.from(
@@ -60,6 +67,7 @@ jobs:
           ')
           echo "::add-mask::$access"
           echo "REPLACEMENT_ACCESS_SECRET=$access" >> "$GITHUB_ENV"
+          unset settings jwt resend access
 
       - name: Run the money-recovery jobs
         working-directory: services/api-next
@@ -69,3 +77,11 @@ jobs:
           SEED_MAINTENANCE: 'yes'
           SEED_STAGING_URL: https://trotxi-api-staging.onrender.com
         run: node --import tsx scripts/seed-staging.ts
+
+      - name: Retry due staging emails
+        # Payment recovery failing must not prevent email retries.
+        if: ${{ !cancelled() && env.JWT_SECRET != '' }}
+        working-directory: services/api-next
+        env:
+          REPLACEMENT_DATABASE_URL: ${{ secrets.STAGING_DATABASE_URL }}
+        run: node --import tsx scripts/retry-staging-emails.ts
