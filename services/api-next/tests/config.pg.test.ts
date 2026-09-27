@@ -534,3 +534,70 @@ test('CFG-12 a rider is told they are not an administrator, whatever else they g
   assert.equal(refused.statusCode, 403, refused.body);
   assert.equal((await f.owner.query('SELECT count(*)::int n FROM app.config_events')).rows[0].n, 0);
 });
+
+test('CFG-13 an administrator is demoted by another administrator, never by themselves', async (t) => {
+  const f = await fixture(t);
+  const version = async (id: string) =>
+    (await f.owner.query('SELECT version FROM app.users WHERE id=$1', [id])).rows[0].version;
+  await f.owner.query("UPDATE app.users SET role='admin' WHERE id=$1", [f.other.userId]);
+
+  const self = await f.call('PATCH', `/v1/ops/users/${f.adminId}/role`, {
+    payload: { role: 'commuter', reason: 'Leaving ops' },
+    match: `"user:${f.adminId}:${await version(f.adminId)}"`,
+  });
+  assert.equal(self.statusCode, 409, self.body);
+  assert.equal(self.json().error.code, 'cannot_demote_self');
+  assert.equal(
+    (await f.owner.query('SELECT role FROM app.users WHERE id=$1', [f.adminId])).rows[0].role,
+    'admin',
+  );
+
+  const other = expectStatus(
+    await f.call('PATCH', `/v1/ops/users/${f.other.userId}/role`, {
+      payload: { role: 'commuter', reason: 'Rider testing account' },
+      match: `"user:${f.other.userId}:${await version(f.other.userId)}"`,
+    }),
+    200,
+  );
+  assert.equal(other.role, 'commuter');
+  const event = (
+    await f.owner.query(
+      "SELECT reason,before_state,after_state FROM app.config_events WHERE action='changeRole'",
+    )
+  ).rows[0];
+  assert.equal(event.reason, 'Rider testing account');
+  assert.deepEqual([event.before_state.role, event.after_state.role], ['admin', 'commuter']);
+});
+
+test('CFG-14 two administrators demoting each other at once leave one administrator', async (t) => {
+  // Today each request's authorization lock makes the pair deadlock and one
+  // is cancelled (503, retryable). The roster count in writeRole is the
+  // second line if that locking ever changes. This asserts the outcome.
+  const f = await fixture(t);
+  // The rider's session becomes the second administrator.
+  await f.owner.query("UPDATE app.users SET role='admin' WHERE id=$1", [f.actor.userId]);
+  await f.owner.query(
+    "UPDATE app.users SET role='commuter' WHERE role='admin' AND id NOT IN ($1,$2)",
+    [f.adminId, f.actor.userId],
+  );
+  const demote = (who: 'ops' | 'rider', target: string) =>
+    f.call('PATCH', `/v1/ops/users/${target}/role`, {
+      who,
+      client: 'ops',
+      payload: { role: 'commuter', reason: 'Race' },
+      match: '*',
+    });
+  const results = await Promise.all([demote('ops', f.actor.userId), demote('rider', f.adminId)]);
+  const codes = results.map((r) => r.statusCode).sort();
+  assert.equal(
+    codes.filter((c) => c === 200).length,
+    1,
+    JSON.stringify(results.map((r) => r.body)),
+  );
+  const admins = (
+    await f.owner.query(
+      "SELECT count(*)::int AS n FROM app.users WHERE role='admin' AND deleted_at IS NULL",
+    )
+  ).rows[0].n;
+  assert.equal(admins, 1, 'nobody can empty the operations roster');
+});

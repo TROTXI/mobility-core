@@ -380,7 +380,7 @@ export class ConfigService {
           ? await this.writeFlag(c, target, input, ifMatch)
           : operation === 'setMinimumVersion'
             ? await this.writeVersion(c, params, input, ifMatch)
-            : await this.writeRole(c, target, input, ifMatch);
+            : await this.writeRole(c, target, input, ifMatch, actor.userId);
       const outcome = await this.render(c, operation, target);
       const receipt = (
         await c.query(
@@ -552,7 +552,13 @@ export class ConfigService {
     };
   }
 
-  private async writeRole(c: PoolClient, id: string, input: Body, ifMatch: string) {
+  private async writeRole(
+    c: PoolClient,
+    id: string,
+    input: Body,
+    ifMatch: string,
+    actorId: string,
+  ) {
     const role = String(input.role);
     const reason = typeof input.reason === 'string' ? input.reason.trim() : '';
     if (!roles.includes(role)) fail(400, 'invalid_request', 'Supply a supported role.');
@@ -579,6 +585,34 @@ export class ConfigService {
       ).rowCount
     )
       fail(409, 'driver_record_required', 'Create the driver record before granting this role.');
+    if (user.role === 'admin' && role !== 'admin') {
+      // Removing your own access is how an operations console ends up with
+      // nobody in it. Another administrator does it, deliberately.
+      if (id === actorId)
+        fail(
+          409,
+          'cannot_demote_self',
+          'You cannot remove your own administrator role. Ask another administrator.',
+        );
+      // Demotions take turns, so two administrators demoting each other at
+      // once cannot both pass the count below and leave nobody. Today the
+      // authorization locks already make that pair deadlock and one is
+      // cancelled; this keeps the rule true if that locking ever changes.
+      // With self-demotion refused, the caller always remains otherwise.
+      await c.query("SELECT pg_advisory_xact_lock(hashtextextended('trotxi:admin-roster',0))");
+      const remaining = (
+        await c.query(
+          "SELECT count(*)::int AS n FROM app.users WHERE role='admin' AND deleted_at IS NULL AND id<>$1",
+          [id],
+        )
+      ).rows[0].n as number;
+      if (remaining === 0)
+        fail(
+          409,
+          'last_administrator',
+          'This is the last administrator. Make someone else an administrator first.',
+        );
+    }
     const before = { id: user.id, role: user.role };
     if (user.role !== role) await c.query('UPDATE app.users SET role=$2 WHERE id=$1', [id, role]);
     return { reason, before, after: { id: user.id, role } };

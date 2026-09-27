@@ -15,6 +15,11 @@ export function People() {
   const [tab, setTab] = useState<'operators' | 'delivery'>('operators');
   const [channel, setChannel] = useState<'' | 'email' | 'push'>('');
   const [reset, setReset] = useState<Operator | null>(null);
+  const [changing, setChanging] = useState<Operator | null>(null);
+  const [role, setRole] = useState<'commuter' | 'driver'>('commuter');
+  const [reason, setReason] = useState('');
+  // One key per opening of the dialog, reused by a retry after no answer.
+  const [roleKey, setRoleKey] = useState('');
   const query = useQuery<{ operators: Operator[]; deliveries: Delivery[] }>(
     async (signal) => {
       const [operators, deliveries] = await Promise.all([
@@ -84,6 +89,23 @@ export function People() {
                         onClick={() => setReset(row)}
                       >
                         Reset passkeys
+                      </Button>
+                      <Button
+                        appearance="subtle"
+                        disabled={row.id === session.account?.id}
+                        title={
+                          row.id === session.account?.id
+                            ? 'Another administrator must change your role.'
+                            : undefined
+                        }
+                        onClick={() => {
+                          setChanging(row);
+                          setRole('commuter');
+                          setReason('');
+                          setRoleKey(crypto.randomUUID());
+                        }}
+                      >
+                        Change role
                       </Button>
                     </td>
                   </tr>
@@ -165,6 +187,52 @@ export function People() {
       >
         <p className="dialog-note">
           The selected administrator will be signed out on every device.
+        </p>
+      </ActionDialog>
+      <ActionDialog
+        open={Boolean(changing)}
+        title="Change administrator role"
+        description={
+          changing
+            ? `${changing.displayName} loses operations access as soon as this is saved. Their sessions stay signed in with the new role's access only.`
+            : undefined
+        }
+        confirmLabel="Change role"
+        danger
+        onClose={() => setChanging(null)}
+        onConfirm={async () => {
+          if (!changing) return;
+          if (!reason.trim()) throw new Error('Give a reason; it is kept in the audit log.');
+          const response = await session.client.PATCH('/v1/ops/users/{id}/role', {
+            params: {
+              path: { id: changing.id },
+              header: { ...opsHeaders, 'Idempotency-Key': roleKey, 'If-Match': changing.editToken },
+            },
+            body: { role, reason: reason.trim() },
+          });
+          if (response.error) throw new Error(response.error.error.message);
+          setChanging(null);
+          query.retry();
+        }}
+      >
+        <label>
+          New role
+          <select value={role} onChange={(event) => setRole(event.target.value as typeof role)}>
+            <option value="commuter">Commuter (rider app)</option>
+            <option value="driver">Driver (needs a driver record)</option>
+          </select>
+        </label>
+        <label>
+          Reason (kept in the audit log)
+          <textarea
+            rows={3}
+            required
+            value={reason}
+            onChange={(event) => setReason(event.target.value)}
+          />
+        </label>
+        <p className="dialog-note">
+          You cannot change your own role, and the last administrator cannot be removed.
         </p>
       </ActionDialog>
     </Page>
