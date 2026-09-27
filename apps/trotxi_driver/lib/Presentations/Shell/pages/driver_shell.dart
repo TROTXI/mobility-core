@@ -12,6 +12,9 @@ import 'package:trotxi_driver/core/config/theme/app_colors.dart';
 import 'package:trotxi_driver/core/state/run_controller.dart';
 import 'package:trotxi_driver/core/state/today_controller.dart';
 import 'package:trotxi_driver/data/trips_repository.dart';
+import 'package:trotxi_driver/core/api/driver_api.dart';
+import 'package:trotxi_driver/core/state/session_controller.dart';
+import 'package:trotxi_driver/data/profile_repository.dart';
 
 /// The app's frame: identity header on top, the five-tab bar underneath.
 ///
@@ -26,6 +29,35 @@ class DriverShell extends StatefulWidget {
 }
 
 class _DriverShellState extends State<DriverShell> {
+  String? _photoUrl;
+  Object? _photoOwner;
+  int _photoRevision = 0;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final owner = context.watch<SessionController>().session;
+    if (!identical(owner, _photoOwner)) {
+      _photoOwner = owner;
+      _photoUrl = null;
+      final revision = ++_photoRevision;
+      if (owner != null) _readPhoto(revision);
+    }
+  }
+
+  Future<void> _readPhoto(int revision) async {
+    try {
+      final account = await DriverProfileRepository(
+        context.read<DriverApi>(),
+      ).account();
+      if (mounted && revision == _photoRevision) {
+        setState(() => _photoUrl = account.avatarUrl);
+      }
+    } on TrotxiException {
+      // Offline or no usable photo: retain the identity initials.
+    }
+  }
+
   ForegroundRefresh? _refresh;
   @override
   void initState() {
@@ -111,7 +143,10 @@ class _DriverShellState extends State<DriverShell> {
         bottom: false,
         child: Column(
           children: [
-            DriverHeader(vehicleRegistration: leading?.vehicleRegistration),
+            DriverHeader(
+              vehicleRegistration: leading?.vehicleRegistration,
+              photoUrl: _photoUrl,
+            ),
             Expanded(
               child: Center(
                 child: ConstrainedBox(
@@ -142,7 +177,17 @@ class _DriverShellState extends State<DriverShell> {
 
   Widget _body(DriverRun? leading) {
     if (_tab == DriverTab.today) return const TodayPage();
-    if (_tab == DriverTab.me) return const ProfilePage();
+    if (_tab == DriverTab.me) {
+      final revision = _photoRevision;
+      return ProfilePage(
+        onPhotoChanged: (url) {
+          if (mounted && revision == _photoRevision) {
+            ++_photoRevision;
+            setState(() => _photoUrl = url);
+          }
+        },
+      );
+    }
 
     final run = _controllerFor(leading);
     // The nav disables these without a run, so this only happens if the day's

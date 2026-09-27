@@ -36,6 +36,56 @@ abstract final class AppTheme {
       scaffoldBackgroundColor: colors.page,
       extensions: <ThemeExtension<dynamic>>[colors],
       textTheme: _textTheme(colors, base.textTheme),
+      primaryTextTheme: _textTheme(colors, base.primaryTextTheme),
+      iconTheme: IconThemeData(color: colors.textSecondary, size: 24),
+      listTileTheme: ListTileThemeData(
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.space16,
+          vertical: AppSpacing.space4,
+        ),
+        minVerticalPadding: AppSpacing.space12,
+        minTileHeight: minTapTarget,
+        iconColor: colors.textSecondary,
+        textColor: colors.textPrimary,
+        titleTextStyle: AppTypography.label.copyWith(color: colors.textPrimary),
+        subtitleTextStyle: AppTypography.bodySmall.copyWith(
+          color: colors.textSecondary,
+        ),
+      ),
+      dialogTheme: DialogThemeData(
+        backgroundColor: colors.surface,
+        surfaceTintColor: Colors.transparent,
+        titleTextStyle: AppTypography.title.copyWith(color: colors.textPrimary),
+        contentTextStyle: AppTypography.bodySmall.copyWith(
+          color: colors.textSecondary,
+        ),
+        shape: RoundedRectangleBorder(
+          borderRadius: AppRadii.circular(AppRadii.lg),
+        ),
+      ),
+      bottomSheetTheme: BottomSheetThemeData(
+        backgroundColor: colors.surface,
+        surfaceTintColor: Colors.transparent,
+        showDragHandle: true,
+        dragHandleColor: colors.borderStrong,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(
+            top: Radius.circular(AppRadii.lg),
+          ),
+        ),
+      ),
+      progressIndicatorTheme: ProgressIndicatorThemeData(color: colors.action),
+      textButtonTheme: TextButtonThemeData(
+        style: TextButton.styleFrom(
+          foregroundColor: colors.action,
+          textStyle: AppTypography.label,
+          minimumSize: const Size(48, minTapTarget),
+          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.space16),
+          shape: RoundedRectangleBorder(
+            borderRadius: AppRadii.circular(AppRadii.button),
+          ),
+        ),
+      ),
       appBarTheme: AppBarTheme(
         backgroundColor: colors.page,
         foregroundColor: colors.textPrimary,
@@ -110,13 +160,6 @@ abstract final class AppTheme {
           shape: RoundedRectangleBorder(
             borderRadius: AppRadii.circular(AppRadii.button),
           ),
-        ),
-      ),
-      textButtonTheme: TextButtonThemeData(
-        style: TextButton.styleFrom(
-          foregroundColor: colors.action,
-          textStyle: AppTypography.label,
-          minimumSize: const Size(0, minTapTarget),
         ),
       ),
       // The auth frames draw the field precisely: 58 high, 18 radius, a 1px
@@ -196,17 +239,24 @@ abstract final class AppTheme {
   static TextTheme _textTheme(AppColors colors, TextTheme base) {
     final primary = colors.textPrimary;
     final secondary = colors.textSecondary;
-    return base.copyWith(
-      headlineLarge: AppTypography.heading1.copyWith(color: primary),
-      headlineMedium: AppTypography.heading2.copyWith(color: primary),
-      headlineSmall: AppTypography.heading3.copyWith(color: primary),
-      titleLarge: AppTypography.title.copyWith(color: primary),
-      titleMedium: AppTypography.runTitle.copyWith(color: primary),
-      bodyLarge: AppTypography.bodyLarge.copyWith(color: primary),
-      bodyMedium: AppTypography.body.copyWith(color: primary),
-      bodySmall: AppTypography.bodySmall.copyWith(color: secondary),
-      labelLarge: AppTypography.label.copyWith(color: primary),
-      labelSmall: AppTypography.caption.copyWith(color: secondary),
-    );
+    // Apply the bundled family to *every* Material slot, including the lesser
+    // used dialog/segmented-control styles. Otherwise newly added screens can
+    // quietly mix platform fonts with Poppins despite using this theme.
+    return base
+        .apply(fontFamily: AppTypography.fontFamily)
+        .copyWith(
+          headlineLarge: AppTypography.heading1.copyWith(color: primary),
+          headlineMedium: AppTypography.heading2.copyWith(color: primary),
+          headlineSmall: AppTypography.heading3.copyWith(color: primary),
+          titleLarge: AppTypography.title.copyWith(color: primary),
+          titleMedium: AppTypography.runTitle.copyWith(color: primary),
+          titleSmall: AppTypography.label.copyWith(color: primary),
+          bodyLarge: AppTypography.bodyLarge.copyWith(color: primary),
+          bodyMedium: AppTypography.body.copyWith(color: primary),
+          bodySmall: AppTypography.bodySmall.copyWith(color: secondary),
+          labelLarge: AppTypography.label.copyWith(color: primary),
+          labelMedium: AppTypography.caption.copyWith(color: secondary),
+          labelSmall: AppTypography.caption.copyWith(color: secondary),
+        );
   }
 }

@@ -15,7 +15,9 @@ import 'package:trotxi_driver/core/state/session_controller.dart';
 /// between drivers that is the difference between boarding riders as yourself
 /// and boarding them as the last person who held it.
 class DriverHeader extends StatelessWidget {
-  const DriverHeader({super.key, this.vehicleRegistration});
+  const DriverHeader({super.key, this.vehicleRegistration, this.photoUrl});
+
+  final String? photoUrl;
 
   /// Shown beside the role when a run has told us which vehicle this is.
   final String? vehicleRegistration;
@@ -82,7 +84,7 @@ class DriverHeader extends StatelessWidget {
                 : 'Switch to dark theme',
           ),
           const SizedBox(width: AppSpacing.space8),
-          _Initials(name: name, colors: colors),
+          _Initials(name: name, colors: colors, photoUrl: photoUrl),
         ],
       ),
     );
@@ -126,10 +128,11 @@ class _CircleButton extends StatelessWidget {
 }
 
 class _Initials extends StatelessWidget {
-  const _Initials({required this.name, required this.colors});
+  const _Initials({required this.name, required this.colors, this.photoUrl});
 
   final String name;
   final AppColors colors;
+  final String? photoUrl;
 
   @override
   Widget build(BuildContext context) {
@@ -145,18 +148,28 @@ class _Initials extends StatelessWidget {
         : (parts.first.characters.first + parts.last.characters.first)
               .toUpperCase();
 
+    final letters = Text(
+      initials,
+      style: AppTypography.label.copyWith(color: colors.textPrimary),
+    );
     return Container(
       width: 40,
       height: 40,
       alignment: Alignment.center,
+      clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
         color: colors.surfaceSelected,
         shape: BoxShape.circle,
       ),
-      child: Text(
-        initials,
-        style: AppTypography.label.copyWith(color: colors.textPrimary),
-      ),
+      child: photoUrl == null
+          ? letters
+          : Image.network(
+              photoUrl!,
+              width: 40,
+              height: 40,
+              fit: BoxFit.cover,
+              errorBuilder: (_, _, _) => letters,
+            ),
     );
   }
 }
