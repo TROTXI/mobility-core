@@ -11,8 +11,8 @@ part 'root.g.dart';
 /// Root
 ///
 /// Properties:
-/// * [docs] 
-/// * [health] 
+/// * [docs]
+/// * [health]
 @BuiltValue()
 abstract class Root implements Built<Root, RootBuilder> {
   @BuiltValueField(wireName: r'docs')
@@ -62,7 +62,9 @@ class _$RootSerializer implements PrimitiveSerializer<Root> {
     Root object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
   }
 
   void _deserializeProperties(
@@ -119,4 +121,3 @@ class _$RootSerializer implements PrimitiveSerializer<Root> {
     return result.build();
   }
 }
-

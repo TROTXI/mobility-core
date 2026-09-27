@@ -13,10 +13,10 @@ part 'trip_input.g.dart';
 /// TripInput
 ///
 /// Properties:
-/// * [scheduleId] 
-/// * [serviceDate] 
-/// * [runNumber] 
-/// * [scheduledAt] 
+/// * [scheduleId]
+/// * [serviceDate]
+/// * [runNumber]
+/// * [scheduledAt]
 @BuiltValue()
 abstract class TripInput implements Built<TripInput, TripInputBuilder> {
   @BuiltValueField(wireName: r'scheduleId')
@@ -85,7 +85,9 @@ class _$TripInputSerializer implements PrimitiveSerializer<TripInput> {
     TripInput object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
   }
 
   void _deserializeProperties(
@@ -158,15 +160,17 @@ class _$TripInputSerializer implements PrimitiveSerializer<TripInput> {
 }
 
 class TripInputRunNumberEnum extends EnumClass {
-
   @BuiltValueEnumConst(wireNumber: 1)
-  static const TripInputRunNumberEnum number1 = _$tripInputRunNumberEnum_number1;
+  static const TripInputRunNumberEnum number1 =
+      _$tripInputRunNumberEnum_number1;
 
-  static Serializer<TripInputRunNumberEnum> get serializer => _$tripInputRunNumberEnumSerializer;
+  static Serializer<TripInputRunNumberEnum> get serializer =>
+      _$tripInputRunNumberEnumSerializer;
 
-  const TripInputRunNumberEnum._(String name): super(name);
+  const TripInputRunNumberEnum._(String name) : super(name);
 
-  static BuiltSet<TripInputRunNumberEnum> get values => _$tripInputRunNumberEnumValues;
-  static TripInputRunNumberEnum valueOf(String name) => _$tripInputRunNumberEnumValueOf(name);
+  static BuiltSet<TripInputRunNumberEnum> get values =>
+      _$tripInputRunNumberEnumValues;
+  static TripInputRunNumberEnum valueOf(String name) =>
+      _$tripInputRunNumberEnumValueOf(name);
 }
-

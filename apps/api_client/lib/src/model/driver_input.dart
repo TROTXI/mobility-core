@@ -11,10 +11,11 @@ part 'driver_input.g.dart';
 /// DriverInput
 ///
 /// Properties:
-/// * [name] 
-/// * [phone] 
-/// * [licenseNumber] 
-/// * [userId] 
+/// * [name]
+/// * [phone]
+/// * [email]
+/// * [licenseNumber]
+/// * [userId]
 @BuiltValue()
 abstract class DriverInput implements Built<DriverInput, DriverInputBuilder> {
   @BuiltValueField(wireName: r'name')
@@ -22,6 +23,9 @@ abstract class DriverInput implements Built<DriverInput, DriverInputBuilder> {
 
   @BuiltValueField(wireName: r'phone')
   String? get phone;
+
+  @BuiltValueField(wireName: r'email')
+  String? get email;
 
   @BuiltValueField(wireName: r'licenseNumber')
   String? get licenseNumber;
@@ -64,6 +68,13 @@ class _$DriverInputSerializer implements PrimitiveSerializer<DriverInput> {
         specifiedType: const FullType(String),
       );
     }
+    if (object.email != null) {
+      yield r'email';
+      yield serializers.serialize(
+        object.email,
+        specifiedType: const FullType(String),
+      );
+    }
     if (object.licenseNumber != null) {
       yield r'licenseNumber';
       yield serializers.serialize(
@@ -86,7 +97,9 @@ class _$DriverInputSerializer implements PrimitiveSerializer<DriverInput> {
     DriverInput object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
   }
 
   void _deserializeProperties(
@@ -114,6 +127,13 @@ class _$DriverInputSerializer implements PrimitiveSerializer<DriverInput> {
             specifiedType: const FullType(String),
           ) as String;
           result.phone = valueDes;
+          break;
+        case r'email':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType(String),
+          ) as String;
+          result.email = valueDes;
           break;
         case r'licenseNumber':
           final valueDes = serializers.deserialize(
@@ -157,4 +177,3 @@ class _$DriverInputSerializer implements PrimitiveSerializer<DriverInput> {
     return result.build();
   }
 }
-

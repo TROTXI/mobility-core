@@ -11,10 +11,11 @@ part 'incident_location.g.dart';
 /// IncidentLocation
 ///
 /// Properties:
-/// * [latitude] 
-/// * [longitude] 
+/// * [latitude]
+/// * [longitude]
 @BuiltValue()
-abstract class IncidentLocation implements Built<IncidentLocation, IncidentLocationBuilder> {
+abstract class IncidentLocation
+    implements Built<IncidentLocation, IncidentLocationBuilder> {
   @BuiltValueField(wireName: r'latitude')
   num get latitude;
 
@@ -23,16 +24,19 @@ abstract class IncidentLocation implements Built<IncidentLocation, IncidentLocat
 
   IncidentLocation._();
 
-  factory IncidentLocation([void updates(IncidentLocationBuilder b)]) = _$IncidentLocation;
+  factory IncidentLocation([void updates(IncidentLocationBuilder b)]) =
+      _$IncidentLocation;
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(IncidentLocationBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
-  static Serializer<IncidentLocation> get serializer => _$IncidentLocationSerializer();
+  static Serializer<IncidentLocation> get serializer =>
+      _$IncidentLocationSerializer();
 }
 
-class _$IncidentLocationSerializer implements PrimitiveSerializer<IncidentLocation> {
+class _$IncidentLocationSerializer
+    implements PrimitiveSerializer<IncidentLocation> {
   @override
   final Iterable<Type> types = const [IncidentLocation, _$IncidentLocation];
 
@@ -62,7 +66,9 @@ class _$IncidentLocationSerializer implements PrimitiveSerializer<IncidentLocati
     IncidentLocation object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
   }
 
   void _deserializeProperties(
@@ -119,4 +125,3 @@ class _$IncidentLocationSerializer implements PrimitiveSerializer<IncidentLocati
     return result.build();
   }
 }
-

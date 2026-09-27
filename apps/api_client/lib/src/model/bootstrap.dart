@@ -16,11 +16,11 @@ part 'bootstrap.g.dart';
 /// Bootstrap
 ///
 /// Properties:
-/// * [serverTime] 
-/// * [applications] 
-/// * [operations] 
-/// * [mapTiles] 
-/// * [flags] 
+/// * [serverTime]
+/// * [applications]
+/// * [operations]
+/// * [mapTiles]
+/// * [flags]
 @BuiltValue()
 abstract class Bootstrap implements Built<Bootstrap, BootstrapBuilder> {
   @BuiltValueField(wireName: r'serverTime')
@@ -69,7 +69,8 @@ class _$BootstrapSerializer implements PrimitiveSerializer<Bootstrap> {
     yield r'applications';
     yield serializers.serialize(
       object.applications,
-      specifiedType: const FullType(BuiltList, [FullType(BootstrapApplicationsInner)]),
+      specifiedType:
+          const FullType(BuiltList, [FullType(BootstrapApplicationsInner)]),
     );
     yield r'operations';
     yield serializers.serialize(
@@ -94,7 +95,9 @@ class _$BootstrapSerializer implements PrimitiveSerializer<Bootstrap> {
     Bootstrap object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
   }
 
   void _deserializeProperties(
@@ -119,7 +122,8 @@ class _$BootstrapSerializer implements PrimitiveSerializer<Bootstrap> {
         case r'applications':
           final valueDes = serializers.deserialize(
             value,
-            specifiedType: const FullType(BuiltList, [FullType(BootstrapApplicationsInner)]),
+            specifiedType: const FullType(
+                BuiltList, [FullType(BootstrapApplicationsInner)]),
           ) as BuiltList<BootstrapApplicationsInner>;
           result.applications.replace(valueDes);
           break;
@@ -140,7 +144,8 @@ class _$BootstrapSerializer implements PrimitiveSerializer<Bootstrap> {
         case r'flags':
           final valueDes = serializers.deserialize(
             value,
-            specifiedType: const FullType(BuiltList, [FullType(BootstrapFlagsInner)]),
+            specifiedType:
+                const FullType(BuiltList, [FullType(BootstrapFlagsInner)]),
           ) as BuiltList<BootstrapFlagsInner>;
           result.flags.replace(valueDes);
           break;
@@ -172,4 +177,3 @@ class _$BootstrapSerializer implements PrimitiveSerializer<Bootstrap> {
     return result.build();
   }
 }
-

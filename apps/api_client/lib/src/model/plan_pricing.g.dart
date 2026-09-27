@@ -71,6 +71,8 @@ class _$PlanPricing extends PlanPricing {
   @override
   final Money creditPerRide;
   @override
+  final String editToken;
+  @override
   final int version;
 
   factory _$PlanPricing([void Function(PlanPricingBuilder)? updates]) =>
@@ -82,6 +84,7 @@ class _$PlanPricing extends PlanPricing {
       required this.priceMultiplierBp,
       required this.takeRateBp,
       required this.creditPerRide,
+      required this.editToken,
       required this.version})
       : super._();
   @override
@@ -100,6 +103,7 @@ class _$PlanPricing extends PlanPricing {
         priceMultiplierBp == other.priceMultiplierBp &&
         takeRateBp == other.takeRateBp &&
         creditPerRide == other.creditPerRide &&
+        editToken == other.editToken &&
         version == other.version;
   }
 
@@ -111,6 +115,7 @@ class _$PlanPricing extends PlanPricing {
     _$hash = $jc(_$hash, priceMultiplierBp.hashCode);
     _$hash = $jc(_$hash, takeRateBp.hashCode);
     _$hash = $jc(_$hash, creditPerRide.hashCode);
+    _$hash = $jc(_$hash, editToken.hashCode);
     _$hash = $jc(_$hash, version.hashCode);
     _$hash = $jf(_$hash);
     return _$hash;
@@ -124,6 +129,7 @@ class _$PlanPricing extends PlanPricing {
           ..add('priceMultiplierBp', priceMultiplierBp)
           ..add('takeRateBp', takeRateBp)
           ..add('creditPerRide', creditPerRide)
+          ..add('editToken', editToken)
           ..add('version', version))
         .toString();
   }
@@ -155,6 +161,10 @@ class PlanPricingBuilder implements Builder<PlanPricing, PlanPricingBuilder> {
   set creditPerRide(MoneyBuilder? creditPerRide) =>
       _$this._creditPerRide = creditPerRide;
 
+  String? _editToken;
+  String? get editToken => _$this._editToken;
+  set editToken(String? editToken) => _$this._editToken = editToken;
+
   int? _version;
   int? get version => _$this._version;
   set version(int? version) => _$this._version = version;
@@ -171,6 +181,7 @@ class PlanPricingBuilder implements Builder<PlanPricing, PlanPricingBuilder> {
       _priceMultiplierBp = $v.priceMultiplierBp;
       _takeRateBp = $v.takeRateBp;
       _creditPerRide = $v.creditPerRide.toBuilder();
+      _editToken = $v.editToken;
       _version = $v.version;
       _$v = null;
     }
@@ -204,6 +215,8 @@ class PlanPricingBuilder implements Builder<PlanPricing, PlanPricingBuilder> {
             takeRateBp: BuiltValueNullFieldError.checkNotNull(
                 takeRateBp, r'PlanPricing', 'takeRateBp'),
             creditPerRide: creditPerRide.build(),
+            editToken: BuiltValueNullFieldError.checkNotNull(
+                editToken, r'PlanPricing', 'editToken'),
             version: BuiltValueNullFieldError.checkNotNull(
                 version, r'PlanPricing', 'version'),
           );

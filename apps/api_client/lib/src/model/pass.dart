@@ -11,11 +11,11 @@ part 'pass.g.dart';
 /// Pass
 ///
 /// Properties:
-/// * [reservationId] 
-/// * [tripId] 
-/// * [qrToken] 
-/// * [expiresAt] 
-/// * [boardingCode] 
+/// * [reservationId]
+/// * [tripId]
+/// * [qrToken]
+/// * [expiresAt]
+/// * [boardingCode]
 @BuiltValue()
 abstract class Pass implements Built<Pass, PassBuilder> {
   @BuiltValueField(wireName: r'reservationId')
@@ -89,7 +89,9 @@ class _$PassSerializer implements PrimitiveSerializer<Pass> {
     Pass object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
   }
 
   void _deserializeProperties(
@@ -167,4 +169,3 @@ class _$PassSerializer implements PrimitiveSerializer<Pass> {
     return result.build();
   }
 }
-

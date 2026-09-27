@@ -12,9 +12,10 @@ part 'fare_response.g.dart';
 /// FareResponse
 ///
 /// Properties:
-/// * [data] 
+/// * [data]
 @BuiltValue()
-abstract class FareResponse implements Built<FareResponse, FareResponseBuilder> {
+abstract class FareResponse
+    implements Built<FareResponse, FareResponseBuilder> {
   @BuiltValueField(wireName: r'data')
   Fare get data;
 
@@ -54,7 +55,9 @@ class _$FareResponseSerializer implements PrimitiveSerializer<FareResponse> {
     FareResponse object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
   }
 
   void _deserializeProperties(
@@ -104,4 +107,3 @@ class _$FareResponseSerializer implements PrimitiveSerializer<FareResponse> {
     return result.build();
   }
 }
-

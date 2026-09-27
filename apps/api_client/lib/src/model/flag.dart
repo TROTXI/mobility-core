@@ -11,11 +11,12 @@ part 'flag.g.dart';
 /// Flag
 ///
 /// Properties:
-/// * [key] 
-/// * [enabled] 
-/// * [rolloutPercentage] 
-/// * [description] 
-/// * [version] 
+/// * [key]
+/// * [enabled]
+/// * [rolloutPercentage]
+/// * [description]
+/// * [version]
+/// * [editToken]
 @BuiltValue()
 abstract class Flag implements Built<Flag, FlagBuilder> {
   @BuiltValueField(wireName: r'key')
@@ -32,6 +33,9 @@ abstract class Flag implements Built<Flag, FlagBuilder> {
 
   @BuiltValueField(wireName: r'version')
   int get version;
+
+  @BuiltValueField(wireName: r'editToken')
+  String get editToken;
 
   Flag._();
 
@@ -81,6 +85,11 @@ class _$FlagSerializer implements PrimitiveSerializer<Flag> {
       object.version,
       specifiedType: const FullType(int),
     );
+    yield r'editToken';
+    yield serializers.serialize(
+      object.editToken,
+      specifiedType: const FullType(String),
+    );
   }
 
   @override
@@ -89,7 +98,9 @@ class _$FlagSerializer implements PrimitiveSerializer<Flag> {
     Flag object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
   }
 
   void _deserializeProperties(
@@ -139,6 +150,13 @@ class _$FlagSerializer implements PrimitiveSerializer<Flag> {
           ) as int;
           result.version = valueDes;
           break;
+        case r'editToken':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType(String),
+          ) as String;
+          result.editToken = valueDes;
+          break;
         default:
           unhandled.add(key);
           unhandled.add(value);
@@ -167,4 +185,3 @@ class _$FlagSerializer implements PrimitiveSerializer<Flag> {
     return result.build();
   }
 }
-

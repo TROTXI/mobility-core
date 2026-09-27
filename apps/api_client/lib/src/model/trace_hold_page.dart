@@ -14,10 +14,11 @@ part 'trace_hold_page.g.dart';
 /// TraceHoldPage
 ///
 /// Properties:
-/// * [data] 
-/// * [page] 
+/// * [data]
+/// * [page]
 @BuiltValue()
-abstract class TraceHoldPage implements Built<TraceHoldPage, TraceHoldPageBuilder> {
+abstract class TraceHoldPage
+    implements Built<TraceHoldPage, TraceHoldPageBuilder> {
   @BuiltValueField(wireName: r'data')
   BuiltList<TraceHold> get data;
 
@@ -26,13 +27,15 @@ abstract class TraceHoldPage implements Built<TraceHoldPage, TraceHoldPageBuilde
 
   TraceHoldPage._();
 
-  factory TraceHoldPage([void updates(TraceHoldPageBuilder b)]) = _$TraceHoldPage;
+  factory TraceHoldPage([void updates(TraceHoldPageBuilder b)]) =
+      _$TraceHoldPage;
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(TraceHoldPageBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
-  static Serializer<TraceHoldPage> get serializer => _$TraceHoldPageSerializer();
+  static Serializer<TraceHoldPage> get serializer =>
+      _$TraceHoldPageSerializer();
 }
 
 class _$TraceHoldPageSerializer implements PrimitiveSerializer<TraceHoldPage> {
@@ -65,7 +68,9 @@ class _$TraceHoldPageSerializer implements PrimitiveSerializer<TraceHoldPage> {
     TraceHoldPage object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
   }
 
   void _deserializeProperties(
@@ -122,4 +127,3 @@ class _$TraceHoldPageSerializer implements PrimitiveSerializer<TraceHoldPage> {
     return result.build();
   }
 }
-

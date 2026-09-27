@@ -11,13 +11,16 @@ part 'reservation_decision_result_pass.g.dart';
 /// ReservationDecisionResultPass
 ///
 /// Properties:
-/// * [reservationId] 
-/// * [tripId] 
-/// * [qrToken] 
-/// * [expiresAt] 
-/// * [boardingCode] 
+/// * [reservationId]
+/// * [tripId]
+/// * [qrToken]
+/// * [expiresAt]
+/// * [boardingCode]
 @BuiltValue()
-abstract class ReservationDecisionResultPass implements Built<ReservationDecisionResultPass, ReservationDecisionResultPassBuilder> {
+abstract class ReservationDecisionResultPass
+    implements
+        Built<ReservationDecisionResultPass,
+            ReservationDecisionResultPassBuilder> {
   @BuiltValueField(wireName: r'reservationId')
   String get reservationId;
 
@@ -35,18 +38,25 @@ abstract class ReservationDecisionResultPass implements Built<ReservationDecisio
 
   ReservationDecisionResultPass._();
 
-  factory ReservationDecisionResultPass([void updates(ReservationDecisionResultPassBuilder b)]) = _$ReservationDecisionResultPass;
+  factory ReservationDecisionResultPass(
+          [void updates(ReservationDecisionResultPassBuilder b)]) =
+      _$ReservationDecisionResultPass;
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(ReservationDecisionResultPassBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
-  static Serializer<ReservationDecisionResultPass> get serializer => _$ReservationDecisionResultPassSerializer();
+  static Serializer<ReservationDecisionResultPass> get serializer =>
+      _$ReservationDecisionResultPassSerializer();
 }
 
-class _$ReservationDecisionResultPassSerializer implements PrimitiveSerializer<ReservationDecisionResultPass> {
+class _$ReservationDecisionResultPassSerializer
+    implements PrimitiveSerializer<ReservationDecisionResultPass> {
   @override
-  final Iterable<Type> types = const [ReservationDecisionResultPass, _$ReservationDecisionResultPass];
+  final Iterable<Type> types = const [
+    ReservationDecisionResultPass,
+    _$ReservationDecisionResultPass
+  ];
 
   @override
   final String wireName = r'ReservationDecisionResultPass';
@@ -89,7 +99,9 @@ class _$ReservationDecisionResultPassSerializer implements PrimitiveSerializer<R
     ReservationDecisionResultPass object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
   }
 
   void _deserializeProperties(
@@ -167,4 +179,3 @@ class _$ReservationDecisionResultPassSerializer implements PrimitiveSerializer<R
     return result.build();
   }
 }
-

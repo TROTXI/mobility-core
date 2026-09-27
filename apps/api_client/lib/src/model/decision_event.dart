@@ -11,12 +11,13 @@ part 'decision_event.g.dart';
 /// DecisionEvent
 ///
 /// Properties:
-/// * [id] 
-/// * [action] 
-/// * [note] 
-/// * [occurredAt] 
+/// * [id]
+/// * [action]
+/// * [note]
+/// * [occurredAt]
 @BuiltValue()
-abstract class DecisionEvent implements Built<DecisionEvent, DecisionEventBuilder> {
+abstract class DecisionEvent
+    implements Built<DecisionEvent, DecisionEventBuilder> {
   @BuiltValueField(wireName: r'id')
   String get id;
 
@@ -31,13 +32,15 @@ abstract class DecisionEvent implements Built<DecisionEvent, DecisionEventBuilde
 
   DecisionEvent._();
 
-  factory DecisionEvent([void updates(DecisionEventBuilder b)]) = _$DecisionEvent;
+  factory DecisionEvent([void updates(DecisionEventBuilder b)]) =
+      _$DecisionEvent;
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(DecisionEventBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
-  static Serializer<DecisionEvent> get serializer => _$DecisionEventSerializer();
+  static Serializer<DecisionEvent> get serializer =>
+      _$DecisionEventSerializer();
 }
 
 class _$DecisionEventSerializer implements PrimitiveSerializer<DecisionEvent> {
@@ -63,10 +66,12 @@ class _$DecisionEventSerializer implements PrimitiveSerializer<DecisionEvent> {
       specifiedType: const FullType(String),
     );
     yield r'note';
-    yield object.note == null ? null : serializers.serialize(
-      object.note,
-      specifiedType: const FullType.nullable(String),
-    );
+    yield object.note == null
+        ? null
+        : serializers.serialize(
+            object.note,
+            specifiedType: const FullType.nullable(String),
+          );
     yield r'occurredAt';
     yield serializers.serialize(
       object.occurredAt,
@@ -80,7 +85,9 @@ class _$DecisionEventSerializer implements PrimitiveSerializer<DecisionEvent> {
     DecisionEvent object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
   }
 
   void _deserializeProperties(
@@ -152,4 +159,3 @@ class _$DecisionEventSerializer implements PrimitiveSerializer<DecisionEvent> {
     return result.build();
   }
 }
-

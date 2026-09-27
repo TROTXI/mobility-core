@@ -65,7 +65,11 @@ class _$OpsOverview extends OpsOverview {
   @override
   final OpsOverviewWindowEnum window;
   @override
+  final Date serviceDate;
+  @override
   final int staleFixAfterSeconds;
+  @override
+  final OpsOverviewTiles tiles;
   @override
   final BuiltList<OpsOverviewTripsInner> trips;
 
@@ -75,7 +79,9 @@ class _$OpsOverview extends OpsOverview {
   _$OpsOverview._(
       {required this.generatedAt,
       required this.window,
+      required this.serviceDate,
       required this.staleFixAfterSeconds,
+      required this.tiles,
       required this.trips})
       : super._();
   @override
@@ -91,7 +97,9 @@ class _$OpsOverview extends OpsOverview {
     return other is OpsOverview &&
         generatedAt == other.generatedAt &&
         window == other.window &&
+        serviceDate == other.serviceDate &&
         staleFixAfterSeconds == other.staleFixAfterSeconds &&
+        tiles == other.tiles &&
         trips == other.trips;
   }
 
@@ -100,7 +108,9 @@ class _$OpsOverview extends OpsOverview {
     var _$hash = 0;
     _$hash = $jc(_$hash, generatedAt.hashCode);
     _$hash = $jc(_$hash, window.hashCode);
+    _$hash = $jc(_$hash, serviceDate.hashCode);
     _$hash = $jc(_$hash, staleFixAfterSeconds.hashCode);
+    _$hash = $jc(_$hash, tiles.hashCode);
     _$hash = $jc(_$hash, trips.hashCode);
     _$hash = $jf(_$hash);
     return _$hash;
@@ -111,7 +121,9 @@ class _$OpsOverview extends OpsOverview {
     return (newBuiltValueToStringHelper(r'OpsOverview')
           ..add('generatedAt', generatedAt)
           ..add('window', window)
+          ..add('serviceDate', serviceDate)
           ..add('staleFixAfterSeconds', staleFixAfterSeconds)
+          ..add('tiles', tiles)
           ..add('trips', trips))
         .toString();
   }
@@ -128,10 +140,19 @@ class OpsOverviewBuilder implements Builder<OpsOverview, OpsOverviewBuilder> {
   OpsOverviewWindowEnum? get window => _$this._window;
   set window(OpsOverviewWindowEnum? window) => _$this._window = window;
 
+  Date? _serviceDate;
+  Date? get serviceDate => _$this._serviceDate;
+  set serviceDate(Date? serviceDate) => _$this._serviceDate = serviceDate;
+
   int? _staleFixAfterSeconds;
   int? get staleFixAfterSeconds => _$this._staleFixAfterSeconds;
   set staleFixAfterSeconds(int? staleFixAfterSeconds) =>
       _$this._staleFixAfterSeconds = staleFixAfterSeconds;
+
+  OpsOverviewTilesBuilder? _tiles;
+  OpsOverviewTilesBuilder get tiles =>
+      _$this._tiles ??= OpsOverviewTilesBuilder();
+  set tiles(OpsOverviewTilesBuilder? tiles) => _$this._tiles = tiles;
 
   ListBuilder<OpsOverviewTripsInner>? _trips;
   ListBuilder<OpsOverviewTripsInner> get trips =>
@@ -147,7 +168,9 @@ class OpsOverviewBuilder implements Builder<OpsOverview, OpsOverviewBuilder> {
     if ($v != null) {
       _generatedAt = $v.generatedAt;
       _window = $v.window;
+      _serviceDate = $v.serviceDate;
       _staleFixAfterSeconds = $v.staleFixAfterSeconds;
+      _tiles = $v.tiles.toBuilder();
       _trips = $v.trips.toBuilder();
       _$v = null;
     }
@@ -176,13 +199,18 @@ class OpsOverviewBuilder implements Builder<OpsOverview, OpsOverviewBuilder> {
                 generatedAt, r'OpsOverview', 'generatedAt'),
             window: BuiltValueNullFieldError.checkNotNull(
                 window, r'OpsOverview', 'window'),
+            serviceDate: BuiltValueNullFieldError.checkNotNull(
+                serviceDate, r'OpsOverview', 'serviceDate'),
             staleFixAfterSeconds: BuiltValueNullFieldError.checkNotNull(
                 staleFixAfterSeconds, r'OpsOverview', 'staleFixAfterSeconds'),
+            tiles: tiles.build(),
             trips: trips.build(),
           );
     } catch (_) {
       late String _$failedField;
       try {
+        _$failedField = 'tiles';
+        tiles.build();
         _$failedField = 'trips';
         trips.build();
       } catch (e) {

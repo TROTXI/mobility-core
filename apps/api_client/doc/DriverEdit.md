@@ -10,6 +10,7 @@ Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
 **name** | **String** |  | [optional] 
 **phone** | **String** |  | [optional] 
+**email** | **String** |  | [optional] 
 **licenseNumber** | **String** |  | [optional] 
 **userId** | **String** |  | [optional] 
 **archived** | **bool** |  | [optional] 

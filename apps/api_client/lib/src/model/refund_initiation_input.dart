@@ -12,10 +12,11 @@ part 'refund_initiation_input.g.dart';
 /// RefundInitiationInput
 ///
 /// Properties:
-/// * [amount] 
-/// * [reason] 
+/// * [amount]
+/// * [reason]
 @BuiltValue()
-abstract class RefundInitiationInput implements Built<RefundInitiationInput, RefundInitiationInputBuilder> {
+abstract class RefundInitiationInput
+    implements Built<RefundInitiationInput, RefundInitiationInputBuilder> {
   @BuiltValueField(wireName: r'amount')
   Money get amount;
 
@@ -24,18 +25,24 @@ abstract class RefundInitiationInput implements Built<RefundInitiationInput, Ref
 
   RefundInitiationInput._();
 
-  factory RefundInitiationInput([void updates(RefundInitiationInputBuilder b)]) = _$RefundInitiationInput;
+  factory RefundInitiationInput(
+      [void updates(RefundInitiationInputBuilder b)]) = _$RefundInitiationInput;
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(RefundInitiationInputBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
-  static Serializer<RefundInitiationInput> get serializer => _$RefundInitiationInputSerializer();
+  static Serializer<RefundInitiationInput> get serializer =>
+      _$RefundInitiationInputSerializer();
 }
 
-class _$RefundInitiationInputSerializer implements PrimitiveSerializer<RefundInitiationInput> {
+class _$RefundInitiationInputSerializer
+    implements PrimitiveSerializer<RefundInitiationInput> {
   @override
-  final Iterable<Type> types = const [RefundInitiationInput, _$RefundInitiationInput];
+  final Iterable<Type> types = const [
+    RefundInitiationInput,
+    _$RefundInitiationInput
+  ];
 
   @override
   final String wireName = r'RefundInitiationInput';
@@ -63,7 +70,9 @@ class _$RefundInitiationInputSerializer implements PrimitiveSerializer<RefundIni
     RefundInitiationInput object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
   }
 
   void _deserializeProperties(
@@ -120,4 +129,3 @@ class _$RefundInitiationInputSerializer implements PrimitiveSerializer<RefundIni
     return result.build();
   }
 }
-

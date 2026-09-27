@@ -12,24 +12,28 @@ part 'avatar_response.g.dart';
 /// AvatarResponse
 ///
 /// Properties:
-/// * [data] 
+/// * [data]
 @BuiltValue()
-abstract class AvatarResponse implements Built<AvatarResponse, AvatarResponseBuilder> {
+abstract class AvatarResponse
+    implements Built<AvatarResponse, AvatarResponseBuilder> {
   @BuiltValueField(wireName: r'data')
   Avatar get data;
 
   AvatarResponse._();
 
-  factory AvatarResponse([void updates(AvatarResponseBuilder b)]) = _$AvatarResponse;
+  factory AvatarResponse([void updates(AvatarResponseBuilder b)]) =
+      _$AvatarResponse;
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(AvatarResponseBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
-  static Serializer<AvatarResponse> get serializer => _$AvatarResponseSerializer();
+  static Serializer<AvatarResponse> get serializer =>
+      _$AvatarResponseSerializer();
 }
 
-class _$AvatarResponseSerializer implements PrimitiveSerializer<AvatarResponse> {
+class _$AvatarResponseSerializer
+    implements PrimitiveSerializer<AvatarResponse> {
   @override
   final Iterable<Type> types = const [AvatarResponse, _$AvatarResponse];
 
@@ -54,7 +58,9 @@ class _$AvatarResponseSerializer implements PrimitiveSerializer<AvatarResponse> 
     AvatarResponse object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
   }
 
   void _deserializeProperties(
@@ -104,4 +110,3 @@ class _$AvatarResponseSerializer implements PrimitiveSerializer<AvatarResponse> 
     return result.build();
   }
 }
-

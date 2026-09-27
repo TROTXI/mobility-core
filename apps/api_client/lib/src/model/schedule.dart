@@ -13,19 +13,19 @@ part 'schedule.g.dart';
 /// Schedule
 ///
 /// Properties:
-/// * [id] 
-/// * [departureId] 
-/// * [patternId] 
-/// * [patternVersionId] 
-/// * [serviceWindow] 
-/// * [localDeparture] 
-/// * [timeZone] 
-/// * [weekdays] 
-/// * [effectiveFrom] 
-/// * [effectiveTo] 
-/// * [createdAt] 
-/// * [updatedAt] 
-/// * [version] 
+/// * [id]
+/// * [departureId]
+/// * [patternId]
+/// * [patternVersionId]
+/// * [serviceWindow]
+/// * [localDeparture]
+/// * [timeZone]
+/// * [weekdays]
+/// * [effectiveFrom]
+/// * [effectiveTo]
+/// * [createdAt]
+/// * [updatedAt]
+/// * [version]
 @BuiltValue()
 abstract class Schedule implements Built<Schedule, ScheduleBuilder> {
   @BuiltValueField(wireName: r'id')
@@ -138,10 +138,12 @@ class _$ScheduleSerializer implements PrimitiveSerializer<Schedule> {
       specifiedType: const FullType(Date),
     );
     yield r'effectiveTo';
-    yield object.effectiveTo == null ? null : serializers.serialize(
-      object.effectiveTo,
-      specifiedType: const FullType.nullable(Date),
-    );
+    yield object.effectiveTo == null
+        ? null
+        : serializers.serialize(
+            object.effectiveTo,
+            specifiedType: const FullType.nullable(Date),
+          );
     yield r'createdAt';
     yield serializers.serialize(
       object.createdAt,
@@ -165,7 +167,9 @@ class _$ScheduleSerializer implements PrimitiveSerializer<Schedule> {
     Schedule object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
   }
 
   void _deserializeProperties(
@@ -302,30 +306,36 @@ class _$ScheduleSerializer implements PrimitiveSerializer<Schedule> {
 }
 
 class ScheduleServiceWindowEnum extends EnumClass {
-
   @BuiltValueEnumConst(wireName: r'morning')
-  static const ScheduleServiceWindowEnum morning = _$scheduleServiceWindowEnum_morning;
+  static const ScheduleServiceWindowEnum morning =
+      _$scheduleServiceWindowEnum_morning;
   @BuiltValueEnumConst(wireName: r'evening')
-  static const ScheduleServiceWindowEnum evening = _$scheduleServiceWindowEnum_evening;
+  static const ScheduleServiceWindowEnum evening =
+      _$scheduleServiceWindowEnum_evening;
 
-  static Serializer<ScheduleServiceWindowEnum> get serializer => _$scheduleServiceWindowEnumSerializer;
+  static Serializer<ScheduleServiceWindowEnum> get serializer =>
+      _$scheduleServiceWindowEnumSerializer;
 
-  const ScheduleServiceWindowEnum._(String name): super(name);
+  const ScheduleServiceWindowEnum._(String name) : super(name);
 
-  static BuiltSet<ScheduleServiceWindowEnum> get values => _$scheduleServiceWindowEnumValues;
-  static ScheduleServiceWindowEnum valueOf(String name) => _$scheduleServiceWindowEnumValueOf(name);
+  static BuiltSet<ScheduleServiceWindowEnum> get values =>
+      _$scheduleServiceWindowEnumValues;
+  static ScheduleServiceWindowEnum valueOf(String name) =>
+      _$scheduleServiceWindowEnumValueOf(name);
 }
 
 class ScheduleTimeZoneEnum extends EnumClass {
-
   @BuiltValueEnumConst(wireName: r'Africa/Accra')
-  static const ScheduleTimeZoneEnum africaSlashAccra = _$scheduleTimeZoneEnum_africaSlashAccra;
+  static const ScheduleTimeZoneEnum africaSlashAccra =
+      _$scheduleTimeZoneEnum_africaSlashAccra;
 
-  static Serializer<ScheduleTimeZoneEnum> get serializer => _$scheduleTimeZoneEnumSerializer;
+  static Serializer<ScheduleTimeZoneEnum> get serializer =>
+      _$scheduleTimeZoneEnumSerializer;
 
-  const ScheduleTimeZoneEnum._(String name): super(name);
+  const ScheduleTimeZoneEnum._(String name) : super(name);
 
-  static BuiltSet<ScheduleTimeZoneEnum> get values => _$scheduleTimeZoneEnumValues;
-  static ScheduleTimeZoneEnum valueOf(String name) => _$scheduleTimeZoneEnumValueOf(name);
+  static BuiltSet<ScheduleTimeZoneEnum> get values =>
+      _$scheduleTimeZoneEnumValues;
+  static ScheduleTimeZoneEnum valueOf(String name) =>
+      _$scheduleTimeZoneEnumValueOf(name);
 }
-

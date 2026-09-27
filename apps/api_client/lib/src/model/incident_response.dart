@@ -12,24 +12,28 @@ part 'incident_response.g.dart';
 /// IncidentResponse
 ///
 /// Properties:
-/// * [data] 
+/// * [data]
 @BuiltValue()
-abstract class IncidentResponse implements Built<IncidentResponse, IncidentResponseBuilder> {
+abstract class IncidentResponse
+    implements Built<IncidentResponse, IncidentResponseBuilder> {
   @BuiltValueField(wireName: r'data')
   Incident get data;
 
   IncidentResponse._();
 
-  factory IncidentResponse([void updates(IncidentResponseBuilder b)]) = _$IncidentResponse;
+  factory IncidentResponse([void updates(IncidentResponseBuilder b)]) =
+      _$IncidentResponse;
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(IncidentResponseBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
-  static Serializer<IncidentResponse> get serializer => _$IncidentResponseSerializer();
+  static Serializer<IncidentResponse> get serializer =>
+      _$IncidentResponseSerializer();
 }
 
-class _$IncidentResponseSerializer implements PrimitiveSerializer<IncidentResponse> {
+class _$IncidentResponseSerializer
+    implements PrimitiveSerializer<IncidentResponse> {
   @override
   final Iterable<Type> types = const [IncidentResponse, _$IncidentResponse];
 
@@ -54,7 +58,9 @@ class _$IncidentResponseSerializer implements PrimitiveSerializer<IncidentRespon
     IncidentResponse object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
   }
 
   void _deserializeProperties(
@@ -104,4 +110,3 @@ class _$IncidentResponseSerializer implements PrimitiveSerializer<IncidentRespon
     return result.build();
   }
 }
-

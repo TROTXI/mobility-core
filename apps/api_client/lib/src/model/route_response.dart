@@ -12,21 +12,24 @@ part 'route_response.g.dart';
 /// RouteResponse
 ///
 /// Properties:
-/// * [data] 
+/// * [data]
 @BuiltValue()
-abstract class RouteResponse implements Built<RouteResponse, RouteResponseBuilder> {
+abstract class RouteResponse
+    implements Built<RouteResponse, RouteResponseBuilder> {
   @BuiltValueField(wireName: r'data')
   Route get data;
 
   RouteResponse._();
 
-  factory RouteResponse([void updates(RouteResponseBuilder b)]) = _$RouteResponse;
+  factory RouteResponse([void updates(RouteResponseBuilder b)]) =
+      _$RouteResponse;
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(RouteResponseBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
-  static Serializer<RouteResponse> get serializer => _$RouteResponseSerializer();
+  static Serializer<RouteResponse> get serializer =>
+      _$RouteResponseSerializer();
 }
 
 class _$RouteResponseSerializer implements PrimitiveSerializer<RouteResponse> {
@@ -54,7 +57,9 @@ class _$RouteResponseSerializer implements PrimitiveSerializer<RouteResponse> {
     RouteResponse object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
   }
 
   void _deserializeProperties(
@@ -104,4 +109,3 @@ class _$RouteResponseSerializer implements PrimitiveSerializer<RouteResponse> {
     return result.build();
   }
 }
-

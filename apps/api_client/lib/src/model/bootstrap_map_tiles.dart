@@ -11,12 +11,13 @@ part 'bootstrap_map_tiles.g.dart';
 /// BootstrapMapTiles
 ///
 /// Properties:
-/// * [url] 
-/// * [styleUrl] 
-/// * [darkStyleUrl] 
-/// * [attribution] 
+/// * [url]
+/// * [styleUrl]
+/// * [darkStyleUrl]
+/// * [attribution]
 @BuiltValue()
-abstract class BootstrapMapTiles implements Built<BootstrapMapTiles, BootstrapMapTilesBuilder> {
+abstract class BootstrapMapTiles
+    implements Built<BootstrapMapTiles, BootstrapMapTilesBuilder> {
   @BuiltValueField(wireName: r'url')
   String? get url;
 
@@ -31,16 +32,19 @@ abstract class BootstrapMapTiles implements Built<BootstrapMapTiles, BootstrapMa
 
   BootstrapMapTiles._();
 
-  factory BootstrapMapTiles([void updates(BootstrapMapTilesBuilder b)]) = _$BootstrapMapTiles;
+  factory BootstrapMapTiles([void updates(BootstrapMapTilesBuilder b)]) =
+      _$BootstrapMapTiles;
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(BootstrapMapTilesBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
-  static Serializer<BootstrapMapTiles> get serializer => _$BootstrapMapTilesSerializer();
+  static Serializer<BootstrapMapTiles> get serializer =>
+      _$BootstrapMapTilesSerializer();
 }
 
-class _$BootstrapMapTilesSerializer implements PrimitiveSerializer<BootstrapMapTiles> {
+class _$BootstrapMapTilesSerializer
+    implements PrimitiveSerializer<BootstrapMapTiles> {
   @override
   final Iterable<Type> types = const [BootstrapMapTiles, _$BootstrapMapTiles];
 
@@ -53,20 +57,26 @@ class _$BootstrapMapTilesSerializer implements PrimitiveSerializer<BootstrapMapT
     FullType specifiedType = FullType.unspecified,
   }) sync* {
     yield r'url';
-    yield object.url == null ? null : serializers.serialize(
-      object.url,
-      specifiedType: const FullType.nullable(String),
-    );
+    yield object.url == null
+        ? null
+        : serializers.serialize(
+            object.url,
+            specifiedType: const FullType.nullable(String),
+          );
     yield r'styleUrl';
-    yield object.styleUrl == null ? null : serializers.serialize(
-      object.styleUrl,
-      specifiedType: const FullType.nullable(String),
-    );
+    yield object.styleUrl == null
+        ? null
+        : serializers.serialize(
+            object.styleUrl,
+            specifiedType: const FullType.nullable(String),
+          );
     yield r'darkStyleUrl';
-    yield object.darkStyleUrl == null ? null : serializers.serialize(
-      object.darkStyleUrl,
-      specifiedType: const FullType.nullable(String),
-    );
+    yield object.darkStyleUrl == null
+        ? null
+        : serializers.serialize(
+            object.darkStyleUrl,
+            specifiedType: const FullType.nullable(String),
+          );
     yield r'attribution';
     yield serializers.serialize(
       object.attribution,
@@ -80,7 +90,9 @@ class _$BootstrapMapTilesSerializer implements PrimitiveSerializer<BootstrapMapT
     BootstrapMapTiles object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
   }
 
   void _deserializeProperties(
@@ -154,4 +166,3 @@ class _$BootstrapMapTilesSerializer implements PrimitiveSerializer<BootstrapMapT
     return result.build();
   }
 }
-

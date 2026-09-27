@@ -11,9 +11,12 @@ Name | Type | Description | Notes
 **id** | **String** |  | 
 **name** | **String** |  | 
 **phone** | **String** |  | 
+**email** | **String** |  | 
 **licenseNumber** | **String** |  | 
 **userId** | **String** |  | 
 **archived** | **bool** |  | 
+**credential** | [**DriverCredential**](DriverCredential.md) |  | 
+**credentialEmail** | [**DriverCredentialEmail**](DriverCredentialEmail.md) |  | 
 **editToken** | **String** |  | 
 **createdAt** | [**DateTime**](DateTime.md) |  | 
 **updatedAt** | [**DateTime**](DateTime.md) |  | 

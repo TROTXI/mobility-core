@@ -12,13 +12,15 @@ part 'bootstrap_applications_inner.g.dart';
 /// BootstrapApplicationsInner
 ///
 /// Properties:
-/// * [app] 
-/// * [platform] 
-/// * [minSupportedBuild] 
-/// * [storeUrl] 
-/// * [apiMajor] 
+/// * [app]
+/// * [platform]
+/// * [minSupportedBuild]
+/// * [storeUrl]
+/// * [apiMajor]
 @BuiltValue()
-abstract class BootstrapApplicationsInner implements Built<BootstrapApplicationsInner, BootstrapApplicationsInnerBuilder> {
+abstract class BootstrapApplicationsInner
+    implements
+        Built<BootstrapApplicationsInner, BootstrapApplicationsInnerBuilder> {
   @BuiltValueField(wireName: r'app')
   BootstrapApplicationsInnerAppEnum get app;
   // enum appEnum {  commuter,  driver,  };
@@ -39,18 +41,25 @@ abstract class BootstrapApplicationsInner implements Built<BootstrapApplications
 
   BootstrapApplicationsInner._();
 
-  factory BootstrapApplicationsInner([void updates(BootstrapApplicationsInnerBuilder b)]) = _$BootstrapApplicationsInner;
+  factory BootstrapApplicationsInner(
+          [void updates(BootstrapApplicationsInnerBuilder b)]) =
+      _$BootstrapApplicationsInner;
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(BootstrapApplicationsInnerBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
-  static Serializer<BootstrapApplicationsInner> get serializer => _$BootstrapApplicationsInnerSerializer();
+  static Serializer<BootstrapApplicationsInner> get serializer =>
+      _$BootstrapApplicationsInnerSerializer();
 }
 
-class _$BootstrapApplicationsInnerSerializer implements PrimitiveSerializer<BootstrapApplicationsInner> {
+class _$BootstrapApplicationsInnerSerializer
+    implements PrimitiveSerializer<BootstrapApplicationsInner> {
   @override
-  final Iterable<Type> types = const [BootstrapApplicationsInner, _$BootstrapApplicationsInner];
+  final Iterable<Type> types = const [
+    BootstrapApplicationsInner,
+    _$BootstrapApplicationsInner
+  ];
 
   @override
   final String wireName = r'BootstrapApplicationsInner';
@@ -76,10 +85,12 @@ class _$BootstrapApplicationsInnerSerializer implements PrimitiveSerializer<Boot
       specifiedType: const FullType(int),
     );
     yield r'storeUrl';
-    yield object.storeUrl == null ? null : serializers.serialize(
-      object.storeUrl,
-      specifiedType: const FullType.nullable(String),
-    );
+    yield object.storeUrl == null
+        ? null
+        : serializers.serialize(
+            object.storeUrl,
+            specifiedType: const FullType.nullable(String),
+          );
     yield r'apiMajor';
     yield serializers.serialize(
       object.apiMajor,
@@ -93,7 +104,9 @@ class _$BootstrapApplicationsInnerSerializer implements PrimitiveSerializer<Boot
     BootstrapApplicationsInner object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
   }
 
   void _deserializeProperties(
@@ -118,7 +131,8 @@ class _$BootstrapApplicationsInnerSerializer implements PrimitiveSerializer<Boot
         case r'platform':
           final valueDes = serializers.deserialize(
             value,
-            specifiedType: const FullType(BootstrapApplicationsInnerPlatformEnum),
+            specifiedType:
+                const FullType(BootstrapApplicationsInnerPlatformEnum),
           ) as BootstrapApplicationsInnerPlatformEnum;
           result.platform = valueDes;
           break;
@@ -140,7 +154,8 @@ class _$BootstrapApplicationsInnerSerializer implements PrimitiveSerializer<Boot
         case r'apiMajor':
           final valueDes = serializers.deserialize(
             value,
-            specifiedType: const FullType(BootstrapApplicationsInnerApiMajorEnum),
+            specifiedType:
+                const FullType(BootstrapApplicationsInnerApiMajorEnum),
           ) as BootstrapApplicationsInnerApiMajorEnum;
           result.apiMajor = valueDes;
           break;
@@ -174,45 +189,55 @@ class _$BootstrapApplicationsInnerSerializer implements PrimitiveSerializer<Boot
 }
 
 class BootstrapApplicationsInnerAppEnum extends EnumClass {
-
   @BuiltValueEnumConst(wireName: r'commuter')
-  static const BootstrapApplicationsInnerAppEnum commuter = _$bootstrapApplicationsInnerAppEnum_commuter;
+  static const BootstrapApplicationsInnerAppEnum commuter =
+      _$bootstrapApplicationsInnerAppEnum_commuter;
   @BuiltValueEnumConst(wireName: r'driver')
-  static const BootstrapApplicationsInnerAppEnum driver = _$bootstrapApplicationsInnerAppEnum_driver;
+  static const BootstrapApplicationsInnerAppEnum driver =
+      _$bootstrapApplicationsInnerAppEnum_driver;
 
-  static Serializer<BootstrapApplicationsInnerAppEnum> get serializer => _$bootstrapApplicationsInnerAppEnumSerializer;
+  static Serializer<BootstrapApplicationsInnerAppEnum> get serializer =>
+      _$bootstrapApplicationsInnerAppEnumSerializer;
 
-  const BootstrapApplicationsInnerAppEnum._(String name): super(name);
+  const BootstrapApplicationsInnerAppEnum._(String name) : super(name);
 
-  static BuiltSet<BootstrapApplicationsInnerAppEnum> get values => _$bootstrapApplicationsInnerAppEnumValues;
-  static BootstrapApplicationsInnerAppEnum valueOf(String name) => _$bootstrapApplicationsInnerAppEnumValueOf(name);
+  static BuiltSet<BootstrapApplicationsInnerAppEnum> get values =>
+      _$bootstrapApplicationsInnerAppEnumValues;
+  static BootstrapApplicationsInnerAppEnum valueOf(String name) =>
+      _$bootstrapApplicationsInnerAppEnumValueOf(name);
 }
 
 class BootstrapApplicationsInnerPlatformEnum extends EnumClass {
-
   @BuiltValueEnumConst(wireName: r'ios')
-  static const BootstrapApplicationsInnerPlatformEnum ios = _$bootstrapApplicationsInnerPlatformEnum_ios;
+  static const BootstrapApplicationsInnerPlatformEnum ios =
+      _$bootstrapApplicationsInnerPlatformEnum_ios;
   @BuiltValueEnumConst(wireName: r'android')
-  static const BootstrapApplicationsInnerPlatformEnum android = _$bootstrapApplicationsInnerPlatformEnum_android;
+  static const BootstrapApplicationsInnerPlatformEnum android =
+      _$bootstrapApplicationsInnerPlatformEnum_android;
 
-  static Serializer<BootstrapApplicationsInnerPlatformEnum> get serializer => _$bootstrapApplicationsInnerPlatformEnumSerializer;
+  static Serializer<BootstrapApplicationsInnerPlatformEnum> get serializer =>
+      _$bootstrapApplicationsInnerPlatformEnumSerializer;
 
-  const BootstrapApplicationsInnerPlatformEnum._(String name): super(name);
+  const BootstrapApplicationsInnerPlatformEnum._(String name) : super(name);
 
-  static BuiltSet<BootstrapApplicationsInnerPlatformEnum> get values => _$bootstrapApplicationsInnerPlatformEnumValues;
-  static BootstrapApplicationsInnerPlatformEnum valueOf(String name) => _$bootstrapApplicationsInnerPlatformEnumValueOf(name);
+  static BuiltSet<BootstrapApplicationsInnerPlatformEnum> get values =>
+      _$bootstrapApplicationsInnerPlatformEnumValues;
+  static BootstrapApplicationsInnerPlatformEnum valueOf(String name) =>
+      _$bootstrapApplicationsInnerPlatformEnumValueOf(name);
 }
 
 class BootstrapApplicationsInnerApiMajorEnum extends EnumClass {
-
   @BuiltValueEnumConst(wireNumber: 1)
-  static const BootstrapApplicationsInnerApiMajorEnum number1 = _$bootstrapApplicationsInnerApiMajorEnum_number1;
+  static const BootstrapApplicationsInnerApiMajorEnum number1 =
+      _$bootstrapApplicationsInnerApiMajorEnum_number1;
 
-  static Serializer<BootstrapApplicationsInnerApiMajorEnum> get serializer => _$bootstrapApplicationsInnerApiMajorEnumSerializer;
+  static Serializer<BootstrapApplicationsInnerApiMajorEnum> get serializer =>
+      _$bootstrapApplicationsInnerApiMajorEnumSerializer;
 
-  const BootstrapApplicationsInnerApiMajorEnum._(String name): super(name);
+  const BootstrapApplicationsInnerApiMajorEnum._(String name) : super(name);
 
-  static BuiltSet<BootstrapApplicationsInnerApiMajorEnum> get values => _$bootstrapApplicationsInnerApiMajorEnumValues;
-  static BootstrapApplicationsInnerApiMajorEnum valueOf(String name) => _$bootstrapApplicationsInnerApiMajorEnumValueOf(name);
+  static BuiltSet<BootstrapApplicationsInnerApiMajorEnum> get values =>
+      _$bootstrapApplicationsInnerApiMajorEnumValues;
+  static BootstrapApplicationsInnerApiMajorEnum valueOf(String name) =>
+      _$bootstrapApplicationsInnerApiMajorEnumValueOf(name);
 }
-

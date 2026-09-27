@@ -13,20 +13,20 @@ part 'ops_incident.g.dart';
 /// OpsIncident
 ///
 /// Properties:
-/// * [id] 
-/// * [tripId] 
-/// * [vehicleId] 
-/// * [category] 
-/// * [note] 
-/// * [location] 
-/// * [status] 
-/// * [resolution] 
-/// * [createdAt] 
-/// * [driverId] 
-/// * [handledBy] 
-/// * [handledAt] 
-/// * [version] 
-/// * [editToken] 
+/// * [id]
+/// * [tripId]
+/// * [vehicleId]
+/// * [category]
+/// * [note]
+/// * [location]
+/// * [status]
+/// * [resolution]
+/// * [createdAt]
+/// * [driverId]
+/// * [handledBy]
+/// * [handledAt]
+/// * [version]
+/// * [editToken]
 @BuiltValue()
 abstract class OpsIncident implements Built<OpsIncident, OpsIncidentBuilder> {
   @BuiltValueField(wireName: r'id')
@@ -102,40 +102,50 @@ class _$OpsIncidentSerializer implements PrimitiveSerializer<OpsIncident> {
       specifiedType: const FullType(String),
     );
     yield r'tripId';
-    yield object.tripId == null ? null : serializers.serialize(
-      object.tripId,
-      specifiedType: const FullType.nullable(String),
-    );
+    yield object.tripId == null
+        ? null
+        : serializers.serialize(
+            object.tripId,
+            specifiedType: const FullType.nullable(String),
+          );
     yield r'vehicleId';
-    yield object.vehicleId == null ? null : serializers.serialize(
-      object.vehicleId,
-      specifiedType: const FullType.nullable(String),
-    );
+    yield object.vehicleId == null
+        ? null
+        : serializers.serialize(
+            object.vehicleId,
+            specifiedType: const FullType.nullable(String),
+          );
     yield r'category';
     yield serializers.serialize(
       object.category,
       specifiedType: const FullType(OpsIncidentCategoryEnum),
     );
     yield r'note';
-    yield object.note == null ? null : serializers.serialize(
-      object.note,
-      specifiedType: const FullType.nullable(String),
-    );
+    yield object.note == null
+        ? null
+        : serializers.serialize(
+            object.note,
+            specifiedType: const FullType.nullable(String),
+          );
     yield r'location';
-    yield object.location == null ? null : serializers.serialize(
-      object.location,
-      specifiedType: const FullType.nullable(IncidentLocation),
-    );
+    yield object.location == null
+        ? null
+        : serializers.serialize(
+            object.location,
+            specifiedType: const FullType.nullable(IncidentLocation),
+          );
     yield r'status';
     yield serializers.serialize(
       object.status,
       specifiedType: const FullType(OpsIncidentStatusEnum),
     );
     yield r'resolution';
-    yield object.resolution == null ? null : serializers.serialize(
-      object.resolution,
-      specifiedType: const FullType.nullable(String),
-    );
+    yield object.resolution == null
+        ? null
+        : serializers.serialize(
+            object.resolution,
+            specifiedType: const FullType.nullable(String),
+          );
     yield r'createdAt';
     yield serializers.serialize(
       object.createdAt,
@@ -147,15 +157,19 @@ class _$OpsIncidentSerializer implements PrimitiveSerializer<OpsIncident> {
       specifiedType: const FullType(String),
     );
     yield r'handledBy';
-    yield object.handledBy == null ? null : serializers.serialize(
-      object.handledBy,
-      specifiedType: const FullType.nullable(String),
-    );
+    yield object.handledBy == null
+        ? null
+        : serializers.serialize(
+            object.handledBy,
+            specifiedType: const FullType.nullable(String),
+          );
     yield r'handledAt';
-    yield object.handledAt == null ? null : serializers.serialize(
-      object.handledAt,
-      specifiedType: const FullType.nullable(DateTime),
-    );
+    yield object.handledAt == null
+        ? null
+        : serializers.serialize(
+            object.handledAt,
+            specifiedType: const FullType.nullable(DateTime),
+          );
     yield r'version';
     yield serializers.serialize(
       object.version,
@@ -174,7 +188,9 @@ class _$OpsIncidentSerializer implements PrimitiveSerializer<OpsIncident> {
     OpsIncident object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
   }
 
   void _deserializeProperties(
@@ -324,40 +340,49 @@ class _$OpsIncidentSerializer implements PrimitiveSerializer<OpsIncident> {
 }
 
 class OpsIncidentCategoryEnum extends EnumClass {
-
   @BuiltValueEnumConst(wireName: r'vehicle')
-  static const OpsIncidentCategoryEnum vehicle = _$opsIncidentCategoryEnum_vehicle;
+  static const OpsIncidentCategoryEnum vehicle =
+      _$opsIncidentCategoryEnum_vehicle;
   @BuiltValueEnumConst(wireName: r'collision')
-  static const OpsIncidentCategoryEnum collision = _$opsIncidentCategoryEnum_collision;
+  static const OpsIncidentCategoryEnum collision =
+      _$opsIncidentCategoryEnum_collision;
   @BuiltValueEnumConst(wireName: r'passenger_safety')
-  static const OpsIncidentCategoryEnum passengerSafety = _$opsIncidentCategoryEnum_passengerSafety;
+  static const OpsIncidentCategoryEnum passengerSafety =
+      _$opsIncidentCategoryEnum_passengerSafety;
   @BuiltValueEnumConst(wireName: r'route_blocked')
-  static const OpsIncidentCategoryEnum routeBlocked = _$opsIncidentCategoryEnum_routeBlocked;
+  static const OpsIncidentCategoryEnum routeBlocked =
+      _$opsIncidentCategoryEnum_routeBlocked;
   @BuiltValueEnumConst(wireName: r'other')
   static const OpsIncidentCategoryEnum other = _$opsIncidentCategoryEnum_other;
 
-  static Serializer<OpsIncidentCategoryEnum> get serializer => _$opsIncidentCategoryEnumSerializer;
+  static Serializer<OpsIncidentCategoryEnum> get serializer =>
+      _$opsIncidentCategoryEnumSerializer;
 
-  const OpsIncidentCategoryEnum._(String name): super(name);
+  const OpsIncidentCategoryEnum._(String name) : super(name);
 
-  static BuiltSet<OpsIncidentCategoryEnum> get values => _$opsIncidentCategoryEnumValues;
-  static OpsIncidentCategoryEnum valueOf(String name) => _$opsIncidentCategoryEnumValueOf(name);
+  static BuiltSet<OpsIncidentCategoryEnum> get values =>
+      _$opsIncidentCategoryEnumValues;
+  static OpsIncidentCategoryEnum valueOf(String name) =>
+      _$opsIncidentCategoryEnumValueOf(name);
 }
 
 class OpsIncidentStatusEnum extends EnumClass {
-
   @BuiltValueEnumConst(wireName: r'open')
   static const OpsIncidentStatusEnum open = _$opsIncidentStatusEnum_open;
   @BuiltValueEnumConst(wireName: r'acknowledged')
-  static const OpsIncidentStatusEnum acknowledged = _$opsIncidentStatusEnum_acknowledged;
+  static const OpsIncidentStatusEnum acknowledged =
+      _$opsIncidentStatusEnum_acknowledged;
   @BuiltValueEnumConst(wireName: r'resolved')
-  static const OpsIncidentStatusEnum resolved = _$opsIncidentStatusEnum_resolved;
+  static const OpsIncidentStatusEnum resolved =
+      _$opsIncidentStatusEnum_resolved;
 
-  static Serializer<OpsIncidentStatusEnum> get serializer => _$opsIncidentStatusEnumSerializer;
+  static Serializer<OpsIncidentStatusEnum> get serializer =>
+      _$opsIncidentStatusEnumSerializer;
 
-  const OpsIncidentStatusEnum._(String name): super(name);
+  const OpsIncidentStatusEnum._(String name) : super(name);
 
-  static BuiltSet<OpsIncidentStatusEnum> get values => _$opsIncidentStatusEnumValues;
-  static OpsIncidentStatusEnum valueOf(String name) => _$opsIncidentStatusEnumValueOf(name);
+  static BuiltSet<OpsIncidentStatusEnum> get values =>
+      _$opsIncidentStatusEnumValues;
+  static OpsIncidentStatusEnum valueOf(String name) =>
+      _$opsIncidentStatusEnumValueOf(name);
 }
-

@@ -12,26 +12,34 @@ part 'position_receipt_response.g.dart';
 /// PositionReceiptResponse
 ///
 /// Properties:
-/// * [data] 
+/// * [data]
 @BuiltValue()
-abstract class PositionReceiptResponse implements Built<PositionReceiptResponse, PositionReceiptResponseBuilder> {
+abstract class PositionReceiptResponse
+    implements Built<PositionReceiptResponse, PositionReceiptResponseBuilder> {
   @BuiltValueField(wireName: r'data')
   PositionReceipt get data;
 
   PositionReceiptResponse._();
 
-  factory PositionReceiptResponse([void updates(PositionReceiptResponseBuilder b)]) = _$PositionReceiptResponse;
+  factory PositionReceiptResponse(
+          [void updates(PositionReceiptResponseBuilder b)]) =
+      _$PositionReceiptResponse;
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(PositionReceiptResponseBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
-  static Serializer<PositionReceiptResponse> get serializer => _$PositionReceiptResponseSerializer();
+  static Serializer<PositionReceiptResponse> get serializer =>
+      _$PositionReceiptResponseSerializer();
 }
 
-class _$PositionReceiptResponseSerializer implements PrimitiveSerializer<PositionReceiptResponse> {
+class _$PositionReceiptResponseSerializer
+    implements PrimitiveSerializer<PositionReceiptResponse> {
   @override
-  final Iterable<Type> types = const [PositionReceiptResponse, _$PositionReceiptResponse];
+  final Iterable<Type> types = const [
+    PositionReceiptResponse,
+    _$PositionReceiptResponse
+  ];
 
   @override
   final String wireName = r'PositionReceiptResponse';
@@ -54,7 +62,9 @@ class _$PositionReceiptResponseSerializer implements PrimitiveSerializer<Positio
     PositionReceiptResponse object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
   }
 
   void _deserializeProperties(
@@ -104,4 +114,3 @@ class _$PositionReceiptResponseSerializer implements PrimitiveSerializer<Positio
     return result.build();
   }
 }
-

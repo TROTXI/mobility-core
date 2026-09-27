@@ -10,6 +10,7 @@ Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
 **id** | **String** |  | 
 **displayName** | **String** |  | 
+**email** | **String** |  | 
 **phone** | **String** |  | 
 **avatarUrl** | **String** |  | 
 **role** | **String** |  | 

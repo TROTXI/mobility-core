@@ -11,25 +11,28 @@ part 'maintenance_input.g.dart';
 /// MaintenanceInput
 ///
 /// Properties:
-/// * [limit] 
+/// * [limit]
 @BuiltValue()
-abstract class MaintenanceInput implements Built<MaintenanceInput, MaintenanceInputBuilder> {
+abstract class MaintenanceInput
+    implements Built<MaintenanceInput, MaintenanceInputBuilder> {
   @BuiltValueField(wireName: r'limit')
   int get limit;
 
   MaintenanceInput._();
 
-  factory MaintenanceInput([void updates(MaintenanceInputBuilder b)]) = _$MaintenanceInput;
+  factory MaintenanceInput([void updates(MaintenanceInputBuilder b)]) =
+      _$MaintenanceInput;
 
   @BuiltValueHook(initializeBuilder: true)
-  static void _defaults(MaintenanceInputBuilder b) => b
-      ..limit = 100;
+  static void _defaults(MaintenanceInputBuilder b) => b..limit = 100;
 
   @BuiltValueSerializer(custom: true)
-  static Serializer<MaintenanceInput> get serializer => _$MaintenanceInputSerializer();
+  static Serializer<MaintenanceInput> get serializer =>
+      _$MaintenanceInputSerializer();
 }
 
-class _$MaintenanceInputSerializer implements PrimitiveSerializer<MaintenanceInput> {
+class _$MaintenanceInputSerializer
+    implements PrimitiveSerializer<MaintenanceInput> {
   @override
   final Iterable<Type> types = const [MaintenanceInput, _$MaintenanceInput];
 
@@ -54,7 +57,9 @@ class _$MaintenanceInputSerializer implements PrimitiveSerializer<MaintenanceInp
     MaintenanceInput object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
   }
 
   void _deserializeProperties(
@@ -104,4 +109,3 @@ class _$MaintenanceInputSerializer implements PrimitiveSerializer<MaintenanceInp
     return result.build();
   }
 }
-

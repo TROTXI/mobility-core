@@ -13,12 +13,13 @@ part 'plan_pricing.g.dart';
 /// PlanPricing
 ///
 /// Properties:
-/// * [plan] 
-/// * [ridesPerPeriod] 
-/// * [priceMultiplierBp] 
-/// * [takeRateBp] 
-/// * [creditPerRide] 
-/// * [version] 
+/// * [plan]
+/// * [ridesPerPeriod]
+/// * [priceMultiplierBp]
+/// * [takeRateBp]
+/// * [creditPerRide]
+/// * [editToken]
+/// * [version]
 @BuiltValue()
 abstract class PlanPricing implements Built<PlanPricing, PlanPricingBuilder> {
   @BuiltValueField(wireName: r'plan')
@@ -36,6 +37,9 @@ abstract class PlanPricing implements Built<PlanPricing, PlanPricingBuilder> {
 
   @BuiltValueField(wireName: r'creditPerRide')
   Money get creditPerRide;
+
+  @BuiltValueField(wireName: r'editToken')
+  String get editToken;
 
   @BuiltValueField(wireName: r'version')
   int get version;
@@ -88,6 +92,11 @@ class _$PlanPricingSerializer implements PrimitiveSerializer<PlanPricing> {
       object.creditPerRide,
       specifiedType: const FullType(Money),
     );
+    yield r'editToken';
+    yield serializers.serialize(
+      object.editToken,
+      specifiedType: const FullType(String),
+    );
     yield r'version';
     yield serializers.serialize(
       object.version,
@@ -101,7 +110,9 @@ class _$PlanPricingSerializer implements PrimitiveSerializer<PlanPricing> {
     PlanPricing object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
   }
 
   void _deserializeProperties(
@@ -151,6 +162,13 @@ class _$PlanPricingSerializer implements PrimitiveSerializer<PlanPricing> {
           ) as Money;
           result.creditPerRide.replace(valueDes);
           break;
+        case r'editToken':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType(String),
+          ) as String;
+          result.editToken = valueDes;
+          break;
         case r'version':
           final valueDes = serializers.deserialize(
             value,
@@ -188,17 +206,18 @@ class _$PlanPricingSerializer implements PrimitiveSerializer<PlanPricing> {
 }
 
 class PlanPricingPlanEnum extends EnumClass {
-
   @BuiltValueEnumConst(wireName: r'monthly')
   static const PlanPricingPlanEnum monthly = _$planPricingPlanEnum_monthly;
   @BuiltValueEnumConst(wireName: r'annual')
   static const PlanPricingPlanEnum annual = _$planPricingPlanEnum_annual;
 
-  static Serializer<PlanPricingPlanEnum> get serializer => _$planPricingPlanEnumSerializer;
+  static Serializer<PlanPricingPlanEnum> get serializer =>
+      _$planPricingPlanEnumSerializer;
 
-  const PlanPricingPlanEnum._(String name): super(name);
+  const PlanPricingPlanEnum._(String name) : super(name);
 
-  static BuiltSet<PlanPricingPlanEnum> get values => _$planPricingPlanEnumValues;
-  static PlanPricingPlanEnum valueOf(String name) => _$planPricingPlanEnumValueOf(name);
+  static BuiltSet<PlanPricingPlanEnum> get values =>
+      _$planPricingPlanEnumValues;
+  static PlanPricingPlanEnum valueOf(String name) =>
+      _$planPricingPlanEnumValueOf(name);
 }
-

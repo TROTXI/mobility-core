@@ -12,11 +12,11 @@ part 'commute_leg.g.dart';
 /// CommuteLeg
 ///
 /// Properties:
-/// * [direction] 
-/// * [scheduleId] 
-/// * [patternVersionId] 
-/// * [pickupOccurrenceId] 
-/// * [dropoffOccurrenceId] 
+/// * [direction]
+/// * [scheduleId]
+/// * [patternVersionId]
+/// * [pickupOccurrenceId]
+/// * [dropoffOccurrenceId]
 @BuiltValue()
 abstract class CommuteLeg implements Built<CommuteLeg, CommuteLegBuilder> {
   @BuiltValueField(wireName: r'direction')
@@ -91,7 +91,9 @@ class _$CommuteLegSerializer implements PrimitiveSerializer<CommuteLeg> {
     CommuteLeg object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
   }
 
   void _deserializeProperties(
@@ -171,17 +173,20 @@ class _$CommuteLegSerializer implements PrimitiveSerializer<CommuteLeg> {
 }
 
 class CommuteLegDirectionEnum extends EnumClass {
-
   @BuiltValueEnumConst(wireName: r'outbound')
-  static const CommuteLegDirectionEnum outbound = _$commuteLegDirectionEnum_outbound;
+  static const CommuteLegDirectionEnum outbound =
+      _$commuteLegDirectionEnum_outbound;
   @BuiltValueEnumConst(wireName: r'return')
-  static const CommuteLegDirectionEnum return_ = _$commuteLegDirectionEnum_return_;
+  static const CommuteLegDirectionEnum return_ =
+      _$commuteLegDirectionEnum_return_;
 
-  static Serializer<CommuteLegDirectionEnum> get serializer => _$commuteLegDirectionEnumSerializer;
+  static Serializer<CommuteLegDirectionEnum> get serializer =>
+      _$commuteLegDirectionEnumSerializer;
 
-  const CommuteLegDirectionEnum._(String name): super(name);
+  const CommuteLegDirectionEnum._(String name) : super(name);
 
-  static BuiltSet<CommuteLegDirectionEnum> get values => _$commuteLegDirectionEnumValues;
-  static CommuteLegDirectionEnum valueOf(String name) => _$commuteLegDirectionEnumValueOf(name);
+  static BuiltSet<CommuteLegDirectionEnum> get values =>
+      _$commuteLegDirectionEnumValues;
+  static CommuteLegDirectionEnum valueOf(String name) =>
+      _$commuteLegDirectionEnumValueOf(name);
 }
-

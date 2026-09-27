@@ -14,10 +14,11 @@ part 'schedule_page.g.dart';
 /// SchedulePage
 ///
 /// Properties:
-/// * [data] 
-/// * [page] 
+/// * [data]
+/// * [page]
 @BuiltValue()
-abstract class SchedulePage implements Built<SchedulePage, SchedulePageBuilder> {
+abstract class SchedulePage
+    implements Built<SchedulePage, SchedulePageBuilder> {
   @BuiltValueField(wireName: r'data')
   BuiltList<Schedule> get data;
 
@@ -65,7 +66,9 @@ class _$SchedulePageSerializer implements PrimitiveSerializer<SchedulePage> {
     SchedulePage object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
   }
 
   void _deserializeProperties(
@@ -122,4 +125,3 @@ class _$SchedulePageSerializer implements PrimitiveSerializer<SchedulePage> {
     return result.build();
   }
 }
-

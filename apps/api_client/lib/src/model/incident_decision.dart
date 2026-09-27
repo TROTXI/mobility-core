@@ -12,10 +12,11 @@ part 'incident_decision.g.dart';
 /// IncidentDecision
 ///
 /// Properties:
-/// * [status] 
-/// * [resolution] 
+/// * [status]
+/// * [resolution]
 @BuiltValue()
-abstract class IncidentDecision implements Built<IncidentDecision, IncidentDecisionBuilder> {
+abstract class IncidentDecision
+    implements Built<IncidentDecision, IncidentDecisionBuilder> {
   @BuiltValueField(wireName: r'status')
   IncidentDecisionStatusEnum get status;
   // enum statusEnum {  acknowledged,  resolved,  };
@@ -25,16 +26,19 @@ abstract class IncidentDecision implements Built<IncidentDecision, IncidentDecis
 
   IncidentDecision._();
 
-  factory IncidentDecision([void updates(IncidentDecisionBuilder b)]) = _$IncidentDecision;
+  factory IncidentDecision([void updates(IncidentDecisionBuilder b)]) =
+      _$IncidentDecision;
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(IncidentDecisionBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
-  static Serializer<IncidentDecision> get serializer => _$IncidentDecisionSerializer();
+  static Serializer<IncidentDecision> get serializer =>
+      _$IncidentDecisionSerializer();
 }
 
-class _$IncidentDecisionSerializer implements PrimitiveSerializer<IncidentDecision> {
+class _$IncidentDecisionSerializer
+    implements PrimitiveSerializer<IncidentDecision> {
   @override
   final Iterable<Type> types = const [IncidentDecision, _$IncidentDecision];
 
@@ -64,7 +68,9 @@ class _$IncidentDecisionSerializer implements PrimitiveSerializer<IncidentDecisi
     IncidentDecision object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
   }
 
   void _deserializeProperties(
@@ -123,17 +129,20 @@ class _$IncidentDecisionSerializer implements PrimitiveSerializer<IncidentDecisi
 }
 
 class IncidentDecisionStatusEnum extends EnumClass {
-
   @BuiltValueEnumConst(wireName: r'acknowledged')
-  static const IncidentDecisionStatusEnum acknowledged = _$incidentDecisionStatusEnum_acknowledged;
+  static const IncidentDecisionStatusEnum acknowledged =
+      _$incidentDecisionStatusEnum_acknowledged;
   @BuiltValueEnumConst(wireName: r'resolved')
-  static const IncidentDecisionStatusEnum resolved = _$incidentDecisionStatusEnum_resolved;
+  static const IncidentDecisionStatusEnum resolved =
+      _$incidentDecisionStatusEnum_resolved;
 
-  static Serializer<IncidentDecisionStatusEnum> get serializer => _$incidentDecisionStatusEnumSerializer;
+  static Serializer<IncidentDecisionStatusEnum> get serializer =>
+      _$incidentDecisionStatusEnumSerializer;
 
-  const IncidentDecisionStatusEnum._(String name): super(name);
+  const IncidentDecisionStatusEnum._(String name) : super(name);
 
-  static BuiltSet<IncidentDecisionStatusEnum> get values => _$incidentDecisionStatusEnumValues;
-  static IncidentDecisionStatusEnum valueOf(String name) => _$incidentDecisionStatusEnumValueOf(name);
+  static BuiltSet<IncidentDecisionStatusEnum> get values =>
+      _$incidentDecisionStatusEnumValues;
+  static IncidentDecisionStatusEnum valueOf(String name) =>
+      _$incidentDecisionStatusEnumValueOf(name);
 }
-

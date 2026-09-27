@@ -11,9 +11,9 @@ part 'flag_edit.g.dart';
 /// FlagEdit
 ///
 /// Properties:
-/// * [enabled] 
-/// * [rolloutPercentage] 
-/// * [description] 
+/// * [enabled]
+/// * [rolloutPercentage]
+/// * [description]
 @BuiltValue()
 abstract class FlagEdit implements Built<FlagEdit, FlagEditBuilder> {
   @BuiltValueField(wireName: r'enabled')
@@ -71,7 +71,9 @@ class _$FlagEditSerializer implements PrimitiveSerializer<FlagEdit> {
     FlagEdit object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
   }
 
   void _deserializeProperties(
@@ -135,4 +137,3 @@ class _$FlagEditSerializer implements PrimitiveSerializer<FlagEdit> {
     return result.build();
   }
 }
-

@@ -12,13 +12,14 @@ part 'stop_occurrence.g.dart';
 /// StopOccurrence
 ///
 /// Properties:
-/// * [id] 
-/// * [stopId] 
-/// * [ordinal] 
-/// * [name] 
-/// * [location] 
+/// * [id]
+/// * [stopId]
+/// * [ordinal]
+/// * [name]
+/// * [location]
 @BuiltValue()
-abstract class StopOccurrence implements Built<StopOccurrence, StopOccurrenceBuilder> {
+abstract class StopOccurrence
+    implements Built<StopOccurrence, StopOccurrenceBuilder> {
   @BuiltValueField(wireName: r'id')
   String get id;
 
@@ -36,16 +37,19 @@ abstract class StopOccurrence implements Built<StopOccurrence, StopOccurrenceBui
 
   StopOccurrence._();
 
-  factory StopOccurrence([void updates(StopOccurrenceBuilder b)]) = _$StopOccurrence;
+  factory StopOccurrence([void updates(StopOccurrenceBuilder b)]) =
+      _$StopOccurrence;
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(StopOccurrenceBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
-  static Serializer<StopOccurrence> get serializer => _$StopOccurrenceSerializer();
+  static Serializer<StopOccurrence> get serializer =>
+      _$StopOccurrenceSerializer();
 }
 
-class _$StopOccurrenceSerializer implements PrimitiveSerializer<StopOccurrence> {
+class _$StopOccurrenceSerializer
+    implements PrimitiveSerializer<StopOccurrence> {
   @override
   final Iterable<Type> types = const [StopOccurrence, _$StopOccurrence];
 
@@ -90,7 +94,9 @@ class _$StopOccurrenceSerializer implements PrimitiveSerializer<StopOccurrence> 
     StopOccurrence object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
   }
 
   void _deserializeProperties(
@@ -168,4 +174,3 @@ class _$StopOccurrenceSerializer implements PrimitiveSerializer<StopOccurrence> 
     return result.build();
   }
 }
-

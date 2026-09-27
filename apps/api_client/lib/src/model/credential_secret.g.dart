@@ -11,12 +11,21 @@ class _$CredentialSecret extends CredentialSecret {
   final String code;
   @override
   final String pin;
+  @override
+  final DateTime temporaryPinExpiresAt;
+  @override
+  final CredentialSecretEmail? email;
 
   factory _$CredentialSecret(
           [void Function(CredentialSecretBuilder)? updates]) =>
       (CredentialSecretBuilder()..update(updates))._build();
 
-  _$CredentialSecret._({required this.code, required this.pin}) : super._();
+  _$CredentialSecret._(
+      {required this.code,
+      required this.pin,
+      required this.temporaryPinExpiresAt,
+      this.email})
+      : super._();
   @override
   CredentialSecret rebuild(void Function(CredentialSecretBuilder) updates) =>
       (toBuilder()..update(updates)).build();
@@ -28,7 +37,11 @@ class _$CredentialSecret extends CredentialSecret {
   @override
   bool operator ==(Object other) {
     if (identical(other, this)) return true;
-    return other is CredentialSecret && code == other.code && pin == other.pin;
+    return other is CredentialSecret &&
+        code == other.code &&
+        pin == other.pin &&
+        temporaryPinExpiresAt == other.temporaryPinExpiresAt &&
+        email == other.email;
   }
 
   @override
@@ -36,6 +49,8 @@ class _$CredentialSecret extends CredentialSecret {
     var _$hash = 0;
     _$hash = $jc(_$hash, code.hashCode);
     _$hash = $jc(_$hash, pin.hashCode);
+    _$hash = $jc(_$hash, temporaryPinExpiresAt.hashCode);
+    _$hash = $jc(_$hash, email.hashCode);
     _$hash = $jf(_$hash);
     return _$hash;
   }
@@ -44,7 +59,9 @@ class _$CredentialSecret extends CredentialSecret {
   String toString() {
     return (newBuiltValueToStringHelper(r'CredentialSecret')
           ..add('code', code)
-          ..add('pin', pin))
+          ..add('pin', pin)
+          ..add('temporaryPinExpiresAt', temporaryPinExpiresAt)
+          ..add('email', email))
         .toString();
   }
 }
@@ -61,6 +78,16 @@ class CredentialSecretBuilder
   String? get pin => _$this._pin;
   set pin(String? pin) => _$this._pin = pin;
 
+  DateTime? _temporaryPinExpiresAt;
+  DateTime? get temporaryPinExpiresAt => _$this._temporaryPinExpiresAt;
+  set temporaryPinExpiresAt(DateTime? temporaryPinExpiresAt) =>
+      _$this._temporaryPinExpiresAt = temporaryPinExpiresAt;
+
+  CredentialSecretEmailBuilder? _email;
+  CredentialSecretEmailBuilder get email =>
+      _$this._email ??= CredentialSecretEmailBuilder();
+  set email(CredentialSecretEmailBuilder? email) => _$this._email = email;
+
   CredentialSecretBuilder() {
     CredentialSecret._defaults(this);
   }
@@ -70,6 +97,8 @@ class CredentialSecretBuilder
     if ($v != null) {
       _code = $v.code;
       _pin = $v.pin;
+      _temporaryPinExpiresAt = $v.temporaryPinExpiresAt;
+      _email = $v.email?.toBuilder();
       _$v = null;
     }
     return this;
@@ -89,13 +118,31 @@ class CredentialSecretBuilder
   CredentialSecret build() => _build();
 
   _$CredentialSecret _build() {
-    final _$result = _$v ??
-        _$CredentialSecret._(
-          code: BuiltValueNullFieldError.checkNotNull(
-              code, r'CredentialSecret', 'code'),
-          pin: BuiltValueNullFieldError.checkNotNull(
-              pin, r'CredentialSecret', 'pin'),
-        );
+    _$CredentialSecret _$result;
+    try {
+      _$result = _$v ??
+          _$CredentialSecret._(
+            code: BuiltValueNullFieldError.checkNotNull(
+                code, r'CredentialSecret', 'code'),
+            pin: BuiltValueNullFieldError.checkNotNull(
+                pin, r'CredentialSecret', 'pin'),
+            temporaryPinExpiresAt: BuiltValueNullFieldError.checkNotNull(
+                temporaryPinExpiresAt,
+                r'CredentialSecret',
+                'temporaryPinExpiresAt'),
+            email: _email?.build(),
+          );
+    } catch (_) {
+      late String _$failedField;
+      try {
+        _$failedField = 'email';
+        _email?.build();
+      } catch (e) {
+        throw BuiltValueNestedFieldError(
+            r'CredentialSecret', _$failedField, e.toString());
+      }
+      rethrow;
+    }
     replace(_$result);
     return _$result;
   }

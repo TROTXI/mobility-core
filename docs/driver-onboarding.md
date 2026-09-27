@@ -216,13 +216,12 @@ Not verified:
 - A real email through Resend. No email was sent while building this.
 - The worker on staging: it is not scheduled, and no manual run was made.
 - The flow on a physical phone.
-- The Dart API client (`apps/api_client`) is not regenerated in this change.
-  `build_runner` hung partway through on this machine, so the committed client
-  is unchanged. The driver app does not use the new fields, and the client
-  ignores fields it does not know, so nothing breaks; regenerate it with
-  `pnpm codegen:replacement` and `dart run build_runner build` in
-  `apps/api_client` before any Dart code needs `temporaryPinExpiresAt` or the
-  new Ops driver fields. The Ops TypeScript types are regenerated.
+
+The canonical Dart API client (`apps/api_client`) and its built-value
+serializers are regenerated from `replacement.openapi.json`, including
+`temporaryPinExpiresAt` and the new Ops driver/email fields. If serializer
+generation stalls on cached inputs, run `dart run build_runner clean` before
+`dart run build_runner build --force-jit` in `apps/api_client`.
 
 ## SMS: deferred
 

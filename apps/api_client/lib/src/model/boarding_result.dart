@@ -12,12 +12,13 @@ part 'boarding_result.g.dart';
 /// BoardingResult
 ///
 /// Properties:
-/// * [reservationId] 
-/// * [status] 
-/// * [alreadyApplied] 
-/// * [chargedRides] 
+/// * [reservationId]
+/// * [status]
+/// * [alreadyApplied]
+/// * [chargedRides]
 @BuiltValue()
-abstract class BoardingResult implements Built<BoardingResult, BoardingResultBuilder> {
+abstract class BoardingResult
+    implements Built<BoardingResult, BoardingResultBuilder> {
   @BuiltValueField(wireName: r'reservationId')
   String get reservationId;
 
@@ -33,16 +34,19 @@ abstract class BoardingResult implements Built<BoardingResult, BoardingResultBui
 
   BoardingResult._();
 
-  factory BoardingResult([void updates(BoardingResultBuilder b)]) = _$BoardingResult;
+  factory BoardingResult([void updates(BoardingResultBuilder b)]) =
+      _$BoardingResult;
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(BoardingResultBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
-  static Serializer<BoardingResult> get serializer => _$BoardingResultSerializer();
+  static Serializer<BoardingResult> get serializer =>
+      _$BoardingResultSerializer();
 }
 
-class _$BoardingResultSerializer implements PrimitiveSerializer<BoardingResult> {
+class _$BoardingResultSerializer
+    implements PrimitiveSerializer<BoardingResult> {
   @override
   final Iterable<Type> types = const [BoardingResult, _$BoardingResult];
 
@@ -82,7 +86,9 @@ class _$BoardingResultSerializer implements PrimitiveSerializer<BoardingResult> 
     BoardingResult object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
   }
 
   void _deserializeProperties(
@@ -155,17 +161,20 @@ class _$BoardingResultSerializer implements PrimitiveSerializer<BoardingResult> 
 }
 
 class BoardingResultStatusEnum extends EnumClass {
-
   @BuiltValueEnumConst(wireName: r'boarded')
-  static const BoardingResultStatusEnum boarded = _$boardingResultStatusEnum_boarded;
+  static const BoardingResultStatusEnum boarded =
+      _$boardingResultStatusEnum_boarded;
   @BuiltValueEnumConst(wireName: r'no_show')
-  static const BoardingResultStatusEnum noShow = _$boardingResultStatusEnum_noShow;
+  static const BoardingResultStatusEnum noShow =
+      _$boardingResultStatusEnum_noShow;
 
-  static Serializer<BoardingResultStatusEnum> get serializer => _$boardingResultStatusEnumSerializer;
+  static Serializer<BoardingResultStatusEnum> get serializer =>
+      _$boardingResultStatusEnumSerializer;
 
-  const BoardingResultStatusEnum._(String name): super(name);
+  const BoardingResultStatusEnum._(String name) : super(name);
 
-  static BuiltSet<BoardingResultStatusEnum> get values => _$boardingResultStatusEnumValues;
-  static BoardingResultStatusEnum valueOf(String name) => _$boardingResultStatusEnumValueOf(name);
+  static BuiltSet<BoardingResultStatusEnum> get values =>
+      _$boardingResultStatusEnumValues;
+  static BoardingResultStatusEnum valueOf(String name) =>
+      _$boardingResultStatusEnumValueOf(name);
 }
-

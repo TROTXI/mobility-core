@@ -12,26 +12,33 @@ part 'ops_purchase_response.g.dart';
 /// OpsPurchaseResponse
 ///
 /// Properties:
-/// * [data] 
+/// * [data]
 @BuiltValue()
-abstract class OpsPurchaseResponse implements Built<OpsPurchaseResponse, OpsPurchaseResponseBuilder> {
+abstract class OpsPurchaseResponse
+    implements Built<OpsPurchaseResponse, OpsPurchaseResponseBuilder> {
   @BuiltValueField(wireName: r'data')
   OpsPurchase get data;
 
   OpsPurchaseResponse._();
 
-  factory OpsPurchaseResponse([void updates(OpsPurchaseResponseBuilder b)]) = _$OpsPurchaseResponse;
+  factory OpsPurchaseResponse([void updates(OpsPurchaseResponseBuilder b)]) =
+      _$OpsPurchaseResponse;
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(OpsPurchaseResponseBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
-  static Serializer<OpsPurchaseResponse> get serializer => _$OpsPurchaseResponseSerializer();
+  static Serializer<OpsPurchaseResponse> get serializer =>
+      _$OpsPurchaseResponseSerializer();
 }
 
-class _$OpsPurchaseResponseSerializer implements PrimitiveSerializer<OpsPurchaseResponse> {
+class _$OpsPurchaseResponseSerializer
+    implements PrimitiveSerializer<OpsPurchaseResponse> {
   @override
-  final Iterable<Type> types = const [OpsPurchaseResponse, _$OpsPurchaseResponse];
+  final Iterable<Type> types = const [
+    OpsPurchaseResponse,
+    _$OpsPurchaseResponse
+  ];
 
   @override
   final String wireName = r'OpsPurchaseResponse';
@@ -54,7 +61,9 @@ class _$OpsPurchaseResponseSerializer implements PrimitiveSerializer<OpsPurchase
     OpsPurchaseResponse object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
   }
 
   void _deserializeProperties(
@@ -104,4 +113,3 @@ class _$OpsPurchaseResponseSerializer implements PrimitiveSerializer<OpsPurchase
     return result.build();
   }
 }
-

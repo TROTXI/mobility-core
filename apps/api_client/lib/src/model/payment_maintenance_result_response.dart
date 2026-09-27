@@ -12,26 +12,36 @@ part 'payment_maintenance_result_response.g.dart';
 /// PaymentMaintenanceResultResponse
 ///
 /// Properties:
-/// * [data] 
+/// * [data]
 @BuiltValue()
-abstract class PaymentMaintenanceResultResponse implements Built<PaymentMaintenanceResultResponse, PaymentMaintenanceResultResponseBuilder> {
+abstract class PaymentMaintenanceResultResponse
+    implements
+        Built<PaymentMaintenanceResultResponse,
+            PaymentMaintenanceResultResponseBuilder> {
   @BuiltValueField(wireName: r'data')
   PaymentMaintenanceResult get data;
 
   PaymentMaintenanceResultResponse._();
 
-  factory PaymentMaintenanceResultResponse([void updates(PaymentMaintenanceResultResponseBuilder b)]) = _$PaymentMaintenanceResultResponse;
+  factory PaymentMaintenanceResultResponse(
+          [void updates(PaymentMaintenanceResultResponseBuilder b)]) =
+      _$PaymentMaintenanceResultResponse;
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(PaymentMaintenanceResultResponseBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
-  static Serializer<PaymentMaintenanceResultResponse> get serializer => _$PaymentMaintenanceResultResponseSerializer();
+  static Serializer<PaymentMaintenanceResultResponse> get serializer =>
+      _$PaymentMaintenanceResultResponseSerializer();
 }
 
-class _$PaymentMaintenanceResultResponseSerializer implements PrimitiveSerializer<PaymentMaintenanceResultResponse> {
+class _$PaymentMaintenanceResultResponseSerializer
+    implements PrimitiveSerializer<PaymentMaintenanceResultResponse> {
   @override
-  final Iterable<Type> types = const [PaymentMaintenanceResultResponse, _$PaymentMaintenanceResultResponse];
+  final Iterable<Type> types = const [
+    PaymentMaintenanceResultResponse,
+    _$PaymentMaintenanceResultResponse
+  ];
 
   @override
   final String wireName = r'PaymentMaintenanceResultResponse';
@@ -54,7 +64,9 @@ class _$PaymentMaintenanceResultResponseSerializer implements PrimitiveSerialize
     PaymentMaintenanceResultResponse object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
   }
 
   void _deserializeProperties(
@@ -104,4 +116,3 @@ class _$PaymentMaintenanceResultResponseSerializer implements PrimitiveSerialize
     return result.build();
   }
 }
-

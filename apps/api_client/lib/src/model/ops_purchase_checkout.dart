@@ -11,10 +11,11 @@ part 'ops_purchase_checkout.g.dart';
 /// OpsPurchaseCheckout
 ///
 /// Properties:
-/// * [url] 
-/// * [expiresAt] 
+/// * [url]
+/// * [expiresAt]
 @BuiltValue()
-abstract class OpsPurchaseCheckout implements Built<OpsPurchaseCheckout, OpsPurchaseCheckoutBuilder> {
+abstract class OpsPurchaseCheckout
+    implements Built<OpsPurchaseCheckout, OpsPurchaseCheckoutBuilder> {
   @BuiltValueField(wireName: r'url')
   String get url;
 
@@ -23,18 +24,24 @@ abstract class OpsPurchaseCheckout implements Built<OpsPurchaseCheckout, OpsPurc
 
   OpsPurchaseCheckout._();
 
-  factory OpsPurchaseCheckout([void updates(OpsPurchaseCheckoutBuilder b)]) = _$OpsPurchaseCheckout;
+  factory OpsPurchaseCheckout([void updates(OpsPurchaseCheckoutBuilder b)]) =
+      _$OpsPurchaseCheckout;
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(OpsPurchaseCheckoutBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
-  static Serializer<OpsPurchaseCheckout> get serializer => _$OpsPurchaseCheckoutSerializer();
+  static Serializer<OpsPurchaseCheckout> get serializer =>
+      _$OpsPurchaseCheckoutSerializer();
 }
 
-class _$OpsPurchaseCheckoutSerializer implements PrimitiveSerializer<OpsPurchaseCheckout> {
+class _$OpsPurchaseCheckoutSerializer
+    implements PrimitiveSerializer<OpsPurchaseCheckout> {
   @override
-  final Iterable<Type> types = const [OpsPurchaseCheckout, _$OpsPurchaseCheckout];
+  final Iterable<Type> types = const [
+    OpsPurchaseCheckout,
+    _$OpsPurchaseCheckout
+  ];
 
   @override
   final String wireName = r'OpsPurchaseCheckout';
@@ -50,10 +57,12 @@ class _$OpsPurchaseCheckoutSerializer implements PrimitiveSerializer<OpsPurchase
       specifiedType: const FullType(String),
     );
     yield r'expiresAt';
-    yield object.expiresAt == null ? null : serializers.serialize(
-      object.expiresAt,
-      specifiedType: const FullType.nullable(DateTime),
-    );
+    yield object.expiresAt == null
+        ? null
+        : serializers.serialize(
+            object.expiresAt,
+            specifiedType: const FullType.nullable(DateTime),
+          );
   }
 
   @override
@@ -62,7 +71,9 @@ class _$OpsPurchaseCheckoutSerializer implements PrimitiveSerializer<OpsPurchase
     OpsPurchaseCheckout object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
   }
 
   void _deserializeProperties(
@@ -120,4 +131,3 @@ class _$OpsPurchaseCheckoutSerializer implements PrimitiveSerializer<OpsPurchase
     return result.build();
   }
 }
-

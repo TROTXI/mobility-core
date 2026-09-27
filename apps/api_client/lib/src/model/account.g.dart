@@ -72,6 +72,8 @@ class _$Account extends Account {
   @override
   final String displayName;
   @override
+  final String? email;
+  @override
   final String? phone;
   @override
   final String? avatarUrl;
@@ -86,6 +88,7 @@ class _$Account extends Account {
   _$Account._(
       {required this.id,
       required this.displayName,
+      this.email,
       this.phone,
       this.avatarUrl,
       required this.role,
@@ -104,6 +107,7 @@ class _$Account extends Account {
     return other is Account &&
         id == other.id &&
         displayName == other.displayName &&
+        email == other.email &&
         phone == other.phone &&
         avatarUrl == other.avatarUrl &&
         role == other.role &&
@@ -115,6 +119,7 @@ class _$Account extends Account {
     var _$hash = 0;
     _$hash = $jc(_$hash, id.hashCode);
     _$hash = $jc(_$hash, displayName.hashCode);
+    _$hash = $jc(_$hash, email.hashCode);
     _$hash = $jc(_$hash, phone.hashCode);
     _$hash = $jc(_$hash, avatarUrl.hashCode);
     _$hash = $jc(_$hash, role.hashCode);
@@ -128,6 +133,7 @@ class _$Account extends Account {
     return (newBuiltValueToStringHelper(r'Account')
           ..add('id', id)
           ..add('displayName', displayName)
+          ..add('email', email)
           ..add('phone', phone)
           ..add('avatarUrl', avatarUrl)
           ..add('role', role)
@@ -146,6 +152,10 @@ class AccountBuilder implements Builder<Account, AccountBuilder> {
   String? _displayName;
   String? get displayName => _$this._displayName;
   set displayName(String? displayName) => _$this._displayName = displayName;
+
+  String? _email;
+  String? get email => _$this._email;
+  set email(String? email) => _$this._email = email;
 
   String? _phone;
   String? get phone => _$this._phone;
@@ -172,6 +182,7 @@ class AccountBuilder implements Builder<Account, AccountBuilder> {
     if ($v != null) {
       _id = $v.id;
       _displayName = $v.displayName;
+      _email = $v.email;
       _phone = $v.phone;
       _avatarUrl = $v.avatarUrl;
       _role = $v.role;
@@ -200,6 +211,7 @@ class AccountBuilder implements Builder<Account, AccountBuilder> {
           id: BuiltValueNullFieldError.checkNotNull(id, r'Account', 'id'),
           displayName: BuiltValueNullFieldError.checkNotNull(
               displayName, r'Account', 'displayName'),
+          email: email,
           phone: phone,
           avatarUrl: avatarUrl,
           role: BuiltValueNullFieldError.checkNotNull(role, r'Account', 'role'),

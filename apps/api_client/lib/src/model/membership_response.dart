@@ -12,24 +12,28 @@ part 'membership_response.g.dart';
 /// MembershipResponse
 ///
 /// Properties:
-/// * [data] 
+/// * [data]
 @BuiltValue()
-abstract class MembershipResponse implements Built<MembershipResponse, MembershipResponseBuilder> {
+abstract class MembershipResponse
+    implements Built<MembershipResponse, MembershipResponseBuilder> {
   @BuiltValueField(wireName: r'data')
   Membership get data;
 
   MembershipResponse._();
 
-  factory MembershipResponse([void updates(MembershipResponseBuilder b)]) = _$MembershipResponse;
+  factory MembershipResponse([void updates(MembershipResponseBuilder b)]) =
+      _$MembershipResponse;
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(MembershipResponseBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
-  static Serializer<MembershipResponse> get serializer => _$MembershipResponseSerializer();
+  static Serializer<MembershipResponse> get serializer =>
+      _$MembershipResponseSerializer();
 }
 
-class _$MembershipResponseSerializer implements PrimitiveSerializer<MembershipResponse> {
+class _$MembershipResponseSerializer
+    implements PrimitiveSerializer<MembershipResponse> {
   @override
   final Iterable<Type> types = const [MembershipResponse, _$MembershipResponse];
 
@@ -54,7 +58,9 @@ class _$MembershipResponseSerializer implements PrimitiveSerializer<MembershipRe
     MembershipResponse object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
   }
 
   void _deserializeProperties(
@@ -104,4 +110,3 @@ class _$MembershipResponseSerializer implements PrimitiveSerializer<MembershipRe
     return result.build();
   }
 }
-

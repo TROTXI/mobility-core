@@ -12,12 +12,13 @@ part 'account.g.dart';
 /// Account
 ///
 /// Properties:
-/// * [id] 
-/// * [displayName] 
-/// * [phone] 
-/// * [avatarUrl] 
-/// * [role] 
-/// * [createdAt] 
+/// * [id]
+/// * [displayName]
+/// * [email]
+/// * [phone]
+/// * [avatarUrl]
+/// * [role]
+/// * [createdAt]
 @BuiltValue()
 abstract class Account implements Built<Account, AccountBuilder> {
   @BuiltValueField(wireName: r'id')
@@ -25,6 +26,9 @@ abstract class Account implements Built<Account, AccountBuilder> {
 
   @BuiltValueField(wireName: r'displayName')
   String get displayName;
+
+  @BuiltValueField(wireName: r'email')
+  String? get email;
 
   @BuiltValueField(wireName: r'phone')
   String? get phone;
@@ -72,16 +76,27 @@ class _$AccountSerializer implements PrimitiveSerializer<Account> {
       object.displayName,
       specifiedType: const FullType(String),
     );
+    yield r'email';
+    yield object.email == null
+        ? null
+        : serializers.serialize(
+            object.email,
+            specifiedType: const FullType.nullable(String),
+          );
     yield r'phone';
-    yield object.phone == null ? null : serializers.serialize(
-      object.phone,
-      specifiedType: const FullType.nullable(String),
-    );
+    yield object.phone == null
+        ? null
+        : serializers.serialize(
+            object.phone,
+            specifiedType: const FullType.nullable(String),
+          );
     yield r'avatarUrl';
-    yield object.avatarUrl == null ? null : serializers.serialize(
-      object.avatarUrl,
-      specifiedType: const FullType.nullable(String),
-    );
+    yield object.avatarUrl == null
+        ? null
+        : serializers.serialize(
+            object.avatarUrl,
+            specifiedType: const FullType.nullable(String),
+          );
     yield r'role';
     yield serializers.serialize(
       object.role,
@@ -100,7 +115,9 @@ class _$AccountSerializer implements PrimitiveSerializer<Account> {
     Account object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
   }
 
   void _deserializeProperties(
@@ -128,6 +145,14 @@ class _$AccountSerializer implements PrimitiveSerializer<Account> {
             specifiedType: const FullType(String),
           ) as String;
           result.displayName = valueDes;
+          break;
+        case r'email':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType.nullable(String),
+          ) as String?;
+          if (valueDes == null) continue;
+          result.email = valueDes;
           break;
         case r'phone':
           final valueDes = serializers.deserialize(
@@ -189,7 +214,6 @@ class _$AccountSerializer implements PrimitiveSerializer<Account> {
 }
 
 class AccountRoleEnum extends EnumClass {
-
   @BuiltValueEnumConst(wireName: r'commuter')
   static const AccountRoleEnum commuter = _$accountRoleEnum_commuter;
   @BuiltValueEnumConst(wireName: r'driver')
@@ -197,11 +221,11 @@ class AccountRoleEnum extends EnumClass {
   @BuiltValueEnumConst(wireName: r'admin')
   static const AccountRoleEnum admin = _$accountRoleEnum_admin;
 
-  static Serializer<AccountRoleEnum> get serializer => _$accountRoleEnumSerializer;
+  static Serializer<AccountRoleEnum> get serializer =>
+      _$accountRoleEnumSerializer;
 
-  const AccountRoleEnum._(String name): super(name);
+  const AccountRoleEnum._(String name) : super(name);
 
   static BuiltSet<AccountRoleEnum> get values => _$accountRoleEnumValues;
   static AccountRoleEnum valueOf(String name) => _$accountRoleEnumValueOf(name);
 }
-

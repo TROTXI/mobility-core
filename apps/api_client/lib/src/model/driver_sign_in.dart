@@ -11,11 +11,12 @@ part 'driver_sign_in.g.dart';
 /// DriverSignIn
 ///
 /// Properties:
-/// * [code] 
-/// * [pin] 
-/// * [ownDevice] 
+/// * [code]
+/// * [pin]
+/// * [ownDevice]
 @BuiltValue()
-abstract class DriverSignIn implements Built<DriverSignIn, DriverSignInBuilder> {
+abstract class DriverSignIn
+    implements Built<DriverSignIn, DriverSignInBuilder> {
   @BuiltValueField(wireName: r'code')
   String get code;
 
@@ -71,7 +72,9 @@ class _$DriverSignInSerializer implements PrimitiveSerializer<DriverSignIn> {
     DriverSignIn object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
   }
 
   void _deserializeProperties(
@@ -135,4 +138,3 @@ class _$DriverSignInSerializer implements PrimitiveSerializer<DriverSignIn> {
     return result.build();
   }
 }
-

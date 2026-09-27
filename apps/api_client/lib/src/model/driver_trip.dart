@@ -14,25 +14,25 @@ part 'driver_trip.g.dart';
 /// DriverTrip
 ///
 /// Properties:
-/// * [id] 
-/// * [departureId] 
-/// * [serviceDate] 
-/// * [runNumber] 
-/// * [routeId] 
-/// * [patternId] 
-/// * [patternVersionId] 
-/// * [direction] 
-/// * [scheduledAt] 
-/// * [status] 
-/// * [vehicleLabel] 
-/// * [vehiclePlate] 
+/// * [id]
+/// * [departureId]
+/// * [serviceDate]
+/// * [runNumber]
+/// * [routeId]
+/// * [patternId]
+/// * [patternVersionId]
+/// * [direction]
+/// * [scheduledAt]
+/// * [status]
+/// * [vehicleLabel]
+/// * [vehiclePlate]
 /// * [assignmentChangedAt]
-/// * [startedAt] 
-/// * [completedAt] 
-/// * [currentStopOccurrenceId] 
-/// * [stops] 
-/// * [version] 
-/// * [editToken] 
+/// * [startedAt]
+/// * [completedAt]
+/// * [currentStopOccurrenceId]
+/// * [stops]
+/// * [version]
+/// * [editToken]
 @BuiltValue()
 abstract class DriverTrip implements Built<DriverTrip, DriverTripBuilder> {
   @BuiltValueField(wireName: r'id')
@@ -169,15 +169,19 @@ class _$DriverTripSerializer implements PrimitiveSerializer<DriverTrip> {
       specifiedType: const FullType(DriverTripStatusEnum),
     );
     yield r'vehicleLabel';
-    yield object.vehicleLabel == null ? null : serializers.serialize(
-      object.vehicleLabel,
-      specifiedType: const FullType.nullable(String),
-    );
+    yield object.vehicleLabel == null
+        ? null
+        : serializers.serialize(
+            object.vehicleLabel,
+            specifiedType: const FullType.nullable(String),
+          );
     yield r'vehiclePlate';
-    yield object.vehiclePlate == null ? null : serializers.serialize(
-      object.vehiclePlate,
-      specifiedType: const FullType.nullable(String),
-    );
+    yield object.vehiclePlate == null
+        ? null
+        : serializers.serialize(
+            object.vehiclePlate,
+            specifiedType: const FullType.nullable(String),
+          );
     if (object.assignmentChangedAt != null) {
       yield r'assignmentChangedAt';
       yield serializers.serialize(
@@ -186,20 +190,26 @@ class _$DriverTripSerializer implements PrimitiveSerializer<DriverTrip> {
       );
     }
     yield r'startedAt';
-    yield object.startedAt == null ? null : serializers.serialize(
-      object.startedAt,
-      specifiedType: const FullType.nullable(DateTime),
-    );
+    yield object.startedAt == null
+        ? null
+        : serializers.serialize(
+            object.startedAt,
+            specifiedType: const FullType.nullable(DateTime),
+          );
     yield r'completedAt';
-    yield object.completedAt == null ? null : serializers.serialize(
-      object.completedAt,
-      specifiedType: const FullType.nullable(DateTime),
-    );
+    yield object.completedAt == null
+        ? null
+        : serializers.serialize(
+            object.completedAt,
+            specifiedType: const FullType.nullable(DateTime),
+          );
     yield r'currentStopOccurrenceId';
-    yield object.currentStopOccurrenceId == null ? null : serializers.serialize(
-      object.currentStopOccurrenceId,
-      specifiedType: const FullType.nullable(String),
-    );
+    yield object.currentStopOccurrenceId == null
+        ? null
+        : serializers.serialize(
+            object.currentStopOccurrenceId,
+            specifiedType: const FullType.nullable(String),
+          );
     yield r'stops';
     yield serializers.serialize(
       object.stops,
@@ -223,7 +233,9 @@ class _$DriverTripSerializer implements PrimitiveSerializer<DriverTrip> {
     DriverTrip object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
   }
 
   void _deserializeProperties(
@@ -359,7 +371,8 @@ class _$DriverTripSerializer implements PrimitiveSerializer<DriverTrip> {
         case r'stops':
           final valueDes = serializers.deserialize(
             value,
-            specifiedType: const FullType(BuiltList, [FullType(StopOccurrence)]),
+            specifiedType:
+                const FullType(BuiltList, [FullType(StopOccurrence)]),
           ) as BuiltList<StopOccurrence>;
           result.stops.replace(valueDes);
           break;
@@ -407,48 +420,60 @@ class _$DriverTripSerializer implements PrimitiveSerializer<DriverTrip> {
 }
 
 class DriverTripRunNumberEnum extends EnumClass {
-
   @BuiltValueEnumConst(wireNumber: 1)
-  static const DriverTripRunNumberEnum number1 = _$driverTripRunNumberEnum_number1;
+  static const DriverTripRunNumberEnum number1 =
+      _$driverTripRunNumberEnum_number1;
 
-  static Serializer<DriverTripRunNumberEnum> get serializer => _$driverTripRunNumberEnumSerializer;
+  static Serializer<DriverTripRunNumberEnum> get serializer =>
+      _$driverTripRunNumberEnumSerializer;
 
-  const DriverTripRunNumberEnum._(String name): super(name);
+  const DriverTripRunNumberEnum._(String name) : super(name);
 
-  static BuiltSet<DriverTripRunNumberEnum> get values => _$driverTripRunNumberEnumValues;
-  static DriverTripRunNumberEnum valueOf(String name) => _$driverTripRunNumberEnumValueOf(name);
+  static BuiltSet<DriverTripRunNumberEnum> get values =>
+      _$driverTripRunNumberEnumValues;
+  static DriverTripRunNumberEnum valueOf(String name) =>
+      _$driverTripRunNumberEnumValueOf(name);
 }
 
 class DriverTripDirectionEnum extends EnumClass {
-
   @BuiltValueEnumConst(wireName: r'outbound')
-  static const DriverTripDirectionEnum outbound = _$driverTripDirectionEnum_outbound;
+  static const DriverTripDirectionEnum outbound =
+      _$driverTripDirectionEnum_outbound;
   @BuiltValueEnumConst(wireName: r'return')
-  static const DriverTripDirectionEnum return_ = _$driverTripDirectionEnum_return_;
+  static const DriverTripDirectionEnum return_ =
+      _$driverTripDirectionEnum_return_;
 
-  static Serializer<DriverTripDirectionEnum> get serializer => _$driverTripDirectionEnumSerializer;
+  static Serializer<DriverTripDirectionEnum> get serializer =>
+      _$driverTripDirectionEnumSerializer;
 
-  const DriverTripDirectionEnum._(String name): super(name);
+  const DriverTripDirectionEnum._(String name) : super(name);
 
-  static BuiltSet<DriverTripDirectionEnum> get values => _$driverTripDirectionEnumValues;
-  static DriverTripDirectionEnum valueOf(String name) => _$driverTripDirectionEnumValueOf(name);
+  static BuiltSet<DriverTripDirectionEnum> get values =>
+      _$driverTripDirectionEnumValues;
+  static DriverTripDirectionEnum valueOf(String name) =>
+      _$driverTripDirectionEnumValueOf(name);
 }
 
 class DriverTripStatusEnum extends EnumClass {
-
   @BuiltValueEnumConst(wireName: r'scheduled')
-  static const DriverTripStatusEnum scheduled = _$driverTripStatusEnum_scheduled;
+  static const DriverTripStatusEnum scheduled =
+      _$driverTripStatusEnum_scheduled;
   @BuiltValueEnumConst(wireName: r'active')
   static const DriverTripStatusEnum active = _$driverTripStatusEnum_active;
   @BuiltValueEnumConst(wireName: r'completed')
-  static const DriverTripStatusEnum completed = _$driverTripStatusEnum_completed;
+  static const DriverTripStatusEnum completed =
+      _$driverTripStatusEnum_completed;
   @BuiltValueEnumConst(wireName: r'cancelled')
-  static const DriverTripStatusEnum cancelled = _$driverTripStatusEnum_cancelled;
+  static const DriverTripStatusEnum cancelled =
+      _$driverTripStatusEnum_cancelled;
 
-  static Serializer<DriverTripStatusEnum> get serializer => _$driverTripStatusEnumSerializer;
+  static Serializer<DriverTripStatusEnum> get serializer =>
+      _$driverTripStatusEnumSerializer;
 
-  const DriverTripStatusEnum._(String name): super(name);
+  const DriverTripStatusEnum._(String name) : super(name);
 
-  static BuiltSet<DriverTripStatusEnum> get values => _$driverTripStatusEnumValues;
-  static DriverTripStatusEnum valueOf(String name) => _$driverTripStatusEnumValueOf(name);
+  static BuiltSet<DriverTripStatusEnum> get values =>
+      _$driverTripStatusEnumValues;
+  static DriverTripStatusEnum valueOf(String name) =>
+      _$driverTripStatusEnumValueOf(name);
 }

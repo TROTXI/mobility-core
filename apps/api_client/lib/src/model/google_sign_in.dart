@@ -11,9 +11,10 @@ part 'google_sign_in.g.dart';
 /// GoogleSignIn
 ///
 /// Properties:
-/// * [idToken] 
+/// * [idToken]
 @BuiltValue()
-abstract class GoogleSignIn implements Built<GoogleSignIn, GoogleSignInBuilder> {
+abstract class GoogleSignIn
+    implements Built<GoogleSignIn, GoogleSignInBuilder> {
   @BuiltValueField(wireName: r'idToken')
   String get idToken;
 
@@ -53,7 +54,9 @@ class _$GoogleSignInSerializer implements PrimitiveSerializer<GoogleSignIn> {
     GoogleSignIn object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
   }
 
   void _deserializeProperties(
@@ -103,4 +106,3 @@ class _$GoogleSignInSerializer implements PrimitiveSerializer<GoogleSignIn> {
     return result.build();
   }
 }
-

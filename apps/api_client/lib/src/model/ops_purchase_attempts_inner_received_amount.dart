@@ -12,10 +12,13 @@ part 'ops_purchase_attempts_inner_received_amount.g.dart';
 /// OpsPurchaseAttemptsInnerReceivedAmount
 ///
 /// Properties:
-/// * [amountMinor] 
-/// * [currency] 
+/// * [amountMinor]
+/// * [currency]
 @BuiltValue()
-abstract class OpsPurchaseAttemptsInnerReceivedAmount implements Built<OpsPurchaseAttemptsInnerReceivedAmount, OpsPurchaseAttemptsInnerReceivedAmountBuilder> {
+abstract class OpsPurchaseAttemptsInnerReceivedAmount
+    implements
+        Built<OpsPurchaseAttemptsInnerReceivedAmount,
+            OpsPurchaseAttemptsInnerReceivedAmountBuilder> {
   @BuiltValueField(wireName: r'amountMinor')
   int get amountMinor;
 
@@ -25,18 +28,25 @@ abstract class OpsPurchaseAttemptsInnerReceivedAmount implements Built<OpsPurcha
 
   OpsPurchaseAttemptsInnerReceivedAmount._();
 
-  factory OpsPurchaseAttemptsInnerReceivedAmount([void updates(OpsPurchaseAttemptsInnerReceivedAmountBuilder b)]) = _$OpsPurchaseAttemptsInnerReceivedAmount;
+  factory OpsPurchaseAttemptsInnerReceivedAmount(
+          [void updates(OpsPurchaseAttemptsInnerReceivedAmountBuilder b)]) =
+      _$OpsPurchaseAttemptsInnerReceivedAmount;
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(OpsPurchaseAttemptsInnerReceivedAmountBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
-  static Serializer<OpsPurchaseAttemptsInnerReceivedAmount> get serializer => _$OpsPurchaseAttemptsInnerReceivedAmountSerializer();
+  static Serializer<OpsPurchaseAttemptsInnerReceivedAmount> get serializer =>
+      _$OpsPurchaseAttemptsInnerReceivedAmountSerializer();
 }
 
-class _$OpsPurchaseAttemptsInnerReceivedAmountSerializer implements PrimitiveSerializer<OpsPurchaseAttemptsInnerReceivedAmount> {
+class _$OpsPurchaseAttemptsInnerReceivedAmountSerializer
+    implements PrimitiveSerializer<OpsPurchaseAttemptsInnerReceivedAmount> {
   @override
-  final Iterable<Type> types = const [OpsPurchaseAttemptsInnerReceivedAmount, _$OpsPurchaseAttemptsInnerReceivedAmount];
+  final Iterable<Type> types = const [
+    OpsPurchaseAttemptsInnerReceivedAmount,
+    _$OpsPurchaseAttemptsInnerReceivedAmount
+  ];
 
   @override
   final String wireName = r'OpsPurchaseAttemptsInnerReceivedAmount';
@@ -54,7 +64,8 @@ class _$OpsPurchaseAttemptsInnerReceivedAmountSerializer implements PrimitiveSer
     yield r'currency';
     yield serializers.serialize(
       object.currency,
-      specifiedType: const FullType(OpsPurchaseAttemptsInnerReceivedAmountCurrencyEnum),
+      specifiedType:
+          const FullType(OpsPurchaseAttemptsInnerReceivedAmountCurrencyEnum),
     );
   }
 
@@ -64,7 +75,9 @@ class _$OpsPurchaseAttemptsInnerReceivedAmountSerializer implements PrimitiveSer
     OpsPurchaseAttemptsInnerReceivedAmount object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
   }
 
   void _deserializeProperties(
@@ -89,7 +102,8 @@ class _$OpsPurchaseAttemptsInnerReceivedAmountSerializer implements PrimitiveSer
         case r'currency':
           final valueDes = serializers.deserialize(
             value,
-            specifiedType: const FullType(OpsPurchaseAttemptsInnerReceivedAmountCurrencyEnum),
+            specifiedType: const FullType(
+                OpsPurchaseAttemptsInnerReceivedAmountCurrencyEnum),
           ) as OpsPurchaseAttemptsInnerReceivedAmountCurrencyEnum;
           result.currency = valueDes;
           break;
@@ -123,15 +137,20 @@ class _$OpsPurchaseAttemptsInnerReceivedAmountSerializer implements PrimitiveSer
 }
 
 class OpsPurchaseAttemptsInnerReceivedAmountCurrencyEnum extends EnumClass {
-
   @BuiltValueEnumConst(wireName: r'GHS')
-  static const OpsPurchaseAttemptsInnerReceivedAmountCurrencyEnum GHS = _$opsPurchaseAttemptsInnerReceivedAmountCurrencyEnum_GHS;
+  static const OpsPurchaseAttemptsInnerReceivedAmountCurrencyEnum GHS =
+      _$opsPurchaseAttemptsInnerReceivedAmountCurrencyEnum_GHS;
 
-  static Serializer<OpsPurchaseAttemptsInnerReceivedAmountCurrencyEnum> get serializer => _$opsPurchaseAttemptsInnerReceivedAmountCurrencyEnumSerializer;
+  static Serializer<OpsPurchaseAttemptsInnerReceivedAmountCurrencyEnum>
+      get serializer =>
+          _$opsPurchaseAttemptsInnerReceivedAmountCurrencyEnumSerializer;
 
-  const OpsPurchaseAttemptsInnerReceivedAmountCurrencyEnum._(String name): super(name);
+  const OpsPurchaseAttemptsInnerReceivedAmountCurrencyEnum._(String name)
+      : super(name);
 
-  static BuiltSet<OpsPurchaseAttemptsInnerReceivedAmountCurrencyEnum> get values => _$opsPurchaseAttemptsInnerReceivedAmountCurrencyEnumValues;
-  static OpsPurchaseAttemptsInnerReceivedAmountCurrencyEnum valueOf(String name) => _$opsPurchaseAttemptsInnerReceivedAmountCurrencyEnumValueOf(name);
+  static BuiltSet<OpsPurchaseAttemptsInnerReceivedAmountCurrencyEnum>
+      get values => _$opsPurchaseAttemptsInnerReceivedAmountCurrencyEnumValues;
+  static OpsPurchaseAttemptsInnerReceivedAmountCurrencyEnum valueOf(
+          String name) =>
+      _$opsPurchaseAttemptsInnerReceivedAmountCurrencyEnumValueOf(name);
 }
-

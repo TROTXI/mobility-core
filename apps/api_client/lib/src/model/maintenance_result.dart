@@ -13,13 +13,14 @@ part 'maintenance_result.g.dart';
 /// MaintenanceResult
 ///
 /// Properties:
-/// * [considered] 
-/// * [succeeded] 
-/// * [blocked] 
-/// * [failed] 
-/// * [failures] 
+/// * [considered]
+/// * [succeeded]
+/// * [blocked]
+/// * [failed]
+/// * [failures]
 @BuiltValue()
-abstract class MaintenanceResult implements Built<MaintenanceResult, MaintenanceResultBuilder> {
+abstract class MaintenanceResult
+    implements Built<MaintenanceResult, MaintenanceResultBuilder> {
   @BuiltValueField(wireName: r'considered')
   int get considered;
 
@@ -37,16 +38,19 @@ abstract class MaintenanceResult implements Built<MaintenanceResult, Maintenance
 
   MaintenanceResult._();
 
-  factory MaintenanceResult([void updates(MaintenanceResultBuilder b)]) = _$MaintenanceResult;
+  factory MaintenanceResult([void updates(MaintenanceResultBuilder b)]) =
+      _$MaintenanceResult;
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(MaintenanceResultBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
-  static Serializer<MaintenanceResult> get serializer => _$MaintenanceResultSerializer();
+  static Serializer<MaintenanceResult> get serializer =>
+      _$MaintenanceResultSerializer();
 }
 
-class _$MaintenanceResultSerializer implements PrimitiveSerializer<MaintenanceResult> {
+class _$MaintenanceResultSerializer
+    implements PrimitiveSerializer<MaintenanceResult> {
   @override
   final Iterable<Type> types = const [MaintenanceResult, _$MaintenanceResult];
 
@@ -81,7 +85,8 @@ class _$MaintenanceResultSerializer implements PrimitiveSerializer<MaintenanceRe
     yield r'failures';
     yield serializers.serialize(
       object.failures,
-      specifiedType: const FullType(BuiltList, [FullType(MaintenanceResultFailuresInner)]),
+      specifiedType:
+          const FullType(BuiltList, [FullType(MaintenanceResultFailuresInner)]),
     );
   }
 
@@ -91,7 +96,9 @@ class _$MaintenanceResultSerializer implements PrimitiveSerializer<MaintenanceRe
     MaintenanceResult object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
   }
 
   void _deserializeProperties(
@@ -137,7 +144,8 @@ class _$MaintenanceResultSerializer implements PrimitiveSerializer<MaintenanceRe
         case r'failures':
           final valueDes = serializers.deserialize(
             value,
-            specifiedType: const FullType(BuiltList, [FullType(MaintenanceResultFailuresInner)]),
+            specifiedType: const FullType(
+                BuiltList, [FullType(MaintenanceResultFailuresInner)]),
           ) as BuiltList<MaintenanceResultFailuresInner>;
           result.failures.replace(valueDes);
           break;
@@ -169,4 +177,3 @@ class _$MaintenanceResultSerializer implements PrimitiveSerializer<MaintenanceRe
     return result.build();
   }
 }
-

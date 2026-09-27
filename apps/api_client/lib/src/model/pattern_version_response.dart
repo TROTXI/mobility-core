@@ -12,26 +12,34 @@ part 'pattern_version_response.g.dart';
 /// PatternVersionResponse
 ///
 /// Properties:
-/// * [data] 
+/// * [data]
 @BuiltValue()
-abstract class PatternVersionResponse implements Built<PatternVersionResponse, PatternVersionResponseBuilder> {
+abstract class PatternVersionResponse
+    implements Built<PatternVersionResponse, PatternVersionResponseBuilder> {
   @BuiltValueField(wireName: r'data')
   PatternVersion get data;
 
   PatternVersionResponse._();
 
-  factory PatternVersionResponse([void updates(PatternVersionResponseBuilder b)]) = _$PatternVersionResponse;
+  factory PatternVersionResponse(
+          [void updates(PatternVersionResponseBuilder b)]) =
+      _$PatternVersionResponse;
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(PatternVersionResponseBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
-  static Serializer<PatternVersionResponse> get serializer => _$PatternVersionResponseSerializer();
+  static Serializer<PatternVersionResponse> get serializer =>
+      _$PatternVersionResponseSerializer();
 }
 
-class _$PatternVersionResponseSerializer implements PrimitiveSerializer<PatternVersionResponse> {
+class _$PatternVersionResponseSerializer
+    implements PrimitiveSerializer<PatternVersionResponse> {
   @override
-  final Iterable<Type> types = const [PatternVersionResponse, _$PatternVersionResponse];
+  final Iterable<Type> types = const [
+    PatternVersionResponse,
+    _$PatternVersionResponse
+  ];
 
   @override
   final String wireName = r'PatternVersionResponse';
@@ -54,7 +62,9 @@ class _$PatternVersionResponseSerializer implements PrimitiveSerializer<PatternV
     PatternVersionResponse object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
   }
 
   void _deserializeProperties(
@@ -104,4 +114,3 @@ class _$PatternVersionResponseSerializer implements PrimitiveSerializer<PatternV
     return result.build();
   }
 }
-
