@@ -19069,6 +19069,9 @@
           },
           "emailInstructions": {
             "type": "boolean"
+          },
+          "smsInstructions": {
+            "type": "boolean"
           }
         },
         "additionalProperties": false
@@ -19104,6 +19107,27 @@
                 "maxLength": 320,
                 "format": "email",
                 "pattern": "^(?!\\.)(?!.*\\.\\.)([A-Za-z0-9_'+\\-\\.]*)[A-Za-z0-9_+-]@([A-Za-z0-9][A-Za-z0-9\\-]*\\.)+[A-Za-z]{2,}$"
+              },
+              "state": {
+                "type": "string",
+                "enum": ["queued"]
+              }
+            },
+            "required": ["id", "to", "state"],
+            "additionalProperties": false
+          },
+          "sms": {
+            "nullable": true,
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 128
+              },
+              "to": {
+                "type": "string",
+                "pattern": "^\\+233[235]\\d{8}$"
               },
               "state": {
                 "type": "string",
@@ -19379,6 +19403,33 @@
               "state": {
                 "type": "string",
                 "enum": ["queued", "provider_accepted", "cancelled", "failed", "unknown"]
+              },
+              "failureCode": {
+                "nullable": true,
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 100
+              },
+              "queuedAt": {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+              }
+            },
+            "required": ["purpose", "state", "failureCode", "queuedAt"],
+            "additionalProperties": false
+          },
+          "credentialSms": {
+            "nullable": true,
+            "type": "object",
+            "properties": {
+              "purpose": {
+                "type": "string",
+                "enum": ["onboarding", "pin_reset"]
+              },
+              "state": {
+                "type": "string",
+                "enum": ["queued", "sending", "provider_accepted", "cancelled", "unknown"]
               },
               "failureCode": {
                 "nullable": true,
@@ -23674,6 +23725,9 @@
             "maxLength": 2000
           },
           "emailInstructions": {
+            "type": "boolean"
+          },
+          "smsInstructions": {
             "type": "boolean"
           }
         },

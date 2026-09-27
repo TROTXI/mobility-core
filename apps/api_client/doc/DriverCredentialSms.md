@@ -1,4 +1,4 @@
-# trotxi_api_client.model.PinResetInput
+# trotxi_api_client.model.DriverCredentialSms
 
 ## Load the model package
 ```dart
@@ -8,9 +8,10 @@ import 'package:trotxi_api_client/api.dart';
 ## Properties
 Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
-**reason** | **String** |  |
-**emailInstructions** | **bool** |  | [optional]
-**smsInstructions** | **bool** |  | [optional]
+**purpose** | **String** |  |
+**state** | **String** |  |
+**failureCode** | **String** |  |
+**queuedAt** | [**DateTime**](DateTime.md) |  |
 
 [[Back to Model list]](../README.md#documentation-for-models) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to README]](../README.md)
 

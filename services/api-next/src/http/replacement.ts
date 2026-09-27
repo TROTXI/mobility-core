@@ -25,6 +25,7 @@ export function createReplacementApp(
     credentialReplayKey: Buffer;
     /** Where driver sign-in details are emailed. Absent: email is refused, not faked. */
     driverEmail?: DriverCredentialEmail;
+    driverSms?: DriverCredentialEmail;
     boarding?: Omit<BoardingOptions, 'pool' | 'authorizeSession'>;
     /**
      * Services that need the session authorizer identity owns. They are built
@@ -59,6 +60,7 @@ export function createReplacementApp(
     replayKey: options.credentialReplayKey,
     cursorSecret: options.cursorSecret,
     ...(options.driverEmail ? { email: options.driverEmail } : {}),
+    ...(options.driverSms ? { sms: options.driverSms } : {}),
   });
   if (
     options.boarding &&

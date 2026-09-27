@@ -11,11 +11,14 @@ class _$CredentialIssue extends CredentialIssue {
   final String? code;
   @override
   final bool? emailInstructions;
+  @override
+  final bool? smsInstructions;
 
   factory _$CredentialIssue([void Function(CredentialIssueBuilder)? updates]) =>
       (CredentialIssueBuilder()..update(updates))._build();
 
-  _$CredentialIssue._({this.code, this.emailInstructions}) : super._();
+  _$CredentialIssue._({this.code, this.emailInstructions, this.smsInstructions})
+      : super._();
   @override
   CredentialIssue rebuild(void Function(CredentialIssueBuilder) updates) =>
       (toBuilder()..update(updates)).build();
@@ -28,7 +31,8 @@ class _$CredentialIssue extends CredentialIssue {
     if (identical(other, this)) return true;
     return other is CredentialIssue &&
         code == other.code &&
-        emailInstructions == other.emailInstructions;
+        emailInstructions == other.emailInstructions &&
+        smsInstructions == other.smsInstructions;
   }
 
   @override
@@ -36,6 +40,7 @@ class _$CredentialIssue extends CredentialIssue {
     var _$hash = 0;
     _$hash = $jc(_$hash, code.hashCode);
     _$hash = $jc(_$hash, emailInstructions.hashCode);
+    _$hash = $jc(_$hash, smsInstructions.hashCode);
     _$hash = $jf(_$hash);
     return _$hash;
   }
@@ -44,7 +49,8 @@ class _$CredentialIssue extends CredentialIssue {
   String toString() {
     return (newBuiltValueToStringHelper(r'CredentialIssue')
           ..add('code', code)
-          ..add('emailInstructions', emailInstructions))
+          ..add('emailInstructions', emailInstructions)
+          ..add('smsInstructions', smsInstructions))
         .toString();
   }
 }
@@ -62,6 +68,11 @@ class CredentialIssueBuilder
   set emailInstructions(bool? emailInstructions) =>
       _$this._emailInstructions = emailInstructions;
 
+  bool? _smsInstructions;
+  bool? get smsInstructions => _$this._smsInstructions;
+  set smsInstructions(bool? smsInstructions) =>
+      _$this._smsInstructions = smsInstructions;
+
   CredentialIssueBuilder() {
     CredentialIssue._defaults(this);
   }
@@ -71,6 +82,7 @@ class CredentialIssueBuilder
     if ($v != null) {
       _code = $v.code;
       _emailInstructions = $v.emailInstructions;
+      _smsInstructions = $v.smsInstructions;
       _$v = null;
     }
     return this;
@@ -94,6 +106,7 @@ class CredentialIssueBuilder
         _$CredentialIssue._(
           code: code,
           emailInstructions: emailInstructions,
+          smsInstructions: smsInstructions,
         );
     replace(_$result);
     return _$result;

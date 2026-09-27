@@ -25,6 +25,7 @@ import { TransactionalEmail } from '../notifications/email.js';
 import { ResendSender } from '../notifications/resend.js';
 import { MnotifySender } from '../notifications/mnotify.js';
 import { PhoneOtp } from '../auth/phone-otp.js';
+import { DriverSms } from '../notifications/driver-sms.js';
 import { FcmSender } from '../notifications/fcm.js';
 import { PushNotifications } from '../notifications/push.js';
 import type { RuntimeConfig } from './config.js';
@@ -40,6 +41,7 @@ export interface Backend {
   admission: import('./admission.js').Admission;
   maintenanceUserId: string;
   email?: TransactionalEmail;
+  sms?: DriverSms;
   push?: PushNotifications;
   close(): Promise<void>;
 }
@@ -133,6 +135,12 @@ export async function composeBackend(config: RuntimeConfig): Promise<Backend> {
           staging: config.email.staging,
         })
       : undefined;
+    const smsSender = config.sms
+      ? new MnotifySender(config.sms.apiKey, config.sms.sender)
+      : undefined;
+    const sms = smsSender
+      ? new DriverSms(pool, smsSender, config.keys.device, config.sms!.staging)
+      : undefined;
     // Built only where the deployment says it offers Apple. Where it does not,
     // there is no verifier, no token client and no route, so nothing can half
     // work: erasure's provider revocation reports that it had no reach, which
@@ -168,6 +176,7 @@ export async function composeBackend(config: RuntimeConfig): Promise<Backend> {
       cursorSecret: config.keys.cursorSecret,
       credentialReplayKey: config.keys.credentialReplay,
       ...(email ? { driverEmail: email } : {}),
+      ...(sms ? { driverSms: sms } : {}),
       authProviders: config.providers,
       admit: (subject) => admission.spend(subject),
       // Do not retain raw network addresses in the disposable budget table.
@@ -202,12 +211,7 @@ export async function composeBackend(config: RuntimeConfig): Promise<Backend> {
         avatarUrl: signAvatar,
         ...(config.sms
           ? {
-              phoneOtp: new PhoneOtp(
-                pool,
-                new MnotifySender(config.sms.apiKey, config.sms.sender),
-                config.keys.device,
-                config.sms.staging,
-              ),
+              phoneOtp: new PhoneOtp(pool, smsSender!, config.keys.device, config.sms.staging),
             }
           : {}),
       },
@@ -323,6 +327,7 @@ export async function composeBackend(config: RuntimeConfig): Promise<Backend> {
       admission,
       maintenanceUserId: config.maintenanceUserId,
       email,
+      sms,
       push,
       close: async () => {
         if (closed) return;

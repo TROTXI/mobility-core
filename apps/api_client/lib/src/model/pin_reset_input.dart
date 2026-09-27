@@ -13,6 +13,7 @@ part 'pin_reset_input.g.dart';
 /// Properties:
 /// * [reason]
 /// * [emailInstructions]
+/// * [smsInstructions]
 @BuiltValue()
 abstract class PinResetInput
     implements Built<PinResetInput, PinResetInputBuilder> {
@@ -21,6 +22,9 @@ abstract class PinResetInput
 
   @BuiltValueField(wireName: r'emailInstructions')
   bool? get emailInstructions;
+
+  @BuiltValueField(wireName: r'smsInstructions')
+  bool? get smsInstructions;
 
   PinResetInput._();
 
@@ -56,6 +60,13 @@ class _$PinResetInputSerializer implements PrimitiveSerializer<PinResetInput> {
       yield r'emailInstructions';
       yield serializers.serialize(
         object.emailInstructions,
+        specifiedType: const FullType(bool),
+      );
+    }
+    if (object.smsInstructions != null) {
+      yield r'smsInstructions';
+      yield serializers.serialize(
+        object.smsInstructions,
         specifiedType: const FullType(bool),
       );
     }
@@ -97,6 +108,13 @@ class _$PinResetInputSerializer implements PrimitiveSerializer<PinResetInput> {
             specifiedType: const FullType(bool),
           ) as bool;
           result.emailInstructions = valueDes;
+          break;
+        case r'smsInstructions':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType(bool),
+          ) as bool;
+          result.smsInstructions = valueDes;
           break;
         default:
           unhandled.add(key);

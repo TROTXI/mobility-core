@@ -1,7 +1,7 @@
 # Commuter phone sign-in — Ghana pilot
 
 Phone OTP is an additional commuter sign-up/sign-in option. Driver code/PIN,
-driver email onboarding and Ops Google + passkey authentication are unchanged.
+driver email onboarding and Ops Google + passkey authentication remain available.
 Phone identities never adopt a Google account merely because its editable
 profile contains the same number. Phone-account linking is out of this slice.
 
@@ -57,10 +57,33 @@ are refused with 403. They do not require an existing bearer token.
 
 ## Driver SMS boundary
 
-This slice supplies the mNotify sender and commuter OTP flow, not driver
-credential SMS delivery. Driver invitations and PIN resets still use the tested
-email outbox. Adding SMS there must preserve PIN-version binding, stale-message
-cancellation, encrypted storage and explicit handling of uncertain delivery;
-do not send existing PINs or bypass the driver reset flow.
+Ops defaults to SMS when a driver has a Ghana mobile number; email remains an
+alternative. Issue/reset requests use `smsInstructions: true` or
+`emailInstructions: true`, never both. Neither is mandatory: Ops may show the
+temporary credentials once and give them to the driver privately.
+
+SMS includes the driver code and a newly issued temporary PIN (72-hour expiry),
+not a driver's private PIN. First sign-in requires choosing a private PIN.
+Migration 031 stores the pending payload encrypted in `driver_sms_outbox`, bound
+to the driver, phone and credential version. Reset, private PIN change, phone
+change, suspension, archive and erasure cancel obsolete queued payloads.
+
+Sending starts immediately after commit. Provider acceptance is not proof of
+handset delivery. An uncertain send is marked `unknown` and scrubbed: it is
+never automatically resent because mNotify has no documented idempotency key.
+Ops must reset the PIN to issue fresh instructions after checking the number.
+An interrupted sending claim is also scrubbed as unknown after one minute.
+
+Pending messages never attempted can be processed by the existing `emails`
+maintenance command (`node dist/worker.js emails`, with the normal backend
+environment). Its counts include SMS and uncertain outcomes fail the job signal.
+The lightweight GitHub email-retry script remains email-only; it does not retry
+SMS. No additional scheduled job or secret has been introduced.
+Without a worker run, pending encrypted SMS payloads can remain after their PIN
+expires; expiry still prevents sending them. Running the worker scrubs them.
+
+The same optional `MNOTIFY_API_KEY` and `MNOTIFY_SENDER` serve OTP and driver SMS.
+Do not configure live sending or test SMS until the sender ID is approved.
+Adom has submitted it; approval and an explicitly authorised handset test remain.
 
 Provider format: [mNotify API documentation](https://readthedocs.mnotify.com/).

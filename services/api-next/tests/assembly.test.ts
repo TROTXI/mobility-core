@@ -9,6 +9,8 @@ import { spawnSync } from 'node:child_process';
 import { readConfiguration, ConfigurationError } from '../src/runtime/config.js';
 import { R2ObjectStore } from '../src/runtime/avatars.js';
 import { jobFailed, jobLog } from '../src/runtime/job-outcome.js';
+import { runJob } from '../src/runtime/maintenance.js';
+import type { Backend } from '../src/runtime/compose.js';
 import {
   rehearsalEnvironment,
   localRehearsalAdmin,
@@ -16,6 +18,36 @@ import {
 } from '../src/runtime/rehearsal.js';
 
 const key = (n: number) => Buffer.alloc(32, n).toString('base64');
+
+test('SMS maintenance works without email and reports ambiguous delivery as a failed job', async () => {
+  const empty = { considered: 0, accepted: 0, cancelled: 0, failed: 0, retried: 0, unknown: 0 };
+  let prepared = false;
+  const backend = {
+    maintenanceUserId: 'operator',
+    pool: {
+      query: async (sql: string) => ({
+        rows: sql.includes('SELECT role')
+          ? [{ role: 'admin', deleted_at: null }]
+          : [{ id: 'session', created_at: new Date(), expires_at: new Date() }],
+      }),
+    },
+    auth: { tokens: { sign: async () => 'local-session' } },
+    sms: { drain: async () => ({ ...empty, considered: 1, unknown: 1 }) },
+  } as unknown as Backend;
+  const smsOnly = await runJob(backend, { job: 'emails' });
+  assert.deepEqual(smsOnly.body, { ...empty, considered: 1, unknown: 1 });
+  assert.equal(jobFailed(smsOnly), true);
+  backend.email = {
+    prepareReminders: async () => {
+      prepared = true;
+    },
+    drain: async () => ({ ...empty, considered: 2, accepted: 2 }),
+  } as unknown as Backend['email'];
+  const combined = await runJob(backend, { job: 'emails' });
+  assert.equal(prepared, true);
+  assert.deepEqual(combined.body, { ...empty, considered: 3, accepted: 2, unknown: 1 });
+  assert.equal(jobFailed(combined), true);
+});
 // Provider-shaped, but assembled at runtime so no credential-looking literal
 // is committed. The repository's secret scan allowlist is deliberately narrow.
 const providerKey = (mode: 'test' | 'live') =>

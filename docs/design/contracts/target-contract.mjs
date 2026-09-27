@@ -894,6 +894,14 @@ named(
       failureCode: text(100).nullable(),
       queuedAt: instant,
     }).nullable(),
+    credentialSms: obj({
+      purpose: z.enum(['onboarding', 'pin_reset']),
+      state: z.enum(['queued', 'sending', 'provider_accepted', 'cancelled', 'unknown']),
+      failureCode: text(100).nullable(),
+      queuedAt: instant,
+    })
+      .nullable()
+      .optional(),
     editToken: text(128),
     ...audit,
   }),
@@ -942,9 +950,20 @@ named('RoleEdit', obj({ role, reason: note }));
 // Preserve existing ops-generated codes when omitted; an explicit code is optional.
 named(
   'CredentialIssue',
-  obj({ code: text(32).optional(), emailInstructions: z.boolean().optional() }),
+  obj({
+    code: text(32).optional(),
+    emailInstructions: z.boolean().optional(),
+    smsInstructions: z.boolean().optional(),
+  }),
 );
-named('PinResetInput', obj({ reason: note, emailInstructions: z.boolean().optional() }));
+named(
+  'PinResetInput',
+  obj({
+    reason: note,
+    emailInstructions: z.boolean().optional(),
+    smsInstructions: z.boolean().optional(),
+  }),
+);
 named(
   'CredentialSecret',
   obj({
@@ -953,6 +972,9 @@ named(
     temporaryPinExpiresAt: instant,
     // Present when email was requested: the message is queued, not yet sent.
     email: obj({ id, to: driverEmail, state: z.enum(['queued']) }).nullable(),
+    sms: obj({ id, to: z.string().regex(/^\+233[235]\d{8}$/), state: z.enum(['queued']) })
+      .nullable()
+      .optional(),
   }),
 );
 named('CredentialAction', obj({ action: z.enum(['suspend', 'activate', 'unlock']), reason: note }));

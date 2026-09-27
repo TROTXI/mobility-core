@@ -3,6 +3,7 @@
 //
 
 // ignore_for_file: unused_element
+import 'package:trotxi_api_client/src/model/credential_secret_sms.dart';
 import 'package:trotxi_api_client/src/model/credential_secret_email.dart';
 import 'package:built_value/built_value.dart';
 import 'package:built_value/serializer.dart';
@@ -16,6 +17,7 @@ part 'credential_secret.g.dart';
 /// * [pin]
 /// * [temporaryPinExpiresAt]
 /// * [email]
+/// * [sms]
 @BuiltValue()
 abstract class CredentialSecret
     implements Built<CredentialSecret, CredentialSecretBuilder> {
@@ -30,6 +32,9 @@ abstract class CredentialSecret
 
   @BuiltValueField(wireName: r'email')
   CredentialSecretEmail? get email;
+
+  @BuiltValueField(wireName: r'sms')
+  CredentialSecretSms? get sms;
 
   CredentialSecret._();
 
@@ -79,6 +84,13 @@ class _$CredentialSecretSerializer
             object.email,
             specifiedType: const FullType.nullable(CredentialSecretEmail),
           );
+    if (object.sms != null) {
+      yield r'sms';
+      yield serializers.serialize(
+        object.sms,
+        specifiedType: const FullType.nullable(CredentialSecretSms),
+      );
+    }
   }
 
   @override
@@ -132,6 +144,14 @@ class _$CredentialSecretSerializer
           ) as CredentialSecretEmail?;
           if (valueDes == null) continue;
           result.email.replace(valueDes);
+          break;
+        case r'sms':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType.nullable(CredentialSecretSms),
+          ) as CredentialSecretSms?;
+          if (valueDes == null) continue;
+          result.sms.replace(valueDes);
           break;
         default:
           unhandled.add(key);

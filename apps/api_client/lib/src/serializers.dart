@@ -57,6 +57,7 @@ import 'package:trotxi_api_client/src/model/credential_issue.dart';
 import 'package:trotxi_api_client/src/model/credential_secret.dart';
 import 'package:trotxi_api_client/src/model/credential_secret_email.dart';
 import 'package:trotxi_api_client/src/model/credential_secret_response.dart';
+import 'package:trotxi_api_client/src/model/credential_secret_sms.dart';
 import 'package:trotxi_api_client/src/model/credit_entry.dart';
 import 'package:trotxi_api_client/src/model/credit_entry_page.dart';
 import 'package:trotxi_api_client/src/model/decision_event.dart';
@@ -67,6 +68,7 @@ import 'package:trotxi_api_client/src/model/device_response.dart';
 import 'package:trotxi_api_client/src/model/driver.dart';
 import 'package:trotxi_api_client/src/model/driver_credential.dart';
 import 'package:trotxi_api_client/src/model/driver_credential_email.dart';
+import 'package:trotxi_api_client/src/model/driver_credential_sms.dart';
 import 'package:trotxi_api_client/src/model/driver_edit.dart';
 import 'package:trotxi_api_client/src/model/driver_input.dart';
 import 'package:trotxi_api_client/src/model/driver_page.dart';
@@ -355,6 +357,7 @@ part 'serializers.g.dart';
   CredentialSecret,
   CredentialSecretEmail,
   CredentialSecretResponse,
+  CredentialSecretSms,
   CreditEntry,
   CreditEntryPage,
   DecisionEvent,
@@ -365,6 +368,7 @@ part 'serializers.g.dart';
   Driver,
   DriverCredential,
   DriverCredentialEmail,
+  DriverCredentialSms,
   DriverEdit,
   DriverInput,
   DriverPage,

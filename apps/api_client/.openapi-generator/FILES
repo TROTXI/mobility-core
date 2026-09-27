@@ -44,6 +44,7 @@ doc/CredentialIssue.md
 doc/CredentialSecret.md
 doc/CredentialSecretEmail.md
 doc/CredentialSecretResponse.md
+doc/CredentialSecretSms.md
 doc/CreditEntry.md
 doc/CreditEntryPage.md
 doc/DecisionEvent.md
@@ -55,6 +56,7 @@ doc/Driver.md
 doc/DriverAssignedOrOwnApi.md
 doc/DriverCredential.md
 doc/DriverCredentialEmail.md
+doc/DriverCredentialSms.md
 doc/DriverEdit.md
 doc/DriverInput.md
 doc/DriverOwnApi.md
@@ -366,6 +368,7 @@ lib/src/model/credential_issue.dart
 lib/src/model/credential_secret.dart
 lib/src/model/credential_secret_email.dart
 lib/src/model/credential_secret_response.dart
+lib/src/model/credential_secret_sms.dart
 lib/src/model/credit_entry.dart
 lib/src/model/credit_entry_page.dart
 lib/src/model/date.dart
@@ -377,6 +380,7 @@ lib/src/model/device_response.dart
 lib/src/model/driver.dart
 lib/src/model/driver_credential.dart
 lib/src/model/driver_credential_email.dart
+lib/src/model/driver_credential_sms.dart
 lib/src/model/driver_edit.dart
 lib/src/model/driver_input.dart
 lib/src/model/driver_page.dart
@@ -621,3 +625,5 @@ lib/src/model/work_request_response.dart
 lib/src/serializers.dart
 lib/trotxi_api_client.dart
 pubspec.yaml
+test/credential_secret_sms_test.dart
+test/driver_credential_sms_test.dart

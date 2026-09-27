@@ -3,6 +3,7 @@
 //
 
 // ignore_for_file: unused_element
+import 'package:trotxi_api_client/src/model/driver_credential_sms.dart';
 import 'package:trotxi_api_client/src/model/driver_credential.dart';
 import 'package:trotxi_api_client/src/model/driver_credential_email.dart';
 import 'package:built_value/built_value.dart';
@@ -22,6 +23,7 @@ part 'driver.g.dart';
 /// * [archived]
 /// * [credential]
 /// * [credentialEmail]
+/// * [credentialSms]
 /// * [editToken]
 /// * [createdAt]
 /// * [updatedAt]
@@ -54,6 +56,9 @@ abstract class Driver implements Built<Driver, DriverBuilder> {
 
   @BuiltValueField(wireName: r'credentialEmail')
   DriverCredentialEmail? get credentialEmail;
+
+  @BuiltValueField(wireName: r'credentialSms')
+  DriverCredentialSms? get credentialSms;
 
   @BuiltValueField(wireName: r'editToken')
   String get editToken;
@@ -147,6 +152,13 @@ class _$DriverSerializer implements PrimitiveSerializer<Driver> {
             object.credentialEmail,
             specifiedType: const FullType.nullable(DriverCredentialEmail),
           );
+    if (object.credentialSms != null) {
+      yield r'credentialSms';
+      yield serializers.serialize(
+        object.credentialSms,
+        specifiedType: const FullType.nullable(DriverCredentialSms),
+      );
+    }
     yield r'editToken';
     yield serializers.serialize(
       object.editToken,
@@ -260,6 +272,14 @@ class _$DriverSerializer implements PrimitiveSerializer<Driver> {
           ) as DriverCredentialEmail?;
           if (valueDes == null) continue;
           result.credentialEmail.replace(valueDes);
+          break;
+        case r'credentialSms':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType.nullable(DriverCredentialSms),
+          ) as DriverCredentialSms?;
+          if (valueDes == null) continue;
+          result.credentialSms.replace(valueDes);
           break;
         case r'editToken':
           final valueDes = serializers.deserialize(

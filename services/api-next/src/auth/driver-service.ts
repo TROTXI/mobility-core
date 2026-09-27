@@ -10,6 +10,8 @@ import { credentialReplay } from './secret-replay.js';
 import { hashToken } from './credentials.js';
 import { cancelCredentialMail } from '../notifications/email.js';
 import type { DriverCredentialEmail } from '../notifications/email.js';
+import { cancelCredentialSms } from '../notifications/driver-sms.js';
+import { ghanaPhone } from '../notifications/mnotify.js';
 import {
   generateDriverCode,
   generatePin,
@@ -53,6 +55,9 @@ type OpsRow = Row & {
   mail_state: string | null;
   mail_failure: string | null;
   mail_created_at: Date | null;
+  sms_state: string | null;
+  sms_created_at: Date | null;
+  sms_operation: string | null;
   cursor_time?: string;
 };
 /**
@@ -65,19 +70,25 @@ export const TEMPORARY_PIN_HOURS = 72;
 const OPS_DRIVER = `SELECT d.*, c.driver_code, c.status AS credential_status, c.must_change_pin,
     c.temporary_pin_expires_at, c.locked_until,
     m.kind AS mail_kind, m.state AS mail_state, m.failure_code AS mail_failure, m.created_at AS mail_created_at,
+    s.state AS sms_state,s.created_at AS sms_created_at,s.operation AS sms_operation,
     to_char(d.created_at AT TIME ZONE 'UTC','YYYY-MM-DD"T"HH24:MI:SS.US"Z"') AS cursor_time
   FROM app.drivers d
   LEFT JOIN app.driver_credentials c ON c.driver_id = d.id
   LEFT JOIN LATERAL (
     SELECT kind, state, failure_code, created_at FROM app.email_outbox e
     WHERE e.user_id = d.user_id AND e.kind IN ('driver_credentials_issued','driver_pin_reset')
-    ORDER BY e.created_at DESC, e.id DESC LIMIT 1) m ON true`;
+    ORDER BY e.created_at DESC, e.id DESC LIMIT 1) m ON true
+  LEFT JOIN LATERAL (
+    SELECT s.state,s.created_at,c.operation FROM app.driver_sms_outbox s
+    JOIN app.driver_commands c ON c.id=s.command_id WHERE s.driver_id=d.id
+    ORDER BY s.created_at DESC,s.id DESC LIMIT 1) s ON true`;
 const MAIL_STATE: Record<string, string> = {
   pending: 'queued',
   accepted: 'provider_accepted',
   cancelled: 'cancelled',
   failed: 'failed',
   unknown: 'unknown',
+  sending: 'sending',
 };
 type Output = { status: number; body: unknown; headers: Record<string, string> };
 export interface DriverOptions {
@@ -88,6 +99,7 @@ export interface DriverOptions {
   cursorSecret: Buffer;
   /** Absent where email is not configured; a request to email is then refused. */
   email?: DriverCredentialEmail;
+  sms?: DriverCredentialEmail;
 }
 const secretOperation = (op: string) => op === 'issueDriverCredential' || op === 'resetDriverPin';
 const editToken = (row: Row) => `"driver:${row.id}:${row.version}"`;
@@ -118,6 +130,14 @@ function view(row: OpsRow) {
           state: MAIL_STATE[row.mail_state!],
           failureCode: row.mail_failure,
           queuedAt: iso(row.mail_created_at),
+        }
+      : null,
+    credentialSms: row.sms_state
+      ? {
+          purpose: row.sms_operation === 'resetDriverPin' ? 'pin_reset' : 'onboarding',
+          state: MAIL_STATE[row.sms_state],
+          failureCode: row.sms_state === 'unknown' ? 'delivery_unconfirmed' : null,
+          queuedAt: iso(row.sms_created_at),
         }
       : null,
     version: row.version,
@@ -409,6 +429,9 @@ export class DriverService {
         pinVersion: number | null = null;
       const commandId = randomUUID();
       const wantsEmail = secretOperation(op) && body.emailInstructions === true;
+      const wantsSms = secretOperation(op) && body.smsInstructions === true;
+      if (wantsEmail && wantsSms)
+        fail(400, 'choose_delivery_channel', 'Choose SMS or email, not both.');
       const temporaryUntil = new Date(now.getTime() + TEMPORARY_PIN_HOURS * 3600000);
       if (create) {
         const name = String(body.name).trim();
@@ -473,7 +496,8 @@ export class DriverService {
           sets.push(`${column}=$${values.length}`);
         }
         const oldUser = driver!.user_id,
-          oldEmail = driver!.email;
+          oldEmail = driver!.email,
+          oldPhone = driver!.phone;
         driver = (
           await client.query<Row>(
             `UPDATE app.drivers SET ${sets.join(',')},version=version+1,updated_at=clock_timestamp() WHERE id=$1 RETURNING *`,
@@ -489,6 +513,11 @@ export class DriverService {
           (driver.archived_at || oldUser !== driver.user_id || oldEmail !== driver.email)
         )
           await cancelCredentialMail(client, oldUser);
+        if (
+          oldUser &&
+          (driver.archived_at || oldUser !== driver.user_id || oldPhone !== driver.phone)
+        )
+          await cancelCredentialSms(client, oldUser);
         response = success(
           200,
           { data: view(await opsDriver(client, driver.id)) },
@@ -513,6 +542,23 @@ export class DriverService {
               503,
               'email_unavailable',
               'Email delivery is not configured here. Issue without email and give the driver the details another way.',
+            );
+        }
+        if (wantsSms) {
+          try {
+            ghanaPhone(driver!.phone ?? '');
+          } catch (_) {
+            fail(
+              409,
+              'driver_phone_missing',
+              'Add a valid Ghana mobile number before sending SMS instructions.',
+            );
+          }
+          if (!this.options.sms)
+            fail(
+              503,
+              'sms_unavailable',
+              'SMS delivery is not configured here. Choose email or show the details once.',
             );
         }
         if (op === 'issueDriverCredential') {
@@ -579,6 +625,20 @@ export class DriverService {
                   pinVersion: credential.pin_version,
                   expiresAt: temporaryUntil,
                 }),
+                sms: await this.mail(
+                  client,
+                  wantsSms,
+                  'driver_credentials_issued',
+                  {
+                    driver: driver!,
+                    commandId,
+                    code: credential.driver_code,
+                    pin,
+                    pinVersion: credential.pin_version,
+                    expiresAt: temporaryUntil,
+                  },
+                  'sms',
+                ),
               },
             },
             { Location: `/v1/ops/drivers/${driver!.id}/credentials` },
@@ -598,7 +658,10 @@ export class DriverService {
                 'UPDATE app.driver_credentials SET status=$2,updated_at=$3 WHERE driver_id=$1',
                 [driver!.id, body.action === 'suspend' ? 'suspended' : 'active', now],
               );
-              if (body.action === 'suspend') await this.revoke(client, driver!.user_id, now);
+              if (body.action === 'suspend') {
+                await this.revoke(client, driver!.user_id, now);
+                await cancelCredentialSms(client, driver!.user_id);
+              }
             }
             response = success();
           } else {
@@ -677,6 +740,7 @@ export class DriverService {
             // Whatever credential mail is still waiting now describes a PIN
             // that no longer works.
             await cancelCredentialMail(client, driver!.user_id);
+            await cancelCredentialSms(client, driver!.user_id);
             if (op === 'resetDriverPin') {
               pinVersion = credential.pin_version;
               response = success(200, {
@@ -692,6 +756,20 @@ export class DriverService {
                     pinVersion: credential.pin_version,
                     expiresAt: temporaryUntil,
                   }),
+                  sms: await this.mail(
+                    client,
+                    wantsSms,
+                    'driver_pin_reset',
+                    {
+                      driver: driver!,
+                      commandId,
+                      code: credential.driver_code,
+                      pin,
+                      pinVersion: credential.pin_version,
+                      expiresAt: temporaryUntil,
+                    },
+                    'sms',
+                  ),
                 },
               });
             } else response = success();
@@ -741,6 +819,10 @@ export class DriverService {
       ?.email?.id;
     if (queued && this.options.email?.sendQueued)
       void this.options.email.sendQueued(queued).catch(() => undefined);
+    const sms = (output.body as { data?: { sms?: { id?: string } | null } } | undefined)?.data?.sms
+      ?.id;
+    if (sms && this.options.sms?.sendQueued)
+      void this.options.sms.sendQueued(sms).catch(() => undefined);
     return output;
   }
   /**
@@ -760,21 +842,24 @@ export class DriverService {
       pinVersion: number;
       expiresAt: Date;
     },
+    channel: 'email' | 'sms' = 'email',
   ) {
     if (!wanted) return null;
-    const id = await this.options.email!.queueCredential(client, {
+    const to = channel === 'sms' ? ghanaPhone(input.driver.phone!) : input.driver.email!;
+    const sender = channel === 'sms' ? this.options.sms! : this.options.email!;
+    const id = await sender.queueCredential(client, {
       kind,
       userId: input.driver.user_id!,
       driverId: input.driver.id,
       commandId: input.commandId,
-      to: input.driver.email!,
+      to,
       name: input.driver.name,
       code: input.code,
       pin: input.pin,
       pinVersion: input.pinVersion,
       expiresAt: input.expiresAt,
     });
-    return { id, to: input.driver.email!, state: 'queued' as const };
+    return { id, to, state: 'queued' as const };
   }
   private async revoke(client: PoolClient, userId: string, now: Date) {
     await client.query(

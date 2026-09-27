@@ -68,7 +68,7 @@ describe('Driver onboarding in Fleet', () => {
   });
 
   it('creates a driver, issues sign-in details and emails them without keeping the PIN', async () => {
-    const created = driver();
+    const created = driver({ phone: null });
     client.POST.mockImplementation(async (path: string) =>
       path === '/v1/ops/drivers' ? { data: { data: created } } : { data: { data: secret } },
     );
@@ -97,7 +97,7 @@ describe('Driver onboarding in Fleet', () => {
   });
 
   it('retries only the failed onboarding step, with the same keys, never a second driver', async () => {
-    const created = driver();
+    const created = driver({ phone: null });
     let issueAttempts = 0;
     client.POST.mockImplementation(async (path: string) => {
       if (path === '/v1/ops/drivers') return { data: { data: created } };
@@ -134,6 +134,7 @@ describe('Driver onboarding in Fleet', () => {
   it('resets with an audit reason and emails the new PIN to the driver on file', async () => {
     register = [
       driver({
+        phone: null,
         userId: 'user-1',
         credential: {
           driverCode: 'DR-7K9Q',
@@ -147,9 +148,9 @@ describe('Driver onboarding in Fleet', () => {
     client.POST.mockResolvedValue({ data: { data: { ...secret, pin: '905113' } } });
     show();
     fireEvent.click(await screen.findByRole('button', { name: 'Manage' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Reset PIN and email instructions' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Reset PIN and send instructions' }));
     expect(
-      within(dialog()).getByText(/any earlier sign-in email still waiting is cancelled/),
+      within(dialog()).getByText(/any earlier sign-in message still waiting is cancelled/),
     ).toBeInTheDocument();
     fireEvent.change(field(/Reason/), {
       target: { value: 'Driver forgot PIN, confirmed by phone' },
@@ -166,7 +167,7 @@ describe('Driver onboarding in Fleet', () => {
   });
 
   it('shows a PIN given out by hand once, with its expiry, when there is no email', async () => {
-    register = [driver({ email: null })];
+    register = [driver({ email: null, phone: null })];
     client.POST.mockResolvedValue({ data: { data: { ...secret, email: null } } });
     show();
     fireEvent.click(await screen.findByRole('button', { name: 'Manage' }));
@@ -177,6 +178,42 @@ describe('Driver onboarding in Fleet', () => {
     expect(client.POST.mock.calls[0]![1].body).toEqual({});
     fireEvent.click(screen.getByRole('button', { name: 'Dismiss' }));
     await waitFor(() => expect(document.body.textContent).not.toContain(secret.pin));
+  });
+
+  it('defaults to SMS for a driver with a phone, without displaying the temporary PIN', async () => {
+    register = [driver({ email: null })];
+    client.POST.mockResolvedValue({
+      data: {
+        data: {
+          ...secret,
+          email: null,
+          sms: { id: 'sms-1', to: '+233200000001', state: 'queued' },
+        },
+      },
+    });
+    show();
+    fireEvent.click(await screen.findByRole('button', { name: 'Manage' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Issue sign-in details' }));
+    expect(within(dialog()).getByLabelText(/SMS the driver code/)).toBeChecked();
+    fireEvent.click(within(dialog()).getByRole('button', { name: 'Apply' }));
+    await screen.findByText(/queued for SMS to/);
+    expect(client.POST.mock.calls[0]![1].body).toEqual({ smsInstructions: true });
+    expect(document.body.textContent).not.toContain(secret.pin);
+  });
+
+  it('lets Ops choose email instead when both contacts exist', async () => {
+    register = [driver()];
+    client.POST.mockResolvedValue({ data: { data: secret } });
+    show();
+    fireEvent.click(await screen.findByRole('button', { name: 'Manage' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Issue sign-in details' }));
+    expect(within(dialog()).getByLabelText(/SMS the driver code/)).toBeChecked();
+    fireEvent.change(within(dialog()).getByLabelText('Instruction delivery'), {
+      target: { value: 'email' },
+    });
+    fireEvent.click(within(dialog()).getByRole('button', { name: 'Apply' }));
+    await screen.findByText(/queued for email/);
+    expect(client.POST.mock.calls[0]![1].body).toEqual({ emailInstructions: true });
   });
 
   it('describes delivery honestly: queued is not sent, accepted is not delivered', () => {

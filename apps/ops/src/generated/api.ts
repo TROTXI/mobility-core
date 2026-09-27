@@ -2482,6 +2482,7 @@ export interface components {
     CredentialIssue: {
       code?: string;
       emailInstructions?: boolean;
+      smsInstructions?: boolean;
     };
     CredentialSecret: {
       code: string;
@@ -2491,6 +2492,12 @@ export interface components {
       email: {
         id: string;
         /** Format: email */
+        to: string;
+        /** @enum {string} */
+        state: 'queued';
+      } | null;
+      sms?: {
+        id: string;
         to: string;
         /** @enum {string} */
         state: 'queued';
@@ -2572,6 +2579,15 @@ export interface components {
         purpose: 'onboarding' | 'pin_reset';
         /** @enum {string} */
         state: 'queued' | 'provider_accepted' | 'cancelled' | 'failed' | 'unknown';
+        failureCode: string | null;
+        /** Format: date-time */
+        queuedAt: string;
+      } | null;
+      credentialSms?: {
+        /** @enum {string} */
+        purpose: 'onboarding' | 'pin_reset';
+        /** @enum {string} */
+        state: 'queued' | 'sending' | 'provider_accepted' | 'cancelled' | 'unknown';
         failureCode: string | null;
         /** Format: date-time */
         queuedAt: string;
@@ -3651,6 +3667,7 @@ export interface components {
     PinResetInput: {
       reason: string;
       emailInstructions?: boolean;
+      smsInstructions?: boolean;
     };
     PlanPricing: {
       /** @enum {string} */
