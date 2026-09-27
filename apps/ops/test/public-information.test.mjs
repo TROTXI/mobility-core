@@ -26,17 +26,33 @@ describe('public privacy and deletion pages', () => {
       expect(doc.querySelectorAll('script, iframe, form')).toHaveLength(0);
       expect(doc.querySelector('link[rel="stylesheet"]')?.getAttribute('href')).toBe('./legal.css');
       expect(html).not.toContain('minokuda55@gmail.com');
-      expect(doc.querySelector('a[href="./privacy.html"]')).not.toBeNull();
-      expect(doc.querySelector('a[href="./delete-account.html"]')).not.toBeNull();
+      expect(doc.querySelector('a[href="./privacy"]')).not.toBeNull();
+      expect(doc.querySelector('a[href="./delete-account"]')).not.toBeNull();
       for (const link of doc.querySelectorAll('a[href^="./"]')) {
         const href = link.getAttribute('href');
-        expect(new URL(href, 'file:///preview/privacy.html').pathname).toMatch(/^\/preview\//);
-        expect(new URL(href, 'https://example.com/privacy.html').origin).toBe(
-          'https://example.com',
-        );
+        for (const path of [
+          '/privacy',
+          '/delete-account',
+          '/privacy.html',
+          '/delete-account.html',
+        ]) {
+          const target = new URL(href, `https://example.com${path}`);
+          expect(target.origin).toBe('https://example.com');
+          expect(['/privacy', '/delete-account']).toContain(target.pathname);
+        }
       }
     });
   }
+  it('routes clean URLs to static pages before the Ops fallback and shares them with both apps', () => {
+    const blueprint = readFileSync('../../render.yaml', 'utf8');
+    expect(blueprint).toMatch(
+      /routes:\s+- type: rewrite\s+source: \/privacy\s+destination: \/privacy\.html\s+- type: rewrite\s+source: \/delete-account\s+destination: \/delete-account\.html\s+- type: rewrite\s+source: \/\*\s+destination: \/index\.html/,
+    );
+    const sharedLinks = readFileSync('../trotxi_client/lib/public_information.dart', 'utf8');
+    expect(sharedLinks).toContain("'https://trotxi-ops-staging.onrender.com/privacy'");
+    expect(sharedLinks).toContain("'https://trotxi-ops-staging.onrender.com/delete-account'");
+    expect(sharedLinks).not.toContain('.html');
+  });
   it('does not promise automatic deletion or universal retention', () => {
     const html = readFileSync('public/delete-account.html', 'utf8');
     expect(html).toContain('we verify identity first');

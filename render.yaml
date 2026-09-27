@@ -354,6 +354,12 @@ services:
         value: nosniff
     routes:
       - type: rewrite
+        source: /privacy
+        destination: /privacy.html
+      - type: rewrite
+        source: /delete-account
+        destination: /delete-account.html
+      - type: rewrite
         source: /*
         destination: /index.html
 

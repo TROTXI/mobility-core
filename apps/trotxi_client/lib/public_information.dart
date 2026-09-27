@@ -4,9 +4,9 @@
 class TrotxiPublicInformation {
   TrotxiPublicInformation._();
   static final privacy = Uri.parse(
-    'https://trotxi-ops-staging.onrender.com/privacy.html',
+    'https://trotxi-ops-staging.onrender.com/privacy',
   );
   static final deletion = Uri.parse(
-    'https://trotxi-ops-staging.onrender.com/delete-account.html',
+    'https://trotxi-ops-staging.onrender.com/delete-account',
   );
 }
