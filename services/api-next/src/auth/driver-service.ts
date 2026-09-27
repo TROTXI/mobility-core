@@ -734,6 +734,13 @@ export class DriverService {
     });
     // Authentication failures with durable counters commit, but occupy no receipt.
     if (output instanceof TransportError) throw output;
+    // The credential and its email are committed. Send it now rather than at
+    // the next worker run; the worker still retries anything this misses.
+    // Not awaited: operations does not wait on the email provider.
+    const queued = (output.body as { data?: { email?: { id?: string } | null } } | undefined)?.data
+      ?.email?.id;
+    if (queued && this.options.email?.sendQueued)
+      void this.options.email.sendQueued(queued).catch(() => undefined);
     return output;
   }
   /**

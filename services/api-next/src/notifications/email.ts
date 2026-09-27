@@ -43,6 +43,11 @@ export interface CredentialMail {
  */
 export interface DriverCredentialEmail {
   queueCredential(c: PoolClient, mail: CredentialMail): Promise<string>;
+  /**
+   * Try one queued message now, after its transaction has committed. The
+   * same checks and retries as the worker apply; a failure leaves it queued.
+   */
+  sendQueued?(id: string): Promise<void>;
 }
 /**
  * Any credential message still waiting describes a PIN that is about to stop
@@ -287,7 +292,17 @@ export class TransactionalEmail {
     if (!Number.isInteger(limit) || limit < 1 || limit > 100)
       throw new Error('Email batch must be between 1 and 100');
   }
-  async drain(limit = 100): Promise<EmailStats> {
+  /**
+   * Deliver one message as soon as the transaction that queued it has
+   * committed, instead of waiting for the next worker run. It goes through
+   * the same claim, recheck and retry path as the worker, so a message that
+   * became stale in the meantime is cancelled, and one the provider refuses
+   * for now stays queued for the worker.
+   */
+  sendQueued = async (id: string): Promise<void> => {
+    await this.drain(1, id);
+  };
+  async drain(limit = 100, only?: string): Promise<EmailStats> {
     this.bound(limit);
     const stats: EmailStats = {
       considered: 0,
@@ -304,14 +319,14 @@ export class TransactionalEmail {
       const row = (
         await this.options.pool.query(
           `WITH candidate AS (
-        SELECT id FROM app.email_outbox WHERE state='pending'
+        SELECT id FROM app.email_outbox WHERE state='pending' AND ($2::uuid IS NULL OR id=$2)
           AND (next_attempt_at<=clock_timestamp() OR expires_at<=clock_timestamp())
           AND (lease_until IS NULL OR lease_until<clock_timestamp())
         ORDER BY next_attempt_at,created_at,id FOR UPDATE SKIP LOCKED LIMIT 1)
         UPDATE app.email_outbox e SET claim_id=$1,lease_until=clock_timestamp()+interval '1 minute',
           first_attempt_at=COALESCE(first_attempt_at,clock_timestamp())
         FROM candidate c WHERE e.id=c.id RETURNING e.*`,
-          [claimId],
+          [claimId, only ?? null],
         )
       ).rows[0];
       if (!row) break;

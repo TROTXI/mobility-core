@@ -12,14 +12,14 @@ sequenceDiagram
   participant Ops as Ops website (Fleet → Drivers)
   participant API as api-next
   participant DB as Postgres
-  participant W as worker emails
+  participant W as email sender (API, then worker)
   participant R as Resend
   participant D as Driver app
 
   Ops->>API: POST /v1/ops/drivers {name, phone, email}
   Ops->>API: POST /v1/ops/drivers/{id}/credentials {emailInstructions: true}
   API->>DB: one transaction: credential (temporary PIN hash, expiry),<br/>receipt, audit event, encrypted outbox row
-  W->>DB: claim pending email, recheck credential version, driver and address
+  W->>DB: right after commit: claim the email, recheck credential version, driver and address
   W->>R: send (idempotency key trotxi-email/{id})
   R-->>D: email: driver code + temporary PIN
   D->>API: POST /v1/auth/driver {code, pin}
@@ -124,10 +124,18 @@ an address that has since changed.
   anywhere to point at, and the app's own "Forgot PIN?" page shows the
   operator contact from `/flags`.
 
-## Running the email worker
+## When the email goes out
 
-Nothing sends email until the worker runs. It is not scheduled anywhere yet,
-and no paid scheduled job is enabled by this change.
+Straight away, in the normal case. Once the issue or reset has committed, the
+API sends that one message in the background; operations does not wait for
+it. It goes through the same claim, recheck and retry path as the worker, so a
+message made obsolete in the meantime is cancelled rather than sent.
+
+The email worker is the safety net for anything that first attempt misses:
+Resend unavailable, a timeout, or the API restarting mid-send. Those stay
+queued with their retry time. The worker is not scheduled anywhere yet, and no
+paid scheduled job is enabled by this change, so until it is, a missed send
+waits for a manual run:
 
 ```sh
 node dist/worker.js emails

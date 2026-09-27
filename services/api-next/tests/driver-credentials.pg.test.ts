@@ -101,6 +101,7 @@ async function setup(
   authBudget = 1000,
   providers: Partial<Pick<AuthOptions, 'google' | 'apple'>> = {},
   emailEnabled = true,
+  sendImmediately = false,
 ) {
   const n = ++serial,
     name = `trotxi_harness_${run}_driver_${n}`,
@@ -166,7 +167,13 @@ async function setup(
     },
   });
   const app = await createReplacementApp({
-    ...(emailEnabled ? { driverEmail: email } : {}),
+    // Queue-only by default, so tests drive the worker explicitly and can
+    // observe a message while it waits. Production also sends right away.
+    ...(emailEnabled
+      ? {
+          driverEmail: sendImmediately ? email : { queueCredential: email.queueCredential },
+        }
+      : {}),
     credentialReplayKey: Buffer.alloc(32, 9),
     pool: runtime,
     cursorSecret: Buffer.alloc(32, 6),
@@ -253,8 +260,8 @@ const data = (response: { statusCode: number; body: string; json(): any }, statu
   return status === 204 ? undefined : response.json().data;
 };
 
-async function fixture(t: TestContext, emailEnabled = true) {
-  const f = await setup(t, 1000, {}, emailEnabled),
+async function fixture(t: TestContext, emailEnabled = true, sendImmediately = false) {
+  const f = await setup(t, 1000, {}, emailEnabled, sendImmediately),
     ops = await f.sign('operator');
   await f.owner.query("UPDATE app.users SET role='admin' WHERE id=$1", [ops.account.id]);
   // A verified operator. The second factor itself is tested in auth.pg.test.ts;
@@ -1417,4 +1424,44 @@ test('DRV-39: upgrading to 029 keeps drivers and PINs, and gives outstanding tem
   assert.equal(rows[1].pin_hash, 'b'.repeat(64));
   assert.equal(rows[1].temporary_pin_expires_at, null);
   assert.equal((await owner.query('SELECT count(*)::int AS n FROM app.drivers')).rows[0].n, 2);
+});
+
+test('DRV-40: the credential email is sent straight after the issue commits, without the worker', async (t) => {
+  const f = await fixture(t, true, true),
+    driver = await f.create({ name: 'Now Driver', email: 'now.driver@example.test' });
+  const secret = data(await f.issue(driver.id, randomUUID(), { emailInstructions: true }), 201);
+  assert.equal(secret.email.state, 'queued', 'the response still says queued, not sent');
+  // Sent in the background once the transaction committed; no worker run.
+  const end = Date.now() + 5000;
+  while (!f.sent.length && Date.now() < end) await delay(20);
+  assert.equal(f.sent.length, 1);
+  assert.ok(f.sent[0]!.message.text.includes(`Temporary PIN: ${secret.pin}`));
+  const [row] = (
+    await f.owner.query(
+      "SELECT id,state FROM app.email_outbox WHERE kind='driver_credentials_issued'",
+    )
+  ).rows;
+  assert.equal(row.state, 'accepted');
+  assert.equal(f.sent[0]!.key, `trotxi-email/${row.id}`);
+  // The worker finds nothing left to do, so nothing is sent twice.
+  assert.equal((await f.email.drain(10)).considered, 0);
+  assert.equal(f.sent.length, 1);
+
+  // A provider failure leaves it queued for the worker, with the same key.
+  const other = await f.create({ name: 'Later Driver', email: 'later.driver@example.test' });
+  f.mailer.failNext = new EmailSendError(true);
+  data(await f.issue(other.id, randomUUID(), { emailInstructions: true }), 201);
+  const waitFor = Date.now() + 5000;
+  let pending;
+  while (Date.now() < waitFor) {
+    pending = (
+      await f.owner.query(
+        "SELECT state,attempts FROM app.email_outbox WHERE kind='driver_credentials_issued' ORDER BY created_at DESC LIMIT 1",
+      )
+    ).rows[0];
+    if (pending.attempts > 0) break;
+    await delay(20);
+  }
+  assert.equal(pending.state, 'pending', 'still queued after a failed first attempt');
+  assert.equal(f.sent.length, 1);
 });
