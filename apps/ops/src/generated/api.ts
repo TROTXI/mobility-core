@@ -2587,7 +2587,7 @@ export interface components {
         /** @enum {string} */
         purpose: 'onboarding' | 'pin_reset';
         /** @enum {string} */
-        state: 'queued' | 'sending' | 'provider_accepted' | 'cancelled' | 'unknown';
+        state: 'queued' | 'sending' | 'provider_accepted' | 'cancelled' | 'failed' | 'unknown';
         failureCode: string | null;
         /** Format: date-time */
         queuedAt: string;

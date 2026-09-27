@@ -280,7 +280,7 @@ export function Fleet({ view = 'drivers' }: { view?: 'drivers' | 'vehicles' }) {
               label="Sign-in SMS"
               value={
                 selectedDriver.credentialSms
-                  ? `${selectedDriver.credentialSms.purpose === 'pin_reset' ? 'PIN reset' : 'Onboarding'}: ${{ queued: 'Waiting to send', sending: 'Sending', provider_accepted: 'Accepted by SMS provider', cancelled: 'Cancelled', unknown: 'Delivery unconfirmed—reset PIN rather than resend' }[selectedDriver.credentialSms.state]}`
+                  ? `${selectedDriver.credentialSms.purpose === 'pin_reset' ? 'PIN reset' : 'Onboarding'}: ${{ queued: 'Waiting to send', sending: 'Sending', provider_accepted: 'Accepted by SMS provider', cancelled: 'Cancelled', failed: 'Provider rejected—check SMS setup and reset PIN', unknown: 'Delivery unconfirmed—reset PIN rather than resend' }[selectedDriver.credentialSms.state]}`
                   : 'None sent'
               }
             />

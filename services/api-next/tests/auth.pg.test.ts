@@ -12,6 +12,7 @@ import { createReplacementApp } from '../src/http/replacement.js';
 import { AuthService } from '../src/auth/service.js';
 import { PhoneOtp } from '../src/auth/phone-otp.js';
 import type { SmsSender } from '../src/notifications/mnotify.js';
+import { SmsSendError } from '../src/notifications/mnotify.js';
 import type { AuthOptions } from '../src/auth/service.js';
 import { GoogleIdTokenVerifier } from '../src/auth/id-token-verifier.google.js';
 import { AppleIdTokenVerifier } from '../src/auth/id-token-verifier.apple.js';
@@ -291,6 +292,97 @@ test('PHONE-03: expired, uncertain-send and wrong-client challenges cannot sign 
   );
 });
 
+test('PHONE-05: rolling source budget is shared, atomic and cannot trust a caller forwarding header', async (t) => {
+  let sends = 0;
+  const f = await setup(
+    t,
+    1000,
+    {},
+    {
+      send: async () => {
+        sends++;
+        return 'provider-receipt';
+      },
+    },
+  );
+  const first = await f.request('POST', '/v1/auth/phone/request', { phone: '0241000001' });
+  assert.equal(first.statusCode, 200, first.body);
+  const row = (await f.owner.query('SELECT * FROM app.phone_otp_challenges')).rows[0];
+  assert.ok(!JSON.stringify(row).includes('127.0.0.1'));
+  // Forty-nine charged attempts on this source. The last two requests really
+  // contend through the HTTP/service path, not through a fake budget callback.
+  await f.owner.query(
+    `INSERT INTO app.phone_otp_challenges(id,phone_hash,source_hash,created_at,expires_at,state)
+    SELECT gen_random_uuid(),repeat(md5(n::text),2),$1,statement_timestamp(),statement_timestamp()+interval '5 minutes','failed'
+    FROM generate_series(1,48) n`,
+    [row.source_hash],
+  );
+  const results = await Promise.all(
+    ['0241000002', '0241000003'].map((phone) =>
+      f.request('POST', '/v1/auth/phone/request', { phone }),
+    ),
+  );
+  assert.deepEqual(results.map((res) => res.statusCode).sort(), [200, 429]);
+  assert.equal(
+    results.find((res) => res.statusCode === 429)!.json().error.code,
+    'phone_source_limited',
+  );
+  assert.equal(sends, 2);
+  const forged = await f.request(
+    'POST',
+    '/v1/auth/phone/request',
+    { phone: '0241000004' },
+    undefined,
+    { 'x-forwarded-for': '192.0.2.99' },
+  );
+  assert.equal(forged.statusCode, 429);
+  const other = await f.request(
+    'POST',
+    '/v1/auth/phone/request',
+    { phone: '0241000005' },
+    undefined,
+    {},
+    '192.0.2.10',
+  );
+  assert.equal(other.statusCode, 200, other.body);
+  assert.equal(sends, 3);
+  await assert.rejects(
+    f.owner.query("UPDATE app.phone_otp_challenges SET source_hash=repeat('a',64)"),
+    /phone_otp_immutable/,
+  );
+});
+
+test('PHONE-06: landlines spend no SMS budget; explicit rejection has a safe, distinct error', async (t) => {
+  let sends = 0;
+  const f = await setup(
+    t,
+    1000,
+    {},
+    {
+      send: async () => {
+        sends++;
+        throw new SmsSendError('rejected');
+      },
+    },
+  );
+  const landline = await f.request('POST', '/v1/auth/phone/request', { phone: '0301234567' });
+  assert.equal(landline.statusCode, 400);
+  assert.equal(landline.json().error.code, 'invalid_phone');
+  assert.equal(
+    (await f.owner.query('SELECT count(*)::int AS n FROM app.phone_otp_challenges')).rows[0].n,
+    0,
+  );
+  assert.equal(sends, 0);
+  const rejected = await f.request('POST', '/v1/auth/phone/request', { phone: '0241000006' });
+  assert.equal(rejected.statusCode, 503, rejected.body);
+  assert.equal(rejected.json().error.code, 'sms_delivery_rejected');
+  assert.equal(sends, 1);
+  const row = (await f.owner.query('SELECT * FROM app.phone_otp_challenges')).rows[0];
+  assert.equal(row.state, 'failed');
+  assert.equal(row.code_hash, null);
+  assert.equal(row.phone_ciphertext, null);
+});
+
 test('PHONE-04: concurrent verification consumes once; later OTP reopens the same phone account', async (t) => {
   let code = '';
   const { owner, runtime, request } = await setup(
@@ -426,10 +518,12 @@ async function setup(
     body?: unknown,
     token?: string,
     headers: Record<string, string> = {},
+    remoteAddress = '127.0.0.1',
   ) {
     return app.inject({
       method,
       url: path,
+      remoteAddress,
       ...(body !== undefined ? { payload: body as object } : {}),
       headers: {
         'x-trotxi-client': path === '/v1/auth/driver' ? 'driver' : 'commuter',

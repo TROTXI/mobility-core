@@ -23158,7 +23158,7 @@
               },
               "state": {
                 "type": "string",
-                "enum": ["queued", "sending", "provider_accepted", "cancelled", "unknown"]
+                "enum": ["queued", "sending", "provider_accepted", "cancelled", "failed", "unknown"]
               },
               "failureCode": {
                 "nullable": true,
@@ -23499,7 +23499,7 @@
               },
               "to": {
                 "type": "string",
-                "pattern": "^\\+233[235]\\d{8}$"
+                "pattern": "^\\+233[25]\\d{8}$"
               },
               "state": {
                 "type": "string",

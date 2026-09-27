@@ -2,7 +2,7 @@ import { createCipheriv, createDecipheriv, hkdfSync, randomBytes, randomUUID } f
 import type { Pool, PoolClient } from 'pg';
 import { z } from 'zod';
 import type { CredentialMail, DriverCredentialEmail } from './email.js';
-import { ghanaPhone, type SmsSender } from './mnotify.js';
+import { ghanaPhone, SmsSendError, type SmsSender } from './mnotify.js';
 
 const payloadSchema = z.strictObject({ phone: z.string(), text: z.string().max(1600) });
 export async function cancelCredentialSms(c: PoolClient, userId: string): Promise<void> {
@@ -111,8 +111,10 @@ export class DriverSms implements DriverCredentialEmail {
         else {
           try {
             await finish('accepted', await this.sender.send(payload.phone, payload.text, false));
-          } catch (_) {
-            await finish('unknown');
+          } catch (error) {
+            await finish(
+              error instanceof SmsSendError && error.outcome === 'rejected' ? 'failed' : 'unknown',
+            );
           }
         }
       }
@@ -153,7 +155,7 @@ export class DriverSms implements DriverCredentialEmail {
       accepted: counts.accepted ?? 0,
       cancelled: counts.cancelled ?? 0,
       unknown: (counts.unknown ?? 0) + (reaped.rowCount ?? 0),
-      failed: 0,
+      failed: counts.failed ?? 0,
       retried: 0,
     };
   }

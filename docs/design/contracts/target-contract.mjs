@@ -896,7 +896,7 @@ named(
     }).nullable(),
     credentialSms: obj({
       purpose: z.enum(['onboarding', 'pin_reset']),
-      state: z.enum(['queued', 'sending', 'provider_accepted', 'cancelled', 'unknown']),
+      state: z.enum(['queued', 'sending', 'provider_accepted', 'cancelled', 'failed', 'unknown']),
       failureCode: text(100).nullable(),
       queuedAt: instant,
     })
@@ -972,7 +972,7 @@ named(
     temporaryPinExpiresAt: instant,
     // Present when email was requested: the message is queued, not yet sent.
     email: obj({ id, to: driverEmail, state: z.enum(['queued']) }).nullable(),
-    sms: obj({ id, to: z.string().regex(/^\+233[235]\d{8}$/), state: z.enum(['queued']) })
+    sms: obj({ id, to: z.string().regex(/^\+233[25]\d{8}$/), state: z.enum(['queued']) })
       .nullable()
       .optional(),
   }),

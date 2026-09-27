@@ -758,12 +758,13 @@ export class AuthService {
     query: Record<string, string | undefined>,
     target: string | undefined,
     key: string | undefined,
+    sourceIp?: string,
   ) {
     if (name === 'requestPhoneSignIn' || name === 'verifyPhoneSignIn') {
       if (!this.options.phoneOtp)
         fail(503, 'phone_signin_unavailable', 'Phone sign-in is not configured yet.');
       if (name === 'requestPhoneSignIn')
-        return result(await this.options.phoneOtp.request(body.phone));
+        return result(await this.options.phoneOtp.request(body.phone, sourceIp ?? ''));
       const tokens = await this.transaction(async (client) => {
         const userId = await this.options.phoneOtp!.verify(client, body.challengeId, body.code);
         if (!userId) return null;

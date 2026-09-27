@@ -5,6 +5,7 @@ ALTER TABLE app.auth_identities ADD CONSTRAINT auth_identities_provider_check
 CREATE TABLE app.phone_otp_challenges (
   id uuid PRIMARY KEY,
   phone_hash text NOT NULL CHECK (phone_hash ~ '^[a-f0-9]{64}$'),
+  source_hash text NOT NULL CHECK (source_hash ~ '^[a-f0-9]{64}$'),
   phone_ciphertext text,
   code_hash text CHECK (code_hash ~ '^[a-f0-9]{64}$'),
   created_at timestamptz NOT NULL DEFAULT clock_timestamp(),
@@ -15,10 +16,11 @@ CREATE TABLE app.phone_otp_challenges (
   CHECK (expires_at > created_at AND expires_at <= created_at + interval '5 minutes')
 );
 CREATE INDEX phone_otp_rate ON app.phone_otp_challenges(phone_hash,created_at DESC);
+CREATE INDEX phone_otp_source_rate ON app.phone_otp_challenges(source_hash,created_at DESC);
 CREATE FUNCTION app.guard_phone_otp_update() RETURNS trigger LANGUAGE plpgsql AS $$
 BEGIN
-  IF ROW(NEW.id,NEW.phone_hash,NEW.created_at,NEW.expires_at)
-       IS DISTINCT FROM ROW(OLD.id,OLD.phone_hash,OLD.created_at,OLD.expires_at)
+  IF ROW(NEW.id,NEW.phone_hash,NEW.source_hash,NEW.created_at,NEW.expires_at)
+       IS DISTINCT FROM ROW(OLD.id,OLD.phone_hash,OLD.source_hash,OLD.created_at,OLD.expires_at)
      OR NEW.attempts NOT IN (OLD.attempts,OLD.attempts+1)
      OR (NEW.attempts <> OLD.attempts AND (OLD.state <> 'sent' OR OLD.attempts >= 5))
      OR (NEW.code_hash IS NOT NULL AND NEW.code_hash IS DISTINCT FROM OLD.code_hash)

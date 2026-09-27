@@ -872,6 +872,7 @@ export async function createTransportApp(options: AppOptions) {
               query,
               (request.params as { id?: string }).id,
               key,
+              request.ip,
             );
           } else if (method === 'get') {
             const query = request.query as Record<string, string | undefined>;

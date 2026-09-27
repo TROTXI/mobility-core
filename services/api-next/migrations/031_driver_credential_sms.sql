@@ -8,7 +8,7 @@ CREATE TABLE app.driver_sms_outbox (
   created_at timestamptz NOT NULL DEFAULT clock_timestamp(),
   expires_at timestamptz NOT NULL,
   payload_ciphertext text,
-  state text NOT NULL DEFAULT 'pending' CHECK (state IN ('pending','sending','accepted','cancelled','unknown')),
+  state text NOT NULL DEFAULT 'pending' CHECK (state IN ('pending','sending','accepted','cancelled','failed','unknown')),
   claimed_at timestamptz,
   provider_id text,
   CHECK (expires_at>created_at),
@@ -22,8 +22,8 @@ BEGIN
      OR (NEW.payload_ciphertext IS NOT NULL AND NEW.payload_ciphertext IS DISTINCT FROM OLD.payload_ciphertext)
      OR (OLD.claimed_at IS NOT NULL AND NEW.claimed_at IS DISTINCT FROM OLD.claimed_at)
      OR (OLD.state='pending' AND NEW.state NOT IN ('sending','cancelled'))
-     OR (OLD.state='sending' AND NEW.state NOT IN ('accepted','cancelled','unknown'))
-     OR (OLD.state IN ('accepted','cancelled','unknown') AND NEW IS DISTINCT FROM OLD)
+     OR (OLD.state='sending' AND NEW.state NOT IN ('accepted','cancelled','failed','unknown'))
+     OR (OLD.state IN ('accepted','cancelled','failed','unknown') AND NEW IS DISTINCT FROM OLD)
      OR (NEW.state='sending' AND NEW.claimed_at IS NULL)
      OR (NEW.provider_id IS NOT NULL AND NEW.state <> 'accepted') THEN
     RAISE EXCEPTION 'driver_sms_immutable' USING ERRCODE='23514';

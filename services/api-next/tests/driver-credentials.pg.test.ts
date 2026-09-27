@@ -18,6 +18,7 @@ import { hashToken } from '../src/auth/credentials.js';
 import { TransportError } from '../src/transport/errors.js';
 import { TransactionalEmail } from '../src/notifications/email.js';
 import { DriverSms } from '../src/notifications/driver-sms.js';
+import { SmsSendError } from '../src/notifications/mnotify.js';
 import { EmailSendError } from '../src/notifications/resend.js';
 import type { EmailMessage } from '../src/notifications/resend.js';
 import { grantRuntime, migrate, readMigrations } from '../src/db/migrate.js';
@@ -169,12 +170,13 @@ async function setup(
     },
   });
   const smsSent: { phone: string; text: string }[] = [];
-  const smsControl = { fail: false };
+  const smsControl = { fail: false, reject: false };
   const sms = new DriverSms(
     runtime,
     {
       send: async (phone, text) => {
         smsSent.push({ phone, text });
+        if (smsControl.reject) throw new SmsSendError('rejected');
         if (smsControl.fail) throw new Error('Unconfirmed SMS response');
         return 'sms-provider-receipt';
       },
@@ -1527,6 +1529,24 @@ test('SMS-03: uncertain delivery is scrubbed and never blindly retried', async (
   assert.equal(row.payload_ciphertext, null);
   const listed = data(await f.call('GET', '/v1/ops/drivers'))[0];
   assert.equal(listed.credentialSms.state, 'unknown');
+});
+
+test('SMS-08: explicit provider rejection is a known, scrubbed failure, not unknown delivery', async (t) => {
+  const f = await fixture(t),
+    driver = await f.create({ name: 'Rejected SMS', phone: '0200000009' });
+  data(await f.issue(driver.id, randomUUID(), { smsInstructions: true }), 201);
+  f.smsControl.reject = true;
+  const stats = await f.sms.drain();
+  assert.equal(stats.failed, 1);
+  assert.equal(stats.unknown, 0);
+  assert.equal(f.smsSent.length, 1);
+  const row = (await f.owner.query('SELECT state,payload_ciphertext FROM app.driver_sms_outbox'))
+    .rows[0];
+  assert.equal(row.state, 'failed');
+  assert.equal(row.payload_ciphertext, null);
+  assert.equal((await f.sms.drain()).considered, 0);
+  const listed = data(await f.call('GET', '/v1/ops/drivers'))[0];
+  assert.equal(listed.credentialSms.failureCode, 'provider_rejected');
 });
 
 test('SMS-04: missing phone, sender or conflicting channels cannot issue a credential', async (t) => {

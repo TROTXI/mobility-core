@@ -38,7 +38,13 @@ are refused with 403. They do not require an existing bearer token.
   Incorrect guesses commit; concurrent successful verification consumes once.
 - Resending invalidates the previous challenge. Sending is limited to one per
   minute, five per hour and ten per rolling day per number; the pilot has a
-  fixed 200-message rolling daily cap, in addition to shared IP admission.
+  fixed 200-message rolling daily cap. Each source IP can request at most 50
+  codes per rolling day, atomically across replicas, in addition to shared
+  per-minute IP admission. A keyed source hash is stored, never the raw IP.
+  This limits one source's spend; it does not stop an attacker using multiple
+  sources. Carrier NAT can share a budget, so review this pilot limit with usage.
+- Only Ghana mobile ranges (`02…` and `05…`) are accepted. Fixed lines (`03…`)
+  are refused before a challenge is created or any SMS budget is consumed.
 - The database stores keyed hashes, encrypted phone numbers and no plaintext
   OTP. Success, supersession, five failed guesses and unconfirmed sending scrub
   the encrypted payload and code hash. Lifetime and attempts cannot be rewritten
@@ -51,6 +57,10 @@ are refused with 403. They do not require an existing bearer token.
 - A timeout or ambiguous response invalidates the challenge and returns 503.
   It is not automatically retried: mNotify's documented quick-SMS endpoint has
   no idempotency key. The user explicitly requests a fresh code after cooldown.
+- Explicit HTTP client/auth/validation refusals or a response reporting one
+  rejected recipient and zero sent are known failures (`sms_delivery_rejected`).
+  Unknown response codes, missing acceptance evidence and server errors remain
+  ambiguous; the adapter does not guess undocumented provider error meanings.
 - SMS OTP is not phishing-resistant. Ops must retain its passkey requirement.
   Phone-number recycling/SIM-swap risk remains; verified account linking and
   stronger phone-account recovery require a separate policy before production.
@@ -69,7 +79,10 @@ to the driver, phone and credential version. Reset, private PIN change, phone
 change, suspension, archive and erasure cancel obsolete queued payloads.
 
 Sending starts immediately after commit. Provider acceptance is not proof of
-handset delivery. An uncertain send is marked `unknown` and scrubbed: it is
+handset delivery. An explicit refusal is marked `failed`, shown as provider
+rejection in Ops, and scrubbed. Fix the number/provider setup and reset the PIN
+to issue fresh credentials; rejected credentials are not automatically resent.
+An uncertain send is marked `unknown` and scrubbed: it is
 never automatically resent because mNotify has no documented idempotency key.
 Ops must reset the PIN to issue fresh instructions after checking the number.
 An interrupted sending claim is also scrubbed as unknown after one minute.

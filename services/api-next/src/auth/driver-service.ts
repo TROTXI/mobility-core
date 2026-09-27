@@ -136,7 +136,12 @@ function view(row: OpsRow) {
       ? {
           purpose: row.sms_operation === 'resetDriverPin' ? 'pin_reset' : 'onboarding',
           state: MAIL_STATE[row.sms_state],
-          failureCode: row.sms_state === 'unknown' ? 'delivery_unconfirmed' : null,
+          failureCode:
+            row.sms_state === 'unknown'
+              ? 'delivery_unconfirmed'
+              : row.sms_state === 'failed'
+                ? 'provider_rejected'
+                : null,
           queuedAt: iso(row.sms_created_at),
         }
       : null,

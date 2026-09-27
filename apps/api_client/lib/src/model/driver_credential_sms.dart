@@ -25,7 +25,7 @@ abstract class DriverCredentialSms
 
   @BuiltValueField(wireName: r'state')
   DriverCredentialSmsStateEnum get state;
-  // enum stateEnum {  queued,  sending,  provider_accepted,  cancelled,  unknown,  };
+  // enum stateEnum {  queued,  sending,  provider_accepted,  cancelled,  failed,  unknown,  };
 
   @BuiltValueField(wireName: r'failureCode')
   String? get failureCode;
@@ -199,6 +199,9 @@ class DriverCredentialSmsStateEnum extends EnumClass {
   @BuiltValueEnumConst(wireName: r'cancelled')
   static const DriverCredentialSmsStateEnum cancelled =
       _$driverCredentialSmsStateEnum_cancelled;
+  @BuiltValueEnumConst(wireName: r'failed')
+  static const DriverCredentialSmsStateEnum failed =
+      _$driverCredentialSmsStateEnum_failed;
   @BuiltValueEnumConst(wireName: r'unknown')
   static const DriverCredentialSmsStateEnum unknown =
       _$driverCredentialSmsStateEnum_unknown;

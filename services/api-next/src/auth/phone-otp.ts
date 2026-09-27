@@ -2,7 +2,7 @@ import { createHmac, hkdfSync, randomInt, randomUUID, timingSafeEqual } from 'no
 import type { Pool, PoolClient } from 'pg';
 import { providerTokenBox } from './credentials.js';
 import { fail } from '../transport/errors.js';
-import { ghanaPhone, type SmsSender } from '../notifications/mnotify.js';
+import { ghanaPhone, SmsSendError, type SmsSender } from '../notifications/mnotify.js';
 
 export class PhoneOtp {
   private readonly key: Buffer;
@@ -21,13 +21,16 @@ export class PhoneOtp {
   private digest(value: string) {
     return createHmac('sha256', this.key).update(value).digest('hex');
   }
-  async request(value: string) {
+  async request(value: string, sourceIp: string) {
     let phone: string;
     try {
       phone = ghanaPhone(value);
     } catch (_) {
       fail(400, 'invalid_phone', 'Use a valid Ghana phone number.');
     }
+    if (!sourceIp)
+      fail(503, 'phone_signin_unavailable', 'Phone sign-in is temporarily unavailable.');
+    const sourceHash = this.digest(`source:${sourceIp}`);
     const phoneHash = this.digest(`phone:${phone!}`),
       id = randomUUID();
     const code = String(randomInt(1000000)).padStart(6, '0');
@@ -41,6 +44,20 @@ export class PhoneOtp {
         `phone-otp:${phoneHash}`,
       ]);
       const now = (await c.query('SELECT clock_timestamp() AS now')).rows[0].now as Date;
+      // The global lock serializes both rolling budgets across replicas. No
+      // raw address is stored; caller supplies Fastify's trusted-proxy result.
+      const source = (
+        await c.query(
+          "SELECT count(*)::int AS n FROM app.phone_otp_challenges WHERE source_hash=$1 AND created_at>$2::timestamptz-interval '24 hours'",
+          [sourceHash, now],
+        )
+      ).rows[0];
+      if (source.n >= 50)
+        fail(
+          429,
+          'phone_source_limited',
+          'This connection has reached its daily SMS limit. Try again later or use Google sign-in.',
+        );
       const global = (
         await c.query(
           "SELECT count(*)::int AS n FROM app.phone_otp_challenges WHERE created_at > $1::timestamptz - interval '24 hours'",
@@ -83,9 +100,17 @@ export class PhoneOtp {
       );
       expires = new Date(now.getTime() + 300000);
       await c.query(
-        `INSERT INTO app.phone_otp_challenges(id,phone_hash,phone_ciphertext,code_hash,created_at,expires_at)
-        VALUES ($1,$2,$3,$4,$5,$6)`,
-        [id, phoneHash, this.box.seal(phone!, id), this.digest(`code:${id}:${code}`), now, expires],
+        `INSERT INTO app.phone_otp_challenges(id,phone_hash,phone_ciphertext,code_hash,created_at,expires_at,source_hash)
+        VALUES ($1,$2,$3,$4,$5,$6,$7)`,
+        [
+          id,
+          phoneHash,
+          this.box.seal(phone!, id),
+          this.digest(`code:${id}:${code}`),
+          now,
+          expires,
+          sourceHash,
+        ],
       );
       await c.query('COMMIT');
     } catch (error) {
@@ -105,11 +130,17 @@ export class PhoneOtp {
         [id],
       );
       if (updated.rowCount !== 1) fail(409, 'otp_superseded', 'Request a fresh sign-in code.');
-    } catch (_) {
+    } catch (error) {
       await this.pool.query(
         `UPDATE app.phone_otp_challenges SET state='failed',phone_ciphertext=NULL,code_hash=NULL WHERE id=$1 AND state <> 'consumed'`,
         [id],
       );
+      if (error instanceof SmsSendError && error.outcome === 'rejected')
+        fail(
+          503,
+          'sms_delivery_rejected',
+          'SMS could not be sent. Try again later or use Google sign-in.',
+        );
       fail(
         503,
         'sms_delivery_unconfirmed',

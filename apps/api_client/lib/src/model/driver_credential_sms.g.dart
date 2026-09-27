@@ -40,6 +40,8 @@ const DriverCredentialSmsStateEnum
     const DriverCredentialSmsStateEnum._('providerAccepted');
 const DriverCredentialSmsStateEnum _$driverCredentialSmsStateEnum_cancelled =
     const DriverCredentialSmsStateEnum._('cancelled');
+const DriverCredentialSmsStateEnum _$driverCredentialSmsStateEnum_failed =
+    const DriverCredentialSmsStateEnum._('failed');
 const DriverCredentialSmsStateEnum _$driverCredentialSmsStateEnum_unknown =
     const DriverCredentialSmsStateEnum._('unknown');
 
@@ -54,6 +56,8 @@ DriverCredentialSmsStateEnum _$driverCredentialSmsStateEnumValueOf(
       return _$driverCredentialSmsStateEnum_providerAccepted;
     case 'cancelled':
       return _$driverCredentialSmsStateEnum_cancelled;
+    case 'failed':
+      return _$driverCredentialSmsStateEnum_failed;
     case 'unknown':
       return _$driverCredentialSmsStateEnum_unknown;
     default:
@@ -68,6 +72,7 @@ final BuiltSet<DriverCredentialSmsStateEnum>
   _$driverCredentialSmsStateEnum_sending,
   _$driverCredentialSmsStateEnum_providerAccepted,
   _$driverCredentialSmsStateEnum_cancelled,
+  _$driverCredentialSmsStateEnum_failed,
   _$driverCredentialSmsStateEnum_unknown,
 ]);
 
@@ -115,6 +120,7 @@ class _$DriverCredentialSmsStateEnumSerializer
     'sending': 'sending',
     'providerAccepted': 'provider_accepted',
     'cancelled': 'cancelled',
+    'failed': 'failed',
     'unknown': 'unknown',
   };
   static const Map<Object, String> _fromWire = const <Object, String>{
@@ -122,6 +128,7 @@ class _$DriverCredentialSmsStateEnumSerializer
     'sending': 'sending',
     'provider_accepted': 'providerAccepted',
     'cancelled': 'cancelled',
+    'failed': 'failed',
     'unknown': 'unknown',
   };
 
