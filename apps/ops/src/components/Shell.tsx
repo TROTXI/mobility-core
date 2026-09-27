@@ -66,7 +66,13 @@ export function Shell({
       <aside className="sidebar" aria-label="Operations navigation">
         <div className="sidebar-brand">
           <NavLink to="/" className="brand-mark" aria-label="Trotxi operations home">
-            <span className="brand-symbol" aria-hidden="true" />
+            <img
+              className="brand-rail-logo"
+              src="/trotxi-wordmark-light.png"
+              alt=""
+              width={568}
+              height={208}
+            />
           </NavLink>
         </div>
         <nav className="nav-list" aria-label="Operations">

@@ -161,8 +161,13 @@ export function AuthFrame({
         <section className="auth-story" aria-label="Trotxi Operations">
           <div className="auth-story-inner">
             <div className="brand-mark">
-              <span className="brand-symbol" aria-hidden="true" />
-              <span>Trotxi</span>
+              <img
+                className="brand-wordmark"
+                src="/trotxi-wordmark-dark.png"
+                alt="Trotxi"
+                width={568}
+                height={208}
+              />
             </div>
             <h2>One secure operations entry.</h2>
             <p>

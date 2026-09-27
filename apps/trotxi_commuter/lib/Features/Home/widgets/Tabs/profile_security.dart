@@ -4,6 +4,7 @@ import 'package:trotxi_commuter/core/api/commuter_api.dart';
 import 'package:trotxi_commuter/core/config/layout/responsive_layout.dart';
 import 'package:trotxi_commuter/core/config/theme/app_colors.dart';
 import 'package:trotxi_commuter/core/config/theme/app_typography.dart';
+import 'package:trotxi_commuter/core/widgets/public_information_links.dart';
 
 String _formatSessionDate(DateTime date) {
   return DateFormat('d MMM y, h:mm a').format(date.toLocal());
@@ -198,6 +199,7 @@ class _ProfileSecurityPageState extends State<ProfileSecurityPage> {
                   const SizedBox(height: 28),
                   _buildSectionTitle(context, 'Account actions'),
                   const SizedBox(height: 12),
+                  const PublicInformationLinks(),
                   Container(
                     decoration: BoxDecoration(
                       color: colors.surfaceElevated,

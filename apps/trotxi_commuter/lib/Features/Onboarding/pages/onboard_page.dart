@@ -8,6 +8,7 @@ import 'package:trotxi_commuter/core/config/theme/app_spacing.dart';
 import 'package:trotxi_commuter/core/config/theme/app_typography.dart';
 import 'package:trotxi_commuter/core/config/theme/app_vectors.dart';
 import 'package:trotxi_commuter/Features/Onboarding/widgets/app_button.dart';
+import 'package:trotxi_commuter/core/widgets/public_information_links.dart';
 
 class OnBoardPage extends StatefulWidget {
   const OnBoardPage({super.key, required this.client});
@@ -245,6 +246,7 @@ class _OnBoardPageState extends State<OnBoardPage> {
               height: 14 / 10,
             ),
           ),
+          const PublicInformationLinks(),
         ],
       ),
     );

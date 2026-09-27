@@ -17,6 +17,7 @@ import 'package:trotxi_driver/Presentations/Support/pages/incident_support_page.
 import 'package:trotxi_driver/Presentations/Work/pages/work_requests_page.dart';
 import 'package:trotxi_driver/core/state/session_controller.dart';
 import 'package:trotxi_driver/core/state/driver_notifications.dart';
+import 'package:trotxi_driver/core/widgets/public_information_links.dart';
 import 'driver_information_page.dart';
 
 /// Profile and settings (prototype frames 49 to 54).
@@ -403,6 +404,7 @@ class _ProfilePageState extends State<ProfilePage> {
                   child: content,
                 ),
               ),
+              const PublicInformationLinks(),
             ],
           ),
         );

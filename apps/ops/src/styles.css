@@ -49,12 +49,10 @@ select {
   font-weight: 800;
   letter-spacing: -1.3px;
 }
-.brand-symbol {
-  width: 34px;
-  height: 34px;
-  border-radius: 11px 4px 11px 4px;
-  background: linear-gradient(145deg, #d8d0e5 0 42%, #756687 43% 68%, #f0ebf5 69%);
-  transform: skewX(-7deg);
+.brand-wordmark {
+  display: block;
+  width: min(280px, 100%);
+  height: auto;
 }
 
 .auth-page {
@@ -910,9 +908,13 @@ select {
   background: #fffdf8;
   text-decoration: none;
 }
-[data-theme] .sidebar-brand .brand-symbol {
-  width: 27px;
-  height: 27px;
+[data-theme] .sidebar-brand .brand-rail-logo {
+  display: block;
+  width: 32px;
+  height: 34px;
+  /* Show the original T/arrow mark, without squeezing the full wordmark into the rail. */
+  object-fit: cover;
+  object-position: left;
 }
 [data-theme] .nav-list {
   width: 100%;
@@ -1533,10 +1535,6 @@ select {
   color: #f7f2f8;
   font-size: clamp(45px, 5vw, 70px);
 }
-.auth-story .brand-symbol {
-  width: 52px;
-  height: 52px;
-}
 .auth-story h2 {
   margin: 18px 0 10px;
   font-size: 25px;
@@ -1719,9 +1717,8 @@ select {
   .auth-story .brand-mark {
     font-size: 40px;
   }
-  .auth-story .brand-symbol {
-    width: 38px;
-    height: 38px;
+  .auth-story .brand-wordmark {
+    width: 190px;
   }
   .auth-story h2 {
     font-size: 20px;
