@@ -99,6 +99,8 @@ for (const o of operations) {
   if (o.etag) failures.push(412, 428);
   if (['signInDriver', 'changeDriverPin'].includes(o.operationId)) failures.push(401, 403, 423);
   if (/signIn|refreshSession/.test(o.operationId)) failures.push(401);
+  if (['requestPhoneSignIn', 'verifyPhoneSignIn'].includes(o.operationId)) failures.push(403);
+  if (o.operationId === 'verifyPhoneSignIn') failures.push(401);
   if (o.path.startsWith('/v1/')) failures.push(426);
   if (o.operationId === 'uploadAvatar') failures.push(413, 415);
   if (o.access === 'provider_signature') failures.push(401);

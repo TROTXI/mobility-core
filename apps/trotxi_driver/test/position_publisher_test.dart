@@ -6,6 +6,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:trotxi_driver/core/api/driver_api.dart';
 import 'package:trotxi_driver/data/position_publisher.dart';
+import 'package:trotxi_driver/data/position_queue.dart';
 import 'support/replacement_client.dart';
 
 class _UnusedClient implements DriverApi {
@@ -184,6 +185,61 @@ void main() {
       expect(publisher.queuedFixes, 0);
       expect(ids.length, greaterThanOrEqualTo(3));
       expect(ids.toSet().length, 1);
+    },
+  );
+
+  test(
+    'a permanently refused fix does not starve later fixes or disappear silently',
+    () async {
+      final queue = PositionQueue();
+      final now = DateTime.now();
+      for (final id in ['refused', 'valid']) {
+        await queue.add({
+          'tripId': 'trip-1',
+          'clientFixId': id,
+          'capturedAt': now.toUtc().toIso8601String(),
+          'accuracyMeters': 5.0,
+          'latitude': 5.57,
+          'longitude': -0.21,
+        });
+      }
+      final publisher = PositionPublisher(
+        queue: queue,
+        client: client((o, h) {
+          if ((o.data as Map)['clientFixId'] == 'refused') {
+            h.reject(
+              DioException(
+                requestOptions: o,
+                response: Response(
+                  requestOptions: o,
+                  statusCode: 409,
+                  data: {
+                    'error': {
+                      'code': 'capture_before_start',
+                      'message': 'This fix predates the start of the run.',
+                    },
+                  },
+                ),
+              ),
+              true,
+            );
+          } else {
+            accept(o, h);
+          }
+        }),
+      );
+      addTearDown(publisher.dispose);
+      await publisher.start('trip-1');
+      await reaches(publisher, PositionSharing.live);
+      expect(queue.rows.map((row) => row['clientFixId']), ['refused']);
+      expect(publisher.rejectedFixes, 1);
+      await expectLater(
+        publisher.flushBeforeComplete('trip-1'),
+        throwsA(isA<ApiException>()),
+      );
+      await publisher.acknowledgeRejections();
+      await publisher.flushBeforeComplete('trip-1');
+      expect(queue.rows, isEmpty);
     },
   );
 
@@ -482,6 +538,18 @@ void main() {
         expect(publisher.isPublishing, isFalse);
         expect(publisher.queue.rows, hasLength(1));
         expect(await publisher.start('trip-1'), PositionBlock.unavailable);
+        if (refusal.$2 == 'collection_session_expired') {
+          expect(publisher.rejectedFixes, 1);
+          await expectLater(
+            publisher.flushBeforeComplete('trip-1'),
+            throwsA(isA<ApiException>()),
+          );
+          await publisher.acknowledgeRejections();
+          await publisher.flushBeforeComplete('trip-1');
+          expect(publisher.queue.rows, isEmpty);
+        } else {
+          expect(publisher.rejectedFixes, 0);
+        }
         expect(publisher.isPublishing, isFalse);
       },
     );

@@ -15,6 +15,8 @@ class _$CredentialSecret extends CredentialSecret {
   final DateTime temporaryPinExpiresAt;
   @override
   final CredentialSecretEmail? email;
+  @override
+  final CredentialSecretSms? sms;
 
   factory _$CredentialSecret(
           [void Function(CredentialSecretBuilder)? updates]) =>
@@ -24,7 +26,8 @@ class _$CredentialSecret extends CredentialSecret {
       {required this.code,
       required this.pin,
       required this.temporaryPinExpiresAt,
-      this.email})
+      this.email,
+      this.sms})
       : super._();
   @override
   CredentialSecret rebuild(void Function(CredentialSecretBuilder) updates) =>
@@ -41,7 +44,8 @@ class _$CredentialSecret extends CredentialSecret {
         code == other.code &&
         pin == other.pin &&
         temporaryPinExpiresAt == other.temporaryPinExpiresAt &&
-        email == other.email;
+        email == other.email &&
+        sms == other.sms;
   }
 
   @override
@@ -51,6 +55,7 @@ class _$CredentialSecret extends CredentialSecret {
     _$hash = $jc(_$hash, pin.hashCode);
     _$hash = $jc(_$hash, temporaryPinExpiresAt.hashCode);
     _$hash = $jc(_$hash, email.hashCode);
+    _$hash = $jc(_$hash, sms.hashCode);
     _$hash = $jf(_$hash);
     return _$hash;
   }
@@ -61,7 +66,8 @@ class _$CredentialSecret extends CredentialSecret {
           ..add('code', code)
           ..add('pin', pin)
           ..add('temporaryPinExpiresAt', temporaryPinExpiresAt)
-          ..add('email', email))
+          ..add('email', email)
+          ..add('sms', sms))
         .toString();
   }
 }
@@ -88,6 +94,11 @@ class CredentialSecretBuilder
       _$this._email ??= CredentialSecretEmailBuilder();
   set email(CredentialSecretEmailBuilder? email) => _$this._email = email;
 
+  CredentialSecretSmsBuilder? _sms;
+  CredentialSecretSmsBuilder get sms =>
+      _$this._sms ??= CredentialSecretSmsBuilder();
+  set sms(CredentialSecretSmsBuilder? sms) => _$this._sms = sms;
+
   CredentialSecretBuilder() {
     CredentialSecret._defaults(this);
   }
@@ -99,6 +110,7 @@ class CredentialSecretBuilder
       _pin = $v.pin;
       _temporaryPinExpiresAt = $v.temporaryPinExpiresAt;
       _email = $v.email?.toBuilder();
+      _sms = $v.sms?.toBuilder();
       _$v = null;
     }
     return this;
@@ -131,12 +143,15 @@ class CredentialSecretBuilder
                 r'CredentialSecret',
                 'temporaryPinExpiresAt'),
             email: _email?.build(),
+            sms: _sms?.build(),
           );
     } catch (_) {
       late String _$failedField;
       try {
         _$failedField = 'email';
         _email?.build();
+        _$failedField = 'sms';
+        _sms?.build();
       } catch (e) {
         throw BuiltValueNestedFieldError(
             r'CredentialSecret', _$failedField, e.toString());

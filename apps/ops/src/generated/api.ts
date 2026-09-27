@@ -140,6 +140,40 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/v1/auth/phone/request': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** request Phone Sign In */
+    post: operations['requestPhoneSignIn'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/v1/auth/phone/verify': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** verify Phone Sign In */
+    post: operations['verifyPhoneSignIn'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/v1/auth/refresh': {
     parameters: {
       query?: never;
@@ -2448,6 +2482,7 @@ export interface components {
     CredentialIssue: {
       code?: string;
       emailInstructions?: boolean;
+      smsInstructions?: boolean;
     };
     CredentialSecret: {
       code: string;
@@ -2457,6 +2492,12 @@ export interface components {
       email: {
         id: string;
         /** Format: email */
+        to: string;
+        /** @enum {string} */
+        state: 'queued';
+      } | null;
+      sms?: {
+        id: string;
         to: string;
         /** @enum {string} */
         state: 'queued';
@@ -2538,6 +2579,15 @@ export interface components {
         purpose: 'onboarding' | 'pin_reset';
         /** @enum {string} */
         state: 'queued' | 'provider_accepted' | 'cancelled' | 'failed' | 'unknown';
+        failureCode: string | null;
+        /** Format: date-time */
+        queuedAt: string;
+      } | null;
+      credentialSms?: {
+        /** @enum {string} */
+        purpose: 'onboarding' | 'pin_reset';
+        /** @enum {string} */
+        state: 'queued' | 'sending' | 'provider_accepted' | 'cancelled' | 'failed' | 'unknown';
         failureCode: string | null;
         /** Format: date-time */
         queuedAt: string;
@@ -3592,6 +3642,24 @@ export interface components {
       /** Format: date */
       resumeDate: string;
     };
+    PhoneChallenge: {
+      /** Format: uuid */
+      challengeId: string;
+      /** Format: date-time */
+      expiresAt: string;
+      resendAfterSeconds: number;
+    };
+    PhoneChallengeResponse: {
+      data: components['schemas']['PhoneChallenge'];
+    };
+    PhoneSignInRequest: {
+      phone: string;
+    };
+    PhoneSignInVerify: {
+      /** Format: uuid */
+      challengeId: string;
+      code: string;
+    };
     PinChange: {
       currentPin: string;
       newPin: string;
@@ -3599,6 +3667,7 @@ export interface components {
     PinResetInput: {
       reason: string;
       emailInstructions?: boolean;
+      smsInstructions?: boolean;
     };
     PlanPricing: {
       /** @enum {string} */
@@ -4659,6 +4728,101 @@ export interface operations {
       403: components['responses']['Error403'];
       409: components['responses']['Error409'];
       423: components['responses']['Error423'];
+      426: components['responses']['Error426'];
+      429: components['responses']['Error429'];
+      500: components['responses']['Error500'];
+      503: components['responses']['Error503'];
+    };
+  };
+  requestPhoneSignIn: {
+    parameters: {
+      query?: never;
+      header: {
+        /**
+         * @description Compatibility metadata only, never grants a role.
+         * @example commuter
+         */
+        'X-Trotxi-Client': 'commuter' | 'driver' | 'ops' | 'worker';
+        /**
+         * @description Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
+         * @example 1
+         */
+        'X-Trotxi-Build': number;
+        /**
+         * @description Required for commuter/driver, absent for ops/worker.
+         * @example ios
+         */
+        'X-Trotxi-Platform'?: 'ios' | 'android';
+      };
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['PhoneSignInRequest'];
+      };
+    };
+    responses: {
+      /** @description Success */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['PhoneChallengeResponse'];
+        };
+      };
+      400: components['responses']['Error400'];
+      403: components['responses']['Error403'];
+      409: components['responses']['Error409'];
+      426: components['responses']['Error426'];
+      429: components['responses']['Error429'];
+      500: components['responses']['Error500'];
+      503: components['responses']['Error503'];
+    };
+  };
+  verifyPhoneSignIn: {
+    parameters: {
+      query?: never;
+      header: {
+        /**
+         * @description Compatibility metadata only, never grants a role.
+         * @example commuter
+         */
+        'X-Trotxi-Client': 'commuter' | 'driver' | 'ops' | 'worker';
+        /**
+         * @description Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
+         * @example 1
+         */
+        'X-Trotxi-Build': number;
+        /**
+         * @description Required for commuter/driver, absent for ops/worker.
+         * @example ios
+         */
+        'X-Trotxi-Platform'?: 'ios' | 'android';
+      };
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['PhoneSignInVerify'];
+      };
+    };
+    responses: {
+      /** @description Success */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['TokensResponse'];
+        };
+      };
+      400: components['responses']['Error400'];
+      401: components['responses']['Error401'];
+      403: components['responses']['Error403'];
+      409: components['responses']['Error409'];
       426: components['responses']['Error426'];
       429: components['responses']['Error429'];
       500: components['responses']['Error500'];

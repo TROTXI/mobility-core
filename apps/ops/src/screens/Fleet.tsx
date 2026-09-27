@@ -20,6 +20,7 @@ type Issued = {
   code: string;
   pin: string | null;
   emailedTo: string | null;
+  smsTo: string | null;
   expiresAt: string;
 };
 
@@ -78,6 +79,7 @@ export function Fleet({ view = 'drivers' }: { view?: 'drivers' | 'vehicles' }) {
   const [email, setEmail] = useState('');
   const [onboardNow, setOnboardNow] = useState(true);
   const [emailInstructions, setEmailInstructions] = useState(true);
+  const [preferSms, setPreferSms] = useState(true);
   const [issuedSecret, setIssuedSecret] = useState<Issued | null>(null);
   // One key per dialog opening, reused by every retry of it: an uncertain
   // network result can be retried without creating a second driver or PIN.
@@ -134,7 +136,10 @@ export function Fleet({ view = 'drivers' }: { view?: 'drivers' | 'vehicles' }) {
     setIssuedSecret(null);
     setCreated(null);
     setKeys({ primary: crypto.randomUUID(), issue: crypto.randomUUID() });
-    setEmailInstructions(next === 'driver-create' || !!selectedDriver?.email);
+    setEmailInstructions(
+      next === 'driver-create' || !!selectedDriver?.email || !!selectedDriver?.phone,
+    );
+    setPreferSms(true);
     if (next === 'driver-create') {
       setName('');
       setPhone('');
@@ -271,11 +276,19 @@ export function Fleet({ view = 'drivers' }: { view?: 'drivers' | 'vehicles' }) {
                   : 'None sent'
               }
             />
+            <Detail
+              label="Sign-in SMS"
+              value={
+                selectedDriver.credentialSms
+                  ? `${selectedDriver.credentialSms.purpose === 'pin_reset' ? 'PIN reset' : 'Onboarding'}: ${{ queued: 'Waiting to send', sending: 'Sending', provider_accepted: 'Accepted by SMS provider', cancelled: 'Cancelled', failed: 'Provider rejected—check SMS setup and reset PIN', unknown: 'Delivery unconfirmed—reset PIN rather than resend' }[selectedDriver.credentialSms.state]}`
+                  : 'None sent'
+              }
+            />
           </dl>
           <p className="dialog-note">
-            Old sign-in details are never resent: if an email did not arrive, reset the PIN. That
-            cancels the old message and emails a new temporary PIN. Operations never sees the PIN a
-            driver chooses.
+            Old sign-in details are never resent: if instructions did not arrive, reset the PIN.
+            That cancels the old message and sends a new temporary PIN. Operations never sees the
+            PIN a driver chooses.
           </p>
           <div className="drawer-actions">
             <Button appearance="primary" onClick={() => open('driver-edit')}>
@@ -283,7 +296,7 @@ export function Fleet({ view = 'drivers' }: { view?: 'drivers' | 'vehicles' }) {
             </Button>
             {selectedDriver.credential ? (
               <Button onClick={() => open('credential-reset')}>
-                Reset PIN and email instructions
+                Reset PIN and send instructions
               </Button>
             ) : (
               <Button onClick={() => open('credential-issue')}>Issue sign-in details</Button>
@@ -321,13 +334,14 @@ export function Fleet({ view = 'drivers' }: { view?: 'drivers' | 'vehicles' }) {
 
       {issuedSecret && (
         <div className="secret-reveal" role="status">
-          {issuedSecret.emailedTo ? (
+          {issuedSecret.emailedTo || issuedSecret.smsTo ? (
             <div>
-              <span className="eyebrow">Email queued</span>
+              <span className="eyebrow">{issuedSecret.smsTo ? 'SMS queued' : 'Email queued'}</span>
               <strong>Driver code {issuedSecret.code}</strong>
               <span>
-                The temporary PIN is queued for email to {issuedSecret.emailedTo}. Queued is not
-                sent: check the sign-in email status on the driver.
+                The temporary PIN is queued for {issuedSecret.smsTo ? 'SMS' : 'email'} to{' '}
+                {issuedSecret.smsTo ?? issuedSecret.emailedTo}. Queued is not sent: check the
+                sign-in delivery status on the driver.
               </span>
             </div>
           ) : (
@@ -468,15 +482,14 @@ export function Fleet({ view = 'drivers' }: { view?: 'drivers' | 'vehicles' }) {
                   Issue a driver code and temporary PIN now
                 </label>
                 {onboardNow && (
-                  <label className="check-row">
-                    <input
-                      type="checkbox"
-                      checked={emailInstructions && !!email}
-                      disabled={!email}
-                      onChange={(event) => setEmailInstructions(event.target.checked)}
-                    />
-                    Email the sign-in instructions to this address
-                  </label>
+                  <DeliveryChoice
+                    phone={phone}
+                    email={email}
+                    checked={emailInstructions}
+                    onChange={setEmailInstructions}
+                    preferSms={preferSms}
+                    onPreference={setPreferSms}
+                  />
                 )}
               </>
             )}
@@ -533,7 +546,10 @@ export function Fleet({ view = 'drivers' }: { view?: 'drivers' | 'vehicles' }) {
               Leave the code blank to generate both the driver code and a six-digit temporary PIN.
               The driver must choose their own PIN after signing in.
             </p>
-            <EmailChoice
+            <DeliveryChoice
+              phone={selectedDriver?.phone ?? null}
+              preferSms={preferSms}
+              onPreference={setPreferSms}
               email={selectedDriver?.email ?? null}
               checked={emailInstructions}
               onChange={setEmailInstructions}
@@ -551,7 +567,7 @@ export function Fleet({ view = 'drivers' }: { view?: 'drivers' | 'vehicles' }) {
           <>
             <p className="dialog-note">
               The current PIN stops working, every signed-in device is signed out, and any earlier
-              sign-in email still waiting is cancelled. A suspended driver stays suspended.
+              sign-in message still waiting is cancelled. A suspended driver stays suspended.
             </p>
             <label>
               Reason (kept in the audit log)
@@ -562,7 +578,10 @@ export function Fleet({ view = 'drivers' }: { view?: 'drivers' | 'vehicles' }) {
                 onChange={(event) => setReason(event.target.value)}
               />
             </label>
-            <EmailChoice
+            <DeliveryChoice
+              phone={selectedDriver?.phone ?? null}
+              preferSms={preferSms}
+              onPreference={setPreferSms}
               email={selectedDriver?.email ?? null}
               checked={emailInstructions}
               onChange={setEmailInstructions}
@@ -602,14 +621,16 @@ export function Fleet({ view = 'drivers' }: { view?: 'drivers' | 'vehicles' }) {
   function reveal(secret: CredentialSecret) {
     setIssuedSecret({
       code: secret.code,
-      pin: secret.email ? null : secret.pin,
+      pin: secret.email || secret.sms ? null : secret.pin,
       emailedTo: secret.email?.to ?? null,
+      smsTo: secret.sms?.to ?? null,
       expiresAt: secret.temporaryPinExpiresAt,
     });
   }
 
   async function issue(driver: Driver) {
-    const wantsEmail = emailInstructions && !!driver.email;
+    const wantsSms = emailInstructions && !!driver.phone && (preferSms || !driver.email);
+    const wantsEmail = emailInstructions && !!driver.email && !wantsSms;
     const response = await session.client.POST('/v1/ops/drivers/{id}/credentials', {
       params: {
         path: { id: driver.id },
@@ -618,6 +639,7 @@ export function Fleet({ view = 'drivers' }: { view?: 'drivers' | 'vehicles' }) {
       body: {
         ...(credentialCode && mode === 'credential-issue' ? { code: credentialCode } : {}),
         ...(wantsEmail ? { emailInstructions: true } : {}),
+        ...(wantsSms ? { smsInstructions: true } : {}),
       },
     });
     if (response.error) throw new Error(response.error.error.message);
@@ -695,10 +717,16 @@ export function Fleet({ view = 'drivers' }: { view?: 'drivers' | 'vehicles' }) {
     } else if (mode === 'credential-issue' && selectedDriver) {
       await issue(selectedDriver);
     } else if (mode === 'credential-reset' && selectedDriver) {
-      const wantsEmail = emailInstructions && !!selectedDriver.email;
+      const wantsSms =
+        emailInstructions && !!selectedDriver.phone && (preferSms || !selectedDriver.email);
+      const wantsEmail = emailInstructions && !!selectedDriver.email && !wantsSms;
       const response = await session.client.POST('/v1/ops/drivers/{id}/credentials/reset-pin', {
         params: { path: { id: selectedDriver.id }, header: mutation },
-        body: { reason, ...(wantsEmail ? { emailInstructions: true } : {}) },
+        body: {
+          reason,
+          ...(wantsEmail ? { emailInstructions: true } : {}),
+          ...(wantsSms ? { smsInstructions: true } : {}),
+        },
       });
       if (response.error) throw new Error(response.error.error.message);
       reveal(response.data.data);
@@ -867,6 +895,53 @@ function title(mode: Mode | null) {
       'vehicle-edit': 'Edit vehicle',
     } satisfies Record<Mode, string>
   )[mode];
+}
+
+function DeliveryChoice({
+  phone,
+  email,
+  checked,
+  onChange,
+  preferSms,
+  onPreference,
+}: {
+  phone: string | null;
+  email: string | null;
+  checked: boolean;
+  onChange: (value: boolean) => void;
+  preferSms: boolean;
+  onPreference: (value: boolean) => void;
+}) {
+  const sms = !!phone && (preferSms || !email);
+  return (
+    <>
+      {phone && email && (
+        <label>
+          Send instructions by
+          <select
+            aria-label="Instruction delivery"
+            value={sms ? 'sms' : 'email'}
+            onChange={(event) => onPreference(event.target.value === 'sms')}
+          >
+            <option value="sms">SMS</option>
+            <option value="email">Email</option>
+          </select>
+        </label>
+      )}
+      {sms ? (
+        <label className="check-row">
+          <input
+            type="checkbox"
+            checked={checked}
+            onChange={(event) => onChange(event.target.checked)}
+          />
+          SMS the driver code and temporary PIN to {phone}
+        </label>
+      ) : (
+        <EmailChoice email={email || null} checked={checked} onChange={onChange} />
+      )}
+    </>
+  );
 }
 
 /** Offer email only where there is an address to send to, and say why not. */

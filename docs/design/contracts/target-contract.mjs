@@ -183,6 +183,12 @@ named('Session', obj({ id, createdAt: instant, expiresAt: instant, current: z.bo
 named('DeviceInput', obj({ token: text(4096), platform: z.enum(['ios', 'android']) }));
 named('Device', obj({ id, platform: z.enum(['ios', 'android']), updatedAt: instant }));
 named('GoogleSignIn', obj({ idToken: text(8192) }));
+named('PhoneSignInRequest', obj({ phone: text(32) }));
+named('PhoneSignInVerify', obj({ challengeId: z.uuid(), code: z.string().regex(/^\d{6}$/) }));
+named(
+  'PhoneChallenge',
+  obj({ challengeId: z.uuid(), expiresAt: instant, resendAfterSeconds: z.int().min(60).max(60) }),
+);
 named(
   'AppleSignIn',
   obj({
@@ -888,6 +894,14 @@ named(
       failureCode: text(100).nullable(),
       queuedAt: instant,
     }).nullable(),
+    credentialSms: obj({
+      purpose: z.enum(['onboarding', 'pin_reset']),
+      state: z.enum(['queued', 'sending', 'provider_accepted', 'cancelled', 'failed', 'unknown']),
+      failureCode: text(100).nullable(),
+      queuedAt: instant,
+    })
+      .nullable()
+      .optional(),
     editToken: text(128),
     ...audit,
   }),
@@ -936,9 +950,20 @@ named('RoleEdit', obj({ role, reason: note }));
 // Preserve existing ops-generated codes when omitted; an explicit code is optional.
 named(
   'CredentialIssue',
-  obj({ code: text(32).optional(), emailInstructions: z.boolean().optional() }),
+  obj({
+    code: text(32).optional(),
+    emailInstructions: z.boolean().optional(),
+    smsInstructions: z.boolean().optional(),
+  }),
 );
-named('PinResetInput', obj({ reason: note, emailInstructions: z.boolean().optional() }));
+named(
+  'PinResetInput',
+  obj({
+    reason: note,
+    emailInstructions: z.boolean().optional(),
+    smsInstructions: z.boolean().optional(),
+  }),
+);
 named(
   'CredentialSecret',
   obj({
@@ -947,6 +972,9 @@ named(
     temporaryPinExpiresAt: instant,
     // Present when email was requested: the message is queued, not yet sent.
     email: obj({ id, to: driverEmail, state: z.enum(['queued']) }).nullable(),
+    sms: obj({ id, to: z.string().regex(/^\+233[25]\d{8}$/), state: z.enum(['queued']) })
+      .nullable()
+      .optional(),
   }),
 );
 named('CredentialAction', obj({ action: z.enum(['suspend', 'activate', 'unlock']), reason: note }));
@@ -1403,6 +1431,14 @@ for (const provider of ['google', 'apple', 'driver'])
     provider === 'driver' ? 'DriverTokens' : 'Tokens',
     { retry: 'credential', sensitive: true },
   );
+post('/v1/auth/phone/request', 'requestPhoneSignIn', 'PhoneSignInRequest', 'PhoneChallenge', {
+  retry: 'credential',
+  sensitive: true,
+});
+post('/v1/auth/phone/verify', 'verifyPhoneSignIn', 'PhoneSignInVerify', 'Tokens', {
+  retry: 'credential',
+  sensitive: true,
+});
 post('/v1/auth/refresh', 'refreshSession', 'RefreshInput', 'Tokens', {
   retry: 'credential',
   sensitive: true,

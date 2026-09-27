@@ -115,6 +115,18 @@ class CommuterApi extends CommuterDataClient {
 
   Future<bool> signOut() => auth.signOut();
 
+  Future<wire.PhoneChallenge> requestPhoneCode(String phone) =>
+      auth.requestPhoneCode(phone);
+
+  Future<void> signInPhone(String challengeId, String code) async {
+    _loadAttempt++;
+    final account = await auth.signInPhone(challengeId, code);
+    if (_closed) return;
+    currentAccount = account;
+    identityRevision.value++;
+    stage.value = CommuterStage.ready;
+  }
+
   @override
   Future<void> eraseAccount() async {
     final generation = sessionGeneration;

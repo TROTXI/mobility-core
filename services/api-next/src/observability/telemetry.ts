@@ -61,6 +61,9 @@ export function startTelemetry(env: NodeJS.ProcessEnv = process.env): boolean {
     logRecordProcessors: [new BatchLogRecordProcessor({ exporter: new OTLPLogExporter() })],
     instrumentations: [
       new HttpInstrumentation({
+        // mNotify requires its secret in the query string. Never emit that outgoing URL.
+        ignoreOutgoingRequestHook: (request) =>
+          request.hostname === 'api.mnotify.com' || request.host === 'api.mnotify.com',
         ignoreIncomingRequestHook: (request) => probes.has((request.url ?? '').split('?')[0]!),
         // Spans record the query string, and the riders search puts names,
         // phone numbers and email addresses in it. Setting this replaces the

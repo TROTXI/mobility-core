@@ -458,6 +458,8 @@ export async function createTransportApp(options: AppOptions) {
           const client = request.headers['x-trotxi-client'],
             build = request.headers['x-trotxi-build'],
             platform = request.headers['x-trotxi-platform'];
+          if (['requestPhoneSignIn', 'verifyPhoneSignIn'].includes(name) && client !== 'commuter')
+            fail(403, 'wrong_client', 'Phone sign-in is for commuters only.');
           // Only the maintenance operations admit it, and only there does it
           // stand in for an operations client. Nothing else about the ops
           // client's own rules changes.
@@ -870,6 +872,7 @@ export async function createTransportApp(options: AppOptions) {
               query,
               (request.params as { id?: string }).id,
               key,
+              request.ip,
             );
           } else if (method === 'get') {
             const query = request.query as Record<string, string | undefined>;

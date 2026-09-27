@@ -181,9 +181,11 @@ Class | Method | HTTP request | Description
 [*PublicApi*](doc/PublicApi.md) | [**listRoutes**](doc/PublicApi.md#listroutes) | **GET** /v1/routes | list Routes
 [*PublicApi*](doc/PublicApi.md) | [**logoutSession**](doc/PublicApi.md#logoutsession) | **POST** /v1/auth/logout | logout Session
 [*PublicApi*](doc/PublicApi.md) | [**refreshSession**](doc/PublicApi.md#refreshsession) | **POST** /v1/auth/refresh | refresh Session
+[*PublicApi*](doc/PublicApi.md) | [**requestPhoneSignIn**](doc/PublicApi.md#requestphonesignin) | **POST** /v1/auth/phone/request | request Phone Sign In
 [*PublicApi*](doc/PublicApi.md) | [**signInApple**](doc/PublicApi.md#signinapple) | **POST** /v1/auth/apple | sign In Apple
 [*PublicApi*](doc/PublicApi.md) | [**signInDriver**](doc/PublicApi.md#signindriver) | **POST** /v1/auth/driver | sign In Driver
 [*PublicApi*](doc/PublicApi.md) | [**signInGoogle**](doc/PublicApi.md#signingoogle) | **POST** /v1/auth/google | sign In Google
+[*PublicApi*](doc/PublicApi.md) | [**verifyPhoneSignIn**](doc/PublicApi.md#verifyphonesignin) | **POST** /v1/auth/phone/verify | verify Phone Sign In
 [*RiderOwnApi*](doc/RiderOwnApi.md) | [**createCommuteRequest**](doc/RiderOwnApi.md#createcommuterequest) | **POST** /v1/me/commute-requests | create Commute Request
 [*RiderOwnApi*](doc/RiderOwnApi.md) | [**createPersonalPause**](doc/RiderOwnApi.md#createpersonalpause) | **POST** /v1/me/membership/pauses | create Personal Pause
 [*RiderOwnApi*](doc/RiderOwnApi.md) | [**createPurchase**](doc/RiderOwnApi.md#createpurchase) | **POST** /v1/me/purchases | create Purchase
@@ -265,6 +267,7 @@ Class | Method | HTTP request | Description
  - [CredentialSecret](doc/CredentialSecret.md)
  - [CredentialSecretEmail](doc/CredentialSecretEmail.md)
  - [CredentialSecretResponse](doc/CredentialSecretResponse.md)
+ - [CredentialSecretSms](doc/CredentialSecretSms.md)
  - [CreditEntry](doc/CreditEntry.md)
  - [CreditEntryPage](doc/CreditEntryPage.md)
  - [DecisionEvent](doc/DecisionEvent.md)
@@ -275,6 +278,7 @@ Class | Method | HTTP request | Description
  - [Driver](doc/Driver.md)
  - [DriverCredential](doc/DriverCredential.md)
  - [DriverCredentialEmail](doc/DriverCredentialEmail.md)
+ - [DriverCredentialSms](doc/DriverCredentialSms.md)
  - [DriverEdit](doc/DriverEdit.md)
  - [DriverInput](doc/DriverInput.md)
  - [DriverPage](doc/DriverPage.md)
@@ -416,6 +420,10 @@ Class | Method | HTTP request | Description
  - [PersonalPausePreviewResponse](doc/PersonalPausePreviewResponse.md)
  - [PersonalPauseResponse](doc/PersonalPauseResponse.md)
  - [PersonalResumeInput](doc/PersonalResumeInput.md)
+ - [PhoneChallenge](doc/PhoneChallenge.md)
+ - [PhoneChallengeResponse](doc/PhoneChallengeResponse.md)
+ - [PhoneSignInRequest](doc/PhoneSignInRequest.md)
+ - [PhoneSignInVerify](doc/PhoneSignInVerify.md)
  - [PinChange](doc/PinChange.md)
  - [PinResetInput](doc/PinResetInput.md)
  - [PlanPricing](doc/PlanPricing.md)

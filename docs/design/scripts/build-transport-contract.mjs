@@ -5,6 +5,8 @@ const source = JSON.parse(
   await readFile(new URL('../contracts/target.openapi.json', import.meta.url), 'utf8'),
 );
 const selected = new Set([
+  'requestPhoneSignIn',
+  'verifyPhoneSignIn',
   'previewPurchase',
   'getPersonalPause',
   'previewPersonalPause',

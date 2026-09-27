@@ -131,7 +131,7 @@ export async function grantRuntime(pool: Pool, role: string): Promise<void> {
           OR (has_table_privilege(r.oid, c.oid, 'DELETE') AND NOT EXISTS (
             SELECT 1 FROM pg_trigger g WHERE g.tgrelid = c.oid AND NOT g.tgisinternal
               AND g.tgfoid = ANY (ARRAY[to_regprocedure('app.guard_trace_deletion()'),
-                to_regprocedure('app.guard_expired_admission()')])
+                to_regprocedure('app.guard_expired_admission()'), to_regprocedure('app.guard_expired_phone_otp()')])
               AND (g.tgtype & 8) <> 0)))) AS unsafe
       FROM pg_roles r CROSS JOIN pg_database d CROSS JOIN pg_namespace n
       WHERE r.rolname = $1 AND d.datname = current_database() AND n.nspname = 'app'`,
@@ -196,7 +196,7 @@ export async function grantRuntime(pool: Pool, role: string): Promise<void> {
       ) AS append_only, EXISTS (
         SELECT 1 FROM pg_trigger g WHERE g.tgrelid = c.oid AND NOT g.tgisinternal
           AND g.tgfoid = ANY (ARRAY[to_regprocedure('app.guard_trace_deletion()'),
-            to_regprocedure('app.guard_expired_admission()')])
+            to_regprocedure('app.guard_expired_admission()'), to_regprocedure('app.guard_expired_phone_otp()')])
           AND (g.tgtype & 8) <> 0
       ) AS deletable
       FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace

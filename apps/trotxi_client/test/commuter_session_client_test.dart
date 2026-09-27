@@ -88,6 +88,29 @@ void main() {
     expect(storage.values.values.single, isNot(contains('google-proof')));
   });
 
+  test('phone code request uses generated contract and stores no OTP',
+      () async {
+    reply = (_) => json(200, {
+          'data': {
+            'challengeId': '00000000-0000-4000-8000-000000000001',
+            'expiresAt': '2026-01-01T00:05:00Z',
+            'resendAfterSeconds': 60,
+          }
+        });
+    final challenge = await sessions.requestPhoneCode('0241234567');
+    expect(challenge.resendAfterSeconds, 60);
+    expect(requests.single.path, '/v1/auth/phone/request');
+    expect(bodyOf(requests.single), {'phone': '0241234567'});
+    expect(storage.values, isEmpty);
+    reply = (_) => json(200, {'data': tokens()});
+    await sessions.signInPhone(challenge.challengeId, '123456');
+    expect(requests.last.path, '/v1/auth/phone/verify');
+    expect(bodyOf(requests.last),
+        {'challengeId': challenge.challengeId, 'code': '123456'});
+    expect(await store.getRefreshToken(), 'r-1');
+    expect(storage.values.values.single, isNot(contains('123456')));
+  });
+
   test(
       'Apple forwards only the supplied proof fields and shares the session scope',
       () async {

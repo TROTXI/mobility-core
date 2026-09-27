@@ -11,11 +11,15 @@ class _$PinResetInput extends PinResetInput {
   final String reason;
   @override
   final bool? emailInstructions;
+  @override
+  final bool? smsInstructions;
 
   factory _$PinResetInput([void Function(PinResetInputBuilder)? updates]) =>
       (PinResetInputBuilder()..update(updates))._build();
 
-  _$PinResetInput._({required this.reason, this.emailInstructions}) : super._();
+  _$PinResetInput._(
+      {required this.reason, this.emailInstructions, this.smsInstructions})
+      : super._();
   @override
   PinResetInput rebuild(void Function(PinResetInputBuilder) updates) =>
       (toBuilder()..update(updates)).build();
@@ -28,7 +32,8 @@ class _$PinResetInput extends PinResetInput {
     if (identical(other, this)) return true;
     return other is PinResetInput &&
         reason == other.reason &&
-        emailInstructions == other.emailInstructions;
+        emailInstructions == other.emailInstructions &&
+        smsInstructions == other.smsInstructions;
   }
 
   @override
@@ -36,6 +41,7 @@ class _$PinResetInput extends PinResetInput {
     var _$hash = 0;
     _$hash = $jc(_$hash, reason.hashCode);
     _$hash = $jc(_$hash, emailInstructions.hashCode);
+    _$hash = $jc(_$hash, smsInstructions.hashCode);
     _$hash = $jf(_$hash);
     return _$hash;
   }
@@ -44,7 +50,8 @@ class _$PinResetInput extends PinResetInput {
   String toString() {
     return (newBuiltValueToStringHelper(r'PinResetInput')
           ..add('reason', reason)
-          ..add('emailInstructions', emailInstructions))
+          ..add('emailInstructions', emailInstructions)
+          ..add('smsInstructions', smsInstructions))
         .toString();
   }
 }
@@ -62,6 +69,11 @@ class PinResetInputBuilder
   set emailInstructions(bool? emailInstructions) =>
       _$this._emailInstructions = emailInstructions;
 
+  bool? _smsInstructions;
+  bool? get smsInstructions => _$this._smsInstructions;
+  set smsInstructions(bool? smsInstructions) =>
+      _$this._smsInstructions = smsInstructions;
+
   PinResetInputBuilder() {
     PinResetInput._defaults(this);
   }
@@ -71,6 +83,7 @@ class PinResetInputBuilder
     if ($v != null) {
       _reason = $v.reason;
       _emailInstructions = $v.emailInstructions;
+      _smsInstructions = $v.smsInstructions;
       _$v = null;
     }
     return this;
@@ -95,6 +108,7 @@ class PinResetInputBuilder
           reason: BuiltValueNullFieldError.checkNotNull(
               reason, r'PinResetInput', 'reason'),
           emailInstructions: emailInstructions,
+          smsInstructions: smsInstructions,
         );
     replace(_$result);
     return _$result;

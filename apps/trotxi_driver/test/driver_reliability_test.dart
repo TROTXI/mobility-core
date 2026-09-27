@@ -169,7 +169,7 @@ void main() {
       await queue.add(fix('first', '2026-09-19T08:00:00Z'));
       await expectLater(
         queue.add(fix('second', '2026-09-19T08:00:05Z')),
-        throwsStateError,
+        throwsA(isA<PositionQueueFull>()),
       );
       expect(queue.rows.single['clientFixId'], 'first');
       await queue.bind(null);

@@ -13,6 +13,7 @@ part 'credential_issue.g.dart';
 /// Properties:
 /// * [code]
 /// * [emailInstructions]
+/// * [smsInstructions]
 @BuiltValue()
 abstract class CredentialIssue
     implements Built<CredentialIssue, CredentialIssueBuilder> {
@@ -21,6 +22,9 @@ abstract class CredentialIssue
 
   @BuiltValueField(wireName: r'emailInstructions')
   bool? get emailInstructions;
+
+  @BuiltValueField(wireName: r'smsInstructions')
+  bool? get smsInstructions;
 
   CredentialIssue._();
 
@@ -62,6 +66,13 @@ class _$CredentialIssueSerializer
         specifiedType: const FullType(bool),
       );
     }
+    if (object.smsInstructions != null) {
+      yield r'smsInstructions';
+      yield serializers.serialize(
+        object.smsInstructions,
+        specifiedType: const FullType(bool),
+      );
+    }
   }
 
   @override
@@ -100,6 +111,13 @@ class _$CredentialIssueSerializer
             specifiedType: const FullType(bool),
           ) as bool;
           result.emailInstructions = valueDes;
+          break;
+        case r'smsInstructions':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType(bool),
+          ) as bool;
+          result.smsInstructions = valueDes;
           break;
         default:
           unhandled.add(key);

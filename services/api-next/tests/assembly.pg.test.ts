@@ -168,7 +168,10 @@ test('ASM-EMAIL configured email worker is composed; missing key refuses explici
   assert.equal(jobFailed(result), false);
   const disabled = await assembled(t);
   assert.equal(disabled.backend.email, undefined);
-  await assert.rejects(runJob(disabled.backend, { job: 'emails' }), /RESEND_API_KEY is required/);
+  await assert.rejects(
+    runJob(disabled.backend, { job: 'emails' }),
+    /An email or SMS provider is required/,
+  );
 });
 
 test('ASM-09 the backend refuses a database it could rewrite its own history on', async (t) => {
@@ -207,8 +210,8 @@ test('ASM-10 the assembled backend routes every reviewed operation', async (t) =
     }
   // Every group's dependency is required, so none of them may be absent. A
   // route that is skipped for a missing service would fail the loop above.
-  assert.equal(expected.length, 148);
-  assert.equal(new Set(expected).size, 148);
+  assert.equal(expected.length, 150);
+  assert.equal(new Set(expected).size, 150);
   for (const operation of [
     'getOpsRiderDetail',
     'listOpsOperators',
@@ -820,7 +823,7 @@ test('ASM-21 a provider this deployment does not have has no route at all', asyn
         routed += 1;
         assert.notEqual((operation as { operationId: string }).operationId, 'signInApple');
       }
-  assert.equal(routed, 147);
+  assert.equal(routed, 149);
   const docs = (await backend.app.inject({ method: 'GET', url: '/docs/json' })).json();
   assert.equal(docs.paths['/v1/auth/apple'], undefined);
   assert.ok(docs.paths['/v1/auth/google']);

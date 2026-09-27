@@ -9,6 +9,7 @@ import {
 import type { Pool, PoolClient } from 'pg';
 import { fail } from '../transport/errors.js';
 import type { Actor, Body, Outcome } from '../transport/service.js';
+import { cancelCredentialSms } from '../notifications/driver-sms.js';
 
 /** The person's own photo. Either app they hold, because it is theirs. */
 export const avatarOperations = ['getAvatar', 'uploadAvatar', 'deleteAvatar'] as const;
@@ -515,6 +516,7 @@ export class AccountService {
       }
       const user = await this.owner(c, actor);
       await this.receipt(c, actor, 'eraseAccount', key, user.id);
+      await cancelCredentialSms(c, user.id);
       await this.options.erasureRequested?.(c, user.id, user.email ?? null);
       const sessions = await c.query(
         'UPDATE app.auth_sessions SET revoked_at=clock_timestamp() WHERE user_id=$1 AND revoked_at IS NULL',

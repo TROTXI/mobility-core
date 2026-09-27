@@ -9,6 +9,7 @@ import 'package:trotxi_commuter/core/config/theme/app_typography.dart';
 import 'package:trotxi_commuter/core/config/theme/app_vectors.dart';
 import 'package:trotxi_commuter/Features/Onboarding/widgets/app_button.dart';
 import 'package:trotxi_commuter/core/widgets/public_information_links.dart';
+import 'phone_sign_in_page.dart';
 
 class OnBoardPage extends StatefulWidget {
   const OnBoardPage({super.key, required this.client});
@@ -236,6 +237,17 @@ class _OnBoardPageState extends State<OnBoardPage> {
             icon: Image.asset(Appvectors.appleIconImage),
           ),
           const SizedBox(height: AppSpacing.space8),
+          TextButton.icon(
+            onPressed: _isSigningIn
+                ? null
+                : () => Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (_) => PhoneSignInPage(client: widget.client),
+                    ),
+                  ),
+            icon: const Icon(Icons.phone_outlined),
+            label: const Text('Continue with phone'),
+          ),
           Text(
             'Use an existing Google or Apple account to continue. By continuing, '
             'you agree to Trotxi\u2019s Terms and acknowledge the Privacy Policy.',

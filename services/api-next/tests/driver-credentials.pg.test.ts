@@ -17,6 +17,8 @@ import { AppleIdTokenVerifier } from '../src/auth/id-token-verifier.apple.js';
 import { hashToken } from '../src/auth/credentials.js';
 import { TransportError } from '../src/transport/errors.js';
 import { TransactionalEmail } from '../src/notifications/email.js';
+import { DriverSms } from '../src/notifications/driver-sms.js';
+import { SmsSendError } from '../src/notifications/mnotify.js';
 import { EmailSendError } from '../src/notifications/resend.js';
 import type { EmailMessage } from '../src/notifications/resend.js';
 import { grantRuntime, migrate, readMigrations } from '../src/db/migrate.js';
@@ -102,6 +104,7 @@ async function setup(
   providers: Partial<Pick<AuthOptions, 'google' | 'apple'>> = {},
   emailEnabled = true,
   sendImmediately = false,
+  smsEnabled = true,
 ) {
   const n = ++serial,
     name = `trotxi_harness_${run}_driver_${n}`,
@@ -166,7 +169,25 @@ async function setup(
       },
     },
   });
+  const smsSent: { phone: string; text: string }[] = [];
+  const smsControl = { fail: false, reject: false };
+  const sms = new DriverSms(
+    runtime,
+    {
+      send: async (phone, text) => {
+        smsSent.push({ phone, text });
+        if (smsControl.reject) throw new SmsSendError('rejected');
+        if (smsControl.fail) throw new Error('Unconfirmed SMS response');
+        return 'sms-provider-receipt';
+      },
+    },
+    Buffer.alloc(32, 4),
+    true,
+  );
   const app = await createReplacementApp({
+    ...(smsEnabled
+      ? { driverSms: sendImmediately ? sms : { queueCredential: sms.queueCredential } }
+      : {}),
     // Queue-only by default, so tests drive the worker explicitly and can
     // observe a message while it waits. Production also sends right away.
     ...(emailEnabled
@@ -246,6 +267,9 @@ async function setup(
     service,
     app,
     email,
+    sms,
+    smsSent,
+    smsControl,
     sent,
     mailer,
     request,
@@ -260,8 +284,13 @@ const data = (response: { statusCode: number; body: string; json(): any }, statu
   return status === 204 ? undefined : response.json().data;
 };
 
-async function fixture(t: TestContext, emailEnabled = true, sendImmediately = false) {
-  const f = await setup(t, 1000, {}, emailEnabled, sendImmediately),
+async function fixture(
+  t: TestContext,
+  emailEnabled = true,
+  sendImmediately = false,
+  smsEnabled = true,
+) {
+  const f = await setup(t, 1000, {}, emailEnabled, sendImmediately, smsEnabled),
     ops = await f.sign('operator');
   await f.owner.query("UPDATE app.users SET role='admin' WHERE id=$1", [ops.account.id]);
   // A verified operator. The second factor itself is tested in auth.pg.test.ts;
@@ -1424,6 +1453,204 @@ test('DRV-39: upgrading to 029 keeps drivers and PINs, and gives outstanding tem
   assert.equal(rows[1].pin_hash, 'b'.repeat(64));
   assert.equal(rows[1].temporary_pin_expires_at, null);
   assert.equal((await owner.query('SELECT count(*)::int AS n FROM app.drivers')).rows[0].n, 2);
+});
+
+test('SMS-01: encrypted onboarding, canonical phone, replay and single provider send', async (t) => {
+  const f = await fixture(t),
+    driver = await f.create({ name: 'SMS Driver', phone: '0200000001' });
+  const key = randomUUID(),
+    secret = data(await f.issue(driver.id, key, { smsInstructions: true }), 201);
+  assert.equal(secret.email, null);
+  assert.equal(secret.sms.to, '+233200000001');
+  assert.deepEqual(data(await f.issue(driver.id, key, { smsInstructions: true }), 201), secret);
+  const rows = (await f.owner.query('SELECT * FROM app.driver_sms_outbox')).rows;
+  assert.equal(rows.length, 1);
+  assert.ok(!JSON.stringify(rows).includes(secret.pin));
+  await f.sms.sendQueued(secret.sms.id);
+  await f.sms.sendQueued(secret.sms.id);
+  assert.equal(f.smsSent.length, 1);
+  assert.ok(f.smsSent[0]!.text.includes(secret.pin));
+  assert.ok(f.smsSent[0]!.text.includes(secret.code));
+  assert.equal(f.smsSent[0]!.phone, '+233200000001');
+  const row = (await f.owner.query('SELECT * FROM app.driver_sms_outbox')).rows[0];
+  assert.equal(row.state, 'accepted');
+  assert.equal(row.payload_ciphertext, null);
+  await assert.rejects(
+    f.runtime.query(
+      "UPDATE app.driver_sms_outbox SET state='pending',payload_ciphertext='replacement'",
+    ),
+    /driver_sms_immutable/,
+  );
+  await assert.rejects(f.runtime.query('DELETE FROM app.driver_sms_outbox'), /permission denied/);
+  assert.equal((await f.login(secret)).mustChangePin, true);
+});
+
+test('SMS-02: resets and private PIN choice cancel queued old credentials', async (t) => {
+  const f = await fixture(t),
+    driver = await f.create({ name: 'Reset SMS', phone: '+233200000002' });
+  const old = data(await f.issue(driver.id, randomUUID(), { smsInstructions: true }), 201);
+  const fresh = data(await f.reset(driver.id, randomUUID(), { smsInstructions: true }));
+  await f.sms.sendQueued(old.sms.id);
+  assert.equal(f.smsSent.length, 0);
+  const session = await f.login(fresh);
+  data(
+    await f.request(
+      'POST',
+      '/v1/auth/driver/pin',
+      {
+        currentPin: fresh.pin,
+        newPin: fresh.pin === '738194' ? '849205' : '738194',
+      },
+      session.accessToken,
+      { 'idempotency-key': randomUUID() },
+    ),
+    204,
+  );
+  await f.sms.drain();
+  assert.equal(f.smsSent.length, 0);
+  const rows = (await f.owner.query('SELECT state,payload_ciphertext FROM app.driver_sms_outbox'))
+    .rows;
+  assert.equal(rows.length, 2);
+  assert.ok(rows.every((row) => row.state === 'cancelled' && row.payload_ciphertext === null));
+});
+
+test('SMS-03: uncertain delivery is scrubbed and never blindly retried', async (t) => {
+  const f = await fixture(t),
+    driver = await f.create({ name: 'Unknown SMS', phone: '+233200000003' });
+  const secret = data(await f.issue(driver.id, randomUUID(), { smsInstructions: true }), 201);
+  f.smsControl.fail = true;
+  await f.sms.sendQueued(secret.sms.id);
+  await f.sms.drain();
+  await f.sms.sendQueued(secret.sms.id);
+  assert.equal(f.smsSent.length, 1);
+  const row = (await f.owner.query('SELECT state,payload_ciphertext FROM app.driver_sms_outbox'))
+    .rows[0];
+  assert.equal(row.state, 'unknown');
+  assert.equal(row.payload_ciphertext, null);
+  const listed = data(await f.call('GET', '/v1/ops/drivers'))[0];
+  assert.equal(listed.credentialSms.state, 'unknown');
+});
+
+test('SMS-08: explicit provider rejection is a known, scrubbed failure, not unknown delivery', async (t) => {
+  const f = await fixture(t),
+    driver = await f.create({ name: 'Rejected SMS', phone: '0200000009' });
+  data(await f.issue(driver.id, randomUUID(), { smsInstructions: true }), 201);
+  f.smsControl.reject = true;
+  const stats = await f.sms.drain();
+  assert.equal(stats.failed, 1);
+  assert.equal(stats.unknown, 0);
+  assert.equal(f.smsSent.length, 1);
+  const row = (await f.owner.query('SELECT state,payload_ciphertext FROM app.driver_sms_outbox'))
+    .rows[0];
+  assert.equal(row.state, 'failed');
+  assert.equal(row.payload_ciphertext, null);
+  assert.equal((await f.sms.drain()).considered, 0);
+  const listed = data(await f.call('GET', '/v1/ops/drivers'))[0];
+  assert.equal(listed.credentialSms.failureCode, 'provider_rejected');
+});
+
+test('SMS-04: missing phone, sender or conflicting channels cannot issue a credential', async (t) => {
+  const f = await fixture(t),
+    driver = await f.create({ name: 'No SMS Phone' });
+  assert.equal((await f.issue(driver.id, randomUUID(), { smsInstructions: true })).statusCode, 409);
+  assert.equal(
+    (await f.issue(driver.id, randomUUID(), { smsInstructions: true, emailInstructions: true }))
+      .statusCode,
+    400,
+  );
+  assert.equal(
+    (await f.owner.query('SELECT count(*)::int AS n FROM app.driver_credentials')).rows[0].n,
+    0,
+  );
+  const other = await fixture(t, true, false, false),
+    withPhone = await other.create({ name: 'No Sender', phone: '0200000004' });
+  assert.equal(
+    (await other.issue(withPhone.id, randomUUID(), { smsInstructions: true })).statusCode,
+    503,
+  );
+  assert.equal(
+    (await other.owner.query('SELECT count(*)::int AS n FROM app.driver_credentials')).rows[0].n,
+    0,
+  );
+});
+
+test('SMS-05: phone edits and erasure scrub queued credentials before delivery', async (t) => {
+  const f = await fixture(t),
+    driver = await f.create({ name: 'Phone Change', phone: '0200000005' });
+  data(await f.issue(driver.id, randomUUID(), { smsInstructions: true }), 201);
+  const listed = data(await f.call('GET', '/v1/ops/drivers'))[0];
+  data(
+    await f.call('PATCH', `/v1/ops/drivers/${driver.id}`, { phone: '0200000006' }, randomUUID(), {
+      'if-match': listed.editToken,
+    }),
+    200,
+  );
+  data(await f.reset(driver.id, randomUUID(), { smsInstructions: true }));
+  await f.owner.query('UPDATE app.users SET deleted_at=clock_timestamp() WHERE id=$1', [
+    listed.userId,
+  ]);
+  const rows = (await f.owner.query('SELECT state,payload_ciphertext FROM app.driver_sms_outbox'))
+    .rows;
+  assert.equal(rows.length, 2);
+  assert.ok(rows.every((row) => row.state === 'cancelled' && row.payload_ciphertext === null));
+  await f.sms.drain();
+  assert.equal(f.smsSent.length, 0);
+});
+
+test('SMS-06: immediate delivery runs after commit, and the worker cannot send again', async (t) => {
+  const f = await fixture(t, true, true),
+    driver = await f.create({ name: 'Immediate SMS', phone: '0200000007' });
+  const secret = data(await f.issue(driver.id, randomUUID(), { smsInstructions: true }), 201);
+  const end = Date.now() + 5000;
+  let row;
+  do {
+    row = (
+      await f.owner.query(
+        'SELECT state,payload_ciphertext FROM app.driver_sms_outbox WHERE id=$1',
+        [secret.sms.id],
+      )
+    ).rows[0];
+    if (row.state === 'accepted') break;
+    await delay(20);
+  } while (Date.now() < end);
+  assert.equal(row.state, 'accepted');
+  assert.equal(row.payload_ciphertext, null);
+  assert.equal(f.smsSent.length, 1);
+  assert.equal((await f.sms.drain()).considered, 0);
+  assert.equal(f.smsSent.length, 1);
+});
+
+test('SMS-07: abandoned claims are unknown, never reopened; database freezes payload and binding', async (t) => {
+  const f = await fixture(t),
+    driver = await f.create({ name: 'Crash SMS', phone: '0200000008' });
+  const secret = data(await f.issue(driver.id, randomUUID(), { smsInstructions: true }), 201);
+  for (const assignment of [
+    "payload_ciphertext='other'",
+    'pin_version=pin_version+1',
+    "expires_at=expires_at+interval '1 day'",
+  ]) {
+    await assert.rejects(
+      f.runtime.query(`UPDATE app.driver_sms_outbox SET ${assignment} WHERE id=$1`, [
+        secret.sms.id,
+      ]),
+      /driver_sms_immutable/,
+    );
+  }
+  await f.runtime.query(
+    "UPDATE app.driver_sms_outbox SET state='sending',claimed_at=clock_timestamp()-interval '2 minutes' WHERE id=$1",
+    [secret.sms.id],
+  );
+  const result = await f.sms.drain();
+  assert.equal(result.unknown, 1);
+  assert.equal(result.considered, 1);
+  assert.equal(f.smsSent.length, 0);
+  const row = (
+    await f.owner.query('SELECT state,payload_ciphertext FROM app.driver_sms_outbox WHERE id=$1', [
+      secret.sms.id,
+    ])
+  ).rows[0];
+  assert.equal(row.state, 'unknown');
+  assert.equal(row.payload_ciphertext, null);
 });
 
 test('DRV-40: the credential email is sent straight after the issue commits, without the worker', async (t) => {

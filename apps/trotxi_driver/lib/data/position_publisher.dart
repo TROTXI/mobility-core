@@ -100,6 +100,14 @@ class PositionPublisher extends ChangeNotifier {
   Future<void> _recording = Future.value();
   int get queuedFixes => queue.rows.length;
   int get expiredFixes => queue.expiredFixes;
+  int get rejectedFixes => queue.rejectedFixes;
+  String? uploadError;
+  Future<void> acknowledgeRejections() async {
+    await queue.acknowledgeRejections();
+    queueError = null;
+    if (!_disposed) notifyListeners();
+  }
+
   Future<void> acknowledgeExpiry() async {
     await queue.acknowledgeExpiry();
     if (!_disposed) notifyListeners();
@@ -114,6 +122,8 @@ class PositionPublisher extends ChangeNotifier {
     try {
       await queue.bind(owner);
       if (owner != _boundOwner) {
+        queueError = null;
+        uploadError = null;
         _refusedRunId = null;
         _retryNotBefore = null;
         _boundOwner = owner;
@@ -181,10 +191,17 @@ class PositionPublisher extends ChangeNotifier {
         _lastCaptured = position.timestamp;
         queueError = null;
         unawaited(_drain(generation));
+      } on PositionQueueFull {
+        if (generation == _generation) {
+          queueError =
+              'GPS storage is full. Saved positions must upload or be reviewed before new positions can be saved.';
+          _set(PositionSharing.failed);
+          unawaited(_drain(generation));
+        }
       } catch (_) {
         if (generation == _generation) {
           queueError =
-              'Location could not be saved. The queue may be full or device storage unavailable.';
+              'Device storage could not save this position. Retry or contact operations.';
           _set(PositionSharing.failed);
         }
       }
@@ -196,6 +213,12 @@ class PositionPublisher extends ChangeNotifier {
   /// Freeze capture, upload all already captured fixes, then permit completion.
   /// A timeout cancels delivery, keeps the stable IDs and leaves the run active.
   Future<void> flushBeforeComplete(String tripId) async {
+    if (rejectedFixes > 0) {
+      throw const ApiException(
+        409,
+        'Some saved GPS positions were refused. Review Location & connectivity before ending this trip.',
+      );
+    }
     if (expiredFixes > 0) {
       throw const ApiException(
         409,
@@ -429,7 +452,7 @@ class PositionPublisher extends ChangeNotifier {
       if (expiredFixes > 0) _set(PositionSharing.stale);
       while (generation == _generation && _runId != null) {
         final saved = queue.rows
-            .where((r) => r['tripId'] == _runId)
+            .where((r) => r['tripId'] == _runId && r['rejected'] == null)
             .firstOrNull;
         if (saved == null) break;
         final timestamp = DateTime.parse(saved['capturedAt'] as String);
@@ -452,6 +475,8 @@ class PositionPublisher extends ChangeNotifier {
             break;
           }
           await queue.acknowledge(fixId);
+          uploadError = null;
+          queueError = null;
           if (generation != _generation) return;
           if (health != _healthRevision) continue;
           if (!receipt.acceptedForLive) {
@@ -478,6 +503,8 @@ class PositionPublisher extends ChangeNotifier {
         } on RateLimitException catch (error) {
           if (generation != _generation) return;
           _retryNotBefore = _now().add(error.retryAfter);
+          uploadError =
+              'GPS uploads are rate-limited. Retry after ${error.retryAfter.inSeconds} seconds.';
           _expiry?.cancel();
           _set(PositionSharing.failed);
           break;
@@ -488,6 +515,34 @@ class PositionPublisher extends ChangeNotifier {
           return;
         } on ApiException catch (error) {
           if (generation != _generation) return;
+          const rejectedReasons = {
+            'capture_before_start': 'A saved position predates the trip start.',
+            'capture_too_old':
+                'A saved position is outside the accepted upload window.',
+            'invalid_capture_time':
+                'A saved position has an invalid capture time.',
+            'fix_payload_conflict':
+                'A saved position identity conflicts with an existing receipt.',
+          };
+          uploadError =
+              rejectedReasons[error.code] ??
+              'Trotxi refused a GPS upload (HTTP ${error.statusCode}). Retry or contact operations.';
+          if (error.code == 'collection_session_expired') {
+            // The API closed this run's collection window. Retrying these
+            // rows cannot recover them; keep them for explicit local review.
+            uploadError =
+                'This trip’s GPS collection window has expired. Review the refused saved positions before ending it.';
+            for (final row in queue.rows.where(
+              (row) => row['tripId'] == _runId && row['rejected'] == null,
+            )) {
+              await queue.reject(row['clientFixId'] as String, error.code!);
+            }
+          }
+          if (rejectedReasons.containsKey(error.code)) {
+            await queue.reject(saved['clientFixId'] as String, error.code!);
+            _set(PositionSharing.failed);
+            continue;
+          }
           if (error.statusCode == 403 ||
               error.statusCode == 404 ||
               error.code == 'trip_not_active' ||
@@ -501,6 +556,8 @@ class PositionPublisher extends ChangeNotifier {
           break;
         } catch (_) {
           if (generation != _generation) return;
+          uploadError =
+              'GPS upload failed or its receipt could not be verified. Check your connection and retry.';
           _expiry?.cancel();
           _set(PositionSharing.failed);
           break;

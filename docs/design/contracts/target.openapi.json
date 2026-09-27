@@ -476,6 +476,197 @@
         "x-implementation-status": "design_only"
       }
     },
+    "/v1/auth/phone/request": {
+      "post": {
+        "operationId": "requestPhoneSignIn",
+        "summary": "request Phone Sign In",
+        "tags": ["public"],
+        "security": [],
+        "parameters": [
+          {
+            "name": "X-Trotxi-Client",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": ["commuter", "driver", "ops", "worker"]
+            },
+            "description": "Compatibility metadata only, never grants a role.",
+            "example": "commuter"
+          },
+          {
+            "name": "X-Trotxi-Build",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1
+            },
+            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.",
+            "example": 1
+          },
+          {
+            "name": "X-Trotxi-Platform",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": ["ios", "android"]
+            },
+            "description": "Required for commuter/driver, absent for ops/worker.",
+            "example": "ios"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PhoneSignInRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PhoneChallengeResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error409"
+          },
+          "426": {
+            "$ref": "#/components/responses/Error426"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error429"
+          },
+          "500": {
+            "$ref": "#/components/responses/Error500"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error503"
+          }
+        },
+        "x-authorization": "public",
+        "x-retry": "credential",
+        "x-sensitive": true,
+        "x-implementation-status": "design_only",
+        "x-delivery-stage": "post-cutover",
+        "x-requirement": "Approved Ghana commuter phone OTP sign-up and login",
+        "x-existing-endpoint-assessment": "Separate verified phone identities; no linking to existing Google accounts or their subscriptions."
+      }
+    },
+    "/v1/auth/phone/verify": {
+      "post": {
+        "operationId": "verifyPhoneSignIn",
+        "summary": "verify Phone Sign In",
+        "tags": ["public"],
+        "security": [],
+        "parameters": [
+          {
+            "name": "X-Trotxi-Client",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": ["commuter", "driver", "ops", "worker"]
+            },
+            "description": "Compatibility metadata only, never grants a role.",
+            "example": "commuter"
+          },
+          {
+            "name": "X-Trotxi-Build",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1
+            },
+            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.",
+            "example": 1
+          },
+          {
+            "name": "X-Trotxi-Platform",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": ["ios", "android"]
+            },
+            "description": "Required for commuter/driver, absent for ops/worker.",
+            "example": "ios"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PhoneSignInVerify"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TokensResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error409"
+          },
+          "426": {
+            "$ref": "#/components/responses/Error426"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error429"
+          },
+          "500": {
+            "$ref": "#/components/responses/Error500"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error503"
+          }
+        },
+        "x-authorization": "public",
+        "x-retry": "credential",
+        "x-sensitive": true,
+        "x-implementation-status": "design_only",
+        "x-delivery-stage": "post-cutover",
+        "x-requirement": "Approved Ghana commuter phone OTP sign-up and login",
+        "x-existing-endpoint-assessment": "Separate verified phone identities; no linking to existing Google accounts or their subscriptions."
+      }
+    },
     "/v1/auth/refresh": {
       "post": {
         "operationId": "refreshSession",
@@ -19349,6 +19540,56 @@
         "required": ["idToken"],
         "additionalProperties": false
       },
+      "PhoneSignInRequest": {
+        "type": "object",
+        "properties": {
+          "phone": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 32
+          }
+        },
+        "required": ["phone"],
+        "additionalProperties": false
+      },
+      "PhoneSignInVerify": {
+        "type": "object",
+        "properties": {
+          "challengeId": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "code": {
+            "type": "string",
+            "pattern": "^\\d{6}$"
+          }
+        },
+        "required": ["challengeId", "code"],
+        "additionalProperties": false
+      },
+      "PhoneChallenge": {
+        "type": "object",
+        "properties": {
+          "challengeId": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+          },
+          "resendAfterSeconds": {
+            "type": "integer",
+            "minimum": 60,
+            "maximum": 60
+          }
+        },
+        "required": ["challengeId", "expiresAt", "resendAfterSeconds"],
+        "additionalProperties": false
+      },
       "AppleSignIn": {
         "type": "object",
         "properties": {
@@ -22907,6 +23148,33 @@
             "required": ["purpose", "state", "failureCode", "queuedAt"],
             "additionalProperties": false
           },
+          "credentialSms": {
+            "nullable": true,
+            "type": "object",
+            "properties": {
+              "purpose": {
+                "type": "string",
+                "enum": ["onboarding", "pin_reset"]
+              },
+              "state": {
+                "type": "string",
+                "enum": ["queued", "sending", "provider_accepted", "cancelled", "failed", "unknown"]
+              },
+              "failureCode": {
+                "nullable": true,
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 100
+              },
+              "queuedAt": {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+              }
+            },
+            "required": ["purpose", "state", "failureCode", "queuedAt"],
+            "additionalProperties": false
+          },
           "editToken": {
             "type": "string",
             "minLength": 1,
@@ -23156,6 +23424,9 @@
           },
           "emailInstructions": {
             "type": "boolean"
+          },
+          "smsInstructions": {
+            "type": "boolean"
           }
         },
         "additionalProperties": false
@@ -23168,6 +23439,9 @@
             "maxLength": 2000
           },
           "emailInstructions": {
+            "type": "boolean"
+          },
+          "smsInstructions": {
             "type": "boolean"
           }
         },
@@ -23205,6 +23479,27 @@
                 "maxLength": 320,
                 "format": "email",
                 "pattern": "^(?!\\.)(?!.*\\.\\.)([A-Za-z0-9_'+\\-\\.]*)[A-Za-z0-9_+-]@([A-Za-z0-9][A-Za-z0-9\\-]*\\.)+[A-Za-z]{2,}$"
+              },
+              "state": {
+                "type": "string",
+                "enum": ["queued"]
+              }
+            },
+            "required": ["id", "to", "state"],
+            "additionalProperties": false
+          },
+          "sms": {
+            "nullable": true,
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 128
+              },
+              "to": {
+                "type": "string",
+                "pattern": "^\\+233[25]\\d{8}$"
               },
               "state": {
                 "type": "string",
@@ -25187,6 +25482,16 @@
         "properties": {
           "data": {
             "$ref": "#/components/schemas/DriverTokens"
+          }
+        },
+        "required": ["data"],
+        "additionalProperties": false
+      },
+      "PhoneChallengeResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/PhoneChallenge"
           }
         },
         "required": ["data"],

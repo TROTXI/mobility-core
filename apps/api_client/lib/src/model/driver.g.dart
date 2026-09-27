@@ -26,6 +26,8 @@ class _$Driver extends Driver {
   @override
   final DriverCredentialEmail? credentialEmail;
   @override
+  final DriverCredentialSms? credentialSms;
+  @override
   final String editToken;
   @override
   final DateTime createdAt;
@@ -47,6 +49,7 @@ class _$Driver extends Driver {
       required this.archived,
       this.credential,
       this.credentialEmail,
+      this.credentialSms,
       required this.editToken,
       required this.createdAt,
       required this.updatedAt,
@@ -72,6 +75,7 @@ class _$Driver extends Driver {
         archived == other.archived &&
         credential == other.credential &&
         credentialEmail == other.credentialEmail &&
+        credentialSms == other.credentialSms &&
         editToken == other.editToken &&
         createdAt == other.createdAt &&
         updatedAt == other.updatedAt &&
@@ -90,6 +94,7 @@ class _$Driver extends Driver {
     _$hash = $jc(_$hash, archived.hashCode);
     _$hash = $jc(_$hash, credential.hashCode);
     _$hash = $jc(_$hash, credentialEmail.hashCode);
+    _$hash = $jc(_$hash, credentialSms.hashCode);
     _$hash = $jc(_$hash, editToken.hashCode);
     _$hash = $jc(_$hash, createdAt.hashCode);
     _$hash = $jc(_$hash, updatedAt.hashCode);
@@ -110,6 +115,7 @@ class _$Driver extends Driver {
           ..add('archived', archived)
           ..add('credential', credential)
           ..add('credentialEmail', credentialEmail)
+          ..add('credentialSms', credentialSms)
           ..add('editToken', editToken)
           ..add('createdAt', createdAt)
           ..add('updatedAt', updatedAt)
@@ -162,6 +168,12 @@ class DriverBuilder implements Builder<Driver, DriverBuilder> {
   set credentialEmail(DriverCredentialEmailBuilder? credentialEmail) =>
       _$this._credentialEmail = credentialEmail;
 
+  DriverCredentialSmsBuilder? _credentialSms;
+  DriverCredentialSmsBuilder get credentialSms =>
+      _$this._credentialSms ??= DriverCredentialSmsBuilder();
+  set credentialSms(DriverCredentialSmsBuilder? credentialSms) =>
+      _$this._credentialSms = credentialSms;
+
   String? _editToken;
   String? get editToken => _$this._editToken;
   set editToken(String? editToken) => _$this._editToken = editToken;
@@ -194,6 +206,7 @@ class DriverBuilder implements Builder<Driver, DriverBuilder> {
       _archived = $v.archived;
       _credential = $v.credential?.toBuilder();
       _credentialEmail = $v.credentialEmail?.toBuilder();
+      _credentialSms = $v.credentialSms?.toBuilder();
       _editToken = $v.editToken;
       _createdAt = $v.createdAt;
       _updatedAt = $v.updatedAt;
@@ -232,6 +245,7 @@ class DriverBuilder implements Builder<Driver, DriverBuilder> {
                 archived, r'Driver', 'archived'),
             credential: _credential?.build(),
             credentialEmail: _credentialEmail?.build(),
+            credentialSms: _credentialSms?.build(),
             editToken: BuiltValueNullFieldError.checkNotNull(
                 editToken, r'Driver', 'editToken'),
             createdAt: BuiltValueNullFieldError.checkNotNull(
@@ -248,6 +262,8 @@ class DriverBuilder implements Builder<Driver, DriverBuilder> {
         _credential?.build();
         _$failedField = 'credentialEmail';
         _credentialEmail?.build();
+        _$failedField = 'credentialSms';
+        _credentialSms?.build();
       } catch (e) {
         throw BuiltValueNestedFieldError(
             r'Driver', _$failedField, e.toString());

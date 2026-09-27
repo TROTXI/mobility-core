@@ -1,6 +1,12 @@
 // Stage-1 review follow-up: predecessor absence is not proof of feature expansion.
 // Deferred operations remain documented proposals, not stage-3 commitments.
 export const operationScope = [
+  ...['requestPhoneSignIn', 'verifyPhoneSignIn'].map((name) => [
+    name,
+    'post-cutover',
+    'Approved Ghana commuter phone OTP sign-up and login',
+    'Separate verified phone identities; no linking to existing Google accounts or their subscriptions.',
+  ]),
   ...[
     'getPersonalPause',
     'previewPersonalPause',

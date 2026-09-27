@@ -155,9 +155,23 @@ export async function runJob(backend: Backend, request: JobRequest): Promise<Job
       return { job: request.job, status: response.statusCode, body: response.json() };
     }
     if (request.job === 'emails') {
-      if (!backend.email) throw new Error('RESEND_API_KEY is required for the email worker');
-      await backend.email.prepareReminders(limit);
-      return { job: request.job, status: 200, body: await backend.email.drain(limit) };
+      if (!backend.email && !backend.sms)
+        throw new Error('An email or SMS provider is required for the notification worker');
+      await backend.email?.prepareReminders(limit);
+      const email = await backend.email?.drain(limit);
+      const sms = await backend.sms?.drain(limit);
+      const counts = {
+        considered: 0,
+        accepted: 0,
+        cancelled: 0,
+        failed: 0,
+        retried: 0,
+        unknown: 0,
+      };
+      for (const key of Object.keys(counts) as (keyof typeof counts)[]) {
+        counts[key] = (email?.[key] ?? 0) + (sms?.[key] ?? 0);
+      }
+      return { job: request.job, status: 200, body: counts };
     }
     if (request.job === 'driver-secrets')
       return {
