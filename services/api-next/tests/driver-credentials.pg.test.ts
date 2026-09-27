@@ -1239,6 +1239,14 @@ test('DRV-35: a temporary PIN reaches only setup, the change revokes it, and the
     await f.request('GET', '/v1/driver/me', undefined, session.accessToken, asDriver),
   );
   assert.equal(self.credential.mustChangePin, true);
+  // Identifying the account is allowed too: it is how a restored app finds
+  // out it must send the driver to PIN setup. Sessions management is not.
+  data(await f.request('GET', '/v1/me', undefined, session.accessToken, asDriver));
+  assert.equal(
+    (await f.request('GET', '/v1/me/sessions', undefined, session.accessToken, asDriver))
+      .statusCode,
+    403,
+  );
   assert.equal(self.credential.temporaryPinExpiresAt, secret.temporaryPinExpiresAt);
   // Restoring the session later changes nothing: the rule is on the server.
   const refreshed = data(

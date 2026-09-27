@@ -768,7 +768,10 @@ export class AuthService {
       // Revocation takes the exclusive user lock first; do not upgrade a shared
       // lock after session checks (two concurrent revokers would deadlock).
       if (name === 'revokeSession') await this.user(client, actor.userId, true);
-      await this.authorizeSession(client, actor);
+      // Reading who you are is part of setting up: the app restores a
+      // temporary-PIN session through this read before sending the driver to
+      // choose a PIN. Everything else here waits for the private PIN.
+      await this.authorizeSession(client, actor, { allowPinSetup: name === 'getAccount' });
       if (name === 'getAccount') return result(this.account(await this.user(client, actor.userId)));
       if (name === 'listSessions') {
         const limit = query.limit === undefined ? 50 : Number(query.limit);
