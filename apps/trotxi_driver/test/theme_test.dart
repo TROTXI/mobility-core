@@ -36,6 +36,47 @@ void main() {
       expect(AppTheme.darkTheme.scaffoldBackgroundColor, AppColors.dark.page);
     });
 
+    test('all Material text slots use the bundled Poppins family', () {
+      for (final theme in [AppTheme.lightTheme, AppTheme.darkTheme]) {
+        for (final text in [theme.textTheme, theme.primaryTextTheme]) {
+          for (final style in [
+            text.displayLarge,
+            text.displayMedium,
+            text.displaySmall,
+            text.headlineLarge,
+            text.headlineMedium,
+            text.headlineSmall,
+            text.titleLarge,
+            text.titleMedium,
+            text.titleSmall,
+            text.bodyLarge,
+            text.bodyMedium,
+            text.bodySmall,
+            text.labelLarge,
+            text.labelMedium,
+            text.labelSmall,
+          ]) {
+            expect(style?.fontFamily, 'Poppins');
+          }
+        }
+      }
+    });
+
+    test('supporting controls use driver colours and readable typography', () {
+      for (final theme in [AppTheme.lightTheme, AppTheme.darkTheme]) {
+        final colors = theme.extension<AppColors>()!;
+        expect(theme.dialogTheme.backgroundColor, colors.surface);
+        expect(theme.dialogTheme.titleTextStyle?.fontFamily, 'Poppins');
+        expect(theme.bottomSheetTheme.backgroundColor, colors.surface);
+        expect(
+          theme.listTileTheme.subtitleTextStyle?.color,
+          colors.textSecondary,
+        );
+        expect(theme.listTileTheme.minTileHeight, AppTheme.minTapTarget);
+        expect(theme.progressIndicatorTheme.color, colors.action);
+      }
+    });
+
     test('primary buttons clear the driver tap-target floor', () {
       // 56dp, above Material's 48. The driver taps a mounted phone, often with
       // the engine running.

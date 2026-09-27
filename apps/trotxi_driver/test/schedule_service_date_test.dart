@@ -37,6 +37,28 @@ class MidnightTrips extends TripsRepository {
 }
 
 void main() {
+  for (final theme in [AppTheme.lightTheme, AppTheme.darkTheme]) {
+    testWidgets('navigation owns one Schedule heading in ${theme.brightness}', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        Provider<TripsRepository>.value(
+          value: MidnightTrips(),
+          child: MaterialApp(
+            theme: theme,
+            home: Scaffold(
+              appBar: AppBar(title: const Text('Schedule')),
+              body: const SchedulePage(showHeading: false),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('Schedule'), findsOneWidget);
+      expect(find.text('Only the runs assigned to you.'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
+  }
   testWidgets(
     'a midnight delay stays on its stored service day in the agenda',
     (tester) async {

@@ -19,7 +19,10 @@ import 'package:trotxi_driver/data/trips_repository.dart';
 /// "Planning principle: show only driver-assigned duties" — not a roster of
 /// everything the depot runs, only what this driver has been given.
 class SchedulePage extends StatefulWidget {
-  const SchedulePage({super.key});
+  const SchedulePage({super.key, this.showHeading = true});
+
+  /// False when the navigation bar already provides the page title.
+  final bool showHeading;
 
   @override
   State<SchedulePage> createState() => _SchedulePageState();
@@ -124,11 +127,13 @@ class _SchedulePageState extends State<SchedulePage> {
           vertical: AppSpacing.space8,
         ),
         children: [
-          Text(
-            'Schedule',
-            style: AppTypography.heading2.copyWith(color: colors.textPrimary),
-          ),
-          const SizedBox(height: AppSpacing.space4),
+          if (widget.showHeading) ...[
+            Text(
+              'Schedule',
+              style: AppTypography.heading2.copyWith(color: colors.textPrimary),
+            ),
+            const SizedBox(height: AppSpacing.space4),
+          ],
           Text(
             'Only the runs assigned to you.',
             style: AppTypography.bodySmall.copyWith(

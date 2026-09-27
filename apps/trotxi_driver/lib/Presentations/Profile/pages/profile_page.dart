@@ -25,7 +25,9 @@ import 'driver_information_page.dart';
 /// Assignment alerts reflect device permission and actual API registration;
 /// general notification preferences remain outside this driver's workflow.
 class ProfilePage extends StatefulWidget {
-  const ProfilePage({super.key});
+  const ProfilePage({super.key, this.onPhotoChanged});
+
+  final ValueChanged<String?>? onPhotoChanged;
 
   @override
   State<ProfilePage> createState() => _ProfilePageState();
@@ -52,7 +54,10 @@ class _ProfilePageState extends State<ProfilePage> {
       final account = await DriverProfileRepository(
         context.read<DriverApi>(),
       ).account();
-      if (mounted) setState(() => _photoUrl = account.avatarUrl);
+      if (mounted) {
+        setState(() => _photoUrl = account.avatarUrl);
+        widget.onPhotoChanged?.call(account.avatarUrl);
+      }
     } on TrotxiException {
       // Leave the initials in place.
     }
@@ -123,6 +128,7 @@ class _ProfilePageState extends State<ProfilePage> {
       );
       if (!mounted) return;
       setState(() => _photoUrl = url);
+      widget.onPhotoChanged?.call(url);
       _say('Photo updated.');
     } on ApiException catch (error) {
       if (!mounted) return;
@@ -208,26 +214,34 @@ class _ProfilePageState extends State<ProfilePage> {
       colors: colors,
       child: _Card(
         colors: colors,
-        child: RadioGroup<ThemeMode>(
-          groupValue: theme.themeMode,
-          onChanged: (next) => theme.setThemeMode(next ?? ThemeMode.system),
-          child: Column(
-            children: [
-              for (final mode in ThemeMode.values)
-                RadioListTile<ThemeMode>(
-                  value: mode,
-                  title: Text(
-                    switch (mode) {
-                      ThemeMode.system => 'Match device',
-                      ThemeMode.light => 'Light',
-                      ThemeMode.dark => 'Dark',
-                    },
-                    style: AppTypography.body.copyWith(
-                      color: colors.textPrimary,
-                    ),
-                  ),
-                ),
+        child: Padding(
+          padding: const EdgeInsets.all(AppSpacing.space12),
+          child: SegmentedButton<ThemeMode>(
+            segments: const [
+              ButtonSegment(value: ThemeMode.system, label: Text('Device')),
+              ButtonSegment(value: ThemeMode.light, label: Text('Light')),
+              ButtonSegment(value: ThemeMode.dark, label: Text('Dark')),
             ],
+            selected: {theme.themeMode},
+            onSelectionChanged: (selected) =>
+                theme.setThemeMode(selected.single),
+            showSelectedIcon: false,
+            expandedInsets: EdgeInsets.zero,
+            style: ButtonStyle(
+              minimumSize: const WidgetStatePropertyAll(Size(0, 56)),
+              textStyle: const WidgetStatePropertyAll(AppTypography.label),
+              foregroundColor: WidgetStateProperty.resolveWith(
+                (states) => states.contains(WidgetState.selected)
+                    ? colors.onAction
+                    : colors.textSecondary,
+              ),
+              backgroundColor: WidgetStateProperty.resolveWith(
+                (states) => states.contains(WidgetState.selected)
+                    ? colors.action
+                    : colors.surface,
+              ),
+              side: WidgetStatePropertyAll(BorderSide(color: colors.border)),
+            ),
           ),
         ),
       ),
@@ -245,7 +259,7 @@ class _ProfilePageState extends State<ProfilePage> {
               title: 'Schedule',
               subtitle: 'Assigned trips by date',
               pageTitle: 'Schedule',
-              page: const SchedulePage(),
+              page: const SchedulePage(showHeading: false),
               colors: colors,
             ),
             _destination(
@@ -253,7 +267,7 @@ class _ProfilePageState extends State<ProfilePage> {
               title: 'Work & requests',
               subtitle: 'Routes, changes and leave',
               pageTitle: 'Work & Requests',
-              page: const WorkRequestsPage(),
+              page: const WorkRequestsPage(showHeading: false),
               colors: colors,
             ),
             _destination(
@@ -261,7 +275,7 @@ class _ProfilePageState extends State<ProfilePage> {
               title: 'Incident & support',
               subtitle: 'Report a problem or call operations',
               pageTitle: 'Incident & support',
-              page: const IncidentSupportPage(),
+              page: const IncidentSupportPage(showHeading: false),
               colors: colors,
               danger: true,
             ),
@@ -284,21 +298,27 @@ class _ProfilePageState extends State<ProfilePage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          if (alerts != null)
-            ListTile(
-              title: const Text('Assignment alerts'),
-              subtitle: Text(alerts.status),
-              trailing: alerts.enabled
-                  ? const Icon(Icons.notifications_active_outlined)
-                  : TextButton(
-                      onPressed: alerts.busy ? null : alerts.enable,
-                      child: const Text('Enable'),
-                    ),
-            ),
           _Card(
             colors: colors,
             child: Column(
               children: [
+                if (alerts != null) ...[
+                  ListTile(
+                    leading: const Icon(Icons.notifications_outlined),
+                    title: const Text('Assignment alerts'),
+                    subtitle: Text(alerts.status),
+                    trailing: alerts.enabled
+                        ? Icon(
+                            Icons.check_circle_outline,
+                            color: colors.success,
+                          )
+                        : TextButton(
+                            onPressed: alerts.busy ? null : alerts.enable,
+                            child: const Text('Enable'),
+                          ),
+                  ),
+                  const Divider(height: 1),
+                ],
                 _StatusRow(
                   label: 'Location services',
                   ok: _locationServices ?? false,
@@ -333,11 +353,14 @@ class _ProfilePageState extends State<ProfilePage> {
     final signOut = Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        ElevatedButton(
+        OutlinedButton(
           onPressed: session.isBusy
               ? null
               : () => _confirmSignOut(context, session),
-          style: ElevatedButton.styleFrom(backgroundColor: colors.danger),
+          style: OutlinedButton.styleFrom(
+            foregroundColor: colors.danger,
+            side: BorderSide(color: colors.danger),
+          ),
           child: const Text('Sign out'),
         ),
         const SizedBox(height: AppSpacing.space8),
@@ -383,11 +406,11 @@ class _ProfilePageState extends State<ProfilePage> {
                 children: [
                   identity,
                   const SizedBox(height: AppSpacing.space24),
-                  appearance,
-                  const SizedBox(height: AppSpacing.space24),
                   work,
                   const SizedBox(height: AppSpacing.space24),
                   device,
+                  const SizedBox(height: AppSpacing.space24),
+                  appearance,
                   const SizedBox(height: AppSpacing.space32),
                   signOut,
                 ],
