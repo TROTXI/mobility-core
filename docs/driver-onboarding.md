@@ -136,9 +136,13 @@ Resend unavailable, a timeout, or the API restarting mid-send. Those stay
 queued with their retry time. The existing GitHub Actions payments/email
 maintenance schedule retries up to 100 due outbox messages every 15 minutes
 once this branch is merged into the default branch. GitHub may delay runs.
-It reuses the existing staging database secret and reads the API's existing
-JWT and Resend keys through the current Render integration: no new secrets
-or paid service. Payment-job failure does not skip email retries. Logs contain
+It reuses the existing staging database secret and the current Render
+integration: no new secrets or paid service. The staging master key is read
+and used only inside the workflow's key step, which derives the outbox key
+there; only that derived key and the Resend key reach the email step, as
+masked step outputs, and nothing is written to the job-wide environment. If
+the staging API has no `RESEND_API_KEY`, the email step skips with a notice
+instead of failing. Payment-job failure does not skip email retries. Logs contain
 counts only; the existing expiry, stale-credential checks and provider
 idempotency keys apply. This schedule only retries queued messages; it does
 not prepare new subscription reminders.

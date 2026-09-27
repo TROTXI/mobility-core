@@ -1,12 +1,20 @@
 /** Bounded staging outbox retry; no seeding, new messages or credential issuance. */
-import { hkdfSync } from 'node:crypto';
 import { pathToFileURL } from 'node:url';
 import pg from 'pg';
 import { TransactionalEmail } from '../src/notifications/email.js';
 import { ResendSender } from '../src/notifications/resend.js';
 import { jobFailed, jobLog } from '../src/runtime/job-outcome.js';
 
-export function retryConfiguration(env: NodeJS.ProcessEnv) {
+/**
+ * What the retry needs, or why it should not run. The workflow derives the
+ * outbox key from the staging master key in its own step and passes only the
+ * derived key here; this script never sees the master key.
+ */
+export function retryConfiguration(
+  env: NodeJS.ProcessEnv,
+):
+  | { skip: string }
+  | { skip?: undefined; connectionString: string; encryptionKey: Buffer; apiKey: string } {
   const database = new URL(env.REPLACEMENT_DATABASE_URL ?? '');
   if (
     !['postgres:', 'postgresql:'].includes(database.protocol) ||
@@ -17,21 +25,25 @@ export function retryConfiguration(env: NodeJS.ProcessEnv) {
     database.hash
   )
     throw new Error('Only the existing external staging database is allowed');
-  const jwt = env.JWT_SECRET;
-  if (!jwt || Buffer.byteLength(jwt) < 32) throw new Error('Staging JWT_SECRET is required');
   const apiKey = env.RESEND_API_KEY;
-  if (!apiKey?.startsWith('re_') || /\s/.test(apiKey))
-    throw new Error('RESEND_API_KEY is required');
-  // Exactly the DEVICE_KEY derivation used by existingStagingEnvironment at boot.
-  const encryptionKey = Buffer.from(
-    hkdfSync('sha256', jwt, 'trotxi:replacement:staging:v1', 'DEVICE_KEY', 32),
-  );
+  // No sender configured is the API's own "email not configured": nothing was
+  // sent immediately either, so there is nothing to retry. Skip, do not fail.
+  if (!apiKey) return { skip: 'RESEND_API_KEY is not set; email retries skipped.' };
+  if (!apiKey.startsWith('re_') || /\s/.test(apiKey))
+    throw new Error('RESEND_API_KEY is malformed');
+  const encryptionKey = Buffer.from(env.EMAIL_ENCRYPTION_KEY ?? '', 'base64');
+  if (encryptionKey.length !== 32)
+    throw new Error('EMAIL_ENCRYPTION_KEY must be the 32-byte derived outbox key');
   if (!database.searchParams.has('sslmode')) database.searchParams.set('sslmode', 'no-verify');
   return { connectionString: database.href, encryptionKey, apiKey };
 }
 
 async function main() {
   const config = retryConfiguration(process.env);
+  if (config.skip !== undefined) {
+    process.stdout.write(`::notice::${config.skip}\n`);
+    return;
+  }
   const pool = new pg.Pool({
     connectionString: config.connectionString,
     max: 4,
