@@ -7,6 +7,7 @@ import 'package:trotxi_driver/Presentations/Auth/models/sign_in_state.dart';
 import 'package:trotxi_driver/Presentations/Auth/pages/cant_sign_in_page.dart';
 import 'package:trotxi_driver/Presentations/Auth/pages/forgot_pin_page.dart';
 import 'package:trotxi_driver/core/widgets/driver_note.dart';
+import 'package:trotxi_driver/core/widgets/public_information_links.dart';
 import 'package:trotxi_driver/core/widgets/trotxi_wordmark.dart';
 import 'package:trotxi_driver/core/config/theme/app_colors.dart';
 import 'package:trotxi_driver/core/config/theme/app_radii.dart';
@@ -380,6 +381,8 @@ class _SignInPageState extends State<SignInPage> {
                         color: colors.textMuted,
                       ),
                     ),
+                    const SizedBox(height: AppSpacing.space12),
+                    const PublicInformationLinks(),
                   ],
                 ),
               ),

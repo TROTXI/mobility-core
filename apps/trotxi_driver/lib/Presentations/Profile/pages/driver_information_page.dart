@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:trotxi_driver/core/state/config_controller.dart';
 import 'package:trotxi_driver/core/widgets/operations_contact.dart';
+import 'package:trotxi_driver/core/widgets/public_information_links.dart';
 import 'package:trotxi_driver/core/config/theme/app_colors.dart';
 import 'package:trotxi_driver/core/config/theme/app_spacing.dart';
 import 'package:trotxi_driver/core/config/theme/app_typography.dart';
@@ -40,6 +41,7 @@ class DriverInformationPage extends StatelessWidget {
           'Pilot information · updated 26 September 2026',
           style: AppTypography.bodySmall.copyWith(color: colors.textSecondary),
         ),
+        const PublicInformationLinks(),
         for (final section in driverInformationSections.entries) ...[
           const SizedBox(height: AppSpacing.space24),
           Text(

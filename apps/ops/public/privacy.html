@@ -1,0 +1,185 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="referrer" content="no-referrer" />
+    <meta
+      name="description"
+      content="How Trotxi Commuter and Trotxi Driver use personal information, active-trip location, payments and account data."
+    />
+    <title>Privacy notice · Trotxi</title>
+    <link rel="stylesheet" href="./legal.css" />
+  </head>
+  <body>
+    <a class="skip" href="#content">Skip to content</a>
+    <header>
+      <a class="brand" href="./privacy.html">Trotxi</a>
+      <nav aria-label="Public information">
+        <a href="./privacy.html" aria-current="page">Privacy</a>
+        <a href="./delete-account.html">Account deletion</a>
+      </nav>
+    </header>
+    <main id="content">
+      <p class="eyebrow">Trotxi Commuter &amp; Trotxi Driver</p>
+      <h1>Your information. Clear boundaries.</h1>
+      <p class="muted">Privacy notice · Updated 26 September 2026</p>
+      <p>
+        This notice describes the Trotxi pilot commuter and driver apps and the operations website
+        that supports them. It explains the information we use, why we use it, who can access it,
+        and how to request deletion or ask about your information.
+      </p>
+      <div class="notice">
+        <p>
+          <strong>Driver location is for active trips, not off-duty tracking.</strong> Collection
+          begins when a driver starts a tracked trip while the app is open. It can continue when the
+          app is in the background or the screen is locked, and stops when the trip ends, the driver
+          signs out, or the app confirms that the assignment is no longer authorised.
+        </p>
+        <p>
+          <a href="./delete-account.html">Request account or personal-data deletion</a> without
+          installing or signing in to the app.
+        </p>
+      </div>
+
+      <h2>Information we use</h2>
+      <ul>
+        <li>
+          <strong>Identity and account:</strong> your sign-in provider identifier, name, verified
+          email when supplied, profile details, optional phone number and optional photo. Drivers
+          also have an operations-managed driver record, contact information, licence details,
+          driver code and a protected PIN credential.
+        </li>
+        <li>
+          <strong>Commutes and trips:</strong> selected routes and stops, subscriptions and ride
+          balances, reservations, boarding and no-show records, assignments, stop arrivals and trip
+          completion.
+        </li>
+        <li>
+          <strong>Driver location:</strong> precise coordinates, accuracy, capture and receipt times
+          during an active trip. The driver app temporarily stores unsent fixes on the device when
+          connectivity is interrupted.
+        </li>
+        <li>
+          <strong>Payments:</strong> purchase amounts, payment references, provider outcomes,
+          reconciliation, refund and accounting records. Paystack handles payment entry and
+          processing; Trotxi does not store your full card number or card security code.
+        </li>
+        <li>
+          <strong>Support and communications:</strong> incident reports, work requests, support
+          messages, relevant evidence, and delivery status for transactional emails and assignment
+          notifications.
+        </li>
+        <li>
+          <strong>Devices and reliability:</strong> session and device-registration information,
+          push tokens, app versions, request diagnostics, and Firebase analytics, crash and
+          performance information where enabled. Service monitoring includes technical metrics, logs
+          and traces.
+        </li>
+      </ul>
+
+      <h2>Why we use it</h2>
+      <p>
+        We use this information to sign you in securely; plan and deliver commutes; assign vehicles
+        and drivers; confirm boarding; account for paid rides; show entitled riders the approaching
+        bus; process payments and refunds; send service messages; investigate incidents; prevent
+        misuse; and diagnose reliability problems.
+      </p>
+      <p>
+        Driver contact emails used for onboarding and PIN recovery are delivery addresses, not proof
+        of account ownership. A private PIN chosen by a driver is not available to operations staff.
+        We do not sell personal information.
+      </p>
+
+      <h2>Location, camera and notifications</h2>
+      <p>
+        Drivers see a location disclosure before granting location access. Starting a tracked trip
+        requires location access and location services. Android displays a location
+        foreground-service notification; iOS may display its location indicator. Tracking is not
+        guaranteed after force-stopping the app, rebooting the phone or losing power.
+      </p>
+      <p>
+        Camera access is optional, for photos or QR boarding. Drivers can use a boarding code
+        instead of the camera. Photo-library access is used when you choose a photo. Notification
+        permission is separate and supports service or assignment updates. You can change these
+        permissions in device settings.
+      </p>
+      <p>
+        The commuter tracking screen reads the bus's position; it does not need to collect the
+        commuter's location to display the approaching bus.
+      </p>
+
+      <h2>Who can access information</h2>
+      <p>
+        Authorised operations staff can access information needed for dispatch, support, safety and
+        accounting. An assigned driver can access their trip and its manifest, including rider
+        information needed to verify boarding. Riders entitled to a run can see its latest bus
+        position; it is not a public driver-location feed.
+      </p>
+      <p>
+        We use service providers for hosting and database storage (Render), files and map delivery
+        (Cloudflare), sign-in and mobile messaging/diagnostics (Google and Firebase; Apple when
+        enabled), payments (Paystack), transactional email (Resend), and monitoring (Grafana).
+        GitHub Actions runs scheduled maintenance. Providers process information necessary for their
+        role; their infrastructure may process information outside Ghana.
+      </p>
+
+      <h2>Storage and retention</h2>
+      <ul>
+        <li>
+          <strong>Offline driver fixes:</strong> the protected queue holds at most 1,440 fixes.
+          Entries older than 24 hours expire when the queue is next processed. Signing out clears
+          the device's queued coordinates.
+        </li>
+        <li>
+          <strong>Raw server traces:</strong> fixes become eligible for deletion after 30 days,
+          except receipt-time intervals protected by an active incident evidence hold. Physical
+          deletion requires the retention maintenance job to run.
+        </li>
+        <li>
+          <strong>Account information:</strong> kept while needed to provide the account, then
+          scrubbed or removed through the account-erasure workflow after an approved deletion.
+        </li>
+        <li>
+          <strong>Trip, accounting, payment, security and incident history:</strong> some records
+          remain for reconciliation, disputes, safety, fraud prevention and applicable legal
+          obligations. These have different lifetimes from raw GPS traces; a 30-day trace policy
+          does not mean all history disappears after 30 days. Contact us about the records relevant
+          to your request.
+        </li>
+      </ul>
+      <p>
+        Route-learning samples do not carry a trip identifier, but that alone is not a guarantee
+        that every sample is anonymous. Deletion of account identifiers and restricted access remain
+        important.
+      </p>
+
+      <h2>Your choices and requests</h2>
+      <p>
+        You can edit supported profile fields and your optional photo, manage permissions in device
+        settings, and sign out. Commuters can initiate account deletion from Profile → Security
+        &amp; sign-in → Delete account. Drivers can request account and personal-data deletion
+        through the public deletion page or operations.
+      </p>
+      <p>
+        You can also ask about access, corrections, retained information or a privacy concern. We
+        verify identity before disclosing private account information or carrying out a deletion.
+        Never send a PIN, password, access token or card details.
+      </p>
+      <p>
+        <a href="./delete-account.html#contact">Contact the Trotxi privacy and deletion desk</a>.
+      </p>
+
+      <h2>Changes and pilot scope</h2>
+      <p>
+        We update this notice when the service or its data practices change. The date above
+        identifies this version. This is a description of the current pilot, not a promise that an
+        unavailable feature is enabled or that all external cleanup finishes immediately.
+      </p>
+    </main>
+    <footer>
+      Trotxi · <a href="./privacy.html">Privacy notice</a> ·
+      <a href="./delete-account.html">Account deletion</a>
+    </footer>
+  </body>
+</html>
