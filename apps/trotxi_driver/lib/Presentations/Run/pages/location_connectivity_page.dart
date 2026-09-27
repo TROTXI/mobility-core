@@ -75,8 +75,9 @@ class LocationConnectivityPage extends StatelessWidget {
                             ],
                           ),
                         );
-                        if (confirmed == true)
+                        if (confirmed == true) {
                           await positions.acknowledgeRejections();
+                        }
                       },
                       child: const Text('Remove refused'),
                     ),
