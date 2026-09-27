@@ -937,31 +937,47 @@ test('ASM-24 composed replicas share hashed IP admission before authentication',
     ),
   );
   assert.notDeepEqual(ipKey, configuration.keys.cursorSecret);
-  const subject = `ip:all:${createHmac('sha256', ipKey).update('192.0.2.44').digest('hex')}`;
-  let window: number | undefined;
-  const codes: number[] = [];
-  for (let i = 0; i < 12 && codes.length < 2; i++) {
-    const response = await (i % 2 ? second : first).app.inject({
+  for (let attempt = 0; attempt < 6; attempt++) {
+    // Shared buckets reset on the minute; the local limiter uses a rolling
+    // minute. A boundary between replicas invalidates the pair, not either
+    // limiter. Retry with a fresh IP so neither replica retains local spend.
+    const ip = `192.0.2.${44 + attempt}`;
+    const subject = `ip:all:${createHmac('sha256', ipKey).update(ip).digest('hex')}`;
+    const request = {
       url: '/v1/routes',
-      remoteAddress: '192.0.2.44',
+      remoteAddress: ip,
       headers: { authorization: 'Bearer invalid-token' },
-    });
-    const row = (
-      await f.owner.query(
-        'SELECT window_started_at,count FROM app.admission_counters WHERE subject=$1',
-        [subject],
-      )
-    ).rows[0];
-    assert.ok(row, 'runtime composition must install shared IP admission');
-    const observed = row.window_started_at.getTime();
-    if (observed !== window) {
-      window = observed;
-      codes.length = 0;
+    };
+    const readCounter = async () => {
+      const row = (
+        await f.owner.query(
+          'SELECT window_started_at,count FROM app.admission_counters WHERE subject=$1',
+          [subject],
+        )
+      ).rows[0];
+      assert.ok(row, 'runtime composition must install shared IP admission');
+      return row;
+    };
+    const accepted = await first.app.inject(request);
+    const initial = await readCounter();
+    assert.equal(accepted.statusCode, 400);
+    assert.equal(Number(initial.count), 1);
+    const refused = await second.app.inject(request);
+    const final = await readCounter();
+    if (final.window_started_at.getTime() !== initial.window_started_at.getTime()) {
+      assert.equal(refused.statusCode, 400);
+      assert.equal(Number(final.count), 1);
+      continue;
     }
-    codes.push(response.statusCode);
-    assert.equal(Number(row.count), codes.length);
-    if (response.statusCode === 429) assert.ok(Number(response.headers['retry-after']) > 0);
+    assert.equal(refused.statusCode, 429);
+    assert.equal(Number(final.count), 2);
+    assert.ok(Number(refused.headers['retry-after']) > 0);
+    assert.equal(subject.includes(ip), false);
+    // Reusing the first replica is refused locally, before a database spend.
+    const locallyRefused = await first.app.inject(request);
+    assert.equal(locallyRefused.statusCode, 429);
+    assert.equal(Number((await readCounter()).count), 2);
+    return;
   }
-  assert.deepEqual(codes, [400, 429]);
-  assert.equal(subject.includes('192.0.2.44'), false);
+  assert.fail('No pair of replica requests completed in the same admission window');
 });
