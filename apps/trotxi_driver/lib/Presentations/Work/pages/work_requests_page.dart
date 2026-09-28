@@ -21,7 +21,9 @@ import 'package:trotxi_driver/data/work_repository.dart';
 /// trip — and it is said plainly to drivers, because it is the thing they would
 /// otherwise assume wrongly while waiting for an answer.
 class WorkRequestsPage extends StatefulWidget {
-  const WorkRequestsPage({super.key});
+  const WorkRequestsPage({super.key, this.showHeading = true});
+
+  final bool showHeading;
 
   @override
   State<WorkRequestsPage> createState() => _WorkRequestsPageState();
@@ -56,11 +58,13 @@ class _WorkRequestsPageState extends State<WorkRequestsPage> {
           vertical: AppSpacing.space8,
         ),
         children: [
-          Text(
-            'Work & Requests',
-            style: AppTypography.heading2.copyWith(color: colors.textPrimary),
-          ),
-          const SizedBox(height: AppSpacing.space4),
+          if (widget.showHeading) ...[
+            Text(
+              'Work & Requests',
+              style: AppTypography.heading2.copyWith(color: colors.textPrimary),
+            ),
+            const SizedBox(height: AppSpacing.space4),
+          ],
           Text(
             'Routes, schedule changes and time-away requests.',
             style: AppTypography.bodySmall.copyWith(

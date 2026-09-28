@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:trotxi_commuter/Features/Home/pages/home_page_provider.dart';
 import 'package:trotxi_commuter/core/config/theme/app_colors.dart';
+import 'package:trotxi_commuter/core/config/theme/app_typography.dart';
 import 'package:trotxi_commuter/main.dart';
 
 /// Boarding pass for one reservation. Issues a short-lived pass via
@@ -200,7 +201,7 @@ class _PassHeader extends StatelessWidget {
           style: TextStyle(
             color: AppColors.dark,
             fontSize: 24,
-            fontFamily: 'Hanken Grotesk',
+            fontFamily: AppTypography.fontFamily,
             fontWeight: FontWeight.w700,
             height: 1.33,
           ),
@@ -349,7 +350,7 @@ class _QrError extends StatelessWidget {
               style: TextStyle(
                 color: AppColors.body,
                 fontSize: 14,
-                fontFamily: 'Inter',
+                fontFamily: AppTypography.fontFamily,
                 fontWeight: FontWeight.w500,
               ),
             ),
@@ -569,7 +570,7 @@ class _PassFooter extends StatelessWidget {
               style: TextStyle(
                 color: AppColors.body,
                 fontSize: 14,
-                fontFamily: 'Inter',
+                fontFamily: AppTypography.fontFamily,
                 fontWeight: FontWeight.w400,
                 height: 1.43,
               ),

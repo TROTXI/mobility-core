@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:trotxi_client/trotxi_client.dart';
 import 'package:trotxi_commuter/core/config/theme/app_colors.dart';
+import 'package:trotxi_commuter/core/config/theme/app_typography.dart';
 import 'package:trotxi_commuter/Features/Home/pages/home_page_provider.dart';
 
 // ---------------------------------------------------------------------
@@ -156,7 +157,7 @@ class _HomeTabState extends ConsumerState<HomeTab> {
                   style: TextStyle(
                     color: colors.textPrimary,
                     fontSize: 22,
-                    fontFamily: 'Hanken Grotesk',
+                    fontFamily: AppTypography.fontFamily,
                     fontWeight: FontWeight.w700,
                     height: 1.2,
                   ),
@@ -167,7 +168,7 @@ class _HomeTabState extends ConsumerState<HomeTab> {
                   style: TextStyle(
                     color: colors.textSecondary,
                     fontSize: 14,
-                    fontFamily: 'Inter',
+                    fontFamily: AppTypography.fontFamily,
                     fontWeight: FontWeight.w500,
                     height: 1.3,
                   ),
@@ -295,7 +296,7 @@ class _HomeTabState extends ConsumerState<HomeTab> {
             style: TextStyle(
               color: colors.textPrimary,
               fontSize: 16,
-              fontFamily: 'Inter',
+              fontFamily: AppTypography.fontFamily,
               fontWeight: FontWeight.w600,
             ),
           ),
@@ -341,7 +342,7 @@ class _HomeTabState extends ConsumerState<HomeTab> {
             style: TextStyle(
               color: colors.textPrimary,
               fontSize: 17,
-              fontFamily: 'Inter',
+              fontFamily: AppTypography.fontFamily,
               fontWeight: FontWeight.w600,
               height: 1.4,
             ),
@@ -352,7 +353,7 @@ class _HomeTabState extends ConsumerState<HomeTab> {
             style: TextStyle(
               color: colors.textSecondary,
               fontSize: 14,
-              fontFamily: 'Inter',
+              fontFamily: AppTypography.fontFamily,
               fontWeight: FontWeight.w400,
               height: 1.5,
             ),
@@ -411,7 +412,7 @@ class _HomeTabState extends ConsumerState<HomeTab> {
               style: TextStyle(
                 color: colors.textPrimary,
                 fontSize: 15,
-                fontFamily: 'Inter',
+                fontFamily: AppTypography.fontFamily,
                 fontWeight: FontWeight.w600,
                 height: 1.3,
               ),
@@ -459,7 +460,7 @@ class _HomeTabState extends ConsumerState<HomeTab> {
                   style: TextStyle(
                     color: colors.actionOnPrimary,
                     fontSize: 22,
-                    fontFamily: 'Inter',
+                    fontFamily: AppTypography.fontFamily,
                     fontWeight: FontWeight.w600,
                     height: 1.1,
                   ),
@@ -476,7 +477,7 @@ class _HomeTabState extends ConsumerState<HomeTab> {
               style: TextStyle(
                 color: colors.actionOnPrimary.withValues(alpha: 0.85),
                 fontSize: 12,
-                fontFamily: 'Inter',
+                fontFamily: AppTypography.fontFamily,
                 fontWeight: FontWeight.w500,
               ),
             ),
@@ -506,7 +507,7 @@ class _HomeTabState extends ConsumerState<HomeTab> {
                         style: TextStyle(
                           color: colors.actionPrimaryPressed,
                           fontSize: 16,
-                          fontFamily: 'Inter',
+                          fontFamily: AppTypography.fontFamily,
                           fontWeight: FontWeight.w600,
                           height: 1.33,
                         ),
@@ -552,7 +553,7 @@ class _HomeTabState extends ConsumerState<HomeTab> {
               style: TextStyle(
                 color: colors.onSurfaceStrong,
                 fontSize: 16,
-                fontFamily: 'Inter',
+                fontFamily: AppTypography.fontFamily,
                 fontWeight: FontWeight.w600,
                 height: 1.3,
               ),
@@ -608,7 +609,7 @@ class _HomeTabState extends ConsumerState<HomeTab> {
                   style: TextStyle(
                     color: colors.textPrimary,
                     fontSize: 16,
-                    fontFamily: 'Inter',
+                    fontFamily: AppTypography.fontFamily,
                     fontWeight: FontWeight.w600,
                     height: 1.3,
                   ),
@@ -619,7 +620,7 @@ class _HomeTabState extends ConsumerState<HomeTab> {
                   style: TextStyle(
                     color: colors.textSecondary,
                     fontSize: 13,
-                    fontFamily: 'Inter',
+                    fontFamily: AppTypography.fontFamily,
                     fontWeight: FontWeight.w400,
                     height: 1.4,
                   ),
@@ -645,7 +646,7 @@ class _HomeTabState extends ConsumerState<HomeTab> {
         style: TextStyle(
           color: colors.actionPrimaryPressed,
           fontSize: 13,
-          fontFamily: 'Inter',
+          fontFamily: AppTypography.fontFamily,
           fontWeight: FontWeight.w600,
           height: 1.4,
         ),
@@ -675,7 +676,7 @@ class _HomeTabState extends ConsumerState<HomeTab> {
                   ? colors.actionOnPrimary
                   : colors.actionPrimaryDefault,
               fontSize: 16,
-              fontFamily: 'Inter',
+              fontFamily: AppTypography.fontFamily,
               fontWeight: FontWeight.w600,
               height: 1.3,
             ),
@@ -736,7 +737,7 @@ class _HomeTabState extends ConsumerState<HomeTab> {
                   style: TextStyle(
                     color: colors.textPrimary,
                     fontSize: 12,
-                    fontFamily: 'Inter',
+                    fontFamily: AppTypography.fontFamily,
                     fontWeight: FontWeight.w600,
                     height: 1.3,
                   ),

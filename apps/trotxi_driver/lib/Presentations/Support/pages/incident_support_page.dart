@@ -26,7 +26,9 @@ import 'package:trotxi_driver/data/trips_repository.dart';
 /// design's rule carried through to the API, which refuses `emergency` as a
 /// category: a crash must not queue behind a broken wiper.
 class IncidentSupportPage extends StatelessWidget {
-  const IncidentSupportPage({super.key});
+  const IncidentSupportPage({super.key, this.showHeading = true});
+
+  final bool showHeading;
 
   @override
   Widget build(BuildContext context) {
@@ -40,11 +42,13 @@ class IncidentSupportPage extends StatelessWidget {
         vertical: AppSpacing.space8,
       ),
       children: [
-        Text(
-          'Incident & support',
-          style: AppTypography.heading2.copyWith(color: colors.textPrimary),
-        ),
-        const SizedBox(height: AppSpacing.space4),
+        if (showHeading) ...[
+          Text(
+            'Incident & support',
+            style: AppTypography.heading2.copyWith(color: colors.textPrimary),
+          ),
+          const SizedBox(height: AppSpacing.space4),
+        ],
         Text(
           active == null
               ? 'No active trip'
