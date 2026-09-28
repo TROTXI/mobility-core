@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:trotxi_commuter/core/api/commuter_api.dart';
 import 'package:trotxi_commuter/core/config/theme/app_colors.dart';
+import 'package:trotxi_commuter/core/config/theme/app_typography.dart';
 import 'package:trotxi_commuter/core/config/theme/app_vectors.dart';
 
 class Navbar extends StatelessWidget implements PreferredSizeWidget {
@@ -81,7 +82,7 @@ class Navbar extends StatelessWidget implements PreferredSizeWidget {
                               style: TextStyle(
                                 color: colors.textPrimary,
                                 fontSize: 16,
-                                fontFamily: 'Inter',
+                                fontFamily: AppTypography.fontFamily,
                                 fontWeight: FontWeight.w400,
                                 height: 1.50,
                               ),
@@ -130,7 +131,7 @@ class Navbar extends StatelessWidget implements PreferredSizeWidget {
                                   color: colors.actionOnPrimary,
                                   fontSize: 14,
                                   fontWeight: FontWeight.w600,
-                                  fontFamily: 'Inter',
+                                  fontFamily: AppTypography.fontFamily,
                                 ),
                               ),
                             ),
