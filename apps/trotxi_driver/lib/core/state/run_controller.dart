@@ -1,9 +1,5 @@
 import 'package:flutter/foundation.dart';
-// The generated client exports wire models named ManifestRider and
-// BoardingResult; this controller means the ones in trips_repository.dart and
-// scan_result.dart.
-import 'package:trotxi_client/trotxi_client.dart'
-    hide ManifestRider, BoardingResult;
+import 'package:trotxi_driver/core/api/driver_api.dart';
 import 'package:trotxi_driver/core/state/loadable.dart';
 import 'package:trotxi_driver/Presentations/Boarding/models/scan_result.dart';
 import 'package:trotxi_driver/data/trips_repository.dart';
@@ -22,16 +18,13 @@ class RunDetail {
   final List<ManifestRider> riders;
 
   /// The corridor's stops in order, for the "stop N of M" counter.
-  final List<String> stops;
+  final List<DriverStop> stops;
 
-  /// The van's seat ceiling (#230), or null when this run has no vehicle
-  /// assigned yet. Reachable now that `GET /trips/:id` serves it to the trip's
-  /// own assigned driver; it used to live only behind the admin API.
+  /// Unknown in the replacement driver contract. The counter uses confirmed
+  /// riders instead and labels that fallback, never a guessed vehicle capacity.
   final int? capacity;
 
-  /// The plate, from `GET /trips/:id`. The hero's second line reads
-  /// "GT 4821-22 · ACTIVE RUN"; null until a vehicle is assigned, and the line
-  /// drops the plate rather than inventing one.
+  /// The assigned vehicle's display label; not necessarily a plate.
   final String? vehicleRegistration;
 
   int get boarded => riders.where((r) => r.boarded).length;
@@ -66,12 +59,17 @@ class RunDetail {
   /// How far along the corridor the driver has reported being (#230).
   int? get currentStopSeq => run.currentStopSeq;
 
+  /// Display position in the ordered route, independent of server numbering.
+  int? get currentStopNumber {
+    final index = stops.indexWhere((stop) => stop.seq == currentStopSeq);
+    return index < 0 ? null : index + 1;
+  }
+
   /// The stop the driver last reported reaching, or null before the first
   /// arrival.
   String? get currentStopName {
-    final seq = run.currentStopSeq;
-    if (seq == null || seq < 1 || seq > stops.length) return null;
-    return stops[seq - 1];
+    final number = currentStopNumber;
+    return number == null ? null : stops[number - 1].name;
   }
 }
 
@@ -80,7 +78,28 @@ class RunController extends ChangeNotifier {
   RunController({required this._trips, required this._run});
 
   final TripsRepository _trips;
+  bool _disposed = false;
+  int _revision = 0;
+  @override
+  void notifyListeners() {
+    if (!_disposed) super.notifyListeners();
+  }
+
+  @override
+  void dispose() {
+    _disposed = true;
+    _revision++;
+    super.dispose();
+  }
+
   DriverRun _run;
+
+  /// The latest lifecycle state accepted from the API.
+  ///
+  /// The shell uses this to enable or disable run-scoped navigation without
+  /// waiting for the independently cached Today board to refresh. A start or
+  /// completion response is authoritative for this run immediately.
+  DriverRun get currentRun => _run;
 
   Loadable<RunDetail> _detail = const Loadable.idle();
   Loadable<RunDetail> get detail => _detail;
@@ -90,6 +109,7 @@ class RunController extends ChangeNotifier {
 
   /// Load or reload the run and its manifest.
   Future<void> load() async {
+    if (_disposed || _transitioning) return;
     _detail = Loadable.loading(previous: _detail.valueOrNull);
     notifyListeners();
     await _fetch();
@@ -120,10 +140,10 @@ class RunController extends ChangeNotifier {
   }
 
   /// Start this run.
-  Future<void> start() => _transition(() => _trips.start(_run.id));
+  Future<bool> start() => _transition(() => _trips.start(_run.id));
 
   /// End this run.
-  Future<void> complete() => _transition(() => _trips.complete(_run.id));
+  Future<bool> complete() => _transition(() => _trips.complete(_run.id));
 
   /// Report reaching a stop (#230).
   ///
@@ -132,10 +152,17 @@ class RunController extends ChangeNotifier {
   /// would stop trusting the number.
   ///
   /// @param seq - the stop reached, as a route sequence number.
-  Future<void> arriveAtStop(int seq) async {
+  Future<void> arriveAtStop(int seq, {bool correction = false}) async {
+    _revision++;
     final current = _detail.valueOrNull;
     try {
-      _run = await _trips.arriveAtStop(_run.id, seq);
+      _run = await _trips.arriveAtStop(
+        _run.id,
+        seq,
+        editToken: _run.editToken,
+        correction: correction,
+      );
+      _revision++;
       if (current != null) {
         _detail = Loadable.data(
           RunDetail(
@@ -159,8 +186,7 @@ class RunController extends ChangeNotifier {
   /// @returns the outcome, for the screen to report.
   Future<BoardingResult> boardFromManifest(String reservationId) async {
     final result = await _trips.boardFromManifest(reservationId);
-    if (result.isAccepted ||
-        result.outcome == BoardingOutcome.alreadyBoarded) {
+    if (result.isAccepted || result.outcome == BoardingOutcome.alreadyBoarded) {
       await refreshManifest();
     }
     return result;
@@ -176,15 +202,33 @@ class RunController extends ChangeNotifier {
     return result;
   }
 
-  Future<void> _transition(Future<DriverRun> Function() action) async {
+  Future<bool> _transition(Future<DriverRun> Function() action) async {
+    _revision++;
     _transitioning = true;
     notifyListeners();
     try {
       _run = await action();
+      _revision++;
+      final previous = _detail.valueOrNull;
+      if (previous != null) {
+        // Preserve the accepted lifecycle response even if the subsequent
+        // manifest/detail refresh fails. Do not leave a completed run active.
+        _detail = Loadable.data(
+          RunDetail(
+            run: _run,
+            riders: previous.riders,
+            stops: previous.stops,
+            capacity: previous.capacity,
+            vehicleRegistration: previous.vehicleRegistration,
+          ),
+        );
+      }
       await _fetch();
+      return true;
     } on TrotxiException catch (err) {
       _detail = Loadable.failure(err.message, previous: _detail.valueOrNull);
       notifyListeners();
+      return false;
     } finally {
       _transitioning = false;
       notifyListeners();
@@ -192,29 +236,37 @@ class RunController extends ChangeNotifier {
   }
 
   Future<void> _fetch() async {
+    if (_disposed) return;
+    final revision = ++_revision;
     try {
       // In parallel: the manifest, the stop list and the run's own detail are
       // independent, and a driver waiting at a stop should not pay for them in
       // series.
-      final riders = _trips.manifest(_run.id);
-      final stops = _trips.stopsFor(_run.routeId);
-      final detail = _trips.detail(_run.id);
-      final facts = await detail;
+      final results = await Future.wait<Object>([
+        _trips.manifest(_run.id),
+        _trips.stopsFor(_run.id),
+        _trips.detail(_run.id),
+      ]);
+      final facts = results[2] as TripDetail;
+      if (_disposed || revision != _revision) return;
+      _run = facts.run ?? _run;
       _detail = Loadable.data(
         RunDetail(
           run: _run,
-          riders: await riders,
-          stops: await stops,
+          riders: results[0] as List<ManifestRider>,
+          stops: results[1] as List<DriverStop>,
           capacity: facts.capacity,
           vehicleRegistration: facts.vehicleRegistration,
         ),
       );
     } on OfflineException {
+      if (_disposed || revision != _revision) return;
       _detail = Loadable.failure(
         'You are offline. Showing the last manifest loaded.',
         previous: _detail.valueOrNull,
       );
     } on TrotxiException catch (err) {
+      if (_disposed || revision != _revision) return;
       _detail = Loadable.failure(err.message, previous: _detail.valueOrNull);
     }
     notifyListeners();

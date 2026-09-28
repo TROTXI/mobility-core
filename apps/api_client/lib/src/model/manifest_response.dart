@@ -12,24 +12,28 @@ part 'manifest_response.g.dart';
 /// ManifestResponse
 ///
 /// Properties:
-/// * [data] 
+/// * [data]
 @BuiltValue()
-abstract class ManifestResponse implements Built<ManifestResponse, ManifestResponseBuilder> {
+abstract class ManifestResponse
+    implements Built<ManifestResponse, ManifestResponseBuilder> {
   @BuiltValueField(wireName: r'data')
   Manifest get data;
 
   ManifestResponse._();
 
-  factory ManifestResponse([void updates(ManifestResponseBuilder b)]) = _$ManifestResponse;
+  factory ManifestResponse([void updates(ManifestResponseBuilder b)]) =
+      _$ManifestResponse;
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(ManifestResponseBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
-  static Serializer<ManifestResponse> get serializer => _$ManifestResponseSerializer();
+  static Serializer<ManifestResponse> get serializer =>
+      _$ManifestResponseSerializer();
 }
 
-class _$ManifestResponseSerializer implements PrimitiveSerializer<ManifestResponse> {
+class _$ManifestResponseSerializer
+    implements PrimitiveSerializer<ManifestResponse> {
   @override
   final Iterable<Type> types = const [ManifestResponse, _$ManifestResponse];
 
@@ -54,7 +58,9 @@ class _$ManifestResponseSerializer implements PrimitiveSerializer<ManifestRespon
     ManifestResponse object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
   }
 
   void _deserializeProperties(
@@ -104,4 +110,3 @@ class _$ManifestResponseSerializer implements PrimitiveSerializer<ManifestRespon
     return result.build();
   }
 }
-

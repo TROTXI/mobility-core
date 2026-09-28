@@ -9,23 +9,16 @@ part of 'credential_issue.dart';
 class _$CredentialIssue extends CredentialIssue {
   @override
   final String? code;
-<<<<<<< HEAD
-=======
   @override
   final bool? emailInstructions;
   @override
   final bool? smsInstructions;
->>>>>>> origin/main
 
   factory _$CredentialIssue([void Function(CredentialIssueBuilder)? updates]) =>
       (CredentialIssueBuilder()..update(updates))._build();
 
-<<<<<<< HEAD
-  _$CredentialIssue._({this.code}) : super._();
-=======
   _$CredentialIssue._({this.code, this.emailInstructions, this.smsInstructions})
       : super._();
->>>>>>> origin/main
   @override
   CredentialIssue rebuild(void Function(CredentialIssueBuilder) updates) =>
       (toBuilder()..update(updates)).build();
@@ -36,39 +29,28 @@ class _$CredentialIssue extends CredentialIssue {
   @override
   bool operator ==(Object other) {
     if (identical(other, this)) return true;
-<<<<<<< HEAD
-    return other is CredentialIssue && code == other.code;
-=======
     return other is CredentialIssue &&
         code == other.code &&
         emailInstructions == other.emailInstructions &&
         smsInstructions == other.smsInstructions;
->>>>>>> origin/main
   }
 
   @override
   int get hashCode {
     var _$hash = 0;
     _$hash = $jc(_$hash, code.hashCode);
-<<<<<<< HEAD
-=======
     _$hash = $jc(_$hash, emailInstructions.hashCode);
     _$hash = $jc(_$hash, smsInstructions.hashCode);
->>>>>>> origin/main
     _$hash = $jf(_$hash);
     return _$hash;
   }
 
   @override
   String toString() {
-<<<<<<< HEAD
-    return (newBuiltValueToStringHelper(r'CredentialIssue')..add('code', code))
-=======
     return (newBuiltValueToStringHelper(r'CredentialIssue')
           ..add('code', code)
           ..add('emailInstructions', emailInstructions)
           ..add('smsInstructions', smsInstructions))
->>>>>>> origin/main
         .toString();
   }
 }
@@ -81,8 +63,6 @@ class CredentialIssueBuilder
   String? get code => _$this._code;
   set code(String? code) => _$this._code = code;
 
-<<<<<<< HEAD
-=======
   bool? _emailInstructions;
   bool? get emailInstructions => _$this._emailInstructions;
   set emailInstructions(bool? emailInstructions) =>
@@ -93,7 +73,6 @@ class CredentialIssueBuilder
   set smsInstructions(bool? smsInstructions) =>
       _$this._smsInstructions = smsInstructions;
 
->>>>>>> origin/main
   CredentialIssueBuilder() {
     CredentialIssue._defaults(this);
   }
@@ -102,11 +81,8 @@ class CredentialIssueBuilder
     final $v = _$v;
     if ($v != null) {
       _code = $v.code;
-<<<<<<< HEAD
-=======
       _emailInstructions = $v.emailInstructions;
       _smsInstructions = $v.smsInstructions;
->>>>>>> origin/main
       _$v = null;
     }
     return this;
@@ -129,11 +105,8 @@ class CredentialIssueBuilder
     final _$result = _$v ??
         _$CredentialIssue._(
           code: code,
-<<<<<<< HEAD
-=======
           emailInstructions: emailInstructions,
           smsInstructions: smsInstructions,
->>>>>>> origin/main
         );
     replace(_$result);
     return _$result;

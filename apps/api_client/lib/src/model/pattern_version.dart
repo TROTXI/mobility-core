@@ -13,20 +13,21 @@ part 'pattern_version.g.dart';
 /// PatternVersion
 ///
 /// Properties:
-/// * [id] 
-/// * [patternId] 
-/// * [revision] 
-/// * [state] 
-/// * [effectiveFrom] 
-/// * [effectiveTo] 
-/// * [stops] 
-/// * [geometryId] 
-/// * [editToken] 
-/// * [createdAt] 
-/// * [updatedAt] 
-/// * [version] 
+/// * [id]
+/// * [patternId]
+/// * [revision]
+/// * [state]
+/// * [effectiveFrom]
+/// * [effectiveTo]
+/// * [stops]
+/// * [geometryId]
+/// * [editToken]
+/// * [createdAt]
+/// * [updatedAt]
+/// * [version]
 @BuiltValue()
-abstract class PatternVersion implements Built<PatternVersion, PatternVersionBuilder> {
+abstract class PatternVersion
+    implements Built<PatternVersion, PatternVersionBuilder> {
   @BuiltValueField(wireName: r'id')
   String get id;
 
@@ -66,16 +67,19 @@ abstract class PatternVersion implements Built<PatternVersion, PatternVersionBui
 
   PatternVersion._();
 
-  factory PatternVersion([void updates(PatternVersionBuilder b)]) = _$PatternVersion;
+  factory PatternVersion([void updates(PatternVersionBuilder b)]) =
+      _$PatternVersion;
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(PatternVersionBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
-  static Serializer<PatternVersion> get serializer => _$PatternVersionSerializer();
+  static Serializer<PatternVersion> get serializer =>
+      _$PatternVersionSerializer();
 }
 
-class _$PatternVersionSerializer implements PrimitiveSerializer<PatternVersion> {
+class _$PatternVersionSerializer
+    implements PrimitiveSerializer<PatternVersion> {
   @override
   final Iterable<Type> types = const [PatternVersion, _$PatternVersion];
 
@@ -108,25 +112,31 @@ class _$PatternVersionSerializer implements PrimitiveSerializer<PatternVersion> 
       specifiedType: const FullType(PatternVersionStateEnum),
     );
     yield r'effectiveFrom';
-    yield object.effectiveFrom == null ? null : serializers.serialize(
-      object.effectiveFrom,
-      specifiedType: const FullType.nullable(DateTime),
-    );
+    yield object.effectiveFrom == null
+        ? null
+        : serializers.serialize(
+            object.effectiveFrom,
+            specifiedType: const FullType.nullable(DateTime),
+          );
     yield r'effectiveTo';
-    yield object.effectiveTo == null ? null : serializers.serialize(
-      object.effectiveTo,
-      specifiedType: const FullType.nullable(DateTime),
-    );
+    yield object.effectiveTo == null
+        ? null
+        : serializers.serialize(
+            object.effectiveTo,
+            specifiedType: const FullType.nullable(DateTime),
+          );
     yield r'stops';
     yield serializers.serialize(
       object.stops,
       specifiedType: const FullType(BuiltList, [FullType(StopOccurrence)]),
     );
     yield r'geometryId';
-    yield object.geometryId == null ? null : serializers.serialize(
-      object.geometryId,
-      specifiedType: const FullType.nullable(String),
-    );
+    yield object.geometryId == null
+        ? null
+        : serializers.serialize(
+            object.geometryId,
+            specifiedType: const FullType.nullable(String),
+          );
     yield r'editToken';
     yield serializers.serialize(
       object.editToken,
@@ -155,7 +165,9 @@ class _$PatternVersionSerializer implements PrimitiveSerializer<PatternVersion> 
     PatternVersion object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
   }
 
   void _deserializeProperties(
@@ -217,7 +229,8 @@ class _$PatternVersionSerializer implements PrimitiveSerializer<PatternVersion> 
         case r'stops':
           final valueDes = serializers.deserialize(
             value,
-            specifiedType: const FullType(BuiltList, [FullType(StopOccurrence)]),
+            specifiedType:
+                const FullType(BuiltList, [FullType(StopOccurrence)]),
           ) as BuiltList<StopOccurrence>;
           result.stops.replace(valueDes);
           break;
@@ -287,19 +300,22 @@ class _$PatternVersionSerializer implements PrimitiveSerializer<PatternVersion> 
 }
 
 class PatternVersionStateEnum extends EnumClass {
-
   @BuiltValueEnumConst(wireName: r'draft')
   static const PatternVersionStateEnum draft = _$patternVersionStateEnum_draft;
   @BuiltValueEnumConst(wireName: r'published')
-  static const PatternVersionStateEnum published = _$patternVersionStateEnum_published;
+  static const PatternVersionStateEnum published =
+      _$patternVersionStateEnum_published;
   @BuiltValueEnumConst(wireName: r'retired')
-  static const PatternVersionStateEnum retired = _$patternVersionStateEnum_retired;
+  static const PatternVersionStateEnum retired =
+      _$patternVersionStateEnum_retired;
 
-  static Serializer<PatternVersionStateEnum> get serializer => _$patternVersionStateEnumSerializer;
+  static Serializer<PatternVersionStateEnum> get serializer =>
+      _$patternVersionStateEnumSerializer;
 
-  const PatternVersionStateEnum._(String name): super(name);
+  const PatternVersionStateEnum._(String name) : super(name);
 
-  static BuiltSet<PatternVersionStateEnum> get values => _$patternVersionStateEnumValues;
-  static PatternVersionStateEnum valueOf(String name) => _$patternVersionStateEnumValueOf(name);
+  static BuiltSet<PatternVersionStateEnum> get values =>
+      _$patternVersionStateEnumValues;
+  static PatternVersionStateEnum valueOf(String name) =>
+      _$patternVersionStateEnumValueOf(name);
 }
-

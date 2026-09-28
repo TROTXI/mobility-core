@@ -1,70 +1,23 @@
 import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:trotxi_api_client/trotxi_api_client.dart';
-import 'package:trotxi_client/trotxi_client.dart';
+import 'package:trotxi_client/trotxi_client.dart' as wire;
+import 'package:trotxi_commuter/core/api/commuter_api.dart';
 import 'package:trotxi_commuter/main.dart';
 
-typedef ReservationDto = Reservation;
+typedef ReservationDto = wire.Reservation;
 
-// =============================================================================
-// Client metadata (X-Trotxi-* headers)
-// =============================================================================
+enum CommuteDirection { outbound, returning }
 
-final clientMetadataProvider = Provider<TrotxiClientMetadata>((ref) {
-  return TrotxiClientMetadata.forCurrentPlatform(client: 'commuter', build: 1);
-});
-
-final membershipProvider = FutureProvider.autoDispose<Membership>((ref) async {
-  final api = ref.watch(trotxiClientProvider).getRiderOwnApi();
-  final meta = ref.watch(clientMetadataProvider);
-  final response = await api.getMembership(
-    xTrotxiClient: meta.client,
-    xTrotxiBuild: meta.build,
-    xTrotxiPlatform: meta.platform,
-  );
-  final membership = response.data?.data; // MembershipResponse -> Membership
-  if (membership == null) throw StateError('Empty membership response');
-  return membership;
-});
-
-// =============================================================================
-// Status mapping
-// =============================================================================
-
-enum ReservationStatus {
-  pending,
-  reserved,
-  boarded,
-  declined,
-  unseated,
-  noShow,
-  operatorCancelled,
+class SelectedDirection extends Notifier<CommuteDirection> {
+  @override
+  CommuteDirection build() => CommuteDirection.outbound;
+  void select(CommuteDirection direction) => state = direction;
 }
 
-// ReservationStatusEnum is a built_value EnumClass, not a Dart enum,
-// so switches on it can't be exhaustive. Use an if-chain.
-ReservationStatus _mapStatus(ReservationStatusEnum status) {
-  if (status == ReservationStatusEnum.pending) return ReservationStatus.pending;
-  if (status == ReservationStatusEnum.reserved) {
-    return ReservationStatus.reserved;
-  }
-  if (status == ReservationStatusEnum.boarded) return ReservationStatus.boarded;
-  if (status == ReservationStatusEnum.declined) {
-    return ReservationStatus.declined;
-  }
-  if (status == ReservationStatusEnum.unseated) {
-    return ReservationStatus.unseated;
-  }
-  if (status == ReservationStatusEnum.noShow) return ReservationStatus.noShow;
-  if (status == ReservationStatusEnum.operatorCancelled) {
-    return ReservationStatus.operatorCancelled;
-  }
-  throw StateError('Unhandled reservation status from API: $status');
-}
-
-// =============================================================================
-// Lifecycle state
-// =============================================================================
+final selectedDirectionProvider =
+    NotifierProvider<SelectedDirection, CommuteDirection>(
+      SelectedDirection.new,
+    );
 
 class EtaPhase {
   final Duration? eta;
@@ -81,20 +34,14 @@ class RidePending extends RideLifecycleState {
 }
 
 class RideReserved extends RideLifecycleState {
-  final String reservationId;
   final String? tripId;
   final EtaPhase etaPhase;
-  const RideReserved({
-    required this.reservationId,
-    required this.tripId,
-    required this.etaPhase,
-  });
+  const RideReserved({required this.tripId, required this.etaPhase});
 }
 
 class RideBoarded extends RideLifecycleState {
-  final String reservationId;
-  final String? tripId; // nullable: the API types it as String?
-  const RideBoarded({required this.reservationId, required this.tripId});
+  final String tripId;
+  const RideBoarded({required this.tripId});
 }
 
 class RideDeclined extends RideLifecycleState {
@@ -109,95 +56,89 @@ class RideNoShow extends RideLifecycleState {
   const RideNoShow();
 }
 
+class RideReleased extends RideLifecycleState {
+  const RideReleased();
+}
+
 class RideOperatorCancelled extends RideLifecycleState {
   const RideOperatorCancelled();
 }
-
-// =============================================================================
-// Repository
-// =============================================================================
 
 abstract class ReservationRepository {
   Future<ReservationDto?> fetchTodayReservation();
 }
 
 class DioReservationRepository implements ReservationRepository {
-  final RiderOwnApi _api;
-  final TrotxiClientMetadata _meta;
-
-  DioReservationRepository(this._api, this._meta);
-
+  DioReservationRepository(this.client, this.direction);
+  final CommuterApi client;
+  final CommuteDirection direction;
   @override
   Future<ReservationDto?> fetchTodayReservation() async {
-    // Africa/Accra is UTC+0 with no DST, so UTC is the Accra day.
-    final now = DateTime.now().toUtc();
-    final today = Date(now.year, now.month, now.day);
-
-    final response = await _api.listReservations(
-      xTrotxiClient: _meta.client,
-      xTrotxiBuild: _meta.build,
-      xTrotxiPlatform: _meta.platform,
-      fromDate: today,
-      toDate: today,
-    );
-
-    final items = response.data?.data;
-    if (items == null || items.isEmpty) return null;
-
-    // Assumption: outbound = morning leg, return = evening leg.
-    final wanted = now.hour < 12
-        ? ReservationDirectionEnum.outbound
-        : ReservationDirectionEnum.return_;
-
-    for (final r in items) {
-      if (r.direction == wanted) return r;
+    // Service calendars are Africa/Accra (UTC), regardless of phone timezone.
+    final today = wire.Date.now(utc: true);
+    final rows = await client.reservations(from: today, to: today);
+    final matching = rows
+        .where(
+          (r) =>
+              r.travelDate == today &&
+              r.direction ==
+                  (direction == CommuteDirection.outbound
+                      ? wire.ReservationDirectionEnum.outbound
+                      : wire.ReservationDirectionEnum.return_),
+        )
+        .toList();
+    if (matching.length > 1) {
+      throw const ApiException(
+        502,
+        'More than one reservation was returned for this direction.',
+      );
     }
-    return items.first; // fall back to any reservation for today
+    return matching.isEmpty ? null : matching.single;
   }
 }
 
-final reservationRepositoryProvider = Provider<ReservationRepository>((ref) {
-  final client = ref.watch(trotxiClientProvider);
-  final meta = ref.watch(clientMetadataProvider);
-  return DioReservationRepository(client.getRiderOwnApi(), meta);
-});
-
-// =============================================================================
-// Notifier
-// =============================================================================
+final reservationRepositoryProvider = Provider<ReservationRepository>(
+  (ref) => DioReservationRepository(
+    ref.watch(trotxiClientProvider),
+    ref.watch(selectedDirectionProvider),
+  ),
+);
 
 class RideLifecycleNotifier extends AsyncNotifier<RideLifecycleState?> {
   @override
-  Future<RideLifecycleState?> build() => _load();
-
-  Future<RideLifecycleState?> _load() async {
-    final reservation = await ref
-        .read(reservationRepositoryProvider)
+  FutureOr<RideLifecycleState?> build() async {
+    final r = await ref
+        .watch(reservationRepositoryProvider)
         .fetchTodayReservation();
-
-    if (reservation == null) return null;
-
-    return switch (_mapStatus(reservation.status)) {
-      ReservationStatus.pending => const RidePending(),
-      ReservationStatus.reserved => RideReserved(
-        reservationId: reservation.id,
-        tripId: reservation.tripId,
-        etaPhase: const EtaPhase(isEstimated: true), // no live position yet
-      ),
-      ReservationStatus.boarded => RideBoarded(
-        reservationId: reservation.id,
-        tripId: reservation.tripId,
-      ),
-      ReservationStatus.declined => const RideDeclined(),
-      ReservationStatus.unseated => const RideUnseated(),
-      ReservationStatus.noShow => const RideNoShow(),
-      ReservationStatus.operatorCancelled => const RideOperatorCancelled(),
-    };
-  }
-
-  Future<void> refresh() async {
-    state = const AsyncLoading();
-    state = await AsyncValue.guard(_load);
+    if (r == null) return null;
+    if (r.status == wire.ReservationStatusEnum.boarded && r.tripId == null) {
+      throw const ApiException(502, 'Boarded reservation has no departure.');
+    }
+    if (r.status == wire.ReservationStatusEnum.pending) {
+      return const RidePending();
+    }
+    if (r.status == wire.ReservationStatusEnum.reserved) {
+      return RideReserved(
+        tripId: r.tripId,
+        etaPhase: const EtaPhase(isEstimated: true),
+      );
+    }
+    if (r.status == wire.ReservationStatusEnum.boarded) {
+      return RideBoarded(tripId: r.tripId!);
+    }
+    if (r.status == wire.ReservationStatusEnum.declined) {
+      return const RideDeclined();
+    }
+    if (r.status == wire.ReservationStatusEnum.unseated) {
+      return const RideUnseated();
+    }
+    if (r.status == wire.ReservationStatusEnum.noShow) {
+      return const RideNoShow();
+    }
+    if (r.status == wire.ReservationStatusEnum.operatorCancelled) {
+      return const RideOperatorCancelled();
+    }
+    throw const ApiException(502, 'Unknown reservation state.');
   }
 }
 

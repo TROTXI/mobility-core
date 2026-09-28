@@ -11,10 +11,11 @@ part 'phone_sign_in_verify.g.dart';
 /// PhoneSignInVerify
 ///
 /// Properties:
-/// * [challengeId] 
-/// * [code] 
+/// * [challengeId]
+/// * [code]
 @BuiltValue()
-abstract class PhoneSignInVerify implements Built<PhoneSignInVerify, PhoneSignInVerifyBuilder> {
+abstract class PhoneSignInVerify
+    implements Built<PhoneSignInVerify, PhoneSignInVerifyBuilder> {
   @BuiltValueField(wireName: r'challengeId')
   String get challengeId;
 
@@ -23,16 +24,19 @@ abstract class PhoneSignInVerify implements Built<PhoneSignInVerify, PhoneSignIn
 
   PhoneSignInVerify._();
 
-  factory PhoneSignInVerify([void updates(PhoneSignInVerifyBuilder b)]) = _$PhoneSignInVerify;
+  factory PhoneSignInVerify([void updates(PhoneSignInVerifyBuilder b)]) =
+      _$PhoneSignInVerify;
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(PhoneSignInVerifyBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
-  static Serializer<PhoneSignInVerify> get serializer => _$PhoneSignInVerifySerializer();
+  static Serializer<PhoneSignInVerify> get serializer =>
+      _$PhoneSignInVerifySerializer();
 }
 
-class _$PhoneSignInVerifySerializer implements PrimitiveSerializer<PhoneSignInVerify> {
+class _$PhoneSignInVerifySerializer
+    implements PrimitiveSerializer<PhoneSignInVerify> {
   @override
   final Iterable<Type> types = const [PhoneSignInVerify, _$PhoneSignInVerify];
 
@@ -62,7 +66,9 @@ class _$PhoneSignInVerifySerializer implements PrimitiveSerializer<PhoneSignInVe
     PhoneSignInVerify object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
   }
 
   void _deserializeProperties(
@@ -119,4 +125,3 @@ class _$PhoneSignInVerifySerializer implements PrimitiveSerializer<PhoneSignInVe
     return result.build();
   }
 }
-

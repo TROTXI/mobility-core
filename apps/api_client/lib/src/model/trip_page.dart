@@ -14,8 +14,8 @@ part 'trip_page.g.dart';
 /// TripPage
 ///
 /// Properties:
-/// * [data] 
-/// * [page] 
+/// * [data]
+/// * [page]
 @BuiltValue()
 abstract class TripPage implements Built<TripPage, TripPageBuilder> {
   @BuiltValueField(wireName: r'data')
@@ -65,7 +65,9 @@ class _$TripPageSerializer implements PrimitiveSerializer<TripPage> {
     TripPage object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
   }
 
   void _deserializeProperties(
@@ -122,4 +124,3 @@ class _$TripPageSerializer implements PrimitiveSerializer<TripPage> {
     return result.build();
   }
 }
-

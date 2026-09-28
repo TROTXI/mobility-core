@@ -14,8 +14,8 @@ part 'vehicle_page.g.dart';
 /// VehiclePage
 ///
 /// Properties:
-/// * [data] 
-/// * [page] 
+/// * [data]
+/// * [page]
 @BuiltValue()
 abstract class VehiclePage implements Built<VehiclePage, VehiclePageBuilder> {
   @BuiltValueField(wireName: r'data')
@@ -65,7 +65,9 @@ class _$VehiclePageSerializer implements PrimitiveSerializer<VehiclePage> {
     VehiclePage object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
   }
 
   void _deserializeProperties(
@@ -122,4 +124,3 @@ class _$VehiclePageSerializer implements PrimitiveSerializer<VehiclePage> {
     return result.build();
   }
 }
-

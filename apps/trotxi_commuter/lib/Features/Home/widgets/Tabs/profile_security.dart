@@ -1,48 +1,49 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:trotxi_client/trotxi_client.dart';
-import 'package:trotxi_commuter/Features/Onboarding/pages/onboard_page.dart';
-import 'package:trotxi_commuter/core/Tokens/token_storage.dart';
-import 'package:trotxi_commuter/core/config/client_metadata.dart';
+import 'package:trotxi_commuter/core/api/commuter_api.dart';
 import 'package:trotxi_commuter/core/config/layout/responsive_layout.dart';
 import 'package:trotxi_commuter/core/config/theme/app_colors.dart';
 import 'package:trotxi_commuter/core/config/theme/app_typography.dart';
+import 'package:trotxi_commuter/core/widgets/public_information_links.dart';
 
-String _formatSessionDate(DateTime raw) =>
-    DateFormat('d MMM y, h:mm a').format(raw.toLocal());
+String _formatSessionDate(DateTime date) {
+  return DateFormat('d MMM y, h:mm a').format(date.toLocal());
+}
 
 /// Full-page "Security & sign-in", pushed from ProfileTab's
 /// "Security & sign-in" row.
 ///
-/// Sessions are real, from `GET /v1/me/sessions` and `DELETE
-/// /v1/me/sessions/{id}`, and account deletion is real, via `DELETE /v1/me`.
-/// Two-step verification is dropped (not asked for). "Change password/PIN"
-/// and "Biometric unlock" have no backend behind them — Trotxi is
-/// Google/Apple sign-in only, and biometric app-lock would need a new
-/// `local_auth` dependency — so they're local-only stubs, same as the
-/// other not-yet-wired rows elsewhere in Profile.
+/// Replacement session management uses `/v1/me/sessions`; account erasure
+/// uses `DELETE /v1/me`. Provider credentials are not local passwords, and
+/// unavailable biometric app-lock is labelled rather than pretending to enable it.
 class ProfileSecurityPage extends StatefulWidget {
   const ProfileSecurityPage({super.key, required this.client});
 
-  final TrotxiApiClient client;
+  final CommuterApi client;
 
   @override
   State<ProfileSecurityPage> createState() => _ProfileSecurityPageState();
 }
 
 class _ProfileSecurityPageState extends State<ProfileSecurityPage> {
-  bool _biometricUnlock = true;
+  final bool _biometricUnlock = false;
 
   void _onChangePasswordOrPin() {
-    // TODO: Trotxi has no password/PIN of its own yet (Google/Apple
-    // sign-in only) — revisit once/if that changes.
-    debugPrint('Change password / PIN tapped');
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text(
+          'Sign-in credentials are managed by your identity provider.',
+        ),
+      ),
+    );
   }
 
   void _onToggleBiometricUnlock(bool value) {
-    // TODO: wire up a real app-lock via the local_auth package once
-    // that's added as a dependency — local-only for now.
-    setState(() => _biometricUnlock = value);
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Biometric app lock is not available in this build.'),
+      ),
+    );
   }
 
   void _openSessions() {
@@ -54,6 +55,7 @@ class _ProfileSecurityPageState extends State<ProfileSecurityPage> {
   }
 
   Future<void> _confirmSignOut() async {
+    final generation = widget.client.sessionGeneration;
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
@@ -71,44 +73,36 @@ class _ProfileSecurityPageState extends State<ProfileSecurityPage> {
         ],
       ),
     );
-    if (confirmed == true) await _signOut();
+    if (confirmed == true &&
+        mounted &&
+        generation == widget.client.sessionGeneration) {
+      await _signOut();
+    }
   }
 
   Future<void> _signOut() async {
-    final refreshToken = await TokenStorage.instance.getRefreshToken();
-    if (refreshToken != null && refreshToken.isNotEmpty) {
-      try {
-        await widget.client
-            .getPublicApi()
-            .logoutSession(
-              xTrotxiClient: commuterMetadata.client,
-              xTrotxiBuild: commuterMetadata.build,
-              xTrotxiPlatform: commuterMetadata.platform,
-              refreshInput: RefreshInput((b) => b..refreshToken = refreshToken),
-            )
-            .timeout(const Duration(seconds: 5));
-      } catch (_) {
-        // Best effort — see ProfileTab._signOut for why this is swallowed.
-      }
+    try {
+      await widget.client.signOut();
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Could not clear this device’s session. Please retry.'),
+        ),
+      );
     }
-    await TokenStorage.instance.clearTokens();
-    if (!mounted) return;
-    Navigator.of(context).pushAndRemoveUntil(
-      MaterialPageRoute(
-        builder: (context) => OnBoardPage(client: widget.client),
-      ),
-      (route) => false,
-    );
   }
 
   Future<void> _confirmDeleteAccount() async {
+    final generation = widget.client.sessionGeneration;
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: const Text('Delete account'),
         content: const Text(
-          'This permanently erases your profile and personal data and signs '
-          'you out everywhere. This cannot be undone.',
+          'This erases your account profile and revokes its sessions. Private-file '
+          'cleanup may finish later; required accounting records are retained. '
+          'This cannot be undone.',
         ),
         actions: [
           TextButton(
@@ -122,33 +116,28 @@ class _ProfileSecurityPageState extends State<ProfileSecurityPage> {
         ],
       ),
     );
-    if (confirmed == true) await _deleteAccount();
+    if (confirmed == true &&
+        mounted &&
+        generation == widget.client.sessionGeneration) {
+      await _deleteAccount();
+    }
   }
 
   Future<void> _deleteAccount() async {
     try {
-      await widget.client.getSelfApi().eraseAccount(
-        idempotencyKey: newIdempotencyKey(),
-        xTrotxiClient: commuterMetadata.client,
-        xTrotxiBuild: commuterMetadata.build,
-        xTrotxiPlatform: commuterMetadata.platform,
-      );
-      await TokenStorage.instance.clearTokens();
-      if (!mounted) return;
-      Navigator.of(context).pushAndRemoveUntil(
-        MaterialPageRoute(
-          builder: (context) => OnBoardPage(client: widget.client),
-        ),
-        (route) => false,
-      );
+      await widget.client.eraseAccount();
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Could not delete your account. Try again.'),
+        SnackBar(
+          content: Text(
+            e is TrotxiException
+                ? e.message
+                : 'Could not delete your account. Try again.',
+          ),
         ),
       );
-      debugPrint('Error deleting account: $e');
+      debugPrint('Account erasure error: ${e.runtimeType}');
     }
   }
 
@@ -195,7 +184,7 @@ class _ProfileSecurityPageState extends State<ProfileSecurityPage> {
                   const SizedBox(height: 8),
                   _SecuritySwitchTile(
                     title: 'Biometric unlock',
-                    subtitle: 'Use fingerprint or Face ID',
+                    subtitle: 'Not available in this build',
                     value: _biometricUnlock,
                     onChanged: _onToggleBiometricUnlock,
                   ),
@@ -210,6 +199,7 @@ class _ProfileSecurityPageState extends State<ProfileSecurityPage> {
                   const SizedBox(height: 28),
                   _buildSectionTitle(context, 'Account actions'),
                   const SizedBox(height: 12),
+                  const PublicInformationLinks(),
                   Container(
                     decoration: BoxDecoration(
                       color: colors.surfaceElevated,
@@ -263,9 +253,11 @@ class _ProfileSecurityPageState extends State<ProfileSecurityPage> {
           ),
         ),
         const SizedBox(width: 12),
-        Text(
-          'Security & sign-in',
-          style: AppTypography.title.copyWith(color: colors.textPrimary),
+        Expanded(
+          child: Text(
+            'Security & sign-in',
+            style: AppTypography.title.copyWith(color: colors.textPrimary),
+          ),
         ),
       ],
     );
@@ -414,14 +406,14 @@ class _SecuritySwitchTile extends StatelessWidget {
 }
 
 // ---------------------------------------------------------------------
-// Sessions list — real data from GET /me/sessions, revoke via
-// DELETE /me/sessions/{id}
+// Sessions list — replacement GET /v1/me/sessions, revoke via
+// DELETE /v1/me/sessions/{id}
 // ---------------------------------------------------------------------
 
 class _SessionsListPage extends StatefulWidget {
   const _SessionsListPage({required this.client});
 
-  final TrotxiApiClient client;
+  final CommuterApi client;
 
   @override
   State<_SessionsListPage> createState() => _SessionsListPageState();
@@ -445,14 +437,10 @@ class _SessionsListPageState extends State<_SessionsListPage> {
       _error = null;
     });
     try {
-      final response = await widget.client.getSelfApi().listSessions(
-        xTrotxiClient: commuterMetadata.client,
-        xTrotxiBuild: commuterMetadata.build,
-        xTrotxiPlatform: commuterMetadata.platform,
-      );
+      final sessions = await widget.client.sessions();
       if (!mounted) return;
       setState(() {
-        _sessions = response.data?.data.toList() ?? const [];
+        _sessions = sessions;
         _loading = false;
       });
     } catch (e) {
@@ -461,11 +449,12 @@ class _SessionsListPageState extends State<_SessionsListPage> {
         _error = e;
         _loading = false;
       });
-      debugPrint('Error loading sessions: $e');
+      debugPrint('Session list error: ${e.runtimeType}');
     }
   }
 
   Future<void> _confirmRevoke(Session session) async {
+    final generation = widget.client.sessionGeneration;
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
@@ -486,19 +475,17 @@ class _SessionsListPageState extends State<_SessionsListPage> {
         ],
       ),
     );
-    if (confirmed == true) await _revoke(session);
+    if (confirmed == true &&
+        mounted &&
+        generation == widget.client.sessionGeneration) {
+      await _revoke(session);
+    }
   }
 
   Future<void> _revoke(Session session) async {
     setState(() => _revokingIds.add(session.id));
     try {
-      await widget.client.getSelfApi().revokeSession(
-        id: session.id,
-        idempotencyKey: newIdempotencyKey(),
-        xTrotxiClient: commuterMetadata.client,
-        xTrotxiBuild: commuterMetadata.build,
-        xTrotxiPlatform: commuterMetadata.platform,
-      );
+      await widget.client.revokeSession(session);
       if (!mounted) return;
       setState(() {
         _sessions = _sessions.where((s) => s.id != session.id).toList();
@@ -508,9 +495,13 @@ class _SessionsListPageState extends State<_SessionsListPage> {
       if (!mounted) return;
       setState(() => _revokingIds.remove(session.id));
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Could not revoke that session.')),
+        SnackBar(
+          content: Text(
+            e is TrotxiException ? e.message : 'Could not revoke that session.',
+          ),
+        ),
       );
-      debugPrint('Error revoking session ${session.id}: $e');
+      debugPrint('Session revocation error: ${e.runtimeType}');
     }
   }
 

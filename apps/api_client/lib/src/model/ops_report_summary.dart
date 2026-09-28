@@ -16,15 +16,16 @@ part 'ops_report_summary.g.dart';
 /// OpsReportSummary
 ///
 /// Properties:
-/// * [generatedAt] 
-/// * [fromDate] 
-/// * [toDate] 
-/// * [riders] 
-/// * [trips] 
-/// * [payments] 
-/// * [delivery] 
+/// * [generatedAt]
+/// * [fromDate]
+/// * [toDate]
+/// * [riders]
+/// * [trips]
+/// * [payments]
+/// * [delivery]
 @BuiltValue()
-abstract class OpsReportSummary implements Built<OpsReportSummary, OpsReportSummaryBuilder> {
+abstract class OpsReportSummary
+    implements Built<OpsReportSummary, OpsReportSummaryBuilder> {
   @BuiltValueField(wireName: r'generatedAt')
   DateTime get generatedAt;
 
@@ -48,16 +49,19 @@ abstract class OpsReportSummary implements Built<OpsReportSummary, OpsReportSumm
 
   OpsReportSummary._();
 
-  factory OpsReportSummary([void updates(OpsReportSummaryBuilder b)]) = _$OpsReportSummary;
+  factory OpsReportSummary([void updates(OpsReportSummaryBuilder b)]) =
+      _$OpsReportSummary;
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(OpsReportSummaryBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
-  static Serializer<OpsReportSummary> get serializer => _$OpsReportSummarySerializer();
+  static Serializer<OpsReportSummary> get serializer =>
+      _$OpsReportSummarySerializer();
 }
 
-class _$OpsReportSummarySerializer implements PrimitiveSerializer<OpsReportSummary> {
+class _$OpsReportSummarySerializer
+    implements PrimitiveSerializer<OpsReportSummary> {
   @override
   final Iterable<Type> types = const [OpsReportSummary, _$OpsReportSummary];
 
@@ -112,7 +116,9 @@ class _$OpsReportSummarySerializer implements PrimitiveSerializer<OpsReportSumma
     OpsReportSummary object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
   }
 
   void _deserializeProperties(
@@ -204,4 +210,3 @@ class _$OpsReportSummarySerializer implements PrimitiveSerializer<OpsReportSumma
     return result.build();
   }
 }
-

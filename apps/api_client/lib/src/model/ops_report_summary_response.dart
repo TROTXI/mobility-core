@@ -12,26 +12,35 @@ part 'ops_report_summary_response.g.dart';
 /// OpsReportSummaryResponse
 ///
 /// Properties:
-/// * [data] 
+/// * [data]
 @BuiltValue()
-abstract class OpsReportSummaryResponse implements Built<OpsReportSummaryResponse, OpsReportSummaryResponseBuilder> {
+abstract class OpsReportSummaryResponse
+    implements
+        Built<OpsReportSummaryResponse, OpsReportSummaryResponseBuilder> {
   @BuiltValueField(wireName: r'data')
   OpsReportSummary get data;
 
   OpsReportSummaryResponse._();
 
-  factory OpsReportSummaryResponse([void updates(OpsReportSummaryResponseBuilder b)]) = _$OpsReportSummaryResponse;
+  factory OpsReportSummaryResponse(
+          [void updates(OpsReportSummaryResponseBuilder b)]) =
+      _$OpsReportSummaryResponse;
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(OpsReportSummaryResponseBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
-  static Serializer<OpsReportSummaryResponse> get serializer => _$OpsReportSummaryResponseSerializer();
+  static Serializer<OpsReportSummaryResponse> get serializer =>
+      _$OpsReportSummaryResponseSerializer();
 }
 
-class _$OpsReportSummaryResponseSerializer implements PrimitiveSerializer<OpsReportSummaryResponse> {
+class _$OpsReportSummaryResponseSerializer
+    implements PrimitiveSerializer<OpsReportSummaryResponse> {
   @override
-  final Iterable<Type> types = const [OpsReportSummaryResponse, _$OpsReportSummaryResponse];
+  final Iterable<Type> types = const [
+    OpsReportSummaryResponse,
+    _$OpsReportSummaryResponse
+  ];
 
   @override
   final String wireName = r'OpsReportSummaryResponse';
@@ -54,7 +63,9 @@ class _$OpsReportSummaryResponseSerializer implements PrimitiveSerializer<OpsRep
     OpsReportSummaryResponse object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
   }
 
   void _deserializeProperties(
@@ -104,4 +115,3 @@ class _$OpsReportSummaryResponseSerializer implements PrimitiveSerializer<OpsRep
     return result.build();
   }
 }
-

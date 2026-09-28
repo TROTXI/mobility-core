@@ -13,13 +13,14 @@ part 'credential_secret.g.dart';
 /// CredentialSecret
 ///
 /// Properties:
-/// * [code] 
-/// * [pin] 
-/// * [temporaryPinExpiresAt] 
-/// * [email] 
-/// * [sms] 
+/// * [code]
+/// * [pin]
+/// * [temporaryPinExpiresAt]
+/// * [email]
+/// * [sms]
 @BuiltValue()
-abstract class CredentialSecret implements Built<CredentialSecret, CredentialSecretBuilder> {
+abstract class CredentialSecret
+    implements Built<CredentialSecret, CredentialSecretBuilder> {
   @BuiltValueField(wireName: r'code')
   String get code;
 
@@ -37,16 +38,19 @@ abstract class CredentialSecret implements Built<CredentialSecret, CredentialSec
 
   CredentialSecret._();
 
-  factory CredentialSecret([void updates(CredentialSecretBuilder b)]) = _$CredentialSecret;
+  factory CredentialSecret([void updates(CredentialSecretBuilder b)]) =
+      _$CredentialSecret;
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(CredentialSecretBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
-  static Serializer<CredentialSecret> get serializer => _$CredentialSecretSerializer();
+  static Serializer<CredentialSecret> get serializer =>
+      _$CredentialSecretSerializer();
 }
 
-class _$CredentialSecretSerializer implements PrimitiveSerializer<CredentialSecret> {
+class _$CredentialSecretSerializer
+    implements PrimitiveSerializer<CredentialSecret> {
   @override
   final Iterable<Type> types = const [CredentialSecret, _$CredentialSecret];
 
@@ -74,10 +78,12 @@ class _$CredentialSecretSerializer implements PrimitiveSerializer<CredentialSecr
       specifiedType: const FullType(DateTime),
     );
     yield r'email';
-    yield object.email == null ? null : serializers.serialize(
-      object.email,
-      specifiedType: const FullType.nullable(CredentialSecretEmail),
-    );
+    yield object.email == null
+        ? null
+        : serializers.serialize(
+            object.email,
+            specifiedType: const FullType.nullable(CredentialSecretEmail),
+          );
     if (object.sms != null) {
       yield r'sms';
       yield serializers.serialize(
@@ -93,7 +99,9 @@ class _$CredentialSecretSerializer implements PrimitiveSerializer<CredentialSecr
     CredentialSecret object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
   }
 
   void _deserializeProperties(
@@ -173,4 +181,3 @@ class _$CredentialSecretSerializer implements PrimitiveSerializer<CredentialSecr
     return result.build();
   }
 }
-

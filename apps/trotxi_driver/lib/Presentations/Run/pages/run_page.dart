@@ -1,14 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:trotxi_driver/core/state/foreground_refresh.dart';
+import 'package:trotxi_driver/core/api/driver_api.dart';
+import 'package:trotxi_driver/Presentations/Readiness/pages/device_readiness_page.dart';
 import 'package:trotxi_driver/core/config/corridor_time.dart';
 import 'package:provider/provider.dart';
-// The generated client exports wire models named TripSummary and StopEta;
-// this page means the widget in pre_trip.dart and the view model in
-// route_map_repository.dart.
-import 'package:trotxi_client/trotxi_client.dart' hide TripSummary, StopEta;
 import 'package:trotxi_driver/Presentations/Boarding/pages/board_by_code_page.dart';
 import 'package:trotxi_driver/Presentations/Boarding/pages/scan_page.dart';
 import 'package:trotxi_driver/Presentations/Completion/pages/end_run_page.dart';
 import 'package:trotxi_driver/Presentations/Run/pages/manifest_page.dart';
+import 'package:trotxi_driver/Presentations/Run/pages/location_connectivity_page.dart';
 import 'package:trotxi_driver/Presentations/Run/widgets/pre_trip.dart';
 import 'package:trotxi_driver/Presentations/Run/widgets/run_map.dart';
 import 'package:trotxi_driver/core/widgets/driver_chip.dart';
@@ -41,31 +41,32 @@ class RunPage extends StatefulWidget {
 }
 
 class _RunPageState extends State<RunPage> {
-  late final PositionPublisher _positions = PositionPublisher(
-    client: context.read<TrotxiApiClient>(),
-  );
-
-  /// Why location sharing is not running, when it is not.
-  PositionBlock? _positionBlock;
-
   /// The API's distance and ETA to each stop still ahead (design page 10).
   /// Null until the run reports a position, which is most of a run's first
   /// minutes and every run in a dead zone.
   VehicleFix? _fix;
+  int _fixRevision = 0;
 
   /// The corridor's stops with their coordinates, for handing one to the
   /// phone's navigation app. Cached for the session by the repository.
   RouteShape? _shape;
+  ForegroundRefresh? _refresh;
 
   @override
   void initState() {
     super.initState();
+    _refresh = ForegroundRefresh(_loadFix);
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (!mounted) return;
       await context.read<RunController>().load();
-      if (mounted) await _syncPublishing();
       if (mounted) await _loadFix();
     });
+  }
+
+  @override
+  void dispose() {
+    _refresh?.dispose();
+    super.dispose();
   }
 
   /// Read the vehicle's position for its stop ETAs.
@@ -73,16 +74,28 @@ class _RunPageState extends State<RunPage> {
   /// Shares the repository's short-lived cache with the map, so the two
   /// surfaces on this screen that want a fix make one call between them.
   Future<void> _loadFix() async {
+    if (!mounted) return;
+    final revision = ++_fixRevision;
     final run = context.read<RunController>().detail.valueOrNull?.run;
-    if (run == null || !run.isActive) return;
+    if (run == null || !run.isActive) {
+      if (_fix != null) setState(() => _fix = null);
+      return;
+    }
     final maps = context.read<RouteMapRepository>();
-    final fix = await maps.vehicleOn(run.id);
-    final shape = await maps.shapeFor(run.routeId);
-    if (mounted) {
-      setState(() {
-        _fix = fix;
-        _shape = shape;
-      });
+    try {
+      final fix = await maps.vehicleOn(run.id);
+      final shape = await maps.shapeFor(run.id);
+      if (mounted &&
+          revision == _fixRevision &&
+          context.read<RunController>().currentRun.id == run.id &&
+          context.read<RunController>().currentRun.isActive) {
+        setState(() {
+          _fix = fix;
+          _shape = shape;
+        });
+      }
+    } on TrotxiException {
+      if (mounted && revision == _fixRevision) setState(() => _fix = null);
     }
   }
 
@@ -121,26 +134,14 @@ class _RunPageState extends State<RunPage> {
     }
   }
 
-  @override
-  void dispose() {
-    // Publishing stops with the screen. The permission asked for is "while in
-    // use", and holding a location stream open behind a closed run would be
-    // tracking the driver rather than the bus.
-    _positions.stop();
-    super.dispose();
-  }
-
-  /// Start or stop publishing to match the run's state.
+  /// Explicit retry after readiness or pull-to-refresh. The session/trip
+  /// controller owns startup and shutdown, not this page's dispose callback.
   Future<void> _syncPublishing() async {
     final run = context.read<RunController>().detail.valueOrNull?.run;
-    if (run == null) return;
-
-    if (run.isActive && !_positions.isPublishing) {
-      final block = await _positions.start(run.id);
-      if (mounted) setState(() => _positionBlock = block);
-    } else if (!run.isActive && _positions.isPublishing) {
-      await _positions.stop();
-      if (mounted) setState(() => _positionBlock = null);
+    if (run == null || !run.isActive) return;
+    final positions = context.read<PositionPublisher>();
+    if (positions.runId == run.id) {
+      await positions.start(run.id);
     }
   }
 
@@ -193,6 +194,9 @@ class _RunPageState extends State<RunPage> {
     return RefreshIndicator(
       onRefresh: () async {
         await controller.load();
+        if (!mounted) return;
+        await _syncPublishing();
+        if (!mounted) return;
         await _loadFix();
       },
       child: detail.isInitialLoad
@@ -272,12 +276,11 @@ class _RunPageState extends State<RunPage> {
           const SizedBox(height: AppSpacing.space12),
           ReadinessCard(data: data),
           const SizedBox(height: AppSpacing.space12),
-          // Page 08 carries the same indicator as the active screen. Location
-          // is a readiness fact before departure, and finding out it is off
-          // after pulling away costs the run its trace.
-          GpsIndicator(
-            state: _gpsState(_positionBlock),
-            detail: _gpsDetail(_positionBlock),
+          Text(
+            'Location is checked before starting. Sharing begins with the trip.',
+            style: AppTypography.bodySmall.copyWith(
+              color: colors.textSecondary,
+            ),
           ),
         ] else ...[
           // The Active Trip Hero (Components / Active Trip Hero): one dominant
@@ -366,7 +369,7 @@ class _RunPageState extends State<RunPage> {
                       child: DriverStatTile(
                         label: 'Stop',
                         value:
-                            '${data.currentStopSeq ?? 0} of ${data.stops.length}',
+                            '${data.currentStopNumber ?? 0} of ${data.stops.length}',
                         caption: _stopCaption(data),
                       ),
                     ),
@@ -388,10 +391,15 @@ class _RunPageState extends State<RunPage> {
                 if (data.stops.isNotEmpty) ...[
                   const SizedBox(height: AppSpacing.space16),
                   NextStopCard(
-                    label: data.currentStopName == null
+                    label: _fix?.nextStop != null
                         ? 'Next stop'
-                        : 'At stop',
-                    stop: data.currentStopName ?? data.stops.first,
+                        : data.currentStopName != null
+                        ? 'Last reported stop'
+                        : 'First stop',
+                    stop:
+                        _fix?.nextStop?.name ??
+                        data.currentStopName ??
+                        data.stops.first.name,
                     // The file's "1.2 km · ~4 min", from the API rather than
                     // computed here: the server derives both from the
                     // corridor's learned geometry. Null until the run has
@@ -479,9 +487,23 @@ class _RunPageState extends State<RunPage> {
                   // "never imply live accuracy when GPS is weak, queued offline
                   // or disabled". The earlier build had one line that said
                   // "sharing" whatever was actually happening underneath.
-                  GpsIndicator(
-                    state: _gpsState(_positionBlock),
-                    detail: _gpsDetail(_positionBlock),
+                  Consumer<PositionPublisher>(
+                    builder: (_, positions, _) => Semantics(
+                      button: true,
+                      label: 'Open location and connectivity details',
+                      child: InkWell(
+                        borderRadius: AppRadii.circular(AppRadii.indicator),
+                        onTap: () => Navigator.of(context).push(
+                          MaterialPageRoute<void>(
+                            builder: (_) => LocationConnectivityPage(run: run),
+                          ),
+                        ),
+                        child: GpsIndicator(
+                          state: _gpsState(positions),
+                          detail: _gpsDetail(positions),
+                        ),
+                      ),
+                    ),
                   ),
                 ],
               ],
@@ -559,19 +581,19 @@ class _RunPageState extends State<RunPage> {
                 for (final (index, stop) in data.stops.indexed)
                   _StopRow(
                     seq: index + 1,
-                    name: stop,
-                    eta: _etaFor(index + 1),
+                    name: stop.name,
+                    eta: _etaFor(stop.seq),
                     // Passed rather than "done": the driver said they reached
                     // stop 4, which means 1 to 3 are behind them.
                     passed:
-                        data.currentStopSeq != null &&
-                        index + 1 < data.currentStopSeq!,
-                    current: data.currentStopSeq == index + 1,
+                        data.currentStopNumber != null &&
+                        index + 1 < data.currentStopNumber!,
+                    current: data.currentStopSeq == stop.seq,
                     // Only on a run that is under way. Reporting arrivals on a
                     // trip nobody has started would record progress along a
                     // route the van is not on.
                     onArrive: run.isActive
-                        ? () => _arrive(context, controller, index + 1)
+                        ? () => _arrive(context, controller, stop.seq)
                         : null,
                     colors: colors,
                   ),
@@ -606,28 +628,46 @@ class _RunPageState extends State<RunPage> {
     RunStatus.scheduled => 'Scheduled',
   };
 
-  /// Which of the file's four telemetry states the run is in.
+  /// Translate measured sharing state into the existing telemetry component.
+  /// Do not label failed uploads queued or infer signal accuracy from permission.
   ///
-  /// The app has no weak-signal or queued-fix reporting yet, so only two of the
-  /// four are reachable. They are mapped rather than collapsed because a driver
-  /// reading "location is turned off" needs a different thing from one reading
-  /// "sharing live", and the component draws both honestly.
-  ///
-  /// @param block - why publishing is not running, when it is not.
+  /// @param positions - acknowledged sharing state, not just permission state.
   /// @returns the state to draw.
-  static GpsState _gpsState(PositionBlock? block) =>
-      block == null ? GpsState.live : GpsState.disabled;
+  static GpsState _gpsState(PositionPublisher positions) =>
+      switch (positions.state) {
+        PositionSharing.live => GpsState.live,
+        PositionSharing.weak => GpsState.weak,
+        PositionSharing.checking || PositionSharing.waiting => GpsState.waiting,
+        PositionSharing.stale => GpsState.stale,
+        PositionSharing.failed => GpsState.failed,
+        PositionSharing.idle || PositionSharing.blocked => GpsState.disabled,
+      };
 
   /// The second line under the state.
   ///
-  /// @param block - why publishing is not running, when it is not.
+  /// @param positions - the publisher's current state and any permission block.
   /// @returns what to say about it.
-  static String _gpsDetail(PositionBlock? block) => switch (block) {
-    null => 'Riders can see the bus approaching',
-    PositionBlock.servicesOff => 'Location is off for the whole device',
-    PositionBlock.deniedForever => 'Turn it on in device settings',
-    PositionBlock.denied => 'Access was declined',
-    PositionBlock.notRequested => 'Not asked for yet',
+  static String _gpsDetail(
+    PositionPublisher positions,
+  ) => switch (positions.state) {
+    PositionSharing.live => 'A recent position was received by the API',
+    PositionSharing.weak =>
+      'API received an approximate fix${positions.lastAccuracyMeters == null ? '' : ' · ±${positions.lastAccuracyMeters!.round()}m'}',
+    PositionSharing.checking => 'Checking location access',
+    PositionSharing.waiting => 'Waiting for the first confirmed position',
+    PositionSharing.stale =>
+      'No recent position confirmed. Riders may see an older location',
+    PositionSharing.failed =>
+      'Update not confirmed. Retrying with the next location',
+    PositionSharing.idle => 'No position is being shared',
+    PositionSharing.blocked => switch (positions.block) {
+      PositionBlock.servicesOff => 'Location is off for the whole device',
+      PositionBlock.deniedForever => 'Turn it on in device settings',
+      PositionBlock.denied => 'Access was declined',
+      PositionBlock.notRequested => 'Not asked for yet',
+      PositionBlock.unavailable ||
+      null => 'Location could not be checked. Try again',
+    },
   };
 
   /// The one word inside the chip.
@@ -653,7 +693,7 @@ class _RunPageState extends State<RunPage> {
   /// @returns the caption.
   static String _stopCaption(RunDetail data) {
     if (data.stops.isEmpty) return 'No stops recorded';
-    final seq = data.currentStopSeq;
+    final seq = data.currentStopNumber;
     if (seq == null) return '${data.stops.length} to go';
     final left = data.stops.length - seq;
     if (left <= 0) return 'Last stop';
@@ -700,7 +740,31 @@ class _RunPageState extends State<RunPage> {
     int seq,
   ) async {
     final messenger = ScaffoldMessenger.of(context);
-    await controller.arriveAtStop(seq);
+    final previous = controller.currentRun.currentStopSeq;
+    final correction = previous != null && seq < previous;
+    if (correction) {
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Correct the last arrival?'),
+          content: const Text(
+            'This moves recorded progress back to an earlier stop. Continue only to correct a mistaken arrival.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('Correct arrival'),
+            ),
+          ],
+        ),
+      );
+      if (confirmed != true || !mounted) return;
+    }
+    await controller.arriveAtStop(seq, correction: correction);
     final detail = controller.detail;
     if (detail is Failure<RunDetail>) {
       messenger.showSnackBar(SnackBar(content: Text(detail.message)));
@@ -868,7 +932,7 @@ class _PrimaryAction extends StatelessWidget {
       onPressed: busy
           ? null
           : () async {
-              // Ending goes through the confirmation flow; starting does not.
+              // Ending goes through confirmation; starting reviews device access.
               // Completing is the one irreversible action here, and a stray tap
               // at the kerb should not close a run with riders still aboard.
               if (run.isActive) {
@@ -881,6 +945,12 @@ class _PrimaryAction extends StatelessWidget {
                   ),
                 );
               } else {
+                final acknowledged = await Navigator.of(context).push<bool>(
+                  MaterialPageRoute(
+                    builder: (_) => const DeviceReadinessPage(beforeTrip: true),
+                  ),
+                );
+                if (acknowledged != true || !context.mounted) return;
                 await controller.start();
               }
               await onChanged();

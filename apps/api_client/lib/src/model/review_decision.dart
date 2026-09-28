@@ -12,10 +12,11 @@ part 'review_decision.g.dart';
 /// ReviewDecision
 ///
 /// Properties:
-/// * [decision] 
-/// * [reason] 
+/// * [decision]
+/// * [reason]
 @BuiltValue()
-abstract class ReviewDecision implements Built<ReviewDecision, ReviewDecisionBuilder> {
+abstract class ReviewDecision
+    implements Built<ReviewDecision, ReviewDecisionBuilder> {
   @BuiltValueField(wireName: r'decision')
   ReviewDecisionDecisionEnum get decision;
   // enum decisionEnum {  resolved,  waived,  };
@@ -25,16 +26,19 @@ abstract class ReviewDecision implements Built<ReviewDecision, ReviewDecisionBui
 
   ReviewDecision._();
 
-  factory ReviewDecision([void updates(ReviewDecisionBuilder b)]) = _$ReviewDecision;
+  factory ReviewDecision([void updates(ReviewDecisionBuilder b)]) =
+      _$ReviewDecision;
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(ReviewDecisionBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
-  static Serializer<ReviewDecision> get serializer => _$ReviewDecisionSerializer();
+  static Serializer<ReviewDecision> get serializer =>
+      _$ReviewDecisionSerializer();
 }
 
-class _$ReviewDecisionSerializer implements PrimitiveSerializer<ReviewDecision> {
+class _$ReviewDecisionSerializer
+    implements PrimitiveSerializer<ReviewDecision> {
   @override
   final Iterable<Type> types = const [ReviewDecision, _$ReviewDecision];
 
@@ -64,7 +68,9 @@ class _$ReviewDecisionSerializer implements PrimitiveSerializer<ReviewDecision> 
     ReviewDecision object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
   }
 
   void _deserializeProperties(
@@ -123,17 +129,20 @@ class _$ReviewDecisionSerializer implements PrimitiveSerializer<ReviewDecision> 
 }
 
 class ReviewDecisionDecisionEnum extends EnumClass {
-
   @BuiltValueEnumConst(wireName: r'resolved')
-  static const ReviewDecisionDecisionEnum resolved = _$reviewDecisionDecisionEnum_resolved;
+  static const ReviewDecisionDecisionEnum resolved =
+      _$reviewDecisionDecisionEnum_resolved;
   @BuiltValueEnumConst(wireName: r'waived')
-  static const ReviewDecisionDecisionEnum waived = _$reviewDecisionDecisionEnum_waived;
+  static const ReviewDecisionDecisionEnum waived =
+      _$reviewDecisionDecisionEnum_waived;
 
-  static Serializer<ReviewDecisionDecisionEnum> get serializer => _$reviewDecisionDecisionEnumSerializer;
+  static Serializer<ReviewDecisionDecisionEnum> get serializer =>
+      _$reviewDecisionDecisionEnumSerializer;
 
-  const ReviewDecisionDecisionEnum._(String name): super(name);
+  const ReviewDecisionDecisionEnum._(String name) : super(name);
 
-  static BuiltSet<ReviewDecisionDecisionEnum> get values => _$reviewDecisionDecisionEnumValues;
-  static ReviewDecisionDecisionEnum valueOf(String name) => _$reviewDecisionDecisionEnumValueOf(name);
+  static BuiltSet<ReviewDecisionDecisionEnum> get values =>
+      _$reviewDecisionDecisionEnumValues;
+  static ReviewDecisionDecisionEnum valueOf(String name) =>
+      _$reviewDecisionDecisionEnumValueOf(name);
 }
-

@@ -14,10 +14,11 @@ part 'ops_incident_page.g.dart';
 /// OpsIncidentPage
 ///
 /// Properties:
-/// * [data] 
-/// * [page] 
+/// * [data]
+/// * [page]
 @BuiltValue()
-abstract class OpsIncidentPage implements Built<OpsIncidentPage, OpsIncidentPageBuilder> {
+abstract class OpsIncidentPage
+    implements Built<OpsIncidentPage, OpsIncidentPageBuilder> {
   @BuiltValueField(wireName: r'data')
   BuiltList<OpsIncident> get data;
 
@@ -26,16 +27,19 @@ abstract class OpsIncidentPage implements Built<OpsIncidentPage, OpsIncidentPage
 
   OpsIncidentPage._();
 
-  factory OpsIncidentPage([void updates(OpsIncidentPageBuilder b)]) = _$OpsIncidentPage;
+  factory OpsIncidentPage([void updates(OpsIncidentPageBuilder b)]) =
+      _$OpsIncidentPage;
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(OpsIncidentPageBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
-  static Serializer<OpsIncidentPage> get serializer => _$OpsIncidentPageSerializer();
+  static Serializer<OpsIncidentPage> get serializer =>
+      _$OpsIncidentPageSerializer();
 }
 
-class _$OpsIncidentPageSerializer implements PrimitiveSerializer<OpsIncidentPage> {
+class _$OpsIncidentPageSerializer
+    implements PrimitiveSerializer<OpsIncidentPage> {
   @override
   final Iterable<Type> types = const [OpsIncidentPage, _$OpsIncidentPage];
 
@@ -65,7 +69,9 @@ class _$OpsIncidentPageSerializer implements PrimitiveSerializer<OpsIncidentPage
     OpsIncidentPage object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
   }
 
   void _deserializeProperties(
@@ -122,4 +128,3 @@ class _$OpsIncidentPageSerializer implements PrimitiveSerializer<OpsIncidentPage
     return result.build();
   }
 }
-

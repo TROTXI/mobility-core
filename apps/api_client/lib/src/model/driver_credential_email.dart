@@ -12,12 +12,13 @@ part 'driver_credential_email.g.dart';
 /// DriverCredentialEmail
 ///
 /// Properties:
-/// * [purpose] 
-/// * [state] 
-/// * [failureCode] 
-/// * [queuedAt] 
+/// * [purpose]
+/// * [state]
+/// * [failureCode]
+/// * [queuedAt]
 @BuiltValue()
-abstract class DriverCredentialEmail implements Built<DriverCredentialEmail, DriverCredentialEmailBuilder> {
+abstract class DriverCredentialEmail
+    implements Built<DriverCredentialEmail, DriverCredentialEmailBuilder> {
   @BuiltValueField(wireName: r'purpose')
   DriverCredentialEmailPurposeEnum get purpose;
   // enum purposeEnum {  onboarding,  pin_reset,  };
@@ -34,18 +35,24 @@ abstract class DriverCredentialEmail implements Built<DriverCredentialEmail, Dri
 
   DriverCredentialEmail._();
 
-  factory DriverCredentialEmail([void updates(DriverCredentialEmailBuilder b)]) = _$DriverCredentialEmail;
+  factory DriverCredentialEmail(
+      [void updates(DriverCredentialEmailBuilder b)]) = _$DriverCredentialEmail;
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(DriverCredentialEmailBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
-  static Serializer<DriverCredentialEmail> get serializer => _$DriverCredentialEmailSerializer();
+  static Serializer<DriverCredentialEmail> get serializer =>
+      _$DriverCredentialEmailSerializer();
 }
 
-class _$DriverCredentialEmailSerializer implements PrimitiveSerializer<DriverCredentialEmail> {
+class _$DriverCredentialEmailSerializer
+    implements PrimitiveSerializer<DriverCredentialEmail> {
   @override
-  final Iterable<Type> types = const [DriverCredentialEmail, _$DriverCredentialEmail];
+  final Iterable<Type> types = const [
+    DriverCredentialEmail,
+    _$DriverCredentialEmail
+  ];
 
   @override
   final String wireName = r'DriverCredentialEmail';
@@ -66,10 +73,12 @@ class _$DriverCredentialEmailSerializer implements PrimitiveSerializer<DriverCre
       specifiedType: const FullType(DriverCredentialEmailStateEnum),
     );
     yield r'failureCode';
-    yield object.failureCode == null ? null : serializers.serialize(
-      object.failureCode,
-      specifiedType: const FullType.nullable(String),
-    );
+    yield object.failureCode == null
+        ? null
+        : serializers.serialize(
+            object.failureCode,
+            specifiedType: const FullType.nullable(String),
+          );
     yield r'queuedAt';
     yield serializers.serialize(
       object.queuedAt,
@@ -83,7 +92,9 @@ class _$DriverCredentialEmailSerializer implements PrimitiveSerializer<DriverCre
     DriverCredentialEmail object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
   }
 
   void _deserializeProperties(
@@ -157,38 +168,48 @@ class _$DriverCredentialEmailSerializer implements PrimitiveSerializer<DriverCre
 }
 
 class DriverCredentialEmailPurposeEnum extends EnumClass {
-
   @BuiltValueEnumConst(wireName: r'onboarding')
-  static const DriverCredentialEmailPurposeEnum onboarding = _$driverCredentialEmailPurposeEnum_onboarding;
+  static const DriverCredentialEmailPurposeEnum onboarding =
+      _$driverCredentialEmailPurposeEnum_onboarding;
   @BuiltValueEnumConst(wireName: r'pin_reset')
-  static const DriverCredentialEmailPurposeEnum pinReset = _$driverCredentialEmailPurposeEnum_pinReset;
+  static const DriverCredentialEmailPurposeEnum pinReset =
+      _$driverCredentialEmailPurposeEnum_pinReset;
 
-  static Serializer<DriverCredentialEmailPurposeEnum> get serializer => _$driverCredentialEmailPurposeEnumSerializer;
+  static Serializer<DriverCredentialEmailPurposeEnum> get serializer =>
+      _$driverCredentialEmailPurposeEnumSerializer;
 
-  const DriverCredentialEmailPurposeEnum._(String name): super(name);
+  const DriverCredentialEmailPurposeEnum._(String name) : super(name);
 
-  static BuiltSet<DriverCredentialEmailPurposeEnum> get values => _$driverCredentialEmailPurposeEnumValues;
-  static DriverCredentialEmailPurposeEnum valueOf(String name) => _$driverCredentialEmailPurposeEnumValueOf(name);
+  static BuiltSet<DriverCredentialEmailPurposeEnum> get values =>
+      _$driverCredentialEmailPurposeEnumValues;
+  static DriverCredentialEmailPurposeEnum valueOf(String name) =>
+      _$driverCredentialEmailPurposeEnumValueOf(name);
 }
 
 class DriverCredentialEmailStateEnum extends EnumClass {
-
   @BuiltValueEnumConst(wireName: r'queued')
-  static const DriverCredentialEmailStateEnum queued = _$driverCredentialEmailStateEnum_queued;
+  static const DriverCredentialEmailStateEnum queued =
+      _$driverCredentialEmailStateEnum_queued;
   @BuiltValueEnumConst(wireName: r'provider_accepted')
-  static const DriverCredentialEmailStateEnum providerAccepted = _$driverCredentialEmailStateEnum_providerAccepted;
+  static const DriverCredentialEmailStateEnum providerAccepted =
+      _$driverCredentialEmailStateEnum_providerAccepted;
   @BuiltValueEnumConst(wireName: r'cancelled')
-  static const DriverCredentialEmailStateEnum cancelled = _$driverCredentialEmailStateEnum_cancelled;
+  static const DriverCredentialEmailStateEnum cancelled =
+      _$driverCredentialEmailStateEnum_cancelled;
   @BuiltValueEnumConst(wireName: r'failed')
-  static const DriverCredentialEmailStateEnum failed = _$driverCredentialEmailStateEnum_failed;
+  static const DriverCredentialEmailStateEnum failed =
+      _$driverCredentialEmailStateEnum_failed;
   @BuiltValueEnumConst(wireName: r'unknown')
-  static const DriverCredentialEmailStateEnum unknown = _$driverCredentialEmailStateEnum_unknown;
+  static const DriverCredentialEmailStateEnum unknown =
+      _$driverCredentialEmailStateEnum_unknown;
 
-  static Serializer<DriverCredentialEmailStateEnum> get serializer => _$driverCredentialEmailStateEnumSerializer;
+  static Serializer<DriverCredentialEmailStateEnum> get serializer =>
+      _$driverCredentialEmailStateEnumSerializer;
 
-  const DriverCredentialEmailStateEnum._(String name): super(name);
+  const DriverCredentialEmailStateEnum._(String name) : super(name);
 
-  static BuiltSet<DriverCredentialEmailStateEnum> get values => _$driverCredentialEmailStateEnumValues;
-  static DriverCredentialEmailStateEnum valueOf(String name) => _$driverCredentialEmailStateEnumValueOf(name);
+  static BuiltSet<DriverCredentialEmailStateEnum> get values =>
+      _$driverCredentialEmailStateEnumValues;
+  static DriverCredentialEmailStateEnum valueOf(String name) =>
+      _$driverCredentialEmailStateEnumValueOf(name);
 }
-

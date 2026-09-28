@@ -12,10 +12,10 @@ part 'pricing_edit.g.dart';
 /// PricingEdit
 ///
 /// Properties:
-/// * [ridesPerPeriod] 
-/// * [priceMultiplierBp] 
-/// * [takeRateBp] 
-/// * [creditPerRide] 
+/// * [ridesPerPeriod]
+/// * [priceMultiplierBp]
+/// * [takeRateBp]
+/// * [creditPerRide]
 @BuiltValue()
 abstract class PricingEdit implements Built<PricingEdit, PricingEditBuilder> {
   @BuiltValueField(wireName: r'ridesPerPeriod')
@@ -89,7 +89,9 @@ class _$PricingEditSerializer implements PrimitiveSerializer<PricingEdit> {
     PricingEdit object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
   }
 
   void _deserializeProperties(
@@ -160,4 +162,3 @@ class _$PricingEditSerializer implements PrimitiveSerializer<PricingEdit> {
     return result.build();
   }
 }
-

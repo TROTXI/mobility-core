@@ -15,12 +15,12 @@ part 'ops_overview.g.dart';
 /// OpsOverview
 ///
 /// Properties:
-/// * [generatedAt] 
-/// * [window] 
-/// * [serviceDate] 
-/// * [staleFixAfterSeconds] 
-/// * [tiles] 
-/// * [trips] 
+/// * [generatedAt]
+/// * [window]
+/// * [serviceDate]
+/// * [staleFixAfterSeconds]
+/// * [tiles]
+/// * [trips]
 @BuiltValue()
 abstract class OpsOverview implements Built<OpsOverview, OpsOverviewBuilder> {
   @BuiltValueField(wireName: r'generatedAt')
@@ -93,7 +93,8 @@ class _$OpsOverviewSerializer implements PrimitiveSerializer<OpsOverview> {
     yield r'trips';
     yield serializers.serialize(
       object.trips,
-      specifiedType: const FullType(BuiltList, [FullType(OpsOverviewTripsInner)]),
+      specifiedType:
+          const FullType(BuiltList, [FullType(OpsOverviewTripsInner)]),
     );
   }
 
@@ -103,7 +104,9 @@ class _$OpsOverviewSerializer implements PrimitiveSerializer<OpsOverview> {
     OpsOverview object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
   }
 
   void _deserializeProperties(
@@ -156,7 +159,8 @@ class _$OpsOverviewSerializer implements PrimitiveSerializer<OpsOverview> {
         case r'trips':
           final valueDes = serializers.deserialize(
             value,
-            specifiedType: const FullType(BuiltList, [FullType(OpsOverviewTripsInner)]),
+            specifiedType:
+                const FullType(BuiltList, [FullType(OpsOverviewTripsInner)]),
           ) as BuiltList<OpsOverviewTripsInner>;
           result.trips.replace(valueDes);
           break;
@@ -190,17 +194,18 @@ class _$OpsOverviewSerializer implements PrimitiveSerializer<OpsOverview> {
 }
 
 class OpsOverviewWindowEnum extends EnumClass {
-
   @BuiltValueEnumConst(wireName: r'morning')
   static const OpsOverviewWindowEnum morning = _$opsOverviewWindowEnum_morning;
   @BuiltValueEnumConst(wireName: r'evening')
   static const OpsOverviewWindowEnum evening = _$opsOverviewWindowEnum_evening;
 
-  static Serializer<OpsOverviewWindowEnum> get serializer => _$opsOverviewWindowEnumSerializer;
+  static Serializer<OpsOverviewWindowEnum> get serializer =>
+      _$opsOverviewWindowEnumSerializer;
 
-  const OpsOverviewWindowEnum._(String name): super(name);
+  const OpsOverviewWindowEnum._(String name) : super(name);
 
-  static BuiltSet<OpsOverviewWindowEnum> get values => _$opsOverviewWindowEnumValues;
-  static OpsOverviewWindowEnum valueOf(String name) => _$opsOverviewWindowEnumValueOf(name);
+  static BuiltSet<OpsOverviewWindowEnum> get values =>
+      _$opsOverviewWindowEnumValues;
+  static OpsOverviewWindowEnum valueOf(String name) =>
+      _$opsOverviewWindowEnumValueOf(name);
 }
-

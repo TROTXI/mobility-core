@@ -13,10 +13,11 @@ part 'membership_access.g.dart';
 /// MembershipAccess
 ///
 /// Properties:
-/// * [canReserve] 
-/// * [blocks] 
+/// * [canReserve]
+/// * [blocks]
 @BuiltValue()
-abstract class MembershipAccess implements Built<MembershipAccess, MembershipAccessBuilder> {
+abstract class MembershipAccess
+    implements Built<MembershipAccess, MembershipAccessBuilder> {
   @BuiltValueField(wireName: r'canReserve')
   bool get canReserve;
 
@@ -25,16 +26,19 @@ abstract class MembershipAccess implements Built<MembershipAccess, MembershipAcc
 
   MembershipAccess._();
 
-  factory MembershipAccess([void updates(MembershipAccessBuilder b)]) = _$MembershipAccess;
+  factory MembershipAccess([void updates(MembershipAccessBuilder b)]) =
+      _$MembershipAccess;
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(MembershipAccessBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
-  static Serializer<MembershipAccess> get serializer => _$MembershipAccessSerializer();
+  static Serializer<MembershipAccess> get serializer =>
+      _$MembershipAccessSerializer();
 }
 
-class _$MembershipAccessSerializer implements PrimitiveSerializer<MembershipAccess> {
+class _$MembershipAccessSerializer
+    implements PrimitiveSerializer<MembershipAccess> {
   @override
   final Iterable<Type> types = const [MembershipAccess, _$MembershipAccess];
 
@@ -64,7 +68,9 @@ class _$MembershipAccessSerializer implements PrimitiveSerializer<MembershipAcce
     MembershipAccess object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
   }
 
   void _deserializeProperties(
@@ -121,4 +127,3 @@ class _$MembershipAccessSerializer implements PrimitiveSerializer<MembershipAcce
     return result.build();
   }
 }
-

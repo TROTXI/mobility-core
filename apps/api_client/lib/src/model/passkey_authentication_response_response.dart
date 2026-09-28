@@ -11,12 +11,15 @@ part 'passkey_authentication_response_response.g.dart';
 /// PasskeyAuthenticationResponseResponse
 ///
 /// Properties:
-/// * [clientDataJSON] 
-/// * [authenticatorData] 
-/// * [signature] 
-/// * [userHandle] 
+/// * [clientDataJSON]
+/// * [authenticatorData]
+/// * [signature]
+/// * [userHandle]
 @BuiltValue()
-abstract class PasskeyAuthenticationResponseResponse implements Built<PasskeyAuthenticationResponseResponse, PasskeyAuthenticationResponseResponseBuilder> {
+abstract class PasskeyAuthenticationResponseResponse
+    implements
+        Built<PasskeyAuthenticationResponseResponse,
+            PasskeyAuthenticationResponseResponseBuilder> {
   @BuiltValueField(wireName: r'clientDataJSON')
   String get clientDataJSON;
 
@@ -31,18 +34,25 @@ abstract class PasskeyAuthenticationResponseResponse implements Built<PasskeyAut
 
   PasskeyAuthenticationResponseResponse._();
 
-  factory PasskeyAuthenticationResponseResponse([void updates(PasskeyAuthenticationResponseResponseBuilder b)]) = _$PasskeyAuthenticationResponseResponse;
+  factory PasskeyAuthenticationResponseResponse(
+          [void updates(PasskeyAuthenticationResponseResponseBuilder b)]) =
+      _$PasskeyAuthenticationResponseResponse;
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(PasskeyAuthenticationResponseResponseBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
-  static Serializer<PasskeyAuthenticationResponseResponse> get serializer => _$PasskeyAuthenticationResponseResponseSerializer();
+  static Serializer<PasskeyAuthenticationResponseResponse> get serializer =>
+      _$PasskeyAuthenticationResponseResponseSerializer();
 }
 
-class _$PasskeyAuthenticationResponseResponseSerializer implements PrimitiveSerializer<PasskeyAuthenticationResponseResponse> {
+class _$PasskeyAuthenticationResponseResponseSerializer
+    implements PrimitiveSerializer<PasskeyAuthenticationResponseResponse> {
   @override
-  final Iterable<Type> types = const [PasskeyAuthenticationResponseResponse, _$PasskeyAuthenticationResponseResponse];
+  final Iterable<Type> types = const [
+    PasskeyAuthenticationResponseResponse,
+    _$PasskeyAuthenticationResponseResponse
+  ];
 
   @override
   final String wireName = r'PasskeyAuthenticationResponseResponse';
@@ -82,7 +92,9 @@ class _$PasskeyAuthenticationResponseResponseSerializer implements PrimitiveSeri
     PasskeyAuthenticationResponseResponse object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
   }
 
   void _deserializeProperties(
@@ -154,4 +166,3 @@ class _$PasskeyAuthenticationResponseResponseSerializer implements PrimitiveSeri
     return result.build();
   }
 }
-

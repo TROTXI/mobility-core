@@ -12,26 +12,33 @@ part 'restriction_response.g.dart';
 /// RestrictionResponse
 ///
 /// Properties:
-/// * [data] 
+/// * [data]
 @BuiltValue()
-abstract class RestrictionResponse implements Built<RestrictionResponse, RestrictionResponseBuilder> {
+abstract class RestrictionResponse
+    implements Built<RestrictionResponse, RestrictionResponseBuilder> {
   @BuiltValueField(wireName: r'data')
   Restriction get data;
 
   RestrictionResponse._();
 
-  factory RestrictionResponse([void updates(RestrictionResponseBuilder b)]) = _$RestrictionResponse;
+  factory RestrictionResponse([void updates(RestrictionResponseBuilder b)]) =
+      _$RestrictionResponse;
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(RestrictionResponseBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
-  static Serializer<RestrictionResponse> get serializer => _$RestrictionResponseSerializer();
+  static Serializer<RestrictionResponse> get serializer =>
+      _$RestrictionResponseSerializer();
 }
 
-class _$RestrictionResponseSerializer implements PrimitiveSerializer<RestrictionResponse> {
+class _$RestrictionResponseSerializer
+    implements PrimitiveSerializer<RestrictionResponse> {
   @override
-  final Iterable<Type> types = const [RestrictionResponse, _$RestrictionResponse];
+  final Iterable<Type> types = const [
+    RestrictionResponse,
+    _$RestrictionResponse
+  ];
 
   @override
   final String wireName = r'RestrictionResponse';
@@ -54,7 +61,9 @@ class _$RestrictionResponseSerializer implements PrimitiveSerializer<Restriction
     RestrictionResponse object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
   }
 
   void _deserializeProperties(
@@ -104,4 +113,3 @@ class _$RestrictionResponseSerializer implements PrimitiveSerializer<Restriction
     return result.build();
   }
 }
-

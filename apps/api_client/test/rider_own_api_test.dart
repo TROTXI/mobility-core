@@ -14,13 +14,6 @@ void main() {
       // TODO
     });
 
-    // create Personal Pause
-    //
-    //Future<PersonalPauseResponse> createPersonalPause(String idempotencyKey, String xTrotxiClient, int xTrotxiBuild, PersonalPauseInput personalPauseInput, { String xTrotxiPlatform }) async
-    test('test createPersonalPause', () async {
-      // TODO
-    });
-
     // create Purchase
     //
     //Future<PurchaseResponse> createPurchase(String idempotencyKey, String xTrotxiClient, int xTrotxiBuild, PurchaseInput purchaseInput, { String xTrotxiPlatform }) async
@@ -39,13 +32,6 @@ void main() {
     //
     //Future<MembershipResponse> getMembership(String xTrotxiClient, int xTrotxiBuild, { String xTrotxiPlatform }) async
     test('test getMembership', () async {
-      // TODO
-    });
-
-    // get Personal Pause
-    //
-    //Future<OptionalPersonalPauseResponse> getPersonalPause(String xTrotxiClient, int xTrotxiBuild, { String xTrotxiPlatform }) async
-    test('test getPersonalPause', () async {
       // TODO
     });
 
@@ -70,13 +56,6 @@ void main() {
       // TODO
     });
 
-    // list Credit Entries
-    //
-    //Future<CreditEntryPage> listCreditEntries(String xTrotxiClient, int xTrotxiBuild, { String cursor, int limit, Date fromDate, Date toDate, String xTrotxiPlatform }) async
-    test('test listCreditEntries', () async {
-      // TODO
-    });
-
     // list Purchases
     //
     //Future<PurchasePage> listPurchases(String xTrotxiClient, int xTrotxiBuild, { String cursor, int limit, Date fromDate, Date toDate, String xTrotxiPlatform }) async
@@ -88,34 +67,6 @@ void main() {
     //
     //Future<ReservationPage> listReservations(String xTrotxiClient, int xTrotxiBuild, { String cursor, int limit, Date fromDate, Date toDate, String xTrotxiPlatform }) async
     test('test listReservations', () async {
-      // TODO
-    });
-
-    // list Ride Entries
-    //
-    //Future<RideEntryPage> listRideEntries(String xTrotxiClient, int xTrotxiBuild, { String cursor, int limit, Date fromDate, Date toDate, String xTrotxiPlatform }) async
-    test('test listRideEntries', () async {
-      // TODO
-    });
-
-    // preview Personal Pause
-    //
-    //Future<PersonalPausePreviewResponse> previewPersonalPause(String xTrotxiClient, int xTrotxiBuild, PersonalPauseInput personalPauseInput, { String xTrotxiPlatform }) async
-    test('test previewPersonalPause', () async {
-      // TODO
-    });
-
-    // preview Purchase
-    //
-    //Future<PurchaseQuoteResponse> previewPurchase(String xTrotxiClient, int xTrotxiBuild, PurchaseQuoteInput purchaseQuoteInput, { String xTrotxiPlatform }) async
-    test('test previewPurchase', () async {
-      // TODO
-    });
-
-    // resume Personal Pause
-    //
-    //Future<PersonalPauseResponse> resumePersonalPause(String id, String idempotencyKey, String xTrotxiClient, int xTrotxiBuild, PersonalResumeInput personalResumeInput, { String xTrotxiPlatform }) async
-    test('test resumePersonalPause', () async {
       // TODO
     });
 

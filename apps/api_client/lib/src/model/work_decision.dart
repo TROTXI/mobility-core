@@ -12,10 +12,11 @@ part 'work_decision.g.dart';
 /// WorkDecision
 ///
 /// Properties:
-/// * [status] 
-/// * [decisionNote] 
+/// * [status]
+/// * [decisionNote]
 @BuiltValue()
-abstract class WorkDecision implements Built<WorkDecision, WorkDecisionBuilder> {
+abstract class WorkDecision
+    implements Built<WorkDecision, WorkDecisionBuilder> {
   @BuiltValueField(wireName: r'status')
   WorkDecisionStatusEnum get status;
   // enum statusEnum {  approved,  declined,  };
@@ -64,7 +65,9 @@ class _$WorkDecisionSerializer implements PrimitiveSerializer<WorkDecision> {
     WorkDecision object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
   }
 
   void _deserializeProperties(
@@ -123,17 +126,20 @@ class _$WorkDecisionSerializer implements PrimitiveSerializer<WorkDecision> {
 }
 
 class WorkDecisionStatusEnum extends EnumClass {
-
   @BuiltValueEnumConst(wireName: r'approved')
-  static const WorkDecisionStatusEnum approved = _$workDecisionStatusEnum_approved;
+  static const WorkDecisionStatusEnum approved =
+      _$workDecisionStatusEnum_approved;
   @BuiltValueEnumConst(wireName: r'declined')
-  static const WorkDecisionStatusEnum declined = _$workDecisionStatusEnum_declined;
+  static const WorkDecisionStatusEnum declined =
+      _$workDecisionStatusEnum_declined;
 
-  static Serializer<WorkDecisionStatusEnum> get serializer => _$workDecisionStatusEnumSerializer;
+  static Serializer<WorkDecisionStatusEnum> get serializer =>
+      _$workDecisionStatusEnumSerializer;
 
-  const WorkDecisionStatusEnum._(String name): super(name);
+  const WorkDecisionStatusEnum._(String name) : super(name);
 
-  static BuiltSet<WorkDecisionStatusEnum> get values => _$workDecisionStatusEnumValues;
-  static WorkDecisionStatusEnum valueOf(String name) => _$workDecisionStatusEnumValueOf(name);
+  static BuiltSet<WorkDecisionStatusEnum> get values =>
+      _$workDecisionStatusEnumValues;
+  static WorkDecisionStatusEnum valueOf(String name) =>
+      _$workDecisionStatusEnumValueOf(name);
 }
-

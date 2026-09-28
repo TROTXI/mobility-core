@@ -13,16 +13,17 @@ part 'driver_tokens.g.dart';
 /// DriverTokens
 ///
 /// Properties:
-/// * [accessToken] 
-/// * [refreshToken] 
-/// * [accessExpiresAt] 
-/// * [refreshExpiresAt] 
-/// * [account] 
-/// * [driver] 
-/// * [mustChangePin] 
-/// * [temporaryPinExpiresAt] 
+/// * [accessToken]
+/// * [refreshToken]
+/// * [accessExpiresAt]
+/// * [refreshExpiresAt]
+/// * [account]
+/// * [driver]
+/// * [mustChangePin]
+/// * [temporaryPinExpiresAt]
 @BuiltValue()
-abstract class DriverTokens implements Built<DriverTokens, DriverTokensBuilder> {
+abstract class DriverTokens
+    implements Built<DriverTokens, DriverTokensBuilder> {
   @BuiltValueField(wireName: r'accessToken')
   String get accessToken;
 
@@ -106,10 +107,12 @@ class _$DriverTokensSerializer implements PrimitiveSerializer<DriverTokens> {
       specifiedType: const FullType(bool),
     );
     yield r'temporaryPinExpiresAt';
-    yield object.temporaryPinExpiresAt == null ? null : serializers.serialize(
-      object.temporaryPinExpiresAt,
-      specifiedType: const FullType.nullable(DateTime),
-    );
+    yield object.temporaryPinExpiresAt == null
+        ? null
+        : serializers.serialize(
+            object.temporaryPinExpiresAt,
+            specifiedType: const FullType.nullable(DateTime),
+          );
   }
 
   @override
@@ -118,7 +121,9 @@ class _$DriverTokensSerializer implements PrimitiveSerializer<DriverTokens> {
     DriverTokens object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
   }
 
   void _deserializeProperties(
@@ -218,4 +223,3 @@ class _$DriverTokensSerializer implements PrimitiveSerializer<DriverTokens> {
     return result.build();
   }
 }
-

@@ -11,24 +11,28 @@ part 'phone_sign_in_request.g.dart';
 /// PhoneSignInRequest
 ///
 /// Properties:
-/// * [phone] 
+/// * [phone]
 @BuiltValue()
-abstract class PhoneSignInRequest implements Built<PhoneSignInRequest, PhoneSignInRequestBuilder> {
+abstract class PhoneSignInRequest
+    implements Built<PhoneSignInRequest, PhoneSignInRequestBuilder> {
   @BuiltValueField(wireName: r'phone')
   String get phone;
 
   PhoneSignInRequest._();
 
-  factory PhoneSignInRequest([void updates(PhoneSignInRequestBuilder b)]) = _$PhoneSignInRequest;
+  factory PhoneSignInRequest([void updates(PhoneSignInRequestBuilder b)]) =
+      _$PhoneSignInRequest;
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(PhoneSignInRequestBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
-  static Serializer<PhoneSignInRequest> get serializer => _$PhoneSignInRequestSerializer();
+  static Serializer<PhoneSignInRequest> get serializer =>
+      _$PhoneSignInRequestSerializer();
 }
 
-class _$PhoneSignInRequestSerializer implements PrimitiveSerializer<PhoneSignInRequest> {
+class _$PhoneSignInRequestSerializer
+    implements PrimitiveSerializer<PhoneSignInRequest> {
   @override
   final Iterable<Type> types = const [PhoneSignInRequest, _$PhoneSignInRequest];
 
@@ -53,7 +57,9 @@ class _$PhoneSignInRequestSerializer implements PrimitiveSerializer<PhoneSignInR
     PhoneSignInRequest object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
   }
 
   void _deserializeProperties(
@@ -103,4 +109,3 @@ class _$PhoneSignInRequestSerializer implements PrimitiveSerializer<PhoneSignInR
     return result.build();
   }
 }
-

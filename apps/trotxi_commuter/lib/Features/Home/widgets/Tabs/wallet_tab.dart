@@ -1,13 +1,11 @@
-import 'package:dio/dio.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:trotxi_client/trotxi_client.dart';
-import 'package:trotxi_commuter/Features/Home/widgets/Payments/paystack_checkout_page.dart';
+import 'package:trotxi_commuter/core/api/commuter_api.dart';
 import 'package:trotxi_commuter/Features/Home/widgets/Payments/purchase_details_sheet.dart';
 import 'package:trotxi_commuter/Features/Home/widgets/Payments/purchase_labels.dart';
 import 'package:trotxi_commuter/Features/Home/widgets/Payments/subscribe_monthly_dialog.dart';
-import 'package:trotxi_commuter/core/config/client_metadata.dart';
+import 'package:trotxi_commuter/Features/Home/widgets/Tabs/checkout_page.dart';
 import 'package:trotxi_commuter/core/config/layout/responsive_layout.dart';
 import 'package:trotxi_commuter/core/config/theme/app_colors.dart';
 import 'package:trotxi_commuter/core/config/theme/app_typography.dart';
@@ -48,8 +46,10 @@ class _PurchaseActivity extends _Activity {
 
 String _formatDay(DateTime date) => DateFormat('d MMM').format(date.toLocal());
 
+// Coverage and commute dates follow the Ghana service calendar, not the
+// device's timezone (which may still be the previous day).
 String _formatFullDay(DateTime date) =>
-    DateFormat('d MMM y').format(date.toLocal());
+    DateFormat('d MMM y').format(date.toUtc());
 
 String _formatDate(Date date) => _formatFullDay(date.toDateTime());
 
@@ -88,7 +88,7 @@ String _blockLabel(AccessBlock block) {
 class WalletTab extends StatefulWidget {
   const WalletTab({super.key, required this.client});
 
-  final TrotxiApiClient client;
+  final CommuterApi client;
 
   @override
   State<WalletTab> createState() => _WalletTabState();
@@ -111,11 +111,6 @@ class _WalletTabState extends State<WalletTab> {
   /// cannot be tapped twice into two purchases.
   bool _subscribing = false;
 
-  /// How long to keep asking whether a purchase has settled after checkout,
-  /// and how often to ask.
-  static const _settleTimeout = Duration(seconds: 24);
-  static const _settlePollInterval = Duration(seconds: 2);
-
   RiderOwnApi get _riderApi => widget.client.getRiderOwnApi();
 
   MembershipEntitlements? get _entitlements => _membership?.entitlements;
@@ -136,20 +131,20 @@ class _WalletTabState extends State<WalletTab> {
       // All three are started together; the page only renders once they've
       // all landed, so there's nothing to gain from staggering them.
       final membership = _riderApi.getMembership(
-        xTrotxiClient: commuterMetadata.client,
-        xTrotxiBuild: commuterMetadata.build,
-        xTrotxiPlatform: commuterMetadata.platform,
+        xTrotxiClient: widget.client.metadata.app,
+        xTrotxiBuild: widget.client.metadata.build,
+        xTrotxiPlatform: widget.client.metadata.platform,
       );
       final rides = _riderApi.listRideEntries(
-        xTrotxiClient: commuterMetadata.client,
-        xTrotxiBuild: commuterMetadata.build,
-        xTrotxiPlatform: commuterMetadata.platform,
+        xTrotxiClient: widget.client.metadata.app,
+        xTrotxiBuild: widget.client.metadata.build,
+        xTrotxiPlatform: widget.client.metadata.platform,
         limit: _activityPageSize,
       );
       final purchases = _riderApi.listPurchases(
-        xTrotxiClient: commuterMetadata.client,
-        xTrotxiBuild: commuterMetadata.build,
-        xTrotxiPlatform: commuterMetadata.platform,
+        xTrotxiClient: widget.client.metadata.app,
+        xTrotxiBuild: widget.client.metadata.build,
+        xTrotxiPlatform: widget.client.metadata.platform,
         limit: _activityPageSize,
       );
 
@@ -160,8 +155,6 @@ class _WalletTabState extends State<WalletTab> {
       final membershipData = membershipResponse.data?.data;
       final rideData = rideResponse.data?.data ?? const <RideEntry>[];
       final purchaseData = purchaseResponse.data?.data ?? const <Purchase>[];
-
-      _debugLogRideCredits(membershipData, rideResponse);
 
       if (!mounted) return;
       setState(() {
@@ -182,67 +175,8 @@ class _WalletTabState extends State<WalletTab> {
     }
   }
 
-  /// Debug-only dump of everything behind the RIDE CREDITS card: the
-  /// entitlements the card renders (from `GET /v1/me/membership`) and the
-  /// ride-credit ledger rows that feed the activity list (from
-  /// `GET /v1/me/ride-entries`), so both can be compared against what Swagger
-  /// returns for the same account.
-  ///
-  /// `remainingRides` and the three Money fields are the card's inputs;
-  /// `deltaRides` across the ledger is what they should add up to, which is
-  /// the mismatch this is most useful for catching.
-  void _debugLogRideCredits(
-    Membership? membership,
-    Response<RideEntryPage> rideResponse,
-  ) {
-    if (!kDebugMode) return;
-
-    debugPrint('===== RIDE CREDITS =====');
-
-    final entitlements = membership?.entitlements;
-    if (entitlements == null) {
-      debugPrint(
-        'entitlements: null (membership was ${membership == null ? 'null' : 'present'})',
-      );
-    } else {
-      debugPrint('remainingRides:  ${entitlements.remainingRides}');
-      debugPrint(
-        'credit:          ${entitlements.credit.amountMinor} '
-        '${entitlements.credit.currency.name} (${entitlements.credit.formatted})',
-      );
-      debugPrint(
-        'heldCredit:      ${entitlements.heldCredit.amountMinor} '
-        '${entitlements.heldCredit.currency.name} (${entitlements.heldCredit.formatted})',
-      );
-      debugPrint(
-        'availableCredit: ${entitlements.availableCredit.amountMinor} '
-        '${entitlements.availableCredit.currency.name} '
-        '(${entitlements.availableCredit.formatted})',
-      );
-    }
-
-    final page = rideResponse.data;
-    final entries = page?.data ?? const <RideEntry>[];
-    debugPrint(
-      'ride-entries: HTTP ${rideResponse.statusCode} · '
-      '${entries.length} row(s) · nextCursor=${page?.page.nextCursor}',
-    );
-    for (final entry in entries) {
-      debugPrint(
-        '  ${entry.createdAt.toIso8601String()}  '
-        '${entry.deltaRides > 0 ? '+' : ''}${entry.deltaRides}  '
-        '${entry.reason.name}  billingPeriodId=${entry.billingPeriodId}  '
-        'id=${entry.id}',
-      );
-    }
-    final net = entries.fold<int>(0, (sum, e) => sum + e.deltaRides);
-    debugPrint('net deltaRides over these ${entries.length} row(s): $net');
-    debugPrint('========================');
-  }
-
-  /// Runs the monthly purchase: pick route and commute, pay any cash due on
-  /// Paystack, then reload. The charge is confirmed by the backend's own
-  /// webhook, so the reload is the only thing that can be trusted here.
+  /// Prepare a purchase, then show the server's price in the existing
+  /// recoverable checkout before the rider opens Paystack.
   Future<void> _onSubscribe() async {
     if (_subscribing) return;
     setState(() => _subscribing = true);
@@ -255,81 +189,21 @@ class _WalletTabState extends State<WalletTab> {
       );
       if (purchase == null || !mounted) return;
 
-      final checkoutUrl = purchase.checkout?.url;
-      if (checkoutUrl != null) {
-        await Navigator.of(context).push<bool>(
+      if (purchase.cashDue.amountMinor > 0) {
+        await Navigator.of(context).push<void>(
           MaterialPageRoute(
-            builder: (context) =>
-                PaystackCheckoutPage(checkoutUrl: checkoutUrl),
+            builder: (_) => CheckoutPage(client: widget.client),
           ),
         );
-      } else {
-        // Credit covered the whole price, so there was nothing to pay.
-        _showSnack('Your credit covered this purchase.');
       }
       if (!mounted) return;
-
-      // PaystackCheckoutPage pops the moment the WebView leaves Paystack's
-      // domain, which is ahead of the webhook that actually settles the
-      // purchase. Reloading right there reads entitlements the backend has
-      // not granted yet: the purchase shows up in the activity feed while
-      // credits and membership still read as unpaid. So wait for the
-      // purchase to leave its settling state before reloading.
-      _showSnack('Confirming your payment...');
-      final settled = await _awaitPurchaseSettled(purchase);
-      if (!mounted) return;
-
       await _load();
-      if (!mounted) return;
-      _showSnack(_settlementMessage(settled));
+      if (mounted && purchase.cashDue.amountMinor == 0) {
+        _showSnack('Purchase prepared. Refresh to see confirmed access.');
+      }
     } finally {
       if (mounted) setState(() => _subscribing = false);
     }
-  }
-
-  /// A purchase the backend has not finished settling. Everything else is a
-  /// resting state whose effect on entitlements is already visible.
-  static bool _isSettling(PurchaseStateEnum state) =>
-      state == PurchaseStateEnum.awaitingPayment ||
-      state == PurchaseStateEnum.processing;
-
-  /// Re-reads the purchase until it settles or [_settleTimeout] runs out,
-  /// and answers with the last state seen.
-  Future<PurchaseStateEnum> _awaitPurchaseSettled(Purchase purchase) async {
-    var state = purchase.state;
-    final deadline = DateTime.now().add(_settleTimeout);
-
-    while (_isSettling(state) && DateTime.now().isBefore(deadline)) {
-      await Future<void>.delayed(_settlePollInterval);
-      if (!mounted) return state;
-      try {
-        final response = await _riderApi.getPurchase(
-          id: purchase.id,
-          xTrotxiClient: commuterMetadata.client,
-          xTrotxiBuild: commuterMetadata.build,
-          xTrotxiPlatform: commuterMetadata.platform,
-        );
-        final refreshed = response.data?.data;
-        if (refreshed != null) state = refreshed.state;
-      } catch (e) {
-        // One failed poll is not fatal — the reload still runs afterwards and
-        // the rider can pull to refresh.
-        debugPrint('Error polling purchase ${purchase.id}: $e');
-      }
-    }
-    return state;
-  }
-
-  String _settlementMessage(PurchaseStateEnum state) {
-    return switch (state) {
-      PurchaseStateEnum.fulfilled => 'Payment confirmed.',
-      PurchaseStateEnum.failed => "That payment didn't go through.",
-      PurchaseStateEnum.cancelled => 'That purchase was cancelled.',
-      PurchaseStateEnum.reviewRequired => 'Your payment is under review.',
-      // Still settling when the timeout ran out: the webhook is late rather
-      // than lost, so point at the refresh instead of claiming a failure.
-      _ => 'Still confirming your payment. Pull down to refresh in a moment.',
-    };
   }
 
   void _showSnack(String message) {
@@ -349,7 +223,8 @@ class _WalletTabState extends State<WalletTab> {
   Widget build(BuildContext context) {
     final colors = context.appColors;
     final layout = ResponsiveLayoutInfo.of(context);
-    final isWide = layout.isTabletLandscape;
+    final isWide =
+        layout.isTabletLandscape && MediaQuery.sizeOf(context).width >= 920;
 
     final maxContentWidth = layout.select(
       phone: 520.0,
@@ -414,6 +289,18 @@ class _WalletTabState extends State<WalletTab> {
         const SizedBox(height: 16),
       ],
       ..._buildBalanceSection(context, membership, isWide),
+      const SizedBox(height: 8),
+      TextButton(
+        onPressed: () async {
+          await Navigator.of(context).push<void>(
+            MaterialPageRoute(
+              builder: (_) => CheckoutPage(client: widget.client),
+            ),
+          );
+          if (mounted) await _load();
+        },
+        child: const Text('Review or recover payment'),
+      ),
       const SizedBox(height: 24),
       _buildSectionTitle(context, 'Recent activity'),
       const SizedBox(height: 12),
@@ -611,6 +498,13 @@ class _WalletTabState extends State<WalletTab> {
           Text(
             '${entitlements.availableCredit.formatted} credit available',
             style: AppTypography.label.copyWith(color: colors.onSurfaceStrong),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Total credit: ${entitlements.credit.formatted}',
+            style: AppTypography.caption.copyWith(
+              color: colors.onSurfaceStrong,
+            ),
           ),
           const SizedBox(height: 4),
           Text(

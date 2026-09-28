@@ -12,13 +12,14 @@ part 'driver_credential.g.dart';
 /// DriverCredential
 ///
 /// Properties:
-/// * [driverCode] 
-/// * [status] 
-/// * [mustChangePin] 
-/// * [temporaryPinExpiresAt] 
-/// * [lockedUntil] 
+/// * [driverCode]
+/// * [status]
+/// * [mustChangePin]
+/// * [temporaryPinExpiresAt]
+/// * [lockedUntil]
 @BuiltValue()
-abstract class DriverCredential implements Built<DriverCredential, DriverCredentialBuilder> {
+abstract class DriverCredential
+    implements Built<DriverCredential, DriverCredentialBuilder> {
   @BuiltValueField(wireName: r'driverCode')
   String get driverCode;
 
@@ -37,16 +38,19 @@ abstract class DriverCredential implements Built<DriverCredential, DriverCredent
 
   DriverCredential._();
 
-  factory DriverCredential([void updates(DriverCredentialBuilder b)]) = _$DriverCredential;
+  factory DriverCredential([void updates(DriverCredentialBuilder b)]) =
+      _$DriverCredential;
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(DriverCredentialBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
-  static Serializer<DriverCredential> get serializer => _$DriverCredentialSerializer();
+  static Serializer<DriverCredential> get serializer =>
+      _$DriverCredentialSerializer();
 }
 
-class _$DriverCredentialSerializer implements PrimitiveSerializer<DriverCredential> {
+class _$DriverCredentialSerializer
+    implements PrimitiveSerializer<DriverCredential> {
   @override
   final Iterable<Type> types = const [DriverCredential, _$DriverCredential];
 
@@ -74,15 +78,19 @@ class _$DriverCredentialSerializer implements PrimitiveSerializer<DriverCredenti
       specifiedType: const FullType(bool),
     );
     yield r'temporaryPinExpiresAt';
-    yield object.temporaryPinExpiresAt == null ? null : serializers.serialize(
-      object.temporaryPinExpiresAt,
-      specifiedType: const FullType.nullable(DateTime),
-    );
+    yield object.temporaryPinExpiresAt == null
+        ? null
+        : serializers.serialize(
+            object.temporaryPinExpiresAt,
+            specifiedType: const FullType.nullable(DateTime),
+          );
     yield r'lockedUntil';
-    yield object.lockedUntil == null ? null : serializers.serialize(
-      object.lockedUntil,
-      specifiedType: const FullType.nullable(DateTime),
-    );
+    yield object.lockedUntil == null
+        ? null
+        : serializers.serialize(
+            object.lockedUntil,
+            specifiedType: const FullType.nullable(DateTime),
+          );
   }
 
   @override
@@ -91,7 +99,9 @@ class _$DriverCredentialSerializer implements PrimitiveSerializer<DriverCredenti
     DriverCredential object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
   }
 
   void _deserializeProperties(
@@ -173,17 +183,20 @@ class _$DriverCredentialSerializer implements PrimitiveSerializer<DriverCredenti
 }
 
 class DriverCredentialStatusEnum extends EnumClass {
-
   @BuiltValueEnumConst(wireName: r'active')
-  static const DriverCredentialStatusEnum active = _$driverCredentialStatusEnum_active;
+  static const DriverCredentialStatusEnum active =
+      _$driverCredentialStatusEnum_active;
   @BuiltValueEnumConst(wireName: r'suspended')
-  static const DriverCredentialStatusEnum suspended = _$driverCredentialStatusEnum_suspended;
+  static const DriverCredentialStatusEnum suspended =
+      _$driverCredentialStatusEnum_suspended;
 
-  static Serializer<DriverCredentialStatusEnum> get serializer => _$driverCredentialStatusEnumSerializer;
+  static Serializer<DriverCredentialStatusEnum> get serializer =>
+      _$driverCredentialStatusEnumSerializer;
 
-  const DriverCredentialStatusEnum._(String name): super(name);
+  const DriverCredentialStatusEnum._(String name) : super(name);
 
-  static BuiltSet<DriverCredentialStatusEnum> get values => _$driverCredentialStatusEnumValues;
-  static DriverCredentialStatusEnum valueOf(String name) => _$driverCredentialStatusEnumValueOf(name);
+  static BuiltSet<DriverCredentialStatusEnum> get values =>
+      _$driverCredentialStatusEnumValues;
+  static DriverCredentialStatusEnum valueOf(String name) =>
+      _$driverCredentialStatusEnumValueOf(name);
 }
-

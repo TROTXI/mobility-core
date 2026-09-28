@@ -12,26 +12,34 @@ part 'ops_work_request_response.g.dart';
 /// OpsWorkRequestResponse
 ///
 /// Properties:
-/// * [data] 
+/// * [data]
 @BuiltValue()
-abstract class OpsWorkRequestResponse implements Built<OpsWorkRequestResponse, OpsWorkRequestResponseBuilder> {
+abstract class OpsWorkRequestResponse
+    implements Built<OpsWorkRequestResponse, OpsWorkRequestResponseBuilder> {
   @BuiltValueField(wireName: r'data')
   OpsWorkRequest get data;
 
   OpsWorkRequestResponse._();
 
-  factory OpsWorkRequestResponse([void updates(OpsWorkRequestResponseBuilder b)]) = _$OpsWorkRequestResponse;
+  factory OpsWorkRequestResponse(
+          [void updates(OpsWorkRequestResponseBuilder b)]) =
+      _$OpsWorkRequestResponse;
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(OpsWorkRequestResponseBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
-  static Serializer<OpsWorkRequestResponse> get serializer => _$OpsWorkRequestResponseSerializer();
+  static Serializer<OpsWorkRequestResponse> get serializer =>
+      _$OpsWorkRequestResponseSerializer();
 }
 
-class _$OpsWorkRequestResponseSerializer implements PrimitiveSerializer<OpsWorkRequestResponse> {
+class _$OpsWorkRequestResponseSerializer
+    implements PrimitiveSerializer<OpsWorkRequestResponse> {
   @override
-  final Iterable<Type> types = const [OpsWorkRequestResponse, _$OpsWorkRequestResponse];
+  final Iterable<Type> types = const [
+    OpsWorkRequestResponse,
+    _$OpsWorkRequestResponse
+  ];
 
   @override
   final String wireName = r'OpsWorkRequestResponse';
@@ -54,7 +62,9 @@ class _$OpsWorkRequestResponseSerializer implements PrimitiveSerializer<OpsWorkR
     OpsWorkRequestResponse object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
   }
 
   void _deserializeProperties(
@@ -104,4 +114,3 @@ class _$OpsWorkRequestResponseSerializer implements PrimitiveSerializer<OpsWorkR
     return result.build();
   }
 }
-

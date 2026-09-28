@@ -12,11 +12,8 @@ class _$DriverEdit extends DriverEdit {
   @override
   final String? phone;
   @override
-<<<<<<< HEAD
-=======
   final String? email;
   @override
->>>>>>> origin/main
   final String? licenseNumber;
   @override
   final String? userId;
@@ -27,16 +24,12 @@ class _$DriverEdit extends DriverEdit {
       (DriverEditBuilder()..update(updates))._build();
 
   _$DriverEdit._(
-<<<<<<< HEAD
-      {this.name, this.phone, this.licenseNumber, this.userId, this.archived})
-=======
       {this.name,
       this.phone,
       this.email,
       this.licenseNumber,
       this.userId,
       this.archived})
->>>>>>> origin/main
       : super._();
   @override
   DriverEdit rebuild(void Function(DriverEditBuilder) updates) =>
@@ -51,10 +44,7 @@ class _$DriverEdit extends DriverEdit {
     return other is DriverEdit &&
         name == other.name &&
         phone == other.phone &&
-<<<<<<< HEAD
-=======
         email == other.email &&
->>>>>>> origin/main
         licenseNumber == other.licenseNumber &&
         userId == other.userId &&
         archived == other.archived;
@@ -65,10 +55,7 @@ class _$DriverEdit extends DriverEdit {
     var _$hash = 0;
     _$hash = $jc(_$hash, name.hashCode);
     _$hash = $jc(_$hash, phone.hashCode);
-<<<<<<< HEAD
-=======
     _$hash = $jc(_$hash, email.hashCode);
->>>>>>> origin/main
     _$hash = $jc(_$hash, licenseNumber.hashCode);
     _$hash = $jc(_$hash, userId.hashCode);
     _$hash = $jc(_$hash, archived.hashCode);
@@ -81,10 +68,7 @@ class _$DriverEdit extends DriverEdit {
     return (newBuiltValueToStringHelper(r'DriverEdit')
           ..add('name', name)
           ..add('phone', phone)
-<<<<<<< HEAD
-=======
           ..add('email', email)
->>>>>>> origin/main
           ..add('licenseNumber', licenseNumber)
           ..add('userId', userId)
           ..add('archived', archived))
@@ -103,13 +87,10 @@ class DriverEditBuilder implements Builder<DriverEdit, DriverEditBuilder> {
   String? get phone => _$this._phone;
   set phone(String? phone) => _$this._phone = phone;
 
-<<<<<<< HEAD
-=======
   String? _email;
   String? get email => _$this._email;
   set email(String? email) => _$this._email = email;
 
->>>>>>> origin/main
   String? _licenseNumber;
   String? get licenseNumber => _$this._licenseNumber;
   set licenseNumber(String? licenseNumber) =>
@@ -132,10 +113,7 @@ class DriverEditBuilder implements Builder<DriverEdit, DriverEditBuilder> {
     if ($v != null) {
       _name = $v.name;
       _phone = $v.phone;
-<<<<<<< HEAD
-=======
       _email = $v.email;
->>>>>>> origin/main
       _licenseNumber = $v.licenseNumber;
       _userId = $v.userId;
       _archived = $v.archived;
@@ -162,10 +140,7 @@ class DriverEditBuilder implements Builder<DriverEdit, DriverEditBuilder> {
         _$DriverEdit._(
           name: name,
           phone: phone,
-<<<<<<< HEAD
-=======
           email: email,
->>>>>>> origin/main
           licenseNumber: licenseNumber,
           userId: userId,
           archived: archived,

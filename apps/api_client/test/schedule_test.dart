@@ -17,11 +17,6 @@ void main() {
       // TODO
     });
 
-    // String patternId
-    test('to test the property `patternId`', () async {
-      // TODO
-    });
-
     // String patternVersionId
     test('to test the property `patternVersionId`', () async {
       // TODO

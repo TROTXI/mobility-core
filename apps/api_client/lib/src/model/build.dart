@@ -11,9 +11,9 @@ part 'build.g.dart';
 /// Build
 ///
 /// Properties:
-/// * [service] 
-/// * [version] 
-/// * [commit] 
+/// * [service]
+/// * [version]
+/// * [commit]
 @BuiltValue()
 abstract class Build implements Built<Build, BuildBuilder> {
   @BuiltValueField(wireName: r'service')
@@ -71,7 +71,9 @@ class _$BuildSerializer implements PrimitiveSerializer<Build> {
     Build object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
   }
 
   void _deserializeProperties(
@@ -135,4 +137,3 @@ class _$BuildSerializer implements PrimitiveSerializer<Build> {
     return result.build();
   }
 }
-

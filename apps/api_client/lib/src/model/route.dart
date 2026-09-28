@@ -12,16 +12,16 @@ part 'route.g.dart';
 /// Route
 ///
 /// Properties:
-/// * [id] 
-/// * [name] 
-/// * [description] 
-/// * [patternIds] 
-/// * [acceptsDriverRequests] 
-/// * [archived] 
-/// * [editToken] 
-/// * [createdAt] 
-/// * [updatedAt] 
-/// * [version] 
+/// * [id]
+/// * [name]
+/// * [description]
+/// * [patternIds]
+/// * [acceptsDriverRequests]
+/// * [archived]
+/// * [editToken]
+/// * [createdAt]
+/// * [updatedAt]
+/// * [version]
 @BuiltValue()
 abstract class Route implements Built<Route, RouteBuilder> {
   @BuiltValueField(wireName: r'id')
@@ -88,10 +88,12 @@ class _$RouteSerializer implements PrimitiveSerializer<Route> {
       specifiedType: const FullType(String),
     );
     yield r'description';
-    yield object.description == null ? null : serializers.serialize(
-      object.description,
-      specifiedType: const FullType.nullable(String),
-    );
+    yield object.description == null
+        ? null
+        : serializers.serialize(
+            object.description,
+            specifiedType: const FullType.nullable(String),
+          );
     yield r'patternIds';
     yield serializers.serialize(
       object.patternIds,
@@ -135,7 +137,9 @@ class _$RouteSerializer implements PrimitiveSerializer<Route> {
     Route object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
   }
 
   void _deserializeProperties(
@@ -249,4 +253,3 @@ class _$RouteSerializer implements PrimitiveSerializer<Route> {
     return result.build();
   }
 }
-

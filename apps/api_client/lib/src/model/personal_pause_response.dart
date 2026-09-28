@@ -12,26 +12,33 @@ part 'personal_pause_response.g.dart';
 /// PersonalPauseResponse
 ///
 /// Properties:
-/// * [data] 
+/// * [data]
 @BuiltValue()
-abstract class PersonalPauseResponse implements Built<PersonalPauseResponse, PersonalPauseResponseBuilder> {
+abstract class PersonalPauseResponse
+    implements Built<PersonalPauseResponse, PersonalPauseResponseBuilder> {
   @BuiltValueField(wireName: r'data')
   PersonalPause get data;
 
   PersonalPauseResponse._();
 
-  factory PersonalPauseResponse([void updates(PersonalPauseResponseBuilder b)]) = _$PersonalPauseResponse;
+  factory PersonalPauseResponse(
+      [void updates(PersonalPauseResponseBuilder b)]) = _$PersonalPauseResponse;
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(PersonalPauseResponseBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
-  static Serializer<PersonalPauseResponse> get serializer => _$PersonalPauseResponseSerializer();
+  static Serializer<PersonalPauseResponse> get serializer =>
+      _$PersonalPauseResponseSerializer();
 }
 
-class _$PersonalPauseResponseSerializer implements PrimitiveSerializer<PersonalPauseResponse> {
+class _$PersonalPauseResponseSerializer
+    implements PrimitiveSerializer<PersonalPauseResponse> {
   @override
-  final Iterable<Type> types = const [PersonalPauseResponse, _$PersonalPauseResponse];
+  final Iterable<Type> types = const [
+    PersonalPauseResponse,
+    _$PersonalPauseResponse
+  ];
 
   @override
   final String wireName = r'PersonalPauseResponse';
@@ -54,7 +61,9 @@ class _$PersonalPauseResponseSerializer implements PrimitiveSerializer<PersonalP
     PersonalPauseResponse object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
   }
 
   void _deserializeProperties(
@@ -104,4 +113,3 @@ class _$PersonalPauseResponseSerializer implements PrimitiveSerializer<PersonalP
     return result.build();
   }
 }
-

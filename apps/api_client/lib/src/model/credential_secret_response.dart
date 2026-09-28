@@ -12,26 +12,35 @@ part 'credential_secret_response.g.dart';
 /// CredentialSecretResponse
 ///
 /// Properties:
-/// * [data] 
+/// * [data]
 @BuiltValue()
-abstract class CredentialSecretResponse implements Built<CredentialSecretResponse, CredentialSecretResponseBuilder> {
+abstract class CredentialSecretResponse
+    implements
+        Built<CredentialSecretResponse, CredentialSecretResponseBuilder> {
   @BuiltValueField(wireName: r'data')
   CredentialSecret get data;
 
   CredentialSecretResponse._();
 
-  factory CredentialSecretResponse([void updates(CredentialSecretResponseBuilder b)]) = _$CredentialSecretResponse;
+  factory CredentialSecretResponse(
+          [void updates(CredentialSecretResponseBuilder b)]) =
+      _$CredentialSecretResponse;
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(CredentialSecretResponseBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
-  static Serializer<CredentialSecretResponse> get serializer => _$CredentialSecretResponseSerializer();
+  static Serializer<CredentialSecretResponse> get serializer =>
+      _$CredentialSecretResponseSerializer();
 }
 
-class _$CredentialSecretResponseSerializer implements PrimitiveSerializer<CredentialSecretResponse> {
+class _$CredentialSecretResponseSerializer
+    implements PrimitiveSerializer<CredentialSecretResponse> {
   @override
-  final Iterable<Type> types = const [CredentialSecretResponse, _$CredentialSecretResponse];
+  final Iterable<Type> types = const [
+    CredentialSecretResponse,
+    _$CredentialSecretResponse
+  ];
 
   @override
   final String wireName = r'CredentialSecretResponse';
@@ -54,7 +63,9 @@ class _$CredentialSecretResponseSerializer implements PrimitiveSerializer<Creden
     CredentialSecretResponse object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
   }
 
   void _deserializeProperties(
@@ -104,4 +115,3 @@ class _$CredentialSecretResponseSerializer implements PrimitiveSerializer<Creden
     return result.build();
   }
 }
-

@@ -11,12 +11,12 @@ part 'flag.g.dart';
 /// Flag
 ///
 /// Properties:
-/// * [key] 
-/// * [enabled] 
-/// * [rolloutPercentage] 
-/// * [description] 
-/// * [version] 
-/// * [editToken] 
+/// * [key]
+/// * [enabled]
+/// * [rolloutPercentage]
+/// * [description]
+/// * [version]
+/// * [editToken]
 @BuiltValue()
 abstract class Flag implements Built<Flag, FlagBuilder> {
   @BuiltValueField(wireName: r'key')
@@ -98,7 +98,9 @@ class _$FlagSerializer implements PrimitiveSerializer<Flag> {
     Flag object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
   }
 
   void _deserializeProperties(
@@ -183,4 +185,3 @@ class _$FlagSerializer implements PrimitiveSerializer<Flag> {
     return result.build();
   }
 }
-

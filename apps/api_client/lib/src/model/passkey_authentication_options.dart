@@ -14,15 +14,18 @@ part 'passkey_authentication_options.g.dart';
 /// PasskeyAuthenticationOptions
 ///
 /// Properties:
-/// * [challenge] 
-/// * [timeout] 
-/// * [rpId] 
-/// * [allowCredentials] 
-/// * [userVerification] 
-/// * [hints] 
-/// * [extensions] 
+/// * [challenge]
+/// * [timeout]
+/// * [rpId]
+/// * [allowCredentials]
+/// * [userVerification]
+/// * [hints]
+/// * [extensions]
 @BuiltValue()
-abstract class PasskeyAuthenticationOptions implements Built<PasskeyAuthenticationOptions, PasskeyAuthenticationOptionsBuilder> {
+abstract class PasskeyAuthenticationOptions
+    implements
+        Built<PasskeyAuthenticationOptions,
+            PasskeyAuthenticationOptionsBuilder> {
   @BuiltValueField(wireName: r'challenge')
   String get challenge;
 
@@ -33,7 +36,8 @@ abstract class PasskeyAuthenticationOptions implements Built<PasskeyAuthenticati
   String? get rpId;
 
   @BuiltValueField(wireName: r'allowCredentials')
-  BuiltList<PasskeyAuthenticationOptionsAllowCredentialsInner>? get allowCredentials;
+  BuiltList<PasskeyAuthenticationOptionsAllowCredentialsInner>?
+      get allowCredentials;
 
   @BuiltValueField(wireName: r'userVerification')
   PasskeyAuthenticationOptionsUserVerificationEnum? get userVerification;
@@ -47,18 +51,25 @@ abstract class PasskeyAuthenticationOptions implements Built<PasskeyAuthenticati
 
   PasskeyAuthenticationOptions._();
 
-  factory PasskeyAuthenticationOptions([void updates(PasskeyAuthenticationOptionsBuilder b)]) = _$PasskeyAuthenticationOptions;
+  factory PasskeyAuthenticationOptions(
+          [void updates(PasskeyAuthenticationOptionsBuilder b)]) =
+      _$PasskeyAuthenticationOptions;
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(PasskeyAuthenticationOptionsBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
-  static Serializer<PasskeyAuthenticationOptions> get serializer => _$PasskeyAuthenticationOptionsSerializer();
+  static Serializer<PasskeyAuthenticationOptions> get serializer =>
+      _$PasskeyAuthenticationOptionsSerializer();
 }
 
-class _$PasskeyAuthenticationOptionsSerializer implements PrimitiveSerializer<PasskeyAuthenticationOptions> {
+class _$PasskeyAuthenticationOptionsSerializer
+    implements PrimitiveSerializer<PasskeyAuthenticationOptions> {
   @override
-  final Iterable<Type> types = const [PasskeyAuthenticationOptions, _$PasskeyAuthenticationOptions];
+  final Iterable<Type> types = const [
+    PasskeyAuthenticationOptions,
+    _$PasskeyAuthenticationOptions
+  ];
 
   @override
   final String wireName = r'PasskeyAuthenticationOptions';
@@ -91,14 +102,16 @@ class _$PasskeyAuthenticationOptionsSerializer implements PrimitiveSerializer<Pa
       yield r'allowCredentials';
       yield serializers.serialize(
         object.allowCredentials,
-        specifiedType: const FullType(BuiltList, [FullType(PasskeyAuthenticationOptionsAllowCredentialsInner)]),
+        specifiedType: const FullType(BuiltList,
+            [FullType(PasskeyAuthenticationOptionsAllowCredentialsInner)]),
       );
     }
     if (object.userVerification != null) {
       yield r'userVerification';
       yield serializers.serialize(
         object.userVerification,
-        specifiedType: const FullType(PasskeyAuthenticationOptionsUserVerificationEnum),
+        specifiedType:
+            const FullType(PasskeyAuthenticationOptionsUserVerificationEnum),
       );
     }
     if (object.hints != null) {
@@ -112,7 +125,8 @@ class _$PasskeyAuthenticationOptionsSerializer implements PrimitiveSerializer<Pa
       yield r'extensions';
       yield serializers.serialize(
         object.extensions,
-        specifiedType: const FullType(BuiltMap, [FullType(String), FullType.nullable(JsonObject)]),
+        specifiedType: const FullType(
+            BuiltMap, [FullType(String), FullType.nullable(JsonObject)]),
       );
     }
   }
@@ -123,7 +137,9 @@ class _$PasskeyAuthenticationOptionsSerializer implements PrimitiveSerializer<Pa
     PasskeyAuthenticationOptions object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
   }
 
   void _deserializeProperties(
@@ -162,14 +178,16 @@ class _$PasskeyAuthenticationOptionsSerializer implements PrimitiveSerializer<Pa
         case r'allowCredentials':
           final valueDes = serializers.deserialize(
             value,
-            specifiedType: const FullType(BuiltList, [FullType(PasskeyAuthenticationOptionsAllowCredentialsInner)]),
+            specifiedType: const FullType(BuiltList,
+                [FullType(PasskeyAuthenticationOptionsAllowCredentialsInner)]),
           ) as BuiltList<PasskeyAuthenticationOptionsAllowCredentialsInner>;
           result.allowCredentials.replace(valueDes);
           break;
         case r'userVerification':
           final valueDes = serializers.deserialize(
             value,
-            specifiedType: const FullType(PasskeyAuthenticationOptionsUserVerificationEnum),
+            specifiedType: const FullType(
+                PasskeyAuthenticationOptionsUserVerificationEnum),
           ) as PasskeyAuthenticationOptionsUserVerificationEnum;
           result.userVerification = valueDes;
           break;
@@ -183,7 +201,8 @@ class _$PasskeyAuthenticationOptionsSerializer implements PrimitiveSerializer<Pa
         case r'extensions':
           final valueDes = serializers.deserialize(
             value,
-            specifiedType: const FullType(BuiltMap, [FullType(String), FullType.nullable(JsonObject)]),
+            specifiedType: const FullType(
+                BuiltMap, [FullType(String), FullType.nullable(JsonObject)]),
           ) as BuiltMap<String, JsonObject?>;
           result.extensions.replace(valueDes);
           break;
@@ -217,19 +236,26 @@ class _$PasskeyAuthenticationOptionsSerializer implements PrimitiveSerializer<Pa
 }
 
 class PasskeyAuthenticationOptionsUserVerificationEnum extends EnumClass {
-
   @BuiltValueEnumConst(wireName: r'discouraged')
-  static const PasskeyAuthenticationOptionsUserVerificationEnum discouraged = _$passkeyAuthenticationOptionsUserVerificationEnum_discouraged;
+  static const PasskeyAuthenticationOptionsUserVerificationEnum discouraged =
+      _$passkeyAuthenticationOptionsUserVerificationEnum_discouraged;
   @BuiltValueEnumConst(wireName: r'preferred')
-  static const PasskeyAuthenticationOptionsUserVerificationEnum preferred = _$passkeyAuthenticationOptionsUserVerificationEnum_preferred;
+  static const PasskeyAuthenticationOptionsUserVerificationEnum preferred =
+      _$passkeyAuthenticationOptionsUserVerificationEnum_preferred;
   @BuiltValueEnumConst(wireName: r'required')
-  static const PasskeyAuthenticationOptionsUserVerificationEnum required_ = _$passkeyAuthenticationOptionsUserVerificationEnum_required_;
+  static const PasskeyAuthenticationOptionsUserVerificationEnum required_ =
+      _$passkeyAuthenticationOptionsUserVerificationEnum_required_;
 
-  static Serializer<PasskeyAuthenticationOptionsUserVerificationEnum> get serializer => _$passkeyAuthenticationOptionsUserVerificationEnumSerializer;
+  static Serializer<PasskeyAuthenticationOptionsUserVerificationEnum>
+      get serializer =>
+          _$passkeyAuthenticationOptionsUserVerificationEnumSerializer;
 
-  const PasskeyAuthenticationOptionsUserVerificationEnum._(String name): super(name);
+  const PasskeyAuthenticationOptionsUserVerificationEnum._(String name)
+      : super(name);
 
-  static BuiltSet<PasskeyAuthenticationOptionsUserVerificationEnum> get values => _$passkeyAuthenticationOptionsUserVerificationEnumValues;
-  static PasskeyAuthenticationOptionsUserVerificationEnum valueOf(String name) => _$passkeyAuthenticationOptionsUserVerificationEnumValueOf(name);
+  static BuiltSet<PasskeyAuthenticationOptionsUserVerificationEnum>
+      get values => _$passkeyAuthenticationOptionsUserVerificationEnumValues;
+  static PasskeyAuthenticationOptionsUserVerificationEnum valueOf(
+          String name) =>
+      _$passkeyAuthenticationOptionsUserVerificationEnumValueOf(name);
 }
-

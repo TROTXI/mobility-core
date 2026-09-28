@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:trotxi_client/trotxi_client.dart';
+import 'package:trotxi_commuter/core/api/commuter_api.dart';
 import 'package:trotxi_commuter/Features/Home/widgets/Tabs/pass_tab.dart';
 import 'package:trotxi_commuter/Features/Home/widgets/Trips/trip_status.dart';
-import 'package:trotxi_commuter/Features/Home/widgets/Trips/trip_tracking_page.dart';
-import 'package:trotxi_commuter/core/config/client_metadata.dart';
+import 'package:trotxi_commuter/Features/Home/widgets/Tabs/trip_tracking_page.dart';
 import 'package:trotxi_commuter/core/config/theme/app_colors.dart';
 import 'package:trotxi_commuter/core/config/theme/app_typography.dart';
 
@@ -14,7 +14,8 @@ String _formatWeekdayDay(DateTime date) =>
 String _formatWeekdayDayShort(DateTime date) =>
     DateFormat('EEE, d MMM').format(date);
 
-String _formatTime(DateTime date) => DateFormat('h:mm a').format(date.toLocal());
+// Schedules use Ghana time (UTC+0), not the device's timezone.
+String _formatTime(DateTime date) => DateFormat('h:mm a').format(date.toUtc());
 
 /// Trip details for a single reservation, driven by
 /// `GET /v1/me/reservations/{id}` (see `ReservationDetail` in trotxi_client).
@@ -30,7 +31,7 @@ class TripDetailsPage extends StatefulWidget {
     required this.reservationId,
   });
 
-  final TrotxiApiClient client;
+  final CommuterApi client;
   final String reservationId;
 
   @override
@@ -54,11 +55,8 @@ class _TripDetailsPageState extends State<TripDetailsPage> {
       _error = null;
     });
     try {
-      final detail = await widget.client.getReservationDetail(
-        id: widget.reservationId,
-        xTrotxiClient: commuterMetadata.client,
-        xTrotxiBuild: commuterMetadata.build,
-        xTrotxiPlatform: commuterMetadata.platform,
+      final detail = await widget.client.reservationDetail(
+        widget.reservationId,
       );
       if (!mounted) return;
       setState(() {
@@ -114,13 +112,18 @@ class _TripDetailsPageState extends State<TripDetailsPage> {
     }
 
     if (detail == null) {
-      return [_buildTopBar(context, null), const SizedBox(height: 24), _buildErrorCard(context)];
+      return [
+        _buildTopBar(context, null),
+        const SizedBox(height: 24),
+        _buildErrorCard(context),
+      ];
     }
 
     final outcome = tripOutcomeOf(detail.reservation.status);
     final isHappyPath = switch (outcome) {
-      TripOutcome.pending || TripOutcome.confirmed || TripOutcome.completed =>
-        true,
+      TripOutcome.pending ||
+      TripOutcome.confirmed ||
+      TripOutcome.completed => true,
       _ => false,
     };
 
@@ -168,7 +171,11 @@ class _TripDetailsPageState extends State<TripDetailsPage> {
       children: [
         IconButton(
           onPressed: () => Navigator.of(context).maybePop(),
-          icon: Icon(Icons.arrow_back_ios_new_rounded, color: colors.textPrimary, size: 18),
+          icon: Icon(
+            Icons.arrow_back_ios_new_rounded,
+            color: colors.textPrimary,
+            size: 18,
+          ),
         ),
         Expanded(
           child: Text(
@@ -216,7 +223,10 @@ class _TripDetailsPageState extends State<TripDetailsPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(message, style: AppTypography.label.copyWith(color: colors.textPrimary)),
+          Text(
+            message,
+            style: AppTypography.label.copyWith(color: colors.textPrimary),
+          ),
           const SizedBox(height: 8),
           TextButton(onPressed: _load, child: const Text('Try again')),
         ],
@@ -262,7 +272,9 @@ class _TripDetailsPageState extends State<TripDetailsPage> {
               if (scheduledAt != null)
                 Text(
                   _formatTime(scheduledAt),
-                  style: AppTypography.label.copyWith(color: colors.onSurfaceStrong),
+                  style: AppTypography.label.copyWith(
+                    color: colors.onSurfaceStrong,
+                  ),
                 ),
             ],
           ),
@@ -319,7 +331,9 @@ class _TripDetailsPageState extends State<TripDetailsPage> {
         Expanded(
           child: Text(
             label,
-            style: AppTypography.bodySmall.copyWith(color: colors.onSurfaceStrong),
+            style: AppTypography.bodySmall.copyWith(
+              color: colors.onSurfaceStrong,
+            ),
           ),
         ),
       ],
@@ -391,10 +405,15 @@ class _TripDetailsPageState extends State<TripDetailsPage> {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(label, style: AppTypography.caption.copyWith(color: colors.textSecondary)),
+        Text(
+          label,
+          style: AppTypography.caption.copyWith(color: colors.textSecondary),
+        ),
         Text(
           value,
-          style: AppTypography.label.copyWith(color: valueColor ?? colors.textPrimary),
+          style: AppTypography.label.copyWith(
+            color: valueColor ?? colors.textPrimary,
+          ),
         ),
       ],
     );
@@ -420,7 +439,9 @@ class _TripDetailsPageState extends State<TripDetailsPage> {
           const SizedBox(height: 8),
           Text(
             tripOutcomeExplanation(outcome),
-            style: AppTypography.bodySmall.copyWith(color: colors.textSecondary),
+            style: AppTypography.bodySmall.copyWith(
+              color: colors.textSecondary,
+            ),
           ),
         ],
       ),
@@ -433,7 +454,10 @@ class _TripDetailsPageState extends State<TripDetailsPage> {
 
   Widget _buildSectionTitle(BuildContext context, String title) {
     final colors = context.appColors;
-    return Text(title, style: AppTypography.buttonAction.copyWith(color: colors.textPrimary));
+    return Text(
+      title,
+      style: AppTypography.buttonAction.copyWith(color: colors.textPrimary),
+    );
   }
 
   Widget _buildVehicleCard(BuildContext context, ReservationDetailTrip trip) {
@@ -468,13 +492,17 @@ class _TripDetailsPageState extends State<TripDetailsPage> {
               children: [
                 Text(
                   trip.vehicleLabel ?? 'Assigned vehicle',
-                  style: AppTypography.label.copyWith(color: colors.textPrimary),
+                  style: AppTypography.label.copyWith(
+                    color: colors.textPrimary,
+                  ),
                 ),
                 if (trip.vehiclePlate != null) ...[
                   const SizedBox(height: 2),
                   Text(
                     trip.vehiclePlate!,
-                    style: AppTypography.caption.copyWith(color: colors.textSecondary),
+                    style: AppTypography.caption.copyWith(
+                      color: colors.textSecondary,
+                    ),
                   ),
                 ],
               ],
@@ -505,11 +533,8 @@ class _TripDetailsPageState extends State<TripDetailsPage> {
           child: OutlinedButton(
             onPressed: () => Navigator.of(context).push(
               MaterialPageRoute(
-                builder: (context) => TripTrackingPage(
-                  client: widget.client,
-                  tripId: trip.id,
-                  pickupName: detail.pickupStop?.name,
-                ),
+                builder: (context) =>
+                    TripTrackingPage(client: widget.client, tripId: trip.id),
               ),
             ),
             child: const Text('Track trip'),
@@ -523,7 +548,10 @@ class _TripDetailsPageState extends State<TripDetailsPage> {
         child: FilledButton(
           onPressed: () => Navigator.of(context).push(
             MaterialPageRoute(
-              builder: (context) => PassTab(reservationId: detail.reservation.id),
+              builder: (context) => PassTab(
+                client: widget.client,
+                initialReservationId: detail.reservation.id,
+              ),
             ),
           ),
           child: const Text('Boarding pass'),

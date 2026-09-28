@@ -12,26 +12,33 @@ part 'personal_resume_input.g.dart';
 /// PersonalResumeInput
 ///
 /// Properties:
-/// * [resumeDate] 
+/// * [resumeDate]
 @BuiltValue()
-abstract class PersonalResumeInput implements Built<PersonalResumeInput, PersonalResumeInputBuilder> {
+abstract class PersonalResumeInput
+    implements Built<PersonalResumeInput, PersonalResumeInputBuilder> {
   @BuiltValueField(wireName: r'resumeDate')
   Date get resumeDate;
 
   PersonalResumeInput._();
 
-  factory PersonalResumeInput([void updates(PersonalResumeInputBuilder b)]) = _$PersonalResumeInput;
+  factory PersonalResumeInput([void updates(PersonalResumeInputBuilder b)]) =
+      _$PersonalResumeInput;
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(PersonalResumeInputBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
-  static Serializer<PersonalResumeInput> get serializer => _$PersonalResumeInputSerializer();
+  static Serializer<PersonalResumeInput> get serializer =>
+      _$PersonalResumeInputSerializer();
 }
 
-class _$PersonalResumeInputSerializer implements PrimitiveSerializer<PersonalResumeInput> {
+class _$PersonalResumeInputSerializer
+    implements PrimitiveSerializer<PersonalResumeInput> {
   @override
-  final Iterable<Type> types = const [PersonalResumeInput, _$PersonalResumeInput];
+  final Iterable<Type> types = const [
+    PersonalResumeInput,
+    _$PersonalResumeInput
+  ];
 
   @override
   final String wireName = r'PersonalResumeInput';
@@ -54,7 +61,9 @@ class _$PersonalResumeInputSerializer implements PrimitiveSerializer<PersonalRes
     PersonalResumeInput object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
   }
 
   void _deserializeProperties(
@@ -104,4 +113,3 @@ class _$PersonalResumeInputSerializer implements PrimitiveSerializer<PersonalRes
     return result.build();
   }
 }
-

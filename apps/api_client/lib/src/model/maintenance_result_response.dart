@@ -12,26 +12,35 @@ part 'maintenance_result_response.g.dart';
 /// MaintenanceResultResponse
 ///
 /// Properties:
-/// * [data] 
+/// * [data]
 @BuiltValue()
-abstract class MaintenanceResultResponse implements Built<MaintenanceResultResponse, MaintenanceResultResponseBuilder> {
+abstract class MaintenanceResultResponse
+    implements
+        Built<MaintenanceResultResponse, MaintenanceResultResponseBuilder> {
   @BuiltValueField(wireName: r'data')
   MaintenanceResult get data;
 
   MaintenanceResultResponse._();
 
-  factory MaintenanceResultResponse([void updates(MaintenanceResultResponseBuilder b)]) = _$MaintenanceResultResponse;
+  factory MaintenanceResultResponse(
+          [void updates(MaintenanceResultResponseBuilder b)]) =
+      _$MaintenanceResultResponse;
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(MaintenanceResultResponseBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
-  static Serializer<MaintenanceResultResponse> get serializer => _$MaintenanceResultResponseSerializer();
+  static Serializer<MaintenanceResultResponse> get serializer =>
+      _$MaintenanceResultResponseSerializer();
 }
 
-class _$MaintenanceResultResponseSerializer implements PrimitiveSerializer<MaintenanceResultResponse> {
+class _$MaintenanceResultResponseSerializer
+    implements PrimitiveSerializer<MaintenanceResultResponse> {
   @override
-  final Iterable<Type> types = const [MaintenanceResultResponse, _$MaintenanceResultResponse];
+  final Iterable<Type> types = const [
+    MaintenanceResultResponse,
+    _$MaintenanceResultResponse
+  ];
 
   @override
   final String wireName = r'MaintenanceResultResponse';
@@ -54,7 +63,9 @@ class _$MaintenanceResultResponseSerializer implements PrimitiveSerializer<Maint
     MaintenanceResultResponse object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
   }
 
   void _deserializeProperties(
@@ -104,4 +115,3 @@ class _$MaintenanceResultResponseSerializer implements PrimitiveSerializer<Maint
     return result.build();
   }
 }
-

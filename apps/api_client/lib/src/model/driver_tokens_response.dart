@@ -12,26 +12,33 @@ part 'driver_tokens_response.g.dart';
 /// DriverTokensResponse
 ///
 /// Properties:
-/// * [data] 
+/// * [data]
 @BuiltValue()
-abstract class DriverTokensResponse implements Built<DriverTokensResponse, DriverTokensResponseBuilder> {
+abstract class DriverTokensResponse
+    implements Built<DriverTokensResponse, DriverTokensResponseBuilder> {
   @BuiltValueField(wireName: r'data')
   DriverTokens get data;
 
   DriverTokensResponse._();
 
-  factory DriverTokensResponse([void updates(DriverTokensResponseBuilder b)]) = _$DriverTokensResponse;
+  factory DriverTokensResponse([void updates(DriverTokensResponseBuilder b)]) =
+      _$DriverTokensResponse;
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(DriverTokensResponseBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
-  static Serializer<DriverTokensResponse> get serializer => _$DriverTokensResponseSerializer();
+  static Serializer<DriverTokensResponse> get serializer =>
+      _$DriverTokensResponseSerializer();
 }
 
-class _$DriverTokensResponseSerializer implements PrimitiveSerializer<DriverTokensResponse> {
+class _$DriverTokensResponseSerializer
+    implements PrimitiveSerializer<DriverTokensResponse> {
   @override
-  final Iterable<Type> types = const [DriverTokensResponse, _$DriverTokensResponse];
+  final Iterable<Type> types = const [
+    DriverTokensResponse,
+    _$DriverTokensResponse
+  ];
 
   @override
   final String wireName = r'DriverTokensResponse';
@@ -54,7 +61,9 @@ class _$DriverTokensResponseSerializer implements PrimitiveSerializer<DriverToke
     DriverTokensResponse object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
   }
 
   void _deserializeProperties(
@@ -104,4 +113,3 @@ class _$DriverTokensResponseSerializer implements PrimitiveSerializer<DriverToke
     return result.build();
   }
 }
-

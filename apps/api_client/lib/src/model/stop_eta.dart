@@ -12,10 +12,10 @@ part 'stop_eta.g.dart';
 /// StopEta
 ///
 /// Properties:
-/// * [stopOccurrenceId] 
-/// * [durationSeconds] 
-/// * [distanceMeters] 
-/// * [basis] 
+/// * [stopOccurrenceId]
+/// * [durationSeconds]
+/// * [distanceMeters]
+/// * [basis]
 @BuiltValue()
 abstract class StopEta implements Built<StopEta, StopEtaBuilder> {
   @BuiltValueField(wireName: r'stopOccurrenceId')
@@ -82,7 +82,9 @@ class _$StopEtaSerializer implements PrimitiveSerializer<StopEta> {
     StopEta object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
   }
 
   void _deserializeProperties(
@@ -155,17 +157,17 @@ class _$StopEtaSerializer implements PrimitiveSerializer<StopEta> {
 }
 
 class StopEtaBasisEnum extends EnumClass {
-
   @BuiltValueEnumConst(wireName: r'observed')
   static const StopEtaBasisEnum observed = _$stopEtaBasisEnum_observed;
   @BuiltValueEnumConst(wireName: r'fallback')
   static const StopEtaBasisEnum fallback = _$stopEtaBasisEnum_fallback;
 
-  static Serializer<StopEtaBasisEnum> get serializer => _$stopEtaBasisEnumSerializer;
+  static Serializer<StopEtaBasisEnum> get serializer =>
+      _$stopEtaBasisEnumSerializer;
 
-  const StopEtaBasisEnum._(String name): super(name);
+  const StopEtaBasisEnum._(String name) : super(name);
 
   static BuiltSet<StopEtaBasisEnum> get values => _$stopEtaBasisEnumValues;
-  static StopEtaBasisEnum valueOf(String name) => _$stopEtaBasisEnumValueOf(name);
+  static StopEtaBasisEnum valueOf(String name) =>
+      _$stopEtaBasisEnumValueOf(name);
 }
-

@@ -14,10 +14,11 @@ part 'driver_trip_page.g.dart';
 /// DriverTripPage
 ///
 /// Properties:
-/// * [data] 
-/// * [page] 
+/// * [data]
+/// * [page]
 @BuiltValue()
-abstract class DriverTripPage implements Built<DriverTripPage, DriverTripPageBuilder> {
+abstract class DriverTripPage
+    implements Built<DriverTripPage, DriverTripPageBuilder> {
   @BuiltValueField(wireName: r'data')
   BuiltList<DriverTrip> get data;
 
@@ -26,16 +27,19 @@ abstract class DriverTripPage implements Built<DriverTripPage, DriverTripPageBui
 
   DriverTripPage._();
 
-  factory DriverTripPage([void updates(DriverTripPageBuilder b)]) = _$DriverTripPage;
+  factory DriverTripPage([void updates(DriverTripPageBuilder b)]) =
+      _$DriverTripPage;
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(DriverTripPageBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
-  static Serializer<DriverTripPage> get serializer => _$DriverTripPageSerializer();
+  static Serializer<DriverTripPage> get serializer =>
+      _$DriverTripPageSerializer();
 }
 
-class _$DriverTripPageSerializer implements PrimitiveSerializer<DriverTripPage> {
+class _$DriverTripPageSerializer
+    implements PrimitiveSerializer<DriverTripPage> {
   @override
   final Iterable<Type> types = const [DriverTripPage, _$DriverTripPage];
 
@@ -65,7 +69,9 @@ class _$DriverTripPageSerializer implements PrimitiveSerializer<DriverTripPage> 
     DriverTripPage object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
   }
 
   void _deserializeProperties(
@@ -122,4 +128,3 @@ class _$DriverTripPageSerializer implements PrimitiveSerializer<DriverTripPage> 
     return result.build();
   }
 }
-

@@ -12,26 +12,34 @@ part 'minimum_version_response.g.dart';
 /// MinimumVersionResponse
 ///
 /// Properties:
-/// * [data] 
+/// * [data]
 @BuiltValue()
-abstract class MinimumVersionResponse implements Built<MinimumVersionResponse, MinimumVersionResponseBuilder> {
+abstract class MinimumVersionResponse
+    implements Built<MinimumVersionResponse, MinimumVersionResponseBuilder> {
   @BuiltValueField(wireName: r'data')
   MinimumVersion get data;
 
   MinimumVersionResponse._();
 
-  factory MinimumVersionResponse([void updates(MinimumVersionResponseBuilder b)]) = _$MinimumVersionResponse;
+  factory MinimumVersionResponse(
+          [void updates(MinimumVersionResponseBuilder b)]) =
+      _$MinimumVersionResponse;
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(MinimumVersionResponseBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
-  static Serializer<MinimumVersionResponse> get serializer => _$MinimumVersionResponseSerializer();
+  static Serializer<MinimumVersionResponse> get serializer =>
+      _$MinimumVersionResponseSerializer();
 }
 
-class _$MinimumVersionResponseSerializer implements PrimitiveSerializer<MinimumVersionResponse> {
+class _$MinimumVersionResponseSerializer
+    implements PrimitiveSerializer<MinimumVersionResponse> {
   @override
-  final Iterable<Type> types = const [MinimumVersionResponse, _$MinimumVersionResponse];
+  final Iterable<Type> types = const [
+    MinimumVersionResponse,
+    _$MinimumVersionResponse
+  ];
 
   @override
   final String wireName = r'MinimumVersionResponse';
@@ -54,7 +62,9 @@ class _$MinimumVersionResponseSerializer implements PrimitiveSerializer<MinimumV
     MinimumVersionResponse object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
   }
 
   void _deserializeProperties(
@@ -104,4 +114,3 @@ class _$MinimumVersionResponseSerializer implements PrimitiveSerializer<MinimumV
     return result.build();
   }
 }
-

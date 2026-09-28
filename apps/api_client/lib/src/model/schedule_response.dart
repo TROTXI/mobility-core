@@ -12,24 +12,28 @@ part 'schedule_response.g.dart';
 /// ScheduleResponse
 ///
 /// Properties:
-/// * [data] 
+/// * [data]
 @BuiltValue()
-abstract class ScheduleResponse implements Built<ScheduleResponse, ScheduleResponseBuilder> {
+abstract class ScheduleResponse
+    implements Built<ScheduleResponse, ScheduleResponseBuilder> {
   @BuiltValueField(wireName: r'data')
   Schedule get data;
 
   ScheduleResponse._();
 
-  factory ScheduleResponse([void updates(ScheduleResponseBuilder b)]) = _$ScheduleResponse;
+  factory ScheduleResponse([void updates(ScheduleResponseBuilder b)]) =
+      _$ScheduleResponse;
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(ScheduleResponseBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
-  static Serializer<ScheduleResponse> get serializer => _$ScheduleResponseSerializer();
+  static Serializer<ScheduleResponse> get serializer =>
+      _$ScheduleResponseSerializer();
 }
 
-class _$ScheduleResponseSerializer implements PrimitiveSerializer<ScheduleResponse> {
+class _$ScheduleResponseSerializer
+    implements PrimitiveSerializer<ScheduleResponse> {
   @override
   final Iterable<Type> types = const [ScheduleResponse, _$ScheduleResponse];
 
@@ -54,7 +58,9 @@ class _$ScheduleResponseSerializer implements PrimitiveSerializer<ScheduleRespon
     ScheduleResponse object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
   }
 
   void _deserializeProperties(
@@ -104,4 +110,3 @@ class _$ScheduleResponseSerializer implements PrimitiveSerializer<ScheduleRespon
     return result.build();
   }
 }
-

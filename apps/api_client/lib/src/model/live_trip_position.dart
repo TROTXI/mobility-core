@@ -12,12 +12,13 @@ part 'live_trip_position.g.dart';
 /// LiveTripPosition
 ///
 /// Properties:
-/// * [location] 
-/// * [capturedAt] 
-/// * [receivedAt] 
-/// * [ageSeconds] 
+/// * [location]
+/// * [capturedAt]
+/// * [receivedAt]
+/// * [ageSeconds]
 @BuiltValue()
-abstract class LiveTripPosition implements Built<LiveTripPosition, LiveTripPositionBuilder> {
+abstract class LiveTripPosition
+    implements Built<LiveTripPosition, LiveTripPositionBuilder> {
   @BuiltValueField(wireName: r'location')
   Point get location;
 
@@ -32,16 +33,19 @@ abstract class LiveTripPosition implements Built<LiveTripPosition, LiveTripPosit
 
   LiveTripPosition._();
 
-  factory LiveTripPosition([void updates(LiveTripPositionBuilder b)]) = _$LiveTripPosition;
+  factory LiveTripPosition([void updates(LiveTripPositionBuilder b)]) =
+      _$LiveTripPosition;
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(LiveTripPositionBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
-  static Serializer<LiveTripPosition> get serializer => _$LiveTripPositionSerializer();
+  static Serializer<LiveTripPosition> get serializer =>
+      _$LiveTripPositionSerializer();
 }
 
-class _$LiveTripPositionSerializer implements PrimitiveSerializer<LiveTripPosition> {
+class _$LiveTripPositionSerializer
+    implements PrimitiveSerializer<LiveTripPosition> {
   @override
   final Iterable<Type> types = const [LiveTripPosition, _$LiveTripPosition];
 
@@ -81,7 +85,9 @@ class _$LiveTripPositionSerializer implements PrimitiveSerializer<LiveTripPositi
     LiveTripPosition object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
   }
 
   void _deserializeProperties(
@@ -152,4 +158,3 @@ class _$LiveTripPositionSerializer implements PrimitiveSerializer<LiveTripPositi
     return result.build();
   }
 }
-

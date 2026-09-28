@@ -14,12 +14,12 @@ part 'geometry.g.dart';
 /// Geometry
 ///
 /// Properties:
-/// * [id] 
-/// * [patternVersionId] 
-/// * [points] 
-/// * [stopDistances] 
-/// * [source_] 
-/// * [createdAt] 
+/// * [id]
+/// * [patternVersionId]
+/// * [points]
+/// * [stopDistances]
+/// * [source_]
+/// * [createdAt]
 @BuiltValue()
 abstract class Geometry implements Built<Geometry, GeometryBuilder> {
   @BuiltValueField(wireName: r'id')
@@ -82,7 +82,8 @@ class _$GeometrySerializer implements PrimitiveSerializer<Geometry> {
     yield r'stopDistances';
     yield serializers.serialize(
       object.stopDistances,
-      specifiedType: const FullType(BuiltList, [FullType(GeometryStopDistancesInner)]),
+      specifiedType:
+          const FullType(BuiltList, [FullType(GeometryStopDistancesInner)]),
     );
     yield r'source';
     yield serializers.serialize(
@@ -102,7 +103,9 @@ class _$GeometrySerializer implements PrimitiveSerializer<Geometry> {
     Geometry object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
   }
 
   void _deserializeProperties(
@@ -141,7 +144,8 @@ class _$GeometrySerializer implements PrimitiveSerializer<Geometry> {
         case r'stopDistances':
           final valueDes = serializers.deserialize(
             value,
-            specifiedType: const FullType(BuiltList, [FullType(GeometryStopDistancesInner)]),
+            specifiedType: const FullType(
+                BuiltList, [FullType(GeometryStopDistancesInner)]),
           ) as BuiltList<GeometryStopDistancesInner>;
           result.stopDistances.replace(valueDes);
           break;
@@ -189,17 +193,17 @@ class _$GeometrySerializer implements PrimitiveSerializer<Geometry> {
 }
 
 class GeometrySource_Enum extends EnumClass {
-
   @BuiltValueEnumConst(wireName: r'observed')
   static const GeometrySource_Enum observed = _$geometrySourceEnum_observed;
   @BuiltValueEnumConst(wireName: r'configured')
   static const GeometrySource_Enum configured = _$geometrySourceEnum_configured;
 
-  static Serializer<GeometrySource_Enum> get serializer => _$geometrySourceEnumSerializer;
+  static Serializer<GeometrySource_Enum> get serializer =>
+      _$geometrySourceEnumSerializer;
 
-  const GeometrySource_Enum._(String name): super(name);
+  const GeometrySource_Enum._(String name) : super(name);
 
   static BuiltSet<GeometrySource_Enum> get values => _$geometrySourceEnumValues;
-  static GeometrySource_Enum valueOf(String name) => _$geometrySourceEnumValueOf(name);
+  static GeometrySource_Enum valueOf(String name) =>
+      _$geometrySourceEnumValueOf(name);
 }
-

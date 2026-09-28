@@ -11,11 +11,12 @@ part 'credential_issue.g.dart';
 /// CredentialIssue
 ///
 /// Properties:
-/// * [code] 
-/// * [emailInstructions] 
-/// * [smsInstructions] 
+/// * [code]
+/// * [emailInstructions]
+/// * [smsInstructions]
 @BuiltValue()
-abstract class CredentialIssue implements Built<CredentialIssue, CredentialIssueBuilder> {
+abstract class CredentialIssue
+    implements Built<CredentialIssue, CredentialIssueBuilder> {
   @BuiltValueField(wireName: r'code')
   String? get code;
 
@@ -27,16 +28,19 @@ abstract class CredentialIssue implements Built<CredentialIssue, CredentialIssue
 
   CredentialIssue._();
 
-  factory CredentialIssue([void updates(CredentialIssueBuilder b)]) = _$CredentialIssue;
+  factory CredentialIssue([void updates(CredentialIssueBuilder b)]) =
+      _$CredentialIssue;
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(CredentialIssueBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
-  static Serializer<CredentialIssue> get serializer => _$CredentialIssueSerializer();
+  static Serializer<CredentialIssue> get serializer =>
+      _$CredentialIssueSerializer();
 }
 
-class _$CredentialIssueSerializer implements PrimitiveSerializer<CredentialIssue> {
+class _$CredentialIssueSerializer
+    implements PrimitiveSerializer<CredentialIssue> {
   @override
   final Iterable<Type> types = const [CredentialIssue, _$CredentialIssue];
 
@@ -77,7 +81,9 @@ class _$CredentialIssueSerializer implements PrimitiveSerializer<CredentialIssue
     CredentialIssue object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
   }
 
   void _deserializeProperties(
@@ -141,4 +147,3 @@ class _$CredentialIssueSerializer implements PrimitiveSerializer<CredentialIssue
     return result.build();
   }
 }
-

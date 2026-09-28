@@ -1,28 +1,24 @@
 import 'package:flutter/material.dart';
 
-import 'package:trotxi_client/trotxi_client.dart';
-import 'package:trotxi_commuter/Features/Home/widgets/Tabs/avatar_editing.dart';
+import 'package:trotxi_commuter/core/api/commuter_api.dart';
 import 'package:trotxi_commuter/Features/Home/widgets/Tabs/commuter_preference.dart';
 import 'package:trotxi_commuter/Features/Home/widgets/Tabs/personal_info.dart';
 import 'package:trotxi_commuter/Features/Home/widgets/Tabs/profile_notification.dart';
 import 'package:trotxi_commuter/Features/Home/widgets/Tabs/profile_security.dart';
-import 'package:trotxi_commuter/Features/Onboarding/pages/onboard_page.dart';
-import 'package:trotxi_commuter/core/config/client_metadata.dart';
 import 'package:trotxi_commuter/core/config/layout/responsive_layout.dart';
 import 'package:trotxi_commuter/core/config/theme/app_colors.dart';
 import 'package:trotxi_commuter/core/config/theme/app_theme_controller.dart';
 import 'package:trotxi_commuter/core/config/theme/app_typography.dart';
-import 'package:trotxi_commuter/core/Tokens/token_storage.dart';
 
 class ProfileTab extends StatefulWidget {
   const ProfileTab({super.key, required this.client});
-  final TrotxiApiClient client;
+  final CommuterApi client;
 
   @override
   State<ProfileTab> createState() => _ProfileTabState();
 }
 
-class _ProfileTabState extends State<ProfileTab> with AvatarEditing<ProfileTab> {
+class _ProfileTabState extends State<ProfileTab> {
   Account? _user;
   bool _loading = true;
   Object? _error;
@@ -40,14 +36,10 @@ class _ProfileTabState extends State<ProfileTab> with AvatarEditing<ProfileTab> 
     });
 
     try {
-      final response = await widget.client.getSelfApi().getAccount(
-        xTrotxiClient: commuterMetadata.client,
-        xTrotxiBuild: commuterMetadata.build,
-        xTrotxiPlatform: commuterMetadata.platform,
-      );
+      final account = await widget.client.account();
       if (!mounted) return;
       setState(() {
-        _user = response.data?.data;
+        _user = account;
         _loading = false;
       });
     } catch (e) {
@@ -56,11 +48,12 @@ class _ProfileTabState extends State<ProfileTab> with AvatarEditing<ProfileTab> 
         _error = e;
         _loading = false;
       });
-      debugPrint('Error fetching profile: $e');
+      debugPrint('Profile fetch error: ${e.runtimeType}');
     }
   }
 
   Future<void> _editDisplayName() async {
+    final generation = widget.client.sessionGeneration;
     final user = _user;
     if (user == null) return;
 
@@ -71,45 +64,29 @@ class _ProfileTabState extends State<ProfileTab> with AvatarEditing<ProfileTab> 
     );
 
     final trimmed = newName?.trim();
-    if (trimmed == null || trimmed.isEmpty || trimmed == user.displayName) {
+    if (!mounted ||
+        generation != widget.client.sessionGeneration ||
+        trimmed == null ||
+        trimmed.isEmpty ||
+        trimmed == user.displayName) {
       return;
     }
 
     try {
-      // A fresh key per distinct name: the API scopes an Idempotency-Key to
-      // caller + operation + payload and answers 409 if the same key comes
-      // back carrying something different.
-      final response = await widget.client.getSelfApi().updateAccount(
-        idempotencyKey: newIdempotencyKey(),
-        xTrotxiClient: commuterMetadata.client,
-        xTrotxiBuild: commuterMetadata.build,
-        xTrotxiPlatform: commuterMetadata.platform,
-        profileUpdate: ProfileUpdate((b) => b..displayName = trimmed),
-      );
+      final account = await widget.client.updateAccount(trimmed);
       if (!mounted) return;
-      setState(() => _user = response.data?.data ?? _user);
+      setState(() => _user = account);
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Could not update name. Try again.')),
       );
-      debugPrint('Error updating display name: $e');
+      debugPrint('Profile update error: ${e.runtimeType}');
     }
   }
 
-  Future<void> _editAvatar() async {
-    final user = _user;
-    if (user == null) return;
-
-    final hasAvatar = user.avatarUrl != null && user.avatarUrl!.isNotEmpty;
-    final outcome = await editAvatar(client: widget.client, hasAvatar: hasAvatar);
-    if (outcome == null || !mounted) return;
-    setState(
-      () => _user = user.rebuild((b) => b..avatarUrl = outcome.avatarUrl),
-    );
-  }
-
   Future<void> _confirmSignOut(BuildContext context) async {
+    final generation = widget.client.sessionGeneration;
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
@@ -128,41 +105,24 @@ class _ProfileTabState extends State<ProfileTab> with AvatarEditing<ProfileTab> 
       ),
     );
 
-    if (confirmed == true) {
+    if (confirmed == true &&
+        mounted &&
+        generation == widget.client.sessionGeneration) {
       await _signOut();
     }
   }
 
   Future<void> _signOut() async {
-    final refreshToken = await TokenStorage.instance.getRefreshToken();
-
-    if (refreshToken != null && refreshToken.isNotEmpty) {
-      try {
-        await widget.client
-            .getPublicApi()
-            .logoutSession(
-              xTrotxiClient: commuterMetadata.client,
-              xTrotxiBuild: commuterMetadata.build,
-              xTrotxiPlatform: commuterMetadata.platform,
-              refreshInput: RefreshInput((b) => b..refreshToken = refreshToken),
-            )
-            .timeout(const Duration(seconds: 5));
-      } catch (_) {
-        // Best effort: /v1/auth/logout is idempotent and outside the auth
-        // guard, so this only fails on things like a dead network — in
-        // which case we still clear locally so the rider isn't stuck.
-      }
+    try {
+      await widget.client.signOut();
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Could not clear this device’s session. Please retry.'),
+        ),
+      );
     }
-
-    await TokenStorage.instance.clearTokens();
-
-    if (!mounted) return;
-    Navigator.of(context).pushAndRemoveUntil(
-      MaterialPageRoute(
-        builder: (context) => OnBoardPage(client: widget.client),
-      ),
-      (route) => false,
-    );
   }
 
   Future<void> _openPersonalInfo() async {
@@ -236,9 +196,7 @@ class _ProfileTabState extends State<ProfileTab> with AvatarEditing<ProfileTab> 
                     displayName: _user?.displayName,
                     phone: _user?.phone,
                     avatarUrl: _user?.avatarUrl,
-                    avatarBusy: avatarBusy,
                     onEdit: _editDisplayName,
-                    onEditAvatar: _user == null ? null : _editAvatar,
                   ),
                 const SizedBox(height: 28),
                 _buildSectionTitle(context, 'Account'),
@@ -254,7 +212,8 @@ class _ProfileTabState extends State<ProfileTab> with AvatarEditing<ProfileTab> 
                   subtitle: 'Pickup, destination and travel preferences',
                   onTap: () => Navigator.of(context).push(
                     MaterialPageRoute(
-                      builder: (context) => CommutePreferencesPage(),
+                      builder: (context) =>
+                          CommutePreferencesPage(client: widget.client),
                     ),
                   ),
                 ),
@@ -352,17 +311,13 @@ class _ProfileHeader extends StatelessWidget {
     required this.displayName,
     required this.phone,
     required this.avatarUrl,
-    required this.avatarBusy,
     required this.onEdit,
-    required this.onEditAvatar,
   });
 
   final String? displayName;
   final String? phone;
   final String? avatarUrl;
-  final bool avatarBusy;
   final VoidCallback onEdit;
-  final VoidCallback? onEditAvatar;
 
   String get _initials {
     final trimmed = displayName?.trim() ?? '';
@@ -394,83 +349,30 @@ class _ProfileHeader extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          GestureDetector(
-            onTap: onEditAvatar == null || avatarBusy ? null : onEditAvatar,
-            child: SizedBox(
-              width: 58,
-              height: 58,
-              child: Stack(
-                clipBehavior: Clip.none,
-                children: [
-                  Container(
-                    width: 58,
-                    height: 58,
-                    clipBehavior: Clip.antiAlias,
-                    decoration: BoxDecoration(
-                      color: hasAvatar ? null : colors.actionPrimaryDefault,
-                      shape: BoxShape.circle,
-                      image: hasAvatar
-                          ? DecorationImage(
-                              image: NetworkImage(avatarUrl!),
-                              fit: BoxFit.cover,
-                            )
-                          : null,
-                    ),
-                    child: hasAvatar
-                        ? null
-                        : Center(
-                            child: Text(
-                              _initials,
-                              style: AppTypography.title.copyWith(
-                                color: colors.actionOnPrimary,
-                              ),
-                            ),
-                          ),
-                  ),
-                  if (avatarBusy)
-                    Positioned.fill(
-                      child: DecoratedBox(
-                        decoration: BoxDecoration(
-                          color: Colors.black.withValues(alpha: 0.35),
-                          shape: BoxShape.circle,
-                        ),
-                        child: const Center(
-                          child: SizedBox(
-                            width: 18,
-                            height: 18,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: Colors.white,
-                            ),
-                          ),
-                        ),
-                      ),
+          Container(
+            width: 58,
+            height: 58,
+            clipBehavior: Clip.antiAlias,
+            decoration: BoxDecoration(
+              color: hasAvatar ? null : colors.actionPrimaryDefault,
+              shape: BoxShape.circle,
+              image: hasAvatar
+                  ? DecorationImage(
+                      image: NetworkImage(avatarUrl!),
+                      fit: BoxFit.cover,
                     )
-                  else if (onEditAvatar != null)
-                    Positioned(
-                      right: -2,
-                      bottom: -2,
-                      child: Container(
-                        width: 22,
-                        height: 22,
-                        decoration: BoxDecoration(
-                          color: colors.actionPrimaryDefault,
-                          shape: BoxShape.circle,
-                          border: Border.all(
-                            color: colors.surfaceElevated,
-                            width: 2,
-                          ),
-                        ),
-                        child: Icon(
-                          Icons.photo_camera_rounded,
-                          size: 12,
-                          color: colors.actionOnPrimary,
-                        ),
+                  : null,
+            ),
+            child: hasAvatar
+                ? null
+                : Center(
+                    child: Text(
+                      _initials,
+                      style: AppTypography.title.copyWith(
+                        color: colors.actionOnPrimary,
                       ),
                     ),
-                ],
-              ),
-            ),
+                  ),
           ),
           const SizedBox(width: 16),
           Expanded(

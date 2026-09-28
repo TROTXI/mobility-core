@@ -12,26 +12,35 @@ part 'reservation_detail_response.g.dart';
 /// ReservationDetailResponse
 ///
 /// Properties:
-/// * [data] 
+/// * [data]
 @BuiltValue()
-abstract class ReservationDetailResponse implements Built<ReservationDetailResponse, ReservationDetailResponseBuilder> {
+abstract class ReservationDetailResponse
+    implements
+        Built<ReservationDetailResponse, ReservationDetailResponseBuilder> {
   @BuiltValueField(wireName: r'data')
   ReservationDetail get data;
 
   ReservationDetailResponse._();
 
-  factory ReservationDetailResponse([void updates(ReservationDetailResponseBuilder b)]) = _$ReservationDetailResponse;
+  factory ReservationDetailResponse(
+          [void updates(ReservationDetailResponseBuilder b)]) =
+      _$ReservationDetailResponse;
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(ReservationDetailResponseBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
-  static Serializer<ReservationDetailResponse> get serializer => _$ReservationDetailResponseSerializer();
+  static Serializer<ReservationDetailResponse> get serializer =>
+      _$ReservationDetailResponseSerializer();
 }
 
-class _$ReservationDetailResponseSerializer implements PrimitiveSerializer<ReservationDetailResponse> {
+class _$ReservationDetailResponseSerializer
+    implements PrimitiveSerializer<ReservationDetailResponse> {
   @override
-  final Iterable<Type> types = const [ReservationDetailResponse, _$ReservationDetailResponse];
+  final Iterable<Type> types = const [
+    ReservationDetailResponse,
+    _$ReservationDetailResponse
+  ];
 
   @override
   final String wireName = r'ReservationDetailResponse';
@@ -54,7 +63,9 @@ class _$ReservationDetailResponseSerializer implements PrimitiveSerializer<Reser
     ReservationDetailResponse object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
   }
 
   void _deserializeProperties(
@@ -104,4 +115,3 @@ class _$ReservationDetailResponseSerializer implements PrimitiveSerializer<Reser
     return result.build();
   }
 }
-

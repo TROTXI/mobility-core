@@ -12,26 +12,33 @@ part 'ops_overview_response.g.dart';
 /// OpsOverviewResponse
 ///
 /// Properties:
-/// * [data] 
+/// * [data]
 @BuiltValue()
-abstract class OpsOverviewResponse implements Built<OpsOverviewResponse, OpsOverviewResponseBuilder> {
+abstract class OpsOverviewResponse
+    implements Built<OpsOverviewResponse, OpsOverviewResponseBuilder> {
   @BuiltValueField(wireName: r'data')
   OpsOverview get data;
 
   OpsOverviewResponse._();
 
-  factory OpsOverviewResponse([void updates(OpsOverviewResponseBuilder b)]) = _$OpsOverviewResponse;
+  factory OpsOverviewResponse([void updates(OpsOverviewResponseBuilder b)]) =
+      _$OpsOverviewResponse;
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(OpsOverviewResponseBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
-  static Serializer<OpsOverviewResponse> get serializer => _$OpsOverviewResponseSerializer();
+  static Serializer<OpsOverviewResponse> get serializer =>
+      _$OpsOverviewResponseSerializer();
 }
 
-class _$OpsOverviewResponseSerializer implements PrimitiveSerializer<OpsOverviewResponse> {
+class _$OpsOverviewResponseSerializer
+    implements PrimitiveSerializer<OpsOverviewResponse> {
   @override
-  final Iterable<Type> types = const [OpsOverviewResponse, _$OpsOverviewResponse];
+  final Iterable<Type> types = const [
+    OpsOverviewResponse,
+    _$OpsOverviewResponse
+  ];
 
   @override
   final String wireName = r'OpsOverviewResponse';
@@ -54,7 +61,9 @@ class _$OpsOverviewResponseSerializer implements PrimitiveSerializer<OpsOverview
     OpsOverviewResponse object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
   }
 
   void _deserializeProperties(
@@ -104,4 +113,3 @@ class _$OpsOverviewResponseSerializer implements PrimitiveSerializer<OpsOverview
     return result.build();
   }
 }
-

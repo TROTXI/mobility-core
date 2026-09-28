@@ -11,10 +11,10 @@ part 'apple_sign_in.g.dart';
 /// AppleSignIn
 ///
 /// Properties:
-/// * [idToken] 
-/// * [nonce] 
-/// * [authorizationCode] 
-/// * [displayName] 
+/// * [idToken]
+/// * [nonce]
+/// * [authorizationCode]
+/// * [displayName]
 @BuiltValue()
 abstract class AppleSignIn implements Built<AppleSignIn, AppleSignInBuilder> {
   @BuiltValueField(wireName: r'idToken')
@@ -86,7 +86,9 @@ class _$AppleSignInSerializer implements PrimitiveSerializer<AppleSignIn> {
     AppleSignIn object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
   }
 
   void _deserializeProperties(
@@ -157,4 +159,3 @@ class _$AppleSignInSerializer implements PrimitiveSerializer<AppleSignIn> {
     return result.build();
   }
 }
-

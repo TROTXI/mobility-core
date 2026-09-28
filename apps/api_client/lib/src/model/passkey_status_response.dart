@@ -12,26 +12,33 @@ part 'passkey_status_response.g.dart';
 /// PasskeyStatusResponse
 ///
 /// Properties:
-/// * [data] 
+/// * [data]
 @BuiltValue()
-abstract class PasskeyStatusResponse implements Built<PasskeyStatusResponse, PasskeyStatusResponseBuilder> {
+abstract class PasskeyStatusResponse
+    implements Built<PasskeyStatusResponse, PasskeyStatusResponseBuilder> {
   @BuiltValueField(wireName: r'data')
   PasskeyStatus get data;
 
   PasskeyStatusResponse._();
 
-  factory PasskeyStatusResponse([void updates(PasskeyStatusResponseBuilder b)]) = _$PasskeyStatusResponse;
+  factory PasskeyStatusResponse(
+      [void updates(PasskeyStatusResponseBuilder b)]) = _$PasskeyStatusResponse;
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(PasskeyStatusResponseBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
-  static Serializer<PasskeyStatusResponse> get serializer => _$PasskeyStatusResponseSerializer();
+  static Serializer<PasskeyStatusResponse> get serializer =>
+      _$PasskeyStatusResponseSerializer();
 }
 
-class _$PasskeyStatusResponseSerializer implements PrimitiveSerializer<PasskeyStatusResponse> {
+class _$PasskeyStatusResponseSerializer
+    implements PrimitiveSerializer<PasskeyStatusResponse> {
   @override
-  final Iterable<Type> types = const [PasskeyStatusResponse, _$PasskeyStatusResponse];
+  final Iterable<Type> types = const [
+    PasskeyStatusResponse,
+    _$PasskeyStatusResponse
+  ];
 
   @override
   final String wireName = r'PasskeyStatusResponse';
@@ -54,7 +61,9 @@ class _$PasskeyStatusResponseSerializer implements PrimitiveSerializer<PasskeySt
     PasskeyStatusResponse object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
   }
 
   void _deserializeProperties(
@@ -104,4 +113,3 @@ class _$PasskeyStatusResponseSerializer implements PrimitiveSerializer<PasskeySt
     return result.build();
   }
 }
-

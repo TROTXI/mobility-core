@@ -12,13 +12,15 @@ part 'ops_rider_detail_membership.g.dart';
 /// OpsRiderDetailMembership
 ///
 /// Properties:
-/// * [id] 
-/// * [lifecycle] 
-/// * [periodId] 
-/// * [startsAt] 
-/// * [endsAt] 
+/// * [id]
+/// * [lifecycle]
+/// * [periodId]
+/// * [startsAt]
+/// * [endsAt]
 @BuiltValue()
-abstract class OpsRiderDetailMembership implements Built<OpsRiderDetailMembership, OpsRiderDetailMembershipBuilder> {
+abstract class OpsRiderDetailMembership
+    implements
+        Built<OpsRiderDetailMembership, OpsRiderDetailMembershipBuilder> {
   @BuiltValueField(wireName: r'id')
   String get id;
 
@@ -37,18 +39,25 @@ abstract class OpsRiderDetailMembership implements Built<OpsRiderDetailMembershi
 
   OpsRiderDetailMembership._();
 
-  factory OpsRiderDetailMembership([void updates(OpsRiderDetailMembershipBuilder b)]) = _$OpsRiderDetailMembership;
+  factory OpsRiderDetailMembership(
+          [void updates(OpsRiderDetailMembershipBuilder b)]) =
+      _$OpsRiderDetailMembership;
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(OpsRiderDetailMembershipBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
-  static Serializer<OpsRiderDetailMembership> get serializer => _$OpsRiderDetailMembershipSerializer();
+  static Serializer<OpsRiderDetailMembership> get serializer =>
+      _$OpsRiderDetailMembershipSerializer();
 }
 
-class _$OpsRiderDetailMembershipSerializer implements PrimitiveSerializer<OpsRiderDetailMembership> {
+class _$OpsRiderDetailMembershipSerializer
+    implements PrimitiveSerializer<OpsRiderDetailMembership> {
   @override
-  final Iterable<Type> types = const [OpsRiderDetailMembership, _$OpsRiderDetailMembership];
+  final Iterable<Type> types = const [
+    OpsRiderDetailMembership,
+    _$OpsRiderDetailMembership
+  ];
 
   @override
   final String wireName = r'OpsRiderDetailMembership';
@@ -69,20 +78,26 @@ class _$OpsRiderDetailMembershipSerializer implements PrimitiveSerializer<OpsRid
       specifiedType: const FullType(OpsRiderDetailMembershipLifecycleEnum),
     );
     yield r'periodId';
-    yield object.periodId == null ? null : serializers.serialize(
-      object.periodId,
-      specifiedType: const FullType.nullable(String),
-    );
+    yield object.periodId == null
+        ? null
+        : serializers.serialize(
+            object.periodId,
+            specifiedType: const FullType.nullable(String),
+          );
     yield r'startsAt';
-    yield object.startsAt == null ? null : serializers.serialize(
-      object.startsAt,
-      specifiedType: const FullType.nullable(DateTime),
-    );
+    yield object.startsAt == null
+        ? null
+        : serializers.serialize(
+            object.startsAt,
+            specifiedType: const FullType.nullable(DateTime),
+          );
     yield r'endsAt';
-    yield object.endsAt == null ? null : serializers.serialize(
-      object.endsAt,
-      specifiedType: const FullType.nullable(DateTime),
-    );
+    yield object.endsAt == null
+        ? null
+        : serializers.serialize(
+            object.endsAt,
+            specifiedType: const FullType.nullable(DateTime),
+          );
   }
 
   @override
@@ -91,7 +106,9 @@ class _$OpsRiderDetailMembershipSerializer implements PrimitiveSerializer<OpsRid
     OpsRiderDetailMembership object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
   }
 
   void _deserializeProperties(
@@ -116,7 +133,8 @@ class _$OpsRiderDetailMembershipSerializer implements PrimitiveSerializer<OpsRid
         case r'lifecycle':
           final valueDes = serializers.deserialize(
             value,
-            specifiedType: const FullType(OpsRiderDetailMembershipLifecycleEnum),
+            specifiedType:
+                const FullType(OpsRiderDetailMembershipLifecycleEnum),
           ) as OpsRiderDetailMembershipLifecycleEnum;
           result.lifecycle = valueDes;
           break;
@@ -174,17 +192,20 @@ class _$OpsRiderDetailMembershipSerializer implements PrimitiveSerializer<OpsRid
 }
 
 class OpsRiderDetailMembershipLifecycleEnum extends EnumClass {
-
   @BuiltValueEnumConst(wireName: r'open')
-  static const OpsRiderDetailMembershipLifecycleEnum open = _$opsRiderDetailMembershipLifecycleEnum_open;
+  static const OpsRiderDetailMembershipLifecycleEnum open =
+      _$opsRiderDetailMembershipLifecycleEnum_open;
   @BuiltValueEnumConst(wireName: r'ended')
-  static const OpsRiderDetailMembershipLifecycleEnum ended = _$opsRiderDetailMembershipLifecycleEnum_ended;
+  static const OpsRiderDetailMembershipLifecycleEnum ended =
+      _$opsRiderDetailMembershipLifecycleEnum_ended;
 
-  static Serializer<OpsRiderDetailMembershipLifecycleEnum> get serializer => _$opsRiderDetailMembershipLifecycleEnumSerializer;
+  static Serializer<OpsRiderDetailMembershipLifecycleEnum> get serializer =>
+      _$opsRiderDetailMembershipLifecycleEnumSerializer;
 
-  const OpsRiderDetailMembershipLifecycleEnum._(String name): super(name);
+  const OpsRiderDetailMembershipLifecycleEnum._(String name) : super(name);
 
-  static BuiltSet<OpsRiderDetailMembershipLifecycleEnum> get values => _$opsRiderDetailMembershipLifecycleEnumValues;
-  static OpsRiderDetailMembershipLifecycleEnum valueOf(String name) => _$opsRiderDetailMembershipLifecycleEnumValueOf(name);
+  static BuiltSet<OpsRiderDetailMembershipLifecycleEnum> get values =>
+      _$opsRiderDetailMembershipLifecycleEnumValues;
+  static OpsRiderDetailMembershipLifecycleEnum valueOf(String name) =>
+      _$opsRiderDetailMembershipLifecycleEnumValueOf(name);
 }
-

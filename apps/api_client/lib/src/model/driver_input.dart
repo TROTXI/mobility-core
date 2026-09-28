@@ -11,11 +11,11 @@ part 'driver_input.g.dart';
 /// DriverInput
 ///
 /// Properties:
-/// * [name] 
-/// * [phone] 
-/// * [email] 
-/// * [licenseNumber] 
-/// * [userId] 
+/// * [name]
+/// * [phone]
+/// * [email]
+/// * [licenseNumber]
+/// * [userId]
 @BuiltValue()
 abstract class DriverInput implements Built<DriverInput, DriverInputBuilder> {
   @BuiltValueField(wireName: r'name')
@@ -97,7 +97,9 @@ class _$DriverInputSerializer implements PrimitiveSerializer<DriverInput> {
     DriverInput object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
   }
 
   void _deserializeProperties(
@@ -175,4 +177,3 @@ class _$DriverInputSerializer implements PrimitiveSerializer<DriverInput> {
     return result.build();
   }
 }
-

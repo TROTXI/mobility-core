@@ -11,10 +11,11 @@ part 'restriction_input.g.dart';
 /// RestrictionInput
 ///
 /// Properties:
-/// * [reason] 
-/// * [reviewAt] 
+/// * [reason]
+/// * [reviewAt]
 @BuiltValue()
-abstract class RestrictionInput implements Built<RestrictionInput, RestrictionInputBuilder> {
+abstract class RestrictionInput
+    implements Built<RestrictionInput, RestrictionInputBuilder> {
   @BuiltValueField(wireName: r'reason')
   String get reason;
 
@@ -23,16 +24,19 @@ abstract class RestrictionInput implements Built<RestrictionInput, RestrictionIn
 
   RestrictionInput._();
 
-  factory RestrictionInput([void updates(RestrictionInputBuilder b)]) = _$RestrictionInput;
+  factory RestrictionInput([void updates(RestrictionInputBuilder b)]) =
+      _$RestrictionInput;
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(RestrictionInputBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
-  static Serializer<RestrictionInput> get serializer => _$RestrictionInputSerializer();
+  static Serializer<RestrictionInput> get serializer =>
+      _$RestrictionInputSerializer();
 }
 
-class _$RestrictionInputSerializer implements PrimitiveSerializer<RestrictionInput> {
+class _$RestrictionInputSerializer
+    implements PrimitiveSerializer<RestrictionInput> {
   @override
   final Iterable<Type> types = const [RestrictionInput, _$RestrictionInput];
 
@@ -62,7 +66,9 @@ class _$RestrictionInputSerializer implements PrimitiveSerializer<RestrictionInp
     RestrictionInput object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
   }
 
   void _deserializeProperties(
@@ -119,4 +125,3 @@ class _$RestrictionInputSerializer implements PrimitiveSerializer<RestrictionInp
     return result.build();
   }
 }
-

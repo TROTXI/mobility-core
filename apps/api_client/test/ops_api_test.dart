@@ -140,13 +140,6 @@ void main() {
       // TODO
     });
 
-    // get Ops Overview
-    //
-    //Future<OpsOverviewResponse> getOpsOverview(String window, String xTrotxiClient, int xTrotxiBuild, { String xTrotxiPlatform }) async
-    test('test getOpsOverview', () async {
-      // TODO
-    });
-
     // get Ops Pattern Version
     //
     //Future<PatternVersionResponse> getOpsPatternVersion(String id, String versionId, String xTrotxiClient, int xTrotxiBuild, { String xTrotxiPlatform }) async
@@ -158,13 +151,6 @@ void main() {
     //
     //Future<OpsPurchaseResponse> getOpsPurchase(String id, String xTrotxiClient, int xTrotxiBuild, { String xTrotxiPlatform }) async
     test('test getOpsPurchase', () async {
-      // TODO
-    });
-
-    // initiate Refund
-    //
-    //Future<RefundInitiationResponse> initiateRefund(String id, String idempotencyKey, String xTrotxiClient, int xTrotxiBuild, RefundInitiationInput refundInitiationInput, { String xTrotxiPlatform }) async
-    test('test initiateRefund', () async {
       // TODO
     });
 
@@ -301,13 +287,6 @@ void main() {
       // TODO
     });
 
-    // list Refund Initiations
-    //
-    //Future<RefundInitiationCollectionResponse> listRefundInitiations(String id, String xTrotxiClient, int xTrotxiBuild, { String xTrotxiPlatform }) async
-    test('test listRefundInitiations', () async {
-      // TODO
-    });
-
     // list Schedules
     //
     //Future<SchedulePage> listSchedules(String xTrotxiClient, int xTrotxiBuild, { String cursor, int limit, String routeId, String xTrotxiPlatform }) async
@@ -368,13 +347,6 @@ void main() {
     //
     //Future<CommuteSlotResponse> retireCommuteSlot(String id, String ifMatch, String idempotencyKey, String xTrotxiClient, int xTrotxiBuild, ReasonInput reasonInput, { String xTrotxiPlatform }) async
     test('test retireCommuteSlot', () async {
-      // TODO
-    });
-
-    // run Personal Pause Resumes
-    //
-    //Future<MaintenanceResultResponse> runPersonalPauseResumes(String xTrotxiClient, int xTrotxiBuild, MaintenanceInput maintenanceInput, { String xTrotxiPlatform }) async
-    test('test runPersonalPauseResumes', () async {
       // TODO
     });
 

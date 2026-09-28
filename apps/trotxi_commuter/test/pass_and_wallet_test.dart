@@ -211,17 +211,16 @@ void main() {
           : jsonResponse(page([]));
       await pump(tester, WalletTab(client: f.api));
       expect(find.text('12'), findsOneWidget);
-      expect(find.text('Available: GHS 18.80'), findsOneWidget);
-      expect(find.text('Held for checkout: GHS 1.00'), findsOneWidget);
-      expect(find.text('Total: GHS 19.80'), findsOneWidget);
-      expect(find.text('Service paused'), findsOneWidget);
-      expect(find.text('Payment dispute — contact operations'), findsOneWidget);
+      expect(find.text('GHS 18.80 credit available'), findsOneWidget);
+      expect(find.textContaining('GHS 1.00 is held'), findsOneWidget);
+      expect(find.text('Total credit: GHS 19.80'), findsOneWidget);
+      expect(find.text('Your membership is paused.'), findsOneWidget);
+      expect(find.text('A payment dispute is open on your account.'), findsOneWidget);
       expect(find.textContaining('4281'), findsNothing);
       expect(find.byType(Switch), findsNothing);
-      expect(
-        f.requests.last.queryParameters.keys,
-        containsAll(['fromDate', 'toDate']),
-      );
+      expect(f.requests.map((r) => r.path), contains('/v1/me/membership'));
+      expect(f.requests.map((r) => r.path), contains('/v1/me/ride-entries'));
+      expect(f.requests.map((r) => r.path), contains('/v1/me/purchases'));
       await finish(tester);
     },
   );

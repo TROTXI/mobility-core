@@ -13,14 +13,17 @@ part 'ops_rider_detail_reservations_inner.g.dart';
 /// OpsRiderDetailReservationsInner
 ///
 /// Properties:
-/// * [id] 
-/// * [serviceDate] 
-/// * [direction] 
-/// * [status] 
-/// * [routeName] 
-/// * [scheduledAt] 
+/// * [id]
+/// * [serviceDate]
+/// * [direction]
+/// * [status]
+/// * [routeName]
+/// * [scheduledAt]
 @BuiltValue()
-abstract class OpsRiderDetailReservationsInner implements Built<OpsRiderDetailReservationsInner, OpsRiderDetailReservationsInnerBuilder> {
+abstract class OpsRiderDetailReservationsInner
+    implements
+        Built<OpsRiderDetailReservationsInner,
+            OpsRiderDetailReservationsInnerBuilder> {
   @BuiltValueField(wireName: r'id')
   String get id;
 
@@ -42,18 +45,25 @@ abstract class OpsRiderDetailReservationsInner implements Built<OpsRiderDetailRe
 
   OpsRiderDetailReservationsInner._();
 
-  factory OpsRiderDetailReservationsInner([void updates(OpsRiderDetailReservationsInnerBuilder b)]) = _$OpsRiderDetailReservationsInner;
+  factory OpsRiderDetailReservationsInner(
+          [void updates(OpsRiderDetailReservationsInnerBuilder b)]) =
+      _$OpsRiderDetailReservationsInner;
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(OpsRiderDetailReservationsInnerBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
-  static Serializer<OpsRiderDetailReservationsInner> get serializer => _$OpsRiderDetailReservationsInnerSerializer();
+  static Serializer<OpsRiderDetailReservationsInner> get serializer =>
+      _$OpsRiderDetailReservationsInnerSerializer();
 }
 
-class _$OpsRiderDetailReservationsInnerSerializer implements PrimitiveSerializer<OpsRiderDetailReservationsInner> {
+class _$OpsRiderDetailReservationsInnerSerializer
+    implements PrimitiveSerializer<OpsRiderDetailReservationsInner> {
   @override
-  final Iterable<Type> types = const [OpsRiderDetailReservationsInner, _$OpsRiderDetailReservationsInner];
+  final Iterable<Type> types = const [
+    OpsRiderDetailReservationsInner,
+    _$OpsRiderDetailReservationsInner
+  ];
 
   @override
   final String wireName = r'OpsRiderDetailReservationsInner';
@@ -76,7 +86,8 @@ class _$OpsRiderDetailReservationsInnerSerializer implements PrimitiveSerializer
     yield r'direction';
     yield serializers.serialize(
       object.direction,
-      specifiedType: const FullType(OpsRiderDetailReservationsInnerDirectionEnum),
+      specifiedType:
+          const FullType(OpsRiderDetailReservationsInnerDirectionEnum),
     );
     yield r'status';
     yield serializers.serialize(
@@ -84,15 +95,19 @@ class _$OpsRiderDetailReservationsInnerSerializer implements PrimitiveSerializer
       specifiedType: const FullType(String),
     );
     yield r'routeName';
-    yield object.routeName == null ? null : serializers.serialize(
-      object.routeName,
-      specifiedType: const FullType.nullable(String),
-    );
+    yield object.routeName == null
+        ? null
+        : serializers.serialize(
+            object.routeName,
+            specifiedType: const FullType.nullable(String),
+          );
     yield r'scheduledAt';
-    yield object.scheduledAt == null ? null : serializers.serialize(
-      object.scheduledAt,
-      specifiedType: const FullType.nullable(DateTime),
-    );
+    yield object.scheduledAt == null
+        ? null
+        : serializers.serialize(
+            object.scheduledAt,
+            specifiedType: const FullType.nullable(DateTime),
+          );
   }
 
   @override
@@ -101,7 +116,9 @@ class _$OpsRiderDetailReservationsInnerSerializer implements PrimitiveSerializer
     OpsRiderDetailReservationsInner object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
   }
 
   void _deserializeProperties(
@@ -133,7 +150,8 @@ class _$OpsRiderDetailReservationsInnerSerializer implements PrimitiveSerializer
         case r'direction':
           final valueDes = serializers.deserialize(
             value,
-            specifiedType: const FullType(OpsRiderDetailReservationsInnerDirectionEnum),
+            specifiedType:
+                const FullType(OpsRiderDetailReservationsInnerDirectionEnum),
           ) as OpsRiderDetailReservationsInnerDirectionEnum;
           result.direction = valueDes;
           break;
@@ -190,17 +208,22 @@ class _$OpsRiderDetailReservationsInnerSerializer implements PrimitiveSerializer
 }
 
 class OpsRiderDetailReservationsInnerDirectionEnum extends EnumClass {
-
   @BuiltValueEnumConst(wireName: r'outbound')
-  static const OpsRiderDetailReservationsInnerDirectionEnum outbound = _$opsRiderDetailReservationsInnerDirectionEnum_outbound;
+  static const OpsRiderDetailReservationsInnerDirectionEnum outbound =
+      _$opsRiderDetailReservationsInnerDirectionEnum_outbound;
   @BuiltValueEnumConst(wireName: r'return')
-  static const OpsRiderDetailReservationsInnerDirectionEnum return_ = _$opsRiderDetailReservationsInnerDirectionEnum_return_;
+  static const OpsRiderDetailReservationsInnerDirectionEnum return_ =
+      _$opsRiderDetailReservationsInnerDirectionEnum_return_;
 
-  static Serializer<OpsRiderDetailReservationsInnerDirectionEnum> get serializer => _$opsRiderDetailReservationsInnerDirectionEnumSerializer;
+  static Serializer<OpsRiderDetailReservationsInnerDirectionEnum>
+      get serializer =>
+          _$opsRiderDetailReservationsInnerDirectionEnumSerializer;
 
-  const OpsRiderDetailReservationsInnerDirectionEnum._(String name): super(name);
+  const OpsRiderDetailReservationsInnerDirectionEnum._(String name)
+      : super(name);
 
-  static BuiltSet<OpsRiderDetailReservationsInnerDirectionEnum> get values => _$opsRiderDetailReservationsInnerDirectionEnumValues;
-  static OpsRiderDetailReservationsInnerDirectionEnum valueOf(String name) => _$opsRiderDetailReservationsInnerDirectionEnumValueOf(name);
+  static BuiltSet<OpsRiderDetailReservationsInnerDirectionEnum> get values =>
+      _$opsRiderDetailReservationsInnerDirectionEnumValues;
+  static OpsRiderDetailReservationsInnerDirectionEnum valueOf(String name) =>
+      _$opsRiderDetailReservationsInnerDirectionEnumValueOf(name);
 }
-

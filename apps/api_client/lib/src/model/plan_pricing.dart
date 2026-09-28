@@ -13,13 +13,13 @@ part 'plan_pricing.g.dart';
 /// PlanPricing
 ///
 /// Properties:
-/// * [plan] 
-/// * [ridesPerPeriod] 
-/// * [priceMultiplierBp] 
-/// * [takeRateBp] 
-/// * [creditPerRide] 
-/// * [editToken] 
-/// * [version] 
+/// * [plan]
+/// * [ridesPerPeriod]
+/// * [priceMultiplierBp]
+/// * [takeRateBp]
+/// * [creditPerRide]
+/// * [editToken]
+/// * [version]
 @BuiltValue()
 abstract class PlanPricing implements Built<PlanPricing, PlanPricingBuilder> {
   @BuiltValueField(wireName: r'plan')
@@ -110,7 +110,9 @@ class _$PlanPricingSerializer implements PrimitiveSerializer<PlanPricing> {
     PlanPricing object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
   }
 
   void _deserializeProperties(
@@ -204,17 +206,18 @@ class _$PlanPricingSerializer implements PrimitiveSerializer<PlanPricing> {
 }
 
 class PlanPricingPlanEnum extends EnumClass {
-
   @BuiltValueEnumConst(wireName: r'monthly')
   static const PlanPricingPlanEnum monthly = _$planPricingPlanEnum_monthly;
   @BuiltValueEnumConst(wireName: r'annual')
   static const PlanPricingPlanEnum annual = _$planPricingPlanEnum_annual;
 
-  static Serializer<PlanPricingPlanEnum> get serializer => _$planPricingPlanEnumSerializer;
+  static Serializer<PlanPricingPlanEnum> get serializer =>
+      _$planPricingPlanEnumSerializer;
 
-  const PlanPricingPlanEnum._(String name): super(name);
+  const PlanPricingPlanEnum._(String name) : super(name);
 
-  static BuiltSet<PlanPricingPlanEnum> get values => _$planPricingPlanEnumValues;
-  static PlanPricingPlanEnum valueOf(String name) => _$planPricingPlanEnumValueOf(name);
+  static BuiltSet<PlanPricingPlanEnum> get values =>
+      _$planPricingPlanEnumValues;
+  static PlanPricingPlanEnum valueOf(String name) =>
+      _$planPricingPlanEnumValueOf(name);
 }
-

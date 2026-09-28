@@ -12,26 +12,34 @@ part 'phone_challenge_response.g.dart';
 /// PhoneChallengeResponse
 ///
 /// Properties:
-/// * [data] 
+/// * [data]
 @BuiltValue()
-abstract class PhoneChallengeResponse implements Built<PhoneChallengeResponse, PhoneChallengeResponseBuilder> {
+abstract class PhoneChallengeResponse
+    implements Built<PhoneChallengeResponse, PhoneChallengeResponseBuilder> {
   @BuiltValueField(wireName: r'data')
   PhoneChallenge get data;
 
   PhoneChallengeResponse._();
 
-  factory PhoneChallengeResponse([void updates(PhoneChallengeResponseBuilder b)]) = _$PhoneChallengeResponse;
+  factory PhoneChallengeResponse(
+          [void updates(PhoneChallengeResponseBuilder b)]) =
+      _$PhoneChallengeResponse;
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(PhoneChallengeResponseBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
-  static Serializer<PhoneChallengeResponse> get serializer => _$PhoneChallengeResponseSerializer();
+  static Serializer<PhoneChallengeResponse> get serializer =>
+      _$PhoneChallengeResponseSerializer();
 }
 
-class _$PhoneChallengeResponseSerializer implements PrimitiveSerializer<PhoneChallengeResponse> {
+class _$PhoneChallengeResponseSerializer
+    implements PrimitiveSerializer<PhoneChallengeResponse> {
   @override
-  final Iterable<Type> types = const [PhoneChallengeResponse, _$PhoneChallengeResponse];
+  final Iterable<Type> types = const [
+    PhoneChallengeResponse,
+    _$PhoneChallengeResponse
+  ];
 
   @override
   final String wireName = r'PhoneChallengeResponse';
@@ -54,7 +62,9 @@ class _$PhoneChallengeResponseSerializer implements PrimitiveSerializer<PhoneCha
     PhoneChallengeResponse object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
   }
 
   void _deserializeProperties(
@@ -104,4 +114,3 @@ class _$PhoneChallengeResponseSerializer implements PrimitiveSerializer<PhoneCha
     return result.build();
   }
 }
-

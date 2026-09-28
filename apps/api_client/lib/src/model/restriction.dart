@@ -11,15 +11,15 @@ part 'restriction.g.dart';
 /// Restriction
 ///
 /// Properties:
-/// * [id] 
-/// * [userId] 
-/// * [reason] 
-/// * [reviewAt] 
-/// * [active] 
-/// * [editToken] 
-/// * [createdAt] 
-/// * [updatedAt] 
-/// * [version] 
+/// * [id]
+/// * [userId]
+/// * [reason]
+/// * [reviewAt]
+/// * [active]
+/// * [editToken]
+/// * [createdAt]
+/// * [updatedAt]
+/// * [version]
 @BuiltValue()
 abstract class Restriction implements Built<Restriction, RestrictionBuilder> {
   @BuiltValueField(wireName: r'id')
@@ -125,7 +125,9 @@ class _$RestrictionSerializer implements PrimitiveSerializer<Restriction> {
     Restriction object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
   }
 
   void _deserializeProperties(
@@ -231,4 +233,3 @@ class _$RestrictionSerializer implements PrimitiveSerializer<Restriction> {
     return result.build();
   }
 }
-

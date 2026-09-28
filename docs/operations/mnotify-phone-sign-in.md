@@ -9,7 +9,7 @@ profile contains the same number. Phone-account linking is out of this slice.
 
 Use mNotify's API v2 key in the API service's `MNOTIFY_API_KEY` environment
 setting. Keep the key out of source control, screenshots and chat. The optional
-`MNOTIFY_SENDER` setting defaults to `TROTXI`; the sender must be approved in
+`MNOTIFY_SENDER` setting defaults to the approved `TrotxiCom`; the sender must be approved in
 mNotify and contain at most 11 characters. Fund the SMS account before enabling
 the app flow. No new encryption secret, cron job or deployment service is needed.
 
@@ -96,7 +96,8 @@ Without a worker run, pending encrypted SMS payloads can remain after their PIN
 expires; expiry still prevents sending them. Running the worker scrubs them.
 
 The same optional `MNOTIFY_API_KEY` and `MNOTIFY_SENDER` serve OTP and driver SMS.
-Do not configure live sending or test SMS until the sender ID is approved.
-Adom has submitted it; approval and an explicitly authorised handset test remain.
+The `TrotxiCom` sender ID has been approved. A charged handset-delivery test
+still requires an explicitly authorised recipient; this runbook does not
+imply that such a test has run.
 
 Provider format: [mNotify API documentation](https://readthedocs.mnotify.com/).

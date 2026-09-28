@@ -14,11 +14,12 @@ part 'commute_slot_input.g.dart';
 /// CommuteSlotInput
 ///
 /// Properties:
-/// * [routeId] 
-/// * [legs] 
-/// * [availableFrom] 
+/// * [routeId]
+/// * [legs]
+/// * [availableFrom]
 @BuiltValue()
-abstract class CommuteSlotInput implements Built<CommuteSlotInput, CommuteSlotInputBuilder> {
+abstract class CommuteSlotInput
+    implements Built<CommuteSlotInput, CommuteSlotInputBuilder> {
   @BuiltValueField(wireName: r'routeId')
   String get routeId;
 
@@ -30,16 +31,19 @@ abstract class CommuteSlotInput implements Built<CommuteSlotInput, CommuteSlotIn
 
   CommuteSlotInput._();
 
-  factory CommuteSlotInput([void updates(CommuteSlotInputBuilder b)]) = _$CommuteSlotInput;
+  factory CommuteSlotInput([void updates(CommuteSlotInputBuilder b)]) =
+      _$CommuteSlotInput;
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(CommuteSlotInputBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
-  static Serializer<CommuteSlotInput> get serializer => _$CommuteSlotInputSerializer();
+  static Serializer<CommuteSlotInput> get serializer =>
+      _$CommuteSlotInputSerializer();
 }
 
-class _$CommuteSlotInputSerializer implements PrimitiveSerializer<CommuteSlotInput> {
+class _$CommuteSlotInputSerializer
+    implements PrimitiveSerializer<CommuteSlotInput> {
   @override
   final Iterable<Type> types = const [CommuteSlotInput, _$CommuteSlotInput];
 
@@ -74,7 +78,9 @@ class _$CommuteSlotInputSerializer implements PrimitiveSerializer<CommuteSlotInp
     CommuteSlotInput object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
   }
 
   void _deserializeProperties(
@@ -138,4 +144,3 @@ class _$CommuteSlotInputSerializer implements PrimitiveSerializer<CommuteSlotInp
     return result.build();
   }
 }
-

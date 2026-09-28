@@ -14,10 +14,11 @@ part 'payment_review_page.g.dart';
 /// PaymentReviewPage
 ///
 /// Properties:
-/// * [data] 
-/// * [page] 
+/// * [data]
+/// * [page]
 @BuiltValue()
-abstract class PaymentReviewPage implements Built<PaymentReviewPage, PaymentReviewPageBuilder> {
+abstract class PaymentReviewPage
+    implements Built<PaymentReviewPage, PaymentReviewPageBuilder> {
   @BuiltValueField(wireName: r'data')
   BuiltList<PaymentReview> get data;
 
@@ -26,16 +27,19 @@ abstract class PaymentReviewPage implements Built<PaymentReviewPage, PaymentRevi
 
   PaymentReviewPage._();
 
-  factory PaymentReviewPage([void updates(PaymentReviewPageBuilder b)]) = _$PaymentReviewPage;
+  factory PaymentReviewPage([void updates(PaymentReviewPageBuilder b)]) =
+      _$PaymentReviewPage;
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(PaymentReviewPageBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
-  static Serializer<PaymentReviewPage> get serializer => _$PaymentReviewPageSerializer();
+  static Serializer<PaymentReviewPage> get serializer =>
+      _$PaymentReviewPageSerializer();
 }
 
-class _$PaymentReviewPageSerializer implements PrimitiveSerializer<PaymentReviewPage> {
+class _$PaymentReviewPageSerializer
+    implements PrimitiveSerializer<PaymentReviewPage> {
   @override
   final Iterable<Type> types = const [PaymentReviewPage, _$PaymentReviewPage];
 
@@ -65,7 +69,9 @@ class _$PaymentReviewPageSerializer implements PrimitiveSerializer<PaymentReview
     PaymentReviewPage object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
   }
 
   void _deserializeProperties(
@@ -122,4 +128,3 @@ class _$PaymentReviewPageSerializer implements PrimitiveSerializer<PaymentReview
     return result.build();
   }
 }
-

@@ -11,10 +11,13 @@ part 'passkey_registration_options_rp.g.dart';
 /// PasskeyRegistrationOptionsRp
 ///
 /// Properties:
-/// * [id] 
-/// * [name] 
+/// * [id]
+/// * [name]
 @BuiltValue()
-abstract class PasskeyRegistrationOptionsRp implements Built<PasskeyRegistrationOptionsRp, PasskeyRegistrationOptionsRpBuilder> {
+abstract class PasskeyRegistrationOptionsRp
+    implements
+        Built<PasskeyRegistrationOptionsRp,
+            PasskeyRegistrationOptionsRpBuilder> {
   @BuiltValueField(wireName: r'id')
   String get id;
 
@@ -23,18 +26,25 @@ abstract class PasskeyRegistrationOptionsRp implements Built<PasskeyRegistration
 
   PasskeyRegistrationOptionsRp._();
 
-  factory PasskeyRegistrationOptionsRp([void updates(PasskeyRegistrationOptionsRpBuilder b)]) = _$PasskeyRegistrationOptionsRp;
+  factory PasskeyRegistrationOptionsRp(
+          [void updates(PasskeyRegistrationOptionsRpBuilder b)]) =
+      _$PasskeyRegistrationOptionsRp;
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(PasskeyRegistrationOptionsRpBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
-  static Serializer<PasskeyRegistrationOptionsRp> get serializer => _$PasskeyRegistrationOptionsRpSerializer();
+  static Serializer<PasskeyRegistrationOptionsRp> get serializer =>
+      _$PasskeyRegistrationOptionsRpSerializer();
 }
 
-class _$PasskeyRegistrationOptionsRpSerializer implements PrimitiveSerializer<PasskeyRegistrationOptionsRp> {
+class _$PasskeyRegistrationOptionsRpSerializer
+    implements PrimitiveSerializer<PasskeyRegistrationOptionsRp> {
   @override
-  final Iterable<Type> types = const [PasskeyRegistrationOptionsRp, _$PasskeyRegistrationOptionsRp];
+  final Iterable<Type> types = const [
+    PasskeyRegistrationOptionsRp,
+    _$PasskeyRegistrationOptionsRp
+  ];
 
   @override
   final String wireName = r'PasskeyRegistrationOptionsRp';
@@ -62,7 +72,9 @@ class _$PasskeyRegistrationOptionsRpSerializer implements PrimitiveSerializer<Pa
     PasskeyRegistrationOptionsRp object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
   }
 
   void _deserializeProperties(
@@ -119,4 +131,3 @@ class _$PasskeyRegistrationOptionsRpSerializer implements PrimitiveSerializer<Pa
     return result.build();
   }
 }
-

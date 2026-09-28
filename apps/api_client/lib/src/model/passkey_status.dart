@@ -11,12 +11,13 @@ part 'passkey_status.g.dart';
 /// PasskeyStatus
 ///
 /// Properties:
-/// * [registered] 
-/// * [passkeyCount] 
-/// * [registrationPending] 
-/// * [verified] 
+/// * [registered]
+/// * [passkeyCount]
+/// * [registrationPending]
+/// * [verified]
 @BuiltValue()
-abstract class PasskeyStatus implements Built<PasskeyStatus, PasskeyStatusBuilder> {
+abstract class PasskeyStatus
+    implements Built<PasskeyStatus, PasskeyStatusBuilder> {
   @BuiltValueField(wireName: r'registered')
   bool get registered;
 
@@ -31,13 +32,15 @@ abstract class PasskeyStatus implements Built<PasskeyStatus, PasskeyStatusBuilde
 
   PasskeyStatus._();
 
-  factory PasskeyStatus([void updates(PasskeyStatusBuilder b)]) = _$PasskeyStatus;
+  factory PasskeyStatus([void updates(PasskeyStatusBuilder b)]) =
+      _$PasskeyStatus;
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(PasskeyStatusBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
-  static Serializer<PasskeyStatus> get serializer => _$PasskeyStatusSerializer();
+  static Serializer<PasskeyStatus> get serializer =>
+      _$PasskeyStatusSerializer();
 }
 
 class _$PasskeyStatusSerializer implements PrimitiveSerializer<PasskeyStatus> {
@@ -80,7 +83,9 @@ class _$PasskeyStatusSerializer implements PrimitiveSerializer<PasskeyStatus> {
     PasskeyStatus object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
   }
 
   void _deserializeProperties(
@@ -151,4 +156,3 @@ class _$PasskeyStatusSerializer implements PrimitiveSerializer<PasskeyStatus> {
     return result.build();
   }
 }
-

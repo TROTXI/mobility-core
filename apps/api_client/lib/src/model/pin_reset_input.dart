@@ -11,11 +11,12 @@ part 'pin_reset_input.g.dart';
 /// PinResetInput
 ///
 /// Properties:
-/// * [reason] 
-/// * [emailInstructions] 
-/// * [smsInstructions] 
+/// * [reason]
+/// * [emailInstructions]
+/// * [smsInstructions]
 @BuiltValue()
-abstract class PinResetInput implements Built<PinResetInput, PinResetInputBuilder> {
+abstract class PinResetInput
+    implements Built<PinResetInput, PinResetInputBuilder> {
   @BuiltValueField(wireName: r'reason')
   String get reason;
 
@@ -27,13 +28,15 @@ abstract class PinResetInput implements Built<PinResetInput, PinResetInputBuilde
 
   PinResetInput._();
 
-  factory PinResetInput([void updates(PinResetInputBuilder b)]) = _$PinResetInput;
+  factory PinResetInput([void updates(PinResetInputBuilder b)]) =
+      _$PinResetInput;
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(PinResetInputBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
-  static Serializer<PinResetInput> get serializer => _$PinResetInputSerializer();
+  static Serializer<PinResetInput> get serializer =>
+      _$PinResetInputSerializer();
 }
 
 class _$PinResetInputSerializer implements PrimitiveSerializer<PinResetInput> {
@@ -75,7 +78,9 @@ class _$PinResetInputSerializer implements PrimitiveSerializer<PinResetInput> {
     PinResetInput object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
   }
 
   void _deserializeProperties(
@@ -139,4 +144,3 @@ class _$PinResetInputSerializer implements PrimitiveSerializer<PinResetInput> {
     return result.build();
   }
 }
-

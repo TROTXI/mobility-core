@@ -11,12 +11,12 @@ part 'driver_edit.g.dart';
 /// DriverEdit
 ///
 /// Properties:
-/// * [name] 
-/// * [phone] 
-/// * [email] 
-/// * [licenseNumber] 
-/// * [userId] 
-/// * [archived] 
+/// * [name]
+/// * [phone]
+/// * [email]
+/// * [licenseNumber]
+/// * [userId]
+/// * [archived]
 @BuiltValue()
 abstract class DriverEdit implements Built<DriverEdit, DriverEditBuilder> {
   @BuiltValueField(wireName: r'name')
@@ -110,7 +110,9 @@ class _$DriverEditSerializer implements PrimitiveSerializer<DriverEdit> {
     DriverEdit object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
   }
 
   void _deserializeProperties(
@@ -199,4 +201,3 @@ class _$DriverEditSerializer implements PrimitiveSerializer<DriverEdit> {
     return result.build();
   }
 }
-

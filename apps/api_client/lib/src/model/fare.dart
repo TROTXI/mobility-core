@@ -12,12 +12,12 @@ part 'fare.g.dart';
 /// Fare
 ///
 /// Properties:
-/// * [amount] 
-/// * [effectiveFrom] 
-/// * [note] 
-/// * [id] 
-/// * [routeId] 
-/// * [effectiveTo] 
+/// * [amount]
+/// * [effectiveFrom]
+/// * [note]
+/// * [id]
+/// * [routeId]
+/// * [effectiveTo]
 @BuiltValue()
 abstract class Fare implements Built<Fare, FareBuilder> {
   @BuiltValueField(wireName: r'amount')
@@ -89,10 +89,12 @@ class _$FareSerializer implements PrimitiveSerializer<Fare> {
       specifiedType: const FullType(String),
     );
     yield r'effectiveTo';
-    yield object.effectiveTo == null ? null : serializers.serialize(
-      object.effectiveTo,
-      specifiedType: const FullType.nullable(DateTime),
-    );
+    yield object.effectiveTo == null
+        ? null
+        : serializers.serialize(
+            object.effectiveTo,
+            specifiedType: const FullType.nullable(DateTime),
+          );
   }
 
   @override
@@ -101,7 +103,9 @@ class _$FareSerializer implements PrimitiveSerializer<Fare> {
     Fare object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
   }
 
   void _deserializeProperties(
@@ -187,4 +191,3 @@ class _$FareSerializer implements PrimitiveSerializer<Fare> {
     return result.build();
   }
 }
-

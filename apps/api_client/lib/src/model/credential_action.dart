@@ -12,10 +12,11 @@ part 'credential_action.g.dart';
 /// CredentialAction
 ///
 /// Properties:
-/// * [action] 
-/// * [reason] 
+/// * [action]
+/// * [reason]
 @BuiltValue()
-abstract class CredentialAction implements Built<CredentialAction, CredentialActionBuilder> {
+abstract class CredentialAction
+    implements Built<CredentialAction, CredentialActionBuilder> {
   @BuiltValueField(wireName: r'action')
   CredentialActionActionEnum get action;
   // enum actionEnum {  suspend,  activate,  unlock,  };
@@ -25,16 +26,19 @@ abstract class CredentialAction implements Built<CredentialAction, CredentialAct
 
   CredentialAction._();
 
-  factory CredentialAction([void updates(CredentialActionBuilder b)]) = _$CredentialAction;
+  factory CredentialAction([void updates(CredentialActionBuilder b)]) =
+      _$CredentialAction;
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(CredentialActionBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
-  static Serializer<CredentialAction> get serializer => _$CredentialActionSerializer();
+  static Serializer<CredentialAction> get serializer =>
+      _$CredentialActionSerializer();
 }
 
-class _$CredentialActionSerializer implements PrimitiveSerializer<CredentialAction> {
+class _$CredentialActionSerializer
+    implements PrimitiveSerializer<CredentialAction> {
   @override
   final Iterable<Type> types = const [CredentialAction, _$CredentialAction];
 
@@ -64,7 +68,9 @@ class _$CredentialActionSerializer implements PrimitiveSerializer<CredentialActi
     CredentialAction object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
   }
 
   void _deserializeProperties(
@@ -123,19 +129,23 @@ class _$CredentialActionSerializer implements PrimitiveSerializer<CredentialActi
 }
 
 class CredentialActionActionEnum extends EnumClass {
-
   @BuiltValueEnumConst(wireName: r'suspend')
-  static const CredentialActionActionEnum suspend = _$credentialActionActionEnum_suspend;
+  static const CredentialActionActionEnum suspend =
+      _$credentialActionActionEnum_suspend;
   @BuiltValueEnumConst(wireName: r'activate')
-  static const CredentialActionActionEnum activate = _$credentialActionActionEnum_activate;
+  static const CredentialActionActionEnum activate =
+      _$credentialActionActionEnum_activate;
   @BuiltValueEnumConst(wireName: r'unlock')
-  static const CredentialActionActionEnum unlock = _$credentialActionActionEnum_unlock;
+  static const CredentialActionActionEnum unlock =
+      _$credentialActionActionEnum_unlock;
 
-  static Serializer<CredentialActionActionEnum> get serializer => _$credentialActionActionEnumSerializer;
+  static Serializer<CredentialActionActionEnum> get serializer =>
+      _$credentialActionActionEnumSerializer;
 
-  const CredentialActionActionEnum._(String name): super(name);
+  const CredentialActionActionEnum._(String name) : super(name);
 
-  static BuiltSet<CredentialActionActionEnum> get values => _$credentialActionActionEnumValues;
-  static CredentialActionActionEnum valueOf(String name) => _$credentialActionActionEnumValueOf(name);
+  static BuiltSet<CredentialActionActionEnum> get values =>
+      _$credentialActionActionEnumValues;
+  static CredentialActionActionEnum valueOf(String name) =>
+      _$credentialActionActionEnumValueOf(name);
 }
-

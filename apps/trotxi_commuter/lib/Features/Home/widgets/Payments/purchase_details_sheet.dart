@@ -4,8 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:trotxi_client/trotxi_client.dart';
+import 'package:trotxi_commuter/core/api/commuter_api.dart';
 import 'package:trotxi_commuter/Features/Home/widgets/Payments/purchase_labels.dart';
-import 'package:trotxi_commuter/core/config/client_metadata.dart';
 import 'package:trotxi_commuter/core/config/theme/app_colors.dart';
 import 'package:trotxi_commuter/core/config/theme/app_typography.dart';
 import 'package:trotxi_commuter/core/utils/money_format.dart';
@@ -18,7 +18,7 @@ import 'package:trotxi_commuter/core/utils/money_format.dart';
 /// opened from to notice a purchase that has settled since the list loaded.
 Future<Purchase?> showPurchaseDetailsSheet(
   BuildContext context, {
-  required TrotxiApiClient client,
+  required CommuterApi client,
   required String purchaseId,
 }) {
   return showModalBottomSheet<Purchase>(
@@ -37,7 +37,7 @@ Future<Purchase?> showPurchaseDetailsSheet(
 class _PurchaseDetailsSheet extends StatefulWidget {
   const _PurchaseDetailsSheet({required this.client, required this.purchaseId});
 
-  final TrotxiApiClient client;
+  final CommuterApi client;
   final String purchaseId;
 
   @override
@@ -64,9 +64,9 @@ class _PurchaseDetailsSheetState extends State<_PurchaseDetailsSheet> {
     try {
       final response = await widget.client.getRiderOwnApi().getPurchase(
         id: widget.purchaseId,
-        xTrotxiClient: commuterMetadata.client,
-        xTrotxiBuild: commuterMetadata.build,
-        xTrotxiPlatform: commuterMetadata.platform,
+        xTrotxiClient: widget.client.metadata.app,
+        xTrotxiBuild: widget.client.metadata.build,
+        xTrotxiPlatform: widget.client.metadata.platform,
       );
       if (!mounted) return;
       setState(() {

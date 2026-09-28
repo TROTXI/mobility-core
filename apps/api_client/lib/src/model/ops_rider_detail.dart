@@ -17,13 +17,14 @@ part 'ops_rider_detail.g.dart';
 /// OpsRiderDetail
 ///
 /// Properties:
-/// * [rider] 
-/// * [membership] 
-/// * [restrictions] 
-/// * [reservations] 
-/// * [purchases] 
+/// * [rider]
+/// * [membership]
+/// * [restrictions]
+/// * [reservations]
+/// * [purchases]
 @BuiltValue()
-abstract class OpsRiderDetail implements Built<OpsRiderDetail, OpsRiderDetailBuilder> {
+abstract class OpsRiderDetail
+    implements Built<OpsRiderDetail, OpsRiderDetailBuilder> {
   @BuiltValueField(wireName: r'rider')
   OpsRider get rider;
 
@@ -41,16 +42,19 @@ abstract class OpsRiderDetail implements Built<OpsRiderDetail, OpsRiderDetailBui
 
   OpsRiderDetail._();
 
-  factory OpsRiderDetail([void updates(OpsRiderDetailBuilder b)]) = _$OpsRiderDetail;
+  factory OpsRiderDetail([void updates(OpsRiderDetailBuilder b)]) =
+      _$OpsRiderDetail;
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(OpsRiderDetailBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
-  static Serializer<OpsRiderDetail> get serializer => _$OpsRiderDetailSerializer();
+  static Serializer<OpsRiderDetail> get serializer =>
+      _$OpsRiderDetailSerializer();
 }
 
-class _$OpsRiderDetailSerializer implements PrimitiveSerializer<OpsRiderDetail> {
+class _$OpsRiderDetailSerializer
+    implements PrimitiveSerializer<OpsRiderDetail> {
   @override
   final Iterable<Type> types = const [OpsRiderDetail, _$OpsRiderDetail];
 
@@ -68,10 +72,12 @@ class _$OpsRiderDetailSerializer implements PrimitiveSerializer<OpsRiderDetail> 
       specifiedType: const FullType(OpsRider),
     );
     yield r'membership';
-    yield object.membership == null ? null : serializers.serialize(
-      object.membership,
-      specifiedType: const FullType.nullable(OpsRiderDetailMembership),
-    );
+    yield object.membership == null
+        ? null
+        : serializers.serialize(
+            object.membership,
+            specifiedType: const FullType.nullable(OpsRiderDetailMembership),
+          );
     yield r'restrictions';
     yield serializers.serialize(
       object.restrictions,
@@ -80,12 +86,14 @@ class _$OpsRiderDetailSerializer implements PrimitiveSerializer<OpsRiderDetail> 
     yield r'reservations';
     yield serializers.serialize(
       object.reservations,
-      specifiedType: const FullType(BuiltList, [FullType(OpsRiderDetailReservationsInner)]),
+      specifiedType: const FullType(
+          BuiltList, [FullType(OpsRiderDetailReservationsInner)]),
     );
     yield r'purchases';
     yield serializers.serialize(
       object.purchases,
-      specifiedType: const FullType(BuiltList, [FullType(OpsRiderDetailPurchasesInner)]),
+      specifiedType:
+          const FullType(BuiltList, [FullType(OpsRiderDetailPurchasesInner)]),
     );
   }
 
@@ -95,7 +103,9 @@ class _$OpsRiderDetailSerializer implements PrimitiveSerializer<OpsRiderDetail> 
     OpsRiderDetail object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
   }
 
   void _deserializeProperties(
@@ -135,14 +145,16 @@ class _$OpsRiderDetailSerializer implements PrimitiveSerializer<OpsRiderDetail> 
         case r'reservations':
           final valueDes = serializers.deserialize(
             value,
-            specifiedType: const FullType(BuiltList, [FullType(OpsRiderDetailReservationsInner)]),
+            specifiedType: const FullType(
+                BuiltList, [FullType(OpsRiderDetailReservationsInner)]),
           ) as BuiltList<OpsRiderDetailReservationsInner>;
           result.reservations.replace(valueDes);
           break;
         case r'purchases':
           final valueDes = serializers.deserialize(
             value,
-            specifiedType: const FullType(BuiltList, [FullType(OpsRiderDetailPurchasesInner)]),
+            specifiedType: const FullType(
+                BuiltList, [FullType(OpsRiderDetailPurchasesInner)]),
           ) as BuiltList<OpsRiderDetailPurchasesInner>;
           result.purchases.replace(valueDes);
           break;
@@ -174,4 +186,3 @@ class _$OpsRiderDetailSerializer implements PrimitiveSerializer<OpsRiderDetail> 
     return result.build();
   }
 }
-

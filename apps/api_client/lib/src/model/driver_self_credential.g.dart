@@ -80,11 +80,8 @@ class _$DriverSelfCredential extends DriverSelfCredential {
   @override
   final bool mustChangePin;
   @override
-<<<<<<< HEAD
-=======
   final DateTime? temporaryPinExpiresAt;
   @override
->>>>>>> origin/main
   final DateTime? lockedUntil;
 
   factory _$DriverSelfCredential(
@@ -95,10 +92,7 @@ class _$DriverSelfCredential extends DriverSelfCredential {
       {required this.driverCode,
       required this.status,
       required this.mustChangePin,
-<<<<<<< HEAD
-=======
       this.temporaryPinExpiresAt,
->>>>>>> origin/main
       this.lockedUntil})
       : super._();
   @override
@@ -117,10 +111,7 @@ class _$DriverSelfCredential extends DriverSelfCredential {
         driverCode == other.driverCode &&
         status == other.status &&
         mustChangePin == other.mustChangePin &&
-<<<<<<< HEAD
-=======
         temporaryPinExpiresAt == other.temporaryPinExpiresAt &&
->>>>>>> origin/main
         lockedUntil == other.lockedUntil;
   }
 
@@ -130,10 +121,7 @@ class _$DriverSelfCredential extends DriverSelfCredential {
     _$hash = $jc(_$hash, driverCode.hashCode);
     _$hash = $jc(_$hash, status.hashCode);
     _$hash = $jc(_$hash, mustChangePin.hashCode);
-<<<<<<< HEAD
-=======
     _$hash = $jc(_$hash, temporaryPinExpiresAt.hashCode);
->>>>>>> origin/main
     _$hash = $jc(_$hash, lockedUntil.hashCode);
     _$hash = $jf(_$hash);
     return _$hash;
@@ -145,10 +133,7 @@ class _$DriverSelfCredential extends DriverSelfCredential {
           ..add('driverCode', driverCode)
           ..add('status', status)
           ..add('mustChangePin', mustChangePin)
-<<<<<<< HEAD
-=======
           ..add('temporaryPinExpiresAt', temporaryPinExpiresAt)
->>>>>>> origin/main
           ..add('lockedUntil', lockedUntil))
         .toString();
   }
@@ -171,14 +156,11 @@ class DriverSelfCredentialBuilder
   set mustChangePin(bool? mustChangePin) =>
       _$this._mustChangePin = mustChangePin;
 
-<<<<<<< HEAD
-=======
   DateTime? _temporaryPinExpiresAt;
   DateTime? get temporaryPinExpiresAt => _$this._temporaryPinExpiresAt;
   set temporaryPinExpiresAt(DateTime? temporaryPinExpiresAt) =>
       _$this._temporaryPinExpiresAt = temporaryPinExpiresAt;
 
->>>>>>> origin/main
   DateTime? _lockedUntil;
   DateTime? get lockedUntil => _$this._lockedUntil;
   set lockedUntil(DateTime? lockedUntil) => _$this._lockedUntil = lockedUntil;
@@ -193,10 +175,7 @@ class DriverSelfCredentialBuilder
       _driverCode = $v.driverCode;
       _status = $v.status;
       _mustChangePin = $v.mustChangePin;
-<<<<<<< HEAD
-=======
       _temporaryPinExpiresAt = $v.temporaryPinExpiresAt;
->>>>>>> origin/main
       _lockedUntil = $v.lockedUntil;
       _$v = null;
     }
@@ -225,10 +204,7 @@ class DriverSelfCredentialBuilder
               status, r'DriverSelfCredential', 'status'),
           mustChangePin: BuiltValueNullFieldError.checkNotNull(
               mustChangePin, r'DriverSelfCredential', 'mustChangePin'),
-<<<<<<< HEAD
-=======
           temporaryPinExpiresAt: temporaryPinExpiresAt,
->>>>>>> origin/main
           lockedUntil: lockedUntil,
         );
     replace(_$result);

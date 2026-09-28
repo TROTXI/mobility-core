@@ -12,11 +12,11 @@ part 'driver_self.g.dart';
 /// DriverSelf
 ///
 /// Properties:
-/// * [id] 
-/// * [name] 
-/// * [phone] 
-/// * [licenseNumber] 
-/// * [credential] 
+/// * [id]
+/// * [name]
+/// * [phone]
+/// * [licenseNumber]
+/// * [credential]
 @BuiltValue()
 abstract class DriverSelf implements Built<DriverSelf, DriverSelfBuilder> {
   @BuiltValueField(wireName: r'id')
@@ -68,20 +68,26 @@ class _$DriverSelfSerializer implements PrimitiveSerializer<DriverSelf> {
       specifiedType: const FullType(String),
     );
     yield r'phone';
-    yield object.phone == null ? null : serializers.serialize(
-      object.phone,
-      specifiedType: const FullType.nullable(String),
-    );
+    yield object.phone == null
+        ? null
+        : serializers.serialize(
+            object.phone,
+            specifiedType: const FullType.nullable(String),
+          );
     yield r'licenseNumber';
-    yield object.licenseNumber == null ? null : serializers.serialize(
-      object.licenseNumber,
-      specifiedType: const FullType.nullable(String),
-    );
+    yield object.licenseNumber == null
+        ? null
+        : serializers.serialize(
+            object.licenseNumber,
+            specifiedType: const FullType.nullable(String),
+          );
     yield r'credential';
-    yield object.credential == null ? null : serializers.serialize(
-      object.credential,
-      specifiedType: const FullType.nullable(DriverSelfCredential),
-    );
+    yield object.credential == null
+        ? null
+        : serializers.serialize(
+            object.credential,
+            specifiedType: const FullType.nullable(DriverSelfCredential),
+          );
   }
 
   @override
@@ -90,7 +96,9 @@ class _$DriverSelfSerializer implements PrimitiveSerializer<DriverSelf> {
     DriverSelf object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
   }
 
   void _deserializeProperties(
@@ -171,4 +179,3 @@ class _$DriverSelfSerializer implements PrimitiveSerializer<DriverSelf> {
     return result.build();
   }
 }
-

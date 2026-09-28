@@ -32,11 +32,6 @@ void main() {
       // TODO
     });
 
-    // String patternId
-    test('to test the property `patternId`', () async {
-      // TODO
-    });
-
     // String patternVersionId
     test('to test the property `patternVersionId`', () async {
       // TODO
@@ -59,16 +54,6 @@ void main() {
 
     // String vehicleLabel
     test('to test the property `vehicleLabel`', () async {
-      // TODO
-    });
-
-    // String vehiclePlate
-    test('to test the property `vehiclePlate`', () async {
-      // TODO
-    });
-
-    // DateTime assignmentChangedAt
-    test('to test the property `assignmentChangedAt`', () async {
       // TODO
     });
 

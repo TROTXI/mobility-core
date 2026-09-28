@@ -12,16 +12,17 @@ part 'ops_audit_event.g.dart';
 /// OpsAuditEvent
 ///
 /// Properties:
-/// * [id] 
-/// * [area] 
-/// * [action] 
-/// * [actorId] 
-/// * [actorName] 
-/// * [targetId] 
-/// * [reason] 
-/// * [occurredAt] 
+/// * [id]
+/// * [area]
+/// * [action]
+/// * [actorId]
+/// * [actorName]
+/// * [targetId]
+/// * [reason]
+/// * [occurredAt]
 @BuiltValue()
-abstract class OpsAuditEvent implements Built<OpsAuditEvent, OpsAuditEventBuilder> {
+abstract class OpsAuditEvent
+    implements Built<OpsAuditEvent, OpsAuditEventBuilder> {
   @BuiltValueField(wireName: r'id')
   String get id;
 
@@ -49,13 +50,15 @@ abstract class OpsAuditEvent implements Built<OpsAuditEvent, OpsAuditEventBuilde
 
   OpsAuditEvent._();
 
-  factory OpsAuditEvent([void updates(OpsAuditEventBuilder b)]) = _$OpsAuditEvent;
+  factory OpsAuditEvent([void updates(OpsAuditEventBuilder b)]) =
+      _$OpsAuditEvent;
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(OpsAuditEventBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
-  static Serializer<OpsAuditEvent> get serializer => _$OpsAuditEventSerializer();
+  static Serializer<OpsAuditEvent> get serializer =>
+      _$OpsAuditEventSerializer();
 }
 
 class _$OpsAuditEventSerializer implements PrimitiveSerializer<OpsAuditEvent> {
@@ -101,10 +104,12 @@ class _$OpsAuditEventSerializer implements PrimitiveSerializer<OpsAuditEvent> {
       specifiedType: const FullType(String),
     );
     yield r'reason';
-    yield object.reason == null ? null : serializers.serialize(
-      object.reason,
-      specifiedType: const FullType.nullable(String),
-    );
+    yield object.reason == null
+        ? null
+        : serializers.serialize(
+            object.reason,
+            specifiedType: const FullType.nullable(String),
+          );
     yield r'occurredAt';
     yield serializers.serialize(
       object.occurredAt,
@@ -118,7 +123,9 @@ class _$OpsAuditEventSerializer implements PrimitiveSerializer<OpsAuditEvent> {
     OpsAuditEvent object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
   }
 
   void _deserializeProperties(
@@ -220,33 +227,39 @@ class _$OpsAuditEventSerializer implements PrimitiveSerializer<OpsAuditEvent> {
 }
 
 class OpsAuditEventAreaEnum extends EnumClass {
-
   @BuiltValueEnumConst(wireName: r'catalog')
   static const OpsAuditEventAreaEnum catalog = _$opsAuditEventAreaEnum_catalog;
   @BuiltValueEnumConst(wireName: r'trip')
   static const OpsAuditEventAreaEnum trip = _$opsAuditEventAreaEnum_trip;
   @BuiltValueEnumConst(wireName: r'schedule')
-  static const OpsAuditEventAreaEnum schedule = _$opsAuditEventAreaEnum_schedule;
+  static const OpsAuditEventAreaEnum schedule =
+      _$opsAuditEventAreaEnum_schedule;
   @BuiltValueEnumConst(wireName: r'fleet')
   static const OpsAuditEventAreaEnum fleet = _$opsAuditEventAreaEnum_fleet;
   @BuiltValueEnumConst(wireName: r'driver')
   static const OpsAuditEventAreaEnum driver = _$opsAuditEventAreaEnum_driver;
   @BuiltValueEnumConst(wireName: r'membership')
-  static const OpsAuditEventAreaEnum membership = _$opsAuditEventAreaEnum_membership;
+  static const OpsAuditEventAreaEnum membership =
+      _$opsAuditEventAreaEnum_membership;
   @BuiltValueEnumConst(wireName: r'boarding')
-  static const OpsAuditEventAreaEnum boarding = _$opsAuditEventAreaEnum_boarding;
+  static const OpsAuditEventAreaEnum boarding =
+      _$opsAuditEventAreaEnum_boarding;
   @BuiltValueEnumConst(wireName: r'pricing')
   static const OpsAuditEventAreaEnum pricing = _$opsAuditEventAreaEnum_pricing;
   @BuiltValueEnumConst(wireName: r'configuration')
-  static const OpsAuditEventAreaEnum configuration = _$opsAuditEventAreaEnum_configuration;
+  static const OpsAuditEventAreaEnum configuration =
+      _$opsAuditEventAreaEnum_configuration;
   @BuiltValueEnumConst(wireName: r'security')
-  static const OpsAuditEventAreaEnum security = _$opsAuditEventAreaEnum_security;
+  static const OpsAuditEventAreaEnum security =
+      _$opsAuditEventAreaEnum_security;
 
-  static Serializer<OpsAuditEventAreaEnum> get serializer => _$opsAuditEventAreaEnumSerializer;
+  static Serializer<OpsAuditEventAreaEnum> get serializer =>
+      _$opsAuditEventAreaEnumSerializer;
 
-  const OpsAuditEventAreaEnum._(String name): super(name);
+  const OpsAuditEventAreaEnum._(String name) : super(name);
 
-  static BuiltSet<OpsAuditEventAreaEnum> get values => _$opsAuditEventAreaEnumValues;
-  static OpsAuditEventAreaEnum valueOf(String name) => _$opsAuditEventAreaEnumValueOf(name);
+  static BuiltSet<OpsAuditEventAreaEnum> get values =>
+      _$opsAuditEventAreaEnumValues;
+  static OpsAuditEventAreaEnum valueOf(String name) =>
+      _$opsAuditEventAreaEnumValueOf(name);
 }
-

@@ -12,12 +12,13 @@ part 'membership_entitlements.g.dart';
 /// MembershipEntitlements
 ///
 /// Properties:
-/// * [remainingRides] 
-/// * [credit] 
-/// * [heldCredit] 
-/// * [availableCredit] 
+/// * [remainingRides]
+/// * [credit]
+/// * [heldCredit]
+/// * [availableCredit]
 @BuiltValue()
-abstract class MembershipEntitlements implements Built<MembershipEntitlements, MembershipEntitlementsBuilder> {
+abstract class MembershipEntitlements
+    implements Built<MembershipEntitlements, MembershipEntitlementsBuilder> {
   @BuiltValueField(wireName: r'remainingRides')
   int get remainingRides;
 
@@ -32,18 +33,25 @@ abstract class MembershipEntitlements implements Built<MembershipEntitlements, M
 
   MembershipEntitlements._();
 
-  factory MembershipEntitlements([void updates(MembershipEntitlementsBuilder b)]) = _$MembershipEntitlements;
+  factory MembershipEntitlements(
+          [void updates(MembershipEntitlementsBuilder b)]) =
+      _$MembershipEntitlements;
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(MembershipEntitlementsBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
-  static Serializer<MembershipEntitlements> get serializer => _$MembershipEntitlementsSerializer();
+  static Serializer<MembershipEntitlements> get serializer =>
+      _$MembershipEntitlementsSerializer();
 }
 
-class _$MembershipEntitlementsSerializer implements PrimitiveSerializer<MembershipEntitlements> {
+class _$MembershipEntitlementsSerializer
+    implements PrimitiveSerializer<MembershipEntitlements> {
   @override
-  final Iterable<Type> types = const [MembershipEntitlements, _$MembershipEntitlements];
+  final Iterable<Type> types = const [
+    MembershipEntitlements,
+    _$MembershipEntitlements
+  ];
 
   @override
   final String wireName = r'MembershipEntitlements';
@@ -81,7 +89,9 @@ class _$MembershipEntitlementsSerializer implements PrimitiveSerializer<Membersh
     MembershipEntitlements object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
   }
 
   void _deserializeProperties(
@@ -152,4 +162,3 @@ class _$MembershipEntitlementsSerializer implements PrimitiveSerializer<Membersh
     return result.build();
   }
 }
-

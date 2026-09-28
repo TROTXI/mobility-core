@@ -11,9 +11,9 @@ part 'route_input.g.dart';
 /// RouteInput
 ///
 /// Properties:
-/// * [name] 
-/// * [description] 
-/// * [acceptsDriverRequests] 
+/// * [name]
+/// * [description]
+/// * [acceptsDriverRequests]
 @BuiltValue()
 abstract class RouteInput implements Built<RouteInput, RouteInputBuilder> {
   @BuiltValueField(wireName: r'name')
@@ -30,8 +30,8 @@ abstract class RouteInput implements Built<RouteInput, RouteInputBuilder> {
   factory RouteInput([void updates(RouteInputBuilder b)]) = _$RouteInput;
 
   @BuiltValueHook(initializeBuilder: true)
-  static void _defaults(RouteInputBuilder b) => b
-      ..acceptsDriverRequests = false;
+  static void _defaults(RouteInputBuilder b) =>
+      b..acceptsDriverRequests = false;
 
   @BuiltValueSerializer(custom: true)
   static Serializer<RouteInput> get serializer => _$RouteInputSerializer();
@@ -74,7 +74,9 @@ class _$RouteInputSerializer implements PrimitiveSerializer<RouteInput> {
     RouteInput object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
   }
 
   void _deserializeProperties(
@@ -138,4 +140,3 @@ class _$RouteInputSerializer implements PrimitiveSerializer<RouteInput> {
     return result.build();
   }
 }
-

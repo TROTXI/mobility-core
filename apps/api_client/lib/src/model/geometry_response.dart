@@ -12,24 +12,28 @@ part 'geometry_response.g.dart';
 /// GeometryResponse
 ///
 /// Properties:
-/// * [data] 
+/// * [data]
 @BuiltValue()
-abstract class GeometryResponse implements Built<GeometryResponse, GeometryResponseBuilder> {
+abstract class GeometryResponse
+    implements Built<GeometryResponse, GeometryResponseBuilder> {
   @BuiltValueField(wireName: r'data')
   Geometry get data;
 
   GeometryResponse._();
 
-  factory GeometryResponse([void updates(GeometryResponseBuilder b)]) = _$GeometryResponse;
+  factory GeometryResponse([void updates(GeometryResponseBuilder b)]) =
+      _$GeometryResponse;
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(GeometryResponseBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
-  static Serializer<GeometryResponse> get serializer => _$GeometryResponseSerializer();
+  static Serializer<GeometryResponse> get serializer =>
+      _$GeometryResponseSerializer();
 }
 
-class _$GeometryResponseSerializer implements PrimitiveSerializer<GeometryResponse> {
+class _$GeometryResponseSerializer
+    implements PrimitiveSerializer<GeometryResponse> {
   @override
   final Iterable<Type> types = const [GeometryResponse, _$GeometryResponse];
 
@@ -54,7 +58,9 @@ class _$GeometryResponseSerializer implements PrimitiveSerializer<GeometryRespon
     GeometryResponse object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
   }
 
   void _deserializeProperties(
@@ -104,4 +110,3 @@ class _$GeometryResponseSerializer implements PrimitiveSerializer<GeometryRespon
     return result.build();
   }
 }
-

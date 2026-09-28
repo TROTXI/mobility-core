@@ -13,14 +13,15 @@ part 'personal_pause.g.dart';
 /// PersonalPause
 ///
 /// Properties:
-/// * [id] 
-/// * [startDate] 
-/// * [resumeDate] 
-/// * [status] 
-/// * [projectedEndsAt] 
-/// * [extensionApplied] 
+/// * [id]
+/// * [startDate]
+/// * [resumeDate]
+/// * [status]
+/// * [projectedEndsAt]
+/// * [extensionApplied]
 @BuiltValue()
-abstract class PersonalPause implements Built<PersonalPause, PersonalPauseBuilder> {
+abstract class PersonalPause
+    implements Built<PersonalPause, PersonalPauseBuilder> {
   @BuiltValueField(wireName: r'id')
   String get id;
 
@@ -42,13 +43,15 @@ abstract class PersonalPause implements Built<PersonalPause, PersonalPauseBuilde
 
   PersonalPause._();
 
-  factory PersonalPause([void updates(PersonalPauseBuilder b)]) = _$PersonalPause;
+  factory PersonalPause([void updates(PersonalPauseBuilder b)]) =
+      _$PersonalPause;
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(PersonalPauseBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
-  static Serializer<PersonalPause> get serializer => _$PersonalPauseSerializer();
+  static Serializer<PersonalPause> get serializer =>
+      _$PersonalPauseSerializer();
 }
 
 class _$PersonalPauseSerializer implements PrimitiveSerializer<PersonalPause> {
@@ -84,10 +87,12 @@ class _$PersonalPauseSerializer implements PrimitiveSerializer<PersonalPause> {
       specifiedType: const FullType(PersonalPauseStatusEnum),
     );
     yield r'projectedEndsAt';
-    yield object.projectedEndsAt == null ? null : serializers.serialize(
-      object.projectedEndsAt,
-      specifiedType: const FullType.nullable(DateTime),
-    );
+    yield object.projectedEndsAt == null
+        ? null
+        : serializers.serialize(
+            object.projectedEndsAt,
+            specifiedType: const FullType.nullable(DateTime),
+          );
     yield r'extensionApplied';
     yield serializers.serialize(
       object.extensionApplied,
@@ -101,7 +106,9 @@ class _$PersonalPauseSerializer implements PrimitiveSerializer<PersonalPause> {
     PersonalPause object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
   }
 
   void _deserializeProperties(
@@ -189,21 +196,26 @@ class _$PersonalPauseSerializer implements PrimitiveSerializer<PersonalPause> {
 }
 
 class PersonalPauseStatusEnum extends EnumClass {
-
   @BuiltValueEnumConst(wireName: r'scheduled')
-  static const PersonalPauseStatusEnum scheduled = _$personalPauseStatusEnum_scheduled;
+  static const PersonalPauseStatusEnum scheduled =
+      _$personalPauseStatusEnum_scheduled;
   @BuiltValueEnumConst(wireName: r'paused')
-  static const PersonalPauseStatusEnum paused = _$personalPauseStatusEnum_paused;
+  static const PersonalPauseStatusEnum paused =
+      _$personalPauseStatusEnum_paused;
   @BuiltValueEnumConst(wireName: r'resumed')
-  static const PersonalPauseStatusEnum resumed = _$personalPauseStatusEnum_resumed;
+  static const PersonalPauseStatusEnum resumed =
+      _$personalPauseStatusEnum_resumed;
   @BuiltValueEnumConst(wireName: r'terminated')
-  static const PersonalPauseStatusEnum terminated = _$personalPauseStatusEnum_terminated;
+  static const PersonalPauseStatusEnum terminated =
+      _$personalPauseStatusEnum_terminated;
 
-  static Serializer<PersonalPauseStatusEnum> get serializer => _$personalPauseStatusEnumSerializer;
+  static Serializer<PersonalPauseStatusEnum> get serializer =>
+      _$personalPauseStatusEnumSerializer;
 
-  const PersonalPauseStatusEnum._(String name): super(name);
+  const PersonalPauseStatusEnum._(String name) : super(name);
 
-  static BuiltSet<PersonalPauseStatusEnum> get values => _$personalPauseStatusEnumValues;
-  static PersonalPauseStatusEnum valueOf(String name) => _$personalPauseStatusEnumValueOf(name);
+  static BuiltSet<PersonalPauseStatusEnum> get values =>
+      _$personalPauseStatusEnumValues;
+  static PersonalPauseStatusEnum valueOf(String name) =>
+      _$personalPauseStatusEnumValueOf(name);
 }
-

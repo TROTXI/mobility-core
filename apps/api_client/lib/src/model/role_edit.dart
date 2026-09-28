@@ -12,8 +12,8 @@ part 'role_edit.g.dart';
 /// RoleEdit
 ///
 /// Properties:
-/// * [role] 
-/// * [reason] 
+/// * [role]
+/// * [reason]
 @BuiltValue()
 abstract class RoleEdit implements Built<RoleEdit, RoleEditBuilder> {
   @BuiltValueField(wireName: r'role')
@@ -64,7 +64,9 @@ class _$RoleEditSerializer implements PrimitiveSerializer<RoleEdit> {
     RoleEdit object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
   }
 
   void _deserializeProperties(
@@ -123,7 +125,6 @@ class _$RoleEditSerializer implements PrimitiveSerializer<RoleEdit> {
 }
 
 class RoleEditRoleEnum extends EnumClass {
-
   @BuiltValueEnumConst(wireName: r'commuter')
   static const RoleEditRoleEnum commuter = _$roleEditRoleEnum_commuter;
   @BuiltValueEnumConst(wireName: r'driver')
@@ -131,11 +132,12 @@ class RoleEditRoleEnum extends EnumClass {
   @BuiltValueEnumConst(wireName: r'admin')
   static const RoleEditRoleEnum admin = _$roleEditRoleEnum_admin;
 
-  static Serializer<RoleEditRoleEnum> get serializer => _$roleEditRoleEnumSerializer;
+  static Serializer<RoleEditRoleEnum> get serializer =>
+      _$roleEditRoleEnumSerializer;
 
-  const RoleEditRoleEnum._(String name): super(name);
+  const RoleEditRoleEnum._(String name) : super(name);
 
   static BuiltSet<RoleEditRoleEnum> get values => _$roleEditRoleEnumValues;
-  static RoleEditRoleEnum valueOf(String name) => _$roleEditRoleEnumValueOf(name);
+  static RoleEditRoleEnum valueOf(String name) =>
+      _$roleEditRoleEnumValueOf(name);
 }
-

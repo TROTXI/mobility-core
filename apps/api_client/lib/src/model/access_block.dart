@@ -12,9 +12,9 @@ part 'access_block.g.dart';
 /// AccessBlock
 ///
 /// Properties:
-/// * [kind] 
-/// * [scope] 
-/// * [periodId] 
+/// * [kind]
+/// * [scope]
+/// * [periodId]
 @BuiltValue()
 abstract class AccessBlock implements Built<AccessBlock, AccessBlockBuilder> {
   @BuiltValueField(wireName: r'kind')
@@ -62,10 +62,12 @@ class _$AccessBlockSerializer implements PrimitiveSerializer<AccessBlock> {
       specifiedType: const FullType(AccessBlockScopeEnum),
     );
     yield r'periodId';
-    yield object.periodId == null ? null : serializers.serialize(
-      object.periodId,
-      specifiedType: const FullType.nullable(String),
-    );
+    yield object.periodId == null
+        ? null
+        : serializers.serialize(
+            object.periodId,
+            specifiedType: const FullType.nullable(String),
+          );
   }
 
   @override
@@ -74,7 +76,9 @@ class _$AccessBlockSerializer implements PrimitiveSerializer<AccessBlock> {
     AccessBlock object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
   }
 
   void _deserializeProperties(
@@ -141,34 +145,38 @@ class _$AccessBlockSerializer implements PrimitiveSerializer<AccessBlock> {
 }
 
 class AccessBlockKindEnum extends EnumClass {
-
   @BuiltValueEnumConst(wireName: r'paused')
   static const AccessBlockKindEnum paused = _$accessBlockKindEnum_paused;
   @BuiltValueEnumConst(wireName: r'dispute')
   static const AccessBlockKindEnum dispute = _$accessBlockKindEnum_dispute;
   @BuiltValueEnumConst(wireName: r'ops_restriction')
-  static const AccessBlockKindEnum opsRestriction = _$accessBlockKindEnum_opsRestriction;
+  static const AccessBlockKindEnum opsRestriction =
+      _$accessBlockKindEnum_opsRestriction;
 
-  static Serializer<AccessBlockKindEnum> get serializer => _$accessBlockKindEnumSerializer;
+  static Serializer<AccessBlockKindEnum> get serializer =>
+      _$accessBlockKindEnumSerializer;
 
-  const AccessBlockKindEnum._(String name): super(name);
+  const AccessBlockKindEnum._(String name) : super(name);
 
-  static BuiltSet<AccessBlockKindEnum> get values => _$accessBlockKindEnumValues;
-  static AccessBlockKindEnum valueOf(String name) => _$accessBlockKindEnumValueOf(name);
+  static BuiltSet<AccessBlockKindEnum> get values =>
+      _$accessBlockKindEnumValues;
+  static AccessBlockKindEnum valueOf(String name) =>
+      _$accessBlockKindEnumValueOf(name);
 }
 
 class AccessBlockScopeEnum extends EnumClass {
-
   @BuiltValueEnumConst(wireName: r'period')
   static const AccessBlockScopeEnum period = _$accessBlockScopeEnum_period;
   @BuiltValueEnumConst(wireName: r'account')
   static const AccessBlockScopeEnum account = _$accessBlockScopeEnum_account;
 
-  static Serializer<AccessBlockScopeEnum> get serializer => _$accessBlockScopeEnumSerializer;
+  static Serializer<AccessBlockScopeEnum> get serializer =>
+      _$accessBlockScopeEnumSerializer;
 
-  const AccessBlockScopeEnum._(String name): super(name);
+  const AccessBlockScopeEnum._(String name) : super(name);
 
-  static BuiltSet<AccessBlockScopeEnum> get values => _$accessBlockScopeEnumValues;
-  static AccessBlockScopeEnum valueOf(String name) => _$accessBlockScopeEnumValueOf(name);
+  static BuiltSet<AccessBlockScopeEnum> get values =>
+      _$accessBlockScopeEnumValues;
+  static AccessBlockScopeEnum valueOf(String name) =>
+      _$accessBlockScopeEnumValueOf(name);
 }
-

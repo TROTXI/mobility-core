@@ -1,16 +1,21 @@
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
-import 'package:trotxi_client/trotxi_client.dart';
-import 'package:trotxi_commuter/core/config/client_metadata.dart';
+import 'package:flutter/services.dart' show PlatformException;
+import 'package:image_picker/image_picker.dart';
+import 'package:trotxi_commuter/core/api/commuter_api.dart';
 import 'package:trotxi_commuter/core/config/layout/responsive_layout.dart';
 import 'package:trotxi_commuter/core/config/theme/app_colors.dart';
 import 'package:trotxi_commuter/core/config/theme/app_typography.dart';
-import 'package:trotxi_commuter/Features/Home/widgets/Tabs/avatar_editing.dart';
+
+enum _PhotoAction { camera, gallery, remove }
 
 /// Full-page "Personal information" editor, pushed from ProfileTab's
 /// "Personal information" row.
 ///
-/// `displayName` is editable via `PATCH /v1/me`, and the avatar via
-/// `PUT`/`DELETE /v1/me/avatar` — both live on the generated `SelfApi`.
+/// `displayName` and the rider's photo are the two things this page changes.
+/// The photo matters beyond the profile screen: a driver checks it against the
+/// person in front of them at boarding, so a missing one weakens that check.
 class PersonalInfoPage extends StatefulWidget {
   const PersonalInfoPage({
     super.key,
@@ -18,21 +23,23 @@ class PersonalInfoPage extends StatefulWidget {
     required this.initialUser,
   });
 
-  final TrotxiApiClient client;
+  final CommuterApi client;
   final Account initialUser;
 
   @override
   State<PersonalInfoPage> createState() => _PersonalInfoPageState();
 }
 
-class _PersonalInfoPageState extends State<PersonalInfoPage>
-    with AvatarEditing<PersonalInfoPage> {
+class _PersonalInfoPageState extends State<PersonalInfoPage> {
   late final TextEditingController _nameController = TextEditingController(
     text: widget.initialUser.displayName,
   );
   bool _saving = false;
-
-  late String? _avatarUrl = widget.initialUser.avatarUrl;
+  bool _uploading = false;
+  /// Set once an upload returns, so the new picture shows without a round trip.
+  /// Signed and short-lived: never persisted, never reused after this screen.
+  String? _avatarUrl;
+  bool _avatarRemoved = false;
 
   @override
   void dispose() {
@@ -54,15 +61,120 @@ class _PersonalInfoPageState extends State<PersonalInfoPage>
     return (parts[0][0] + parts[1][0]).toUpperCase();
   }
 
+  /// The types the server accepts. It reads the file's own header rather than
+  /// trusting the extension, so anything else is refused however it is named.
+  static const _accepted = {'jpg': 'image/jpeg', 'jpeg': 'image/jpeg', 'png': 'image/png', 'webp': 'image/webp'};
+
   Future<void> _onChangePhoto() async {
-    final hasAvatar = _avatarUrl != null && _avatarUrl!.isNotEmpty;
-    final outcome = await editAvatar(
-      client: widget.client,
-      hasAvatar: hasAvatar,
+    final action = await showModalBottomSheet<_PhotoAction>(
+      context: context,
+      builder: (sheet) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.photo_camera_outlined),
+              title: const Text('Take a photo'),
+              onTap: () => Navigator.of(sheet).pop(_PhotoAction.camera),
+            ),
+            ListTile(
+              leading: const Icon(Icons.photo_library_outlined),
+              title: const Text('Choose from library'),
+              onTap: () => Navigator.of(sheet).pop(_PhotoAction.gallery),
+            ),
+            if (!_avatarRemoved &&
+                (_avatarUrl ?? widget.initialUser.avatarUrl) != null)
+              ListTile(
+                leading: const Icon(Icons.delete_outline_rounded),
+                title: const Text('Remove photo'),
+                onTap: () => Navigator.of(sheet).pop(_PhotoAction.remove),
+              ),
+          ],
+        ),
+      ),
     );
-    if (outcome == null || !mounted) return;
-    setState(() => _avatarUrl = outcome.avatarUrl);
+    if (!mounted || action == null) return;
+    if (action == _PhotoAction.remove) {
+      setState(() => _uploading = true);
+      try {
+        await widget.client.deleteAvatar();
+        if (!mounted) return;
+        setState(() {
+          _avatarRemoved = true;
+          _avatarUrl = null;
+        });
+        _say('Photo removed.');
+      } catch (error) {
+        if (mounted) _say('Could not remove that photo. Try again.');
+      } finally {
+        if (mounted) setState(() => _uploading = false);
+      }
+      return;
+    }
+
+    final XFile? picked;
+    try {
+      // Resized before it leaves the device: a modern phone photo is several
+      // megabytes and the server caps the upload, so sending the original
+      // wastes a rider's data to earn a 413. 1024px is far more than the
+      // boarding screen shows.
+      picked = await ImagePicker().pickImage(
+        source: action == _PhotoAction.camera
+            ? ImageSource.camera
+            : ImageSource.gallery,
+        maxWidth: 1024,
+        maxHeight: 1024,
+        imageQuality: 85,
+      );
+    } on PlatformException {
+      if (!mounted) return;
+      _say('Trotxi needs permission to use that. Check your settings.');
+      return;
+    }
+    if (picked == null || !mounted) return;
+
+    final extension = picked.name.split('.').last.toLowerCase();
+    final contentType = _accepted[extension];
+    if (contentType == null) {
+      _say('Choose a JPEG, PNG or WebP image.');
+      return;
+    }
+
+    setState(() => _uploading = true);
+    try {
+      final Uint8List bytes = await picked.readAsBytes();
+      final avatar = await widget.client.uploadAvatar(
+        bytes,
+        contentType: contentType,
+        filename: picked.name,
+      );
+      if (!mounted) return;
+      // The URL is signed and short-lived, so it is held only for this screen
+      // and re-read from the server the next time anything needs it.
+      setState(() {
+        _avatarUrl = avatar.url;
+        _avatarRemoved = false;
+      });
+      _say('Photo updated.');
+    } on ApiException catch (error) {
+      if (!mounted) return;
+      _say(switch (error.statusCode) {
+        413 => 'That photo is too large. Try a smaller one.',
+        415 => 'That file is not an image Trotxi can read.',
+        429 => 'Too many attempts. Wait a moment and try again.',
+        _ => 'Could not upload that photo. Try again.',
+      });
+    } catch (error) {
+      if (!mounted) return;
+      _say('Could not upload that photo. Try again.');
+      debugPrint('Avatar upload error: ${error.runtimeType}');
+    } finally {
+      if (mounted) setState(() => _uploading = false);
+    }
   }
+
+  void _say(String message) =>
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
 
   Future<void> _onSave() async {
     final trimmed = _nameController.text.trim();
@@ -79,13 +191,7 @@ class _PersonalInfoPageState extends State<PersonalInfoPage>
 
     setState(() => _saving = true);
     try {
-      await widget.client.getSelfApi().updateAccount(
-        idempotencyKey: newIdempotencyKey(),
-        xTrotxiClient: commuterMetadata.client,
-        xTrotxiBuild: commuterMetadata.build,
-        xTrotxiPlatform: commuterMetadata.platform,
-        profileUpdate: ProfileUpdate((b) => b..displayName = trimmed),
-      );
+      await widget.client.updateAccount(trimmed);
       if (!mounted) return;
       Navigator.of(context).pop();
     } catch (e) {
@@ -93,7 +199,7 @@ class _PersonalInfoPageState extends State<PersonalInfoPage>
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Could not save changes. Try again.')),
       );
-      debugPrint('Error updating personal information: $e');
+      debugPrint('Profile update error: ${e.runtimeType}');
     } finally {
       if (mounted) setState(() => _saving = false);
     }
@@ -217,75 +323,75 @@ class _PersonalInfoPageState extends State<PersonalInfoPage>
 
   Widget _buildAvatarSection(BuildContext context) {
     final colors = context.appColors;
-    final avatarUrl = _avatarUrl;
+    final avatarUrl = _avatarRemoved ? null : _avatarUrl ?? widget.initialUser.avatarUrl;
     final hasAvatar = avatarUrl != null && avatarUrl.isNotEmpty;
 
     return Column(
       children: [
-        SizedBox(
+        Container(
           width: 76,
           height: 76,
-          child: Stack(
-            children: [
-              Container(
-                width: 76,
-                height: 76,
-                clipBehavior: Clip.antiAlias,
-                decoration: BoxDecoration(
-                  color: hasAvatar
-                      ? null
-                      : colors.actionPrimaryDefault.withValues(alpha: 0.12),
-                  shape: BoxShape.circle,
-                  image: hasAvatar
-                      ? DecorationImage(
-                          image: NetworkImage(avatarUrl),
-                          fit: BoxFit.cover,
-                        )
-                      : null,
-                ),
-                child: hasAvatar
-                    ? null
-                    : Center(
-                        child: Text(
-                          _initials,
-                          style: AppTypography.heading3.copyWith(
-                            color: colors.actionPrimaryDefault,
-                          ),
-                        ),
-                      ),
-              ),
-              if (avatarBusy)
-                Positioned.fill(
-                  child: DecoratedBox(
-                    decoration: BoxDecoration(
-                      color: Colors.black.withValues(alpha: 0.35),
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Center(
-                      child: SizedBox(
-                        width: 22,
-                        height: 22,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2.5,
-                          color: Colors.white,
-                        ),
-                      ),
+          clipBehavior: Clip.antiAlias,
+          decoration: BoxDecoration(
+            color: hasAvatar
+                ? null
+                : colors.actionPrimaryDefault.withValues(alpha: 0.12),
+            shape: BoxShape.circle,
+            image: hasAvatar
+                ? DecorationImage(
+                    image: NetworkImage(avatarUrl),
+                    fit: BoxFit.cover,
+                  )
+                : null,
+          ),
+          child: hasAvatar
+              ? null
+              : Center(
+                  child: Text(
+                    _initials,
+                    style: AppTypography.heading3.copyWith(
+                      color: colors.actionPrimaryDefault,
                     ),
                   ),
                 ),
-            ],
-          ),
         ),
         const SizedBox(height: 12),
-        GestureDetector(
-          onTap: avatarBusy ? null : _onChangePhoto,
-          child: Text(
-            'Change photo',
-            style: AppTypography.label.copyWith(
-              color: colors.actionPrimaryDefault,
+        if (_uploading)
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              SizedBox(
+                width: 14,
+                height: 14,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: colors.actionPrimaryDefault,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Text(
+                'Uploading',
+                style: AppTypography.label.copyWith(color: colors.textSecondary),
+              ),
+            ],
+          )
+        else
+          // A button, not a tappable label: a GestureDetector defers hit
+          // testing to its child and a bare Text does not hit test itself, so
+          // this rendered correctly and never fired.
+          TextButton(
+            onPressed: _onChangePhoto,
+            style: TextButton.styleFrom(
+              padding: EdgeInsets.zero,
+              alignment: Alignment.centerLeft,
+              minimumSize: const Size(0, 44),
+              foregroundColor: colors.actionPrimaryDefault,
+            ),
+            child: Text(
+              hasAvatar ? 'Change photo' : 'Add a photo',
+              style: AppTypography.label,
             ),
           ),
-        ),
       ],
     );
   }

@@ -164,11 +164,8 @@ class _$OpsOverviewTripsInner extends OpsOverviewTripsInner {
   @override
   final String? vehicleLabel;
   @override
-<<<<<<< HEAD
-=======
   final String? vehiclePlate;
   @override
->>>>>>> origin/main
   final int? capacity;
   @override
   final int confirmed;
@@ -177,11 +174,8 @@ class _$OpsOverviewTripsInner extends OpsOverviewTripsInner {
   @override
   final int noShow;
   @override
-<<<<<<< HEAD
-=======
   final int reserved;
   @override
->>>>>>> origin/main
   final DateTime? lastFixAt;
   @override
   final int? fixAgeSeconds;
@@ -203,18 +197,12 @@ class _$OpsOverviewTripsInner extends OpsOverviewTripsInner {
       this.driverName,
       this.vehicleId,
       this.vehicleLabel,
-<<<<<<< HEAD
-=======
       this.vehiclePlate,
->>>>>>> origin/main
       this.capacity,
       required this.confirmed,
       required this.boarded,
       required this.noShow,
-<<<<<<< HEAD
-=======
       required this.reserved,
->>>>>>> origin/main
       this.lastFixAt,
       this.fixAgeSeconds,
       this.lastPosition,
@@ -241,18 +229,12 @@ class _$OpsOverviewTripsInner extends OpsOverviewTripsInner {
         driverName == other.driverName &&
         vehicleId == other.vehicleId &&
         vehicleLabel == other.vehicleLabel &&
-<<<<<<< HEAD
-=======
         vehiclePlate == other.vehiclePlate &&
->>>>>>> origin/main
         capacity == other.capacity &&
         confirmed == other.confirmed &&
         boarded == other.boarded &&
         noShow == other.noShow &&
-<<<<<<< HEAD
-=======
         reserved == other.reserved &&
->>>>>>> origin/main
         lastFixAt == other.lastFixAt &&
         fixAgeSeconds == other.fixAgeSeconds &&
         lastPosition == other.lastPosition &&
@@ -270,18 +252,12 @@ class _$OpsOverviewTripsInner extends OpsOverviewTripsInner {
     _$hash = $jc(_$hash, driverName.hashCode);
     _$hash = $jc(_$hash, vehicleId.hashCode);
     _$hash = $jc(_$hash, vehicleLabel.hashCode);
-<<<<<<< HEAD
-=======
     _$hash = $jc(_$hash, vehiclePlate.hashCode);
->>>>>>> origin/main
     _$hash = $jc(_$hash, capacity.hashCode);
     _$hash = $jc(_$hash, confirmed.hashCode);
     _$hash = $jc(_$hash, boarded.hashCode);
     _$hash = $jc(_$hash, noShow.hashCode);
-<<<<<<< HEAD
-=======
     _$hash = $jc(_$hash, reserved.hashCode);
->>>>>>> origin/main
     _$hash = $jc(_$hash, lastFixAt.hashCode);
     _$hash = $jc(_$hash, fixAgeSeconds.hashCode);
     _$hash = $jc(_$hash, lastPosition.hashCode);
@@ -301,18 +277,12 @@ class _$OpsOverviewTripsInner extends OpsOverviewTripsInner {
           ..add('driverName', driverName)
           ..add('vehicleId', vehicleId)
           ..add('vehicleLabel', vehicleLabel)
-<<<<<<< HEAD
-=======
           ..add('vehiclePlate', vehiclePlate)
->>>>>>> origin/main
           ..add('capacity', capacity)
           ..add('confirmed', confirmed)
           ..add('boarded', boarded)
           ..add('noShow', noShow)
-<<<<<<< HEAD
-=======
           ..add('reserved', reserved)
->>>>>>> origin/main
           ..add('lastFixAt', lastFixAt)
           ..add('fixAgeSeconds', fixAgeSeconds)
           ..add('lastPosition', lastPosition)
@@ -358,13 +328,10 @@ class OpsOverviewTripsInnerBuilder
   String? get vehicleLabel => _$this._vehicleLabel;
   set vehicleLabel(String? vehicleLabel) => _$this._vehicleLabel = vehicleLabel;
 
-<<<<<<< HEAD
-=======
   String? _vehiclePlate;
   String? get vehiclePlate => _$this._vehiclePlate;
   set vehiclePlate(String? vehiclePlate) => _$this._vehiclePlate = vehiclePlate;
 
->>>>>>> origin/main
   int? _capacity;
   int? get capacity => _$this._capacity;
   set capacity(int? capacity) => _$this._capacity = capacity;
@@ -381,13 +348,10 @@ class OpsOverviewTripsInnerBuilder
   int? get noShow => _$this._noShow;
   set noShow(int? noShow) => _$this._noShow = noShow;
 
-<<<<<<< HEAD
-=======
   int? _reserved;
   int? get reserved => _$this._reserved;
   set reserved(int? reserved) => _$this._reserved = reserved;
 
->>>>>>> origin/main
   DateTime? _lastFixAt;
   DateTime? get lastFixAt => _$this._lastFixAt;
   set lastFixAt(DateTime? lastFixAt) => _$this._lastFixAt = lastFixAt;
@@ -422,18 +386,12 @@ class OpsOverviewTripsInnerBuilder
       _driverName = $v.driverName;
       _vehicleId = $v.vehicleId;
       _vehicleLabel = $v.vehicleLabel;
-<<<<<<< HEAD
-=======
       _vehiclePlate = $v.vehiclePlate;
->>>>>>> origin/main
       _capacity = $v.capacity;
       _confirmed = $v.confirmed;
       _boarded = $v.boarded;
       _noShow = $v.noShow;
-<<<<<<< HEAD
-=======
       _reserved = $v.reserved;
->>>>>>> origin/main
       _lastFixAt = $v.lastFixAt;
       _fixAgeSeconds = $v.fixAgeSeconds;
       _lastPosition = $v.lastPosition?.toBuilder();
@@ -472,10 +430,7 @@ class OpsOverviewTripsInnerBuilder
             driverName: driverName,
             vehicleId: vehicleId,
             vehicleLabel: vehicleLabel,
-<<<<<<< HEAD
-=======
             vehiclePlate: vehiclePlate,
->>>>>>> origin/main
             capacity: capacity,
             confirmed: BuiltValueNullFieldError.checkNotNull(
                 confirmed, r'OpsOverviewTripsInner', 'confirmed'),
@@ -483,11 +438,8 @@ class OpsOverviewTripsInnerBuilder
                 boarded, r'OpsOverviewTripsInner', 'boarded'),
             noShow: BuiltValueNullFieldError.checkNotNull(
                 noShow, r'OpsOverviewTripsInner', 'noShow'),
-<<<<<<< HEAD
-=======
             reserved: BuiltValueNullFieldError.checkNotNull(
                 reserved, r'OpsOverviewTripsInner', 'reserved'),
->>>>>>> origin/main
             lastFixAt: lastFixAt,
             fixAgeSeconds: fixAgeSeconds,
             lastPosition: _lastPosition?.build(),

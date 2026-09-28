@@ -7,13 +7,6 @@ void main() {
   final instance = TrotxiApiClient().getSelfApi();
 
   group(SelfApi, () {
-    // delete Avatar
-    //
-    //Future deleteAvatar(String idempotencyKey, String xTrotxiClient, int xTrotxiBuild, { String xTrotxiPlatform }) async
-    test('test deleteAvatar', () async {
-      // TODO
-    });
-
     // erase Account
     //
     //Future eraseAccount(String idempotencyKey, String xTrotxiClient, int xTrotxiBuild, { String xTrotxiPlatform }) async

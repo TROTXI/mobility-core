@@ -14,10 +14,11 @@ part 'ops_rider_page.g.dart';
 /// OpsRiderPage
 ///
 /// Properties:
-/// * [data] 
-/// * [page] 
+/// * [data]
+/// * [page]
 @BuiltValue()
-abstract class OpsRiderPage implements Built<OpsRiderPage, OpsRiderPageBuilder> {
+abstract class OpsRiderPage
+    implements Built<OpsRiderPage, OpsRiderPageBuilder> {
   @BuiltValueField(wireName: r'data')
   BuiltList<OpsRider> get data;
 
@@ -65,7 +66,9 @@ class _$OpsRiderPageSerializer implements PrimitiveSerializer<OpsRiderPage> {
     OpsRiderPage object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
   }
 
   void _deserializeProperties(
@@ -122,4 +125,3 @@ class _$OpsRiderPageSerializer implements PrimitiveSerializer<OpsRiderPage> {
     return result.build();
   }
 }
-

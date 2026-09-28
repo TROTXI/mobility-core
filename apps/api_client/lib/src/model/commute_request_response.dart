@@ -12,26 +12,34 @@ part 'commute_request_response.g.dart';
 /// CommuteRequestResponse
 ///
 /// Properties:
-/// * [data] 
+/// * [data]
 @BuiltValue()
-abstract class CommuteRequestResponse implements Built<CommuteRequestResponse, CommuteRequestResponseBuilder> {
+abstract class CommuteRequestResponse
+    implements Built<CommuteRequestResponse, CommuteRequestResponseBuilder> {
   @BuiltValueField(wireName: r'data')
   CommuteRequest get data;
 
   CommuteRequestResponse._();
 
-  factory CommuteRequestResponse([void updates(CommuteRequestResponseBuilder b)]) = _$CommuteRequestResponse;
+  factory CommuteRequestResponse(
+          [void updates(CommuteRequestResponseBuilder b)]) =
+      _$CommuteRequestResponse;
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(CommuteRequestResponseBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
-  static Serializer<CommuteRequestResponse> get serializer => _$CommuteRequestResponseSerializer();
+  static Serializer<CommuteRequestResponse> get serializer =>
+      _$CommuteRequestResponseSerializer();
 }
 
-class _$CommuteRequestResponseSerializer implements PrimitiveSerializer<CommuteRequestResponse> {
+class _$CommuteRequestResponseSerializer
+    implements PrimitiveSerializer<CommuteRequestResponse> {
   @override
-  final Iterable<Type> types = const [CommuteRequestResponse, _$CommuteRequestResponse];
+  final Iterable<Type> types = const [
+    CommuteRequestResponse,
+    _$CommuteRequestResponse
+  ];
 
   @override
   final String wireName = r'CommuteRequestResponse';
@@ -54,7 +62,9 @@ class _$CommuteRequestResponseSerializer implements PrimitiveSerializer<CommuteR
     CommuteRequestResponse object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
   }
 
   void _deserializeProperties(
@@ -104,4 +114,3 @@ class _$CommuteRequestResponseSerializer implements PrimitiveSerializer<CommuteR
     return result.build();
   }
 }
-

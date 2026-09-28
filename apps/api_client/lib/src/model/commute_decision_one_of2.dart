@@ -12,10 +12,11 @@ part 'commute_decision_one_of2.g.dart';
 /// CommuteDecisionOneOf2
 ///
 /// Properties:
-/// * [action] 
-/// * [note] 
+/// * [action]
+/// * [note]
 @BuiltValue()
-abstract class CommuteDecisionOneOf2 implements Built<CommuteDecisionOneOf2, CommuteDecisionOneOf2Builder> {
+abstract class CommuteDecisionOneOf2
+    implements Built<CommuteDecisionOneOf2, CommuteDecisionOneOf2Builder> {
   @BuiltValueField(wireName: r'action')
   CommuteDecisionOneOf2ActionEnum get action;
   // enum actionEnum {  pause,  };
@@ -25,18 +26,24 @@ abstract class CommuteDecisionOneOf2 implements Built<CommuteDecisionOneOf2, Com
 
   CommuteDecisionOneOf2._();
 
-  factory CommuteDecisionOneOf2([void updates(CommuteDecisionOneOf2Builder b)]) = _$CommuteDecisionOneOf2;
+  factory CommuteDecisionOneOf2(
+      [void updates(CommuteDecisionOneOf2Builder b)]) = _$CommuteDecisionOneOf2;
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(CommuteDecisionOneOf2Builder b) => b;
 
   @BuiltValueSerializer(custom: true)
-  static Serializer<CommuteDecisionOneOf2> get serializer => _$CommuteDecisionOneOf2Serializer();
+  static Serializer<CommuteDecisionOneOf2> get serializer =>
+      _$CommuteDecisionOneOf2Serializer();
 }
 
-class _$CommuteDecisionOneOf2Serializer implements PrimitiveSerializer<CommuteDecisionOneOf2> {
+class _$CommuteDecisionOneOf2Serializer
+    implements PrimitiveSerializer<CommuteDecisionOneOf2> {
   @override
-  final Iterable<Type> types = const [CommuteDecisionOneOf2, _$CommuteDecisionOneOf2];
+  final Iterable<Type> types = const [
+    CommuteDecisionOneOf2,
+    _$CommuteDecisionOneOf2
+  ];
 
   @override
   final String wireName = r'CommuteDecisionOneOf2';
@@ -64,7 +71,9 @@ class _$CommuteDecisionOneOf2Serializer implements PrimitiveSerializer<CommuteDe
     CommuteDecisionOneOf2 object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
   }
 
   void _deserializeProperties(
@@ -123,15 +132,17 @@ class _$CommuteDecisionOneOf2Serializer implements PrimitiveSerializer<CommuteDe
 }
 
 class CommuteDecisionOneOf2ActionEnum extends EnumClass {
-
   @BuiltValueEnumConst(wireName: r'pause')
-  static const CommuteDecisionOneOf2ActionEnum pause = _$commuteDecisionOneOf2ActionEnum_pause;
+  static const CommuteDecisionOneOf2ActionEnum pause =
+      _$commuteDecisionOneOf2ActionEnum_pause;
 
-  static Serializer<CommuteDecisionOneOf2ActionEnum> get serializer => _$commuteDecisionOneOf2ActionEnumSerializer;
+  static Serializer<CommuteDecisionOneOf2ActionEnum> get serializer =>
+      _$commuteDecisionOneOf2ActionEnumSerializer;
 
-  const CommuteDecisionOneOf2ActionEnum._(String name): super(name);
+  const CommuteDecisionOneOf2ActionEnum._(String name) : super(name);
 
-  static BuiltSet<CommuteDecisionOneOf2ActionEnum> get values => _$commuteDecisionOneOf2ActionEnumValues;
-  static CommuteDecisionOneOf2ActionEnum valueOf(String name) => _$commuteDecisionOneOf2ActionEnumValueOf(name);
+  static BuiltSet<CommuteDecisionOneOf2ActionEnum> get values =>
+      _$commuteDecisionOneOf2ActionEnumValues;
+  static CommuteDecisionOneOf2ActionEnum valueOf(String name) =>
+      _$commuteDecisionOneOf2ActionEnumValueOf(name);
 }
-

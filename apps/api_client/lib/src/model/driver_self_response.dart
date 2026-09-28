@@ -12,24 +12,28 @@ part 'driver_self_response.g.dart';
 /// DriverSelfResponse
 ///
 /// Properties:
-/// * [data] 
+/// * [data]
 @BuiltValue()
-abstract class DriverSelfResponse implements Built<DriverSelfResponse, DriverSelfResponseBuilder> {
+abstract class DriverSelfResponse
+    implements Built<DriverSelfResponse, DriverSelfResponseBuilder> {
   @BuiltValueField(wireName: r'data')
   DriverSelf get data;
 
   DriverSelfResponse._();
 
-  factory DriverSelfResponse([void updates(DriverSelfResponseBuilder b)]) = _$DriverSelfResponse;
+  factory DriverSelfResponse([void updates(DriverSelfResponseBuilder b)]) =
+      _$DriverSelfResponse;
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(DriverSelfResponseBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
-  static Serializer<DriverSelfResponse> get serializer => _$DriverSelfResponseSerializer();
+  static Serializer<DriverSelfResponse> get serializer =>
+      _$DriverSelfResponseSerializer();
 }
 
-class _$DriverSelfResponseSerializer implements PrimitiveSerializer<DriverSelfResponse> {
+class _$DriverSelfResponseSerializer
+    implements PrimitiveSerializer<DriverSelfResponse> {
   @override
   final Iterable<Type> types = const [DriverSelfResponse, _$DriverSelfResponse];
 
@@ -54,7 +58,9 @@ class _$DriverSelfResponseSerializer implements PrimitiveSerializer<DriverSelfRe
     DriverSelfResponse object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
   }
 
   void _deserializeProperties(
@@ -104,4 +110,3 @@ class _$DriverSelfResponseSerializer implements PrimitiveSerializer<DriverSelfRe
     return result.build();
   }
 }
-

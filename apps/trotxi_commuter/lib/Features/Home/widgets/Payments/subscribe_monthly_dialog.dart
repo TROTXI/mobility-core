@@ -3,7 +3,8 @@ import 'package:flutter/material.dart';
 // pulled in under a prefix.
 import 'package:trotxi_client/trotxi_client.dart' hide Route;
 import 'package:trotxi_client/trotxi_client.dart' as api show Route;
-import 'package:trotxi_commuter/core/config/client_metadata.dart';
+import 'package:trotxi_client/commuter_checkout.dart';
+import 'package:trotxi_commuter/core/api/commuter_api.dart';
 import 'package:trotxi_commuter/core/config/theme/app_colors.dart';
 import 'package:trotxi_commuter/core/config/theme/app_typography.dart';
 import 'package:trotxi_commuter/core/utils/money_format.dart';
@@ -20,7 +21,7 @@ import 'package:trotxi_commuter/core/utils/money_format.dart';
 /// covered everything, `checkout` is null.
 Future<Purchase?> showSubscribeMonthlyDialog(
   BuildContext context, {
-  required TrotxiApiClient client,
+  required CommuterApi client,
   Money? availableCredit,
   MembershipCommute? currentCommute,
 }) {
@@ -40,8 +41,7 @@ class _LegSelection {
   StopOccurrence? pickup;
   StopOccurrence? dropoff;
 
-  bool get isComplete =>
-      departure != null && pickup != null && dropoff != null;
+  bool get isComplete => departure != null && pickup != null && dropoff != null;
 }
 
 class _SubscribeMonthlyDialog extends StatefulWidget {
@@ -51,7 +51,7 @@ class _SubscribeMonthlyDialog extends StatefulWidget {
     this.currentCommute,
   });
 
-  final TrotxiApiClient client;
+  final CommuterApi client;
 
   /// Credit the rider can put toward this purchase. A toggle to apply it
   /// is offered when it's non-zero.
@@ -103,7 +103,6 @@ class _SubscribeMonthlyDialogState extends State<_SubscribeMonthlyDialog> {
 
   /// Reused when the same selection is retried, so a retry can't create a
   /// second purchase. Cleared whenever the selection changes.
-  String? _idempotencyKey;
 
   bool _submitting = false;
   String? _submitError;
@@ -128,9 +127,9 @@ class _SubscribeMonthlyDialogState extends State<_SubscribeMonthlyDialog> {
       String? cursor;
       do {
         final response = await _publicApi.listRoutes(
-          xTrotxiClient: commuterMetadata.client,
-          xTrotxiBuild: commuterMetadata.build,
-          xTrotxiPlatform: commuterMetadata.platform,
+          xTrotxiClient: widget.client.metadata.app,
+          xTrotxiBuild: widget.client.metadata.build,
+          xTrotxiPlatform: widget.client.metadata.platform,
           cursor: cursor,
         );
         routes.addAll(response.data?.data ?? const <api.Route>[]);
@@ -189,9 +188,9 @@ class _SubscribeMonthlyDialogState extends State<_SubscribeMonthlyDialog> {
       do {
         final response = await _publicApi.listRouteSchedules(
           id: route.id,
-          xTrotxiClient: commuterMetadata.client,
-          xTrotxiBuild: commuterMetadata.build,
-          xTrotxiPlatform: commuterMetadata.platform,
+          xTrotxiClient: widget.client.metadata.app,
+          xTrotxiBuild: widget.client.metadata.build,
+          xTrotxiPlatform: widget.client.metadata.platform,
           cursor: cursor,
         );
         schedules.addAll(response.data?.data ?? const <Schedule>[]);
@@ -203,9 +202,9 @@ class _SubscribeMonthlyDialogState extends State<_SubscribeMonthlyDialog> {
         route.patternIds.map(
           (id) => _publicApi.getPattern(
             id: id,
-            xTrotxiClient: commuterMetadata.client,
-            xTrotxiBuild: commuterMetadata.build,
-            xTrotxiPlatform: commuterMetadata.platform,
+            xTrotxiClient: widget.client.metadata.app,
+            xTrotxiBuild: widget.client.metadata.build,
+            xTrotxiPlatform: widget.client.metadata.platform,
           ),
         ),
       );
@@ -238,9 +237,9 @@ class _SubscribeMonthlyDialogState extends State<_SubscribeMonthlyDialog> {
           (entry) => _publicApi.getPatternVersion(
             id: entry.value,
             versionId: entry.key,
-            xTrotxiClient: commuterMetadata.client,
-            xTrotxiBuild: commuterMetadata.build,
-            xTrotxiPlatform: commuterMetadata.platform,
+            xTrotxiClient: widget.client.metadata.app,
+            xTrotxiBuild: widget.client.metadata.build,
+            xTrotxiPlatform: widget.client.metadata.platform,
           ),
         ),
       );
@@ -311,7 +310,6 @@ class _SubscribeMonthlyDialogState extends State<_SubscribeMonthlyDialog> {
   void _select(VoidCallback change) {
     setState(() {
       change();
-      _idempotencyKey = null;
       _submitError = null;
     });
   }
@@ -367,7 +365,6 @@ class _SubscribeMonthlyDialogState extends State<_SubscribeMonthlyDialog> {
   Future<void> _submit() async {
     if (!_canSubmit) return;
     final route = _selectedRoute!;
-    final idempotencyKey = _idempotencyKey ??= newIdempotencyKey();
     setState(() {
       _submitting = true;
       _submitError = null;
@@ -381,27 +378,21 @@ class _SubscribeMonthlyDialogState extends State<_SubscribeMonthlyDialog> {
           ..useCredit = _hasCredit && _useCredit
           ..legs.addAll(_directions.map(_legInput)),
       );
-      final response = await widget.client.getRiderOwnApi().createPurchase(
-        idempotencyKey: idempotencyKey,
-        xTrotxiClient: commuterMetadata.client,
-        xTrotxiBuild: commuterMetadata.build,
-        xTrotxiPlatform: commuterMetadata.platform,
-        purchaseInput: input,
-      );
-      final purchase = response.data?.data;
-      if (!mounted) return;
-      if (purchase == null) {
-        setState(() {
-          _submitError = 'Could not start checkout. Please try again.';
-          _submitting = false;
-        });
-        return;
+      final checkout = await CommuterCheckout.open(widget.client);
+      final Purchase purchase;
+      try {
+        purchase = await checkout.start(input);
+      } finally {
+        checkout.dispose();
       }
+      if (!mounted) return;
       Navigator.of(context).pop(purchase);
     } catch (e) {
       if (!mounted) return;
       setState(() {
-        _submitError = 'Could not start checkout. Please try again.';
+        _submitError = e is TrotxiException
+            ? e.message
+            : 'Could not start checkout. Use payment recovery before retrying.';
         _submitting = false;
       });
     }

@@ -245,71 +245,6 @@ void main() {
     );
   });
 
-<<<<<<< HEAD
-  test('carries the API error code and message onto ApiException', () {
-    final err = DioException(
-      requestOptions: options(),
-      response: Response(
-        requestOptions: options(),
-        statusCode: 400,
-        statusMessage: 'Bad Request',
-        data: {
-          'error': {
-            'code': 'client_metadata_required',
-            'message': 'Supply the appropriate client, build and platform '
-                'metadata.',
-            'requestId': '1d75a5ec',
-          },
-        },
-      ),
-      type: DioExceptionType.badResponse,
-    );
-
-    final error = runOnError(err);
-    expect(error, isA<ApiException>());
-    final api = error as ApiException;
-    expect(api.statusCode, 400);
-    expect(api.code, 'client_metadata_required');
-    expect(api.message, startsWith('Supply the appropriate client'));
-    expect(api.toString(), contains('client_metadata_required'));
-  });
-
-  test('parses the error body when it arrives as an undecoded String', () {
-    final err = DioException(
-      requestOptions: options(),
-      response: Response(
-        requestOptions: options(),
-        statusCode: 404,
-        data: '{"error":{"code":"not_found","message":"No such route."}}',
-      ),
-      type: DioExceptionType.badResponse,
-    );
-
-    final api = runOnError(err) as ApiException;
-    expect(api.code, 'not_found');
-    expect(api.message, 'No such route.');
-  });
-
-  test('falls back to the status message when the body is not our shape', () {
-    final err = DioException(
-      requestOptions: options(),
-      response: Response(
-        requestOptions: options(),
-        statusCode: 502,
-        statusMessage: 'Bad Gateway',
-        data: '<html>proxy blew up</html>',
-      ),
-      type: DioExceptionType.badResponse,
-    );
-
-    final api = runOnError(err) as ApiException;
-    expect(api.statusCode, 502);
-    expect(api.code, isNull);
-    expect(api.message, 'Bad Gateway');
-  });
-
-=======
->>>>>>> origin/main
   test('maps connectionError to OfflineException', () {
     final err = DioException(
       requestOptions: options(),
@@ -318,26 +253,6 @@ void main() {
 
     final error = runOnError(err);
     expect(error, isA<OfflineException>());
-  });
-
-  test('maps receiveTimeout to ServerTimeoutException', () {
-    final err = DioException(
-      requestOptions: options(),
-      type: DioExceptionType.receiveTimeout,
-    );
-
-    final error = runOnError(err);
-    expect(error, isA<ServerTimeoutException>());
-  });
-
-  test('maps sendTimeout to ServerTimeoutException', () {
-    final err = DioException(
-      requestOptions: options(),
-      type: DioExceptionType.sendTimeout,
-    );
-
-    final error = runOnError(err);
-    expect(error, isA<ServerTimeoutException>());
   });
 
   test('maps unknown type with no response to OfflineException', () {

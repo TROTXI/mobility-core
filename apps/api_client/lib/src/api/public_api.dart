@@ -31,7 +31,6 @@ import 'package:trotxi_api_client/src/model/schedule_page.dart';
 import 'package:trotxi_api_client/src/model/tokens_response.dart';
 
 class PublicApi {
-
   final Dio _dio;
 
   final Serializers _serializers;
@@ -39,7 +38,7 @@ class PublicApi {
   const PublicApi(this._dio, this._serializers);
 
   /// get Bootstrap
-  /// 
+  ///
   ///
   /// Parameters:
   /// * [cancelToken] - A [CancelToken] that can be used to cancel the operation
@@ -51,7 +50,7 @@ class PublicApi {
   ///
   /// Returns a [Future] containing a [Response] with a [Bootstrap] as data
   /// Throws [DioException] if API call or serialization fails
-  Future<Response<Bootstrap>> getBootstrap({ 
+  Future<Response<Bootstrap>> getBootstrap({
     CancelToken? cancelToken,
     Map<String, dynamic>? headers,
     Map<String, dynamic>? extra,
@@ -84,11 +83,12 @@ class PublicApi {
 
     try {
       final rawResponse = _response.data;
-      _responseData = rawResponse == null ? null : _serializers.deserialize(
-        rawResponse,
-        specifiedType: const FullType(Bootstrap),
-      ) as Bootstrap;
-
+      _responseData = rawResponse == null
+          ? null
+          : _serializers.deserialize(
+              rawResponse,
+              specifiedType: const FullType(Bootstrap),
+            ) as Bootstrap;
     } catch (error, stackTrace) {
       throw DioException(
         requestOptions: _response.requestOptions,
@@ -112,7 +112,7 @@ class PublicApi {
   }
 
   /// get Build
-  /// 
+  ///
   ///
   /// Parameters:
   /// * [cancelToken] - A [CancelToken] that can be used to cancel the operation
@@ -124,7 +124,7 @@ class PublicApi {
   ///
   /// Returns a [Future] containing a [Response] with a [Build] as data
   /// Throws [DioException] if API call or serialization fails
-  Future<Response<Build>> getBuild({ 
+  Future<Response<Build>> getBuild({
     CancelToken? cancelToken,
     Map<String, dynamic>? headers,
     Map<String, dynamic>? extra,
@@ -157,11 +157,12 @@ class PublicApi {
 
     try {
       final rawResponse = _response.data;
-      _responseData = rawResponse == null ? null : _serializers.deserialize(
-        rawResponse,
-        specifiedType: const FullType(Build),
-      ) as Build;
-
+      _responseData = rawResponse == null
+          ? null
+          : _serializers.deserialize(
+              rawResponse,
+              specifiedType: const FullType(Build),
+            ) as Build;
     } catch (error, stackTrace) {
       throw DioException(
         requestOptions: _response.requestOptions,
@@ -185,10 +186,10 @@ class PublicApi {
   }
 
   /// get Geometry
-  /// 
+  ///
   ///
   /// Parameters:
-  /// * [id] 
+  /// * [id]
   /// * [xTrotxiClient] - Compatibility metadata only, never grants a role.
   /// * [xTrotxiBuild] - Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
   /// * [xTrotxiPlatform] - Required for commuter/driver, absent for ops/worker.
@@ -201,7 +202,7 @@ class PublicApi {
   ///
   /// Returns a [Future] containing a [Response] with a [GeometryResponse] as data
   /// Throws [DioException] if API call or serialization fails
-  Future<Response<GeometryResponse>> getGeometry({ 
+  Future<Response<GeometryResponse>> getGeometry({
     required String id,
     required String xTrotxiClient,
     int xTrotxiBuild = 1,
@@ -213,7 +214,10 @@ class PublicApi {
     ProgressCallback? onSendProgress,
     ProgressCallback? onReceiveProgress,
   }) async {
-    final _path = r'/v1/route-geometries/{id}'.replaceAll('{' r'id' '}', encodeQueryParameter(_serializers, id, const FullType(String)).toString());
+    final _path = r'/v1/route-geometries/{id}'.replaceAll(
+        '{' r'id' '}',
+        encodeQueryParameter(_serializers, id, const FullType(String))
+            .toString());
     final _options = Options(
       method: r'GET',
       headers: <String, dynamic>{
@@ -241,11 +245,12 @@ class PublicApi {
 
     try {
       final rawResponse = _response.data;
-      _responseData = rawResponse == null ? null : _serializers.deserialize(
-        rawResponse,
-        specifiedType: const FullType(GeometryResponse),
-      ) as GeometryResponse;
-
+      _responseData = rawResponse == null
+          ? null
+          : _serializers.deserialize(
+              rawResponse,
+              specifiedType: const FullType(GeometryResponse),
+            ) as GeometryResponse;
     } catch (error, stackTrace) {
       throw DioException(
         requestOptions: _response.requestOptions,
@@ -269,7 +274,7 @@ class PublicApi {
   }
 
   /// get Health
-  /// 
+  ///
   ///
   /// Parameters:
   /// * [cancelToken] - A [CancelToken] that can be used to cancel the operation
@@ -281,7 +286,7 @@ class PublicApi {
   ///
   /// Returns a [Future] containing a [Response] with a [Health] as data
   /// Throws [DioException] if API call or serialization fails
-  Future<Response<Health>> getHealth({ 
+  Future<Response<Health>> getHealth({
     CancelToken? cancelToken,
     Map<String, dynamic>? headers,
     Map<String, dynamic>? extra,
@@ -314,11 +319,12 @@ class PublicApi {
 
     try {
       final rawResponse = _response.data;
-      _responseData = rawResponse == null ? null : _serializers.deserialize(
-        rawResponse,
-        specifiedType: const FullType(Health),
-      ) as Health;
-
+      _responseData = rawResponse == null
+          ? null
+          : _serializers.deserialize(
+              rawResponse,
+              specifiedType: const FullType(Health),
+            ) as Health;
     } catch (error, stackTrace) {
       throw DioException(
         requestOptions: _response.requestOptions,
@@ -342,10 +348,10 @@ class PublicApi {
   }
 
   /// get Pattern
-  /// 
+  ///
   ///
   /// Parameters:
-  /// * [id] 
+  /// * [id]
   /// * [xTrotxiClient] - Compatibility metadata only, never grants a role.
   /// * [xTrotxiBuild] - Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
   /// * [xTrotxiPlatform] - Required for commuter/driver, absent for ops/worker.
@@ -358,7 +364,7 @@ class PublicApi {
   ///
   /// Returns a [Future] containing a [Response] with a [PatternResponse] as data
   /// Throws [DioException] if API call or serialization fails
-  Future<Response<PatternResponse>> getPattern({ 
+  Future<Response<PatternResponse>> getPattern({
     required String id,
     required String xTrotxiClient,
     int xTrotxiBuild = 1,
@@ -370,7 +376,10 @@ class PublicApi {
     ProgressCallback? onSendProgress,
     ProgressCallback? onReceiveProgress,
   }) async {
-    final _path = r'/v1/route-patterns/{id}'.replaceAll('{' r'id' '}', encodeQueryParameter(_serializers, id, const FullType(String)).toString());
+    final _path = r'/v1/route-patterns/{id}'.replaceAll(
+        '{' r'id' '}',
+        encodeQueryParameter(_serializers, id, const FullType(String))
+            .toString());
     final _options = Options(
       method: r'GET',
       headers: <String, dynamic>{
@@ -398,11 +407,12 @@ class PublicApi {
 
     try {
       final rawResponse = _response.data;
-      _responseData = rawResponse == null ? null : _serializers.deserialize(
-        rawResponse,
-        specifiedType: const FullType(PatternResponse),
-      ) as PatternResponse;
-
+      _responseData = rawResponse == null
+          ? null
+          : _serializers.deserialize(
+              rawResponse,
+              specifiedType: const FullType(PatternResponse),
+            ) as PatternResponse;
     } catch (error, stackTrace) {
       throw DioException(
         requestOptions: _response.requestOptions,
@@ -426,11 +436,11 @@ class PublicApi {
   }
 
   /// get Pattern Version
-  /// 
+  ///
   ///
   /// Parameters:
-  /// * [id] 
-  /// * [versionId] 
+  /// * [id]
+  /// * [versionId]
   /// * [xTrotxiClient] - Compatibility metadata only, never grants a role.
   /// * [xTrotxiBuild] - Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
   /// * [xTrotxiPlatform] - Required for commuter/driver, absent for ops/worker.
@@ -443,7 +453,7 @@ class PublicApi {
   ///
   /// Returns a [Future] containing a [Response] with a [PatternVersionResponse] as data
   /// Throws [DioException] if API call or serialization fails
-  Future<Response<PatternVersionResponse>> getPatternVersion({ 
+  Future<Response<PatternVersionResponse>> getPatternVersion({
     required String id,
     required String versionId,
     required String xTrotxiClient,
@@ -456,7 +466,16 @@ class PublicApi {
     ProgressCallback? onSendProgress,
     ProgressCallback? onReceiveProgress,
   }) async {
-    final _path = r'/v1/route-patterns/{id}/versions/{versionId}'.replaceAll('{' r'id' '}', encodeQueryParameter(_serializers, id, const FullType(String)).toString()).replaceAll('{' r'versionId' '}', encodeQueryParameter(_serializers, versionId, const FullType(String)).toString());
+    final _path = r'/v1/route-patterns/{id}/versions/{versionId}'
+        .replaceAll(
+            '{' r'id' '}',
+            encodeQueryParameter(_serializers, id, const FullType(String))
+                .toString())
+        .replaceAll(
+            '{' r'versionId' '}',
+            encodeQueryParameter(
+                    _serializers, versionId, const FullType(String))
+                .toString());
     final _options = Options(
       method: r'GET',
       headers: <String, dynamic>{
@@ -484,11 +503,12 @@ class PublicApi {
 
     try {
       final rawResponse = _response.data;
-      _responseData = rawResponse == null ? null : _serializers.deserialize(
-        rawResponse,
-        specifiedType: const FullType(PatternVersionResponse),
-      ) as PatternVersionResponse;
-
+      _responseData = rawResponse == null
+          ? null
+          : _serializers.deserialize(
+              rawResponse,
+              specifiedType: const FullType(PatternVersionResponse),
+            ) as PatternVersionResponse;
     } catch (error, stackTrace) {
       throw DioException(
         requestOptions: _response.requestOptions,
@@ -512,7 +532,7 @@ class PublicApi {
   }
 
   /// get Readiness
-  /// 
+  ///
   ///
   /// Parameters:
   /// * [cancelToken] - A [CancelToken] that can be used to cancel the operation
@@ -524,7 +544,7 @@ class PublicApi {
   ///
   /// Returns a [Future] containing a [Response] with a [Health] as data
   /// Throws [DioException] if API call or serialization fails
-  Future<Response<Health>> getReadiness({ 
+  Future<Response<Health>> getReadiness({
     CancelToken? cancelToken,
     Map<String, dynamic>? headers,
     Map<String, dynamic>? extra,
@@ -557,11 +577,12 @@ class PublicApi {
 
     try {
       final rawResponse = _response.data;
-      _responseData = rawResponse == null ? null : _serializers.deserialize(
-        rawResponse,
-        specifiedType: const FullType(Health),
-      ) as Health;
-
+      _responseData = rawResponse == null
+          ? null
+          : _serializers.deserialize(
+              rawResponse,
+              specifiedType: const FullType(Health),
+            ) as Health;
     } catch (error, stackTrace) {
       throw DioException(
         requestOptions: _response.requestOptions,
@@ -585,7 +606,7 @@ class PublicApi {
   }
 
   /// get Root
-  /// 
+  ///
   ///
   /// Parameters:
   /// * [cancelToken] - A [CancelToken] that can be used to cancel the operation
@@ -597,7 +618,7 @@ class PublicApi {
   ///
   /// Returns a [Future] containing a [Response] with a [Root] as data
   /// Throws [DioException] if API call or serialization fails
-  Future<Response<Root>> getRoot({ 
+  Future<Response<Root>> getRoot({
     CancelToken? cancelToken,
     Map<String, dynamic>? headers,
     Map<String, dynamic>? extra,
@@ -630,11 +651,12 @@ class PublicApi {
 
     try {
       final rawResponse = _response.data;
-      _responseData = rawResponse == null ? null : _serializers.deserialize(
-        rawResponse,
-        specifiedType: const FullType(Root),
-      ) as Root;
-
+      _responseData = rawResponse == null
+          ? null
+          : _serializers.deserialize(
+              rawResponse,
+              specifiedType: const FullType(Root),
+            ) as Root;
     } catch (error, stackTrace) {
       throw DioException(
         requestOptions: _response.requestOptions,
@@ -658,10 +680,10 @@ class PublicApi {
   }
 
   /// get Route
-  /// 
+  ///
   ///
   /// Parameters:
-  /// * [id] 
+  /// * [id]
   /// * [xTrotxiClient] - Compatibility metadata only, never grants a role.
   /// * [xTrotxiBuild] - Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
   /// * [xTrotxiPlatform] - Required for commuter/driver, absent for ops/worker.
@@ -674,7 +696,7 @@ class PublicApi {
   ///
   /// Returns a [Future] containing a [Response] with a [RouteResponse] as data
   /// Throws [DioException] if API call or serialization fails
-  Future<Response<RouteResponse>> getRoute({ 
+  Future<Response<RouteResponse>> getRoute({
     required String id,
     required String xTrotxiClient,
     int xTrotxiBuild = 1,
@@ -686,7 +708,10 @@ class PublicApi {
     ProgressCallback? onSendProgress,
     ProgressCallback? onReceiveProgress,
   }) async {
-    final _path = r'/v1/routes/{id}'.replaceAll('{' r'id' '}', encodeQueryParameter(_serializers, id, const FullType(String)).toString());
+    final _path = r'/v1/routes/{id}'.replaceAll(
+        '{' r'id' '}',
+        encodeQueryParameter(_serializers, id, const FullType(String))
+            .toString());
     final _options = Options(
       method: r'GET',
       headers: <String, dynamic>{
@@ -714,11 +739,12 @@ class PublicApi {
 
     try {
       final rawResponse = _response.data;
-      _responseData = rawResponse == null ? null : _serializers.deserialize(
-        rawResponse,
-        specifiedType: const FullType(RouteResponse),
-      ) as RouteResponse;
-
+      _responseData = rawResponse == null
+          ? null
+          : _serializers.deserialize(
+              rawResponse,
+              specifiedType: const FullType(RouteResponse),
+            ) as RouteResponse;
     } catch (error, stackTrace) {
       throw DioException(
         requestOptions: _response.requestOptions,
@@ -742,10 +768,10 @@ class PublicApi {
   }
 
   /// list Route Schedules
-  /// 
+  ///
   ///
   /// Parameters:
-  /// * [id] 
+  /// * [id]
   /// * [xTrotxiClient] - Compatibility metadata only, never grants a role.
   /// * [xTrotxiBuild] - Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
   /// * [cursor] - Opaque cursor bound to caller, sort and filters.
@@ -761,7 +787,7 @@ class PublicApi {
   ///
   /// Returns a [Future] containing a [Response] with a [SchedulePage] as data
   /// Throws [DioException] if API call or serialization fails
-  Future<Response<SchedulePage>> listRouteSchedules({ 
+  Future<Response<SchedulePage>> listRouteSchedules({
     required String id,
     required String xTrotxiClient,
     int xTrotxiBuild = 1,
@@ -776,7 +802,10 @@ class PublicApi {
     ProgressCallback? onSendProgress,
     ProgressCallback? onReceiveProgress,
   }) async {
-    final _path = r'/v1/routes/{id}/schedules'.replaceAll('{' r'id' '}', encodeQueryParameter(_serializers, id, const FullType(String)).toString());
+    final _path = r'/v1/routes/{id}/schedules'.replaceAll(
+        '{' r'id' '}',
+        encodeQueryParameter(_serializers, id, const FullType(String))
+            .toString());
     final _options = Options(
       method: r'GET',
       headers: <String, dynamic>{
@@ -793,9 +822,15 @@ class PublicApi {
     );
 
     final _queryParameters = <String, dynamic>{
-      if (cursor != null) r'cursor': encodeQueryParameter(_serializers, cursor, const FullType(String)),
-      if (limit != null) r'limit': encodeQueryParameter(_serializers, limit, const FullType(int)),
-      if (routeId != null) r'routeId': encodeQueryParameter(_serializers, routeId, const FullType(String)),
+      if (cursor != null)
+        r'cursor':
+            encodeQueryParameter(_serializers, cursor, const FullType(String)),
+      if (limit != null)
+        r'limit':
+            encodeQueryParameter(_serializers, limit, const FullType(int)),
+      if (routeId != null)
+        r'routeId':
+            encodeQueryParameter(_serializers, routeId, const FullType(String)),
     };
 
     final _response = await _dio.request<Object>(
@@ -811,11 +846,12 @@ class PublicApi {
 
     try {
       final rawResponse = _response.data;
-      _responseData = rawResponse == null ? null : _serializers.deserialize(
-        rawResponse,
-        specifiedType: const FullType(SchedulePage),
-      ) as SchedulePage;
-
+      _responseData = rawResponse == null
+          ? null
+          : _serializers.deserialize(
+              rawResponse,
+              specifiedType: const FullType(SchedulePage),
+            ) as SchedulePage;
     } catch (error, stackTrace) {
       throw DioException(
         requestOptions: _response.requestOptions,
@@ -839,7 +875,7 @@ class PublicApi {
   }
 
   /// list Routes
-  /// 
+  ///
   ///
   /// Parameters:
   /// * [xTrotxiClient] - Compatibility metadata only, never grants a role.
@@ -856,7 +892,7 @@ class PublicApi {
   ///
   /// Returns a [Future] containing a [Response] with a [RoutePage] as data
   /// Throws [DioException] if API call or serialization fails
-  Future<Response<RoutePage>> listRoutes({ 
+  Future<Response<RoutePage>> listRoutes({
     required String xTrotxiClient,
     int xTrotxiBuild = 1,
     String? cursor,
@@ -886,8 +922,12 @@ class PublicApi {
     );
 
     final _queryParameters = <String, dynamic>{
-      if (cursor != null) r'cursor': encodeQueryParameter(_serializers, cursor, const FullType(String)),
-      if (limit != null) r'limit': encodeQueryParameter(_serializers, limit, const FullType(int)),
+      if (cursor != null)
+        r'cursor':
+            encodeQueryParameter(_serializers, cursor, const FullType(String)),
+      if (limit != null)
+        r'limit':
+            encodeQueryParameter(_serializers, limit, const FullType(int)),
     };
 
     final _response = await _dio.request<Object>(
@@ -903,11 +943,12 @@ class PublicApi {
 
     try {
       final rawResponse = _response.data;
-      _responseData = rawResponse == null ? null : _serializers.deserialize(
-        rawResponse,
-        specifiedType: const FullType(RoutePage),
-      ) as RoutePage;
-
+      _responseData = rawResponse == null
+          ? null
+          : _serializers.deserialize(
+              rawResponse,
+              specifiedType: const FullType(RoutePage),
+            ) as RoutePage;
     } catch (error, stackTrace) {
       throw DioException(
         requestOptions: _response.requestOptions,
@@ -931,12 +972,12 @@ class PublicApi {
   }
 
   /// logout Session
-  /// 
+  ///
   ///
   /// Parameters:
   /// * [xTrotxiClient] - Compatibility metadata only, never grants a role.
   /// * [xTrotxiBuild] - Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
-  /// * [refreshInput] 
+  /// * [refreshInput]
   /// * [xTrotxiPlatform] - Required for commuter/driver, absent for ops/worker.
   /// * [cancelToken] - A [CancelToken] that can be used to cancel the operation
   /// * [headers] - Can be used to add additional headers to the request
@@ -947,7 +988,7 @@ class PublicApi {
   ///
   /// Returns a [Future]
   /// Throws [DioException] if API call or serialization fails
-  Future<Response<void>> logoutSession({ 
+  Future<Response<void>> logoutSession({
     required String xTrotxiClient,
     int xTrotxiBuild = 1,
     required RefreshInput refreshInput,
@@ -981,10 +1022,9 @@ class PublicApi {
     try {
       const _type = FullType(RefreshInput);
       _bodyData = _serializers.serialize(refreshInput, specifiedType: _type);
-
-    } catch(error, stackTrace) {
+    } catch (error, stackTrace) {
       throw DioException(
-         requestOptions: _options.compose(
+        requestOptions: _options.compose(
           _dio.options,
           _path,
         ),
@@ -1007,12 +1047,12 @@ class PublicApi {
   }
 
   /// refresh Session
-  /// 
+  ///
   ///
   /// Parameters:
   /// * [xTrotxiClient] - Compatibility metadata only, never grants a role.
   /// * [xTrotxiBuild] - Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
-  /// * [refreshInput] 
+  /// * [refreshInput]
   /// * [xTrotxiPlatform] - Required for commuter/driver, absent for ops/worker.
   /// * [cancelToken] - A [CancelToken] that can be used to cancel the operation
   /// * [headers] - Can be used to add additional headers to the request
@@ -1023,7 +1063,7 @@ class PublicApi {
   ///
   /// Returns a [Future] containing a [Response] with a [TokensResponse] as data
   /// Throws [DioException] if API call or serialization fails
-  Future<Response<TokensResponse>> refreshSession({ 
+  Future<Response<TokensResponse>> refreshSession({
     required String xTrotxiClient,
     int xTrotxiBuild = 1,
     required RefreshInput refreshInput,
@@ -1057,10 +1097,9 @@ class PublicApi {
     try {
       const _type = FullType(RefreshInput);
       _bodyData = _serializers.serialize(refreshInput, specifiedType: _type);
-
-    } catch(error, stackTrace) {
+    } catch (error, stackTrace) {
       throw DioException(
-         requestOptions: _options.compose(
+        requestOptions: _options.compose(
           _dio.options,
           _path,
         ),
@@ -1083,11 +1122,12 @@ class PublicApi {
 
     try {
       final rawResponse = _response.data;
-      _responseData = rawResponse == null ? null : _serializers.deserialize(
-        rawResponse,
-        specifiedType: const FullType(TokensResponse),
-      ) as TokensResponse;
-
+      _responseData = rawResponse == null
+          ? null
+          : _serializers.deserialize(
+              rawResponse,
+              specifiedType: const FullType(TokensResponse),
+            ) as TokensResponse;
     } catch (error, stackTrace) {
       throw DioException(
         requestOptions: _response.requestOptions,
@@ -1111,12 +1151,12 @@ class PublicApi {
   }
 
   /// request Phone Sign In
-  /// 
+  ///
   ///
   /// Parameters:
   /// * [xTrotxiClient] - Compatibility metadata only, never grants a role.
   /// * [xTrotxiBuild] - Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
-  /// * [phoneSignInRequest] 
+  /// * [phoneSignInRequest]
   /// * [xTrotxiPlatform] - Required for commuter/driver, absent for ops/worker.
   /// * [cancelToken] - A [CancelToken] that can be used to cancel the operation
   /// * [headers] - Can be used to add additional headers to the request
@@ -1127,7 +1167,7 @@ class PublicApi {
   ///
   /// Returns a [Future] containing a [Response] with a [PhoneChallengeResponse] as data
   /// Throws [DioException] if API call or serialization fails
-  Future<Response<PhoneChallengeResponse>> requestPhoneSignIn({ 
+  Future<Response<PhoneChallengeResponse>> requestPhoneSignIn({
     required String xTrotxiClient,
     int xTrotxiBuild = 1,
     required PhoneSignInRequest phoneSignInRequest,
@@ -1160,11 +1200,11 @@ class PublicApi {
 
     try {
       const _type = FullType(PhoneSignInRequest);
-      _bodyData = _serializers.serialize(phoneSignInRequest, specifiedType: _type);
-
-    } catch(error, stackTrace) {
+      _bodyData =
+          _serializers.serialize(phoneSignInRequest, specifiedType: _type);
+    } catch (error, stackTrace) {
       throw DioException(
-         requestOptions: _options.compose(
+        requestOptions: _options.compose(
           _dio.options,
           _path,
         ),
@@ -1187,11 +1227,12 @@ class PublicApi {
 
     try {
       final rawResponse = _response.data;
-      _responseData = rawResponse == null ? null : _serializers.deserialize(
-        rawResponse,
-        specifiedType: const FullType(PhoneChallengeResponse),
-      ) as PhoneChallengeResponse;
-
+      _responseData = rawResponse == null
+          ? null
+          : _serializers.deserialize(
+              rawResponse,
+              specifiedType: const FullType(PhoneChallengeResponse),
+            ) as PhoneChallengeResponse;
     } catch (error, stackTrace) {
       throw DioException(
         requestOptions: _response.requestOptions,
@@ -1215,12 +1256,12 @@ class PublicApi {
   }
 
   /// sign In Apple
-  /// 
+  ///
   ///
   /// Parameters:
   /// * [xTrotxiClient] - Compatibility metadata only, never grants a role.
   /// * [xTrotxiBuild] - Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
-  /// * [appleSignIn] 
+  /// * [appleSignIn]
   /// * [xTrotxiPlatform] - Required for commuter/driver, absent for ops/worker.
   /// * [cancelToken] - A [CancelToken] that can be used to cancel the operation
   /// * [headers] - Can be used to add additional headers to the request
@@ -1231,7 +1272,7 @@ class PublicApi {
   ///
   /// Returns a [Future] containing a [Response] with a [TokensResponse] as data
   /// Throws [DioException] if API call or serialization fails
-  Future<Response<TokensResponse>> signInApple({ 
+  Future<Response<TokensResponse>> signInApple({
     required String xTrotxiClient,
     int xTrotxiBuild = 1,
     required AppleSignIn appleSignIn,
@@ -1265,10 +1306,9 @@ class PublicApi {
     try {
       const _type = FullType(AppleSignIn);
       _bodyData = _serializers.serialize(appleSignIn, specifiedType: _type);
-
-    } catch(error, stackTrace) {
+    } catch (error, stackTrace) {
       throw DioException(
-         requestOptions: _options.compose(
+        requestOptions: _options.compose(
           _dio.options,
           _path,
         ),
@@ -1291,11 +1331,12 @@ class PublicApi {
 
     try {
       final rawResponse = _response.data;
-      _responseData = rawResponse == null ? null : _serializers.deserialize(
-        rawResponse,
-        specifiedType: const FullType(TokensResponse),
-      ) as TokensResponse;
-
+      _responseData = rawResponse == null
+          ? null
+          : _serializers.deserialize(
+              rawResponse,
+              specifiedType: const FullType(TokensResponse),
+            ) as TokensResponse;
     } catch (error, stackTrace) {
       throw DioException(
         requestOptions: _response.requestOptions,
@@ -1319,12 +1360,12 @@ class PublicApi {
   }
 
   /// sign In Driver
-  /// 
+  ///
   ///
   /// Parameters:
   /// * [xTrotxiClient] - Compatibility metadata only, never grants a role.
   /// * [xTrotxiBuild] - Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
-  /// * [driverSignIn] 
+  /// * [driverSignIn]
   /// * [xTrotxiPlatform] - Required for commuter/driver, absent for ops/worker.
   /// * [cancelToken] - A [CancelToken] that can be used to cancel the operation
   /// * [headers] - Can be used to add additional headers to the request
@@ -1335,7 +1376,7 @@ class PublicApi {
   ///
   /// Returns a [Future] containing a [Response] with a [DriverTokensResponse] as data
   /// Throws [DioException] if API call or serialization fails
-  Future<Response<DriverTokensResponse>> signInDriver({ 
+  Future<Response<DriverTokensResponse>> signInDriver({
     required String xTrotxiClient,
     int xTrotxiBuild = 1,
     required DriverSignIn driverSignIn,
@@ -1369,10 +1410,9 @@ class PublicApi {
     try {
       const _type = FullType(DriverSignIn);
       _bodyData = _serializers.serialize(driverSignIn, specifiedType: _type);
-
-    } catch(error, stackTrace) {
+    } catch (error, stackTrace) {
       throw DioException(
-         requestOptions: _options.compose(
+        requestOptions: _options.compose(
           _dio.options,
           _path,
         ),
@@ -1395,11 +1435,12 @@ class PublicApi {
 
     try {
       final rawResponse = _response.data;
-      _responseData = rawResponse == null ? null : _serializers.deserialize(
-        rawResponse,
-        specifiedType: const FullType(DriverTokensResponse),
-      ) as DriverTokensResponse;
-
+      _responseData = rawResponse == null
+          ? null
+          : _serializers.deserialize(
+              rawResponse,
+              specifiedType: const FullType(DriverTokensResponse),
+            ) as DriverTokensResponse;
     } catch (error, stackTrace) {
       throw DioException(
         requestOptions: _response.requestOptions,
@@ -1423,12 +1464,12 @@ class PublicApi {
   }
 
   /// sign In Google
-  /// 
+  ///
   ///
   /// Parameters:
   /// * [xTrotxiClient] - Compatibility metadata only, never grants a role.
   /// * [xTrotxiBuild] - Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
-  /// * [googleSignIn] 
+  /// * [googleSignIn]
   /// * [xTrotxiPlatform] - Required for commuter/driver, absent for ops/worker.
   /// * [cancelToken] - A [CancelToken] that can be used to cancel the operation
   /// * [headers] - Can be used to add additional headers to the request
@@ -1439,7 +1480,7 @@ class PublicApi {
   ///
   /// Returns a [Future] containing a [Response] with a [TokensResponse] as data
   /// Throws [DioException] if API call or serialization fails
-  Future<Response<TokensResponse>> signInGoogle({ 
+  Future<Response<TokensResponse>> signInGoogle({
     required String xTrotxiClient,
     int xTrotxiBuild = 1,
     required GoogleSignIn googleSignIn,
@@ -1473,10 +1514,9 @@ class PublicApi {
     try {
       const _type = FullType(GoogleSignIn);
       _bodyData = _serializers.serialize(googleSignIn, specifiedType: _type);
-
-    } catch(error, stackTrace) {
+    } catch (error, stackTrace) {
       throw DioException(
-         requestOptions: _options.compose(
+        requestOptions: _options.compose(
           _dio.options,
           _path,
         ),
@@ -1499,11 +1539,12 @@ class PublicApi {
 
     try {
       final rawResponse = _response.data;
-      _responseData = rawResponse == null ? null : _serializers.deserialize(
-        rawResponse,
-        specifiedType: const FullType(TokensResponse),
-      ) as TokensResponse;
-
+      _responseData = rawResponse == null
+          ? null
+          : _serializers.deserialize(
+              rawResponse,
+              specifiedType: const FullType(TokensResponse),
+            ) as TokensResponse;
     } catch (error, stackTrace) {
       throw DioException(
         requestOptions: _response.requestOptions,
@@ -1527,12 +1568,12 @@ class PublicApi {
   }
 
   /// verify Phone Sign In
-  /// 
+  ///
   ///
   /// Parameters:
   /// * [xTrotxiClient] - Compatibility metadata only, never grants a role.
   /// * [xTrotxiBuild] - Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
-  /// * [phoneSignInVerify] 
+  /// * [phoneSignInVerify]
   /// * [xTrotxiPlatform] - Required for commuter/driver, absent for ops/worker.
   /// * [cancelToken] - A [CancelToken] that can be used to cancel the operation
   /// * [headers] - Can be used to add additional headers to the request
@@ -1543,7 +1584,7 @@ class PublicApi {
   ///
   /// Returns a [Future] containing a [Response] with a [TokensResponse] as data
   /// Throws [DioException] if API call or serialization fails
-  Future<Response<TokensResponse>> verifyPhoneSignIn({ 
+  Future<Response<TokensResponse>> verifyPhoneSignIn({
     required String xTrotxiClient,
     int xTrotxiBuild = 1,
     required PhoneSignInVerify phoneSignInVerify,
@@ -1576,11 +1617,11 @@ class PublicApi {
 
     try {
       const _type = FullType(PhoneSignInVerify);
-      _bodyData = _serializers.serialize(phoneSignInVerify, specifiedType: _type);
-
-    } catch(error, stackTrace) {
+      _bodyData =
+          _serializers.serialize(phoneSignInVerify, specifiedType: _type);
+    } catch (error, stackTrace) {
       throw DioException(
-         requestOptions: _options.compose(
+        requestOptions: _options.compose(
           _dio.options,
           _path,
         ),
@@ -1603,11 +1644,12 @@ class PublicApi {
 
     try {
       final rawResponse = _response.data;
-      _responseData = rawResponse == null ? null : _serializers.deserialize(
-        rawResponse,
-        specifiedType: const FullType(TokensResponse),
-      ) as TokensResponse;
-
+      _responseData = rawResponse == null
+          ? null
+          : _serializers.deserialize(
+              rawResponse,
+              specifiedType: const FullType(TokensResponse),
+            ) as TokensResponse;
     } catch (error, stackTrace) {
       throw DioException(
         requestOptions: _response.requestOptions,
@@ -1629,5 +1671,4 @@ class PublicApi {
       extra: _response.extra,
     );
   }
-
 }
