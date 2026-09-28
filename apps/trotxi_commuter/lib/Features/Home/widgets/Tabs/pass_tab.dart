@@ -4,6 +4,7 @@ import 'package:qr_flutter/qr_flutter.dart';
 import 'package:trotxi_client/trotxi_client.dart' as wire;
 import 'package:trotxi_commuter/core/api/commuter_api.dart';
 import 'package:trotxi_commuter/core/config/theme/app_colors.dart';
+import 'package:trotxi_commuter/core/config/theme/app_typography.dart';
 
 class PassTab extends StatefulWidget {
   const PassTab({super.key, required this.client, this.now = DateTime.now});
@@ -239,7 +240,7 @@ class _PassHeader extends StatelessWidget {
           style: TextStyle(
             color: AppColors.dark,
             fontSize: 24,
-            fontFamily: 'Hanken Grotesk',
+            fontFamily: AppTypography.fontFamily,
             fontWeight: FontWeight.w700,
             height: 1.33,
           ),
@@ -393,7 +394,7 @@ class _QrError extends StatelessWidget {
               style: TextStyle(
                 color: AppColors.body,
                 fontSize: 14,
-                fontFamily: 'Inter',
+                fontFamily: AppTypography.fontFamily,
                 fontWeight: FontWeight.w500,
               ),
             ),
@@ -615,7 +616,7 @@ class _PassFooter extends StatelessWidget {
               style: TextStyle(
                 color: AppColors.body,
                 fontSize: 14,
-                fontFamily: 'Inter',
+                fontFamily: AppTypography.fontFamily,
                 fontWeight: FontWeight.w400,
                 height: 1.43,
               ),
