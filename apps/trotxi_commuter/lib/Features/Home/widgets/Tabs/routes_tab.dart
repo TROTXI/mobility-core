@@ -3,6 +3,7 @@ import 'package:intl/intl.dart';
 import 'package:trotxi_client/trotxi_client.dart' as wire;
 import 'package:trotxi_commuter/core/api/commuter_api.dart';
 import 'trip_tracking_page.dart';
+import 'reservation_trips_tab.dart';
 
 class RoutesTab extends StatefulWidget {
   const RoutesTab({super.key, required this.client});
@@ -87,7 +88,24 @@ class _RoutesTabState extends State<RoutesTab> {
   Widget build(BuildContext context) => ListView(
     padding: const EdgeInsets.all(16),
     children: [
-      Text('Departures', style: Theme.of(context).textTheme.headlineSmall),
+      Row(
+        children: [
+          Expanded(
+            child: Text(
+              'Departures',
+              style: Theme.of(context).textTheme.headlineSmall,
+            ),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) => ReservationTripsTab(client: widget.client),
+              ),
+            ),
+            child: const Text('My trips'),
+          ),
+        ],
+      ),
       const Text(
         'Service dates and departure times are Ghana time. A listed trip does not confirm your seat or grant live tracking access.',
       ),

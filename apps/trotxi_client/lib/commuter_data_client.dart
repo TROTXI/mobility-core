@@ -241,6 +241,22 @@ class CommuterDataClient {
       ))
           .data;
 
+  /// Remove the rider's current photo without disturbing the account or its
+  /// session. A retry after an uncertain response uses the same command key.
+  Future<void> deleteAvatar() async {
+    await _command(
+      'deleteAvatar',
+      null,
+      (key, extra) => _ack(client.getSelfApi().deleteAvatar(
+            idempotencyKey: key,
+            xTrotxiClient: metadata.app,
+            xTrotxiBuild: metadata.build,
+            xTrotxiPlatform: metadata.platform,
+            extra: extra,
+          )),
+    );
+  }
+
   Future<List<Session>> sessions() => _pages(
       (cursor, extra) => client.getSelfApi().listSessions(
           xTrotxiClient: metadata.app,
@@ -326,6 +342,17 @@ class CommuterDataClient {
               extra: extra),
           (page) => page.data,
           (page) => page.page.nextCursor);
+
+  /// Rider-scoped reservation detail, including its scheduled trip and stops.
+  Future<ReservationDetail> reservationDetail(String id) async =>
+      (await _read((extra) => client.getRiderOwnApi().getReservation(
+            id: id,
+            xTrotxiClient: metadata.app,
+            xTrotxiBuild: metadata.build,
+            xTrotxiPlatform: metadata.platform,
+            extra: extra,
+          )))
+          .data;
 
   Future<List<CommuteRequest>> commuteRequests(
           {CommuteRequestStatusEnum? status}) =>

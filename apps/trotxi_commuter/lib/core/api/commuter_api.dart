@@ -169,3 +169,11 @@ class CommuterApi extends CommuterDataClient {
     upgradeRequired.dispose();
   }
 }
+
+/// Generated operation groups used by the commuter's detailed flows. They
+/// share the current session-scoped transport; this does not construct a
+/// second client or token store.
+extension CommuterGeneratedOperations on CommuterApi {
+  wire.RiderOwnApi getRiderOwnApi() => client.getRiderOwnApi();
+  wire.PublicApi getPublicApi() => client.getPublicApi();
+}

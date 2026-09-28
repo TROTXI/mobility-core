@@ -284,7 +284,7 @@ export function readConfiguration(env: Env = process.env): RuntimeConfig {
       ? {
           sms: {
             apiKey: required(env, 'MNOTIFY_API_KEY'),
-            sender: withDefault(env, 'MNOTIFY_SENDER', 'TROTXI'),
+            sender: withDefault(env, 'MNOTIFY_SENDER', 'TrotxiCom'),
             staging: deployment === 'staging',
           },
         }

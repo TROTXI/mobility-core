@@ -19,6 +19,14 @@ import {
 
 const key = (n: number) => Buffer.alloc(32, n).toString('base64');
 
+test('approved mNotify sender is the default unless explicitly overridden', () => {
+  const env = environment();
+  env.MNOTIFY_API_KEY = 'fixture-key';
+  assert.equal(readConfiguration(env).sms?.sender, 'TrotxiCom');
+  env.MNOTIFY_SENDER = 'OtherSender';
+  assert.equal(readConfiguration(env).sms?.sender, 'OtherSender');
+});
+
 test('SMS maintenance works without email and reports ambiguous delivery as a failed job', async () => {
   const empty = { considered: 0, accepted: 0, cancelled: 0, failed: 0, retried: 0, unknown: 0 };
   let prepared = false;

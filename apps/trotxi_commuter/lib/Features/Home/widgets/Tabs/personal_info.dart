@@ -8,6 +8,8 @@ import 'package:trotxi_commuter/core/config/layout/responsive_layout.dart';
 import 'package:trotxi_commuter/core/config/theme/app_colors.dart';
 import 'package:trotxi_commuter/core/config/theme/app_typography.dart';
 
+enum _PhotoAction { camera, gallery, remove }
+
 /// Full-page "Personal information" editor, pushed from ProfileTab's
 /// "Personal information" row.
 ///
@@ -37,6 +39,7 @@ class _PersonalInfoPageState extends State<PersonalInfoPage> {
   /// Set once an upload returns, so the new picture shows without a round trip.
   /// Signed and short-lived: never persisted, never reused after this screen.
   String? _avatarUrl;
+  bool _avatarRemoved = false;
 
   @override
   void dispose() {
@@ -63,7 +66,7 @@ class _PersonalInfoPageState extends State<PersonalInfoPage> {
   static const _accepted = {'jpg': 'image/jpeg', 'jpeg': 'image/jpeg', 'png': 'image/png', 'webp': 'image/webp'};
 
   Future<void> _onChangePhoto() async {
-    final source = await showModalBottomSheet<ImageSource>(
+    final action = await showModalBottomSheet<_PhotoAction>(
       context: context,
       builder: (sheet) => SafeArea(
         child: Column(
@@ -72,18 +75,42 @@ class _PersonalInfoPageState extends State<PersonalInfoPage> {
             ListTile(
               leading: const Icon(Icons.photo_camera_outlined),
               title: const Text('Take a photo'),
-              onTap: () => Navigator.of(sheet).pop(ImageSource.camera),
+              onTap: () => Navigator.of(sheet).pop(_PhotoAction.camera),
             ),
             ListTile(
               leading: const Icon(Icons.photo_library_outlined),
               title: const Text('Choose from library'),
-              onTap: () => Navigator.of(sheet).pop(ImageSource.gallery),
+              onTap: () => Navigator.of(sheet).pop(_PhotoAction.gallery),
             ),
+            if (!_avatarRemoved &&
+                (_avatarUrl ?? widget.initialUser.avatarUrl) != null)
+              ListTile(
+                leading: const Icon(Icons.delete_outline_rounded),
+                title: const Text('Remove photo'),
+                onTap: () => Navigator.of(sheet).pop(_PhotoAction.remove),
+              ),
           ],
         ),
       ),
     );
-    if (source == null || !mounted) return;
+    if (!mounted || action == null) return;
+    if (action == _PhotoAction.remove) {
+      setState(() => _uploading = true);
+      try {
+        await widget.client.deleteAvatar();
+        if (!mounted) return;
+        setState(() {
+          _avatarRemoved = true;
+          _avatarUrl = null;
+        });
+        _say('Photo removed.');
+      } catch (error) {
+        if (mounted) _say('Could not remove that photo. Try again.');
+      } finally {
+        if (mounted) setState(() => _uploading = false);
+      }
+      return;
+    }
 
     final XFile? picked;
     try {
@@ -92,7 +119,9 @@ class _PersonalInfoPageState extends State<PersonalInfoPage> {
       // wastes a rider's data to earn a 413. 1024px is far more than the
       // boarding screen shows.
       picked = await ImagePicker().pickImage(
-        source: source,
+        source: action == _PhotoAction.camera
+            ? ImageSource.camera
+            : ImageSource.gallery,
         maxWidth: 1024,
         maxHeight: 1024,
         imageQuality: 85,
@@ -122,7 +151,10 @@ class _PersonalInfoPageState extends State<PersonalInfoPage> {
       if (!mounted) return;
       // The URL is signed and short-lived, so it is held only for this screen
       // and re-read from the server the next time anything needs it.
-      setState(() => _avatarUrl = avatar.url);
+      setState(() {
+        _avatarUrl = avatar.url;
+        _avatarRemoved = false;
+      });
       _say('Photo updated.');
     } on ApiException catch (error) {
       if (!mounted) return;
@@ -291,7 +323,7 @@ class _PersonalInfoPageState extends State<PersonalInfoPage> {
 
   Widget _buildAvatarSection(BuildContext context) {
     final colors = context.appColors;
-    final avatarUrl = _avatarUrl ?? widget.initialUser.avatarUrl;
+    final avatarUrl = _avatarRemoved ? null : _avatarUrl ?? widget.initialUser.avatarUrl;
     final hasAvatar = avatarUrl != null && avatarUrl.isNotEmpty;
 
     return Column(

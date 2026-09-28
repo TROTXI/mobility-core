@@ -7,8 +7,14 @@ import 'package:trotxi_commuter/core/config/theme/app_colors.dart';
 import 'package:trotxi_commuter/core/config/theme/app_typography.dart';
 
 class PassTab extends StatefulWidget {
-  const PassTab({super.key, required this.client, this.now = DateTime.now});
+  const PassTab({
+    super.key,
+    required this.client,
+    this.initialReservationId,
+    this.now = DateTime.now,
+  });
   final CommuterApi client;
+  final String? initialReservationId;
   final DateTime Function() now;
   @override
   State<PassTab> createState() => _PassTabState();
@@ -82,6 +88,11 @@ class _PassTabState extends State<PassTab> with WidgetsBindingObserver {
                   r.tripId != null,
             )
             .toList();
+        if (_selectedId == null &&
+            widget.initialReservationId != null &&
+            _seats.any((r) => r.id == widget.initialReservationId)) {
+          _selectedId = widget.initialReservationId;
+        }
         if (!_seats.any((r) => r.id == _selectedId)) _selectedId = null;
         // Even one seat is explicitly chosen, so the rider sees which day/leg this proof authorizes.
         _loading = false;
