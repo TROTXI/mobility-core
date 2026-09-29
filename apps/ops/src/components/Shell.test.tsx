@@ -13,12 +13,13 @@ vi.mock('../auth/AuthContext', () => ({
 }));
 
 describe('Ops navigation', () => {
-  it('keeps secondary sections reachable without filling the icon rail', async () => {
+  it('keeps secondary sections in More and account actions in one menu', async () => {
+    const toggleAppearance = vi.fn();
     render(
       <FluentProvider theme={trotxiLight} data-theme="light">
         <MemoryRouter initialEntries={['/']}>
           <Routes>
-            <Route element={<Shell appearance="light" toggleAppearance={vi.fn()} />}>
+            <Route element={<Shell appearance="light" toggleAppearance={toggleAppearance} />}>
               <Route index element={<div>Home screen</div>} />
               <Route path="payments" element={<div>Payments screen</div>} />
             </Route>
@@ -30,7 +31,12 @@ describe('Ops navigation', () => {
     const home = screen.getByRole('link', { name: 'Trotxi operations home' });
     expect(home.querySelector('img')).toHaveAttribute('src', '/trotxi-wordmark-light.png');
     expect(home.querySelector('img')).toHaveAttribute('alt', '');
+    expect(screen.getByRole('link', { name: 'Live operations' })).toBeInTheDocument();
+    expect(screen.queryByRole('search')).not.toBeInTheDocument();
     expect(screen.queryByRole('link', { name: 'Payments' })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Account menu for Test Operator' }));
+    fireEvent.click(await screen.findByRole('menuitem', { name: 'Dark appearance' }));
+    expect(toggleAppearance).toHaveBeenCalledOnce();
     fireEvent.click(screen.getByRole('button', { name: 'More sections' }));
     fireEvent.click(await screen.findByRole('menuitem', { name: 'Payments' }));
     expect(await screen.findByText('Payments screen')).toBeInTheDocument();

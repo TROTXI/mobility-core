@@ -67,7 +67,7 @@ export function Overview() {
   return (
     <Page
       title="Live operations"
-      description="Active runs and exceptions in this service window. Scheduled departures are in Dispatch."
+      description="Running trips and issues that need action."
       actions={
         <>
           <input
@@ -87,16 +87,18 @@ export function Overview() {
         onTabSelect={(_, data) => setWindowName(data.value as 'morning' | 'evening')}
         style={{ marginBottom: 20 }}
       >
-        <Tab value="morning">Morning window</Tab>
-        <Tab value="evening">Evening window</Tab>
+        <Tab value="morning">Morning</Tab>
+        <Tab value="evening">Evening</Tab>
       </TabList>
       {query.error && <ErrorState message={query.error} retry={query.retry} />}
       {(query.data || !query.error) && (
         <>
           <div className="stat-grid overview-stat-grid">
             <Stat label="Active trips" value={tiles?.inProgress} />
-            <Stat label="Seats confirmed" value={tiles?.seatsConfirmed} />
-            <Stat label="Boarded" value={tiles?.boarded} />
+            <Stat
+              label="Boarded / confirmed"
+              value={tiles ? `${tiles.boarded} / ${tiles.seatsConfirmed}` : undefined}
+            />
             <Stat
               label="Needs attention"
               value={
@@ -112,7 +114,7 @@ export function Overview() {
           >
             <section className="overview-trips" aria-label="Live runs and exceptions">
               <div className="overview-section-heading">
-                <h2>Live runs & exceptions</h2>
+                <h2>Trips to monitor</h2>
                 <span>{priorityTrips.length} to monitor</span>
               </div>
               {priorityTrips.length > 0 && (
@@ -182,11 +184,7 @@ export function Overview() {
             {liveMarkers.length > 0 && (
               <section className="overview-map-panel" aria-label="Accra network live map">
                 <div className="overview-section-heading">
-                  <div>
-                    <h2>Accra network · live</h2>
-                    <span>Driver positions and trip context</span>
-                  </div>
-                  <span className="map-live-badge">Network view</span>
+                  <h2>Live map</h2>
                 </div>
                 <LiveMap markers={liveMarkers} />
                 <div className="overview-map-footer">
@@ -217,9 +215,7 @@ export function Overview() {
                   )}
                 </div>
                 {query.data && (
-                  <div className="map-meta">
-                    Snapshot {when(query.data.generatedAt)} · refreshes every 10 seconds
-                  </div>
+                  <div className="map-meta">Updated {when(query.data.generatedAt)}</div>
                 )}
               </section>
             )}
@@ -236,7 +232,7 @@ function Stat({
   attention = false,
 }: {
   label: string;
-  value?: number;
+  value?: number | string;
   attention?: boolean;
 }) {
   return (

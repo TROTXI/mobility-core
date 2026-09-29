@@ -1,5 +1,4 @@
 import {
-  AlertBadgeRegular,
   BoardRegular,
   CalendarRegular,
   DataTrendingRegular,
@@ -8,7 +7,6 @@ import {
   MoneyRegular,
   PeopleRegular,
   PersonSupportRegular,
-  SearchRegular,
   SettingsRegular,
   SignOutRegular,
   WeatherMoonRegular,
@@ -17,7 +15,6 @@ import {
 } from '@fluentui/react-icons';
 import {
   Avatar,
-  Button,
   Menu,
   MenuItem,
   MenuList,
@@ -25,7 +22,6 @@ import {
   MenuTrigger,
   Tooltip,
 } from '@fluentui/react-components';
-import { useState } from 'react';
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
 
@@ -47,9 +43,6 @@ const secondaryItems = [
   ['/platform', 'Platform', SettingsRegular],
 ] as const;
 
-const items = [...primaryItems, ...secondaryItems, ['/profile', 'Profile', PeopleRegular]] as const;
-const titles = Object.fromEntries(items.map(([path, label]) => [path, label]));
-
 export function Shell({
   appearance,
   toggleAppearance,
@@ -60,15 +53,21 @@ export function Shell({
   const { pathname } = useLocation();
   const navigate = useNavigate();
   const { account, session } = useAuth();
-  const [search, setSearch] = useState('');
   return (
     <div className="app-shell">
       <aside className="sidebar" aria-label="Operations navigation">
         <div className="sidebar-brand">
           <NavLink to="/" className="brand-mark" aria-label="Trotxi operations home">
             <img
-              className="brand-rail-logo"
+              className="brand-rail-logo logo-light"
               src="/trotxi-wordmark-light.png"
+              alt=""
+              width={568}
+              height={208}
+            />
+            <img
+              className="brand-rail-logo logo-dark"
+              src="/trotxi-wordmark-dark.png"
               alt=""
               width={568}
               height={208}
@@ -76,12 +75,14 @@ export function Shell({
           </NavLink>
         </div>
         <nav className="nav-list" aria-label="Operations">
+          <span className="nav-section-label">Workspace</span>
           {primaryItems.map(([path, label, Icon]) => (
             <Tooltip key={path} content={label} relationship="label">
               <NavLink
                 className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}
                 to={path}
                 end={path === '/'}
+                aria-label={label}
               >
                 <Icon aria-hidden="true" />
                 <span className="nav-label">{label}</span>
@@ -111,71 +112,42 @@ export function Shell({
             </MenuPopover>
           </Menu>
         </nav>
-        <div className="sidebar-footer">
-          <NavLink to="/profile" aria-label="Open profile">
-            <Avatar
-              name={account?.displayName}
-              image={account?.avatarUrl ? { src: account.avatarUrl } : undefined}
-              size={32}
-            />
-          </NavLink>
-        </div>
       </aside>
       <section className="workspace">
         <header className="topbar">
-          <div className="topbar-heading">
-            <div className="topbar-title">{titles[pathname] ?? 'Trotxi Operations'}</div>
-            <div className="topbar-subtitle">Accra network · Operations</div>
-          </div>
-          <form
-            className="topbar-search"
-            role="search"
-            onSubmit={(event) => {
-              event.preventDefault();
-              navigate(`/trips?search=${encodeURIComponent(search.trim())}`);
-            }}
-          >
-            <SearchRegular aria-hidden="true" />
-            <input
-              aria-label="Search trips, drivers and vehicles"
-              placeholder="Search trip, driver or vehicle"
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-            />
-          </form>
-          <div className="ops-status">
-            <span className="connection-dot" /> Ops workspace
-          </div>
-          <Tooltip content="People & messages" relationship="label">
-            <NavLink className="topbar-icon" to="/people" aria-label="People and messages">
-              <AlertBadgeRegular aria-hidden="true" />
-            </NavLink>
-          </Tooltip>
-          <Tooltip
-            content={`Switch to ${appearance === 'dark' ? 'light' : 'dark'} mode`}
-            relationship="label"
-          >
-            <Button
-              appearance="subtle"
-              aria-label={`Switch to ${appearance === 'dark' ? 'light' : 'dark'} mode`}
-              icon={appearance === 'dark' ? <WeatherSunnyRegular /> : <WeatherMoonRegular />}
-              onClick={toggleAppearance}
-            />
-          </Tooltip>
-          <NavLink className="profile-link" to="/profile" aria-label="Open profile">
-            <Avatar
-              name={account?.displayName}
-              image={account?.avatarUrl ? { src: account.avatarUrl } : undefined}
-            />
-            <span>{account?.displayName?.split(' ')[0] ?? 'Operator'}</span>
-          </NavLink>
-          <Tooltip content="Sign out" relationship="label">
-            <Button
-              appearance="subtle"
-              icon={<SignOutRegular />}
-              onClick={() => void session.logout()}
-            />
-          </Tooltip>
+          <span className="topbar-context">Trotxi Operations</span>
+          <Menu positioning="below-end">
+            <MenuTrigger disableButtonEnhancement>
+              <button
+                type="button"
+                className="account-menu-trigger"
+                aria-label={`Account menu for ${account?.displayName ?? 'operator'}`}
+              >
+                <Avatar
+                  name={account?.displayName}
+                  image={account?.avatarUrl ? { src: account.avatarUrl } : undefined}
+                  size={32}
+                />
+                <span>{account?.displayName?.split(' ')[0] ?? 'Operator'}</span>
+              </button>
+            </MenuTrigger>
+            <MenuPopover>
+              <MenuList>
+                <MenuItem icon={<PeopleRegular />} onClick={() => navigate('/profile')}>
+                  My profile
+                </MenuItem>
+                <MenuItem
+                  icon={appearance === 'dark' ? <WeatherSunnyRegular /> : <WeatherMoonRegular />}
+                  onClick={toggleAppearance}
+                >
+                  {appearance === 'dark' ? 'Light appearance' : 'Dark appearance'}
+                </MenuItem>
+                <MenuItem icon={<SignOutRegular />} onClick={() => void session.logout()}>
+                  Sign out
+                </MenuItem>
+              </MenuList>
+            </MenuPopover>
+          </Menu>
         </header>
         <Outlet />
       </section>
