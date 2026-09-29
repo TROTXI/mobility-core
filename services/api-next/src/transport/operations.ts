@@ -286,6 +286,7 @@ export async function readOperations(
     'security',
     'payments',
     'gps',
+    'maintenance',
   ];
   if (area !== undefined && !allowedAreas.includes(area))
     fail(400, 'invalid_query', 'Unsupported audit area.');
@@ -323,6 +324,9 @@ export async function readOperations(
       UNION ALL SELECT id,'payments','resolvePaymentReview:'||decision,actor_user_id,review_id::text,reason,created_at FROM app.payment_review_commands
       UNION ALL SELECT id,'payments','initiateRefund',actor_user_id,purchase_id::text,reason,created_at FROM app.refund_initiations
       UNION ALL SELECT id,'gps',operation,actor_user_id,hold_id::text,NULL,created_at FROM app.gps_events
+      UNION ALL SELECT s.id,'maintenance',s.origin||':'||s.operation,s.actor_user_id,s.id::text,
+        coalesce(o.state,'started'),s.started_at FROM app.maintenance_run_starts s
+        LEFT JOIN app.maintenance_run_outcomes o ON o.run_id=s.id
     ) SELECT e.*,coalesce(nullif(u.display_name,''),
       CASE WHEN u.deleted_at IS NOT NULL THEN 'Former user' ELSE 'User' END) actor_name,
       to_char(e.occurred_at AT TIME ZONE 'UTC','YYYY-MM-DD"T"HH24:MI:SS.US"Z"') AS cursor_time

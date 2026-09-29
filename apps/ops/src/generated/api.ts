@@ -2988,7 +2988,8 @@ export interface components {
         | 'configuration'
         | 'security'
         | 'payments'
-        | 'gps';
+        | 'gps'
+        | 'maintenance';
       action: string;
       actorId: string;
       actorName: string;

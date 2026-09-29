@@ -39,6 +39,7 @@ import { boardingOperations } from '../boarding/service.js';
 import type { BoardingService } from '../boarding/service.js';
 import { loggerOptions } from '../observability/logging.js';
 import { recordJob } from '../observability/metrics.js';
+import type { MaintenanceAudit } from '../runtime/maintenance-audit.js';
 // The contract admits a `worker` client on exactly these, with no platform:
 // scheduled maintenance is an operations caller without an app build behind it.
 const maintenanceOperations = new Set([
@@ -81,6 +82,7 @@ interface Operation {
   responses: Record<string, { content?: Record<string, { schema: Record<string, unknown> }> }>;
 }
 export interface AppOptions extends Dependencies {
+  maintenanceAudit?: MaintenanceAudit;
   refunds?: RefundInitiation;
   /** Request logs to stdout, which OpenTelemetry ships to Loki. Off in tests. */
   logRequests?: boolean;
@@ -189,6 +191,7 @@ export async function createTransportApp(options: AppOptions) {
   });
   app.decorate('transport', service);
   const actors = new WeakMap<FastifyRequest, Actor>();
+  const maintenanceRuns = new WeakMap<FastifyRequest, string>();
   const budget = options.requestsPerMinute ?? 120;
   if (!Number.isInteger(budget) || budget < 1) throw new Error('Invalid request budget');
   const ipBudget = options.requestsPerIpPerMinute ?? 600;
@@ -427,10 +430,15 @@ export async function createTransportApp(options: AppOptions) {
         ...(scheduled
           ? {
               onSend: async (
-                _request: unknown,
+                request: FastifyRequest,
                 reply: { statusCode: number },
                 payload: unknown,
               ) => {
+                const runId = maintenanceRuns.get(request);
+                if (runId) {
+                  maintenanceRuns.delete(request);
+                  await options.maintenanceAudit!.finish(runId, reply.statusCode, payload);
+                }
                 recordJob(name, reply.statusCode, payload);
                 return payload;
               },
@@ -544,6 +552,14 @@ export async function createTransportApp(options: AppOptions) {
         },
         handler: async (request, reply) => {
           const actor = actors.get(request)!;
+          if (scheduled && options.maintenanceAudit) {
+            const runId = await options.maintenanceAudit.startApi(
+              actor,
+              request.headers['x-trotxi-client'],
+              name,
+            );
+            if (runId) maintenanceRuns.set(request, runId);
+          }
           let result;
           if (refundEndpoint) {
             if (Object.keys(request.query as object).length)

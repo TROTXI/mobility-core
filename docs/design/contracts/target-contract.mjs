@@ -1265,6 +1265,7 @@ named(
       'security',
       'payments',
       'gps',
+      'maintenance',
     ]),
     action: text(100),
     actorId: id,

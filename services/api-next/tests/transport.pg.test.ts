@@ -285,7 +285,8 @@ test('MIG-01 clean install records hashes, rerun is no-op, historical drift fail
     // 028 adds passkeys, short-lived WebAuthn challenges and their audit events.
     // 030 adds bounded, encrypted phone OTP challenges.
     // 031 adds encrypted, once-only driver SMS delivery.
-    assert.equal(tables.rows[0].n, 91);
+    // 032 adds append-only maintenance starts and outcomes.
+    assert.equal(tables.rows[0].n, 93);
     assert.deepEqual(
       (
         await pool.query(

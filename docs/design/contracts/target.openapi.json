@@ -24984,7 +24984,8 @@
               "configuration",
               "security",
               "payments",
-              "gps"
+              "gps",
+              "maintenance"
             ]
           },
           "action": {

@@ -257,6 +257,9 @@ class OpsAuditEventAreaEnum extends EnumClass {
       _$opsAuditEventAreaEnum_payments;
   @BuiltValueEnumConst(wireName: r'gps')
   static const OpsAuditEventAreaEnum gps = _$opsAuditEventAreaEnum_gps;
+  @BuiltValueEnumConst(wireName: r'maintenance')
+  static const OpsAuditEventAreaEnum maintenance =
+      _$opsAuditEventAreaEnum_maintenance;
 
   static Serializer<OpsAuditEventAreaEnum> get serializer =>
       _$opsAuditEventAreaEnumSerializer;

@@ -82,6 +82,7 @@ export function Audit() {
               'security',
               'payments',
               'gps',
+              'maintenance',
             ].map((value) => (
               <option key={value} value={value}>
                 {value}
