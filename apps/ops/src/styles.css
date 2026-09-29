@@ -1290,6 +1290,20 @@ select {
 .profile-account-details dd {
   font-weight: 600;
 }
+.audit-search {
+  margin: 0 0 18px;
+  color: var(--ops-text);
+}
+.audit-search summary {
+  width: fit-content;
+  cursor: pointer;
+  color: var(--ops-muted);
+  font-size: 13px;
+  font-weight: 700;
+}
+.audit-search .filter-bar {
+  margin: 12px 0 0;
+}
 
 /* The dispatch frame pairs the operational map with a visible assignment queue. */
 .dispatch-stage {

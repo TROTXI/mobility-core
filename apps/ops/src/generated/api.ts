@@ -2986,7 +2986,9 @@ export interface components {
         | 'boarding'
         | 'pricing'
         | 'configuration'
-        | 'security';
+        | 'security'
+        | 'payments'
+        | 'gps';
       action: string;
       actorId: string;
       actorName: string;
@@ -9229,6 +9231,16 @@ export interface operations {
         limit?: number;
         /** @description Audit domain. */
         area?: string;
+        /** @description Operator user ID. */
+        actorId?: string;
+        /** @description Exact audit action. */
+        action?: string;
+        /** @description Exact resource ID. */
+        targetId?: string;
+        /** @description Earliest UTC date, inclusive. */
+        fromDate?: string;
+        /** @description Latest UTC date, inclusive. */
+        toDate?: string;
       };
       header: {
         /**

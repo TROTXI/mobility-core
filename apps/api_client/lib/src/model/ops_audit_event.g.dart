@@ -26,6 +26,10 @@ const OpsAuditEventAreaEnum _$opsAuditEventAreaEnum_configuration =
     const OpsAuditEventAreaEnum._('configuration');
 const OpsAuditEventAreaEnum _$opsAuditEventAreaEnum_security =
     const OpsAuditEventAreaEnum._('security');
+const OpsAuditEventAreaEnum _$opsAuditEventAreaEnum_payments =
+    const OpsAuditEventAreaEnum._('payments');
+const OpsAuditEventAreaEnum _$opsAuditEventAreaEnum_gps =
+    const OpsAuditEventAreaEnum._('gps');
 
 OpsAuditEventAreaEnum _$opsAuditEventAreaEnumValueOf(String name) {
   switch (name) {
@@ -49,6 +53,10 @@ OpsAuditEventAreaEnum _$opsAuditEventAreaEnumValueOf(String name) {
       return _$opsAuditEventAreaEnum_configuration;
     case 'security':
       return _$opsAuditEventAreaEnum_security;
+    case 'payments':
+      return _$opsAuditEventAreaEnum_payments;
+    case 'gps':
+      return _$opsAuditEventAreaEnum_gps;
     default:
       throw ArgumentError(name);
   }
@@ -66,6 +74,8 @@ final BuiltSet<OpsAuditEventAreaEnum> _$opsAuditEventAreaEnumValues =
   _$opsAuditEventAreaEnum_pricing,
   _$opsAuditEventAreaEnum_configuration,
   _$opsAuditEventAreaEnum_security,
+  _$opsAuditEventAreaEnum_payments,
+  _$opsAuditEventAreaEnum_gps,
 ]);
 
 Serializer<OpsAuditEventAreaEnum> _$opsAuditEventAreaEnumSerializer =
@@ -84,6 +94,8 @@ class _$OpsAuditEventAreaEnumSerializer
     'pricing': 'pricing',
     'configuration': 'configuration',
     'security': 'security',
+    'payments': 'payments',
+    'gps': 'gps',
   };
   static const Map<Object, String> _fromWire = const <Object, String>{
     'catalog': 'catalog',
@@ -96,6 +108,8 @@ class _$OpsAuditEventAreaEnumSerializer
     'pricing': 'pricing',
     'configuration': 'configuration',
     'security': 'security',
+    'payments': 'payments',
+    'gps': 'gps',
   };
 
   @override
