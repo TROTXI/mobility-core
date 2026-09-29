@@ -28,7 +28,7 @@ abstract class OpsAuditEvent
 
   @BuiltValueField(wireName: r'area')
   OpsAuditEventAreaEnum get area;
-  // enum areaEnum {  catalog,  trip,  schedule,  fleet,  driver,  membership,  boarding,  pricing,  configuration,  security,  };
+  // enum areaEnum {  catalog,  trip,  schedule,  fleet,  driver,  membership,  boarding,  pricing,  configuration,  security,  payments,  gps,  };
 
   @BuiltValueField(wireName: r'action')
   String get action;
@@ -252,6 +252,11 @@ class OpsAuditEventAreaEnum extends EnumClass {
   @BuiltValueEnumConst(wireName: r'security')
   static const OpsAuditEventAreaEnum security =
       _$opsAuditEventAreaEnum_security;
+  @BuiltValueEnumConst(wireName: r'payments')
+  static const OpsAuditEventAreaEnum payments =
+      _$opsAuditEventAreaEnum_payments;
+  @BuiltValueEnumConst(wireName: r'gps')
+  static const OpsAuditEventAreaEnum gps = _$opsAuditEventAreaEnum_gps;
 
   static Serializer<OpsAuditEventAreaEnum> get serializer =>
       _$opsAuditEventAreaEnumSerializer;

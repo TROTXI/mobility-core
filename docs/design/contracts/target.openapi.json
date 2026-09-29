@@ -12109,6 +12109,58 @@
             "description": "Audit domain."
           },
           {
+            "name": "actorId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Operator user ID."
+          },
+          {
+            "name": "action",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 100
+            },
+            "description": "Exact audit action."
+          },
+          {
+            "name": "targetId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            },
+            "description": "Exact resource ID."
+          },
+          {
+            "name": "fromDate",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            },
+            "description": "Earliest UTC date, inclusive."
+          },
+          {
+            "name": "toDate",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            },
+            "description": "Latest UTC date, inclusive."
+          },
+          {
             "name": "X-Trotxi-Client",
             "in": "header",
             "required": true,
@@ -24930,7 +24982,9 @@
               "boarding",
               "pricing",
               "configuration",
-              "security"
+              "security",
+              "payments",
+              "gps"
             ]
           },
           "action": {

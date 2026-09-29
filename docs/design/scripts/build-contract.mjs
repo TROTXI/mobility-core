@@ -188,7 +188,14 @@ for (const o of operations) {
       query('state', { type: 'string', maxLength: 50 }, 'Provider delivery state.'),
     );
   if (o.operationId === 'listOpsAuditEvents')
-    parameters.push(query('area', { type: 'string', maxLength: 50 }, 'Audit domain.'));
+    parameters.push(
+      query('area', { type: 'string', maxLength: 50 }, 'Audit domain.'),
+      query('actorId', { type: 'string', format: 'uuid' }, 'Operator user ID.'),
+      query('action', { type: 'string', minLength: 1, maxLength: 100 }, 'Exact audit action.'),
+      query('targetId', { type: 'string', minLength: 1, maxLength: 128 }, 'Exact resource ID.'),
+      query('fromDate', { type: 'string', format: 'date' }, 'Earliest UTC date, inclusive.'),
+      query('toDate', { type: 'string', format: 'date' }, 'Latest UTC date, inclusive.'),
+    );
   if (o.operationId === 'getOpsReportSummary')
     parameters.push(
       query('fromDate', { type: 'string', format: 'date' }, 'Inclusive reporting day.'),

@@ -3750,6 +3750,11 @@ class OpsApi {
   /// * [cursor] - Opaque cursor bound to caller, sort and filters.
   /// * [limit] - Page size. No silent truncation.
   /// * [area] - Audit domain.
+  /// * [actorId] - Operator user ID.
+  /// * [action] - Exact audit action.
+  /// * [targetId] - Exact resource ID.
+  /// * [fromDate] - Earliest UTC date, inclusive.
+  /// * [toDate] - Latest UTC date, inclusive.
   /// * [xTrotxiPlatform] - Required for commuter/driver, absent for ops/worker.
   /// * [cancelToken] - A [CancelToken] that can be used to cancel the operation
   /// * [headers] - Can be used to add additional headers to the request
@@ -3766,6 +3771,11 @@ class OpsApi {
     String? cursor,
     int? limit = 50,
     String? area,
+    String? actorId,
+    String? action,
+    String? targetId,
+    String? fromDate,
+    String? toDate,
     String? xTrotxiPlatform,
     CancelToken? cancelToken,
     Map<String, dynamic>? headers,
@@ -3806,6 +3816,21 @@ class OpsApi {
       if (area != null)
         r'area':
             encodeQueryParameter(_serializers, area, const FullType(String)),
+      if (actorId != null)
+        r'actorId':
+            encodeQueryParameter(_serializers, actorId, const FullType(String)),
+      if (action != null)
+        r'action':
+            encodeQueryParameter(_serializers, action, const FullType(String)),
+      if (targetId != null)
+        r'targetId':
+            encodeQueryParameter(_serializers, targetId, const FullType(String)),
+      if (fromDate != null)
+        r'fromDate':
+            encodeQueryParameter(_serializers, fromDate, const FullType(String)),
+      if (toDate != null)
+        r'toDate':
+            encodeQueryParameter(_serializers, toDate, const FullType(String)),
     };
 
     final _response = await _dio.request<Object>(

@@ -1263,6 +1263,8 @@ named(
       'pricing',
       'configuration',
       'security',
+      'payments',
+      'gps',
     ]),
     action: text(100),
     actorId: id,
