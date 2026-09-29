@@ -17,8 +17,8 @@ import 'package:trotxi_commuter/core/api/commuter_api.dart';
 import 'package:trotxi_commuter/firebase_options.dart';
 import 'package:trotxi_commuter/firebase_performance.dart';
 
-const _apiBaseUrl = String.fromEnvironment('API_BASE_URL');
-const _apiRealm = String.fromEnvironment('API_SESSION_REALM');
+const _apiBaseUrl = 'https://trotxi-api-staging.onrender.com';
+const _apiRealm = 'staging-1';
 
 final trotxiClientProvider = Provider<CommuterApi>((ref) {
   throw UnimplementedError(

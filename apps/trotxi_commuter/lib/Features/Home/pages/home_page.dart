@@ -304,12 +304,28 @@ class _HomePageState extends State<HomePage> {
 
     return Scaffold(
       appBar: Navbar(userData: userData, userName: userData.displayName),
+      // None of the 4 tabs hosts a TextField directly (edits happen in
+      // pushed pages/dialogs, which have their own Scaffolds), so this
+      // Scaffold never needs to shrink for the keyboard — and a stuck/
+      // phantom bottom inset (seen on some OEM ROMs after a dialog's
+      // keyboard closes) must not squash the dock up the screen either.
+      resizeToAvoidBottomInset: false,
       body: LazyIndexedStack(index: _selected.index, children: pages),
-      bottomNavigationBar: CommuterBottomNavigation(
-        selected: _selected,
-        onDestinationSelected: _goToDestination,
-        onSearch: null,
-        isTabletPortrait: false,
+      bottomNavigationBar: SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
+          child: Center(
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: CommuterPhoneDock(
+                selected: _selected,
+                onDestinationSelected: _goToDestination,
+                onSearch: null,
+              ),
+            ),
+          ),
+        ),
       ),
     );
   }

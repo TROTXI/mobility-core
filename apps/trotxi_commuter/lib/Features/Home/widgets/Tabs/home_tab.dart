@@ -116,6 +116,10 @@ class _HomeTabState extends ConsumerState<HomeTab> {
 
     return Scaffold(
       backgroundColor: context.appColors.backgroundDefault,
+      // No TextField lives directly in this tab, so it never needs to shrink
+      // for the keyboard — and a stuck/phantom bottom inset (seen on some
+      // OEM ROMs after a dialog's keyboard closes) must not squash it either.
+      resizeToAvoidBottomInset: false,
       body: SafeArea(
         child: Center(
           child: ConstrainedBox(

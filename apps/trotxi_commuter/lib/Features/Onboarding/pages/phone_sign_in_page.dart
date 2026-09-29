@@ -151,7 +151,7 @@ class _PhoneSignInPageState extends State<PhoneSignInPage> {
                   style: TextStyle(color: colors.textPrimary),
                 ),
               ),
-            FilledButton(
+            ElevatedButton(
               onPressed: _busy ? null : (_challenge == null ? _send : _verify),
               child: Text(
                 _busy
