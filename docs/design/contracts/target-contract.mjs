@@ -1339,6 +1339,8 @@ named(
         tripId: id,
         scheduledAt: instant,
         status: z.enum(['scheduled', 'active', 'completed', 'cancelled']),
+        patternId: id,
+        patternVersionId: id,
         routeName: text().nullable(),
         driverId: id.nullable(),
         driverName: text().nullable(),

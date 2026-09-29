@@ -21570,6 +21570,16 @@
                   "type": "string",
                   "enum": ["scheduled", "active", "completed", "cancelled"]
                 },
+                "patternId": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 128
+                },
+                "patternVersionId": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 128
+                },
                 "routeName": {
                   "nullable": true,
                   "type": "string",
@@ -21671,6 +21681,8 @@
                 "tripId",
                 "scheduledAt",
                 "status",
+                "patternId",
+                "patternVersionId",
                 "routeName",
                 "driverId",
                 "driverName",

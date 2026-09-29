@@ -3126,6 +3126,8 @@ export interface components {
         scheduledAt: string;
         /** @enum {string} */
         status: 'scheduled' | 'active' | 'completed' | 'cancelled';
+        patternId: string;
+        patternVersionId: string;
         routeName: string | null;
         driverId: string | null;
         driverName: string | null;

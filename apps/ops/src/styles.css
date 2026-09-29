@@ -587,6 +587,11 @@ select {
   width: 100%;
   min-height: 420px;
 }
+.live-map-shell {
+  width: 100%;
+  flex: 1;
+  min-width: 0;
+}
 .map-meta {
   padding: 10px 14px;
   border-top: 1px solid #ece8ef;

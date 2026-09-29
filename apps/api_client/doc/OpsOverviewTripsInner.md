@@ -11,6 +11,8 @@ Name | Type | Description | Notes
 **tripId** | **String** |  | 
 **scheduledAt** | [**DateTime**](DateTime.md) |  | 
 **status** | **String** |  | 
+**patternId** | **String** |  |
+**patternVersionId** | **String** |  |
 **routeName** | **String** |  | 
 **driverId** | **String** |  | 
 **driverName** | **String** |  | 
@@ -28,5 +30,3 @@ Name | Type | Description | Notes
 **badge** | **String** |  | 
 
 [[Back to Model list]](../README.md#documentation-for-models) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to README]](../README.md)
-
-

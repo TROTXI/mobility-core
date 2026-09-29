@@ -9,9 +9,22 @@ import { useQuery } from '../hooks/useQuery';
 import { opsHeaders } from '../api/session';
 import { LiveMap } from '../components/LiveMap';
 import { formatAccraClock } from '../api/accra-time';
-import { homeTrips, homeTripStatus, needsOperatorAttention } from './overview-view';
+import {
+  fixDescription,
+  homeTrips,
+  homeTripStatus,
+  needsOperatorAttention,
+  withObservedAge,
+} from './overview-view';
 
 type OverviewData = components['schemas']['OpsOverview'];
+type Point = { latitude: number; longitude: number };
+type TripLine = {
+  versionId: string;
+  points: Point[];
+  source: 'geometry' | 'stops' | 'unavailable';
+};
+const emptyLine: Point[] = [];
 
 export function Overview() {
   const { session } = useAuth();
@@ -20,6 +33,12 @@ export function Overview() {
   const [selectedTripId, setSelectedTripId] = useState<string | null>(null);
   const [attentionOnly, setAttentionOnly] = useState(false);
   const [search, setSearch] = useState('');
+  const [tripLine, setTripLine] = useState<TripLine | null>(null);
+  const [clockNow, setClockNow] = useState(() => Date.now());
+  const [snapshot, setSnapshot] = useState<{ data: OverviewData | null; receivedAt: number }>({
+    data: null,
+    receivedAt: Date.now(),
+  });
   const query = useQuery<OverviewData>(
     async (signal) => {
       const { data, error } = await session.client.GET('/v1/ops/overview', {
@@ -37,8 +56,20 @@ export function Overview() {
     return () => window.clearInterval(timer);
   }, [query.retry]);
 
+  useEffect(() => {
+    setSnapshot({ data: query.data, receivedAt: Date.now() });
+  }, [query.data]);
+  useEffect(() => {
+    const timer = window.setInterval(() => setClockNow(Date.now()), 10_000);
+    return () => window.clearInterval(timer);
+  }, []);
+
   const tiles = query.data?.tiles;
-  const trips = query.data?.trips ?? [];
+  const elapsedSeconds =
+    snapshot.data === query.data ? Math.max(0, (clockNow - snapshot.receivedAt) / 1000) : 0;
+  const trips = (query.data?.trips ?? []).map((trip) =>
+    withObservedAge(trip, elapsedSeconds, query.data?.staleFixAfterSeconds ?? 300),
+  );
   const priorityTrips = homeTrips(trips);
   const visibleTrips = priorityTrips.filter((trip) => {
     if (attentionOnly && !needsOperatorAttention(trip)) return false;
@@ -52,13 +83,68 @@ export function Overview() {
   });
   const selectedTrip =
     visibleTrips.find((trip) => trip.tripId === selectedTripId) ?? visibleTrips[0];
+  const selectedPatternId = selectedTrip?.patternId;
+  const selectedVersionId = selectedTrip?.patternVersionId;
+  useEffect(() => {
+    setTripLine(null);
+    if (!selectedPatternId || !selectedVersionId) return;
+    const controller = new AbortController();
+    const load = async () => {
+      const version = await session.client.GET('/v1/ops/route-patterns/{id}/versions/{versionId}', {
+        params: {
+          path: { id: selectedPatternId, versionId: selectedVersionId },
+          header: opsHeaders,
+        },
+        signal: controller.signal,
+      });
+      if (version.error || !version.data) {
+        if (!controller.signal.aborted)
+          setTripLine({ versionId: selectedVersionId, points: [], source: 'unavailable' });
+        return;
+      }
+      const fallback = [...version.data.data.stops]
+        .sort((a, b) => a.ordinal - b.ordinal)
+        .map((stop) => stop.location);
+      const geometryId = version.data.data.geometryId;
+      if (geometryId) {
+        try {
+          const geometry = await session.client.GET('/v1/route-geometries/{id}', {
+            params: { path: { id: geometryId }, header: opsHeaders },
+            signal: controller.signal,
+          });
+          if (!geometry.error && geometry.data && geometry.data.data.points.length >= 2) {
+            if (!controller.signal.aborted)
+              setTripLine({
+                versionId: selectedVersionId,
+                points: geometry.data.data.points,
+                source: 'geometry',
+              });
+            return;
+          }
+        } catch {
+          // A missing geometry does not hide the ordered stop path.
+        }
+      }
+      if (!controller.signal.aborted)
+        setTripLine({
+          versionId: selectedVersionId,
+          points: fallback.length >= 2 ? fallback : [],
+          source: fallback.length >= 2 ? 'stops' : 'unavailable',
+        });
+    };
+    void load().catch(() => {
+      if (!controller.signal.aborted)
+        setTripLine({ versionId: selectedVersionId, points: [], source: 'unavailable' });
+    });
+    return () => controller.abort();
+  }, [session, selectedPatternId, selectedVersionId]);
   const liveMarkers = trips.flatMap((trip) =>
     trip.status === 'active' && trip.lastPosition
       ? [
           {
             id: trip.tripId,
             ...trip.lastPosition,
-            label: `${trip.routeName ?? 'Route'} · ${trip.vehiclePlate ?? trip.vehicleLabel ?? 'vehicle'}`,
+            label: `${trip.routeName ?? 'Route'} · ${trip.vehiclePlate ?? trip.vehicleLabel ?? 'vehicle'} · ${fixDescription(trip)}`,
             state: trip.badge,
           },
         ]
@@ -102,10 +188,18 @@ export function Overview() {
             <Stat
               label="Needs attention"
               value={
-                tiles ? tiles.staleGps + tiles.unassigned + tiles.awaitingResolution : undefined
+                tiles
+                  ? trips.filter((trip) => trip.badge === 'stale_gps').length +
+                    tiles.unassigned +
+                    tiles.awaitingResolution
+                  : undefined
               }
               attention={Boolean(
-                tiles && tiles.staleGps + tiles.unassigned + tiles.awaitingResolution > 0,
+                tiles &&
+                trips.filter((trip) => trip.badge === 'stale_gps').length +
+                  tiles.unassigned +
+                  tiles.awaitingResolution >
+                  0,
               )}
             />
           </div>
@@ -176,17 +270,34 @@ export function Overview() {
                         {formatAccraClock(trip.scheduledAt)} · {trip.boarded}/{trip.confirmed}{' '}
                         boarded
                       </small>
+                      {fixDescription(trip) && <small>{fixDescription(trip)}</small>}
                     </button>
                   ))}
                 </div>
               )}
             </section>
-            {liveMarkers.length > 0 && (
+            {trips.some((trip) => trip.status === 'active') && (
               <section className="overview-map-panel" aria-label="Accra network live map">
                 <div className="overview-section-heading">
                   <h2>Live map</h2>
                 </div>
-                <LiveMap markers={liveMarkers} />
+                <LiveMap
+                  markers={liveMarkers}
+                  line={tripLine?.versionId === selectedVersionId ? tripLine.points : emptyLine}
+                />
+                {liveMarkers.length === 0 && (
+                  <p className="map-meta">No vehicle has sent a GPS fix in this window.</p>
+                )}
+                {tripLine?.versionId === selectedVersionId && tripLine.source === 'stops' && (
+                  <p className="map-meta">
+                    Showing the ordered stops; route geometry is unavailable.
+                  </p>
+                )}
+                {tripLine?.versionId === selectedVersionId && tripLine.source === 'unavailable' && (
+                  <p className="map-meta">
+                    Route unavailable; live vehicle positions remain visible.
+                  </p>
+                )}
                 <div className="overview-map-footer">
                   {selectedTrip ? (
                     <div className="overview-selected-trip">
@@ -202,6 +313,9 @@ export function Overview() {
                       </div>
                       <div className="overview-selected-details">
                         <StatusBadge value={homeTripStatus(selectedTrip)} />
+                        {fixDescription(selectedTrip) && (
+                          <span>{fixDescription(selectedTrip)}</span>
+                        )}
                         <span>
                           {selectedTrip.boarded} of {selectedTrip.confirmed} boarded
                         </span>
