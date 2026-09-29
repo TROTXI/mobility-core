@@ -30,7 +30,9 @@ const schemas = {
       oldestEligibleAt: z.string().nullable(),
     })
     .strict(),
-  erasures: z.object({ considered: count, completed: count, failed: count }).strict(),
+  erasures: z
+    .object({ considered: count, completed: count, failed: count, phoneChallengesPurged: count })
+    .strict(),
   'driver-secrets': z.object({ cleared: count }).strict(),
   admission: z.object({ cleared: count }).strict(),
   push: z
