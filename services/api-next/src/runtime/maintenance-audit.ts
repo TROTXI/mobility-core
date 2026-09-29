@@ -39,13 +39,17 @@ export class MaintenanceAudit {
   }
 
   async startApi(actor: Actor, client: unknown, operation: string): Promise<string | null> {
-    const session = await this.pool.query<{ issued_for: string }>(
-      `SELECT issued_for FROM app.auth_sessions WHERE id=$1 AND user_id=$2
-       AND revoked_at IS NULL AND expires_at>clock_timestamp()`,
+    const session = await this.pool.query<{ issued_for: string; role: string }>(
+      `SELECT s.issued_for,u.role FROM app.auth_sessions s
+       JOIN app.users u ON u.id=s.user_id
+       WHERE s.id=$1 AND s.user_id=$2 AND s.revoked_at IS NULL
+         AND s.expires_at>clock_timestamp() AND u.deleted_at IS NULL`,
       [actor.sessionId, actor.userId],
     );
-    const issuedFor = session.rows[0]?.issued_for;
+    const identity = session.rows[0];
+    const issuedFor = identity?.issued_for;
     if (!issuedFor) fail(401, 'unauthenticated', 'Sign in to continue.');
+    if (identity.role !== 'admin') fail(403, 'forbidden', 'Operations access is required.');
     if (issuedFor === 'maintenance') {
       if (client !== 'worker') fail(403, 'wrong_client', 'Use the maintenance worker client.');
       // The outer worker run covers this routed operation exactly once.

@@ -333,6 +333,30 @@ test('ASM-24 manual and worker maintenance have distinct append-only starts and 
       .sort(),
     ['api:runGpsRetention', 'worker:driver-secrets'],
   );
+  const riderSession = (
+    await backend.pool.query(
+      `INSERT INTO app.auth_sessions(user_id,expires_at)
+       VALUES ($1,clock_timestamp()+interval '1 hour')
+       RETURNING id,created_at,expires_at`,
+      [f.actor.userId],
+    )
+  ).rows[0];
+  const riderToken = await backend.auth.tokens.sign(
+    { userId: f.actor.userId, sessionId: riderSession.id },
+    'commuter',
+    riderSession.created_at,
+    riderSession.expires_at,
+  );
+  const refused = await call('POST', '/v1/ops/maintenance/gps-retention', {
+    payload: { limit: 5 },
+    token: riderToken,
+  });
+  assert.equal(refused.statusCode, 403, refused.body);
+  assert.equal(
+    (await f.owner.query('SELECT count(*)::int n FROM app.maintenance_run_starts')).rows[0].n,
+    2,
+    'a non-operator cannot create permanent maintenance evidence',
+  );
   const bad = await call('POST', '/v1/ops/maintenance/trip-generation?unexpected=1', {
     payload: { serviceDate: new Date(Date.now() + 86400000).toISOString().slice(0, 10), limit: 5 },
   });
