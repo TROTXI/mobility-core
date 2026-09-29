@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import type { TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import { randomUUID, randomBytes } from 'node:crypto';
+import { setTimeout as delay } from 'node:timers/promises';
 import { setup } from './helpers/financial-fixture.js';
 import { AccountService } from '../src/account/service.js';
 import { MembershipService } from '../src/membership/service.js';
@@ -792,5 +793,69 @@ test('ACC-15 erasure closes seeded linked stores while preserving only restricte
       )
     ).rows[0].tracked_cleanup_state,
     'tracked_complete',
+  );
+});
+
+test('ACC-16 erasure waits for in-flight phone issuance then cancels its challenge', async (t) => {
+  const f = await fixture(t);
+  const phoneHash = '1'.repeat(64);
+  const challengeId = randomUUID();
+  await f.owner.query("UPDATE app.users SET phone='+233241234567' WHERE id=$1", [f.actor.userId]);
+  await f.owner.query(
+    "INSERT INTO app.auth_identities(user_id,provider,subject) VALUES ($1,'phone',$2)",
+    [f.actor.userId, phoneHash],
+  );
+  const issuer = await f.owner.connect();
+  let deletion: Promise<Response> | undefined;
+  let waiting = false;
+  try {
+    await issuer.query('BEGIN');
+    await issuer.query('SELECT pg_advisory_xact_lock(hashtextextended($1,0))', [
+      `phone-otp:${phoneHash}`,
+    ]);
+    deletion = f.call('DELETE', '/v1/me');
+    for (let attempt = 0; attempt < 100; attempt++) {
+      const row = (
+        await f.owner.query(
+          `SELECT 1 FROM pg_stat_activity
+           WHERE datname=current_database() AND wait_event='advisory'
+             AND query LIKE 'SELECT pg_advisory_xact_lock%' LIMIT 1`,
+        )
+      ).rows[0];
+      if (row) {
+        waiting = true;
+        break;
+      }
+      await delay(20);
+    }
+    await issuer.query(
+      `INSERT INTO app.phone_otp_challenges
+        (id,phone_hash,source_hash,phone_ciphertext,code_hash,state,expires_at)
+       VALUES ($1,$2,$3,'sealed-phone',$4,'sending',clock_timestamp()+interval '4 minutes')`,
+      [challengeId, phoneHash, '2'.repeat(64), '3'.repeat(64)],
+    );
+    await issuer.query('COMMIT');
+  } finally {
+    await issuer.query('ROLLBACK').catch(() => undefined);
+    issuer.release();
+  }
+  assert.equal((await deletion!).statusCode, 204);
+  assert.equal(waiting, true, 'deletion must wait on the issuance lock before scrubbing');
+  const challenge = (
+    await f.owner.query(
+      'SELECT state,phone_ciphertext,code_hash FROM app.phone_otp_challenges WHERE id=$1',
+      [challengeId],
+    )
+  ).rows[0];
+  assert.deepEqual(challenge, { state: 'failed', phone_ciphertext: null, code_hash: null });
+  assert.equal(
+    (
+      await f.owner.query(
+        "UPDATE app.phone_otp_challenges SET state='sent' WHERE id=$1 AND state='sending'",
+        [challengeId],
+      )
+    ).rowCount,
+    0,
+    'the issuer cannot promote a cancelled challenge after deletion',
   );
 });

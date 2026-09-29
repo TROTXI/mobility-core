@@ -1,6 +1,8 @@
 -- A code issued before account closure must not create a fresh account after
 -- its verified phone identity is scrubbed. Keep the 24-hour hashed rate-budget
 -- tombstone, but make the challenge unusable and erase its encrypted phone.
+-- AccountService takes the same phone-scoped advisory lock as OTP issuance
+-- before it locks the user row; this trigger runs while that lock is held.
 CREATE INDEX phone_otp_cleanup ON app.phone_otp_challenges(created_at,id);
 CREATE FUNCTION app.cancel_erased_phone_challenges() RETURNS trigger LANGUAGE plpgsql AS $$
 BEGIN
