@@ -625,5 +625,3 @@ lib/src/model/work_request_response.dart
 lib/src/serializers.dart
 lib/trotxi_api_client.dart
 pubspec.yaml
-test/credential_secret_sms_test.dart
-test/driver_credential_sms_test.dart
