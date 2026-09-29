@@ -829,6 +829,7 @@ named(
     location: point.nullable(),
     status: z.enum(['open', 'acknowledged', 'resolved']),
     resolution: note.nullable(),
+    redactedAt: instant.nullable(),
     createdAt: instant,
   }),
 );
@@ -1120,7 +1121,7 @@ named('WebhookAck', obj({ received: z.literal(true) }));
 named(
   'OpsIncident',
   schemas.Incident.extend({
-    driverId: id,
+    driverId: id.nullable(),
     handledBy: id.nullable(),
     handledAt: instant.nullable(),
     version,

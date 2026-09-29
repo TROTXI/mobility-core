@@ -337,9 +337,10 @@ export class Gps {
     // delete cannot interleave.
     await lock(client, traceLockKey(String(body.tripId)));
     const incident = (
-      await client.query('SELECT trip_id FROM app.driver_incidents WHERE id=$1 FOR SHARE', [
-        body.incidentId,
-      ])
+      await client.query(
+        'SELECT trip_id FROM app.driver_incidents WHERE id=$1 AND redacted_at IS NULL FOR SHARE',
+        [body.incidentId],
+      )
     ).rows[0];
     if (!incident) return notFound();
     if (

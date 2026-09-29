@@ -2802,6 +2802,8 @@ export interface components {
       status: 'open' | 'acknowledged' | 'resolved';
       resolution: string | null;
       /** Format: date-time */
+      redactedAt: string | null;
+      /** Format: date-time */
       createdAt: string;
     };
     IncidentDecision: {
@@ -3066,8 +3068,10 @@ export interface components {
       status: 'open' | 'acknowledged' | 'resolved';
       resolution: string | null;
       /** Format: date-time */
+      redactedAt: string | null;
+      /** Format: date-time */
       createdAt: string;
-      driverId: string;
+      driverId: string | null;
       handledBy: string | null;
       /** Format: date-time */
       handledAt: string | null;

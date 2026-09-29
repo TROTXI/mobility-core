@@ -3,6 +3,7 @@ import { purgeExpiredDriverSecrets } from '../auth/driver-service.js';
 import type { Backend } from './compose.js';
 import { jobFailed } from './job-outcome.js';
 import { purgeExpiredCommandPayloads } from './receipt-retention.js';
+import { redactExpiredIncidents } from './incident-retention.js';
 
 export const JOBS = [
   'personal-pause-resumes',
@@ -12,6 +13,7 @@ export const JOBS = [
   'no-shows',
   'route-learning',
   'gps-retention',
+  'incident-retention',
   'erasures',
   'driver-secrets',
   'admission',
@@ -111,7 +113,7 @@ async function operatorSession(backend: Backend, minutes = 15) {
  *
  * The batch and service-day jobs go through the application's own routes, so
  * they get the same schema validation, authorization, receipts and idempotency
- * as any operator pressing the same button. The two physical sweeps have no
+ * as any operator pressing the same button. The direct physical sweeps have no
  * reviewed operation and are called directly; neither can be triggered over
  * HTTP, which is the point of them living in the worker.
  */
@@ -122,12 +124,12 @@ async function runJobCore(backend: Backend, request: JobRequest): Promise<JobRes
   const day = SERVICE_DAY[request.job];
   if (day && (!request.travelDate || !request.direction))
     throw new Error(`${request.job} needs a travel date and a direction`);
-  // Opened for every job, including the two with no HTTP route: destroying
+  // Opened for every job, including those with no HTTP route: destroying
   // credential ciphertext and withdrawing a rider's provider grant are not
   // things an unattributed process should be able to start, so the operations
   // account is checked and a session opened before either runs.
   //
-  // KNOWN GAP, flagged rather than invented: those two write no receipt. There
+  // KNOWN GAP, flagged rather than invented: these write no command receipt. There
   // is no reviewed operation and no command store for them, and adding one is
   // a contract and schema decision, not something to improvise here.
   const session = await operatorSession(backend);
@@ -195,6 +197,12 @@ async function runJobCore(backend: Backend, request: JobRequest): Promise<JobRes
         job: request.job,
         status: 200,
         body: { cleared: await backend.admission.sweep(limit * 10) },
+      };
+    if (request.job === 'incident-retention')
+      return {
+        job: request.job,
+        status: 200,
+        body: await redactExpiredIncidents(backend.pool, backend.maintenanceUserId!, limit),
       };
     const maxBatches = request.job === 'gps-retention' ? (request.maxBatches ?? 1000) : 1;
     const maxRunMs = request.maxRunMs ?? 45000;
