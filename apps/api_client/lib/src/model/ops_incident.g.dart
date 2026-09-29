@@ -158,9 +158,11 @@ class _$OpsIncident extends OpsIncident {
   @override
   final String? resolution;
   @override
+  final DateTime? redactedAt;
+  @override
   final DateTime createdAt;
   @override
-  final String driverId;
+  final String? driverId;
   @override
   final String? handledBy;
   @override
@@ -182,8 +184,9 @@ class _$OpsIncident extends OpsIncident {
       this.location,
       required this.status,
       this.resolution,
+      this.redactedAt,
       required this.createdAt,
-      required this.driverId,
+      this.driverId,
       this.handledBy,
       this.handledAt,
       required this.version,
@@ -208,6 +211,7 @@ class _$OpsIncident extends OpsIncident {
         location == other.location &&
         status == other.status &&
         resolution == other.resolution &&
+        redactedAt == other.redactedAt &&
         createdAt == other.createdAt &&
         driverId == other.driverId &&
         handledBy == other.handledBy &&
@@ -227,6 +231,7 @@ class _$OpsIncident extends OpsIncident {
     _$hash = $jc(_$hash, location.hashCode);
     _$hash = $jc(_$hash, status.hashCode);
     _$hash = $jc(_$hash, resolution.hashCode);
+    _$hash = $jc(_$hash, redactedAt.hashCode);
     _$hash = $jc(_$hash, createdAt.hashCode);
     _$hash = $jc(_$hash, driverId.hashCode);
     _$hash = $jc(_$hash, handledBy.hashCode);
@@ -248,6 +253,7 @@ class _$OpsIncident extends OpsIncident {
           ..add('location', location)
           ..add('status', status)
           ..add('resolution', resolution)
+          ..add('redactedAt', redactedAt)
           ..add('createdAt', createdAt)
           ..add('driverId', driverId)
           ..add('handledBy', handledBy)
@@ -296,6 +302,10 @@ class OpsIncidentBuilder implements Builder<OpsIncident, OpsIncidentBuilder> {
   String? get resolution => _$this._resolution;
   set resolution(String? resolution) => _$this._resolution = resolution;
 
+  DateTime? _redactedAt;
+  DateTime? get redactedAt => _$this._redactedAt;
+  set redactedAt(DateTime? redactedAt) => _$this._redactedAt = redactedAt;
+
   DateTime? _createdAt;
   DateTime? get createdAt => _$this._createdAt;
   set createdAt(DateTime? createdAt) => _$this._createdAt = createdAt;
@@ -335,6 +345,7 @@ class OpsIncidentBuilder implements Builder<OpsIncident, OpsIncidentBuilder> {
       _location = $v.location?.toBuilder();
       _status = $v.status;
       _resolution = $v.resolution;
+      _redactedAt = $v.redactedAt;
       _createdAt = $v.createdAt;
       _driverId = $v.driverId;
       _handledBy = $v.handledBy;
@@ -374,10 +385,10 @@ class OpsIncidentBuilder implements Builder<OpsIncident, OpsIncidentBuilder> {
             status: BuiltValueNullFieldError.checkNotNull(
                 status, r'OpsIncident', 'status'),
             resolution: resolution,
+            redactedAt: redactedAt,
             createdAt: BuiltValueNullFieldError.checkNotNull(
                 createdAt, r'OpsIncident', 'createdAt'),
-            driverId: BuiltValueNullFieldError.checkNotNull(
-                driverId, r'OpsIncident', 'driverId'),
+            driverId: driverId,
             handledBy: handledBy,
             handledAt: handledAt,
             version: BuiltValueNullFieldError.checkNotNull(

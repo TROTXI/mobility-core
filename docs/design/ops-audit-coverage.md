@@ -8,6 +8,7 @@
 | Service schedules                                                  | `schedule_events`                                                 |
 | Trips, assignments, reschedules, cancellations and generated trips | `trip_events`                                                     |
 | Vehicles, incidents and driver requests/decisions                  | `fleet_events`                                                    |
+| Incident-detail redaction                                          | `incident_redactions` and `maintenance_run_*`                     |
 | Driver records and credential issuance, reset and state changes    | `driver_events`                                                   |
 | Commute slots/requests and rider restrictions                      | `membership_events`                                               |
 | No-show decisions that change a reservation                        | `boarding_events`                                                 |

@@ -241,6 +241,17 @@ test('maintenance exit policy detects 200 partial failures and contract drift, n
     },
   };
   assert.equal(jobFailed(result), true);
+  const incident = {
+    job: 'incident-retention' as const,
+    status: 200,
+    body: { considered: 100, redacted: 100, held: 1, remainingEligible: 0, oldestEligibleAt: null },
+  };
+  assert.equal(jobFailed(incident), false, 'an active hold is not a failed sweep');
+  assert.equal(
+    jobFailed({ ...incident, body: { ...incident.body, remainingEligible: 1 } }),
+    true,
+    'a due backlog left behind must be visible as a failed run',
+  );
   const logged = JSON.parse(
     jobLog({
       job: 'route-learning',

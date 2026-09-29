@@ -286,7 +286,8 @@ test('MIG-01 clean install records hashes, rerun is no-op, historical drift fail
     // 030 adds bounded, encrypted phone OTP challenges.
     // 031 adds encrypted, once-only driver SMS delivery.
     // 032 adds append-only maintenance starts and outcomes.
-    assert.equal(tables.rows[0].n, 93);
+    // 033 adds append-only driver incident redaction evidence.
+    assert.equal(tables.rows[0].n, 94);
     assert.deepEqual(
       (
         await pool.query(

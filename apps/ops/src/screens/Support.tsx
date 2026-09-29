@@ -289,7 +289,7 @@ function IncidentRows({ rows, onSelect }: { rows: Incident[]; onSelect: (row: In
           <tr key={row.id}>
             <td>{when(row.createdAt)}</td>
             <td>{row.category.replaceAll('_', ' ')}</td>
-            <td className="mono">{row.driverId.slice(0, 8)}</td>
+            <td className="mono">{row.driverId?.slice(0, 8) ?? 'Redacted'}</td>
             <td>
               <StatusBadge value={row.status} />
             </td>

@@ -21,6 +21,7 @@ part 'incident.g.dart';
 /// * [location]
 /// * [status]
 /// * [resolution]
+/// * [redactedAt]
 /// * [createdAt]
 @BuiltValue()
 abstract class Incident implements Built<Incident, IncidentBuilder> {
@@ -49,6 +50,9 @@ abstract class Incident implements Built<Incident, IncidentBuilder> {
 
   @BuiltValueField(wireName: r'resolution')
   String? get resolution;
+
+  @BuiltValueField(wireName: r'redactedAt')
+  DateTime? get redactedAt;
 
   @BuiltValueField(wireName: r'createdAt')
   DateTime get createdAt;
@@ -125,6 +129,13 @@ class _$IncidentSerializer implements PrimitiveSerializer<Incident> {
         : serializers.serialize(
             object.resolution,
             specifiedType: const FullType.nullable(String),
+          );
+    yield r'redactedAt';
+    yield object.redactedAt == null
+        ? null
+        : serializers.serialize(
+            object.redactedAt,
+            specifiedType: const FullType.nullable(DateTime),
           );
     yield r'createdAt';
     yield serializers.serialize(
@@ -216,6 +227,14 @@ class _$IncidentSerializer implements PrimitiveSerializer<Incident> {
           ) as String?;
           if (valueDes == null) continue;
           result.resolution = valueDes;
+          break;
+        case r'redactedAt':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType.nullable(DateTime),
+          ) as DateTime?;
+          if (valueDes == null) continue;
+          result.redactedAt = valueDes;
           break;
         case r'createdAt':
           final valueDes = serializers.deserialize(

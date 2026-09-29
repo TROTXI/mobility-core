@@ -6,6 +6,7 @@ import pg from 'pg';
 import { createTransportApp } from '../src/http/app.js';
 import { TransportError } from '../src/transport/errors.js';
 import { grantRuntime, migrate, readMigrations } from '../src/db/migrate.js';
+import { redactExpiredIncidents } from '../src/runtime/incident-retention.js';
 
 const value = process.env.HARNESS_ADMIN_DATABASE_URL;
 if (!value || process.env.HARNESS_ALLOW_CREATE_DATABASES !== '1')
@@ -979,3 +980,332 @@ test('FLT-14 a page cursor is bound to its filter and cannot be replayed against
       1,
     );
   }));
+
+test('FLT-15 incident retention is category-aware, one-way and removes every report copy', () =>
+  withCase(async (c) => {
+    const report = async (category: string, tripId?: string) => {
+      const created = expectStatus(
+        await c.request(
+          'POST',
+          '/v1/driver/incidents',
+          {
+            category,
+            note: 'Passenger details in a roadside report',
+            location: { latitude: 5.61234, longitude: -0.23456 },
+            ...(tripId ? { tripId } : {}),
+          },
+          { who: 'driver' },
+        ),
+        201,
+      );
+      const queued = expectStatus(await c.request('GET', '/v1/ops/incidents'), 200).find(
+        (incident: any) => incident.id === created.id,
+      );
+      expectStatus(
+        await c.request(
+          'POST',
+          `/v1/ops/incidents/${created.id}/decisions`,
+          { status: 'resolved', resolution: 'Handler private notes' },
+          { token: queued.editToken },
+        ),
+        200,
+      );
+      return created.id as string;
+    };
+    const routine = await report('vehicle');
+    const safety = await report('passenger_safety');
+    const heldTrip = await c.tripFor('driver');
+    const held = await report('collision', heldTrip);
+    await c.owner.query(
+      `UPDATE app.driver_incidents SET handled_at=clock_timestamp()-interval '100 days'
+      WHERE id=ANY($1::uuid[])`,
+      [[routine, safety]],
+    );
+    await c.owner.query(
+      `UPDATE app.driver_incidents SET handled_at=clock_timestamp()-interval '366 days'
+      WHERE id=$1`,
+      [held],
+    );
+    const hold = (
+      await c.owner.query(
+        `INSERT INTO app.trace_holds(incident_id,trip_id,received_from,received_to,reason,review_at,created_by)
+        VALUES ($1,$2,clock_timestamp()-interval '1 day',clock_timestamp(),
+          'Private evidence reason',clock_timestamp()+interval '1 day',$3) RETURNING id`,
+        [held, heldTrip, c.users.admin],
+      )
+    ).rows[0].id;
+    const holdCommand = randomUUID();
+    await c.owner.query(
+      `INSERT INTO app.transport_commands(id,actor_user_id,operation,target,key_hash,input_hash,
+        response_status,response_body,response_headers,replay_expires_at)
+      VALUES ($1,$2,'createTraceHold',$3,repeat('a',64),repeat('b',64),201,
+        $4::jsonb,'{}'::jsonb,clock_timestamp()+interval '7 days')`,
+      [holdCommand, c.users.admin, hold, JSON.stringify({ reason: 'Private evidence reason' })],
+    );
+    await c.owner.query(
+      `INSERT INTO app.gps_events(actor_user_id,command_id,hold_id,operation,before_state,after_state)
+      VALUES ($1,$2,$3,'createTraceHold','{}'::jsonb,$4::jsonb)`,
+      [
+        c.users.admin,
+        holdCommand,
+        hold,
+        JSON.stringify({ id: hold, reason: 'Private evidence reason', state: 'active' }),
+      ],
+    );
+    const first = await redactExpiredIncidents(c.runtime, c.users.admin, 1);
+    assert.equal(first.redacted, 1);
+    assert.equal(first.held, 1);
+    assert.equal(first.remainingEligible, 0);
+    let row = (await c.owner.query('SELECT * FROM app.driver_incidents WHERE id=$1', [routine]))
+      .rows[0];
+    assert.equal(row.driver_id, null);
+    assert.equal(row.trip_id, null);
+    assert.equal(row.vehicle_id, null);
+    assert.equal(row.note, null);
+    assert.equal(row.latitude, null);
+    assert.equal(row.longitude, null);
+    assert.equal(row.resolution, null);
+    assert.equal(row.handled_by, null);
+    assert.ok(row.redacted_at);
+    assert.equal(
+      (await c.owner.query('SELECT redacted_at FROM app.driver_incidents WHERE id=$1', [safety]))
+        .rows[0].redacted_at,
+      null,
+      'safety needs 365 days',
+    );
+    await assert.rejects(
+      c.runtime.query('UPDATE app.driver_incidents SET redacted_at=clock_timestamp() WHERE id=$1', [
+        safety,
+      ]),
+      /invalid_incident_redaction/,
+    );
+    await assert.rejects(
+      c.runtime.query(
+        `INSERT INTO app.incident_redactions(incident_id,actor_user_id,category)
+        VALUES ($1,$2,'passenger_safety')`,
+        [safety, c.users.admin],
+      ),
+      /unverified_incident_redaction/,
+    );
+    const ops = expectStatus(await c.request('GET', '/v1/ops/incidents'), 200);
+    const redacted = ops.find((incident: any) => incident.id === routine);
+    assert.equal(redacted.note, null);
+    assert.equal(redacted.location, null);
+    assert.equal(redacted.driverId, null);
+    const mine = expectStatus(
+      await c.request('GET', '/v1/driver/incidents', undefined, { who: 'driver' }),
+      200,
+    );
+    assert.ok(!mine.some((incident: any) => incident.id === routine));
+    const snapshots = (
+      await c.owner.query(
+        'SELECT before_state,after_state FROM app.fleet_events WHERE incident_id=$1',
+        [routine],
+      )
+    ).rows;
+    assert.ok(snapshots.length >= 2);
+    for (const event of snapshots)
+      assert.doesNotMatch(
+        JSON.stringify(event),
+        /Passenger details|Handler private|tripId|driverId|location/,
+      );
+    assert.equal(
+      (
+        await c.owner.query(
+          'SELECT count(*)::int n FROM app.incident_redactions WHERE incident_id=$1',
+          [routine],
+        )
+      ).rows[0].n,
+      1,
+    );
+    await assert.rejects(
+      c.runtime.query("UPDATE app.driver_incidents SET note='restored' WHERE id=$1", [routine]),
+      /incident_already_redacted/,
+    );
+    await c.owner.query(
+      `UPDATE app.trace_holds SET state='released',released_by=$2,
+        release_reason='No longer needed',released_at=clock_timestamp() WHERE id=$1`,
+      [hold, c.users.admin],
+    );
+    const second = await redactExpiredIncidents(c.runtime, c.users.admin, 1);
+    assert.equal(second.redacted, 1);
+    const released = (await c.owner.query('SELECT * FROM app.trace_holds WHERE id=$1', [hold]))
+      .rows[0];
+    assert.equal(released.incident_id, null);
+    assert.equal(released.reason, 'Redacted after release');
+    assert.equal(
+      (
+        await c.owner.query('SELECT response_body FROM app.transport_commands WHERE id=$1', [
+          holdCommand,
+        ])
+      ).rows[0].response_body,
+      null,
+      'even an unexpired incident-hold replay snapshot is cleared atomically',
+    );
+    assert.doesNotMatch(
+      JSON.stringify(
+        (await c.owner.query('SELECT after_state FROM app.gps_events WHERE hold_id=$1', [hold]))
+          .rows[0],
+      ),
+      /Private evidence reason/,
+    );
+    row = (await c.owner.query('SELECT redacted_at FROM app.driver_incidents WHERE id=$1', [held]))
+      .rows[0];
+    assert.ok(row.redacted_at);
+    assert.equal((await redactExpiredIncidents(c.runtime, c.users.admin, 1)).redacted, 0);
+  }));
+
+test('FLT-16 incident text refuses payment and authentication secrets', () =>
+  withCase(async (c) => {
+    for (const note of ['Card 4111 1111 1111 1111', 'PIN: 1234', 'sk_test_example']) {
+      const response = await c.request(
+        'POST',
+        '/v1/driver/incidents',
+        { category: 'other', note },
+        { who: 'driver' },
+      );
+      assert.equal(response.statusCode, 400, response.body);
+      assert.equal(response.json().error.code, 'incident_sensitive_content');
+    }
+    assert.equal(
+      (await c.owner.query('SELECT count(*)::int n FROM app.driver_incidents')).rows[0].n,
+      0,
+    );
+    const safe = expectStatus(
+      await c.request(
+        'POST',
+        '/v1/driver/incidents',
+        { category: 'vehicle', note: 'Tyre is flat' },
+        { who: 'driver' },
+      ),
+      201,
+    );
+    const queued = expectStatus(await c.request('GET', '/v1/ops/incidents'), 200)[0];
+    const refused = await c.request(
+      'POST',
+      `/v1/ops/incidents/${safe.id}/decisions`,
+      { status: 'resolved', resolution: 'OTP: 123456' },
+      { token: queued.editToken },
+    );
+    assert.equal(refused.statusCode, 400, refused.body);
+    assert.equal(refused.json().error.code, 'incident_sensitive_content');
+  }));
+
+test('FLT-17 driver account erasure does not leave an incident permanently exempt', () =>
+  withCase(async (c) => {
+    const report = expectStatus(
+      await c.request(
+        'POST',
+        '/v1/driver/incidents',
+        { category: 'route_blocked', note: 'Road obstruction' },
+        { who: 'driver' },
+      ),
+      201,
+    );
+    // Mimic the account service's user + driver anonymization. An open report
+    // still needs an ops decision, but deletion must not block later expiry.
+    await c.owner.query('UPDATE app.users SET deleted_at=clock_timestamp() WHERE id=$1', [
+      c.users.driver,
+    ]);
+    await c.owner.query(
+      `UPDATE app.drivers SET name='Erased driver',phone=NULL,email=NULL,
+        license_number=NULL,archived_at=clock_timestamp() WHERE user_id=$1`,
+      [c.users.driver],
+    );
+    const driver = (
+      await c.owner.query('SELECT name,phone,email FROM app.drivers WHERE user_id=$1', [
+        c.users.driver,
+      ])
+    ).rows[0];
+    assert.equal(driver.phone, null);
+    assert.equal(driver.email, null);
+    assert.notEqual(driver.name, 'Kojo Mensah');
+    assert.equal((await redactExpiredIncidents(c.runtime, c.users.admin)).redacted, 0);
+    const queued = expectStatus(await c.request('GET', '/v1/ops/incidents'), 200).find(
+      (incident: any) => incident.id === report.id,
+    );
+    expectStatus(
+      await c.request(
+        'POST',
+        `/v1/ops/incidents/${report.id}/decisions`,
+        { status: 'resolved', resolution: 'Cleared' },
+        { token: queued.editToken },
+      ),
+      200,
+    );
+    await c.owner.query(
+      "UPDATE app.driver_incidents SET handled_at=clock_timestamp()-interval '91 days' WHERE id=$1",
+      [report.id],
+    );
+    assert.equal((await redactExpiredIncidents(c.runtime, c.users.admin)).redacted, 1);
+    const incident = (
+      await c.owner.query('SELECT driver_id,note FROM app.driver_incidents WHERE id=$1', [
+        report.id,
+      ])
+    ).rows[0];
+    assert.equal(incident.driver_id, null);
+    assert.equal(incident.note, null);
+  }));
+
+test('FLT-18 migration removes legacy incident text and coordinates from permanent events', async () => {
+  const name = `trotxi_harness_${run}_incident_upgrade`;
+  await admin.query(`CREATE DATABASE "${name}"`);
+  owned.push(name);
+  const db = new URL(url);
+  db.pathname = `/${name}`;
+  const pool = new pg.Pool({ connectionString: db.href, max: 2 });
+  try {
+    await migrate(pool, migrations.slice(0, -1));
+    const driverUser = randomUUID();
+    await pool.query("INSERT INTO app.users(id,role) VALUES ($1,'driver')", [driverUser]);
+    const driver = (
+      await pool.query("INSERT INTO app.drivers(user_id,name) VALUES ($1,'Legacy') RETURNING id", [
+        driverUser,
+      ])
+    ).rows[0].id;
+    const incident = (
+      await pool.query(
+        `INSERT INTO app.driver_incidents(driver_id,category,note,latitude,longitude)
+        VALUES ($1,'collision','Passenger full name',5.61234,-0.23456) RETURNING id`,
+        [driver],
+      )
+    ).rows[0].id;
+    const command = randomUUID();
+    await pool.query(
+      `INSERT INTO app.transport_commands(id,actor_user_id,operation,target,key_hash,input_hash,
+        response_status,response_body,response_headers,replay_expires_at)
+      VALUES ($1,$2,'reportIncident','new',repeat('a',64),repeat('b',64),201,
+        '{}'::jsonb,'{}'::jsonb,clock_timestamp()+interval '7 days')`,
+      [command, driverUser],
+    );
+    await pool.query(
+      `INSERT INTO app.fleet_events(actor_user_id,command_id,incident_id,operation,before_state,after_state)
+      VALUES ($1,$2,$3,'reportIncident','{}'::jsonb,$4::jsonb)`,
+      [
+        driverUser,
+        command,
+        incident,
+        JSON.stringify({
+          id: incident,
+          category: 'collision',
+          status: 'open',
+          note: 'Passenger full name',
+          location: { latitude: 5.61234, longitude: -0.23456 },
+        }),
+      ],
+    );
+    await migrate(pool, migrations);
+    const state = (
+      await pool.query('SELECT after_state FROM app.fleet_events WHERE incident_id=$1', [incident])
+    ).rows[0].after_state;
+    assert.deepEqual(state, { id: incident, category: 'collision', status: 'open' });
+    assert.equal(
+      (await pool.query('SELECT note FROM app.driver_incidents WHERE id=$1', [incident])).rows[0]
+        .note,
+      'Passenger full name',
+      'active report remains available until resolution and expiry',
+    );
+  } finally {
+    await pool.end();
+  }
+});

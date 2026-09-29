@@ -159,6 +159,7 @@ export async function grantRuntime(pool: Pool, role: string): Promise<void> {
       'driver_commands',
       'driver_events',
       'fleet_events',
+      'incident_redactions',
       'purchase_legs',
       'credit_entries',
       'ride_entries',
@@ -193,7 +194,9 @@ export async function grantRuntime(pool: Pool, role: string): Promise<void> {
         SELECT 1 FROM pg_trigger g WHERE g.tgrelid = c.oid AND NOT g.tgisinternal
           AND g.tgfoid = ANY (ARRAY[to_regprocedure('app.append_only()'),
             to_regprocedure('app.guard_driver_receipt()'), to_regprocedure('app.guard_account_command()'),
-            to_regprocedure('app.guard_receipt_payload()')])
+            to_regprocedure('app.guard_receipt_payload()'),
+            to_regprocedure('app.guard_fleet_event_privacy()'),
+            to_regprocedure('app.guard_gps_event_privacy()')])
           AND (g.tgtype & 16) <> 0
       ) AS append_only, EXISTS (
         SELECT 1 FROM pg_trigger g WHERE g.tgrelid = c.oid AND NOT g.tgisinternal
