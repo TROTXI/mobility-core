@@ -4,6 +4,7 @@ import type { Backend } from './compose.js';
 import { jobFailed } from './job-outcome.js';
 import { purgeExpiredCommandPayloads } from './receipt-retention.js';
 import { redactExpiredIncidents } from './incident-retention.js';
+import { purgeExpiredPhoneOtpChallenges } from '../auth/phone-otp.js';
 
 export const JOBS = [
   'personal-pause-resumes',
@@ -185,10 +186,11 @@ async function runJobCore(backend: Backend, request: JobRequest): Promise<JobRes
       const receiptPayloadsCleared =
         (await backend.account.purgeExpiredReceipts(limit)) +
         (await purgeExpiredCommandPayloads(backend.pool, limit));
+      const phoneChallengesPurged = await purgeExpiredPhoneOtpChallenges(backend.pool, limit);
       return {
         job: request.job,
         status: 200,
-        body: await backend.account.retryErasures(limit),
+        body: { ...(await backend.account.retryErasures(limit)), phoneChallengesPurged },
         receiptPayloadsCleared,
       };
     }

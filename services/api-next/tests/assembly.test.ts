@@ -217,7 +217,11 @@ test('maintenance exit policy detects 200 partial failures and contract drift, n
     true,
   );
   assert.equal(
-    jobFailed({ job: 'erasures', status: 200, body: { considered: 1, completed: 0, failed: 1 } }),
+    jobFailed({
+      job: 'erasures',
+      status: 200,
+      body: { considered: 1, completed: 0, failed: 1, phoneChallengesPurged: 0 },
+    }),
     true,
   );
   assert.throws(

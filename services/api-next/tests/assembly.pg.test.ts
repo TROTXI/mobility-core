@@ -456,8 +456,18 @@ test('ASM-15 outstanding erasure work is retried and never reported as finished'
     VALUES ($1,'provider_revocation',$2),($1,'avatar_object','legacy/not-ours.jpg')`,
     [user, `google:${randomUUID()}:subject-1`],
   );
+  await f.owner.query(
+    `INSERT INTO app.phone_otp_challenges(id,phone_hash,source_hash,state,created_at,expires_at)
+     VALUES (gen_random_uuid(),repeat('a',64),repeat('b',64),'failed',
+       statement_timestamp()-interval '25 hours',statement_timestamp()-interval '25 hours'+interval '5 minutes')`,
+  );
   const first = await runJob(backend, { job: 'erasures', limit: 10 });
-  assert.deepEqual(first.body, { considered: 2, completed: 0, failed: 2 });
+  assert.deepEqual(first.body, {
+    considered: 2,
+    completed: 0,
+    failed: 2,
+    phoneChallengesPurged: 1,
+  });
   const rows = (
     await f.owner.query(
       'SELECT kind,state,attempts,completed_at,last_failure FROM app.erasure_tasks WHERE user_id=$1 ORDER BY kind',
@@ -477,6 +487,7 @@ test('ASM-15 outstanding erasure work is retried and never reported as finished'
     considered: 2,
     completed: 0,
     failed: 2,
+    phoneChallengesPurged: 0,
   });
   assert.equal(
     (

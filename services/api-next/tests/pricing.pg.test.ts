@@ -1,13 +1,14 @@
 import { test } from 'node:test';
 import type { TestContext } from 'node:test';
 import assert from 'node:assert/strict';
-import { randomUUID } from 'node:crypto';
+import { randomBytes, randomUUID } from 'node:crypto';
 import { setup } from './helpers/financial-fixture.js';
 import { FinancialFoundation } from '../src/payments/foundation.js';
 import { MembershipService } from '../src/membership/service.js';
 import { Pricing } from '../src/payments/pricing.js';
 import { Purchases } from '../src/payments/purchases.js';
 import { createTransportApp } from '../src/http/app.js';
+import { AccountService } from '../src/account/service.js';
 
 type Response = { statusCode: number; body: string; json(): any };
 function expectStatus(response: Response, code: number) {
@@ -464,4 +465,45 @@ test('PRC-08 a transfer is priced from the corridor, not from a stub', async (t)
   } finally {
     client.release();
   }
+});
+
+test('PRC-09 deleted rider is absent from Ops profile reads while restricted purchase facts remain', async (t) => {
+  const f = await fixture(t);
+  await f.owner.query(
+    "UPDATE app.users SET display_name='Ama Private',email='ama.private@example.test',phone='+233241234567' WHERE id=$1",
+    [f.actor.userId],
+  );
+  expectStatus(await f.publishFare(600), 201);
+  const purchase = expectStatus(
+    await f.call('POST', '/v1/me/purchases', { payload: f.input }),
+    201,
+  );
+  const account = new AccountService({
+    pool: f.runtime,
+    authorizeSession: f.dependencies.authorizeSession,
+    deviceKey: randomBytes(32),
+  });
+  assert.equal(
+    (await account.handle(f.actor, 'eraseAccount', {}, undefined, randomUUID())).status,
+    204,
+  );
+
+  const riders = expectStatus(await f.call('GET', '/v1/ops/riders', { who: 'ops' }), 200);
+  assert.equal(
+    riders.some((r: { id: string }) => r.id === f.actor.userId),
+    false,
+  );
+  assert.equal(
+    (await f.call('GET', `/v1/ops/riders/${f.actor.userId}`, { who: 'ops' })).statusCode,
+    404,
+  );
+  const retained = expectStatus(
+    await f.call('GET', `/v1/ops/purchases/${purchase.id}`, { who: 'ops' }),
+    200,
+  );
+  assert.equal(retained.riderId, f.actor.userId, 'financial history remains linkable by ID');
+  assert.equal(retained.id, purchase.id);
+  assert.equal(JSON.stringify(retained).includes('Ama Private'), false);
+  assert.equal(JSON.stringify(retained).includes('ama.private@example.test'), false);
+  assert.equal(JSON.stringify(retained).includes('+233241234567'), false);
 });
