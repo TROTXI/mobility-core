@@ -285,7 +285,7 @@ test('ASM-13 the worker client is the maintenance surface and nothing else', asy
   const { call } = await assembled(t);
   const run = (client: string, platform?: string) =>
     call('POST', '/v1/ops/maintenance/gps-retention', { payload: { limit: 5 }, client, platform });
-  assert.equal((await run('worker')).statusCode, 200);
+  assert.equal((await run('worker')).statusCode, 403);
   assert.equal((await run('ops')).statusCode, 200);
   // It carries no app build, so a platform on it is a caller that has not
   // understood what it is.
@@ -297,6 +297,116 @@ test('ASM-13 the worker client is the maintenance surface and nothing else', asy
     assert.equal(response.statusCode, 400, `${url} accepted the worker client`);
     assert.equal(response.json().error.code, 'client_metadata_required');
   }
+});
+
+test('ASM-24 manual and worker maintenance have distinct append-only starts and outcomes', async (t) => {
+  const { f, backend, call } = await assembled(t);
+  const manual = await call('POST', '/v1/ops/maintenance/gps-retention', {
+    payload: { limit: 5 },
+  });
+  assert.equal(manual.statusCode, 200, manual.body);
+  const worker = await runJob(backend, { job: 'driver-secrets', limit: 5 });
+  assert.equal(worker.status, 200);
+  const rows = (
+    await f.owner.query(
+      `SELECT s.operation,s.origin,s.actor_user_id,s.started_at,o.state,o.status_code,
+         o.completed_at FROM app.maintenance_run_starts s
+         LEFT JOIN app.maintenance_run_outcomes o ON o.run_id=s.id
+         ORDER BY s.started_at`,
+    )
+  ).rows;
+  assert.equal(rows.length, 2, JSON.stringify(rows));
+  assert.deepEqual(
+    rows.map((row) => [row.operation, row.origin, row.state, row.status_code]),
+    [
+      ['runGpsRetention', 'api', 'no_work', 200],
+      ['driver-secrets', 'worker', 'no_work', 200],
+    ],
+  );
+  assert.ok(rows.every((row) => row.actor_user_id === f.adminId && row.completed_at));
+  const listed = await call('GET', '/v1/ops/audit-events?area=maintenance');
+  assert.equal(listed.statusCode, 200, listed.body);
+  assert.deepEqual(
+    listed
+      .json()
+      .data.map((row: { action: string }) => row.action)
+      .sort(),
+    ['api:runGpsRetention', 'worker:driver-secrets'],
+  );
+  const riderSession = (
+    await backend.pool.query(
+      `INSERT INTO app.auth_sessions(user_id,expires_at)
+       VALUES ($1,clock_timestamp()+interval '1 hour')
+       RETURNING id,created_at,expires_at`,
+      [f.actor.userId],
+    )
+  ).rows[0];
+  const riderToken = await backend.auth.tokens.sign(
+    { userId: f.actor.userId, sessionId: riderSession.id },
+    'commuter',
+    riderSession.created_at,
+    riderSession.expires_at,
+  );
+  const refused = await call('POST', '/v1/ops/maintenance/gps-retention', {
+    payload: { limit: 5 },
+    token: riderToken,
+  });
+  assert.equal(refused.statusCode, 403, refused.body);
+  assert.equal(
+    (await f.owner.query('SELECT count(*)::int n FROM app.maintenance_run_starts')).rows[0].n,
+    2,
+    'a non-operator cannot create permanent maintenance evidence',
+  );
+  const bad = await call('POST', '/v1/ops/maintenance/trip-generation?unexpected=1', {
+    payload: { serviceDate: new Date(Date.now() + 86400000).toISOString().slice(0, 10), limit: 5 },
+  });
+  assert.equal(bad.statusCode, 400, bad.body);
+  const failed = await f.owner.query(
+    `SELECT o.state,o.status_code FROM app.maintenance_run_starts s
+     JOIN app.maintenance_run_outcomes o ON o.run_id=s.id
+     WHERE s.origin='api' AND o.state='failed'`,
+  );
+  assert.deepEqual(failed.rows, [{ state: 'failed', status_code: 400 }]);
+  await assert.rejects(
+    f.owner.query("UPDATE app.auth_sessions SET issued_for='maintenance' WHERE user_id=$1", [
+      f.adminId,
+    ]),
+    /session_origin_immutable/,
+  );
+  await assert.rejects(
+    f.owner.query('UPDATE app.maintenance_run_starts SET operation=$1', ['rewritten']),
+    /append.only|immutable/i,
+  );
+  await assert.rejects(
+    f.owner.query('DELETE FROM app.maintenance_run_outcomes'),
+    /append.only|immutable/i,
+  );
+  await assert.rejects(runJob(backend, { job: 'driver-secrets', limit: 0 }), /maintenance batch/);
+  const failedWorker = await f.owner.query(
+    `SELECT o.status_code FROM app.maintenance_run_starts s
+     JOIN app.maintenance_run_outcomes o ON o.run_id=s.id
+     WHERE s.origin='worker' AND o.state='failed'`,
+  );
+  assert.deepEqual(failedWorker.rows, [{ status_code: 500 }]);
+});
+
+test('ASM-25 a failed outcome write cannot report an audited success', async (t) => {
+  const { f, backend, call } = await assembled(t);
+  const original = backend.maintenanceAudit.finish.bind(backend.maintenanceAudit);
+  backend.maintenanceAudit.finish = async () => {
+    throw new Error('audit_outcome_unavailable');
+  };
+  const response = await call('POST', '/v1/ops/maintenance/gps-retention', {
+    payload: { limit: 5 },
+  });
+  backend.maintenanceAudit.finish = original;
+  assert.equal(response.statusCode, 500, response.body);
+  const evidence = await f.owner.query(
+    `SELECT s.id,o.run_id FROM app.maintenance_run_starts s
+     LEFT JOIN app.maintenance_run_outcomes o ON o.run_id=s.id`,
+  );
+  assert.equal(evidence.rowCount, 1);
+  assert.equal(evidence.rows[0].run_id, null, 'interrupted outcomes remain visible as starts');
 });
 
 test('ASM-14 expired credential ciphertext is physically removed, and only that', async (t) => {
@@ -595,11 +705,11 @@ test('ASM-18 raising the operations build floor must not switch the sweeps off',
     const result = await runJob(backend, { job, limit: 5 });
     assert.equal(result.status, 200, `${job}: ${JSON.stringify(result.body)}`);
   }
-  const worker = await call('POST', '/v1/ops/maintenance/gps-retention', {
+  const fakeWorker = await call('POST', '/v1/ops/maintenance/gps-retention', {
     payload: { limit: 5 },
     client: 'worker',
   });
-  assert.equal(worker.statusCode, 200, worker.body);
+  assert.equal(fakeWorker.statusCode, 403, fakeWorker.body);
 });
 
 /** Five requests from one socket, each claiming a different client address. */

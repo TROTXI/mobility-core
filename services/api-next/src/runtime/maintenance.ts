@@ -83,8 +83,8 @@ async function operatorSession(backend: Backend, minutes = 15) {
       // one is minted by a process holding database access, which is already
       // past anything a second factor protects. Without this, every scheduled
       // job would be refused the moment two-factor sign-in shipped.
-      `INSERT INTO app.auth_sessions(user_id,expires_at,admin_verified_at)
-      VALUES ($1, clock_timestamp() + make_interval(mins => $2), clock_timestamp())
+      `INSERT INTO app.auth_sessions(user_id,expires_at,admin_verified_at,issued_for)
+      VALUES ($1, clock_timestamp() + make_interval(mins => $2), clock_timestamp(),'maintenance')
       RETURNING id,created_at,expires_at`,
       [backend.maintenanceUserId, minutes],
     )
@@ -115,7 +115,7 @@ async function operatorSession(backend: Backend, minutes = 15) {
  * reviewed operation and are called directly; neither can be triggered over
  * HTTP, which is the point of them living in the worker.
  */
-export async function runJob(backend: Backend, request: JobRequest): Promise<JobResult> {
+async function runJobCore(backend: Backend, request: JobRequest): Promise<JobResult> {
   const limit = request.limit ?? 100;
   if (!Number.isInteger(limit) || limit < 1 || limit > 100)
     throw new Error('A maintenance batch is between 1 and 100');
@@ -271,5 +271,24 @@ export async function runJob(backend: Backend, request: JobRequest): Promise<Job
     };
   } finally {
     await session.release();
+  }
+}
+
+export async function runJob(backend: Backend, request: JobRequest): Promise<JobResult> {
+  // Do not open an un-attributed worker session if the start cannot be saved.
+  // A missing outcome exposes an interrupted run rather than pretending it
+  // completed. HTTP subcalls use this worker session and do not double-log.
+  const audit = backend.maintenanceAudit;
+  const runId = await audit.startWorker(backend.maintenanceUserId, request.job);
+  let finishAttempted = false;
+  try {
+    const result = await runJobCore(backend, request);
+    const failed = jobFailed(result);
+    finishAttempted = true;
+    await audit.finish(runId, result.status, result.body, failed);
+    return result;
+  } catch (error) {
+    if (!finishAttempted) await audit.finish(runId, 500, null, true);
+    throw error;
   }
 }

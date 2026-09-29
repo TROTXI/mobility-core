@@ -191,6 +191,46 @@ test('OPS-READ-06 role changes retain the actor, target, reason and action in Au
   );
 });
 
+test('OPS-READ-07 trip reassignment and configuration changes are traceable by operator', async (t) => {
+  const f = await fixture(t);
+  const trip = (
+    await f.owner.query(
+      `INSERT INTO app.trips(schedule_id,pattern_version_id,departure_id,service_date,scheduled_at,status)
+       SELECT id,pattern_version_id,departure_id,current_date,clock_timestamp(),'scheduled'
+       FROM app.service_schedules WHERE id=$1 RETURNING id`,
+      [f.input.legs[0]!.scheduleId],
+    )
+  ).rows[0].id as string;
+  await f.owner.query(
+    `INSERT INTO app.trip_events(trip_id,actor_user_id,operation,reason,before_state,after_state)
+     VALUES ($1,$2,'assign','Pilot reassignment',$3,$4)`,
+    [trip, f.adminId, { driverId: null }, { driverId: f.actor.userId }],
+  );
+  const command = (
+    await f.owner.query(
+      `INSERT INTO app.config_commands(actor_user_id,operation,target,key_hash,input_hash,response_body)
+       VALUES ($1,'setFlag','pilot_feature',repeat('3',64),repeat('4',64),'{}') RETURNING id`,
+      [f.adminId],
+    )
+  ).rows[0].id as string;
+  await f.owner.query(
+    `INSERT INTO app.config_events(command_id,actor_user_id,action,target,before_state,after_state)
+     VALUES ($1,$2,'setFlag','pilot_feature',$3,$4)`,
+    [command, f.adminId, { enabled: false }, { enabled: true }],
+  );
+  for (const [area, action, targetId] of [
+    ['trip', 'assign', trip],
+    ['configuration', 'setFlag', 'pilot_feature'],
+  ]) {
+    const response = await f.get(
+      `/v1/ops/audit-events?area=${area}&action=${action}&actorId=${f.adminId}&targetId=${targetId}`,
+    );
+    assert.equal(response.statusCode, 200, response.body);
+    assert.equal(response.json().data.length, 1);
+    assert.equal(response.json().data[0].actorId, f.adminId);
+  }
+});
+
 test('OPS-READ-03 operator counts exclude revoked credentials and sessions', async (t) => {
   const f = await fixture(t);
   for (const [index, revoked] of [false, false, true].entries()) {

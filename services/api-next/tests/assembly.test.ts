@@ -32,6 +32,10 @@ test('SMS maintenance works without email and reports ambiguous delivery as a fa
   let prepared = false;
   const backend = {
     maintenanceUserId: 'operator',
+    maintenanceAudit: {
+      startWorker: async () => 'run',
+      finish: async () => undefined,
+    },
     pool: {
       query: async (sql: string) => ({
         rows: sql.includes('SELECT role')
