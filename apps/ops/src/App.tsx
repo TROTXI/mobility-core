@@ -42,9 +42,9 @@ const Profile = lazy(() =>
 export function App() {
   const [appearance, setAppearance] = useState<'dark' | 'light'>(() => {
     try {
-      return window.localStorage.getItem('trotxi-ops-appearance') === 'light' ? 'light' : 'dark';
+      return window.localStorage.getItem('trotxi-ops-appearance') === 'dark' ? 'dark' : 'light';
     } catch {
-      return 'dark';
+      return 'light';
     }
   });
   const toggleAppearance = () => {

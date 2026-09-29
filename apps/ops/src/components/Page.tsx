@@ -8,14 +8,16 @@ export function Page({
   description,
   actions,
   children,
+  className,
 }: {
   title: string;
   description: string;
   actions?: ReactNode;
   children: ReactNode;
+  className?: string;
 }) {
   return (
-    <main className="page">
+    <main className={`page${className ? ` ${className}` : ''}`}>
       <div className="page-heading">
         <div>
           <h1>{title}</h1>
@@ -101,7 +103,10 @@ export function StatusBadge({ value }: { value: string }) {
           : 'informative';
   return (
     <Badge appearance="tint" color={color}>
-      {value.replaceAll('_', ' ').toUpperCase()}
+      {value
+        .replaceAll('_', ' ')
+        .replace(/\bgps\b/gi, 'GPS')
+        .replace(/^./, (first) => first.toUpperCase())}
     </Badge>
   );
 }

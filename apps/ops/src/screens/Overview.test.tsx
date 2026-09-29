@@ -85,6 +85,8 @@ describe('live operations density', () => {
   it('shows the map and Ghana time once a driver reports on an active run', () => {
     show(data('active', true));
     expect(screen.getByText('Map mounted')).toBeInTheDocument();
+    expect(screen.getByText('Boarded / confirmed')).toBeInTheDocument();
+    expect(screen.queryByText('Seats confirmed')).not.toBeInTheDocument();
     expect(screen.getByText(/06:30 am GMT/)).toBeInTheDocument();
     expect(screen.getAllByText('Circle - Madina')).toHaveLength(2);
   });
