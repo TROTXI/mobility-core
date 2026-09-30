@@ -236,8 +236,8 @@ class _OnBoardPageState extends State<OnBoardPage> {
             text: 'Continue with Apple',
             icon: Image.asset(Appvectors.appleIconImage),
           ),
-          const SizedBox(height: AppSpacing.space8),
-          TextButton.icon(
+          const SizedBox(height: 13),
+          AppSignInButton(
             onPressed: _isSigningIn
                 ? null
                 : () => Navigator.of(context).push(
@@ -245,9 +245,10 @@ class _OnBoardPageState extends State<OnBoardPage> {
                       builder: (_) => PhoneSignInPage(client: widget.client),
                     ),
                   ),
-            icon: const Icon(Icons.phone_outlined),
-            label: const Text('Continue with phone'),
+            text: 'Continue with phone',
+            icon: Icon(Icons.phone_outlined, color: colors.textPrimary),
           ),
+          const SizedBox(height: AppSpacing.space8),
           Text(
             'Use an existing Google or Apple account to continue. By continuing, '
             'you agree to Trotxi\u2019s Terms and acknowledge the Privacy Policy.',

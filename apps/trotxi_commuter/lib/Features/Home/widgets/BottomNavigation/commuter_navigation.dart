@@ -54,54 +54,57 @@ class CommuterBottomNavigation extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = context.appColors;
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(
-        AppSpacing.space16,
-        AppSpacing.space8,
-        AppSpacing.space16,
-        AppSpacing.space12,
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Flexible(
-            child: Container(
-              key: ValueKey(
-                isTabletPortrait
-                    ? 'home-navigation-tablet-portrait'
-                    : 'home-navigation-phone',
-              ),
-              constraints: BoxConstraints(
-                maxWidth: isTabletPortrait ? 640 : 560,
-                minHeight: 64,
-              ),
-              padding: const EdgeInsets.all(AppSpacing.space4),
-              decoration: BoxDecoration(
-                color: colors.surfaceElevated,
-                borderRadius: AppRadii.circular(AppRadii.full),
-                border: Border.all(color: colors.borderSubtle),
-                boxShadow: AppShadows.elevation3,
-              ),
-              child: Row(
-                children: CommuterDestination.values
-                    .map(
-                      (destination) => Expanded(
-                        child: _DestinationButton(
-                          destination: destination,
-                          selected: destination == selected,
-                          onPressed: onDestinationSelected == null
-                              ? null
-                              : () => onDestinationSelected!(destination),
+    return SafeArea(
+      top: false,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(
+          AppSpacing.space16,
+          AppSpacing.space8,
+          AppSpacing.space16,
+          AppSpacing.space12,
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Flexible(
+              child: Container(
+                key: ValueKey(
+                  isTabletPortrait
+                      ? 'home-navigation-tablet-portrait'
+                      : 'home-navigation-phone',
+                ),
+                constraints: BoxConstraints(
+                  maxWidth: isTabletPortrait ? 640 : 560,
+                  minHeight: 64,
+                ),
+                padding: const EdgeInsets.all(AppSpacing.space4),
+                decoration: BoxDecoration(
+                  color: colors.surfaceElevated,
+                  borderRadius: AppRadii.circular(AppRadii.full),
+                  border: Border.all(color: colors.borderSubtle),
+                  boxShadow: AppShadows.elevation3,
+                ),
+                child: Row(
+                  children: CommuterDestination.values
+                      .map(
+                        (destination) => Expanded(
+                          child: _DestinationButton(
+                            destination: destination,
+                            selected: destination == selected,
+                            onPressed: onDestinationSelected == null
+                                ? null
+                                : () => onDestinationSelected!(destination),
+                          ),
                         ),
-                      ),
-                    )
-                    .toList(),
+                      )
+                      .toList(),
+                ),
               ),
             ),
-          ),
-          const SizedBox(width: AppSpacing.space12),
-          CommuterSearchAction(onPressed: onSearch),
-        ],
+            const SizedBox(width: AppSpacing.space12),
+            CommuterSearchAction(onPressed: onSearch),
+          ],
+        ),
       ),
     );
   }
