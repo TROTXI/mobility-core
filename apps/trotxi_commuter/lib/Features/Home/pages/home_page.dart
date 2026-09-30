@@ -315,7 +315,15 @@ class _HomePageState extends State<HomePage> {
         top: false,
         child: Padding(
           padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
-          child: Center(
+          // Align with heightFactor: 1 hugs the dock's own height instead of
+          // expanding to fill the bottomNavigationBar slot — a bare Center
+          // (or FittedBox inside one) tries to be as tall as the space it's
+          // offered there, which Scaffold measures as very large and sends
+          // into a layout pass that never settles (visually: the dock floats
+          // mid-screen with dead space below, and pumpAndSettle hangs).
+          child: Align(
+            alignment: Alignment.center,
+            heightFactor: 1,
             child: FittedBox(
               fit: BoxFit.scaleDown,
               child: CommuterPhoneDock(
