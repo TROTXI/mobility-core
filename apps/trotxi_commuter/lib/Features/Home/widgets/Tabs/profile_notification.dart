@@ -80,6 +80,29 @@ class _ProfileNotificationsPageState extends State<ProfileNotificationsPage> {
     }
   }
 
+  Future<void> _chooseDailyAskTime(String current) async {
+    final parts = current.split(':');
+    final selected = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay(
+        hour: int.parse(parts[0]),
+        minute: int.parse(parts[1]),
+      ),
+    );
+    if (!mounted || selected == null) return;
+    if (selected.hour < 6 || selected.hour > 21) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Choose a time between 6:00 AM and 9:59 PM.'),
+        ),
+      );
+      return;
+    }
+    final value =
+        '${selected.hour.toString().padLeft(2, '0')}:${selected.minute.toString().padLeft(2, '0')}';
+    if (value != current) await _save(time: value);
+  }
+
   @override
   Widget build(BuildContext context) {
     final colors = context.appColors;
@@ -133,22 +156,21 @@ class _ProfileNotificationsPageState extends State<ProfileNotificationsPage> {
                       ),
                     ),
                     const SizedBox(height: 8),
-                    DropdownButtonFormField<String>(
-                      initialValue: preferences.dailyAskTime,
-                      items: [
-                        for (var hour = 6; hour <= 21; hour++)
-                          DropdownMenuItem(
-                            value: '${hour.toString().padLeft(2, '0')}:00',
-                            child: Text(
-                              TimeOfDay(hour: hour, minute: 0).format(context),
-                            ),
-                          ),
-                      ],
-                      onChanged: _saving
+                    OutlinedButton.icon(
+                      onPressed: _saving
                           ? null
-                          : (time) {
-                              if (time != null) _save(time: time);
-                            },
+                          : () => _chooseDailyAskTime(preferences.dailyAskTime),
+                      icon: const Icon(Icons.schedule),
+                      label: Text(
+                        TimeOfDay(
+                          hour: int.parse(
+                            preferences.dailyAskTime.substring(0, 2),
+                          ),
+                          minute: int.parse(
+                            preferences.dailyAskTime.substring(3, 5),
+                          ),
+                        ).format(context),
+                      ),
                     ),
                     const SizedBox(height: 8),
                     Text(

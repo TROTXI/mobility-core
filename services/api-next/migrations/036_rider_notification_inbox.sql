@@ -114,7 +114,9 @@ BEGIN
       CASE WHEN NEW.operation='cancel' THEN 'trip_cancelled' ELSE 'trip_changed' END,
       NEW.id,'reservation',r.id
     FROM app.reservations r JOIN app.users u ON u.id=r.user_id AND u.deleted_at IS NULL
-    WHERE r.trip_id=NEW.trip_id AND r.status IN ('pending','reserved','boarded','operator_cancelled')
+    WHERE r.trip_id=NEW.trip_id AND
+      (r.status IN ('pending','reserved','boarded') OR
+       (NEW.operation='cancel' AND r.status='operator_cancelled'))
     ORDER BY r.user_id,r.created_at DESC,r.id DESC
     ON CONFLICT DO NOTHING;
   END IF;

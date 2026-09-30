@@ -639,6 +639,22 @@ test('ASM-16 a funded run blocks a future revision until ops explicitly clears i
       .status,
     'operator_cancelled',
   );
+  // Cancellation reaches the former rider, but later non-cancellation changes
+  // must not suggest that this rider still has a seat on the trip.
+  await f.owner.query(
+    `INSERT INTO app.trip_events(trip_id,actor_user_id,operation,before_state,after_state)
+     VALUES ($1,$2,'assign',$3,$4)`,
+    [trip.id, f.adminId, { driverId: null }, { driverId: f.actor.userId }],
+  );
+  assert.deepEqual(
+    (
+      await f.owner.query(
+        'SELECT kind FROM app.rider_notifications WHERE target_id=$1 ORDER BY created_at,id',
+        [reservation],
+      )
+    ).rows.map((row) => row.kind),
+    ['trip_cancelled'],
+  );
   const published = await publish();
   assert.equal(published.statusCode, 200, published.body);
   const versions = (
