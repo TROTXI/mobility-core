@@ -51,8 +51,9 @@ class _NotificationsInboxPageState extends State<NotificationsInboxPage> {
       );
       if (!mounted ||
           generation != widget.client.sessionGeneration ||
-          revision != _requestRevision)
+          revision != _requestRevision) {
         return;
+      }
       setState(() {
         if (!more) _items.clear();
         _items.addAll(page.data);
@@ -61,8 +62,9 @@ class _NotificationsInboxPageState extends State<NotificationsInboxPage> {
     } catch (error) {
       if (!mounted ||
           generation != widget.client.sessionGeneration ||
-          revision != _requestRevision)
+          revision != _requestRevision) {
         return;
+      }
       setState(() => _error = error);
     } finally {
       if (mounted &&
