@@ -28,6 +28,7 @@ import { PhoneOtp } from '../auth/phone-otp.js';
 import { DriverSms } from '../notifications/driver-sms.js';
 import { FcmSender } from '../notifications/fcm.js';
 import { PushNotifications } from '../notifications/push.js';
+import { RiderInbox } from '../notifications/inbox.js';
 import type { RuntimeConfig } from './config.js';
 import { MaintenanceAudit } from './maintenance-audit.js';
 
@@ -227,6 +228,11 @@ export async function composeBackend(config: RuntimeConfig): Promise<Backend> {
       // then the membership rules that read them, then the money foundation
       // those rules bound, then the surfaces over it.
       compose: ({ auth, authorizeSession }) => {
+        const inbox = new RiderInbox({
+          pool,
+          cursorSecret: config.keys.cursorSecret,
+          authorizeSession,
+        });
         const pricing = new Pricing({
           pool,
           authorizeSession,
@@ -275,6 +281,7 @@ export async function composeBackend(config: RuntimeConfig): Promise<Backend> {
         });
         identity = { auth, membership, account };
         return {
+          inbox,
           pricing,
           refunds: new RefundInitiation({
             pool,

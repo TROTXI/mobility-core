@@ -5,6 +5,7 @@ import 'package:trotxi_commuter/core/api/commuter_api.dart';
 import 'package:trotxi_commuter/core/config/theme/app_colors.dart';
 import 'package:trotxi_commuter/core/config/theme/app_typography.dart';
 import 'package:trotxi_commuter/Features/Home/pages/home_page_provider.dart';
+import 'package:trotxi_commuter/Features/Home/widgets/Tabs/notifications_inbox_page.dart';
 
 // ---------------------------------------------------------------------
 // Models
@@ -244,8 +245,11 @@ class _HomeTabState extends ConsumerState<HomeTab> {
       child: InkWell(
         customBorder: const CircleBorder(),
         onTap: () {
-          // TODO: navigate to notifications.
-          debugPrint('Notifications tapped');
+          Navigator.of(context).push(
+            MaterialPageRoute<void>(
+              builder: (_) => NotificationsInboxPage(client: widget.client),
+            ),
+          );
         },
         child: Padding(
           padding: const EdgeInsets.all(10),

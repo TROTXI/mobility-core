@@ -223,7 +223,8 @@ class _ProfileTabState extends State<ProfileTab> {
                   subtitle: 'Ride alerts, reminders and updates',
                   onTap: () => Navigator.of(context).push(
                     MaterialPageRoute(
-                      builder: (context) => const ProfileNotificationsPage(),
+                      builder: (context) =>
+                          ProfileNotificationsPage(client: widget.client),
                     ),
                   ),
                 ),

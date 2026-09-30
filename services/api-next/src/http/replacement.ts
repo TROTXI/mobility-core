@@ -13,7 +13,7 @@ import type { BoardingOptions } from '../boarding/service.js';
 export type ComposedServices = Partial<
   Pick<
     AppOptions,
-    'payments' | 'membership' | 'pricing' | 'purchases' | 'account' | 'config' | 'refunds'
+    'payments' | 'membership' | 'pricing' | 'purchases' | 'account' | 'config' | 'refunds' | 'inbox'
   >
 >;
 export function createReplacementApp(

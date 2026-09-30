@@ -130,6 +130,15 @@ test('FIN-05 / PAY-04–06: close racing renewal converts once; next purchase ge
     { closes: 1, converted: 1980, purchases: 2, current: next.id },
   );
   assert.equal((await f.period(first.id)).state, 'closed');
+  assert.deepEqual(
+    (
+      await f.owner.query(
+        'SELECT kind,count(*)::int AS n FROM app.rider_notifications WHERE user_id=$1 GROUP BY kind',
+        [f.actor.userId],
+      )
+    ).rows,
+    [{ kind: 'credit_converted', n: 1 }],
+  );
   assert.deepEqual(await f.service.balance(f.actor), { credit: 0, held: 0, available: 0 });
 });
 test('FIN-06 / PAY-07 boundary and PAY-09 interface: close guards fail without mutations and exact boundary succeeds', async (t) => {

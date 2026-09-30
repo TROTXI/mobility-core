@@ -239,6 +239,15 @@ test('BRD-01: issued pass binds reservation/trip and QR commits exactly one owne
   assert.deepEqual(
     (
       await f.owner.query(
+        'SELECT kind,count(*)::int AS n FROM app.rider_notifications WHERE user_id=$1 GROUP BY kind ORDER BY kind',
+        [f.actor.userId],
+      )
+    ).rows,
+    [{ kind: 'ride_used', n: 1 }],
+  );
+  assert.deepEqual(
+    (
+      await f.owner.query(
         'SELECT user_id,period_id,reason,delta_rides,reservation_id FROM app.ride_entries WHERE reservation_id=$1',
         [f.reservation.id],
       )
@@ -593,6 +602,7 @@ test('BRD-17: 014 to 015 upgrade preserves funded reservations and recorded migr
     '033_driver_incident_retention.sql',
     '034_account_erasure_phone_challenges.sql',
     '035_payment_evidence_retention.sql',
+    '036_rider_notification_inbox.sql',
   ]);
   await grantRuntime(f.owner, f.role);
   assert.deepEqual((await f.owner.query('SELECT * FROM app.reservations')).rows, before);

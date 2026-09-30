@@ -1,5 +1,12 @@
 # trotxi_commuter
 
+The bell on Home opens the server-backed rider notification inbox. The Profile
+notification screen edits account-scoped settings with the server ETag. In the
+pilot, seat-ask dispatch remains manual, so a preferred ask hour is saved but
+does not schedule delivery. Mandatory ride notices cannot be muted. See
+[`docs/api/notifications.md`](../../docs/api/notifications.md) for the contract
+and event policy.
+
 A new Flutter project.
 
 ## Getting Started

@@ -433,6 +433,75 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/v1/me/notifications': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** list Notifications */
+    get: operations['listNotifications'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/v1/me/notifications/read': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** mark All Notifications Read */
+    post: operations['markAllNotificationsRead'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/v1/me/notifications/{id}/read': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** mark Notification Read */
+    post: operations['markNotificationRead'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/v1/me/notification-preferences': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** get Notification Preferences */
+    get: operations['getNotificationPreferences'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    /** update Notification Preferences */
+    patch: operations['updateNotificationPreferences'];
+    trace?: never;
+  };
   '/v1/me/membership': {
     parameters: {
       query?: never;
@@ -2992,6 +3061,26 @@ export interface components {
       /** @enum {string} */
       currency: 'GHS';
     };
+    NotificationPreferences: {
+      dailyAskTime: string;
+      optionalUpdatesEnabled: boolean;
+      /** Format: date-time */
+      updatedAt: string;
+      version: number;
+    };
+    NotificationPreferencesInput: {
+      dailyAskTime: string;
+      optionalUpdatesEnabled: boolean;
+    };
+    NotificationPreferencesResponse: {
+      data: components['schemas']['NotificationPreferences'];
+    };
+    NotificationReadCount: {
+      readCount: number;
+    };
+    NotificationReadCountResponse: {
+      data: components['schemas']['NotificationReadCount'];
+    };
     OpsAccountErasure: {
       userId: string;
       /** Format: date-time */
@@ -4011,6 +4100,36 @@ export interface components {
       page: {
         nextCursor: string | null;
       };
+    };
+    RiderNotification: {
+      id: string;
+      /** @enum {string} */
+      kind:
+        | 'seat_ask'
+        | 'seat_held'
+        | 'seat_unseated'
+        | 'ride_used'
+        | 'credit_converted'
+        | 'trip_changed'
+        | 'trip_cancelled';
+      target: {
+        /** @enum {string} */
+        type: 'reservation' | 'credit';
+        id: string;
+      };
+      /** Format: date-time */
+      createdAt: string;
+      /** Format: date-time */
+      readAt: string | null;
+    };
+    RiderNotificationPage: {
+      data: components['schemas']['RiderNotification'][];
+      page: {
+        nextCursor: string | null;
+      };
+    };
+    RiderNotificationResponse: {
+      data: components['schemas']['RiderNotification'];
     };
     RoleEdit: {
       /** @enum {string} */
@@ -5765,6 +5884,252 @@ export interface operations {
       404: components['responses']['Error404'];
       409: components['responses']['Error409'];
       426: components['responses']['Error426'];
+      429: components['responses']['Error429'];
+      500: components['responses']['Error500'];
+      503: components['responses']['Error503'];
+    };
+  };
+  listNotifications: {
+    parameters: {
+      query?: {
+        /** @description Opaque cursor bound to caller, sort and filters. */
+        cursor?: string;
+        /** @description Page size. No silent truncation. */
+        limit?: number;
+        /** @description Only unread notifications. */
+        unreadOnly?: boolean;
+      };
+      header: {
+        /**
+         * @description Compatibility metadata only, never grants a role.
+         * @example commuter
+         */
+        'X-Trotxi-Client': 'commuter' | 'driver' | 'ops' | 'worker';
+        /**
+         * @description Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
+         * @example 1
+         */
+        'X-Trotxi-Build': number;
+        /**
+         * @description Required for commuter/driver, absent for ops/worker.
+         * @example ios
+         */
+        'X-Trotxi-Platform'?: 'ios' | 'android';
+      };
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Success */
+      200: {
+        headers: {
+          /** @description Opaque resource version; required on protected edits. */
+          ETag?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['RiderNotificationPage'];
+        };
+      };
+      400: components['responses']['Error400'];
+      401: components['responses']['Error401'];
+      403: components['responses']['Error403'];
+      404: components['responses']['Error404'];
+      426: components['responses']['Error426'];
+      429: components['responses']['Error429'];
+      500: components['responses']['Error500'];
+      503: components['responses']['Error503'];
+    };
+  };
+  markAllNotificationsRead: {
+    parameters: {
+      query?: never;
+      header: {
+        /**
+         * @description Compatibility metadata only, never grants a role.
+         * @example commuter
+         */
+        'X-Trotxi-Client': 'commuter' | 'driver' | 'ops' | 'worker';
+        /**
+         * @description Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
+         * @example 1
+         */
+        'X-Trotxi-Build': number;
+        /**
+         * @description Required for commuter/driver, absent for ops/worker.
+         * @example ios
+         */
+        'X-Trotxi-Platform'?: 'ios' | 'android';
+      };
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Success */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['NotificationReadCountResponse'];
+        };
+      };
+      400: components['responses']['Error400'];
+      401: components['responses']['Error401'];
+      403: components['responses']['Error403'];
+      404: components['responses']['Error404'];
+      409: components['responses']['Error409'];
+      426: components['responses']['Error426'];
+      429: components['responses']['Error429'];
+      500: components['responses']['Error500'];
+      503: components['responses']['Error503'];
+    };
+  };
+  markNotificationRead: {
+    parameters: {
+      query?: never;
+      header: {
+        /**
+         * @description Compatibility metadata only, never grants a role.
+         * @example commuter
+         */
+        'X-Trotxi-Client': 'commuter' | 'driver' | 'ops' | 'worker';
+        /**
+         * @description Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
+         * @example 1
+         */
+        'X-Trotxi-Build': number;
+        /**
+         * @description Required for commuter/driver, absent for ops/worker.
+         * @example ios
+         */
+        'X-Trotxi-Platform'?: 'ios' | 'android';
+      };
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Success */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['RiderNotificationResponse'];
+        };
+      };
+      400: components['responses']['Error400'];
+      401: components['responses']['Error401'];
+      403: components['responses']['Error403'];
+      404: components['responses']['Error404'];
+      409: components['responses']['Error409'];
+      426: components['responses']['Error426'];
+      429: components['responses']['Error429'];
+      500: components['responses']['Error500'];
+      503: components['responses']['Error503'];
+    };
+  };
+  getNotificationPreferences: {
+    parameters: {
+      query?: never;
+      header: {
+        /**
+         * @description Compatibility metadata only, never grants a role.
+         * @example commuter
+         */
+        'X-Trotxi-Client': 'commuter' | 'driver' | 'ops' | 'worker';
+        /**
+         * @description Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
+         * @example 1
+         */
+        'X-Trotxi-Build': number;
+        /**
+         * @description Required for commuter/driver, absent for ops/worker.
+         * @example ios
+         */
+        'X-Trotxi-Platform'?: 'ios' | 'android';
+      };
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Success */
+      200: {
+        headers: {
+          /** @description Opaque resource version; required on protected edits. */
+          ETag?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['NotificationPreferencesResponse'];
+        };
+      };
+      400: components['responses']['Error400'];
+      401: components['responses']['Error401'];
+      403: components['responses']['Error403'];
+      404: components['responses']['Error404'];
+      426: components['responses']['Error426'];
+      429: components['responses']['Error429'];
+      500: components['responses']['Error500'];
+      503: components['responses']['Error503'];
+    };
+  };
+  updateNotificationPreferences: {
+    parameters: {
+      query?: never;
+      header: {
+        /** @description Missing = 428; stale = 412. Reload the current preferences and retry with its ETag. */
+        'If-Match': string;
+        /**
+         * @description Compatibility metadata only, never grants a role.
+         * @example commuter
+         */
+        'X-Trotxi-Client': 'commuter' | 'driver' | 'ops' | 'worker';
+        /**
+         * @description Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
+         * @example 1
+         */
+        'X-Trotxi-Build': number;
+        /**
+         * @description Required for commuter/driver, absent for ops/worker.
+         * @example ios
+         */
+        'X-Trotxi-Platform'?: 'ios' | 'android';
+      };
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['NotificationPreferencesInput'];
+      };
+    };
+    responses: {
+      /** @description Success */
+      200: {
+        headers: {
+          /** @description Opaque resource version; required on protected edits. */
+          ETag?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['NotificationPreferencesResponse'];
+        };
+      };
+      400: components['responses']['Error400'];
+      401: components['responses']['Error401'];
+      403: components['responses']['Error403'];
+      404: components['responses']['Error404'];
+      409: components['responses']['Error409'];
+      412: components['responses']['Error412'];
+      426: components['responses']['Error426'];
+      428: components['responses']['Error428'];
       429: components['responses']['Error429'];
       500: components['responses']['Error500'];
       503: components['responses']['Error503'];

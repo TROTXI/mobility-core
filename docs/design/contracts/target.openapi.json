@@ -2567,6 +2567,563 @@
         "x-implementation-status": "design_only"
       }
     },
+    "/v1/me/notifications": {
+      "get": {
+        "operationId": "listNotifications",
+        "summary": "list Notifications",
+        "tags": ["rider_own"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            },
+            "description": "Opaque cursor bound to caller, sort and filters."
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 30
+            },
+            "description": "Page size. No silent truncation."
+          },
+          {
+            "name": "unreadOnly",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false
+            },
+            "description": "Only unread notifications."
+          },
+          {
+            "name": "X-Trotxi-Client",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": ["commuter", "driver", "ops", "worker"]
+            },
+            "description": "Compatibility metadata only, never grants a role.",
+            "example": "commuter"
+          },
+          {
+            "name": "X-Trotxi-Build",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1
+            },
+            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.",
+            "example": 1
+          },
+          {
+            "name": "X-Trotxi-Platform",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": ["ios", "android"]
+            },
+            "description": "Required for commuter/driver, absent for ops/worker.",
+            "example": "ios"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RiderNotificationPage"
+                }
+              }
+            },
+            "headers": {
+              "ETag": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "Opaque resource version; required on protected edits."
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "426": {
+            "$ref": "#/components/responses/Error426"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error429"
+          },
+          "500": {
+            "$ref": "#/components/responses/Error500"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error503"
+          }
+        },
+        "x-authorization": "rider_own",
+        "x-retry": "safe_read",
+        "x-sensitive": false,
+        "x-list-order": "createdAt DESC, id DESC",
+        "x-implementation-status": "design_only",
+        "x-delivery-stage": "post-cutover",
+        "x-requirement": "Owned rider notification inbox and settings",
+        "x-existing-endpoint-assessment": "Push acceptance is not a durable, rider-readable history or a preference policy."
+      }
+    },
+    "/v1/me/notifications/read": {
+      "post": {
+        "operationId": "markAllNotificationsRead",
+        "summary": "mark All Notifications Read",
+        "tags": ["rider_own"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-Trotxi-Client",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": ["commuter", "driver", "ops", "worker"]
+            },
+            "description": "Compatibility metadata only, never grants a role.",
+            "example": "commuter"
+          },
+          {
+            "name": "X-Trotxi-Build",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1
+            },
+            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.",
+            "example": 1
+          },
+          {
+            "name": "X-Trotxi-Platform",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": ["ios", "android"]
+            },
+            "description": "Required for commuter/driver, absent for ops/worker.",
+            "example": "ios"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotificationReadCountResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error409"
+          },
+          "426": {
+            "$ref": "#/components/responses/Error426"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error429"
+          },
+          "500": {
+            "$ref": "#/components/responses/Error500"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error503"
+          }
+        },
+        "x-authorization": "rider_own",
+        "x-retry": "idempotent_state",
+        "x-sensitive": false,
+        "x-implementation-status": "design_only",
+        "x-delivery-stage": "post-cutover",
+        "x-requirement": "Owned rider notification inbox and settings",
+        "x-existing-endpoint-assessment": "Push acceptance is not a durable, rider-readable history or a preference policy."
+      }
+    },
+    "/v1/me/notifications/{id}/read": {
+      "post": {
+        "operationId": "markNotificationRead",
+        "summary": "mark Notification Read",
+        "tags": ["rider_own"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            }
+          },
+          {
+            "name": "X-Trotxi-Client",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": ["commuter", "driver", "ops", "worker"]
+            },
+            "description": "Compatibility metadata only, never grants a role.",
+            "example": "commuter"
+          },
+          {
+            "name": "X-Trotxi-Build",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1
+            },
+            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.",
+            "example": 1
+          },
+          {
+            "name": "X-Trotxi-Platform",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": ["ios", "android"]
+            },
+            "description": "Required for commuter/driver, absent for ops/worker.",
+            "example": "ios"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RiderNotificationResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error409"
+          },
+          "426": {
+            "$ref": "#/components/responses/Error426"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error429"
+          },
+          "500": {
+            "$ref": "#/components/responses/Error500"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error503"
+          }
+        },
+        "x-authorization": "rider_own",
+        "x-retry": "idempotent_state",
+        "x-sensitive": false,
+        "x-implementation-status": "design_only",
+        "x-delivery-stage": "post-cutover",
+        "x-requirement": "Owned rider notification inbox and settings",
+        "x-existing-endpoint-assessment": "Push acceptance is not a durable, rider-readable history or a preference policy."
+      }
+    },
+    "/v1/me/notification-preferences": {
+      "get": {
+        "operationId": "getNotificationPreferences",
+        "summary": "get Notification Preferences",
+        "tags": ["rider_own"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-Trotxi-Client",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": ["commuter", "driver", "ops", "worker"]
+            },
+            "description": "Compatibility metadata only, never grants a role.",
+            "example": "commuter"
+          },
+          {
+            "name": "X-Trotxi-Build",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1
+            },
+            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.",
+            "example": 1
+          },
+          {
+            "name": "X-Trotxi-Platform",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": ["ios", "android"]
+            },
+            "description": "Required for commuter/driver, absent for ops/worker.",
+            "example": "ios"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotificationPreferencesResponse"
+                }
+              }
+            },
+            "headers": {
+              "ETag": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "Opaque resource version; required on protected edits."
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "426": {
+            "$ref": "#/components/responses/Error426"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error429"
+          },
+          "500": {
+            "$ref": "#/components/responses/Error500"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error503"
+          }
+        },
+        "x-authorization": "rider_own",
+        "x-retry": "safe_read",
+        "x-sensitive": false,
+        "x-implementation-status": "design_only",
+        "x-delivery-stage": "post-cutover",
+        "x-requirement": "Owned rider notification inbox and settings",
+        "x-existing-endpoint-assessment": "Push acceptance is not a durable, rider-readable history or a preference policy."
+      },
+      "patch": {
+        "operationId": "updateNotificationPreferences",
+        "summary": "update Notification Preferences",
+        "tags": ["rider_own"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "If-Match",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            },
+            "description": "Missing = 428; stale = 412. Reload the current preferences and retry with its ETag."
+          },
+          {
+            "name": "X-Trotxi-Client",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": ["commuter", "driver", "ops", "worker"]
+            },
+            "description": "Compatibility metadata only, never grants a role.",
+            "example": "commuter"
+          },
+          {
+            "name": "X-Trotxi-Build",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1
+            },
+            "description": "Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.",
+            "example": 1
+          },
+          {
+            "name": "X-Trotxi-Platform",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": ["ios", "android"]
+            },
+            "description": "Required for commuter/driver, absent for ops/worker.",
+            "example": "ios"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NotificationPreferencesInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotificationPreferencesResponse"
+                }
+              }
+            },
+            "headers": {
+              "ETag": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "Opaque resource version; required on protected edits."
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error409"
+          },
+          "412": {
+            "$ref": "#/components/responses/Error412"
+          },
+          "426": {
+            "$ref": "#/components/responses/Error426"
+          },
+          "428": {
+            "$ref": "#/components/responses/Error428"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error429"
+          },
+          "500": {
+            "$ref": "#/components/responses/Error500"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error503"
+          }
+        },
+        "x-authorization": "rider_own",
+        "x-retry": "conditional_state",
+        "x-sensitive": false,
+        "x-implementation-status": "design_only",
+        "x-delivery-stage": "post-cutover",
+        "x-requirement": "Owned rider notification inbox and settings",
+        "x-existing-endpoint-assessment": "Push acceptance is not a durable, rider-readable history or a preference policy."
+      }
+    },
     "/v1/me/membership": {
       "get": {
         "operationId": "getMembership",
@@ -19702,6 +20259,107 @@
         "required": ["id", "platform", "updatedAt"],
         "additionalProperties": false
       },
+      "RiderNotification": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "seat_ask",
+              "seat_held",
+              "seat_unseated",
+              "ride_used",
+              "credit_converted",
+              "trip_changed",
+              "trip_cancelled"
+            ]
+          },
+          "target": {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": ["reservation", "credit"]
+              },
+              "id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 128
+              }
+            },
+            "required": ["type", "id"],
+            "additionalProperties": false
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+          },
+          "readAt": {
+            "nullable": true,
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+          }
+        },
+        "required": ["id", "kind", "target", "createdAt", "readAt"],
+        "additionalProperties": false
+      },
+      "NotificationReadCount": {
+        "type": "object",
+        "properties": {
+          "readCount": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          }
+        },
+        "required": ["readCount"],
+        "additionalProperties": false
+      },
+      "NotificationPreferences": {
+        "type": "object",
+        "properties": {
+          "dailyAskTime": {
+            "type": "string",
+            "pattern": "^(0[6-9]|1\\d|20|21):[0-5]\\d$"
+          },
+          "optionalUpdatesEnabled": {
+            "type": "boolean"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          }
+        },
+        "required": ["dailyAskTime", "optionalUpdatesEnabled", "updatedAt", "version"],
+        "additionalProperties": false
+      },
+      "NotificationPreferencesInput": {
+        "type": "object",
+        "properties": {
+          "dailyAskTime": {
+            "type": "string",
+            "pattern": "^(0[6-9]|1\\d|20|21):[0-5]\\d$"
+          },
+          "optionalUpdatesEnabled": {
+            "type": "boolean"
+          }
+        },
+        "required": ["dailyAskTime", "optionalUpdatesEnabled"],
+        "additionalProperties": false
+      },
       "GoogleSignIn": {
         "type": "object",
         "properties": {
@@ -25865,6 +26523,62 @@
         "properties": {
           "data": {
             "$ref": "#/components/schemas/Device"
+          }
+        },
+        "required": ["data"],
+        "additionalProperties": false
+      },
+      "RiderNotificationPage": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RiderNotification"
+            }
+          },
+          "page": {
+            "type": "object",
+            "properties": {
+              "nextCursor": {
+                "nullable": true,
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 128
+              }
+            },
+            "required": ["nextCursor"],
+            "additionalProperties": false
+          }
+        },
+        "required": ["data", "page"],
+        "additionalProperties": false
+      },
+      "NotificationReadCountResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/NotificationReadCount"
+          }
+        },
+        "required": ["data"],
+        "additionalProperties": false
+      },
+      "RiderNotificationResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/RiderNotification"
+          }
+        },
+        "required": ["data"],
+        "additionalProperties": false
+      },
+      "NotificationPreferencesResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/NotificationPreferences"
           }
         },
         "required": ["data"],

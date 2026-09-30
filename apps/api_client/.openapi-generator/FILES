@@ -117,6 +117,11 @@ doc/MinimumVersionEdit.md
 doc/MinimumVersionPage.md
 doc/MinimumVersionResponse.md
 doc/Money.md
+doc/NotificationPreferences.md
+doc/NotificationPreferencesInput.md
+doc/NotificationPreferencesResponse.md
+doc/NotificationReadCount.md
+doc/NotificationReadCountResponse.md
 doc/OpsAccountErasure.md
 doc/OpsAccountErasurePage.md
 doc/OpsApi.md
@@ -254,6 +259,10 @@ doc/RestrictionResponse.md
 doc/ReviewDecision.md
 doc/RideEntry.md
 doc/RideEntryPage.md
+doc/RiderNotification.md
+doc/RiderNotificationPage.md
+doc/RiderNotificationResponse.md
+doc/RiderNotificationTarget.md
 doc/RiderOwnApi.md
 doc/RoleEdit.md
 doc/Root.md
@@ -441,6 +450,11 @@ lib/src/model/minimum_version_edit.dart
 lib/src/model/minimum_version_page.dart
 lib/src/model/minimum_version_response.dart
 lib/src/model/money.dart
+lib/src/model/notification_preferences.dart
+lib/src/model/notification_preferences_input.dart
+lib/src/model/notification_preferences_response.dart
+lib/src/model/notification_read_count.dart
+lib/src/model/notification_read_count_response.dart
 lib/src/model/ops_account_erasure.dart
 lib/src/model/ops_account_erasure_page.dart
 lib/src/model/ops_audit_event.dart
@@ -574,6 +588,10 @@ lib/src/model/restriction_response.dart
 lib/src/model/review_decision.dart
 lib/src/model/ride_entry.dart
 lib/src/model/ride_entry_page.dart
+lib/src/model/rider_notification.dart
+lib/src/model/rider_notification_page.dart
+lib/src/model/rider_notification_response.dart
+lib/src/model/rider_notification_target.dart
 lib/src/model/role_edit.dart
 lib/src/model/root.dart
 lib/src/model/route.dart

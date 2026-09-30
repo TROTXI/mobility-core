@@ -40,6 +40,8 @@ import type { BoardingService } from '../boarding/service.js';
 import { loggerOptions } from '../observability/logging.js';
 import { recordJob } from '../observability/metrics.js';
 import type { MaintenanceAudit } from '../runtime/maintenance-audit.js';
+import { inboxOperations } from '../notifications/inbox.js';
+import type { RiderInbox } from '../notifications/inbox.js';
 // The contract admits a `worker` client on exactly these, with no platform:
 // scheduled maintenance is an operations caller without an app build behind it.
 const maintenanceOperations = new Set([
@@ -137,6 +139,7 @@ export interface AppOptions extends Dependencies {
   // fulfilment coordinators have been explicitly supplied. No silent no-ops.
   payments?: PaymentRecovery;
   membership?: MembershipService;
+  inbox?: RiderInbox;
   pricing?: Pricing;
   account?: AccountService;
   config?: ConfigService;
@@ -343,6 +346,7 @@ export async function createTransportApp(options: AppOptions) {
       const refundEndpoint = (refundOperations as readonly string[]).includes(name);
       if (refundEndpoint && !options.refunds) continue;
       const membershipEndpoint = (membershipOperations as readonly string[]).includes(name);
+      const inboxEndpoint = (inboxOperations as readonly string[]).includes(name);
       const boardingEndpoint = (boardingOperations as readonly string[]).includes(name);
       const pricingEndpoint = (pricingOperations as readonly string[]).includes(name);
       const purchaseEndpoint = (purchaseOperations as readonly string[]).includes(name);
@@ -356,6 +360,7 @@ export async function createTransportApp(options: AppOptions) {
       if (pricingEndpoint && !options.pricing) continue;
       if (purchaseEndpoint && !options.purchases) continue;
       if (membershipEndpoint && !options.membership) continue;
+      if (inboxEndpoint && !options.inbox) continue;
       if (paymentEndpoint && !options.payments) continue;
       if (name === 'receivePaystackWebhook') {
         documentedOperations.add(name);
@@ -488,6 +493,7 @@ export async function createTransportApp(options: AppOptions) {
                       (ops
                         ? 'ops'
                         : membershipEndpoint ||
+                            inboxEndpoint ||
                             purchaseEndpoint ||
                             accountEndpoint ||
                             name === 'previewPurchase' ||
@@ -774,6 +780,32 @@ export async function createTransportApp(options: AppOptions) {
                   )
                 : await options.purchases!.create(actor!, (request.body ?? {}) as Body, key);
             }
+          } else if (inboxEndpoint) {
+            if (!input && request.body !== undefined)
+              fail(400, 'invalid_request', 'This operation has no request body.');
+            const query = request.query as Record<string, string | undefined>;
+            const allowed = new Set(
+              operation.parameters.filter((p) => p.in === 'query').map((p) => p.name),
+            );
+            if (
+              Object.entries(query).some(
+                ([k, v]) => !allowed.has(k) || typeof v !== 'string' || v.length > 128,
+              )
+            )
+              fail(400, 'invalid_query', 'Unsupported query parameters.');
+            if (name === 'listNotifications') result = await options.inbox!.list(actor, query);
+            else if (name === 'markNotificationRead')
+              result = await options.inbox!.markRead(actor, (request.params as { id: string }).id);
+            else if (name === 'markAllNotificationsRead')
+              result = await options.inbox!.markAllRead(actor);
+            else if (name === 'getNotificationPreferences')
+              result = await options.inbox!.getPreferences(actor);
+            else
+              result = await options.inbox!.updatePreferences(
+                actor,
+                request.body as { dailyAskTime: string; optionalUpdatesEnabled: boolean },
+                request.headers['if-match'] as string | undefined,
+              );
           } else if (membershipEndpoint) {
             const query = request.query as Record<string, string | undefined>;
             const allowed = new Set(

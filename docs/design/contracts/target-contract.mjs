@@ -182,6 +182,36 @@ named('AvatarUpload', obj({ file: z.string().meta({ format: 'binary' }) }));
 named('Session', obj({ id, createdAt: instant, expiresAt: instant, current: z.boolean() }));
 named('DeviceInput', obj({ token: text(4096), platform: z.enum(['ios', 'android']) }));
 named('Device', obj({ id, platform: z.enum(['ios', 'android']), updatedAt: instant }));
+named(
+  'RiderNotification',
+  obj({
+    id,
+    kind: z.enum([
+      'seat_ask',
+      'seat_held',
+      'seat_unseated',
+      'ride_used',
+      'credit_converted',
+      'trip_changed',
+      'trip_cancelled',
+    ]),
+    target: obj({ type: z.enum(['reservation', 'credit']), id }),
+    createdAt: instant,
+    readAt: instant.nullable(),
+  }),
+);
+named('NotificationReadCount', obj({ readCount: count }));
+const dailyAskTime = z.string().regex(/^(0[6-9]|1\d|20|21):[0-5]\d$/);
+named(
+  'NotificationPreferences',
+  obj({
+    dailyAskTime,
+    optionalUpdatesEnabled: z.boolean(),
+    updatedAt: instant,
+    version,
+  }),
+);
+named('NotificationPreferencesInput', obj({ dailyAskTime, optionalUpdatesEnabled: z.boolean() }));
 named('GoogleSignIn', obj({ idToken: text(8192) }));
 named('PhoneSignInRequest', obj({ phone: text(32) }));
 named('PhoneSignInVerify', obj({ challengeId: z.uuid(), code: z.string().regex(/^\d{6}$/) }));
@@ -1546,6 +1576,26 @@ del('/v1/me/avatar', 'deleteAvatar');
 list('/v1/me/sessions', 'listSessions', 'Session');
 del('/v1/me/sessions/{id}', 'revokeSession');
 post('/v1/me/devices', 'registerDevice', 'DeviceInput', 'Device');
+list('/v1/me/notifications', 'listNotifications', 'RiderNotification', { access: 'rider_own' });
+post('/v1/me/notifications/read', 'markAllNotificationsRead', null, 'NotificationReadCount', {
+  access: 'rider_own',
+  retry: 'idempotent_state',
+});
+post('/v1/me/notifications/{id}/read', 'markNotificationRead', null, 'RiderNotification', {
+  access: 'rider_own',
+  retry: 'idempotent_state',
+});
+get('/v1/me/notification-preferences', 'getNotificationPreferences', 'NotificationPreferences', {
+  access: 'rider_own',
+});
+edit(
+  'patch',
+  '/v1/me/notification-preferences',
+  'updateNotificationPreferences',
+  'NotificationPreferencesInput',
+  'NotificationPreferences',
+  { access: 'rider_own', retry: 'conditional_state' },
+);
 get('/v1/me/membership', 'getMembership', 'Membership', { access: 'rider_own' });
 get('/v1/me/membership/pause', 'getPersonalPause', 'OptionalPersonalPause', {
   access: 'rider_own',

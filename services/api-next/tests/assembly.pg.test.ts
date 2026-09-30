@@ -210,8 +210,8 @@ test('ASM-10 the assembled backend routes every reviewed operation', async (t) =
     }
   // Every group's dependency is required, so none of them may be absent. A
   // route that is skipped for a missing service would fail the loop above.
-  assert.equal(expected.length, 151);
-  assert.equal(new Set(expected).size, 151);
+  assert.equal(expected.length, 156);
+  assert.equal(new Set(expected).size, 156);
   for (const operation of [
     'getOpsRiderDetail',
     'listOpsOperators',
@@ -639,6 +639,22 @@ test('ASM-16 a funded run blocks a future revision until ops explicitly clears i
       .status,
     'operator_cancelled',
   );
+  // Cancellation reaches the former rider, but later non-cancellation changes
+  // must not suggest that this rider still has a seat on the trip.
+  await f.owner.query(
+    `INSERT INTO app.trip_events(trip_id,actor_user_id,operation,before_state,after_state)
+     VALUES ($1,$2,'assign',$3,$4)`,
+    [trip.id, f.adminId, { driverId: null }, { driverId: f.actor.userId }],
+  );
+  assert.deepEqual(
+    (
+      await f.owner.query(
+        'SELECT kind FROM app.rider_notifications WHERE target_id=$1 ORDER BY created_at,id',
+        [reservation],
+      )
+    ).rows.map((row) => row.kind),
+    ['trip_cancelled'],
+  );
   const published = await publish();
   assert.equal(published.statusCode, 200, published.body);
   const versions = (
@@ -945,7 +961,7 @@ test('ASM-21 a provider this deployment does not have has no route at all', asyn
         routed += 1;
         assert.notEqual((operation as { operationId: string }).operationId, 'signInApple');
       }
-  assert.equal(routed, 150);
+  assert.equal(routed, 155);
   const docs = (await backend.app.inject({ method: 'GET', url: '/docs/json' })).json();
   assert.equal(docs.paths['/v1/auth/apple'], undefined);
   assert.ok(docs.paths['/v1/auth/google']);
