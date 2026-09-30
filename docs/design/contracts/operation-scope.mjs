@@ -1,6 +1,18 @@
 // Stage-1 review follow-up: predecessor absence is not proof of feature expansion.
 // Deferred operations remain documented proposals, not stage-3 commitments.
 export const operationScope = [
+  ...[
+    'listNotifications',
+    'markNotificationRead',
+    'markAllNotificationsRead',
+    'getNotificationPreferences',
+    'updateNotificationPreferences',
+  ].map((name) => [
+    name,
+    'post-cutover',
+    'Owned rider notification inbox and settings',
+    'Push acceptance is not a durable, rider-readable history or a preference policy.',
+  ]),
   ...['requestPhoneSignIn', 'verifyPhoneSignIn'].map((name) => [
     name,
     'post-cutover',

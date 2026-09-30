@@ -127,6 +127,11 @@ import 'package:trotxi_api_client/src/model/minimum_version_edit.dart';
 import 'package:trotxi_api_client/src/model/minimum_version_page.dart';
 import 'package:trotxi_api_client/src/model/minimum_version_response.dart';
 import 'package:trotxi_api_client/src/model/money.dart';
+import 'package:trotxi_api_client/src/model/notification_preferences.dart';
+import 'package:trotxi_api_client/src/model/notification_preferences_input.dart';
+import 'package:trotxi_api_client/src/model/notification_preferences_response.dart';
+import 'package:trotxi_api_client/src/model/notification_read_count.dart';
+import 'package:trotxi_api_client/src/model/notification_read_count_response.dart';
 import 'package:trotxi_api_client/src/model/ops_account_erasure.dart';
 import 'package:trotxi_api_client/src/model/ops_account_erasure_page.dart';
 import 'package:trotxi_api_client/src/model/ops_audit_event.dart';
@@ -260,6 +265,10 @@ import 'package:trotxi_api_client/src/model/restriction_response.dart';
 import 'package:trotxi_api_client/src/model/review_decision.dart';
 import 'package:trotxi_api_client/src/model/ride_entry.dart';
 import 'package:trotxi_api_client/src/model/ride_entry_page.dart';
+import 'package:trotxi_api_client/src/model/rider_notification.dart';
+import 'package:trotxi_api_client/src/model/rider_notification_page.dart';
+import 'package:trotxi_api_client/src/model/rider_notification_response.dart';
+import 'package:trotxi_api_client/src/model/rider_notification_target.dart';
 import 'package:trotxi_api_client/src/model/role_edit.dart';
 import 'package:trotxi_api_client/src/model/root.dart';
 import 'package:trotxi_api_client/src/model/route.dart';
@@ -429,6 +438,11 @@ part 'serializers.g.dart';
   MinimumVersionPage,
   MinimumVersionResponse,
   Money,
+  NotificationPreferences,
+  NotificationPreferencesInput,
+  NotificationPreferencesResponse,
+  NotificationReadCount,
+  NotificationReadCountResponse,
   OpsAccountErasure,
   OpsAccountErasurePage,
   OpsAuditEvent,
@@ -562,6 +576,10 @@ part 'serializers.g.dart';
   ReviewDecision,
   RideEntry,
   RideEntryPage,
+  RiderNotification,
+  RiderNotificationPage,
+  RiderNotificationResponse,
+  RiderNotificationTarget,
   RoleEdit,
   Root,
   Route,

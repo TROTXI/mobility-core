@@ -192,18 +192,23 @@ Class | Method | HTTP request | Description
 [*RiderOwnApi*](doc/RiderOwnApi.md) | [**createPurchase**](doc/RiderOwnApi.md#createpurchase) | **POST** /v1/me/purchases | create Purchase
 [*RiderOwnApi*](doc/RiderOwnApi.md) | [**decideReservation**](doc/RiderOwnApi.md#decidereservation) | **POST** /v1/me/reservation-decisions | decide Reservation
 [*RiderOwnApi*](doc/RiderOwnApi.md) | [**getMembership**](doc/RiderOwnApi.md#getmembership) | **GET** /v1/me/membership | get Membership
+[*RiderOwnApi*](doc/RiderOwnApi.md) | [**getNotificationPreferences**](doc/RiderOwnApi.md#getnotificationpreferences) | **GET** /v1/me/notification-preferences | get Notification Preferences
 [*RiderOwnApi*](doc/RiderOwnApi.md) | [**getPersonalPause**](doc/RiderOwnApi.md#getpersonalpause) | **GET** /v1/me/membership/pause | get Personal Pause
 [*RiderOwnApi*](doc/RiderOwnApi.md) | [**getPurchase**](doc/RiderOwnApi.md#getpurchase) | **GET** /v1/me/purchases/{id} | get Purchase
 [*RiderOwnApi*](doc/RiderOwnApi.md) | [**getReservation**](doc/RiderOwnApi.md#getreservation) | **GET** /v1/me/reservations/{id} | get Reservation
 [*RiderOwnApi*](doc/RiderOwnApi.md) | [**issuePass**](doc/RiderOwnApi.md#issuepass) | **POST** /v1/me/reservations/{id}/pass | issue Pass
 [*RiderOwnApi*](doc/RiderOwnApi.md) | [**listCommuteRequests**](doc/RiderOwnApi.md#listcommuterequests) | **GET** /v1/me/commute-requests | list Commute Requests
 [*RiderOwnApi*](doc/RiderOwnApi.md) | [**listCreditEntries**](doc/RiderOwnApi.md#listcreditentries) | **GET** /v1/me/credit-entries | list Credit Entries
+[*RiderOwnApi*](doc/RiderOwnApi.md) | [**listNotifications**](doc/RiderOwnApi.md#listnotifications) | **GET** /v1/me/notifications | list Notifications
 [*RiderOwnApi*](doc/RiderOwnApi.md) | [**listPurchases**](doc/RiderOwnApi.md#listpurchases) | **GET** /v1/me/purchases | list Purchases
 [*RiderOwnApi*](doc/RiderOwnApi.md) | [**listReservations**](doc/RiderOwnApi.md#listreservations) | **GET** /v1/me/reservations | list Reservations
 [*RiderOwnApi*](doc/RiderOwnApi.md) | [**listRideEntries**](doc/RiderOwnApi.md#listrideentries) | **GET** /v1/me/ride-entries | list Ride Entries
+[*RiderOwnApi*](doc/RiderOwnApi.md) | [**markAllNotificationsRead**](doc/RiderOwnApi.md#markallnotificationsread) | **POST** /v1/me/notifications/read | mark All Notifications Read
+[*RiderOwnApi*](doc/RiderOwnApi.md) | [**markNotificationRead**](doc/RiderOwnApi.md#marknotificationread) | **POST** /v1/me/notifications/{id}/read | mark Notification Read
 [*RiderOwnApi*](doc/RiderOwnApi.md) | [**previewPersonalPause**](doc/RiderOwnApi.md#previewpersonalpause) | **POST** /v1/me/membership/pause-preview | preview Personal Pause
 [*RiderOwnApi*](doc/RiderOwnApi.md) | [**previewPurchase**](doc/RiderOwnApi.md#previewpurchase) | **POST** /v1/me/purchase-quotes | preview Purchase
 [*RiderOwnApi*](doc/RiderOwnApi.md) | [**resumePersonalPause**](doc/RiderOwnApi.md#resumepersonalpause) | **POST** /v1/me/membership/pauses/{id}/resume | resume Personal Pause
+[*RiderOwnApi*](doc/RiderOwnApi.md) | [**updateNotificationPreferences**](doc/RiderOwnApi.md#updatenotificationpreferences) | **PATCH** /v1/me/notification-preferences | update Notification Preferences
 [*RiderOwnApi*](doc/RiderOwnApi.md) | [**withdrawCommuteRequest**](doc/RiderOwnApi.md#withdrawcommuterequest) | **POST** /v1/me/commute-requests/{id}/withdraw | withdraw Commute Request
 [*SelfApi*](doc/SelfApi.md) | [**deleteAvatar**](doc/SelfApi.md#deleteavatar) | **DELETE** /v1/me/avatar | delete Avatar
 [*SelfApi*](doc/SelfApi.md) | [**eraseAccount**](doc/SelfApi.md#eraseaccount) | **DELETE** /v1/me | erase Account
@@ -338,6 +343,11 @@ Class | Method | HTTP request | Description
  - [MinimumVersionPage](doc/MinimumVersionPage.md)
  - [MinimumVersionResponse](doc/MinimumVersionResponse.md)
  - [Money](doc/Money.md)
+ - [NotificationPreferences](doc/NotificationPreferences.md)
+ - [NotificationPreferencesInput](doc/NotificationPreferencesInput.md)
+ - [NotificationPreferencesResponse](doc/NotificationPreferencesResponse.md)
+ - [NotificationReadCount](doc/NotificationReadCount.md)
+ - [NotificationReadCountResponse](doc/NotificationReadCountResponse.md)
  - [OpsAccountErasure](doc/OpsAccountErasure.md)
  - [OpsAccountErasurePage](doc/OpsAccountErasurePage.md)
  - [OpsAuditEvent](doc/OpsAuditEvent.md)
@@ -471,6 +481,10 @@ Class | Method | HTTP request | Description
  - [ReviewDecision](doc/ReviewDecision.md)
  - [RideEntry](doc/RideEntry.md)
  - [RideEntryPage](doc/RideEntryPage.md)
+ - [RiderNotification](doc/RiderNotification.md)
+ - [RiderNotificationPage](doc/RiderNotificationPage.md)
+ - [RiderNotificationResponse](doc/RiderNotificationResponse.md)
+ - [RiderNotificationTarget](doc/RiderNotificationTarget.md)
  - [RoleEdit](doc/RoleEdit.md)
  - [Root](doc/Root.md)
  - [Route](doc/Route.md)

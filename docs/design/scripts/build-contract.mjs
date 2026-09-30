@@ -150,9 +150,15 @@ for (const o of operations) {
       query('cursor', str, 'Opaque cursor bound to caller, sort and filters.'),
       query(
         'limit',
-        { type: 'integer', minimum: 1, maximum: 200, default: 50 },
+        o.operationId === 'listNotifications'
+          ? { type: 'integer', minimum: 1, maximum: 100, default: 30 }
+          : { type: 'integer', minimum: 1, maximum: 200, default: 50 },
         'Page size. No silent truncation.',
       ),
+    );
+  if (o.operationId === 'listNotifications')
+    parameters.push(
+      query('unreadOnly', { type: 'boolean', default: false }, 'Only unread notifications.'),
     );
   // The board's morning/evening toggle. Required, not defaulted: the schema is
   // explicit that the service window is stated and never inferred from a
@@ -238,7 +244,9 @@ for (const o of operations) {
         'If-Match',
         str,
         true,
-        'Missing = 428; stale = 412. Completed idempotent replay is checked first after authorization.',
+        retry === 'conditional_state'
+          ? 'Missing = 428; stale = 412. Reload the current preferences and retry with its ETag.'
+          : 'Missing = 428; stale = 412. Completed idempotent replay is checked first after authorization.',
       ),
     );
   if (['idempotency_key', 'short_lived', 'erasure'].includes(retry))

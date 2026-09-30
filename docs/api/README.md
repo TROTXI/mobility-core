@@ -82,10 +82,16 @@ are ISO: Monday = 1, Sunday = 7. Ghana schedules use `Africa/Accra`.
 | Route-change requests     | `GET /v1/me/commute-requests`                                   | Submitted/waitlisted/approved/applied/rejected/cancelled history      |
 | Departures                | `GET /v1/trips`                                                 | Public departure information, with declared filters                   |
 | Bus tracking              | `GET /v1/trips/{id}/live`                                       | Authorized position/ETA; never collect the commuter's GPS             |
+| Notification inbox        | `GET /v1/me/notifications`                                      | Owned, paginated event history; push acceptance is not an inbox row   |
+| Notification settings     | `GET/PATCH /v1/me/notification-preferences`                     | Read the ETag and send it in `If-Match` when editing                  |
 
 Use the specification for complete inputs, status codes and enums. Public trip
 visibility is not permission to track that trip: the live endpoint evaluates
 current access independently and hides unavailable/unauthorized resources with 404. A stale marker is not a live ETA.
+
+The [notification inbox and preference guide](notifications.md) covers cursor
+pagination, read state, event sources, and the current manual seat-ask dispatch
+policy. The checked-in contract is ahead of staging until its PR is deployed.
 
 ## 1. Sign in, then read membership separately
 

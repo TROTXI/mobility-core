@@ -14,18 +14,23 @@ Method | HTTP request | Description
 [**createPurchase**](RiderOwnApi.md#createpurchase) | **POST** /v1/me/purchases | create Purchase
 [**decideReservation**](RiderOwnApi.md#decidereservation) | **POST** /v1/me/reservation-decisions | decide Reservation
 [**getMembership**](RiderOwnApi.md#getmembership) | **GET** /v1/me/membership | get Membership
+[**getNotificationPreferences**](RiderOwnApi.md#getnotificationpreferences) | **GET** /v1/me/notification-preferences | get Notification Preferences
 [**getPersonalPause**](RiderOwnApi.md#getpersonalpause) | **GET** /v1/me/membership/pause | get Personal Pause
 [**getPurchase**](RiderOwnApi.md#getpurchase) | **GET** /v1/me/purchases/{id} | get Purchase
 [**getReservation**](RiderOwnApi.md#getreservation) | **GET** /v1/me/reservations/{id} | get Reservation
 [**issuePass**](RiderOwnApi.md#issuepass) | **POST** /v1/me/reservations/{id}/pass | issue Pass
 [**listCommuteRequests**](RiderOwnApi.md#listcommuterequests) | **GET** /v1/me/commute-requests | list Commute Requests
 [**listCreditEntries**](RiderOwnApi.md#listcreditentries) | **GET** /v1/me/credit-entries | list Credit Entries
+[**listNotifications**](RiderOwnApi.md#listnotifications) | **GET** /v1/me/notifications | list Notifications
 [**listPurchases**](RiderOwnApi.md#listpurchases) | **GET** /v1/me/purchases | list Purchases
 [**listReservations**](RiderOwnApi.md#listreservations) | **GET** /v1/me/reservations | list Reservations
 [**listRideEntries**](RiderOwnApi.md#listrideentries) | **GET** /v1/me/ride-entries | list Ride Entries
+[**markAllNotificationsRead**](RiderOwnApi.md#markallnotificationsread) | **POST** /v1/me/notifications/read | mark All Notifications Read
+[**markNotificationRead**](RiderOwnApi.md#marknotificationread) | **POST** /v1/me/notifications/{id}/read | mark Notification Read
 [**previewPersonalPause**](RiderOwnApi.md#previewpersonalpause) | **POST** /v1/me/membership/pause-preview | preview Personal Pause
 [**previewPurchase**](RiderOwnApi.md#previewpurchase) | **POST** /v1/me/purchase-quotes | preview Purchase
 [**resumePersonalPause**](RiderOwnApi.md#resumepersonalpause) | **POST** /v1/me/membership/pauses/{id}/resume | resume Personal Pause
+[**updateNotificationPreferences**](RiderOwnApi.md#updatenotificationpreferences) | **PATCH** /v1/me/notification-preferences | update Notification Preferences
 [**withdrawCommuteRequest**](RiderOwnApi.md#withdrawcommuterequest) | **POST** /v1/me/commute-requests/{id}/withdraw | withdraw Commute Request
 
 
@@ -258,6 +263,51 @@ Name | Type | Description  | Notes
 ### Return type
 
 [**MembershipResponse**](MembershipResponse.md)
+
+### Authorization
+
+[bearerAuth](../README.md#bearerAuth)
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
+ - **Accept**: application/json
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
+# **getNotificationPreferences**
+> NotificationPreferencesResponse getNotificationPreferences(xTrotxiClient, xTrotxiBuild, xTrotxiPlatform)
+
+get Notification Preferences
+
+### Example
+```dart
+import 'package:trotxi_api_client/api.dart';
+
+final api = TrotxiApiClient().getRiderOwnApi();
+final String xTrotxiClient = commuter; // String | Compatibility metadata only, never grants a role.
+final int xTrotxiBuild = 1; // int | Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
+final String xTrotxiPlatform = ios; // String | Required for commuter/driver, absent for ops/worker.
+
+try {
+    final response = api.getNotificationPreferences(xTrotxiClient, xTrotxiBuild, xTrotxiPlatform);
+    print(response);
+} on DioException catch (e) {
+    print('Exception when calling RiderOwnApi->getNotificationPreferences: $e\n');
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **xTrotxiClient** | **String**| Compatibility metadata only, never grants a role. | 
+ **xTrotxiBuild** | **int**| Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable. | [default to 1]
+ **xTrotxiPlatform** | **String**| Required for commuter/driver, absent for ops/worker. | [optional] 
+
+### Return type
+
+[**NotificationPreferencesResponse**](NotificationPreferencesResponse.md)
 
 ### Authorization
 
@@ -562,6 +612,57 @@ Name | Type | Description  | Notes
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
+# **listNotifications**
+> RiderNotificationPage listNotifications(xTrotxiClient, xTrotxiBuild, cursor, limit, unreadOnly, xTrotxiPlatform)
+
+list Notifications
+
+### Example
+```dart
+import 'package:trotxi_api_client/api.dart';
+
+final api = TrotxiApiClient().getRiderOwnApi();
+final String xTrotxiClient = commuter; // String | Compatibility metadata only, never grants a role.
+final int xTrotxiBuild = 1; // int | Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
+final String cursor = cursor_example; // String | Opaque cursor bound to caller, sort and filters.
+final int limit = 56; // int | Page size. No silent truncation.
+final bool unreadOnly = true; // bool | Only unread notifications.
+final String xTrotxiPlatform = ios; // String | Required for commuter/driver, absent for ops/worker.
+
+try {
+    final response = api.listNotifications(xTrotxiClient, xTrotxiBuild, cursor, limit, unreadOnly, xTrotxiPlatform);
+    print(response);
+} on DioException catch (e) {
+    print('Exception when calling RiderOwnApi->listNotifications: $e\n');
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **xTrotxiClient** | **String**| Compatibility metadata only, never grants a role. | 
+ **xTrotxiBuild** | **int**| Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable. | [default to 1]
+ **cursor** | **String**| Opaque cursor bound to caller, sort and filters. | [optional] 
+ **limit** | **int**| Page size. No silent truncation. | [optional] [default to 30]
+ **unreadOnly** | **bool**| Only unread notifications. | [optional] [default to false]
+ **xTrotxiPlatform** | **String**| Required for commuter/driver, absent for ops/worker. | [optional] 
+
+### Return type
+
+[**RiderNotificationPage**](RiderNotificationPage.md)
+
+### Authorization
+
+[bearerAuth](../README.md#bearerAuth)
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
+ - **Accept**: application/json
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
 # **listPurchases**
 > PurchasePage listPurchases(xTrotxiClient, xTrotxiBuild, cursor, limit, fromDate, toDate, xTrotxiPlatform)
 
@@ -721,6 +822,98 @@ Name | Type | Description  | Notes
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
+# **markAllNotificationsRead**
+> NotificationReadCountResponse markAllNotificationsRead(xTrotxiClient, xTrotxiBuild, xTrotxiPlatform)
+
+mark All Notifications Read
+
+### Example
+```dart
+import 'package:trotxi_api_client/api.dart';
+
+final api = TrotxiApiClient().getRiderOwnApi();
+final String xTrotxiClient = commuter; // String | Compatibility metadata only, never grants a role.
+final int xTrotxiBuild = 1; // int | Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
+final String xTrotxiPlatform = ios; // String | Required for commuter/driver, absent for ops/worker.
+
+try {
+    final response = api.markAllNotificationsRead(xTrotxiClient, xTrotxiBuild, xTrotxiPlatform);
+    print(response);
+} on DioException catch (e) {
+    print('Exception when calling RiderOwnApi->markAllNotificationsRead: $e\n');
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **xTrotxiClient** | **String**| Compatibility metadata only, never grants a role. | 
+ **xTrotxiBuild** | **int**| Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable. | [default to 1]
+ **xTrotxiPlatform** | **String**| Required for commuter/driver, absent for ops/worker. | [optional] 
+
+### Return type
+
+[**NotificationReadCountResponse**](NotificationReadCountResponse.md)
+
+### Authorization
+
+[bearerAuth](../README.md#bearerAuth)
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
+ - **Accept**: application/json
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
+# **markNotificationRead**
+> RiderNotificationResponse markNotificationRead(id, xTrotxiClient, xTrotxiBuild, xTrotxiPlatform)
+
+mark Notification Read
+
+### Example
+```dart
+import 'package:trotxi_api_client/api.dart';
+
+final api = TrotxiApiClient().getRiderOwnApi();
+final String id = id_example; // String | 
+final String xTrotxiClient = commuter; // String | Compatibility metadata only, never grants a role.
+final int xTrotxiBuild = 1; // int | Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
+final String xTrotxiPlatform = ios; // String | Required for commuter/driver, absent for ops/worker.
+
+try {
+    final response = api.markNotificationRead(id, xTrotxiClient, xTrotxiBuild, xTrotxiPlatform);
+    print(response);
+} on DioException catch (e) {
+    print('Exception when calling RiderOwnApi->markNotificationRead: $e\n');
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **id** | **String**|  | 
+ **xTrotxiClient** | **String**| Compatibility metadata only, never grants a role. | 
+ **xTrotxiBuild** | **int**| Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable. | [default to 1]
+ **xTrotxiPlatform** | **String**| Required for commuter/driver, absent for ops/worker. | [optional] 
+
+### Return type
+
+[**RiderNotificationResponse**](RiderNotificationResponse.md)
+
+### Authorization
+
+[bearerAuth](../README.md#bearerAuth)
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
+ - **Accept**: application/json
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
 # **previewPersonalPause**
 > PersonalPausePreviewResponse previewPersonalPause(xTrotxiClient, xTrotxiBuild, personalPauseInput, xTrotxiPlatform)
 
@@ -854,6 +1047,55 @@ Name | Type | Description  | Notes
 ### Return type
 
 [**PersonalPauseResponse**](PersonalPauseResponse.md)
+
+### Authorization
+
+[bearerAuth](../README.md#bearerAuth)
+
+### HTTP request headers
+
+ - **Content-Type**: application/json
+ - **Accept**: application/json
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
+# **updateNotificationPreferences**
+> NotificationPreferencesResponse updateNotificationPreferences(ifMatch, xTrotxiClient, xTrotxiBuild, notificationPreferencesInput, xTrotxiPlatform)
+
+update Notification Preferences
+
+### Example
+```dart
+import 'package:trotxi_api_client/api.dart';
+
+final api = TrotxiApiClient().getRiderOwnApi();
+final String ifMatch = ifMatch_example; // String | Missing = 428; stale = 412. Reload the current preferences and retry with its ETag.
+final String xTrotxiClient = commuter; // String | Compatibility metadata only, never grants a role.
+final int xTrotxiBuild = 1; // int | Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
+final NotificationPreferencesInput notificationPreferencesInput = ; // NotificationPreferencesInput | 
+final String xTrotxiPlatform = ios; // String | Required for commuter/driver, absent for ops/worker.
+
+try {
+    final response = api.updateNotificationPreferences(ifMatch, xTrotxiClient, xTrotxiBuild, notificationPreferencesInput, xTrotxiPlatform);
+    print(response);
+} on DioException catch (e) {
+    print('Exception when calling RiderOwnApi->updateNotificationPreferences: $e\n');
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **ifMatch** | **String**| Missing = 428; stale = 412. Reload the current preferences and retry with its ETag. | 
+ **xTrotxiClient** | **String**| Compatibility metadata only, never grants a role. | 
+ **xTrotxiBuild** | **int**| Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable. | [default to 1]
+ **notificationPreferencesInput** | [**NotificationPreferencesInput**](NotificationPreferencesInput.md)|  | 
+ **xTrotxiPlatform** | **String**| Required for commuter/driver, absent for ops/worker. | [optional] 
+
+### Return type
+
+[**NotificationPreferencesResponse**](NotificationPreferencesResponse.md)
 
 ### Authorization
 
