@@ -8,6 +8,12 @@ import 'package:uuid/uuid.dart';
 import 'scoped_token_store.dart';
 import 'trotxi_client.dart';
 
+class NotificationPreferencesSnapshot {
+  const NotificationPreferencesSnapshot(this.preferences, this.editToken);
+  final NotificationPreferences preferences;
+  final String editToken;
+}
+
 /// Commuter data over the generated replacement contract. All reads are
 /// session-bound; an old screen cannot consume a new rider's response or send
 /// a queued command with that rider's bearer. Native sign-in lives separately
@@ -327,6 +333,83 @@ class CommuterDataClient {
               extra: extra)))
           .data;
 
+  /// Load one bounded page; the screen requests the next cursor on demand.
+  Future<RiderNotificationPage> notificationPage({
+    String? cursor,
+    bool unreadOnly = false,
+  }) async =>
+      await _read((extra) => client.getRiderOwnApi().listNotifications(
+            xTrotxiClient: metadata.app,
+            xTrotxiBuild: metadata.build,
+            xTrotxiPlatform: metadata.platform,
+            cursor: cursor,
+            limit: 30,
+            unreadOnly: unreadOnly,
+            extra: extra,
+          ));
+
+  Future<RiderNotification> markNotificationRead(String id) async =>
+      (await _read((extra) => client.getRiderOwnApi().markNotificationRead(
+                id: id,
+                xTrotxiClient: metadata.app,
+                xTrotxiBuild: metadata.build,
+                xTrotxiPlatform: metadata.platform,
+                extra: extra,
+              )))
+          .data;
+
+  Future<int> markAllNotificationsRead() async =>
+      (await _read((extra) => client.getRiderOwnApi().markAllNotificationsRead(
+                xTrotxiClient: metadata.app,
+                xTrotxiBuild: metadata.build,
+                xTrotxiPlatform: metadata.platform,
+                extra: extra,
+              )))
+          .data
+          .readCount;
+
+  Future<NotificationPreferencesSnapshot> notificationPreferences() async {
+    String? editToken;
+    final response = await _read((extra) async {
+      final result = await client.getRiderOwnApi().getNotificationPreferences(
+            xTrotxiClient: metadata.app,
+            xTrotxiBuild: metadata.build,
+            xTrotxiPlatform: metadata.platform,
+            extra: extra,
+          );
+      editToken = result.headers.value('etag');
+      return result;
+    });
+    if (editToken == null) {
+      throw const ApiException(502, 'Notification settings had no edit token.');
+    }
+    return NotificationPreferencesSnapshot(response.data, editToken!);
+  }
+
+  Future<NotificationPreferencesSnapshot> updateNotificationPreferences(
+    NotificationPreferencesInput input,
+    String editToken,
+  ) async {
+    String? nextToken;
+    final response = await _read((extra) async {
+      final result =
+          await client.getRiderOwnApi().updateNotificationPreferences(
+                ifMatch: editToken,
+                xTrotxiClient: metadata.app,
+                xTrotxiBuild: metadata.build,
+                xTrotxiPlatform: metadata.platform,
+                notificationPreferencesInput: input,
+                extra: extra,
+              );
+      nextToken = result.headers.value('etag');
+      return result;
+    });
+    if (nextToken == null) {
+      throw const ApiException(502, 'Notification settings had no edit token.');
+    }
+    return NotificationPreferencesSnapshot(response.data, nextToken!);
+  }
+
   /// Date bounds are mandatory. The backend's default window is not the
   /// app's "today", and the phone's timezone must not select a direction.
   Future<List<Reservation>> reservations(
@@ -346,12 +429,12 @@ class CommuterDataClient {
   /// Rider-scoped reservation detail, including its scheduled trip and stops.
   Future<ReservationDetail> reservationDetail(String id) async =>
       (await _read((extra) => client.getRiderOwnApi().getReservation(
-            id: id,
-            xTrotxiClient: metadata.app,
-            xTrotxiBuild: metadata.build,
-            xTrotxiPlatform: metadata.platform,
-            extra: extra,
-          )))
+                id: id,
+                xTrotxiClient: metadata.app,
+                xTrotxiBuild: metadata.build,
+                xTrotxiPlatform: metadata.platform,
+                extra: extra,
+              )))
           .data;
 
   Future<List<CommuteRequest>> commuteRequests(

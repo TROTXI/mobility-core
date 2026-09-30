@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:dio/dio.dart';
 import 'package:test/test.dart';
@@ -611,5 +612,64 @@ void main() {
     expect(member.access.canReserve, isFalse);
     expect(member.access.blocks.map((b) => b.kind),
         [AccessBlockKindEnum.paused, AccessBlockKindEnum.dispute]);
+  });
+
+  test('notification pages and settings use the generated scoped routes',
+      () async {
+    final notification = {
+      'id': '26a51489-63b5-4c24-9d6f-e3f16d72d807',
+      'kind': 'seat_ask',
+      'target': {
+        'type': 'reservation',
+        'id': '08ed1605-1cd0-4571-af5b-c33b1c3c719e',
+      },
+      'createdAt': stamp,
+      'readAt': null,
+    };
+    final preferences = {
+      'dailyAskTime': '17:00',
+      'optionalUpdatesEnabled': false,
+      'updatedAt': stamp,
+      'version': 1,
+    };
+    reply = (o) {
+      if (o.path == '/v1/me/notifications') {
+        return json(200, page([notification]));
+      }
+      if (o.path == '/v1/me/notifications/read') {
+        return json(200, {
+          'data': {'readCount': 1}
+        });
+      }
+      if (o.path.endsWith('/read')) {
+        return json(200, {
+          'data': {...notification, 'readAt': stamp}
+        });
+      }
+      return ResponseBody.fromString(
+        jsonEncode({'data': preferences}),
+        200,
+        headers: {
+          Headers.contentTypeHeader: ['application/json'],
+          'etag': ['"notification-preferences:1"'],
+        },
+      );
+    };
+    final pageResult = await data.notificationPage(unreadOnly: true);
+    expect(pageResult.data.single.kind, RiderNotificationKindEnum.seatAsk);
+    expect(requests.last.queryParameters['unreadOnly'], true);
+    final id = pageResult.data.single.id;
+    expect((await data.markNotificationRead(id)).readAt, isNotNull);
+    expect(await data.markAllNotificationsRead(), 1);
+    final current = await data.notificationPreferences();
+    expect(current.editToken, '"notification-preferences:1"');
+    await data.updateNotificationPreferences(
+      NotificationPreferencesInput((b) => b
+        ..dailyAskTime = '18:00'
+        ..optionalUpdatesEnabled = false),
+      current.editToken,
+    );
+    expect(requests.last.headers['If-Match'], current.editToken);
+    expect(requests.last.path, '/v1/me/notification-preferences');
   });
 }
