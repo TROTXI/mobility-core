@@ -161,10 +161,11 @@ export class PaymentRecovery {
     id: string,
     state: 'processed' | 'quarantined',
     reason: string | null = null,
+    purchaseId: string | null = null,
   ) {
     await c.query(
-      'UPDATE app.payment_events SET state=$2,reason=$3,processed_at=clock_timestamp() WHERE id=$1',
-      [id, state, reason],
+      'UPDATE app.payment_events SET state=$2,reason=$3,purchase_id=$4,processed_at=clock_timestamp() WHERE id=$1',
+      [id, state, reason, purchaseId],
     );
     return state === 'processed' ? ('succeeded' as const) : ('failed' as const);
   }
@@ -230,7 +231,7 @@ export class PaymentRecovery {
             fact.amountPesewas !== a.amount_pesewas)
         ) {
           await this.eventReview(c, a, e, 'provider_conflict');
-          await this.finish(c, id, 'quarantined', 'provider_conflict');
+          await this.finish(c, id, 'quarantined', 'provider_conflict', a.purchase_id);
           return { outcome: 'failed', reason: 'provider_conflict' };
         }
         if (fact.kind === 'success') {
@@ -265,7 +266,7 @@ export class PaymentRecovery {
             );
           if (user.deleted_at) {
             await this.eventReview(c, a, e, 'account_unavailable');
-            await this.finish(c, id, 'quarantined', 'account_unavailable');
+            await this.finish(c, id, 'quarantined', 'account_unavailable', a.purchase_id);
             return { outcome: 'failed', reason: 'account_unavailable' };
           }
           const result = await this.options.foundation.fulfillInTransaction(c, fact);
@@ -274,7 +275,7 @@ export class PaymentRecovery {
             // A new purchase may already exist. Do not move the old failed purchase
             // into the single unresolved slot, or silently grant another period.
             await this.eventReview(c, a, e, 'late_success');
-            await this.finish(c, id, 'quarantined', 'late_success');
+            await this.finish(c, id, 'quarantined', 'late_success', a.purchase_id);
             return { outcome: 'failed', reason: 'late_success' };
           }
         } else if (fact.kind === 'failure') {
@@ -290,7 +291,7 @@ export class PaymentRecovery {
             );
           }
         } else if (fact.kind === 'unresolved') {
-          await this.finish(c, id, 'processed');
+          await this.finish(c, id, 'processed', null, a.purchase_id);
           return { outcome: 'blocked' };
         } else {
           // Out-of-order refund/dispute before charge: keep durable work retryable.
@@ -303,7 +304,7 @@ export class PaymentRecovery {
           if (fact.kind === 'refund') await this.refund(c, a, e, fact);
           else await this.dispute(c, a, e, fact);
         }
-        await this.finish(c, id, 'processed');
+        await this.finish(c, id, 'processed', null, a.purchase_id);
         return { outcome: 'succeeded' };
       });
     } catch (error) {

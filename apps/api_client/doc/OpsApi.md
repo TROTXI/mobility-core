@@ -42,6 +42,7 @@ Method | HTTP request | Description
 [**listFares**](OpsApi.md#listfares) | **GET** /v1/ops/routes/{id}/fares | list Fares
 [**listFlags**](OpsApi.md#listflags) | **GET** /v1/ops/flags | list Flags
 [**listMinimumVersions**](OpsApi.md#listminimumversions) | **GET** /v1/ops/min-versions | list Minimum Versions
+[**listOpsAccountErasures**](OpsApi.md#listopsaccounterasures) | **GET** /v1/ops/account-erasures | list Ops Account Erasures
 [**listOpsAuditEvents**](OpsApi.md#listopsauditevents) | **GET** /v1/ops/audit-events | list Ops Audit Events
 [**listOpsCommuteRequests**](OpsApi.md#listopscommuterequests) | **GET** /v1/ops/commute-requests | list Ops Commute Requests
 [**listOpsDeliveries**](OpsApi.md#listopsdeliveries) | **GET** /v1/ops/deliveries | list Ops Deliveries
@@ -1728,8 +1729,57 @@ Name | Type | Description  | Notes
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
+# **listOpsAccountErasures**
+> OpsAccountErasurePage listOpsAccountErasures(xTrotxiClient, xTrotxiBuild, cursor, limit, xTrotxiPlatform)
+
+list Ops Account Erasures
+
+### Example
+```dart
+import 'package:trotxi_api_client/api.dart';
+
+final api = TrotxiApiClient().getOpsApi();
+final String xTrotxiClient = ops; // String | Compatibility metadata only, never grants a role.
+final int xTrotxiBuild = 1; // int | Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
+final String cursor = cursor_example; // String | Opaque cursor bound to caller, sort and filters.
+final int limit = 56; // int | Page size. No silent truncation.
+final String xTrotxiPlatform = xTrotxiPlatform_example; // String | Required for commuter/driver, absent for ops/worker.
+
+try {
+    final response = api.listOpsAccountErasures(xTrotxiClient, xTrotxiBuild, cursor, limit, xTrotxiPlatform);
+    print(response);
+} on DioException catch (e) {
+    print('Exception when calling OpsApi->listOpsAccountErasures: $e\n');
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **xTrotxiClient** | **String**| Compatibility metadata only, never grants a role. | 
+ **xTrotxiBuild** | **int**| Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable. | [default to 1]
+ **cursor** | **String**| Opaque cursor bound to caller, sort and filters. | [optional] 
+ **limit** | **int**| Page size. No silent truncation. | [optional] [default to 50]
+ **xTrotxiPlatform** | **String**| Required for commuter/driver, absent for ops/worker. | [optional] 
+
+### Return type
+
+[**OpsAccountErasurePage**](OpsAccountErasurePage.md)
+
+### Authorization
+
+[bearerAuth](../README.md#bearerAuth)
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
+ - **Accept**: application/json
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
 # **listOpsAuditEvents**
-> OpsAuditEventPage listOpsAuditEvents(xTrotxiClient, xTrotxiBuild, cursor, limit, area, xTrotxiPlatform)
+> OpsAuditEventPage listOpsAuditEvents(xTrotxiClient, xTrotxiBuild, cursor, limit, area, actorId, action, targetId, fromDate, toDate, xTrotxiPlatform)
 
 list Ops Audit Events
 
@@ -1743,10 +1793,15 @@ final int xTrotxiBuild = 1; // int | Unsupported build: 426. Missing metadata: 4
 final String cursor = cursor_example; // String | Opaque cursor bound to caller, sort and filters.
 final int limit = 56; // int | Page size. No silent truncation.
 final String area = area_example; // String | Audit domain.
+final String actorId = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | Operator user ID.
+final String action = action_example; // String | Exact audit action.
+final String targetId = targetId_example; // String | Exact resource ID.
+final Date fromDate = 2013-10-20; // Date | Earliest UTC date, inclusive.
+final Date toDate = 2013-10-20; // Date | Latest UTC date, inclusive.
 final String xTrotxiPlatform = xTrotxiPlatform_example; // String | Required for commuter/driver, absent for ops/worker.
 
 try {
-    final response = api.listOpsAuditEvents(xTrotxiClient, xTrotxiBuild, cursor, limit, area, xTrotxiPlatform);
+    final response = api.listOpsAuditEvents(xTrotxiClient, xTrotxiBuild, cursor, limit, area, actorId, action, targetId, fromDate, toDate, xTrotxiPlatform);
     print(response);
 } on DioException catch (e) {
     print('Exception when calling OpsApi->listOpsAuditEvents: $e\n');
@@ -1762,6 +1817,11 @@ Name | Type | Description  | Notes
  **cursor** | **String**| Opaque cursor bound to caller, sort and filters. | [optional] 
  **limit** | **int**| Page size. No silent truncation. | [optional] [default to 50]
  **area** | **String**| Audit domain. | [optional] 
+ **actorId** | **String**| Operator user ID. | [optional] 
+ **action** | **String**| Exact audit action. | [optional] 
+ **targetId** | **String**| Exact resource ID. | [optional] 
+ **fromDate** | **Date**| Earliest UTC date, inclusive. | [optional] 
+ **toDate** | **Date**| Latest UTC date, inclusive. | [optional] 
  **xTrotxiPlatform** | **String**| Required for commuter/driver, absent for ops/worker. | [optional] 
 
 ### Return type

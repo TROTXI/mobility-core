@@ -5,6 +5,7 @@ import { fail } from './errors.js';
 export const operationsReads = [
   'listOpsOperators',
   'listOpsDeliveries',
+  'listOpsAccountErasures',
   'listOpsAuditEvents',
   'getOpsReportSummary',
 ] as const;
@@ -201,6 +202,41 @@ export async function readOperations(
             : null,
           joinedAt: new Date(r.created_at as string).toISOString(),
           editToken: `"user:${r.id}:${r.version}"`,
+        })),
+        page: { nextCursor: result.nextCursor },
+      },
+      headers: {},
+    };
+  }
+
+  if (operation === 'listOpsAccountErasures') {
+    if (Object.keys(query).some((key) => !['cursor', 'limit'].includes(key)))
+      fail(400, 'invalid_query', 'Unsupported query parameters.');
+    const rows = (
+      await client.query(
+        `SELECT *,to_char(erased_at AT TIME ZONE 'UTC','YYYY-MM-DD"T"HH24:MI:SS.US"Z"') AS cursor_time
+         FROM app.account_erasure_status
+         WHERE ($1::timestamptz IS NULL OR (erased_at,user_id)<($1::timestamptz,$2::uuid))
+         ORDER BY erased_at DESC,user_id DESC LIMIT $3`,
+        [cursor?.time ?? null, cursor?.id ?? null, limit + 1],
+      )
+    ).rows;
+    const result = page(rows.map((r) => ({ ...r, id: r.user_id })));
+    return {
+      status: 200,
+      body: {
+        data: result.rows.map((r) => ({
+          userId: r.user_id,
+          erasedAt: new Date(r.erased_at as string).toISOString(),
+          sessionsRevoked: Number(r.sessions_revoked),
+          devicesRevoked: Number(r.devices_revoked),
+          identitiesScrubbed: Number(r.identities_scrubbed),
+          trackedTasks: Number(r.tracked_tasks),
+          trackedDone: Number(r.tracked_done),
+          trackedCancelled: Number(r.tracked_cancelled),
+          trackedPending: Number(r.tracked_pending),
+          trackedUnavailable: Number(r.tracked_unavailable),
+          trackedCleanupState: r.tracked_cleanup_state,
         })),
         page: { nextCursor: result.nextCursor },
       },

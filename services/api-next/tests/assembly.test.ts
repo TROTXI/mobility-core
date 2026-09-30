@@ -256,6 +256,17 @@ test('maintenance exit policy detects 200 partial failures and contract drift, n
     true,
     'a due backlog left behind must be visible as a failed run',
   );
+  const paymentRetention = {
+    job: 'payment-evidence-retention' as const,
+    status: 200,
+    body: { redacted: 100, batches: 1, backlogRemaining: false },
+  };
+  assert.equal(jobFailed(paymentRetention), false);
+  assert.equal(
+    jobFailed({ ...paymentRetention, body: { ...paymentRetention.body, backlogRemaining: true } }),
+    true,
+    'a payment evidence backlog must reach the scheduler',
+  );
   const logged = JSON.parse(
     jobLog({
       job: 'route-learning',

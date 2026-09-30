@@ -28,7 +28,7 @@ abstract class OpsAuditEvent
 
   @BuiltValueField(wireName: r'area')
   OpsAuditEventAreaEnum get area;
-  // enum areaEnum {  catalog,  trip,  schedule,  fleet,  driver,  membership,  boarding,  pricing,  configuration,  security,  payments,  gps,  };
+  // enum areaEnum {  catalog,  trip,  schedule,  fleet,  driver,  membership,  boarding,  pricing,  configuration,  security,  payments,  gps,  maintenance,  };
 
   @BuiltValueField(wireName: r'action')
   String get action;

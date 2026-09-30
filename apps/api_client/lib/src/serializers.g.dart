@@ -174,6 +174,9 @@ Serializers _$serializers = (Serializers().toBuilder()
       ..add(MinimumVersionResponse.serializer)
       ..add(Money.serializer)
       ..add(MoneyCurrencyEnum.serializer)
+      ..add(OpsAccountErasure.serializer)
+      ..add(OpsAccountErasurePage.serializer)
+      ..add(OpsAccountErasureTrackedCleanupStateEnum.serializer)
       ..add(OpsAuditEvent.serializer)
       ..add(OpsAuditEventAreaEnum.serializer)
       ..add(OpsAuditEventPage.serializer)
@@ -506,6 +509,9 @@ Serializers _$serializers = (Serializers().toBuilder()
       ..addBuilderFactory(
           const FullType(BuiltList, const [const FullType(MinimumVersion)]),
           () => ListBuilder<MinimumVersion>())
+      ..addBuilderFactory(
+          const FullType(BuiltList, const [const FullType(OpsAccountErasure)]),
+          () => ListBuilder<OpsAccountErasure>())
       ..addBuilderFactory(
           const FullType(BuiltList, const [const FullType(OpsAuditEvent)]),
           () => ListBuilder<OpsAuditEvent>())

@@ -117,6 +117,8 @@ doc/MinimumVersionEdit.md
 doc/MinimumVersionPage.md
 doc/MinimumVersionResponse.md
 doc/Money.md
+doc/OpsAccountErasure.md
+doc/OpsAccountErasurePage.md
 doc/OpsApi.md
 doc/OpsAuditEvent.md
 doc/OpsAuditEventPage.md
@@ -439,6 +441,8 @@ lib/src/model/minimum_version_edit.dart
 lib/src/model/minimum_version_page.dart
 lib/src/model/minimum_version_response.dart
 lib/src/model/money.dart
+lib/src/model/ops_account_erasure.dart
+lib/src/model/ops_account_erasure_page.dart
 lib/src/model/ops_audit_event.dart
 lib/src/model/ops_audit_event_page.dart
 lib/src/model/ops_commute_request.dart

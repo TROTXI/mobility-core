@@ -17,10 +17,13 @@ type WorkRequest = components['schemas']['OpsWorkRequest'];
 type CommuteRequest = components['schemas']['OpsCommuteRequest'];
 type CommuteSlot = components['schemas']['CommuteSlot'];
 type DecisionEvent = components['schemas']['DecisionEvent'];
+type AccountErasure = components['schemas']['OpsAccountErasure'];
 
 export function Support() {
   const { session } = useAuth();
-  const [tab, setTab] = useState<'incidents' | 'driver' | 'commute'>('incidents');
+  const [tab, setTab] = useState<'incidents' | 'driver' | 'commute' | 'deletions'>('incidents');
+  const [deletionCursor, setDeletionCursor] = useState<string | undefined>();
+  const [deletionHistory, setDeletionHistory] = useState<(string | undefined)[]>([]);
   const [selected, setSelected] = useState<Selection | null>(null);
   const [decision, setDecision] = useState('resolved');
   const [note, setNote] = useState('');
@@ -80,6 +83,21 @@ export function Support() {
     },
     [session, selected?.kind === 'commute' ? selected.row.id : null],
   );
+  const deletions = useQuery<{ items: AccountErasure[]; nextCursor: string | null }>(
+    async (signal) => {
+      if (tab !== 'deletions') return { items: [], nextCursor: null };
+      const response = await session.client.GET('/v1/ops/account-erasures', {
+        params: {
+          query: { limit: 50, ...(deletionCursor ? { cursor: deletionCursor } : {}) },
+          header: opsHeaders,
+        },
+        signal,
+      });
+      if (response.error) throw new Error(response.error.error.message);
+      return { items: response.data.data, nextCursor: response.data.page.nextCursor ?? null };
+    },
+    [session, tab, deletionCursor],
+  );
   const availableSlots =
     selected?.kind === 'commute'
       ? (query.data?.slots ?? []).filter(
@@ -99,18 +117,60 @@ export function Support() {
         <Tab value="incidents">Incidents</Tab>
         <Tab value="driver">Driver requests</Tab>
         <Tab value="commute">Commute changes</Tab>
+        <Tab value="deletions">Account deletions</Tab>
       </TabList>
-      {query.error && <ErrorState message={query.error} retry={query.retry} />}
+      {tab !== 'deletions' && query.error && (
+        <ErrorState message={query.error} retry={query.retry} />
+      )}
+      {tab === 'deletions' && deletions.error && (
+        <ErrorState message={deletions.error} retry={deletions.retry} />
+      )}
       <Panel
         title={
           tab === 'incidents'
             ? 'Incident queue'
             : tab === 'driver'
               ? 'Driver request queue'
-              : 'Commute request queue'
+              : tab === 'commute'
+                ? 'Commute request queue'
+                : 'Local deletion status'
         }
       >
-        {query.loading ? (
+        {tab === 'deletions' ? (
+          <>
+            <p className="muted" style={{ padding: '0 20px' }}>
+              This shows local account closure and tracked avatar or sign-in grant cleanup only. It
+              does not certify deletion from payment, messaging or analytics providers or backups.
+            </p>
+            {deletions.loading ? (
+              <LoadingRows />
+            ) : (
+              <AccountErasureRows rows={deletions.data?.items ?? []} />
+            )}
+            {(deletionHistory.length > 0 || deletions.data?.nextCursor) && (
+              <div className="toolbar" style={{ padding: 20 }}>
+                <Button
+                  disabled={!deletionHistory.length || deletions.loading}
+                  onClick={() => {
+                    setDeletionCursor(deletionHistory.at(-1));
+                    setDeletionHistory(deletionHistory.slice(0, -1));
+                  }}
+                >
+                  Previous
+                </Button>
+                <Button
+                  disabled={!deletions.data?.nextCursor || deletions.loading}
+                  onClick={() => {
+                    setDeletionHistory([...deletionHistory, deletionCursor]);
+                    setDeletionCursor(deletions.data!.nextCursor!);
+                  }}
+                >
+                  Next
+                </Button>
+              </div>
+            )}
+          </>
+        ) : query.loading ? (
           <LoadingRows />
         ) : tab === 'incidents' ? (
           <IncidentRows
@@ -269,6 +329,39 @@ export function Support() {
         )}
       </ActionDialog>
     </Page>
+  );
+}
+function AccountErasureRows({ rows }: { rows: AccountErasure[] }) {
+  if (!rows.length) return <Empty>No account deletions recorded.</Empty>;
+  return (
+    <table className="data-table">
+      <thead>
+        <tr>
+          <th>Closed</th>
+          <th>Account ID</th>
+          <th>Local cleanup</th>
+          <th>Tracked tasks</th>
+        </tr>
+      </thead>
+      <tbody>
+        {rows.map((row) => (
+          <tr key={row.userId}>
+            <td>{when(row.erasedAt)}</td>
+            <td className="mono">{row.userId}</td>
+            <td>
+              {row.trackedCleanupState === 'tracked_complete'
+                ? 'Tracked tasks complete'
+                : row.trackedCleanupState === 'retry_needed'
+                  ? 'Retry needed'
+                  : 'Pending'}
+            </td>
+            <td>
+              {row.trackedDone + row.trackedCancelled}/{row.trackedTasks}
+            </td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
   );
 }
 function IncidentRows({ rows, onSelect }: { rows: Incident[]; onSelect: (row: Incident) => void }) {
