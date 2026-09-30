@@ -30,7 +30,9 @@ const schemas = {
       oldestEligibleAt: z.string().nullable(),
     })
     .strict(),
-  'payment-evidence-retention': z.object({ redacted: count }).strict(),
+  'payment-evidence-retention': z
+    .object({ redacted: count, batches: count, backlogRemaining: z.boolean() })
+    .strict(),
   erasures: z
     .object({ considered: count, completed: count, failed: count, phoneChallengesPurged: count })
     .strict(),
@@ -67,6 +69,8 @@ export function jobFailed(result: JobResult): boolean {
     ((result.job === 'emails' || result.job === 'push') &&
       ((parsed.data as any).retried > 0 || (parsed.data as any).unknown > 0)) ||
     (result.retention?.overdueSeconds ?? 0) > 3600 ||
+    (result.job === 'payment-evidence-retention' &&
+      (parsed.data as unknown as { backlogRemaining: boolean }).backlogRemaining) ||
     (result.job === 'incident-retention' &&
       (parsed.data as unknown as { remainingEligible: number }).remainingEligible > 0)
   );

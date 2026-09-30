@@ -212,7 +212,12 @@ async function runJobCore(backend: Backend, request: JobRequest): Promise<JobRes
       return {
         job: request.job,
         status: 200,
-        body: await redactExpiredPaymentEvidence(backend.pool, limit),
+        body: await redactExpiredPaymentEvidence(
+          backend.pool,
+          limit,
+          request.maxBatches ?? 100,
+          request.maxRunMs ?? 45_000,
+        ),
       };
     const maxBatches = request.job === 'gps-retention' ? (request.maxBatches ?? 1000) : 1;
     const maxRunMs = request.maxRunMs ?? 45000;
