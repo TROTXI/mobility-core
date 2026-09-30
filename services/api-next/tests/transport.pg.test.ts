@@ -287,7 +287,8 @@ test('MIG-01 clean install records hashes, rerun is no-op, historical drift fail
     // 031 adds encrypted, once-only driver SMS delivery.
     // 032 adds append-only maintenance starts and outcomes.
     // 033 adds append-only driver incident redaction evidence.
-    assert.equal(tables.rows[0].n, 94);
+    // 036 adds rider notifications, their event history and preferences.
+    assert.equal(tables.rows[0].n, 97);
     assert.deepEqual(
       (
         await pool.query(
