@@ -121,6 +121,7 @@ Class | Method | HTTP request | Description
 [*OpsApi*](doc/OpsApi.md) | [**listFares**](doc/OpsApi.md#listfares) | **GET** /v1/ops/routes/{id}/fares | list Fares
 [*OpsApi*](doc/OpsApi.md) | [**listFlags**](doc/OpsApi.md#listflags) | **GET** /v1/ops/flags | list Flags
 [*OpsApi*](doc/OpsApi.md) | [**listMinimumVersions**](doc/OpsApi.md#listminimumversions) | **GET** /v1/ops/min-versions | list Minimum Versions
+[*OpsApi*](doc/OpsApi.md) | [**listOpsAccountErasures**](doc/OpsApi.md#listopsaccounterasures) | **GET** /v1/ops/account-erasures | list Ops Account Erasures
 [*OpsApi*](doc/OpsApi.md) | [**listOpsAuditEvents**](doc/OpsApi.md#listopsauditevents) | **GET** /v1/ops/audit-events | list Ops Audit Events
 [*OpsApi*](doc/OpsApi.md) | [**listOpsCommuteRequests**](doc/OpsApi.md#listopscommuterequests) | **GET** /v1/ops/commute-requests | list Ops Commute Requests
 [*OpsApi*](doc/OpsApi.md) | [**listOpsDeliveries**](doc/OpsApi.md#listopsdeliveries) | **GET** /v1/ops/deliveries | list Ops Deliveries
@@ -337,6 +338,8 @@ Class | Method | HTTP request | Description
  - [MinimumVersionPage](doc/MinimumVersionPage.md)
  - [MinimumVersionResponse](doc/MinimumVersionResponse.md)
  - [Money](doc/Money.md)
+ - [OpsAccountErasure](doc/OpsAccountErasure.md)
+ - [OpsAccountErasurePage](doc/OpsAccountErasurePage.md)
  - [OpsAuditEvent](doc/OpsAuditEvent.md)
  - [OpsAuditEventPage](doc/OpsAuditEventPage.md)
  - [OpsCommuteRequest](doc/OpsCommuteRequest.md)

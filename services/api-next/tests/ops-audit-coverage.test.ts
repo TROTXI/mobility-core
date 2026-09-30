@@ -80,6 +80,7 @@ test('every scheduler job is covered by the worker run recorder', () => {
       'incident-retention',
       'no-shows',
       'payments',
+      'payment-evidence-retention',
       'personal-pause-resumes',
       'push',
       'reservation-defaults',

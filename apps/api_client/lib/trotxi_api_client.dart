@@ -134,6 +134,8 @@ export 'package:trotxi_api_client/src/model/minimum_version_edit.dart';
 export 'package:trotxi_api_client/src/model/minimum_version_page.dart';
 export 'package:trotxi_api_client/src/model/minimum_version_response.dart';
 export 'package:trotxi_api_client/src/model/money.dart';
+export 'package:trotxi_api_client/src/model/ops_account_erasure.dart';
+export 'package:trotxi_api_client/src/model/ops_account_erasure_page.dart';
 export 'package:trotxi_api_client/src/model/ops_audit_event.dart';
 export 'package:trotxi_api_client/src/model/ops_audit_event_page.dart';
 export 'package:trotxi_api_client/src/model/ops_commute_request.dart';

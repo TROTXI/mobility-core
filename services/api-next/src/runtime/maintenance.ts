@@ -5,6 +5,7 @@ import { jobFailed } from './job-outcome.js';
 import { purgeExpiredCommandPayloads } from './receipt-retention.js';
 import { redactExpiredIncidents } from './incident-retention.js';
 import { purgeExpiredPhoneOtpChallenges } from '../auth/phone-otp.js';
+import { redactExpiredPaymentEvidence } from '../payments/evidence-retention.js';
 
 export const JOBS = [
   'personal-pause-resumes',
@@ -15,6 +16,7 @@ export const JOBS = [
   'route-learning',
   'gps-retention',
   'incident-retention',
+  'payment-evidence-retention',
   'erasures',
   'driver-secrets',
   'admission',
@@ -205,6 +207,12 @@ async function runJobCore(backend: Backend, request: JobRequest): Promise<JobRes
         job: request.job,
         status: 200,
         body: await redactExpiredIncidents(backend.pool, backend.maintenanceUserId!, limit),
+      };
+    if (request.job === 'payment-evidence-retention')
+      return {
+        job: request.job,
+        status: 200,
+        body: await redactExpiredPaymentEvidence(backend.pool, limit),
       };
     const maxBatches = request.job === 'gps-retention' ? (request.maxBatches ?? 1000) : 1;
     const maxRunMs = request.maxRunMs ?? 45000;

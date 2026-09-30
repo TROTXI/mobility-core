@@ -152,6 +152,7 @@ const selected = new Set([
   'getOpsRiderDetail',
   'listOpsOperators',
   'listOpsDeliveries',
+  'listOpsAccountErasures',
   'listOpsAuditEvents',
   'getOpsReportSummary',
   'getDriverSelf',

@@ -112,6 +112,29 @@ test('OPS-READ-02 filters are validated and cursors are bound to them', async (t
   assert.equal((await f.get('/v1/ops/riders/not-a-uuid')).statusCode, 404);
 });
 
+test('OPS-READ-ERASURE: status read exposes only local cleanup facts, not retained identities', async (t) => {
+  const f = await fixture(t);
+  await f.owner.query(
+    `INSERT INTO app.account_erasures(user_id,session_id,sessions_revoked,devices_revoked,identities_scrubbed)
+     VALUES ($1,$2,2,1,1)`,
+    [f.actor.userId, f.adminId],
+  );
+  await f.owner.query(
+    "INSERT INTO app.erasure_tasks(user_id,kind,reference) VALUES ($1,'avatar_object','test-object')",
+    [f.actor.userId],
+  );
+  const response = await f.get('/v1/ops/account-erasures?limit=1');
+  assert.equal(response.statusCode, 200, response.body);
+  assert.deepEqual(
+    response.json().data.map((row: any) => row.userId),
+    [f.actor.userId],
+  );
+  assert.equal(response.json().data[0].trackedCleanupState, 'pending');
+  assert.equal(response.json().data[0].trackedPending, 1);
+  assert.ok(!response.body.includes('ops@example.com'));
+  assert.equal((await f.get('/v1/ops/account-erasures?search=email')).statusCode, 400);
+});
+
 test('OPS-READ-05 payment decisions and refund intents are visible without receipt payloads', async (t) => {
   const f = await fixture(t);
   const purchase = await f.buy();

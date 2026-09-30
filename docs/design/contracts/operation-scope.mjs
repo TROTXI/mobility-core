@@ -329,6 +329,12 @@ export const operationScope = [
     'Worker metrics expose totals, not which queued email or push failed and needs investigation.',
   ],
   [
+    'listOpsAccountErasures',
+    'post-cutover',
+    'account-erasure-data-map.md: operators need local deletion and tracked cleanup status',
+    'The database view exists but is not available to Ops without direct database access. This read deliberately does not claim provider or backup erasure.',
+  ],
+  [
     'listOpsAuditEvents',
     'post-cutover',
     'ops-console.md: every mutating action must be attributable and reviewable',

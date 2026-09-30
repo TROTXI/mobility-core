@@ -9,9 +9,65 @@ import { FinancialFoundation } from '../src/payments/foundation.js';
 import { TransportError } from '../src/transport/errors.js';
 import { createTransportApp } from '../src/http/app.js';
 import { purgeExpiredCommandPayloads } from '../src/runtime/receipt-retention.js';
+import { redactExpiredPaymentEvidence } from '../src/payments/evidence-retention.js';
 
 // Generated locally; never an account credential or a provider network token.
 const secret = `sk_test_${randomBytes(16).toString('hex')}`;
+
+test('REC-RET-01: old settled provider bodies redact once while financial facts and open reviews remain', async (t) => {
+  const f = await fixture(t);
+  const purchase = await f.buy();
+  const insert = async (ageDays: number, state: 'processed' | 'quarantined') => {
+    const row = await f.owner.query<{ id: string }>(
+      `INSERT INTO app.payment_events(environment,source,payload_hash,ciphertext,state,reason,received_at,processed_at)
+       VALUES ('test','verify',$1,$2,$3,$4,
+         clock_timestamp()-make_interval(days=>$5),clock_timestamp()-make_interval(days=>$5)) RETURNING id`,
+      [
+        randomBytes(32).toString('hex'),
+        randomBytes(40),
+        state,
+        state === 'quarantined' ? 'unknown_reference' : null,
+        ageDays,
+      ],
+    );
+    return row.rows[0]!.id;
+  };
+  const expired = await insert(181, 'processed');
+  const recent = await insert(179, 'processed');
+  const quarantined = await insert(181, 'quarantined');
+  const held = await insert(181, 'processed');
+  const linked = await insert(181, 'processed');
+  await f.owner.query(
+    `INSERT INTO app.payment_collections(attempt_id,purchase_id,user_id,environment,
+       provider_transaction_id,amount_pesewas,currency,paid_at,event_id)
+     VALUES ($1,$2,$3,'test','987654321',$4,'GHS',clock_timestamp(),$5)`,
+    [purchase.attempt.id, purchase.id, f.actor.userId, purchase.cashDuePesewas, linked],
+  );
+  await f.owner.query(
+    `INSERT INTO app.payment_reviews(purchase_id,kind,reason,amount_pesewas,event_id)
+     VALUES ($1,'manual_review','late_success',100,$2)`,
+    [purchase.id, held],
+  );
+  assert.deepEqual(await redactExpiredPaymentEvidence(f.runtime), { redacted: 1 });
+  const rows = (
+    await f.owner.query(
+      'SELECT id,ciphertext,redacted_at,payload_hash FROM app.payment_events WHERE id=ANY($1)',
+      [[expired, recent, quarantined, held, linked]],
+    )
+  ).rows;
+  const byId = new Map(rows.map((row) => [row.id, row]));
+  assert.equal(byId.get(expired).ciphertext, null);
+  assert.ok(byId.get(expired).redacted_at);
+  assert.match(byId.get(expired).payload_hash, /^[a-f0-9]{64}$/);
+  for (const id of [recent, quarantined, held, linked]) assert.ok(byId.get(id).ciphertext);
+  assert.deepEqual(await redactExpiredPaymentEvidence(f.runtime), { redacted: 0 });
+  await assert.rejects(
+    f.runtime.query('UPDATE app.payment_events SET ciphertext=$2 WHERE id=$1', [
+      expired,
+      randomBytes(40),
+    ]),
+  );
+});
 async function fixture(
   t: TestContext,
   request: typeof fetch = async () => new Response('', { status: 503 }),

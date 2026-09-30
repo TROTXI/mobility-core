@@ -127,6 +127,8 @@ import 'package:trotxi_api_client/src/model/minimum_version_edit.dart';
 import 'package:trotxi_api_client/src/model/minimum_version_page.dart';
 import 'package:trotxi_api_client/src/model/minimum_version_response.dart';
 import 'package:trotxi_api_client/src/model/money.dart';
+import 'package:trotxi_api_client/src/model/ops_account_erasure.dart';
+import 'package:trotxi_api_client/src/model/ops_account_erasure_page.dart';
 import 'package:trotxi_api_client/src/model/ops_audit_event.dart';
 import 'package:trotxi_api_client/src/model/ops_audit_event_page.dart';
 import 'package:trotxi_api_client/src/model/ops_commute_request.dart';
@@ -427,6 +429,8 @@ part 'serializers.g.dart';
   MinimumVersionPage,
   MinimumVersionResponse,
   Money,
+  OpsAccountErasure,
+  OpsAccountErasurePage,
   OpsAuditEvent,
   OpsAuditEventPage,
   OpsCommuteRequest,

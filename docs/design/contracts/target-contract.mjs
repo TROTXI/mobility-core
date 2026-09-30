@@ -1250,6 +1250,22 @@ named(
   }),
 );
 named(
+  'OpsAccountErasure',
+  obj({
+    userId: id,
+    erasedAt: instant,
+    sessionsRevoked: count,
+    devicesRevoked: count,
+    identitiesScrubbed: count,
+    trackedTasks: count,
+    trackedDone: count,
+    trackedCancelled: count,
+    trackedPending: count,
+    trackedUnavailable: count,
+    trackedCleanupState: z.enum(['pending', 'retry_needed', 'tracked_complete']),
+  }),
+);
+named(
   'OpsAuditEvent',
   obj({
     id,
@@ -1680,6 +1696,7 @@ get('/v1/ops/riders/summary', 'getOpsRiderSummary', 'OpsRiderSummary');
 get('/v1/ops/riders/{id}', 'getOpsRiderDetail', 'OpsRiderDetail');
 list('/v1/ops/operators', 'listOpsOperators', 'OpsOperator');
 list('/v1/ops/deliveries', 'listOpsDeliveries', 'OpsDelivery');
+list('/v1/ops/account-erasures', 'listOpsAccountErasures', 'OpsAccountErasure');
 list('/v1/ops/audit-events', 'listOpsAuditEvents', 'OpsAuditEvent');
 get('/v1/ops/reports/summary', 'getOpsReportSummary', 'OpsReportSummary');
 for (const [path, name, type, input] of [

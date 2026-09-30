@@ -282,27 +282,29 @@ continuing to serve money and audit writes in a state we cannot vouch for.
 and exits non-zero if it was refused, because a scheduler that reports success
 for a sweep that failed is how retention quietly stops happening.
 
-| Job                    | What it does                                          |
-| ---------------------- | ----------------------------------------------------- |
-| `gps-retention`        | Deletes raw traces past the retention window          |
-| `route-learning`       | Learns corridor shape and segment speeds from the day |
-| `payments`             | Webhook inbox, provider reconciliation, period close  |
-| `ask-dispatch`         | Asks riders about a service day                       |
-| `reservation-defaults` | Resolves the still-pending at the cutoff              |
-| `no-shows`             | Debits confirmed seats nobody took                    |
-| `erasures`             | Retries erasure's external half                       |
-| `driver-secrets`       | Physically clears expired credential ciphertext       |
+| Job                          | What it does                                                                      |
+| ---------------------------- | --------------------------------------------------------------------------------- |
+| `gps-retention`              | Deletes raw traces past the retention window                                      |
+| `incident-retention`         | Redacts resolved incident detail after 90/365 days                                |
+| `payment-evidence-retention` | Redacts settled raw provider bodies after 180 days, excluding open financial work |
+| `route-learning`             | Learns corridor shape and segment speeds from the day                             |
+| `payments`                   | Webhook inbox, provider reconciliation, period close                              |
+| `ask-dispatch`               | Asks riders about a service day                                                   |
+| `reservation-defaults`       | Resolves the still-pending at the cutoff                                          |
+| `no-shows`                   | Debits confirmed seats nobody took                                                |
+| `erasures`                   | Retries erasure's external half                                                   |
+| `driver-secrets`             | Physically clears expired credential ciphertext                                   |
 
-The first six go through the application's own routes, so they get the same
-schema validation, authorization, receipts and idempotency as an operator
+The HTTP-backed jobs go through the application's own routes, so they get the
+same schema validation, authorization, receipts and idempotency as an operator
 pressing the same button. The contract admits a `worker` client on exactly those
-maintenance operations and the app now accepts it there and nowhere else. The
+maintenance operations and the app accepts it there and nowhere else. The
 worker is not exempt from authorization: it opens a real session for a named
 operations account, every receipt names that user, and the session is revoked
 when the run ends whether or not the run succeeded.
 
-The last two have no reviewed HTTP operation and are called directly, which is
-why they live in the worker. `driver-secrets` is the physical half of credential
+Physical sweeps without an HTTP operation are called directly from the worker.
+`driver-secrets` is the physical half of credential
 expiry: logical expiry already refuses replay, but the recoverable ciphertext
 stays on disk until this runs. `erasures` is the external half of account
 closure — withdrawing the Apple grant and removing the stored avatar object.
