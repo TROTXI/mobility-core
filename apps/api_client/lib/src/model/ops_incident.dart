@@ -21,6 +21,7 @@ part 'ops_incident.g.dart';
 /// * [location]
 /// * [status]
 /// * [resolution]
+/// * [redactedAt]
 /// * [createdAt]
 /// * [driverId]
 /// * [handledBy]
@@ -55,11 +56,14 @@ abstract class OpsIncident implements Built<OpsIncident, OpsIncidentBuilder> {
   @BuiltValueField(wireName: r'resolution')
   String? get resolution;
 
+  @BuiltValueField(wireName: r'redactedAt')
+  DateTime? get redactedAt;
+
   @BuiltValueField(wireName: r'createdAt')
   DateTime get createdAt;
 
   @BuiltValueField(wireName: r'driverId')
-  String get driverId;
+  String? get driverId;
 
   @BuiltValueField(wireName: r'handledBy')
   String? get handledBy;
@@ -146,16 +150,25 @@ class _$OpsIncidentSerializer implements PrimitiveSerializer<OpsIncident> {
             object.resolution,
             specifiedType: const FullType.nullable(String),
           );
+    yield r'redactedAt';
+    yield object.redactedAt == null
+        ? null
+        : serializers.serialize(
+            object.redactedAt,
+            specifiedType: const FullType.nullable(DateTime),
+          );
     yield r'createdAt';
     yield serializers.serialize(
       object.createdAt,
       specifiedType: const FullType(DateTime),
     );
     yield r'driverId';
-    yield serializers.serialize(
-      object.driverId,
-      specifiedType: const FullType(String),
-    );
+    yield object.driverId == null
+        ? null
+        : serializers.serialize(
+            object.driverId,
+            specifiedType: const FullType.nullable(String),
+          );
     yield r'handledBy';
     yield object.handledBy == null
         ? null
@@ -266,6 +279,14 @@ class _$OpsIncidentSerializer implements PrimitiveSerializer<OpsIncident> {
           if (valueDes == null) continue;
           result.resolution = valueDes;
           break;
+        case r'redactedAt':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType.nullable(DateTime),
+          ) as DateTime?;
+          if (valueDes == null) continue;
+          result.redactedAt = valueDes;
+          break;
         case r'createdAt':
           final valueDes = serializers.deserialize(
             value,
@@ -276,8 +297,9 @@ class _$OpsIncidentSerializer implements PrimitiveSerializer<OpsIncident> {
         case r'driverId':
           final valueDes = serializers.deserialize(
             value,
-            specifiedType: const FullType(String),
-          ) as String;
+            specifiedType: const FullType.nullable(String),
+          ) as String?;
+          if (valueDes == null) continue;
           result.driverId = valueDes;
           break;
         case r'handledBy':

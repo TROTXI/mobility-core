@@ -77,6 +77,10 @@ test('both apps use the canonical replacement client and codegen cannot pull leg
     pkg.scripts['codegen:replacement'],
     /-o apps\/api_client --additional-properties=pubName=trotxi_api_client,/,
   );
+  assert.match(
+    pkg.scripts['codegen:replacement'],
+    /--global-property apiTests=false,modelTests=false/,
+  );
   assert.doesNotMatch(pkg.scripts['codegen:replacement'], /https?:|_next/);
   for (const app of ['trotxi_driver', 'trotxi_commuter']) {
     const pubspec = await readFile(new URL(`apps/${app}/pubspec.yaml`, root), 'utf8');

@@ -1,4 +1,5 @@
-import { Button } from '@fluentui/react-components';
+import { Avatar, Button } from '@fluentui/react-components';
+import { Link } from 'react-router-dom';
 import type { components } from '../generated/api';
 import { useAuth } from '../auth/AuthContext';
 import { Empty, ErrorState, LoadingRows, Page, Panel, StatusBadge, when } from '../components/Page';
@@ -22,83 +23,92 @@ export function Profile() {
   );
   return (
     <Page
-      title="Profile & account"
-      description="Your operations identity, passkey posture and signed-in sessions."
+      title="My profile"
+      description="Your sign-in and active sessions."
+      className="profile-page"
     >
-      <div className="split-grid">
-        <Panel title="Operator profile">
-          <div className="profile-card">
-            <div className="profile-avatar">{account?.displayName.slice(0, 1).toUpperCase()}</div>
-            <div>
-              <h2>{account?.displayName}</h2>
-              <p>{account?.email ?? 'No email on record'}</p>
-              <StatusBadge value={account?.role ?? 'admin'} />
-            </div>
-          </div>
-          <dl className="detail-grid">
-            <div>
-              <dt>Operator ID</dt>
-              <dd className="mono">{account?.id}</dd>
-            </div>
-            <div>
-              <dt>Joined</dt>
-              <dd>{account ? when(account.createdAt) : '—'}</dd>
-            </div>
-          </dl>
-        </Panel>
-        <Panel title="Access policy">
-          <div className="panel-body">
-            <p>
-              <strong>Google identity + passkey</strong>
-            </p>
-            <p className="muted">
-              Every privileged request uses current database role facts. Passkey elevation expires
-              after one eight-hour shift.
-            </p>
-            <Button onClick={() => window.location.assign('/platform')}>Manage passkeys</Button>
+      <section className="profile-summary" aria-label="Operator profile">
+        <Avatar
+          name={account?.displayName}
+          image={account?.avatarUrl ? { src: account.avatarUrl } : undefined}
+          size={64}
+        />
+        <div className="profile-summary-identity">
+          <h2>{account?.displayName}</h2>
+          <p>{account?.email ?? 'No email on record'}</p>
+        </div>
+        <span className="profile-role">Admin</span>
+      </section>
+
+      <div className="profile-sections">
+        <Panel title="Security">
+          <div className="panel-body profile-security">
+            <p>Google sign-in and a passkey protect Ops access.</p>
+            <p className="muted">Passkey elevation lasts for one eight-hour shift.</p>
+            <Link to="/platform">Manage passkeys</Link>
           </div>
         </Panel>
+        <div>
+          <Panel title="Sessions">
+            {query.error ? (
+              <div className="panel-body">
+                <ErrorState message={query.error} retry={query.retry} />
+              </div>
+            ) : query.loading ? (
+              <LoadingRows />
+            ) : !query.data?.length ? (
+              <Empty>No active sessions.</Empty>
+            ) : (
+              <div className="profile-sessions">
+                <table className="data-table">
+                  <thead>
+                    <tr>
+                      <th>Created</th>
+                      <th>Expires</th>
+                      <th>State</th>
+                      <th />
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {query.data.map((row) => (
+                      <tr key={row.id}>
+                        <td>{when(row.createdAt)}</td>
+                        <td>{when(row.expiresAt)}</td>
+                        <td>
+                          <StatusBadge value={row.current ? 'current' : 'active'} />
+                        </td>
+                        <td>
+                          <Button
+                            appearance="subtle"
+                            disabled={row.current}
+                            onClick={() => void revoke(session, row.id).then(query.retry)}
+                          >
+                            Revoke
+                          </Button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </Panel>
+        </div>
       </div>
-      <div style={{ height: 18 }} />
-      {query.error && <ErrorState message={query.error} retry={query.retry} />}
-      <Panel title="Active sessions">
-        {query.loading ? (
-          <LoadingRows />
-        ) : !query.data?.length ? (
-          <Empty>No active sessions.</Empty>
-        ) : (
-          <table className="data-table">
-            <thead>
-              <tr>
-                <th>Created</th>
-                <th>Expires</th>
-                <th>State</th>
-                <th />
-              </tr>
-            </thead>
-            <tbody>
-              {query.data.map((row) => (
-                <tr key={row.id}>
-                  <td>{when(row.createdAt)}</td>
-                  <td>{when(row.expiresAt)}</td>
-                  <td>
-                    <StatusBadge value={row.current ? 'current' : 'active'} />
-                  </td>
-                  <td>
-                    <Button
-                      appearance="subtle"
-                      disabled={row.current}
-                      onClick={() => void revoke(session, row.id).then(query.retry)}
-                    >
-                      Revoke
-                    </Button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </Panel>
+
+      <details className="profile-account-details">
+        <summary>Account details</summary>
+        <dl className="detail-grid">
+          <div>
+            <dt>Operator ID</dt>
+            <dd className="mono">{account?.id}</dd>
+          </div>
+          <div>
+            <dt>Joined</dt>
+            <dd>{account ? when(account.createdAt) : '—'}</dd>
+          </div>
+        </dl>
+      </details>
     </Page>
   );
 }

@@ -29,6 +29,7 @@ import { DriverSms } from '../notifications/driver-sms.js';
 import { FcmSender } from '../notifications/fcm.js';
 import { PushNotifications } from '../notifications/push.js';
 import type { RuntimeConfig } from './config.js';
+import { MaintenanceAudit } from './maintenance-audit.js';
 
 export interface Backend {
   app: FastifyInstance;
@@ -40,6 +41,7 @@ export interface Backend {
   /** Closed admission windows are the worker's to clear. */
   admission: import('./admission.js').Admission;
   maintenanceUserId: string;
+  maintenanceAudit: MaintenanceAudit;
   email?: TransactionalEmail;
   sms?: DriverSms;
   push?: PushNotifications;
@@ -168,6 +170,7 @@ export async function composeBackend(config: RuntimeConfig): Promise<Backend> {
       return identity;
     };
     const admission = sharedAdmission(pool);
+    const maintenanceAudit = new MaintenanceAudit(pool);
     const ipAdmissionKey = Buffer.from(
       hkdfSync('sha256', config.keys.cursorSecret, 'trotxi:admission:v1', 'ip-address-digest', 32),
     );
@@ -179,6 +182,7 @@ export async function composeBackend(config: RuntimeConfig): Promise<Backend> {
       ...(sms ? { driverSms: sms } : {}),
       authProviders: config.providers,
       admit: (subject) => admission.spend(subject),
+      maintenanceAudit,
       // Do not retain raw network addresses in the disposable budget table.
       admitIp: (ip, bucket) =>
         admission.spend(
@@ -326,6 +330,7 @@ export async function composeBackend(config: RuntimeConfig): Promise<Backend> {
       account: built().account,
       admission,
       maintenanceUserId: config.maintenanceUserId,
+      maintenanceAudit,
       email,
       sms,
       push,

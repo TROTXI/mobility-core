@@ -277,6 +277,8 @@ test('a run with no driver or no bus is flagged, not left blank', async () => {
   const noDriver = body.trips.find((t: { driverId: null }) => t.driverId === null);
   assert.equal(noDriver.badge, 'unassigned');
   assert.equal(noDriver.capacity, 18, 'the seat ceiling is still reported');
+  assert.equal(noDriver.patternId, line.pattern);
+  assert.equal(noDriver.patternVersionId, line.version);
   const noBus = body.trips.find((t: { vehicleId: null }) => t.vehicleId === null);
   assert.equal(noBus.badge, 'unassigned');
   assert.equal(noBus.capacity, null);

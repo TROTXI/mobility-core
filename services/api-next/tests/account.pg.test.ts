@@ -2,12 +2,14 @@ import { test } from 'node:test';
 import type { TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import { randomUUID, randomBytes } from 'node:crypto';
+import { setTimeout as delay } from 'node:timers/promises';
 import { setup } from './helpers/financial-fixture.js';
 import { AccountService } from '../src/account/service.js';
 import { MembershipService } from '../src/membership/service.js';
 import { FinancialFoundation } from '../src/payments/foundation.js';
 import { Pricing } from '../src/payments/pricing.js';
 import { createTransportApp } from '../src/http/app.js';
+import { PhoneOtp } from '../src/auth/phone-otp.js';
 
 type Response = { statusCode: number; body: string; json(): any };
 test('driver app can register its own push device without opening other account routes to driver metadata', async (t) => {
@@ -405,6 +407,16 @@ test('ACC-05 erasure stops the account working and leaves nothing personal', asy
   assert.equal(record.user_id, f.actor.userId);
   assert.equal(record.identities_scrubbed, 1);
   assert.equal(record.devices_revoked, 1);
+  const status = (
+    await f.owner.query('SELECT * FROM app.account_erasure_status WHERE user_id=$1', [
+      f.actor.userId,
+    ])
+  ).rows[0];
+  assert.equal(status.tracked_cleanup_state, 'tracked_complete');
+  assert.equal(status.tracked_pending, 0);
+  assert.equal(status.tracked_unavailable, 0);
+  assert.equal(status.tracked_done, 2);
+  assert.equal(JSON.stringify(status).includes('ama@example.com'), false);
 
   // Closing an account is what takes its identity away, whoever does the
   // closing. A writer that forgets to scrub does not get to keep a name.
@@ -461,6 +473,13 @@ test('ACC-06 an unreachable provider leaves work to retry, not a finished erasur
     ],
   );
   assert.ok(tasks.every((x: any) => x.last_failure));
+  const status = (
+    await f.owner.query('SELECT * FROM app.account_erasure_status WHERE user_id=$1', [
+      f.actor.userId,
+    ])
+  ).rows[0];
+  assert.equal(status.tracked_cleanup_state, 'retry_needed');
+  assert.equal(status.tracked_unavailable, 2);
   // The retry is bounded and does not invent success while still unwired.
   assert.deepEqual(await f.account.retryErasures(), { considered: 2, completed: 0, failed: 2 });
   const after = (
@@ -639,4 +658,204 @@ test('ACC-13 two sweeps do not do the same outside work twice', async (t) => {
     )
   ).rows[0];
   assert.equal(settled.state, 'done');
+});
+
+test('ACC-14 deleting a phone account invalidates its outstanding code without resetting the abuse budget', async (t) => {
+  const f = await fixture(t);
+  const phoneHash = 'a'.repeat(64);
+  const challengeId = randomUUID();
+  await f.owner.query("UPDATE app.users SET phone='+233241234567' WHERE id=$1", [f.actor.userId]);
+  await f.owner.query(
+    "INSERT INTO app.auth_identities(user_id,provider,subject) VALUES ($1,'phone',$2)",
+    [f.actor.userId, phoneHash],
+  );
+  await f.owner.query(
+    `INSERT INTO app.phone_otp_challenges
+      (id,phone_hash,source_hash,phone_ciphertext,code_hash,state,expires_at)
+     VALUES ($1,$2,$3,'encrypted-phone',$4,'sent',clock_timestamp()+interval '4 minutes')`,
+    [challengeId, phoneHash, 'b'.repeat(64), 'c'.repeat(64)],
+  );
+  assert.equal((await f.call('DELETE', '/v1/me')).statusCode, 204);
+  const challenge = (
+    await f.owner.query('SELECT * FROM app.phone_otp_challenges WHERE id=$1', [challengeId])
+  ).rows[0];
+  assert.equal(challenge.state, 'failed');
+  assert.equal(challenge.phone_ciphertext, null);
+  assert.equal(challenge.code_hash, null);
+  assert.equal(challenge.phone_hash, phoneHash, 'the 24-hour rate budget is not reset');
+  const otp = new PhoneOtp(f.runtime, { send: async () => 'test' }, randomBytes(32), true);
+  const c = await f.runtime.connect();
+  try {
+    await c.query('BEGIN');
+    assert.equal(await otp.verify(c, challengeId, '123456'), null);
+    await c.query('ROLLBACK');
+  } finally {
+    c.release();
+  }
+  await assert.rejects(
+    f.runtime.query("UPDATE app.phone_otp_challenges SET state='sent' WHERE id=$1", [challengeId]),
+    /phone_otp_immutable/,
+  );
+  assert.equal(
+    (
+      await f.owner.query("SELECT subject FROM app.auth_identities WHERE provider='phone'")
+    ).rows[0].subject.startsWith('erased:'),
+    true,
+  );
+});
+
+test('ACC-15 erasure closes seeded linked stores while preserving only restricted delivery facts', async (t) => {
+  const f = await fixture(t);
+  const driverId = (
+    await f.owner.query(
+      "INSERT INTO app.drivers(user_id,name,phone,email) VALUES ($1,'Ama Driver','+233241234567','ama@example.test') RETURNING id",
+      [f.actor.userId],
+    )
+  ).rows[0].id;
+  await f.owner.query(
+    "UPDATE app.users SET phone='+233241234567',email='ama@example.test' WHERE id=$1",
+    [f.actor.userId],
+  );
+  const phoneHash = 'd'.repeat(64);
+  await f.owner.query(
+    "INSERT INTO app.auth_identities(user_id,provider,subject) VALUES ($1,'phone',$2)",
+    [f.actor.userId, phoneHash],
+  );
+  const challengeId = randomUUID();
+  await f.owner.query(
+    `INSERT INTO app.phone_otp_challenges(id,phone_hash,source_hash,phone_ciphertext,code_hash,state,expires_at)
+     VALUES ($1,$2,$3,'sealed-phone',$4,'sent',clock_timestamp()+interval '4 minutes')`,
+    [challengeId, phoneHash, 'e'.repeat(64), 'f'.repeat(64)],
+  );
+  const emailId = randomUUID();
+  await f.owner.query(
+    `INSERT INTO app.email_outbox(id,user_id,kind,source_id,dedupe_key,payload_ciphertext)
+     VALUES ($1,$2,'subscription_active',$3,$4,'sealed-email')`,
+    [emailId, f.actor.userId, randomUUID(), randomUUID()],
+  );
+  const smsId = randomUUID();
+  await f.owner.query(
+    `INSERT INTO app.driver_sms_outbox(id,user_id,driver_id,command_id,pin_version,expires_at,payload_ciphertext)
+     VALUES ($1,$2,$3,$4,1,clock_timestamp()+interval '1 hour','sealed-sms')`,
+    [smsId, f.actor.userId, driverId, randomUUID()],
+  );
+  expectStatus(await f.upload(PNG), 200);
+  expectStatus(
+    await f.call('POST', '/v1/me/devices', {
+      payload: { token: 'delete-device-' + randomUUID(), platform: 'android' },
+    }),
+    200,
+  );
+
+  expectStatus(await f.call('DELETE', '/v1/me'), 204);
+  const local = (
+    await f.owner.query(
+      `SELECT u.email,u.phone,u.avatar_object_key,d.email AS driver_email,d.phone AS driver_phone,
+        e.state AS email_state,e.payload_ciphertext AS email_payload,
+        s.state AS sms_state,s.payload_ciphertext AS sms_payload,
+        o.state AS otp_state,o.phone_ciphertext AS otp_phone,o.code_hash AS otp_code,
+        p.revoked_at,p.token_ciphertext
+       FROM app.users u JOIN app.drivers d ON d.user_id=u.id
+       JOIN app.email_outbox e ON e.user_id=u.id
+       JOIN app.driver_sms_outbox s ON s.user_id=u.id
+       JOIN app.phone_otp_challenges o ON o.phone_hash=$2
+       JOIN app.push_devices p ON p.user_id=u.id
+       WHERE u.id=$1`,
+      [f.actor.userId, phoneHash],
+    )
+  ).rows[0];
+  assert.deepEqual(
+    [
+      local.email,
+      local.phone,
+      local.avatar_object_key,
+      local.driver_email,
+      local.driver_phone,
+      local.email_payload,
+      local.sms_payload,
+      local.otp_phone,
+      local.otp_code,
+      local.token_ciphertext,
+    ],
+    Array(10).fill(null),
+  );
+  assert.deepEqual(
+    [local.email_state, local.sms_state, local.otp_state],
+    ['cancelled', 'cancelled', 'failed'],
+  );
+  assert.ok(local.revoked_at);
+  assert.deepEqual(f.removed(), [f.stored()[0]!.objectKey]);
+  assert.equal(
+    (
+      await f.owner.query(
+        'SELECT tracked_cleanup_state FROM app.account_erasure_status WHERE user_id=$1',
+        [f.actor.userId],
+      )
+    ).rows[0].tracked_cleanup_state,
+    'tracked_complete',
+  );
+});
+
+test('ACC-16 erasure waits for in-flight phone issuance then cancels its challenge', async (t) => {
+  const f = await fixture(t);
+  const phoneHash = '1'.repeat(64);
+  const challengeId = randomUUID();
+  await f.owner.query("UPDATE app.users SET phone='+233241234567' WHERE id=$1", [f.actor.userId]);
+  await f.owner.query(
+    "INSERT INTO app.auth_identities(user_id,provider,subject) VALUES ($1,'phone',$2)",
+    [f.actor.userId, phoneHash],
+  );
+  const issuer = await f.owner.connect();
+  let deletion: Promise<Response> | undefined;
+  let waiting = false;
+  try {
+    await issuer.query('BEGIN');
+    await issuer.query('SELECT pg_advisory_xact_lock(hashtextextended($1,0))', [
+      `phone-otp:${phoneHash}`,
+    ]);
+    deletion = f.call('DELETE', '/v1/me');
+    for (let attempt = 0; attempt < 100; attempt++) {
+      const row = (
+        await f.owner.query(
+          `SELECT 1 FROM pg_stat_activity
+           WHERE datname=current_database() AND wait_event='advisory'
+             AND query LIKE 'SELECT pg_advisory_xact_lock%' LIMIT 1`,
+        )
+      ).rows[0];
+      if (row) {
+        waiting = true;
+        break;
+      }
+      await delay(20);
+    }
+    await issuer.query(
+      `INSERT INTO app.phone_otp_challenges
+        (id,phone_hash,source_hash,phone_ciphertext,code_hash,state,expires_at)
+       VALUES ($1,$2,$3,'sealed-phone',$4,'sending',clock_timestamp()+interval '4 minutes')`,
+      [challengeId, phoneHash, '2'.repeat(64), '3'.repeat(64)],
+    );
+    await issuer.query('COMMIT');
+  } finally {
+    await issuer.query('ROLLBACK').catch(() => undefined);
+    issuer.release();
+  }
+  assert.equal((await deletion!).statusCode, 204);
+  assert.equal(waiting, true, 'deletion must wait on the issuance lock before scrubbing');
+  const challenge = (
+    await f.owner.query(
+      'SELECT state,phone_ciphertext,code_hash FROM app.phone_otp_challenges WHERE id=$1',
+      [challengeId],
+    )
+  ).rows[0];
+  assert.deepEqual(challenge, { state: 'failed', phone_ciphertext: null, code_hash: null });
+  assert.equal(
+    (
+      await f.owner.query(
+        "UPDATE app.phone_otp_challenges SET state='sent' WHERE id=$1 AND state='sending'",
+        [challengeId],
+      )
+    ).rowCount,
+    0,
+    'the issuer cannot promote a cancelled challenge after deletion',
+  );
 });

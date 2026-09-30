@@ -496,6 +496,23 @@ export class AccountService {
    */
   private async erase(actor: Actor, key: string): Promise<Outcome> {
     const outstanding = await this.tx(async (c) => {
+      // Phone issuance and verification lock this digest before touching a
+      // user. Take the same locks first: a code already being issued must
+      // commit before the identity scrub scans and cancels challenges.
+      // Taking them after FOR UPDATE on users would invert verification's
+      // phone -> user lock order and risk a deadlock.
+      const phoneSubjects = (
+        await c.query(
+          `SELECT subject FROM app.auth_identities
+           WHERE user_id=$1 AND provider='phone' AND subject NOT LIKE 'erased:%'
+           ORDER BY subject`,
+          [id(actor.userId)],
+        )
+      ).rows;
+      for (const identity of phoneSubjects)
+        await c.query('SELECT pg_advisory_xact_lock(hashtextextended($1,0))', [
+          `phone-otp:${identity.subject}`,
+        ]);
       await c.query('SELECT id FROM app.users WHERE id=$1 FOR UPDATE', [id(actor.userId)]);
       // verifyAccess already checked signature, issuer, audience and expiry.
       // This exception is bound to the original deletion session AND exact key;

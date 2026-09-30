@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import type { components } from '../generated/api';
-import { homeTrips, homeTripStatus, needsOperatorAttention } from './overview-view';
+import {
+  fixDescription,
+  homeTrips,
+  homeTripStatus,
+  needsOperatorAttention,
+  withObservedAge,
+} from './overview-view';
 
 type Trip = components['schemas']['OpsOverview']['trips'][number];
 
@@ -14,6 +20,8 @@ function trip(
     tripId,
     scheduledAt: '2026-09-25T06:30:00Z',
     status,
+    patternId: 'pattern',
+    patternVersionId: 'version',
     routeName: 'Circle - Madina',
     driverId: null,
     driverName: null,
@@ -51,5 +59,38 @@ describe('home monitoring priorities', () => {
     expect(homeTripStatus(rows[3])).toBe('awaiting resolution');
     expect(needsOperatorAttention(rows[1])).toBe(false);
     expect(needsOperatorAttention(rows[2])).toBe(true);
+  });
+
+  it('distinguishes no fix, stale fixes and fresh fixes', () => {
+    const missing = trip('missing', 'active', 'stale_gps');
+    expect(fixDescription(missing)).toBe('No GPS fix');
+    expect(
+      fixDescription({
+        ...missing,
+        lastPosition: { latitude: 5.6, longitude: -0.2 },
+        fixAgeSeconds: 480,
+      }),
+    ).toBe('GPS stale · 8 min old');
+    expect(
+      fixDescription({
+        ...missing,
+        badge: 'on_time',
+        lastPosition: { latitude: 5.6, longitude: -0.2 },
+        fixAgeSeconds: 12,
+      }),
+    ).toBe('GPS · 12 sec old');
+  });
+
+  it('ages the last fix through failed polls and crosses the stale threshold', () => {
+    const fresh: Trip = {
+      ...trip('running', 'active'),
+      lastPosition: { latitude: 5.6, longitude: -0.2 },
+      fixAgeSeconds: 290,
+    };
+    const aged = withObservedAge(fresh, 11, 300);
+    expect(aged.fixAgeSeconds).toBe(301);
+    expect(aged.badge).toBe('stale_gps');
+    expect(fixDescription(aged)).toBe('GPS stale · 5 min old');
+    expect(withObservedAge(trip('scheduled', 'scheduled'), 999, 300).status).toBe('scheduled');
   });
 });

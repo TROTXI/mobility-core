@@ -44,6 +44,7 @@ const BOARD = `
     GROUP BY r.trip_id
   )
   SELECT w.id, w.scheduled_at, w.status,
+    pv.pattern_id, w.pattern_version_id,
     ro.name AS route_name,
     w.assigned_driver_id AS driver_id, d.name AS driver_name,
     w.vehicle_id, v.label AS vehicle_label, v.plate AS vehicle_plate, v.capacity,
@@ -67,6 +68,8 @@ interface Row {
   id: string;
   scheduled_at: Date;
   status: 'scheduled' | 'active' | 'completed' | 'cancelled';
+  pattern_id: string;
+  pattern_version_id: string;
   route_name: string | null;
   driver_id: string | null;
   driver_name: string | null;
@@ -139,6 +142,8 @@ export async function readOverview(
       tripId: row.id,
       scheduledAt: new Date(row.scheduled_at).toISOString(),
       status: row.status,
+      patternId: row.pattern_id,
+      patternVersionId: row.pattern_version_id,
       routeName: row.route_name,
       driverId: row.driver_id,
       driverName: row.driver_name,

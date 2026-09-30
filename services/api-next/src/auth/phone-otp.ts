@@ -4,6 +4,19 @@ import { providerTokenBox } from './credentials.js';
 import { fail } from '../transport/errors.js';
 import { ghanaPhone, SmsSendError, type SmsSender } from '../notifications/mnotify.js';
 
+/** Physical cleanup after the rolling abuse budget no longer needs its hash. */
+export async function purgeExpiredPhoneOtpChallenges(pool: Pool, limit = 100): Promise<number> {
+  const bounded = Math.max(1, Math.min(limit, 1000));
+  const result = await pool.query(
+    `DELETE FROM app.phone_otp_challenges WHERE id IN (
+      SELECT id FROM app.phone_otp_challenges
+      WHERE created_at < clock_timestamp() - interval '24 hours'
+      ORDER BY created_at,id LIMIT $1 FOR UPDATE SKIP LOCKED)`,
+    [bounded],
+  );
+  return result.rowCount ?? 0;
+}
+
 export class PhoneOtp {
   private readonly key: Buffer;
   private readonly box;

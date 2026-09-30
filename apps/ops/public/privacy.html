@@ -28,7 +28,7 @@
     <main id="content">
       <p class="eyebrow">Trotxi Commuter &amp; Trotxi Driver</p>
       <h1>Your information. Clear boundaries.</h1>
-      <p class="muted">Privacy notice · Updated 26 September 2026</p>
+      <p class="muted">Privacy notice · Updated 29 September 2026</p>
       <p>
         This notice describes the Trotxi pilot commuter and driver apps and the operations website
         that supports them. It explains the information we use, why we use it, who can access it,
@@ -124,9 +124,9 @@
       <p>
         We use service providers for hosting and database storage (Render), files and map delivery
         (Cloudflare), sign-in and mobile messaging/diagnostics (Google and Firebase; Apple when
-        enabled), payments (Paystack), transactional email (Resend), and monitoring (Grafana).
-        GitHub Actions runs scheduled maintenance. Providers process information necessary for their
-        role; their infrastructure may process information outside Ghana.
+        enabled), SMS (mNotify), payments (Paystack), transactional email (Resend), and monitoring
+        (Grafana). GitHub Actions runs scheduled maintenance. Providers process information
+        necessary for their role; their infrastructure may process information outside Ghana.
       </p>
 
       <h2>Storage and retention</h2>
@@ -144,6 +144,17 @@
         <li>
           <strong>Account information:</strong> kept while needed to provide the account, then
           scrubbed or removed through the account-erasure workflow after an approved deletion.
+        </li>
+        <li>
+          <strong>Phone sign-in codes:</strong> account deletion invalidates an outstanding code for
+          that verified phone and clears its encrypted phone and code digest. Keyed rate-limit
+          records remain for at least 24 hours and are removed by a later guarded cleanup run.
+        </li>
+        <li>
+          <strong>Resolved driver incidents:</strong> identifiable detail becomes eligible for
+          redaction 90 days after routine resolution or 365 days after collision or passenger-safety
+          resolution. Open incidents and active evidence holds are protected; physical redaction
+          requires the incident-retention job to run.
         </li>
         <li>
           <strong>Trip, accounting, payment, security and incident history:</strong> some records

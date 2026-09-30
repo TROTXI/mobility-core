@@ -2802,6 +2802,8 @@ export interface components {
       status: 'open' | 'acknowledged' | 'resolved';
       resolution: string | null;
       /** Format: date-time */
+      redactedAt: string | null;
+      /** Format: date-time */
       createdAt: string;
     };
     IncidentDecision: {
@@ -2986,7 +2988,10 @@ export interface components {
         | 'boarding'
         | 'pricing'
         | 'configuration'
-        | 'security';
+        | 'security'
+        | 'payments'
+        | 'gps'
+        | 'maintenance';
       action: string;
       actorId: string;
       actorName: string;
@@ -3063,8 +3068,10 @@ export interface components {
       status: 'open' | 'acknowledged' | 'resolved';
       resolution: string | null;
       /** Format: date-time */
+      redactedAt: string | null;
+      /** Format: date-time */
       createdAt: string;
-      driverId: string;
+      driverId: string | null;
       handledBy: string | null;
       /** Format: date-time */
       handledAt: string | null;
@@ -3126,6 +3133,8 @@ export interface components {
         scheduledAt: string;
         /** @enum {string} */
         status: 'scheduled' | 'active' | 'completed' | 'cancelled';
+        patternId: string;
+        patternVersionId: string;
         routeName: string | null;
         driverId: string | null;
         driverName: string | null;
@@ -9227,6 +9236,16 @@ export interface operations {
         limit?: number;
         /** @description Audit domain. */
         area?: string;
+        /** @description Operator user ID. */
+        actorId?: string;
+        /** @description Exact audit action. */
+        action?: string;
+        /** @description Exact resource ID. */
+        targetId?: string;
+        /** @description Earliest UTC date, inclusive. */
+        fromDate?: string;
+        /** @description Latest UTC date, inclusive. */
+        toDate?: string;
       };
       header: {
         /**

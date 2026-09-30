@@ -829,6 +829,7 @@ named(
     location: point.nullable(),
     status: z.enum(['open', 'acknowledged', 'resolved']),
     resolution: note.nullable(),
+    redactedAt: instant.nullable(),
     createdAt: instant,
   }),
 );
@@ -1120,7 +1121,7 @@ named('WebhookAck', obj({ received: z.literal(true) }));
 named(
   'OpsIncident',
   schemas.Incident.extend({
-    driverId: id,
+    driverId: id.nullable(),
     handledBy: id.nullable(),
     handledAt: instant.nullable(),
     version,
@@ -1263,6 +1264,9 @@ named(
       'pricing',
       'configuration',
       'security',
+      'payments',
+      'gps',
+      'maintenance',
     ]),
     action: text(100),
     actorId: id,
@@ -1339,6 +1343,8 @@ named(
         tripId: id,
         scheduledAt: instant,
         status: z.enum(['scheduled', 'active', 'completed', 'cancelled']),
+        patternId: id,
+        patternVersionId: id,
         routeName: text().nullable(),
         driverId: id.nullable(),
         driverName: text().nullable(),
