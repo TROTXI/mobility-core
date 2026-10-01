@@ -5,6 +5,7 @@ import 'package:trotxi_commuter/Features/Home/widgets/Tabs/commuter_preference.d
 import 'package:trotxi_commuter/Features/Home/widgets/Tabs/personal_info.dart';
 import 'package:trotxi_commuter/Features/Home/widgets/Tabs/profile_notification.dart';
 import 'package:trotxi_commuter/Features/Home/widgets/Tabs/profile_security.dart';
+import 'package:trotxi_commuter/Features/Home/widgets/Tabs/phone_verification_page.dart';
 import 'package:trotxi_commuter/core/config/layout/responsive_layout.dart';
 import 'package:trotxi_commuter/core/config/theme/app_colors.dart';
 import 'package:trotxi_commuter/core/config/theme/app_theme_controller.dart';
@@ -243,6 +244,17 @@ class _ProfileTabState extends State<ProfileTab> {
                     MaterialPageRoute(
                       builder: (context) =>
                           ProfileSecurityPage(client: widget.client),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                _SettingsCardTile(
+                  title: 'Phone verification',
+                  subtitle: 'Verify or update your Ghana mobile number',
+                  onTap: () => Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (context) =>
+                          PhoneVerificationPage(client: widget.client),
                     ),
                   ),
                 ),

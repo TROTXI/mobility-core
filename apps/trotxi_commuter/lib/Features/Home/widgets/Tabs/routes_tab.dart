@@ -4,6 +4,7 @@ import 'package:trotxi_client/trotxi_client.dart' as wire;
 import 'package:trotxi_commuter/core/api/commuter_api.dart';
 import 'trip_tracking_page.dart';
 import 'reservation_trips_tab.dart';
+import 'standby_page.dart';
 
 class RoutesTab extends StatefulWidget {
   const RoutesTab({super.key, required this.client});
@@ -108,6 +109,13 @@ class _RoutesTabState extends State<RoutesTab> {
       ),
       const Text(
         'Service dates and departure times are Ghana time. A listed trip does not confirm your seat or grant live tracking access.',
+      ),
+      TextButton.icon(
+        onPressed: () => Navigator.of(context).push(
+          MaterialPageRoute(builder: (_) => StandbyPage(client: widget.client)),
+        ),
+        icon: const Icon(Icons.hourglass_bottom),
+        label: const Text('Join route standby'),
       ),
       Row(
         children: [

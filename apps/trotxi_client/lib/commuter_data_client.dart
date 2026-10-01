@@ -368,6 +368,89 @@ class CommuterDataClient {
           .data
           .readCount;
 
+  Future<VerificationStatus> verificationStatus() async =>
+      (await _read((extra) => client.getRiderOwnApi().getVerification(
+                xTrotxiClient: metadata.app,
+                xTrotxiBuild: metadata.build,
+                xTrotxiPlatform: metadata.platform,
+                extra: extra,
+              )))
+          .data;
+
+  Future<PhoneChallenge> startPhoneVerification(String phone) async =>
+      (await _read((extra) => client.getRiderOwnApi().startPhoneVerification(
+                xTrotxiClient: metadata.app,
+                xTrotxiBuild: metadata.build,
+                xTrotxiPlatform: metadata.platform,
+                phoneVerificationStart:
+                    PhoneVerificationStart((b) => b..phone = phone),
+                extra: extra,
+              )))
+          .data;
+
+  Future<PhoneVerificationResult> confirmPhoneVerification(
+          String challengeId, String code) async =>
+      (await _read((extra) => client.getRiderOwnApi().confirmPhoneVerification(
+                xTrotxiClient: metadata.app,
+                xTrotxiBuild: metadata.build,
+                xTrotxiPlatform: metadata.platform,
+                phoneVerificationConfirm: PhoneVerificationConfirm((b) => b
+                  ..challengeId = challengeId
+                  ..code = code),
+                extra: extra,
+              )))
+          .data;
+
+  Future<List<StandbyApplication>> standbyApplications() async =>
+      (await _read((extra) => client.getRiderOwnApi().listMyStandby(
+                xTrotxiClient: metadata.app,
+                xTrotxiBuild: metadata.build,
+                xTrotxiPlatform: metadata.platform,
+                extra: extra,
+              )))
+          .data
+          .toList();
+
+  Future<StandbyApplication> joinStandby(PurchaseInput selection) async =>
+      (await _command(
+              'joinStandby',
+              selection.toString(),
+              (key, extra) => client.getRiderOwnApi().joinStandby(
+                    idempotencyKey: key,
+                    xTrotxiClient: metadata.app,
+                    xTrotxiBuild: metadata.build,
+                    xTrotxiPlatform: metadata.platform,
+                    purchaseInput: selection,
+                    extra: extra,
+                  )))
+          .data;
+
+  Future<StandbyApplication> withdrawStandby(String id) async =>
+      (await _command(
+              'withdrawStandby',
+              id,
+              (key, extra) => client.getRiderOwnApi().withdrawStandby(
+                    id: id,
+                    xTrotxiClient: metadata.app,
+                    xTrotxiBuild: metadata.build,
+                    xTrotxiPlatform: metadata.platform,
+                    extra: extra,
+                  )))
+          .data;
+
+  Future<Purchase> acceptStandbyOffer(String id) async => (await _command(
+          'acceptStandbyOffer',
+          id,
+          (key, extra) => client.getRiderOwnApi().acceptStandbyOffer(
+                id: id,
+                idempotencyKey: key,
+                xTrotxiClient: metadata.app,
+                xTrotxiBuild: metadata.build,
+                xTrotxiPlatform: metadata.platform,
+                extra: extra,
+              )))
+      .data;
+
   Future<NotificationPreferencesSnapshot> notificationPreferences() async {
     String? editToken;
     final response = await _read((extra) async {
