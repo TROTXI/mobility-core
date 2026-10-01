@@ -315,6 +315,11 @@ Serializers _$serializers = (Serializers().toBuilder()
       ..add(PhoneChallengeResponse.serializer)
       ..add(PhoneSignInRequest.serializer)
       ..add(PhoneSignInVerify.serializer)
+      ..add(PhoneVerificationConfirm.serializer)
+      ..add(PhoneVerificationResult.serializer)
+      ..add(PhoneVerificationResultResponse.serializer)
+      ..add(PhoneVerificationResultStatusEnum.serializer)
+      ..add(PhoneVerificationStart.serializer)
       ..add(PinChange.serializer)
       ..add(PinResetInput.serializer)
       ..add(PlanPricing.serializer)
@@ -407,6 +412,13 @@ Serializers _$serializers = (Serializers().toBuilder()
       ..add(ServiceDayInputDirectionEnum.serializer)
       ..add(Session.serializer)
       ..add(SessionPage.serializer)
+      ..add(StandbyApplication.serializer)
+      ..add(StandbyApplicationOffer.serializer)
+      ..add(StandbyApplicationOfferStateEnum.serializer)
+      ..add(StandbyApplicationPage.serializer)
+      ..add(StandbyApplicationResponse.serializer)
+      ..add(StandbyApplicationStateEnum.serializer)
+      ..add(StandbyOfferInput.serializer)
       ..add(Stop.serializer)
       ..add(StopEdit.serializer)
       ..add(StopEta.serializer)
@@ -441,6 +453,11 @@ Serializers _$serializers = (Serializers().toBuilder()
       ..add(VehicleInput.serializer)
       ..add(VehiclePage.serializer)
       ..add(VehicleResponse.serializer)
+      ..add(VerificationStatus.serializer)
+      ..add(VerificationStatusMissingEnum.serializer)
+      ..add(VerificationStatusPhone.serializer)
+      ..add(VerificationStatusPhoneStatusEnum.serializer)
+      ..add(VerificationStatusResponse.serializer)
       ..add(WebhookAck.serializer)
       ..add(WorkDecision.serializer)
       ..add(WorkDecisionStatusEnum.serializer)
@@ -661,6 +678,9 @@ Serializers _$serializers = (Serializers().toBuilder()
           const FullType(BuiltList, const [const FullType(Session)]),
           () => ListBuilder<Session>())
       ..addBuilderFactory(
+          const FullType(BuiltList, const [const FullType(StandbyApplication)]),
+          () => ListBuilder<StandbyApplication>())
+      ..addBuilderFactory(
           const FullType(BuiltList, const [const FullType(Stop)]),
           () => ListBuilder<Stop>())
       ..addBuilderFactory(
@@ -696,6 +716,10 @@ Serializers _$serializers = (Serializers().toBuilder()
       ..addBuilderFactory(
           const FullType(BuiltList, const [const FullType(Vehicle)]),
           () => ListBuilder<Vehicle>())
+      ..addBuilderFactory(
+          const FullType(
+              BuiltList, const [const FullType(VerificationStatusMissingEnum)]),
+          () => ListBuilder<VerificationStatusMissingEnum>())
       ..addBuilderFactory(
           const FullType(BuiltList, const [const FullType(WorkRequest)]),
           () => ListBuilder<WorkRequest>())

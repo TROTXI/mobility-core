@@ -11,6 +11,9 @@ const RiderNotificationTargetTypeEnum
     const RiderNotificationTargetTypeEnum._('reservation');
 const RiderNotificationTargetTypeEnum _$riderNotificationTargetTypeEnum_credit =
     const RiderNotificationTargetTypeEnum._('credit');
+const RiderNotificationTargetTypeEnum
+    _$riderNotificationTargetTypeEnum_standby =
+    const RiderNotificationTargetTypeEnum._('standby');
 
 RiderNotificationTargetTypeEnum _$riderNotificationTargetTypeEnumValueOf(
     String name) {
@@ -19,6 +22,8 @@ RiderNotificationTargetTypeEnum _$riderNotificationTargetTypeEnumValueOf(
       return _$riderNotificationTargetTypeEnum_reservation;
     case 'credit':
       return _$riderNotificationTargetTypeEnum_credit;
+    case 'standby':
+      return _$riderNotificationTargetTypeEnum_standby;
     default:
       throw ArgumentError(name);
   }
@@ -29,6 +34,7 @@ final BuiltSet<RiderNotificationTargetTypeEnum>
         RiderNotificationTargetTypeEnum>(const <RiderNotificationTargetTypeEnum>[
   _$riderNotificationTargetTypeEnum_reservation,
   _$riderNotificationTargetTypeEnum_credit,
+  _$riderNotificationTargetTypeEnum_standby,
 ]);
 
 Serializer<RiderNotificationTargetTypeEnum>
@@ -40,10 +46,12 @@ class _$RiderNotificationTargetTypeEnumSerializer
   static const Map<String, Object> _toWire = const <String, Object>{
     'reservation': 'reservation',
     'credit': 'credit',
+    'standby': 'standby',
   };
   static const Map<Object, String> _fromWire = const <Object, String>{
     'reservation': 'reservation',
     'credit': 'credit',
+    'standby': 'standby',
   };
 
   @override

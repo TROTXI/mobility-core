@@ -11,11 +11,14 @@ import type { AppleTokenClient } from './apple-token-types.js';
 import { normalizeDriverCode, verifyDriverPin } from './driver-pin.js';
 import type { AuthenticationResponseJSON, RegistrationResponseJSON } from '@simplewebauthn/server';
 import type { PasskeyRelyingParty, StoredPasskey } from './passkeys.js';
-import type { PhoneOtp } from './phone-otp.js';
+import { phoneVerificationStatus, type PhoneOtp } from './phone-otp.js';
 
 export const authOperations = [
   'requestPhoneSignIn',
   'verifyPhoneSignIn',
+  'startPhoneVerification',
+  'confirmPhoneVerification',
+  'getVerification',
   'signInGoogle',
   'signInApple',
   'signInDriver',
@@ -791,6 +794,59 @@ export class AuthService {
       return result();
     }
     if (!actor) throw denied();
+    if (
+      name === 'startPhoneVerification' ||
+      name === 'confirmPhoneVerification' ||
+      name === 'getVerification'
+    ) {
+      if (name !== 'getVerification' && !this.options.phoneOtp)
+        fail(
+          503,
+          'phone_verification_unavailable',
+          'Phone verification is temporarily unavailable.',
+        );
+      if (name === 'startPhoneVerification')
+        return result(
+          await this.options.phoneOtp!.request(body.phone, sourceIp ?? '', {
+            userId: actor.userId,
+            authorize: (client) => this.authorizeSession(client, actor),
+          }),
+        );
+      if (name === 'confirmPhoneVerification') {
+        const outcome = await this.transaction((client) =>
+          this.options.phoneOtp!.confirmForAccount(
+            client,
+            actor,
+            body.challengeId,
+            body.code,
+            (c) => this.authorizeSession(c, actor),
+          ),
+        );
+        if (!outcome)
+          fail(
+            401,
+            'invalid_otp',
+            'This code is invalid, expired or already used. Request a new code.',
+          );
+        return result({ status: outcome });
+      }
+      return this.transaction(async (client) => {
+        await this.authorizeSession(client, actor);
+        const user = await this.user(client, actor.userId);
+        if (user.role !== 'commuter')
+          fail(403, 'forbidden', 'Rider verification is for commuters only.');
+        const state = await phoneVerificationStatus(client, actor.userId);
+        const profileComplete = Boolean(
+          user.display_name?.trim() && user.display_name !== 'New commuter',
+        );
+        const verified = state.phone.status === 'verified';
+        return result({
+          ...state,
+          standbyEligible: verified && profileComplete,
+          missing: [...(!verified ? ['phone'] : []), ...(!profileComplete ? ['profile'] : [])],
+        });
+      });
+    }
     if ((passkeyOperations as readonly string[]).includes(name))
       return this.passkey(name as PasskeyOperation, actor, body, target);
     return this.transaction(async (client) => {

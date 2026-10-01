@@ -36,6 +36,7 @@ const primaryItems = [
 ] as const;
 
 const secondaryItems = [
+  ['/standby', 'Standby', CalendarRegular],
   ['/payments', 'Payments', MoneyRegular],
   ['/reports', 'Reports', DataTrendingRegular],
   ['/people', 'People & messages', PeopleRegular],

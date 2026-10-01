@@ -9,6 +9,8 @@ All URIs are relative to *https://trotxi-api-staging.onrender.com*
 
 Method | HTTP request | Description
 ------------- | ------------- | -------------
+[**acceptStandbyOffer**](RiderOwnApi.md#acceptstandbyoffer) | **POST** /v1/me/standby/{id}/accept | accept Standby Offer
+[**confirmPhoneVerification**](RiderOwnApi.md#confirmphoneverification) | **POST** /v1/me/phone-verification/confirm | confirm Phone Verification
 [**createCommuteRequest**](RiderOwnApi.md#createcommuterequest) | **POST** /v1/me/commute-requests | create Commute Request
 [**createPersonalPause**](RiderOwnApi.md#createpersonalpause) | **POST** /v1/me/membership/pauses | create Personal Pause
 [**createPurchase**](RiderOwnApi.md#createpurchase) | **POST** /v1/me/purchases | create Purchase
@@ -18,9 +20,12 @@ Method | HTTP request | Description
 [**getPersonalPause**](RiderOwnApi.md#getpersonalpause) | **GET** /v1/me/membership/pause | get Personal Pause
 [**getPurchase**](RiderOwnApi.md#getpurchase) | **GET** /v1/me/purchases/{id} | get Purchase
 [**getReservation**](RiderOwnApi.md#getreservation) | **GET** /v1/me/reservations/{id} | get Reservation
+[**getVerification**](RiderOwnApi.md#getverification) | **GET** /v1/me/verification | get Verification
 [**issuePass**](RiderOwnApi.md#issuepass) | **POST** /v1/me/reservations/{id}/pass | issue Pass
+[**joinStandby**](RiderOwnApi.md#joinstandby) | **POST** /v1/me/standby | join Standby
 [**listCommuteRequests**](RiderOwnApi.md#listcommuterequests) | **GET** /v1/me/commute-requests | list Commute Requests
 [**listCreditEntries**](RiderOwnApi.md#listcreditentries) | **GET** /v1/me/credit-entries | list Credit Entries
+[**listMyStandby**](RiderOwnApi.md#listmystandby) | **GET** /v1/me/standby | list My Standby
 [**listNotifications**](RiderOwnApi.md#listnotifications) | **GET** /v1/me/notifications | list Notifications
 [**listPurchases**](RiderOwnApi.md#listpurchases) | **GET** /v1/me/purchases | list Purchases
 [**listReservations**](RiderOwnApi.md#listreservations) | **GET** /v1/me/reservations | list Reservations
@@ -30,9 +35,107 @@ Method | HTTP request | Description
 [**previewPersonalPause**](RiderOwnApi.md#previewpersonalpause) | **POST** /v1/me/membership/pause-preview | preview Personal Pause
 [**previewPurchase**](RiderOwnApi.md#previewpurchase) | **POST** /v1/me/purchase-quotes | preview Purchase
 [**resumePersonalPause**](RiderOwnApi.md#resumepersonalpause) | **POST** /v1/me/membership/pauses/{id}/resume | resume Personal Pause
+[**startPhoneVerification**](RiderOwnApi.md#startphoneverification) | **POST** /v1/me/phone-verification/start | start Phone Verification
 [**updateNotificationPreferences**](RiderOwnApi.md#updatenotificationpreferences) | **PATCH** /v1/me/notification-preferences | update Notification Preferences
 [**withdrawCommuteRequest**](RiderOwnApi.md#withdrawcommuterequest) | **POST** /v1/me/commute-requests/{id}/withdraw | withdraw Commute Request
+[**withdrawStandby**](RiderOwnApi.md#withdrawstandby) | **POST** /v1/me/standby/{id}/withdraw | withdraw Standby
 
+
+# **acceptStandbyOffer**
+> PurchaseResponse acceptStandbyOffer(id, idempotencyKey, xTrotxiClient, xTrotxiBuild, xTrotxiPlatform)
+
+accept Standby Offer
+
+### Example
+```dart
+import 'package:trotxi_api_client/api.dart';
+
+final api = TrotxiApiClient().getRiderOwnApi();
+final String id = id_example; // String |
+final String idempotencyKey = idempotencyKey_example; // String | Caller + operation + target scoped; payload mismatch = 409. Never log secrets.
+final String xTrotxiClient = commuter; // String | Compatibility metadata only, never grants a role.
+final int xTrotxiBuild = 1; // int | Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
+final String xTrotxiPlatform = ios; // String | Required for commuter/driver, absent for ops/worker.
+
+try {
+    final response = api.acceptStandbyOffer(id, idempotencyKey, xTrotxiClient, xTrotxiBuild, xTrotxiPlatform);
+    print(response);
+} on DioException catch (e) {
+    print('Exception when calling RiderOwnApi->acceptStandbyOffer: $e\n');
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **id** | **String**|  |
+ **idempotencyKey** | **String**| Caller + operation + target scoped; payload mismatch = 409. Never log secrets. |
+ **xTrotxiClient** | **String**| Compatibility metadata only, never grants a role. |
+ **xTrotxiBuild** | **int**| Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable. | [default to 1]
+ **xTrotxiPlatform** | **String**| Required for commuter/driver, absent for ops/worker. | [optional]
+
+### Return type
+
+[**PurchaseResponse**](PurchaseResponse.md)
+
+### Authorization
+
+[bearerAuth](../README.md#bearerAuth)
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
+ - **Accept**: application/json
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
+# **confirmPhoneVerification**
+> PhoneVerificationResultResponse confirmPhoneVerification(xTrotxiClient, xTrotxiBuild, phoneVerificationConfirm, xTrotxiPlatform)
+
+confirm Phone Verification
+
+### Example
+```dart
+import 'package:trotxi_api_client/api.dart';
+
+final api = TrotxiApiClient().getRiderOwnApi();
+final String xTrotxiClient = commuter; // String | Compatibility metadata only, never grants a role.
+final int xTrotxiBuild = 1; // int | Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
+final PhoneVerificationConfirm phoneVerificationConfirm = ; // PhoneVerificationConfirm |
+final String xTrotxiPlatform = ios; // String | Required for commuter/driver, absent for ops/worker.
+
+try {
+    final response = api.confirmPhoneVerification(xTrotxiClient, xTrotxiBuild, phoneVerificationConfirm, xTrotxiPlatform);
+    print(response);
+} on DioException catch (e) {
+    print('Exception when calling RiderOwnApi->confirmPhoneVerification: $e\n');
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **xTrotxiClient** | **String**| Compatibility metadata only, never grants a role. |
+ **xTrotxiBuild** | **int**| Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable. | [default to 1]
+ **phoneVerificationConfirm** | [**PhoneVerificationConfirm**](PhoneVerificationConfirm.md)|  |
+ **xTrotxiPlatform** | **String**| Required for commuter/driver, absent for ops/worker. | [optional]
+
+### Return type
+
+[**PhoneVerificationResultResponse**](PhoneVerificationResultResponse.md)
+
+### Authorization
+
+[bearerAuth](../README.md#bearerAuth)
+
+### HTTP request headers
+
+ - **Content-Type**: application/json
+ - **Accept**: application/json
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **createCommuteRequest**
 > CommuteRequestResponse createCommuteRequest(idempotencyKey, xTrotxiClient, xTrotxiBuild, commuteRequestInput, xTrotxiPlatform)
@@ -47,7 +150,7 @@ final api = TrotxiApiClient().getRiderOwnApi();
 final String idempotencyKey = idempotencyKey_example; // String | Caller + operation + target scoped; payload mismatch = 409. Never log secrets.
 final String xTrotxiClient = commuter; // String | Compatibility metadata only, never grants a role.
 final int xTrotxiBuild = 1; // int | Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
-final CommuteRequestInput commuteRequestInput = ; // CommuteRequestInput | 
+final CommuteRequestInput commuteRequestInput = ; // CommuteRequestInput |
 final String xTrotxiPlatform = ios; // String | Required for commuter/driver, absent for ops/worker.
 
 try {
@@ -62,11 +165,11 @@ try {
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **idempotencyKey** | **String**| Caller + operation + target scoped; payload mismatch = 409. Never log secrets. | 
- **xTrotxiClient** | **String**| Compatibility metadata only, never grants a role. | 
+ **idempotencyKey** | **String**| Caller + operation + target scoped; payload mismatch = 409. Never log secrets. |
+ **xTrotxiClient** | **String**| Compatibility metadata only, never grants a role. |
  **xTrotxiBuild** | **int**| Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable. | [default to 1]
- **commuteRequestInput** | [**CommuteRequestInput**](CommuteRequestInput.md)|  | 
- **xTrotxiPlatform** | **String**| Required for commuter/driver, absent for ops/worker. | [optional] 
+ **commuteRequestInput** | [**CommuteRequestInput**](CommuteRequestInput.md)|  |
+ **xTrotxiPlatform** | **String**| Required for commuter/driver, absent for ops/worker. | [optional]
 
 ### Return type
 
@@ -96,7 +199,7 @@ final api = TrotxiApiClient().getRiderOwnApi();
 final String idempotencyKey = idempotencyKey_example; // String | Caller + operation + target scoped; payload mismatch = 409. Never log secrets.
 final String xTrotxiClient = commuter; // String | Compatibility metadata only, never grants a role.
 final int xTrotxiBuild = 1; // int | Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
-final PersonalPauseInput personalPauseInput = ; // PersonalPauseInput | 
+final PersonalPauseInput personalPauseInput = ; // PersonalPauseInput |
 final String xTrotxiPlatform = ios; // String | Required for commuter/driver, absent for ops/worker.
 
 try {
@@ -111,11 +214,11 @@ try {
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **idempotencyKey** | **String**| Caller + operation + target scoped; payload mismatch = 409. Never log secrets. | 
- **xTrotxiClient** | **String**| Compatibility metadata only, never grants a role. | 
+ **idempotencyKey** | **String**| Caller + operation + target scoped; payload mismatch = 409. Never log secrets. |
+ **xTrotxiClient** | **String**| Compatibility metadata only, never grants a role. |
  **xTrotxiBuild** | **int**| Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable. | [default to 1]
- **personalPauseInput** | [**PersonalPauseInput**](PersonalPauseInput.md)|  | 
- **xTrotxiPlatform** | **String**| Required for commuter/driver, absent for ops/worker. | [optional] 
+ **personalPauseInput** | [**PersonalPauseInput**](PersonalPauseInput.md)|  |
+ **xTrotxiPlatform** | **String**| Required for commuter/driver, absent for ops/worker. | [optional]
 
 ### Return type
 
@@ -145,7 +248,7 @@ final api = TrotxiApiClient().getRiderOwnApi();
 final String idempotencyKey = idempotencyKey_example; // String | Caller + operation + target scoped; payload mismatch = 409. Never log secrets.
 final String xTrotxiClient = commuter; // String | Compatibility metadata only, never grants a role.
 final int xTrotxiBuild = 1; // int | Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
-final PurchaseInput purchaseInput = ; // PurchaseInput | 
+final PurchaseInput purchaseInput = ; // PurchaseInput |
 final String xTrotxiPlatform = ios; // String | Required for commuter/driver, absent for ops/worker.
 
 try {
@@ -160,11 +263,11 @@ try {
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **idempotencyKey** | **String**| Caller + operation + target scoped; payload mismatch = 409. Never log secrets. | 
- **xTrotxiClient** | **String**| Compatibility metadata only, never grants a role. | 
+ **idempotencyKey** | **String**| Caller + operation + target scoped; payload mismatch = 409. Never log secrets. |
+ **xTrotxiClient** | **String**| Compatibility metadata only, never grants a role. |
  **xTrotxiBuild** | **int**| Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable. | [default to 1]
- **purchaseInput** | [**PurchaseInput**](PurchaseInput.md)|  | 
- **xTrotxiPlatform** | **String**| Required for commuter/driver, absent for ops/worker. | [optional] 
+ **purchaseInput** | [**PurchaseInput**](PurchaseInput.md)|  |
+ **xTrotxiPlatform** | **String**| Required for commuter/driver, absent for ops/worker. | [optional]
 
 ### Return type
 
@@ -194,7 +297,7 @@ final api = TrotxiApiClient().getRiderOwnApi();
 final String idempotencyKey = idempotencyKey_example; // String | Caller + operation + target scoped; payload mismatch = 409. Never log secrets.
 final String xTrotxiClient = commuter; // String | Compatibility metadata only, never grants a role.
 final int xTrotxiBuild = 1; // int | Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
-final ReservationDecision reservationDecision = ; // ReservationDecision | 
+final ReservationDecision reservationDecision = ; // ReservationDecision |
 final String xTrotxiPlatform = ios; // String | Required for commuter/driver, absent for ops/worker.
 
 try {
@@ -209,11 +312,11 @@ try {
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **idempotencyKey** | **String**| Caller + operation + target scoped; payload mismatch = 409. Never log secrets. | 
- **xTrotxiClient** | **String**| Compatibility metadata only, never grants a role. | 
+ **idempotencyKey** | **String**| Caller + operation + target scoped; payload mismatch = 409. Never log secrets. |
+ **xTrotxiClient** | **String**| Compatibility metadata only, never grants a role. |
  **xTrotxiBuild** | **int**| Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable. | [default to 1]
- **reservationDecision** | [**ReservationDecision**](ReservationDecision.md)|  | 
- **xTrotxiPlatform** | **String**| Required for commuter/driver, absent for ops/worker. | [optional] 
+ **reservationDecision** | [**ReservationDecision**](ReservationDecision.md)|  |
+ **xTrotxiPlatform** | **String**| Required for commuter/driver, absent for ops/worker. | [optional]
 
 ### Return type
 
@@ -256,9 +359,9 @@ try {
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **xTrotxiClient** | **String**| Compatibility metadata only, never grants a role. | 
+ **xTrotxiClient** | **String**| Compatibility metadata only, never grants a role. |
  **xTrotxiBuild** | **int**| Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable. | [default to 1]
- **xTrotxiPlatform** | **String**| Required for commuter/driver, absent for ops/worker. | [optional] 
+ **xTrotxiPlatform** | **String**| Required for commuter/driver, absent for ops/worker. | [optional]
 
 ### Return type
 
@@ -301,9 +404,9 @@ try {
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **xTrotxiClient** | **String**| Compatibility metadata only, never grants a role. | 
+ **xTrotxiClient** | **String**| Compatibility metadata only, never grants a role. |
  **xTrotxiBuild** | **int**| Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable. | [default to 1]
- **xTrotxiPlatform** | **String**| Required for commuter/driver, absent for ops/worker. | [optional] 
+ **xTrotxiPlatform** | **String**| Required for commuter/driver, absent for ops/worker. | [optional]
 
 ### Return type
 
@@ -346,9 +449,9 @@ try {
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **xTrotxiClient** | **String**| Compatibility metadata only, never grants a role. | 
+ **xTrotxiClient** | **String**| Compatibility metadata only, never grants a role. |
  **xTrotxiBuild** | **int**| Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable. | [default to 1]
- **xTrotxiPlatform** | **String**| Required for commuter/driver, absent for ops/worker. | [optional] 
+ **xTrotxiPlatform** | **String**| Required for commuter/driver, absent for ops/worker. | [optional]
 
 ### Return type
 
@@ -375,7 +478,7 @@ get Purchase
 import 'package:trotxi_api_client/api.dart';
 
 final api = TrotxiApiClient().getRiderOwnApi();
-final String id = id_example; // String | 
+final String id = id_example; // String |
 final String xTrotxiClient = commuter; // String | Compatibility metadata only, never grants a role.
 final int xTrotxiBuild = 1; // int | Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
 final String xTrotxiPlatform = ios; // String | Required for commuter/driver, absent for ops/worker.
@@ -392,10 +495,10 @@ try {
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **id** | **String**|  | 
- **xTrotxiClient** | **String**| Compatibility metadata only, never grants a role. | 
+ **id** | **String**|  |
+ **xTrotxiClient** | **String**| Compatibility metadata only, never grants a role. |
  **xTrotxiBuild** | **int**| Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable. | [default to 1]
- **xTrotxiPlatform** | **String**| Required for commuter/driver, absent for ops/worker. | [optional] 
+ **xTrotxiPlatform** | **String**| Required for commuter/driver, absent for ops/worker. | [optional]
 
 ### Return type
 
@@ -422,7 +525,7 @@ get Reservation
 import 'package:trotxi_api_client/api.dart';
 
 final api = TrotxiApiClient().getRiderOwnApi();
-final String id = id_example; // String | 
+final String id = id_example; // String |
 final String xTrotxiClient = commuter; // String | Compatibility metadata only, never grants a role.
 final int xTrotxiBuild = 1; // int | Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
 final String xTrotxiPlatform = ios; // String | Required for commuter/driver, absent for ops/worker.
@@ -439,14 +542,59 @@ try {
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **id** | **String**|  | 
- **xTrotxiClient** | **String**| Compatibility metadata only, never grants a role. | 
+ **id** | **String**|  |
+ **xTrotxiClient** | **String**| Compatibility metadata only, never grants a role. |
  **xTrotxiBuild** | **int**| Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable. | [default to 1]
- **xTrotxiPlatform** | **String**| Required for commuter/driver, absent for ops/worker. | [optional] 
+ **xTrotxiPlatform** | **String**| Required for commuter/driver, absent for ops/worker. | [optional]
 
 ### Return type
 
 [**ReservationDetailResponse**](ReservationDetailResponse.md)
+
+### Authorization
+
+[bearerAuth](../README.md#bearerAuth)
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
+ - **Accept**: application/json
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
+# **getVerification**
+> VerificationStatusResponse getVerification(xTrotxiClient, xTrotxiBuild, xTrotxiPlatform)
+
+get Verification
+
+### Example
+```dart
+import 'package:trotxi_api_client/api.dart';
+
+final api = TrotxiApiClient().getRiderOwnApi();
+final String xTrotxiClient = commuter; // String | Compatibility metadata only, never grants a role.
+final int xTrotxiBuild = 1; // int | Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
+final String xTrotxiPlatform = ios; // String | Required for commuter/driver, absent for ops/worker.
+
+try {
+    final response = api.getVerification(xTrotxiClient, xTrotxiBuild, xTrotxiPlatform);
+    print(response);
+} on DioException catch (e) {
+    print('Exception when calling RiderOwnApi->getVerification: $e\n');
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **xTrotxiClient** | **String**| Compatibility metadata only, never grants a role. |
+ **xTrotxiBuild** | **int**| Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable. | [default to 1]
+ **xTrotxiPlatform** | **String**| Required for commuter/driver, absent for ops/worker. | [optional]
+
+### Return type
+
+[**VerificationStatusResponse**](VerificationStatusResponse.md)
 
 ### Authorization
 
@@ -469,7 +617,7 @@ issue Pass
 import 'package:trotxi_api_client/api.dart';
 
 final api = TrotxiApiClient().getRiderOwnApi();
-final String id = id_example; // String | 
+final String id = id_example; // String |
 final String idempotencyKey = idempotencyKey_example; // String | Caller + operation + target scoped; payload mismatch = 409. Never log secrets.
 final String xTrotxiClient = commuter; // String | Compatibility metadata only, never grants a role.
 final int xTrotxiBuild = 1; // int | Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
@@ -487,11 +635,11 @@ try {
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **id** | **String**|  | 
- **idempotencyKey** | **String**| Caller + operation + target scoped; payload mismatch = 409. Never log secrets. | 
- **xTrotxiClient** | **String**| Compatibility metadata only, never grants a role. | 
+ **id** | **String**|  |
+ **idempotencyKey** | **String**| Caller + operation + target scoped; payload mismatch = 409. Never log secrets. |
+ **xTrotxiClient** | **String**| Compatibility metadata only, never grants a role. |
  **xTrotxiBuild** | **int**| Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable. | [default to 1]
- **xTrotxiPlatform** | **String**| Required for commuter/driver, absent for ops/worker. | [optional] 
+ **xTrotxiPlatform** | **String**| Required for commuter/driver, absent for ops/worker. | [optional]
 
 ### Return type
 
@@ -504,6 +652,55 @@ Name | Type | Description  | Notes
 ### HTTP request headers
 
  - **Content-Type**: Not defined
+ - **Accept**: application/json
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
+# **joinStandby**
+> StandbyApplicationResponse joinStandby(idempotencyKey, xTrotxiClient, xTrotxiBuild, purchaseInput, xTrotxiPlatform)
+
+join Standby
+
+### Example
+```dart
+import 'package:trotxi_api_client/api.dart';
+
+final api = TrotxiApiClient().getRiderOwnApi();
+final String idempotencyKey = idempotencyKey_example; // String | Caller + operation + target scoped; payload mismatch = 409. Never log secrets.
+final String xTrotxiClient = commuter; // String | Compatibility metadata only, never grants a role.
+final int xTrotxiBuild = 1; // int | Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
+final PurchaseInput purchaseInput = ; // PurchaseInput |
+final String xTrotxiPlatform = ios; // String | Required for commuter/driver, absent for ops/worker.
+
+try {
+    final response = api.joinStandby(idempotencyKey, xTrotxiClient, xTrotxiBuild, purchaseInput, xTrotxiPlatform);
+    print(response);
+} on DioException catch (e) {
+    print('Exception when calling RiderOwnApi->joinStandby: $e\n');
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **idempotencyKey** | **String**| Caller + operation + target scoped; payload mismatch = 409. Never log secrets. |
+ **xTrotxiClient** | **String**| Compatibility metadata only, never grants a role. |
+ **xTrotxiBuild** | **int**| Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable. | [default to 1]
+ **purchaseInput** | [**PurchaseInput**](PurchaseInput.md)|  |
+ **xTrotxiPlatform** | **String**| Required for commuter/driver, absent for ops/worker. | [optional]
+
+### Return type
+
+[**StandbyApplicationResponse**](StandbyApplicationResponse.md)
+
+### Authorization
+
+[bearerAuth](../README.md#bearerAuth)
+
+### HTTP request headers
+
+ - **Content-Type**: application/json
  - **Accept**: application/json
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
@@ -537,12 +734,12 @@ try {
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **xTrotxiClient** | **String**| Compatibility metadata only, never grants a role. | 
+ **xTrotxiClient** | **String**| Compatibility metadata only, never grants a role. |
  **xTrotxiBuild** | **int**| Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable. | [default to 1]
- **cursor** | **String**| Opaque cursor bound to caller, sort and filters. | [optional] 
+ **cursor** | **String**| Opaque cursor bound to caller, sort and filters. | [optional]
  **limit** | **int**| Page size. No silent truncation. | [optional] [default to 50]
- **status** | **String**| Must match the resource state enum; unknown values return 400. | [optional] 
- **xTrotxiPlatform** | **String**| Required for commuter/driver, absent for ops/worker. | [optional] 
+ **status** | **String**| Must match the resource state enum; unknown values return 400. | [optional]
+ **xTrotxiPlatform** | **String**| Required for commuter/driver, absent for ops/worker. | [optional]
 
 ### Return type
 
@@ -589,17 +786,66 @@ try {
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **xTrotxiClient** | **String**| Compatibility metadata only, never grants a role. | 
+ **xTrotxiClient** | **String**| Compatibility metadata only, never grants a role. |
  **xTrotxiBuild** | **int**| Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable. | [default to 1]
- **cursor** | **String**| Opaque cursor bound to caller, sort and filters. | [optional] 
+ **cursor** | **String**| Opaque cursor bound to caller, sort and filters. | [optional]
  **limit** | **int**| Page size. No silent truncation. | [optional] [default to 50]
- **fromDate** | **Date**| Africa/Accra day; paired with toDate. Default last/current 7 days; maximum 31 days. | [optional] 
- **toDate** | **Date**| Inclusive; paired with fromDate. | [optional] 
- **xTrotxiPlatform** | **String**| Required for commuter/driver, absent for ops/worker. | [optional] 
+ **fromDate** | **Date**| Africa/Accra day; paired with toDate. Default last/current 7 days; maximum 31 days. | [optional]
+ **toDate** | **Date**| Inclusive; paired with fromDate. | [optional]
+ **xTrotxiPlatform** | **String**| Required for commuter/driver, absent for ops/worker. | [optional]
 
 ### Return type
 
 [**CreditEntryPage**](CreditEntryPage.md)
+
+### Authorization
+
+[bearerAuth](../README.md#bearerAuth)
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
+ - **Accept**: application/json
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
+# **listMyStandby**
+> StandbyApplicationPage listMyStandby(xTrotxiClient, xTrotxiBuild, cursor, limit, xTrotxiPlatform)
+
+list My Standby
+
+### Example
+```dart
+import 'package:trotxi_api_client/api.dart';
+
+final api = TrotxiApiClient().getRiderOwnApi();
+final String xTrotxiClient = commuter; // String | Compatibility metadata only, never grants a role.
+final int xTrotxiBuild = 1; // int | Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
+final String cursor = cursor_example; // String | Opaque cursor bound to caller, sort and filters.
+final int limit = 56; // int | Page size. No silent truncation.
+final String xTrotxiPlatform = ios; // String | Required for commuter/driver, absent for ops/worker.
+
+try {
+    final response = api.listMyStandby(xTrotxiClient, xTrotxiBuild, cursor, limit, xTrotxiPlatform);
+    print(response);
+} on DioException catch (e) {
+    print('Exception when calling RiderOwnApi->listMyStandby: $e\n');
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **xTrotxiClient** | **String**| Compatibility metadata only, never grants a role. |
+ **xTrotxiBuild** | **int**| Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable. | [default to 1]
+ **cursor** | **String**| Opaque cursor bound to caller, sort and filters. | [optional]
+ **limit** | **int**| Page size. No silent truncation. | [optional] [default to 50]
+ **xTrotxiPlatform** | **String**| Required for commuter/driver, absent for ops/worker. | [optional]
+
+### Return type
+
+[**StandbyApplicationPage**](StandbyApplicationPage.md)
 
 ### Authorization
 
@@ -641,12 +887,12 @@ try {
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **xTrotxiClient** | **String**| Compatibility metadata only, never grants a role. | 
+ **xTrotxiClient** | **String**| Compatibility metadata only, never grants a role. |
  **xTrotxiBuild** | **int**| Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable. | [default to 1]
- **cursor** | **String**| Opaque cursor bound to caller, sort and filters. | [optional] 
+ **cursor** | **String**| Opaque cursor bound to caller, sort and filters. | [optional]
  **limit** | **int**| Page size. No silent truncation. | [optional] [default to 30]
  **unreadOnly** | **bool**| Only unread notifications. | [optional] [default to false]
- **xTrotxiPlatform** | **String**| Required for commuter/driver, absent for ops/worker. | [optional] 
+ **xTrotxiPlatform** | **String**| Required for commuter/driver, absent for ops/worker. | [optional]
 
 ### Return type
 
@@ -693,13 +939,13 @@ try {
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **xTrotxiClient** | **String**| Compatibility metadata only, never grants a role. | 
+ **xTrotxiClient** | **String**| Compatibility metadata only, never grants a role. |
  **xTrotxiBuild** | **int**| Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable. | [default to 1]
- **cursor** | **String**| Opaque cursor bound to caller, sort and filters. | [optional] 
+ **cursor** | **String**| Opaque cursor bound to caller, sort and filters. | [optional]
  **limit** | **int**| Page size. No silent truncation. | [optional] [default to 50]
- **fromDate** | **Date**| Optional inclusive Africa/Accra purchase-creation day. With no date filters, returns all purchase history, including unresolved purchases. No default recency cutoff. | [optional] 
- **toDate** | **Date**| Optional inclusive purchase-creation day; if both bounds are supplied, toDate must not precede fromDate. | [optional] 
- **xTrotxiPlatform** | **String**| Required for commuter/driver, absent for ops/worker. | [optional] 
+ **fromDate** | **Date**| Optional inclusive Africa/Accra purchase-creation day. With no date filters, returns all purchase history, including unresolved purchases. No default recency cutoff. | [optional]
+ **toDate** | **Date**| Optional inclusive purchase-creation day; if both bounds are supplied, toDate must not precede fromDate. | [optional]
+ **xTrotxiPlatform** | **String**| Required for commuter/driver, absent for ops/worker. | [optional]
 
 ### Return type
 
@@ -746,13 +992,13 @@ try {
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **xTrotxiClient** | **String**| Compatibility metadata only, never grants a role. | 
+ **xTrotxiClient** | **String**| Compatibility metadata only, never grants a role. |
  **xTrotxiBuild** | **int**| Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable. | [default to 1]
- **cursor** | **String**| Opaque cursor bound to caller, sort and filters. | [optional] 
+ **cursor** | **String**| Opaque cursor bound to caller, sort and filters. | [optional]
  **limit** | **int**| Page size. No silent truncation. | [optional] [default to 50]
- **fromDate** | **Date**| Africa/Accra day; paired with toDate. Default last/current 7 days; maximum 31 days. | [optional] 
- **toDate** | **Date**| Inclusive; paired with fromDate. | [optional] 
- **xTrotxiPlatform** | **String**| Required for commuter/driver, absent for ops/worker. | [optional] 
+ **fromDate** | **Date**| Africa/Accra day; paired with toDate. Default last/current 7 days; maximum 31 days. | [optional]
+ **toDate** | **Date**| Inclusive; paired with fromDate. | [optional]
+ **xTrotxiPlatform** | **String**| Required for commuter/driver, absent for ops/worker. | [optional]
 
 ### Return type
 
@@ -799,13 +1045,13 @@ try {
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **xTrotxiClient** | **String**| Compatibility metadata only, never grants a role. | 
+ **xTrotxiClient** | **String**| Compatibility metadata only, never grants a role. |
  **xTrotxiBuild** | **int**| Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable. | [default to 1]
- **cursor** | **String**| Opaque cursor bound to caller, sort and filters. | [optional] 
+ **cursor** | **String**| Opaque cursor bound to caller, sort and filters. | [optional]
  **limit** | **int**| Page size. No silent truncation. | [optional] [default to 50]
- **fromDate** | **Date**| Africa/Accra day; paired with toDate. Default last/current 7 days; maximum 31 days. | [optional] 
- **toDate** | **Date**| Inclusive; paired with fromDate. | [optional] 
- **xTrotxiPlatform** | **String**| Required for commuter/driver, absent for ops/worker. | [optional] 
+ **fromDate** | **Date**| Africa/Accra day; paired with toDate. Default last/current 7 days; maximum 31 days. | [optional]
+ **toDate** | **Date**| Inclusive; paired with fromDate. | [optional]
+ **xTrotxiPlatform** | **String**| Required for commuter/driver, absent for ops/worker. | [optional]
 
 ### Return type
 
@@ -848,9 +1094,9 @@ try {
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **xTrotxiClient** | **String**| Compatibility metadata only, never grants a role. | 
+ **xTrotxiClient** | **String**| Compatibility metadata only, never grants a role. |
  **xTrotxiBuild** | **int**| Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable. | [default to 1]
- **xTrotxiPlatform** | **String**| Required for commuter/driver, absent for ops/worker. | [optional] 
+ **xTrotxiPlatform** | **String**| Required for commuter/driver, absent for ops/worker. | [optional]
 
 ### Return type
 
@@ -877,7 +1123,7 @@ mark Notification Read
 import 'package:trotxi_api_client/api.dart';
 
 final api = TrotxiApiClient().getRiderOwnApi();
-final String id = id_example; // String | 
+final String id = id_example; // String |
 final String xTrotxiClient = commuter; // String | Compatibility metadata only, never grants a role.
 final int xTrotxiBuild = 1; // int | Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
 final String xTrotxiPlatform = ios; // String | Required for commuter/driver, absent for ops/worker.
@@ -894,10 +1140,10 @@ try {
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **id** | **String**|  | 
- **xTrotxiClient** | **String**| Compatibility metadata only, never grants a role. | 
+ **id** | **String**|  |
+ **xTrotxiClient** | **String**| Compatibility metadata only, never grants a role. |
  **xTrotxiBuild** | **int**| Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable. | [default to 1]
- **xTrotxiPlatform** | **String**| Required for commuter/driver, absent for ops/worker. | [optional] 
+ **xTrotxiPlatform** | **String**| Required for commuter/driver, absent for ops/worker. | [optional]
 
 ### Return type
 
@@ -926,7 +1172,7 @@ import 'package:trotxi_api_client/api.dart';
 final api = TrotxiApiClient().getRiderOwnApi();
 final String xTrotxiClient = commuter; // String | Compatibility metadata only, never grants a role.
 final int xTrotxiBuild = 1; // int | Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
-final PersonalPauseInput personalPauseInput = ; // PersonalPauseInput | 
+final PersonalPauseInput personalPauseInput = ; // PersonalPauseInput |
 final String xTrotxiPlatform = ios; // String | Required for commuter/driver, absent for ops/worker.
 
 try {
@@ -941,10 +1187,10 @@ try {
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **xTrotxiClient** | **String**| Compatibility metadata only, never grants a role. | 
+ **xTrotxiClient** | **String**| Compatibility metadata only, never grants a role. |
  **xTrotxiBuild** | **int**| Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable. | [default to 1]
- **personalPauseInput** | [**PersonalPauseInput**](PersonalPauseInput.md)|  | 
- **xTrotxiPlatform** | **String**| Required for commuter/driver, absent for ops/worker. | [optional] 
+ **personalPauseInput** | [**PersonalPauseInput**](PersonalPauseInput.md)|  |
+ **xTrotxiPlatform** | **String**| Required for commuter/driver, absent for ops/worker. | [optional]
 
 ### Return type
 
@@ -973,7 +1219,7 @@ import 'package:trotxi_api_client/api.dart';
 final api = TrotxiApiClient().getRiderOwnApi();
 final String xTrotxiClient = commuter; // String | Compatibility metadata only, never grants a role.
 final int xTrotxiBuild = 1; // int | Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
-final PurchaseQuoteInput purchaseQuoteInput = ; // PurchaseQuoteInput | 
+final PurchaseQuoteInput purchaseQuoteInput = ; // PurchaseQuoteInput |
 final String xTrotxiPlatform = ios; // String | Required for commuter/driver, absent for ops/worker.
 
 try {
@@ -988,10 +1234,10 @@ try {
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **xTrotxiClient** | **String**| Compatibility metadata only, never grants a role. | 
+ **xTrotxiClient** | **String**| Compatibility metadata only, never grants a role. |
  **xTrotxiBuild** | **int**| Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable. | [default to 1]
- **purchaseQuoteInput** | [**PurchaseQuoteInput**](PurchaseQuoteInput.md)|  | 
- **xTrotxiPlatform** | **String**| Required for commuter/driver, absent for ops/worker. | [optional] 
+ **purchaseQuoteInput** | [**PurchaseQuoteInput**](PurchaseQuoteInput.md)|  |
+ **xTrotxiPlatform** | **String**| Required for commuter/driver, absent for ops/worker. | [optional]
 
 ### Return type
 
@@ -1018,11 +1264,11 @@ resume Personal Pause
 import 'package:trotxi_api_client/api.dart';
 
 final api = TrotxiApiClient().getRiderOwnApi();
-final String id = id_example; // String | 
+final String id = id_example; // String |
 final String idempotencyKey = idempotencyKey_example; // String | Caller + operation + target scoped; payload mismatch = 409. Never log secrets.
 final String xTrotxiClient = commuter; // String | Compatibility metadata only, never grants a role.
 final int xTrotxiBuild = 1; // int | Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
-final PersonalResumeInput personalResumeInput = ; // PersonalResumeInput | 
+final PersonalResumeInput personalResumeInput = ; // PersonalResumeInput |
 final String xTrotxiPlatform = ios; // String | Required for commuter/driver, absent for ops/worker.
 
 try {
@@ -1037,16 +1283,63 @@ try {
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **id** | **String**|  | 
- **idempotencyKey** | **String**| Caller + operation + target scoped; payload mismatch = 409. Never log secrets. | 
- **xTrotxiClient** | **String**| Compatibility metadata only, never grants a role. | 
+ **id** | **String**|  |
+ **idempotencyKey** | **String**| Caller + operation + target scoped; payload mismatch = 409. Never log secrets. |
+ **xTrotxiClient** | **String**| Compatibility metadata only, never grants a role. |
  **xTrotxiBuild** | **int**| Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable. | [default to 1]
- **personalResumeInput** | [**PersonalResumeInput**](PersonalResumeInput.md)|  | 
- **xTrotxiPlatform** | **String**| Required for commuter/driver, absent for ops/worker. | [optional] 
+ **personalResumeInput** | [**PersonalResumeInput**](PersonalResumeInput.md)|  |
+ **xTrotxiPlatform** | **String**| Required for commuter/driver, absent for ops/worker. | [optional]
 
 ### Return type
 
 [**PersonalPauseResponse**](PersonalPauseResponse.md)
+
+### Authorization
+
+[bearerAuth](../README.md#bearerAuth)
+
+### HTTP request headers
+
+ - **Content-Type**: application/json
+ - **Accept**: application/json
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
+# **startPhoneVerification**
+> PhoneChallengeResponse startPhoneVerification(xTrotxiClient, xTrotxiBuild, phoneVerificationStart, xTrotxiPlatform)
+
+start Phone Verification
+
+### Example
+```dart
+import 'package:trotxi_api_client/api.dart';
+
+final api = TrotxiApiClient().getRiderOwnApi();
+final String xTrotxiClient = commuter; // String | Compatibility metadata only, never grants a role.
+final int xTrotxiBuild = 1; // int | Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
+final PhoneVerificationStart phoneVerificationStart = ; // PhoneVerificationStart |
+final String xTrotxiPlatform = ios; // String | Required for commuter/driver, absent for ops/worker.
+
+try {
+    final response = api.startPhoneVerification(xTrotxiClient, xTrotxiBuild, phoneVerificationStart, xTrotxiPlatform);
+    print(response);
+} on DioException catch (e) {
+    print('Exception when calling RiderOwnApi->startPhoneVerification: $e\n');
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **xTrotxiClient** | **String**| Compatibility metadata only, never grants a role. |
+ **xTrotxiBuild** | **int**| Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable. | [default to 1]
+ **phoneVerificationStart** | [**PhoneVerificationStart**](PhoneVerificationStart.md)|  |
+ **xTrotxiPlatform** | **String**| Required for commuter/driver, absent for ops/worker. | [optional]
+
+### Return type
+
+[**PhoneChallengeResponse**](PhoneChallengeResponse.md)
 
 ### Authorization
 
@@ -1072,7 +1365,7 @@ final api = TrotxiApiClient().getRiderOwnApi();
 final String ifMatch = ifMatch_example; // String | Missing = 428; stale = 412. Reload the current preferences and retry with its ETag.
 final String xTrotxiClient = commuter; // String | Compatibility metadata only, never grants a role.
 final int xTrotxiBuild = 1; // int | Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
-final NotificationPreferencesInput notificationPreferencesInput = ; // NotificationPreferencesInput | 
+final NotificationPreferencesInput notificationPreferencesInput = ; // NotificationPreferencesInput |
 final String xTrotxiPlatform = ios; // String | Required for commuter/driver, absent for ops/worker.
 
 try {
@@ -1087,11 +1380,11 @@ try {
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **ifMatch** | **String**| Missing = 428; stale = 412. Reload the current preferences and retry with its ETag. | 
- **xTrotxiClient** | **String**| Compatibility metadata only, never grants a role. | 
+ **ifMatch** | **String**| Missing = 428; stale = 412. Reload the current preferences and retry with its ETag. |
+ **xTrotxiClient** | **String**| Compatibility metadata only, never grants a role. |
  **xTrotxiBuild** | **int**| Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable. | [default to 1]
- **notificationPreferencesInput** | [**NotificationPreferencesInput**](NotificationPreferencesInput.md)|  | 
- **xTrotxiPlatform** | **String**| Required for commuter/driver, absent for ops/worker. | [optional] 
+ **notificationPreferencesInput** | [**NotificationPreferencesInput**](NotificationPreferencesInput.md)|  |
+ **xTrotxiPlatform** | **String**| Required for commuter/driver, absent for ops/worker. | [optional]
 
 ### Return type
 
@@ -1118,7 +1411,7 @@ withdraw Commute Request
 import 'package:trotxi_api_client/api.dart';
 
 final api = TrotxiApiClient().getRiderOwnApi();
-final String id = id_example; // String | 
+final String id = id_example; // String |
 final String idempotencyKey = idempotencyKey_example; // String | Caller + operation + target scoped; payload mismatch = 409. Never log secrets.
 final String xTrotxiClient = commuter; // String | Compatibility metadata only, never grants a role.
 final int xTrotxiBuild = 1; // int | Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
@@ -1136,15 +1429,62 @@ try {
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **id** | **String**|  | 
- **idempotencyKey** | **String**| Caller + operation + target scoped; payload mismatch = 409. Never log secrets. | 
- **xTrotxiClient** | **String**| Compatibility metadata only, never grants a role. | 
+ **id** | **String**|  |
+ **idempotencyKey** | **String**| Caller + operation + target scoped; payload mismatch = 409. Never log secrets. |
+ **xTrotxiClient** | **String**| Compatibility metadata only, never grants a role. |
  **xTrotxiBuild** | **int**| Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable. | [default to 1]
- **xTrotxiPlatform** | **String**| Required for commuter/driver, absent for ops/worker. | [optional] 
+ **xTrotxiPlatform** | **String**| Required for commuter/driver, absent for ops/worker. | [optional]
 
 ### Return type
 
 [**CommuteRequestResponse**](CommuteRequestResponse.md)
+
+### Authorization
+
+[bearerAuth](../README.md#bearerAuth)
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
+ - **Accept**: application/json
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
+# **withdrawStandby**
+> StandbyApplicationResponse withdrawStandby(id, xTrotxiClient, xTrotxiBuild, xTrotxiPlatform)
+
+withdraw Standby
+
+### Example
+```dart
+import 'package:trotxi_api_client/api.dart';
+
+final api = TrotxiApiClient().getRiderOwnApi();
+final String id = id_example; // String |
+final String xTrotxiClient = commuter; // String | Compatibility metadata only, never grants a role.
+final int xTrotxiBuild = 1; // int | Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
+final String xTrotxiPlatform = ios; // String | Required for commuter/driver, absent for ops/worker.
+
+try {
+    final response = api.withdrawStandby(id, xTrotxiClient, xTrotxiBuild, xTrotxiPlatform);
+    print(response);
+} on DioException catch (e) {
+    print('Exception when calling RiderOwnApi->withdrawStandby: $e\n');
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **id** | **String**|  |
+ **xTrotxiClient** | **String**| Compatibility metadata only, never grants a role. |
+ **xTrotxiBuild** | **int**| Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable. | [default to 1]
+ **xTrotxiPlatform** | **String**| Required for commuter/driver, absent for ops/worker. | [optional]
+
+### Return type
+
+[**StandbyApplicationResponse**](StandbyApplicationResponse.md)
 
 ### Authorization
 

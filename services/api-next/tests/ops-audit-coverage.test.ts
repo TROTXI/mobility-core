@@ -38,6 +38,7 @@ const evidence = {
   pricing_events: ['createFare', 'updatePlanPricing'],
   config_events: ['changeRole', 'setFlag', 'setMinimumVersion'],
   payment_review_commands: ['resolvePaymentReview'],
+  standby_events: ['offerStandby'],
   gps_events: ['createTraceHold', 'releaseTraceHold'],
   maintenance_run_starts: [
     'runPersonalPauseResumes',

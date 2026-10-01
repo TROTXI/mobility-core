@@ -38,6 +38,9 @@ const Audit = lazy(() => import('./screens/Audit').then((module) => ({ default: 
 const Profile = lazy(() =>
   import('./screens/Profile').then((module) => ({ default: module.Profile })),
 );
+const Standby = lazy(() =>
+  import('./screens/Standby').then((module) => ({ default: module.Standby })),
+);
 
 export function App() {
   const [appearance, setAppearance] = useState<'dark' | 'light'>(() => {
@@ -104,6 +107,7 @@ function Entry({
               <Route path="fleet" element={<Fleet view="vehicles" />} />
               <Route path="drivers" element={<Fleet view="drivers" />} />
               <Route path="riders" element={<Riders />} />
+              <Route path="standby" element={<Standby />} />
               <Route path="support" element={<Support />} />
               <Route path="payments" element={<Payments />} />
               <Route path="reports" element={<Reports />} />

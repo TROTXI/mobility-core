@@ -4,6 +4,7 @@ import 'package:trotxi_client/trotxi_client.dart';
 import 'package:trotxi_commuter/core/api/commuter_api.dart';
 import 'package:trotxi_commuter/Features/Home/widgets/Trips/trip_details_page.dart';
 import 'package:trotxi_commuter/Features/Home/widgets/Tabs/wallet_tab.dart';
+import 'package:trotxi_commuter/Features/Home/widgets/Tabs/standby_page.dart';
 import 'package:trotxi_commuter/core/config/theme/app_colors.dart';
 import 'package:trotxi_commuter/core/config/theme/app_typography.dart';
 
@@ -109,6 +110,13 @@ class _NotificationsInboxPageState extends State<NotificationsInboxPage> {
             client: widget.client,
             reservationId: notification.target.id,
           ),
+        ),
+      );
+    } else if (notification.target.type ==
+        RiderNotificationTargetTypeEnum.standby) {
+      await Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          builder: (_) => StandbyPage(client: widget.client),
         ),
       );
     } else {
@@ -299,6 +307,11 @@ class _NotificationsInboxPageState extends State<NotificationsInboxPage> {
         'Trip cancelled',
         'Open your trip for the latest status.',
         Icons.event_busy_outlined,
+      ),
+      RiderNotificationKindEnum.standbyOffered => (
+        'A place is available',
+        'Review your standby offer before it expires.',
+        Icons.hourglass_bottom,
       ),
       _ => ('Trip update', 'Open for details.', Icons.notifications_outlined),
     };

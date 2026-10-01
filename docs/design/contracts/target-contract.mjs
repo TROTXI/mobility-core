@@ -194,8 +194,9 @@ named(
       'credit_converted',
       'trip_changed',
       'trip_cancelled',
+      'standby_offered',
     ]),
-    target: obj({ type: z.enum(['reservation', 'credit']), id }),
+    target: obj({ type: z.enum(['reservation', 'credit', 'standby']), id }),
     createdAt: instant,
     readAt: instant.nullable(),
   }),
@@ -215,6 +216,24 @@ named('NotificationPreferencesInput', obj({ dailyAskTime, optionalUpdatesEnabled
 named('GoogleSignIn', obj({ idToken: text(8192) }));
 named('PhoneSignInRequest', obj({ phone: text(32) }));
 named('PhoneSignInVerify', obj({ challengeId: z.uuid(), code: z.string().regex(/^\d{6}$/) }));
+named('PhoneVerificationStart', obj({ phone: text(32) }));
+named(
+  'PhoneVerificationConfirm',
+  obj({ challengeId: z.uuid(), code: z.string().regex(/^\d{6}$/) }),
+);
+named('PhoneVerificationResult', obj({ status: z.enum(['verified', 'review']) }));
+named(
+  'VerificationStatus',
+  obj({
+    phone: obj({
+      status: z.enum(['incomplete', 'pending', 'verified', 'review', 'unavailable']),
+      maskedNumber: text(32).nullable(),
+      verifiedAt: instant.nullable(),
+    }),
+    standbyEligible: z.boolean(),
+    missing: z.array(z.enum(['phone', 'profile'])),
+  }),
+);
 named(
   'PhoneChallenge',
   obj({ challengeId: z.uuid(), expiresAt: instant, resendAfterSeconds: z.int().min(60).max(60) }),
@@ -459,6 +478,29 @@ named(
   'PurchaseInput',
   obj({ plan, routeId: id, legs: z.array(schemas.CommuteLeg).length(2), useCredit: z.boolean() }),
 );
+named(
+  'StandbyOffer',
+  obj({
+    id,
+    state: z.enum(['offered', 'accepting', 'checkout_open', 'cancelled']),
+    expiresAt: instant,
+    purchaseId: id.nullable(),
+  }),
+);
+named(
+  'StandbyApplication',
+  obj({
+    id,
+    riderId: id,
+    riderName: text(),
+    routeName: text(),
+    state: z.enum(['submitted', 'offered', 'withdrawn', 'checkout_open']),
+    selection: schemas.PurchaseInput,
+    offer: schemas.StandbyOffer.nullable(),
+    createdAt: instant,
+  }),
+);
+named('StandbyOfferInput', obj({ expiresAt: instant }));
 named(
   'Purchase',
   obj({
@@ -1561,6 +1603,48 @@ post('/v1/auth/driver/pin', 'changeDriverPin', 'PinChange', null, {
   sensitive: true,
 });
 get('/v1/me', 'getAccount', 'Account', { access: 'self' });
+get('/v1/me/verification', 'getVerification', 'VerificationStatus', { access: 'rider_own' });
+post(
+  '/v1/me/phone-verification/start',
+  'startPhoneVerification',
+  'PhoneVerificationStart',
+  'PhoneChallenge',
+  {
+    access: 'rider_own',
+    retry: 'credential',
+    sensitive: true,
+  },
+);
+post(
+  '/v1/me/phone-verification/confirm',
+  'confirmPhoneVerification',
+  'PhoneVerificationConfirm',
+  'PhoneVerificationResult',
+  {
+    access: 'rider_own',
+    retry: 'credential',
+    sensitive: true,
+  },
+);
+list('/v1/me/standby', 'listMyStandby', 'StandbyApplication', { access: 'rider_own' });
+post('/v1/me/standby', 'joinStandby', 'PurchaseInput', 'StandbyApplication', {
+  access: 'rider_own',
+  status: 201,
+});
+post('/v1/me/standby/{id}/withdraw', 'withdrawStandby', null, 'StandbyApplication', {
+  access: 'rider_own',
+  retry: 'idempotent_state',
+});
+post('/v1/me/standby/{id}/accept', 'acceptStandbyOffer', null, 'Purchase', {
+  access: 'rider_own',
+  retry: 'idempotency_key',
+  sensitive: true,
+  status: 201,
+});
+list('/v1/ops/standby', 'listOpsStandby', 'StandbyApplication');
+post('/v1/ops/standby/{id}/offers', 'offerStandby', 'StandbyOfferInput', 'StandbyApplication', {
+  status: 201,
+});
 edit('patch', '/v1/me', 'updateAccount', 'ProfileUpdate', 'Account', {
   access: 'self',
   etag: false,

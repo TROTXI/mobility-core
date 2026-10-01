@@ -17,6 +17,7 @@ import { Pricing } from '../payments/pricing.js';
 import { Purchases } from '../payments/purchases.js';
 import { RefundInitiation } from '../payments/refunds.js';
 import { MembershipService } from '../membership/service.js';
+import { StandbyService } from '../membership/standby.js';
 import { AccountService } from '../account/service.js';
 import { ConfigService } from '../config/service.js';
 import { R2ObjectStore } from './avatars.js';
@@ -279,6 +280,18 @@ export async function composeBackend(config: RuntimeConfig): Promise<Backend> {
           avatarUrlTtlSeconds: config.avatars.urlTtlSeconds,
           maxAvatarBytes: config.avatars.maxBytes,
         });
+        const purchases = new Purchases({
+          pool,
+          financial,
+          authorizeSession,
+          cursorSecret: config.keys.cursorSecret,
+          initializeCheckout: async (request) =>
+            provider.initialize({
+              reference: request.reference,
+              amountPesewas: request.amountPesewas,
+              email: await payerEmail(request.userId),
+            }),
+        });
         identity = { auth, membership, account };
         return {
           inbox,
@@ -292,17 +305,12 @@ export async function composeBackend(config: RuntimeConfig): Promise<Backend> {
           }),
           membership,
           account,
-          purchases: new Purchases({
+          purchases,
+          standby: new StandbyService({
             pool,
-            financial,
             authorizeSession,
+            purchases,
             cursorSecret: config.keys.cursorSecret,
-            initializeCheckout: async (request) =>
-              provider.initialize({
-                reference: request.reference,
-                amountPesewas: request.amountPesewas,
-                email: await payerEmail(request.userId),
-              }),
           }),
           payments: new PaymentRecovery({
             pool,
