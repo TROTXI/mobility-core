@@ -823,22 +823,36 @@ export async function createTransportApp(options: AppOptions) {
                 request.headers['if-match'] as string | undefined,
               );
           } else if (standbyEndpoint) {
-            if (Object.keys(request.query as object).length)
+            const query = request.query as Record<string, string | undefined>;
+            const listing = name === 'listMyStandby' || name === 'listOpsStandby';
+            if (
+              Object.entries(query).some(
+                ([k, v]) =>
+                  !listing ||
+                  !['cursor', 'limit'].includes(k) ||
+                  typeof v !== 'string' ||
+                  v.length > 128,
+              )
+            )
               fail(400, 'invalid_query', 'Unsupported query parameters.');
             const target = (request.params as { id?: string }).id;
-            if (name === 'listMyStandby' || name === 'listOpsStandby')
-              result = await options.standby!.list(actor, name === 'listOpsStandby');
+            if (listing)
+              result = await options.standby!.list(actor, name === 'listOpsStandby', query);
             else if (name === 'joinStandby')
               result = await options.standby!.join(actor, request.body as Body);
             else if (name === 'withdrawStandby')
               result = await options.standby!.withdraw(actor, target!);
-            else if (name === 'offerStandby')
+            else if (name === 'offerStandby') {
+              const key = request.headers['idempotency-key'];
+              if (typeof key !== 'string' || !key || key.length > 128)
+                fail(400, 'idempotency_key_required', 'Supply an Idempotency-Key.');
               result = await options.standby!.offer(
                 actor,
                 target!,
                 (request.body as { expiresAt: string }).expiresAt,
+                key,
               );
-            else {
+            } else {
               const key = request.headers['idempotency-key'];
               if (typeof key !== 'string' || !key || key.length > 128)
                 fail(400, 'idempotency_key_required', 'Supply an Idempotency-Key.');

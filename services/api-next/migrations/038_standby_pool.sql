@@ -18,6 +18,8 @@ CREATE TABLE app.standby_offers (
   application_id uuid NOT NULL UNIQUE REFERENCES app.standby_applications(id) ON DELETE RESTRICT,
   state text NOT NULL DEFAULT 'offered' CHECK (state IN ('offered','accepting','checkout_open','cancelled')),
   expires_at timestamptz NOT NULL CHECK (isfinite(expires_at)),
+  offer_key_hash text NOT NULL CHECK (offer_key_hash ~ '^[a-f0-9]{64}$'),
+  offer_receipt jsonb CHECK (offer_receipt IS NULL OR jsonb_typeof(offer_receipt)='object'),
   acceptance_key_hash text CHECK (acceptance_key_hash ~ '^[a-f0-9]{64}$'),
   purchase_id uuid UNIQUE REFERENCES app.purchases(id) ON DELETE RESTRICT,
   created_at timestamptz NOT NULL DEFAULT clock_timestamp(),
@@ -48,9 +50,11 @@ COMMENT ON TABLE app.standby_offers IS
 CREATE FUNCTION app.erase_standby_application() RETURNS trigger LANGUAGE plpgsql AS $$
 BEGIN
   IF OLD.deleted_at IS NULL AND NEW.deleted_at IS NOT NULL THEN
-    UPDATE app.standby_offers SET state='cancelled'
+    UPDATE app.standby_offers SET state='cancelled',offer_receipt=NULL
       WHERE application_id IN (SELECT id FROM app.standby_applications WHERE user_id=NEW.id)
         AND state='offered';
+    UPDATE app.standby_offers SET offer_receipt=NULL
+      WHERE application_id IN (SELECT id FROM app.standby_applications WHERE user_id=NEW.id);
     UPDATE app.standby_applications SET
       state=CASE WHEN state IN ('submitted','offered') THEN 'withdrawn' ELSE state END,
       selection='{}'::jsonb,updated_at=clock_timestamp()

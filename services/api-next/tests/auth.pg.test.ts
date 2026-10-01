@@ -554,6 +554,7 @@ test('KYC-03: verified new rider joins standby, Ops offers, and rider can withdr
     pool: runtime,
     authorizeSession: async () => {},
     purchases: {} as Purchases,
+    cursorSecret: Buffer.alloc(32, 6),
   });
   const riderActor = { userId: riderId, sessionId: randomUUID() };
   const adminActor = { userId: adminId, sessionId: randomUUID() };
@@ -630,12 +631,19 @@ test('KYC-03: verified new rider joins standby, Ops offers, and rider can withdr
   assert.equal(joined.status, 201);
   const appId = (joined.body as any).data.id as string;
   assert.equal((await standby.join(riderActor, selection)).status, 200);
-  const offered = await standby.offer(
-    adminActor,
-    appId,
-    new Date(Date.now() + 86400000).toISOString(),
-  );
+  const expiresAt = new Date(Date.now() + 86400000).toISOString();
+  const offerKey = randomUUID();
+  const offered = await standby.offer(adminActor, appId, expiresAt, offerKey);
   assert.equal((offered.body as any).data.offer.state, 'offered');
+  assert.deepEqual(await standby.offer(adminActor, appId, expiresAt, offerKey), offered);
+  await assert.rejects(
+    standby.offer(adminActor, appId, new Date(Date.now() + 2 * 86400000).toISOString(), offerKey),
+    (error: any) => error?.code === 'idempotency_conflict',
+  );
+  await assert.rejects(
+    standby.offer(adminActor, appId, expiresAt, randomUUID()),
+    (error: any) => error?.code === 'standby_not_pending',
+  );
   const notice = await owner.query(
     'SELECT kind,target_type,target_id FROM app.rider_notifications WHERE user_id=$1',
     [riderId],
@@ -645,9 +653,62 @@ test('KYC-03: verified new rider joins standby, Ops offers, and rider can withdr
     ['standby_offered'],
   );
   assert.equal(notice.rows[0].target_id, appId);
+  const firstPage = (await standby.list(adminActor, true, { limit: '1' })).body as any;
+  assert.equal(firstPage.data.length, 1);
+  const otherRider = randomUUID();
+  await owner.query(
+    "INSERT INTO app.users(id,role,display_name) VALUES ($1,'commuter','Other rider')",
+    [otherRider],
+  );
+  await owner.query(
+    'INSERT INTO app.standby_applications(user_id,route_id,selection) VALUES ($1,$2,$3::jsonb)',
+    [otherRider, route, JSON.stringify(selection)],
+  );
+  const pageOne = (await standby.list(adminActor, true, { limit: '1' })).body as any;
+  assert.equal(pageOne.data.length, 1);
+  assert.ok(pageOne.page.nextCursor);
+  const pageTwo = (
+    await standby.list(adminActor, true, { limit: '1', cursor: pageOne.page.nextCursor })
+  ).body as any;
+  assert.equal(pageTwo.data.length, 1);
+  assert.notEqual(pageTwo.data[0].id, pageOne.data[0].id);
+  assert.equal(pageTwo.page.nextCursor, null);
+  await assert.rejects(
+    standby.list(riderActor, false, { cursor: pageOne.page.nextCursor }),
+    (error: any) => error?.code === 'invalid_cursor',
+  );
+  await assert.rejects(
+    standby.list(adminActor, true, { limit: '101' }),
+    (error: any) => error?.code === 'invalid_query',
+  );
+  let signalPurchase!: () => void;
+  let releasePurchase!: () => void;
+  const purchaseStarted = new Promise<void>((resolve) => (signalPurchase = resolve));
+  const purchaseRelease = new Promise<void>((resolve) => (releasePurchase = resolve));
+  const racing = new StandbyService({
+    pool: runtime,
+    authorizeSession: async () => {},
+    cursorSecret: Buffer.alloc(32, 6),
+    purchases: {
+      create: async () => {
+        signalPurchase();
+        await purchaseRelease;
+        throw new TransportError(409, 'fare_unavailable', 'No current fare.');
+      },
+    } as unknown as Purchases,
+  });
+  const firstAcceptance = racing.accept(riderActor, appId, randomUUID());
+  await purchaseStarted;
+  await assert.rejects(
+    racing.accept(riderActor, appId, randomUUID()),
+    (error: any) => error?.code === 'offer_unavailable',
+  );
+  releasePurchase();
+  await assert.rejects(firstAcceptance, (error: any) => error?.code === 'fare_unavailable');
   const refusing = new StandbyService({
     pool: runtime,
     authorizeSession: async () => {},
+    cursorSecret: Buffer.alloc(32, 6),
     purchases: {
       create: async () => {
         throw new TransportError(409, 'fare_unavailable', 'No current fare.');
@@ -662,6 +723,7 @@ test('KYC-03: verified new rider joins standby, Ops offers, and rider can withdr
   assert.equal(reset.data[0].offer.state, 'offered');
   const withdrawn = await standby.withdraw(riderActor, appId);
   assert.equal((withdrawn.body as any).data.state, 'withdrawn');
+  assert.deepEqual(await standby.offer(adminActor, appId, expiresAt, offerKey), offered);
 });
 
 async function setup(

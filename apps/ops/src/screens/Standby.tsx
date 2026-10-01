@@ -8,19 +8,27 @@ import { Empty, ErrorState, LoadingRows, Page, Panel, StatusBadge } from '../com
 import { ActionDialog } from '../components/ActionDialog';
 
 type Application = components['schemas']['StandbyApplication'];
+type PageResult = { data: Application[]; nextCursor: string | null };
 
 export function Standby() {
   const { session } = useAuth();
   const [selected, setSelected] = useState<Application | null>(null);
   const [days, setDays] = useState(2);
-  const query = useQuery<Application[]>(
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [moreError, setMoreError] = useState('');
+  const [offerAttempt, setOfferAttempt] = useState<{
+    applicationId: string;
+    key: string;
+    expiresAt: string;
+  } | null>(null);
+  const query = useQuery<PageResult>(
     async (signal) => {
       const response = await session.client.GET('/v1/ops/standby', {
         params: { header: opsHeaders },
         signal,
       });
       if (response.error) throw new Error(response.error.error.message);
-      return response.data.data;
+      return { data: response.data.data, nextCursor: response.data.page.nextCursor };
     },
     [session],
   );
@@ -34,7 +42,7 @@ export function Standby() {
       <Panel title="Applications" action={<Button onClick={query.retry}>Refresh</Button>}>
         {query.loading ? (
           <LoadingRows />
-        ) : !query.data?.length ? (
+        ) : !query.data?.data.length ? (
           <Empty />
         ) : (
           <div style={{ overflowX: 'auto' }}>
@@ -49,7 +57,7 @@ export function Standby() {
                 </tr>
               </thead>
               <tbody>
-                {query.data.map((application) => (
+                {query.data.data.map((application) => (
                   <tr key={application.id}>
                     <td>{application.riderName}</td>
                     <td>{application.routeName}</td>
@@ -63,7 +71,13 @@ export function Standby() {
                     </td>
                     <td>
                       {application.state === 'submitted' && (
-                        <Button appearance="subtle" onClick={() => setSelected(application)}>
+                        <Button
+                          appearance="subtle"
+                          onClick={() => {
+                            setOfferAttempt(null);
+                            setSelected(application);
+                          }}
+                        >
                           Send offer
                         </Button>
                       )}
@@ -72,6 +86,46 @@ export function Standby() {
                 ))}
               </tbody>
             </table>
+            {query.data.nextCursor && (
+              <>
+                {moreError && <ErrorState message={moreError} retry={() => setMoreError('')} />}
+                <Button
+                  disabled={loadingMore}
+                  onClick={async () => {
+                    if (!query.data?.nextCursor) return;
+                    setLoadingMore(true);
+                    setMoreError('');
+                    try {
+                      const response = await session.client.GET('/v1/ops/standby', {
+                        params: {
+                          header: opsHeaders,
+                          query: { cursor: query.data.nextCursor },
+                        },
+                      });
+                      if (response.error) throw new Error(response.error.error.message);
+                      query.setData((current) =>
+                        current
+                          ? {
+                              data: [...current.data, ...response.data.data],
+                              nextCursor: response.data.page.nextCursor,
+                            }
+                          : current,
+                      );
+                    } catch (error) {
+                      setMoreError(
+                        error instanceof Error
+                          ? error.message
+                          : 'Could not load more applications.',
+                      );
+                    } finally {
+                      setLoadingMore(false);
+                    }
+                  }}
+                >
+                  {loadingMore ? 'Loading…' : 'Load more'}
+                </Button>
+              </>
+            )}
           </div>
         )}
       </Panel>
@@ -80,17 +134,30 @@ export function Standby() {
         title="Offer route place"
         description="The rider must accept this offer and explicitly complete a fresh Paystack checkout. No payment is taken automatically."
         confirmLabel="Send offer"
-        onClose={() => setSelected(null)}
+        onClose={() => {
+          setSelected(null);
+          setOfferAttempt(null);
+        }}
         onConfirm={async () => {
           if (!selected) return;
+          const attempt =
+            offerAttempt?.applicationId === selected.id
+              ? offerAttempt
+              : {
+                  applicationId: selected.id,
+                  key: crypto.randomUUID(),
+                  expiresAt: new Date(Date.now() + days * 86400000).toISOString(),
+                };
+          setOfferAttempt(attempt);
           const response = await session.client.POST('/v1/ops/standby/{id}/offers', {
             params: {
               path: { id: selected.id },
-              header: { ...opsHeaders, 'Idempotency-Key': crypto.randomUUID() },
+              header: { ...opsHeaders, 'Idempotency-Key': attempt.key },
             },
-            body: { expiresAt: new Date(Date.now() + days * 86400000).toISOString() },
+            body: { expiresAt: attempt.expiresAt },
           });
           if (response.error) throw new Error(response.error.error.message);
+          setOfferAttempt(null);
           setSelected(null);
           query.retry();
         }}

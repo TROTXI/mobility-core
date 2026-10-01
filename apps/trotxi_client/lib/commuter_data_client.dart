@@ -401,15 +401,16 @@ class CommuterDataClient {
               )))
           .data;
 
-  Future<List<StandbyApplication>> standbyApplications() async =>
-      (await _read((extra) => client.getRiderOwnApi().listMyStandby(
+  Future<List<StandbyApplication>> standbyApplications() => _pages(
+      (cursor, extra) => client.getRiderOwnApi().listMyStandby(
                 xTrotxiClient: metadata.app,
                 xTrotxiBuild: metadata.build,
                 xTrotxiPlatform: metadata.platform,
+                cursor: cursor,
                 extra: extra,
-              )))
-          .data
-          .toList();
+              ),
+      (page) => page.data,
+      (page) => page.page.nextCursor);
 
   Future<StandbyApplication> joinStandby(PurchaseInput selection) async =>
       (await _command(

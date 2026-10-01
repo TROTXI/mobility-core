@@ -306,7 +306,12 @@ export async function composeBackend(config: RuntimeConfig): Promise<Backend> {
           membership,
           account,
           purchases,
-          standby: new StandbyService({ pool, authorizeSession, purchases }),
+          standby: new StandbyService({
+            pool,
+            authorizeSession,
+            purchases,
+            cursorSecret: config.keys.cursorSecret,
+          }),
           payments: new PaymentRecovery({
             pool,
             provider,
