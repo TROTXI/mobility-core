@@ -26,7 +26,7 @@ abstract class RiderNotification
 
   @BuiltValueField(wireName: r'kind')
   RiderNotificationKindEnum get kind;
-  // enum kindEnum {  seat_ask,  seat_held,  seat_unseated,  ride_used,  credit_converted,  trip_changed,  trip_cancelled,  };
+  // enum kindEnum {  seat_ask,  seat_held,  seat_unseated,  ride_used,  credit_converted,  trip_changed,  trip_cancelled,  standby_offered,  };
 
   @BuiltValueField(wireName: r'target')
   RiderNotificationTarget get target;
@@ -202,6 +202,9 @@ class RiderNotificationKindEnum extends EnumClass {
   @BuiltValueEnumConst(wireName: r'trip_cancelled')
   static const RiderNotificationKindEnum tripCancelled =
       _$riderNotificationKindEnum_tripCancelled;
+  @BuiltValueEnumConst(wireName: r'standby_offered')
+  static const RiderNotificationKindEnum standbyOffered =
+      _$riderNotificationKindEnum_standbyOffered;
 
   static Serializer<RiderNotificationKindEnum> get serializer =>
       _$riderNotificationKindEnumSerializer;

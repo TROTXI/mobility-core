@@ -213,6 +213,10 @@ doc/PhoneChallenge.md
 doc/PhoneChallengeResponse.md
 doc/PhoneSignInRequest.md
 doc/PhoneSignInVerify.md
+doc/PhoneVerificationConfirm.md
+doc/PhoneVerificationResult.md
+doc/PhoneVerificationResultResponse.md
+doc/PhoneVerificationStart.md
 doc/PinChange.md
 doc/PinResetInput.md
 doc/PlanPricing.md
@@ -283,6 +287,11 @@ doc/ServiceDayInput.md
 doc/Session.md
 doc/SessionPage.md
 doc/SignedInCatalogApi.md
+doc/StandbyApplication.md
+doc/StandbyApplicationOffer.md
+doc/StandbyApplicationPage.md
+doc/StandbyApplicationResponse.md
+doc/StandbyOfferInput.md
 doc/Stop.md
 doc/StopEdit.md
 doc/StopEta.md
@@ -310,6 +319,9 @@ doc/VehicleEdit.md
 doc/VehicleInput.md
 doc/VehiclePage.md
 doc/VehicleResponse.md
+doc/VerificationStatus.md
+doc/VerificationStatusPhone.md
+doc/VerificationStatusResponse.md
 doc/WebhookAck.md
 doc/WorkDecision.md
 doc/WorkRequest.md
@@ -544,6 +556,10 @@ lib/src/model/phone_challenge.dart
 lib/src/model/phone_challenge_response.dart
 lib/src/model/phone_sign_in_request.dart
 lib/src/model/phone_sign_in_verify.dart
+lib/src/model/phone_verification_confirm.dart
+lib/src/model/phone_verification_result.dart
+lib/src/model/phone_verification_result_response.dart
+lib/src/model/phone_verification_start.dart
 lib/src/model/pin_change.dart
 lib/src/model/pin_reset_input.dart
 lib/src/model/plan_pricing.dart
@@ -609,6 +625,11 @@ lib/src/model/schedule_response.dart
 lib/src/model/service_day_input.dart
 lib/src/model/session.dart
 lib/src/model/session_page.dart
+lib/src/model/standby_application.dart
+lib/src/model/standby_application_offer.dart
+lib/src/model/standby_application_page.dart
+lib/src/model/standby_application_response.dart
+lib/src/model/standby_offer_input.dart
 lib/src/model/stop.dart
 lib/src/model/stop_edit.dart
 lib/src/model/stop_eta.dart
@@ -636,6 +657,9 @@ lib/src/model/vehicle_edit.dart
 lib/src/model/vehicle_input.dart
 lib/src/model/vehicle_page.dart
 lib/src/model/vehicle_response.dart
+lib/src/model/verification_status.dart
+lib/src/model/verification_status_phone.dart
+lib/src/model/verification_status_response.dart
 lib/src/model/webhook_ack.dart
 lib/src/model/work_decision.dart
 lib/src/model/work_request.dart

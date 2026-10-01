@@ -132,6 +132,7 @@ Class | Method | HTTP request | Description
 [*OpsApi*](doc/OpsApi.md) | [**listOpsPurchases**](doc/OpsApi.md#listopspurchases) | **GET** /v1/ops/purchases | list Ops Purchases
 [*OpsApi*](doc/OpsApi.md) | [**listOpsRiders**](doc/OpsApi.md#listopsriders) | **GET** /v1/ops/riders | list Ops Riders
 [*OpsApi*](doc/OpsApi.md) | [**listOpsRoutes**](doc/OpsApi.md#listopsroutes) | **GET** /v1/ops/routes | list Ops Routes
+[*OpsApi*](doc/OpsApi.md) | [**listOpsStandby**](doc/OpsApi.md#listopsstandby) | **GET** /v1/ops/standby | list Ops Standby
 [*OpsApi*](doc/OpsApi.md) | [**listOpsStops**](doc/OpsApi.md#listopsstops) | **GET** /v1/ops/stops | list Ops Stops
 [*OpsApi*](doc/OpsApi.md) | [**listOpsTrips**](doc/OpsApi.md#listopstrips) | **GET** /v1/ops/trips | list Ops Trips
 [*OpsApi*](doc/OpsApi.md) | [**listOpsVehicles**](doc/OpsApi.md#listopsvehicles) | **GET** /v1/ops/vehicles | list Ops Vehicles
@@ -142,6 +143,7 @@ Class | Method | HTTP request | Description
 [*OpsApi*](doc/OpsApi.md) | [**listRefundInitiations**](doc/OpsApi.md#listrefundinitiations) | **GET** /v1/ops/purchases/{id}/refunds | list Refund Initiations
 [*OpsApi*](doc/OpsApi.md) | [**listSchedules**](doc/OpsApi.md#listschedules) | **GET** /v1/ops/service-schedules | list Schedules
 [*OpsApi*](doc/OpsApi.md) | [**listTraceHolds**](doc/OpsApi.md#listtraceholds) | **GET** /v1/ops/trace-holds | list Trace Holds
+[*OpsApi*](doc/OpsApi.md) | [**offerStandby**](doc/OpsApi.md#offerstandby) | **POST** /v1/ops/standby/{id}/offers | offer Standby
 [*OpsApi*](doc/OpsApi.md) | [**publishPatternVersion**](doc/OpsApi.md#publishpatternversion) | **POST** /v1/ops/route-patterns/{id}/versions/{versionId}/publish | publish Pattern Version
 [*OpsApi*](doc/OpsApi.md) | [**releaseAccountRestriction**](doc/OpsApi.md#releaseaccountrestriction) | **POST** /v1/ops/users/{id}/restrictions/{restrictionId}/release | release Account Restriction
 [*OpsApi*](doc/OpsApi.md) | [**releaseTraceHold**](doc/OpsApi.md#releasetracehold) | **POST** /v1/ops/trace-holds/{id}/release | release Trace Hold
@@ -187,6 +189,8 @@ Class | Method | HTTP request | Description
 [*PublicApi*](doc/PublicApi.md) | [**signInDriver**](doc/PublicApi.md#signindriver) | **POST** /v1/auth/driver | sign In Driver
 [*PublicApi*](doc/PublicApi.md) | [**signInGoogle**](doc/PublicApi.md#signingoogle) | **POST** /v1/auth/google | sign In Google
 [*PublicApi*](doc/PublicApi.md) | [**verifyPhoneSignIn**](doc/PublicApi.md#verifyphonesignin) | **POST** /v1/auth/phone/verify | verify Phone Sign In
+[*RiderOwnApi*](doc/RiderOwnApi.md) | [**acceptStandbyOffer**](doc/RiderOwnApi.md#acceptstandbyoffer) | **POST** /v1/me/standby/{id}/accept | accept Standby Offer
+[*RiderOwnApi*](doc/RiderOwnApi.md) | [**confirmPhoneVerification**](doc/RiderOwnApi.md#confirmphoneverification) | **POST** /v1/me/phone-verification/confirm | confirm Phone Verification
 [*RiderOwnApi*](doc/RiderOwnApi.md) | [**createCommuteRequest**](doc/RiderOwnApi.md#createcommuterequest) | **POST** /v1/me/commute-requests | create Commute Request
 [*RiderOwnApi*](doc/RiderOwnApi.md) | [**createPersonalPause**](doc/RiderOwnApi.md#createpersonalpause) | **POST** /v1/me/membership/pauses | create Personal Pause
 [*RiderOwnApi*](doc/RiderOwnApi.md) | [**createPurchase**](doc/RiderOwnApi.md#createpurchase) | **POST** /v1/me/purchases | create Purchase
@@ -196,9 +200,12 @@ Class | Method | HTTP request | Description
 [*RiderOwnApi*](doc/RiderOwnApi.md) | [**getPersonalPause**](doc/RiderOwnApi.md#getpersonalpause) | **GET** /v1/me/membership/pause | get Personal Pause
 [*RiderOwnApi*](doc/RiderOwnApi.md) | [**getPurchase**](doc/RiderOwnApi.md#getpurchase) | **GET** /v1/me/purchases/{id} | get Purchase
 [*RiderOwnApi*](doc/RiderOwnApi.md) | [**getReservation**](doc/RiderOwnApi.md#getreservation) | **GET** /v1/me/reservations/{id} | get Reservation
+[*RiderOwnApi*](doc/RiderOwnApi.md) | [**getVerification**](doc/RiderOwnApi.md#getverification) | **GET** /v1/me/verification | get Verification
 [*RiderOwnApi*](doc/RiderOwnApi.md) | [**issuePass**](doc/RiderOwnApi.md#issuepass) | **POST** /v1/me/reservations/{id}/pass | issue Pass
+[*RiderOwnApi*](doc/RiderOwnApi.md) | [**joinStandby**](doc/RiderOwnApi.md#joinstandby) | **POST** /v1/me/standby | join Standby
 [*RiderOwnApi*](doc/RiderOwnApi.md) | [**listCommuteRequests**](doc/RiderOwnApi.md#listcommuterequests) | **GET** /v1/me/commute-requests | list Commute Requests
 [*RiderOwnApi*](doc/RiderOwnApi.md) | [**listCreditEntries**](doc/RiderOwnApi.md#listcreditentries) | **GET** /v1/me/credit-entries | list Credit Entries
+[*RiderOwnApi*](doc/RiderOwnApi.md) | [**listMyStandby**](doc/RiderOwnApi.md#listmystandby) | **GET** /v1/me/standby | list My Standby
 [*RiderOwnApi*](doc/RiderOwnApi.md) | [**listNotifications**](doc/RiderOwnApi.md#listnotifications) | **GET** /v1/me/notifications | list Notifications
 [*RiderOwnApi*](doc/RiderOwnApi.md) | [**listPurchases**](doc/RiderOwnApi.md#listpurchases) | **GET** /v1/me/purchases | list Purchases
 [*RiderOwnApi*](doc/RiderOwnApi.md) | [**listReservations**](doc/RiderOwnApi.md#listreservations) | **GET** /v1/me/reservations | list Reservations
@@ -208,8 +215,10 @@ Class | Method | HTTP request | Description
 [*RiderOwnApi*](doc/RiderOwnApi.md) | [**previewPersonalPause**](doc/RiderOwnApi.md#previewpersonalpause) | **POST** /v1/me/membership/pause-preview | preview Personal Pause
 [*RiderOwnApi*](doc/RiderOwnApi.md) | [**previewPurchase**](doc/RiderOwnApi.md#previewpurchase) | **POST** /v1/me/purchase-quotes | preview Purchase
 [*RiderOwnApi*](doc/RiderOwnApi.md) | [**resumePersonalPause**](doc/RiderOwnApi.md#resumepersonalpause) | **POST** /v1/me/membership/pauses/{id}/resume | resume Personal Pause
+[*RiderOwnApi*](doc/RiderOwnApi.md) | [**startPhoneVerification**](doc/RiderOwnApi.md#startphoneverification) | **POST** /v1/me/phone-verification/start | start Phone Verification
 [*RiderOwnApi*](doc/RiderOwnApi.md) | [**updateNotificationPreferences**](doc/RiderOwnApi.md#updatenotificationpreferences) | **PATCH** /v1/me/notification-preferences | update Notification Preferences
 [*RiderOwnApi*](doc/RiderOwnApi.md) | [**withdrawCommuteRequest**](doc/RiderOwnApi.md#withdrawcommuterequest) | **POST** /v1/me/commute-requests/{id}/withdraw | withdraw Commute Request
+[*RiderOwnApi*](doc/RiderOwnApi.md) | [**withdrawStandby**](doc/RiderOwnApi.md#withdrawstandby) | **POST** /v1/me/standby/{id}/withdraw | withdraw Standby
 [*SelfApi*](doc/SelfApi.md) | [**deleteAvatar**](doc/SelfApi.md#deleteavatar) | **DELETE** /v1/me/avatar | delete Avatar
 [*SelfApi*](doc/SelfApi.md) | [**eraseAccount**](doc/SelfApi.md#eraseaccount) | **DELETE** /v1/me | erase Account
 [*SelfApi*](doc/SelfApi.md) | [**finishPasskeyAuthentication**](doc/SelfApi.md#finishpasskeyauthentication) | **POST** /v1/auth/passkeys/authentication/verification | finish Passkey Authentication
@@ -437,6 +446,10 @@ Class | Method | HTTP request | Description
  - [PhoneChallengeResponse](doc/PhoneChallengeResponse.md)
  - [PhoneSignInRequest](doc/PhoneSignInRequest.md)
  - [PhoneSignInVerify](doc/PhoneSignInVerify.md)
+ - [PhoneVerificationConfirm](doc/PhoneVerificationConfirm.md)
+ - [PhoneVerificationResult](doc/PhoneVerificationResult.md)
+ - [PhoneVerificationResultResponse](doc/PhoneVerificationResultResponse.md)
+ - [PhoneVerificationStart](doc/PhoneVerificationStart.md)
  - [PinChange](doc/PinChange.md)
  - [PinResetInput](doc/PinResetInput.md)
  - [PlanPricing](doc/PlanPricing.md)
@@ -502,6 +515,11 @@ Class | Method | HTTP request | Description
  - [ServiceDayInput](doc/ServiceDayInput.md)
  - [Session](doc/Session.md)
  - [SessionPage](doc/SessionPage.md)
+ - [StandbyApplication](doc/StandbyApplication.md)
+ - [StandbyApplicationOffer](doc/StandbyApplicationOffer.md)
+ - [StandbyApplicationPage](doc/StandbyApplicationPage.md)
+ - [StandbyApplicationResponse](doc/StandbyApplicationResponse.md)
+ - [StandbyOfferInput](doc/StandbyOfferInput.md)
  - [Stop](doc/Stop.md)
  - [StopEdit](doc/StopEdit.md)
  - [StopEta](doc/StopEta.md)
@@ -529,6 +547,9 @@ Class | Method | HTTP request | Description
  - [VehicleInput](doc/VehicleInput.md)
  - [VehiclePage](doc/VehiclePage.md)
  - [VehicleResponse](doc/VehicleResponse.md)
+ - [VerificationStatus](doc/VerificationStatus.md)
+ - [VerificationStatusPhone](doc/VerificationStatusPhone.md)
+ - [VerificationStatusResponse](doc/VerificationStatusResponse.md)
  - [WebhookAck](doc/WebhookAck.md)
  - [WorkDecision](doc/WorkDecision.md)
  - [WorkRequest](doc/WorkRequest.md)

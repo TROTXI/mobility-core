@@ -19,7 +19,7 @@ abstract class RiderNotificationTarget
     implements Built<RiderNotificationTarget, RiderNotificationTargetBuilder> {
   @BuiltValueField(wireName: r'type')
   RiderNotificationTargetTypeEnum get type;
-  // enum typeEnum {  reservation,  credit,  };
+  // enum typeEnum {  reservation,  credit,  standby,  };
 
   @BuiltValueField(wireName: r'id')
   String get id;
@@ -139,6 +139,9 @@ class RiderNotificationTargetTypeEnum extends EnumClass {
   @BuiltValueEnumConst(wireName: r'credit')
   static const RiderNotificationTargetTypeEnum credit =
       _$riderNotificationTargetTypeEnum_credit;
+  @BuiltValueEnumConst(wireName: r'standby')
+  static const RiderNotificationTargetTypeEnum standby =
+      _$riderNotificationTargetTypeEnum_standby;
 
   static Serializer<RiderNotificationTargetTypeEnum> get serializer =>
       _$riderNotificationTargetTypeEnumSerializer;

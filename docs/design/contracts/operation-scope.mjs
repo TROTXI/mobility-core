@@ -19,6 +19,25 @@ export const operationScope = [
     'Approved Ghana commuter phone OTP sign-up and login',
     'Separate verified phone identities; no linking to existing Google accounts or their subscriptions.',
   ]),
+  ...['startPhoneVerification', 'confirmPhoneVerification', 'getVerification'].map((name) => [
+    name,
+    'post-cutover',
+    'Approved standby phone-possession eligibility without universal sign-in gating',
+    'Phone sign-in creates a separate identity; a profile or Paystack number does not verify an existing Google account.',
+  ]),
+  ...[
+    'listMyStandby',
+    'joinStandby',
+    'withdrawStandby',
+    'acceptStandbyOffer',
+    'listOpsStandby',
+    'offerStandby',
+  ].map((name) => [
+    name,
+    'post-cutover',
+    'Approved new-rider standby pool with verified phone and fresh customer-authorized checkout',
+    'Paid-member commute-request waitlisting is a different workflow and cannot enroll new riders.',
+  ]),
   ...[
     'getPersonalPause',
     'previewPersonalPause',

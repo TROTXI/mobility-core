@@ -20,6 +20,8 @@ const RiderNotificationKindEnum _$riderNotificationKindEnum_tripChanged =
     const RiderNotificationKindEnum._('tripChanged');
 const RiderNotificationKindEnum _$riderNotificationKindEnum_tripCancelled =
     const RiderNotificationKindEnum._('tripCancelled');
+const RiderNotificationKindEnum _$riderNotificationKindEnum_standbyOffered =
+    const RiderNotificationKindEnum._('standbyOffered');
 
 RiderNotificationKindEnum _$riderNotificationKindEnumValueOf(String name) {
   switch (name) {
@@ -37,6 +39,8 @@ RiderNotificationKindEnum _$riderNotificationKindEnumValueOf(String name) {
       return _$riderNotificationKindEnum_tripChanged;
     case 'tripCancelled':
       return _$riderNotificationKindEnum_tripCancelled;
+    case 'standbyOffered':
+      return _$riderNotificationKindEnum_standbyOffered;
     default:
       throw ArgumentError(name);
   }
@@ -51,6 +55,7 @@ final BuiltSet<RiderNotificationKindEnum> _$riderNotificationKindEnumValues =
   _$riderNotificationKindEnum_creditConverted,
   _$riderNotificationKindEnum_tripChanged,
   _$riderNotificationKindEnum_tripCancelled,
+  _$riderNotificationKindEnum_standbyOffered,
 ]);
 
 Serializer<RiderNotificationKindEnum> _$riderNotificationKindEnumSerializer =
@@ -66,6 +71,7 @@ class _$RiderNotificationKindEnumSerializer
     'creditConverted': 'credit_converted',
     'tripChanged': 'trip_changed',
     'tripCancelled': 'trip_cancelled',
+    'standbyOffered': 'standby_offered',
   };
   static const Map<Object, String> _fromWire = const <Object, String>{
     'seat_ask': 'seatAsk',
@@ -75,6 +81,7 @@ class _$RiderNotificationKindEnumSerializer
     'credit_converted': 'creditConverted',
     'trip_changed': 'tripChanged',
     'trip_cancelled': 'tripCancelled',
+    'standby_offered': 'standbyOffered',
   };
 
   @override

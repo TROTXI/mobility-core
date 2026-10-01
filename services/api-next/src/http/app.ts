@@ -35,6 +35,7 @@ import { purchaseOperations } from '../payments/purchases.js';
 import type { Purchases, PurchaseOperation } from '../payments/purchases.js';
 import type { TripRead } from '../transport/trips.js';
 import type { MembershipService, MembershipOperation } from '../membership/service.js';
+import { standbyOperations, type StandbyService } from '../membership/standby.js';
 import { boardingOperations } from '../boarding/service.js';
 import type { BoardingService } from '../boarding/service.js';
 import { loggerOptions } from '../observability/logging.js';
@@ -139,6 +140,7 @@ export interface AppOptions extends Dependencies {
   // fulfilment coordinators have been explicitly supplied. No silent no-ops.
   payments?: PaymentRecovery;
   membership?: MembershipService;
+  standby?: StandbyService;
   inbox?: RiderInbox;
   pricing?: Pricing;
   account?: AccountService;
@@ -346,6 +348,7 @@ export async function createTransportApp(options: AppOptions) {
       const refundEndpoint = (refundOperations as readonly string[]).includes(name);
       if (refundEndpoint && !options.refunds) continue;
       const membershipEndpoint = (membershipOperations as readonly string[]).includes(name);
+      const standbyEndpoint = (standbyOperations as readonly string[]).includes(name);
       const inboxEndpoint = (inboxOperations as readonly string[]).includes(name);
       const boardingEndpoint = (boardingOperations as readonly string[]).includes(name);
       const pricingEndpoint = (pricingOperations as readonly string[]).includes(name);
@@ -360,6 +363,7 @@ export async function createTransportApp(options: AppOptions) {
       if (pricingEndpoint && !options.pricing) continue;
       if (purchaseEndpoint && !options.purchases) continue;
       if (membershipEndpoint && !options.membership) continue;
+      if (standbyEndpoint && !options.standby) continue;
       if (inboxEndpoint && !options.inbox) continue;
       if (paymentEndpoint && !options.payments) continue;
       if (name === 'receivePaystackWebhook') {
@@ -413,6 +417,8 @@ export async function createTransportApp(options: AppOptions) {
       const authLimited =
         publicAuth ||
         name === 'changeDriverPin' ||
+        name === 'startPhoneVerification' ||
+        name === 'confirmPhoneVerification' ||
         (passkeyOperations as readonly string[]).includes(name);
       const response: Record<string, unknown> = {};
       for (const [status, out] of Object.entries(operation.responses)) {
@@ -471,8 +477,17 @@ export async function createTransportApp(options: AppOptions) {
           const client = request.headers['x-trotxi-client'],
             build = request.headers['x-trotxi-build'],
             platform = request.headers['x-trotxi-platform'];
-          if (['requestPhoneSignIn', 'verifyPhoneSignIn'].includes(name) && client !== 'commuter')
-            fail(403, 'wrong_client', 'Phone sign-in is for commuters only.');
+          if (
+            [
+              'requestPhoneSignIn',
+              'verifyPhoneSignIn',
+              'startPhoneVerification',
+              'confirmPhoneVerification',
+              'getVerification',
+            ].includes(name) &&
+            client !== 'commuter'
+          )
+            fail(403, 'wrong_client', 'Phone verification is for commuters only.');
           // Only the maintenance operations admit it, and only there does it
           // stand in for an operations client. Nothing else about the ops
           // client's own rules changes.
@@ -493,6 +508,7 @@ export async function createTransportApp(options: AppOptions) {
                       (ops
                         ? 'ops'
                         : membershipEndpoint ||
+                            (standbyEndpoint && !ops) ||
                             inboxEndpoint ||
                             purchaseEndpoint ||
                             accountEndpoint ||
@@ -806,6 +822,28 @@ export async function createTransportApp(options: AppOptions) {
                 request.body as { dailyAskTime: string; optionalUpdatesEnabled: boolean },
                 request.headers['if-match'] as string | undefined,
               );
+          } else if (standbyEndpoint) {
+            if (Object.keys(request.query as object).length)
+              fail(400, 'invalid_query', 'Unsupported query parameters.');
+            const target = (request.params as { id?: string }).id;
+            if (name === 'listMyStandby' || name === 'listOpsStandby')
+              result = await options.standby!.list(actor, name === 'listOpsStandby');
+            else if (name === 'joinStandby')
+              result = await options.standby!.join(actor, request.body as Body);
+            else if (name === 'withdrawStandby')
+              result = await options.standby!.withdraw(actor, target!);
+            else if (name === 'offerStandby')
+              result = await options.standby!.offer(
+                actor,
+                target!,
+                (request.body as { expiresAt: string }).expiresAt,
+              );
+            else {
+              const key = request.headers['idempotency-key'];
+              if (typeof key !== 'string' || !key || key.length > 128)
+                fail(400, 'idempotency_key_required', 'Supply an Idempotency-Key.');
+              result = await options.standby!.accept(actor, target!, key);
+            }
           } else if (membershipEndpoint) {
             const query = request.query as Record<string, string | undefined>;
             const allowed = new Set(

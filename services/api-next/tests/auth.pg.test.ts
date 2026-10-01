@@ -11,6 +11,8 @@ import { createLocalJWKSet, exportJWK, generateKeyPair, SignJWT } from 'jose';
 import { createReplacementApp } from '../src/http/replacement.js';
 import { AuthService } from '../src/auth/service.js';
 import { PhoneOtp } from '../src/auth/phone-otp.js';
+import { StandbyService } from '../src/membership/standby.js';
+import type { Purchases } from '../src/payments/purchases.js';
 import type { SmsSender } from '../src/notifications/mnotify.js';
 import { SmsSendError } from '../src/notifications/mnotify.js';
 import type { AuthOptions } from '../src/auth/service.js';
@@ -444,6 +446,222 @@ test('PHONE-04: concurrent verification consumes once; later OTP reopens the sam
       .rows[0].n,
     1,
   );
+});
+
+test('KYC-01: Google commuter upgrades the same account by OTP without creating a phone sign-in identity', async (t) => {
+  let code = '';
+  const { owner, request, sign } = await setup(
+    t,
+    1000,
+    {},
+    {
+      send: async (_phone, message) => {
+        code = message.match(/\b(\d{6})\b/)![1]!;
+        return 'test-receipt';
+      },
+    },
+  );
+  const rider = await sign('kyc-google-upgrade');
+  const before = await request('GET', '/v1/me/verification', undefined, rider.accessToken);
+  assert.equal(before.statusCode, 200, before.body);
+  assert.equal(before.json().data.standbyEligible, false);
+  const started = await request(
+    'POST',
+    '/v1/me/phone-verification/start',
+    { phone: '0241234567' },
+    rider.accessToken,
+  );
+  assert.equal(started.statusCode, 200, started.body);
+  const confirmed = await request(
+    'POST',
+    '/v1/me/phone-verification/confirm',
+    { challengeId: started.json().data.challengeId, code },
+    rider.accessToken,
+  );
+  assert.equal(confirmed.statusCode, 200, confirmed.body);
+  assert.equal(confirmed.json().data.status, 'verified');
+  const after = await request('GET', '/v1/me/verification', undefined, rider.accessToken);
+  assert.equal(after.json().data.phone.status, 'verified');
+  assert.equal(after.json().data.standbyEligible, true);
+  assert.equal(
+    (await owner.query("SELECT count(*)::int AS n FROM app.auth_identities WHERE provider='phone'"))
+      .rows[0].n,
+    0,
+  );
+  assert.equal((await owner.query('SELECT count(*)::int AS n FROM app.users')).rows[0].n, 1);
+  const replay = await request(
+    'POST',
+    '/v1/me/phone-verification/confirm',
+    { challengeId: started.json().data.challengeId, code },
+    rider.accessToken,
+  );
+  assert.equal(replay.statusCode, 401, replay.body);
+});
+
+test('KYC-02: account-bound code cannot be redeemed by another signed-in rider', async (t) => {
+  let code = '';
+  const { request, sign } = await setup(
+    t,
+    1000,
+    {},
+    {
+      send: async (_phone, message) => {
+        code = message.match(/\b(\d{6})\b/)![1]!;
+        return 'test-receipt';
+      },
+    },
+  );
+  const first = await sign('kyc-first');
+  const second = await sign('kyc-second');
+  const started = await request(
+    'POST',
+    '/v1/me/phone-verification/start',
+    { phone: '0241234567' },
+    first.accessToken,
+  );
+  assert.equal(started.statusCode, 200, started.body);
+  const challengeId = started.json().data.challengeId;
+  const wrongOwner = await request(
+    'POST',
+    '/v1/me/phone-verification/confirm',
+    { challengeId, code },
+    second.accessToken,
+  );
+  assert.equal(wrongOwner.statusCode, 401, wrongOwner.body);
+  const rightOwner = await request(
+    'POST',
+    '/v1/me/phone-verification/confirm',
+    { challengeId, code },
+    first.accessToken,
+  );
+  assert.equal(rightOwner.statusCode, 200, rightOwner.body);
+});
+
+test('KYC-03: verified new rider joins standby, Ops offers, and rider can withdraw', async (t) => {
+  const { owner, runtime, request, sign } = await setup(t);
+  const rider = await sign('standby-rider');
+  assert.equal(
+    (await request('GET', '/v1/me/verification', undefined, rider.accessToken)).statusCode,
+    200,
+  );
+  const riderId = rider.account.id as string;
+  const adminId = randomUUID();
+  await owner.query(
+    "INSERT INTO app.users(id,role,display_name) VALUES ($1,'admin','Pilot admin')",
+    [adminId],
+  );
+  const standby = new StandbyService({
+    pool: runtime,
+    authorizeSession: async () => {},
+    purchases: {} as Purchases,
+  });
+  const riderActor = { userId: riderId, sessionId: randomUUID() };
+  const adminActor = { userId: adminId, sessionId: randomUUID() };
+  await assert.rejects(
+    standby.join(riderActor, {}),
+    (error: any) => error?.code === 'phone_verification_required',
+  );
+  await owner.query(
+    `INSERT INTO app.commuter_phone_verifications(user_id,phone_hash,last_four,verified_at,method)
+     VALUES ($1,$2,'4567',clock_timestamp(),'account_upgrade')`,
+    [riderId, 'a'.repeat(64)],
+  );
+  const one = async (sql: string, params: unknown[] = []) =>
+    (await owner.query(sql + ' RETURNING id', params)).rows[0].id as string;
+  const route = await one("INSERT INTO app.routes(name) VALUES ('Standby corridor')");
+  const stop = await one(
+    "INSERT INTO app.stops(name,latitude,longitude) VALUES ('Pilot stop',5.6,-0.2)",
+  );
+  const legs: Record<string, string>[] = [];
+  for (const direction of ['outbound', 'return']) {
+    const pattern = await one('INSERT INTO app.route_patterns(route_id,direction) VALUES ($1,$2)', [
+      route,
+      direction,
+    ]);
+    const version = await one(
+      'INSERT INTO app.route_pattern_versions(pattern_id,revision) VALUES ($1,1)',
+      [pattern],
+    );
+    const pickup = await one(
+      "INSERT INTO app.route_pattern_stops(pattern_version_id,stop_id,ordinal,name,latitude,longitude) VALUES ($1,$2,0,'Start',5.6,-0.2)",
+      [version, stop],
+    );
+    const dropoff = await one(
+      "INSERT INTO app.route_pattern_stops(pattern_version_id,stop_id,ordinal,name,latitude,longitude) VALUES ($1,$2,1,'End',5.6,-0.2)",
+      [version, stop],
+    );
+    const geometry = await one(
+      "INSERT INTO app.route_geometries(pattern_version_id,source,line) VALUES ($1,'configured',ST_GeomFromText('LINESTRING(-0.2 5.6,-0.21 5.6)',4326))",
+      [version],
+    );
+    await owner.query('INSERT INTO app.geometry_stop_distances VALUES ($1,$2,$3,0)', [
+      geometry,
+      version,
+      pickup,
+    ]);
+    await owner.query('INSERT INTO app.geometry_stop_distances VALUES ($1,$2,$3,1000)', [
+      geometry,
+      version,
+      dropoff,
+    ]);
+    await owner.query("UPDATE app.route_geometries SET state='published' WHERE id=$1", [geometry]);
+    await owner.query(
+      "UPDATE app.route_pattern_versions SET state='published',geometry_id=$2,effective_from='2026-01-01' WHERE id=$1",
+      [version, geometry],
+    );
+    const departure = await one('INSERT INTO app.service_departures(pattern_id) VALUES ($1)', [
+      pattern,
+    ]);
+    const schedule = await one(
+      `INSERT INTO app.service_schedules(pattern_version_id,service_window,local_departure,weekdays,effective_from,departure_id,pattern_id)
+       VALUES ($1,'morning','06:30',ARRAY[1,2,3,4,5]::smallint[],'2026-01-01',$2,$3)`,
+      [version, departure, pattern],
+    );
+    legs.push({
+      direction,
+      scheduleId: schedule,
+      patternVersionId: version,
+      pickupOccurrenceId: pickup,
+      dropoffOccurrenceId: dropoff,
+    });
+  }
+  const selection = { plan: 'monthly', routeId: route, legs, useCredit: false };
+  const joined = await standby.join(riderActor, selection);
+  assert.equal(joined.status, 201);
+  const appId = (joined.body as any).data.id as string;
+  assert.equal((await standby.join(riderActor, selection)).status, 200);
+  const offered = await standby.offer(
+    adminActor,
+    appId,
+    new Date(Date.now() + 86400000).toISOString(),
+  );
+  assert.equal((offered.body as any).data.offer.state, 'offered');
+  const notice = await owner.query(
+    'SELECT kind,target_type,target_id FROM app.rider_notifications WHERE user_id=$1',
+    [riderId],
+  );
+  assert.deepEqual(
+    notice.rows.map((r) => r.kind),
+    ['standby_offered'],
+  );
+  assert.equal(notice.rows[0].target_id, appId);
+  const refusing = new StandbyService({
+    pool: runtime,
+    authorizeSession: async () => {},
+    purchases: {
+      create: async () => {
+        throw new TransportError(409, 'fare_unavailable', 'No current fare.');
+      },
+    } as unknown as Purchases,
+  });
+  await assert.rejects(
+    refusing.accept(riderActor, appId, randomUUID()),
+    (error: any) => error?.code === 'fare_unavailable',
+  );
+  const reset = (await standby.list(riderActor)).body as any;
+  assert.equal(reset.data[0].offer.state, 'offered');
+  const withdrawn = await standby.withdraw(riderActor, appId);
+  assert.equal((withdrawn.body as any).data.state, 'withdrawn');
 });
 
 async function setup(

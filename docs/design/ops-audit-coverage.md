@@ -11,6 +11,7 @@
 | Incident-detail redaction                                          | `incident_redactions` and `maintenance_run_*`                     |
 | Driver records and credential issuance, reset and state changes    | `driver_events`                                                   |
 | Commute slots/requests and rider restrictions                      | `membership_events`                                               |
+| New-rider standby offers and rider transitions                     | `standby_events`                                                  |
 | No-show decisions that change a reservation                        | `boarding_events`                                                 |
 | Fare publication and plan pricing                                  | `pricing_events`                                                  |
 | Feature flags, minimum app versions and administrator role changes | `config_events`                                                   |

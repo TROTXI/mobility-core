@@ -503,9 +503,16 @@ export class AccountService {
       // phone -> user lock order and risk a deadlock.
       const phoneSubjects = (
         await c.query(
-          `SELECT subject FROM app.auth_identities
-           WHERE user_id=$1 AND provider='phone' AND subject NOT LIKE 'erased:%'
-           ORDER BY subject`,
+          `SELECT subject FROM (
+             SELECT subject FROM app.auth_identities
+               WHERE user_id=$1 AND provider='phone' AND subject NOT LIKE 'erased:%'
+             UNION SELECT phone_hash AS subject FROM app.commuter_phone_verifications
+               WHERE user_id=$1 AND phone_hash IS NOT NULL
+             UNION SELECT phone_hash AS subject FROM app.phone_verification_reviews
+               WHERE user_id=$1 AND phone_hash IS NOT NULL
+             UNION SELECT phone_hash AS subject FROM app.phone_otp_challenges
+               WHERE owner_user_id=$1 AND state IN ('sending','sent')
+           ) subjects WHERE subject IS NOT NULL ORDER BY subject`,
           [id(actor.userId)],
         )
       ).rows;
@@ -533,6 +540,19 @@ export class AccountService {
       }
       const user = await this.owner(c, actor);
       await this.receipt(c, actor, 'eraseAccount', key, user.id);
+      await c.query(
+        `UPDATE app.phone_otp_challenges SET state='failed',code_hash=NULL,phone_ciphertext=NULL
+         WHERE owner_user_id=$1 AND state IN ('sending','sent')`,
+        [user.id],
+      );
+      await c.query(
+        'UPDATE app.phone_verification_reviews SET phone_hash=NULL,closed_at=clock_timestamp() WHERE user_id=$1',
+        [user.id],
+      );
+      await c.query(
+        'UPDATE app.commuter_phone_verifications SET phone_hash=NULL,last_four=NULL,revoked_at=clock_timestamp() WHERE user_id=$1',
+        [user.id],
+      );
       await cancelCredentialSms(c, user.id);
       await this.options.erasureRequested?.(c, user.id, user.email ?? null);
       const sessions = await c.query(

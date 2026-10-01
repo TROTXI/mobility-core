@@ -353,6 +353,7 @@ export async function readOperations(
       UNION ALL SELECT id,'fleet',operation,actor_user_id,coalesce(vehicle_id,incident_id,request_id)::text,NULL,created_at FROM app.fleet_events
       UNION ALL SELECT id,'driver',operation,actor_user_id,driver_id::text,reason,created_at FROM app.driver_events
       UNION ALL SELECT id,'membership',action,actor_user_id,resource_id::text,NULL,occurred_at FROM app.membership_events
+      UNION ALL SELECT id,'standby',action,actor_user_id,application_id::text,NULL,occurred_at FROM app.standby_events
       UNION ALL SELECT id,'boarding',method,actor_user_id,reservation_id::text,NULL,occurred_at FROM app.boarding_events
       UNION ALL SELECT id,'pricing',action,actor_user_id,resource_id,NULL,occurred_at FROM app.pricing_events
       UNION ALL SELECT id,'configuration',action,actor_user_id,target,reason,occurred_at FROM app.config_events

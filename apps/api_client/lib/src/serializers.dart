@@ -221,6 +221,10 @@ import 'package:trotxi_api_client/src/model/phone_challenge.dart';
 import 'package:trotxi_api_client/src/model/phone_challenge_response.dart';
 import 'package:trotxi_api_client/src/model/phone_sign_in_request.dart';
 import 'package:trotxi_api_client/src/model/phone_sign_in_verify.dart';
+import 'package:trotxi_api_client/src/model/phone_verification_confirm.dart';
+import 'package:trotxi_api_client/src/model/phone_verification_result.dart';
+import 'package:trotxi_api_client/src/model/phone_verification_result_response.dart';
+import 'package:trotxi_api_client/src/model/phone_verification_start.dart';
 import 'package:trotxi_api_client/src/model/pin_change.dart';
 import 'package:trotxi_api_client/src/model/pin_reset_input.dart';
 import 'package:trotxi_api_client/src/model/plan_pricing.dart';
@@ -286,6 +290,11 @@ import 'package:trotxi_api_client/src/model/schedule_response.dart';
 import 'package:trotxi_api_client/src/model/service_day_input.dart';
 import 'package:trotxi_api_client/src/model/session.dart';
 import 'package:trotxi_api_client/src/model/session_page.dart';
+import 'package:trotxi_api_client/src/model/standby_application.dart';
+import 'package:trotxi_api_client/src/model/standby_application_offer.dart';
+import 'package:trotxi_api_client/src/model/standby_application_page.dart';
+import 'package:trotxi_api_client/src/model/standby_application_response.dart';
+import 'package:trotxi_api_client/src/model/standby_offer_input.dart';
 import 'package:trotxi_api_client/src/model/stop.dart';
 import 'package:trotxi_api_client/src/model/stop_edit.dart';
 import 'package:trotxi_api_client/src/model/stop_eta.dart';
@@ -313,6 +322,9 @@ import 'package:trotxi_api_client/src/model/vehicle_edit.dart';
 import 'package:trotxi_api_client/src/model/vehicle_input.dart';
 import 'package:trotxi_api_client/src/model/vehicle_page.dart';
 import 'package:trotxi_api_client/src/model/vehicle_response.dart';
+import 'package:trotxi_api_client/src/model/verification_status.dart';
+import 'package:trotxi_api_client/src/model/verification_status_phone.dart';
+import 'package:trotxi_api_client/src/model/verification_status_response.dart';
 import 'package:trotxi_api_client/src/model/webhook_ack.dart';
 import 'package:trotxi_api_client/src/model/work_decision.dart';
 import 'package:trotxi_api_client/src/model/work_request.dart';
@@ -532,6 +544,10 @@ part 'serializers.g.dart';
   PhoneChallengeResponse,
   PhoneSignInRequest,
   PhoneSignInVerify,
+  PhoneVerificationConfirm,
+  PhoneVerificationResult,
+  PhoneVerificationResultResponse,
+  PhoneVerificationStart,
   PinChange,
   PinResetInput,
   PlanPricing,
@@ -597,6 +613,11 @@ part 'serializers.g.dart';
   ServiceDayInput,
   Session,
   SessionPage,
+  StandbyApplication,
+  StandbyApplicationOffer,
+  StandbyApplicationPage,
+  StandbyApplicationResponse,
+  StandbyOfferInput,
   Stop,
   StopEdit,
   StopEta,
@@ -624,6 +645,9 @@ part 'serializers.g.dart';
   VehicleInput,
   VehiclePage,
   VehicleResponse,
+  VerificationStatus,
+  VerificationStatusPhone,
+  VerificationStatusResponse,
   WebhookAck,
   WorkDecision,
   WorkRequest,
