@@ -148,7 +148,11 @@ export function LiveMap({
     instance.addControl(new maplibregl.AttributionControl({ compact: true }), 'bottom-right');
     let loaded = false;
     let recovered = !styleUrl;
-    instance.on('load', () => {
+    // `load` is a map-lifetime event. A failed remote style may be replaced
+    // before it fires; `style.load` also fires for the overlay-only recovery
+    // style, so the vehicle and route sources are installed in either case.
+    instance.on('style.load', () => {
+      if (loaded) return;
       loaded = true;
       instance.addSource(routeSourceId, {
         type: 'geojson',
@@ -247,7 +251,7 @@ export function LiveMap({
       />
       {baseMapFailed && (
         <div className="map-meta" role="status">
-          Basemap unavailable. Vehicle positions and route remain visible.
+          Basemap unavailable. Vehicle positions and route are shown when available.
         </div>
       )}
     </div>

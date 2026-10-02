@@ -69,7 +69,7 @@ describe('live map degradation', () => {
     render(<LiveMap markers={[{ id: 'bus', latitude: 5.6, longitude: -0.2 }]} />);
     await waitFor(() => expect(maps.instances).toHaveLength(1));
     const map = maps.instances[0];
-    act(() => map.emit('load'));
+    act(() => map.emit('style.load'));
     expect(map.sources.has('trotxi-live-vehicles')).toBe(true);
     expect(map.sources.has('trotxi-route-draft')).toBe(true);
     act(() => map.emit('error'));
@@ -83,7 +83,7 @@ describe('live map degradation', () => {
     render(<LiveMap markers={[{ id: 'bus', latitude: 5.6, longitude: -0.2 }]} />);
     await waitFor(() => expect(maps.instances).toHaveLength(1));
     expect(maps.instances[0].options.style).toMatchObject({ version: 8, layers: [] });
-    act(() => maps.instances[0].emit('load'));
+    act(() => maps.instances[0].emit('style.load'));
     expect(maps.instances[0].sources.has('trotxi-live-vehicles')).toBe(true);
     expect(screen.getByRole('status')).toHaveTextContent('Basemap unavailable');
   });
@@ -94,7 +94,9 @@ describe('live map degradation', () => {
     const map = maps.instances[0];
     act(() => map.emit('error'));
     expect(map.setStyle).toHaveBeenCalledWith({ version: 8, sources: {}, layers: [] });
-    act(() => map.emit('load'));
+    // The original style never emits the map-lifetime `load` event after
+    // failing. Its replacement still emits `style.load`.
+    act(() => map.emit('style.load'));
     expect(map.sources.has('trotxi-live-vehicles')).toBe(true);
     expect(screen.getByRole('status')).toHaveTextContent('Basemap unavailable');
   });
