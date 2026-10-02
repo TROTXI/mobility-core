@@ -1,5 +1,6 @@
 import * as maplibregl from 'maplibre-gl';
 import type { GeoJSONSource, Map as MapLibreMap, MapLayerMouseEvent } from 'maplibre-gl';
+import workerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url';
 import { Protocol } from 'pmtiles';
 import { useEffect, useRef, useState } from 'react';
 import 'maplibre-gl/dist/maplibre-gl.css';
@@ -18,6 +19,7 @@ const sourceId = 'trotxi-live-vehicles';
 const routeSourceId = 'trotxi-route-draft';
 const emptyLine: Point[] = [];
 let protocolReady = false;
+let workerReady = false;
 const overlayOnlyStyle = { version: 8 as const, sources: {}, layers: [] };
 
 function asGeoJson(markers: Marker[]) {
@@ -126,6 +128,12 @@ export function LiveMap({
   useEffect(() => {
     if (!container.current || !configReady) return;
     if (styleUrl) setBaseMapFailed(false);
+    if (!workerReady) {
+      // Bundle MapLibre's ESM worker before the first map creates one. Vite's
+      // hashed production chunks cannot resolve its default relative URL.
+      maplibregl.setWorkerUrl(workerUrl);
+      workerReady = true;
+    }
     if (!protocolReady) {
       const protocol = new Protocol();
       maplibregl.addProtocol('pmtiles', protocol.tile);
