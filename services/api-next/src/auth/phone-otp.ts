@@ -193,7 +193,6 @@ export class PhoneOtp {
       await this.sender.send(
         phone!,
         `${this.staging ? '[Trotxi STAGING] ' : 'Trotxi '}${code} is your commuter ${upgrade ? 'phone verification' : 'sign-in'} code. Expires in 5 minutes. Never share it.`,
-        true,
       );
       const updated = await this.pool.query(
         `UPDATE app.phone_otp_challenges SET state='sent' WHERE id=$1 AND state='sending' RETURNING id`,
