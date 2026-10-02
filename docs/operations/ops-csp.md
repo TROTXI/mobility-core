@@ -25,12 +25,28 @@ The policy has no broad `https:`, `*`, or `blob:` script/worker allowance. It
 preserves `frame-ancestors 'none'`, `base-uri 'none'`, `object-src 'none'`, and
 the existing anti-framing, referrer and MIME-sniffing headers.
 
-## Deployment check
+## Required Render apply before deployment
 
-Because Render's Blueprint header is applied only when the staging static site
-deploys, a passing local build does **not** prove the hosted policy works. After
-the PR deploys, check the `Content-Security-Policy` response header on the Ops
-document and run this browser walkthrough with the console open:
+The GitHub deploy workflow calls Render's service-deploy endpoint, which does
+**not** sync `render.yaml` headers. After this change is merged, first inspect
+the linked Blueprint's proposed changes in Render and manually sync it if the
+diff contains only intended staging changes. A Blueprint sync can affect other
+services and configuration, so do not apply an unrelated diff just to update
+this header. If this static site is not Blueprint-managed, update its
+`Content-Security-Policy` under the site's Render Headers settings to match
+`render.yaml` exactly. Do not paste the policy into an API service's headers.
+
+The deploy workflow now checks the live Ops response header **before**
+deploying anything and again after the Ops deploy. A mismatch fails the run;
+apply the header and rerun the workflow. You can check it locally from the
+repository root with `bash .github/scripts/check-ops-csp.sh`. The check does
+not read credentials or make a test sign-in request.
+
+## Browser deployment check
+
+A matching header does **not** prove the hosted policy works for every browser
+flow. After the header is applied and the PR deploys, run this walkthrough with
+the console open:
 
 1. In a fresh signed-out session, load the sign-in page. Verify the Google
    button appears, complete Google sign-in, then complete the Ops passkey step.

@@ -193,3 +193,9 @@ This has already bitten once: `MAP_TILES_URL` shipped in #186 and staging
 served `mapTiles.url: null` for days, because the blueprint was never
 re-applied. If a config change does not appear, apply the blueprint before
 looking for a bug.
+
+The Ops Content Security Policy is one such change. Its deployment preflight
+compares the live static-site header with `render.yaml` and fails until the
+reviewed Blueprint change (or that site's header alone) has been applied. See
+[`docs/operations/ops-csp.md`](operations/ops-csp.md) for the safe apply and
+post-deploy browser checks.
