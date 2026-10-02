@@ -1,9 +1,11 @@
 import { act, render, screen, waitFor } from '@testing-library/react';
+import * as maplibregl from 'maplibre-gl';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { LiveMap } from './LiveMap';
 
 const maps = vi.hoisted(() => {
   const instances: MockMap[] = [];
+  const events: string[] = [];
   class MockMap {
     handlers = new Map<string, (() => void)[]>();
     sources = new Map<string, { setData: ReturnType<typeof vi.fn> }>();
@@ -16,6 +18,7 @@ const maps = vi.hoisted(() => {
     getCanvas = () => ({ style: { cursor: '' } });
     queryRenderedFeatures = () => [];
     constructor(public options: { style: unknown }) {
+      events.push('map');
       instances.push(this);
     }
     on(event: string, layerOrHandler: string | (() => void), handler?: () => void) {
@@ -35,7 +38,7 @@ const maps = vi.hoisted(() => {
       return this.sources.get(id);
     }
   }
-  return { instances, MockMap };
+  return { events, instances, MockMap };
 });
 
 vi.mock('maplibre-gl', () => ({
@@ -46,6 +49,7 @@ vi.mock('maplibre-gl', () => ({
     extend() {}
   },
   addProtocol: vi.fn(),
+  setWorkerUrl: vi.fn(() => maps.events.push('worker')),
 }));
 vi.mock('pmtiles', () => ({
   Protocol: class {
@@ -55,6 +59,7 @@ vi.mock('pmtiles', () => ({
 
 describe('live map degradation', () => {
   beforeEach(() => {
+    maps.events.length = 0;
     maps.instances.length = 0;
     vi.stubGlobal(
       'fetch',
@@ -63,6 +68,13 @@ describe('live map degradation', () => {
         json: async () => ({ mapTiles: { styleUrl: 'https://tiles.example/style.json' } }),
       }),
     );
+  });
+
+  it('configures a bundled worker before creating the map', async () => {
+    render(<LiveMap markers={[]} />);
+    await waitFor(() => expect(maps.instances).toHaveLength(1));
+    expect(maplibregl.setWorkerUrl).toHaveBeenCalledWith(expect.stringContaining('worker'));
+    expect(maps.events).toEqual(['worker', 'map']);
   });
 
   it('keeps position and route overlays when a tile fails after load', async () => {
