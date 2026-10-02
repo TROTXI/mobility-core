@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:trotxi_client/trotxi_client.dart' as wire;
 import 'commute_picker.dart';
 import 'package:trotxi_commuter/core/api/commuter_api.dart';
@@ -22,8 +23,11 @@ class _CommutePreferencesPageState extends State<CommutePreferencesPage> {
   bool _pauseIfWaitlisted = false;
   bool _busy = false;
   bool _loading = true;
+  bool _editing = false;
   String? _error;
   List<CommuteRequest> _requests = [];
+  wire.MembershipCommute? _currentCommute;
+  bool _currentCommuteUnavailable = false;
   DateTime _requestedDate = DateTime.now().toUtc();
   final _note = TextEditingController();
   late final _repository = CommuteRepository(widget.client);
@@ -51,8 +55,28 @@ class _CommutePreferencesPageState extends State<CommutePreferencesPage> {
       if (mounted) setState(() => _requests = requests);
     } catch (error) {
       if (mounted) setState(() => _error = commuteError(error));
-    } finally {
-      if (mounted) setState(() => _loading = false);
+    }
+    await _loadCurrentCommute();
+    if (mounted) setState(() => _loading = false);
+  }
+
+  /// The commute the rider has paid for. A failure here must not block
+  /// requesting a change, so it only hides the summary card.
+  Future<void> _loadCurrentCommute() async {
+    final meta = widget.client.metadata;
+    try {
+      final response = await widget.client.getRiderOwnApi().getMembership(
+        xTrotxiClient: meta.app,
+        xTrotxiBuild: meta.build,
+        xTrotxiPlatform: meta.platform,
+      );
+      if (!mounted) return;
+      setState(() {
+        _currentCommute = response.data?.data.commute;
+        _currentCommuteUnavailable = false;
+      });
+    } catch (_) {
+      if (mounted) setState(() => _currentCommuteUnavailable = true);
     }
   }
 
@@ -133,6 +157,12 @@ class _CommutePreferencesPageState extends State<CommutePreferencesPage> {
           ),
         ),
       );
+      setState(() {
+        _editing = false;
+        _routeSelection = null;
+        _pauseIfWaitlisted = false;
+        _note.clear();
+      });
       await _refresh();
     } catch (error) {
       if (mounted) setState(() => _error = commuteError(error));
@@ -179,6 +209,15 @@ class _CommutePreferencesPageState extends State<CommutePreferencesPage> {
                   ),
                   if (_loading) const LinearProgressIndicator(),
                   if (_error != null) Text(_error!, semanticsLabel: _error),
+                  const SizedBox(height: 12),
+                  _buildSectionTitle(context, 'My current commute'),
+                  const SizedBox(height: 12),
+                  _buildCurrentCommuteCard(context),
+                  if (_requests.isNotEmpty) ...[
+                    const SizedBox(height: 24),
+                    _buildSectionTitle(context, 'Requested routes'),
+                    const SizedBox(height: 4),
+                  ],
                   for (final request in _requests)
                     Card(
                       child: Padding(
@@ -213,9 +252,30 @@ class _CommutePreferencesPageState extends State<CommutePreferencesPage> {
                     const Text(
                       'Your request is with operations. Refresh here for the decision; your current route stays assigned until the change is applied.',
                     ),
-                  if (!_hasOpen) ...[
+                  if (!_hasOpen && !_editing) ...[
                     const SizedBox(height: 24),
-                    _buildSectionTitle(context, 'Requested route'),
+                    SizedBox(
+                      width: double.infinity,
+                      child: FilledButton(
+                        onPressed: _busy || _loading
+                            ? null
+                            : () => setState(() => _editing = true),
+                        style: FilledButton.styleFrom(
+                          backgroundColor: colors.actionPrimaryDefault,
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                        ),
+                        child: Text(
+                          'Request a new route',
+                          style: AppTypography.buttonAction.copyWith(
+                            color: colors.actionOnPrimary,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                  if (!_hasOpen && _editing) ...[
+                    const SizedBox(height: 24),
+                    _buildSectionTitle(context, 'New route request'),
                     const SizedBox(height: 12),
                     _buildRouteCard(context),
                     const SizedBox(height: 28),
@@ -301,6 +361,15 @@ class _CommutePreferencesPageState extends State<CommutePreferencesPage> {
                         ),
                       ),
                     ),
+                    TextButton(
+                      onPressed: _busy
+                          ? null
+                          : () => setState(() {
+                              _editing = false;
+                              _routeSelection = null;
+                            }),
+                      child: const Text('Cancel'),
+                    ),
                   ],
                 ],
               ),
@@ -308,6 +377,72 @@ class _CommutePreferencesPageState extends State<CommutePreferencesPage> {
           ),
         ),
       ),
+    );
+  }
+
+  String _day(wire.Date date) => DateFormat('d MMM yyyy').format(
+    DateTime(date.year, date.month, date.day),
+  );
+
+  Widget _buildCurrentCommuteCard(BuildContext context) {
+    final colors = context.appColors;
+    final commute = _currentCommute;
+    // Outbound before return, whatever order the API listed them in.
+    final legs = <wire.CommuteLegView>[...?commute?.legs]
+      ..sort((a, b) => a.direction.name.compareTo(b.direction.name));
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: colors.surfaceElevated,
+        border: Border.all(color: colors.borderSubtle),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: commute == null
+          ? Text(
+              _loading
+                  ? 'Loading your commute…'
+                  : _currentCommuteUnavailable
+                  ? "Couldn't load your current commute. Pull to refresh or try again."
+                  : "You don't have a paid commute yet. Subscribe from the Wallet tab.",
+              style: AppTypography.bodySmall.copyWith(
+                color: colors.textSecondary,
+              ),
+            )
+          : Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  commute.routeName,
+                  style: AppTypography.label.copyWith(
+                    color: colors.textPrimary,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                for (final leg in legs)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 4),
+                    child: Text(
+                      '${leg.direction == wire.CommuteLegViewDirectionEnum.outbound ? 'Outbound' : 'Return'}'
+                      ' · ${leg.localDeparture}\n'
+                      '${leg.pickupName} → ${leg.dropoffName}',
+                      style: AppTypography.caption.copyWith(
+                        color: colors.textSecondary,
+                      ),
+                    ),
+                  ),
+                const SizedBox(height: 8),
+                Text(
+                  commute.effectiveTo == null
+                      ? 'Since ${_day(commute.effectiveFrom)}'
+                      : '${_day(commute.effectiveFrom)} – ${_day(commute.effectiveTo!)}',
+                  style: AppTypography.caption.copyWith(
+                    color: colors.textTertiary,
+                  ),
+                ),
+              ],
+            ),
     );
   }
 

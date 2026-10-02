@@ -27,11 +27,10 @@ class _PhoneSignInPageState extends State<PhoneSignInPage> {
   Future<void> _send() async {
     if (_busy || _wait > 0) return;
     final phone = _phone.text.trim();
-    if (!RegExp(
-      r'^(0[235]\d{8}|\+?233[235]\d{8})$',
-    ).hasMatch(phone.replaceAll(' ', ''))) {
+    if (!RegExp(r'^0[25]\d{8}$').hasMatch(phone)) {
       setState(
-        () => _error = 'Enter a Ghana mobile number, such as 0241234567.',
+        () => _error =
+            'Enter a Ghana mobile number: 10 digits starting with 02 or 05, such as 0241234567.',
       );
       return;
     }
@@ -123,7 +122,8 @@ class _PhoneSignInPageState extends State<PhoneSignInPage> {
               enabled: !_busy && _challenge == null,
               keyboardType: TextInputType.phone,
               autofillHints: const [AutofillHints.telephoneNumber],
-              maxLength: 32,
+              maxLength: 10,
+              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
               decoration: const InputDecoration(
                 labelText: 'Ghana mobile number',
                 hintText: '0241234567',

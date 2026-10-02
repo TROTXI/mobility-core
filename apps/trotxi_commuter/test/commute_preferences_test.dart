@@ -13,6 +13,22 @@ void main() {
   late List<Map<String, Object?>> requests;
   late List<RequestOptions> writes;
   bool failed = false;
+  Map<String, Object?>? commute;
+  Map<String, Object?> membership() => {
+    'data': {
+      'membership': {'id': 'member', 'lifecycle': 'open'},
+      'coverage': null,
+      'lastCoverageEndedAt': null,
+      'commute': commute,
+      'access': {'canReserve': true, 'blocks': <Object>[]},
+      'entitlements': {
+        'remainingRides': 12,
+        'credit': {'amountMinor': 0, 'currency': 'GHS'},
+        'heldCredit': {'amountMinor': 0, 'currency': 'GHS'},
+        'availableCredit': {'amountMinor': 0, 'currency': 'GHS'},
+      },
+    },
+  };
   Map<String, Object?> route() => {
     'id': 'route',
     'name': 'New corridor',
@@ -104,6 +120,7 @@ void main() {
     requests = [];
     writes = [];
     failed = false;
+    commute = null;
     f.reply = (o) {
       if (failed) {
         throw DioException(
@@ -126,6 +143,7 @@ void main() {
       if (o.path == '/v1/me/commute-requests') {
         return jsonResponse(page(requests));
       }
+      if (o.path == '/v1/me/membership') return jsonResponse(membership());
       if (o.path == '/v1/routes') return jsonResponse(page([route()]));
       if (o.path == '/v1/routes/route/schedules') {
         return jsonResponse(page([schedule('outbound'), schedule('return')]));
@@ -166,6 +184,8 @@ void main() {
   }
 
   Future<void> choose(WidgetTester tester) async {
+    await tester.tap(find.text('Request a new route'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Choose route'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('New corridor'));
@@ -252,7 +272,48 @@ void main() {
     await tester.pumpAndSettle();
     expect(writes.single.path, '/v1/me/commute-requests/request/withdraw');
     expect(find.text('New corridor — cancelled'), findsOneWidget);
+    expect(find.text('Request a new route'), findsOneWidget);
+  });
+
+  testWidgets('shows the current purchase and keeps the form behind a button', (
+    tester,
+  ) async {
+    commute = {
+      'id': 'commute',
+      'routeId': 'route',
+      'routeName': 'Current corridor',
+      'effectiveFrom': '2026-09-01',
+      'effectiveTo': null,
+      'legs': [
+        for (final dir in ['outbound', 'return'])
+          {
+            'direction': dir,
+            'scheduleId': 'schedule-$dir',
+            'patternVersionId': 'version-$dir',
+            'pickupOccurrenceId': '$dir-visit-0',
+            'dropoffOccurrenceId': '$dir-visit-1',
+            'localDeparture': dir == 'outbound' ? '06:30' : '17:30',
+            'timeZone': 'Africa/Accra',
+            'pickupName': 'Home',
+            'dropoffName': 'Office',
+          },
+      ],
+    };
+    await pumpPage(tester);
+    expect(find.text('My current commute'), findsOneWidget);
+    expect(find.text('Current corridor'), findsOneWidget);
+    expect(find.textContaining('Outbound · 06:30'), findsOneWidget);
+    expect(find.textContaining('Return · 17:30'), findsOneWidget);
+    expect(find.text('Since 1 Sep 2026'), findsOneWidget);
+    expect(find.text('Send request to operations'), findsNothing);
+    await tester.tap(find.text('Request a new route'));
+    await tester.pumpAndSettle();
     expect(find.text('Choose route'), findsOneWidget);
+    await tester.ensureVisible(find.text('Cancel'));
+    await tester.tap(find.text('Cancel'));
+    await tester.pumpAndSettle();
+    expect(find.text('Request a new route'), findsOneWidget);
+    expect(writes, isEmpty);
   });
 
   testWidgets('offline load shows refresh and never claims local success', (

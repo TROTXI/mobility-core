@@ -10,7 +10,7 @@ class AppSignInButton extends StatelessWidget {
     this.backgroundColor,
     this.borderColor,
     this.textColor,
-    this.borderRadius = 10,
+    this.borderRadius = 40,
     this.padding = const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
   });
 

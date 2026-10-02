@@ -13,6 +13,7 @@ import 'package:trotxi_client/trotxi_client.dart' as wire;
 import 'package:trotxi_commuter/core/Tokens/token_storage.dart';
 import 'package:trotxi_commuter/core/config/theme/app_theme.dart';
 import 'package:trotxi_commuter/core/config/theme/app_theme_controller.dart';
+import 'package:trotxi_commuter/core/api/api_debug_interceptor.dart';
 import 'package:trotxi_commuter/core/api/commuter_api.dart';
 import 'package:trotxi_commuter/firebase_options.dart';
 import 'package:trotxi_commuter/firebase_performance.dart';
@@ -67,6 +68,7 @@ Future<void> main() async {
         metadata: metadata,
       );
       transport.dio.interceptors.add(PerformanceInterceptor());
+      transport.dio.interceptors.add(ApiDebugInterceptor());
       final client = CommuterApi(
         client: transport,
         store: tokens,
