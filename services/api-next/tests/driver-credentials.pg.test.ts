@@ -1658,17 +1658,22 @@ test('DRV-40: the credential email is sent straight after the issue commits, wit
     driver = await f.create({ name: 'Now Driver', email: 'now.driver@example.test' });
   const secret = data(await f.issue(driver.id, randomUUID(), { emailInstructions: true }), 201);
   assert.equal(secret.email.state, 'queued', 'the response still says queued, not sent');
-  // Sent in the background once the transaction committed; no worker run.
+  // The provider records the send before the background task marks the outbox
+  // accepted. Wait for the committed state, not just the provider callback.
   const end = Date.now() + 5000;
-  while (!f.sent.length && Date.now() < end) await delay(20);
+  let row;
+  do {
+    [row] = (
+      await f.owner.query(
+        "SELECT id,state FROM app.email_outbox WHERE kind='driver_credentials_issued'",
+      )
+    ).rows;
+    if (row?.state === 'accepted') break;
+    await delay(20);
+  } while (Date.now() < end);
+  assert.equal(row?.state, 'accepted');
   assert.equal(f.sent.length, 1);
   assert.ok(f.sent[0]!.message.text.includes(`Temporary PIN: ${secret.pin}`));
-  const [row] = (
-    await f.owner.query(
-      "SELECT id,state FROM app.email_outbox WHERE kind='driver_credentials_issued'",
-    )
-  ).rows;
-  assert.equal(row.state, 'accepted');
   assert.equal(f.sent[0]!.key, `trotxi-email/${row.id}`);
   // The worker finds nothing left to do, so nothing is sent twice.
   assert.equal((await f.email.drain(10)).considered, 0);
