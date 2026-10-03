@@ -1313,7 +1313,10 @@ test('AUTH-16: revocation waits for an authorized transaction; every subsequent 
     actor = (await f.service.tokens.verify(`Bearer ${a.accessToken}`))!;
   const client = await f.runtime.connect();
   await client.query('BEGIN');
-  await f.service.authorizeSession(client, actor);
+  assert.deepEqual(await f.service.authorizeActor(client, actor), {
+    role: 'commuter',
+    driverId: null,
+  });
   const logout = f.request('POST', '/v1/auth/logout', { refreshToken: a.refreshToken });
   try {
     await f.waitForWaiters(1);

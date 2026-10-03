@@ -1,3 +1,4 @@
+import { beginTransaction } from '../db/transaction.js';
 import { createHash, randomUUID } from 'node:crypto';
 import type { Pool, PoolClient } from 'pg';
 import { cursorCodec } from './cursor.js';
@@ -55,6 +56,11 @@ export interface Actor {
   userId: string;
   sessionId: string;
 }
+/** Database-checked facts, valid only while this transaction holds its locks. */
+export interface AuthorizedActor {
+  role: string;
+  driverId: string | null;
+}
 export interface TripRow {
   id: string;
   schedule_id: string;
@@ -82,7 +88,7 @@ export interface Dependencies {
   cursorSecret: Buffer;
   // Must validate session/credential revocation using this transaction, not a
   // client role claim. There is no permissive default until identity lands.
-  authorizeSession: (client: PoolClient, actor: Actor) => Promise<void>;
+  authorizeSession: (client: PoolClient, actor: Actor) => Promise<AuthorizedActor | void>;
   // Trip lock is already held. Validate/release/update affected reservations
   // using THIS client or throw; never commit or call external services here.
   coordinateReservations?: (client: PoolClient, change: ReservationChange) => Promise<void>;
@@ -156,10 +162,7 @@ export class TransportService {
     let client: PoolClient | undefined;
     try {
       client = await this.deps.pool.connect();
-      await client.query(consistentRead ? 'BEGIN ISOLATION LEVEL REPEATABLE READ' : 'BEGIN');
-      await client.query("SET LOCAL TIME ZONE 'UTC'");
-      await client.query("SET LOCAL lock_timeout='3s'");
-      await client.query("SET LOCAL statement_timeout='10s'");
+      await beginTransaction(client, consistentRead);
       const result = await work(client);
       await client.query('COMMIT');
       return result;
@@ -175,18 +178,21 @@ export class TransportService {
     actor: Actor,
     operation: string,
   ): Promise<string | null> {
-    await this.deps.authorizeSession(client, actor);
-    const user = (
-      await client.query(
-        'SELECT role FROM app.users WHERE id=$1 AND deleted_at IS NULL FOR SHARE',
-        [resourceId(actor.userId)],
-      )
-    ).rows[0];
+    const authorized = await this.deps.authorizeSession(client, actor);
+    const user =
+      authorized ??
+      (
+        await client.query(
+          'SELECT role FROM app.users WHERE id=$1 AND deleted_at IS NULL FOR SHARE',
+          [resourceId(actor.userId)],
+        )
+      ).rows[0];
     if (!user) fail(401, 'unauthenticated', 'Sign in to continue.');
     const isDriver = driverOperation(operation);
     if (user.role !== (isDriver ? 'driver' : 'admin'))
       fail(403, 'forbidden', 'This operation is not available to your account.');
     if (!isDriver) return null;
+    if (authorized?.driverId) return authorized.driverId;
     const driver = (
       await client.query(
         'SELECT id FROM app.drivers WHERE user_id=$1 AND archived_at IS NULL FOR SHARE',

@@ -11,6 +11,7 @@ import 'package:trotxi_driver/core/config/theme/app_spacing.dart';
 import 'package:trotxi_driver/core/config/theme/app_typography.dart';
 import 'package:trotxi_driver/core/state/config_controller.dart';
 import 'package:trotxi_driver/data/route_map_repository.dart';
+import 'package:trotxi_driver/data/position_publisher.dart';
 import 'package:trotxi_map/trotxi_map.dart';
 
 /// The corridor, drawn (#237, active trip / page 09).
@@ -35,9 +36,7 @@ class RunMap extends StatefulWidget {
   final String routeId;
   final String runId;
 
-  /// Whether the run is under way. The vehicle is only polled on a live run —
-  /// a scheduled trip has no position and asking for one every few seconds is
-  /// battery spent on a known answer.
+  /// Only active runs show this device's position. Upload health is separate.
   final bool isActive;
 
   final double height;
@@ -54,6 +53,8 @@ class _RunMapState extends State<RunMap> {
   RouteShape? _shape;
   VehicleFix? _vehicle;
   bool _framed = false;
+  PositionPublisher? _positions;
+  DateTime? _shapeLoadedAt;
   ForegroundRefresh? _refresh;
   int _revision = 0;
   bool _drawing = false;
@@ -78,8 +79,56 @@ class _RunMapState extends State<RunMap> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) => _load());
     _refresh = ForegroundRefresh(() async {
-      if (mounted && widget.isActive) await _load();
+      if (!mounted) return;
+      // Age the marker even when stationary/offline. No position read-back.
+      _updatePosition();
+      if (_shape == null ||
+          (_shape!.source == RouteShapeSource.stops &&
+              DateTime.now().difference(_shapeLoadedAt!) >=
+                  const Duration(seconds: 30))) {
+        await _load();
+      }
     });
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final positions = context.read<PositionPublisher>();
+    if (!identical(_positions, positions)) {
+      _positions?.removeListener(_updatePosition);
+      _positions = positions;
+      positions.addListener(_updatePosition);
+      _updatePosition();
+    }
+  }
+
+  void _updatePosition() {
+    if (!mounted) return;
+    final lifecycle = WidgetsBinding.instance.lifecycleState;
+    if (lifecycle != null && lifecycle != AppLifecycleState.resumed) return;
+    final publisher = _positions;
+    final position = widget.isActive && publisher?.runId == widget.runId
+        ? publisher?.localPosition
+        : null;
+    final vehicle = position == null
+        ? null
+        : VehicleFix(
+            position: LatLng(position.latitude, position.longitude),
+            recordedAt: position.timestamp,
+          );
+    setState(() => _vehicle = vehicle);
+    if (vehicle == null) {
+      _marker.clear();
+    } else {
+      _marker.accept(
+        vehicle.position,
+        vehicle.recordedAt,
+        fresh:
+            !vehicle.age.isNegative &&
+            vehicle.age <= const Duration(seconds: 30),
+      );
+    }
   }
 
   @override
@@ -103,34 +152,24 @@ class _RunMapState extends State<RunMap> {
   void dispose() {
     _revision++;
     _refresh?.dispose();
+    _positions?.removeListener(_updatePosition);
     _marker.dispose();
     super.dispose();
   }
 
-  /// Fetch the corridor and, on a live run, where the bus is.
+  /// Fetch the corridor. Vehicle position comes from the existing GPS stream.
   Future<void> _load() async {
     if (!mounted) return;
     final revision = ++_revision;
     final maps = context.read<RouteMapRepository>();
     try {
       final shape = await maps.shapeFor(widget.runId);
-      final vehicle = widget.isActive
-          ? await maps.vehicleOn(widget.runId)
-          : null;
       if (!mounted || revision != _revision) return;
       setState(() {
         _shape = shape;
-        _vehicle = vehicle;
+        _shapeLoadedAt = DateTime.now();
       });
-      if (vehicle == null) {
-        _marker.clear();
-      } else {
-        _marker.accept(
-          vehicle.position,
-          vehicle.receivedAt ?? vehicle.recordedAt,
-          fresh: vehicle.age <= const Duration(seconds: 30),
-        );
-      }
+      _updatePosition();
       await _draw();
     } on TrotxiException {
       if (mounted && revision == _revision) {
@@ -297,7 +336,7 @@ class _RunMapState extends State<RunMap> {
                   if (_vehicle != null) ...[
                     _MapNote(
                       // Never a position without its age.
-                      text: 'Bus ${_ago(_vehicle!.age)}',
+                      text: 'Device GPS ${_ago(_vehicle!.age)}',
                       colors: colors,
                     ),
                     const SizedBox(height: AppSpacing.space4),

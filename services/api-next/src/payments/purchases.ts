@@ -1,3 +1,4 @@
+import { beginTransaction } from '../db/transaction.js';
 import type { Pool, PoolClient } from 'pg';
 import { fail } from '../transport/errors.js';
 import { canonical } from '../transport/service.js';
@@ -57,10 +58,7 @@ export class Purchases {
   private async tx<T>(work: (c: PoolClient) => Promise<T>): Promise<T> {
     const c = await this.options.pool.connect();
     try {
-      await c.query('BEGIN');
-      await c.query("SET LOCAL TIME ZONE 'UTC'");
-      await c.query("SET LOCAL lock_timeout='3s'");
-      await c.query("SET LOCAL statement_timeout='10s'");
+      await beginTransaction(c);
       const result = await work(c);
       await c.query('COMMIT');
       return result;

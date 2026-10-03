@@ -5,6 +5,8 @@ import 'package:trotxi_driver/core/state/foreground_refresh.dart';
 import 'package:trotxi_driver/core/state/config_controller.dart';
 import 'package:trotxi_driver/data/config_repository.dart';
 import 'package:trotxi_driver/data/position_queue.dart';
+import 'package:trotxi_driver/data/position_publisher.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:trotxi_map/trotxi_map.dart';
 import 'package:provider/provider.dart';
 import 'package:trotxi_driver/core/config/theme/app_theme.dart';
@@ -47,6 +49,34 @@ class Maps implements RouteMapRepository {
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
+class LocalPositions extends PositionPublisher {
+  LocalPositions() : super(client: replacementClient());
+  String? tripId = 'trip';
+  Position? fix;
+  @override
+  String? get runId => tripId;
+  @override
+  Position? get localPosition => fix;
+  void update(String? trip) {
+    tripId = trip;
+    fix = trip == null
+        ? null
+        : Position(
+            latitude: 5.6,
+            longitude: -0.2,
+            timestamp: DateTime.now(),
+            accuracy: 5,
+            altitude: 0,
+            altitudeAccuracy: 0,
+            heading: 0,
+            headingAccuracy: 0,
+            speed: 0,
+            speedAccuracy: 0,
+          );
+    notifyListeners();
+  }
+}
+
 Map<String, dynamic> fix(String id, String time) => {
   'tripId': 'trip',
   'clientFixId': id,
@@ -55,14 +85,16 @@ Map<String, dynamic> fix(String id, String time) => {
 
 void main() {
   testWidgets(
-    'active map reloads its position without reopening and stops fetching when the trip ends',
+    'active map uses local GPS without read-back and clears it at trip or owner changes',
     (tester) async {
       tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
       final maps = Maps();
+      final positions = LocalPositions();
       final config = ConfigController(config: Config());
       Widget view(bool active) => MultiProvider(
         providers: [
           Provider<RouteMapRepository>.value(value: maps),
+          ChangeNotifierProvider<PositionPublisher>.value(value: positions),
           ChangeNotifierProvider<ConfigController>.value(value: config),
         ],
         child: MaterialApp(
@@ -74,16 +106,39 @@ void main() {
       );
       await tester.pumpWidget(view(true));
       await tester.pump();
-      expect(maps.reads, ['trip']);
+      positions.update('trip');
+      await tester.pump();
+      expect(find.text('Device GPS here now'), findsOneWidget);
+      expect(maps.reads, isEmpty);
       await tester.pump(const Duration(seconds: 5));
       await tester.pump();
-      expect(maps.reads, ['trip', 'trip']);
+      expect(maps.reads, isEmpty);
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
+      positions.update('another-trip');
+      await tester.pump();
+      expect(
+        find.text('Device GPS here now'),
+        findsOneWidget,
+        reason: 'Native GPS must not redraw a hidden map',
+      );
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+      await tester.pump();
+      expect(find.text('Device GPS here now'), findsNothing);
+      positions.update('trip');
+      await tester.pump();
+      expect(find.text('Device GPS here now'), findsOneWidget);
+      positions.update(null);
+      await tester.pump();
+      expect(find.text('Device GPS here now'), findsNothing);
+      positions.update('trip');
+      await tester.pump();
       await tester.pumpWidget(view(false));
       await tester.pump(const Duration(seconds: 10));
-      expect(maps.reads.length, 2);
-      expect(find.text('Bus here now'), findsNothing);
+      expect(maps.reads, isEmpty);
+      expect(find.text('Device GPS here now'), findsNothing);
       await tester.pumpWidget(const SizedBox());
       config.dispose();
+      positions.dispose();
     },
   );
   testWidgets(

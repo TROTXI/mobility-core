@@ -332,6 +332,7 @@ export async function composeBackend(config: RuntimeConfig): Promise<Backend> {
             support: config.support,
             fallbackBuilds: { driver: config.floors.driver, commuter: config.floors.commuter },
             docsUrl: config.docsUrl,
+            floorCacheMs: 30_000,
           }),
         };
       },

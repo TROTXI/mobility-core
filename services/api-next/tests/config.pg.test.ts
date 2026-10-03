@@ -20,6 +20,7 @@ async function fixture(t: TestContext) {
   const admin = { userId: f.adminId, sessionId: f.adminId };
   const config = new ConfigService({
     pool: f.runtime,
+    floorCacheMs: 30_000,
     authorizeSession: f.dependencies.authorizeSession,
     build: { service: 'trotxi-api-next', version: '0.0.0-test', commit: 'abcdef0' },
     cursorSecret: Buffer.alloc(32, 17),
@@ -88,6 +89,35 @@ async function fixture(t: TestContext) {
   const bare = (url: string) => app.inject({ method: 'GET', url }) as Promise<Response>;
   return { ...f, admin, app, config, call, bare };
 }
+
+test('a pre-update floor read cannot repopulate the cache after an Ops change', async (t) => {
+  const f = await fixture(t);
+  let finish!: (result: unknown) => void;
+  const delayed = new Promise((resolve) => {
+    finish = resolve;
+  });
+  const original = f.runtime.query.bind(f.runtime);
+  let captured = false;
+  const query = t.mock.method(f.runtime, 'query', (sql: any, ...args: any[]) => {
+    if (!captured && typeof sql === 'string' && sql.startsWith('SELECT min_supported_build')) {
+      captured = true;
+      return delayed;
+    }
+    return (original as any)(sql, ...args);
+  });
+  const old = f.config.minimumBuild('commuter', 'android');
+  expectStatus(
+    await f.call('PUT', '/v1/ops/min-versions/commuter/android', {
+      payload: { minSupportedBuild: 50, apiMajor: 1, storeUrl: 'https://play.example/app' },
+      match: '*',
+    }),
+    200,
+  );
+  finish({ rows: [{ min_supported_build: 2 }] });
+  assert.equal(await old, 2);
+  query.mock.restore();
+  assert.equal(await f.config.minimumBuild('commuter', 'android'), 50);
+});
 
 test('CFG-01 the unauthenticated endpoints answer without any client metadata', async (t) => {
   const f = await fixture(t);

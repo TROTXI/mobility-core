@@ -1,8 +1,9 @@
+import { beginTransaction } from '../db/transaction.js';
 import type { Pool, PoolClient } from 'pg';
 import { errors as joseErrors } from 'jose';
 import { ZodError } from 'zod';
 import { TransportError, fail, mapDatabaseError } from '../transport/errors.js';
-import type { Actor } from '../transport/service.js';
+import type { Actor, AuthorizedActor } from '../transport/service.js';
 import { cursorCodec } from '../transport/cursor.js';
 import { accessTokens, hashToken, newRefresh, providerTokenBox } from './credentials.js';
 import type { AccessConfig } from './credentials.js';
@@ -137,10 +138,7 @@ export class AuthService {
   private async transaction<T>(work: (client: PoolClient) => Promise<T>): Promise<T> {
     const client = await this.options.pool.connect();
     try {
-      await client.query('BEGIN');
-      await client.query("SET LOCAL TIME ZONE 'UTC'");
-      await client.query("SET LOCAL lock_timeout='3s'");
-      await client.query("SET LOCAL statement_timeout='10s'");
+      await beginTransaction(client);
       const output = await work(client);
       await client.query('COMMIT');
       return output;
@@ -183,11 +181,11 @@ export class AuthService {
   private async driverAllowed(
     client: PoolClient,
     user: User,
-  ): Promise<{ must_change_pin: boolean } | undefined> {
+  ): Promise<{ id: string; must_change_pin: boolean } | undefined> {
     if (user.role !== 'driver') return undefined;
     const row = (
       await client.query(
-        `SELECT c.status, c.must_change_pin FROM app.drivers d JOIN app.driver_credentials c ON c.driver_id=d.id
+        `SELECT d.id, c.status, c.must_change_pin FROM app.drivers d JOIN app.driver_credentials c ON c.driver_id=d.id
       WHERE d.user_id=$1 AND d.archived_at IS NULL FOR SHARE OF d,c`,
         [user.id],
       )
@@ -216,6 +214,16 @@ export class AuthService {
     actor: Actor,
     options: { allowUnelevated?: boolean; allowPinSetup?: boolean } = {},
   ): Promise<void> => {
+    await this.authorizeActor(client, actor, options);
+  };
+
+  // Reuse checked identity within the caller's transaction only. Keep the
+  // user -> session -> driver lock order used by revocation and PIN changes.
+  readonly authorizeActor = async (
+    client: PoolClient,
+    actor: Actor,
+    options: { allowUnelevated?: boolean; allowPinSetup?: boolean } = {},
+  ): Promise<AuthorizedActor> => {
     const user = await this.user(client, actor.userId);
     const session = (
       await client.query(
@@ -234,6 +242,7 @@ export class AuthService {
       fail(403, 'pin_change_required', 'Set your own PIN before you continue.');
     if (user.role === 'admin' && !session.elevated && !options.allowUnelevated)
       fail(403, 'passkey_required', 'Use your passkey to continue.');
+    return { role: user.role, driverId: driver?.id ?? null };
   };
 
   private async issue(

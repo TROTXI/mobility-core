@@ -71,8 +71,8 @@ class _RunPageState extends State<RunPage> {
 
   /// Read the vehicle's position for its stop ETAs.
   ///
-  /// Shares the repository's short-lived cache with the map, so the two
-  /// surfaces on this screen that want a fix make one call between them.
+  /// This is the screen's only live read. The map uses the phone's existing
+  /// GPS stream, while stop ETAs retain the server's route-based calculation.
   Future<void> _loadFix() async {
     if (!mounted) return;
     final revision = ++_fixRevision;
