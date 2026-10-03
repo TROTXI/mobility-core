@@ -1,6 +1,6 @@
 import { test, after } from 'node:test';
 import assert from 'node:assert/strict';
-import { randomBytes } from 'node:crypto';
+import { randomBytes, randomUUID } from 'node:crypto';
 import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
 import { mkdir, readFile, readdir, writeFile } from 'node:fs/promises';
@@ -8,7 +8,13 @@ import { relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { setTimeout as delay } from 'node:timers/promises';
 import pg from 'pg';
-import { grantRuntime, migrate, migration, readMigrations } from '../src/db/migrate.js';
+import {
+  assertMigrationsCurrent,
+  grantRuntime,
+  migrate,
+  migration,
+  readMigrations,
+} from '../src/db/migrate.js';
 import { maintainStagingPayments } from '../scripts/maintain-staging-payments.js';
 
 // Deliberately fail, never describe.skip: only a disposable loopback admin DB.
@@ -121,7 +127,7 @@ async function rejects(query: Promise<unknown>, code = '23514', message?: RegExp
   });
 }
 
-test('standalone payment maintenance requires an existing admin and revokes its session', () =>
+test('standalone payment maintenance requires a dedicated identity and audits a worker session', () =>
   withDb(async (pool) => {
     let calls = 0;
     const request: typeof fetch = async () => {
@@ -129,24 +135,41 @@ test('standalone payment maintenance requires an existing admin and revokes its 
       const session = (await pool.query('SELECT * FROM app.auth_sessions')).rows[0];
       assert.equal(session.revoked_at, null);
       assert.ok(session.admin_verified_at);
+      assert.equal(session.issued_for, 'maintenance');
       return Response.json({
         data: { considered: 0, succeeded: 0, blocked: 0, failed: 0, failures: [] },
       });
     };
     const key = Buffer.alloc(32, 4);
     await assert.rejects(
-      maintainStagingPayments(pool, key, request, () => {}),
-      /existing active staging administrator/,
+      maintainStagingPayments(pool, key, randomUUID(), request, () => {}),
+      /configuration/,
     );
     assert.equal(calls, 0);
     assert.equal((await pool.query('SELECT count(*)::int AS n FROM app.users')).rows[0].n, 0);
-    await id(pool, "INSERT INTO app.users(role) VALUES ('admin')");
-    await maintainStagingPayments(pool, key, request, () => {});
+    const human = await id(
+      pool,
+      "INSERT INTO app.users(role,email) VALUES ('admin','fixture@example.test')",
+    );
+    await assert.rejects(
+      maintainStagingPayments(pool, key, human, request, () => {}),
+      /configuration/,
+    );
+    const worker = await id(pool, "INSERT INTO app.users(role) VALUES ('admin')");
+    await maintainStagingPayments(pool, key, worker, request, () => {});
     assert.equal(calls, 2);
     const sessions = (await pool.query('SELECT * FROM app.auth_sessions')).rows;
     assert.equal(sessions.length, 1);
     assert.ok(sessions[0].revoked_at);
-    assert.equal((await pool.query('SELECT count(*)::int AS n FROM app.users')).rows[0].n, 1);
+    assert.equal(sessions[0].user_id, worker);
+    const starts = (await pool.query('SELECT * FROM app.maintenance_run_starts')).rows;
+    assert.equal(starts.length, 2);
+    assert.ok(starts.every((row) => row.origin === 'worker' && row.actor_user_id === worker));
+    assert.equal(
+      (await pool.query('SELECT count(*)::int AS n FROM app.maintenance_run_outcomes')).rows[0].n,
+      2,
+    );
+    assert.equal((await pool.query('SELECT count(*)::int AS n FROM app.users')).rows[0].n, 2);
   }));
 async function id(
   pool: pg.Pool | pg.PoolClient,
@@ -1146,7 +1169,11 @@ test('runtime role cannot mutate event history, delete/truncate tables or instal
       await rejects(client.query('TRUNCATE app.trips CASCADE'), '42501');
       await rejects(client.query('CREATE TABLE app.evil(id integer)'), '42501');
       await rejects(client.query('CREATE SCHEMA evil'), '42501');
-      await rejects(client.query('SELECT * FROM public._replacement_migrations'), '42501');
+      await assertMigrationsCurrent(client as unknown as pg.Pool, files);
+      await rejects(
+        client.query("UPDATE public._replacement_migrations SET sha256=repeat('a',64)"),
+        '42501',
+      );
       await rejects(client.query('ALTER TABLE app.trips DISABLE TRIGGER ALL'), '42501');
     } finally {
       await client.query('RESET ROLE');

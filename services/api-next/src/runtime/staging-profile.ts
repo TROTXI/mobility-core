@@ -1,4 +1,5 @@
 import { hkdfSync } from 'node:crypto';
+import { stagingDatabase } from './staging-database.js';
 
 export const STAGING_SERVICE_ID = 'srv-d8suhkn7f7vs73bigd40';
 type Env = Record<string, string | undefined>;
@@ -13,7 +14,7 @@ const purposes = [
   'PAYSTACK_EVIDENCE_KEY',
 ] as const;
 
-/** Existing, disposable staging only. No additional dashboard secrets.
+/** Existing staging only, with a separately provisioned restricted DB login.
  * Stable, purpose-separated derivation preserves keys across restarts.
  * Rotating JWT_SECRET also rotates encryption keys: never rotate casually.
  */
@@ -32,23 +33,9 @@ export function existingStagingEnvironment(env: Env): Env {
     throw new Error('PAYSTACK_SECRET_KEY must be TEST on staging');
   if (!env.JWT_SECRET || Buffer.byteLength(env.JWT_SECRET) < 32)
     throw new Error('JWT_SECRET must contain at least 32 bytes');
-  let database: URL;
-  try {
-    database = new URL(env.DATABASE_URL ?? '');
-  } catch {
-    throw new Error('DATABASE_URL must identify the existing staging database');
-  }
-  if (
-    !['postgres:', 'postgresql:'].includes(database.protocol) ||
-    database.pathname !== '/trotxi' ||
-    database.username !== 'trotxi' ||
-    ![
-      'dpg-d8sugvv7f7vs73bifff0-a',
-      'dpg-d8sugvv7f7vs73bifff0-a.frankfurt-postgres.render.com',
-    ].includes(database.hostname) ||
-    [...database.searchParams.keys()].some((k) => !['sslmode', 'sslrootcert'].includes(k))
-  )
-    throw new Error('DATABASE_URL must identify the unchanged trotxi staging connection');
+  if (env.DATABASE_URL || env.REPLACEMENT_DATABASE_URL)
+    throw new Error('Remove the owner database credentials from the staging API environment');
+  stagingDatabase(env.REPLACEMENT_RUNTIME_DATABASE_URL, env.STAGING_DATABASE_CA_CERT);
   for (const purpose of purposes)
     if (env[`REPLACEMENT_${purpose}`])
       throw new Error(
@@ -59,7 +46,6 @@ export function existingStagingEnvironment(env: Env): Env {
     REPLACEMENT_DEPLOYMENT_ENVIRONMENT: 'staging',
     REPLACEMENT_SERVICE_NAME: 'trotxi-api-staging',
     REPLACEMENT_POOL_SIZE: '4',
-    REPLACEMENT_RUNTIME_DATABASE_URL: env.DATABASE_URL,
     REPLACEMENT_PAYSTACK_SECRET_KEY: env.PAYSTACK_SECRET_KEY,
     REPLACEMENT_GOOGLE_CLIENT_ID: env.GOOGLE_CLIENT_ID,
     REPLACEMENT_AUTH_PROVIDERS: 'google',

@@ -9,6 +9,9 @@ import { spawnSync } from 'node:child_process';
 import { access, readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { jwtVerify } from 'jose';
+import { stagingDatabase } from '../src/runtime/staging-database.js';
+import { stagingInstallerConfiguration } from '../scripts/migrate-staging.js';
+import { failureLine, MaintenanceFailure } from '../scripts/maintenance-safety.js';
 import {
   maintainStagingPayments,
   paymentMaintenanceConfiguration,
@@ -18,7 +21,8 @@ const settings = () => ({
   RENDER_SERVICE_ID: STAGING_SERVICE_ID,
   RENDER_SERVICE_NAME: 'trotxi-api-staging',
   RENDER_GIT_COMMIT: 'a'.repeat(40),
-  DATABASE_URL: 'postgres://trotxi:fixture@dpg-d8sugvv7f7vs73bifff0-a/trotxi',
+  REPLACEMENT_RUNTIME_DATABASE_URL:
+    'postgres://trotxi_runtime_api:fixture@dpg-d8sugvv7f7vs73bifff0-a.frankfurt-postgres.render.com/trotxi',
   JWT_SECRET: 'fixture-root-secret-32-bytes-long-only-for-tests',
   PAYSTACK_SECRET_KEY: ['sk', 'test', randomUUID().replaceAll('-', '')].join('_'),
   GOOGLE_CLIENT_ID: 'fixture.apps.googleusercontent.com',
@@ -45,24 +49,28 @@ test('the retired seed is absent and payment maintenance keeps a standalone entr
 
 test('payment maintenance only accepts the staging target and a derived access key', () => {
   const env = {
-    REPLACEMENT_DATABASE_URL:
-      'postgres://trotxi:fixture@dpg-d8sugvv7f7vs73bifff0-a.frankfurt-postgres.render.com/trotxi',
+    REPLACEMENT_RUNTIME_DATABASE_URL:
+      'postgres://trotxi_runtime_worker:fixture@dpg-d8sugvv7f7vs73bifff0-a.frankfurt-postgres.render.com/trotxi',
     REPLACEMENT_ACCESS_SECRET: Buffer.alloc(32, 2).toString('base64'),
+    REPLACEMENT_MAINTENANCE_USER_ID: randomUUID(),
   };
   const config = paymentMaintenanceConfiguration(env);
-  assert.equal(new URL(config.connectionString).searchParams.get('sslmode'), 'no-verify');
+  assert.equal(new URL(config.connectionString).search, '');
+  assert.equal(config.ssl.rejectUnauthorized, true);
   assert.deepEqual(config.key, Buffer.alloc(32, 2));
   for (const database of [
-    env.REPLACEMENT_DATABASE_URL.replace('/trotxi', '/production'),
-    env.REPLACEMENT_DATABASE_URL.replace('trotxi:fixture', 'other:fixture'),
-    env.REPLACEMENT_DATABASE_URL.replace(
+    env.REPLACEMENT_RUNTIME_DATABASE_URL.replace('/trotxi', '/production'),
+    env.REPLACEMENT_RUNTIME_DATABASE_URL.replace('trotxi_runtime_worker:fixture', 'trotxi:fixture'),
+    env.REPLACEMENT_RUNTIME_DATABASE_URL.replace(
       'dpg-d8sugvv7f7vs73bifff0-a.frankfurt-postgres.render.com',
       'other.example',
     ),
-    env.REPLACEMENT_DATABASE_URL + '?host=other.example',
+    env.REPLACEMENT_RUNTIME_DATABASE_URL + '?host=other.example',
+    env.REPLACEMENT_RUNTIME_DATABASE_URL + '?sslmode=no-verify',
+    env.REPLACEMENT_RUNTIME_DATABASE_URL + '?sslrootcert=/tmp/hostile.crt',
   ])
     assert.throws(() =>
-      paymentMaintenanceConfiguration({ ...env, REPLACEMENT_DATABASE_URL: database }),
+      paymentMaintenanceConfiguration({ ...env, REPLACEMENT_RUNTIME_DATABASE_URL: database }),
     );
   assert.throws(() => paymentMaintenanceConfiguration({ ...env, REPLACEMENT_ACCESS_SECRET: '' }));
   const run = spawnSync(
@@ -76,7 +84,7 @@ test('payment maintenance only accepts the staging target and a derived access k
     },
   );
   assert.equal(run.status, 1);
-  assert.match(run.stderr, /Staging payment maintenance failed/);
+  assert.match(run.stderr, /"category":"configuration"/);
   assert.doesNotMatch(run.stderr + run.stdout, /private-malformed-url/);
 });
 
@@ -103,6 +111,7 @@ test('payment maintenance calls both jobs, logs counts only, and revokes on ever
       assert.equal(init?.method, 'POST');
       assert.deepEqual(JSON.parse(init?.body as string), { limit: 100 });
       const headers = new Headers(init?.headers);
+      assert.equal(headers.get('x-trotxi-client'), 'worker');
       ids.add(headers.get('idempotency-key')!);
       const verified = await jwtVerify(headers.get('authorization')!.slice(7), key, {
         algorithms: ['HS256'],
@@ -126,7 +135,7 @@ test('payment maintenance calls both jobs, logs counts only, and revokes on ever
             : success;
       return Response.json(body, { status: mode === 'http' ? 503 : 200 });
     };
-    const run = maintainStagingPayments(pool, key, request, (line) => logs.push(line));
+    const run = maintainStagingPayments(pool, key, 'operator', request, (line) => logs.push(line));
     if (mode === 'success') await run;
     else await assert.rejects(run);
     assert.equal(revoked, true);
@@ -142,13 +151,14 @@ test('payment maintenance calls both jobs, logs counts only, and revokes on ever
   }
 });
 
-test('existing staging config needs no new secrets and preserves existing provider values', () => {
+test('staging uses a restricted database and preserves existing provider keys', () => {
   const env = settings();
   const before = { ...env };
   const config = readConfiguration(env);
   assert.deepEqual(env, before);
   assert.equal(config.existingStaging, true);
-  assert.equal(config.databaseUrl, env.DATABASE_URL);
+  assert.equal(config.databaseUrl, env.REPLACEMENT_RUNTIME_DATABASE_URL);
+  assert.equal(config.databaseSsl?.rejectUnauthorized, true);
   assert.equal(config.paystack.secretKey, env.PAYSTACK_SECRET_KEY);
   assert.equal(config.avatars.secretAccessKey, env.R2_SECRET_ACCESS_KEY);
   assert.equal(config.google.clientId, env.GOOGLE_CLIENT_ID);
@@ -186,14 +196,22 @@ test('staging config rejects live keys, foreign targets, weak roots and mixed ke
     { JWT_SECRET: 'short' },
     { DATABASE_URL: 'private-invalid-value' },
     { DATABASE_URL: 'postgres://trotxi:fixture@other-host/trotxi' },
-    { DATABASE_URL: settings().DATABASE_URL + '?host=other-host' },
-    { DATABASE_URL: settings().DATABASE_URL.replace('/trotxi', '/other') },
+    {
+      REPLACEMENT_RUNTIME_DATABASE_URL:
+        settings().REPLACEMENT_RUNTIME_DATABASE_URL + '?host=other-host',
+    },
+    {
+      REPLACEMENT_RUNTIME_DATABASE_URL: settings().REPLACEMENT_RUNTIME_DATABASE_URL.replace(
+        '/trotxi',
+        '/other',
+      ),
+    },
     { REPLACEMENT_ACCESS_SECRET: Buffer.alloc(32, 1).toString('base64') },
   ])
     assert.throws(() => readConfiguration({ ...settings(), ...change }));
 });
 
-test('owner exception requires both explicit staging configuration and matching database facts', async () => {
+test('the staging owner no longer bypasses runtime privilege checks', async () => {
   const row = {
     installed: true,
     create_schema: true,
@@ -204,15 +222,54 @@ test('owner exception requires both explicit staging configuration and matching 
   const pool = (changes = {}) =>
     ({ query: async () => ({ rows: [{ ...row, ...changes }] }) }) as unknown as Pool;
   await assert.rejects(assertRuntimeRole(pool()), /can create objects/);
-  await assertRuntimeRole(pool(), true);
-  await assert.rejects(
-    assertRuntimeRole(pool({ database: 'production' }), true),
-    /staging owner exception/,
-  );
-  await assert.rejects(
-    assertRuntimeRole(pool({ login: 'another-owner' }), true),
-    /staging owner exception/,
-  );
-  await assert.rejects(assertRuntimeRole(pool({ installed: false }), true), /not installed/);
+  await assert.rejects(assertRuntimeRole(pool({ installed: false })), /not installed/);
   await assertRuntimeRole(pool({ create_schema: false, rewrite_history: false }));
+});
+
+test('TLS options cannot disable verification or override the pinned server', () => {
+  const url = settings().REPLACEMENT_RUNTIME_DATABASE_URL;
+  const ca = '-----BEGIN CERTIFICATE-----\nfixture\n-----END CERTIFICATE-----';
+  const verified = stagingDatabase(url + '?sslmode=verify-full', ca);
+  assert.deepEqual(verified.ssl, { rejectUnauthorized: true, ca });
+  assert.equal(new URL(verified.connectionString).search, '');
+  for (const suffix of [
+    '?sslmode=require',
+    '?ssl=false',
+    '?sslmode=disable',
+    '?sslmode=verify-full&sslmode=disable',
+    '?sslrootcert=/tmp/cert',
+    '?host=evil',
+    '#fragment',
+  ])
+    assert.throws(() => stagingDatabase(url + suffix, undefined));
+  assert.throws(() => stagingDatabase(url, 'not-a-certificate'));
+  const installer = {
+    STAGING_DATABASE_URL: url.replace('trotxi_runtime_api:', 'trotxi:'),
+    STAGING_RUNTIME_DATABASE_URL: url,
+    STAGING_MAINTENANCE_DATABASE_URL: url.replace('trotxi_runtime_api:', 'trotxi_runtime_worker:'),
+    REPLACEMENT_MAINTENANCE_USER_ID: randomUUID(),
+  };
+  assert.deepEqual(stagingInstallerConfiguration(installer).roles, [
+    'trotxi_runtime_api',
+    'trotxi_runtime_worker',
+  ]);
+  assert.throws(() =>
+    stagingInstallerConfiguration({ ...installer, STAGING_MAINTENANCE_DATABASE_URL: url }),
+  );
+  assert.throws(() => stagingInstallerConfiguration({ ...installer, STAGING_DATABASE_URL: url }));
+  assert.equal(JSON.parse(failureLine(new Error('secret-value'))).category, 'internal');
+  assert.equal(JSON.parse(failureLine(new MaintenanceFailure('transport'))).category, 'transport');
+});
+
+test('maintenance workflow has no root key fetch or owner credentials and requires protected main', async () => {
+  const source = await readFile(
+    new URL('../../../.github/workflows/payments-maintenance.yml', import.meta.url),
+    'utf8',
+  );
+  assert.match(source, /permissions:\s+contents: read/);
+  assert.equal((source.match(/environment: staging/g) ?? []).length, 2);
+  assert.equal((source.match(/if: github.ref == 'refs\/heads\/main'/g) ?? []).length, 2);
+  assert.doesNotMatch(source, /JWT_SECRET|RENDER_API_KEY|secrets\.STAGING_DATABASE_URL|GITHUB_ENV/);
+  assert.match(source, /secrets\.STAGING_ACCESS_SECRET/);
+  assert.match(source, /secrets\.STAGING_EMAIL_ENCRYPTION_KEY/);
 });

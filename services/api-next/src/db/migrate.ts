@@ -108,8 +108,24 @@ export function runtimeRoleIdentifier(name: string): string {
   return `"${name}"`;
 }
 
+/** Read-only startup check. The service must never install its own schema. */
+export async function assertMigrationsCurrent(
+  pool: Pool,
+  files: readonly Migration[],
+): Promise<void> {
+  validateMigrations(files);
+  const applied = await pool.query<{ name: string; sha256: string }>(
+    'SELECT name,sha256 FROM public._replacement_migrations ORDER BY name',
+  );
+  if (
+    applied.rows.length !== files.length ||
+    applied.rows.some((row, i) => row.name !== files[i]!.name || row.sha256 !== files[i]!.sha256)
+  )
+    throw new Error('Install the reviewed migration inventory before starting the API');
+}
+
 // Provision credentials out of band. Never grant to the installer/owner or a
-// role that can SET ROLE to it. No DELETE, TRUNCATE, DDL or migration-table access.
+// role that can SET ROLE to it. No TRUNCATE, DDL or migration-table writes.
 export async function grantRuntime(pool: Pool, role: string): Promise<void> {
   const quoted = runtimeRoleIdentifier(role);
   const client = await pool.connect();
@@ -140,6 +156,7 @@ export async function grantRuntime(pool: Pool, role: string): Promise<void> {
     if (check.rows.length !== 1 || check.rows[0].unsafe)
       throw new Error('Runtime role must exist and be independent of the owner/installer');
     await client.query(`GRANT USAGE ON SCHEMA app TO ${quoted}`);
+    await client.query(`GRANT SELECT ON public._replacement_migrations TO ${quoted}`);
     await client.query(`GRANT SELECT, INSERT, UPDATE ON ALL TABLES IN SCHEMA app TO ${quoted}`);
     if (
       (await client.query("SELECT to_regclass('app.erasure_recovery_control') AS name")).rows[0]

@@ -1,5 +1,7 @@
 import { createHash } from 'node:crypto';
 import { existingStagingEnvironment, STAGING_SERVICE_ID } from './staging-profile.js';
+import { stagingDatabase } from './staging-database.js';
+import type { ConnectionOptions } from 'node:tls';
 import type { BuildIdentity, MapTiles, SupportContacts } from '../config/service.js';
 import type { ErasureStoreConfig } from './erasure-journal-store.js';
 
@@ -26,9 +28,10 @@ export interface KeyMaterial {
   paystackEvidence: Buffer;
 }
 export interface RuntimeConfig {
-  /** Explicitly approved exception for the existing disposable Render staging. */
+  /** Pinned staging service and preserved purpose-separated key derivation. */
   existingStaging?: boolean;
   databaseUrl: string;
+  databaseSsl?: ConnectionOptions;
   erasureJournal?: ErasureStoreConfig;
   poolSize: number;
   staleFixAfterSeconds: number;
@@ -314,7 +317,12 @@ export function readConfiguration(env: Env = process.env): RuntimeConfig {
           },
         }
       : {}),
-    databaseUrl,
+    databaseUrl: existingStaging
+      ? stagingDatabase(databaseUrl, env.STAGING_DATABASE_CA_CERT).connectionString
+      : databaseUrl,
+    ...(existingStaging
+      ? { databaseSsl: stagingDatabase(databaseUrl, env.STAGING_DATABASE_CA_CERT).ssl }
+      : {}),
     poolSize: integerOr(env, 'REPLACEMENT_POOL_SIZE', 8, 1, 100),
     // Drivers publish every five seconds through patchy coverage, so a short
     // threshold cries wolf all morning. Five minutes to start; tune it from what

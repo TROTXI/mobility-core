@@ -54,10 +54,12 @@ bulk enrolment, account inspection and PIN resets. Use the supported Ops and
 commuter workflows instead. Existing staging data is not deleted.
 
 The scheduled payments/email workflow remains. Its payment step now runs
-`scripts/maintain-staging-payments.ts`, which uses an existing administrator
-for a short-lived session, processes the inbox and reconciliation jobs, and
-revokes the session afterward. It cannot create an administrator or seed data.
-Logs contain only job names, HTTP statuses and allowlisted batch counts.
+`scripts/maintain-staging-payments.ts`, which uses the explicitly configured
+non-human maintenance account for a short-lived worker session, processes the
+inbox and reconciliation jobs, and revokes the session afterward. It cannot
+create an administrator or seed data. Logs contain job names, HTTP statuses,
+fixed failure categories and allowlisted batch counts only. The required
+restricted-role and secret setup is in [Staging security cutover](operations/staging-security.md).
 
 Removing this tooling does not revoke existing PINs or remove old Actions
 logs. Treat any driver credentials previously printed there as exposed. Reset
