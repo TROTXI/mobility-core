@@ -12,6 +12,7 @@ import 'package:provider/provider.dart';
 import 'package:trotxi_driver/core/config/theme/app_theme.dart';
 import 'package:trotxi_driver/data/route_map_repository.dart';
 import 'package:trotxi_driver/Presentations/Run/widgets/run_map.dart';
+import 'package:trotxi_driver/core/api/driver_api.dart';
 import 'support/replacement_client.dart';
 
 class Config extends ConfigRepository {
@@ -45,6 +46,37 @@ class Maps implements RouteMapRepository {
     );
   }
 
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+class UnavailableCorridor extends Maps {
+  final first = Completer<RouteShape>();
+  int attempts = 0;
+  @override
+  Future<RouteShape> shapeFor(String id) {
+    if (++attempts == 1) return first.future;
+    return Future.error(const TrotxiException('Route unavailable'));
+  }
+}
+
+class MarkerMap implements MapLibreMapController {
+  @override
+  final circles = <Circle>{};
+  @override
+  Future<Circle> addCircle(
+    CircleOptions options, [
+    Map<String, dynamic>? data,
+  ]) async {
+    final circle = Circle('vehicle', options, data);
+    circles.add(circle);
+    return circle;
+  }
+
+  @override
+  Future<void> updateCircle(Circle circle, CircleOptions changes) async {}
+  @override
+  Future<void> removeCircle(Circle circle) async => circles.remove(circle);
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
@@ -84,6 +116,58 @@ Map<String, dynamic> fix(String id, String time) => {
 };
 
 void main() {
+  testWidgets(
+    'route failures and retries preserve local GPS without a loaded corridor',
+    (tester) async {
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+      final maps = UnavailableCorridor();
+      final positions = LocalPositions()..update('trip');
+      final config = ConfigController(config: Config());
+      await tester.pumpWidget(
+        MultiProvider(
+          providers: [
+            Provider<RouteMapRepository>.value(value: maps),
+            ChangeNotifierProvider<PositionPublisher>.value(value: positions),
+            ChangeNotifierProvider<ConfigController>.value(value: config),
+          ],
+          child: MaterialApp(
+            theme: AppTheme.lightTheme,
+            home: const Scaffold(
+              body: RunMap(routeId: 'route', runId: 'trip', isActive: true),
+            ),
+          ),
+        ),
+      );
+      final controller = MarkerMap();
+      tester.widget<TrotxiMapView>(find.byType(TrotxiMapView)).onStyleReloaded!(
+        controller,
+      );
+      await tester.pump();
+      expect(
+        controller.circles.single.options.geometry,
+        const LatLng(5.6, -0.2),
+      );
+      expect(find.text('Device GPS here now'), findsOneWidget);
+      maps.first.completeError(const TrotxiException('Route unavailable'));
+      await tester.pump();
+      expect(controller.circles, hasLength(1));
+      expect(find.text('Device GPS here now'), findsOneWidget);
+      await tester.pump(const Duration(seconds: 5));
+      await tester.pump();
+      expect(maps.attempts, greaterThan(1));
+      expect(controller.circles, hasLength(1));
+      expect(find.text('Device GPS here now'), findsOneWidget);
+      expect(maps.reads, isEmpty);
+      positions.update(null);
+      await tester.pump();
+      expect(controller.circles, isEmpty);
+      expect(find.text('Device GPS here now'), findsNothing);
+      await tester.pumpWidget(const SizedBox());
+      config.dispose();
+      positions.dispose();
+    },
+  );
+
   testWidgets(
     'active map uses local GPS without read-back and clears it at trip or owner changes',
     (tester) async {

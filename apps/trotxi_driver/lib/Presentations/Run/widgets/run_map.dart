@@ -161,6 +161,7 @@ class _RunMapState extends State<RunMap> {
   Future<void> _load() async {
     if (!mounted) return;
     final revision = ++_revision;
+    _updatePosition();
     final maps = context.read<RouteMapRepository>();
     try {
       final shape = await maps.shapeFor(widget.runId);
@@ -172,10 +173,8 @@ class _RunMapState extends State<RunMap> {
       _updatePosition();
       await _draw();
     } on TrotxiException {
-      if (mounted && revision == _revision) {
-        _marker.clear();
-        setState(() => _vehicle = null);
-      }
+      // Corridor availability does not govern this device's GPS. Keep the
+      // marker and any previously loaded route while the refresh retries.
     }
   }
 
@@ -206,7 +205,11 @@ class _RunMapState extends State<RunMap> {
   Future<void> _drawNow() async {
     final controller = _controller;
     final shape = _shape;
-    if (controller == null || shape == null || !mounted) return;
+    if (controller == null || !mounted) return;
+    if (shape == null) {
+      _marker.attach(controller);
+      return;
+    }
     final signature = Object.hash(
       widget.runId,
       shape.source,
