@@ -133,12 +133,32 @@ provisioning any paid resource require explicit approval.
    Prevent public/mobile/Ops access and disable outbound email, SMS, push,
    payment and provider-cleanup side effects. Do not attach normal workers or
    production credentials to the restored copy.
-2. **Recover authoritative deletion facts.** Obtain the complete set of
-   closures newer than the restore point, through the recovery cutoff, from
-   a separately protected source. The audit table inside the old snapshot
-   cannot contain later deletions. Record provenance and reconcile coverage.
-   If the live database and the independent register are unavailable or
-   incomplete, stop: the restored data is not safe to serve.
+2. **Fence the source, then capture the final deletion set.** For the pilot,
+   use an approved maintenance window that stops source writes across all API
+   replicas, workers and operator paths. Drain in-flight transactions to a
+   known commit/rollback outcome before establishing the final cutoff. Keep
+   this fence in place through replay, verification and traffic cutover;
+   isolating only the restored target is insufficient. A deletion arriving
+   while fenced must not be acknowledged as completed on the old source.
+   Record the fence acknowledgement, drained writers and final committed
+   capture watermark. A wall-clock timestamp or a largest allocated sequence
+   alone does not prove that all earlier transactions have committed.
+
+   Obtain all closures newer than the restore point through that verified
+   watermark from a separately protected source. The audit table inside the
+   old snapshot cannot contain later deletions. An initial capture made while
+   the source was live is only provisional: capture and replay its final delta
+   after fencing. Reconcile provenance, contiguous coverage and the replayed
+   watermark. If the source is unavailable, require independent evidence of
+   every acknowledged closure and a fence preventing it from rejoining as a
+   writer; otherwise stop. An incomplete register is not safe recovery.
+
+   Online redirection is an alternative only after a reviewed coordinator can
+   durably record every acknowledged deletion, replay through a cutover
+   barrier and hand off to one authoritative writer without a gap. That
+   mechanism does not currently exist here. Do not substitute a last-minute
+   query followed by a traffic switch while the source can still accept writes.
+
 3. **Apply schema and reviewed replay.** Use a purpose-built, reviewed recovery
    path that reapplies account closure by stable account ID, preserving the
    transaction's phone-lock ordering, session/device revocation, identity and
@@ -159,16 +179,31 @@ provisioning any paid resource require explicit approval.
    simulate interruption; no account reopening, duplicate sends or duplicate
    financial effects are acceptable. Test closures whose user row does not
    exist in the snapshot, and record their disposition rather than creating it.
+   Also start a deletion before the fence and attempt another after the
+   provisional cutoff: the first must be drained and included if committed;
+   the second must either be captured before the final barrier or refused
+   without a success acknowledgement. Test a missing final delta, an in-flight
+   transaction at cutoff and a stale source attempting to resume writes.
+   Each unresolved case must block release.
 6. **Sign off before release.** Engineering and the privacy/infrastructure
    owners reconcile the deletion register against restored state, record all
-   exceptions and approve re-enabling access and workers. Until then, keep
-   the restore isolated. Dispose of the approved test copy under its recorded
-   lifecycle, with separate approval for irreversible deletion.
+   exceptions and confirm that the replayed watermark equals the fenced
+   source's final committed watermark with no outstanding capture/replay work.
+   Keep the old source fenced while routing traffic and granting write
+   authority to the restored target; only then re-enable approved workers.
+   Verify stale clients cannot write to the old source. If the fence is lost
+   or the source accepts another deletion, invalidate sign-off and repeat
+   final capture/replay/verification before release. A rollback after target
+   writes also requires reconciling those new deletions, not simply reopening
+   the stale source. Until these checks pass, keep the restore isolated.
+   Dispose of the approved test copy under its recorded lifecycle, with
+   separate approval for irreversible deletion.
 
 ## Open engineering work, not completed controls
 
 - Select and implement independent durable capture of deletion facts, with
-  a recovery cutoff and a way to detect missing facts before release.
+  a source write fence, final committed watermark, verified final delta and
+  a way to detect missing facts before release. No online cutover is implied.
 - Implement a reviewed, idempotent restore-only replay path and recovery
   tests. The ordinary `DELETE /v1/me` endpoint requires the account's session;
   it is not an administrator bulk replay mechanism.
