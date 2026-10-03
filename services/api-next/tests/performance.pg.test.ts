@@ -3,6 +3,64 @@ import assert from 'node:assert/strict';
 import { setup } from './helpers/financial-fixture.js';
 import { beginTransaction } from '../src/db/transaction.js';
 
+test('request and retention paths reach their rows through an index', async (t) => {
+  const f = await setup(t);
+  const c = await f.owner.connect();
+  const id = '00000000-0000-4000-8000-000000000000';
+  // Empty tables, so the planner is told sequential scans are off. A plan that
+  // still names a table scan, or reads an index whose leading column is not
+  // the one searched, has no index to use.
+  const paths: [string, string, string][] = [
+    [
+      'membership assignment',
+      `SELECT * FROM app.commute_assignments WHERE period_id=$1 AND effective_from<=current_date
+       AND (effective_to IS NULL OR current_date<effective_to)`,
+      'commute_assignments_period',
+    ],
+    [
+      'trip summary counts',
+      'SELECT count(*) FROM app.reservations WHERE trip_id=$1',
+      'reservations_trip',
+    ],
+    [
+      'trip summary boarding charges',
+      `SELECT count(DISTINCT e.reservation_id) FROM app.boarding_events e
+       JOIN app.reservation_charges r ON r.reservation_id=e.reservation_id WHERE r.trip_id=$1`,
+      'reservation_charges_trip',
+    ],
+    [
+      'trip summary boarding events',
+      `SELECT count(DISTINCT e.reservation_id) FROM app.boarding_events e
+       JOIN app.reservation_charges r ON r.reservation_id=e.reservation_id WHERE r.trip_id=$1`,
+      'boarding_events_reservation',
+    ],
+    [
+      'GPS retention foreign key check',
+      'SELECT 1 FROM app.trip_live_positions WHERE position_id=$1',
+      'trip_live_positions_position',
+    ],
+    [
+      'latest personal pause',
+      'SELECT * FROM app.personal_pauses WHERE user_id=$1 ORDER BY created_at DESC,id DESC LIMIT 1',
+      'personal_pauses_user_latest',
+    ],
+  ];
+  try {
+    await c.query('BEGIN');
+    await c.query('SET LOCAL enable_seqscan=off');
+    await c.query('SET LOCAL enable_bitmapscan=off');
+    for (const [path, sql, index] of paths) {
+      const plan = (await c.query(`EXPLAIN (FORMAT JSON) ${sql}`, [id])).rows[0]['QUERY PLAN'];
+      const text = JSON.stringify(plan);
+      assert.match(text, new RegExp(`"Index Name":"${index}"`), `${path} uses ${index}`);
+      assert.doesNotMatch(text, /"Node Type":"Seq Scan"/, `${path} scans no table`);
+    }
+  } finally {
+    await c.query('ROLLBACK');
+    c.release();
+  }
+});
+
 test('batched transaction setup preserves safety limits, isolation and pooled connection cleanup', async (t) => {
   const f = await setup(t);
   const c = await f.runtime.connect();
