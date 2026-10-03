@@ -8,6 +8,69 @@ import { ErasureJournal } from '../src/account/erasure-journal.js';
 import { ErasureRecovery, assertErasureRuntime } from '../src/account/erasure-recovery.js';
 import { AccountService } from '../src/account/service.js';
 
+test('ER-05 prepared restores cannot cross writer generations, but a new writer baseline can', async (t) => {
+  const source = await setup(t),
+    winner = await setup(t),
+    staleIsolated = await setup(t),
+    staleReady = await setup(t),
+    fresh = await setup(t);
+  const device = randomBytes(32);
+  const journal = new ErasureJournal(new MemoryErasureStore(), randomUUID(), randomBytes(32));
+  const sourceTool = new ErasureRecovery(source.owner, journal, device);
+  await sourceTool.initialize();
+  const original = (await source.owner.query('SELECT * FROM app.erasure_recovery_control')).rows[0];
+  // Control rows model backups from the same original writer, before handover.
+  for (const target of [winner, staleIsolated, staleReady])
+    await target.owner.query(
+      'UPDATE app.erasure_recovery_control SET database_id=$1,database_name=$2,journal_namespace=$3',
+      [original.database_id, original.database_name, original.journal_namespace],
+    );
+  await sourceTool.fence();
+  const winnerTool = new ErasureRecovery(winner.owner, journal, device);
+  const isolatedTool = new ErasureRecovery(staleIsolated.owner, journal, device);
+  const readyTool = new ErasureRecovery(staleReady.owner, journal, device);
+  for (const tool of [winnerTool, isolatedTool, readyTool]) {
+    await tool.prepare();
+    assert.equal((await tool.prepare()).mode, 'isolated');
+  }
+  await readyTool.replay();
+  assert.equal((await readyTool.prepare()).mode, 'ready');
+  const prepared = (await staleReady.owner.query('SELECT * FROM app.erasure_recovery_control'))
+    .rows[0];
+  assert.equal(prepared.source_writer_id, original.database_id);
+  assert.equal(prepared.source_database_name, original.database_name);
+  await winnerTool.replay();
+  await winnerTool.promote();
+  await winnerTool.fence();
+  const before = await journal.require();
+  for (const tool of [isolatedTool, readyTool]) {
+    await assert.rejects(tool.prepare(), /wrong_source/);
+    // Skipping prepare must not bypass the binding either.
+    await assert.rejects(tool.replay(), /wrong_source/);
+  }
+  await assert.rejects(readyTool.promote(), /wrong_source/);
+  assert.deepEqual(await journal.require(), before);
+  assert.equal(
+    (await staleIsolated.owner.query('SELECT mode FROM app.erasure_recovery_control')).rows[0].mode,
+    'isolated',
+  );
+  assert.deepEqual(
+    (await staleReady.owner.query('SELECT * FROM app.erasure_recovery_control')).rows[0],
+    prepared,
+  );
+  // A baseline carrying the current writer's identity remains recoverable.
+  const current = (await winner.owner.query('SELECT * FROM app.erasure_recovery_control')).rows[0];
+  await fresh.owner.query(
+    'UPDATE app.erasure_recovery_control SET database_id=$1,database_name=$2,journal_namespace=$3',
+    [current.database_id, current.database_name, current.journal_namespace],
+  );
+  const freshTool = new ErasureRecovery(fresh.owner, journal, device);
+  await freshTool.prepare();
+  await freshTool.replay();
+  await freshTool.promote();
+  await assertErasureRuntime(fresh.runtime, journal, device);
+});
+
 test('ER-04 interrupted replay stays isolated and resumes without duplicate local closure', async (t) => {
   const source = await setup(t),
     target = await setup(t),

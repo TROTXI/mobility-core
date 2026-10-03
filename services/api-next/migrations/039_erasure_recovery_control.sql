@@ -5,8 +5,12 @@ CREATE TABLE app.erasure_recovery_control (
   database_name text NOT NULL DEFAULT current_database(),
   mode text NOT NULL DEFAULT 'active' CHECK (mode IN ('active','fenced','isolated','ready')),
   journal_namespace uuid,
+  source_writer_id uuid,
+  source_database_name text,
   replay_revision bigint,
   replay_hash text,
+  CHECK ((source_writer_id IS NULL) = (source_database_name IS NULL)),
+  CHECK (mode NOT IN ('isolated','ready') OR source_writer_id IS NOT NULL),
   CHECK ((replay_revision IS NULL) = (replay_hash IS NULL))
 );
 INSERT INTO app.erasure_recovery_control(singleton) VALUES (true);

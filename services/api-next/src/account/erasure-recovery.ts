@@ -134,6 +134,13 @@ export class ErasureRecovery {
     if (!value.fenced || value.deviceKeyHash !== keyHash(this.deviceKey))
       throw new Error('erasure_recovery_snapshot_not_fenced');
   }
+  private checkSource(value: Journal, control: any) {
+    if (
+      control.source_writer_id !== value.writer ||
+      control.source_database_name !== value.database
+    )
+      throw new Error('erasure_restore_wrong_source');
+  }
   async prepare() {
     return this.locked(async (c, control) => {
       const { value } = await this.journal.require();
@@ -146,6 +153,7 @@ export class ErasureRecovery {
           control.database_name !== control.actual
         )
           throw new Error('erasure_restore_mismatch');
+        this.checkSource(value, control);
         return { mode: control.mode };
       }
       // Restore must contain the source identity, not an unrelated database.
@@ -155,8 +163,8 @@ export class ErasureRecovery {
       )
         throw new Error('erasure_restore_wrong_source');
       await c.query(
-        "UPDATE app.erasure_recovery_control SET database_id=$1,database_name=current_database(),mode='isolated',replay_revision=NULL,replay_hash=NULL WHERE singleton",
-        [randomUUID()],
+        "UPDATE app.erasure_recovery_control SET database_id=$1,database_name=current_database(),source_writer_id=$2,source_database_name=$3,mode='isolated',replay_revision=NULL,replay_hash=NULL WHERE singleton",
+        [randomUUID(), value.writer, value.database],
       );
       return { mode: 'isolated' };
     });
@@ -171,6 +179,7 @@ export class ErasureRecovery {
         !['isolated', 'ready'].includes(control.mode)
       )
         throw new Error('erasure_restore_not_isolated');
+      this.checkSource(value, control);
       await c.query(
         "UPDATE app.erasure_recovery_control SET mode='isolated',replay_revision=NULL,replay_hash=NULL WHERE singleton",
       );
@@ -188,6 +197,7 @@ export class ErasureRecovery {
       const current = (await this.journal.require()).value;
       if (journalHash(current) !== journalHash(value) || control.mode !== 'isolated')
         throw new Error('erasure_recovery_snapshot_changed');
+      this.checkSource(current, control);
       const present = (
         await c.query(
           'SELECT count(*)::int AS n FROM app.users WHERE id=ANY($1::uuid[]) AND deleted_at IS NULL',
@@ -211,6 +221,9 @@ export class ErasureRecovery {
       )
         throw new Error('erasure_restore_not_ready');
       const { value, etag } = await this.journal.require();
+      // A completed remote handover may be retried only by its exact target
+      // below. Every still-fenced handover must come from the prepared source.
+      if (value.fenced) this.checkSource(value, control);
       if (
         value.deviceKeyHash !== keyHash(this.deviceKey) ||
         contentHash(value) !== control.replay_hash

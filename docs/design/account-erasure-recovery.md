@@ -53,7 +53,9 @@ Do not bypass this operational requirement by setting acknowledgement flags.
 A restored database must have a different database name from the source and
 contain the source control identity/namespace. A backup made before journal
 activation is unsupported by this tool and must remain isolated for separate
-review. Preparation creates a new target identity and marks it isolated;
+review. Preparation persists the source writer identity and database name,
+creates a new target identity and marks it isolated. Repeated preparation,
+replay and promotion reject a target bound to an earlier writer generation;
 ordinary backend startup refuses an isolated, ready, fenced or misbound
 database. No normal application is started by the offline tool.
 
