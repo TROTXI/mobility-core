@@ -23,7 +23,7 @@ function NavigateAgain() {
 }
 
 function show(url: string) {
-  render(
+  return render(
     <FluentProvider theme={trotxiLight}>
       <MemoryRouter initialEntries={[url]}>
         <NavigateAgain />
@@ -41,7 +41,7 @@ describe('dispatch navigation context', () => {
     }));
   });
 
-  it('loads the exact overview day and direction, including another window without remounting', async () => {
+  it('honors an explicit direction, including another date without remounting', async () => {
     show('/trips?date=2026-09-25&direction=return&search=old-trip');
     expect(screen.getByLabelText('From')).toHaveValue('2026-09-25');
     expect(screen.getByLabelText('To')).toHaveValue('2026-09-25');
@@ -79,12 +79,50 @@ describe('dispatch navigation context', () => {
     );
   });
 
-  it('validates calendar dates and safely encodes the evening trip link', () => {
+  it.each([
+    { direction: 'return', time: '06:30', status: 'active' },
+    { direction: 'outbound', time: '17:30', status: 'scheduled' },
+  ])('keeps $time $direction trips visible from Overview links', async (trip) => {
+    get.mockImplementation(async (path: string) => ({
+      data: {
+        data:
+          path === '/v1/ops/overview'
+            ? { trips: [] }
+            : path === '/v1/ops/trips'
+              ? [
+                  {
+                    id: 'cross-direction-trip',
+                    serviceDate: '2026-09-25',
+                    scheduledAt: `2026-09-25T${trip.time}:00Z`,
+                    direction: trip.direction,
+                    status: trip.status,
+                    assignedDriverId: 'driver',
+                    vehicleId: 'vehicle',
+                    vehiclePlate: 'TEST-CROSS-DIRECTION',
+                    stops: [],
+                  },
+                ]
+              : [],
+      },
+    }));
+    const view = show(dispatchLink('2026-09-25', 'cross-direction-trip'));
+    expect(screen.getByRole('tab', { name: 'All' })).toHaveAttribute('aria-selected', 'true');
+    expect(await screen.findByText('TEST-CROSS-DIRECTION')).toBeInTheDocument();
+    expect(screen.getByRole('textbox', { name: 'Search trips' })).toHaveValue(
+      'cross-direction-trip',
+    );
+    view.unmount();
+    show(dispatchLink('2026-09-25'));
+    expect(screen.getByRole('tab', { name: 'All' })).toHaveAttribute('aria-selected', 'true');
+    expect(await screen.findByText('TEST-CROSS-DIRECTION')).toBeInTheDocument();
+  });
+
+  it('validates calendar dates and safely encodes the trip link without a direction', () => {
     expect(dispatchDate('2026-02-30')).toBeNull();
     expect(dispatchDate('2026-9-2')).toBeNull();
     expect(dispatchDate('2028-02-29')).toBe('2028-02-29');
-    expect(dispatchLink('2026-09-25', 'evening', 'trip&other')).toBe(
-      '/trips?date=2026-09-25&direction=return&search=trip%26other',
+    expect(dispatchLink('2026-09-25', 'trip&other')).toBe(
+      '/trips?date=2026-09-25&search=trip%26other',
     );
   });
 });

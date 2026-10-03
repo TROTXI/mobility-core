@@ -6,14 +6,11 @@ export function dispatchDate(value: string | null): string | null {
     : null;
 }
 
-export function dispatchLink(
-  date: string | undefined,
-  window: 'morning' | 'evening',
-  tripId?: string,
-) {
+export function dispatchLink(date: string | undefined, tripId?: string) {
   const params = new URLSearchParams();
   if (dispatchDate(date ?? null)) params.set('date', date!);
-  params.set('direction', window === 'morning' ? 'outbound' : 'return');
+  // Service window and route direction are independent. Overview exposes
+  // no direction, so keep both directions visible on the destination board.
   if (tripId) params.set('search', tripId);
   return `/trips?${params}`;
 }

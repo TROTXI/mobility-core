@@ -98,7 +98,7 @@ describe('live operations density', () => {
     expect(screen.getByText(/No buses are running or need attention/)).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /View scheduled departures/ })).toHaveAttribute(
       'href',
-      '/trips?date=2026-09-25&direction=outbound',
+      '/trips?date=2026-09-25',
     );
     expect(screen.queryByText('Map mounted')).not.toBeInTheDocument();
     expect(
@@ -116,7 +116,7 @@ describe('live operations density', () => {
     expect(screen.getByLabelText('Service date')).toHaveValue('2026-09-25');
     expect(screen.getByRole('link', { name: 'Open dispatch' })).toHaveAttribute(
       'href',
-      '/trips?date=2026-09-25&direction=outbound&search=test-trip',
+      '/trips?date=2026-09-25&search=test-trip',
     );
   });
 

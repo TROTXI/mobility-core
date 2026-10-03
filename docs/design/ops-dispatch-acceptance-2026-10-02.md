@@ -28,23 +28,26 @@ this record does not close #365.
 
 ## Gap found and fixed in this branch
 
-Overview's Dispatch links discarded the selected service date and direction.
+Overview's Dispatch links discarded the selected service date.
 Dispatch then loaded its default date range, so an older active trip could
 disappear even when its ID was in the search field. The empty Overview date
 input also showed a browser-local placeholder rather than the API's actual
 service date.
 
-The fix displays the returned service date, carries date/direction/search in
-both Dispatch links, validates URL dates, and restores those filters when
-navigating without a component remount. Default ranges use UTC day arithmetic.
-Regression coverage includes morning/evening links, calendar validation,
-encoded trip IDs, repeated navigation and malformed URL defaults.
+The fix displays the returned service date and carries date and optional trip
+search in both Dispatch links. It does not infer direction from the service
+window: a morning trip can be a return trip, and Overview does not expose
+actual direction. Dispatch opens with All directions; an explicit direction
+in a separately supplied URL is still supported. URL dates are validated and
+filters update without a component remount. Default ranges use UTC arithmetic.
+Regression coverage includes morning-return/evening-outbound trips, calendar
+validation, encoded trip IDs, repeated navigation and malformed URL defaults.
 
 ## Remaining acceptance before closing #171
 
 - [ ] Merge and deploy this fix, then select an older service date and test
-      both View scheduled departures and Open dispatch. The date, direction
-      and selected trip search must survive navigation.
+      both View scheduled departures and Open dispatch. The date and selected
+      trip search must survive navigation, with All directions selected.
 - [ ] Use an approved disposable fixture with a populated manifest and a
       pending incident or driver request. Follow the exception from the
       dispatch context through its decision and verify the resulting state

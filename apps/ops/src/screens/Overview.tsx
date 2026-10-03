@@ -248,7 +248,7 @@ export function Overview() {
                       ? 'No runs match this filter.'
                       : `No buses are running or need attention in this window. ${trips.filter((trip) => trip.status === 'scheduled').length} departures are scheduled.`}
                   </p>
-                  <Link to={dispatchLink(query.data?.serviceDate, windowName)}>
+                  <Link to={dispatchLink(query.data?.serviceDate)}>
                     View scheduled departures in Dispatch
                   </Link>
                 </div>
@@ -322,13 +322,7 @@ export function Overview() {
                         <span>
                           {selectedTrip.boarded} of {selectedTrip.confirmed} boarded
                         </span>
-                        <Link
-                          to={dispatchLink(
-                            query.data?.serviceDate,
-                            windowName,
-                            selectedTrip.tripId,
-                          )}
-                        >
+                        <Link to={dispatchLink(query.data?.serviceDate, selectedTrip.tripId)}>
                           Open dispatch
                         </Link>
                       </div>
