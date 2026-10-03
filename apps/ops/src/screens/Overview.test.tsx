@@ -98,7 +98,7 @@ describe('live operations density', () => {
     expect(screen.getByText(/No buses are running or need attention/)).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /View scheduled departures/ })).toHaveAttribute(
       'href',
-      '/trips',
+      '/trips?date=2026-09-25',
     );
     expect(screen.queryByText('Map mounted')).not.toBeInTheDocument();
     expect(
@@ -113,6 +113,11 @@ describe('live operations density', () => {
     expect(screen.queryByText('Seats confirmed')).not.toBeInTheDocument();
     expect(screen.getByText(/06:30 am GMT/)).toBeInTheDocument();
     expect(screen.getAllByText('Circle - Madina')).toHaveLength(2);
+    expect(screen.getByLabelText('Service date')).toHaveValue('2026-09-25');
+    expect(screen.getByRole('link', { name: 'Open dispatch' })).toHaveAttribute(
+      'href',
+      '/trips?date=2026-09-25&search=test-trip',
+    );
   });
 
   it('keeps a map and explicit no-fix state for an active bus with no position', async () => {

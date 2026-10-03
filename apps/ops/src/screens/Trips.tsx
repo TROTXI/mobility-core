@@ -10,6 +10,7 @@ import { opsHeaders } from '../api/session';
 import { accraLocalToIso } from '../api/accra-time';
 import { ActionDialog } from '../components/ActionDialog';
 import { LiveMap } from '../components/LiveMap';
+import { dispatchDate } from './dispatch-context';
 
 type Trip = components['schemas']['OpsTrip'];
 type Driver = components['schemas']['Driver'];
@@ -25,7 +26,7 @@ function isoDay(date: Date) {
 function initialRange() {
   const today = new Date();
   const end = new Date(today);
-  end.setDate(end.getDate() + 7);
+  end.setUTCDate(end.getUTCDate() + 7);
   return { fromDate: isoDay(today), toDate: isoDay(end) };
 }
 
@@ -34,13 +35,25 @@ export function Trips() {
   const [searchParams] = useSearchParams();
   const searchFromUrl = searchParams.get('search') ?? '';
   const defaults = useMemo(initialRange, []);
+  const dateFromUrl = dispatchDate(searchParams.get('date'));
+  const requestedDirection = searchParams.get('direction');
+  const directionFromUrl =
+    requestedDirection === 'outbound' || requestedDirection === 'return'
+      ? requestedDirection
+      : 'all';
   const [selected, setSelected] = useState<Trip | null>(null);
   const [mode, setMode] = useState<'create' | 'assign' | 'reschedule' | 'cancel' | null>(null);
-  const [fromDate, setFromDate] = useState(defaults.fromDate);
-  const [toDate, setToDate] = useState(defaults.toDate);
-  const [direction, setDirection] = useState<'all' | 'outbound' | 'return'>('all');
+  const [fromDate, setFromDate] = useState(dateFromUrl ?? defaults.fromDate);
+  const [toDate, setToDate] = useState(dateFromUrl ?? defaults.toDate);
+  const [direction, setDirection] = useState<'all' | 'outbound' | 'return'>(directionFromUrl);
   const [search, setSearch] = useState(searchFromUrl);
   useEffect(() => setSearch(searchFromUrl), [searchFromUrl]);
+  useEffect(() => {
+    setFromDate(dateFromUrl ?? defaults.fromDate);
+    setToDate(dateFromUrl ?? defaults.toDate);
+    setDirection(directionFromUrl);
+    setSelected(null);
+  }, [dateFromUrl, directionFromUrl, defaults]);
   const [scheduleId, setScheduleId] = useState('');
   const [serviceDate, setServiceDate] = useState('');
   const [scheduledAt, setScheduledAt] = useState('');
