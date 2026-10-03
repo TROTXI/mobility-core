@@ -9,6 +9,7 @@ import { useQuery } from '../hooks/useQuery';
 import { opsHeaders } from '../api/session';
 import { LiveMap } from '../components/LiveMap';
 import { formatAccraClock } from '../api/accra-time';
+import { dispatchLink } from './dispatch-context';
 import {
   fixDescription,
   homeTrips,
@@ -159,7 +160,7 @@ export function Overview() {
           <input
             aria-label="Service date"
             type="date"
-            value={date}
+            value={date || query.data?.serviceDate || ''}
             onChange={(event) => setDate(event.target.value)}
           />
           <Button appearance="subtle" icon={<ArrowClockwiseRegular />} onClick={query.retry}>
@@ -247,7 +248,9 @@ export function Overview() {
                       ? 'No runs match this filter.'
                       : `No buses are running or need attention in this window. ${trips.filter((trip) => trip.status === 'scheduled').length} departures are scheduled.`}
                   </p>
-                  <Link to="/trips">View scheduled departures in Dispatch</Link>
+                  <Link to={dispatchLink(query.data?.serviceDate, windowName)}>
+                    View scheduled departures in Dispatch
+                  </Link>
                 </div>
               ) : (
                 <div className="overview-trip-scroll">
@@ -319,7 +322,13 @@ export function Overview() {
                         <span>
                           {selectedTrip.boarded} of {selectedTrip.confirmed} boarded
                         </span>
-                        <Link to={`/trips?search=${encodeURIComponent(selectedTrip.tripId)}`}>
+                        <Link
+                          to={dispatchLink(
+                            query.data?.serviceDate,
+                            windowName,
+                            selectedTrip.tripId,
+                          )}
+                        >
                           Open dispatch
                         </Link>
                       </div>
