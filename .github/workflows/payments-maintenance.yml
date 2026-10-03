@@ -1,103 +1,66 @@
-# Drains the Paystack webhook inbox, reconciles stale attempts, and retries
-# due transactional emails missed by the API's immediate send.
-#
-# This is not a backstop. acceptWebhook stores and acknowledges only, and says
-# so: "Durable acknowledgement only. Processing happens in the bounded worker."
-# Nothing else runs that worker on staging, so until this exists a paid
-# subscription never becomes rides, and the purchase_unresolved guard then
-# stops the rider paying again. Two testers were stranded that way.
-#
-# A Render cron would be the tidier home for it, at about a dollar a month per
-# cron service. This costs nothing on a public repository, so it runs here
-# until that is funded.
-#
-# Prints counts only, never an address or an amount, which matters because
-# this repository is public and so are these logs.
+# No master key, owner DB credential or Render API access in scheduled jobs.
+# Configure the protected environment before merging. See docs/operations/staging-security.md.
 name: Payments and email maintenance
 
 on:
   schedule:
-    - cron: '*/15 * * * *' # best effort; GitHub can delay a scheduled run
+    - cron: '*/15 * * * *'
   workflow_dispatch:
 
-concurrency: seed-staging # never overlap the seeding workflow's writes
+permissions:
+  contents: read
+
+# Retain the previous lock while any retired seed run finishes.
+concurrency: seed-staging
 
 jobs:
-  drain:
-    name: drain the inbox
+  payments:
+    if: github.ref == 'refs/heads/main'
+    environment: staging
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v7
-      - uses: pnpm/action-setup@v6
-      - uses: actions/setup-node@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
         with:
           node-version: 24
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-
-      # Same derivations the service performs at boot, and the same ones
-      # seed-staging.yml uses. Keep them in step.
-      #
-      # The master key (JWT_SECRET) never leaves this step: every staging key
-      # derives from it. Each step gets only the derived credential it needs,
-      # as a masked step output, never through $GITHUB_ENV, which every later
-      # step (and every dependency they run) could read.
-      - name: Read existing staging keys and derive per-step credentials
-        id: keys
-        env:
-          RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
-          SERVICE_ID: ${{ vars.RENDER_STAGING_SERVICE_ID }}
-        run: |
-          if [ "$SERVICE_ID" != 'srv-d8suhkn7f7vs73bigd40' ]; then
-            echo '::error::RENDER_STAGING_SERVICE_ID must identify the existing staging API.'; exit 1
-          fi
-          api() { curl -fsS -H "Authorization: Bearer ${RENDER_API_KEY}" "https://api.render.com/v1$1"; }
-          settings=$(api "/services/${SERVICE_ID}/env-vars?limit=100")
-          jwt=$(printf '%s' "$settings" | jq -r '.. | objects | select(.key? == "JWT_SECRET") | .value' | head -1)
-          if [ -z "$jwt" ]; then
-            echo '::error::No JWT_SECRET on the service.'; exit 1
-          fi
-          echo "::add-mask::$jwt"
-          derive() {
-            JWT="$jwt" PURPOSE="$1" node --input-type=module -e '
-              import { hkdfSync } from "node:crypto";
-              process.stdout.write(Buffer.from(
-                hkdfSync("sha256", process.env.JWT, "trotxi:replacement:staging:v1", process.env.PURPOSE, 32),
-              ).toString("base64"));
-            '
-          }
-          access=$(derive ACCESS_SECRET)
-          echo "::add-mask::$access"
-          echo "access=$access" >> "$GITHUB_OUTPUT"
-          # The email outbox is sealed with the service's DEVICE_KEY.
-          device=$(derive DEVICE_KEY)
-          echo "::add-mask::$device"
-          echo "email_key=$device" >> "$GITHUB_OUTPUT"
-          resend=$(printf '%s' "$settings" | jq -r '.. | objects | select(.key? == "RESEND_API_KEY") | .value' | head -1)
-          if [ -n "$resend" ]; then
-            echo "::add-mask::$resend"
-            echo "resend=$resend" >> "$GITHUB_OUTPUT"
-          else
-            echo '::notice::RESEND_API_KEY is not set on the staging API; email retries will be skipped.'
-          fi
-
       - name: Run the money-recovery jobs
         working-directory: services/api-next
         env:
-          REPLACEMENT_DATABASE_URL: ${{ secrets.STAGING_DATABASE_URL }}
-          REPLACEMENT_ACCESS_SECRET: ${{ steps.keys.outputs.access }}
-          SEED_MAINTENANCE: 'yes'
-          SEED_STAGING_URL: https://trotxi-api-staging.onrender.com
-        run: node --import tsx scripts/seed-staging.ts
+          REPLACEMENT_RUNTIME_DATABASE_URL: ${{ secrets.STAGING_MAINTENANCE_DATABASE_URL }}
+          STAGING_DATABASE_CA_CERT: ${{ secrets.STAGING_DATABASE_CA_CERT }}
+          REPLACEMENT_ACCESS_SECRET: ${{ secrets.STAGING_ACCESS_SECRET }}
+          REPLACEMENT_MAINTENANCE_USER_ID: ${{ vars.STAGING_MAINTENANCE_USER_ID }}
+        run: node --import tsx scripts/maintain-staging-payments.ts
 
+  emails:
+    # Independent jobs: payments cannot prevent retrying due emails, and no
+    # process receives both the access-signing and email-encryption keys.
+    if: github.ref == 'refs/heads/main'
+    environment: staging
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
       - name: Retry due staging emails
-        # Payment recovery failing must not prevent email retries. Without a
-        # Resend key the script skips with a notice rather than failing.
-        if: ${{ !cancelled() && steps.keys.outcome == 'success' }}
         working-directory: services/api-next
         env:
-          REPLACEMENT_DATABASE_URL: ${{ secrets.STAGING_DATABASE_URL }}
-          EMAIL_ENCRYPTION_KEY: ${{ steps.keys.outputs.email_key }}
-          RESEND_API_KEY: ${{ steps.keys.outputs.resend }}
+          REPLACEMENT_RUNTIME_DATABASE_URL: ${{ secrets.STAGING_MAINTENANCE_DATABASE_URL }}
+          STAGING_DATABASE_CA_CERT: ${{ secrets.STAGING_DATABASE_CA_CERT }}
+          REPLACEMENT_MAINTENANCE_USER_ID: ${{ vars.STAGING_MAINTENANCE_USER_ID }}
+          EMAIL_ENCRYPTION_KEY: ${{ secrets.STAGING_EMAIL_ENCRYPTION_KEY }}
+          RESEND_API_KEY: ${{ secrets.STAGING_RESEND_API_KEY }}
         run: node --import tsx scripts/retry-staging-emails.ts

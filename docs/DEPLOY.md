@@ -185,6 +185,11 @@ does not create or update it.
 
 ### Blueprint changes need an apply
 
+The staging security cutover also moves migrations out of API startup into the
+protected deployment workflow. A manual Render deployment does not install
+migrations. Follow [Staging security cutover](operations/staging-security.md)
+before switching the API from its former owner connection to its restricted role.
+
 Render syncs blueprint-declared values (those with `value:` rather than
 `sync: false`) **only when the blueprint is applied**. Merging a change to
 `render.yaml` does not push it to a running service.
