@@ -81,3 +81,8 @@ control. Before real users or a production deletion promise, schedule and
 monitor these jobs, test restore-and-replay of deletion, confirm provider and
 backup windows, and approve the accounting period with counsel. A missed run
 or provider uncertainty remains open work under issue #284.
+
+The [operations checklist](account-erasure-operations-checklist.md) makes the
+evidence and restore gate explicit. The current erasure worker cannot replay
+closures missing from an old backup; a complete independent deletion register
+and a reviewed replay path are required before releasing such a restore.

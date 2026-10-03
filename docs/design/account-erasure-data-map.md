@@ -58,3 +58,8 @@ payloads or exact coordinates into job logs.
 
 These are explicit limits, not reasons to relabel local account closure as
 complete erasure across every store.
+
+Use the [operations checklist](account-erasure-operations-checklist.md) for
+the restricted evidence packet, provider register and backup inventory.
+Its restore release gate explicitly records that independent deletion-fact
+capture and a restore-specific replay tool are not yet implemented.
