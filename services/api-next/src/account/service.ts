@@ -10,6 +10,7 @@ import type { Pool, PoolClient } from 'pg';
 import { fail } from '../transport/errors.js';
 import type { Actor, Body, Outcome } from '../transport/service.js';
 import { cancelCredentialSms } from '../notifications/driver-sms.js';
+import type { ErasureJournal } from './erasure-journal.js';
 
 /** The person's own photo. Either app they hold, because it is theirs. */
 export const avatarOperations = ['getAvatar', 'uploadAvatar', 'deleteAvatar'] as const;
@@ -53,6 +54,9 @@ export interface AccountOptions {
   avatarUrlTtlSeconds?: number;
   maxAvatarBytes?: number;
   now?: () => Date;
+  erasureJournal?: ErasureJournal;
+  /** Only the offline owner CLI sets this; never wired into HTTP composition. */
+  recoveryOnly?: boolean;
 }
 
 type Row = Record<string, any>;
@@ -168,6 +172,8 @@ export class AccountService {
     contentType?: string,
     key?: string,
   ): Promise<Outcome> {
+    if (this.options.recoveryOnly)
+      throw new Error('recovery_service_has_no_interactive_operations');
     if (operation === 'getAvatar') return this.avatar(actor);
     if (typeof key !== 'string' || !key.length || key.length > 128)
       fail(400, 'idempotency_key_required', 'Supply an Idempotency-Key of 1 to 128 characters.');
@@ -494,8 +500,38 @@ export class AccountService {
    * that is unreachable leaves work to retry rather than an erasure that
    * quietly did not happen. Accounting we are required to keep is kept.
    */
-  private async erase(actor: Actor, key: string): Promise<Outcome> {
+  async replayErasure(entry: { userId: string; sessionId: string }): Promise<void> {
+    if (!this.options.recoveryOnly) throw new Error('recovery_service_required');
+    // These are journal audit identifiers, not a minted session or access token.
+    await this.erase({ userId: id(entry.userId), sessionId: id(entry.sessionId) }, '', true);
+  }
+
+  private async erase(actor: Actor, key: string, recovery = false): Promise<Outcome> {
     const outstanding = await this.tx(async (c) => {
+      // The owner fence takes the exclusive advisory lock and drains every in-flight
+      // deletion before it captures a final external journal revision.
+      await c.query(
+        "SELECT pg_advisory_xact_lock_shared(hashtextextended('trotxi:erasure-recovery',0))",
+      );
+      const control = (
+        await c.query(
+          'SELECT *,current_database() AS actual_database FROM app.erasure_recovery_control WHERE singleton',
+        )
+      ).rows[0];
+      if (
+        !control ||
+        control.database_name !== control.actual_database ||
+        control.mode !== (recovery ? 'isolated' : 'active')
+      )
+        fail(503, 'account_recovery_fenced', 'Account changes are temporarily unavailable.');
+      if (
+        !recovery &&
+        control.journal_namespace &&
+        this.options.erasureJournal?.namespace !== control.journal_namespace
+      )
+        fail(503, 'erasure_journal_unavailable', 'Account deletion is temporarily unavailable.');
+      if (!recovery && this.options.erasureJournal && !control.journal_namespace)
+        fail(503, 'erasure_journal_uninitialized', 'Account deletion is temporarily unavailable.');
       // Phone issuance and verification lock this digest before touching a
       // user. Take the same locks first: a code already being issued must
       // commit before the identity scrub scans and cancels challenges.
@@ -521,6 +557,10 @@ export class AccountService {
           `phone-otp:${identity.subject}`,
         ]);
       await c.query('SELECT id FROM app.users WHERE id=$1 FOR UPDATE', [id(actor.userId)]);
+      const restoredUser = recovery
+        ? (await c.query('SELECT * FROM app.users WHERE id=$1', [actor.userId])).rows[0]
+        : null;
+      if (recovery && (!restoredUser || restoredUser.deleted_at)) return false;
       // verifyAccess already checked signature, issuer, audience and expiry.
       // This exception is bound to the original deletion session AND exact key;
       // it grants no refresh or access to any other operation.
@@ -536,10 +576,50 @@ export class AccountService {
           fail(401, 'unauthenticated', 'Sign in to continue.');
         const prior = await this.receipt(c, actor, 'eraseAccount', key, actor.userId);
         if (!prior) fail(401, 'unauthenticated', 'Sign in to continue.');
+        if (this.options.erasureJournal) {
+          try {
+            const { value } = await this.options.erasureJournal.require();
+            this.options.erasureJournal.assertWriter(
+              value,
+              control.database_id,
+              control.database_name,
+              this.options.deviceKey,
+            );
+            if (!value.entries.some((entry) => entry.userId === actor.userId))
+              throw new Error('erasure_journal_entry_missing');
+          } catch {
+            fail(
+              503,
+              'erasure_journal_unavailable',
+              'Account deletion is temporarily unavailable.',
+            );
+          }
+        }
         return false;
       }
-      const user = await this.owner(c, actor);
-      await this.receipt(c, actor, 'eraseAccount', key, user.id);
+      const user = recovery ? restoredUser : await this.owner(c, actor);
+      if (!recovery) {
+        await this.receipt(c, actor, 'eraseAccount', key, user.id);
+        if (this.options.erasureJournal) {
+          try {
+            // Write-ahead deletion intent survives a subsequent SQL rollback.
+            // Once durable, recovery must honour it even if the HTTP reply is lost.
+            await this.options.erasureJournal.record(
+              control.database_id,
+              control.database_name,
+              this.options.deviceKey,
+              user.id,
+              actor.sessionId,
+            );
+          } catch {
+            fail(
+              503,
+              'erasure_journal_unavailable',
+              'Account deletion is temporarily unavailable.',
+            );
+          }
+        }
+      }
       await c.query(
         `UPDATE app.phone_otp_challenges SET state='failed',code_hash=NULL,phone_ciphertext=NULL
          WHERE owner_user_id=$1 AND state IN ('sending','sent')`,
@@ -554,7 +634,7 @@ export class AccountService {
         [user.id],
       );
       await cancelCredentialSms(c, user.id);
-      await this.options.erasureRequested?.(c, user.id, user.email ?? null);
+      if (!recovery) await this.options.erasureRequested?.(c, user.id, user.email ?? null);
       const sessions = await c.query(
         'UPDATE app.auth_sessions SET revoked_at=clock_timestamp() WHERE user_id=$1 AND revoked_at IS NULL',
         [user.id],
@@ -640,7 +720,7 @@ export class AccountService {
           archived_at=coalesce(archived_at,clock_timestamp()) WHERE user_id=$1`,
         [user.id],
       );
-      await this.record(c, actor, 'eraseAccount', key, user.id, null);
+      if (!recovery) await this.record(c, actor, 'eraseAccount', key, user.id, null);
       await c.query(
         `UPDATE app.driver_commands SET response_body=NULL,secret_ciphertext=NULL
         WHERE driver_id IN (SELECT id FROM app.drivers WHERE user_id=$1)
@@ -655,7 +735,7 @@ export class AccountService {
     });
     // Attempted once here so an ordinary erasure finishes now. A failure is
     // already recorded, and the maintenance worker owns the retry.
-    if (outstanding) await this.retryErasures(50, actor.userId);
+    if (outstanding && !recovery) await this.retryErasures(50, actor.userId);
     return { status: 204, body: null, headers: {} } as Outcome;
   }
 

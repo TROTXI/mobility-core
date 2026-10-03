@@ -289,7 +289,7 @@ test('MIG-01 clean install records hashes, rerun is no-op, historical drift fail
     // 033 adds append-only driver incident redaction evidence.
     // 036 adds rider notifications, their event history and preferences.
     // 037–038 add account-bound phone verification and new-rider standby.
-    assert.equal(tables.rows[0].n, 102);
+    assert.equal(tables.rows[0].n, 103);
     assert.deepEqual(
       (
         await pool.query(
