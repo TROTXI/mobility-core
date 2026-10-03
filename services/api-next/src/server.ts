@@ -2,7 +2,7 @@ import { readConfiguration } from './runtime/config.js';
 import { composeBackend } from './runtime/compose.js';
 import pg from 'pg';
 import { fileURLToPath } from 'node:url';
-import { migrate, readMigrations } from './db/migrate.js';
+import { assertMigrationsCurrent, readMigrations } from './db/migrate.js';
 import { observeBusiness, observeProcess } from './observability/metrics.js';
 import { stopTelemetry } from './observability/telemetry.js';
 
@@ -15,19 +15,19 @@ import { stopTelemetry } from './observability/telemetry.js';
  * the name of what is missing and the platform reports a failed deploy.
  */
 const config = readConfiguration();
-// Existing staging uses the same DATABASE_URL for installation and runtime,
-// as explicitly approved. Startup NEVER drops tables: the one-time disposable
-// reset is separate. Applied migration hashes remain checked on every deploy.
+// Deployment installs migrations using the protected owner credential. The API
+// only checks the resulting inventory using its restricted runtime connection.
 if (config.existingStaging) {
-  const installer = new pg.Pool({ connectionString: config.databaseUrl, max: 1 });
+  const checker = new pg.Pool({
+    connectionString: config.databaseUrl,
+    ssl: config.databaseSsl,
+    max: 1,
+  });
   try {
     const files = await readMigrations(fileURLToPath(new URL('../migrations/', import.meta.url)));
-    const installed = await migrate(installer, files);
-    process.stdout.write(
-      `${JSON.stringify({ installed, databaseMode: 'existing-disposable-staging' })}\n`,
-    );
+    await assertMigrationsCurrent(checker, files);
   } finally {
-    await installer.end();
+    await checker.end();
   }
 }
 const backend = await composeBackend(config);

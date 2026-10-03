@@ -63,7 +63,7 @@ export interface Backend {
  * migration owner would otherwise work perfectly and be quietly unauditable,
  * and that mistake is worth catching before the listener opens.
  */
-export async function assertRuntimeRole(pool: Pool, existingStaging = false): Promise<void> {
+export async function assertRuntimeRole(pool: Pool): Promise<void> {
   const row = (
     await pool.query<{
       create_schema: boolean;
@@ -81,16 +81,6 @@ export async function assertRuntimeRole(pool: Pool, existingStaging = false): Pr
     )
   ).rows[0];
   if (!row?.installed) throw new Error('The replacement schema is not installed on this database');
-  // Approved for the disposable, existing staging service only. Configuration
-  // also pins the Render service, host and TEST key. This deliberately gives up
-  // the narrow-login boundary; it is not a claim that owners are restricted.
-  if (existingStaging) {
-    if (row.database !== 'trotxi' || row.login !== 'trotxi')
-      throw new Error(
-        'The staging owner exception requires the existing trotxi database and login',
-      );
-    return;
-  }
   if (row.create_schema)
     throw new Error('Refusing to start: this connection can create objects in the app schema');
   if (row.rewrite_history)
@@ -108,13 +98,14 @@ export async function assertRuntimeRole(pool: Pool, existingStaging = false): Pr
 export async function composeBackend(config: RuntimeConfig): Promise<Backend> {
   const pool = new pg.Pool({
     connectionString: config.databaseUrl,
+    ...(config.databaseSsl ? { ssl: config.databaseSsl } : {}),
     max: config.poolSize,
     application_name: `${config.build.service}@${config.build.commit.slice(0, 12)}`,
     connectionTimeoutMillis: 5000,
     idleTimeoutMillis: 30000,
   });
   try {
-    await assertRuntimeRole(pool, config.existingStaging);
+    await assertRuntimeRole(pool);
     const erasureJournal = config.erasureJournal
       ? new ErasureJournal(
           new R2ErasureJournalStore(config.erasureJournal),
@@ -341,6 +332,7 @@ export async function composeBackend(config: RuntimeConfig): Promise<Backend> {
             support: config.support,
             fallbackBuilds: { driver: config.floors.driver, commuter: config.floors.commuter },
             docsUrl: config.docsUrl,
+            floorCacheMs: 30_000,
           }),
         };
       },

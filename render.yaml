@@ -26,20 +26,9 @@ databases:
   #   plan: basic-256mb
   #   region: frankfurt
 
-# Shared config for the ask-dispatch cron jobs (E3). Kept while the crons
-# themselves are commented out: the group costs nothing, and deleting it would
-# mean re-entering JWT_SECRET by hand when they are switched on.
-#
-# The crons mint a short-lived admin token, so this JWT_SECRET MUST equal the web
-# service's or every cron gets a 401 that looks like a bug rather than a config
-# mismatch. API_BASE_URL is the public staging URL (not a secret).
-envVarGroups:
-  - name: trotxi-cron-staging
-    envVars:
-      - key: JWT_SECRET
-        sync: false # set in dashboard; MUST match trotxi-api-staging's JWT_SECRET
-      - key: API_BASE_URL
-        value: https://trotxi-api-staging.onrender.com
+# Scheduled maintenance runs in GitHub with purpose-specific keys. Do not copy
+# the staging root secret into a cron environment group. Retire the existing
+# unused trotxi-cron-staging group during the security cutover.
 
 services:
   - type: web
@@ -57,10 +46,12 @@ services:
     envVars:
       - key: NODE_ENV
         value: production
-      - key: DATABASE_URL
-        fromDatabase:
-          name: trotxi-db-staging
-          property: connectionString
+      # Provision the restricted role before applying this Blueprint. The owner
+      # URL belongs only to the protected GitHub deployment environment.
+      - key: REPLACEMENT_RUNTIME_DATABASE_URL
+        sync: false
+      - key: STAGING_DATABASE_CA_CERT
+        sync: false # optional PEM CA; otherwise use the system trust store
       # Required because NODE_ENV=production (see ADR-0007). Set the value in the
       # Render dashboard; never commit it. Generate: openssl rand -base64 48
       - key: JWT_SECRET
@@ -340,6 +331,11 @@ services:
       - key: VITE_OPS_BUILD
         value: '1'
     headers:
+      # Only Vite content-hashed bundles. HTML and public files must revalidate.
+      # Apply this header in Render too; deploying a commit does not sync headers.
+      - path: /assets/*
+        name: Cache-Control
+        value: public, max-age=31536000, immutable
       - path: /*
         name: X-Frame-Options
         value: DENY
