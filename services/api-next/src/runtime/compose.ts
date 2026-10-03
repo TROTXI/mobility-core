@@ -21,6 +21,9 @@ import { StandbyService } from '../membership/standby.js';
 import { AccountService } from '../account/service.js';
 import { ConfigService } from '../config/service.js';
 import { R2ObjectStore } from './avatars.js';
+import { R2ErasureJournalStore } from './erasure-journal-store.js';
+import { ErasureJournal } from '../account/erasure-journal.js';
+import { assertErasureRuntime } from '../account/erasure-recovery.js';
 import { sharedAdmission } from './admission.js';
 import { TransactionalEmail } from '../notifications/email.js';
 import { ResendSender } from '../notifications/resend.js';
@@ -112,6 +115,14 @@ export async function composeBackend(config: RuntimeConfig): Promise<Backend> {
   });
   try {
     await assertRuntimeRole(pool, config.existingStaging);
+    const erasureJournal = config.erasureJournal
+      ? new ErasureJournal(
+          new R2ErasureJournalStore(config.erasureJournal),
+          config.erasureJournal.namespace,
+          config.erasureJournal.key,
+        )
+      : undefined;
+    await assertErasureRuntime(pool, erasureJournal, config.keys.device);
     const avatars = new R2ObjectStore(config.avatars);
     const push = config.firebaseServiceAccount
       ? new PushNotifications({
@@ -259,6 +270,7 @@ export async function composeBackend(config: RuntimeConfig): Promise<Backend> {
           pool,
           authorizeSession,
           deviceKey: config.keys.device,
+          erasureJournal,
           erasureRequested: email?.erasureRequested,
           avatars,
           // Erasure's external half. Marking a row deleted withdraws nothing

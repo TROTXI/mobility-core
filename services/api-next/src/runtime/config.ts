@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 import { existingStagingEnvironment, STAGING_SERVICE_ID } from './staging-profile.js';
 import type { BuildIdentity, MapTiles, SupportContacts } from '../config/service.js';
+import type { ErasureStoreConfig } from './erasure-journal-store.js';
 
 /**
  * Deployment configuration for the replacement backend.
@@ -28,6 +29,7 @@ export interface RuntimeConfig {
   /** Explicitly approved exception for the existing disposable Render staging. */
   existingStaging?: boolean;
   databaseUrl: string;
+  erasureJournal?: ErasureStoreConfig;
   poolSize: number;
   staleFixAfterSeconds: number;
   logRequests: boolean;
@@ -81,6 +83,25 @@ export interface RuntimeConfig {
 
 export class ConfigurationError extends Error {}
 type Env = Record<string, string | undefined>;
+
+/** Separate bucket, key and credentials; never inherit the avatar capability. */
+export function readErasureJournalConfiguration(env: Env): ErasureStoreConfig | undefined {
+  const names = ['ACCOUNT_ID', 'ACCESS_KEY_ID', 'SECRET_ACCESS_KEY', 'BUCKET', 'NAMESPACE', 'KEY'];
+  if (!names.some((name) => env[`ERASURE_JOURNAL_${name}`] !== undefined)) return undefined;
+  const config = {
+    accountId: required(env, 'ERASURE_JOURNAL_ACCOUNT_ID'),
+    accessKeyId: required(env, 'ERASURE_JOURNAL_ACCESS_KEY_ID'),
+    secretAccessKey: required(env, 'ERASURE_JOURNAL_SECRET_ACCESS_KEY'),
+    bucket: required(env, 'ERASURE_JOURNAL_BUCKET'),
+    namespace: required(env, 'ERASURE_JOURNAL_NAMESPACE'),
+    key: key(env, 'ERASURE_JOURNAL_KEY'),
+  };
+  if (!uuid.test(config.namespace))
+    throw new ConfigurationError('ERASURE_JOURNAL_NAMESPACE must be a UUID');
+  if (config.bucket === env.REPLACEMENT_R2_BUCKET_NAME)
+    throw new ConfigurationError('Erasure journal requires a separate private bucket');
+  return config;
+}
 
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -272,8 +293,12 @@ export function readConfiguration(env: Env = process.env): RuntimeConfig {
     throw new ConfigurationError(
       'REPLACEMENT_RUNTIME_DATABASE_URL must be the narrow runtime role, not the migration owner',
     );
+  const erasureJournal = readErasureJournalConfiguration(env);
+  if (erasureJournal && Object.values(keys).some((value) => value.equals(erasureJournal.key)))
+    throw new ConfigurationError('Erasure journal encryption key must be dedicated');
   return {
     existingStaging,
+    ...(erasureJournal ? { erasureJournal } : {}),
     ...(optional(env, 'FIREBASE_SERVICE_ACCOUNT')
       ? { firebaseServiceAccount: required(env, 'FIREBASE_SERVICE_ACCOUNT') }
       : {}),

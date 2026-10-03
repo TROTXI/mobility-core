@@ -125,8 +125,10 @@ These deployment-specific values are **not verified** by this runbook.
 
 ## Restore release gate
 
-This is a required procedure to implement and rehearse, not an existing
-automated recovery capability. Restoring or exporting personal data and
+The opt-in [encrypted register and offline recovery tool](account-erasure-recovery.md)
+implements capture, deletion fencing and replay. It is not provisioned or
+enabled on staging, and the hosted recovery procedure still needs rehearsal.
+Restoring or exporting personal data and
 provisioning any paid resource require explicit approval.
 
 1. **Isolate first.** Restore only into an approved non-serving environment.
@@ -165,8 +167,9 @@ provisioning any paid resource require explicit approval.
    message scrubbing, membership triggers and durable cleanup tasks. Do not
    set only `users.deleted_at`, copy audit rows as a substitute for cleanup,
    disable constraints, forge a rider token or call a nonexistent replay API.
-   No such restore-specific replay tool was found in the current replacement
-   backend. Until it exists and is tested, this step is BLOCKED.
+   Use the offline `prepare`, `replay` and `promote` commands described in the
+   recovery runbook. They require a backup made after register activation and
+   a fenced source. Local tests do not replace the approved hosted drill.
 4. **Prevent resurrection outside identity.** Reconcile restored OTPs,
    outboxes, pending jobs, provider-grant tasks, avatar references and holds
    before enabling workers. Reapply applicable post-snapshot restrictions and
@@ -199,17 +202,18 @@ provisioning any paid resource require explicit approval.
    Dispose of the approved test copy under its recorded lifecycle, with
    separate approval for irreversible deletion.
 
-## Open engineering work, not completed controls
+## Activation and evidence still required
 
-- Select and implement independent durable capture of deletion facts, with
-  a source write fence, final committed watermark, verified final delta and
-  a way to detect missing facts before release. No online cutover is implied.
-- Implement a reviewed, idempotent restore-only replay path and recovery
-  tests. The ordinary `DELETE /v1/me` endpoint requires the account's session;
-  it is not an administrator bulk replay mechanism.
+- Approve and provision the separate encrypted register and keys, establish
+  its baseline, and test hosted conditional writes. The implemented fence
+  covers deletion only; all other writers must be stopped operationally.
+- Rehearse the offline replay and writer handover. The ordinary `DELETE /v1/me`
+  endpoint is not an administrator bulk replay mechanism. Recovery without a
+  surviving source database remains unsupported by this tool and must stop
+  for a reviewed procedure, not initialize a replacement register.
 - Run the authorized isolated restore drill and record evidence.
 - Verify actual backup/export windows and obtain provider responses.
 
 Source checks: `account/service.ts` (`erase`, `retryErasures`), migrations
-017/032/034, `runtime/maintenance.ts` and `runtime/job-outcome.ts`. The data
+017/032/034/039, `account/erasure-recovery.ts`, `runtime/maintenance.ts` and `runtime/job-outcome.ts`. The data
 map remains the source for per-store tests and downstream erasure triggers.

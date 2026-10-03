@@ -141,6 +141,11 @@ export async function grantRuntime(pool: Pool, role: string): Promise<void> {
       throw new Error('Runtime role must exist and be independent of the owner/installer');
     await client.query(`GRANT USAGE ON SCHEMA app TO ${quoted}`);
     await client.query(`GRANT SELECT, INSERT, UPDATE ON ALL TABLES IN SCHEMA app TO ${quoted}`);
+    if (
+      (await client.query("SELECT to_regclass('app.erasure_recovery_control') AS name")).rows[0]
+        .name
+    )
+      await client.query(`REVOKE INSERT, UPDATE ON app.erasure_recovery_control FROM ${quoted}`);
     // UPDATE is revoked on every append-only table, and the set is read from
     // the schema's own triggers rather than kept by hand here: a new event
     // table cannot ship with UPDATE still granted, and a table from a

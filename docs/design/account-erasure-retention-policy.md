@@ -83,6 +83,9 @@ backup windows, and approve the accounting period with counsel. A missed run
 or provider uncertainty remains open work under issue #284.
 
 The [operations checklist](account-erasure-operations-checklist.md) makes the
-evidence and restore gate explicit. The current erasure worker cannot replay
-closures missing from an old backup; a complete independent deletion register
-and a reviewed replay path are required before releasing such a restore.
+evidence and restore gate explicit. The ordinary erasure worker cannot replay
+closures missing from an old backup. Use the separate
+[encrypted register and offline replay tool](account-erasure-recovery.md),
+which is implemented but not provisioned or enabled on staging. Activation,
+complete capture coverage and the hosted drill are required before releasing
+such a restore.
