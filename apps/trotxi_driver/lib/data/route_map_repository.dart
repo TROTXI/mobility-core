@@ -149,12 +149,14 @@ class RouteMapRepository {
   RouteMapRepository({required this.client});
   final DriverApi client;
   final Map<String, RouteShape> _shapes = {};
-  final Map<String, (DateTime, VehicleFix)> _fixes = {};
+  final Map<String, (DateTime, VehicleFix?)> _fixes = {};
+  final Map<String, Future<VehicleFix?>> _fixReads = {};
   int? _generation;
   void _sync() {
     if (_generation != client.store.generation) {
       _shapes.clear();
       _fixes.clear();
+      _fixReads.clear();
       _generation = client.store.generation;
     }
   }
@@ -230,23 +232,46 @@ class RouteMapRepository {
           : RouteShapeSource.manual,
       runCount: null,
     );
-    if (geometry != null) _shapes[trip.patternVersionId] = shape;
+    if (geometry != null) {
+      if (_shapes.length >= 32) _shapes.remove(_shapes.keys.first);
+      _shapes[trip.patternVersionId] = shape;
+    }
     return shape;
   }
 
   Future<VehicleFix?> vehicleOn(String runId) async {
     _sync();
+    final generation = client.sessionGeneration;
     final cached = _fixes[runId];
     if (cached != null &&
         DateTime.now().difference(cached.$1) < const Duration(seconds: 5)) {
       return cached.$2;
     }
+    final pending = _fixReads[runId];
+    if (pending != null) return pending;
+    final read = _readVehicle(runId, generation);
+    _fixReads[runId] = read;
+    try {
+      return await read;
+    } finally {
+      if (identical(_fixReads[runId], read)) _fixReads.remove(runId);
+    }
+  }
+
+  void _cacheFix(String runId, VehicleFix? fix) {
+    _fixes.remove(runId);
+    if (_fixes.length >= 16) _fixes.remove(_fixes.keys.first);
+    _fixes[runId] = (DateTime.now(), fix);
+  }
+
+  Future<VehicleFix?> _readVehicle(String runId, int generation) async {
     try {
       final trip = await client.trip(runId);
       final live = (await client.get(
         '/v1/trips/${Uri.encodeComponent(runId)}/live',
         wire.LiveTripResponse.serializer,
       )).data;
+      client.ensureSession(generation);
       if (live.tripId != runId ||
           live.patternVersionId != trip.patternVersionId) {
         throw const ApiException(502, 'The position did not match this run.');
@@ -254,7 +279,7 @@ class RouteMapRepository {
       final position = live.position;
       if (position == null ||
           ['ended', 'notStarted'].contains(live.state.name)) {
-        _fixes.remove(runId);
+        _cacheFix(runId, null);
         return null;
       }
       final fetched = DateTime.now();
@@ -282,9 +307,10 @@ class RouteMapRepository {
                 ),
         ],
       );
-      _fixes[runId] = (fetched, fix);
+      _cacheFix(runId, fix);
       return fix;
     } on TrotxiException {
+      client.ensureSession(generation);
       _fixes.remove(runId);
       return null;
     }

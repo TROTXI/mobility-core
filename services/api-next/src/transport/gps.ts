@@ -221,14 +221,16 @@ export class Gps {
   ): Promise<Outcome> {
     const trip = (
       await client.query(
-        'SELECT id,status,started_at FROM app.trips WHERE id=$1 AND assigned_driver_id=$2 FOR SHARE',
+        `WITH locked AS MATERIALIZED (
+          SELECT id,status,started_at FROM app.trips WHERE id=$1 AND assigned_driver_id=$2 FOR SHARE
+        ) SELECT locked.*,clock_timestamp() AS now FROM locked`,
         [tripId, driverId],
       )
     ).rows[0];
     if (!trip) return notFound();
     if (trip.status !== 'active')
       fail(409, 'trip_not_active', 'Positions are only accepted while the run is active.');
-    const now = (await client.query('SELECT clock_timestamp() AS now')).rows[0].now as Date;
+    const now = trip.now as Date;
     // A run left active is forgotten, not driving. Collecting past this would
     // hand the retention clock another thirty days of fixes to carry.
     if (now.getTime() - (trip.started_at as Date).getTime() > MAX_COLLECTION_SESSION_MS)

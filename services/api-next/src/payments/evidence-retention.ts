@@ -37,9 +37,7 @@ export async function redactExpiredPaymentEvidence(
     const c = await pool.connect();
     let count = 0;
     try {
-      await c.query('BEGIN');
-      await c.query("SET LOCAL lock_timeout='3s'");
-      await c.query("SET LOCAL statement_timeout='10s'");
+      await c.query("BEGIN; SET LOCAL lock_timeout='3s'; SET LOCAL statement_timeout='10s'");
       const candidates = (
         await c.query<{ id: string; purchase_id: string }>(
           `SELECT e.id,e.purchase_id FROM app.payment_events e WHERE ${eligible}

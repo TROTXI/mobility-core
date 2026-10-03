@@ -84,8 +84,7 @@ export class PhoneOtp {
     const c = await this.pool.connect();
     let expires: Date;
     try {
-      await c.query('BEGIN');
-      await c.query("SET LOCAL lock_timeout='3s'");
+      await c.query("BEGIN; SET LOCAL lock_timeout='3s'");
       await c.query("SELECT pg_advisory_xact_lock(hashtextextended('phone-otp:daily-budget',0))");
       await c.query('SELECT pg_advisory_xact_lock(hashtextextended($1,0))', [
         `phone-otp:${phoneHash}`,

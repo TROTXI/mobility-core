@@ -14,6 +14,15 @@ function deployedPolicy() {
 }
 
 describe('deployed Ops CSP', () => {
+  it('only declares immutable caching for the hashed build asset directory', () => {
+    const blueprint = readFileSync(resolve(process.cwd(), '../../render.yaml'), 'utf8');
+    const cacheRules = [
+      ...blueprint.matchAll(/- path: (\S+)\s+name: Cache-Control\s+value: ([^\n]+)/g),
+    ];
+    expect(cacheRules.map((rule) => [rule[1], rule[2]])).toEqual([
+      ['/assets/*', 'public, max-age=31536000, immutable'],
+    ]);
+  });
   it('keeps executable code and workers on audited origins', () => {
     const policy = deployedPolicy();
     expect(policy.get('default-src')).toEqual(["'none'"]);

@@ -96,6 +96,6 @@ export function createReplacementApp(
     drivers,
     boarding,
     verifyAccess: auth.tokens.verify,
-    authorizeSession: auth.authorizeSession,
+    authorizeSession: auth.authorizeActor,
   });
 }

@@ -41,8 +41,7 @@ export class ErasureRecovery {
   private async locked<T>(work: (client: PoolClient, control: any) => Promise<T>): Promise<T> {
     const client = await this.pool.connect();
     try {
-      await client.query('BEGIN');
-      await client.query("SET LOCAL lock_timeout='10s'");
+      await client.query("BEGIN; SET LOCAL lock_timeout='10s'");
       await client.query(
         "SELECT pg_advisory_xact_lock(hashtextextended('trotxi:erasure-recovery',0))",
       );

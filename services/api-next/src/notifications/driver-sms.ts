@@ -63,8 +63,7 @@ export class DriverSms implements DriverCredentialEmail {
     if (!claimed) return;
     const c = await this.pool.connect();
     try {
-      await c.query('BEGIN');
-      await c.query("SET LOCAL lock_timeout='3s'");
+      await c.query("BEGIN; SET LOCAL lock_timeout='3s'");
       const user = (
         await c.query('SELECT deleted_at FROM app.users WHERE id=$1 FOR UPDATE', [claimed.user_id])
       ).rows[0];

@@ -1,3 +1,4 @@
+import { beginTransaction } from '../db/transaction.js';
 import { randomUUID } from 'node:crypto';
 import type { Pool, PoolClient } from 'pg';
 import { canonical } from '../transport/service.js';
@@ -172,10 +173,7 @@ export class DriverService {
   private async transaction<T>(work: (client: PoolClient) => Promise<T>): Promise<T> {
     const client = await this.options.pool.connect();
     try {
-      await client.query('BEGIN');
-      await client.query("SET LOCAL TIME ZONE 'UTC'");
-      await client.query("SET LOCAL lock_timeout='3s'");
-      await client.query("SET LOCAL statement_timeout='10s'");
+      await beginTransaction(client);
       const result = await work(client);
       await client.query('COMMIT');
       return result;

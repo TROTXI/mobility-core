@@ -1,3 +1,4 @@
+import { beginTransaction } from '../db/transaction.js';
 import type { Pool, PoolClient } from 'pg';
 import { cursorCodec } from '../transport/cursor.js';
 import { fail } from '../transport/errors.js';
@@ -61,9 +62,7 @@ export class RiderInbox {
   ): Promise<T> {
     const c = await this.options.pool.connect();
     try {
-      await c.query(
-        "BEGIN; SET LOCAL TIME ZONE 'UTC'; SET LOCAL lock_timeout='3s'; SET LOCAL statement_timeout='10s'",
-      );
+      await beginTransaction(c);
       const owner = await c.query(
         `SELECT id FROM app.users WHERE id=$1 AND role='commuter' AND deleted_at IS NULL ${write ? 'FOR UPDATE' : 'FOR SHARE'}`,
         [actor.userId],

@@ -1,3 +1,4 @@
+import { beginTransaction } from '../db/transaction.js';
 import { randomUUID, timingSafeEqual } from 'node:crypto';
 import type { Pool, PoolClient } from 'pg';
 import type { Actor, Body, Outcome } from '../transport/service.js';
@@ -47,10 +48,7 @@ export class BoardingService {
   private async tx<T>(fn: (c: PoolClient) => Promise<T>, snapshot = false): Promise<T> {
     const c = await this.options.pool.connect();
     try {
-      await c.query(snapshot ? 'BEGIN ISOLATION LEVEL REPEATABLE READ' : 'BEGIN');
-      await c.query("SET LOCAL TIME ZONE 'UTC'");
-      await c.query("SET LOCAL lock_timeout='3s'");
-      await c.query("SET LOCAL statement_timeout='10s'");
+      await beginTransaction(c, snapshot);
       const result = await fn(c);
       await c.query('COMMIT');
       return result;

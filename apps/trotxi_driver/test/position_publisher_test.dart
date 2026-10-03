@@ -144,10 +144,17 @@ void main() {
       expect(calls, contains('getCurrentPosition'));
       expect(publisher.queueError, isNull);
       expect(publisher.state, PositionSharing.live);
+      expect(
+        publisher.localPosition?.timestamp.millisecondsSinceEpoch,
+        now.millisecondsSinceEpoch,
+      );
       expect(bodies.length, 2);
       expect(bodies[0]['latitude'], bodies[1]['latitude']);
       expect(bodies[0]['capturedAt'], isNot(bodies[1]['capturedAt']));
       expect(bodies[0]['clientFixId'], isNot(bodies[1]['clientFixId']));
+      await publisher.bindOwner('new-driver');
+      expect(publisher.localPosition, isNull);
+      expect(publisher.runId, isNull);
     },
   );
 
@@ -175,6 +182,11 @@ void main() {
       await publisher.start('trip-1');
       await fix();
       await reaches(publisher, PositionSharing.failed);
+      expect(
+        publisher.localPosition,
+        isNotNull,
+        reason: 'The device marker still works when delivery is offline',
+      );
       await expectLater(
         publisher.flushBeforeComplete('trip-1'),
         throwsA(isA<ApiException>()),
@@ -419,6 +431,7 @@ void main() {
     expect(publisher.state, PositionSharing.idle);
     expect(publisher.runId, isNull);
     expect(publisher.lastAcknowledgedAt, isNull);
+    expect(publisher.localPosition, isNull);
   });
 
   test('starts only with location access and stops its stream', () async {

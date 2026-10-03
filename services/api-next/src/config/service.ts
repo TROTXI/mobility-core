@@ -1,3 +1,4 @@
+import { beginTransaction } from '../db/transaction.js';
 import { createHash } from 'node:crypto';
 import type { Pool, PoolClient } from 'pg';
 import { fail } from '../transport/errors.js';
@@ -92,6 +93,8 @@ export function inRollout(userId: string, key: string, percentage: number): bool
 
 export class ConfigService {
   private readonly floors = new Map<string, { build: number; until: number }>();
+  private readonly floorReads = new Map<string, Promise<number>>();
+  private floorRevision = 0;
   private readonly cursors;
   constructor(private readonly options: ConfigOptions) {
     this.cursors = cursorCodec(options.cursorSecret);
@@ -116,10 +119,7 @@ export class ConfigService {
   private async tx<T>(work: (c: PoolClient) => Promise<T>): Promise<T> {
     const c = await this.options.pool.connect();
     try {
-      await c.query('BEGIN');
-      await c.query("SET LOCAL TIME ZONE 'UTC'");
-      await c.query("SET LOCAL lock_timeout='3s'");
-      await c.query("SET LOCAL statement_timeout='10s'");
+      await beginTransaction(c);
       const result = await work(c);
       await c.query('COMMIT');
       return result;
@@ -151,6 +151,24 @@ export class ConfigService {
     const cached = this.floors.get(slot);
     const now = this.now().getTime();
     if (cached && cached.until > now) return cached.build;
+    const pending = this.floorReads.get(slot);
+    if (pending) return pending;
+    const revision = this.floorRevision;
+    const read = this.readFloor(app, platform).then((build) => {
+      // A read started before an Ops update must not refill the invalidated cache.
+      if (revision === this.floorRevision)
+        this.floors.set(slot, { build, until: now + (this.options.floorCacheMs ?? 0) });
+      return build;
+    });
+    if ((this.options.floorCacheMs ?? 0) > 0) this.floorReads.set(slot, read);
+    try {
+      return await read;
+    } finally {
+      if (this.floorReads.get(slot) === read) this.floorReads.delete(slot);
+    }
+  }
+
+  private async readFloor(app: 'commuter' | 'driver', platform: 'ios' | 'android') {
     // One statement, no transaction: this runs before every admitted request,
     // and the value it reads changes about as often as an app ships. The
     // window is short enough that raising a floor takes effect immediately
@@ -159,9 +177,7 @@ export class ConfigService {
       'SELECT min_supported_build FROM app.minimum_versions WHERE app=$1 AND platform=$2',
       [app, platform],
     );
-    const build = row.rows[0]?.min_supported_build ?? this.options.fallbackBuilds[app][platform];
-    this.floors.set(slot, { build, until: now + (this.options.floorCacheMs ?? 0) });
-    return build;
+    return row.rows[0]?.min_supported_build ?? this.options.fallbackBuilds[app][platform];
   }
 
   /**
@@ -323,7 +339,7 @@ export class ConfigService {
     key: string,
     ifMatch?: string,
   ): Promise<Outcome> {
-    return this.tx(async (c) => {
+    const result = await this.tx(async (c) => {
       // Whether this caller may configure anything is decided before the shape
       // of what they sent: a rider fumbling a header should be told they are
       // not an administrator, not which header they got wrong.
@@ -403,6 +419,12 @@ export class ConfigService {
       );
       return outcome;
     });
+    if (operation === 'setMinimumVersion') {
+      this.floorRevision++;
+      this.floors.clear();
+      this.floorReads.clear();
+    }
+    return result;
   }
 
   private async render(
