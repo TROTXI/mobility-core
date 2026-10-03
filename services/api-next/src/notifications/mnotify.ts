@@ -10,7 +10,7 @@ export function ghanaPhone(value: string): string {
   return normalized;
 }
 export interface SmsSender {
-  send(phone: string, text: string, otp: boolean): Promise<string>;
+  send(phone: string, text: string): Promise<string>;
 }
 export class SmsSendError extends Error {
   constructor(readonly outcome: 'rejected' | 'unknown' = 'unknown') {
@@ -26,7 +26,7 @@ export class MnotifySender implements SmsSender {
     if (!key || /\s/.test(key) || !/^[A-Za-z0-9 ._-]{1,11}$/.test(sender))
       throw new Error('Valid mNotify key and approved sender ID required');
   }
-  async send(phone: string, text: string, otp: boolean): Promise<string> {
+  async send(phone: string, text: string): Promise<string> {
     try {
       const response = await this.request(
         `https://api.mnotify.com/api/sms/quick?key=${encodeURIComponent(this.key)}`,
@@ -37,8 +37,9 @@ export class MnotifySender implements SmsSender {
             recipient: [ghanaPhone(phone).slice(1)],
             sender: this.sender,
             message: text,
+            // No sms_type 'otp': mNotify bills OTP messages to the cash wallet,
+            // not the SMS credit bundle, and refuses them with 402 when it is empty.
             is_schedule: false,
-            ...(otp ? { sms_type: 'otp' } : {}),
           }),
           redirect: 'error',
           signal: AbortSignal.timeout(10000),
@@ -49,7 +50,9 @@ export class MnotifySender implements SmsSender {
         // Explicit client/auth/validation refusals are not lost replies.
         // Timeouts, server errors and redirects remain ambiguous.
         throw new SmsSendError(
-          [400, 401, 403, 404, 413, 422, 429].includes(response.status) ? 'rejected' : 'unknown',
+          [400, 401, 402, 403, 404, 413, 422, 429].includes(response.status)
+            ? 'rejected'
+            : 'unknown',
         );
       }
       const body = (await response.json()) as {

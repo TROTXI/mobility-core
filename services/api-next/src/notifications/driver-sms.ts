@@ -110,7 +110,7 @@ export class DriverSms implements DriverCredentialEmail {
         if (!eligible) await finish('cancelled');
         else {
           try {
-            await finish('accepted', await this.sender.send(payload.phone, payload.text, false));
+            await finish('accepted', await this.sender.send(payload.phone, payload.text));
           } catch (error) {
             await finish(
               error instanceof SmsSendError && error.outcome === 'rejected' ? 'failed' : 'unknown',

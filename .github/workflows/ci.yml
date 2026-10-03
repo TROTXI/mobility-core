@@ -41,7 +41,7 @@ jobs:
             files: >-
               tests/transport-commands.pg.test.ts tests/driver-credentials.pg.test.ts
               tests/catalog.pg.test.ts tests/fleet.pg.test.ts
-              tests/account-recovery.pg.test.ts tests/email.pg.test.ts tests/boarding.pg.test.ts
+              tests/account-recovery.pg.test.ts tests/erasure-recovery.pg.test.ts tests/email.pg.test.ts tests/boarding.pg.test.ts
               tests/payment-recovery.pg.test.ts
           - part: 3 of 3
             slug: part-3

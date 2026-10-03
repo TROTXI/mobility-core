@@ -25,6 +25,17 @@ been removed. This document does not set a new statutory retention period.
 | Firebase Cloud Messaging, Crashlytics and Performance                                                                                      | Device/installation IDs, push receipt IDs, crash/performance telemetry                                                                              | Token is removed locally and no further Trotxi push is eligible. There is no server-side deletion of installation/diagnostic data. The apps do not set a Trotxi user ID in Crashlytics in the inspected code, but installation data still exists.                                                                                                          | `notifications/push.ts`, app `main.dart`; [Firebase data management guidance](https://firebase.google.com/support/privacy/manage-iids). A provider deletion path would require installation identifiers and app-side coordination.           |
 | Resend and mNotify                                                                                                                         | Sent recipient and message/provider logs                                                                                                            | Trotxi clears queued message contents locally at terminal state or account closure. A sent email/SMS cannot be recalled. No provider-specific deletion endpoint is wired and its remote retention is not verified by local tests.                                                                                                                          | `notifications/resend.ts`, `mnotify.ts`; Resend [data-processing terms](https://resend.com/legal/dpa). Treat an operator/provider response as separate evidence, not an automatic result of `204`.                                           |
 
+### Opt-in independent deletion register
+
+The recovery implementation adds a separate private R2 object containing
+encrypted account and deletion-session IDs, writer identity and a revision.
+It contains no contacts or credentials, but its IDs are pseudonymous personal
+data, not anonymous. It is not provisioned on staging. There is no automatic
+entry expiry: the approved retention/rotation decision must cover every
+remaining backup and export before entries can be removed. See the
+[recovery runbook](account-erasure-recovery.md) for its capacity, key protection
+and evidence limits. This register must not be counted as an erased avatar.
+
 ## Machine-readable result and operational sequence
 
 `app.account_erasures` is the immutable local-closure fact. The read-only
@@ -58,3 +69,10 @@ payloads or exact coordinates into job logs.
 
 These are explicit limits, not reasons to relabel local account closure as
 complete erasure across every store.
+
+Use the [operations checklist](account-erasure-operations-checklist.md) for
+the restricted evidence packet, provider register and backup inventory.
+The [encrypted register and offline replay tool](account-erasure-recovery.md)
+now implement deletion capture and fenced recovery, but are not provisioned
+or enabled on staging. Hosted restore evidence and provider responses remain
+required before releasing a restored database.
