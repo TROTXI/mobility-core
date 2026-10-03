@@ -127,6 +127,7 @@ Source-loss recovery remains unsupported by the current offline tool. A missing
 source requires a separately reviewed recovery procedure, not a replacement
 register or forced promotion.
 
-Issue #284 remains open until these acceptance items are evidenced or moved
-to explicitly accepted, owned follow-ups. External-provider cleanup is not
-certified by this rehearsal.
+Issue #284 is closed as an implementation tracking item. The remaining
+acceptance requirements above are not completed by that closure and require
+separate ownership and evidence. External-provider cleanup is not certified
+by this rehearsal.

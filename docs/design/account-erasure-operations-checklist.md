@@ -79,8 +79,9 @@ UTC observation time and reviewer. A reason is required for NOT APPLICABLE.
    exception, not a silently successful deletion.
 9. **Completion statement.** State separately: local closure, tracked cleanup,
    provider exceptions, backup exceptions and device evidence. Record owners
-   and due dates for all unresolved items. Keep #284 open until acceptance is
-   evidenced or explicit owned follow-ups are approved.
+   and due dates for all unresolved items. Issue closure is not acceptance
+   evidence; preserve outstanding requirements until evidence or explicitly
+   owned follow-ups are approved.
 
 The current worker retries existing `erasure_tasks` and sweeps expired local
 payloads/challenges. It does **not** replay account closure from a deletion
