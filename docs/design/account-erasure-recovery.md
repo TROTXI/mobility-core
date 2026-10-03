@@ -1,9 +1,11 @@
 # Deletion recovery register and offline replay
 
-Issue #284. Implemented locally; **not provisioned or enabled on staging**.
-This does not close provider retention, backup-window, legal-review or hosted
-restore acceptance. No new HTTP operation, background schedule or paid service
-is enabled by this code.
+Issue #284. The private register was provisioned and enabled on staging on
+2026-10-03. The API deployment passed health, readiness and writer checks.
+This does not close provider retention, legal review or full recovery release
+acceptance. No new HTTP operation or background schedule is enabled by this
+code. See the [2026-10-03 hosted rehearsal evidence](account-erasure-hosted-drill-2026-10-03.md)
+for verified checks, disposal status and limits separate from unit tests.
 
 ## Safety model
 
@@ -180,10 +182,13 @@ providers and needs the existing maintenance approval.
   storage refusal, runtime permissions, a fence waiting for an in-flight
   deletion, repeated replay, an interrupted replay, missing snapshot accounts,
   stale watermark refusal and lost-response promotion recovery.
-- The restore test reproduces pre-deletion account/control rows in a separate
+- The automated PostgreSQL restore test reproduces pre-deletion account/control rows in a separate
   disposable database. It is not a Render backup restore or a live R2 test.
+- The separate 2026-10-03 hosted rehearsal used an actual Render PITR copy,
+  a server-side PostgreSQL snapshot clone and a test R2 register. Its evidence
+  does not certify live traffic cutover, provider cleanup or source-loss recovery.
 - No migration changes a public API operation; no client regeneration is needed.
 
-Still required under #284: approve/provision storage and credentials, verify
-actual backup/export retention, rehearse hosted restore and cutover, obtain
+Still required under #284: complete backup/export inventory and retention
+evidence, review hosted rehearsal scope and remaining cutover checks, obtain
 provider responses and legal review, and record maintenance responsibility.
