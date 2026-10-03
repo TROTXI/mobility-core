@@ -20,7 +20,8 @@ on:
     - cron: '*/15 * * * *' # best effort; GitHub can delay a scheduled run
   workflow_dispatch:
 
-concurrency: seed-staging # never overlap the seeding workflow's writes
+# Retain the previous lock while any run from the retired seed workflow finishes.
+concurrency: seed-staging
 
 jobs:
   drain:
@@ -36,8 +37,7 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
 
-      # Same derivations the service performs at boot, and the same ones
-      # seed-staging.yml uses. Keep them in step.
+      # Same derivations the service performs at boot.
       #
       # The master key (JWT_SECRET) never leaves this step: every staging key
       # derives from it. Each step gets only the derived credential it needs,
@@ -87,9 +87,7 @@ jobs:
         env:
           REPLACEMENT_DATABASE_URL: ${{ secrets.STAGING_DATABASE_URL }}
           REPLACEMENT_ACCESS_SECRET: ${{ steps.keys.outputs.access }}
-          SEED_MAINTENANCE: 'yes'
-          SEED_STAGING_URL: https://trotxi-api-staging.onrender.com
-        run: node --import tsx scripts/seed-staging.ts
+        run: node --import tsx scripts/maintain-staging-payments.ts
 
       - name: Retry due staging emails
         # Payment recovery failing must not prevent email retries. Without a

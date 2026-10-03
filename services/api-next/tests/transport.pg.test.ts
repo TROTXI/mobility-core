@@ -9,6 +9,7 @@ import { fileURLToPath } from 'node:url';
 import { setTimeout as delay } from 'node:timers/promises';
 import pg from 'pg';
 import { grantRuntime, migrate, migration, readMigrations } from '../src/db/migrate.js';
+import { maintainStagingPayments } from '../scripts/maintain-staging-payments.js';
 
 // Deliberately fail, never describe.skip: only a disposable loopback admin DB.
 const value = process.env.HARNESS_ADMIN_DATABASE_URL;
@@ -111,6 +112,7 @@ async function withDb(work: (pool: pg.Pool) => Promise<void>) {
     await pool.end();
   }
 }
+
 async function rejects(query: Promise<unknown>, code = '23514', message?: RegExp) {
   await assert.rejects(query, (error: unknown) => {
     assert.equal((error as { code: string }).code, code);
@@ -118,6 +120,34 @@ async function rejects(query: Promise<unknown>, code = '23514', message?: RegExp
     return true;
   });
 }
+
+test('standalone payment maintenance requires an existing admin and revokes its session', () =>
+  withDb(async (pool) => {
+    let calls = 0;
+    const request: typeof fetch = async () => {
+      calls++;
+      const session = (await pool.query('SELECT * FROM app.auth_sessions')).rows[0];
+      assert.equal(session.revoked_at, null);
+      assert.ok(session.admin_verified_at);
+      return Response.json({
+        data: { considered: 0, succeeded: 0, blocked: 0, failed: 0, failures: [] },
+      });
+    };
+    const key = Buffer.alloc(32, 4);
+    await assert.rejects(
+      maintainStagingPayments(pool, key, request, () => {}),
+      /existing active staging administrator/,
+    );
+    assert.equal(calls, 0);
+    assert.equal((await pool.query('SELECT count(*)::int AS n FROM app.users')).rows[0].n, 0);
+    await id(pool, "INSERT INTO app.users(role) VALUES ('admin')");
+    await maintainStagingPayments(pool, key, request, () => {});
+    assert.equal(calls, 2);
+    const sessions = (await pool.query('SELECT * FROM app.auth_sessions')).rows;
+    assert.equal(sessions.length, 1);
+    assert.ok(sessions[0].revoked_at);
+    assert.equal((await pool.query('SELECT count(*)::int AS n FROM app.users')).rows[0].n, 1);
+  }));
 async function id(
   pool: pg.Pool | pg.PoolClient,
   sql: string,
