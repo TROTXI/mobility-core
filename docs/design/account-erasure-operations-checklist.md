@@ -1,6 +1,6 @@
 # Account deletion: evidence packet and restore release gate
 
-Engineering runbook for #284, 2 October 2026. This is not a new retention
+Engineering runbook for #284, updated 3 October 2026. This is not a new retention
 policy, legal opinion, provider completion certificate or authorization to
 delete data. Use the [data map](account-erasure-data-map.md) and
 [pilot retention policy](account-erasure-retention-policy.md) alongside it.
@@ -17,6 +17,11 @@ responses, backup expiry and device cleanup were not independently checked.
 This is UI/status evidence only. It is not the complete end-to-end packet.
 Do not publish the account ID or a screenshot containing customer data in the
 public issue.
+
+The [3 October hosted rehearsal](account-erasure-hosted-drill-2026-10-03.md)
+separately records staging register activation, a Render PITR copy, synthetic
+snapshot/replay checks, test writer handover and completed test-resource
+disposal. Its scope limits and remaining acceptance table still apply.
 
 ## Ownership and evidence handling
 
@@ -121,13 +126,16 @@ production. Use NOT PROVISIONED for an environment that does not exist.
 - Verified expiration evidence, provider exception, or an owner and deadline
   where evidence cannot yet be obtained.
 
-These deployment-specific values are **not verified** by this runbook.
+The hosted rehearsal records one staging recovery point and the lifecycle of
+its temporary copy. A complete deployment-specific inventory and retention
+expiry evidence are **not verified** by this runbook.
 
 ## Restore release gate
 
 The opt-in [encrypted register and offline recovery tool](account-erasure-recovery.md)
-implements capture, deletion fencing and replay. It is not provisioned or
-enabled on staging, and the hosted recovery procedure still needs rehearsal.
+implements capture, deletion fencing and replay. The private register was
+provisioned and enabled on staging on 2026-10-03. Activation alone does not
+satisfy the hosted recovery release checks below.
 Restoring or exporting personal data and
 provisioning any paid resource require explicit approval.
 
@@ -204,14 +212,17 @@ provisioning any paid resource require explicit approval.
 
 ## Activation and evidence still required
 
-- Approve and provision the separate encrypted register and keys, establish
-  its baseline, and test hosted conditional writes. The implemented fence
+- Staging register provisioning and baseline activation completed on
+  2026-10-03. Preserve the protected keys and operational evidence. The implemented fence
   covers deletion only; all other writers must be stopped operationally.
-- Rehearse the offline replay and writer handover. The ordinary `DELETE /v1/me`
+- The non-serving hosted replay and test writer handover passed within the
+  recorded rehearsal scope. Complete the remaining real-recovery release
+  checks before routing traffic. The ordinary `DELETE /v1/me`
   endpoint is not an administrator bulk replay mechanism. Recovery without a
   surviving source database remains unsupported by this tool and must stop
   for a reviewed procedure, not initialize a replacement register.
-- Run the authorized isolated restore drill and record evidence.
+- Review the [2026-10-03 isolated rehearsal evidence](account-erasure-hosted-drill-2026-10-03.md)
+  and complete its outstanding acceptance checks. Test-resource disposal is complete.
 - Verify actual backup/export windows and obtain provider responses.
 
 Source checks: `account/service.ts` (`erase`, `retryErasures`), migrations
