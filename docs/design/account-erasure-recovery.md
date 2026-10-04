@@ -1,11 +1,9 @@
 # Deletion recovery register and offline replay
 
-Issue #284. The private register was provisioned and enabled on staging on
-2026-10-03. The API deployment passed health, readiness and writer checks.
-This does not close provider retention, legal review or full recovery release
-acceptance. No new HTTP operation or background schedule is enabled by this
-code. See the [2026-10-03 hosted rehearsal evidence](account-erasure-hosted-drill-2026-10-03.md)
-for verified checks, disposal status and limits separate from unit tests.
+The independent deletion register and replay tools prevent restored snapshots
+from reopening deleted accounts. Configuration, rehearsal and release checks
+belong to the [operations checklist](account-erasure-operations-checklist.md).
+Code support does not certify provider retention or recovery readiness.
 
 ## Safety model
 

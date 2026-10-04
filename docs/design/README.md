@@ -1,35 +1,31 @@
-# Design and evidence documents
+# Technical references
 
-Start with [current features](../features/README.md), [architecture](../architecture.md)
-and [implementation status](../STATUS.md). The stale ADR collection has been
-removed; its history remains in Git.
+Product behavior starts in [features](../features/README.md).
+This directory holds current safety references and executable contract tooling,
+not a history of the backend redesign.
 
-## Current controls and runbooks
+## Current feature details
 
 - [Phone verification](commuter-phone-verification.md)
-- [Account erasure data map](account-erasure-data-map.md),
-  [retention policy](account-erasure-retention-policy.md),
+- Account erasure: [data map](account-erasure-data-map.md),
+  [retention](account-erasure-retention-policy.md),
   [operations checklist](account-erasure-operations-checklist.md) and
   [restore recovery](account-erasure-recovery.md)
 - [Incident retention](driver-incident-retention.md)
 - [Ops audit coverage](ops-audit-coverage.md)
 - [Observability](observability.md)
-- [Generated API contract](contracts/replacement.openapi.json)
 
-Use source and tests to resolve discrepancies. A runbook describes a procedure;
-it does not establish that production configuration or a scheduled job exists.
+## Contract tooling
 
-## Historical material
+- [Executable schemas](contracts/target-contract.mjs)
+- [Implemented OpenAPI](contracts/replacement.openapi.json)
+- [Full catalog including deferred operations](contracts/target.openapi.json)
+- Generation and validation in `scripts/`
 
-The `stage-*` reports, API/database redesign proposals, redesign harness and
-invariant notes describe the replacement project's design and staged acceptance.
-They are preserved for traceability, not current deployment instructions.
-In particular, statements that api-next is undeployed, clients are unmigrated,
-or old seeds/migrations are needed must not be used to operate the current API.
+The generated `stage-1-endpoints.md`, `stage-1-invariants.md` and
+`stage-2-operation-scope.md` are inventories used by generation/CI, not
+developer setup guides or current deployment reports. Keep them synchronized
+through their generators; do not edit them by hand.
 
-Generated stage inventories are contract-build artifacts. Their historical
-names do not make the surrounding staged rollout reports current.
-
-Dated hosted-erasure drills and Ops-dispatch acceptance reports establish only
-the tested commit, environment and scope. Figma parity notes describe design
-comparisons, not proof that every proposed screen or provider integration exists.
+Historical reports and proposals are removed from the working tree and remain
+available through Git. Use the [developer guide](../development.md) for changes.

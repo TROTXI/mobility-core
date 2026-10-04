@@ -6,6 +6,11 @@ Ops provisions the driver and issues a temporary code/PIN through private
 handoff, email or SMS. First sign-in requires replacing a temporary PIN.
 Profile supports photo, PIN change, support/privacy and device readiness.
 
+Presentation uses the bundled Poppins typography and shared driver colour
+tokens. Home and Profile share the account photo, with an initials fallback;
+session changes must clear the previous account's image. Reuse the theme
+rather than adding screen-specific fonts or colours.
+
 The driver app lists assigned runs, checks location readiness before starting,
 records stop arrivals, boards through QR/code/photo, shows manifest/summary and
 completes the trip. Camera access is optional when using code/photo paths.

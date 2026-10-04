@@ -3,9 +3,10 @@
 The implementation repository for the commuter app, driver app, Ops console
 and transactional API.
 
-Start with [current status](docs/STATUS.md), the
-[feature index](docs/features/README.md) and [architecture](docs/architecture.md).
-[Deployment](docs/DEPLOY.md) documents staging configuration and release gates.
+Start with the [documentation guide](docs/README.md): implemented features,
+request flows and where developers change them. The
+[feature index](docs/features/README.md) explains product behavior;
+[development](docs/development.md) covers setup and verification.
 Product intent belongs in the private [strategy repository](https://github.com/TROTXI/strategy).
 
 ## Repository
@@ -29,6 +30,5 @@ New subscriptions use a verified commuter request, an Ops-priced offer and
 customer-authorized Paystack checkout. There is no public fixed-price plan,
 44-ride product requirement or prepaid cash wallet. Amounts use integer pesewas.
 
-Historical redesign reports are dated evidence, not current setup instructions.
-Architecture decision records have been retired; current rules live in feature
-docs and runbooks. Their history remains available in Git.
+Current rules live in feature docs and operating guides. Historical reports
+and architecture decision records have been removed; Git preserves their history.

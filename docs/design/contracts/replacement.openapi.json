@@ -19774,7 +19774,7 @@
     },
     "responses": {
       "Error400": {
-        "description": "Error 400; bounded code, no internal error text. See stage-1-access-and-gps.md.",
+        "description": "Error 400; bounded code, no internal error text. See docs/api/README.md for error handling.",
         "content": {
           "application/json": {
             "schema": {
@@ -19784,7 +19784,7 @@
         }
       },
       "Error429": {
-        "description": "Error 429; bounded code, no internal error text. See stage-1-access-and-gps.md.",
+        "description": "Error 429; bounded code, no internal error text. See docs/api/README.md for error handling.",
         "content": {
           "application/json": {
             "schema": {
@@ -19803,7 +19803,7 @@
         }
       },
       "Error500": {
-        "description": "Error 500; bounded code, no internal error text. See stage-1-access-and-gps.md.",
+        "description": "Error 500; bounded code, no internal error text. See docs/api/README.md for error handling.",
         "content": {
           "application/json": {
             "schema": {
@@ -19813,7 +19813,7 @@
         }
       },
       "Error503": {
-        "description": "Error 503; bounded code, no internal error text. See stage-1-access-and-gps.md.",
+        "description": "Error 503; bounded code, no internal error text. See docs/api/README.md for error handling.",
         "content": {
           "application/json": {
             "schema": {
@@ -19823,7 +19823,7 @@
         }
       },
       "Error409": {
-        "description": "Error 409; bounded code, no internal error text. See stage-1-access-and-gps.md.",
+        "description": "Error 409; bounded code, no internal error text. See docs/api/README.md for error handling.",
         "content": {
           "application/json": {
             "schema": {
@@ -19833,7 +19833,7 @@
         }
       },
       "Error401": {
-        "description": "Error 401; bounded code, no internal error text. See stage-1-access-and-gps.md.",
+        "description": "Error 401; bounded code, no internal error text. See docs/api/README.md for error handling.",
         "content": {
           "application/json": {
             "schema": {
@@ -19843,7 +19843,7 @@
         }
       },
       "Error426": {
-        "description": "Error 426; bounded code, no internal error text. See stage-1-access-and-gps.md.",
+        "description": "Error 426; bounded code, no internal error text. See docs/api/README.md for error handling.",
         "content": {
           "application/json": {
             "schema": {
@@ -19853,7 +19853,7 @@
         }
       },
       "Error403": {
-        "description": "Error 403; bounded code, no internal error text. See stage-1-access-and-gps.md.",
+        "description": "Error 403; bounded code, no internal error text. See docs/api/README.md for error handling.",
         "content": {
           "application/json": {
             "schema": {
@@ -19863,7 +19863,7 @@
         }
       },
       "Error423": {
-        "description": "Error 423; bounded code, no internal error text. See stage-1-access-and-gps.md.",
+        "description": "Error 423; bounded code, no internal error text. See docs/api/README.md for error handling.",
         "content": {
           "application/json": {
             "schema": {
@@ -19873,7 +19873,7 @@
         }
       },
       "Error404": {
-        "description": "Error 404; bounded code, no internal error text. See stage-1-access-and-gps.md.",
+        "description": "Error 404; bounded code, no internal error text. See docs/api/README.md for error handling.",
         "content": {
           "application/json": {
             "schema": {
@@ -19883,7 +19883,7 @@
         }
       },
       "Error413": {
-        "description": "Error 413; bounded code, no internal error text. See stage-1-access-and-gps.md.",
+        "description": "Error 413; bounded code, no internal error text. See docs/api/README.md for error handling.",
         "content": {
           "application/json": {
             "schema": {
@@ -19893,7 +19893,7 @@
         }
       },
       "Error415": {
-        "description": "Error 415; bounded code, no internal error text. See stage-1-access-and-gps.md.",
+        "description": "Error 415; bounded code, no internal error text. See docs/api/README.md for error handling.",
         "content": {
           "application/json": {
             "schema": {
@@ -19903,7 +19903,7 @@
         }
       },
       "Error412": {
-        "description": "Error 412; bounded code, no internal error text. See stage-1-access-and-gps.md.",
+        "description": "Error 412; bounded code, no internal error text. See docs/api/README.md for error handling.",
         "content": {
           "application/json": {
             "schema": {
@@ -19913,7 +19913,7 @@
         }
       },
       "Error428": {
-        "description": "Error 428; bounded code, no internal error text. See stage-1-access-and-gps.md.",
+        "description": "Error 428; bounded code, no internal error text. See docs/api/README.md for error handling.",
         "content": {
           "application/json": {
             "schema": {
