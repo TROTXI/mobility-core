@@ -20,6 +20,8 @@ import { GoogleIdTokenVerifier } from '../src/auth/id-token-verifier.google.js';
 import { AppleIdTokenVerifier } from '../src/auth/id-token-verifier.apple.js';
 import { hashDriverPin } from '../src/auth/driver-pin.js';
 import { hashToken, providerTokenBox } from '../src/auth/credentials.js';
+import { TransactionalEmail } from '../src/notifications/email.js';
+import { bootstrapSuperadmin } from '../src/auth/ops-bootstrap.js';
 import { TransportError } from '../src/transport/errors.js';
 import type { PasskeyRelyingParty } from '../src/auth/passkeys.js';
 import { grantRuntime, migrate, readMigrations } from '../src/db/migrate.js';
@@ -776,7 +778,20 @@ async function setup(
     application_name: applicationName,
   });
   t.after(() => runtime.end());
+  const sentEmails: string[] = [];
   const identity = {
+    opsOrigin: 'https://ops.example.invalid',
+    opsEmail: new TransactionalEmail({
+      pool: runtime,
+      encryptionKey: Buffer.alloc(32, 21),
+      staging: true,
+      sender: {
+        send: async (message) => {
+          sentEmails.push(message.text);
+          return randomUUID();
+        },
+      },
+    }),
     access,
     pinSecret,
     refreshTtlDays: 30,
@@ -891,6 +906,7 @@ async function setup(
     lockUser,
     waitForWaiters,
     role,
+    sentEmails,
   };
 }
 const data = (response: { statusCode: number; body: string; json(): any }, status = 200) => {
@@ -1397,6 +1413,229 @@ test('AUTH-17: session-revocation failures leave no receipt; unauthorized replay
  * adapter; session, challenge, credential, authorization and replay handling
  * all run through the real HTTP and PostgreSQL paths.
  */
+test('OPS-TEAM: invitation ownership, passkey activation, superadmin boundaries and revoke', async (t) => {
+  const f = await setup(t);
+  const owner = await operator(f, 'team-owner');
+  await register(f, owner.token);
+  const database = (await f.owner.query('SELECT current_database() AS name')).rows[0].name;
+  await assert.rejects(bootstrapSuperadmin(f.runtime, owner.id, database));
+  await assert.rejects(bootstrapSuperadmin(f.owner, owner.id, 'wrong_database'));
+  await bootstrapSuperadmin(f.owner, owner.id, database);
+  await assert.rejects(bootstrapSuperadmin(f.owner, owner.id, database), /already completed/);
+  await assert.rejects(
+    f.owner.query('UPDATE app.users SET is_superadmin=false WHERE id=$1', [owner.id]),
+    /last_superadmin/,
+  );
+  const selfChange = await ops(
+    f,
+    'POST',
+    `/v1/ops/team/members/${owner.id.toUpperCase()}/access`,
+    owner.token,
+    { action: 'revoke' },
+  );
+  assert.equal(selfChange.json().error.code, 'self_access_change');
+  const outsider = await operator(f, 'team-regular');
+  await register(f, outsider.token);
+  assert.equal((await ops(f, 'GET', '/v1/ops/team', outsider.token)).statusCode, 403);
+  data(
+    await ops(f, 'POST', `/v1/ops/team/members/${outsider.id}/access`, owner.token, {
+      action: 'make_superadmin',
+    }),
+  );
+  assert.equal(
+    (await f.owner.query('SELECT is_superadmin FROM app.users WHERE id=$1', [outsider.id])).rows[0]
+      .is_superadmin,
+    true,
+  );
+  assert.equal(
+    (await ops(f, 'GET', '/v1/ops/team', outsider.token)).statusCode,
+    401,
+    'promotion also revokes old sessions',
+  );
+  data(
+    await ops(f, 'POST', `/v1/ops/team/members/${outsider.id}/access`, owner.token, {
+      action: 'make_admin',
+    }),
+  );
+  assert.equal(
+    (await f.owner.query('SELECT is_superadmin FROM app.users WHERE id=$1', [outsider.id])).rows[0]
+      .is_superadmin,
+    false,
+  );
+  const invite = (email: string, key = randomUUID()) =>
+    ops(
+      f,
+      'POST',
+      '/v1/ops/team/invitations',
+      owner.token,
+      { email, name: 'Invited operator' },
+      key,
+    );
+  const key = randomUUID();
+  const created = await invite('invited@example.invalid', key);
+  const id = data(created).id;
+  assert.equal(data(await invite('invited@example.invalid', key)).id, id);
+  assert.equal(f.sentEmails.length, 1, 'command replay must not queue another email');
+  assert.equal((await invite('different@example.invalid', key)).statusCode, 409);
+  const oldToken = f.sentEmails.at(-1)!.match(/#invite=([A-Za-z0-9_-]+)/)![1]!;
+  const signOps = (subject: string, email: string, invitationToken?: string) =>
+    identityToken(subject, 'google', { email }).then((idToken) =>
+      ops(f, 'POST', '/v1/auth/ops/google', '', {
+        idToken,
+        ...(invitationToken ? { invitationToken } : {}),
+      }),
+    );
+  const count = Number((await f.owner.query('SELECT count(*) FROM app.users')).rows[0].count);
+  assert.equal((await signOps('uninvited', 'other@example.invalid')).statusCode, 403);
+  assert.equal((await signOps('uninvited', 'other@example.invalid', oldToken)).statusCode, 403);
+  assert.equal(
+    Number((await f.owner.query('SELECT count(*) FROM app.users')).rows[0].count),
+    count,
+    'refused Ops sign-in must not create commuter accounts',
+  );
+  data(await ops(f, 'POST', `/v1/ops/team/invitations/${id}/resend`, owner.token));
+  const token = f.sentEmails.at(-1)!.match(/#invite=([A-Za-z0-9_-]+)/)![1]!;
+  assert.notEqual(token, oldToken);
+  assert.equal((await signOps('invited-sub', 'invited@example.invalid', oldToken)).statusCode, 403);
+  const signed = data(await signOps('invited-sub', 'invited@example.invalid', token));
+  assert.equal(signed.account.role, 'admin');
+  assert.equal(signed.account.isSuperadmin, false);
+  assert.equal((await ops(f, 'GET', '/v1/ops/riders', signed.accessToken)).statusCode, 403);
+  assert.equal(
+    (
+      await f.owner.query('SELECT ops_invite_pending FROM app.users WHERE id=$1', [
+        signed.account.id,
+      ])
+    ).rows[0].ops_invite_pending,
+    true,
+  );
+  await register(f, signed.accessToken);
+  assert.deepEqual(
+    (await f.owner.query('SELECT email,name,token_hash FROM app.ops_invitations WHERE id=$1', [id]))
+      .rows[0],
+    { email: null, name: null, token_hash: null },
+  );
+  assert.equal((await ops(f, 'GET', '/v1/ops/riders', signed.accessToken)).statusCode, 200);
+  assert.equal((await ops(f, 'GET', '/v1/ops/team', signed.accessToken)).statusCode, 403);
+  assert.equal(
+    (await ops(f, 'POST', `/v1/ops/users/${owner.id}/passkeys/reset`, signed.accessToken))
+      .statusCode,
+    403,
+  );
+  assert.equal(
+    (await signOps('invited-sub', 'invited@example.invalid', token)).statusCode,
+    403,
+    'consumed invitation does not replay access',
+  );
+  assert.equal(
+    (await signOps('invited-sub', 'invited@example.invalid')).statusCode,
+    200,
+    'ordinary login needs no invitation after activation',
+  );
+  const page1 = await ops(f, 'GET', '/v1/ops/team?limit=1', owner.token);
+  assert.equal(page1.json().data.length, 1);
+  const next = page1.json().page.nextCursor;
+  assert.ok(next);
+  const page2 = await ops(
+    f,
+    'GET',
+    `/v1/ops/team?limit=1&cursor=${encodeURIComponent(next)}`,
+    owner.token,
+  );
+  assert.notEqual(page2.json().data[0].id, page1.json().data[0].id);
+  data(
+    await ops(f, 'POST', `/v1/ops/team/members/${signed.account.id}/access`, owner.token, {
+      action: 'revoke',
+    }),
+  );
+  assert.equal((await ops(f, 'GET', '/v1/ops/riders', signed.accessToken)).statusCode, 401);
+  assert.equal((await signOps('invited-sub', 'invited@example.invalid')).statusCode, 403);
+  assert.ok(
+    (
+      await f.owner.query(
+        "SELECT 1 FROM app.ops_team_events WHERE action='revoke' AND target_id=$1",
+        [signed.account.id],
+      )
+    ).rowCount,
+  );
+});
+
+test('OPS-TEAM: expired or cancelled setup cannot activate, and invitation secret is hashed', async (t) => {
+  const f = await setup(t),
+    owner = await operator(f, 'team-expiry-owner');
+  await register(f, owner.token);
+  await f.owner.query('UPDATE app.users SET is_superadmin=true WHERE id=$1', [owner.id]);
+  const existingCommuter = await f.sign('setup-sub');
+  const invite = data(
+    await ops(f, 'POST', '/v1/ops/team/invitations', owner.token, {
+      email: 'setup@example.invalid',
+      name: 'Setup',
+    }),
+  );
+  const token = f.sentEmails.at(-1)!.match(/#invite=([A-Za-z0-9_-]+)/)![1]!;
+  const row = (await f.owner.query('SELECT * FROM app.ops_invitations WHERE id=$1', [invite.id]))
+    .rows[0];
+  assert.notEqual(row.token_hash, token);
+  const sign = () =>
+    identityToken('setup-sub', 'google', { email: 'setup@example.invalid' }).then((idToken) =>
+      ops(f, 'POST', '/v1/auth/ops/google', '', { idToken, invitationToken: token }),
+    );
+  const signed = data(await sign());
+  assert.equal(
+    signed.account.id,
+    existingCommuter.account.id,
+    'an existing Google identity keeps its account',
+  );
+  assert.equal(signed.account.email, 'setup@example.invalid');
+  assert.equal(
+    (await ops(f, 'GET', '/v1/auth/passkeys', existingCommuter.accessToken)).statusCode,
+    401,
+  );
+  const started = data(
+    await ops(f, 'POST', '/v1/auth/passkeys/registration/options', signed.accessToken),
+  );
+  data(await ops(f, 'POST', `/v1/ops/team/invitations/${invite.id}/cancel`, owner.token));
+  const refused = await ops(
+    f,
+    'POST',
+    '/v1/auth/passkeys/registration/verification',
+    signed.accessToken,
+    registrationResponse(started.challenge),
+  );
+  assert.equal(refused.statusCode, 401);
+  assert.equal((await sign()).statusCode, 403);
+  const invitation = data(
+    await ops(f, 'POST', '/v1/ops/team/invitations', owner.token, {
+      email: 'expired@example.invalid',
+      name: 'Expiry',
+    }),
+  );
+  const expiredToken = f.sentEmails.at(-1)!.match(/#invite=([A-Za-z0-9_-]+)/)![1]!;
+  const expiredIdentity = await identityToken('expiry-sub', 'google', {
+    email: 'expired@example.invalid',
+  });
+  const pending = data(
+    await ops(f, 'POST', '/v1/auth/ops/google', '', {
+      idToken: expiredIdentity,
+      invitationToken: expiredToken,
+    }),
+  );
+  await f.owner.query(
+    "UPDATE app.ops_invitations SET created_at=clock_timestamp()-interval '2 days',expires_at=clock_timestamp()-interval '1 minute' WHERE id=$1",
+    [invitation.id],
+  );
+  const expired = await ops(f, 'POST', '/v1/auth/ops/google', '', {
+    idToken: await identityToken('expiry-sub', 'google', { email: 'expired@example.invalid' }),
+    invitationToken: expiredToken,
+  });
+  assert.equal(expired.statusCode, 403);
+  assert.equal(
+    (await ops(f, 'POST', '/v1/auth/passkeys/registration/options', pending.accessToken)).json()
+      .error.code,
+    'invitation_expired',
+  );
+});
+
 async function operator(f: Awaited<ReturnType<typeof setup>>, subject: string) {
   const signed = await f.sign(subject);
   await f.owner.query("UPDATE app.users SET role='admin' WHERE id=$1", [signed.account.id]);
@@ -1409,12 +1648,18 @@ function ops(
   path: string,
   token: string,
   body?: unknown,
+  key = randomUUID(),
 ) {
   return f.app.inject({
     method,
     url: path,
     ...(body !== undefined ? { payload: body as object } : {}),
-    headers: { authorization: `Bearer ${token}`, 'x-trotxi-client': 'ops', 'x-trotxi-build': '2' },
+    headers: {
+      authorization: `Bearer ${token}`,
+      'x-trotxi-client': 'ops',
+      'x-trotxi-build': '2',
+      'idempotency-key': key,
+    },
   });
 }
 function registrationResponse(challenge: string, id = randomBytes(24).toString('base64url')) {
@@ -1589,12 +1834,16 @@ test('PASSKEY-03 a verified admin can add a second passkey; an unelevated sessio
   );
 });
 
-test('PASSKEY-04 only another elevated admin can reset passkeys', async (t) => {
+test('PASSKEY-04 only another elevated superadmin can reset passkeys', async (t) => {
   const f = await setup(t);
   const lost = await operator(f, 'ops-passkey-4a');
   await register(f, lost.token);
   const helper = await operator(f, 'ops-passkey-4b');
   await register(f, helper.token);
+  const regular = await ops(f, 'POST', `/v1/ops/users/${lost.id}/passkeys/reset`, helper.token);
+  assert.equal(regular.statusCode, 403);
+  assert.equal(regular.json().error.code, 'superadmin_required');
+  await f.owner.query('UPDATE app.users SET is_superadmin=true WHERE id=$1', [helper.id]);
 
   const self = await ops(f, 'POST', `/v1/ops/users/${helper.id}/passkeys/reset`, helper.token);
   assert.equal(self.statusCode, 403);

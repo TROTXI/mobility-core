@@ -1,4 +1,5 @@
 import { beginTransaction } from '../db/transaction.js';
+import { requireSuperadmin } from '../auth/ops-team.js';
 import { createHash } from 'node:crypto';
 import type { Pool, PoolClient } from 'pg';
 import { fail } from '../transport/errors.js';
@@ -344,6 +345,7 @@ export class ConfigService {
       // of what they sent: a rider fumbling a header should be told they are
       // not an administrator, not which header they got wrong.
       await this.authorize(c, actor);
+      if (operation === 'changeRole') await requireSuperadmin(c, actor);
       if (typeof key !== 'string' || !key.length || key.length > 128)
         fail(400, 'idempotency_key_required', 'Supply an Idempotency-Key of 1 to 128 characters.');
       if (!ifMatch)
@@ -590,6 +592,10 @@ export class ConfigService {
       await c.query('SELECT * FROM app.users WHERE id=$1 AND deleted_at IS NULL FOR UPDATE', [id])
     ).rows[0];
     if (!user) fail(404, 'not_found', 'Resource not found.');
+    if (role === 'admin' && user.role !== 'admin')
+      fail(409, 'invitation_required', 'Invite this operator from Team & access.');
+    if ((user.is_superadmin && role !== 'admin') || user.ops_invite_pending)
+      fail(409, 'team_access_required', 'Manage this operator from Team & access.');
     // The one wildcard the service accepts, and only because nothing in the
     // approved contract lets ops read an account to learn its token first.
     if (ifMatch !== '*') this.precondition(ifMatch, userToken(user));

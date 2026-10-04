@@ -54,6 +54,17 @@ record a task as done because an API returned `204` or a provider was
 unreachable. Do not put raw phone numbers, email addresses, OTPs, provider
 payloads or exact coordinates into job logs.
 
+## Operator invitations and ownership
+
+Ops invitations (`ops_invitations`) contain a duplicate name/email and a hashed
+invitation secret while setup is pending. Migration 043 scrubs these on account
+erasure when the invite belongs to that user or matches the erased email.
+Acceptance and cancellation also scrub them. The encrypted invitation email
+uses the existing outbox expiry and terminal-state cleanup. First-superadmin
+setup, team command receipts and access events retain only account/target IDs,
+hashed command inputs and timestamps, not email addresses or invitation secrets.
+The last superadmin cannot be erased until ownership has been transferred.
+
 ## What remains open under issue #284
 
 - The provisional accounting period and production financial-evidence policy

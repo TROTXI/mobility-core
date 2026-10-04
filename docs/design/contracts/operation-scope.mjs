@@ -2,6 +2,19 @@
 // Deferred operations remain documented proposals, not stage-3 commitments.
 export const operationScope = [
   ...[
+    'signInOpsGoogle',
+    'listOpsTeam',
+    'inviteOperator',
+    'resendOperatorInvitation',
+    'cancelOperatorInvitation',
+    'updateOperatorAccess',
+  ].map((name) => [
+    name,
+    'post-cutover',
+    'Invite-only Ops onboarding and superadmin-owned access management',
+    'A shared social login and generic role editor do not bind invitation ownership or restrict administrator provisioning.',
+  ]),
+  ...[
     'listNotifications',
     'markNotificationRead',
     'markAllNotificationsRead',

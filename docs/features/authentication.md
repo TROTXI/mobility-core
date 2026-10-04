@@ -9,9 +9,10 @@ Source audit: 2026-10-03.
 - Drivers: `POST /v1/auth/driver` with driver code and six-digit PIN.
   Ops creates drivers and issues/resets temporary credentials. Temporary PINs
   expire and require a private PIN change before normal driver work.
-- Ops: approved Google account plus WebAuthn passkey registration/authentication.
+- Ops: invited Google account plus WebAuthn passkey registration/authentication.
   Current database role and session elevation are enforced on Ops requests.
-  A role-grant email is notification, not an access credential.
+  Invitations require both their secret link and the matching verified Google
+  identity. They never replace the passkey check.
 
 HS256 access tokens are verified for signature, issuer, audience and expiry.
 Current session, role and account state are checked in the database.
@@ -41,7 +42,7 @@ Ops can issue/reset, suspend, reinstate and unlock driver credentials. Resets
 revoke sessions. Delivery can be SMS or email, or a private one-time handoff;
 do not log credentials. [Onboarding](../driver-onboarding.md) covers recovery.
 
-Passkey reset requires another elevated operator. Phone OTP is not an Ops
+Passkey reset requires another elevated superadmin. Phone OTP is not an Ops
 second factor. The dedicated maintenance identity is non-human and separate
 from interactive operators.
 
@@ -89,3 +90,43 @@ Developer entry points:
 Tests: [auth](../../services/api-next/tests/auth.pg.test.ts) and
 [account](../../services/api-next/tests/account.pg.test.ts).
 Requests: [worked auth examples](../api/worked-examples.md#2-establish-commuter-eligibility).
+
+## Invite only Ops access
+
+The Ops login uses `POST /v1/auth/ops/google`, not the commuter registration
+endpoint. An uninvited Google identity receives `ops_access_required` without
+creating an account. Existing administrators continue to sign in normally.
+`isSuperadmin` is an additional capability on an admin, checked in the database
+on each access-management request; it is not trusted from a token or UI flag.
+
+Only an elevated superadmin can list the team, issue/resend/cancel invitations,
+change administrator access or reset another operator's passkeys. Ordinary
+admins retain dispatch and support work. The old role endpoint cannot grant
+admin access and now also requires superadmin authorization.
+
+An invitation lasts 48 hours. Email delivery uses the encrypted transactional
+outbox, immediate delivery attempt and existing retry worker. Provider acceptance
+does not prove inbox delivery. Resending rotates the secret and makes the old
+link unusable. The database stores only its hash; the encrypted email contains
+the link. The UI removes the URL fragment before sign-in and keeps the secret
+only in memory. Reloading before sign-in may require reopening the email.
+
+Google verification must return the invited email. Matching a profile email
+alone never grants access or merges identities. Claiming gives that account
+only passkey-setup access. Completing a verified passkey ceremony before expiry
+activates Ops access and consumes the invitation. Cancellation during setup
+revokes sessions and removes the pending admin role. Expired setup cannot activate.
+
+Invitations that were never claimed can be resent, including after expiry.
+Cancel an expired claimed invitation before issuing a replacement. Expired
+invitations remain in Team & access until a superadmin resolves them. Acceptance
+and cancellation scrub the duplicate invite name/email and secret. Account
+erasure also scrubs matching invitations; audit IDs remain, without link secrets.
+
+Access changes and passkey resets appear in Audit log. Revocation through Team
+removes the admin role and revokes sessions, but does not delete the person's
+commuter account or subscription. Self access changes are refused. The database
+also refuses removing or erasing the last superadmin.
+
+Source: [team service](../../services/api-next/src/auth/ops-team.ts).
+First-owner setup: [deployment](../DEPLOY.md#first-superadmin-setup).

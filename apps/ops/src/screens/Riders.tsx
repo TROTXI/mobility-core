@@ -190,7 +190,6 @@ export function Riders() {
             <select value={role} onChange={(event) => setRole(event.target.value as typeof role)}>
               <option value="commuter">Commuter</option>
               <option value="driver">Driver</option>
-              <option value="admin">Administrator</option>
             </select>
           </label>
         )}
@@ -324,7 +323,7 @@ function RiderDetail({
               </div>
               <div className="drawer-actions">
                 <Button onClick={onRestrict}>Restrict account</Button>
-                <Button onClick={onRole}>Change role</Button>
+                {session.account?.isSuperadmin && <Button onClick={onRole}>Change role</Button>}
               </div>
             </>
           )

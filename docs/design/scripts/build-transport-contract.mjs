@@ -5,6 +5,12 @@ const source = JSON.parse(
   await readFile(new URL('../contracts/target.openapi.json', import.meta.url), 'utf8'),
 );
 const selected = new Set([
+  'signInOpsGoogle',
+  'listOpsTeam',
+  'inviteOperator',
+  'resendOperatorInvitation',
+  'cancelOperatorInvitation',
+  'updateOperatorAccess',
   'requestPhoneSignIn',
   'verifyPhoneSignIn',
   'startPhoneVerification',

@@ -188,7 +188,8 @@ describe('OpsSession', () => {
     const seen: { body: string; bearer: string | null }[] = [];
     const fetcher = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       const request = input instanceof Request ? input : new Request(input, init);
-      if (request.url.endsWith('/v1/auth/google')) return Response.json(tokens('old', 'refresh-1'));
+      if (request.url.endsWith('/v1/auth/ops/google'))
+        return Response.json(tokens('old', 'refresh-1'));
       if (request.url.endsWith('/v1/auth/refresh'))
         return Response.json(tokens('new', 'refresh-2'));
       seen.push({ body: await request.text(), bearer: request.headers.get('Authorization') });
@@ -220,7 +221,8 @@ describe('OpsSession', () => {
     const storage = new MemoryStorage();
     const fetcher = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       const request = input instanceof Request ? input : new Request(input, init);
-      if (request.url.endsWith('/v1/auth/google')) return Response.json(tokens('old', 'refresh-1'));
+      if (request.url.endsWith('/v1/auth/ops/google'))
+        return Response.json(tokens('old', 'refresh-1'));
       if (request.url.endsWith('/v1/auth/refresh'))
         return Response.json({ error: { code: 'session_revoked' } }, { status: 401 });
       return Response.json({ error: { code: 'token_expired' } }, { status: 401 });
@@ -240,7 +242,7 @@ describe('OpsSession', () => {
   it('notifies the passkey gate when elevation expires without consuming the error response', async () => {
     const fetcher = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       const request = input instanceof Request ? input : new Request(input, init);
-      if (request.url.endsWith('/v1/auth/google'))
+      if (request.url.endsWith('/v1/auth/ops/google'))
         return Response.json(tokens('access', 'refresh'));
       return Response.json({ error: { code: 'passkey_required' } }, { status: 403 });
     });

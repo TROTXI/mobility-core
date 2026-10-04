@@ -14,6 +14,7 @@ the passkey check. Role checks are enforced by the server, not only navigation.
 | More → Standby             | Review commuter requests and send priced subscription offers                                                        |
 | More → Payments            | Purchases, recovery/review and TEST refund initiation                                                               |
 | More → People & messages   | Operators, access controls, delivery and erasure visibility                                                         |
+| More → Team & access       | Superadmin-only invitations, administrator revocation, superadmin capability and passkey recovery                   |
 | More → Audit log / Reports | Attributable events and operational summaries                                                                       |
 | More → Platform            | Flags, minimum builds and exposed manual maintenance controls                                                       |
 
@@ -71,3 +72,22 @@ Code: [navigation](../../apps/ops/src/components/Shell.tsx),
 Tests: [offers](../../apps/ops/src/screens/Standby.test.tsx),
 [trips](../../apps/ops/src/screens/Trips.test.tsx),
 [support](../../apps/ops/src/screens/Support.test.tsx).
+
+## Administrator onboarding
+
+The public front page contains only the Trotxi sign-in card. There is no public
+administrator registration form. A superadmin opens **More → Team & access**,
+enters a name and Google account email, then sends an invitation. The recipient
+opens the emailed link, signs in with that exact Google account, and registers
+or verifies a passkey before entering the workspace.
+
+The directory distinguishes active members, pending invitations, expired links
+and incomplete passkey setup. Email status means queued/provider accepted/failed,
+not guaranteed delivery. Resend invalidates the old link. Cancel removes pending
+access. Revocation signs out the administrator and removes Ops access without
+deleting their account. Use **View access history** for attributed events.
+
+Only a superadmin can promote another active administrator to superadmin.
+Nobody can change their own access here. Register a second recovery passkey and
+establish a separately approved backup superadmin; there is no public recovery
+or email-only bypass. See [first setup](../DEPLOY.md#first-superadmin-setup).

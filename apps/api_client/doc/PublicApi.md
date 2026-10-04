@@ -26,6 +26,7 @@ Method | HTTP request | Description
 [**signInApple**](PublicApi.md#signinapple) | **POST** /v1/auth/apple | sign In Apple
 [**signInDriver**](PublicApi.md#signindriver) | **POST** /v1/auth/driver | sign In Driver
 [**signInGoogle**](PublicApi.md#signingoogle) | **POST** /v1/auth/google | sign In Google
+[**signInOpsGoogle**](PublicApi.md#signinopsgoogle) | **POST** /v1/auth/ops/google | sign In Ops Google
 [**verifyPhoneSignIn**](PublicApi.md#verifyphonesignin) | **POST** /v1/auth/phone/verify | verify Phone Sign In
 
 
@@ -113,7 +114,7 @@ get Geometry
 import 'package:trotxi_api_client/api.dart';
 
 final api = TrotxiApiClient().getPublicApi();
-final String id = id_example; // String | 
+final String id = id_example; // String |
 final String xTrotxiClient = commuter; // String | Compatibility metadata only, never grants a role.
 final int xTrotxiBuild = 1; // int | Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
 final String xTrotxiPlatform = ios; // String | Required for commuter/driver, absent for ops/worker.
@@ -130,10 +131,10 @@ try {
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **id** | **String**|  | 
- **xTrotxiClient** | **String**| Compatibility metadata only, never grants a role. | 
+ **id** | **String**|  |
+ **xTrotxiClient** | **String**| Compatibility metadata only, never grants a role. |
  **xTrotxiBuild** | **int**| Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable. | [default to 1]
- **xTrotxiPlatform** | **String**| Required for commuter/driver, absent for ops/worker. | [optional] 
+ **xTrotxiPlatform** | **String**| Required for commuter/driver, absent for ops/worker. | [optional]
 
 ### Return type
 
@@ -197,7 +198,7 @@ get Pattern
 import 'package:trotxi_api_client/api.dart';
 
 final api = TrotxiApiClient().getPublicApi();
-final String id = id_example; // String | 
+final String id = id_example; // String |
 final String xTrotxiClient = commuter; // String | Compatibility metadata only, never grants a role.
 final int xTrotxiBuild = 1; // int | Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
 final String xTrotxiPlatform = ios; // String | Required for commuter/driver, absent for ops/worker.
@@ -214,10 +215,10 @@ try {
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **id** | **String**|  | 
- **xTrotxiClient** | **String**| Compatibility metadata only, never grants a role. | 
+ **id** | **String**|  |
+ **xTrotxiClient** | **String**| Compatibility metadata only, never grants a role. |
  **xTrotxiBuild** | **int**| Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable. | [default to 1]
- **xTrotxiPlatform** | **String**| Required for commuter/driver, absent for ops/worker. | [optional] 
+ **xTrotxiPlatform** | **String**| Required for commuter/driver, absent for ops/worker. | [optional]
 
 ### Return type
 
@@ -244,8 +245,8 @@ get Pattern Version
 import 'package:trotxi_api_client/api.dart';
 
 final api = TrotxiApiClient().getPublicApi();
-final String id = id_example; // String | 
-final String versionId = versionId_example; // String | 
+final String id = id_example; // String |
+final String versionId = versionId_example; // String |
 final String xTrotxiClient = commuter; // String | Compatibility metadata only, never grants a role.
 final int xTrotxiBuild = 1; // int | Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
 final String xTrotxiPlatform = ios; // String | Required for commuter/driver, absent for ops/worker.
@@ -262,11 +263,11 @@ try {
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **id** | **String**|  | 
- **versionId** | **String**|  | 
- **xTrotxiClient** | **String**| Compatibility metadata only, never grants a role. | 
+ **id** | **String**|  |
+ **versionId** | **String**|  |
+ **xTrotxiClient** | **String**| Compatibility metadata only, never grants a role. |
  **xTrotxiBuild** | **int**| Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable. | [default to 1]
- **xTrotxiPlatform** | **String**| Required for commuter/driver, absent for ops/worker. | [optional] 
+ **xTrotxiPlatform** | **String**| Required for commuter/driver, absent for ops/worker. | [optional]
 
 ### Return type
 
@@ -367,7 +368,7 @@ get Route
 import 'package:trotxi_api_client/api.dart';
 
 final api = TrotxiApiClient().getPublicApi();
-final String id = id_example; // String | 
+final String id = id_example; // String |
 final String xTrotxiClient = commuter; // String | Compatibility metadata only, never grants a role.
 final int xTrotxiBuild = 1; // int | Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
 final String xTrotxiPlatform = ios; // String | Required for commuter/driver, absent for ops/worker.
@@ -384,10 +385,10 @@ try {
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **id** | **String**|  | 
- **xTrotxiClient** | **String**| Compatibility metadata only, never grants a role. | 
+ **id** | **String**|  |
+ **xTrotxiClient** | **String**| Compatibility metadata only, never grants a role. |
  **xTrotxiBuild** | **int**| Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable. | [default to 1]
- **xTrotxiPlatform** | **String**| Required for commuter/driver, absent for ops/worker. | [optional] 
+ **xTrotxiPlatform** | **String**| Required for commuter/driver, absent for ops/worker. | [optional]
 
 ### Return type
 
@@ -414,7 +415,7 @@ list Route Schedules
 import 'package:trotxi_api_client/api.dart';
 
 final api = TrotxiApiClient().getPublicApi();
-final String id = id_example; // String | 
+final String id = id_example; // String |
 final String xTrotxiClient = commuter; // String | Compatibility metadata only, never grants a role.
 final int xTrotxiBuild = 1; // int | Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
 final String cursor = cursor_example; // String | Opaque cursor bound to caller, sort and filters.
@@ -434,13 +435,13 @@ try {
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **id** | **String**|  | 
- **xTrotxiClient** | **String**| Compatibility metadata only, never grants a role. | 
+ **id** | **String**|  |
+ **xTrotxiClient** | **String**| Compatibility metadata only, never grants a role. |
  **xTrotxiBuild** | **int**| Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable. | [default to 1]
- **cursor** | **String**| Opaque cursor bound to caller, sort and filters. | [optional] 
+ **cursor** | **String**| Opaque cursor bound to caller, sort and filters. | [optional]
  **limit** | **int**| Page size. No silent truncation. | [optional] [default to 50]
- **routeId** | **String**| Filter within caller scope; never expands authorization. | [optional] 
- **xTrotxiPlatform** | **String**| Required for commuter/driver, absent for ops/worker. | [optional] 
+ **routeId** | **String**| Filter within caller scope; never expands authorization. | [optional]
+ **xTrotxiPlatform** | **String**| Required for commuter/driver, absent for ops/worker. | [optional]
 
 ### Return type
 
@@ -485,11 +486,11 @@ try {
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **xTrotxiClient** | **String**| Compatibility metadata only, never grants a role. | 
+ **xTrotxiClient** | **String**| Compatibility metadata only, never grants a role. |
  **xTrotxiBuild** | **int**| Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable. | [default to 1]
- **cursor** | **String**| Opaque cursor bound to caller, sort and filters. | [optional] 
+ **cursor** | **String**| Opaque cursor bound to caller, sort and filters. | [optional]
  **limit** | **int**| Page size. No silent truncation. | [optional] [default to 50]
- **xTrotxiPlatform** | **String**| Required for commuter/driver, absent for ops/worker. | [optional] 
+ **xTrotxiPlatform** | **String**| Required for commuter/driver, absent for ops/worker. | [optional]
 
 ### Return type
 
@@ -518,7 +519,7 @@ import 'package:trotxi_api_client/api.dart';
 final api = TrotxiApiClient().getPublicApi();
 final String xTrotxiClient = commuter; // String | Compatibility metadata only, never grants a role.
 final int xTrotxiBuild = 1; // int | Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
-final RefreshInput refreshInput = ; // RefreshInput | 
+final RefreshInput refreshInput = ; // RefreshInput |
 final String xTrotxiPlatform = ios; // String | Required for commuter/driver, absent for ops/worker.
 
 try {
@@ -532,10 +533,10 @@ try {
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **xTrotxiClient** | **String**| Compatibility metadata only, never grants a role. | 
+ **xTrotxiClient** | **String**| Compatibility metadata only, never grants a role. |
  **xTrotxiBuild** | **int**| Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable. | [default to 1]
- **refreshInput** | [**RefreshInput**](RefreshInput.md)|  | 
- **xTrotxiPlatform** | **String**| Required for commuter/driver, absent for ops/worker. | [optional] 
+ **refreshInput** | [**RefreshInput**](RefreshInput.md)|  |
+ **xTrotxiPlatform** | **String**| Required for commuter/driver, absent for ops/worker. | [optional]
 
 ### Return type
 
@@ -564,7 +565,7 @@ import 'package:trotxi_api_client/api.dart';
 final api = TrotxiApiClient().getPublicApi();
 final String xTrotxiClient = commuter; // String | Compatibility metadata only, never grants a role.
 final int xTrotxiBuild = 1; // int | Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
-final RefreshInput refreshInput = ; // RefreshInput | 
+final RefreshInput refreshInput = ; // RefreshInput |
 final String xTrotxiPlatform = ios; // String | Required for commuter/driver, absent for ops/worker.
 
 try {
@@ -579,10 +580,10 @@ try {
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **xTrotxiClient** | **String**| Compatibility metadata only, never grants a role. | 
+ **xTrotxiClient** | **String**| Compatibility metadata only, never grants a role. |
  **xTrotxiBuild** | **int**| Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable. | [default to 1]
- **refreshInput** | [**RefreshInput**](RefreshInput.md)|  | 
- **xTrotxiPlatform** | **String**| Required for commuter/driver, absent for ops/worker. | [optional] 
+ **refreshInput** | [**RefreshInput**](RefreshInput.md)|  |
+ **xTrotxiPlatform** | **String**| Required for commuter/driver, absent for ops/worker. | [optional]
 
 ### Return type
 
@@ -611,7 +612,7 @@ import 'package:trotxi_api_client/api.dart';
 final api = TrotxiApiClient().getPublicApi();
 final String xTrotxiClient = commuter; // String | Compatibility metadata only, never grants a role.
 final int xTrotxiBuild = 1; // int | Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
-final PhoneSignInRequest phoneSignInRequest = ; // PhoneSignInRequest | 
+final PhoneSignInRequest phoneSignInRequest = ; // PhoneSignInRequest |
 final String xTrotxiPlatform = ios; // String | Required for commuter/driver, absent for ops/worker.
 
 try {
@@ -626,10 +627,10 @@ try {
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **xTrotxiClient** | **String**| Compatibility metadata only, never grants a role. | 
+ **xTrotxiClient** | **String**| Compatibility metadata only, never grants a role. |
  **xTrotxiBuild** | **int**| Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable. | [default to 1]
- **phoneSignInRequest** | [**PhoneSignInRequest**](PhoneSignInRequest.md)|  | 
- **xTrotxiPlatform** | **String**| Required for commuter/driver, absent for ops/worker. | [optional] 
+ **phoneSignInRequest** | [**PhoneSignInRequest**](PhoneSignInRequest.md)|  |
+ **xTrotxiPlatform** | **String**| Required for commuter/driver, absent for ops/worker. | [optional]
 
 ### Return type
 
@@ -658,7 +659,7 @@ import 'package:trotxi_api_client/api.dart';
 final api = TrotxiApiClient().getPublicApi();
 final String xTrotxiClient = commuter; // String | Compatibility metadata only, never grants a role.
 final int xTrotxiBuild = 1; // int | Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
-final AppleSignIn appleSignIn = ; // AppleSignIn | 
+final AppleSignIn appleSignIn = ; // AppleSignIn |
 final String xTrotxiPlatform = ios; // String | Required for commuter/driver, absent for ops/worker.
 
 try {
@@ -673,10 +674,10 @@ try {
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **xTrotxiClient** | **String**| Compatibility metadata only, never grants a role. | 
+ **xTrotxiClient** | **String**| Compatibility metadata only, never grants a role. |
  **xTrotxiBuild** | **int**| Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable. | [default to 1]
- **appleSignIn** | [**AppleSignIn**](AppleSignIn.md)|  | 
- **xTrotxiPlatform** | **String**| Required for commuter/driver, absent for ops/worker. | [optional] 
+ **appleSignIn** | [**AppleSignIn**](AppleSignIn.md)|  |
+ **xTrotxiPlatform** | **String**| Required for commuter/driver, absent for ops/worker. | [optional]
 
 ### Return type
 
@@ -705,7 +706,7 @@ import 'package:trotxi_api_client/api.dart';
 final api = TrotxiApiClient().getPublicApi();
 final String xTrotxiClient = commuter; // String | Compatibility metadata only, never grants a role.
 final int xTrotxiBuild = 1; // int | Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
-final DriverSignIn driverSignIn = ; // DriverSignIn | 
+final DriverSignIn driverSignIn = ; // DriverSignIn |
 final String xTrotxiPlatform = ios; // String | Required for commuter/driver, absent for ops/worker.
 
 try {
@@ -720,10 +721,10 @@ try {
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **xTrotxiClient** | **String**| Compatibility metadata only, never grants a role. | 
+ **xTrotxiClient** | **String**| Compatibility metadata only, never grants a role. |
  **xTrotxiBuild** | **int**| Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable. | [default to 1]
- **driverSignIn** | [**DriverSignIn**](DriverSignIn.md)|  | 
- **xTrotxiPlatform** | **String**| Required for commuter/driver, absent for ops/worker. | [optional] 
+ **driverSignIn** | [**DriverSignIn**](DriverSignIn.md)|  |
+ **xTrotxiPlatform** | **String**| Required for commuter/driver, absent for ops/worker. | [optional]
 
 ### Return type
 
@@ -752,7 +753,7 @@ import 'package:trotxi_api_client/api.dart';
 final api = TrotxiApiClient().getPublicApi();
 final String xTrotxiClient = commuter; // String | Compatibility metadata only, never grants a role.
 final int xTrotxiBuild = 1; // int | Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
-final GoogleSignIn googleSignIn = ; // GoogleSignIn | 
+final GoogleSignIn googleSignIn = ; // GoogleSignIn |
 final String xTrotxiPlatform = ios; // String | Required for commuter/driver, absent for ops/worker.
 
 try {
@@ -767,10 +768,57 @@ try {
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **xTrotxiClient** | **String**| Compatibility metadata only, never grants a role. | 
+ **xTrotxiClient** | **String**| Compatibility metadata only, never grants a role. |
  **xTrotxiBuild** | **int**| Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable. | [default to 1]
- **googleSignIn** | [**GoogleSignIn**](GoogleSignIn.md)|  | 
- **xTrotxiPlatform** | **String**| Required for commuter/driver, absent for ops/worker. | [optional] 
+ **googleSignIn** | [**GoogleSignIn**](GoogleSignIn.md)|  |
+ **xTrotxiPlatform** | **String**| Required for commuter/driver, absent for ops/worker. | [optional]
+
+### Return type
+
+[**TokensResponse**](TokensResponse.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+ - **Content-Type**: application/json
+ - **Accept**: application/json
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
+# **signInOpsGoogle**
+> TokensResponse signInOpsGoogle(xTrotxiClient, xTrotxiBuild, opsGoogleSignIn, xTrotxiPlatform)
+
+sign In Ops Google
+
+### Example
+```dart
+import 'package:trotxi_api_client/api.dart';
+
+final api = TrotxiApiClient().getPublicApi();
+final String xTrotxiClient = commuter; // String | Compatibility metadata only, never grants a role.
+final int xTrotxiBuild = 1; // int | Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
+final OpsGoogleSignIn opsGoogleSignIn = ; // OpsGoogleSignIn |
+final String xTrotxiPlatform = ios; // String | Required for commuter/driver, absent for ops/worker.
+
+try {
+    final response = api.signInOpsGoogle(xTrotxiClient, xTrotxiBuild, opsGoogleSignIn, xTrotxiPlatform);
+    print(response);
+} on DioException catch (e) {
+    print('Exception when calling PublicApi->signInOpsGoogle: $e\n');
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **xTrotxiClient** | **String**| Compatibility metadata only, never grants a role. |
+ **xTrotxiBuild** | **int**| Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable. | [default to 1]
+ **opsGoogleSignIn** | [**OpsGoogleSignIn**](OpsGoogleSignIn.md)|  |
+ **xTrotxiPlatform** | **String**| Required for commuter/driver, absent for ops/worker. | [optional]
 
 ### Return type
 
@@ -799,7 +847,7 @@ import 'package:trotxi_api_client/api.dart';
 final api = TrotxiApiClient().getPublicApi();
 final String xTrotxiClient = commuter; // String | Compatibility metadata only, never grants a role.
 final int xTrotxiBuild = 1; // int | Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
-final PhoneSignInVerify phoneSignInVerify = ; // PhoneSignInVerify | 
+final PhoneSignInVerify phoneSignInVerify = ; // PhoneSignInVerify |
 final String xTrotxiPlatform = ios; // String | Required for commuter/driver, absent for ops/worker.
 
 try {
@@ -814,10 +862,10 @@ try {
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **xTrotxiClient** | **String**| Compatibility metadata only, never grants a role. | 
+ **xTrotxiClient** | **String**| Compatibility metadata only, never grants a role. |
  **xTrotxiBuild** | **int**| Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable. | [default to 1]
- **phoneSignInVerify** | [**PhoneSignInVerify**](PhoneSignInVerify.md)|  | 
- **xTrotxiPlatform** | **String**| Required for commuter/driver, absent for ops/worker. | [optional] 
+ **phoneSignInVerify** | [**PhoneSignInVerify**](PhoneSignInVerify.md)|  |
+ **xTrotxiPlatform** | **String**| Required for commuter/driver, absent for ops/worker. | [optional]
 
 ### Return type
 

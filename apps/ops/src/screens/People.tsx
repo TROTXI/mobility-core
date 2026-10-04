@@ -85,14 +85,14 @@ export function People() {
                     <td>
                       <Button
                         appearance="subtle"
-                        disabled={row.id === session.account?.id}
+                        disabled={!session.account?.isSuperadmin || row.id === session.account?.id}
                         onClick={() => setReset(row)}
                       >
                         Reset passkeys
                       </Button>
                       <Button
                         appearance="subtle"
-                        disabled={row.id === session.account?.id}
+                        disabled={!session.account?.isSuperadmin || row.id === session.account?.id}
                         title={
                           row.id === session.account?.id
                             ? 'Another administrator must change your role.'

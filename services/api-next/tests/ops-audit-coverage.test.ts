@@ -7,6 +7,12 @@ import { JOBS } from '../src/runtime/maintenance.js';
 // Domain receipts remain in their own tables; maintenance is the only new
 // cross-domain run record. See docs/design/ops-audit-coverage.md.
 const evidence = {
+  ops_team_events: [
+    'inviteOperator',
+    'resendOperatorInvitation',
+    'cancelOperatorInvitation',
+    'updateOperatorAccess',
+  ],
   admin_passkey_events: ['resetOperatorPasskeys'],
   refund_initiations: ['initiateRefund'],
   catalog_events: [

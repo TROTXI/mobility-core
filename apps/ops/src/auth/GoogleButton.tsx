@@ -24,6 +24,7 @@ export function GoogleButton() {
   const host = useRef<HTMLDivElement>(null);
   const [state, setState] = useState<'loading' | 'ready' | 'error'>('loading');
   const [message, setMessage] = useState('');
+  const [attempt, setAttempt] = useState(0);
   const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
 
   useEffect(() => {
@@ -54,7 +55,7 @@ export function GoogleButton() {
         size: 'large',
         shape: 'pill',
         text: 'continue_with',
-        width: 360,
+        width: Math.min(360, host.current.clientWidth || 360),
       });
       setState('ready');
     };
@@ -71,17 +72,25 @@ export function GoogleButton() {
     script.dataset.trotxiGoogle = 'true';
     script.addEventListener('load', render, { once: true });
     script.addEventListener('error', () => {
+      script.remove();
       setMessage('Google sign-in could not load. Check your connection and try again.');
       setState('error');
     });
     document.head.append(script);
-  }, [clientId, session]);
+  }, [clientId, session, attempt]);
 
   if (state === 'error')
     return (
       <div className="auth-actions">
         <div className="error-box">{message}</div>
-        <Button appearance="primary" onClick={() => location.reload()}>
+        <Button
+          appearance="primary"
+          onClick={() => {
+            setMessage('');
+            setState('loading');
+            setAttempt((value) => value + 1);
+          }}
+        >
           Try again
         </Button>
       </div>

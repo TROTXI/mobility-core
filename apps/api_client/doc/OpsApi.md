@@ -10,6 +10,7 @@ All URIs are relative to *https://trotxi-api-staging.onrender.com*
 Method | HTTP request | Description
 ------------- | ------------- | -------------
 [**assignTrip**](OpsApi.md#assigntrip) | **PUT** /v1/ops/trips/{id}/assignment | assign Trip
+[**cancelOperatorInvitation**](OpsApi.md#canceloperatorinvitation) | **POST** /v1/ops/team/invitations/{id}/cancel | cancel Operator Invitation
 [**cancelTrip**](OpsApi.md#canceltrip) | **POST** /v1/ops/trips/{id}/cancel | cancel Trip
 [**changeCredentialState**](OpsApi.md#changecredentialstate) | **POST** /v1/ops/drivers/{id}/credentials/actions | change Credential State
 [**changeRole**](OpsApi.md#changerole) | **PATCH** /v1/ops/users/{id}/role | change Role
@@ -36,6 +37,7 @@ Method | HTTP request | Description
 [**getOpsRiderDetail**](OpsApi.md#getopsriderdetail) | **GET** /v1/ops/riders/{id} | get Ops Rider Detail
 [**getOpsRiderSummary**](OpsApi.md#getopsridersummary) | **GET** /v1/ops/riders/summary | get Ops Rider Summary
 [**initiateRefund**](OpsApi.md#initiaterefund) | **POST** /v1/ops/purchases/{id}/refunds | initiate Refund
+[**inviteOperator**](OpsApi.md#inviteoperator) | **POST** /v1/ops/team/invitations | invite Operator
 [**issueDriverCredential**](OpsApi.md#issuedrivercredential) | **POST** /v1/ops/drivers/{id}/credentials | issue Driver Credential
 [**listCommuteEvents**](OpsApi.md#listcommuteevents) | **GET** /v1/ops/commute-requests/{id}/events | list Commute Events
 [**listCommuteSlots**](OpsApi.md#listcommuteslots) | **GET** /v1/ops/commute-slots | list Commute Slots
@@ -55,6 +57,7 @@ Method | HTTP request | Description
 [**listOpsRoutes**](OpsApi.md#listopsroutes) | **GET** /v1/ops/routes | list Ops Routes
 [**listOpsStandby**](OpsApi.md#listopsstandby) | **GET** /v1/ops/standby | list Ops Standby
 [**listOpsStops**](OpsApi.md#listopsstops) | **GET** /v1/ops/stops | list Ops Stops
+[**listOpsTeam**](OpsApi.md#listopsteam) | **GET** /v1/ops/team | list Ops Team
 [**listOpsTrips**](OpsApi.md#listopstrips) | **GET** /v1/ops/trips | list Ops Trips
 [**listOpsVehicles**](OpsApi.md#listopsvehicles) | **GET** /v1/ops/vehicles | list Ops Vehicles
 [**listPatternVersions**](OpsApi.md#listpatternversions) | **GET** /v1/ops/route-patterns/{id}/versions | list Pattern Versions
@@ -69,6 +72,7 @@ Method | HTTP request | Description
 [**releaseAccountRestriction**](OpsApi.md#releaseaccountrestriction) | **POST** /v1/ops/users/{id}/restrictions/{restrictionId}/release | release Account Restriction
 [**releaseTraceHold**](OpsApi.md#releasetracehold) | **POST** /v1/ops/trace-holds/{id}/release | release Trace Hold
 [**rescheduleTrip**](OpsApi.md#rescheduletrip) | **PATCH** /v1/ops/trips/{id} | reschedule Trip
+[**resendOperatorInvitation**](OpsApi.md#resendoperatorinvitation) | **POST** /v1/ops/team/invitations/{id}/resend | resend Operator Invitation
 [**resetDriverPin**](OpsApi.md#resetdriverpin) | **POST** /v1/ops/drivers/{id}/credentials/reset-pin | reset Driver Pin
 [**resetOperatorPasskeys**](OpsApi.md#resetoperatorpasskeys) | **POST** /v1/ops/users/{id}/passkeys/reset | reset Operator Passkeys
 [**resolvePaymentReview**](OpsApi.md#resolvepaymentreview) | **POST** /v1/ops/payments/reviews/{id}/decisions | resolve Payment Review
@@ -77,6 +81,7 @@ Method | HTTP request | Description
 [**setFlag**](OpsApi.md#setflag) | **PUT** /v1/ops/flags/{key} | set Flag
 [**setMinimumVersion**](OpsApi.md#setminimumversion) | **PUT** /v1/ops/min-versions/{app}/{platform} | set Minimum Version
 [**updateDriver**](OpsApi.md#updatedriver) | **PATCH** /v1/ops/drivers/{id} | update Driver
+[**updateOperatorAccess**](OpsApi.md#updateoperatoraccess) | **POST** /v1/ops/team/members/{id}/access | update Operator Access
 [**updatePlanPricing**](OpsApi.md#updateplanpricing) | **PATCH** /v1/ops/plan-pricing/{plan} | update Plan Pricing
 [**updateRoute**](OpsApi.md#updateroute) | **PATCH** /v1/ops/routes/{id} | update Route
 [**updateStop**](OpsApi.md#updatestop) | **PATCH** /v1/ops/stops/{id} | update Stop
@@ -132,6 +137,55 @@ Name | Type | Description  | Notes
 ### HTTP request headers
 
  - **Content-Type**: application/json
+ - **Accept**: application/json
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
+# **cancelOperatorInvitation**
+> OperatorCommandResultResponse cancelOperatorInvitation(id, idempotencyKey, xTrotxiClient, xTrotxiBuild, xTrotxiPlatform)
+
+cancel Operator Invitation
+
+### Example
+```dart
+import 'package:trotxi_api_client/api.dart';
+
+final api = TrotxiApiClient().getOpsApi();
+final String id = id_example; // String |
+final String idempotencyKey = idempotencyKey_example; // String | Caller + operation + target scoped; payload mismatch = 409. Never log secrets.
+final String xTrotxiClient = ops; // String | Compatibility metadata only, never grants a role.
+final int xTrotxiBuild = 1; // int | Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
+final String xTrotxiPlatform = xTrotxiPlatform_example; // String | Required for commuter/driver, absent for ops/worker.
+
+try {
+    final response = api.cancelOperatorInvitation(id, idempotencyKey, xTrotxiClient, xTrotxiBuild, xTrotxiPlatform);
+    print(response);
+} on DioException catch (e) {
+    print('Exception when calling OpsApi->cancelOperatorInvitation: $e\n');
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **id** | **String**|  |
+ **idempotencyKey** | **String**| Caller + operation + target scoped; payload mismatch = 409. Never log secrets. |
+ **xTrotxiClient** | **String**| Compatibility metadata only, never grants a role. |
+ **xTrotxiBuild** | **int**| Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable. | [default to 1]
+ **xTrotxiPlatform** | **String**| Required for commuter/driver, absent for ops/worker. | [optional]
+
+### Return type
+
+[**OperatorCommandResultResponse**](OperatorCommandResultResponse.md)
+
+### Authorization
+
+[bearerAuth](../README.md#bearerAuth)
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
  - **Accept**: application/json
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
@@ -1429,6 +1483,55 @@ Name | Type | Description  | Notes
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
+# **inviteOperator**
+> OperatorCommandResultResponse inviteOperator(idempotencyKey, xTrotxiClient, xTrotxiBuild, operatorInvitationInput, xTrotxiPlatform)
+
+invite Operator
+
+### Example
+```dart
+import 'package:trotxi_api_client/api.dart';
+
+final api = TrotxiApiClient().getOpsApi();
+final String idempotencyKey = idempotencyKey_example; // String | Caller + operation + target scoped; payload mismatch = 409. Never log secrets.
+final String xTrotxiClient = ops; // String | Compatibility metadata only, never grants a role.
+final int xTrotxiBuild = 1; // int | Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
+final OperatorInvitationInput operatorInvitationInput = ; // OperatorInvitationInput |
+final String xTrotxiPlatform = xTrotxiPlatform_example; // String | Required for commuter/driver, absent for ops/worker.
+
+try {
+    final response = api.inviteOperator(idempotencyKey, xTrotxiClient, xTrotxiBuild, operatorInvitationInput, xTrotxiPlatform);
+    print(response);
+} on DioException catch (e) {
+    print('Exception when calling OpsApi->inviteOperator: $e\n');
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **idempotencyKey** | **String**| Caller + operation + target scoped; payload mismatch = 409. Never log secrets. |
+ **xTrotxiClient** | **String**| Compatibility metadata only, never grants a role. |
+ **xTrotxiBuild** | **int**| Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable. | [default to 1]
+ **operatorInvitationInput** | [**OperatorInvitationInput**](OperatorInvitationInput.md)|  |
+ **xTrotxiPlatform** | **String**| Required for commuter/driver, absent for ops/worker. | [optional]
+
+### Return type
+
+[**OperatorCommandResultResponse**](OperatorCommandResultResponse.md)
+
+### Authorization
+
+[bearerAuth](../README.md#bearerAuth)
+
+### HTTP request headers
+
+ - **Content-Type**: application/json
+ - **Accept**: application/json
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
 # **issueDriverCredential**
 > CredentialSecretResponse issueDriverCredential(id, idempotencyKey, xTrotxiClient, xTrotxiBuild, credentialIssue, xTrotxiPlatform)
 
@@ -2396,6 +2499,55 @@ Name | Type | Description  | Notes
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
+# **listOpsTeam**
+> OpsTeamEntryPage listOpsTeam(xTrotxiClient, xTrotxiBuild, cursor, limit, xTrotxiPlatform)
+
+list Ops Team
+
+### Example
+```dart
+import 'package:trotxi_api_client/api.dart';
+
+final api = TrotxiApiClient().getOpsApi();
+final String xTrotxiClient = ops; // String | Compatibility metadata only, never grants a role.
+final int xTrotxiBuild = 1; // int | Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
+final String cursor = cursor_example; // String | Opaque cursor bound to caller, sort and filters.
+final int limit = 56; // int | Page size. No silent truncation.
+final String xTrotxiPlatform = xTrotxiPlatform_example; // String | Required for commuter/driver, absent for ops/worker.
+
+try {
+    final response = api.listOpsTeam(xTrotxiClient, xTrotxiBuild, cursor, limit, xTrotxiPlatform);
+    print(response);
+} on DioException catch (e) {
+    print('Exception when calling OpsApi->listOpsTeam: $e\n');
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **xTrotxiClient** | **String**| Compatibility metadata only, never grants a role. |
+ **xTrotxiBuild** | **int**| Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable. | [default to 1]
+ **cursor** | **String**| Opaque cursor bound to caller, sort and filters. | [optional]
+ **limit** | **int**| Page size. No silent truncation. | [optional] [default to 50]
+ **xTrotxiPlatform** | **String**| Required for commuter/driver, absent for ops/worker. | [optional]
+
+### Return type
+
+[**OpsTeamEntryPage**](OpsTeamEntryPage.md)
+
+### Authorization
+
+[bearerAuth](../README.md#bearerAuth)
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
+ - **Accept**: application/json
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
 # **listOpsTrips**
 > OpsTripPage listOpsTrips(xTrotxiClient, xTrotxiBuild, cursor, limit, fromDate, toDate, routeId, xTrotxiPlatform)
 
@@ -3114,6 +3266,55 @@ Name | Type | Description  | Notes
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
+# **resendOperatorInvitation**
+> OperatorCommandResultResponse resendOperatorInvitation(id, idempotencyKey, xTrotxiClient, xTrotxiBuild, xTrotxiPlatform)
+
+resend Operator Invitation
+
+### Example
+```dart
+import 'package:trotxi_api_client/api.dart';
+
+final api = TrotxiApiClient().getOpsApi();
+final String id = id_example; // String |
+final String idempotencyKey = idempotencyKey_example; // String | Caller + operation + target scoped; payload mismatch = 409. Never log secrets.
+final String xTrotxiClient = ops; // String | Compatibility metadata only, never grants a role.
+final int xTrotxiBuild = 1; // int | Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
+final String xTrotxiPlatform = xTrotxiPlatform_example; // String | Required for commuter/driver, absent for ops/worker.
+
+try {
+    final response = api.resendOperatorInvitation(id, idempotencyKey, xTrotxiClient, xTrotxiBuild, xTrotxiPlatform);
+    print(response);
+} on DioException catch (e) {
+    print('Exception when calling OpsApi->resendOperatorInvitation: $e\n');
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **id** | **String**|  |
+ **idempotencyKey** | **String**| Caller + operation + target scoped; payload mismatch = 409. Never log secrets. |
+ **xTrotxiClient** | **String**| Compatibility metadata only, never grants a role. |
+ **xTrotxiBuild** | **int**| Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable. | [default to 1]
+ **xTrotxiPlatform** | **String**| Required for commuter/driver, absent for ops/worker. | [optional]
+
+### Return type
+
+[**OperatorCommandResultResponse**](OperatorCommandResultResponse.md)
+
+### Authorization
+
+[bearerAuth](../README.md#bearerAuth)
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
+ - **Accept**: application/json
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
 # **resetDriverPin**
 > CredentialSecretResponse resetDriverPin(id, idempotencyKey, xTrotxiClient, xTrotxiBuild, pinResetInput, xTrotxiPlatform)
 
@@ -3513,6 +3714,57 @@ Name | Type | Description  | Notes
 ### Return type
 
 [**DriverResponse**](DriverResponse.md)
+
+### Authorization
+
+[bearerAuth](../README.md#bearerAuth)
+
+### HTTP request headers
+
+ - **Content-Type**: application/json
+ - **Accept**: application/json
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
+# **updateOperatorAccess**
+> OperatorCommandResultResponse updateOperatorAccess(id, idempotencyKey, xTrotxiClient, xTrotxiBuild, operatorAccessInput, xTrotxiPlatform)
+
+update Operator Access
+
+### Example
+```dart
+import 'package:trotxi_api_client/api.dart';
+
+final api = TrotxiApiClient().getOpsApi();
+final String id = id_example; // String |
+final String idempotencyKey = idempotencyKey_example; // String | Caller + operation + target scoped; payload mismatch = 409. Never log secrets.
+final String xTrotxiClient = ops; // String | Compatibility metadata only, never grants a role.
+final int xTrotxiBuild = 1; // int | Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
+final OperatorAccessInput operatorAccessInput = ; // OperatorAccessInput |
+final String xTrotxiPlatform = xTrotxiPlatform_example; // String | Required for commuter/driver, absent for ops/worker.
+
+try {
+    final response = api.updateOperatorAccess(id, idempotencyKey, xTrotxiClient, xTrotxiBuild, operatorAccessInput, xTrotxiPlatform);
+    print(response);
+} on DioException catch (e) {
+    print('Exception when calling OpsApi->updateOperatorAccess: $e\n');
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **id** | **String**|  |
+ **idempotencyKey** | **String**| Caller + operation + target scoped; payload mismatch = 409. Never log secrets. |
+ **xTrotxiClient** | **String**| Compatibility metadata only, never grants a role. |
+ **xTrotxiBuild** | **int**| Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable. | [default to 1]
+ **operatorAccessInput** | [**OperatorAccessInput**](OperatorAccessInput.md)|  |
+ **xTrotxiPlatform** | **String**| Required for commuter/driver, absent for ops/worker. | [optional]
+
+### Return type
+
+[**OperatorCommandResultResponse**](OperatorCommandResultResponse.md)
 
 ### Authorization
 

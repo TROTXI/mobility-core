@@ -122,7 +122,7 @@ export function PasskeyGate({ children }: { children: ReactNode }) {
       </Button>
       <div className="auth-note">
         Passkeys are bound to this Ops website and require your device unlock. If every passkey is
-        lost, another verified administrator must reset access.
+        lost, a superadmin must reset access.
       </div>
     </AuthFrame>
   );
@@ -137,58 +137,32 @@ export function AuthFrame({
   copy: string;
   children: ReactNode;
 }) {
-  const now = new Date();
   return (
-    <main className="auth-page">
-      <div className="auth-clock" aria-hidden="true">
-        <span className="clock-cell">{String(now.getHours()).padStart(2, '0')}</span>
-        <span>:</span>
-        <span className="clock-cell">{String(now.getMinutes()).padStart(2, '0')}</span>
-        <span className="clock-cell">{now.getHours() < 12 ? 'am' : 'pm'}</span>
-        <span className="clock-date">
-          {new Intl.DateTimeFormat('en-GB', {
-            day: '2-digit',
-            month: 'short',
-            year: 'numeric',
-          }).format(now)}
-        </span>
-      </div>
-      <div className="auth-workspace-mark" aria-label="Trotxi Operations">
-        <span>HQ</span>
-        <small>Trotxi Ops · secure workspace</small>
-      </div>
+    <main className="auth-page auth-simple">
       <div className="auth-layout">
-        <section className="auth-story" aria-label="Trotxi Operations">
-          <div className="auth-story-inner">
-            <div className="brand-mark">
-              <img
-                className="brand-wordmark"
-                src="/trotxi-wordmark-dark.png"
-                alt="Trotxi"
-                width={568}
-                height={208}
-              />
-            </div>
-            <h2>One secure operations entry.</h2>
-            <p>
-              Manage the Accra network from a workspace protected by your organisation account and
-              passkey.
-            </p>
-            <div className="auth-trust-markers">
-              <span>Accra network</span>
-              <span>Role-based access</span>
-              <span>Passkey protected</span>
-            </div>
-          </div>
-        </section>
         <section className="auth-card">
-          <span className="auth-eyebrow">Trotxi Operations</span>
+          <div className="auth-logo" role="img" aria-label="Trotxi">
+            <img
+              className="logo-light"
+              src="/trotxi-wordmark-light.png"
+              alt=""
+              width={568}
+              height={208}
+            />
+            <img
+              className="logo-dark"
+              src="/trotxi-wordmark-dark.png"
+              alt=""
+              width={568}
+              height={208}
+            />
+          </div>
           <h1>{title}</h1>
           <p>{copy}</p>
           <div className="auth-actions">{children}</div>
         </section>
       </div>
-      <div className="auth-footer">Need help? Contact your organisation administrator.</div>
+      <div className="auth-footer">Need access? Contact your organisation's superadmin.</div>
     </main>
   );
 }

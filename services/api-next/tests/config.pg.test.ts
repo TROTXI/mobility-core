@@ -16,6 +16,7 @@ function expectStatus(response: Response, code: number) {
 
 async function fixture(t: TestContext) {
   const f = await setup(t);
+  await f.owner.query('UPDATE app.users SET is_superadmin=true WHERE id=$1', [f.adminId]);
   await f.owner.query('INSERT INTO app.test_fin_sessions VALUES ($1,true)', [f.adminId]);
   const admin = { userId: f.adminId, sessionId: f.adminId };
   const config = new ConfigService({
@@ -576,7 +577,7 @@ test('CFG-13 an administrator is demoted by another administrator, never by them
     match: `"user:${f.adminId}:${await version(f.adminId)}"`,
   });
   assert.equal(self.statusCode, 409, self.body);
-  assert.equal(self.json().error.code, 'cannot_demote_self');
+  assert.equal(self.json().error.code, 'team_access_required');
   assert.equal(
     (await f.owner.query('SELECT role FROM app.users WHERE id=$1', [f.adminId])).rows[0].role,
     'admin',

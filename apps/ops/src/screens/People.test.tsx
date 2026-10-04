@@ -9,7 +9,7 @@ type Operator = components['schemas']['OpsOperator'];
 
 const { client, session } = vi.hoisted(() => {
   const client = { GET: vi.fn(), POST: vi.fn(), PATCH: vi.fn() };
-  return { client, session: { client, account: { id: 'admin-me' } } };
+  return { client, session: { client, account: { id: 'admin-me', isSuperadmin: true } } };
 });
 vi.mock('../auth/AuthContext', () => ({ useAuth: () => ({ session }) }));
 // jsdom has no ResizeObserver; Fluent's MessageBar measures itself with one.
