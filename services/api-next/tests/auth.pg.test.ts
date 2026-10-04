@@ -1496,6 +1496,39 @@ test('OPS-TEAM: invitation ownership, passkey activation, superadmin boundaries 
       { email, name: 'Invited operator' },
       key,
     );
+  // Team changes need a passkey check from the last few minutes, not the
+  // eight-hour elevation. The console prompts on the same code as elevation.
+  await f.owner.query(
+    "UPDATE app.auth_sessions SET admin_verified_at=clock_timestamp()-interval '10 minutes' WHERE user_id=$1",
+    [owner.id],
+  );
+  assert.equal((await ops(f, 'GET', '/v1/ops/team', owner.token)).statusCode, 200);
+  const stale = await invite('stale@example.invalid');
+  assert.equal(stale.statusCode, 403);
+  assert.equal(stale.json().error.code, 'passkey_required');
+  assert.equal(
+    (await ops(f, 'POST', `/v1/ops/users/${outsider.id}/passkeys/reset`, owner.token)).json().error
+      .code,
+    'passkey_required',
+  );
+  assert.equal(
+    (await f.owner.query("SELECT 1 FROM app.ops_invitations WHERE email='stale@example.invalid'"))
+      .rowCount,
+    0,
+  );
+  await f.owner.query(
+    'UPDATE app.auth_sessions SET admin_verified_at=clock_timestamp() WHERE user_id=$1',
+    [owner.id],
+  );
+  // A rider's address is never turned into an operator account.
+  data(
+    await f.request('POST', '/v1/auth/google', {
+      idToken: await identityToken('existing-rider', 'google', { email: 'rider@example.invalid' }),
+    }),
+  );
+  const riderInvite = await invite('Rider@Example.invalid');
+  assert.equal(riderInvite.statusCode, 409);
+  assert.equal(riderInvite.json().error.code, 'operator_account_conflict');
   const key = randomUUID();
   const created = await invite('invited@example.invalid', key);
   const id = data(created).id;
@@ -1557,8 +1590,13 @@ test('OPS-TEAM: invitation ownership, passkey activation, superadmin boundaries 
     200,
     'ordinary login needs no invitation after activation',
   );
+  assert.equal((await ops(f, 'GET', '/v1/ops/team?limit=200', owner.token)).statusCode, 200);
+  assert.equal((await ops(f, 'GET', '/v1/ops/team?limit=201', owner.token)).statusCode, 400);
+  const everyone = (await ops(f, 'GET', '/v1/ops/team?limit=200', owner.token)).json().data;
+  assert.equal(everyone[0].id, signed.account.id, 'newest entry first, as the contract declares');
   const page1 = await ops(f, 'GET', '/v1/ops/team?limit=1', owner.token);
   assert.equal(page1.json().data.length, 1);
+  assert.equal(page1.json().data[0].id, everyone[0].id);
   const next = page1.json().page.nextCursor;
   assert.ok(next);
   const page2 = await ops(
@@ -1567,7 +1605,7 @@ test('OPS-TEAM: invitation ownership, passkey activation, superadmin boundaries 
     `/v1/ops/team?limit=1&cursor=${encodeURIComponent(next)}`,
     owner.token,
   );
-  assert.notEqual(page2.json().data[0].id, page1.json().data[0].id);
+  assert.equal(page2.json().data[0].id, everyone[1].id);
   const deleteKey = randomUUID();
   const remove = (token = owner.token, key = deleteKey) =>
     ops(
@@ -1668,7 +1706,7 @@ test('OPS-TEAM: expired or cancelled setup cannot activate, and invitation secre
     owner = await operator(f, 'team-expiry-owner');
   await register(f, owner.token);
   await f.owner.query('UPDATE app.users SET is_superadmin=true WHERE id=$1', [owner.id]);
-  const existingCommuter = await f.sign('setup-sub');
+  const existingCommuter = await f.sign('setup-rider');
   const invite = data(
     await ops(f, 'POST', '/v1/ops/team/invitations', owner.token, {
       email: 'setup@example.invalid',
@@ -1679,21 +1717,27 @@ test('OPS-TEAM: expired or cancelled setup cannot activate, and invitation secre
   const row = (await f.owner.query('SELECT * FROM app.ops_invitations WHERE id=$1', [invite.id]))
     .rows[0];
   assert.notEqual(row.token_hash, token);
-  const sign = () =>
-    identityToken('setup-sub', 'google', { email: 'setup@example.invalid' }).then((idToken) =>
+  const sign = (subject = 'setup-sub') =>
+    identityToken(subject, 'google', { email: 'setup@example.invalid' }).then((idToken) =>
       ops(f, 'POST', '/v1/auth/ops/google', '', { idToken, invitationToken: token }),
     );
+  // A Google identity that already has a rider account cannot claim, even
+  // with the right link and address: cancelling would delete their rides.
+  const conflict = await sign('setup-rider');
+  assert.equal(conflict.statusCode, 409);
+  assert.equal(conflict.json().error.code, 'operator_account_conflict');
+  assert.equal(
+    (
+      await f.owner.query('SELECT role,ops_invite_pending FROM app.users WHERE id=$1', [
+        existingCommuter.account.id,
+      ])
+    ).rows[0].role,
+    'commuter',
+  );
+  data(await f.request('GET', '/v1/me', undefined, existingCommuter.accessToken));
   const signed = data(await sign());
-  assert.equal(
-    signed.account.id,
-    existingCommuter.account.id,
-    'an existing Google identity keeps its account',
-  );
+  assert.notEqual(signed.account.id, existingCommuter.account.id);
   assert.equal(signed.account.email, 'setup@example.invalid');
-  assert.equal(
-    (await ops(f, 'GET', '/v1/auth/passkeys', existingCommuter.accessToken)).statusCode,
-    401,
-  );
   const started = data(
     await ops(f, 'POST', '/v1/auth/passkeys/registration/options', signed.accessToken),
   );
@@ -1711,6 +1755,15 @@ test('OPS-TEAM: expired or cancelled setup cannot activate, and invitation secre
     (await f.owner.query('SELECT deleted_at FROM app.users WHERE id=$1', [signed.account.id]))
       .rows[0].deleted_at,
     'cancelling claimed setup deletes the account rather than downgrading it',
+  );
+  assert.equal(
+    (
+      await f.owner.query('SELECT deleted_at FROM app.users WHERE id=$1', [
+        existingCommuter.account.id,
+      ])
+    ).rows[0].deleted_at,
+    null,
+    'the rider account is untouched',
   );
   const invitation = data(
     await ops(f, 'POST', '/v1/ops/team/invitations', owner.token, {

@@ -100,7 +100,12 @@ creating an account. Existing administrators continue to sign in normally.
 on each access-management request; it is not trusted from a token or UI flag.
 
 Only an elevated superadmin can list the team, issue/resend/cancel invitations,
-change administrator access or reset another operator's passkeys. Ordinary
+change administrator access or reset another operator's passkeys. Every change
+(invite, resend, cancel, delete, promote, demote, passkey reset) also needs a
+passkey check from the last five minutes, not just the eight-hour session
+elevation; otherwise the request returns `passkey_required` and the console asks
+for the passkey before the change is repeated. A session taken over within the
+elevation window therefore cannot invite an address its holder controls. Ordinary
 admins retain dispatch and support work. The old role endpoint cannot grant
 admin access or downgrade an administrator to a commuter or driver. It requires
 superadmin authorization for the remaining commuter/driver role changes.
@@ -113,11 +118,16 @@ the link. The UI removes the URL fragment before sign-in and keeps the secret
 only in memory. Reloading before sign-in may require reopening the email.
 
 Google verification must return the invited email. Matching a profile email
-alone never grants access or merges identities. Claiming gives that account
-only passkey-setup access. Completing a verified passkey ceremony before expiry
+alone never grants access or merges identities. Operators use a Google account
+and address that are not already a Trotxi account: an invitation to an address
+that belongs to any account is refused, and a Google identity that already has a
+rider or driver account cannot claim one (`operator_account_conflict`). Claiming
+creates a new account with only passkey-setup access. Completing a verified passkey
+ceremony before expiry
 activates Ops access and consumes the invitation. Cancelling unclaimed invitations
-invalidates the link. Cancelling claimed setup deletes the entire account, including
-any existing commuter profile, after an explicit warning. Expired setup cannot activate.
+invalidates the link. Cancelling claimed setup deletes the account created for that
+invitation, after an explicit warning; it never holds a rider profile. Expired setup
+cannot activate.
 
 Invitations that were never claimed can be resent, including after expiry.
 Cancel an expired claimed invitation before issuing a replacement. Expired

@@ -20,6 +20,7 @@ import {
   claimInvitation,
   finishInvitation,
   requireSuperadmin,
+  requireRecentPasskey,
   type OpsInvitationEmail,
   type TeamOperation,
 } from './ops-team.js';
@@ -576,6 +577,7 @@ export class AuthService {
       if (name === 'resetOperatorPasskeys') {
         await this.authorizeSession(client, actor);
         await requireSuperadmin(client, actor);
+        await requireRecentPasskey(client, actor);
         if (user.role !== 'admin')
           fail(403, 'forbidden', 'This operation is not available to your account.');
         return this.resetPasskeys(client, actor, target);
