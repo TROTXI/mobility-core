@@ -589,7 +589,7 @@ class _WalletTabState extends State<WalletTab> {
     if (coverage == null) {
       final endedAt = membership.lastCoverageEndedAt;
       return endedAt == null
-          ? 'Request an offer for your journeys and travel days.'
+          ? 'Join the waitlist with your journeys and travel days.'
           : 'Ended ${_formatFullDay(endedAt)}. Request a renewal offer.';
     }
     final endsAt = coverage.endsAt;
@@ -676,9 +676,7 @@ class _WalletTabState extends State<WalletTab> {
                 ),
               )
             : Text(
-                isCovered
-                    ? 'Request renewal offer'
-                    : 'Request subscription offer',
+                isCovered ? 'Request renewal offer' : 'Join the waitlist',
                 style: AppTypography.buttonAction.copyWith(
                   color: colors.actionOnPrimary,
                 ),

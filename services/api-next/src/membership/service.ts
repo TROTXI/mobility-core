@@ -1354,7 +1354,7 @@ export class MembershipService {
     const blocks = await this.blocks(c, userId, b?.id ?? null),
       paused = blocks.some((x) => x.kind === 'paused');
     const now = this.now();
-    const current = b && (b.effective_ends_at > now || paused) ? b : null;
+    const current = b && b.starts_at <= now && (b.effective_ends_at > now || paused) ? b : null;
     const a = current
       ? (
           await c.query(

@@ -12,6 +12,18 @@ test('request and retention paths reach their rows through an index', async (t) 
   // the one searched, has no index to use.
   const paths: [string, string, string][] = [
     [
+      'offered reservation directional quota',
+      `SELECT count(*) FROM app.reservations WHERE period_id=$1 AND direction='outbound'
+       AND id<>$1 AND status IN ('reserved','boarded','no_show')`,
+      'reservations_period_direction_committed',
+    ],
+    [
+      'offered period directional charges',
+      `SELECT count(*) FROM app.reservation_charges c JOIN app.reservations r ON r.id=c.reservation_id
+       WHERE c.period_id=$1 AND r.direction='outbound'`,
+      'reservation_charges_period',
+    ],
+    [
       'membership assignment',
       `SELECT * FROM app.commute_assignments WHERE period_id=$1 AND effective_from<=current_date
        AND (effective_to IS NULL OR current_date<effective_to)`,

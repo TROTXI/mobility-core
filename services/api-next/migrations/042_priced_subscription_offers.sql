@@ -54,6 +54,9 @@ END $$;
 CREATE TRIGGER offered_purchase BEFORE INSERT ON app.purchases FOR EACH ROW EXECUTE FUNCTION app.guard_offered_purchase();
 
 -- One directional balance, with immutable grant and conversion values.
+CREATE INDEX reservations_period_direction_committed ON app.reservations(period_id,direction)
+ WHERE status IN ('reserved','boarded','no_show');
+CREATE INDEX reservation_charges_period ON app.reservation_charges(period_id);
 CREATE FUNCTION app.offer_ride_balances(pid uuid)
 RETURNS TABLE(direction text,granted integer,charged integer,held integer,credit_rate integer)
 LANGUAGE sql STABLE AS $$
@@ -69,10 +72,12 @@ CREATE FUNCTION app.guard_offered_reservation() RETURNS trigger LANGUAGE plpgsql
 DECLARE terms jsonb; leg jsonb; used integer;
 BEGIN
  IF NEW.period_id IS NULL OR NEW.status NOT IN ('pending','reserved','boarded','no_show') THEN RETURN NEW; END IF;
- PERFORM id FROM app.users WHERE id=NEW.user_id FOR UPDATE;
- PERFORM id FROM app.billing_periods WHERE id=NEW.period_id FOR UPDATE;
  SELECT p.offer_terms INTO terms FROM app.billing_periods b JOIN app.purchases p ON p.id=b.purchase_id WHERE b.id=NEW.period_id;
  IF terms IS NULL THEN RETURN NEW; END IF;
+ -- Purchase terms are immutable. Legacy reservations need no offer lock.
+ -- Offered reservations retain the shared user-before-period lock order.
+ PERFORM id FROM app.users WHERE id=NEW.user_id FOR UPDATE;
+ PERFORM id FROM app.billing_periods WHERE id=NEW.period_id FOR UPDATE;
  SELECT l INTO leg FROM jsonb_array_elements(terms->'legs') l WHERE l->>'direction'=NEW.direction;
  IF leg IS NULL OR (leg->>'scheduleId')::uuid<>NEW.schedule_id
    OR (leg->>'patternVersionId')::uuid<>NEW.pattern_version_id

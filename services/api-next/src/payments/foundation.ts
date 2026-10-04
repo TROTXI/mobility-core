@@ -244,6 +244,8 @@ export class FinancialFoundation {
         await this.closeOne(c, open.id, boundary);
       }
       // Validate the immutable transport references before freezing the quote.
+      // A paid offer can cover a published service that has not started yet.
+      const serviceAt = offered ? new Date(`${offered.coverageStart}T00:00:00Z`) : now;
       for (const leg of input.legs) {
         const r = (
           await c.query(
@@ -264,12 +266,16 @@ export class FinancialFoundation {
               leg.pickupOccurrenceId,
               leg.dropoffOccurrenceId,
               leg.direction,
-              now,
+              serviceAt,
             ],
           )
         ).rowCount;
         if (!r)
-          fail(409, 'invalid_commute_selection', 'Select current ordered stops and service legs.');
+          fail(
+            409,
+            'invalid_commute_selection',
+            'Select ordered stops and service legs valid for coverage.',
+          );
       }
       const quoted = offered
         ? {

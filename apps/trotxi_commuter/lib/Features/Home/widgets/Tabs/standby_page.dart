@@ -21,6 +21,7 @@ class _StandbyPageState extends State<StandbyPage> {
   String? _error;
   final Set<int> _travelDays = {1, 2, 3, 4, 5};
   bool _useCredit = false;
+  wire.PurchaseInputPlanEnum _plan = wire.PurchaseInputPlanEnum.monthly;
   static const _dayNames = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
   @override
@@ -68,7 +69,7 @@ class _StandbyPageState extends State<StandbyPage> {
     final commute = selection.request(wire.Date.now(utc: true), false, '');
     final selectionInput = wire.PurchaseInput(
       (b) => b
-        ..plan = wire.PurchaseInputPlanEnum.monthly
+        ..plan = _plan
         ..routeId = commute.routeId
         ..legs.replace(commute.legs)
         ..useCredit = _useCredit,
@@ -231,12 +232,12 @@ class _StandbyPageState extends State<StandbyPage> {
         )
         .toList();
     return Scaffold(
-      appBar: AppBar(title: const Text('Subscription offers')),
+      appBar: AppBar(title: const Text('Waitlist')),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
           const Text(
-            'Request a commute or renewal. Operations will send an offer with your journeys, dates, ride allowance and price. Review it before paying. Renewals are not automatic.',
+            'Join the waitlist for your commute or renewal. Joining is free and does not guarantee a seat. Operations will send an offer with your journeys, dates, ride allowance and price. Review it before paying. Renewals are not automatic.',
           ),
           const SizedBox(height: 16),
           if (_busy) const LinearProgressIndicator(),
@@ -260,6 +261,24 @@ class _StandbyPageState extends State<StandbyPage> {
             ),
           ],
           if (eligible && active.isEmpty) ...[
+            DropdownButtonFormField<wire.PurchaseInputPlanEnum>(
+              initialValue: _plan,
+              decoration: const InputDecoration(labelText: 'Requested plan'),
+              items: const [
+                DropdownMenuItem(
+                  value: wire.PurchaseInputPlanEnum.monthly,
+                  child: Text('Monthly'),
+                ),
+                DropdownMenuItem(
+                  value: wire.PurchaseInputPlanEnum.annual,
+                  child: Text('Annual'),
+                ),
+              ],
+              onChanged: _busy
+                  ? null
+                  : (plan) => setState(() => _plan = plan ?? _plan),
+            ),
+            const SizedBox(height: 16),
             const Text('Which days do you travel?'),
             Wrap(
               spacing: 8,
@@ -302,6 +321,7 @@ class _StandbyPageState extends State<StandbyPage> {
                       style: Theme.of(context).textTheme.titleMedium,
                     ),
                     Text('Status: ${application.state.name}'),
+                    Text('Requested plan: ${application.selection.plan.name}'),
                     Text(
                       application.travelDays
                           .map((day) => _dayNames[day - 1])
@@ -317,20 +337,20 @@ class _StandbyPageState extends State<StandbyPage> {
                         application.offer!.expiresAt.isAfter(DateTime.now()))
                       FilledButton(
                         onPressed: _busy ? null : () => _accept(application),
-                        child: const Text('Review offer'),
+                        child: const Text('Review your offer'),
                       ),
                     if (application.offer != null &&
                         application.offer!.terms == null &&
                         application.state ==
                             wire.StandbyApplicationStateEnum.offered)
                       const Text(
-                        'This older offer has no agreed price. Leave standby and submit a new request.',
+                        'This older offer has no agreed price. Leave the waitlist and submit a new request.',
                       ),
                     if (application.state ==
                             wire.StandbyApplicationStateEnum.offered &&
                         !application.offer!.expiresAt.isAfter(DateTime.now()))
                       const Text(
-                        'This offer has expired. Leave standby to choose a route again.',
+                        'This offer has expired. Leave the waitlist to choose a route again.',
                       ),
                     if (application.state ==
                             wire.StandbyApplicationStateEnum.submitted ||
@@ -338,7 +358,7 @@ class _StandbyPageState extends State<StandbyPage> {
                             wire.StandbyApplicationStateEnum.offered)
                       TextButton(
                         onPressed: _busy ? null : () => _withdraw(application),
-                        child: const Text('Leave standby'),
+                        child: const Text('Leave waitlist'),
                       ),
                     if (application.state ==
                         wire.StandbyApplicationStateEnum.checkoutOpen)

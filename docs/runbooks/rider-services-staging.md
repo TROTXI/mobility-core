@@ -19,6 +19,18 @@ checkout. It does not prove that no money was collected. Check late-payment
 reviews before advising another payment or initiating a refund. Existing paid
 subscriptions and provider evidence are not reset by this change.
 
+An already-open Paystack page may still accept a payment after the local offer
+expires. Such a collection does not activate coverage: Ops must review the
+provider evidence and arrange a refund or agree a fresh offer. A fresh offer
+does not automatically transfer the late payment. Do not tell the rider to pay
+again until the first collection is resolved.
+
+Paid future coverage is not reported as current and has no spendable ride
+balance before its start date. The paid purchase and its agreed coverage dates
+remain visible in payment history. Waitlist entry is free and does not promise
+a seat; monthly and annual are requested plans, with final dates and allowances
+set in the Ops offer.
+
 ## Deployment and operating decision
 
 PR #338 is deployed to `trotxi-api-staging` at `59041f1`, including migrations

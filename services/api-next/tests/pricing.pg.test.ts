@@ -23,8 +23,8 @@ function expectStatus(response: Response, code: number) {
 }
 
 /** A rider, an admin and a corridor, priced from the database rather than a stub. */
-async function fixture(t: TestContext, target = true, requireOffer = false) {
-  const f = await setup(t);
+async function fixture(t: TestContext, target = true, requireOffer = false, serviceFrom?: string) {
+  const f = await setup(t, {}, false, files.length, serviceFrom);
   await f.owner.query('INSERT INTO app.test_fin_sessions VALUES ($1,true)', [f.adminId]);
   const admin = { userId: f.adminId, sessionId: f.adminId };
   const pricing = new Pricing({
@@ -137,8 +137,9 @@ async function fixture(t: TestContext, target = true, requireOffer = false) {
   };
 }
 
-async function offeredFixture(t: TestContext) {
-  const f = await fixture(t, true, true);
+async function offeredFixture(t: TestContext, futureService = false) {
+  const start = new Date(Date.now() + 3 * 86400000).toISOString().slice(0, 10);
+  const f = await fixture(t, true, true, futureService ? start : undefined);
   await f.owner.query("UPDATE app.users SET display_name='Offer rider' WHERE id=$1", [
     f.actor.userId,
   ]);
@@ -164,7 +165,6 @@ async function offeredFixture(t: TestContext) {
     );
   const selection = { ...f.input, useCredit: false };
   const request = { selection, travelDays: [1, 3, 5] };
-  const start = new Date(Date.now() + 3 * 86400000).toISOString().slice(0, 10);
   const end = new Date(Date.now() + 17 * 86400000).toISOString().slice(0, 10);
   const offerInput = {
     expiresAt: new Date(Date.now() + 86400000).toISOString(),
@@ -267,6 +267,20 @@ test('OFFER-02 frozen coverage and per-journey credits close correctly, and a fr
   const period = await f.period(purchase.id);
   assert.equal(period.starts_at.toISOString().slice(0, 10), f.start);
   assert.equal(period.original_ends_at.toISOString().slice(0, 10), f.end);
+  const before = expectStatus(await f.call('GET', '/v1/me/membership'), 200);
+  assert.equal(before.coverage, null);
+  assert.equal(before.entitlements.remainingRides, 0);
+  assert.equal(before.access.canReserve, false);
+  const atStart = new MembershipService({
+    pool: f.runtime,
+    authorizeSession: f.dependencies.authorizeSession,
+    cursorSecret: Buffer.alloc(32, 11),
+    now: () => new Date(`${f.start}T00:00:00Z`),
+  });
+  const active = (await atStart.read(f.actor, 'getMembership')).body as any;
+  assert.equal(active.data.coverage.id, period.id);
+  assert.equal(active.data.entitlements.remainingRides, 12);
+  assert.equal(active.data.access.canReserve, true);
   assert.equal(
     (await f.owner.query('SELECT state FROM app.standby_applications WHERE id=$1', [app.id]))
       .rows[0].state,
@@ -366,6 +380,21 @@ test('OFFER-03 invalid credits, dates, changed replays and late payment cannot s
     app.id,
     'late payment does not strand the rider in the old application',
   );
+});
+
+test('OFFER-08 future published services can be requested and paid before coverage starts', async (t) => {
+  const f = await offeredFixture(t, true);
+  await f.verify();
+  // Annual remains a supported request, with calendar dates set in the offer.
+  f.request.selection.plan = 'annual';
+  const application = await f.join();
+  assert.equal(application.selection.plan, 'annual');
+  await f.offer(application.id);
+  const purchase = expectStatus(await f.accept(application.id), 201);
+  assert.equal(purchase.plan, 'annual');
+  assert.equal(purchase.offerTerms.coverageStart, f.start);
+  assert.equal(purchase.price.amountMinor, 7000);
+  assert.equal(f.initialized(), 1);
 });
 
 test('OFFER-04 calendar allowances count real dates, not four weeks or 44 rides', () => {

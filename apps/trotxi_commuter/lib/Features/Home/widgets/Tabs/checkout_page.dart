@@ -270,7 +270,7 @@ class _CheckoutPageState extends State<CheckoutPage>
                           builder: (_) => StandbyPage(client: widget.client),
                         ),
                       ),
-                child: const Text('View subscription offers'),
+                child: const Text('Waitlist and offers'),
               ),
             ],
           ],

@@ -214,9 +214,7 @@ export class StandbyService {
            JOIN app.route_pattern_stops b ON b.id=$5 AND b.pattern_version_id=v.id
            WHERE s.id=$1 AND v.id=$2 AND p.route_id=$3 AND p.direction=$6
              AND a.ordinal<b.ordinal AND r.archived_at IS NULL AND v.state='published'
-             AND v.effective_from<=clock_timestamp()
              AND (v.effective_to IS NULL OR v.effective_to>clock_timestamp())
-             AND s.effective_from<=(clock_timestamp() AT TIME ZONE 'Africa/Accra')::date
              AND (s.effective_to IS NULL OR s.effective_to>=(clock_timestamp() AT TIME ZONE 'Africa/Accra')::date)`,
             [
               identifier(leg.scheduleId),

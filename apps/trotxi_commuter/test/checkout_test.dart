@@ -166,7 +166,7 @@ void main() {
     (tester) async {
       await pump(tester, noPurchases: true);
       expect(find.text('Prepare checkout'), findsNothing);
-      expect(find.text('View subscription offers'), findsOneWidget);
+      expect(find.text('Waitlist and offers'), findsOneWidget);
       expect(f.requests.where((r) => r.method == 'POST'), isEmpty);
       await finish(tester);
     },
