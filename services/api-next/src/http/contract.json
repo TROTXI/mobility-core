@@ -23583,7 +23583,7 @@
         "properties": {
           "action": {
             "type": "string",
-            "enum": ["revoke", "make_superadmin", "make_admin"]
+            "enum": ["delete", "make_superadmin", "make_admin"]
           }
         },
         "required": ["action"],

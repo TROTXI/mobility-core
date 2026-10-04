@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { FluentProvider } from '@fluentui/react-components';
 import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, expect, it, vi } from 'vitest';
@@ -52,7 +52,7 @@ it('reuses an invitation key after an uncertain response and shows queued rather
   );
   expect(first[1].body).toEqual({ name: 'Adom', email: 'adom@example.invalid' });
 });
-it('confirms a revoke, and never offers self-revocation', async () => {
+it('confirms whole-account deletion, and never offers self-deletion', async () => {
   client.GET.mockResolvedValue({
     data: {
       data: [
@@ -82,16 +82,19 @@ it('confirms a revoke, and never offers self-revocation', async () => {
   });
   client.POST.mockResolvedValue({ data: { data: { id: 'other' } } });
   show();
-  const revoke = await screen.findAllByRole('button', { name: 'Revoke access' });
-  expect(revoke).toHaveLength(1);
-  fireEvent.click(revoke[0]!);
+  const remove = await screen.findAllByRole('button', { name: 'Delete account' });
+  expect(remove).toHaveLength(1);
+  fireEvent.click(remove[0]!);
   expect(client.POST).not.toHaveBeenCalled();
-  fireEvent.click(screen.getByRole('button', { name: 'Confirm' }));
+  expect(screen.getByText(/permanently closes their entire account/)).toBeInTheDocument();
+  fireEvent.click(
+    within(screen.getByRole('dialog')).getByRole('button', { name: 'Delete account' }),
+  );
   await waitFor(() =>
     expect(client.POST).toHaveBeenCalledWith(
       '/v1/ops/team/members/{id}/access',
       expect.objectContaining({
-        body: { action: 'revoke' },
+        body: { action: 'delete' },
         params: expect.objectContaining({ path: { id: 'other' } }),
       }),
     ),

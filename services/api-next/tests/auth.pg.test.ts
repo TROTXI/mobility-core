@@ -22,6 +22,10 @@ import { hashDriverPin } from '../src/auth/driver-pin.js';
 import { hashToken, providerTokenBox } from '../src/auth/credentials.js';
 import { TransactionalEmail } from '../src/notifications/email.js';
 import { bootstrapSuperadmin } from '../src/auth/ops-bootstrap.js';
+import { AccountService } from '../src/account/service.js';
+import { ErasureJournal } from '../src/account/erasure-journal.js';
+import { ErasureRecovery } from '../src/account/erasure-recovery.js';
+import { MemoryErasureStore } from './helpers/erasure-store.js';
 import { TransportError } from '../src/transport/errors.js';
 import type { PasskeyRelyingParty } from '../src/auth/passkeys.js';
 import { grantRuntime, migrate, readMigrations } from '../src/db/migrate.js';
@@ -755,6 +759,7 @@ async function setup(
   authBudget = 1000,
   providers: Partial<Pick<AuthOptions, 'google' | 'apple'>> = {},
   sms?: SmsSender,
+  erasureJournal?: ErasureJournal,
 ) {
   const n = ++serial,
     name = `trotxi_harness_${run}_auth_${n}`,
@@ -819,6 +824,14 @@ async function setup(
     pool: runtime,
     cursorSecret: Buffer.alloc(32, 6),
     identity,
+    compose: ({ authorizeSession }) => ({
+      account: new AccountService({
+        pool: runtime,
+        authorizeSession,
+        deviceKey: Buffer.alloc(32, 25),
+        erasureJournal,
+      }),
+    }),
     minimumBuilds: { ops: 2, driver: { ios: 2, android: 2 }, commuter: { ios: 2, android: 2 } },
     requestsPerMinute: 1000,
     requestsPerIpPerMinute: 3000,
@@ -1413,8 +1426,11 @@ test('AUTH-17: session-revocation failures leave no receipt; unauthorized replay
  * adapter; session, challenge, credential, authorization and replay handling
  * all run through the real HTTP and PostgreSQL paths.
  */
-test('OPS-TEAM: invitation ownership, passkey activation, superadmin boundaries and revoke', async (t) => {
-  const f = await setup(t);
+test('OPS-TEAM: invitation ownership, passkey activation, superadmin boundaries and account deletion', async (t) => {
+  const store = new MemoryErasureStore();
+  const journal = new ErasureJournal(store, randomUUID(), randomBytes(32));
+  const f = await setup(t, 1000, {}, undefined, journal);
+  await new ErasureRecovery(f.owner, journal, Buffer.alloc(32, 25)).initialize();
   const owner = await operator(f, 'team-owner');
   await register(f, owner.token);
   const database = (await f.owner.query('SELECT current_database() AS name')).rows[0].name;
@@ -1431,9 +1447,18 @@ test('OPS-TEAM: invitation ownership, passkey activation, superadmin boundaries 
     'POST',
     `/v1/ops/team/members/${owner.id.toUpperCase()}/access`,
     owner.token,
-    { action: 'revoke' },
+    { action: 'delete' },
   );
   assert.equal(selfChange.json().error.code, 'self_access_change');
+  const selfErasure = await f.request('DELETE', '/v1/me', undefined, owner.token, {
+    'idempotency-key': randomUUID(),
+  });
+  assert.equal(selfErasure.json().error.code, 'last_superadmin');
+  assert.equal(
+    (await journal.require()).value.entries.length,
+    0,
+    'refusal must not journal deletion',
+  );
   const outsider = await operator(f, 'team-regular');
   await register(f, outsider.token);
   assert.equal((await ops(f, 'GET', '/v1/ops/team', outsider.token)).statusCode, 403);
@@ -1543,17 +1568,95 @@ test('OPS-TEAM: invitation ownership, passkey activation, superadmin boundaries 
     owner.token,
   );
   assert.notEqual(page2.json().data[0].id, page1.json().data[0].id);
-  data(
-    await ops(f, 'POST', `/v1/ops/team/members/${signed.account.id}/access`, owner.token, {
-      action: 'revoke',
-    }),
+  const deleteKey = randomUUID();
+  const remove = (token = owner.token, key = deleteKey) =>
+    ops(
+      f,
+      'POST',
+      `/v1/ops/team/members/${signed.account.id}/access`,
+      token,
+      { action: 'delete' },
+      key,
+    );
+  assert.equal((await remove(signed.accessToken)).statusCode, 403);
+  const commuter = await f.sign('not-an-operator');
+  assert.equal(
+    (
+      await ops(f, 'POST', `/v1/ops/team/members/${commuter.account.id}/access`, owner.token, {
+        action: 'delete',
+      })
+    ).statusCode,
+    404,
+  );
+  await f.owner.query("UPDATE app.erasure_recovery_control SET mode='fenced'");
+  assert.equal((await remove()).json().error.code, 'account_recovery_fenced');
+  await f.owner.query("UPDATE app.erasure_recovery_control SET mode='active'");
+  store.refuse = true;
+  assert.equal((await remove()).json().error.code, 'erasure_journal_unavailable');
+  store.refuse = false;
+  assert.equal((await journal.require()).value.entries.length, 0);
+  assert.equal(
+    (await f.owner.query('SELECT deleted_at FROM app.users WHERE id=$1', [signed.account.id]))
+      .rows[0].deleted_at,
+    null,
+  );
+  data(await remove());
+  data(await remove()); // Same command replays after the target is erased.
+  assert.equal((await remove(owner.token, randomUUID())).statusCode, 404);
+  const erased = (
+    await f.owner.query(
+      'SELECT role,deleted_at,display_name,email,phone,is_superadmin FROM app.users WHERE id=$1',
+      [signed.account.id],
+    )
+  ).rows[0];
+  assert.ok(erased.deleted_at);
+  assert.equal(erased.role, 'admin', 'erasure must not convert the account into a commuter');
+  assert.equal(erased.display_name, null);
+  assert.equal(erased.email, null);
+  assert.equal(erased.phone, null);
+  assert.equal(erased.is_superadmin, false);
+  assert.equal(
+    (
+      await f.owner.query(
+        'SELECT 1 FROM app.admin_passkeys WHERE user_id=$1 AND revoked_at IS NULL',
+        [signed.account.id],
+      )
+    ).rowCount,
+    0,
+  );
+  assert.equal(
+    (
+      await f.owner.query(
+        "SELECT 1 FROM app.auth_identities WHERE user_id=$1 AND subject NOT LIKE 'erased:%'",
+        [signed.account.id],
+      )
+    ).rowCount,
+    0,
+  );
+  const deletion = (
+    await f.owner.query('SELECT session_id FROM app.account_erasures WHERE user_id=$1', [
+      signed.account.id,
+    ])
+  ).rows[0];
+  const entries = (await journal.require()).value.entries;
+  assert.equal(entries.length, 1);
+  assert.equal(entries[0]!.userId, signed.account.id);
+  assert.equal(entries[0]!.sessionId, deletion.session_id);
+  assert.equal(
+    (
+      await f.owner.query('SELECT user_id FROM app.auth_sessions WHERE id=$1', [
+        deletion.session_id,
+      ])
+    ).rows[0].user_id,
+    owner.id,
+    'deletion records the requesting superadmin session',
   );
   assert.equal((await ops(f, 'GET', '/v1/ops/riders', signed.accessToken)).statusCode, 401);
   assert.equal((await signOps('invited-sub', 'invited@example.invalid')).statusCode, 403);
   assert.ok(
     (
       await f.owner.query(
-        "SELECT 1 FROM app.ops_team_events WHERE action='revoke' AND target_id=$1",
+        "SELECT 1 FROM app.ops_team_events WHERE action='delete' AND target_id=$1",
         [signed.account.id],
       )
     ).rowCount,
@@ -1604,6 +1707,11 @@ test('OPS-TEAM: expired or cancelled setup cannot activate, and invitation secre
   );
   assert.equal(refused.statusCode, 401);
   assert.equal((await sign()).statusCode, 403);
+  assert.ok(
+    (await f.owner.query('SELECT deleted_at FROM app.users WHERE id=$1', [signed.account.id]))
+      .rows[0].deleted_at,
+    'cancelling claimed setup deletes the account rather than downgrading it',
+  );
   const invitation = data(
     await ops(f, 'POST', '/v1/ops/team/invitations', owner.token, {
       email: 'expired@example.invalid',

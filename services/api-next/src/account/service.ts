@@ -12,6 +12,7 @@ import { fail } from '../transport/errors.js';
 import type { Actor, Body, Outcome } from '../transport/service.js';
 import { cancelCredentialSms } from '../notifications/driver-sms.js';
 import type { ErasureJournal } from './erasure-journal.js';
+import { requireSuperadmin, teamLock } from '../auth/ops-team.js';
 
 /** The person's own photo. Either app they hold, because it is theirs. */
 export const avatarOperations = ['getAvatar', 'uploadAvatar', 'deleteAvatar'] as const;
@@ -505,39 +506,68 @@ export class AccountService {
   }
 
   private async erase(actor: Actor, key: string, recovery = false): Promise<Outcome> {
-    const outstanding = await this.tx(async (c) => {
-      // The owner fence takes the exclusive advisory lock and drains every in-flight
-      // deletion before it captures a final external journal revision.
+    const outstanding = await this.tx((c) => this.eraseInTransaction(c, actor, key, recovery));
+    // Attempted once here so an ordinary erasure finishes now. A failure is
+    // already recorded, and the maintenance worker owns the retry.
+    if (outstanding && !recovery) await this.retryErasures(50, actor.userId);
+    return { status: 204, body: null, headers: {} } as Outcome;
+  }
+
+  /** Shares the team command transaction, including its receipt and audit event. */
+  async eraseOperator(c: PoolClient, actor: Actor, target: string): Promise<void> {
+    if (this.options.recoveryOnly) throw new Error('interactive_service_required');
+    await teamLock(c);
+    await this.options.authorizeSession(c, actor);
+    await requireSuperadmin(c, actor);
+    if (id(target) === id(actor.userId))
+      fail(403, 'self_access_change', 'Another superadmin must delete your account.');
+    await this.eraseInTransaction(c, actor, '', false, id(target));
+    // External cleanup remains in the durable erasure queue for maintenance.
+  }
+
+  private async eraseInTransaction(
+    c: PoolClient,
+    actor: Actor,
+    key: string,
+    recovery = false,
+    operatorId?: string,
+  ): Promise<boolean> {
+    const subjectId = operatorId ?? id(actor.userId);
+    // Team changes and all erasures take this before user locks. Otherwise
+    // self-erasure's last-owner trigger could deadlock an operator deletion.
+    await teamLock(c);
+    // The owner fence takes the exclusive advisory lock and drains every in-flight
+    // deletion before it captures a final external journal revision.
+    await c.query(
+      "SELECT pg_advisory_xact_lock_shared(hashtextextended('trotxi:erasure-recovery',0))",
+    );
+    const control = (
       await c.query(
-        "SELECT pg_advisory_xact_lock_shared(hashtextextended('trotxi:erasure-recovery',0))",
-      );
-      const control = (
-        await c.query(
-          'SELECT *,current_database() AS actual_database FROM app.erasure_recovery_control WHERE singleton',
-        )
-      ).rows[0];
-      if (
-        !control ||
-        control.database_name !== control.actual_database ||
-        control.mode !== (recovery ? 'isolated' : 'active')
+        'SELECT *,current_database() AS actual_database FROM app.erasure_recovery_control WHERE singleton',
       )
-        fail(503, 'account_recovery_fenced', 'Account changes are temporarily unavailable.');
-      if (
-        !recovery &&
-        control.journal_namespace &&
-        this.options.erasureJournal?.namespace !== control.journal_namespace
-      )
-        fail(503, 'erasure_journal_unavailable', 'Account deletion is temporarily unavailable.');
-      if (!recovery && this.options.erasureJournal && !control.journal_namespace)
-        fail(503, 'erasure_journal_uninitialized', 'Account deletion is temporarily unavailable.');
-      // Phone issuance and verification lock this digest before touching a
-      // user. Take the same locks first: a code already being issued must
-      // commit before the identity scrub scans and cancels challenges.
-      // Taking them after FOR UPDATE on users would invert verification's
-      // phone -> user lock order and risk a deadlock.
-      const phoneSubjects = (
-        await c.query(
-          `SELECT subject FROM (
+    ).rows[0];
+    if (
+      !control ||
+      control.database_name !== control.actual_database ||
+      control.mode !== (recovery ? 'isolated' : 'active')
+    )
+      fail(503, 'account_recovery_fenced', 'Account changes are temporarily unavailable.');
+    if (
+      !recovery &&
+      control.journal_namespace &&
+      this.options.erasureJournal?.namespace !== control.journal_namespace
+    )
+      fail(503, 'erasure_journal_unavailable', 'Account deletion is temporarily unavailable.');
+    if (!recovery && this.options.erasureJournal && !control.journal_namespace)
+      fail(503, 'erasure_journal_uninitialized', 'Account deletion is temporarily unavailable.');
+    // Phone issuance and verification lock this digest before touching a
+    // user. Take the same locks first: a code already being issued must
+    // commit before the identity scrub scans and cancels challenges.
+    // Taking them after FOR UPDATE on users would invert verification's
+    // phone -> user lock order and risk a deadlock.
+    const phoneSubjects = (
+      await c.query(
+        `SELECT subject FROM (
              SELECT subject FROM app.auth_identities
                WHERE user_id=$1 AND provider='phone' AND subject NOT LIKE 'erased:%'
              UNION SELECT phone_hash AS subject FROM app.commuter_phone_verifications
@@ -547,194 +577,212 @@ export class AccountService {
              UNION SELECT phone_hash AS subject FROM app.phone_otp_challenges
                WHERE owner_user_id=$1 AND state IN ('sending','sent')
            ) subjects WHERE subject IS NOT NULL ORDER BY subject`,
-          [id(actor.userId)],
-        )
-      ).rows;
-      for (const identity of phoneSubjects)
-        await c.query('SELECT pg_advisory_xact_lock(hashtextextended($1,0))', [
-          `phone-otp:${identity.subject}`,
-        ]);
-      await c.query('SELECT id FROM app.users WHERE id=$1 FOR UPDATE', [id(actor.userId)]);
-      const restoredUser = recovery
-        ? (await c.query('SELECT * FROM app.users WHERE id=$1', [actor.userId])).rows[0]
-        : null;
-      if (recovery && (!restoredUser || restoredUser.deleted_at)) return false;
-      // verifyAccess already checked signature, issuer, audience and expiry.
-      // This exception is bound to the original deletion session AND exact key;
-      // it grants no refresh or access to any other operation.
-      const erased = (
-        await c.query(
-          `SELECT e.session_id FROM app.account_erasures e
+        [subjectId],
+      )
+    ).rows;
+    for (const identity of phoneSubjects)
+      await c.query('SELECT pg_advisory_xact_lock(hashtextextended($1,0))', [
+        `phone-otp:${identity.subject}`,
+      ]);
+    await c.query('SELECT id FROM app.users WHERE id=$1 FOR UPDATE', [subjectId]);
+    const restoredUser = recovery
+      ? (await c.query('SELECT * FROM app.users WHERE id=$1', [actor.userId])).rows[0]
+      : null;
+    if (recovery && (!restoredUser || restoredUser.deleted_at)) return false;
+    // verifyAccess already checked signature, issuer, audience and expiry.
+    // This exception is bound to the original deletion session AND exact key;
+    // it grants no refresh or access to any other operation.
+    const erased = (
+      await c.query(
+        `SELECT e.session_id FROM app.account_erasures e
         JOIN app.users u ON u.id=e.user_id WHERE e.user_id=$1 AND u.deleted_at IS NOT NULL`,
-          [id(actor.userId)],
-        )
-      ).rows[0];
-      if (erased) {
-        if (erased.session_id !== id(actor.sessionId))
-          fail(401, 'unauthenticated', 'Sign in to continue.');
-        const prior = await this.receipt(c, actor, 'eraseAccount', key, actor.userId);
-        if (!prior) fail(401, 'unauthenticated', 'Sign in to continue.');
-        if (this.options.erasureJournal) {
-          try {
-            const { value } = await this.options.erasureJournal.require();
-            this.options.erasureJournal.assertWriter(
-              value,
-              control.database_id,
-              control.database_name,
-              this.options.deviceKey,
-            );
-            if (!value.entries.some((entry) => entry.userId === actor.userId))
-              throw new Error('erasure_journal_entry_missing');
-          } catch {
-            fail(
-              503,
-              'erasure_journal_unavailable',
-              'Account deletion is temporarily unavailable.',
-            );
-          }
-        }
-        return false;
-      }
-      const user = recovery ? restoredUser : await this.owner(c, actor);
-      if (!recovery) {
-        await this.receipt(c, actor, 'eraseAccount', key, user.id);
-        if (this.options.erasureJournal) {
-          try {
-            // Write-ahead deletion intent survives a subsequent SQL rollback.
-            // Once durable, recovery must honour it even if the HTTP reply is lost.
-            await this.options.erasureJournal.record(
-              control.database_id,
-              control.database_name,
-              this.options.deviceKey,
-              user.id,
-              actor.sessionId,
-            );
-          } catch {
-            fail(
-              503,
-              'erasure_journal_unavailable',
-              'Account deletion is temporarily unavailable.',
-            );
-          }
+        [subjectId],
+      )
+    ).rows[0];
+    if (erased) {
+      if (operatorId) fail(404, 'not_found', 'Operator not found.');
+      if (erased.session_id !== id(actor.sessionId))
+        fail(401, 'unauthenticated', 'Sign in to continue.');
+      const prior = await this.receipt(c, actor, 'eraseAccount', key, actor.userId);
+      if (!prior) fail(401, 'unauthenticated', 'Sign in to continue.');
+      if (this.options.erasureJournal) {
+        try {
+          const { value } = await this.options.erasureJournal.require();
+          this.options.erasureJournal.assertWriter(
+            value,
+            control.database_id,
+            control.database_name,
+            this.options.deviceKey,
+          );
+          if (!value.entries.some((entry) => entry.userId === actor.userId))
+            throw new Error('erasure_journal_entry_missing');
+        } catch {
+          fail(503, 'erasure_journal_unavailable', 'Account deletion is temporarily unavailable.');
         }
       }
-      await c.query(
-        `UPDATE app.phone_otp_challenges SET state='failed',code_hash=NULL,phone_ciphertext=NULL
-         WHERE owner_user_id=$1 AND state IN ('sending','sent')`,
-        [user.id],
-      );
-      await c.query(
-        'UPDATE app.phone_verification_reviews SET phone_hash=NULL,closed_at=clock_timestamp() WHERE user_id=$1',
-        [user.id],
-      );
-      await c.query(
-        'UPDATE app.commuter_phone_verifications SET phone_hash=NULL,last_four=NULL,revoked_at=clock_timestamp() WHERE user_id=$1',
-        [user.id],
-      );
-      await cancelCredentialSms(c, user.id);
-      if (!recovery) await this.options.erasureRequested?.(c, user.id, user.email ?? null);
-      const sessions = await c.query(
-        'UPDATE app.auth_sessions SET revoked_at=clock_timestamp() WHERE user_id=$1 AND revoked_at IS NULL',
-        [user.id],
-      );
-      await c.query(
-        `UPDATE app.refresh_credentials SET consumed_at=clock_timestamp()
-        WHERE session_id IN (SELECT id FROM app.auth_sessions WHERE user_id=$1)
-          AND consumed_at IS NULL`,
-        [user.id],
-      );
-      const devices = await c.query(
-        `UPDATE app.push_devices SET revoked_at=clock_timestamp(),token_ciphertext=NULL
-        WHERE user_id=$1 AND revoked_at IS NULL`,
-        [user.id],
-      );
-      const identities = (
+      return false;
+    }
+    const user = operatorId
+      ? (
+          await c.query(
+            "SELECT * FROM app.users WHERE id=$1 AND role='admin' AND deleted_at IS NULL",
+            [subjectId],
+          )
+        ).rows[0]
+      : recovery
+        ? restoredUser
+        : await this.owner(c, actor);
+    if (!user) fail(404, 'not_found', 'Operator not found.');
+    // Reject before recording irreversible write-ahead intent, not only in
+    // the database trigger that runs later during the profile scrub.
+    if (
+      user.is_superadmin &&
+      !(
         await c.query(
-          'SELECT id,provider,subject,provider_token_ciphertext FROM app.auth_identities WHERE user_id=$1',
+          'SELECT 1 FROM app.users WHERE is_superadmin AND deleted_at IS NULL AND id<>$1',
           [user.id],
         )
-      ).rows;
-      // The subject goes now, so signing in again is a new account. The token
-      // stays only until the grant it opens has actually been revoked.
-      for (const identity of identities)
-        await c.query(
-          'UPDATE app.auth_identities SET subject=$2,provider_token_ciphertext=NULL WHERE id=$1',
-          [identity.id, `erased:${randomUUID()}`],
-        );
-      const objectKey = user.avatar_object_key as string | null;
-      // 013's trigger fires on this transition and clears slots, pauses,
-      // requests, assignments, reservations and rider notes.
+      ).rowCount
+    )
+      fail(409, 'last_superadmin', 'Keep at least one superadmin account.');
+    if (!recovery) {
+      if (!operatorId) await this.receipt(c, actor, 'eraseAccount', key, user.id);
+      if (this.options.erasureJournal) {
+        try {
+          // Write-ahead deletion intent survives a subsequent SQL rollback.
+          // Once durable, recovery must honour it even if the HTTP reply is lost.
+          await this.options.erasureJournal.record(
+            control.database_id,
+            control.database_name,
+            this.options.deviceKey,
+            user.id,
+            actor.sessionId,
+          );
+        } catch {
+          fail(503, 'erasure_journal_unavailable', 'Account deletion is temporarily unavailable.');
+        }
+      }
+    }
+    await c.query(
+      `UPDATE app.phone_otp_challenges SET state='failed',code_hash=NULL,phone_ciphertext=NULL
+         WHERE owner_user_id=$1 AND state IN ('sending','sent')`,
+      [user.id],
+    );
+    await c.query(
+      'UPDATE app.phone_verification_reviews SET phone_hash=NULL,closed_at=clock_timestamp() WHERE user_id=$1',
+      [user.id],
+    );
+    await c.query(
+      'UPDATE app.commuter_phone_verifications SET phone_hash=NULL,last_four=NULL,revoked_at=clock_timestamp() WHERE user_id=$1',
+      [user.id],
+    );
+    await cancelCredentialSms(c, user.id);
+    if (!recovery) await this.options.erasureRequested?.(c, user.id, user.email ?? null);
+    const sessions = await c.query(
+      'UPDATE app.auth_sessions SET revoked_at=clock_timestamp() WHERE user_id=$1 AND revoked_at IS NULL',
+      [user.id],
+    );
+    await c.query(
+      'UPDATE app.admin_passkeys SET revoked_at=clock_timestamp() WHERE user_id=$1 AND revoked_at IS NULL',
+      [user.id],
+    );
+    await c.query(
+      'UPDATE app.admin_passkey_challenges SET consumed_at=clock_timestamp() WHERE user_id=$1 AND consumed_at IS NULL',
+      [user.id],
+    );
+    await c.query(
+      `UPDATE app.refresh_credentials SET consumed_at=clock_timestamp()
+        WHERE session_id IN (SELECT id FROM app.auth_sessions WHERE user_id=$1)
+          AND consumed_at IS NULL`,
+      [user.id],
+    );
+    const devices = await c.query(
+      `UPDATE app.push_devices SET revoked_at=clock_timestamp(),token_ciphertext=NULL
+        WHERE user_id=$1 AND revoked_at IS NULL`,
+      [user.id],
+    );
+    const identities = (
       await c.query(
-        `UPDATE app.users SET deleted_at=clock_timestamp(),display_name=NULL,email=NULL,
-          phone=NULL,avatar_object_key=NULL WHERE id=$1`,
+        'SELECT id,provider,subject,provider_token_ciphertext FROM app.auth_identities WHERE user_id=$1',
         [user.id],
-      );
+      )
+    ).rows;
+    // The subject goes now, so signing in again is a new account. The token
+    // stays only until the grant it opens has actually been revoked.
+    for (const identity of identities)
       await c.query(
-        `INSERT INTO app.account_erasures(user_id,session_id,sessions_revoked,devices_revoked,identities_scrubbed)
+        'UPDATE app.auth_identities SET subject=$2,provider_token_ciphertext=NULL WHERE id=$1',
+        [identity.id, `erased:${randomUUID()}`],
+      );
+    const objectKey = user.avatar_object_key as string | null;
+    // 013's trigger fires on this transition and clears slots, pauses,
+    // requests, assignments, reservations and rider notes.
+    await c.query(
+      `UPDATE app.users SET deleted_at=clock_timestamp(),display_name=NULL,email=NULL,
+          phone=NULL,avatar_object_key=NULL WHERE id=$1`,
+      [user.id],
+    );
+    await c.query(
+      `INSERT INTO app.account_erasures(user_id,session_id,sessions_revoked,devices_revoked,identities_scrubbed)
         VALUES ($1,$2,$3,$4,$5)`,
+      [
+        user.id,
+        id(actor.sessionId),
+        sessions.rowCount ?? 0,
+        devices.rowCount ?? 0,
+        identities.length,
+      ],
+    );
+    for (const identity of identities) {
+      const taskId = randomUUID();
+      // Google sign-in supplies an ID token, not an OAuth refresh grant.
+      const applicable = identity.provider === 'apple' && !!identity.provider_token_ciphertext;
+      await c.query(
+        `INSERT INTO app.erasure_tasks(id,user_id,kind,reference,payload_ciphertext,state,completed_at,disposition)
+          VALUES ($1::uuid,$2,'provider_revocation',$1::text,$3,$4,CASE WHEN $4='done' THEN clock_timestamp() END,$5)`,
         [
+          taskId,
           user.id,
-          id(actor.sessionId),
-          sessions.rowCount ?? 0,
-          devices.rowCount ?? 0,
-          identities.length,
+          applicable
+            ? this.box(
+                {
+                  provider: identity.provider,
+                  subject: identity.subject,
+                  tokenCiphertext: identity.provider_token_ciphertext,
+                },
+                `task:${taskId}`,
+              )
+            : null,
+          applicable ? 'pending' : 'done',
+          applicable ? null : 'not_applicable',
         ],
       );
-      for (const identity of identities) {
-        const taskId = randomUUID();
-        // Google sign-in supplies an ID token, not an OAuth refresh grant.
-        const applicable = identity.provider === 'apple' && !!identity.provider_token_ciphertext;
-        await c.query(
-          `INSERT INTO app.erasure_tasks(id,user_id,kind,reference,payload_ciphertext,state,completed_at,disposition)
-          VALUES ($1::uuid,$2,'provider_revocation',$1::text,$3,$4,CASE WHEN $4='done' THEN clock_timestamp() END,$5)`,
-          [
-            taskId,
-            user.id,
-            applicable
-              ? this.box(
-                  {
-                    provider: identity.provider,
-                    subject: identity.subject,
-                    tokenCiphertext: identity.provider_token_ciphertext,
-                  },
-                  `task:${taskId}`,
-                )
-              : null,
-            applicable ? 'pending' : 'done',
-            applicable ? null : 'not_applicable',
-          ],
-        );
-      }
-      if (objectKey)
-        await c.query(
-          `INSERT INTO app.erasure_tasks(user_id,kind,reference) VALUES ($1,'avatar_object',$2) ON CONFLICT DO NOTHING`,
-          [user.id, objectKey],
-        );
-      // A driver's own record carries a name, a phone number, a contact email
-      // and a licence. Closing the account closes that too, or erasure is only
-      // half done.
+    }
+    if (objectKey)
       await c.query(
-        `UPDATE app.drivers SET name='Erased driver',phone=NULL,email=NULL,license_number=NULL,
-          archived_at=coalesce(archived_at,clock_timestamp()) WHERE user_id=$1`,
-        [user.id],
+        `INSERT INTO app.erasure_tasks(user_id,kind,reference) VALUES ($1,'avatar_object',$2) ON CONFLICT DO NOTHING`,
+        [user.id, objectKey],
       );
-      if (!recovery) await this.record(c, actor, 'eraseAccount', key, user.id, null);
-      await c.query(
-        `UPDATE app.driver_commands SET response_body=NULL,secret_ciphertext=NULL
+    // A driver's own record carries a name, a phone number, a contact email
+    // and a licence. Closing the account closes that too, or erasure is only
+    // half done.
+    await c.query(
+      `UPDATE app.drivers SET name='Erased driver',phone=NULL,email=NULL,license_number=NULL,
+          archived_at=coalesce(archived_at,clock_timestamp()) WHERE user_id=$1`,
+      [user.id],
+    );
+    if (!recovery && !operatorId) await this.record(c, actor, 'eraseAccount', key, user.id, null);
+    await c.query(
+      `UPDATE app.driver_commands SET response_body=NULL,secret_ciphertext=NULL
         WHERE driver_id IN (SELECT id FROM app.drivers WHERE user_id=$1)
         AND (response_body IS NOT NULL OR secret_ciphertext IS NOT NULL)`,
-        [user.id],
-      );
-      await c.query(
-        'UPDATE app.account_commands SET result=NULL,response_ciphertext=NULL WHERE actor_user_id=$1 AND (result IS NOT NULL OR response_ciphertext IS NOT NULL)',
-        [user.id],
-      );
-      return true;
-    });
-    // Attempted once here so an ordinary erasure finishes now. A failure is
-    // already recorded, and the maintenance worker owns the retry.
-    if (outstanding && !recovery) await this.retryErasures(50, actor.userId);
-    return { status: 204, body: null, headers: {} } as Outcome;
+      [user.id],
+    );
+    await c.query(
+      'UPDATE app.account_commands SET result=NULL,response_ciphertext=NULL WHERE actor_user_id=$1 AND (result IS NOT NULL OR response_ciphertext IS NOT NULL)',
+      [user.id],
+    );
+    return true;
   }
 
   private async attempt(task: Row) {

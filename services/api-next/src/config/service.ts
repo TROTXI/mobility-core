@@ -1,5 +1,5 @@
 import { beginTransaction } from '../db/transaction.js';
-import { requireSuperadmin } from '../auth/ops-team.js';
+import { requireSuperadmin, teamLock } from '../auth/ops-team.js';
 import { createHash } from 'node:crypto';
 import type { Pool, PoolClient } from 'pg';
 import { fail } from '../transport/errors.js';
@@ -344,6 +344,7 @@ export class ConfigService {
       // Whether this caller may configure anything is decided before the shape
       // of what they sent: a rider fumbling a header should be told they are
       // not an administrator, not which header they got wrong.
+      if (operation === 'changeRole') await teamLock(c);
       await this.authorize(c, actor);
       if (operation === 'changeRole') await requireSuperadmin(c, actor);
       if (typeof key !== 'string' || !key.length || key.length > 128)
@@ -398,7 +399,7 @@ export class ConfigService {
           ? await this.writeFlag(c, target, input, ifMatch)
           : operation === 'setMinimumVersion'
             ? await this.writeVersion(c, params, input, ifMatch)
-            : await this.writeRole(c, target, input, ifMatch, actor.userId);
+            : await this.writeRole(c, target, input, ifMatch);
       const outcome = await this.render(c, operation, target);
       const receipt = (
         await c.query(
@@ -576,13 +577,7 @@ export class ConfigService {
     };
   }
 
-  private async writeRole(
-    c: PoolClient,
-    id: string,
-    input: Body,
-    ifMatch: string,
-    actorId: string,
-  ) {
+  private async writeRole(c: PoolClient, id: string, input: Body, ifMatch: string) {
     const role = String(input.role);
     const reason = typeof input.reason === 'string' ? input.reason.trim() : '';
     if (!roles.includes(role)) fail(400, 'invalid_request', 'Supply a supported role.');
@@ -594,7 +589,7 @@ export class ConfigService {
     if (!user) fail(404, 'not_found', 'Resource not found.');
     if (role === 'admin' && user.role !== 'admin')
       fail(409, 'invitation_required', 'Invite this operator from Team & access.');
-    if ((user.is_superadmin && role !== 'admin') || user.ops_invite_pending)
+    if ((user.role === 'admin' && role !== 'admin') || user.ops_invite_pending)
       fail(409, 'team_access_required', 'Manage this operator from Team & access.');
     // The one wildcard the service accepts, and only because nothing in the
     // approved contract lets ops read an account to learn its token first.
@@ -613,34 +608,6 @@ export class ConfigService {
       ).rowCount
     )
       fail(409, 'driver_record_required', 'Create the driver record before granting this role.');
-    if (user.role === 'admin' && role !== 'admin') {
-      // Removing your own access is how an operations console ends up with
-      // nobody in it. Another administrator does it, deliberately.
-      if (id === actorId)
-        fail(
-          409,
-          'cannot_demote_self',
-          'You cannot remove your own administrator role. Ask another administrator.',
-        );
-      // Demotions take turns, so two administrators demoting each other at
-      // once cannot both pass the count below and leave nobody. Today the
-      // authorization locks already make that pair deadlock and one is
-      // cancelled; this keeps the rule true if that locking ever changes.
-      // With self-demotion refused, the caller always remains otherwise.
-      await c.query("SELECT pg_advisory_xact_lock(hashtextextended('trotxi:admin-roster',0))");
-      const remaining = (
-        await c.query(
-          "SELECT count(*)::int AS n FROM app.users WHERE role='admin' AND deleted_at IS NULL AND id<>$1",
-          [id],
-        )
-      ).rows[0].n as number;
-      if (remaining === 0)
-        fail(
-          409,
-          'last_administrator',
-          'This is the last administrator. Make someone else an administrator first.',
-        );
-    }
     const before = { id: user.id, role: user.role };
     if (user.role !== role) await c.query('UPDATE app.users SET role=$2 WHERE id=$1', [id, role]);
     return { reason, before, after: { id: user.id, role } };

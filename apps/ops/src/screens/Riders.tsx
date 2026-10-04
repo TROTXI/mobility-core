@@ -140,7 +140,7 @@ export function Riders() {
         title={mode === 'restrict' ? 'Restrict rider account' : 'Change account role'}
         description={
           mode === 'role'
-            ? 'Role changes take effect from current database facts. Promoting to admin grants access only after passkey registration.'
+            ? 'Change between commuter and driver access. Administrator accounts are managed through Team & access.'
             : 'A restriction blocks access account-wide until an attributed release decision.'
         }
         confirmLabel={mode === 'restrict' ? 'Create restriction' : 'Change role'}

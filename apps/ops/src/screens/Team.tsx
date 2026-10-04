@@ -9,7 +9,7 @@ import { ActionDialog } from '../components/ActionDialog';
 import type { components } from '../generated/api';
 
 type Entry = components['schemas']['OpsTeamEntry'];
-type Action = 'resend' | 'cancel' | 'revoke' | 'make_superadmin' | 'make_admin' | 'reset';
+type Action = 'resend' | 'cancel' | 'delete' | 'make_superadmin' | 'make_admin' | 'reset';
 export function Team() {
   const { account } = useAuth();
   if (!account?.isSuperadmin)
@@ -95,12 +95,16 @@ function TeamDirectory() {
     keys.current.delete(identity);
     setSelected(null);
     query.retry();
-    setNotice('Access change saved.');
+    setNotice(
+      action === 'delete'
+        ? 'Account deleted. All sessions have been revoked.'
+        : 'Access change saved.',
+    );
   };
   const labels: Record<Action, string> = {
     resend: 'Resend invitation',
     cancel: 'Cancel invitation',
-    revoke: 'Revoke access',
+    delete: 'Delete account',
     make_superadmin: 'Make superadmin',
     make_admin: 'Make administrator',
     reset: 'Reset passkeys',
@@ -208,7 +212,7 @@ function TeamDirectory() {
                               [
                                 'reset',
                                 entry.isSuperadmin ? 'make_admin' : 'make_superadmin',
-                                'revoke',
+                                'delete',
                               ] as Action[]
                             ).map((action) => (
                               <Button
@@ -263,12 +267,12 @@ function TeamDirectory() {
         title={selected ? labels[selected.action] : ''}
         description={
           selected
-            ? `${selected.entry.name}: ${selected.action === 'resend' ? 'The old invitation link will stop working.' : selected.action === 'make_superadmin' ? 'This grants authority to invite, revoke and manage other administrators.' : selected.action === 'reset' ? 'Existing passkeys and sessions will be revoked. They must sign in with Google and register a new passkey.' : 'This changes their access immediately and may sign them out.'}`
+            ? `${selected.entry.name}: ${selected.action === 'resend' ? 'The old invitation link will stop working.' : selected.action === 'make_superadmin' ? 'This grants authority to invite, delete and manage other administrators.' : selected.action === 'reset' ? 'Existing passkeys and sessions will be revoked. They must sign in with Google and register a new passkey.' : selected.action === 'delete' || (selected.action === 'cancel' && selected.entry.state === 'claimed') ? 'This permanently closes their entire account, including any commuter profile, and signs them out everywhere. Personal details are erased; required financial and audit records are retained. External cleanup is tracked separately. This cannot be undone.' : 'This changes their access immediately and may sign them out.'}`
             : ''
         }
-        confirmLabel="Confirm"
+        confirmLabel={selected?.action === 'delete' ? 'Delete account' : 'Confirm'}
         danger={
-          selected?.action === 'revoke' ||
+          selected?.action === 'delete' ||
           selected?.action === 'cancel' ||
           selected?.action === 'reset'
         }

@@ -14,8 +14,10 @@ authorized by current database role and passkey elevation on the API.
 Access is invite only. A superadmin uses **More → Team & access** to enter a
 name and Google email. The recipient follows the email link, signs in with that
 Google account and completes passkey setup before entering Ops. Invitations
-expire after 48 hours; the directory supports resend, cancellation and access
-revocation. Ordinary administrators cannot grant access or reset passkeys.
+expire after 48 hours; the directory supports resend, cancellation and whole-account
+deletion. Cancelling setup after an invitation is claimed also deletes the account.
+Deletion is confirmed explicitly and does not downgrade the person to commuter.
+Ordinary administrators cannot grant access, delete operators or reset passkeys.
 
 The first superadmin is an existing approved administrator promoted through
 the one-time [installer command](../../docs/DEPLOY.md#first-superadmin-setup).

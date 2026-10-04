@@ -93,6 +93,7 @@ export class DriverLockedError extends LockedError {
 export interface AuthOptions {
   opsEmail?: OpsInvitationEmail;
   opsOrigin?: string;
+  eraseOperator?: (c: PoolClient, actor: Actor, target: string) => Promise<void>;
   phoneOtp?: PhoneOtp;
   pool: Pool;
   access: AccessConfig;
@@ -841,6 +842,7 @@ export class AuthService {
         cursorSecret: this.options.cursorSecret,
         email: this.options.opsEmail,
         origin: this.options.opsOrigin,
+        eraseOperator: this.options.eraseOperator,
       }).handle(name as TeamOperation, actor, body, query, target, key);
     }
     if (name === 'requestPhoneSignIn' || name === 'verifyPhoneSignIn') {

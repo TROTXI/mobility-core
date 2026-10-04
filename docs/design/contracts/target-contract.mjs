@@ -229,7 +229,7 @@ named(
   'OperatorInvitationInput',
   obj({ email: z.email().max(320), name: z.string().trim().min(1).max(100) }),
 );
-named('OperatorAccessInput', obj({ action: z.enum(['revoke', 'make_superadmin', 'make_admin']) }));
+named('OperatorAccessInput', obj({ action: z.enum(['delete', 'make_superadmin', 'make_admin']) }));
 named('OperatorCommandResult', obj({ id }));
 named(
   'OpsTeamEntry',

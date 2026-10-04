@@ -1,5 +1,6 @@
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import { FluentProvider } from '@fluentui/react-components';
+import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { components } from '../generated/api';
 import { trotxiLight } from '../theme';
@@ -42,65 +43,56 @@ function show() {
   }));
   return render(
     <FluentProvider theme={trotxiLight} data-theme="light">
-      <People />
+      <MemoryRouter>
+        <People />
+      </MemoryRouter>
     </FluentProvider>,
   );
 }
 const dialog = () => screen.getByRole('dialog');
 
-describe('Changing an administrator role', () => {
-  beforeEach(() => vi.clearAllMocks());
+describe('Administrator account management', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    session.account.isSuperadmin = true;
+  });
 
-  it('is not offered on your own row', async () => {
+  it('routes account changes to Team instead of offering commuter demotion', async () => {
     show();
     const mine = (await screen.findByText('Me')).closest('tr')!;
-    expect(within(mine).getByRole('button', { name: 'Change role' })).toBeDisabled();
+    expect(within(mine).getByRole('button', { name: 'Reset passkeys' })).toBeDisabled();
     const theirs = screen.getByText('K. Fosu').closest('tr')!;
-    expect(within(theirs).getByRole('button', { name: 'Change role' })).toBeEnabled();
+    expect(within(theirs).getByRole('button', { name: 'Reset passkeys' })).toBeEnabled();
+    expect(screen.queryByRole('button', { name: 'Change role' })).not.toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Manage team accounts' })).toHaveAttribute(
+      'href',
+      '/team',
+    );
   });
 
-  it('demotes another administrator to commuter with a reason and their edit token', async () => {
-    client.PATCH.mockResolvedValue({ data: { data: { id: 'admin-fosu', role: 'commuter' } } });
+  it('does not offer account management to regular admins', async () => {
+    session.account.isSuperadmin = false;
     show();
     const theirs = (await screen.findByText('K. Fosu')).closest('tr')!;
-    fireEvent.click(within(theirs).getByRole('button', { name: 'Change role' }));
-
-    fireEvent.click(within(dialog()).getByRole('button', { name: 'Change role' }));
-    expect(await within(dialog()).findByText(/Give a reason/)).toBeInTheDocument();
+    expect(within(theirs).getByRole('button', { name: 'Reset passkeys' })).toBeDisabled();
+    expect(screen.queryByRole('link', { name: 'Manage team accounts' })).not.toBeInTheDocument();
     expect(client.PATCH).not.toHaveBeenCalled();
-
-    fireEvent.change(within(dialog()).getByLabelText(/Reason/), {
-      target: { value: 'Rider app testing account' },
-    });
-    fireEvent.click(within(dialog()).getByRole('button', { name: 'Change role' }));
-    await vi.waitFor(() => expect(client.PATCH).toHaveBeenCalledTimes(1));
-    const [path, request] = client.PATCH.mock.calls[0]!;
-    expect(path).toBe('/v1/ops/users/{id}/role');
-    expect(request.params.path).toEqual({ id: 'admin-fosu' });
-    expect(request.params.header['If-Match']).toBe('"user:admin-fosu:3"');
-    expect(request.body).toEqual({ role: 'commuter', reason: 'Rider app testing account' });
   });
 
-  it('keeps one key for a retry and shows the server refusal', async () => {
-    client.PATCH.mockResolvedValue({
+  it('shows a passkey reset refusal without changing account roles', async () => {
+    client.POST.mockResolvedValue({
       error: {
         error: {
-          code: 'last_administrator',
-          message: 'This is the last administrator. Make someone else an administrator first.',
+          code: 'superadmin_required',
+          message: 'Only a superadmin can manage operator access.',
         },
       },
     });
     show();
     const theirs = (await screen.findByText('K. Fosu')).closest('tr')!;
-    fireEvent.click(within(theirs).getByRole('button', { name: 'Change role' }));
-    fireEvent.change(within(dialog()).getByLabelText(/Reason/), {
-      target: { value: 'Testing' },
-    });
-    fireEvent.click(within(dialog()).getByRole('button', { name: 'Change role' }));
-    expect(await within(dialog()).findByText(/last administrator/)).toBeInTheDocument();
-    fireEvent.click(within(dialog()).getByRole('button', { name: 'Change role' }));
-    await vi.waitFor(() => expect(client.PATCH).toHaveBeenCalledTimes(2));
-    const keys = client.PATCH.mock.calls.map((call) => call[1].params.header['Idempotency-Key']);
-    expect(keys[0]).toBe(keys[1]);
+    fireEvent.click(within(theirs).getByRole('button', { name: 'Reset passkeys' }));
+    fireEvent.click(within(dialog()).getByRole('button', { name: 'Reset access' }));
+    expect(await within(dialog()).findByText(/Only a superadmin/)).toBeInTheDocument();
+    expect(client.PATCH).not.toHaveBeenCalled();
   });
 });

@@ -3347,7 +3347,7 @@ export interface components {
     };
     OperatorAccessInput: {
       /** @enum {string} */
-      action: 'revoke' | 'make_superadmin' | 'make_admin';
+      action: 'delete' | 'make_superadmin' | 'make_admin';
     };
     OperatorCommandResult: {
       id: string;

@@ -114,7 +114,8 @@ Invitation mail uses the existing Resend settings and configured Ops origin.
 Missing mail configuration refuses invitation creation rather than reporting
 success. Test with an explicitly approved recipient before rollout. Check
 wrong-account refusal, first passkey setup, resend invalidation, cancellation,
-and immediate loss of access after revocation. No live delivery is proved by
+and immediate loss of access after account deletion. Confirm the erased profile,
+attributed audit event and queued external cleanup. No live delivery is proved by
 local tests.
 
 The bootstrap command is not a reusable recovery backdoor. If the sole

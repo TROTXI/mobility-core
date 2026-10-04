@@ -18,7 +18,7 @@ abstract class OperatorAccessInput
     implements Built<OperatorAccessInput, OperatorAccessInputBuilder> {
   @BuiltValueField(wireName: r'action')
   OperatorAccessInputActionEnum get action;
-  // enum actionEnum {  revoke,  make_superadmin,  make_admin,  };
+  // enum actionEnum {  delete,  make_superadmin,  make_admin,  };
 
   OperatorAccessInput._();
 
@@ -116,9 +116,9 @@ class _$OperatorAccessInputSerializer
 }
 
 class OperatorAccessInputActionEnum extends EnumClass {
-  @BuiltValueEnumConst(wireName: r'revoke')
-  static const OperatorAccessInputActionEnum revoke =
-      _$operatorAccessInputActionEnum_revoke;
+  @BuiltValueEnumConst(wireName: r'delete')
+  static const OperatorAccessInputActionEnum delete =
+      _$operatorAccessInputActionEnum_delete;
   @BuiltValueEnumConst(wireName: r'make_superadmin')
   static const OperatorAccessInputActionEnum makeSuperadmin =
       _$operatorAccessInputActionEnum_makeSuperadmin;

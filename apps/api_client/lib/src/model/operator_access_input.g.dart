@@ -6,8 +6,8 @@ part of 'operator_access_input.dart';
 // BuiltValueGenerator
 // **************************************************************************
 
-const OperatorAccessInputActionEnum _$operatorAccessInputActionEnum_revoke =
-    const OperatorAccessInputActionEnum._('revoke');
+const OperatorAccessInputActionEnum _$operatorAccessInputActionEnum_delete =
+    const OperatorAccessInputActionEnum._('delete');
 const OperatorAccessInputActionEnum
     _$operatorAccessInputActionEnum_makeSuperadmin =
     const OperatorAccessInputActionEnum._('makeSuperadmin');
@@ -17,8 +17,8 @@ const OperatorAccessInputActionEnum _$operatorAccessInputActionEnum_makeAdmin =
 OperatorAccessInputActionEnum _$operatorAccessInputActionEnumValueOf(
     String name) {
   switch (name) {
-    case 'revoke':
-      return _$operatorAccessInputActionEnum_revoke;
+    case 'delete':
+      return _$operatorAccessInputActionEnum_delete;
     case 'makeSuperadmin':
       return _$operatorAccessInputActionEnum_makeSuperadmin;
     case 'makeAdmin':
@@ -31,7 +31,7 @@ OperatorAccessInputActionEnum _$operatorAccessInputActionEnumValueOf(
 final BuiltSet<OperatorAccessInputActionEnum>
     _$operatorAccessInputActionEnumValues = BuiltSet<
         OperatorAccessInputActionEnum>(const <OperatorAccessInputActionEnum>[
-  _$operatorAccessInputActionEnum_revoke,
+  _$operatorAccessInputActionEnum_delete,
   _$operatorAccessInputActionEnum_makeSuperadmin,
   _$operatorAccessInputActionEnum_makeAdmin,
 ]);
@@ -43,12 +43,12 @@ Serializer<OperatorAccessInputActionEnum>
 class _$OperatorAccessInputActionEnumSerializer
     implements PrimitiveSerializer<OperatorAccessInputActionEnum> {
   static const Map<String, Object> _toWire = const <String, Object>{
-    'revoke': 'revoke',
+    'delete': 'delete',
     'makeSuperadmin': 'make_superadmin',
     'makeAdmin': 'make_admin',
   };
   static const Map<Object, String> _fromWire = const <Object, String>{
-    'revoke': 'revoke',
+    'delete': 'delete',
     'make_superadmin': 'makeSuperadmin',
     'make_admin': 'makeAdmin',
   };

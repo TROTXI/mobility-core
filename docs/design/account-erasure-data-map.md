@@ -65,6 +65,14 @@ setup, team command receipts and access events retain only account/target IDs,
 hashed command inputs and timestamps, not email addresses or invitation secrets.
 The last superadmin cannot be erased until ownership has been transferred.
 
+Superadmins can delete another operator through Team & access. This uses the
+same local erasure, recovery fence, independent journal and external cleanup queue
+as self-service deletion. The deletion-session ID identifies the requesting
+superadmin's session; the team event records that actor and the erased account ID.
+It does not impersonate the erased operator. Sessions and passkeys are revoked and
+outstanding passkey challenges are consumed. Required audit and financial records
+remain under the retention policy. No account is downgraded to commuter by this action.
+
 ## What remains open under issue #284
 
 - The provisional accounting period and production financial-evidence policy

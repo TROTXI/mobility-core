@@ -124,6 +124,7 @@ export class OpsTeam {
       cursorSecret: Buffer;
       email?: OpsInvitationEmail;
       origin?: string;
+      eraseOperator?: (c: PoolClient, actor: Actor, target: string) => Promise<void>;
     },
   ) {
     this.cursor = cursorCodec(options.cursorSecret);
@@ -278,14 +279,13 @@ export class OpsTeam {
         if (!invite || !['pending', 'claimed'].includes(invite.state))
           fail(409, 'invitation_not_pending', 'This invitation cannot be cancelled.');
         if (invite.user_id) {
-          await c.query(
-            "UPDATE app.users SET role='commuter',ops_invite_pending=false WHERE id=$1 AND ops_invite_pending",
-            [invite.user_id],
-          );
-          await c.query(
-            'UPDATE app.auth_sessions SET revoked_at=COALESCE(revoked_at,clock_timestamp()) WHERE user_id=$1',
-            [invite.user_id],
-          );
+          if (!this.options.eraseOperator)
+            fail(
+              503,
+              'account_erasure_unavailable',
+              'Account deletion is temporarily unavailable.',
+            );
+          await this.options.eraseOperator(c, actor, invite.user_id);
         }
         await c.query(
           "UPDATE app.ops_invitations SET state='cancelled',token_hash=NULL,email=NULL,name=NULL WHERE id=$1",
@@ -294,26 +294,33 @@ export class OpsTeam {
       } else {
         if (target === actor.userId)
           fail(403, 'self_access_change', 'Another superadmin must change your access.');
-        const user = (
-          await c.query(
-            "SELECT * FROM app.users WHERE id=$1 AND role='admin' AND deleted_at IS NULL AND NOT ops_invite_pending FOR UPDATE",
-            [target],
-          )
-        ).rows[0];
-        if (!user) fail(404, 'not_found', 'Operator not found.');
-        if (body.action === 'revoke')
-          await c.query("UPDATE app.users SET role='commuter',is_superadmin=false WHERE id=$1", [
-            target,
-          ]);
-        else
+        if (body.action === 'delete') {
+          if (!this.options.eraseOperator)
+            fail(
+              503,
+              'account_erasure_unavailable',
+              'Account deletion is temporarily unavailable.',
+            );
+          await this.options.eraseOperator(c, actor, target!);
+        } else {
+          const user = (
+            await c.query(
+              "SELECT * FROM app.users WHERE id=$1 AND role='admin' AND deleted_at IS NULL AND NOT ops_invite_pending FOR UPDATE",
+              [target],
+            )
+          ).rows[0];
+          if (!user) fail(404, 'not_found', 'Operator not found.');
+          if (!['make_superadmin', 'make_admin'].includes(body.action))
+            fail(400, 'invalid_request', 'Unsupported access change.');
           await c.query('UPDATE app.users SET is_superadmin=$2 WHERE id=$1', [
             target,
             body.action === 'make_superadmin',
           ]);
-        await c.query(
-          'UPDATE app.auth_sessions SET revoked_at=COALESCE(revoked_at,clock_timestamp()) WHERE user_id=$1',
-          [target],
-        );
+          await c.query(
+            'UPDATE app.auth_sessions SET revoked_at=COALESCE(revoked_at,clock_timestamp()) WHERE user_id=$1',
+            [target],
+          );
+        }
       }
       await c.query(
         'INSERT INTO app.ops_team_commands(actor_user_id,key_hash,input_hash,result_id) VALUES ($1,$2,$3,$4)',
