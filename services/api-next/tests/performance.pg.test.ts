@@ -10,7 +10,7 @@ test('request and retention paths reach their rows through an index', async (t) 
   // Empty tables, so the planner is told sequential scans are off. A plan that
   // still names a table scan, or reads an index whose leading column is not
   // the one searched, has no index to use.
-  const paths: [string, string, string][] = [
+  const paths: [string, string, string | string[]][] = [
     [
       'offered reservation directional quota',
       `SELECT count(*) FROM app.reservations WHERE period_id=$1 AND direction='outbound'
@@ -27,7 +27,9 @@ test('request and retention paths reach their rows through an index', async (t) 
       'membership assignment',
       `SELECT * FROM app.commute_assignments WHERE period_id=$1 AND effective_from<=current_date
        AND (effective_to IS NULL OR current_date<effective_to)`,
-      'commute_assignments_period',
+      // Both indexes start with period_id. PostgreSQL may prefer the new
+      // period-scoped exclusion index introduced for prepaid renewals.
+      ['commute_assignments_period', 'commute_assignments_period_dates_excl'],
     ],
     [
       'trip summary counts',
@@ -64,7 +66,14 @@ test('request and retention paths reach their rows through an index', async (t) 
     for (const [path, sql, index] of paths) {
       const plan = (await c.query(`EXPLAIN (FORMAT JSON) ${sql}`, [id])).rows[0]['QUERY PLAN'];
       const text = JSON.stringify(plan);
-      assert.match(text, new RegExp(`"Index Name":"${index}"`), `${path} uses ${index}`);
+      const indexes = Array.isArray(index) ? index : [index];
+      assert.match(
+        text,
+        new RegExp(`"Index Name":"(?:${indexes.join('|')})"`),
+        `${path} uses ${indexes.join(' or ')}`,
+      );
+      if (path === 'membership assignment')
+        assert.match(text, /"Index Cond":"\(period_id =/, `${path} seeks by period`);
       assert.doesNotMatch(text, /"Node Type":"Seq Scan"/, `${path} scans no table`);
     }
   } finally {
