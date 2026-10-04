@@ -124,7 +124,7 @@ export class MembershipService {
     await c.query('SELECT app.settle_personal_pauses($1)', [userId]);
     const b = (
       await c.query(
-        "SELECT b.*,p.fare_pesewas FROM app.billing_periods b JOIN app.purchases p ON p.id=b.purchase_id WHERE b.user_id=$1 AND b.state='open' FOR UPDATE OF b",
+        "SELECT b.*,p.fare_pesewas,to_jsonb(p)->'offer_terms' AS offer_terms FROM app.billing_periods b JOIN app.purchases p ON p.id=b.purchase_id WHERE b.user_id=$1 AND b.state='open' FOR UPDATE OF b",
         [userId],
       )
     ).rows[0];
@@ -564,6 +564,12 @@ export class MembershipService {
     }
     if (op === 'createCommuteRequest') {
       const b = await this.period(c, actor.userId);
+      if (b.offer_terms)
+        fail(
+          409,
+          'fresh_offer_required',
+          'Request a new subscription offer to change a priced journey.',
+        );
       if (b.effective_ends_at <= now || String(input.requestedDate) < date(now))
         fail(409, 'coverage_required', 'Choose a date within current service.');
       const selection = await this.selection(
@@ -639,7 +645,7 @@ export class MembershipService {
     const action = op === 'withdrawCommuteRequest' ? 'cancel' : String(input.action);
     const b = (
       await c.query(
-        'SELECT b.*,p.fare_pesewas FROM app.billing_periods b JOIN app.purchases p ON p.id=b.purchase_id WHERE b.id=$1 FOR UPDATE OF b',
+        "SELECT b.*,p.fare_pesewas,to_jsonb(p)->'offer_terms' AS offer_terms FROM app.billing_periods b JOIN app.purchases p ON p.id=b.purchase_id WHERE b.id=$1 FOR UPDATE OF b",
         [r.period_id],
       )
     ).rows[0];
@@ -711,6 +717,12 @@ export class MembershipService {
     } else if (action === 'apply') {
       if (r.status !== 'approved' || dayString(r.effective_date) > date(now))
         fail(409, 'application_not_due', 'Approved effective date has not arrived.');
+      if (b.offer_terms)
+        fail(
+          409,
+          'fresh_offer_required',
+          'Changing a priced journey requires a new subscription offer.',
+        );
       const fare = await this.options.fareForSelection?.(c, r.selection_id);
       if (!Number.isSafeInteger(fare) || fare !== b.fare_pesewas)
         fail(409, 'fare_review_required', 'Transfer pricing requires review.');
@@ -795,6 +807,21 @@ export class MembershipService {
       ).rows[0].id;
     }
     const b = funding!;
+    if (b.offer_terms) {
+      const terms = b.offer_terms as import('./offer-terms.js').OfferTerms;
+      const offeredLeg = terms.legs.find((l) => l.direction === direction);
+      if (!offeredLeg?.travelDays.includes(new Date(`${day}T00:00:00Z`).getUTCDay() || 7))
+        fail(409, 'travel_day_not_covered', 'This weekday is not included in your offer.');
+      const balance = (
+        await c.query('SELECT * FROM app.offer_ride_balances($1) WHERE direction=$2', [
+          b.id,
+          direction,
+        ])
+      ).rows[0];
+      const alreadyHeld = old?.period_id === b.id && old?.status === 'reserved' ? 1 : 0;
+      if (!balance || balance.granted - balance.charged - balance.held + alreadyHeld <= 0)
+        fail(409, 'journey_rides_exhausted', 'No rides remain for this direction.');
+    }
     if ((await this.blocks(c, actor.userId, b.id)).length)
       fail(409, 'membership_blocked', 'Resolve the current access block first.');
     const leg = (
@@ -895,12 +922,16 @@ export class MembershipService {
       return (
         await c.query(
           `SELECT b.user_id AS id FROM app.billing_periods b JOIN app.memberships m ON m.id=b.membership_id AND m.lifecycle='open'
+        JOIN app.purchases purchase ON purchase.id=b.purchase_id
         JOIN app.users u ON u.id=b.user_id AND u.deleted_at IS NULL
         JOIN app.commute_assignments a ON a.period_id=b.id AND a.effective_from<=$1 AND (a.effective_to IS NULL OR $1<a.effective_to)
         JOIN app.commute_selection_legs l ON l.selection_id=a.selection_id AND l.direction=$2
         JOIN app.commute_selections s ON s.id=l.selection_id
         JOIN app.trips t ON t.schedule_id=l.schedule_id AND t.service_date=$1 AND t.status='scheduled' AND t.scheduled_at>$4
         WHERE b.state='open' AND b.starts_at<=t.scheduled_at AND t.scheduled_at<b.effective_ends_at
+        AND (purchase.offer_terms IS NULL OR EXISTS(
+          SELECT 1 FROM jsonb_array_elements(purchase.offer_terms->'legs') ol
+          WHERE ol->>'direction'=$2 AND (ol->'travelDays') @> to_jsonb(ARRAY[extract(isodow FROM $1::date)::integer])))
         AND ($3::uuid IS NULL OR s.route_id=$3)
         AND NOT EXISTS(SELECT 1 FROM app.reservations r WHERE r.user_id=b.user_id AND r.service_date=$1 AND r.direction=$2)
         AND NOT EXISTS(SELECT 1 FROM app.membership_pauses p WHERE p.period_id=b.id AND p.ended_at IS NULL)

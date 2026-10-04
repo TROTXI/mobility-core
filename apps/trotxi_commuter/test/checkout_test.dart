@@ -162,22 +162,11 @@ void main() {
     await finish(tester);
   });
   testWidgets(
-    'new checkout requires a commute and labels preparation rather than a charge',
+    'new checkout directs riders to Ops offers without a direct purchase form',
     (tester) async {
       await pump(tester, noPurchases: true);
-      expect(
-        tester
-            .widget<FilledButton>(
-              find.widgetWithText(FilledButton, 'Prepare checkout'),
-            )
-            .onPressed,
-        isNull,
-      );
-      expect(find.textContaining('does not charge you'), findsOneWidget);
-      expect(
-        find.textContaining('cancellation currently requires operations'),
-        findsOneWidget,
-      );
+      expect(find.text('Prepare checkout'), findsNothing);
+      expect(find.text('View subscription offers'), findsOneWidget);
       expect(f.requests.where((r) => r.method == 'POST'), isEmpty);
       await finish(tester);
     },

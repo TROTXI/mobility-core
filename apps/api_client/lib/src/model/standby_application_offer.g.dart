@@ -91,6 +91,8 @@ class _$StandbyApplicationOffer extends StandbyApplicationOffer {
   final DateTime expiresAt;
   @override
   final String? purchaseId;
+  @override
+  final OpsPurchaseOfferTerms? terms;
 
   factory _$StandbyApplicationOffer(
           [void Function(StandbyApplicationOfferBuilder)? updates]) =>
@@ -100,7 +102,8 @@ class _$StandbyApplicationOffer extends StandbyApplicationOffer {
       {required this.id,
       required this.state,
       required this.expiresAt,
-      this.purchaseId})
+      this.purchaseId,
+      this.terms})
       : super._();
   @override
   StandbyApplicationOffer rebuild(
@@ -118,7 +121,8 @@ class _$StandbyApplicationOffer extends StandbyApplicationOffer {
         id == other.id &&
         state == other.state &&
         expiresAt == other.expiresAt &&
-        purchaseId == other.purchaseId;
+        purchaseId == other.purchaseId &&
+        terms == other.terms;
   }
 
   @override
@@ -128,6 +132,7 @@ class _$StandbyApplicationOffer extends StandbyApplicationOffer {
     _$hash = $jc(_$hash, state.hashCode);
     _$hash = $jc(_$hash, expiresAt.hashCode);
     _$hash = $jc(_$hash, purchaseId.hashCode);
+    _$hash = $jc(_$hash, terms.hashCode);
     _$hash = $jf(_$hash);
     return _$hash;
   }
@@ -138,7 +143,8 @@ class _$StandbyApplicationOffer extends StandbyApplicationOffer {
           ..add('id', id)
           ..add('state', state)
           ..add('expiresAt', expiresAt)
-          ..add('purchaseId', purchaseId))
+          ..add('purchaseId', purchaseId)
+          ..add('terms', terms))
         .toString();
   }
 }
@@ -164,6 +170,11 @@ class StandbyApplicationOfferBuilder
   String? get purchaseId => _$this._purchaseId;
   set purchaseId(String? purchaseId) => _$this._purchaseId = purchaseId;
 
+  OpsPurchaseOfferTermsBuilder? _terms;
+  OpsPurchaseOfferTermsBuilder get terms =>
+      _$this._terms ??= OpsPurchaseOfferTermsBuilder();
+  set terms(OpsPurchaseOfferTermsBuilder? terms) => _$this._terms = terms;
+
   StandbyApplicationOfferBuilder() {
     StandbyApplicationOffer._defaults(this);
   }
@@ -175,6 +186,7 @@ class StandbyApplicationOfferBuilder
       _state = $v.state;
       _expiresAt = $v.expiresAt;
       _purchaseId = $v.purchaseId;
+      _terms = $v.terms?.toBuilder();
       _$v = null;
     }
     return this;
@@ -194,16 +206,30 @@ class StandbyApplicationOfferBuilder
   StandbyApplicationOffer build() => _build();
 
   _$StandbyApplicationOffer _build() {
-    final _$result = _$v ??
-        _$StandbyApplicationOffer._(
-          id: BuiltValueNullFieldError.checkNotNull(
-              id, r'StandbyApplicationOffer', 'id'),
-          state: BuiltValueNullFieldError.checkNotNull(
-              state, r'StandbyApplicationOffer', 'state'),
-          expiresAt: BuiltValueNullFieldError.checkNotNull(
-              expiresAt, r'StandbyApplicationOffer', 'expiresAt'),
-          purchaseId: purchaseId,
-        );
+    _$StandbyApplicationOffer _$result;
+    try {
+      _$result = _$v ??
+          _$StandbyApplicationOffer._(
+            id: BuiltValueNullFieldError.checkNotNull(
+                id, r'StandbyApplicationOffer', 'id'),
+            state: BuiltValueNullFieldError.checkNotNull(
+                state, r'StandbyApplicationOffer', 'state'),
+            expiresAt: BuiltValueNullFieldError.checkNotNull(
+                expiresAt, r'StandbyApplicationOffer', 'expiresAt'),
+            purchaseId: purchaseId,
+            terms: _terms?.build(),
+          );
+    } catch (_) {
+      late String _$failedField;
+      try {
+        _$failedField = 'terms';
+        _terms?.build();
+      } catch (e) {
+        throw BuiltValueNestedFieldError(
+            r'StandbyApplicationOffer', _$failedField, e.toString());
+      }
+      rethrow;
+    }
     replace(_$result);
     return _$result;
   }

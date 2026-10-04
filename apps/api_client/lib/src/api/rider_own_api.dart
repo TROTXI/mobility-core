@@ -43,6 +43,7 @@ import 'package:trotxi_api_client/src/model/rider_notification_page.dart';
 import 'package:trotxi_api_client/src/model/rider_notification_response.dart';
 import 'package:trotxi_api_client/src/model/standby_application_page.dart';
 import 'package:trotxi_api_client/src/model/standby_application_response.dart';
+import 'package:trotxi_api_client/src/model/standby_join_input.dart';
 import 'package:trotxi_api_client/src/model/verification_status_response.dart';
 
 class RiderOwnApi {
@@ -1363,7 +1364,7 @@ class RiderOwnApi {
   /// * [idempotencyKey] - Caller + operation + target scoped; payload mismatch = 409. Never log secrets.
   /// * [xTrotxiClient] - Compatibility metadata only, never grants a role.
   /// * [xTrotxiBuild] - Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
-  /// * [purchaseInput]
+  /// * [standbyJoinInput]
   /// * [xTrotxiPlatform] - Required for commuter/driver, absent for ops/worker.
   /// * [cancelToken] - A [CancelToken] that can be used to cancel the operation
   /// * [headers] - Can be used to add additional headers to the request
@@ -1378,7 +1379,7 @@ class RiderOwnApi {
     required String idempotencyKey,
     required String xTrotxiClient,
     int xTrotxiBuild = 1,
-    required PurchaseInput purchaseInput,
+    required StandbyJoinInput standbyJoinInput,
     String? xTrotxiPlatform,
     CancelToken? cancelToken,
     Map<String, dynamic>? headers,
@@ -1414,8 +1415,9 @@ class RiderOwnApi {
     dynamic _bodyData;
 
     try {
-      const _type = FullType(PurchaseInput);
-      _bodyData = _serializers.serialize(purchaseInput, specifiedType: _type);
+      const _type = FullType(StandbyJoinInput);
+      _bodyData =
+          _serializers.serialize(standbyJoinInput, specifiedType: _type);
     } catch (error, stackTrace) {
       throw DioException(
         requestOptions: _options.compose(

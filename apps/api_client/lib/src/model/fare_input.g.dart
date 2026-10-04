@@ -13,11 +13,23 @@ class _$FareInput extends FareInput {
   final DateTime effectiveFrom;
   @override
   final String? note;
+  @override
+  final String? patternVersionId;
+  @override
+  final String? pickupOccurrenceId;
+  @override
+  final String? dropoffOccurrenceId;
 
   factory _$FareInput([void Function(FareInputBuilder)? updates]) =>
       (FareInputBuilder()..update(updates))._build();
 
-  _$FareInput._({required this.amount, required this.effectiveFrom, this.note})
+  _$FareInput._(
+      {required this.amount,
+      required this.effectiveFrom,
+      this.note,
+      this.patternVersionId,
+      this.pickupOccurrenceId,
+      this.dropoffOccurrenceId})
       : super._();
   @override
   FareInput rebuild(void Function(FareInputBuilder) updates) =>
@@ -32,7 +44,10 @@ class _$FareInput extends FareInput {
     return other is FareInput &&
         amount == other.amount &&
         effectiveFrom == other.effectiveFrom &&
-        note == other.note;
+        note == other.note &&
+        patternVersionId == other.patternVersionId &&
+        pickupOccurrenceId == other.pickupOccurrenceId &&
+        dropoffOccurrenceId == other.dropoffOccurrenceId;
   }
 
   @override
@@ -41,6 +56,9 @@ class _$FareInput extends FareInput {
     _$hash = $jc(_$hash, amount.hashCode);
     _$hash = $jc(_$hash, effectiveFrom.hashCode);
     _$hash = $jc(_$hash, note.hashCode);
+    _$hash = $jc(_$hash, patternVersionId.hashCode);
+    _$hash = $jc(_$hash, pickupOccurrenceId.hashCode);
+    _$hash = $jc(_$hash, dropoffOccurrenceId.hashCode);
     _$hash = $jf(_$hash);
     return _$hash;
   }
@@ -50,7 +68,10 @@ class _$FareInput extends FareInput {
     return (newBuiltValueToStringHelper(r'FareInput')
           ..add('amount', amount)
           ..add('effectiveFrom', effectiveFrom)
-          ..add('note', note))
+          ..add('note', note)
+          ..add('patternVersionId', patternVersionId)
+          ..add('pickupOccurrenceId', pickupOccurrenceId)
+          ..add('dropoffOccurrenceId', dropoffOccurrenceId))
         .toString();
   }
 }
@@ -71,6 +92,21 @@ class FareInputBuilder implements Builder<FareInput, FareInputBuilder> {
   String? get note => _$this._note;
   set note(String? note) => _$this._note = note;
 
+  String? _patternVersionId;
+  String? get patternVersionId => _$this._patternVersionId;
+  set patternVersionId(String? patternVersionId) =>
+      _$this._patternVersionId = patternVersionId;
+
+  String? _pickupOccurrenceId;
+  String? get pickupOccurrenceId => _$this._pickupOccurrenceId;
+  set pickupOccurrenceId(String? pickupOccurrenceId) =>
+      _$this._pickupOccurrenceId = pickupOccurrenceId;
+
+  String? _dropoffOccurrenceId;
+  String? get dropoffOccurrenceId => _$this._dropoffOccurrenceId;
+  set dropoffOccurrenceId(String? dropoffOccurrenceId) =>
+      _$this._dropoffOccurrenceId = dropoffOccurrenceId;
+
   FareInputBuilder() {
     FareInput._defaults(this);
   }
@@ -81,6 +117,9 @@ class FareInputBuilder implements Builder<FareInput, FareInputBuilder> {
       _amount = $v.amount.toBuilder();
       _effectiveFrom = $v.effectiveFrom;
       _note = $v.note;
+      _patternVersionId = $v.patternVersionId;
+      _pickupOccurrenceId = $v.pickupOccurrenceId;
+      _dropoffOccurrenceId = $v.dropoffOccurrenceId;
       _$v = null;
     }
     return this;
@@ -108,6 +147,9 @@ class FareInputBuilder implements Builder<FareInput, FareInputBuilder> {
             effectiveFrom: BuiltValueNullFieldError.checkNotNull(
                 effectiveFrom, r'FareInput', 'effectiveFrom'),
             note: note,
+            patternVersionId: patternVersionId,
+            pickupOccurrenceId: pickupOccurrenceId,
+            dropoffOccurrenceId: dropoffOccurrenceId,
           );
     } catch (_) {
       late String _$failedField;

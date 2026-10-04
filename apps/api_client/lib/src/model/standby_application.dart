@@ -20,6 +20,7 @@ part 'standby_application.g.dart';
 /// * [routeName]
 /// * [state]
 /// * [selection]
+/// * [travelDays]
 /// * [offer]
 /// * [createdAt]
 @BuiltValue()
@@ -39,10 +40,13 @@ abstract class StandbyApplication
 
   @BuiltValueField(wireName: r'state')
   StandbyApplicationStateEnum get state;
-  // enum stateEnum {  submitted,  offered,  withdrawn,  checkout_open,  };
+  // enum stateEnum {  submitted,  offered,  withdrawn,  checkout_open,  completed,  };
 
   @BuiltValueField(wireName: r'selection')
   PurchaseInput get selection;
+
+  @BuiltValueField(wireName: r'travelDays')
+  BuiltList<int> get travelDays;
 
   @BuiltValueField(wireName: r'offer')
   StandbyApplicationOffer? get offer;
@@ -105,6 +109,11 @@ class _$StandbyApplicationSerializer
     yield serializers.serialize(
       object.selection,
       specifiedType: const FullType(PurchaseInput),
+    );
+    yield r'travelDays';
+    yield serializers.serialize(
+      object.travelDays,
+      specifiedType: const FullType(BuiltList, [FullType(int)]),
     );
     yield r'offer';
     yield object.offer == null
@@ -185,6 +194,13 @@ class _$StandbyApplicationSerializer
           ) as PurchaseInput;
           result.selection.replace(valueDes);
           break;
+        case r'travelDays':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType(BuiltList, [FullType(int)]),
+          ) as BuiltList<int>;
+          result.travelDays.replace(valueDes);
+          break;
         case r'offer':
           final valueDes = serializers.deserialize(
             value,
@@ -242,6 +258,9 @@ class StandbyApplicationStateEnum extends EnumClass {
   @BuiltValueEnumConst(wireName: r'checkout_open')
   static const StandbyApplicationStateEnum checkoutOpen =
       _$standbyApplicationStateEnum_checkoutOpen;
+  @BuiltValueEnumConst(wireName: r'completed')
+  static const StandbyApplicationStateEnum completed =
+      _$standbyApplicationStateEnum_completed;
 
   static Serializer<StandbyApplicationStateEnum> get serializer =>
       _$standbyApplicationStateEnumSerializer;

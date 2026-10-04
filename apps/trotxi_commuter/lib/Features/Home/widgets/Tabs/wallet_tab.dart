@@ -4,7 +4,7 @@ import 'package:trotxi_client/trotxi_client.dart';
 import 'package:trotxi_commuter/core/api/commuter_api.dart';
 import 'package:trotxi_commuter/Features/Home/widgets/Payments/purchase_details_sheet.dart';
 import 'package:trotxi_commuter/Features/Home/widgets/Payments/purchase_labels.dart';
-import 'package:trotxi_commuter/Features/Home/widgets/Payments/subscribe_monthly_dialog.dart';
+import 'standby_page.dart';
 import 'package:trotxi_commuter/Features/Home/widgets/Tabs/checkout_page.dart';
 import 'package:trotxi_commuter/core/config/layout/responsive_layout.dart';
 import 'package:trotxi_commuter/core/config/theme/app_colors.dart';
@@ -113,8 +113,6 @@ class _WalletTabState extends State<WalletTab> {
 
   RiderOwnApi get _riderApi => widget.client.getRiderOwnApi();
 
-  MembershipEntitlements? get _entitlements => _membership?.entitlements;
-
   @override
   void initState() {
     super.initState();
@@ -181,36 +179,14 @@ class _WalletTabState extends State<WalletTab> {
     if (_subscribing) return;
     setState(() => _subscribing = true);
     try {
-      final purchase = await showSubscribeMonthlyDialog(
-        context,
-        client: widget.client,
-        availableCredit: _entitlements?.availableCredit,
-        currentCommute: _membership?.commute,
+      await Navigator.of(context).push<void>(
+        MaterialPageRoute(builder: (_) => StandbyPage(client: widget.client)),
       );
-      if (purchase == null || !mounted) return;
-
-      if (purchase.cashDue.amountMinor > 0) {
-        await Navigator.of(context).push<void>(
-          MaterialPageRoute(
-            builder: (_) => CheckoutPage(client: widget.client),
-          ),
-        );
-      }
       if (!mounted) return;
       await _load();
-      if (mounted && purchase.cashDue.amountMinor == 0) {
-        _showSnack('Purchase prepared. Refresh to see confirmed access.');
-      }
     } finally {
       if (mounted) setState(() => _subscribing = false);
     }
-  }
-
-  void _showSnack(String message) {
-    if (!mounted) return;
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text(message)));
   }
 
   // ---------------------------------------------------------------------
@@ -601,10 +577,10 @@ class _WalletTabState extends State<WalletTab> {
     }
     if (coverage.paused) return 'Paused';
     return switch (coverage.state) {
-      MembershipCoverageStateEnum.open => 'Monthly plan active',
+      MembershipCoverageStateEnum.open => 'Subscription active',
       MembershipCoverageStateEnum.closed => 'Plan ended',
       MembershipCoverageStateEnum.reversed => 'Plan reversed',
-      _ => 'Monthly plan',
+      _ => 'Subscription',
     };
   }
 
@@ -613,8 +589,8 @@ class _WalletTabState extends State<WalletTab> {
     if (coverage == null) {
       final endedAt = membership.lastCoverageEndedAt;
       return endedAt == null
-          ? 'Subscribe to unlock recurring rides.'
-          : 'Ended ${_formatFullDay(endedAt)}. Subscribe again to keep riding.';
+          ? 'Request an offer for your journeys and travel days.'
+          : 'Ended ${_formatFullDay(endedAt)}. Request a renewal offer.';
     }
     final endsAt = coverage.endsAt;
     if (endsAt == null) return 'Started ${_formatFullDay(coverage.startsAt)}';
@@ -700,7 +676,9 @@ class _WalletTabState extends State<WalletTab> {
                 ),
               )
             : Text(
-                isCovered ? 'Renew monthly plan' : 'Subscribe monthly',
+                isCovered
+                    ? 'Request renewal offer'
+                    : 'Request subscription offer',
                 style: AppTypography.buttonAction.copyWith(
                   color: colors.actionOnPrimary,
                 ),
@@ -765,7 +743,9 @@ class _WalletTabState extends State<WalletTab> {
         entry.deltaRides > 0,
       ),
       _PurchaseActivity(:final purchase) => (
-        purchasePlanLabel(purchase.plan),
+        purchase.offerTerms != null
+            ? 'Subscription offer'
+            : purchasePlanLabel(purchase.plan),
         '${purchaseStateLabel(purchase.state)} · ${_formatDay(purchase.createdAt)}',
         purchase.price.formatted,
         false,

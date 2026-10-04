@@ -8,17 +8,18 @@ import 'package:trotxi_api_client/api.dart';
 ## Properties
 Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
-**id** | **String** |  | 
-**plan** | **String** |  | 
-**state** | **String** |  | 
-**collectionState** | **String** |  | 
-**price** | [**Money**](Money.md) |  | 
-**appliedCredit** | [**Money**](Money.md) |  | 
-**cashDue** | [**Money**](Money.md) |  | 
-**checkout** | [**OpsPurchaseCheckout**](OpsPurchaseCheckout.md) |  | 
-**billingPeriodId** | **String** |  | 
-**failureCode** | **String** |  | 
-**createdAt** | [**DateTime**](DateTime.md) |  | 
+**id** | **String** |  |
+**plan** | **String** |  |
+**state** | **String** |  |
+**collectionState** | **String** |  |
+**price** | [**Money**](Money.md) |  |
+**offerTerms** | [**OpsPurchaseOfferTerms**](OpsPurchaseOfferTerms.md) |  | [optional]
+**appliedCredit** | [**Money**](Money.md) |  |
+**cashDue** | [**Money**](Money.md) |  |
+**checkout** | [**OpsPurchaseCheckout**](OpsPurchaseCheckout.md) |  |
+**billingPeriodId** | **String** |  |
+**failureCode** | **String** |  |
+**createdAt** | [**DateTime**](DateTime.md) |  |
 
 [[Back to Model list]](../README.md#documentation-for-models) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to README]](../README.md)
 

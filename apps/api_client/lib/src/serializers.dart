@@ -88,6 +88,7 @@ import 'package:trotxi_api_client/src/model/error_response_error.dart';
 import 'package:trotxi_api_client/src/model/error_response_error_field_errors_inner.dart';
 import 'package:trotxi_api_client/src/model/fare.dart';
 import 'package:trotxi_api_client/src/model/fare_input.dart';
+import 'package:trotxi_api_client/src/model/fare_journey.dart';
 import 'package:trotxi_api_client/src/model/fare_page.dart';
 import 'package:trotxi_api_client/src/model/fare_response.dart';
 import 'package:trotxi_api_client/src/model/flag.dart';
@@ -154,6 +155,7 @@ import 'package:trotxi_api_client/src/model/ops_purchase.dart';
 import 'package:trotxi_api_client/src/model/ops_purchase_attempts_inner.dart';
 import 'package:trotxi_api_client/src/model/ops_purchase_attempts_inner_received_amount.dart';
 import 'package:trotxi_api_client/src/model/ops_purchase_checkout.dart';
+import 'package:trotxi_api_client/src/model/ops_purchase_offer_terms.dart';
 import 'package:trotxi_api_client/src/model/ops_purchase_page.dart';
 import 'package:trotxi_api_client/src/model/ops_purchase_response.dart';
 import 'package:trotxi_api_client/src/model/ops_report_summary.dart';
@@ -294,7 +296,9 @@ import 'package:trotxi_api_client/src/model/standby_application.dart';
 import 'package:trotxi_api_client/src/model/standby_application_offer.dart';
 import 'package:trotxi_api_client/src/model/standby_application_page.dart';
 import 'package:trotxi_api_client/src/model/standby_application_response.dart';
+import 'package:trotxi_api_client/src/model/standby_join_input.dart';
 import 'package:trotxi_api_client/src/model/standby_offer_input.dart';
+import 'package:trotxi_api_client/src/model/standby_offer_input_credits_inner.dart';
 import 'package:trotxi_api_client/src/model/stop.dart';
 import 'package:trotxi_api_client/src/model/stop_edit.dart';
 import 'package:trotxi_api_client/src/model/stop_eta.dart';
@@ -302,6 +306,7 @@ import 'package:trotxi_api_client/src/model/stop_input.dart';
 import 'package:trotxi_api_client/src/model/stop_occurrence.dart';
 import 'package:trotxi_api_client/src/model/stop_page.dart';
 import 'package:trotxi_api_client/src/model/stop_response.dart';
+import 'package:trotxi_api_client/src/model/subscription_offer_leg.dart';
 import 'package:trotxi_api_client/src/model/tokens.dart';
 import 'package:trotxi_api_client/src/model/tokens_response.dart';
 import 'package:trotxi_api_client/src/model/trace_hold.dart';
@@ -411,6 +416,7 @@ part 'serializers.g.dart';
   ErrorResponseErrorFieldErrorsInner,
   Fare,
   FareInput,
+  FareJourney,
   FarePage,
   FareResponse,
   Flag,
@@ -477,6 +483,7 @@ part 'serializers.g.dart';
   OpsPurchaseAttemptsInner,
   OpsPurchaseAttemptsInnerReceivedAmount,
   OpsPurchaseCheckout,
+  OpsPurchaseOfferTerms,
   OpsPurchasePage,
   OpsPurchaseResponse,
   OpsReportSummary,
@@ -617,7 +624,9 @@ part 'serializers.g.dart';
   StandbyApplicationOffer,
   StandbyApplicationPage,
   StandbyApplicationResponse,
+  StandbyJoinInput,
   StandbyOfferInput,
+  StandbyOfferInputCreditsInner,
   Stop,
   StopEdit,
   StopEta,
@@ -625,6 +634,7 @@ part 'serializers.g.dart';
   StopOccurrence,
   StopPage,
   StopResponse,
+  SubscriptionOfferLeg,
   Tokens,
   TokensResponse,
   TraceHold,

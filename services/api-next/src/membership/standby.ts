@@ -4,6 +4,10 @@ import { fail, TransportError } from '../transport/errors.js';
 import { canonical, type Actor, type Body, type Outcome } from '../transport/service.js';
 import type { Purchases } from '../payments/purchases.js';
 import { cursorCodec } from '../transport/cursor.js';
+import { Pricing } from '../payments/pricing.js';
+import type { CheckoutInput } from '../payments/foundation.js';
+import { buildOfferTerms, travelDays } from './offer-terms.js';
+import { expireUnpaidOffers } from '../payments/offer-expiry.js';
 
 export const standbyOperations = [
   'listMyStandby',
@@ -27,12 +31,14 @@ const view = (row: Row) => ({
   routeName: row.route_name as string,
   state: row.state as string,
   selection: row.selection as Body,
+  travelDays: row.travel_days ?? [],
   offer: row.offer_id
     ? {
         id: row.offer_id as string,
         state: row.offer_state as string,
         expiresAt: (row.expires_at as Date).toISOString(),
         purchaseId: (row.purchase_id as string | null) ?? null,
+        terms: row.terms ?? null,
       }
     : null,
   createdAt: (row.created_at as Date).toISOString(),
@@ -101,7 +107,7 @@ export class StandbyService {
       await c.query(
         `SELECT a.*,u.display_name AS rider_name,r.name AS route_name,
               o.id AS offer_id,o.state AS offer_state,o.expires_at,o.purchase_id,
-              o.acceptance_key_hash,o.offer_key_hash,o.offer_receipt
+              o.acceptance_key_hash,o.offer_key_hash,o.offer_receipt,o.terms,o.input_hash
        FROM app.standby_applications a
        JOIN app.users u ON u.id=a.user_id JOIN app.routes r ON r.id=a.route_id
        LEFT JOIN app.standby_offers o ON o.application_id=a.id
@@ -121,11 +127,13 @@ export class StandbyService {
     const context = `${actor.userId}:standby:${admin ? 'ops' : 'rider'}`;
     const cursor = query.cursor ? this.cursors.decode(query.cursor, context, new Date()) : null;
     return this.tx(async (c) => {
+      if (!admin) await c.query('SELECT id FROM app.users WHERE id=$1 FOR UPDATE', [actor.userId]);
       await this.authorize(c, actor, admin);
+      if (!admin) await expireUnpaidOffers(c, actor.userId);
       const rows = (
         await c.query(
           `SELECT a.*,u.display_name AS rider_name,r.name AS route_name,
-                o.id AS offer_id,o.state AS offer_state,o.expires_at,o.purchase_id,
+                o.id AS offer_id,o.state AS offer_state,o.expires_at,o.purchase_id,o.terms,
                 to_char(a.created_at AT TIME ZONE 'UTC','YYYY-MM-DD"T"HH24:MI:SS.US"Z"') AS cursor_time
          FROM app.standby_applications a
          JOIN app.users u ON u.id=a.user_id AND u.deleted_at IS NULL
@@ -153,20 +161,32 @@ export class StandbyService {
       };
     });
   }
-  async join(actor: Actor, selection: Body): Promise<Outcome> {
+  async join(actor: Actor, input: Body): Promise<Outcome> {
     return this.tx(async (c) => {
       // A user-level lock serializes concurrent applications for the same account.
       await c.query('SELECT id FROM app.users WHERE id=$1 FOR UPDATE', [actor.userId]);
       await this.eligible(c, actor);
+      await expireUnpaidOffers(c, actor.userId);
+      const selection = input.selection as Body;
+      const days = travelDays(input.travelDays);
+      if (
+        !selection ||
+        !['monthly', 'annual'].includes(String(selection.plan)) ||
+        typeof selection.useCredit !== 'boolean'
+      )
+        fail(400, 'invalid_selection', 'Select a commute and credit preference.');
       const routeId = identifier(selection.routeId);
       const existing = (
         await c.query(
-          "SELECT id,selection FROM app.standby_applications WHERE user_id=$1 AND state IN ('submitted','offered','checkout_open') FOR UPDATE",
+          "SELECT id,selection,travel_days FROM app.standby_applications WHERE user_id=$1 AND state IN ('submitted','offered','checkout_open') FOR UPDATE",
           [actor.userId],
         )
       ).rows[0];
       if (existing) {
-        if (canonical(existing.selection) !== canonical(selection))
+        if (
+          canonical(existing.selection) !== canonical(selection) ||
+          canonical(existing.travel_days) !== canonical(days)
+        )
           fail(409, 'standby_already_joined', 'Withdraw your existing standby application first.');
         return {
           status: 200,
@@ -174,16 +194,8 @@ export class StandbyService {
           body: { data: view((await this.row(c, existing.id, actor.userId))!) },
         };
       }
-      if (
-        (
-          await c.query(
-            `SELECT 1 FROM app.billing_periods WHERE user_id=$1 AND state='open'
-         AND effective_ends_at>clock_timestamp()`,
-            [actor.userId],
-          )
-        ).rowCount
-      )
-        fail(409, 'coverage_active', 'You already have active ride coverage.');
+      // Paid members can request their next offer. Payment remains blocked until
+      // current coverage ends; no overlapping period or automatic renewal.
       const legs = selection.legs as Body[];
       if (
         !Array.isArray(legs) ||
@@ -220,9 +232,9 @@ export class StandbyService {
       }
       const id = (
         await c.query(
-          `INSERT INTO app.standby_applications(user_id,route_id,selection)
-         VALUES ($1,$2,$3::jsonb) RETURNING id`,
-          [actor.userId, routeId, JSON.stringify(selection)],
+          `INSERT INTO app.standby_applications(user_id,route_id,selection,travel_days)
+         VALUES ($1,$2,$3::jsonb,$4) RETURNING id`,
+          [actor.userId, routeId, JSON.stringify(selection), days],
         )
       ).rows[0].id as string;
       await c.query(
@@ -262,15 +274,16 @@ export class StandbyService {
       };
     });
   }
-  async offer(actor: Actor, id: string, expiresAt: string, key: string): Promise<Outcome> {
+  async offer(actor: Actor, id: string, input: Body, key: string): Promise<Outcome> {
     const keyHash = createHash('sha256').update(key).digest('hex');
+    const inputHash = createHash('sha256').update(canonical(input)).digest('hex');
     return this.tx(async (c) => {
       await this.authorize(c, actor, true);
       const row = await this.row(c, id, undefined, true);
       if (!row) fail(404, 'not_found', 'Resource not found.');
-      const expiry = new Date(expiresAt);
+      const expiry = new Date(String(input.expiresAt));
       if (row.offer_id && row.offer_key_hash === keyHash) {
-        if (row.expires_at?.getTime() !== expiry.getTime())
+        if (row.input_hash !== inputHash)
           fail(409, 'idempotency_conflict', 'This key was used for a different offer.');
         if (!row.offer_receipt) fail(409, 'offer_unavailable', 'This offer is unavailable.');
         return { status: 201, headers: {}, body: { data: row.offer_receipt } };
@@ -280,11 +293,45 @@ export class StandbyService {
       const ms = expiry.getTime() - Date.now();
       if (!Number.isFinite(ms) || ms < 60000 || ms > 7 * 86400000)
         fail(400, 'invalid_offer_expiry', 'Choose an offer expiry within seven days.');
+      if (!row.travel_days)
+        fail(
+          409,
+          'standby_days_required',
+          'Ask the rider to submit a new request with travel days.',
+        );
+      const terms = await buildOfferTerms(
+        c,
+        new Pricing(this.options),
+        row.selection as CheckoutInput,
+        row.travel_days,
+        input,
+      );
+      const overlap = (
+        await c.query(
+          `SELECT 1 FROM app.billing_periods WHERE user_id=$1 AND state='open' AND effective_ends_at>$2::date`,
+          [row.user_id, terms.coverageStart],
+        )
+      ).rowCount;
+      if (overlap)
+        fail(409, 'coverage_active', 'Start this offer after the current coverage ends.');
+      const unavailableWindow = (
+        await c.query(
+          `SELECT 1 FROM app.billing_periods
+        WHERE user_id=$1 AND state='open' AND effective_ends_at >= $2`,
+          [row.user_id, expiry],
+        )
+      ).rowCount;
+      if (unavailableWindow)
+        fail(
+          409,
+          'renewal_payment_window_required',
+          'Current coverage must end before this offer expires. Choose a later coverage start and payment deadline.',
+        );
       const offerId = (
         await c.query(
-          `INSERT INTO app.standby_offers(application_id,expires_at,offer_key_hash)
-           VALUES ($1,$2,$3) RETURNING id`,
-          [id, expiry, keyHash],
+          `INSERT INTO app.standby_offers(application_id,expires_at,offer_key_hash,terms,input_hash)
+           VALUES ($1,$2,$3,$4::jsonb,$5) RETURNING id`,
+          [id, expiry, keyHash, JSON.stringify(terms), inputHash],
         )
       ).rows[0].id as string;
       await c.query(
@@ -310,10 +357,16 @@ export class StandbyService {
   }
   async accept(actor: Actor, id: string, key: string): Promise<Outcome> {
     const keyHash = createHash('sha256').update(key).digest('hex');
-    const selection = await this.tx(async (c) => {
+    const accepted = await this.tx(async (c) => {
       await this.eligible(c, actor);
       const row = await this.row(c, id, actor.userId, true);
       if (!row) fail(404, 'not_found', 'Resource not found.');
+      if (!row.terms && !row.purchase_id)
+        fail(
+          409,
+          'offer_terms_required',
+          'This older offer needs to be replaced with a priced offer.',
+        );
       if (row.state === 'offered' && row.offer_state === 'offered') {
         if (row.expires_at <= new Date()) fail(409, 'offer_expired', 'This offer has expired.');
         const claimed = await c.query(
@@ -327,13 +380,18 @@ export class StandbyService {
         row.acceptance_key_hash !== keyHash
       )
         fail(409, 'offer_unavailable', 'This offer is unavailable.');
-      return row.selection as Body;
+      return { selection: row.selection as Body, offerId: row.offer_id as string };
     });
     // The financial service freezes authoritative price and opens a *new*
     // Paystack checkout. No previous payment reference is reused.
     let purchase: Outcome;
     try {
-      purchase = await this.options.purchases.create(actor, selection, key);
+      purchase = await this.options.purchases.create(
+        actor,
+        accepted.selection,
+        key,
+        accepted.offerId,
+      );
     } catch (error) {
       // A definitive refusal happened before a checkout could be returned.
       // Keep uncertain/provider failures locked to the original retry key.
@@ -372,8 +430,8 @@ export class StandbyService {
         [row.offer_id, purchaseId],
       );
       await c.query(
-        "UPDATE app.standby_applications SET state='checkout_open',updated_at=clock_timestamp() WHERE id=$1",
-        [id],
+        `UPDATE app.standby_applications SET state=CASE WHEN EXISTS(SELECT 1 FROM app.purchases WHERE id=$2 AND state IN ('fulfilled','failed','cancelled')) THEN 'completed' ELSE 'checkout_open' END,updated_at=clock_timestamp() WHERE id=$1`,
+        [id, purchaseId],
       );
       if (row.offer_state !== 'checkout_open')
         await c.query(

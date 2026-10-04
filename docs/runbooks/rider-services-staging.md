@@ -1,5 +1,24 @@
 # Rider services: manual staging operations
 
+## Ops-priced subscription offer rollout
+
+The new offer flow is documented in the current amendment to
+[ADR-0015](../adr/0015-fare-derived-pricing.md), including the staging acceptance
+loop. It requires migrations 041 and 042, the regenerated API clients and the
+updated Ops and commuter applications. The historical checks below are not
+evidence that this new flow has been deployed or exercised with Paystack.
+
+Publish exact stop-pair fares before sending offers. Set the agreed package
+price and both journey credit rates explicitly. Confirm travel days and actual
+calendar ride counts with the rider. Use Paystack TEST only during staging.
+Retire old direct-checkout builds through the existing minimum-build controls
+as part of the coordinated rollout; they cannot create purchases in this flow.
+
+Expiry releases local held credit on the next rider offer refresh/request or
+checkout. It does not prove that no money was collected. Check late-payment
+reviews before advising another payment or initiating a refund. Existing paid
+subscriptions and provider evidence are not reset by this change.
+
 ## Deployment and operating decision
 
 PR #338 is deployed to `trotxi-api-staging` at `59041f1`, including migrations

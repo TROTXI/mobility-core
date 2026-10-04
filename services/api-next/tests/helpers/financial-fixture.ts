@@ -204,6 +204,7 @@ export async function setup(
     conversionRatePesewas: 45,
   });
   const dependencies: FinancialDependencies = {
+    requireOffer: false, // Legacy financial invariants; offer enforcement has dedicated integration tests.
     pool: runtime,
     environment: 'test',
     authorizeSession: async (c, a) => {

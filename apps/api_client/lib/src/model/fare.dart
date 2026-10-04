@@ -4,6 +4,7 @@
 
 // ignore_for_file: unused_element
 import 'package:trotxi_api_client/src/model/money.dart';
+import 'package:trotxi_api_client/src/model/fare_journey.dart';
 import 'package:built_value/built_value.dart';
 import 'package:built_value/serializer.dart';
 
@@ -15,9 +16,13 @@ part 'fare.g.dart';
 /// * [amount]
 /// * [effectiveFrom]
 /// * [note]
+/// * [patternVersionId]
+/// * [pickupOccurrenceId]
+/// * [dropoffOccurrenceId]
 /// * [id]
 /// * [routeId]
 /// * [effectiveTo]
+/// * [journey]
 @BuiltValue()
 abstract class Fare implements Built<Fare, FareBuilder> {
   @BuiltValueField(wireName: r'amount')
@@ -29,6 +34,15 @@ abstract class Fare implements Built<Fare, FareBuilder> {
   @BuiltValueField(wireName: r'note')
   String? get note;
 
+  @BuiltValueField(wireName: r'patternVersionId')
+  String? get patternVersionId;
+
+  @BuiltValueField(wireName: r'pickupOccurrenceId')
+  String? get pickupOccurrenceId;
+
+  @BuiltValueField(wireName: r'dropoffOccurrenceId')
+  String? get dropoffOccurrenceId;
+
   @BuiltValueField(wireName: r'id')
   String get id;
 
@@ -37,6 +51,9 @@ abstract class Fare implements Built<Fare, FareBuilder> {
 
   @BuiltValueField(wireName: r'effectiveTo')
   DateTime? get effectiveTo;
+
+  @BuiltValueField(wireName: r'journey')
+  FareJourney? get journey;
 
   Fare._();
 
@@ -78,6 +95,27 @@ class _$FareSerializer implements PrimitiveSerializer<Fare> {
         specifiedType: const FullType(String),
       );
     }
+    if (object.patternVersionId != null) {
+      yield r'patternVersionId';
+      yield serializers.serialize(
+        object.patternVersionId,
+        specifiedType: const FullType(String),
+      );
+    }
+    if (object.pickupOccurrenceId != null) {
+      yield r'pickupOccurrenceId';
+      yield serializers.serialize(
+        object.pickupOccurrenceId,
+        specifiedType: const FullType(String),
+      );
+    }
+    if (object.dropoffOccurrenceId != null) {
+      yield r'dropoffOccurrenceId';
+      yield serializers.serialize(
+        object.dropoffOccurrenceId,
+        specifiedType: const FullType(String),
+      );
+    }
     yield r'id';
     yield serializers.serialize(
       object.id,
@@ -95,6 +133,13 @@ class _$FareSerializer implements PrimitiveSerializer<Fare> {
             object.effectiveTo,
             specifiedType: const FullType.nullable(DateTime),
           );
+    if (object.journey != null) {
+      yield r'journey';
+      yield serializers.serialize(
+        object.journey,
+        specifiedType: const FullType(FareJourney),
+      );
+    }
   }
 
   @override
@@ -141,6 +186,27 @@ class _$FareSerializer implements PrimitiveSerializer<Fare> {
           ) as String;
           result.note = valueDes;
           break;
+        case r'patternVersionId':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType(String),
+          ) as String;
+          result.patternVersionId = valueDes;
+          break;
+        case r'pickupOccurrenceId':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType(String),
+          ) as String;
+          result.pickupOccurrenceId = valueDes;
+          break;
+        case r'dropoffOccurrenceId':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType(String),
+          ) as String;
+          result.dropoffOccurrenceId = valueDes;
+          break;
         case r'id':
           final valueDes = serializers.deserialize(
             value,
@@ -162,6 +228,13 @@ class _$FareSerializer implements PrimitiveSerializer<Fare> {
           ) as DateTime?;
           if (valueDes == null) continue;
           result.effectiveTo = valueDes;
+          break;
+        case r'journey':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType(FareJourney),
+          ) as FareJourney;
+          result.journey.replace(valueDes);
           break;
         default:
           unhandled.add(key);

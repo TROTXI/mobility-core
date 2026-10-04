@@ -93,6 +93,7 @@ export class Purchases {
       state: p.state,
       collectionState: latest?.state ?? 'pending',
       price: money(p.price_pesewas),
+      offerTerms: p.offer_terms ?? null,
       appliedCredit: money(p.applied_credit_pesewas),
       cashDue: money(p.cash_due_pesewas),
       checkout: session
@@ -120,10 +121,21 @@ export class Purchases {
     const sessions = (
       await c.query('SELECT * FROM app.checkout_sessions WHERE purchase_id=ANY($1::uuid[])', [ids])
     ).rows;
+    const offerIds = rows.map((p) => p.offer_id).filter(Boolean);
+    const offers = offerIds.length
+      ? (
+          await c.query('SELECT id,expires_at FROM app.standby_offers WHERE id=ANY($1::uuid[])', [
+            offerIds,
+          ])
+        ).rows
+      : [];
     return rows.map((p) => {
       const mine = attempts.filter((a) => a.purchase_id === p.id);
       const latest = mine[0];
       const session = sessions.find((s) => s.attempt_id === latest?.id);
+      const deadline = offers.find((o) => o.id === p.offer_id)?.expires_at;
+      if (session && deadline && (!session.expires_at || deadline < session.expires_at))
+        session.expires_at = deadline;
       const base = this.view(p, latest, session);
       if (!admin) return base;
       return {
@@ -297,8 +309,14 @@ export class Purchases {
    * and, if the first attempt to reach the provider failed, tries again for
    * the target rather than stranding a payable purchase with nowhere to pay.
    */
-  async create(actor: Actor, input: Body, key: string): Promise<Outcome> {
-    const purchase = await this.options.financial.checkout(actor, input as never, key, this.now());
+  async create(actor: Actor, input: Body, key: string, offerId?: string): Promise<Outcome> {
+    const purchase = await this.options.financial.checkout(
+      actor,
+      input as never,
+      key,
+      this.now(),
+      offerId,
+    );
     await this.target(actor, purchase);
     return this.tx(async (c) => {
       const row = (
@@ -317,12 +335,19 @@ export class Purchases {
     actor: Actor,
     purchase: {
       id: string;
+      state: string;
       cashDuePesewas: number;
       attempt?: { id: string; reference: string; state: string };
     },
   ) {
     const attempt = purchase.attempt;
-    if (!this.options.initializeCheckout || !attempt || attempt.state !== 'pending') return;
+    if (
+      !this.options.initializeCheckout ||
+      !attempt ||
+      attempt.state !== 'pending' ||
+      purchase.state !== 'awaiting_payment'
+    )
+      return;
     const existing = await this.tx((c) =>
       c.query('SELECT 1 FROM app.checkout_sessions WHERE attempt_id=$1', [attempt.id]),
     );

@@ -10,6 +10,7 @@ import { accraLocalToIso } from '../api/accra-time';
 import { ActionDialog } from '../components/ActionDialog';
 import { LiveMap } from '../components/LiveMap';
 import { buildRouteGeometry, type RoutePoint } from './routeGeometry';
+import { FareJourneyFields, type FareJourney } from './FareJourneyFields';
 
 type Route = components['schemas']['Route'];
 type Stop = components['schemas']['Stop'];
@@ -69,6 +70,7 @@ export function Network() {
   const [latitude, setLatitude] = useState('5.6037');
   const [longitude, setLongitude] = useState('-0.1870');
   const [routeId, setRouteId] = useState('');
+  const [fareJourney, setFareJourney] = useState<FareJourney | null>(null);
   const [direction, setDirection] = useState<'outbound' | 'return'>('outbound');
   const [versionStops, setVersionStops] = useState<string[]>([]);
   const [routeWaypoints, setRouteWaypoints] = useState<Record<number, RoutePoint[]>>({});
@@ -276,7 +278,8 @@ export function Network() {
       setEffectiveFrom(today());
       setEffectiveTo('');
     } else if (kind === 'fare-create') {
-      setAmountGhs('6');
+      setAmountGhs('');
+      setFareJourney(null);
       setEffectiveFrom(new Date().toISOString().slice(0, 16));
     } else if (kind === 'pricing-edit' && selectedPricing) {
       setRidesPerPeriod(selectedPricing.ridesPerPeriod);
@@ -617,6 +620,7 @@ export function Network() {
             <table className="data-table">
               <thead>
                 <tr>
+                  <th>Journey</th>
                   <th>Amount</th>
                   <th>Effective from</th>
                   <th>Effective to</th>
@@ -626,6 +630,13 @@ export function Network() {
               <tbody>
                 {fareQuery.data.map((fare) => (
                   <tr key={fare.id}>
+                    <td>
+                      {fare.journey
+                        ? `${fare.journey.pickup} → ${fare.journey.dropoff} (${fare.journey.direction})`
+                        : fare.patternVersionId
+                          ? 'Stop-pair fare'
+                          : 'Legacy corridor fare'}
+                    </td>
                     <td>
                       <strong>GHS {(fare.amount.amountMinor / 100).toFixed(2)}</strong>
                     </td>
@@ -641,7 +652,12 @@ export function Network() {
       )}
 
       {tab === 'pricing' && (
-        <Panel title="Membership plan pricing">
+        <Panel title="Legacy plan pricing">
+          <p>
+            These settings are not used by new subscription offers. Set stop-pair fares here, then
+            agree each rider's price, dates and unused-ride credits in the standby queue. Existing
+            paid terms never change.
+          </p>
           <TableState loading={query.loading} empty={!query.data?.pricing.length}>
             <table className="data-table">
               <thead>
@@ -1132,7 +1148,14 @@ export function Network() {
           <>
             <label>
               Route
-              <select required value={routeId} onChange={(event) => setRouteId(event.target.value)}>
+              <select
+                required
+                value={routeId}
+                onChange={(event) => {
+                  setRouteId(event.target.value);
+                  setFareJourney(null);
+                }}
+              >
                 <option value="">Choose route</option>
                 {query.data?.routes
                   .filter((route) => !route.archived)
@@ -1143,6 +1166,12 @@ export function Network() {
                   ))}
               </select>
             </label>
+            <FareJourneyFields
+              key={routeId}
+              patterns={query.data?.patterns.filter((pattern) => pattern.routeId === routeId) ?? []}
+              value={fareJourney}
+              onChange={setFareJourney}
+            />
             <label>
               Fare (GHS)
               <input
@@ -1172,7 +1201,8 @@ export function Network() {
         {dialog === 'pricing-edit' && selectedPricing && (
           <>
             <p className="dialog-note">
-              Editing the {selectedPricing.plan} plan changes future purchases only.
+              These {selectedPricing.plan} defaults belong to the legacy pricing model. Editing them
+              does not change new Ops offers or existing paid purchases.
             </p>
             <label>
               Rides per period
@@ -1371,9 +1401,16 @@ export function Network() {
       });
       if (response.error) throw new Error(response.error.error.message);
     } else if (dialog === 'fare-create') {
+      if (
+        !fareJourney?.patternVersionId ||
+        !fareJourney.pickupOccurrenceId ||
+        !fareJourney.dropoffOccurrenceId
+      )
+        throw new Error('Choose the route version, pickup and drop-off.');
       const response = await session.client.POST('/v1/ops/routes/{id}/fares', {
         params: { path: { id: routeId }, header: mutation },
         body: {
+          ...fareJourney,
           amount: { amountMinor: Math.round(Number(amountGhs) * 100), currency: 'GHS' },
           effectiveFrom: toIso(effectiveFrom),
           note,

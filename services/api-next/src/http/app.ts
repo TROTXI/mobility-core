@@ -846,12 +846,7 @@ export async function createTransportApp(options: AppOptions) {
               const key = request.headers['idempotency-key'];
               if (typeof key !== 'string' || !key || key.length > 128)
                 fail(400, 'idempotency_key_required', 'Supply an Idempotency-Key.');
-              result = await options.standby!.offer(
-                actor,
-                target!,
-                (request.body as { expiresAt: string }).expiresAt,
-                key,
-              );
+              result = await options.standby!.offer(actor, target!, request.body as Body, key);
             } else {
               const key = request.headers['idempotency-key'];
               if (typeof key !== 'string' || !key || key.length > 128)

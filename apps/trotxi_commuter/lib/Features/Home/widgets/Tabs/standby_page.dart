@@ -19,6 +19,9 @@ class _StandbyPageState extends State<StandbyPage> {
   List<wire.StandbyApplication> _applications = [];
   bool _busy = false;
   String? _error;
+  final Set<int> _travelDays = {1, 2, 3, 4, 5};
+  bool _useCredit = false;
+  static const _dayNames = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
   @override
   void initState() {
@@ -63,12 +66,17 @@ class _StandbyPageState extends State<StandbyPage> {
       return;
     }
     final commute = selection.request(wire.Date.now(utc: true), false, '');
-    final input = wire.PurchaseInput(
+    final selectionInput = wire.PurchaseInput(
       (b) => b
         ..plan = wire.PurchaseInputPlanEnum.monthly
         ..routeId = commute.routeId
         ..legs.replace(commute.legs)
-        ..useCredit = false,
+        ..useCredit = _useCredit,
+    );
+    final input = wire.StandbyJoinInput(
+      (b) => b
+        ..selection.replace(selectionInput)
+        ..travelDays.replace(_travelDays.toList()..sort()),
     );
     setState(() {
       _busy = true;
@@ -109,14 +117,47 @@ class _StandbyPageState extends State<StandbyPage> {
   }
 
   Future<void> _accept(wire.StandbyApplication application) async {
+    final generation = widget.client.sessionGeneration;
     final offer = application.offer;
     if (offer == null) return;
+    final terms = offer.terms;
+    if (terms == null) return;
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Accept this offer?'),
-        content: const Text(
-          'This creates a new Paystack checkout. You will see the current price before choosing to pay. No existing payment is reused.',
+        content: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'Package: GHS ${(terms.price.amountMinor / 100).toStringAsFixed(2)}',
+              ),
+              Text(
+                'Coverage: ${terms.coverageStart} until ${terms.coverageEnd} (end date excluded).',
+              ),
+              for (final leg in terms.legs) ...[
+                const SizedBox(height: 12),
+                Text(
+                  '${leg.direction.name}: ${leg.pickupName} → ${leg.dropoffName}',
+                ),
+                Text(
+                  '${leg.ridesGranted} rides on ${leg.travelDays.map((d) => _dayNames[d - 1]).join(', ')}',
+                ),
+                Text(
+                  'Journey fare: GHS ${(leg.fare.amountMinor / 100).toStringAsFixed(2)}',
+                ),
+                Text(
+                  'Credit per unused ride: GHS ${(leg.creditPerUnusedRide.amountMinor / 100).toStringAsFixed(2)}',
+                ),
+              ],
+              const SizedBox(height: 12),
+              const Text(
+                'Unused rides convert to the stated credit when coverage closes. Outbound and return allowances are separate. Trips still require confirmation and available seats. You will review the final cash due before paying on Paystack.',
+              ),
+            ],
+          ),
         ),
         actions: [
           TextButton(
@@ -130,8 +171,11 @@ class _StandbyPageState extends State<StandbyPage> {
         ],
       ),
     );
-    if (!mounted || confirmed != true) return;
-    final generation = widget.client.sessionGeneration;
+    if (!mounted ||
+        confirmed != true ||
+        generation != widget.client.sessionGeneration) {
+      return;
+    }
     setState(() {
       _busy = true;
       _error = null;
@@ -187,12 +231,12 @@ class _StandbyPageState extends State<StandbyPage> {
         )
         .toList();
     return Scaffold(
-      appBar: AppBar(title: const Text('Standby')),
+      appBar: AppBar(title: const Text('Subscription offers')),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
           const Text(
-            'Join standby for a route. An offer is not a booking; you choose whether to start and pay for a new checkout.',
+            'Request a commute or renewal. Operations will send an offer with your journeys, dates, ride allowance and price. Review it before paying. Renewals are not automatic.',
           ),
           const SizedBox(height: 16),
           if (_busy) const LinearProgressIndicator(),
@@ -215,11 +259,37 @@ class _StandbyPageState extends State<StandbyPage> {
               child: const Text('Verify phone'),
             ),
           ],
-          if (eligible && active.isEmpty)
+          if (eligible && active.isEmpty) ...[
+            const Text('Which days do you travel?'),
+            Wrap(
+              spacing: 8,
+              children: [
+                for (var day = 1; day <= 7; day++)
+                  FilterChip(
+                    label: Text(_dayNames[day - 1]),
+                    selected: _travelDays.contains(day),
+                    onSelected: _busy
+                        ? null
+                        : (selected) => setState(
+                            () => selected
+                                ? _travelDays.add(day)
+                                : _travelDays.remove(day),
+                          ),
+                  ),
+              ],
+            ),
+            CheckboxListTile(
+              value: _useCredit,
+              onChanged: _busy
+                  ? null
+                  : (v) => setState(() => _useCredit = v ?? false),
+              title: const Text('Apply available ride credit when I accept'),
+            ),
             FilledButton(
-              onPressed: _busy ? null : _join,
+              onPressed: _busy || _travelDays.isEmpty ? null : _join,
               child: const Text('Choose a route'),
             ),
+          ],
           for (final application in active)
             Card(
               child: Padding(
@@ -232,21 +302,36 @@ class _StandbyPageState extends State<StandbyPage> {
                       style: Theme.of(context).textTheme.titleMedium,
                     ),
                     Text('Status: ${application.state.name}'),
+                    Text(
+                      application.travelDays
+                          .map((day) => _dayNames[day - 1])
+                          .join(', '),
+                    ),
                     if (application.offer != null)
                       Text(
                         'Offer expires ${application.offer!.expiresAt.toLocal()}',
                       ),
                     if (application.state ==
                             wire.StandbyApplicationStateEnum.offered &&
+                        application.offer!.terms != null &&
                         application.offer!.expiresAt.isAfter(DateTime.now()))
                       FilledButton(
                         onPressed: _busy ? null : () => _accept(application),
                         child: const Text('Review offer'),
                       ),
+                    if (application.offer != null &&
+                        application.offer!.terms == null &&
+                        application.state ==
+                            wire.StandbyApplicationStateEnum.offered)
+                      const Text(
+                        'This older offer has no agreed price. Leave standby and submit a new request.',
+                      ),
                     if (application.state ==
                             wire.StandbyApplicationStateEnum.offered &&
                         !application.offer!.expiresAt.isAfter(DateTime.now()))
-                      const Text('This offer has expired. Leave standby to choose a route again.'),
+                      const Text(
+                        'This offer has expired. Leave standby to choose a route again.',
+                      ),
                     if (application.state ==
                             wire.StandbyApplicationStateEnum.submitted ||
                         application.state ==

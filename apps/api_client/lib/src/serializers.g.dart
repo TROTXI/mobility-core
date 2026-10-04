@@ -119,6 +119,8 @@ Serializers _$serializers = (Serializers().toBuilder()
       ..add(ErrorResponseErrorFieldErrorsInner.serializer)
       ..add(Fare.serializer)
       ..add(FareInput.serializer)
+      ..add(FareJourney.serializer)
+      ..add(FareJourneyDirectionEnum.serializer)
       ..add(FarePage.serializer)
       ..add(FareResponse.serializer)
       ..add(Flag.serializer)
@@ -214,6 +216,7 @@ Serializers _$serializers = (Serializers().toBuilder()
       ..add(OpsPurchaseAttemptsInnerStatusEnum.serializer)
       ..add(OpsPurchaseCheckout.serializer)
       ..add(OpsPurchaseCollectionStateEnum.serializer)
+      ..add(OpsPurchaseOfferTerms.serializer)
       ..add(OpsPurchasePage.serializer)
       ..add(OpsPurchasePlanEnum.serializer)
       ..add(OpsPurchaseResponse.serializer)
@@ -418,7 +421,10 @@ Serializers _$serializers = (Serializers().toBuilder()
       ..add(StandbyApplicationPage.serializer)
       ..add(StandbyApplicationResponse.serializer)
       ..add(StandbyApplicationStateEnum.serializer)
+      ..add(StandbyJoinInput.serializer)
       ..add(StandbyOfferInput.serializer)
+      ..add(StandbyOfferInputCreditsInner.serializer)
+      ..add(StandbyOfferInputCreditsInnerDirectionEnum.serializer)
       ..add(Stop.serializer)
       ..add(StopEdit.serializer)
       ..add(StopEta.serializer)
@@ -427,6 +433,8 @@ Serializers _$serializers = (Serializers().toBuilder()
       ..add(StopOccurrence.serializer)
       ..add(StopPage.serializer)
       ..add(StopResponse.serializer)
+      ..add(SubscriptionOfferLeg.serializer)
+      ..add(SubscriptionOfferLegDirectionEnum.serializer)
       ..add(Tokens.serializer)
       ..add(TokensResponse.serializer)
       ..add(TraceHold.serializer)
@@ -681,6 +689,10 @@ Serializers _$serializers = (Serializers().toBuilder()
           const FullType(BuiltList, const [const FullType(StandbyApplication)]),
           () => ListBuilder<StandbyApplication>())
       ..addBuilderFactory(
+          const FullType(
+              BuiltList, const [const FullType(StandbyOfferInputCreditsInner)]),
+          () => ListBuilder<StandbyOfferInputCreditsInner>())
+      ..addBuilderFactory(
           const FullType(BuiltList, const [const FullType(Stop)]),
           () => ListBuilder<Stop>())
       ..addBuilderFactory(
@@ -708,6 +720,10 @@ Serializers _$serializers = (Serializers().toBuilder()
           const FullType(BuiltList, const [const FullType(String)]),
           () => ListBuilder<String>())
       ..addBuilderFactory(
+          const FullType(
+              BuiltList, const [const FullType(SubscriptionOfferLeg)]),
+          () => ListBuilder<SubscriptionOfferLeg>())
+      ..addBuilderFactory(
           const FullType(BuiltList, const [const FullType(TraceHold)]),
           () => ListBuilder<TraceHold>())
       ..addBuilderFactory(
@@ -723,6 +739,15 @@ Serializers _$serializers = (Serializers().toBuilder()
       ..addBuilderFactory(
           const FullType(BuiltList, const [const FullType(WorkRequest)]),
           () => ListBuilder<WorkRequest>())
+      ..addBuilderFactory(
+          const FullType(BuiltList, const [const FullType(int)]),
+          () => ListBuilder<int>())
+      ..addBuilderFactory(
+          const FullType(BuiltList, const [const FullType(int)]),
+          () => ListBuilder<int>())
+      ..addBuilderFactory(
+          const FullType(BuiltList, const [const FullType(int)]),
+          () => ListBuilder<int>())
       ..addBuilderFactory(
           const FullType(BuiltList, const [const FullType(int)]),
           () => ListBuilder<int>())
