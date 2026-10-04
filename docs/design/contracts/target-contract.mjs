@@ -86,6 +86,7 @@ named(
     avatarUrl: z.url().nullable(),
     role,
     createdAt: instant,
+    isSuperadmin: z.boolean().optional(),
   }),
 );
 named('ProfileUpdate', obj({ displayName: text(100) }));
@@ -214,6 +215,35 @@ named(
 );
 named('NotificationPreferencesInput', obj({ dailyAskTime, optionalUpdatesEnabled: z.boolean() }));
 named('GoogleSignIn', obj({ idToken: text(8192) }));
+named(
+  'OpsGoogleSignIn',
+  obj({
+    idToken: text(8192),
+    invitationToken: z
+      .string()
+      .regex(/^[A-Za-z0-9_-]{43}$/)
+      .optional(),
+  }),
+);
+named(
+  'OperatorInvitationInput',
+  obj({ email: z.email().max(320), name: z.string().trim().min(1).max(100) }),
+);
+named('OperatorAccessInput', obj({ action: z.enum(['delete', 'make_superadmin', 'make_admin']) }));
+named('OperatorCommandResult', obj({ id }));
+named(
+  'OpsTeamEntry',
+  obj({
+    id,
+    name: text(),
+    email: z.email().nullable(),
+    kind: z.enum(['member', 'invitation']),
+    state: z.enum(['active', 'pending', 'claimed', 'expired', 'cancelled']),
+    isSuperadmin: z.boolean(),
+    expiresAt: instant.nullable(),
+    emailState: z.enum(['pending', 'accepted', 'cancelled', 'failed', 'unknown']).nullable(),
+  }),
+);
 named('PhoneSignInRequest', obj({ phone: text(32) }));
 named('PhoneSignInVerify', obj({ challengeId: z.uuid(), code: z.string().regex(/^\d{6}$/) }));
 named('PhoneVerificationStart', obj({ phone: text(32) }));
@@ -1576,6 +1606,39 @@ get('/healthz', 'getHealth', 'Health', { stable: true });
 get('/readyz', 'getReadiness', 'Health', { stable: true });
 get('/version', 'getBuild', 'Build', { stable: true });
 get('/flags', 'getBootstrap', 'Bootstrap', { stable: true });
+post('/v1/auth/ops/google', 'signInOpsGoogle', 'OpsGoogleSignIn', 'Tokens', {
+  retry: 'credential',
+  sensitive: true,
+});
+list('/v1/ops/team', 'listOpsTeam', 'OpsTeamEntry');
+post(
+  '/v1/ops/team/invitations',
+  'inviteOperator',
+  'OperatorInvitationInput',
+  'OperatorCommandResult',
+  { status: 200, sensitive: true },
+);
+post(
+  '/v1/ops/team/invitations/{id}/resend',
+  'resendOperatorInvitation',
+  null,
+  'OperatorCommandResult',
+  { status: 200, sensitive: true },
+);
+post(
+  '/v1/ops/team/invitations/{id}/cancel',
+  'cancelOperatorInvitation',
+  null,
+  'OperatorCommandResult',
+  { status: 200 },
+);
+post(
+  '/v1/ops/team/members/{id}/access',
+  'updateOperatorAccess',
+  'OperatorAccessInput',
+  'OperatorCommandResult',
+  { status: 200 },
+);
 for (const provider of ['google', 'apple', 'driver'])
   post(
     `/v1/auth/${provider}`,

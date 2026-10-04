@@ -133,6 +133,10 @@ import 'package:trotxi_api_client/src/model/notification_preferences_input.dart'
 import 'package:trotxi_api_client/src/model/notification_preferences_response.dart';
 import 'package:trotxi_api_client/src/model/notification_read_count.dart';
 import 'package:trotxi_api_client/src/model/notification_read_count_response.dart';
+import 'package:trotxi_api_client/src/model/operator_access_input.dart';
+import 'package:trotxi_api_client/src/model/operator_command_result.dart';
+import 'package:trotxi_api_client/src/model/operator_command_result_response.dart';
+import 'package:trotxi_api_client/src/model/operator_invitation_input.dart';
 import 'package:trotxi_api_client/src/model/ops_account_erasure.dart';
 import 'package:trotxi_api_client/src/model/ops_account_erasure_page.dart';
 import 'package:trotxi_api_client/src/model/ops_audit_event.dart';
@@ -142,6 +146,7 @@ import 'package:trotxi_api_client/src/model/ops_commute_request_page.dart';
 import 'package:trotxi_api_client/src/model/ops_commute_request_response.dart';
 import 'package:trotxi_api_client/src/model/ops_delivery.dart';
 import 'package:trotxi_api_client/src/model/ops_delivery_page.dart';
+import 'package:trotxi_api_client/src/model/ops_google_sign_in.dart';
 import 'package:trotxi_api_client/src/model/ops_incident.dart';
 import 'package:trotxi_api_client/src/model/ops_incident_page.dart';
 import 'package:trotxi_api_client/src/model/ops_incident_response.dart';
@@ -173,6 +178,8 @@ import 'package:trotxi_api_client/src/model/ops_rider_detail_response.dart';
 import 'package:trotxi_api_client/src/model/ops_rider_page.dart';
 import 'package:trotxi_api_client/src/model/ops_rider_summary.dart';
 import 'package:trotxi_api_client/src/model/ops_rider_summary_response.dart';
+import 'package:trotxi_api_client/src/model/ops_team_entry.dart';
+import 'package:trotxi_api_client/src/model/ops_team_entry_page.dart';
 import 'package:trotxi_api_client/src/model/ops_trip.dart';
 import 'package:trotxi_api_client/src/model/ops_trip_page.dart';
 import 'package:trotxi_api_client/src/model/ops_trip_response.dart';
@@ -461,6 +468,10 @@ part 'serializers.g.dart';
   NotificationPreferencesResponse,
   NotificationReadCount,
   NotificationReadCountResponse,
+  OperatorAccessInput,
+  OperatorCommandResult,
+  OperatorCommandResultResponse,
+  OperatorInvitationInput,
   OpsAccountErasure,
   OpsAccountErasurePage,
   OpsAuditEvent,
@@ -470,6 +481,7 @@ part 'serializers.g.dart';
   OpsCommuteRequestResponse,
   OpsDelivery,
   OpsDeliveryPage,
+  OpsGoogleSignIn,
   OpsIncident,
   OpsIncidentPage,
   OpsIncidentResponse,
@@ -501,6 +513,8 @@ part 'serializers.g.dart';
   OpsRiderPage,
   OpsRiderSummary,
   OpsRiderSummaryResponse,
+  OpsTeamEntry,
+  OpsTeamEntryPage,
   OpsTrip,
   OpsTripPage,
   OpsTripResponse,

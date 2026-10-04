@@ -358,6 +358,7 @@ export async function readOperations(
       UNION ALL SELECT id,'pricing',action,actor_user_id,resource_id,NULL,occurred_at FROM app.pricing_events
       UNION ALL SELECT id,'configuration',action,actor_user_id,target,reason,occurred_at FROM app.config_events
       UNION ALL SELECT id,'security',action,actor_user_id,user_id::text,NULL,occurred_at FROM app.admin_passkey_events
+      UNION ALL SELECT id,'security',action,actor_user_id,target_id::text,NULL,created_at FROM app.ops_team_events
       UNION ALL SELECT id,'payments','resolvePaymentReview:'||decision,actor_user_id,review_id::text,reason,created_at FROM app.payment_review_commands
       UNION ALL SELECT id,'payments','initiateRefund',actor_user_id,purchase_id::text,reason,created_at FROM app.refund_initiations
       UNION ALL SELECT id,'gps',operation,actor_user_id,hold_id::text,NULL,created_at FROM app.gps_events

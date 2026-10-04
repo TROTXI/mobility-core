@@ -13,8 +13,21 @@ import { normalizeDriverCode, verifyDriverPin } from './driver-pin.js';
 import type { AuthenticationResponseJSON, RegistrationResponseJSON } from '@simplewebauthn/server';
 import type { PasskeyRelyingParty, StoredPasskey } from './passkeys.js';
 import { phoneVerificationStatus, type PhoneOtp } from './phone-otp.js';
+import {
+  OpsTeam,
+  teamOperations,
+  teamLock,
+  claimInvitation,
+  finishInvitation,
+  requireSuperadmin,
+  requireRecentPasskey,
+  type OpsInvitationEmail,
+  type TeamOperation,
+} from './ops-team.js';
 
 export const authOperations = [
+  ...teamOperations,
+  'signInOpsGoogle',
   'requestPhoneSignIn',
   'verifyPhoneSignIn',
   'startPhoneVerification',
@@ -53,6 +66,7 @@ type PasskeyOperation = (typeof passkeyOperations)[number];
 export const ADMIN_ELEVATION_HOURS = 8;
 const PASSKEY_CHALLENGE_SECONDS = 300;
 export const publicAuthOperations = [
+  'signInOpsGoogle',
   'requestPhoneSignIn',
   'verifyPhoneSignIn',
   'signInGoogle',
@@ -78,6 +92,9 @@ export class DriverLockedError extends LockedError {
   }
 }
 export interface AuthOptions {
+  opsEmail?: OpsInvitationEmail;
+  opsOrigin?: string;
+  eraseOperator?: (c: PoolClient, actor: Actor, target: string) => Promise<void>;
   phoneOtp?: PhoneOtp;
   pool: Pool;
   access: AccessConfig;
@@ -103,6 +120,8 @@ type User = {
   avatar_object_key: string | null;
   created_at: Date;
   deleted_at: Date | null;
+  is_superadmin?: boolean;
+  ops_invite_pending?: boolean;
 };
 const denied = () => new TransportError(401, 'unauthenticated', 'Sign in to continue.');
 const result = (data?: unknown) => ({
@@ -163,6 +182,7 @@ export class AuthService {
       phone: user.phone,
       avatarUrl: user.avatar_object_key ? this.options.avatarUrl!(user.avatar_object_key) : null,
       createdAt: user.created_at.toISOString(),
+      isSuperadmin: user.is_superadmin === true,
     };
   }
   // Global auth lock order: user, session, refresh credential, driver/credential.
@@ -237,6 +257,16 @@ export class AuthService {
       )
     ).rows[0];
     if (!session) throw denied();
+    if (user.ops_invite_pending) {
+      const valid = (
+        await client.query(
+          "SELECT 1 FROM app.ops_invitations WHERE user_id=$1 AND state='claimed' AND expires_at>clock_timestamp()",
+          [user.id],
+        )
+      ).rowCount;
+      if (!valid) fail(403, 'invitation_expired', 'Ask a superadmin for a new invitation.');
+      if (!options.allowUnelevated) fail(403, 'passkey_required', 'Complete your passkey setup.');
+    }
     const driver = await this.driverAllowed(client, user);
     if (driver?.must_change_pin && !options.allowPinSetup)
       fail(403, 'pin_change_required', 'Set your own PIN before you continue.');
@@ -289,7 +319,14 @@ export class AuthService {
 
   async social(
     provider: Provider,
-    input: { idToken: string; nonce?: string; displayName?: string; authorizationCode?: string },
+    input: {
+      idToken: string;
+      nonce?: string;
+      displayName?: string;
+      authorizationCode?: string;
+      invitationToken?: string;
+    },
+    opsOnly = false,
   ) {
     const verifier = this.options[provider];
     if (!verifier) fail(503, 'provider_unavailable', 'This sign-in provider is not configured.');
@@ -333,7 +370,20 @@ export class AuthService {
         )
       ).rows[0];
       let user: User;
-      if (existing) {
+      if (opsOnly && input.invitationToken) {
+        const userId = await claimInvitation(
+          client,
+          identity,
+          input.invitationToken,
+          existing?.user_id,
+        );
+        if (!existing)
+          await client.query(
+            'INSERT INTO app.auth_identities(user_id,provider,subject) VALUES ($1,$2,$3)',
+            [userId, provider, identity.providerId],
+          );
+        user = await this.user(client, userId, true);
+      } else if (existing) {
         user = await this.user(client, existing.user_id, true);
         if (!user.email && identity.email)
           await client.query('UPDATE app.users SET email=$2 WHERE id=$1', [
@@ -346,6 +396,12 @@ export class AuthService {
             [provider, identity.providerId, encrypted],
           );
       } else {
+        if (opsOnly)
+          fail(
+            403,
+            'ops_access_required',
+            'This account has not been invited to Trotxi Operations.',
+          );
         const displayName =
           (identity.displayName || (provider === 'apple' ? input.displayName : '') || 'New user')
             .trim()
@@ -361,6 +417,8 @@ export class AuthService {
           [user.id, provider, identity.providerId, encrypted],
         );
       }
+      if (opsOnly && user.role !== 'admin')
+        fail(403, 'ops_access_required', 'This account has not been invited to Trotxi Operations.');
       await this.driverAllowed(client, user);
       return this.newSession(client, user, this.options.refreshTtlDays * 86400000);
     });
@@ -513,10 +571,13 @@ export class AuthService {
     if (!relyingParty)
       fail(503, 'passkeys_unavailable', 'Passkey authentication is not configured here.');
     return this.transaction(async (client) => {
+      await teamLock(client);
       const user = await this.user(client, actor.userId, true);
 
       if (name === 'resetOperatorPasskeys') {
         await this.authorizeSession(client, actor);
+        await requireSuperadmin(client, actor);
+        await requireRecentPasskey(client, actor);
         if (user.role !== 'admin')
           fail(403, 'forbidden', 'This operation is not available to your account.');
         return this.resetPasskeys(client, actor, target);
@@ -614,6 +675,7 @@ export class AuthService {
           ],
         );
         await this.consumePasskeyChallenge(client, actor, 'registration');
+        await finishInvitation(client, user.id);
         await this.elevate(client, actor, now);
         await this.passkeyEvent(client, user.id, user.id, 'registered');
         return result();
@@ -655,6 +717,7 @@ export class AuthService {
         [user.id, verified.newCounter, verified.deviceType, verified.backedUp, now, credential.id],
       );
       await this.consumePasskeyChallenge(client, actor, 'authentication');
+      await finishInvitation(client, user.id);
       await this.elevate(client, actor, now);
       await this.passkeyEvent(client, user.id, user.id, 'verified');
       return result();
@@ -772,6 +835,18 @@ export class AuthService {
     key: string | undefined,
     sourceIp?: string,
   ) {
+    if (name === 'signInOpsGoogle') return result(await this.social('google', body, true));
+    if ((teamOperations as readonly string[]).includes(name)) {
+      if (!actor) throw denied();
+      return new OpsTeam({
+        pool: this.options.pool,
+        authorize: this.authorizeSession,
+        cursorSecret: this.options.cursorSecret,
+        email: this.options.opsEmail,
+        origin: this.options.opsOrigin,
+        eraseOperator: this.options.eraseOperator,
+      }).handle(name as TeamOperation, actor, body, query, target, key);
+    }
     if (name === 'requestPhoneSignIn' || name === 'verifyPhoneSignIn') {
       if (!this.options.phoneOtp)
         fail(503, 'phone_signin_unavailable', 'Phone sign-in is not configured yet.');

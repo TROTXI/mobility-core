@@ -104,6 +104,11 @@ export function Shell({
             </MenuTrigger>
             <MenuPopover>
               <MenuList>
+                {account?.isSuperadmin && (
+                  <MenuItem icon={<PeopleRegular />} onClick={() => navigate('/team')}>
+                    Team & access
+                  </MenuItem>
+                )}
                 {secondaryItems.map(([path, label, Icon]) => (
                   <MenuItem key={path} icon={<Icon />} onClick={() => navigate(path)}>
                     {label}

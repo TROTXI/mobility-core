@@ -6,6 +6,7 @@ import { DriverService } from '../auth/driver-service.js';
 import type { DriverCredentialEmail } from '../notifications/email.js';
 import { BoardingService } from '../boarding/service.js';
 import type { BoardingOptions } from '../boarding/service.js';
+import { fail } from '../transport/errors.js';
 
 // Composition boundary: no bearer-header test fallback, no stateless session
 // shortcut. Still refuses startup without the real reservation coordinator.
@@ -48,10 +49,16 @@ export function createReplacementApp(
     }) => ComposedServices;
   },
 ) {
+  let account = options.account;
   const auth = new AuthService({
     ...options.identity,
     pool: options.pool,
     cursorSecret: options.cursorSecret,
+    eraseOperator: async (c, actor, target) => {
+      if (!account)
+        fail(503, 'account_erasure_unavailable', 'Account deletion is temporarily unavailable.');
+      await account.eraseOperator(c, actor, target);
+    },
   });
   if (
     options.credentialReplayKey?.equals(Buffer.from(options.identity.access.secret)) ||
@@ -89,6 +96,7 @@ export function createReplacementApp(
       })
     : undefined;
   const composed = options.compose?.({ auth, authorizeSession: auth.authorizeSession }) ?? {};
+  account = composed.account ?? account;
   return createTransportApp({
     ...options,
     ...composed,

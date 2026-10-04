@@ -409,7 +409,8 @@ export async function createTransportApp(options: AppOptions) {
       if (authentication && !options.auth) continue;
       if (driverEndpoint && !options.drivers) continue;
       const providers = options.authProviders ?? (['google', 'apple'] as const);
-      if (name === 'signInGoogle' && !providers.includes('google')) continue;
+      if ((name === 'signInGoogle' || name === 'signInOpsGoogle') && !providers.includes('google'))
+        continue;
       if (name === 'signInApple' && !providers.includes('apple')) continue;
       documentedOperations.add(name);
       const publicAuth = (publicAuthOperations as readonly string[]).includes(name);

@@ -213,6 +213,8 @@ export async function composeBackend(config: RuntimeConfig): Promise<Backend> {
         shiftTtlHours: config.shiftTtlHours,
         providerEncryptionKey: config.keys.providerEncryption,
         passkeys: webAuthnRelyingParty(config.opsOrigin),
+        opsOrigin: config.opsOrigin,
+        opsEmail: email,
         google: new GoogleIdTokenVerifier(config.google.clientId),
         ...(config.apple ? { apple: new AppleIdTokenVerifier(config.apple.clientIds) } : {}),
         ...(appleTokens ? { appleTokens } : {}),

@@ -55,6 +55,81 @@ select {
   height: auto;
 }
 
+.auth-page.auth-simple {
+  background: var(--colorNeutralBackground2);
+  padding: 32px 20px;
+  align-items: center;
+}
+.team-invite-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  align-items: end;
+}
+.team-invite-form label {
+  display: grid;
+  gap: 6px;
+  flex: 1;
+  min-width: 220px;
+}
+.team-pagination {
+  display: flex;
+  gap: 8px;
+  margin-top: 16px;
+}
+.auth-page.auth-simple::before {
+  display: none;
+}
+.auth-simple .auth-layout {
+  display: block;
+  width: min(100%, 440px);
+  min-height: 0;
+  border: 1px solid var(--colorNeutralStroke2);
+  border-radius: 16px;
+  background: var(--colorNeutralBackground1);
+}
+.auth-simple .auth-card {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 36px;
+  border-radius: 16px;
+  background: var(--colorNeutralBackground1);
+  color: var(--colorNeutralForeground1);
+}
+.auth-simple .auth-card h1 {
+  font-size: 26px;
+  line-height: 1.25;
+  letter-spacing: -0.5px;
+}
+.auth-simple .auth-card p,
+.auth-simple .auth-note {
+  color: var(--colorNeutralForeground2);
+}
+.auth-simple .auth-logo img {
+  width: 140px;
+  height: auto;
+  margin-bottom: 24px;
+}
+.auth-simple .auth-logo .logo-dark {
+  display: none;
+}
+[data-theme='dark'] .auth-simple .auth-logo .logo-light {
+  display: none;
+}
+[data-theme='dark'] .auth-simple .auth-logo .logo-dark {
+  display: inline;
+}
+@media (max-width: 480px) {
+  .auth-simple .auth-card {
+    padding: 24px 16px;
+  }
+}
+.auth-simple .auth-footer {
+  position: static;
+  margin-top: 24px;
+  text-align: center;
+  color: var(--colorNeutralForeground2);
+}
 .auth-page {
   min-height: 100vh;
   display: grid;
@@ -1468,7 +1543,7 @@ select {
   }
 }
 
-/* The auth frame keeps the Figma split composition with the approved Google/passkey flow. */
+/* Shared Google/passkey authentication frame. */
 .auth-page {
   display: flex;
   flex-direction: column;

@@ -81,3 +81,45 @@ Use the [replacement runbook](runbooks/replace-staging-database.md) for approved
 database replacement, and [erasure recovery](design/account-erasure-recovery.md)
 before releasing any restored snapshot. Later account closures must be replayed
 with source-write fencing and writer-generation checks.
+
+## First superadmin setup
+
+Deploy migration 043 and its runtime grants, then the API, then Ops from the
+same release. The new UI calls `/v1/auth/ops/google`. Existing admins keep their
+operational access, but cannot invite administrators or reset another operator's
+passkeys until an initial superadmin has been bootstrapped.
+
+Use an existing approved Google administrator with at least one active passkey
+and a successful passkey check within the current eight-hour session window.
+Confirm the exact account UUID and database name from trusted administrative
+records. Staging and production are separate decisions. This command does not
+create infrastructure, select an account by email or provision a brand-new
+environment's first identity.
+
+With explicit approval, an installer can run from `services/api-next`:
+
+```sh
+pnpm exec tsx scripts/bootstrap-superadmin.ts \
+  '<EXACT_ACCOUNT_UUID>' '<EXACT_DATABASE_NAME>' 'confirm:<EXACT_ACCOUNT_UUID>'
+```
+
+Supply the approved installer connection through `REPLACEMENT_DATABASE_URL`
+using the protected secret mechanism. Do not put credentials in the command,
+logs or repository. The command ignores ordinary `DATABASE_URL`, checks the
+database name, refuses if bootstrap already happened or a superadmin exists,
+and records the promotion atomically. The API runtime role cannot write the
+bootstrap marker. Sign out and back in to refresh the menu afterwards.
+
+Invitation mail uses the existing Resend settings and configured Ops origin.
+Missing mail configuration refuses invitation creation rather than reporting
+success. Test with an explicitly approved recipient before rollout. Check
+wrong-account refusal, first passkey setup, resend invalidation, cancellation,
+and immediate loss of access after account deletion. Confirm the erased profile,
+attributed audit event and queued external cleanup. No live delivery is proved by
+local tests.
+
+The bootstrap command is not a reusable recovery backdoor. If the sole
+superadmin loses every passkey, stop and use a separately reviewed, audited
+installer recovery procedure after identity verification. Never remove the
+bootstrap marker to rerun setup. Prefer two enrolled passkeys and a separately
+approved backup superadmin before relying on this workflow.

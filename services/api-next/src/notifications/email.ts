@@ -17,6 +17,7 @@ const payloadSchema = z
   .strict();
 type Payload = z.infer<typeof payloadSchema>;
 type Kind =
+  | 'ops_invitation'
   | 'subscription_active'
   | 'subscription_expiring'
   | 'erasure_requested'
@@ -122,9 +123,12 @@ export class TransactionalEmail {
     if (!email || !z.email().safeParse(email).success) return undefined;
     const id = randomUUID();
     // Staging mail says so, in words that fit what the message is about.
-    const stagingNote = kind.startsWith('driver_')
-      ? 'This is a Trotxi staging test account. It is not for live operations.\n\n'
-      : 'This is a Trotxi staging test. No real payment was taken.\n\n';
+    const stagingNote =
+      kind === 'ops_invitation'
+        ? 'This invitation is for Trotxi staging, not production.\n\n'
+        : kind.startsWith('driver_')
+          ? 'This is a Trotxi staging test account. It is not for live operations.\n\n'
+          : 'This is a Trotxi staging test. No real payment was taken.\n\n';
     const { expiresAt, ...bound } = extra;
     const payload = payloadSchema.parse({
       from: 'Trotxi <hello@notifications.trotxi.com>',
@@ -188,6 +192,36 @@ export class TransactionalEmail {
       { driverId: mail.driverId, pinVersion: mail.pinVersion, expiresAt: mail.expiresAt },
     );
     if (!id) throw new Error('Credential email was not queued');
+    return id;
+  };
+
+  queueInvitation = async (
+    c: PoolClient,
+    mail: {
+      ownerId: string;
+      id: string;
+      version: number;
+      email: string;
+      name: string;
+      token: string;
+      expiresAt: Date;
+      origin: string;
+    },
+  ): Promise<string> => {
+    const link = new URL('/', mail.origin);
+    link.hash = `invite=${mail.token}`;
+    const id = await this.enqueue(
+      c,
+      mail.ownerId,
+      'ops_invitation',
+      mail.id,
+      mail.email,
+      `Hello ${mail.name},\n\nYou have been invited to Trotxi Operations. Open ${link.href}\n\nSign in with the Google account for ${mail.email}, then create a passkey to activate your administrator access. No password or PIN is provided.\n\nThis invitation expires at ${mail.expiresAt.toISOString()} and works only with the invited account. If you did not expect it, ignore this email or contact your organisation's superadmin.`,
+      'Your invitation to Trotxi Operations',
+      `:${mail.version}`,
+      { expiresAt: mail.expiresAt },
+    );
+    if (!id) throw new Error('Invitation email was not queued');
     return id;
   };
 
@@ -376,6 +410,13 @@ export class TransactionalEmail {
           }
           if (payload) {
             let eligible = true;
+            if (row.kind === 'ops_invitation')
+              eligible = !!(
+                await c.query(
+                  `SELECT 1 FROM app.ops_invitations WHERE id=$1 AND state='pending' AND expires_at>clock_timestamp() AND email=$2 AND $3='ops_invitation:'||id::text||':'||version::text`,
+                  [row.source_id, payload.to, current.dedupe_key],
+                )
+              ).rowCount;
             if (row.kind === 'subscription_expiring')
               eligible = !!(
                 await c.query(

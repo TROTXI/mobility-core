@@ -41,6 +41,12 @@ export function mapDatabaseError(error: unknown): TransportError {
       'invalid_reference',
       'The selected resources do not belong together.',
     );
+  if (e.code === '23514' && e.message === 'last_superadmin')
+    return new TransportError(
+      409,
+      'last_superadmin',
+      'Transfer superadmin access to another operator before removing this account.',
+    );
   if (e.code === '23514' && e.message === 'reassignment_required')
     return new TransportError(
       409,

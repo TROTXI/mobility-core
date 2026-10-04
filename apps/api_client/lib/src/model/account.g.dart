@@ -81,6 +81,8 @@ class _$Account extends Account {
   final AccountRoleEnum role;
   @override
   final DateTime createdAt;
+  @override
+  final bool? isSuperadmin;
 
   factory _$Account([void Function(AccountBuilder)? updates]) =>
       (AccountBuilder()..update(updates))._build();
@@ -92,7 +94,8 @@ class _$Account extends Account {
       this.phone,
       this.avatarUrl,
       required this.role,
-      required this.createdAt})
+      required this.createdAt,
+      this.isSuperadmin})
       : super._();
   @override
   Account rebuild(void Function(AccountBuilder) updates) =>
@@ -111,7 +114,8 @@ class _$Account extends Account {
         phone == other.phone &&
         avatarUrl == other.avatarUrl &&
         role == other.role &&
-        createdAt == other.createdAt;
+        createdAt == other.createdAt &&
+        isSuperadmin == other.isSuperadmin;
   }
 
   @override
@@ -124,6 +128,7 @@ class _$Account extends Account {
     _$hash = $jc(_$hash, avatarUrl.hashCode);
     _$hash = $jc(_$hash, role.hashCode);
     _$hash = $jc(_$hash, createdAt.hashCode);
+    _$hash = $jc(_$hash, isSuperadmin.hashCode);
     _$hash = $jf(_$hash);
     return _$hash;
   }
@@ -137,7 +142,8 @@ class _$Account extends Account {
           ..add('phone', phone)
           ..add('avatarUrl', avatarUrl)
           ..add('role', role)
-          ..add('createdAt', createdAt))
+          ..add('createdAt', createdAt)
+          ..add('isSuperadmin', isSuperadmin))
         .toString();
   }
 }
@@ -173,6 +179,10 @@ class AccountBuilder implements Builder<Account, AccountBuilder> {
   DateTime? get createdAt => _$this._createdAt;
   set createdAt(DateTime? createdAt) => _$this._createdAt = createdAt;
 
+  bool? _isSuperadmin;
+  bool? get isSuperadmin => _$this._isSuperadmin;
+  set isSuperadmin(bool? isSuperadmin) => _$this._isSuperadmin = isSuperadmin;
+
   AccountBuilder() {
     Account._defaults(this);
   }
@@ -187,6 +197,7 @@ class AccountBuilder implements Builder<Account, AccountBuilder> {
       _avatarUrl = $v.avatarUrl;
       _role = $v.role;
       _createdAt = $v.createdAt;
+      _isSuperadmin = $v.isSuperadmin;
       _$v = null;
     }
     return this;
@@ -217,6 +228,7 @@ class AccountBuilder implements Builder<Account, AccountBuilder> {
           role: BuiltValueNullFieldError.checkNotNull(role, r'Account', 'role'),
           createdAt: BuiltValueNullFieldError.checkNotNull(
               createdAt, r'Account', 'createdAt'),
+          isSuperadmin: isSuperadmin,
         );
     replace(_$result);
     return _$result;

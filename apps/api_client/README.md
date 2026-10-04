@@ -48,11 +48,11 @@ import 'package:trotxi_api_client/trotxi_api_client.dart';
 
 
 final api = TrotxiApiClient().getDriverAssignedOrOwnApi();
-final String id = id_example; // String | 
+final String id = id_example; // String |
 final String idempotencyKey = idempotencyKey_example; // String | Caller + operation + target scoped; payload mismatch = 409. Never log secrets.
 final String xTrotxiClient = driver; // String | Compatibility metadata only, never grants a role.
 final int xTrotxiBuild = 1; // int | Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
-final BoardingInput boardingInput = ; // BoardingInput | 
+final BoardingInput boardingInput = ; // BoardingInput |
 final String xTrotxiPlatform = ios; // String | Required for commuter/driver, absent for ops/worker.
 
 try {
@@ -89,6 +89,7 @@ Class | Method | HTTP request | Description
 [*DriverOwnApi*](doc/DriverOwnApi.md) | [**withdrawDriverRequest**](doc/DriverOwnApi.md#withdrawdriverrequest) | **POST** /v1/driver/requests/{id}/withdraw | withdraw Driver Request
 [*LiveEligibleApi*](doc/LiveEligibleApi.md) | [**getLiveTrip**](doc/LiveEligibleApi.md#getlivetrip) | **GET** /v1/trips/{id}/live | get Live Trip
 [*OpsApi*](doc/OpsApi.md) | [**assignTrip**](doc/OpsApi.md#assigntrip) | **PUT** /v1/ops/trips/{id}/assignment | assign Trip
+[*OpsApi*](doc/OpsApi.md) | [**cancelOperatorInvitation**](doc/OpsApi.md#canceloperatorinvitation) | **POST** /v1/ops/team/invitations/{id}/cancel | cancel Operator Invitation
 [*OpsApi*](doc/OpsApi.md) | [**cancelTrip**](doc/OpsApi.md#canceltrip) | **POST** /v1/ops/trips/{id}/cancel | cancel Trip
 [*OpsApi*](doc/OpsApi.md) | [**changeCredentialState**](doc/OpsApi.md#changecredentialstate) | **POST** /v1/ops/drivers/{id}/credentials/actions | change Credential State
 [*OpsApi*](doc/OpsApi.md) | [**changeRole**](doc/OpsApi.md#changerole) | **PATCH** /v1/ops/users/{id}/role | change Role
@@ -115,6 +116,7 @@ Class | Method | HTTP request | Description
 [*OpsApi*](doc/OpsApi.md) | [**getOpsRiderDetail**](doc/OpsApi.md#getopsriderdetail) | **GET** /v1/ops/riders/{id} | get Ops Rider Detail
 [*OpsApi*](doc/OpsApi.md) | [**getOpsRiderSummary**](doc/OpsApi.md#getopsridersummary) | **GET** /v1/ops/riders/summary | get Ops Rider Summary
 [*OpsApi*](doc/OpsApi.md) | [**initiateRefund**](doc/OpsApi.md#initiaterefund) | **POST** /v1/ops/purchases/{id}/refunds | initiate Refund
+[*OpsApi*](doc/OpsApi.md) | [**inviteOperator**](doc/OpsApi.md#inviteoperator) | **POST** /v1/ops/team/invitations | invite Operator
 [*OpsApi*](doc/OpsApi.md) | [**issueDriverCredential**](doc/OpsApi.md#issuedrivercredential) | **POST** /v1/ops/drivers/{id}/credentials | issue Driver Credential
 [*OpsApi*](doc/OpsApi.md) | [**listCommuteEvents**](doc/OpsApi.md#listcommuteevents) | **GET** /v1/ops/commute-requests/{id}/events | list Commute Events
 [*OpsApi*](doc/OpsApi.md) | [**listCommuteSlots**](doc/OpsApi.md#listcommuteslots) | **GET** /v1/ops/commute-slots | list Commute Slots
@@ -134,6 +136,7 @@ Class | Method | HTTP request | Description
 [*OpsApi*](doc/OpsApi.md) | [**listOpsRoutes**](doc/OpsApi.md#listopsroutes) | **GET** /v1/ops/routes | list Ops Routes
 [*OpsApi*](doc/OpsApi.md) | [**listOpsStandby**](doc/OpsApi.md#listopsstandby) | **GET** /v1/ops/standby | list Ops Standby
 [*OpsApi*](doc/OpsApi.md) | [**listOpsStops**](doc/OpsApi.md#listopsstops) | **GET** /v1/ops/stops | list Ops Stops
+[*OpsApi*](doc/OpsApi.md) | [**listOpsTeam**](doc/OpsApi.md#listopsteam) | **GET** /v1/ops/team | list Ops Team
 [*OpsApi*](doc/OpsApi.md) | [**listOpsTrips**](doc/OpsApi.md#listopstrips) | **GET** /v1/ops/trips | list Ops Trips
 [*OpsApi*](doc/OpsApi.md) | [**listOpsVehicles**](doc/OpsApi.md#listopsvehicles) | **GET** /v1/ops/vehicles | list Ops Vehicles
 [*OpsApi*](doc/OpsApi.md) | [**listPatternVersions**](doc/OpsApi.md#listpatternversions) | **GET** /v1/ops/route-patterns/{id}/versions | list Pattern Versions
@@ -148,6 +151,7 @@ Class | Method | HTTP request | Description
 [*OpsApi*](doc/OpsApi.md) | [**releaseAccountRestriction**](doc/OpsApi.md#releaseaccountrestriction) | **POST** /v1/ops/users/{id}/restrictions/{restrictionId}/release | release Account Restriction
 [*OpsApi*](doc/OpsApi.md) | [**releaseTraceHold**](doc/OpsApi.md#releasetracehold) | **POST** /v1/ops/trace-holds/{id}/release | release Trace Hold
 [*OpsApi*](doc/OpsApi.md) | [**rescheduleTrip**](doc/OpsApi.md#rescheduletrip) | **PATCH** /v1/ops/trips/{id} | reschedule Trip
+[*OpsApi*](doc/OpsApi.md) | [**resendOperatorInvitation**](doc/OpsApi.md#resendoperatorinvitation) | **POST** /v1/ops/team/invitations/{id}/resend | resend Operator Invitation
 [*OpsApi*](doc/OpsApi.md) | [**resetDriverPin**](doc/OpsApi.md#resetdriverpin) | **POST** /v1/ops/drivers/{id}/credentials/reset-pin | reset Driver Pin
 [*OpsApi*](doc/OpsApi.md) | [**resetOperatorPasskeys**](doc/OpsApi.md#resetoperatorpasskeys) | **POST** /v1/ops/users/{id}/passkeys/reset | reset Operator Passkeys
 [*OpsApi*](doc/OpsApi.md) | [**resolvePaymentReview**](doc/OpsApi.md#resolvepaymentreview) | **POST** /v1/ops/payments/reviews/{id}/decisions | resolve Payment Review
@@ -156,6 +160,7 @@ Class | Method | HTTP request | Description
 [*OpsApi*](doc/OpsApi.md) | [**setFlag**](doc/OpsApi.md#setflag) | **PUT** /v1/ops/flags/{key} | set Flag
 [*OpsApi*](doc/OpsApi.md) | [**setMinimumVersion**](doc/OpsApi.md#setminimumversion) | **PUT** /v1/ops/min-versions/{app}/{platform} | set Minimum Version
 [*OpsApi*](doc/OpsApi.md) | [**updateDriver**](doc/OpsApi.md#updatedriver) | **PATCH** /v1/ops/drivers/{id} | update Driver
+[*OpsApi*](doc/OpsApi.md) | [**updateOperatorAccess**](doc/OpsApi.md#updateoperatoraccess) | **POST** /v1/ops/team/members/{id}/access | update Operator Access
 [*OpsApi*](doc/OpsApi.md) | [**updatePlanPricing**](doc/OpsApi.md#updateplanpricing) | **PATCH** /v1/ops/plan-pricing/{plan} | update Plan Pricing
 [*OpsApi*](doc/OpsApi.md) | [**updateRoute**](doc/OpsApi.md#updateroute) | **PATCH** /v1/ops/routes/{id} | update Route
 [*OpsApi*](doc/OpsApi.md) | [**updateStop**](doc/OpsApi.md#updatestop) | **PATCH** /v1/ops/stops/{id} | update Stop
@@ -188,6 +193,7 @@ Class | Method | HTTP request | Description
 [*PublicApi*](doc/PublicApi.md) | [**signInApple**](doc/PublicApi.md#signinapple) | **POST** /v1/auth/apple | sign In Apple
 [*PublicApi*](doc/PublicApi.md) | [**signInDriver**](doc/PublicApi.md#signindriver) | **POST** /v1/auth/driver | sign In Driver
 [*PublicApi*](doc/PublicApi.md) | [**signInGoogle**](doc/PublicApi.md#signingoogle) | **POST** /v1/auth/google | sign In Google
+[*PublicApi*](doc/PublicApi.md) | [**signInOpsGoogle**](doc/PublicApi.md#signinopsgoogle) | **POST** /v1/auth/ops/google | sign In Ops Google
 [*PublicApi*](doc/PublicApi.md) | [**verifyPhoneSignIn**](doc/PublicApi.md#verifyphonesignin) | **POST** /v1/auth/phone/verify | verify Phone Sign In
 [*RiderOwnApi*](doc/RiderOwnApi.md) | [**acceptStandbyOffer**](doc/RiderOwnApi.md#acceptstandbyoffer) | **POST** /v1/me/standby/{id}/accept | accept Standby Offer
 [*RiderOwnApi*](doc/RiderOwnApi.md) | [**confirmPhoneVerification**](doc/RiderOwnApi.md#confirmphoneverification) | **POST** /v1/me/phone-verification/confirm | confirm Phone Verification
@@ -358,6 +364,10 @@ Class | Method | HTTP request | Description
  - [NotificationPreferencesResponse](doc/NotificationPreferencesResponse.md)
  - [NotificationReadCount](doc/NotificationReadCount.md)
  - [NotificationReadCountResponse](doc/NotificationReadCountResponse.md)
+ - [OperatorAccessInput](doc/OperatorAccessInput.md)
+ - [OperatorCommandResult](doc/OperatorCommandResult.md)
+ - [OperatorCommandResultResponse](doc/OperatorCommandResultResponse.md)
+ - [OperatorInvitationInput](doc/OperatorInvitationInput.md)
  - [OpsAccountErasure](doc/OpsAccountErasure.md)
  - [OpsAccountErasurePage](doc/OpsAccountErasurePage.md)
  - [OpsAuditEvent](doc/OpsAuditEvent.md)
@@ -367,6 +377,7 @@ Class | Method | HTTP request | Description
  - [OpsCommuteRequestResponse](doc/OpsCommuteRequestResponse.md)
  - [OpsDelivery](doc/OpsDelivery.md)
  - [OpsDeliveryPage](doc/OpsDeliveryPage.md)
+ - [OpsGoogleSignIn](doc/OpsGoogleSignIn.md)
  - [OpsIncident](doc/OpsIncident.md)
  - [OpsIncidentPage](doc/OpsIncidentPage.md)
  - [OpsIncidentResponse](doc/OpsIncidentResponse.md)
@@ -398,6 +409,8 @@ Class | Method | HTTP request | Description
  - [OpsRiderPage](doc/OpsRiderPage.md)
  - [OpsRiderSummary](doc/OpsRiderSummary.md)
  - [OpsRiderSummaryResponse](doc/OpsRiderSummaryResponse.md)
+ - [OpsTeamEntry](doc/OpsTeamEntry.md)
+ - [OpsTeamEntryPage](doc/OpsTeamEntryPage.md)
  - [OpsTrip](doc/OpsTrip.md)
  - [OpsTripPage](doc/OpsTripPage.md)
  - [OpsTripResponse](doc/OpsTripResponse.md)
