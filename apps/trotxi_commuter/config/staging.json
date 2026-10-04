@@ -1,0 +1,5 @@
+{
+  "API_BASE_URL": "https://trotxi-api-staging.onrender.com",
+  "API_SESSION_REALM": "staging-1",
+  "PUBLIC_SITE_URL": "https://trotxi-ops-staging.onrender.com"
+}

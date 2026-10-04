@@ -14,9 +14,23 @@ Current implementation: 2026-10-03.
 
 ## Configuration and builds
 
-Both mobile apps require explicit `API_BASE_URL` and `API_SESSION_REALM`
-build definitions. Use a new realm after replacing a disposable database;
-there is no implicit backend or old-token fallback.
+Both mobile apps require explicit `API_BASE_URL`, `API_SESSION_REALM` and
+`PUBLIC_SITE_URL` build definitions; an app missing one shows a start-up error
+instead of falling back to staging. `PUBLIC_SITE_URL` is the site that serves
+the privacy notice and deletion-request pages. Use a new realm after replacing
+a disposable database; there is no implicit backend or old-token fallback.
+
+The rider app keeps its staging values in `trotxi_commuter/config/staging.json`:
+
+```sh
+cd apps/trotxi_commuter
+flutter run --dart-define-from-file=config/staging.json
+flutter build apk --dart-define-from-file=config/staging.json
+```
+
+A production build passes its own file (for example `config/production.json`
+with the production API, a new realm and the production site). No code
+changes are needed to switch environments.
 Android emulators reach a local backend at `http://10.0.2.2:3001`;
 iOS simulators use `http://127.0.0.1:3001`. Release builds require HTTPS.
 

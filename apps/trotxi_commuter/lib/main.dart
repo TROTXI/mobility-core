@@ -10,6 +10,7 @@ import 'package:trotxi_commuter/Features/Onboarding/pages/onboard_page.dart';
 import 'package:trotxi_commuter/Features/Home/pages/home_page.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:trotxi_client/trotxi_client.dart' as wire;
+import 'package:trotxi_client/public_information.dart';
 import 'package:trotxi_commuter/core/Tokens/token_storage.dart';
 import 'package:trotxi_commuter/core/config/theme/app_theme.dart';
 import 'package:trotxi_commuter/core/config/theme/app_theme_controller.dart';
@@ -17,8 +18,10 @@ import 'package:trotxi_commuter/core/api/commuter_api.dart';
 import 'package:trotxi_commuter/firebase_options.dart';
 import 'package:trotxi_commuter/firebase_performance.dart';
 
-const _apiBaseUrl = 'https://trotxi-api-staging.onrender.com';
-const _apiRealm = 'staging-1';
+// Build inputs, never defaults: run with
+// `--dart-define-from-file=config/staging.json` (or a production file).
+const _apiBaseUrl = String.fromEnvironment('API_BASE_URL');
+const _apiRealm = String.fromEnvironment('API_SESSION_REALM');
 
 final trotxiClientProvider = Provider<CommuterApi>((ref) {
   throw UnimplementedError(
@@ -32,6 +35,7 @@ Future<void> main() async {
   await runZonedGuarded(
     () async {
       WidgetsFlutterBinding.ensureInitialized();
+      TrotxiPublicInformation.ensureConfigured(release: kReleaseMode);
       final tokens = TokenStorage(baseUrl: _apiBaseUrl, realm: _apiRealm);
       await Firebase.initializeApp(
         options: DefaultFirebaseOptions.currentPlatform,
@@ -89,7 +93,7 @@ Future<void> main() async {
                   child: Padding(
                     padding: EdgeInsets.all(24),
                     child: Text(
-                      'This build needs a replacement API URL and session realm. Contact support.',
+                      'This build needs its API URL, session realm and public site address. Contact support.',
                       textAlign: TextAlign.center,
                     ),
                   ),
