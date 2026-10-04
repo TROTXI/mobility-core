@@ -25,3 +25,19 @@ before relying on a flag to disable it.
 Sources: `services/api-next/src/config/service.ts`, `src/http/app.ts`,
 `src/runtime/compose.ts`, `apps/ops/src/screens/Platform.tsx`.
 See [performance](../operations/request-performance.md).
+
+## Developer contract
+
+Bootstrap is reachable before sign-in and before a forced upgrade. Read its
+configured values instead of hardcoding provider URLs, support numbers or
+minimum builds into a screen. On failure, use the client's scoped recovery
+behavior and expose unavailable state; do not fabricate configuration.
+
+Ops updates the floor for a specific app/platform. It is not a logout or
+permission change. Test both the local invalidation and the bounded delay on
+another API instance. If a flag is intended to stop a write, enforce it at
+the appropriate server boundary as well as hiding a button.
+
+Code: [configuration](../../services/api-next/src/config/service.ts),
+[composition](../../services/api-next/src/runtime/compose.ts).
+Tests: [flags](../../services/api-next/tests/flags.test.ts).

@@ -85,3 +85,82 @@ Sources: `membership/standby.ts`, `membership/offer-terms.ts`,
 `payments/{pricing,foundation,purchases,recovery}.ts` under
 `services/api-next/src`; migrations 041/042; `tests/pricing.pg.test.ts`.
 Use the [staging runbook](../runbooks/rider-services-staging.md) for acceptance.
+
+## Who does what
+
+```mermaid
+sequenceDiagram
+  participant Commuter
+  participant API
+  participant Ops
+  participant Paystack
+  participant Worker
+  Commuter->>API: Submit verified service request
+  Ops->>API: Read request and send priced offer
+  Commuter->>API: Read terms and accept
+  API->>Paystack: Initialize checkout
+  API-->>Commuter: Purchase and checkout instructions
+  Commuter->>Paystack: Authorize TEST payment
+  Paystack->>API: Signed payment evidence
+  API-->>Paystack: Persisted webhook acknowledgement
+  Worker->>API: Process inbox and reconciliation
+  Commuter->>API: Read purchase and membership
+  API-->>Commuter: Fulfilled or actionable state
+```
+
+This is the successful path. Webhook timing can differ, and duplicate callbacks
+are expected. The worker's verified transactional result, not message order or
+the return URL, establishes coverage.
+
+Ops selects terms; the commuter explicitly accepts/pays; the API freezes and
+enforces them; Paystack reports collection; workers process evidence; Ops
+resolves review/refund cases. Frontend code must not allocate rides itself.
+
+## State and recovery
+
+| Resource/state                             | Meaning                                   | Correct next step                                                |
+| ------------------------------------------ | ----------------------------------------- | ---------------------------------------------------------------- |
+| Application `submitted`                    | Request exists, no payable offer yet      | Ops checks supply and prepares terms                             |
+| Application `offered`                      | Terms can be reviewed                     | Commuter accepts before expiry or withdraws                      |
+| Offer `accepting`                          | One acceptance key owns checkout creation | Retry the same logical request/key after an uncertain response   |
+| `checkout_open`                            | Purchase is linked                        | Read that purchase; do not create another direct checkout        |
+| Purchase `awaiting_payment` / `processing` | No confirmed fulfilment yet               | Recover the same purchase and check processing                   |
+| Purchase `fulfilled`                       | Its service value was granted             | Read membership; future coverage still shows upcoming            |
+| Purchase `review_required`                 | Automated fulfilment cannot safely finish | Ops reviews evidence; do not instruct another payment            |
+| Purchase `failed` / `cancelled`            | Purchase does not provide new coverage    | Inspect failure/collection evidence before replacement or refund |
+
+Application completion is not proof of payment: it can also follow a failed
+purchase. Always read the purchase state and current membership.
+
+| Refusal                           | Resolution                                                            |
+| --------------------------------- | --------------------------------------------------------------------- |
+| `phone_verification_required`     | Verify the current account's phone                                    |
+| `standby_profile_incomplete`      | Complete rider name                                                   |
+| `invalid_offer_expiry`            | Use an allowed future deadline no later than coverage start           |
+| `coverage_active`                 | Set non-overlapping coverage dates                                    |
+| `offer_expired`                   | Review any existing collection before requesting a fresh offer        |
+| `idempotency_conflict`            | Do not change payload beneath an existing command key                 |
+| Uncertain provider/network result | Keep original identity and reconcile, never assume “nothing happened” |
+
+## Worked price and renewal
+
+For coverage from 5 October through the exclusive 2 November 2026 boundary,
+Monday-Friday service gives 20 rides per direction. Example fares are GHS 10
+each, package price GHS 400 and unused credit GHS 5 per ride. API values are
+1000, 40000 and 500 pesewas. Total potential unused credit is GHS 200.
+These are illustrative terms, not a product default.
+
+A renewal starting 2 November can be paid before that date. The evening before,
+confirmation of a covered departure uses the renewal period. The wallet still
+shows it as upcoming until midnight. Closing the old period converts only its
+unused value; it must not consume or close the renewal.
+
+Requests: [offer/payment examples](../api/worked-examples.md#3-request-offer-and-pay).
+Code: [standby](../../services/api-next/src/membership/standby.ts),
+[offer terms](../../services/api-next/src/membership/offer-terms.ts),
+[purchases](../../services/api-next/src/payments/purchases.ts),
+[foundation](../../services/api-next/src/payments/foundation.ts),
+[recovery](../../services/api-next/src/payments/recovery.ts).
+UI: [Ops offers](../../apps/ops/src/screens/Standby.tsx),
+[commuter offers](../../apps/trotxi_commuter/lib/Features/Home/widgets/Tabs/standby_page.dart).
+Tests: [pricing and prepaid renewals](../../services/api-next/tests/pricing.pg.test.ts).

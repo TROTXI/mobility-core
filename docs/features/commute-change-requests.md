@@ -38,3 +38,30 @@ capacity while retaining restricted audit attribution.
 
 Sources: `services/api-next/src/membership/service.ts`,
 `apps/ops/src/screens/Support.tsx`, commuter commute-preference screens.
+
+## Review is separate from application
+
+```mermaid
+flowchart TD
+  request["Commuter requests change"] --> review["Ops reviews supply"]
+  review --> wait["Waitlist or consented pause"]
+  review --> approve["Approve and hold matching slot"]
+  review --> reject["Reject with decision"]
+  wait --> review
+  approve --> apply["Explicit apply when eligible"]
+  apply --> assignment["New commute assignment"]
+```
+
+This is a transfer of an existing member's commute, not the subscription-offer
+queue. The commuter can inspect/withdraw eligible requests. Ops makes and records
+the decision, then explicitly applies an approved change at its effective date.
+
+Do not switch the client to the requested route merely because the request was
+submitted or approved. Re-read current membership/commute after application.
+Paused coverage, unsettled travel, capacity, fare differences and renewal locks
+can prevent application; show the conflict rather than editing the assignment
+directly.
+
+Code: [membership service](../../services/api-next/src/membership/service.ts),
+[Ops Support](../../apps/ops/src/screens/Support.tsx).
+Tests: [membership decisions](../../services/api-next/tests/membership.pg.test.ts).

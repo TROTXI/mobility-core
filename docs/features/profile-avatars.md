@@ -37,3 +37,36 @@ Authoritative scope:
 [retention policy](../design/account-erasure-retention-policy.md),
 [recovery](../design/account-erasure-recovery.md).
 Sources: `services/api-next/src/account/`, migrations and account PG tests.
+
+## Deletion boundary
+
+```mermaid
+flowchart TD
+  confirm["Owner confirms deletion"] --> request["Authenticated erasure command"]
+  request --> journal["Record protected intent when enabled"]
+  journal --> local["Commit closure and scrub identity"]
+  local --> access["Revoke sessions and verification"]
+  local --> cleanup["Queue external cleanup"]
+  cleanup --> worker["Retry eligible provider tasks"]
+  worker --> tracked["Tracked cleanup status"]
+  journal --> restore["Replay closures before restore release"]
+```
+
+The app must explain the action and ask for confirmation before sending it.
+After successful local closure, clear local account state and return to sign-in.
+If the response is lost, recover using the supported idempotency/session outcome;
+do not interpret a now-revoked session as proof that deletion failed.
+
+Ops displays local closure and tracked task status. It cannot certify all
+provider copies, backups or retained financial records as erased. Keep those
+boundaries visible in support replies and UI copy.
+
+An avatar upload is a separate operation. It must not change account ownership.
+Ignore stale photo reads after a newer upload or session change. Physical cleanup
+of the replaced object can complete later without deleting the new photo.
+
+Code: [account lifecycle](../../services/api-next/src/account/service.ts),
+[recovery](../../services/api-next/src/account/erasure-recovery.ts).
+Tests: [account](../../services/api-next/tests/account.pg.test.ts),
+[recovery](../../services/api-next/tests/account-recovery.pg.test.ts).
+Use the linked retention/data-map runbooks before changing stored personal data.

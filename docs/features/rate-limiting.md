@@ -23,3 +23,23 @@ environment overrides were inspected.
 
 Sources: `services/api-next/src/runtime/admission.ts`, `src/http/app.ts`,
 `apps/ops/src/api/`, `apps/trotxi_client/lib/`.
+
+## Client recovery rules
+
+| Response                               | Client action                                                     |
+| -------------------------------------- | ----------------------------------------------------------------- |
+| 429 with Retry-After                   | Respect the supplied delay; show a retry state                    |
+| Network timeout after a mutation       | Keep the same command key and recover the outcome                 |
+| Definitive expired session             | Use the shared session flow, not independent screen refresh logic |
+| Read request superseded by new filters | Discard stale results                                             |
+| Account or backend changed             | Discard the previous scope's cached/in-flight results             |
+
+Admission and OTP spend budgets are different. Increasing a read-cache lifetime
+does not solve an SMS cap, and a local cache must not authorize boarding or
+membership. Preserve maximum entry counts, waiter cancellation and owner checks
+when optimizing requests.
+
+Code: [admission](../../services/api-next/src/runtime/admission.ts),
+[HTTP boundary](../../services/api-next/src/http/app.ts).
+See [performance implementation and checks](../operations/request-performance.md)
+before changing timings or transaction reuse.

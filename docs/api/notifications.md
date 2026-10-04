@@ -57,3 +57,29 @@ this explicitly. Proximity alerts are deferred until product approval and a
 bounded once-per-trip design. Missing Firebase credentials do not block API
 startup, the inbox, or tests; only the push worker requires them. No new push
 delivery path was added by this inbox work.
+
+## Event to inbox, and settings concurrency
+
+```mermaid
+flowchart LR
+  event["Committed service event"] --> inbox["Account-owned inbox row"]
+  inbox --> read["Client reads current target"]
+  event --> delivery["Eligible push delivery"]
+  delivery --> provider["FCM acceptance"]
+  provider --> device["Handset delivery if available"]
+```
+
+The inbox and push are separate outcomes. Reading an inbox row must fetch the
+current reservation/offer rather than trust stale notification text. A provider
+acceptance or unread count does not prove a handset displayed a notification.
+Not every inbox event implies a push is configured or supported.
+
+Settings use optimistic concurrency: GET preferences and keep its ETag, then
+PATCH both values with If-Match. On 412, refresh and let the user reconcile.
+Keep pending/error state visible; do not display “saved” before success.
+A minute-level value such as 18:30 must remain selectable.
+
+Calls: [read/update settings](worked-examples.md#5-update-preferences-safely).
+Code: [inbox and preferences](../../services/api-next/src/notifications/inbox.ts),
+[preferences UI](../../apps/trotxi_commuter/lib/Features/Home/widgets/Tabs/profile_notification.dart).
+Tests: [notifications](../../services/api-next/tests/notifications.pg.test.ts).

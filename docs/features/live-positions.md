@@ -31,3 +31,35 @@ Ops-audited commands. See [driver privacy](../driver-privacy-and-guidance.md).
 
 Sources: `services/api-next/src/transport/{gps,trips,operations}.ts`,
 `runtime/maintenance.ts`. MQTT/Go/WebSocket delivery remains unimplemented.
+
+## Capture is not delivery
+
+```mermaid
+flowchart LR
+  device["Native fix"] --> local["Device GPS marker"]
+  device --> queue["Persist fix ID and capture time"]
+  queue --> upload["Authenticated upload"]
+  upload --> receipt["Server receipt"]
+  receipt --> remove["Remove matching queued fix"]
+  receipt --> fresh{"Accepted for live"}
+  fresh -->|"Yes"| latest["Authorized live reads"]
+  fresh -->|"No"| history["Historical acceptance only"]
+```
+
+The local marker can move even while the network is unavailable. Conversely,
+acceptance of a delayed fix does not replace the latest position. Readers must
+honor age and availability, not infer freshness from the time they fetched it.
+
+| Failure                            | Required behavior                                              |
+| ---------------------------------- | -------------------------------------------------------------- |
+| Network/temporary error            | Keep the original fix and retry under bounded queue rules      |
+| 429                                | Honor cooldown; do not generate a new identity for the old fix |
+| Same ID, changed payload           | Surface the conflict; do not overwrite accepted evidence       |
+| Authorization/session/trip refusal | Stop inappropriate publishing and refresh state                |
+| Queue full/storage failure         | Show degraded delivery instead of dropping new facts silently  |
+| Expired queued fix                 | Record the expiry outcome; never relabel it as fresh           |
+
+Code: [GPS ingestion](../../services/api-next/src/transport/gps.ts),
+[publisher](../../apps/trotxi_driver/lib/data/position_publisher.dart).
+Tests: [GPS receipt/retention cases](../../services/api-next/tests/gps.pg.test.ts).
+Calls: [GPS upload](../api/worked-examples.md#upload-one-captured-gps-fix).

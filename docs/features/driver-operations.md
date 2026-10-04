@@ -39,3 +39,39 @@ Sources: `apps/trotxi_driver/lib/data/position_publisher.dart`,
 See [reliability](../driver-reliability.md),
 [onboarding](../driver-onboarding.md) and
 [device/privacy checks](../driver-privacy-and-guidance.md).
+
+## Run lifecycle
+
+```mermaid
+flowchart TD
+  assignment["Assigned scheduled trip"] --> ready["Foreground readiness checks"]
+  ready --> start["API starts trip"]
+  start --> active["Capture GPS and serve stops"]
+  active --> boarding["Board passengers online"]
+  boarding --> active
+  active --> finish["Request completion"]
+  finish --> freeze["Freeze capture and flush queue"]
+  freeze --> result{"Uploads resolved"}
+  result -->|"No"| retry["Remain active and recover"]
+  result -->|"Yes"| complete["API completes trip"]
+  retry --> freeze
+```
+
+Ops owns assignment and fleet. The driver owns the active-run interaction;
+the publisher owns capture/queue state independently of the selected tab.
+The API remains authoritative for lifecycle and assignment.
+
+An Ops driver-request decision is not a lifecycle transition. Approving leave
+or a route request does not reassign a running trip.
+
+If the driver loses assignment/access, stop publishing and refresh the roster.
+If a delivery queue cannot drain, retain the explicit unresolved state rather
+than calling completion behind the UI. A map dot alone cannot establish that
+Ops received the position.
+
+Code: [publisher](../../apps/trotxi_driver/lib/data/position_publisher.dart),
+[queue](../../apps/trotxi_driver/lib/data/position_queue.dart),
+[transport](../../services/api-next/src/transport/service.ts).
+Tests: [GPS](../../services/api-next/tests/gps.pg.test.ts),
+[trip commands](../../services/api-next/tests/transport-commands.pg.test.ts).
+Calls: [start, position and completion](../api/worked-examples.md#4-reserve-and-operate-the-trip).

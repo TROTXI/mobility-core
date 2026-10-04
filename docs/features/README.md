@@ -4,6 +4,10 @@ Source audit: 2026-10-03. These documents describe the implementation on main.
 They replace the retired ADR collection. Product intent is maintained separately
 in [strategy](https://github.com/TROTXI/strategy).
 
+Read a feature's flow diagram, ownership and recovery rules, then follow its
+code/test links. [Worked API calls](../api/worked-examples.md) connect route
+setup, verification, offers, payment, reservations and driver operation.
+
 | Area                                         | Guide                                         |
 | -------------------------------------------- | --------------------------------------------- |
 | Social, phone, driver and Ops access         | [Authentication](authentication.md)           |

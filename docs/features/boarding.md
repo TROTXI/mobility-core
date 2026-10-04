@@ -30,3 +30,36 @@ simply because an old QR or screenshot exists.
 
 Sources: `services/api-next/src/boarding/{service,proofs}.ts`,
 `tests/boarding.pg.test.ts`, driver Scan/Manifest screens.
+
+## Online settlement
+
+```mermaid
+sequenceDiagram
+  participant Commuter
+  participant API
+  participant Driver
+  participant Database
+  Commuter->>API: Issue reservation pass
+  API-->>Commuter: Short-lived proof and code
+  Driver->>API: Submit QR, code or photo selection
+  API->>Database: Check assignment and funded reservation
+  API->>Database: Commit charge, ride effects and receipt
+  API-->>Driver: Authoritative boarding outcome
+```
+
+Only the driver assigned to the active trip may perform its boarding work.
+The commuter displays the proof; they do not self-board by posting a scan.
+Photo selection is a manifest workflow, not facial-recognition KYC.
+
+On a lost response, retry the same action with its idempotency key. The unique
+reservation charge prevents a second debit. Do not show success just because
+a camera decoded the QR. Wrong trip, stale proof, ineligible reservation or
+lost assignment must remain refusals even if an old image/code looks valid.
+
+A later correction must use the supported server behavior; do not directly
+edit ride balances. A no-show and boarding must never become two charges.
+
+Code: [settlement](../../services/api-next/src/boarding/service.ts),
+[proofs](../../services/api-next/src/boarding/proofs.ts).
+Tests: [database cases](../../services/api-next/tests/boarding.pg.test.ts).
+Calls: [pass and code boarding](../api/worked-examples.md#4-reserve-and-operate-the-trip).
