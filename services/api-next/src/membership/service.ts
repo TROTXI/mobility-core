@@ -142,6 +142,39 @@ export class MembershipService {
       )
     ).rows;
   }
+  private async periodForDeparture(
+    c: PoolClient,
+    userId: string,
+    day: string,
+    direction: string,
+    tripId: string | null,
+  ) {
+    await c.query('SELECT app.settle_personal_pauses($1)', [userId]);
+    // The rider lock protects assignment changes. Discover without a trip lock,
+    // lock funding first, then reserve() locks/rechecks the departure. Upcoming
+    // paid coverage may fund a future trip without becoming current coverage.
+    const periods = (
+      await c.query(
+        `SELECT b.*,p.fare_pesewas,to_jsonb(p)->'offer_terms' AS offer_terms
+         FROM app.billing_periods b JOIN app.purchases p ON p.id=b.purchase_id
+         WHERE b.user_id=$1 AND b.state='open' AND EXISTS (
+           SELECT 1 FROM app.commute_assignments a
+           JOIN app.commute_selection_legs l ON l.selection_id=a.selection_id
+           JOIN app.trips t ON t.schedule_id=l.schedule_id AND t.service_date=$2
+           WHERE a.period_id=b.id AND a.effective_from<=$2
+             AND (a.effective_to IS NULL OR $2<a.effective_to) AND l.direction=$3
+             AND ($4::uuid IS NULL OR t.id=$4)
+             AND b.starts_at<=t.scheduled_at AND t.scheduled_at<b.effective_ends_at
+         ) ORDER BY b.starts_at FOR UPDATE OF b`,
+        [userId, day, direction, tripId],
+      )
+    ).rows;
+    if (!periods.length)
+      fail(409, 'coverage_required', 'Paid coverage for this departure is required.');
+    if (periods.length !== 1)
+      fail(409, 'departure_unavailable', 'Select a single funded departure.');
+    return periods[0]!;
+  }
   assertCheckoutAllowed: NonNullable<FinancialDependencies['assertCheckoutAllowed']> = async (
     c,
     b,
@@ -800,7 +833,16 @@ export class MembershipService {
       now = this.now();
     if (day < date(now)) fail(409, 'service_day_past', 'Cannot change a past service day.');
     // Period before trip locks for acquisition. Decline needs no funding lock.
-    const funding = input.decision === 'decline' ? null : await this.period(c, actor.userId);
+    const funding =
+      input.decision === 'decline'
+        ? null
+        : await this.periodForDeparture(
+            c,
+            actor.userId,
+            day,
+            direction,
+            input.tripId ? id(input.tripId) : null,
+          );
     const old = (
       await c.query(
         "SELECT * FROM app.reservations WHERE user_id=$1 AND service_date=$2 AND direction=$3 AND status<>'operator_cancelled'",
@@ -952,7 +994,7 @@ export class MembershipService {
         JOIN app.commute_selection_legs l ON l.selection_id=a.selection_id AND l.direction=$2
         JOIN app.commute_selections s ON s.id=l.selection_id
         JOIN app.trips t ON t.schedule_id=l.schedule_id AND t.service_date=$1 AND t.status='scheduled' AND t.scheduled_at>$4
-        WHERE b.state='open' AND b.starts_at<=$4 AND b.starts_at<=t.scheduled_at AND t.scheduled_at<b.effective_ends_at
+        WHERE b.state='open' AND b.starts_at<=t.scheduled_at AND t.scheduled_at<b.effective_ends_at
         AND (purchase.offer_terms IS NULL OR EXISTS(
           SELECT 1 FROM jsonb_array_elements(purchase.offer_terms->'legs') ol
           WHERE ol->>'direction'=$2 AND (ol->'travelDays') @> to_jsonb(ARRAY[extract(isodow FROM $1::date)::integer])))

@@ -40,6 +40,16 @@ Resolve any planned or active pause first. A pending or paid renewal locks
 pause/commute changes on the preceding period. Do not extend coverage manually
 into the new period: overlapping collections require Ops review. Refunds of an
 upcoming purchase must leave current coverage and its ride balance untouched.
+The pause restriction applies to Ops as well as riders, including during a
+service disruption. Resolve the upcoming renewal through the refund/review
+workflow before pausing current coverage and agreeing replacement dates; do
+not edit frozen offer terms or extend one period into another.
+
+On the evening before renewal, generate the next day's trips and run
+ask-dispatch. The rider can confirm those departures immediately. Reservations
+and prompts use the period covering the departure time, while the wallet keeps
+the renewal marked upcoming until its start. Unused renewal rides cannot fund
+departures outside that period.
 
 ## Deployment and operating decision
 

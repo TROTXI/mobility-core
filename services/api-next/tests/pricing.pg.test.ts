@@ -599,6 +599,112 @@ test('RENEW-01 prepaid coverage switches at the boundary without early rides, pr
   );
 });
 
+test('RENEW-02 day-ahead booking, prompts and defaults fund the departure from prepaid coverage', async (t) => {
+  const f = await offeredFixture(t);
+  await f.verify();
+  const paidAt = new Date(`${f.start}T00:00:00Z`);
+  paidAt.setUTCMonth(paidAt.getUTCMonth() - 1);
+  const legacy = await f.buy(randomUUID(), paidAt);
+  await f.financial.fulfill(f.settle(legacy, paidAt));
+  const current = await f.period(legacy.id);
+  f.request.travelDays = [1, 2, 3, 4, 5, 6, 7];
+  const application = await f.join();
+  await f.offer(application.id);
+  const purchase = expectStatus(await f.accept(application.id), 201);
+  const attempt = (
+    await f.owner.query('SELECT * FROM app.payment_attempts WHERE purchase_id=$1', [purchase.id])
+  ).rows[0];
+  await f.financial.fulfill({
+    reference: attempt.reference,
+    environment: 'test',
+    amountPesewas: 7000,
+    currency: 'GHS',
+    transactionId: '9002',
+    paidAt: new Date(),
+    channel: null,
+    feesPesewas: 0,
+  });
+  const upcoming = await f.period(purchase.id);
+  assert.equal(upcoming.starts_at.getTime(), current.effective_ends_at.getTime());
+  const evening = new Date(upcoming.starts_at.getTime() - 4 * 3600000);
+  const membership = new MembershipService({
+    pool: f.runtime,
+    authorizeSession: f.dependencies.authorizeSession,
+    cursorSecret: randomBytes(32),
+    now: () => evening,
+  });
+  const vehicle = (
+    await f.owner.query(
+      "INSERT INTO app.vehicles(plate,capacity) VALUES ('RENEW TEST',18) RETURNING id",
+    )
+  ).rows[0].id;
+  const driver = (
+    await f.owner.query("INSERT INTO app.drivers(name) VALUES ('Renewal test') RETURNING id")
+  ).rows[0].id;
+  const trip = async (day: string, direction: string) => {
+    const leg = f.input.legs.find((l) => l.direction === direction)!;
+    return (
+      await f.owner.query(
+        `INSERT INTO app.trips(schedule_id,departure_id,pattern_version_id,service_date,scheduled_at,assigned_driver_id,vehicle_id)
+      SELECT id,departure_id,pattern_version_id,$2::date,$2::date+local_departure,$3,$4
+      FROM app.service_schedules WHERE id=$1 RETURNING id`,
+        [leg.scheduleId, day, driver, vehicle],
+      )
+    ).rows[0].id;
+  };
+  const outbound = await trip(f.start, 'outbound');
+  await trip(f.start, 'return');
+  const confirm = (day: string, direction: string, tripId?: string) =>
+    membership.command(
+      f.actor,
+      'decideReservation',
+      undefined,
+      { travelDate: day, direction, decision: 'confirm', ...(tripId ? { tripId } : {}) },
+      randomUUID(),
+    );
+  await confirm(f.start, 'outbound', outbound);
+  await confirm(f.start, 'outbound', outbound);
+  const batch = { travelDate: f.start, direction: 'return' };
+  const asked = (await membership.maintenance(f.admin, 'runAskDispatch', batch)).body as any;
+  assert.equal(asked.data.succeeded, 1, JSON.stringify(asked));
+  const repeated = (await membership.maintenance(f.admin, 'runAskDispatch', batch)).body as any;
+  assert.equal(repeated.data.considered, 0);
+  const defaults = (await membership.maintenance(f.admin, 'runReservationDefaults', batch))
+    .body as any;
+  assert.equal(defaults.data.succeeded, 1, JSON.stringify(defaults));
+  const reservations = (
+    await f.owner.query('SELECT period_id,status FROM app.reservations WHERE user_id=$1', [
+      f.actor.userId,
+    ])
+  ).rows;
+  assert.deepEqual(reservations, [
+    { period_id: upcoming.id, status: 'reserved' },
+    { period_id: upcoming.id, status: 'reserved' },
+  ]);
+  assert.equal(
+    (await f.owner.query('SELECT count(*)::int n FROM app.reservation_prompts')).rows[0].n,
+    1,
+  );
+  assert.equal(
+    (await f.owner.query('SELECT count(*)::int n FROM app.reservation_charges')).rows[0].n,
+    0,
+  );
+  const view = (await membership.read(f.actor, 'getMembership')).body as any;
+  assert.equal(view.data.coverage.id, current.id);
+  assert.equal(view.data.upcomingCoverage.id, upcoming.id);
+  assert.equal(view.data.entitlements.remainingRides, 44);
+  const balances = (
+    await f.owner.query('SELECT held FROM app.offer_ride_balances($1)', [upcoming.id])
+  ).rows;
+  assert.deepEqual(
+    balances.map((b) => Number(b.held)),
+    [1, 1],
+  );
+  await trip(f.end, 'outbound');
+  await assert.rejects(confirm(f.end, 'outbound'), /Paid coverage for this departure/);
+  await assert.rejects(confirm(f.end, 'outbound', outbound), /Paid coverage for this departure/);
+});
+
 test('OFFER-04 calendar allowances count real dates, not four weeks or 44 rides', () => {
   assert.equal(
     countTravelDays(new Date('2026-10-01'), new Date('2026-11-01'), [1, 2, 3, 4, 5]),

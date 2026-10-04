@@ -37,7 +37,10 @@ no-show charging still apply. An offer does not reserve vehicle capacity.
 Renewals require a new request and offer. One upcoming renewal can be paid in
 advance, starting exactly when current coverage ends without a gap. Current and
 upcoming periods remain separate, non-overlapping accounting records. Current
-ride balances and booking access exclude upcoming periods until their start.
+ride balances exclude upcoming periods until their start. Reservations and
+day-ahead prompts use the paid period covering the departure time, so riders
+can confirm the first renewal trip before coverage starts. These reservations
+hold rides only in that renewal; they do not enable travel outside its dates.
 The date boundary selects coverage without depending on the old period's
 settlement job completing. Unused-ride credits are only available after actual
 period closure, never projected into an early renewal payment.
