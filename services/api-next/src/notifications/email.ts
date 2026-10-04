@@ -2,6 +2,12 @@ import { createCipheriv, createDecipheriv, hkdfSync, randomBytes, randomUUID } f
 import type { Pool, PoolClient } from 'pg';
 import { z } from 'zod';
 import { EmailSendError, type EmailSender, type EmailMessage } from './resend.js';
+import { ghanaTime } from './format.js';
+
+// A rider who has already paid for the period that follows has renewed. The
+// reminder exists to prompt a renewal, so it must not go to them.
+const RENEWED = `EXISTS(SELECT 1 FROM app.billing_periods n WHERE n.membership_id=b.membership_id
+  AND n.id<>b.id AND n.state='open' AND n.starts_at>=b.effective_ends_at)`;
 
 const payloadSchema = z
   .object({
@@ -162,7 +168,6 @@ export class TransactionalEmail {
    */
   queueCredential = async (c: PoolClient, mail: CredentialMail): Promise<string> => {
     const reset = mail.kind === 'driver_pin_reset';
-    const until = mail.expiresAt.toISOString().replace(/\.\d{3}Z$/, 'Z');
     const text = [
       `Hello ${mail.name},`,
       '',
@@ -174,7 +179,7 @@ export class TransactionalEmail {
       `Driver code: ${mail.code}`,
       `Temporary PIN: ${mail.pin}`,
       '',
-      `This temporary PIN works until ${until} (UTC). After signing in, the app asks you to choose your own six-digit PIN before you can start work. Operations cannot see the PIN you choose.`,
+      `This temporary PIN works until ${ghanaTime(mail.expiresAt)}. After signing in, the app asks you to choose your own six-digit PIN before you can start work. Operations cannot see the PIN you choose.`,
       '',
       'Keep this email private and delete it once you have set your own PIN. Trotxi will never ask you to reply with your PIN.',
       '',
@@ -216,7 +221,7 @@ export class TransactionalEmail {
       'ops_invitation',
       mail.id,
       mail.email,
-      `Hello ${mail.name},\n\nYou have been invited to Trotxi Operations. Open ${link.href}\n\nSign in with the Google account for ${mail.email}, then create a passkey to activate your administrator access. No password or PIN is provided.\n\nThis invitation expires at ${mail.expiresAt.toISOString()} and works only with the invited account. If you did not expect it, ignore this email or contact your organisation's superadmin.`,
+      `Hello ${mail.name},\n\nYou have been invited to Trotxi Operations. Open ${link.href}\n\nSign in with the Google account for ${mail.email}, then create a passkey to activate your administrator access. No password or PIN is provided.\n\nThis invitation expires on ${ghanaTime(mail.expiresAt)} and works only with the invited account. If you did not expect it, ignore this email or contact your organisation's superadmin.`,
       'Your invitation to Trotxi Operations',
       `:${mail.version}`,
       { expiresAt: mail.expiresAt },
@@ -244,7 +249,7 @@ export class TransactionalEmail {
       'subscription_active',
       purchaseId,
       row.email,
-      `${upcoming ? 'Your upcoming subscription is paid. Rides become available when coverage starts.' : 'Your subscription is active.'}\nRides included: ${row.rides_granted}\nPayment: GHS ${(row.cash_due_pesewas / 100).toFixed(2)}\nRide Credit applied: GHS ${(row.applied_credit_pesewas / 100).toFixed(2)}\nCoverage starts: ${row.starts_at.toISOString()}\nCoverage ends: ${row.effective_ends_at.toISOString()}\nRenewal is manual; you will not be automatically charged.`,
+      `${upcoming ? 'Your upcoming subscription is paid. Rides become available when coverage starts.' : 'Your subscription is active.'}\nRides included: ${row.rides_granted}\nPayment: GHS ${(row.cash_due_pesewas / 100).toFixed(2)}\nRide Credit applied: GHS ${(row.applied_credit_pesewas / 100).toFixed(2)}\nCoverage starts: ${ghanaTime(row.starts_at)}\nCoverage ends: ${ghanaTime(row.effective_ends_at)}\nRenewal is manual; you will not be automatically charged.`,
       upcoming ? 'Your upcoming Trotxi subscription is paid' : 'Your Trotxi subscription is active',
     );
   };
@@ -277,6 +282,7 @@ export class TransactionalEmail {
         AND NOT EXISTS(SELECT 1 FROM app.personal_pauses p WHERE p.period_id=b.id AND p.state='planned')
         AND NOT EXISTS(SELECT 1 FROM app.membership_pauses p WHERE p.period_id=b.id AND p.ended_at IS NULL)
         AND NOT EXISTS(SELECT 1 FROM app.payment_access_blocks p WHERE p.period_id=b.id AND p.released_at IS NULL)
+        AND NOT ${RENEWED}
         AND NOT EXISTS(SELECT 1 FROM app.email_outbox e WHERE e.kind='subscription_expiring' AND e.source_id=b.id
           AND e.dedupe_key='subscription_expiring:'||b.id::text||':'||extract(epoch FROM b.effective_ends_at)::text)
       ORDER BY b.effective_ends_at,b.id LIMIT $1`,
@@ -298,7 +304,8 @@ export class TransactionalEmail {
           WHERE id=$1 AND state='open' AND effective_ends_at>clock_timestamp() AND effective_ends_at<=clock_timestamp()+interval '3 days'
           AND NOT EXISTS(SELECT 1 FROM app.personal_pauses p WHERE p.period_id=b.id AND p.state='planned')
           AND NOT EXISTS(SELECT 1 FROM app.membership_pauses p WHERE p.period_id=b.id AND p.ended_at IS NULL)
-          AND NOT EXISTS(SELECT 1 FROM app.payment_access_blocks p WHERE p.period_id=b.id AND p.released_at IS NULL)`,
+          AND NOT EXISTS(SELECT 1 FROM app.payment_access_blocks p WHERE p.period_id=b.id AND p.released_at IS NULL)
+          AND NOT ${RENEWED}`,
             [row.id],
           )
         ).rows[0];
@@ -309,7 +316,7 @@ export class TransactionalEmail {
             'subscription_expiring',
             row.id,
             user.email,
-            `Your current coverage ends at ${p.effective_ends_at.toISOString()}. Open Trotxi to review your membership and renew. Renewal is manual; no automatic charge will be taken.`,
+            `Your current coverage ends on ${ghanaTime(p.effective_ends_at)}. Open Trotxi to review your membership and renew. Renewal is manual; no automatic charge will be taken.`,
             'Your Trotxi coverage ends soon',
             `:${p.epoch}`,
             { periodEnd: p.effective_ends_at.toISOString() },
@@ -424,7 +431,8 @@ export class TransactionalEmail {
               AND b.effective_ends_at=$2 AND b.effective_ends_at>clock_timestamp()
               AND NOT EXISTS(SELECT 1 FROM app.personal_pauses p WHERE p.period_id=b.id AND p.state='planned')
               AND NOT EXISTS(SELECT 1 FROM app.membership_pauses p WHERE p.period_id=b.id AND p.ended_at IS NULL)
-              AND NOT EXISTS(SELECT 1 FROM app.payment_access_blocks p WHERE p.period_id=b.id AND p.released_at IS NULL)`,
+              AND NOT EXISTS(SELECT 1 FROM app.payment_access_blocks p WHERE p.period_id=b.id AND p.released_at IS NULL)
+              AND NOT ${RENEWED}`,
                   [row.source_id, payload.periodEnd],
                 )
               ).rowCount;
