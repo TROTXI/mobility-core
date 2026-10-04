@@ -5,6 +5,7 @@ import { Protocol } from 'pmtiles';
 import { useEffect, useRef, useState } from 'react';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { mapStyleFromBootstrap } from '../api/map-config';
+import { apiBaseUrl } from '../api/session';
 
 type Marker = {
   id: string;
@@ -103,10 +104,7 @@ export function LiveMap({
 
   useEffect(() => {
     const controller = new AbortController();
-    void fetch(
-      `${String(import.meta.env.VITE_API_BASE_URL ?? 'https://trotxi-api-staging.onrender.com').replace(/\/$/, '')}/flags`,
-      { signal: controller.signal },
-    )
+    void fetch(`${apiBaseUrl}/flags`, { signal: controller.signal })
       .then((response) =>
         response.ok ? response.json() : Promise.reject(new Error('map_config_unavailable')),
       )

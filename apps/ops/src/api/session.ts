@@ -290,6 +290,6 @@ export async function errorFrom(response: Response) {
   );
 }
 
-export const apiBaseUrl = String(
-  import.meta.env.VITE_API_BASE_URL ?? 'https://trotxi-api-staging.onrender.com',
-).replace(/\/$/, '');
+// Required at build time (vite.config.ts refuses to build without it), so a
+// production bundle can never quietly talk to staging.
+export const apiBaseUrl = String(import.meta.env.VITE_API_BASE_URL ?? '').replace(/\/$/, '');

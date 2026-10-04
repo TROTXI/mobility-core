@@ -32,7 +32,9 @@ Use Node 24 and run from the repository root:
 pnpm --filter @trotxi/ops dev
 ```
 
-Optional public build values:
+Public build values. `VITE_API_BASE_URL` is required: `dev` and `build` refuse
+to start without it, and it must use HTTPS except for a local API. Staging uses
+the value below; a production build sets its own.
 
 ```text
 VITE_API_BASE_URL=https://trotxi-api-staging.onrender.com

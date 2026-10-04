@@ -198,6 +198,10 @@ jobs:
       - run: pnpm -r --if-present run lint
       - run: pnpm -r --if-present run test:coverage
       - run: pnpm -r --if-present run build
+        env:
+          # A compile check, never deployed. Ops refuses to build without an
+          # explicit API address, so give it one that cannot reach anything.
+          VITE_API_BASE_URL: https://api.example.invalid
 
   flutter:
     name: Flutter (${{ matrix.app }})
