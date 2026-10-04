@@ -12,7 +12,7 @@ import { fail } from '../transport/errors.js';
 import type { Actor, Body, Outcome } from '../transport/service.js';
 import { cancelCredentialSms } from '../notifications/driver-sms.js';
 import type { ErasureJournal } from './erasure-journal.js';
-import { requireSuperadmin, teamLock } from '../auth/ops-team.js';
+import { requireRecentPasskey, requireSuperadmin, teamLock } from '../auth/ops-team.js';
 
 /** The person's own photo. Either app they hold, because it is theirs. */
 export const avatarOperations = ['getAvatar', 'uploadAvatar', 'deleteAvatar'] as const;
@@ -519,6 +519,7 @@ export class AccountService {
     await teamLock(c);
     await this.options.authorizeSession(c, actor);
     await requireSuperadmin(c, actor);
+    await requireRecentPasskey(c, actor);
     if (id(target) === id(actor.userId))
       fail(403, 'self_access_change', 'Another superadmin must delete your account.');
     await this.eraseInTransaction(c, actor, '', false, id(target));

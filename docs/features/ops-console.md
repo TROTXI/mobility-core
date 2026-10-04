@@ -85,7 +85,9 @@ The directory distinguishes active members, pending invitations, expired links
 and incomplete passkey setup. Email status means queued/provider accepted/failed,
 not guaranteed delivery. Resend invalidates the old link. Cancel invalidates an
 unclaimed invitation; if setup has started, its warning explains that cancellation
-deletes the whole account. **Delete account** closes an active administrator's
+deletes the account created for that invitation. Invite a separate address: one
+already used by a rider or driver account is refused. Team changes ask for your
+passkey again when the last check is more than five minutes old. **Delete account** closes an active administrator's
 entire account, not just Ops access. The confirmation warns about any commuter
 profile too. Sessions and passkeys are revoked, personal details are erased,
 and required financial/audit records remain. External cleanup is tracked separately.

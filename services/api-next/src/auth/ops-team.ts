@@ -42,6 +42,24 @@ export async function requireSuperadmin(c: PoolClient, actor: Actor) {
   ).rowCount;
   if (!r) fail(403, 'superadmin_required', 'Only a superadmin can manage operator access.');
 }
+/**
+ * Changing who can operate needs a passkey check from moments ago, not the
+ * eight-hour session elevation. A session taken over inside that window could
+ * otherwise invite an address its holder controls, and that account would
+ * outlive the stolen session. Same code as elevation, so the console asks for
+ * the passkey; the operator repeats the change afterwards.
+ */
+export const RECENT_PASSKEY_MINUTES = 5;
+export async function requireRecentPasskey(c: PoolClient, actor: Actor) {
+  const fresh = (
+    await c.query(
+      `SELECT 1 FROM app.auth_sessions WHERE id=$1 AND user_id=$2
+       AND admin_verified_at > clock_timestamp() - make_interval(mins => ${RECENT_PASSKEY_MINUTES})`,
+      [actor.sessionId, actor.userId],
+    )
+  ).rowCount;
+  if (!fresh) fail(403, 'passkey_required', 'Confirm with your passkey to change operator access.');
+}
 export async function finishInvitation(c: PoolClient, userId: string) {
   const pending = (await c.query('SELECT ops_invite_pending FROM app.users WHERE id=$1', [userId]))
     .rows[0]?.ops_invite_pending;
@@ -86,13 +104,15 @@ export async function claimInvitation(
         userId,
       ])
     ).rows[0];
-    if (
-      !user ||
-      user.role === 'driver' ||
-      user.is_superadmin ||
-      (user.role === 'admin' && !user.ops_invite_pending)
-    )
-      fail(409, 'operator_account_conflict', 'This account already has operational access.');
+    // Only an invitee resuming their own setup continues an existing account.
+    // A rider's account is never converted: cancelling unfinished setup would
+    // then delete their rider history along with it.
+    if (!user || user.role !== 'admin' || !user.ops_invite_pending)
+      fail(
+        409,
+        'operator_account_conflict',
+        'This Google account is already used for Trotxi. Use a separate Google account for Operations.',
+      );
   } else
     userId = (
       await c.query(
@@ -149,8 +169,8 @@ export class OpsTeam {
         fail(400, 'invalid_query', 'Unsupported query parameters.');
       if (name === 'listOpsTeam') {
         const limit = Number(query.limit ?? 50);
-        if (!Number.isInteger(limit) || limit < 1 || limit > 100)
-          fail(400, 'invalid_query', 'Use a limit from 1 to 100.');
+        if (!Number.isInteger(limit) || limit < 1 || limit > 200)
+          fail(400, 'invalid_query', 'Use a limit from 1 to 200.');
         const context = JSON.stringify(['ops-team', actor.userId]);
         const after = query.cursor ? this.cursor.decode(query.cursor, context, new Date()) : null;
         const rows = (
@@ -161,7 +181,7 @@ export class OpsTeam {
           SELECT i.id,i.name,i.email,i.created_at,'invitation',CASE WHEN i.expires_at<=clock_timestamp() AND i.state='pending' THEN 'expired' ELSE i.state END,false,i.expires_at,
             (SELECT e.state FROM app.email_outbox e WHERE e.kind='ops_invitation' AND e.source_id=i.id ORDER BY e.created_at DESC,e.id DESC LIMIT 1)
           FROM app.ops_invitations i WHERE i.email IS NOT NULL AND i.state<>'accepted'
-        ) entries WHERE ($1::timestamptz IS NULL OR (created_at,id)>($1::timestamptz,$2::uuid)) ORDER BY created_at,id LIMIT $3`,
+        ) entries WHERE ($1::timestamptz IS NULL OR (created_at,id)<($1::timestamptz,$2::uuid)) ORDER BY created_at DESC,id DESC LIMIT $3`,
             [after?.time ?? null, after?.id ?? null, limit + 1],
           )
         ).rows;
@@ -211,6 +231,7 @@ export class OpsTeam {
         await c.query('COMMIT');
         return { status: 200, headers: {}, body: { data: { id: prior.result_id } } };
       }
+      await requireRecentPasskey(c, actor);
       let resultId = target;
       if (name === 'inviteOperator' || name === 'resendOperatorInvitation') {
         if (!this.options.email || !this.options.origin)
@@ -221,16 +242,15 @@ export class OpsTeam {
           const email = String(body.email).trim().toLowerCase();
           if (!body.name.trim()) fail(400, 'invalid_request', 'Supply the operator name.');
           const existing = (
-            await c.query(
-              "SELECT 1 FROM app.users WHERE lower(email)=$1 AND role IN ('admin','driver') AND deleted_at IS NULL",
-              [email],
-            )
+            await c.query('SELECT 1 FROM app.users WHERE lower(email)=$1 AND deleted_at IS NULL', [
+              email,
+            ])
           ).rowCount;
           if (existing)
             fail(
               409,
               'operator_account_conflict',
-              'This address already belongs to an operational account.',
+              'This address already belongs to a Trotxi account. Invite a separate address for Operations.',
             );
           if (
             (
