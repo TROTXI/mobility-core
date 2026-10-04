@@ -1,5 +1,9 @@
 # Stage 4 progress
 
+> Historical design/acceptance record. Scope and deployment statements below
+> describe the recorded stage, not the current runtime. See
+> [current features](../features/README.md) and [design index](README.md).
+
 Owner: Codex alone, as requested. Base: integration merge `b606ef3` (PR #318,
 all 16 checks green). Main and staging are unchanged.
 

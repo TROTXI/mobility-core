@@ -1,5 +1,9 @@
 # Stage 1: access, retry and GPS storage decisions
 
+> Historical design/acceptance record. Scope and deployment statements below
+> describe the recorded stage, not the current runtime. See
+> [current features](../features/README.md) and [design index](README.md).
+
 Review proposal, not deployed behavior. Product-approved directions: one clean
 replacement, period-scoped historical disputes by default, public route/stops
 mapping with restricted live position, explicit removed-stop reassignment and

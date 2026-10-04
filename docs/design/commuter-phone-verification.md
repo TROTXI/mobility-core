@@ -1,52 +1,33 @@
-# Pilot phone verification for standby
+# Commuter phone verification
 
-**Status:** product boundary, 2026-09-30. Follows the approved
-[KYC strategy](https://github.com/TROTXI/strategy/blob/main/docs/kyc.md).
+Source audit: 2026-10-03. Phone verification and the subscription standby
+request/offer flow are implemented, not a future endpoint proposal.
 
-## Recommended pilot rule
+Google/configured Apple sign-in and ordinary account access do not require
+OTP. Standby enrollment and acceptance require a completed rider name and an
+active verified Ghana phone. Phone sign-in establishes that verification, so
+the user should not be asked for a second OTP just to join standby.
 
-Google sign-in and ordinary commuter account access do not require a phone OTP.
-Require a verified Ghana mobile number when a commuter **joins the new-rider
-standby flow**. An authenticated account, basic profile and explicit payment on
-offer acceptance remain separate requirements in the strategy. Successful OTP
-verification proves control of a number, **not** the subscriber's legal identity
-or Ghana Card ownership. Do not label this Ghana Card KYC.
+Social accounts use `POST /v1/me/phone-verification/start`, then
+`/v1/me/phone-verification/confirm`; safe state comes from
+`GET /v1/me/verification`. Challenges are purpose/owner scoped.
+An editable profile number or Paystack phone is not verification.
 
-The existing membership `waitlisted` state represents a route-change request
-for an already subscribed rider. It is **not** the new-rider standby flow and
-must not be used as the enforcement point for this policy. The current API and
-app do not yet have a dedicated standby application endpoint or screen, so no
-universal sign-in, booking or payment gate should be added in anticipation.
+The server enforces the gate, not merely the app screen. Matching a number
+does not merge accounts, transfer subscriptions or establish legal identity.
+OTP proves possession, not Ghana Card ownership. Collision/review handling
+must not bypass unique ownership.
 
-## Current implementation and safe extension
+Standby here means an Ops-reviewed subscription request, not automated
+released-seat allocation. See [authentication](../features/authentication.md),
+[offers](../features/payments-and-wallet.md),
+[mNotify operations](../operations/mnotify-phone-sign-in.md) and the
+[private strategy](https://github.com/TROTXI/strategy/blob/main/docs/kyc.md).
 
-- Phone sign-in already sends a six-digit mNotify OTP, creates or signs in a
-  phone-identity commuter, and bounds expiry, guesses and sends. It is distinct
-  from verifying the phone of an existing Google-identity commuter.
-- A non-null `users.phone` or payment contact number is not proof of OTP
-  possession. Google users must be offered an authenticated, account-bound
-  verification challenge before standby eligibility can use their number.
-- Store verified-number status separately, with an immutable challenge purpose
-  and owner. Reuse the existing provider, expiry and rate limits, with a
-  per-account budget. Keep verification valid across logins; erase it with the
-  account. Never merge accounts or transfer subscriptions based on a matching
-  number or OTP alone.
-- The standby API must enforce verified-phone eligibility server-side when it
-  is added. The commuter UI should ask for OTP only at standby application,
-  show an actionable pending/verified state, and keep sign-in, help and erasure
-  reachable.
+Acceptance: phone login → one verification → join; social login with unverified
+phone → verify → join; wrong/expired/replayed code → no eligibility; another
+account's number → no silent merge; account deletion → no surviving old
+verification/session authority.
 
-## Delivery sequence
-
-1. Define the standby application and offer-acceptance contract against the
-   strategy; do not confuse it with membership route-change waitlisting.
-2. Add account-bound phone verification, unique live ownership, erasure and
-   concurrency tests, without changing Google sign-in eligibility.
-3. Add the standby API guard and its commuter UI; regenerate the canonical
-   client from the published contract.
-4. Rehearse Google account → standby application → OTP → eligible standby,
-   plus wrong, expired and replayed codes, number collision and erasure on
-   staging. Do not log OTPs, full phone numbers or provider keys.
-
-Full Ghana Card verification remains deferred until there is an approved use
-case, NIA-authorized verification and privacy review, as the strategy states.
+Sources: `services/api-next/src/auth/phone-otp.ts`,
+`membership/standby.ts`, commuter verification and standby screens.

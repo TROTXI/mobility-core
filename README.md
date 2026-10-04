@@ -1,0 +1,34 @@
+# Trotxi Mobility Core
+
+The implementation repository for the commuter app, driver app, Ops console
+and transactional API.
+
+Start with [current status](docs/STATUS.md), the
+[feature index](docs/features/README.md) and [architecture](docs/architecture.md).
+[Deployment](docs/DEPLOY.md) documents staging configuration and release gates.
+Product intent belongs in the private [strategy repository](https://github.com/TROTXI/strategy).
+
+## Repository
+
+| Path                      | Responsibility                                                        |
+| ------------------------- | --------------------------------------------------------------------- |
+| `services/api-next`       | Current Fastify/TypeScript API, PostgreSQL migrations and maintenance |
+| `apps/ops`                | React/Vite operations website                                         |
+| `apps/trotxi_commuter`    | Flutter commuter app                                                  |
+| `apps/trotxi_driver`      | Flutter driver app                                                    |
+| `apps/trotxi_client`      | Shared mobile session and domain integration                          |
+| `apps/api_client`         | Generated Dart HTTP client                                            |
+| `apps/trotxi_map`, `maps` | Shared Flutter map and basemap assets                                 |
+| `docs/design/contracts`   | Executable schema sources and generated contracts                     |
+
+Use Node 24 and the pinned pnpm version. Mobile build requirements are in
+[apps/README.md](apps/README.md). The current API is not the retired
+`services/api` implementation.
+
+New subscriptions use a verified commuter request, an Ops-priced offer and
+customer-authorized Paystack checkout. There is no public fixed-price plan,
+44-ride product requirement or prepaid cash wallet. Amounts use integer pesewas.
+
+Historical redesign reports are dated evidence, not current setup instructions.
+Architecture decision records have been retired; current rules live in feature
+docs and runbooks. Their history remains available in Git.

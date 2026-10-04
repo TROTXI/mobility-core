@@ -1,5 +1,9 @@
 # Stage 1 review package
 
+> Historical design/acceptance record. Scope and deployment statements below
+> describe the recorded stage, not the current runtime. See
+> [current features](../features/README.md) and [design index](README.md).
+
 Status: technical design ready for review; **not approval to implement or cut over**.
 PR #293 remains draft. Baseline runtime source: `43cdae0`. No runtime module,
 migration, deployed configuration, generated app client or database was changed.

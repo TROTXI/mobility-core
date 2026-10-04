@@ -1,5 +1,9 @@
 # Stage 3: existing driver provisioning and credentials
 
+> Historical design/acceptance record. Scope and deployment statements below
+> describe the recorded stage, not the current runtime. See
+> [current features](../features/README.md) and [design index](README.md).
+
 Base: integration merge `8a1a466` (auth PR #298).
 Review branch: `codex/stage-3-driver-credentials`.
 The payment baseline remains `43cdae0`. No listener, staging deployment, account

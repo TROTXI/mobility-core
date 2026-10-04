@@ -1,5 +1,9 @@
 # Stage 3 — 015 boarding and settlement
 
+> Historical design/acceptance record. Scope and deployment statements below
+> describe the recorded stage, not the current runtime. See
+> [current features](../features/README.md) and [design index](README.md).
+
 Target: `codex/backend-replacement`, not deploying `main`. Reviewed migrations
 001–014 are unchanged. This slice adds six already-reviewed operations: pass
 issuance, manifest, trip summary, boarding, manual no-show, and bounded no-show

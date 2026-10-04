@@ -32,7 +32,7 @@ enum SessionStage {
 
 /// The signed-in session, as app state rather than screen state.
 ///
-/// The first controller under ADR-0016. Session is the clearest case for one:
+/// Session state belongs in one controller:
 /// sign-in sets it, the profile screen clears it, and an expired token will
 /// clear it from a network callback with no widget involved. Held in a
 /// `StatefulWidget` it would belong to whichever screen happened to be mounted.

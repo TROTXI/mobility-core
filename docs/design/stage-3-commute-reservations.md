@@ -1,5 +1,9 @@
 # Stage 3 — migration 013: commute and funded reservations
 
+> Historical design/acceptance record. Scope and deployment statements below
+> describe the recorded stage, not the current runtime. See
+> [current features](../features/README.md) and [design index](README.md).
+
 Integration target: `codex/backend-replacement`. This is not a deployment or a
 cutover of `services/api`. Migrations 001–012 are unchanged; 014 remains Claude's
 GPS allocation and 015 remains boarding/settlement.

@@ -1,5 +1,9 @@
 # Proposed database model and implementation plan
 
+> Historical design/acceptance record. Scope and deployment statements below
+> describe the recorded stage, not the current runtime. See
+> [current features](../features/README.md) and [design index](README.md).
+
 Status: design draft, not implemented or approved DDL.
 
 Baseline: `43cdae0`, including merged geospatial PR #292.

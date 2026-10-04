@@ -1,5 +1,9 @@
 # Stage 3: port existing sign-in and session logic
 
+> Historical design/acceptance record. Scope and deployment statements below
+> describe the recorded stage, not the current runtime. See
+> [current features](../features/README.md) and [design index](README.md).
+
 Base: integration merge `8f74dbd` (PR #297), not deploying `main`.
 Review branch: `codex/stage-3-auth-port`. The payment baseline stays `43cdae0`.
 No listener, staging deployment, account creation on staging, data reset or

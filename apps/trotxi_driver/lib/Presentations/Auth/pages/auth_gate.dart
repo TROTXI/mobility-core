@@ -13,7 +13,7 @@ import 'package:trotxi_driver/data/first_launch_store.dart';
 
 /// Renders whichever screen the session is currently on.
 ///
-/// The stage machine moved to [SessionController] under ADR-0016; this is now
+/// The stage machine lives in [SessionController]; this is now
 /// only the mapping from stage to screen. Sign-out reaches the controller from
 /// anywhere, so a profile screen does not need a callback threaded down to it.
 class AuthGate extends StatefulWidget {

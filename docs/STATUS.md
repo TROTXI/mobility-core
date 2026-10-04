@@ -1,67 +1,61 @@
 # Current implementation status
 
-**Verified against the payment-lifecycle PR stack:** 2026-09-12
+Source audit: 2026-10-03, mobility-core main at `2d5e063`.
+This records code support, not proof of production configuration, device
+acceptance, or a successful live-provider transaction.
 
-This is a point-in-time implementation map, not a roadmap. Feature contracts
-live in [`features/`](features/), decisions in [`adr/`](adr/) and the generated
-HTTP contract at `GET /docs/json`.
+## Implemented surfaces
 
-## Platform
+| Surface      | Current capability                                                                                                                                                                                                                                       |
+| ------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| API          | Fastify/TypeScript service in `services/api-next`; PostgreSQL/PostGIS migration chain through 042                                                                                                                                                        |
+| Commuter     | Google/optional Apple and phone sign-in, phone verification, subscription requests/offers, Paystack checkout/recovery, current/upcoming coverage, reservations, passes, live tracking, inbox, preferences, pauses, commute requests, profile and erasure |
+| Driver       | Code/PIN sign-in, forced temporary-PIN replacement, assigned trips, readiness checks, boarding, manifests, incidents/work requests, background GPS with bounded durable queue, profile and support                                                       |
+| Ops          | Google plus passkey access; dispatch/map, routes/stops/patterns/schedules/fares, fleet/drivers, riders, standby offers, support, payments/reviews/refunds, reports, delivery/audit and platform controls                                                 |
+| Integrations | Paystack, mNotify, Resend, FCM, private R2 avatars, public MapLibre/PMTiles basemap, OTel and Firebase instrumentation                                                                                                                                   |
 
-| Surface                   | State                                                                                                                                 |
-| ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
-| Fastify transactional API | Live and covered by unit/e2e/OpenAPI tests                                                                                            |
-| PostgreSQL/PostGIS schema | Migrations 001–039                                                                                                                    |
-| Driver Flutter app        | Sign-in, schedule, run lifecycle, maps/GPS, manifest, QR/code/photo boarding, completion, incidents and work requests are implemented |
-| Commuter Flutter app      | Shell, authentication/client integration and mock/UI flows exist; end-to-end rider lifecycle remains incomplete                       |
-| Operations web console    | Repository/design-system seam only; production React application not built                                                            |
-| Basemap                   | PMTiles/styles/glyphs live at `tiles.trotxi.com`; shared Flutter map and driver integration live                                      |
-| Observability             | API OTel → Grafana Cloud live on staging; Firebase Crashlytics/Performance wired in both apps                                         |
-| Deployment                | Paid staging PostgreSQL + free staging API declared; production and paid cron services disabled                                       |
+## Product rules implemented
 
-## Backend domains
+- Phone OTP proves number possession, not Ghana Card identity. Google sign-in
+  is not blocked by unverified phone; standby enrollment and acceptance are.
+- Standby currently means the subscription request/offer queue. It is not an
+  automatic released-seat cascade or single-journey ticket market.
+- Ops publishes exact pickup/drop-off fares and sends immutable package terms.
+  Travel dates, selected weekdays and schedules determine directional ride
+  counts. Ops sets package price and discloses each journey's unused-ride credit.
+- One prepaid upcoming renewal can coexist with current coverage without
+  overlap. Day-ahead booking uses the period covering the departure, while the
+  wallet reports upcoming coverage separately.
+- Boarding/no-show settlement is transactional. Operator cancellation does not
+  consume a ride. Ride Credits are renewal discounts, not withdrawable cash.
+- Account closure revokes access and scrubs identity while retaining restricted
+  financial/audit records. Provider cleanup and restore protection are separate
+  tracked processes.
 
-| Domain                                                                    | State                                             |
-| ------------------------------------------------------------------------- | ------------------------------------------------- |
-| Google auth, sessions, refresh rotation/reuse detection                   | Live                                              |
-| Apple auth, code exchange and deletion revocation                         | Implemented; production Apple credentials pending |
-| Driver code/PIN credentials, lockout and suspension                       | Live                                              |
-| Profile, private avatars and account erasure                              | Live                                              |
-| Routes, stops, fleet CRUD, trips and assignment                           | Live                                              |
-| Driver lifecycle, stop progress and run summary                           | Live                                              |
-| HTTP GPS reporting, polling, ETA and rider pickup ETA                     | Live                                              |
-| Route geometry and morning/evening segment-speed learning                 | Live; scheduled job disabled                      |
-| Effective-dated fares and ops-editable plan levers                        | Live; seeded commercial values are placeholders   |
-| Paystack checkout, durable webhooks, reconciliation, refunds and disputes | Implemented; staging uses Paystack test mode      |
-| Atomic subscription periods, renewal and credit-netted checkout           | Implemented                                       |
-| Ride entitlement and Ride Credit ledgers                                  | Live                                              |
-| Daily ask, confirmation/default-yes and capacity/unseated handling        | Live; scheduled jobs disabled                     |
-| QR, code and photo boarding plus no-shows                                 | Live                                              |
-| Driver incidents and work requests                                        | Live                                              |
-| Feature flags, force-update, basemap and operations contact config        | Live                                              |
+## Operating boundaries
 
-## Current operating constraints
+The checked-in deployment workflow installs migrations with a protected owner
+connection, then deploys staging API and Ops. Runtime uses a restricted login.
+Production services and paid Render cron examples remain commented out.
 
-- Render cron services are commented out to avoid recurring cost, so
-  ask/default/no-show/expiry/conversion/learning jobs need manual triggers or an
-  approved scheduler.
-- Production API/database definitions are commented out until production spend
-  and configuration are approved.
-- Apple sign-in cannot operate in production until the Apple Developer IDs and
-  private key are configured.
-- Operations contact values intentionally default to `null`; the driver app must
-  not display a plausible placeholder emergency number.
-- Paystack, Firebase, R2 and Grafana features depend on their production secrets.
-- Payment maintenance has one safe manual endpoint and a compiled hourly cron,
-  but its Render cron declaration remains commented until the $1/month minimum
-  recurring charge is approved.
+The GitHub maintenance workflow declares payments and email retries every
+15 minutes on main. This does not schedule all workers: trip generation, asks,
+defaults, no-shows, push and retention need their own approved invocation.
+Workflow definitions do not prove that environment secrets or a recent run
+are healthy.
 
-## Deferred product/engineering work
+## Not delivered or not certified by this audit
 
-- Standby KYC, released-seat offer cascade and single-journey payment.
-- Automatic subscription renewal and stored payment mandates.
-- Automated dispute evidence/merchant decisions and operator payout execution.
-- Final tier taxonomy, price/take-rate/credit values and corporate billing.
-- Complete commuter lifecycle and build the operations console.
-- Driver offline GPS/boarding queue and the MQTT/EMQX/Go/WebSocket telemetry path.
-- Import Grafana dashboards/alerts and connect production notification channels.
+- Production provisioning, store releases, provider live-mode acceptance and
+  physical-device acceptance across supported phones.
+- Ghana Card/NIA verification, automatic account merging by phone number.
+- Stored payment mandates, automatic recurring charges, card-payment product
+  rollout, automated operator payouts and corporate billing.
+- One-way subscription offers, holiday calendars and mid-period offer replacement.
+- Automated released-seat standby cascade and single-journey checkout.
+- MQTT/Go/WebSocket telemetry, Redis serving infrastructure, automatic road
+  map-matching and offline boarding.
+- Production SLOs, current hosting bills, legal approval and console-side
+  provider restrictions. These need evidence outside source code.
+
+See [features](features/README.md) for behavior and source references.

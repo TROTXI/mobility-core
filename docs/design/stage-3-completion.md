@@ -1,5 +1,9 @@
 # Stage 3 completion report
 
+> Historical design/acceptance record. Scope and deployment statements below
+> describe the recorded stage, not the current runtime. See
+> [current features](../features/README.md) and [design index](README.md).
+
 What the replacement backend does, what proves it, and what it still does not do.
 
 Read this against [the stage-2 operation scope](stage-2-operation-scope.md), which
@@ -83,7 +87,7 @@ unconvertible period the schema does permit.
 
 Substituting a payment scenario takes a declaration, an entry in a reviewed
 allowlist in `harness.test.mjs`, and a substitute that passes on its own. See
-[the harness runbook](../../tools/redesign-harness/README.md) for that and for
+the harness runbook (retired `tools/redesign-harness/README.md`; see Git history) for that and for
 the normalisations.
 
 ### Non-payment scenario groups

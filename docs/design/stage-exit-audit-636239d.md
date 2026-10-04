@@ -1,5 +1,9 @@
 # Replacement-plan exit audit — 636239d
 
+> Historical design/acceptance record. Scope and deployment statements below
+> describe the recorded stage, not the current runtime. See
+> [current features](../features/README.md) and [design index](README.md).
+
 Reviewed 2026-09-16. This is a local review artifact, not an implementation PR or cutover approval.
 
 ## Verdict

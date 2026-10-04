@@ -229,7 +229,7 @@ class _TrotxiDriverAppState extends State<TrotxiDriverApp> {
 
   @override
   Widget build(BuildContext context) {
-    // Composition root (ADR-0016): repositories and controllers are built once
+    // Composition root: repositories and controllers are built once
     // here and read from context, rather than threaded through constructors
     // down every screen that happens to sit between the two.
     return MultiProvider(

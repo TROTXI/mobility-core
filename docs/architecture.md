@@ -1,67 +1,66 @@
-# Architecture
+# Current architecture
 
-## System context
+Source audit: 2026-10-03. This describes the implemented system, not a future
+scale diagram.
 
-Three user-facing surfaces and a small set of external integrations:
+## Runtime
 
-- **Commuter app** (Flutter) — subscribe, browse routes/trips, board with a QR
-  pass, watch the vehicle live.
-- **Driver app** (Flutter) — see assigned trips, scan rider passes, publish GPS.
-- **Ops dashboard** (web, later) — manage routes, trips, vehicles, drivers.
-- **External**: mobile-money aggregator (MTN MoMo / Telecel / AirtelTigo via
-  Paystack or Hubtel), SMS/OTP provider, map tiles.
+The Flutter apps use `apps/trotxi_client` over generated `apps/api_client`.
+Ops uses generated TypeScript types and an HTTP client. All use the current
+`services/api-next` Fastify API and its reviewed versioned contract.
 
-## Two decoupled paths
+`src/server.ts` validates configuration and composes domain services in
+`src/runtime/compose.ts`. Services use parameterized PostgreSQL queries,
+transactions, row/advisory locks, guarded migrations and durable command
+receipts. There is no production in-memory repository fallback or required
+Redis service. Mocks belong in tests.
 
-The defining decision (see [ADR-0002](adr/0002-two-path-architecture.md)):
-latency-critical telemetry never blocks on business logic, and product
-iteration never destabilises the live map.
+The executable schema source is `docs/design/contracts/target-contract.mjs`.
+Generators emit the full design contract and the implemented replacement
+subset, copied into `src/http/contract.json`. Fastify compiles the emitted
+JSON schemas for HTTP validation/serialization. Zod is the schema authoring
+source, not a claim that every handler runs Zod parsing directly.
 
-```
-TRANSACTIONAL PATH                      TELEMETRY PATH (post-MVP)
-apps                                    driver app (GPS)
-  │ HTTPS/JSON                            │ MQTT, QoS 1
-  ▼                                       ▼
-Node.js + TypeScript API (Fastify)      EMQX broker
-  │                                       │
-  ▼                                       ▼
-PostgreSQL + PostGIS                    Go geo-processor
-                                          │
-                              ┌───────────┴───────────┐
-                              ▼                       ▼
-                            Redis  ◄── read by API  WebSocket fan-out
-                         (live cache)               → commuter app
-```
+## Domain boundaries
 
-Until pilot scale demands the right-hand path, the API serves vehicle
-positions over plain HTTP polling — same endpoints, simpler engine. The
-interfaces are designed so the telemetry path can replace the implementation
-without touching clients.
+- Auth: provider/phone/PIN verification, current database sessions and roles,
+  refresh rotation, administrator passkey elevation.
+- Transport: catalog versions, schedules, trips, assignment, GPS/ETA and Ops reads.
+- Membership: commute assignments, reservations, pauses, changes and priced offers.
+- Payments: purchase snapshots, credit holds, verified collections, fulfilment,
+  refunds/disputes, reviews and period close.
+- Boarding: reservation-specific proof and atomic ride settlement.
+- Account: profile/avatar lifecycle, erasure, external cleanup and recovery journal.
+- Notifications: durable inbox/outboxes and provider delivery.
 
-## Transactional API
+Financial and authorization state stays in PostgreSQL. Client caches and local
+GPS markers never establish entitlement, payment success or server receipt.
 
-Layered: **routes → services → repositories**, dependencies injected through
-`buildApp(deps)`.
+## Providers and background work
 
-- Routes validate input (zod) and translate domain errors to HTTP.
-- Services own business rules (subscription guards, boarding rules, payment
-  lifecycle) and are unit-tested in isolation.
-- Repositories come in pairs: in-memory (tests, zero-infra dev) and Postgres
-  (real runs). The choice happens once, at startup, by environment.
+Paystack hosts customer-authorized checkout; signed webhook evidence and
+verification/reconciliation determine fulfilment. mNotify sends phone codes and
+temporary driver instructions. Resend sends transactional email; FCM sends
+privacy-limited push messages. Provider acceptance is not handset delivery.
 
-## Environments & delivery
+Private R2 objects hold avatars. Public basemap files are separate from private
+storage. GPS uses authenticated HTTP uploads and scoped polling; there is no
+active MQTT, Go, TimescaleDB or WebSocket path.
 
-```
-PR → CI (typecheck · lint · unit · e2e) → merge to main
-   → staging deploys automatically → smoke test
-   → production after manual approval
-```
+`src/worker.ts` runs explicit maintenance jobs through the same authorization
+and transaction boundaries or bounded physical sweeps. A worker implementation
+is not an enabled schedule. See [deployment](DEPLOY.md).
 
-`main` is protected: all checks must pass on an up-to-date branch. See
-[DEPLOY.md](DEPLOY.md).
+## Safety and recovery
 
-## Data protection & compliance
+The API and maintenance logins do not own the schema. The protected installer
+applies checksum-verified migrations and grants. Database guards reinforce
+ownership, immutable money terms, receipt attribution and retention rules.
 
-Ghana Data Protection Act, 2012 (Act 843) applies: minimal PII, encrypted in
-transit and at rest, audit log on money-touching mutations. Mobile-money flows
-ride on a licensed aggregator — we never hold value ourselves.
+Account deletion has an independent closure journal and fenced restore workflow.
+A restored snapshot must replay later closures before it can serve traffic.
+See [recovery](design/account-erasure-recovery.md) and
+[staging security](operations/staging-security.md).
+
+Production readiness needs configuration and operational evidence beyond these
+controls. No architecture document certifies legal compliance or measured capacity.

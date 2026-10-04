@@ -1,5 +1,9 @@
 # Stage 4: moving an app to the replacement contract
 
+> Historical design/acceptance record. Scope and deployment statements below
+> describe the recorded stage, not the current runtime. See
+> [current features](../features/README.md) and [design index](README.md).
+
 For the current staging integration and captured responses, start with the
 [commuter API guide](../api/README.md). The stage notes below are historical
 migration context, not the current deployment runbook.
