@@ -12,6 +12,7 @@ Name | Type | Description | Notes
 **state** | **String** |  |
 **expiresAt** | [**DateTime**](DateTime.md) |  |
 **purchaseId** | **String** |  |
+**terms** | [**OpsPurchaseOfferTerms**](OpsPurchaseOfferTerms.md) |  |
 
 [[Back to Model list]](../README.md#documentation-for-models) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to README]](../README.md)
 

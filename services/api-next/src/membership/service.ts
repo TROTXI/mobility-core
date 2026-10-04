@@ -124,8 +124,8 @@ export class MembershipService {
     await c.query('SELECT app.settle_personal_pauses($1)', [userId]);
     const b = (
       await c.query(
-        "SELECT b.*,p.fare_pesewas FROM app.billing_periods b JOIN app.purchases p ON p.id=b.purchase_id WHERE b.user_id=$1 AND b.state='open' FOR UPDATE OF b",
-        [userId],
+        "SELECT b.*,p.fare_pesewas,to_jsonb(p)->'offer_terms' AS offer_terms FROM app.billing_periods b JOIN app.purchases p ON p.id=b.purchase_id WHERE b.user_id=$1 AND b.state='open' AND b.starts_at<=$2 ORDER BY b.starts_at DESC LIMIT 1 FOR UPDATE OF b",
+        [userId, this.now()],
       )
     ).rows[0];
     if (!b) fail(409, 'coverage_required', 'Current paid coverage is required.');
@@ -142,18 +142,67 @@ export class MembershipService {
       )
     ).rows;
   }
+  private async periodForDeparture(
+    c: PoolClient,
+    userId: string,
+    day: string,
+    direction: string,
+    tripId: string | null,
+  ) {
+    await c.query('SELECT app.settle_personal_pauses($1)', [userId]);
+    // The rider lock protects assignment changes. Discover without a trip lock,
+    // lock funding first, then reserve() locks/rechecks the departure. Upcoming
+    // paid coverage may fund a future trip without becoming current coverage.
+    const periods = (
+      await c.query(
+        `SELECT b.*,p.fare_pesewas,to_jsonb(p)->'offer_terms' AS offer_terms
+         FROM app.billing_periods b JOIN app.purchases p ON p.id=b.purchase_id
+         WHERE b.user_id=$1 AND b.state='open' AND EXISTS (
+           SELECT 1 FROM app.commute_assignments a
+           JOIN app.commute_selection_legs l ON l.selection_id=a.selection_id
+           JOIN app.trips t ON t.schedule_id=l.schedule_id AND t.service_date=$2
+           WHERE a.period_id=b.id AND a.effective_from<=$2
+             AND (a.effective_to IS NULL OR $2<a.effective_to) AND l.direction=$3
+             AND ($4::uuid IS NULL OR t.id=$4)
+             AND b.starts_at<=t.scheduled_at AND t.scheduled_at<b.effective_ends_at
+         ) ORDER BY b.starts_at FOR UPDATE OF b`,
+        [userId, day, direction, tripId],
+      )
+    ).rows;
+    if (!periods.length)
+      fail(409, 'coverage_required', 'Paid coverage for this departure is required.');
+    if (periods.length !== 1)
+      fail(409, 'departure_unavailable', 'Select a single funded departure.');
+    return periods[0]!;
+  }
   assertCheckoutAllowed: NonNullable<FinancialDependencies['assertCheckoutAllowed']> = async (
     c,
     b,
   ) => {
     await c.query('SELECT app.settle_personal_pauses($1)', [b.userId]);
-    const period = (
+    const periods = (
       await c.query("SELECT id FROM app.billing_periods WHERE membership_id=$1 AND state='open'", [
         b.membershipId,
       ])
-    ).rows[0];
-    if ((await this.blocks(c, b.userId, period?.id ?? null)).length)
+    ).rows;
+    if ((await this.blocks(c, b.userId, null)).length)
       fail(409, 'membership_blocked', 'Resolve the current membership block first.');
+    for (const period of periods) {
+      if (
+        (await this.blocks(c, b.userId, period.id)).length ||
+        (
+          await c.query(
+            "SELECT 1 FROM app.personal_pauses WHERE period_id=$1 AND state='planned'",
+            [period.id],
+          )
+        ).rowCount
+      )
+        fail(
+          409,
+          'membership_blocked',
+          'Resolve pauses and payment blocks before buying renewal coverage.',
+        );
+    }
   };
   assertPeriodCanClose: NonNullable<FinancialDependencies['assertPeriodCanClose']> = async (
     c,
@@ -252,10 +301,8 @@ export class MembershipService {
       )
     ).rows as PurchaseLeg[];
     const selection = await this.selection(c, p.route_id, legs);
-    await c.query(
-      'UPDATE app.commute_assignments SET effective_to=greatest(effective_from,$2::date) WHERE membership_id=$1 AND effective_to IS NULL',
-      [b.membershipId, date(b.now)],
-    );
+    // Period closure owns assignment/slot cleanup. A prepaid period must leave
+    // the current assignment usable, including if the renewal is later refunded.
     await c.query(
       'INSERT INTO app.commute_assignments(user_id,membership_id,period_id,selection_id,purchase_id,effective_from) VALUES ($1,$2,$3,$4,$5,$6)',
       [b.userId, b.membershipId, b.periodId, selection, b.purchaseId, date(b.now)],
@@ -564,6 +611,12 @@ export class MembershipService {
     }
     if (op === 'createCommuteRequest') {
       const b = await this.period(c, actor.userId);
+      if (b.offer_terms)
+        fail(
+          409,
+          'fresh_offer_required',
+          'Request a new subscription offer to change a priced journey.',
+        );
       if (b.effective_ends_at <= now || String(input.requestedDate) < date(now))
         fail(409, 'coverage_required', 'Choose a date within current service.');
       const selection = await this.selection(
@@ -637,9 +690,19 @@ export class MembershipService {
     if (!['submitted', 'waitlisted', 'approved'].includes(r.status))
       fail(409, 'request_terminal', 'This request is already closed.');
     const action = op === 'withdrawCommuteRequest' ? 'cancel' : String(input.action);
+    if (
+      ['approve', 'apply', 'pause'].includes(action) &&
+      (await c.query('SELECT app.has_pending_renewal($1) AS blocked', [r.period_id])).rows[0]
+        .blocked
+    )
+      fail(
+        409,
+        'renewal_dates_locked',
+        'Resolve the upcoming renewal before changing the commute.',
+      );
     const b = (
       await c.query(
-        'SELECT b.*,p.fare_pesewas FROM app.billing_periods b JOIN app.purchases p ON p.id=b.purchase_id WHERE b.id=$1 FOR UPDATE OF b',
+        "SELECT b.*,p.fare_pesewas,to_jsonb(p)->'offer_terms' AS offer_terms FROM app.billing_periods b JOIN app.purchases p ON p.id=b.purchase_id WHERE b.id=$1 FOR UPDATE OF b",
         [r.period_id],
       )
     ).rows[0];
@@ -711,6 +774,12 @@ export class MembershipService {
     } else if (action === 'apply') {
       if (r.status !== 'approved' || dayString(r.effective_date) > date(now))
         fail(409, 'application_not_due', 'Approved effective date has not arrived.');
+      if (b.offer_terms)
+        fail(
+          409,
+          'fresh_offer_required',
+          'Changing a priced journey requires a new subscription offer.',
+        );
       const fare = await this.options.fareForSelection?.(c, r.selection_id);
       if (!Number.isSafeInteger(fare) || fare !== b.fare_pesewas)
         fail(409, 'fare_review_required', 'Transfer pricing requires review.');
@@ -721,12 +790,12 @@ export class MembershipService {
       // Never backdate a commute over already-operated service. Approved date is
       // the earliest application date; actual assignment starts on application.
       await c.query(
-        "UPDATE app.commute_slots SET state='available' WHERE id IN (SELECT r.slot_id FROM app.commute_requests r JOIN app.commute_assignments a ON a.request_id=r.id WHERE a.membership_id=$1 AND a.effective_to IS NULL)",
-        [b.membership_id],
+        "UPDATE app.commute_slots SET state='available' WHERE id IN (SELECT r.slot_id FROM app.commute_requests r JOIN app.commute_assignments a ON a.request_id=r.id WHERE a.period_id=$1 AND a.effective_to IS NULL)",
+        [b.id],
       );
       await c.query(
-        'UPDATE app.commute_assignments SET effective_to=greatest(effective_from,$2::date) WHERE membership_id=$1 AND effective_to IS NULL',
-        [b.membership_id, date(now)],
+        'UPDATE app.commute_assignments SET effective_to=greatest(effective_from,$2::date) WHERE period_id=$1 AND effective_to IS NULL',
+        [b.id, date(now)],
       );
       await c.query(
         'INSERT INTO app.commute_assignments(user_id,membership_id,period_id,selection_id,request_id,effective_from) VALUES ($1,$2,$3,$4,$5,$6)',
@@ -764,7 +833,16 @@ export class MembershipService {
       now = this.now();
     if (day < date(now)) fail(409, 'service_day_past', 'Cannot change a past service day.');
     // Period before trip locks for acquisition. Decline needs no funding lock.
-    const funding = input.decision === 'decline' ? null : await this.period(c, actor.userId);
+    const funding =
+      input.decision === 'decline'
+        ? null
+        : await this.periodForDeparture(
+            c,
+            actor.userId,
+            day,
+            direction,
+            input.tripId ? id(input.tripId) : null,
+          );
     const old = (
       await c.query(
         "SELECT * FROM app.reservations WHERE user_id=$1 AND service_date=$2 AND direction=$3 AND status<>'operator_cancelled'",
@@ -795,6 +873,21 @@ export class MembershipService {
       ).rows[0].id;
     }
     const b = funding!;
+    if (b.offer_terms) {
+      const terms = b.offer_terms as import('./offer-terms.js').OfferTerms;
+      const offeredLeg = terms.legs.find((l) => l.direction === direction);
+      if (!offeredLeg?.travelDays.includes(new Date(`${day}T00:00:00Z`).getUTCDay() || 7))
+        fail(409, 'travel_day_not_covered', 'This weekday is not included in your offer.');
+      const balance = (
+        await c.query('SELECT * FROM app.offer_ride_balances($1) WHERE direction=$2', [
+          b.id,
+          direction,
+        ])
+      ).rows[0];
+      const alreadyHeld = old?.period_id === b.id && old?.status === 'reserved' ? 1 : 0;
+      if (!balance || balance.granted - balance.charged - balance.held + alreadyHeld <= 0)
+        fail(409, 'journey_rides_exhausted', 'No rides remain for this direction.');
+    }
     if ((await this.blocks(c, actor.userId, b.id)).length)
       fail(409, 'membership_blocked', 'Resolve the current access block first.');
     const leg = (
@@ -895,12 +988,16 @@ export class MembershipService {
       return (
         await c.query(
           `SELECT b.user_id AS id FROM app.billing_periods b JOIN app.memberships m ON m.id=b.membership_id AND m.lifecycle='open'
+        JOIN app.purchases purchase ON purchase.id=b.purchase_id
         JOIN app.users u ON u.id=b.user_id AND u.deleted_at IS NULL
         JOIN app.commute_assignments a ON a.period_id=b.id AND a.effective_from<=$1 AND (a.effective_to IS NULL OR $1<a.effective_to)
         JOIN app.commute_selection_legs l ON l.selection_id=a.selection_id AND l.direction=$2
         JOIN app.commute_selections s ON s.id=l.selection_id
         JOIN app.trips t ON t.schedule_id=l.schedule_id AND t.service_date=$1 AND t.status='scheduled' AND t.scheduled_at>$4
         WHERE b.state='open' AND b.starts_at<=t.scheduled_at AND t.scheduled_at<b.effective_ends_at
+        AND (purchase.offer_terms IS NULL OR EXISTS(
+          SELECT 1 FROM jsonb_array_elements(purchase.offer_terms->'legs') ol
+          WHERE ol->>'direction'=$2 AND (ol->'travelDays') @> to_jsonb(ARRAY[extract(isodow FROM $1::date)::integer])))
         AND ($3::uuid IS NULL OR s.route_id=$3)
         AND NOT EXISTS(SELECT 1 FROM app.reservations r WHERE r.user_id=b.user_id AND r.service_date=$1 AND r.direction=$2)
         AND NOT EXISTS(SELECT 1 FROM app.membership_pauses p WHERE p.period_id=b.id AND p.ended_at IS NULL)
@@ -1235,6 +1332,12 @@ export class MembershipService {
     const start = this.personalDate(input.startDate),
       resume = this.personalDate(input.resumeDate);
     const b = await this.period(c, userId);
+    if ((await c.query('SELECT app.has_pending_renewal($1) AS blocked', [b.id])).rows[0].blocked)
+      fail(
+        409,
+        'renewal_dates_locked',
+        'Resolve the upcoming renewal before changing coverage dates.',
+      );
     if ((await c.query('SELECT 1 FROM app.personal_pauses WHERE period_id=$1', [b.id])).rowCount)
       fail(409, 'personal_pause_used', 'This paid period already has a personal pause.');
     const cancelled = (
@@ -1317,13 +1420,18 @@ export class MembershipService {
   private async membership(c: PoolClient, userId: string) {
     await c.query('SELECT app.settle_personal_pauses($1)', [userId]);
     const m = (await c.query('SELECT * FROM app.memberships WHERE user_id=$1', [userId])).rows[0];
-    const b = (
-      await c.query("SELECT * FROM app.billing_periods WHERE user_id=$1 AND state='open'", [userId])
-    ).rows[0];
+    const now = this.now();
+    const periods = (
+      await c.query(
+        "SELECT * FROM app.billing_periods WHERE user_id=$1 AND state='open' ORDER BY starts_at",
+        [userId],
+      )
+    ).rows;
+    const b = periods.filter((p) => p.starts_at <= now).at(-1);
+    const upcoming = periods.find((p) => p.starts_at > now);
     const blocks = await this.blocks(c, userId, b?.id ?? null),
       paused = blocks.some((x) => x.kind === 'paused');
-    const now = this.now();
-    const current = b && (b.effective_ends_at > now || paused) ? b : null;
+    const current = b && b.starts_at <= now && (b.effective_ends_at > now || paused) ? b : null;
     const a = current
       ? (
           await c.query(
@@ -1354,6 +1462,16 @@ export class MembershipService {
     const money = (n: number) => ({ amountMinor: n, currency: 'GHS' });
     return {
       membership: m ? { id: m.id, lifecycle: m.lifecycle } : null,
+      upcomingCoverage: upcoming
+        ? {
+            id: upcoming.id,
+            startsAt: iso(upcoming.starts_at),
+            endsAt: iso(upcoming.effective_ends_at),
+            state: upcoming.state,
+            paused: false,
+            renewalMode: 'manual',
+          }
+        : null,
       coverage: current
         ? {
             id: b.id,

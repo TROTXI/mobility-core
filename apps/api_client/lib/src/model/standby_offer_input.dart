@@ -3,6 +3,10 @@
 //
 
 // ignore_for_file: unused_element
+import 'package:trotxi_api_client/src/model/date.dart';
+import 'package:built_collection/built_collection.dart';
+import 'package:trotxi_api_client/src/model/money.dart';
+import 'package:trotxi_api_client/src/model/standby_offer_input_credits_inner.dart';
 import 'package:built_value/built_value.dart';
 import 'package:built_value/serializer.dart';
 
@@ -12,11 +16,27 @@ part 'standby_offer_input.g.dart';
 ///
 /// Properties:
 /// * [expiresAt]
+/// * [coverageStart]
+/// * [coverageEnd]
+/// * [price]
+/// * [credits]
 @BuiltValue()
 abstract class StandbyOfferInput
     implements Built<StandbyOfferInput, StandbyOfferInputBuilder> {
   @BuiltValueField(wireName: r'expiresAt')
   DateTime get expiresAt;
+
+  @BuiltValueField(wireName: r'coverageStart')
+  Date get coverageStart;
+
+  @BuiltValueField(wireName: r'coverageEnd')
+  Date get coverageEnd;
+
+  @BuiltValueField(wireName: r'price')
+  Money get price;
+
+  @BuiltValueField(wireName: r'credits')
+  BuiltList<StandbyOfferInputCreditsInner> get credits;
 
   StandbyOfferInput._();
 
@@ -49,6 +69,27 @@ class _$StandbyOfferInputSerializer
       object.expiresAt,
       specifiedType: const FullType(DateTime),
     );
+    yield r'coverageStart';
+    yield serializers.serialize(
+      object.coverageStart,
+      specifiedType: const FullType(Date),
+    );
+    yield r'coverageEnd';
+    yield serializers.serialize(
+      object.coverageEnd,
+      specifiedType: const FullType(Date),
+    );
+    yield r'price';
+    yield serializers.serialize(
+      object.price,
+      specifiedType: const FullType(Money),
+    );
+    yield r'credits';
+    yield serializers.serialize(
+      object.credits,
+      specifiedType:
+          const FullType(BuiltList, [FullType(StandbyOfferInputCreditsInner)]),
+    );
   }
 
   @override
@@ -80,6 +121,35 @@ class _$StandbyOfferInputSerializer
             specifiedType: const FullType(DateTime),
           ) as DateTime;
           result.expiresAt = valueDes;
+          break;
+        case r'coverageStart':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType(Date),
+          ) as Date;
+          result.coverageStart = valueDes;
+          break;
+        case r'coverageEnd':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType(Date),
+          ) as Date;
+          result.coverageEnd = valueDes;
+          break;
+        case r'price':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType(Money),
+          ) as Money;
+          result.price.replace(valueDes);
+          break;
+        case r'credits':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType(
+                BuiltList, [FullType(StandbyOfferInputCreditsInner)]),
+          ) as BuiltList<StandbyOfferInputCreditsInner>;
+          result.credits.replace(valueDes);
           break;
         default:
           unhandled.add(key);

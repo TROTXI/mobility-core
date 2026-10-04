@@ -448,6 +448,7 @@ named(
   obj({
     membership: obj({ id, lifecycle: z.enum(['open', 'ended']) }).nullable(),
     coverage: schemas.Coverage.nullable(),
+    upcomingCoverage: schemas.Coverage.nullable().optional(),
     lastCoverageEndedAt: instant.nullable(),
     access: obj({ canReserve: z.boolean(), blocks: z.array(schemas.AccessBlock) }),
     commute: schemas.CommuteAssignment.nullable(),
@@ -479,12 +480,41 @@ named(
   obj({ plan, routeId: id, legs: z.array(schemas.CommuteLeg).length(2), useCredit: z.boolean() }),
 );
 named(
+  'SubscriptionOfferLeg',
+  schemas.CommuteLeg.extend({
+    pickupName: text(),
+    dropoffName: text(),
+    fareId: id,
+    fare: money,
+    ridesGranted: z.int().min(1).max(366),
+    travelDays: z.array(z.int().min(1).max(7)).min(1).max(7),
+    creditPerUnusedRide: money,
+  }),
+);
+named(
+  'SubscriptionOfferTerms',
+  obj({
+    coverageStart: date,
+    coverageEnd: date,
+    price: money,
+    legs: z.array(schemas.SubscriptionOfferLeg).length(2),
+  }),
+);
+named(
+  'StandbyJoinInput',
+  obj({
+    selection: schemas.PurchaseInput,
+    travelDays: z.array(z.int().min(1).max(7)).min(1).max(7),
+  }),
+);
+named(
   'StandbyOffer',
   obj({
     id,
     state: z.enum(['offered', 'accepting', 'checkout_open', 'cancelled']),
     expiresAt: instant,
     purchaseId: id.nullable(),
+    terms: schemas.SubscriptionOfferTerms.nullable(),
   }),
 );
 named(
@@ -494,13 +524,23 @@ named(
     riderId: id,
     riderName: text(),
     routeName: text(),
-    state: z.enum(['submitted', 'offered', 'withdrawn', 'checkout_open']),
+    state: z.enum(['submitted', 'offered', 'withdrawn', 'checkout_open', 'completed']),
     selection: schemas.PurchaseInput,
+    travelDays: z.array(z.int().min(1).max(7)),
     offer: schemas.StandbyOffer.nullable(),
     createdAt: instant,
   }),
 );
-named('StandbyOfferInput', obj({ expiresAt: instant }));
+named(
+  'StandbyOfferInput',
+  obj({
+    expiresAt: instant,
+    coverageStart: date,
+    coverageEnd: date,
+    price: money,
+    credits: z.array(obj({ direction, creditPerUnusedRide: money })).length(2),
+  }),
+);
 named(
   'Purchase',
   obj({
@@ -516,6 +556,7 @@ named(
     ]),
     collectionState: z.enum(['pending', 'successful', 'failed', 'unknown']),
     price: money,
+    offerTerms: schemas.SubscriptionOfferTerms.nullable().optional(),
     appliedCredit: money,
     cashDue: money,
     checkout: obj({ url: z.url(), expiresAt: instant.nullable() }).nullable(),
@@ -1051,8 +1092,26 @@ named(
   }),
 );
 named('CredentialAction', obj({ action: z.enum(['suspend', 'activate', 'unlock']), reason: note }));
-named('FareInput', obj({ amount: money, effectiveFrom: instant, note: note.optional() }));
-named('Fare', schemas.FareInput.extend({ id, routeId: id, effectiveTo: instant.nullable() }));
+named(
+  'FareInput',
+  obj({
+    amount: money,
+    effectiveFrom: instant,
+    note: note.optional(),
+    patternVersionId: id.optional(),
+    pickupOccurrenceId: id.optional(),
+    dropoffOccurrenceId: id.optional(),
+  }),
+);
+named(
+  'Fare',
+  schemas.FareInput.extend({
+    id,
+    routeId: id,
+    effectiveTo: instant.nullable(),
+    journey: obj({ pickup: text(), dropoff: text(), direction }).optional(),
+  }),
+);
 named(
   'PlanPricing',
   obj({
@@ -1627,7 +1686,7 @@ post(
   },
 );
 list('/v1/me/standby', 'listMyStandby', 'StandbyApplication', { access: 'rider_own' });
-post('/v1/me/standby', 'joinStandby', 'PurchaseInput', 'StandbyApplication', {
+post('/v1/me/standby', 'joinStandby', 'StandbyJoinInput', 'StandbyApplication', {
   access: 'rider_own',
   status: 201,
 });

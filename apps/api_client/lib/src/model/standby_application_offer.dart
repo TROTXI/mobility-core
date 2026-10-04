@@ -4,6 +4,7 @@
 
 // ignore_for_file: unused_element
 import 'package:built_collection/built_collection.dart';
+import 'package:trotxi_api_client/src/model/ops_purchase_offer_terms.dart';
 import 'package:built_value/built_value.dart';
 import 'package:built_value/serializer.dart';
 
@@ -16,6 +17,7 @@ part 'standby_application_offer.g.dart';
 /// * [state]
 /// * [expiresAt]
 /// * [purchaseId]
+/// * [terms]
 @BuiltValue()
 abstract class StandbyApplicationOffer
     implements Built<StandbyApplicationOffer, StandbyApplicationOfferBuilder> {
@@ -31,6 +33,9 @@ abstract class StandbyApplicationOffer
 
   @BuiltValueField(wireName: r'purchaseId')
   String? get purchaseId;
+
+  @BuiltValueField(wireName: r'terms')
+  OpsPurchaseOfferTerms? get terms;
 
   StandbyApplicationOffer._();
 
@@ -83,6 +88,13 @@ class _$StandbyApplicationOfferSerializer
         : serializers.serialize(
             object.purchaseId,
             specifiedType: const FullType.nullable(String),
+          );
+    yield r'terms';
+    yield object.terms == null
+        ? null
+        : serializers.serialize(
+            object.terms,
+            specifiedType: const FullType.nullable(OpsPurchaseOfferTerms),
           );
   }
 
@@ -137,6 +149,14 @@ class _$StandbyApplicationOfferSerializer
           ) as String?;
           if (valueDes == null) continue;
           result.purchaseId = valueDes;
+          break;
+        case r'terms':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType.nullable(OpsPurchaseOfferTerms),
+          ) as OpsPurchaseOfferTerms?;
+          if (valueDes == null) continue;
+          result.terms.replace(valueDes);
           break;
         default:
           unhandled.add(key);

@@ -2945,16 +2945,28 @@ export interface components {
       /** Format: date-time */
       effectiveFrom: string;
       note?: string;
+      patternVersionId?: string;
+      pickupOccurrenceId?: string;
+      dropoffOccurrenceId?: string;
       id: string;
       routeId: string;
       /** Format: date-time */
       effectiveTo: string | null;
+      journey?: {
+        pickup: string;
+        dropoff: string;
+        /** @enum {string} */
+        direction: 'outbound' | 'return';
+      };
     };
     FareInput: {
       amount: components['schemas']['Money'];
       /** Format: date-time */
       effectiveFrom: string;
       note?: string;
+      patternVersionId?: string;
+      pickupOccurrenceId?: string;
+      dropoffOccurrenceId?: string;
     };
     FarePage: {
       data: components['schemas']['Fare'][];
@@ -3127,6 +3139,18 @@ export interface components {
         lifecycle: 'open' | 'ended';
       } | null;
       coverage: {
+        id: string;
+        /** Format: date-time */
+        startsAt: string;
+        /** Format: date-time */
+        endsAt: string | null;
+        /** @enum {string} */
+        state: 'open' | 'closed' | 'reversed';
+        paused: boolean;
+        /** @enum {string} */
+        renewalMode: 'manual';
+      } | null;
+      upcomingCoverage?: {
         id: string;
         /** Format: date-time */
         startsAt: string;
@@ -3439,6 +3463,14 @@ export interface components {
       /** @enum {string} */
       collectionState: 'pending' | 'successful' | 'failed' | 'unknown';
       price: components['schemas']['Money'];
+      offerTerms?: {
+        /** Format: date */
+        coverageStart: string;
+        /** Format: date */
+        coverageEnd: string;
+        price: components['schemas']['Money'];
+        legs: components['schemas']['SubscriptionOfferLeg'][];
+      } | null;
       appliedCredit: components['schemas']['Money'];
       cashDue: components['schemas']['Money'];
       checkout: {
@@ -4033,6 +4065,14 @@ export interface components {
       /** @enum {string} */
       collectionState: 'pending' | 'successful' | 'failed' | 'unknown';
       price: components['schemas']['Money'];
+      offerTerms?: {
+        /** Format: date */
+        coverageStart: string;
+        /** Format: date */
+        coverageEnd: string;
+        price: components['schemas']['Money'];
+        legs: components['schemas']['SubscriptionOfferLeg'][];
+      } | null;
       appliedCredit: components['schemas']['Money'];
       cashDue: components['schemas']['Money'];
       checkout: {
@@ -4410,8 +4450,9 @@ export interface components {
       riderName: string;
       routeName: string;
       /** @enum {string} */
-      state: 'submitted' | 'offered' | 'withdrawn' | 'checkout_open';
+      state: 'submitted' | 'offered' | 'withdrawn' | 'checkout_open' | 'completed';
       selection: components['schemas']['PurchaseInput'];
+      travelDays: number[];
       offer: {
         id: string;
         /** @enum {string} */
@@ -4419,6 +4460,14 @@ export interface components {
         /** Format: date-time */
         expiresAt: string;
         purchaseId: string | null;
+        terms: {
+          /** Format: date */
+          coverageStart: string;
+          /** Format: date */
+          coverageEnd: string;
+          price: components['schemas']['Money'];
+          legs: components['schemas']['SubscriptionOfferLeg'][];
+        } | null;
       } | null;
       /** Format: date-time */
       createdAt: string;
@@ -4432,9 +4481,23 @@ export interface components {
     StandbyApplicationResponse: {
       data: components['schemas']['StandbyApplication'];
     };
+    StandbyJoinInput: {
+      selection: components['schemas']['PurchaseInput'];
+      travelDays: number[];
+    };
     StandbyOfferInput: {
       /** Format: date-time */
       expiresAt: string;
+      /** Format: date */
+      coverageStart: string;
+      /** Format: date */
+      coverageEnd: string;
+      price: components['schemas']['Money'];
+      credits: {
+        /** @enum {string} */
+        direction: 'outbound' | 'return';
+        creditPerUnusedRide: components['schemas']['Money'];
+      }[];
     };
     Stop: {
       id: string;
@@ -4479,6 +4542,21 @@ export interface components {
     };
     StopResponse: {
       data: components['schemas']['Stop'];
+    };
+    SubscriptionOfferLeg: {
+      /** @enum {string} */
+      direction: 'outbound' | 'return';
+      scheduleId: string;
+      patternVersionId: string;
+      pickupOccurrenceId: string;
+      dropoffOccurrenceId: string;
+      pickupName: string;
+      dropoffName: string;
+      fareId: string;
+      fare: components['schemas']['Money'];
+      ridesGranted: number;
+      travelDays: number[];
+      creditPerUnusedRide: components['schemas']['Money'];
     };
     Tokens: {
       accessToken: string;
@@ -6017,7 +6095,7 @@ export interface operations {
     };
     requestBody: {
       content: {
-        'application/json': components['schemas']['PurchaseInput'];
+        'application/json': components['schemas']['StandbyJoinInput'];
       };
     };
     responses: {

@@ -657,7 +657,7 @@ Name | Type | Description  | Notes
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **joinStandby**
-> StandbyApplicationResponse joinStandby(idempotencyKey, xTrotxiClient, xTrotxiBuild, purchaseInput, xTrotxiPlatform)
+> StandbyApplicationResponse joinStandby(idempotencyKey, xTrotxiClient, xTrotxiBuild, standbyJoinInput, xTrotxiPlatform)
 
 join Standby
 
@@ -669,11 +669,11 @@ final api = TrotxiApiClient().getRiderOwnApi();
 final String idempotencyKey = idempotencyKey_example; // String | Caller + operation + target scoped; payload mismatch = 409. Never log secrets.
 final String xTrotxiClient = commuter; // String | Compatibility metadata only, never grants a role.
 final int xTrotxiBuild = 1; // int | Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
-final PurchaseInput purchaseInput = ; // PurchaseInput |
+final StandbyJoinInput standbyJoinInput = ; // StandbyJoinInput |
 final String xTrotxiPlatform = ios; // String | Required for commuter/driver, absent for ops/worker.
 
 try {
-    final response = api.joinStandby(idempotencyKey, xTrotxiClient, xTrotxiBuild, purchaseInput, xTrotxiPlatform);
+    final response = api.joinStandby(idempotencyKey, xTrotxiClient, xTrotxiBuild, standbyJoinInput, xTrotxiPlatform);
     print(response);
 } on DioException catch (e) {
     print('Exception when calling RiderOwnApi->joinStandby: $e\n');
@@ -687,7 +687,7 @@ Name | Type | Description  | Notes
  **idempotencyKey** | **String**| Caller + operation + target scoped; payload mismatch = 409. Never log secrets. |
  **xTrotxiClient** | **String**| Compatibility metadata only, never grants a role. |
  **xTrotxiBuild** | **int**| Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable. | [default to 1]
- **purchaseInput** | [**PurchaseInput**](PurchaseInput.md)|  |
+ **standbyJoinInput** | [**StandbyJoinInput**](StandbyJoinInput.md)|  |
  **xTrotxiPlatform** | **String**| Required for commuter/driver, absent for ops/worker. | [optional]
 
 ### Return type

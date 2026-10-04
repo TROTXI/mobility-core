@@ -4,7 +4,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:trotxi_client/commuter_checkout.dart';
 import 'package:trotxi_client/trotxi_client.dart' as wire;
 import 'package:trotxi_commuter/core/api/commuter_api.dart';
-import 'commute_picker.dart';
+import 'standby_page.dart';
 
 Future<bool> openPaystackCheckout(Uri uri) =>
     launchUrl(uri, mode: LaunchMode.externalApplication);
@@ -26,9 +26,7 @@ class CheckoutPage extends StatefulWidget {
 class _CheckoutPageState extends State<CheckoutPage>
     with WidgetsBindingObserver {
   CommuterCheckout? _checkout;
-  CommuteRouteSelection? _selection;
-  wire.PurchaseInputPlanEnum _plan = wire.PurchaseInputPlanEnum.monthly;
-  bool _credit = false, _busy = true, _refreshWhenIdle = false;
+  bool _busy = true, _refreshWhenIdle = false;
   String? _error;
   int _load = 0;
   @override
@@ -115,35 +113,6 @@ class _CheckoutPageState extends State<CheckoutPage>
     }
   }
 
-  Future<void> _choose() async {
-    final generation = widget.client.sessionGeneration;
-    final selection = await Navigator.of(context).push<CommuteRouteSelection>(
-      MaterialPageRoute(
-        builder: (_) => CommutePickerPage(client: widget.client),
-      ),
-    );
-    if (!mounted ||
-        generation != widget.client.sessionGeneration ||
-        selection == null) {
-      return;
-    }
-    setState(() => _selection = selection);
-  }
-
-  Future<void> _prepare() => _work(() async {
-    final selected = _selection!;
-    // Reuse the exact two-leg validator; purchase has no requested-date field.
-    final commute = selected.request(wire.Date.now(utc: true), false, '');
-    await _checkout!.start(
-      wire.PurchaseInput(
-        (b) => b
-          ..plan = _plan
-          ..routeId = commute.routeId
-          ..legs.replace(commute.legs)
-          ..useCredit = _credit,
-      ),
-    );
-  });
   Future<void> _pay(wire.Purchase shown) => _work(() async {
     final generation = widget.client.sessionGeneration;
     // A URL rendered earlier may now be expired, paid or under review.
@@ -239,7 +208,18 @@ class _CheckoutPageState extends State<CheckoutPage>
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('${p.plan.name} · ${_money(p.price)}'),
+                      Text(
+                        '${p.offerTerms == null ? p.plan.name : 'Subscription offer'} · ${_money(p.price)}',
+                      ),
+                      if (p.offerTerms != null) ...[
+                        Text(
+                          '${p.offerTerms!.coverageStart} until ${p.offerTerms!.coverageEnd} (end date excluded)',
+                        ),
+                        for (final leg in p.offerTerms!.legs)
+                          Text(
+                            '${leg.direction.name}: ${leg.ridesGranted} rides, ${leg.pickupName} → ${leg.dropoffName}. Unused credit: ${_money(leg.creditPerUnusedRide)} per ride.',
+                          ),
+                      ],
                       Text('Ride Credit applied: ${_money(p.appliedCredit)}'),
                       Text('Cash due: ${_money(p.cashDue)}'),
                       SelectableText('Purchase ID: ${p.id}'),
@@ -279,38 +259,18 @@ class _CheckoutPageState extends State<CheckoutPage>
               ),
             if (saved == null && !unresolved && _error == null) ...[
               const Divider(),
-              const Text('Prepare a new purchase'),
-              TextButton(
-                onPressed: _busy ? null : _choose,
-                child: Text(
-                  _selection == null
-                      ? 'Choose commute'
-                      : 'Change ${_selection!.routeName}',
-                ),
-              ),
-              if (_selection != null)
-                Text(
-                  '${_selection!.outbound.choice.schedule.localDeparture} outbound · ${_selection!.returning.choice.schedule.localDeparture} return',
-                ),
-              DropdownButton<wire.PurchaseInputPlanEnum>(
-                value: _plan,
-                items: [
-                  for (final p in wire.PurchaseInputPlanEnum.values)
-                    DropdownMenuItem(value: p, child: Text(p.name)),
-                ],
-                onChanged: _busy ? null : (p) => setState(() => _plan = p!),
-              ),
-              CheckboxListTile(
-                value: _credit,
-                onChanged: _busy ? null : (v) => setState(() => _credit = v!),
-                title: const Text('Apply available Ride Credit'),
-              ),
               const Text(
-                'Preparation reserves eligible credit and creates a pending purchase, but does not charge you. Review the server price before continuing to Paystack. An unresolved purchase must be resolved before starting another; cancellation currently requires operations.',
+                'New subscriptions and renewals require an Ops offer. Request your journeys and travel days, then review the agreed terms before paying.',
               ),
               FilledButton(
-                onPressed: _busy || _selection == null ? null : _prepare,
-                child: const Text('Prepare checkout'),
+                onPressed: _busy
+                    ? null
+                    : () => Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => StandbyPage(client: widget.client),
+                        ),
+                      ),
+                child: const Text('Waitlist and offers'),
               ),
             ],
           ],

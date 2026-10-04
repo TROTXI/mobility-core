@@ -2412,7 +2412,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/PurchaseInput"
+                "$ref": "#/components/schemas/StandbyJoinInput"
               }
             }
           }
@@ -22627,6 +22627,41 @@
             "additionalProperties": false,
             "nullable": true
           },
+          "upcomingCoverage": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 128
+              },
+              "startsAt": {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+              },
+              "endsAt": {
+                "nullable": true,
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+              },
+              "state": {
+                "type": "string",
+                "enum": ["open", "closed", "reversed"]
+              },
+              "paused": {
+                "type": "boolean"
+              },
+              "renewalMode": {
+                "type": "string",
+                "enum": ["manual"]
+              }
+            },
+            "required": ["id", "startsAt", "endsAt", "state", "paused", "renewalMode"],
+            "additionalProperties": false,
+            "nullable": true
+          },
           "lastCoverageEndedAt": {
             "nullable": true,
             "type": "string",
@@ -22817,6 +22852,134 @@
         "required": ["plan", "routeId", "legs", "useCredit"],
         "additionalProperties": false
       },
+      "SubscriptionOfferLeg": {
+        "type": "object",
+        "properties": {
+          "direction": {
+            "type": "string",
+            "enum": ["outbound", "return"]
+          },
+          "scheduleId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "patternVersionId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "pickupOccurrenceId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "dropoffOccurrenceId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "pickupName": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "dropoffName": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "fareId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "fare": {
+            "$ref": "#/components/schemas/Money"
+          },
+          "ridesGranted": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 366
+          },
+          "travelDays": {
+            "minItems": 1,
+            "maxItems": 7,
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 7
+            }
+          },
+          "creditPerUnusedRide": {
+            "$ref": "#/components/schemas/Money"
+          }
+        },
+        "required": [
+          "direction",
+          "scheduleId",
+          "patternVersionId",
+          "pickupOccurrenceId",
+          "dropoffOccurrenceId",
+          "pickupName",
+          "dropoffName",
+          "fareId",
+          "fare",
+          "ridesGranted",
+          "travelDays",
+          "creditPerUnusedRide"
+        ],
+        "additionalProperties": false
+      },
+      "SubscriptionOfferTerms": {
+        "type": "object",
+        "properties": {
+          "coverageStart": {
+            "type": "string",
+            "format": "date",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+          },
+          "coverageEnd": {
+            "type": "string",
+            "format": "date",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+          },
+          "price": {
+            "$ref": "#/components/schemas/Money"
+          },
+          "legs": {
+            "minItems": 2,
+            "maxItems": 2,
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SubscriptionOfferLeg"
+            }
+          }
+        },
+        "required": ["coverageStart", "coverageEnd", "price", "legs"],
+        "additionalProperties": false
+      },
+      "StandbyJoinInput": {
+        "type": "object",
+        "properties": {
+          "selection": {
+            "$ref": "#/components/schemas/PurchaseInput"
+          },
+          "travelDays": {
+            "minItems": 1,
+            "maxItems": 7,
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 7
+            }
+          }
+        },
+        "required": ["selection", "travelDays"],
+        "additionalProperties": false
+      },
       "StandbyOffer": {
         "type": "object",
         "properties": {
@@ -22839,9 +23002,38 @@
             "type": "string",
             "minLength": 1,
             "maxLength": 128
+          },
+          "terms": {
+            "type": "object",
+            "properties": {
+              "coverageStart": {
+                "type": "string",
+                "format": "date",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+              },
+              "coverageEnd": {
+                "type": "string",
+                "format": "date",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+              },
+              "price": {
+                "$ref": "#/components/schemas/Money"
+              },
+              "legs": {
+                "minItems": 2,
+                "maxItems": 2,
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/SubscriptionOfferLeg"
+                }
+              }
+            },
+            "required": ["coverageStart", "coverageEnd", "price", "legs"],
+            "additionalProperties": false,
+            "nullable": true
           }
         },
-        "required": ["id", "state", "expiresAt", "purchaseId"],
+        "required": ["id", "state", "expiresAt", "purchaseId", "terms"],
         "additionalProperties": false
       },
       "StandbyApplication": {
@@ -22869,10 +23061,18 @@
           },
           "state": {
             "type": "string",
-            "enum": ["submitted", "offered", "withdrawn", "checkout_open"]
+            "enum": ["submitted", "offered", "withdrawn", "checkout_open", "completed"]
           },
           "selection": {
             "$ref": "#/components/schemas/PurchaseInput"
+          },
+          "travelDays": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 7
+            }
           },
           "offer": {
             "type": "object",
@@ -22896,9 +23096,38 @@
                 "type": "string",
                 "minLength": 1,
                 "maxLength": 128
+              },
+              "terms": {
+                "type": "object",
+                "properties": {
+                  "coverageStart": {
+                    "type": "string",
+                    "format": "date",
+                    "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+                  },
+                  "coverageEnd": {
+                    "type": "string",
+                    "format": "date",
+                    "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+                  },
+                  "price": {
+                    "$ref": "#/components/schemas/Money"
+                  },
+                  "legs": {
+                    "minItems": 2,
+                    "maxItems": 2,
+                    "type": "array",
+                    "items": {
+                      "$ref": "#/components/schemas/SubscriptionOfferLeg"
+                    }
+                  }
+                },
+                "required": ["coverageStart", "coverageEnd", "price", "legs"],
+                "additionalProperties": false,
+                "nullable": true
               }
             },
-            "required": ["id", "state", "expiresAt", "purchaseId"],
+            "required": ["id", "state", "expiresAt", "purchaseId", "terms"],
             "additionalProperties": false,
             "nullable": true
           },
@@ -22915,6 +23144,7 @@
           "routeName",
           "state",
           "selection",
+          "travelDays",
           "offer",
           "createdAt"
         ],
@@ -22927,9 +23157,41 @@
             "type": "string",
             "format": "date-time",
             "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+          },
+          "coverageStart": {
+            "type": "string",
+            "format": "date",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+          },
+          "coverageEnd": {
+            "type": "string",
+            "format": "date",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+          },
+          "price": {
+            "$ref": "#/components/schemas/Money"
+          },
+          "credits": {
+            "minItems": 2,
+            "maxItems": 2,
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "direction": {
+                  "type": "string",
+                  "enum": ["outbound", "return"]
+                },
+                "creditPerUnusedRide": {
+                  "$ref": "#/components/schemas/Money"
+                }
+              },
+              "required": ["direction", "creditPerUnusedRide"],
+              "additionalProperties": false
+            }
           }
         },
-        "required": ["expiresAt"],
+        "required": ["expiresAt", "coverageStart", "coverageEnd", "price", "credits"],
         "additionalProperties": false
       },
       "Purchase": {
@@ -22961,6 +23223,35 @@
           },
           "price": {
             "$ref": "#/components/schemas/Money"
+          },
+          "offerTerms": {
+            "type": "object",
+            "properties": {
+              "coverageStart": {
+                "type": "string",
+                "format": "date",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+              },
+              "coverageEnd": {
+                "type": "string",
+                "format": "date",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+              },
+              "price": {
+                "$ref": "#/components/schemas/Money"
+              },
+              "legs": {
+                "minItems": 2,
+                "maxItems": 2,
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/SubscriptionOfferLeg"
+                }
+              }
+            },
+            "required": ["coverageStart", "coverageEnd", "price", "legs"],
+            "additionalProperties": false,
+            "nullable": true
           },
           "appliedCredit": {
             "$ref": "#/components/schemas/Money"
@@ -25608,6 +25899,21 @@
           "note": {
             "type": "string",
             "maxLength": 2000
+          },
+          "patternVersionId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "pickupOccurrenceId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "dropoffOccurrenceId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
           }
         },
         "required": ["amount", "effectiveFrom"],
@@ -25628,6 +25934,21 @@
             "type": "string",
             "maxLength": 2000
           },
+          "patternVersionId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "pickupOccurrenceId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "dropoffOccurrenceId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
           "id": {
             "type": "string",
             "minLength": 1,
@@ -25643,6 +25964,27 @@
             "type": "string",
             "format": "date-time",
             "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+          },
+          "journey": {
+            "type": "object",
+            "properties": {
+              "pickup": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 200
+              },
+              "dropoff": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 200
+              },
+              "direction": {
+                "type": "string",
+                "enum": ["outbound", "return"]
+              }
+            },
+            "required": ["pickup", "dropoff", "direction"],
+            "additionalProperties": false
           }
         },
         "required": ["amount", "effectiveFrom", "id", "routeId", "effectiveTo"],
@@ -26536,6 +26878,35 @@
           },
           "price": {
             "$ref": "#/components/schemas/Money"
+          },
+          "offerTerms": {
+            "type": "object",
+            "properties": {
+              "coverageStart": {
+                "type": "string",
+                "format": "date",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+              },
+              "coverageEnd": {
+                "type": "string",
+                "format": "date",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+              },
+              "price": {
+                "$ref": "#/components/schemas/Money"
+              },
+              "legs": {
+                "minItems": 2,
+                "maxItems": 2,
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/SubscriptionOfferLeg"
+                }
+              }
+            },
+            "required": ["coverageStart", "coverageEnd", "price", "legs"],
+            "additionalProperties": false,
+            "nullable": true
           },
           "appliedCredit": {
             "$ref": "#/components/schemas/Money"

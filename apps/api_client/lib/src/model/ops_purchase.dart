@@ -7,6 +7,7 @@ import 'package:trotxi_api_client/src/model/ops_purchase_checkout.dart';
 import 'package:trotxi_api_client/src/model/ops_purchase_attempts_inner.dart';
 import 'package:built_collection/built_collection.dart';
 import 'package:trotxi_api_client/src/model/money.dart';
+import 'package:trotxi_api_client/src/model/ops_purchase_offer_terms.dart';
 import 'package:built_value/built_value.dart';
 import 'package:built_value/serializer.dart';
 
@@ -20,6 +21,7 @@ part 'ops_purchase.g.dart';
 /// * [state]
 /// * [collectionState]
 /// * [price]
+/// * [offerTerms]
 /// * [appliedCredit]
 /// * [cashDue]
 /// * [checkout]
@@ -47,6 +49,9 @@ abstract class OpsPurchase implements Built<OpsPurchase, OpsPurchaseBuilder> {
 
   @BuiltValueField(wireName: r'price')
   Money get price;
+
+  @BuiltValueField(wireName: r'offerTerms')
+  OpsPurchaseOfferTerms? get offerTerms;
 
   @BuiltValueField(wireName: r'appliedCredit')
   Money get appliedCredit;
@@ -120,6 +125,13 @@ class _$OpsPurchaseSerializer implements PrimitiveSerializer<OpsPurchase> {
       object.price,
       specifiedType: const FullType(Money),
     );
+    if (object.offerTerms != null) {
+      yield r'offerTerms';
+      yield serializers.serialize(
+        object.offerTerms,
+        specifiedType: const FullType.nullable(OpsPurchaseOfferTerms),
+      );
+    }
     yield r'appliedCredit';
     yield serializers.serialize(
       object.appliedCredit,
@@ -226,6 +238,14 @@ class _$OpsPurchaseSerializer implements PrimitiveSerializer<OpsPurchase> {
             specifiedType: const FullType(Money),
           ) as Money;
           result.price.replace(valueDes);
+          break;
+        case r'offerTerms':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType.nullable(OpsPurchaseOfferTerms),
+          ) as OpsPurchaseOfferTerms?;
+          if (valueDes == null) continue;
+          result.offerTerms.replace(valueDes);
           break;
         case r'appliedCredit':
           final valueDes = serializers.deserialize(

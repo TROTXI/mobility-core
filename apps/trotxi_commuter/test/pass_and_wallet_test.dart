@@ -215,7 +215,10 @@ void main() {
       expect(find.textContaining('GHS 1.00 is held'), findsOneWidget);
       expect(find.text('Total credit: GHS 19.80'), findsOneWidget);
       expect(find.text('Your membership is paused.'), findsOneWidget);
-      expect(find.text('A payment dispute is open on your account.'), findsOneWidget);
+      expect(
+        find.text('A payment dispute is open on your account.'),
+        findsOneWidget,
+      );
       expect(find.textContaining('4281'), findsNothing);
       expect(find.byType(Switch), findsNothing);
       expect(f.requests.map((r) => r.path), contains('/v1/me/membership'));
@@ -224,4 +227,60 @@ void main() {
       await finish(tester);
     },
   );
+
+  for (final hasCurrent in [false, true]) {
+    testWidgets(
+      'wallet separates paid upcoming coverage from current rides ($hasCurrent)',
+      (tester) async {
+        final upcoming = {
+          'id': 'next-period',
+          'startsAt': '2030-11-01T00:00:00Z',
+          'endsAt': '2030-12-01T00:00:00Z',
+          'state': 'open',
+          'paused': false,
+          'renewalMode': 'manual',
+        };
+        f.reply = (o) => o.path == '/v1/me/membership'
+            ? jsonResponse({
+                'data': {
+                  'membership': {'id': 'member', 'lifecycle': 'open'},
+                  'coverage': hasCurrent
+                      ? {
+                          ...upcoming,
+                          'id': 'current-period',
+                          'startsAt': timestamp,
+                          'endsAt': '2030-11-01T00:00:00Z',
+                        }
+                      : null,
+                  'upcomingCoverage': upcoming,
+                  'lastCoverageEndedAt': null,
+                  'commute': null,
+                  'access': {'canReserve': hasCurrent, 'blocks': []},
+                  'entitlements': {
+                    'remainingRides': hasCurrent ? 12 : 0,
+                    'credit': {'amountMinor': 0, 'currency': 'GHS'},
+                    'heldCredit': {'amountMinor': 0, 'currency': 'GHS'},
+                    'availableCredit': {'amountMinor': 0, 'currency': 'GHS'},
+                  },
+                },
+              })
+            : jsonResponse(page([]));
+        await pump(tester, WalletTab(client: f.api));
+        expect(find.text(hasCurrent ? '12' : '0'), findsOneWidget);
+        await tester.scrollUntilVisible(
+          find.text('Upcoming coverage paid'),
+          150,
+        );
+        expect(find.text('Upcoming coverage paid'), findsOneWidget);
+        expect(find.textContaining('Starts 1 Nov 2030'), findsOneWidget);
+        expect(
+          find.textContaining(
+            'rides become available when this coverage starts',
+          ),
+          findsOneWidget,
+        );
+        await finish(tester);
+      },
+    );
+  }
 }

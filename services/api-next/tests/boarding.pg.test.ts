@@ -607,6 +607,8 @@ test('BRD-17: 014 to 015 upgrade preserves funded reservations and recorded migr
     '038_standby_pool.sql',
     '039_erasure_recovery_control.sql',
     '040_query_path_indexes.sql',
+    '041_stop_pair_fares.sql',
+    '042_priced_subscription_offers.sql',
   ]);
   await grantRuntime(f.owner, f.role);
   assert.deepEqual((await f.owner.query('SELECT * FROM app.reservations')).rows, before);
