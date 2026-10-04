@@ -43,3 +43,31 @@ edits. Do not bypass guards using direct database updates.
 
 Sources: `apps/ops/src/{App.tsx,components/Shell.tsx,screens/}`.
 See [Ops development](../../apps/ops/README.md).
+
+## Ownership and handoffs
+
+| Ops action                     | Who acts next                                            | What it does not do                           |
+| ------------------------------ | -------------------------------------------------------- | --------------------------------------------- |
+| Publish route/version/schedule | Ops generates and assigns departures                     | Does not create paid rider coverage           |
+| Send subscription offer        | Commuter reviews and explicitly accepts/pays             | Does not reserve a guaranteed fleet seat      |
+| Assign driver/vehicle          | Assigned driver starts eligible trip                     | Does not begin tracking from the Ops browser  |
+| Decide driver request          | Ops separately updates operational assignments if needed | Does not automatically reassign trips         |
+| Approve commute change         | Ops explicitly applies it when eligible                  | Does not switch the rider immediately         |
+| Initiate refund                | Provider evidence and payment workers settle it          | Does not prove funds already arrived          |
+| Read erasure status            | Support follows the retention/cleanup procedure          | Does not certify all backups/providers erased |
+
+Start with [worked route setup](../api/worked-examples.md#1-ops-prepares-service),
+then [the offer flow](../api/worked-examples.md#3-request-offer-and-pay).
+The route/request/trip IDs belong to different resources; never pass one in
+place of another because their UI labels look similar.
+
+For every edit screen, retain the resource edit token, submit once, recover
+an uncertain result with the same command identity, and reconcile conflicts.
+Client permissions only affect presentation; server authorization is mandatory.
+
+Code: [navigation](../../apps/ops/src/components/Shell.tsx),
+[Network](../../apps/ops/src/screens/Network.tsx),
+[Standby](../../apps/ops/src/screens/Standby.tsx).
+Tests: [offers](../../apps/ops/src/screens/Standby.test.tsx),
+[trips](../../apps/ops/src/screens/Trips.test.tsx),
+[support](../../apps/ops/src/screens/Support.test.tsx).

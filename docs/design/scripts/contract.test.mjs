@@ -126,6 +126,101 @@ function jsonSchema(value) {
 ajv.addSchema({ $id: 'urn:trotxi:design', components: jsonSchema(spec.components) });
 const validate = (name) => ajv.compile({ $ref: `urn:trotxi:design#/components/schemas/${name}` });
 
+test('worked HTTP examples use implemented routes, required headers and valid request bodies', async () => {
+  const implemented = JSON.parse(
+    await readFile(new URL('../contracts/replacement.openapi.json', import.meta.url), 'utf8'),
+  );
+  const guide = await readFile(new URL('../../api/worked-examples.md', import.meta.url), 'utf8');
+  const blocks = [...guide.matchAll(/```http\n([\s\S]*?)\n```/g)];
+  assert.ok(blocks.length > 0, 'Worked request examples must not disappear');
+  const covered = new Set();
+  for (const [, block] of blocks) {
+    const [head, ...bodyParts] = block.split('\n\n');
+    const [line, ...headerLines] = head.split('\n');
+    const [method, target] = line.split(' ');
+    const url = new URL(target, 'https://api.example.invalid');
+    const segments = url.pathname.split('/');
+    const route = Object.entries(implemented.paths).find(([path, methods]) => {
+      const parts = path.split('/');
+      return (
+        methods[method.toLowerCase()] &&
+        parts.length === segments.length &&
+        parts.every((part, i) => part.startsWith('{') || part === segments[i])
+      );
+    });
+    assert.ok(route, `Undeclared example: ${line}`);
+    const [path, methods] = route;
+    const operation = methods[method.toLowerCase()];
+    covered.add(operation.operationId);
+    const headers = Object.fromEntries(
+      headerLines.map((header) => {
+        const colon = header.indexOf(':');
+        assert.ok(colon > 0, `Malformed header in ${line}`);
+        return [header.slice(0, colon).toLowerCase(), header.slice(colon + 1).trim()];
+      }),
+    );
+    assert.equal(headers.host, 'api.example.invalid', 'Examples must not target a real service');
+    if (operation.security?.length) assert.match(headers.authorization ?? '', /^Bearer <[A-Z_]+>$/);
+    const parameters = operation.parameters ?? [];
+    for (const parameter of parameters) {
+      const name = parameter.name;
+      const value =
+        parameter.in === 'header'
+          ? headers[name.toLowerCase()]
+          : parameter.in === 'query'
+            ? url.searchParams.get(name)
+            : segments[path.split('/').indexOf(`{${name}}`)];
+      if (parameter.required) assert.ok(value != null && value !== '', `${line}: missing ${name}`);
+      if (value != null) {
+        const typed =
+          parameter.schema.type === 'integer'
+            ? Number(value)
+            : parameter.schema.type === 'boolean'
+              ? JSON.parse(value)
+              : value;
+        const check = ajv.compile(jsonSchema(parameter.schema));
+        assert.ok(check(typed), `${line}: invalid ${name}: ${JSON.stringify(check.errors)}`);
+      }
+    }
+    for (const name of url.searchParams.keys())
+      assert.ok(
+        parameters.some((p) => p.in === 'query' && p.name === name),
+        `${line}: unknown ${name}`,
+      );
+    if (['commuter', 'driver'].includes(headers['x-trotxi-client']))
+      assert.ok(['android', 'ios'].includes(headers['x-trotxi-platform']));
+    else assert.equal(headers['x-trotxi-platform'], undefined);
+    const rawBody = bodyParts.join('\n\n').trim();
+    if (operation.requestBody?.required) assert.ok(rawBody, `${line}: missing body`);
+    if (rawBody) {
+      assert.equal(headers['content-type'], 'application/json');
+      const ref = operation.requestBody?.content?.['application/json']?.schema?.$ref;
+      assert.ok(ref, `${line}: unexpected body`);
+      const name = ref.split('/').at(-1);
+      const body = JSON.parse(rawBody);
+      schemas[name].parse(body);
+      const check = validate(name);
+      assert.ok(check(body), `${line}: ${JSON.stringify(check.errors)}`);
+    }
+  }
+  for (const operation of [
+    'createRoute',
+    'createPatternVersion',
+    'createSchedule',
+    'createFare',
+    'verifyPhoneSignIn',
+    'joinStandby',
+    'offerStandby',
+    'acceptStandbyOffer',
+    'decideReservation',
+    'issuePass',
+    'boardRider',
+    'recordPosition',
+    'updateNotificationPreferences',
+  ])
+    assert.ok(covered.has(operation), `Missing core workflow example: ${operation}`);
+});
+
 test('commute event history declares pagination only, without its parent status filter', async () => {
   const runtime = JSON.parse(
     await readFile(

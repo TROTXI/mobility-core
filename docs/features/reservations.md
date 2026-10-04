@@ -32,3 +32,38 @@ See [boarding](boarding.md), [notifications](../api/notifications.md) and
 
 Sources: `services/api-next/src/membership/service.ts`,
 `services/api-next/src/boarding/service.ts`, migrations 013 and 042.
+
+## Confirmation flow
+
+```mermaid
+flowchart TD
+  trigger["Rider confirms or default runs"] --> departure["Resolve departure"]
+  departure --> period["Find paid period covering departure"]
+  period --> eligible{"Journey and rider eligible"}
+  eligible -->|"No"| refused["Return refusal"]
+  eligible -->|"Yes"| capacity{"Capacity available"}
+  capacity -->|"Yes"| reserved["Reserved seat"]
+  capacity -->|"No"| unavailable["Capacity refusal or unseated default"]
+  reserved --> boarded["Board or settle no-show"]
+```
+
+Ask-dispatch creates prompts; it is not payment or boarding. A missing scheduler
+is different from missing coverage. Defaults act on unanswered requests, while
+a commuter's explicit confirm/decline records their decision.
+
+For day-ahead renewal booking, select the period by the trip's departure time,
+not today's wallet view. An explicit decline does not require a paid booking.
+Do not select a random period when multiple departures make the result ambiguous.
+
+| Result                          | UI/recovery                                                           |
+| ------------------------------- | --------------------------------------------------------------------- |
+| `coverage_required`             | Check the selected departure is inside paid coverage                  |
+| `departure_unavailable`         | Re-read catalog/trips; do not substitute a different journey silently |
+| Capacity or restriction refusal | Show the reason; payment does not override it                         |
+| Confirmation response lost      | Repeat the same command/key, then read the reservation                |
+| Operator cancelled trip         | Show cancellation; do not display an old pass as valid                |
+
+Code: [membership service](../../services/api-next/src/membership/service.ts).
+Tests: [membership](../../services/api-next/tests/membership.pg.test.ts) and
+[renewal booking](../../services/api-next/tests/pricing.pg.test.ts).
+Calls: [confirm and pass](../api/worked-examples.md#4-reserve-and-operate-the-trip).

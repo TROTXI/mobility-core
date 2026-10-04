@@ -48,3 +48,44 @@ from interactive operators.
 Sources: `services/api-next/src/auth/`, `runtime/config.ts`,
 `apps/ops/src/auth/`, `apps/trotxi_driver/lib/core/state/session_controller.dart`.
 Configuration support does not prove Apple or production provider setup.
+
+## Flow and ownership
+
+```mermaid
+flowchart TD
+  entry["Choose sign-in"] --> method{"Phone or social"}
+  method -->|"Phone"| loginCode["Request and verify OTP"]
+  method -->|"Social"| social["Verify provider identity"]
+  loginCode --> session["Authenticated account"]
+  social --> session
+  session --> eligible{"Name and phone verified"}
+  eligible -->|"Yes"| request["Request subscription"]
+  eligible -->|"No"| profile["Complete name and account-bound OTP"]
+  profile --> request
+```
+
+The commuter initiates login and stores tokens through the shared client.
+The API verifies credentials and owns sessions/phone verification. mNotify
+delivers the challenge but cannot itself grant access. Ops has a separate
+Google-plus-passkey flow; driver access uses code/PIN, not commuter OTP.
+
+| Situation                          | Client behavior                                                 | Server boundary                                                          |
+| ---------------------------------- | --------------------------------------------------------------- | ------------------------------------------------------------------------ |
+| Google sign-in, phone unverified   | Allow ordinary account access; verify before requesting service | Standby rejects missing verification                                     |
+| Phone OTP already succeeded        | Do not ask for another OTP just to join                         | Verified record still belongs to that account                            |
+| Expired/wrong/replayed code        | Show failure; request a fresh challenge when eligible           | No session/verification granted                                          |
+| Send refused or unconfirmed        | Show delivery failure and retry guidance                        | Do not treat challenge as verified                                       |
+| 429                                | Honor Retry-After; preserve user input                          | Shared and purpose-specific budgets apply                                |
+| Account number collision           | Show the explicit review/conflict state                         | No silent account/subscription merge                                     |
+| Refresh request loses its response | Use shared-session recovery behavior                            | Refresh tokens are single-use; unsafe parallel reuse can revoke sessions |
+
+Temporary driver PINs must complete private-PIN setup before trip work.
+Never implement a generic “retry every 401” wrapper around mutations.
+
+Developer entry points:
+[OTP](../../services/api-next/src/auth/phone-otp.ts),
+[auth service](../../services/api-next/src/auth/service.ts),
+[session client](../../apps/trotxi_client/lib/commuter_session_client.dart).
+Tests: [auth](../../services/api-next/tests/auth.pg.test.ts) and
+[account](../../services/api-next/tests/account.pg.test.ts).
+Requests: [worked auth examples](../api/worked-examples.md#2-establish-commuter-eligibility).

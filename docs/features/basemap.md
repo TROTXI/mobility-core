@@ -21,3 +21,20 @@ apply Render response headers. See [Ops CSP](../operations/ops-csp.md).
 
 Sources: `maps/`, `apps/trotxi_map/`,
 `apps/ops/src/components/LiveMap.tsx`, `render.yaml`.
+
+## Diagnose the right layer
+
+| Symptom                                    | Inspect                                                           |
+| ------------------------------------------ | ----------------------------------------------------------------- |
+| No background tiles                        | Bootstrap URLs, byte ranges, CORS, style/glyph assets and Ops CSP |
+| Map renders but vehicle is absent          | Authorized live response, freshness and trip state                |
+| Driver dot moves but Ops is stale          | Durable upload queue and matching server receipts                 |
+| Route is a straight line                   | Configured version geometry, not the tile provider                |
+| Map works in a test but not a native build | Platform MapLibre setup and the actual build/device               |
+
+Do not make trip/boarding actions depend on tile availability. Keep attribution
+visible and distinguish a missing basemap from missing vehicle data.
+
+Code: [Ops map](../../apps/ops/src/components/LiveMap.tsx),
+[shared mobile map](../../apps/trotxi_map/).
+Test: [Ops map regression](../../apps/ops/src/components/LiveMap.test.tsx).

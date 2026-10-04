@@ -18,6 +18,8 @@ user flow, business rules, API boundary and code responsible for it.
 
 Use the [developer guide](development.md) for code locations and checks, then
 the [API integration guide](api/README.md) and [response examples](api/response-examples.md).
+Use the [worked API calls](api/worked-examples.md) to follow the complete flow
+with required headers, request bodies and recovery notes.
 The [implemented OpenAPI](design/contracts/replacement.openapi.json) defines
 request/response shapes. The [architecture](architecture.md) explains state ownership.
 

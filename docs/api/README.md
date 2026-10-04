@@ -17,6 +17,10 @@ current commercial defaults or a supported new-purchase walkthrough.
 Use the schema-checked [response examples](response-examples.md) to understand
 the error, membership and live-trip shapes.
 
+For request bodies, required headers and returned-ID handoffs, use the
+[worked API calls](worked-examples.md). They are synthetic templates checked
+against the contract, not authorized calls to staging.
+
 ## Request rules
 
 Use the documented client/build/platform headers and bearer token where
