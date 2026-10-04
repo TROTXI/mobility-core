@@ -6,7 +6,8 @@ scheduled/paid workers.
 
 ## Behaviour
 
-- Active map and stop ETA reads refresh every five seconds while foregrounded.
+- The active map uses the device's captured GPS fix; it does not read that
+  position back from the server. Stop ETA reads refresh every five seconds while foregrounded.
   Returning to the app refreshes immediately; disposed screens stop polling.
 - The signed-in shell refreshes assignments every 30 seconds and on resume.
   `assignmentChangedAt` comes from committed assignment/reschedule/cancel events.
@@ -57,7 +58,10 @@ The worker is still **manual on staging**, as requested. Polling works without
 it, but remote push delivery requires running the existing worker. No scheduling
 or production configuration has been changed.
 
-## Verification
+## Historical implementation verification
+
+These counts describe the original implementation run, not the current suite
+or a new physical-device sign-off.
 
 - Driver regression suite: 201 tests passing; static analysis clean.
 - Android debug APK builds after a clean build (Firebase native dependencies

@@ -1,7 +1,12 @@
 # Demo & teaching assets
 
+Historical demos for the retired backend. Commands and endpoint behavior below
+are not current setup instructions. Use [the API guide](../docs/api/README.md)
+and [current architecture](../docs/architecture.md) instead. The old fake-auth
+playground is not an authentication option in the deployed API.
+
 Static pages for team sessions and API exploration. Nothing here ships to
-production — the Dockerfile only packages `services/api/dist`.
+production; the current API Dockerfile packages `services/api-next`.
 
 ## auth-explainer.html — the authentication walkthrough
 

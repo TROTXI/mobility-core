@@ -2,9 +2,8 @@
 
 ## Ops-priced subscription offer rollout
 
-The new offer flow is documented in the current amendment to
-[ADR-0015](../adr/0015-fare-derived-pricing.md), including the staging acceptance
-loop. It requires migrations 041 and 042, the regenerated API clients and the
+The offer flow is documented in
+[Subscription offers, payments and renewal](../features/payments-and-wallet.md). It requires migrations 041 and 042, the regenerated API clients and the
 updated Ops and commuter applications. The historical checks below are not
 evidence that this new flow has been deployed or exercised with Paystack.
 
@@ -53,29 +52,30 @@ departures outside that period.
 
 ## Deployment and operating decision
 
-PR #338 is deployed to `trotxi-api-staging` at `59041f1`, including migrations
-023–025. On 2026-09-20 UTC, the owner chose **manual runs for now** instead of
-adding paid Render cron services. No scheduler, credentials or environment
-settings were changed for this verification.
+The checked-in GitHub Actions workflow runs payment inbox/reconciliation and
+email retry every 15 minutes on main, using the protected staging environment.
+This does not schedule trip generation, asks/defaults, push, pause settlement,
+erasure or retention. Check the relevant job result before claiming it ran.
 
-Without a scheduler, these jobs do **not** run automatically. In particular,
-accepting a payment webhook stores evidence; the inbox must be processed to
-activate a purchase. Lazy pause settlement on selected request paths is not a
-replacement for scheduled maintenance.
+Accepting a webhook stores evidence; inbox processing activates eligible
+purchases. Lazy pause settlement on selected request paths is not a substitute
+for maintenance. See [deployment](../DEPLOY.md) for configuration and permissions.
+The dated verification records below are historical evidence, not a current
+scheduler inventory.
 
 ## Running existing workers manually
 
-Use the staging service's shell and existing configuration. Each job needs the
-UUID of the existing active operations account for attribution. If it is not
-already configured, supply `REPLACEMENT_MAINTENANCE_USER_ID` for that invocation
-only; it is an account identifier, not a new secret or database credential.
+Use the approved maintenance runtime and its restricted database login, not
+the API service's database credentials. Supply the configured non-human
+maintenance account as `REPLACEMENT_MAINTENANCE_USER_ID`, never a human admin.
+See [staging security](../operations/staging-security.md).
 
 ```sh
-REPLACEMENT_MAINTENANCE_USER_ID='<existing operator UUID>' node dist/worker.js trip-generation 2026-09-21
-REPLACEMENT_MAINTENANCE_USER_ID='<existing operator UUID>' node dist/worker.js personal-pause-resumes
-REPLACEMENT_MAINTENANCE_USER_ID='<existing operator UUID>' node dist/worker.js push
-REPLACEMENT_MAINTENANCE_USER_ID='<existing operator UUID>' node dist/worker.js emails
-REPLACEMENT_MAINTENANCE_USER_ID='<existing operator UUID>' node dist/worker.js erasures
+REPLACEMENT_MAINTENANCE_USER_ID='<maintenance account UUID>' node dist/worker.js trip-generation 2026-09-21
+REPLACEMENT_MAINTENANCE_USER_ID='<maintenance account UUID>' node dist/worker.js personal-pause-resumes
+REPLACEMENT_MAINTENANCE_USER_ID='<maintenance account UUID>' node dist/worker.js push
+REPLACEMENT_MAINTENANCE_USER_ID='<maintenance account UUID>' node dist/worker.js emails
+REPLACEMENT_MAINTENANCE_USER_ID='<maintenance account UUID>' node dist/worker.js erasures
 ```
 
 Replace the illustrative travel date before running. Trip generation defaults
@@ -136,7 +136,10 @@ with synthetic identifiers, then proves against Postgres that pending,
 processed, replayed and out-of-order events produce one refund and one reversal.
 The live check does not fabricate a processed callback while Paystack is pending.
 
-## What remains unproven
+## What remained unproven in the 2026-09-20 check
+
+This is the original test record, not the current implementation backlog.
+Use [current status](../STATUS.md) for available app features and scheduling.
 
 - Actual pause activation/resumption on the future dates and its resulting
   coverage extension on staging. Automated database tests cover that rule;

@@ -35,14 +35,15 @@ non-null `readAt`. It is idempotent; a different rider's ID returns 404.
 `{ "data": { "readCount": 1 } }`. Neither mark-read call needs a request body.
 
 The supported kinds are `seat_ask`, `seat_held`, `seat_unseated`, `ride_used`,
-`credit_converted`, `trip_changed` and `trip_cancelled`. They come from committed
+`credit_converted`, `trip_changed`, `trip_cancelled` and `standby_offered`. They come from committed
 reservation prompts, status changes, credit conversions and trip events. A
 unique `(rider, kind, source)` key prevents a replay from creating a duplicate.
 Opening a reservation target fetches the current trip detail; a credit target
-opens the wallet. The inbox never treats an old event as current trip state.
+opens the wallet. A standby target opens the subscription request and offer.
+The inbox never treats an old event as current trip state.
 
 `GET /v1/me/notification-preferences` returns `data.dailyAskTime` (24-hour
-Ghana local clock, 06:00–21:00), `data.optionalUpdatesEnabled`, `updatedAt`
+Ghana local clock, 06:00 through 21:59), `data.optionalUpdatesEnabled`, `updatedAt`
 and `version`, plus an `ETag` header. `PATCH` takes both settings and that
 ETag in `If-Match`; missing is 428 and stale is 412. There is no global mute:
 seat asks, seat results, boarding/credit receipts and trip changes remain

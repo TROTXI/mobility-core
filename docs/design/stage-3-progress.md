@@ -1,5 +1,9 @@
 # Stage 3 implementation checkpoint
 
+> Historical design/acceptance record. Scope and deployment statements below
+> describe the recorded stage, not the current runtime. See
+> [current features](../features/README.md) and [design index](README.md).
+
 Stage 2 is approved and merged as PR #294, merge `1a46ad0`. The source/lockfile
 baseline remains pinned to `43cdae0`; it is not advanced to the merge commit.
 

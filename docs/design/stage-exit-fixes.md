@@ -1,5 +1,9 @@
 # Replacement exit fixes
 
+> Historical design/acceptance record. Scope and deployment statements below
+> describe the recorded stage, not the current runtime. See
+> [current features](../features/README.md) and [design index](README.md).
+
 Implementation branch: `codex/replacement-exit-fixes`, based on `636239d`.
 Sole implementation and verification: Codex. No staging deployment, reset,
 provider payment or traffic switch is performed by this change.

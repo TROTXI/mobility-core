@@ -1,5 +1,9 @@
 # Stage 3: payment recovery — migration 012
 
+> Historical design/acceptance record. Scope and deployment statements below
+> describe the recorded stage, not the current runtime. See
+> [current features](../features/README.md) and [design index](README.md).
+
 Implementation branch: `codex/stage-3-payment-recovery`, based on integration
 `8da4f53f1341fd5dddcbdf94a9268769c932be50` after #305. Target:
 `codex/backend-replacement`, not main. Nothing in this slice deploys or schedules

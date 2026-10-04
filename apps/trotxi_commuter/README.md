@@ -1,24 +1,29 @@
-# trotxi_commuter
+# Trotxi commuter app
 
-The bell on Home opens the server-backed rider notification inbox. The Profile
-notification screen edits account-scoped settings with the server ETag. In the
-pilot, seat-ask dispatch remains manual, so a preferred ask hour is saved but
-does not schedule delivery. Mandatory ride notices cannot be muted. See
-[`docs/api/notifications.md`](../../docs/api/notifications.md) for the contract
-and event policy.
+Flutter commuter app over `trotxi_client` and the canonical generated
+`api_client`. Build requirements are in [the apps guide](../README.md).
 
-A new Flutter project.
+## Implemented flow
 
-## Getting Started
+Google/configured Apple or phone OTP sign-in → complete rider profile and
+verify phone for standby → choose route, outbound/return journeys and weekdays
+→ request an Ops offer → review dates, price, ride allowances and credit values
+→ explicitly pay through Paystack → observe verified fulfilment.
 
-This project is a starting point for a Flutter application.
+Home, Trips, Wallet and Profile expose reservations/passes, scoped live tracking,
+current/upcoming membership, payment recovery/history, ride/credit history,
+pauses, commute-change requests, avatar/account controls and support.
+The bell opens the durable inbox; preferences use the server ETag.
 
-A few resources to get you started if this is your first Flutter project:
+There is no fixed 44-ride subscription, direct public purchase bypass, cash
+top-up wallet, automatic card renewal or single-seat standby cascade.
+Phone OTP already verifies phone-login accounts; social accounts verify at
+standby when needed. OTP is not Ghana Card identity verification.
 
-- [Learn Flutter](https://docs.flutter.dev/get-started/learn-flutter)
-- [Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Flutter learning resources](https://docs.flutter.dev/reference/learning-resources)
+See [API integration](../../docs/api/README.md),
+[offers](../../docs/features/payments-and-wallet.md) and
+[notifications](../../docs/api/notifications.md).
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+Preferred ask time is stored, not an enabled scheduler. Push/store/Apple and
+production configuration require separate acceptance; source support is not
+proof a device received a notification.

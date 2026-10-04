@@ -52,7 +52,7 @@ services:
         sync: false
       - key: STAGING_DATABASE_CA_CERT
         sync: false # optional PEM CA; otherwise use the system trust store
-      # Required because NODE_ENV=production (see ADR-0007). Set the value in the
+      # Required because NODE_ENV=production. Set the value in the
       # Render dashboard; never commit it. Generate: openssl rand -base64 48
       - key: JWT_SECRET
         sync: false
@@ -678,7 +678,7 @@ services:
   #       fromDatabase:
   #         name: trotxi-db-production
   #         property: connectionString
-  #     # Required because NODE_ENV=production (ADR-0007). Generate a NEW one:
+  #     # Required because NODE_ENV=production. Generate a NEW one:
   #     #   openssl rand -base64 48
   #     - key: JWT_SECRET
   #       sync: false

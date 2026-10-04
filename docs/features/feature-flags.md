@@ -1,56 +1,27 @@
-# Launch configuration, feature flags and force-update
+# Bootstrap, flags and supported builds
 
-**Owner:** Godfred Awuku · **Last verified:** 2026-09-12
+Source audit: 2026-10-03.
 
-**Status:** Live with the pilot's home-grown flag store.
+Public `GET /flags` supplies client bootstrap configuration: flags,
+application/platform minimum builds, map URLs and operations contacts.
+Unset contact/map values remain absent/null; clients must not invent a support
+number or treat a missing basemap as unavailable boarding.
 
-`GET /flags` is the public launch/session payload shared by all clients. It
-contains feature gates, minimum versions, basemap configuration and operations
-contact details. This keeps operational values out of shipped app binaries.
+Ops Platform edits flags and minimum versions using:
 
-## Public response
+- `GET /v1/ops/flags`, `PUT /v1/ops/flags/{key}`.
+- `GET /v1/ops/min-versions`,
+  `PUT /v1/ops/min-versions/{app}/{platform}`.
 
-```json
-{
-  "flags": [{ "key": "live_positions", "enabled": true, "rolloutPercentage": 100 }],
-  "minSupportedVersion": { "ios": null, "android": null },
-  "mapTiles": {
-    "url": null,
-    "styleUrl": null,
-    "darkStyleUrl": null,
-    "attribution": "© OpenStreetMap contributors · © OpenMapTiles"
-  },
-  "operations": {
-    "phone": null,
-    "whatsapp": null,
-    "email": null,
-    "hours": null
-  }
-}
-```
+Mobile product requests carry client/build/platform metadata. Missing or
+unsupported metadata is rejected by the API; unsupported builds receive 426.
+The floor cache lasts 30 seconds per process and invalidates locally after
+an Ops update. Other replicas can observe the update after that bounded delay.
 
-The endpoint is public because sign-in recovery, force-update and map startup
-need it before authentication. It omits flag descriptions and timestamps.
+Flag storage is not proof every feature has an enforced rollout switch, nor
+a complete experimentation/cohort platform. Inspect a feature's consumers
+before relying on a flag to disable it.
 
-`enabled` is the kill switch. `rolloutPercentage` is data only; cohort bucketing
-is performed by clients until a product-analytics platform replaces the pilot
-implementation.
-
-## Admin API
-
-| Endpoint                            | Purpose                                            |
-| ----------------------------------- | -------------------------------------------------- |
-| `GET /admin/flags`                  | Full flag rows                                     |
-| `PUT /admin/flags/:key`             | Partial upsert of enabled, rollout and description |
-| `GET /admin/min-versions`           | Current iOS and Android floors                     |
-| `PUT /admin/min-versions/:platform` | Set a force-update floor                           |
-
-Map and operations-contact values are environment configuration, not database
-rows. Unset values serialize as `null`, which tells clients to hide or degrade
-that surface safely. A placeholder emergency number must never be shipped.
-
-## Code
-
-- `services/api/src/modules/flags/`
-- admin flag routes in `services/api/src/modules/admin/`
-- migration `018_feature_flags.sql`
+Sources: `services/api-next/src/config/service.ts`, `src/http/app.ts`,
+`src/runtime/compose.ts`, `apps/ops/src/screens/Platform.tsx`.
+See [performance](../operations/request-performance.md).

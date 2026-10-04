@@ -1,5 +1,9 @@
 # Stage 5 verification and Stage 6 staging cutover
 
+> Historical design/acceptance record. Scope and deployment statements below
+> describe the recorded stage, not the current runtime. See
+> [current features](../features/README.md) and [design index](README.md).
+
 Owner: Codex only. Starting integration commit: `67c8147` (merged #323).
 This is an execution record and release checklist, **not a completed cutover**.
 New frontend features excluded in `stage-4-completion.md` stay out of scope.

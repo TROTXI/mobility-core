@@ -1,22 +1,26 @@
 # Stage 2 implementation review
 
+> Historical design/acceptance record. Scope and deployment statements below
+> describe the recorded stage, not the current runtime. See
+> [current features](../features/README.md) and [design index](README.md).
+
 The baseline measuring instrument is implemented. No business migration,
 production endpoint, app client or deployment setting changes in this PR.
 Staging was not accessed or reset. Replacement runtime work remains stage 3.
 
 ## Review order
 
-1. [`catalog.mjs`](../../tools/redesign-harness/catalog.mjs): 16 preserved payment
+1. `catalog.mjs` (retired `tools/redesign-harness/catalog.mjs`; see Git history): 16 preserved payment
    scenarios, independent fixed expectations, four new recovery scenarios and
    two deliberate negative controls. No SQL or baseline adapter import.
-2. [`baseline-adapter.mjs`](../../tools/redesign-harness/baseline-adapter.mjs): pinned
+2. `baseline-adapter.mjs` (retired `tools/redesign-harness/baseline-adapter.mjs`; see Git history): pinned
    domain calls, SQL fixture translation and persisted-state observations.
-3. [`assertions.mjs`](../../tools/redesign-harness/assertions.mjs): exact scalar/array
+3. `assertions.mjs` (retired `tools/redesign-harness/assertions.mjs`; see Git history): exact scalar/array
    comparison, logical identity preservation and contract projection.
-4. [`run.mjs`](../../tools/redesign-harness/run.mjs) and
-   [`support.mjs`](../../tools/redesign-harness/support.mjs): source pinning,
+4. `run.mjs` (retired `tools/redesign-harness/run.mjs`; see Git history) and
+   `support.mjs` (retired `tools/redesign-harness/support.mjs`; see Git history): source pinning,
    isolated databases, original suite, fail-closed reporting and cleanup.
-5. [Runbook and extension limits](../../tools/redesign-harness/README.md).
+5. Runbook and extension limits (retired `tools/redesign-harness/README.md`; see Git history).
 
 ## Verification
 

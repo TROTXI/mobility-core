@@ -1,5 +1,9 @@
 # Proposed API contracts and endpoint redesign
 
+> Historical design/acceptance record. Scope and deployment statements below
+> describe the recorded stage, not the current runtime. See
+> [current features](../features/README.md) and [design index](README.md).
+
 Status: stage-1 review draft; no deployed routes, runtime schemas or app clients changed.
 Baseline: `43cdae0`, merged PR #292. This is part of the
 [database redesign](database-redesign-proposal.md), not a later cosmetic rename.

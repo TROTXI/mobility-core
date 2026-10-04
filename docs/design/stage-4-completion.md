@@ -1,5 +1,9 @@
 # Stage 4 completion: existing app flows and replacement requirements
 
+> Historical design/acceptance record. Scope and deployment statements below
+> describe the recorded stage, not the current runtime. See
+> [current features](../features/README.md) and [design index](README.md).
+
 Owner: Codex. Scope confirmed by Godfred: finish what the old apps actually did
 and what the replacement model requires; hand new frontend features over
 separately. This is implementation completion, **not deployment approval**.

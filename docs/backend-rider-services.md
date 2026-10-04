@@ -71,10 +71,14 @@ Membership reads and booking/checkout boundaries also settle due pauses, so a
 late worker does not leave the rider's membership screen stuck indefinitely.
 Other read paths do not independently settle time: schedule the worker.
 
-## Purchase price preview
+## Legacy purchase price preview
+
+New subscriptions use [Ops-issued offers](features/payments-and-wallet.md).
+The endpoint below remains for compatibility; it is not an offer quote and
+cannot authorize direct checkout or determine a new offered package's terms.
 
 `POST /v1/me/purchase-quotes` accepts `{ "plan": "monthly", "routeId": "…",
-"useCredit": true }`. No legs are needed until actual purchase creation.
+"useCredit": true }`. This read does not select journey-specific offer terms.
 
 `data` includes `routeId`, `plan`, `ridesGranted`, `fare`, `price`,
 `availableCredit`, `appliedCredit`, `cashDue`, `minimumCashDue`, `quotedAt`,
@@ -83,8 +87,8 @@ Other read paths do not independently settle time: schedule the worker.
 
 It uses authoritative current pricing and excludes held credit, but creates no
 purchase, hold, membership or Paystack checkout. It is a **price preview**, not
-an eligibility/seat promise. Actual checkout checks the commute, restrictions
-and existing coverage, then freezes prices and reserves credit atomically.
+an eligibility/seat promise. Actual checkout requires an accepted Ops offer, checks the commute,
+restrictions and non-overlapping coverage, and uses that offer's frozen terms.
 Minimum cash payment remains GHS 1.
 
 ## Recurring trip generation
@@ -164,7 +168,10 @@ database, credentials, provider dashboard or Render schedule is changed by
 these source changes. Do not call this rollout complete until scheduling and
 device delivery have been verified separately.
 
-Use the existing worker deployment/configuration and operator identity:
+Use the restricted maintenance runtime and its non-human maintenance identity.
+The following are suggested cadences, not proof of enabled schedules.
+Payment recovery and email retry have a 15-minute GitHub workflow; other jobs
+need separately approved scheduling. See [deployment](DEPLOY.md).
 
 | Command                                      | Suggested UTC cadence / order                                                            |
 | -------------------------------------------- | ---------------------------------------------------------------------------------------- |
@@ -172,7 +179,7 @@ Use the existing worker deployment/configuration and operator identity:
 | `node dist/worker.js personal-pause-resumes` | Every five minutes, and before period-close jobs.                                        |
 | `node dist/worker.js push`                   | Every minute, after ask-dispatch where practical.                                        |
 | `node dist/worker.js emails`                 | Existing outbox/reminder worker; schedule separately if not already running.             |
-| `node dist/worker.js erasures`               | Existing erasure schedule also removes deleted/replaced avatars.                         |
+| `node dist/worker.js erasures`               | Worker also removes deleted/replaced avatars; schedule separately.                       |
 | `node dist/worker.js admission`              | Every five minutes when scheduling is enabled; drain expired account/IP counter batches. |
 
 Every batch is bounded. Rerun/drain batches when backlog exceeds its limit and

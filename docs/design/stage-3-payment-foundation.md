@@ -1,5 +1,9 @@
 # Stage 3: financial foundation (011)
 
+> Historical design/acceptance record. Scope and deployment statements below
+> describe the recorded stage, not the current runtime. See
+> [current features](../features/README.md) and [design index](README.md).
+
 Status: **domain implementation and contiguous migration; not enabled in the replacement app**.
 Integration base: merged #306 at `77f00c24c53376230618531f7a85640d73578916` on
 `codex/backend-replacement`. No main/staging deployment or provider calls.

@@ -1,69 +1,34 @@
 # Ride entitlements and Ride Credits
 
-**Owner:** Godfred Awuku · **Last verified:** 2026-09-12
+Source audit: 2026-10-03.
 
-**Status:** Period-scoped allocation, boarding/no-show deduction, atomic
-period-end conversion, balance reporting, checkout holds and renewal capture
-are implemented.
+Ride allowances and monetary credits are different units:
 
-## Ledgers
+- Ride entries allocate/retire period-owned ride counts.
+- Reservation charges attribute boarding/no-show consumption to the funded period.
+- Credit entries record integer-pesewa renewal discounts.
+- Credit holds reserve available discount during checkout; a hold is not money
+  already collected and must be captured or released.
 
-The Hybrid Subscription Model uses two append-only ledgers:
+For offered subscriptions, balances and limits are directional. Booking must
+match the offered journey, travel weekday and coverage period. Boarding and
+no-show share one charge identity, so retries or a later boarding correction
+cannot charge twice.
 
-- Entitlement ledger in ride counts. Allocation is positive; boarding,
-  no-show, conversion and refund revocation are negative.
-- Ride Credit ledger in pesewas. Period conversion, compensation, loyalty and
-  refund restoration are positive; renewal capture is negative.
+Period close waits for unsettled seats, converts each direction's unused
+allowance at its disclosed frozen credit value, retires the remaining rides
+and closes only that period. Already sold terms do not change with new fares.
+Historical non-offer periods retain their original accounting rules.
 
-Balances are sums of immutable entries. Every write has a unique idempotency
-key. New entitlement mutations carry `subscription_period_id`, so one period
-cannot consume or convert another period's rides.
+Current coverage excludes future periods. Upcoming coverage is returned
+separately by `GET /v1/me/membership`. Renewal can be prepaid, but unconverted
+current rides cannot fund it. Credit is neither a transferable cash wallet nor
+a withdrawal balance.
 
-`credit_holds` is deliberately not a balance ledger. Checkout reserves available
-credit there, success captures the exact hold into the ledger, and terminal
-failure releases it. A rider lock prevents concurrent checkouts from promising
-the same credit twice.
+Read history through `GET /v1/me/ride-entries` and
+`GET /v1/me/credit-entries`. Period close is
+`POST /v1/ops/maintenance/period-close`, also part of payment maintenance.
 
-## API
-
-| Endpoint                                 | Role                | Behaviour                                                     |
-| ---------------------------------------- | ------------------- | ------------------------------------------------------------- |
-| `GET /me/rides`                          | authenticated rider | Current ride and Ride Credit balances plus renewal time       |
-| `GET /me/subscription`                   | authenticated rider | Current membership, pinned route and next renewal date        |
-| `POST /admin/close-subscription-periods` | admin               | Canonical atomic conversion and close                         |
-| `POST /admin/convert-credits`            | admin               | Legacy alias to the canonical close in production wiring      |
-| `POST /admin/expire-subscriptions`       | admin               | Legacy alias to the same canonical close in production wiring |
-
-`GET /me/subscription` keeps service status and voluntary pause state separate:
-a membership can be both `suspended` and `paused`. Its `renewsAt` is null while
-paused because the final date is calculated when the rider resumes. Expired and
-cancelled rows are historical, not current, and return `subscribed: false`.
-
-## Lifecycle
-
-1. Fulfilment creates an immutable period and appends
-   `alloc:<payment-reference>` within the same transaction.
-2. Boarding/no-show appends `-1` against the reservation's funding period.
-3. Once the period ended and all its seats are terminal, close computes that
-   period's ledger sum and applies its frozen `creditPesewasPerRide`.
-4. The same transaction grants `close-credit:<period-id>`, retires rides with
-   `close-rides:<period-id>`, closes the period and expires the membership.
-5. Rider-initiated renewal reserves that balance, reuses the subscription, and
-   creates the next immutable period after Paystack success.
-
-This replaces the former two-job expiry/conversion ordering hazard and the
-global rider balance calculation that could convert old rides at a later
-period's rate.
-
-## Deferred
-
-- Provider-initiated automatic renewal.
-- Standby ride purchases.
-- Operator settlement ledger and payout execution.
-
-## Code
-
-- `services/api/src/modules/entitlements/`
-- `services/api/src/modules/payments/payment-lifecycle.ts`
-- `services/api/src/modules/payments/payment-lifecycle.pg.ts`
-- migration `039`
+Sources: `services/api-next/src/payments/foundation.ts`,
+`services/api-next/src/membership/service.ts`, migrations 011, 013 and 042.
+See [payments](payments-and-wallet.md) for refunds, pauses and renewals.

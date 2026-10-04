@@ -1,39 +1,39 @@
-# Mobile apps
+# Applications
 
-Two Flutter apps now use the replacement API on the integration branch:
+Current implementation: 2026-10-03.
 
-- `apps/trotxi_commuter/` — rider app: subscribe, browse routes/trips, board with a
-  QR pass, live map.
-- `apps/trotxi_driver/` — driver app: assigned trips, scan rider passes, publish GPS.
+- [Commuter](trotxi_commuter/README.md): sign-in and phone verification,
+  subscription requests/offers, Paystack checkout, reservations, passes,
+  wallet, live trips, notifications and account controls.
+- [Driver](trotxi_driver/README.md): code/PIN sign-in, assigned trips,
+  boarding, durable background GPS, incidents and work requests.
+- [Ops](../docs/features/ops-console.md): React operations console.
+- `trotxi_client`: shared mobile session/domain layer.
+- `api_client`: generated Dart contract client.
+- `trotxi_map`: shared mobile map surface.
 
-Both depend on `trotxi_client`, the shared session/domain layer over the generated
-`api_client`. Regenerate with `pnpm codegen`, then `dart run build_runner build`
-inside `apps/api_client`. The source is the checked-in replacement contract,
-not staging. See `docs/design/stage-4-completion.md` for scope and release gates.
+## Configuration and builds
 
-## Conventions (agree before scaffolding)
+Both mobile apps require explicit `API_BASE_URL` and `API_SESSION_REALM`
+build definitions. Use a new realm after replacing a disposable database;
+there is no implicit backend or old-token fallback.
+Android emulators reach a local backend at `http://10.0.2.2:3001`;
+iOS simulators use `http://127.0.0.1:3001`. Release builds require HTTPS.
 
-- Created with `flutter create --org com.trotxi <name>`.
-- Both `API_BASE_URL` and `API_SESSION_REALM` are required build definitions.
-  For a local backend, Android emulators use `http://10.0.2.2:3001`; an iOS
-  simulator uses `http://127.0.0.1:3001`. Choose a new realm after replacing the
-  disposable database. There is no implicit staging or old-token fallback.
-- `flutter analyze` clean and widget tests passing are CI gates — the CI
-  `flutter` job matrix turns on when the first app lands. Note that neither
-  gate builds for Android, so an Android-only break passes CI.
-- **Android needs JDK 21.** `maplibre_gl` (the shared map surface, #180/#237)
-  declares a Java 21 toolchain, and Flutter's default JDK on a stock macOS
-  setup is 17. Without it `flutter build apk` fails with
-  `:maplibre_gl:compileDebugJavaWithJavac — error: invalid source release: 21`,
-  which reads like a plugin bug and is a toolchain mismatch. Overriding the
-  plugin down to 17 does not work: it resets its own compile options in
-  `afterEvaluate`, and Gradle then fails on the Java/Kotlin mismatch it was
-  handed. Install it and point Flutter at it:
+Regenerate the replacement client using `pnpm codegen:replacement`, then
+`dart run build_runner build` in `apps/api_client`. The checked-in
+replacement contract is the source, not a captured staging response.
 
-  ```
-  brew install --cask temurin@21
-  flutter config --jdk-dir="/Library/Java/JavaVirtualMachines/temurin-21.jdk/Contents/Home"
-  ```
+Flutter analysis and tests are CI gates. Native builds, store signing,
+provider configuration and physical-device acceptance are separate checks.
+Do not treat passing widget tests as proof of background GPS or push delivery.
 
-- Shared code (API client, models, theme) gets extracted to
-  `packages/trotxi_shared` the second time it is duplicated.
+Android map builds need JDK 21. On macOS:
+
+```sh
+brew install --cask temurin@21
+flutter config --jdk-dir="/Library/Java/JavaVirtualMachines/temurin-21.jdk/Contents/Home"
+```
+
+Production needs its own API/session realm, Firebase identity, signing and
+provider configuration. See [deployment](../docs/DEPLOY.md).
