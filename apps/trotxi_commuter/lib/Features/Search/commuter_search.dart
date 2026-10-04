@@ -2,14 +2,18 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:trotxi_client/trotxi_client.dart' as wire;
 import 'package:trotxi_commuter/Features/Home/models/home_ride_lifecycle_state.dart';
+import 'package:trotxi_commuter/Features/Home/widgets/Payments/purchase_details_sheet.dart';
+import 'package:trotxi_commuter/Features/Home/widgets/Payments/purchase_labels.dart';
 import 'package:trotxi_commuter/Features/Home/widgets/Tabs/commuter_preference.dart';
 import 'package:trotxi_commuter/Features/Home/widgets/Tabs/profile_notification.dart';
 import 'package:trotxi_commuter/Features/Home/widgets/Tabs/profile_security.dart';
+import 'package:trotxi_commuter/Features/Home/widgets/Tabs/routes_tab.dart';
 import 'package:trotxi_commuter/Features/Home/widgets/Trips/trip_details_page.dart';
 import 'package:trotxi_commuter/Features/Home/widgets/Trips/trip_status.dart';
 import 'package:trotxi_commuter/core/api/commuter_api.dart';
 import 'package:trotxi_commuter/core/config/theme/app_colors.dart';
 import 'package:trotxi_commuter/core/config/theme/app_typography.dart';
+import 'package:trotxi_commuter/core/utils/money_format.dart';
 
 /// One tappable search result. [keywords] are extra words that should find the
 /// entry without being shown (e.g. "money" finds Wallet).
@@ -104,12 +108,18 @@ class _SearchPanel extends StatefulWidget {
 class _SearchPanelState extends State<_SearchPanel> {
   final _controller = TextEditingController();
   List<wire.Reservation> _reservations = const [];
-  bool _loadingTrips = true;
+  List<wire.Route> _routes = const [];
+  List<wire.Purchase> _purchases = const [];
+  int _pendingLoads = 3;
+
+  bool get _loading => _pendingLoads > 0;
 
   @override
   void initState() {
     super.initState();
     _loadTrips();
+    _loadRoutes();
+    _loadPurchases();
   }
 
   @override
@@ -118,23 +128,48 @@ class _SearchPanelState extends State<_SearchPanel> {
     super.dispose();
   }
 
-  /// Trips are a bonus: if they can't load, the screen results still work.
-  Future<void> _loadTrips() async {
+  /// Runs one of the optional lookups. Trips, routes and payments are a bonus:
+  /// if one can't load, the screen results and the other lookups still work.
+  Future<void> _load(Future<void> Function() fetch) async {
     try {
-      final now = DateTime.now().toUtc();
-      final rows = await widget.client.reservations(
-        from: now.subtract(const Duration(days: 30)).toDate(),
-        to: now.add(const Duration(days: 30)).toDate(),
-      );
-      if (!mounted) return;
-      setState(() => _reservations = [...rows]
-        ..sort((a, b) => b.travelDate.compareTo(a.travelDate)));
+      await fetch();
     } catch (_) {
-      // Leave trip results empty.
+      // Leave that group of results empty.
     } finally {
-      if (mounted) setState(() => _loadingTrips = false);
+      if (mounted) setState(() => _pendingLoads--);
     }
   }
+
+  Future<void> _loadTrips() => _load(() async {
+    final now = DateTime.now().toUtc();
+    final rows = await widget.client.reservations(
+      from: now.subtract(const Duration(days: 30)).toDate(),
+      to: now.add(const Duration(days: 30)).toDate(),
+    );
+    if (!mounted) return;
+    setState(
+      () => _reservations = [...rows]
+        ..sort((a, b) => b.travelDate.compareTo(a.travelDate)),
+    );
+  });
+
+  Future<void> _loadRoutes() => _load(() async {
+    final rows = await widget.client.routes();
+    if (!mounted) return;
+    setState(
+      () => _routes = [...rows.where((r) => !r.archived)]
+        ..sort((a, b) => a.name.compareTo(b.name)),
+    );
+  });
+
+  Future<void> _loadPurchases() => _load(() async {
+    final rows = await widget.client.purchases();
+    if (!mounted) return;
+    setState(
+      () => _purchases = [...rows]
+        ..sort((a, b) => b.createdAt.compareTo(a.createdAt)),
+    );
+  });
 
   /// Closes the panel, then lets [showCommuterSearch] run [action].
   void _select(VoidCallback action) => Navigator.of(context).pop(action);
@@ -155,6 +190,13 @@ class _SearchPanelState extends State<_SearchPanel> {
       icon: icon,
       keywords: keywords,
       onSelected: () => widget.onDestination(d),
+    );
+
+    void pushScaffold(String title, Widget body) => push(
+      (_) => Scaffold(
+        appBar: AppBar(title: Text(title)),
+        body: body,
+      ),
     );
 
     final screens = <SearchEntry>[
@@ -193,6 +235,19 @@ class _SearchPanelState extends State<_SearchPanel> {
       ),
       SearchEntry(
         group: 'Go to',
+        title: 'Routes & schedule',
+        subtitle: 'Departures and times for a service date',
+        icon: Icons.schedule_rounded,
+        keywords:
+            'route routes schedule timetable departures departure times '
+            'service date bus live track tracking',
+        onSelected: () => pushScaffold(
+          'Departures',
+          RoutesTab(client: widget.client),
+        ),
+      ),
+      SearchEntry(
+        group: 'Go to',
         title: 'Notifications',
         icon: Icons.notifications_none_rounded,
         keywords: 'alerts push reminders',
@@ -227,7 +282,41 @@ class _SearchPanelState extends State<_SearchPanel> {
           ),
         ),
     ];
-    return [...screens, ...trips];
+    final routes = <SearchEntry>[
+      for (final r in _routes)
+        SearchEntry(
+          group: 'Routes',
+          title: r.name,
+          subtitle: r.description,
+          icon: Icons.alt_route_rounded,
+          keywords: 'route schedule departures timetable',
+          onSelected: () => pushScaffold(
+            r.name,
+            RoutesTab(client: widget.client, routeId: r.id),
+          ),
+        ),
+    ];
+
+    final payments = <SearchEntry>[
+      for (final p in _purchases)
+        SearchEntry(
+          group: 'Payments',
+          title:
+              '${purchasePlanLabel(p.plan)} · '
+              '${dayFormat.format(p.createdAt.toUtc())}',
+          subtitle: '${purchaseStateLabel(p.state)} · ${p.price.formatted}',
+          icon: Icons.receipt_long_outlined,
+          keywords:
+              'payment purchase receipt wallet subscription membership '
+              '${p.state.name} ${longFormat.format(p.createdAt.toUtc())}',
+          onSelected: () => showPurchaseDetailsSheet(
+            navigator,
+            client: widget.client,
+            purchaseId: p.id,
+          ),
+        ),
+    ];
+    return [...screens, ...routes, ...trips, ...payments];
   }
 
   @override
@@ -336,9 +425,9 @@ class _SearchPanelState extends State<_SearchPanel> {
     return Padding(
       padding: const EdgeInsets.all(24),
       child: Text(
-        _loadingTrips
+        _loading
             ? 'Searching…'
-            : 'No results for “$query”. Try a screen name, a date or a trip status.',
+            : 'No results for “$query”. Try a screen, route, date or payment.',
         textAlign: TextAlign.center,
         style: AppTypography.bodySmall.copyWith(color: colors.textSecondary),
       ),
@@ -393,7 +482,7 @@ class _SearchPanelState extends State<_SearchPanel> {
         ),
       );
     }
-    if (_loadingTrips && !shortcuts) {
+    if (_loading && !shortcuts) {
       children.add(const LinearProgressIndicator(minHeight: 2));
     }
     return ListView(
