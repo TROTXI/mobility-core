@@ -46,15 +46,8 @@ test('captured staging responses and request bodies satisfy the authoritative sc
   assert.doesNotMatch(serialized, /sk_(test|live)_|Bearer\s|eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\./);
   assert.doesNotMatch(serialized, /@gmail\.com|@googlemail\.com/);
   const guide = await readFile(new URL('../../api/README.md', import.meta.url), 'utf8');
-  const blocks = [...guide.matchAll(/```json\n([\s\S]*?)\n```/g)];
-  assert.equal(blocks.length, 2, 'Keep the two verified before/after guide examples');
-  for (const [, block] of blocks) {
-    const body = JSON.parse(block);
-    assert.ok(
-      captured.examples.some((example) => JSON.stringify(example.body) === JSON.stringify(body)),
-      'Guide JSON must be an actual validated capture, not a hand-written success',
-    );
-  }
+  // Captures remain executable fixtures, not a historical before/after walkthrough.
+  assert.match(guide, /\]\(staging-examples\.json\)/);
 });
 test('schedule and trip contracts carry the exact pattern owner, including driver and ops views', () => {
   for (const name of ['Schedule', 'Trip', 'DriverTrip', 'OpsTrip']) {
@@ -282,8 +275,13 @@ test('nullable named objects remain nullable in generated OpenAPI', () => {
   assert.equal(validate('MembershipResponse')({ data: null }), false);
 });
 test('prose JSON examples match the same executable response schemas', async () => {
-  const markdown = await readFile(new URL('../api-redesign-proposal.md', import.meta.url), 'utf8');
-  for (const match of markdown.matchAll(/```json\n([\s\S]*?)\n```/g)) {
+  const markdown = await readFile(
+    new URL('../../api/response-examples.md', import.meta.url),
+    'utf8',
+  );
+  const examples = [...markdown.matchAll(/```json\n([\s\S]*?)\n```/g)];
+  assert.equal(examples.length, 3, 'error, membership and live-trip examples must remain covered');
+  for (const match of examples) {
     const value = JSON.parse(match[1]);
     const name = value.error
       ? 'ErrorResponse'

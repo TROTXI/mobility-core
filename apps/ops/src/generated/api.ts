@@ -4778,7 +4778,7 @@ export interface components {
     };
   };
   responses: {
-    /** @description Error 400; bounded code, no internal error text. See stage-1-access-and-gps.md. */
+    /** @description Error 400; bounded code, no internal error text. See docs/api/README.md for error handling. */
     Error400: {
       headers: {
         [name: string]: unknown;
@@ -4787,7 +4787,7 @@ export interface components {
         'application/json': components['schemas']['ErrorResponse'];
       };
     };
-    /** @description Error 429; bounded code, no internal error text. See stage-1-access-and-gps.md. */
+    /** @description Error 429; bounded code, no internal error text. See docs/api/README.md for error handling. */
     Error429: {
       headers: {
         /** @description Seconds until another attempt. */
@@ -4798,7 +4798,7 @@ export interface components {
         'application/json': components['schemas']['ErrorResponse'];
       };
     };
-    /** @description Error 500; bounded code, no internal error text. See stage-1-access-and-gps.md. */
+    /** @description Error 500; bounded code, no internal error text. See docs/api/README.md for error handling. */
     Error500: {
       headers: {
         [name: string]: unknown;
@@ -4807,7 +4807,7 @@ export interface components {
         'application/json': components['schemas']['ErrorResponse'];
       };
     };
-    /** @description Error 503; bounded code, no internal error text. See stage-1-access-and-gps.md. */
+    /** @description Error 503; bounded code, no internal error text. See docs/api/README.md for error handling. */
     Error503: {
       headers: {
         [name: string]: unknown;
@@ -4816,7 +4816,7 @@ export interface components {
         'application/json': components['schemas']['ErrorResponse'];
       };
     };
-    /** @description Error 409; bounded code, no internal error text. See stage-1-access-and-gps.md. */
+    /** @description Error 409; bounded code, no internal error text. See docs/api/README.md for error handling. */
     Error409: {
       headers: {
         [name: string]: unknown;
@@ -4825,7 +4825,7 @@ export interface components {
         'application/json': components['schemas']['ErrorResponse'];
       };
     };
-    /** @description Error 401; bounded code, no internal error text. See stage-1-access-and-gps.md. */
+    /** @description Error 401; bounded code, no internal error text. See docs/api/README.md for error handling. */
     Error401: {
       headers: {
         [name: string]: unknown;
@@ -4834,7 +4834,7 @@ export interface components {
         'application/json': components['schemas']['ErrorResponse'];
       };
     };
-    /** @description Error 426; bounded code, no internal error text. See stage-1-access-and-gps.md. */
+    /** @description Error 426; bounded code, no internal error text. See docs/api/README.md for error handling. */
     Error426: {
       headers: {
         [name: string]: unknown;
@@ -4843,7 +4843,7 @@ export interface components {
         'application/json': components['schemas']['ErrorResponse'];
       };
     };
-    /** @description Error 403; bounded code, no internal error text. See stage-1-access-and-gps.md. */
+    /** @description Error 403; bounded code, no internal error text. See docs/api/README.md for error handling. */
     Error403: {
       headers: {
         [name: string]: unknown;
@@ -4852,7 +4852,7 @@ export interface components {
         'application/json': components['schemas']['ErrorResponse'];
       };
     };
-    /** @description Error 423; bounded code, no internal error text. See stage-1-access-and-gps.md. */
+    /** @description Error 423; bounded code, no internal error text. See docs/api/README.md for error handling. */
     Error423: {
       headers: {
         [name: string]: unknown;
@@ -4861,7 +4861,7 @@ export interface components {
         'application/json': components['schemas']['ErrorResponse'];
       };
     };
-    /** @description Error 404; bounded code, no internal error text. See stage-1-access-and-gps.md. */
+    /** @description Error 404; bounded code, no internal error text. See docs/api/README.md for error handling. */
     Error404: {
       headers: {
         [name: string]: unknown;
@@ -4870,7 +4870,7 @@ export interface components {
         'application/json': components['schemas']['ErrorResponse'];
       };
     };
-    /** @description Error 413; bounded code, no internal error text. See stage-1-access-and-gps.md. */
+    /** @description Error 413; bounded code, no internal error text. See docs/api/README.md for error handling. */
     Error413: {
       headers: {
         [name: string]: unknown;
@@ -4879,7 +4879,7 @@ export interface components {
         'application/json': components['schemas']['ErrorResponse'];
       };
     };
-    /** @description Error 415; bounded code, no internal error text. See stage-1-access-and-gps.md. */
+    /** @description Error 415; bounded code, no internal error text. See docs/api/README.md for error handling. */
     Error415: {
       headers: {
         [name: string]: unknown;
@@ -4888,7 +4888,7 @@ export interface components {
         'application/json': components['schemas']['ErrorResponse'];
       };
     };
-    /** @description Error 412; bounded code, no internal error text. See stage-1-access-and-gps.md. */
+    /** @description Error 412; bounded code, no internal error text. See docs/api/README.md for error handling. */
     Error412: {
       headers: {
         [name: string]: unknown;
@@ -4897,7 +4897,7 @@ export interface components {
         'application/json': components['schemas']['ErrorResponse'];
       };
     };
-    /** @description Error 428; bounded code, no internal error text. See stage-1-access-and-gps.md. */
+    /** @description Error 428; bounded code, no internal error text. See docs/api/README.md for error handling. */
     Error428: {
       headers: {
         [name: string]: unknown;

@@ -10,9 +10,12 @@ unversioned subscription endpoints.
 - `services/api-next/src/http/contract.json` is the runtime copy.
 - `apps/trotxi_client` wraps generated `apps/api_client`.
 
-`staging-examples.json` is retained as a dated captured fixture for contract
+[Captured fixtures](staging-examples.json) are retained for contract
 tests. Its old direct-purchase flow, 44 rides and example amount are not
 current commercial defaults or a supported new-purchase walkthrough.
+
+Use the schema-checked [response examples](response-examples.md) to understand
+the error, membership and live-trip shapes.
 
 ## Request rules
 

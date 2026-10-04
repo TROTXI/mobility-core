@@ -19,8 +19,7 @@ or deletes data. All fixture records remain in staging for inspection.
   other API/service targets and for a non-`sk_test_` Paystack key.
 - PostgreSQL TLS certificate verification is required. If the database chain is
   not trusted by the runner, set `STAGING_DATABASE_CA_CERT` to its trusted CA PEM
-  obtained from the database operator. Do not bypass validation. The one-off
-  verification used relaxed TLS; this reusable version intentionally does not.
+  obtained from the database operator. Do not bypass validation. Do not relax TLS verification for a test.
 - Paystack **Test Webhook URL** must be
   `https://trotxi-api-staging.onrender.com/webhooks/paystack`.
 
@@ -61,20 +60,12 @@ Do not run external manual replays or reconciliation against a fixture while
 testing automatic delivery. The inbox verifies a shared HMAC, not independent
 sender provenance; this tool's marker only distinguishes its own signed replays.
 
-## Scope and prior evidence
+## Scope
 
-The original sandbox runs also verified period close, conversion at the frozen
-rate, duplicate-close idempotency, exact credit reservation/capture and renewal
-into a new immutable period. They deliberately moved a labelled fixture's clock
-and used a global admin close endpoint. That operation is excluded here: a preflight
-query cannot prevent an unrelated period becoming due before a global close.
-The real-Postgres lifecycle tests remain in normal CI for those invariants.
+This workflow checks provider delivery and replay for its synthetic fixtures.
+Period close, unused-credit conversion and renewal isolation are covered by the
+normal PostgreSQL suites; a global close operation is deliberately excluded
+because an unrelated period may become due after a preflight check.
 
-- Original renewal and audit: https://github.com/TROTXI/mobility-core/actions/runs/34750132362
-- Automatic provider delivery after fixing the empty test webhook URL:
-  https://github.com/TROTXI/mobility-core/actions/runs/34750674114
-
-Those runs validated the one-off scripts against staging, not this refactored
-manual workflow. Its first post-merge dispatch must confirm the trusted-CA setup
-and reusable fixture flow. A passing staging run is not a production-readiness
-approval or authorization to enable maintenance scheduling.
+Record each run's revision and results in the restricted operations record.
+A staging pass is not production approval or permission to enable scheduling.

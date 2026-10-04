@@ -36,4 +36,5 @@ as GHS only at the UI boundary.
 
 See [status](../STATUS.md) for deferred work, [API integration](../api/README.md)
 for the request sequence and [deployment](../DEPLOY.md) for actual scheduling
-boundaries. Dated design-stage reports remain historical evidence.
+boundaries. For code locations and checks, use the
+[developer guide](../development.md).

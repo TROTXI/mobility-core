@@ -25,8 +25,8 @@ collections, refunds/disputes/recovery; period-owned rides and credit; prepaid
 renewals; pauses/commute changes; notifications; Ops read models/audit/config.
 
 Start at the [feature index](../../docs/features/README.md) and
-[architecture](../../docs/architecture.md). Historical stage reports record
-earlier counts, migration inventories and cutover evidence, not current totals.
+[architecture](../../docs/architecture.md). Use the [developer guide](../../docs/development.md) for code locations and
+verification. Contract tooling retains generated inventories used by CI.
 
 ## Contract
 

@@ -5,24 +5,6 @@ policy, legal opinion, provider completion certificate or authorization to
 delete data. Use the [data map](account-erasure-data-map.md) and
 [pilot retention policy](account-erasure-retention-policy.md) alongside it.
 
-## What has actually been checked
-
-The authenticated staging Ops **Support > Account deletions** page was read
-on 2 October Pacific / 3 October UTC. One historical closure showed **three
-of three tracked tasks complete**. The page explicitly limited this to local
-closure and tracked avatar/sign-in cleanup. No deletion or maintenance job
-was run during this inspection. Its linked records before deletion, provider
-responses, backup expiry and device cleanup were not independently checked.
-
-This is UI/status evidence only. It is not the complete end-to-end packet.
-Do not publish the account ID or a screenshot containing customer data in the
-public issue.
-
-The [3 October hosted rehearsal](account-erasure-hosted-drill-2026-10-03.md)
-separately records staging register activation, a Render PITR copy, synthetic
-snapshot/replay checks, test writer handover and completed test-resource
-disposal. Its scope limits and remaining acceptance table still apply.
-
 ## Ownership and evidence handling
 
 Before a run, name a case operator, engineering reviewer, infrastructure
@@ -211,19 +193,16 @@ provisioning any paid resource require explicit approval.
    Dispose of the approved test copy under its recorded lifecycle, with
    separate approval for irreversible deletion.
 
-## Activation and evidence still required
+## Release requirements
 
-- Staging register provisioning and baseline activation completed on
-  2026-10-03. Preserve the protected keys and operational evidence. The implemented fence
-  covers deletion only; all other writers must be stopped operationally.
-- The non-serving hosted replay and test writer handover passed within the
-  recorded rehearsal scope. Complete the remaining real-recovery release
-  checks before routing traffic. The ordinary `DELETE /v1/me`
-  endpoint is not an administrator bulk replay mechanism. Recovery without a
-  surviving source database remains unsupported by this tool and must stop
-  for a reviewed procedure, not initialize a replacement register.
-- Review the [2026-10-03 isolated rehearsal evidence](account-erasure-hosted-drill-2026-10-03.md)
-  and complete its outstanding acceptance checks. Test-resource disposal is complete.
+- Verify register configuration and preserve protected keys. The implemented
+  fence covers deletion only; stop all other writers operationally.
+- Complete the replay and writer-handover checks above before routing traffic.
+  The ordinary `DELETE /v1/me` endpoint is not an administrator bulk replay
+  mechanism. Recovery without a surviving source database remains unsupported
+  by this tool and requires a reviewed procedure, not a replacement register.
+- Keep environment-specific evidence in the restricted operations record.
+  Dispose of test resources only under approved lifecycle and deletion authority.
 - Verify actual backup/export windows and obtain provider responses.
 
 Source checks: `account/service.ts` (`erase`, `retryErasures`), migrations

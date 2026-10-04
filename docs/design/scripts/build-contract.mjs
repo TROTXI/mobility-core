@@ -46,7 +46,7 @@ const spec = {
     title: 'Trotxi replacement API — stage 1 review',
     version: '1.0.0-draft',
     description:
-      'DESIGN ONLY; not deployed. Engineering choices awaiting review are identified in stage-1-review.md. Generated from target-contract.mjs; do not edit JSON.',
+      'Full contract catalog, including deferred operations. Use replacement.openapi.json for the implemented API. Generated from target-contract.mjs; do not edit JSON.',
   },
   servers: [
     {
@@ -107,7 +107,7 @@ for (const o of operations) {
   for (const code of new Set(failures)) {
     spec.components.responses[`Error${code}`] ??= response(
       'ErrorResponse',
-      `Error ${code}; bounded code, no internal error text. See stage-1-access-and-gps.md.`,
+      `Error ${code}; bounded code, no internal error text. See docs/api/README.md for error handling.`,
     );
     responses[code] = { $ref: `#/components/responses/Error${code}` };
   }

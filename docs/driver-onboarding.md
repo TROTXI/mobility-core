@@ -239,30 +239,12 @@ X-Trotxi-Client: driver
 { "error": { "code": "pin_change_required", "message": "Set your own PIN before you continue." } }
 ```
 
-## Verified, and not
+## Development checks
 
-Verified locally:
-
-- Postgres tests DRV-30 to DRV-39: onboarding, replay, rollback, missing and
-  unconfigured email, plaintext absence, stale cancellation (reset, PIN change,
-  address change, version race, erasure), setup enforcement including a
-  refreshed session, expiry, authorization including passkey elevation,
-  retries with the same provider idempotency key, and upgrade from 028.
-  Removing the worker's recheck makes DRV-34 fail.
-- Ops: create and onboard, partial-failure retry without a second driver,
-  reset with reason and email, delivery wording, no PIN on screen or in
-  storage once emailed.
-- Driver app: PIN rules, no automatic submission, confirmation mismatch,
-  stable key on an unanswered retry and a new one after edits, uncertain
-  outcome, wrong temporary PIN, lockout, rate limit, expiry, restored-session
-  setup, sign-in to setup hand-off, and "Forgot PIN?".
-
-Not verified:
-
-- A real email through Resend. No email was sent while building this.
-- The scheduled retry workflow in GitHub Actions: it starts after merge into
-  the default branch; no live run was made while implementing this change.
-- The flow on a physical phone.
+Cover credential issuance/replay, partial creation retry, private-PIN setup,
+expiry/lockout, session revocation, stale delivery cancellation and ambiguous
+provider outcomes. Real email/SMS and physical-device acceptance require
+separate authorized tests; passing unit tests does not prove delivery.
 
 The canonical Dart API client (`apps/api_client`) and its built-value
 serializers are regenerated from `replacement.openapi.json`, including
