@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { ResendSender, EmailSendError } from '../src/notifications/resend.js';
 import { jobFailed } from '../src/runtime/job-outcome.js';
+import { ghanaTime } from '../src/notifications/format.js';
 
 const message = {
   from: 'Trotxi <hello@notifications.trotxi.com>',
@@ -60,4 +61,9 @@ test('EMAIL-U3 worker marks retries and unknown outcomes non-successful instead 
     () => jobFailed({ job: 'emails', status: 200, body: { sent: 1 } }),
     /contract_drift/,
   );
+});
+
+test('EMAIL-U4 message times read as Ghana local dates, not machine timestamps', () => {
+  assert.equal(ghanaTime(new Date('2026-10-31T00:00:00.000Z')), 'Sat 31 Oct 2026, 00:00 GMT');
+  assert.equal(ghanaTime(new Date('2026-01-05T17:45:59.999Z')), 'Mon 5 Jan 2026, 17:45 GMT');
 });
