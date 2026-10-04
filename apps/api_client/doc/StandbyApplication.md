@@ -14,6 +14,7 @@ Name | Type | Description | Notes
 **routeName** | **String** |  |
 **state** | **String** |  |
 **selection** | [**PurchaseInput**](PurchaseInput.md) |  |
+**travelDays** | **BuiltList&lt;int&gt;** |  |
 **offer** | [**StandbyApplicationOffer**](StandbyApplicationOffer.md) |  |
 **createdAt** | [**DateTime**](DateTime.md) |  |
 

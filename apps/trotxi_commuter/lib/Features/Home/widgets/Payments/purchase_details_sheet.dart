@@ -182,7 +182,9 @@ class _PurchaseDetailsSheetState extends State<_PurchaseDetailsSheet> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                purchasePlanLabel(purchase.plan),
+                purchase.offerTerms != null
+                    ? 'Subscription offer'
+                    : purchasePlanLabel(purchase.plan),
                 style: AppTypography.heading2.copyWith(
                   color: colors.textPrimary,
                 ),

@@ -248,6 +248,7 @@ export async function composeBackend(config: RuntimeConfig): Promise<Backend> {
           fareForSelection: pricing.fareForSelection,
         });
         const financial = new FinancialFoundation({
+          requireOffer: true,
           pool,
           environment: provider.environment,
           authorizeSession,

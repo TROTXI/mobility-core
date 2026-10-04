@@ -1,4 +1,95 @@
-# ADR-0015 — Subscription prices are derived from regulated fares, never stored
+# ADR-0015 - Subscription fares and immutable Ops offers
+
+## Current decision: Ops-priced offers (2026-10-03)
+
+This amendment supersedes the corridor-wide automatic purchase model below for
+new subscriptions and renewals. Historical paid subscriptions keep their terms.
+
+Operations publishes an effective-dated fare for an ordered pickup/drop-off
+pair on a published route version. B to C and C to D can have different prices.
+B to D needs its own explicit fare, not an automatic sum. The reverse journey
+is priced separately. Repeated visits to the same physical stop use distinct
+stop occurrences.
+
+A phone-verified commuter requests a route, outward/return journeys and travel
+weekdays. Operations sends an offer containing:
+
+- Fixed coverage dates, with the end date excluded, in Africa/Accra.
+- Each journey, schedule, applicable weekdays and ride count. Counts use actual
+  calendar dates intersected with the schedule, not a fixed 44-ride allowance.
+- The applicable journey fare and an agreed total package price in GHS.
+- A separately chosen unused-ride credit value for each direction, disclosed
+  before acceptance. Each value is at most that journey's fare, and the total
+  possible credit cannot exceed the package price.
+- A payment deadline no later than the coverage start.
+
+Acceptance freezes these terms in the purchase before opening Paystack. Later
+fare changes cannot reprice sent offers, purchases or unused-ride credits.
+The public direct-purchase endpoint refuses new checkouts without an offer.
+The rider reviews terms, then the final cash due after any opted-in account
+credit. Only verified provider settlement grants coverage and rides.
+
+Outbound and return balances are separate. Reservations must use the offered
+journey and weekdays. At period close, each direction's unconsumed rides convert
+at its frozen credit value. Existing booking cutoffs, capacity checks and
+no-show charging still apply. An offer does not reserve vehicle capacity.
+
+Renewals require a new request and offer. One upcoming renewal can be paid in
+advance, starting exactly when current coverage ends without a gap. Current and
+upcoming periods remain separate, non-overlapping accounting records. Current
+ride balances exclude upcoming periods until their start. Reservations and
+day-ahead prompts use the paid period covering the departure time, so riders
+can confirm the first renewal trip before coverage starts. These reservations
+hold rides only in that renewal; they do not enable travel outside its dates.
+The date boundary selects coverage without depending on the old period's
+settlement job completing. Unused-ride credits are only available after actual
+period closure, never projected into an early renewal payment.
+
+Resolve pauses before buying a renewal. Once a renewal checkout or paid renewal
+exists, pauses and commute changes on its preceding period are blocked so they
+cannot extend coverage into the frozen start. Refunding an upcoming period
+reverses only that period. One-way packages, holidays and mid-period offer
+replacement are not implemented. Calendar-date offers can meet an existing
+midnight boundary exactly; legacy periods ending mid-day need a later date.
+
+Payment recorded after the deadline does not activate expired terms. The
+purchase is failed, reserved credit is released, and collection evidence goes
+to the existing late-payment review/refund workflow. Do not ask the rider to
+pay again until Operations has checked the collected payment.
+
+On the rider's next offer refresh, request or checkout, unpaid expired offers
+release their credit hold and open application slot. This is local service
+expiry, not proof that Paystack collected nothing. The pending provider attempt
+stays reconcilable. A collection discovered after local expiry is retained for
+Ops review/refund, including a delayed confirmation of an earlier payment.
+
+Before enabling the updated apps, apply migrations 041 and 042 and publish
+stop-pair fares. Legacy unpriced offers with no purchase must be withdrawn and
+requested again with travel days. Already-created historical purchases retain
+their recovery path. Deploy the API contract and both regenerated clients
+together; old direct-checkout clients receive `offer_required`.
+
+### Staging acceptance loop
+
+1. In Routes & stops, publish distinct B-to-C and C-to-D fares, then separate
+   return fares. Confirm B-to-D is unavailable until explicitly configured.
+2. Sign in as a phone-verified commuter. Request Monday/Wednesday/Friday travel.
+   Repeat with an unverified Google account and confirm verification is required.
+3. In the standby queue, send an offer with dates, package price and two
+   different unused-ride credit values. Confirm the actual dated ride counts.
+4. Review it in the commuter app. Check all terms before continuing to Paystack
+   TEST. Retry the same acceptance and confirm one checkout, not another charge.
+5. Complete TEST payment and process its verified provider event. Confirm the
+   fixed coverage period, correct directional allowances and completed request.
+6. Change a published fare. Confirm the accepted offer and purchase do not change.
+7. Reserve/board only covered dates and journeys. Confirm another journey,
+   weekday or exhausted directional allowance is refused.
+8. Close the period in a disposable test database. Confirm each direction's
+   unused rides use the disclosed credit value, with no duplicate close credit.
+9. Exercise late payment and historical checkout recovery. Verify no expired
+   service is granted, held credit is released, and Ops can review the collection.
+
+## Historical decision
 
 **Status:** accepted · **Date:** 2026-08-23 · **Amended:** 2026-08-24 · **Refines** ADR-0014 (the Hybrid Subscription Model stands; this decides how its prices are set)
 

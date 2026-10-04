@@ -1,5 +1,56 @@
 # Rider services: manual staging operations
 
+## Ops-priced subscription offer rollout
+
+The new offer flow is documented in the current amendment to
+[ADR-0015](../adr/0015-fare-derived-pricing.md), including the staging acceptance
+loop. It requires migrations 041 and 042, the regenerated API clients and the
+updated Ops and commuter applications. The historical checks below are not
+evidence that this new flow has been deployed or exercised with Paystack.
+
+Publish exact stop-pair fares before sending offers. Set the agreed package
+price and both journey credit rates explicitly. Confirm travel days and actual
+calendar ride counts with the rider. Use Paystack TEST only during staging.
+Retire old direct-checkout builds through the existing minimum-build controls
+as part of the coordinated rollout; they cannot create purchases in this flow.
+
+Expiry releases local held credit on the next rider offer refresh/request or
+checkout. It does not prove that no money was collected. Check late-payment
+reviews before advising another payment or initiating a refund. Existing paid
+subscriptions and provider evidence are not reset by this change.
+
+An already-open Paystack page may still accept a payment after the local offer
+expires. Such a collection does not activate coverage: Ops must review the
+provider evidence and arrange a refund or agree a fresh offer. A fresh offer
+does not automatically transfer the late payment. Do not tell the rider to pay
+again until the first collection is resolved.
+
+Paid future coverage is not reported as current and has no spendable ride
+balance before its start date. The paid purchase and its agreed coverage dates
+remain visible in payment history. Waitlist entry is free and does not promise
+a seat; monthly and annual are requested plans, with final dates and allowances
+set in the Ops offer.
+
+For continuous renewal, set the new start to the current end date and let the
+rider pay before that boundary. The wallet shows paid upcoming coverage
+separately. Only one future period may be prepaid. No job is needed to switch
+current coverage at the start instant; settlement of old unused rides remains
+separate and must finish before those credits can fund another payment.
+Resolve any planned or active pause first. A pending or paid renewal locks
+pause/commute changes on the preceding period. Do not extend coverage manually
+into the new period: overlapping collections require Ops review. Refunds of an
+upcoming purchase must leave current coverage and its ride balance untouched.
+The pause restriction applies to Ops as well as riders, including during a
+service disruption. Resolve the upcoming renewal through the refund/review
+workflow before pausing current coverage and agreeing replacement dates; do
+not edit frozen offer terms or extend one period into another.
+
+On the evening before renewal, generate the next day's trips and run
+ask-dispatch. The rider can confirm those departures immediately. Reservations
+and prompts use the period covering the departure time, while the wallet keeps
+the renewal marked upcoming until its start. Unused renewal rides cannot fund
+departures outside that period.
+
 ## Deployment and operating decision
 
 PR #338 is deployed to `trotxi-api-staging` at `59041f1`, including migrations

@@ -15,6 +15,9 @@ part 'fare_input.g.dart';
 /// * [amount]
 /// * [effectiveFrom]
 /// * [note]
+/// * [patternVersionId]
+/// * [pickupOccurrenceId]
+/// * [dropoffOccurrenceId]
 @BuiltValue()
 abstract class FareInput implements Built<FareInput, FareInputBuilder> {
   @BuiltValueField(wireName: r'amount')
@@ -25,6 +28,15 @@ abstract class FareInput implements Built<FareInput, FareInputBuilder> {
 
   @BuiltValueField(wireName: r'note')
   String? get note;
+
+  @BuiltValueField(wireName: r'patternVersionId')
+  String? get patternVersionId;
+
+  @BuiltValueField(wireName: r'pickupOccurrenceId')
+  String? get pickupOccurrenceId;
+
+  @BuiltValueField(wireName: r'dropoffOccurrenceId')
+  String? get dropoffOccurrenceId;
 
   FareInput._();
 
@@ -63,6 +75,27 @@ class _$FareInputSerializer implements PrimitiveSerializer<FareInput> {
       yield r'note';
       yield serializers.serialize(
         object.note,
+        specifiedType: const FullType(String),
+      );
+    }
+    if (object.patternVersionId != null) {
+      yield r'patternVersionId';
+      yield serializers.serialize(
+        object.patternVersionId,
+        specifiedType: const FullType(String),
+      );
+    }
+    if (object.pickupOccurrenceId != null) {
+      yield r'pickupOccurrenceId';
+      yield serializers.serialize(
+        object.pickupOccurrenceId,
+        specifiedType: const FullType(String),
+      );
+    }
+    if (object.dropoffOccurrenceId != null) {
+      yield r'dropoffOccurrenceId';
+      yield serializers.serialize(
+        object.dropoffOccurrenceId,
         specifiedType: const FullType(String),
       );
     }
@@ -111,6 +144,27 @@ class _$FareInputSerializer implements PrimitiveSerializer<FareInput> {
             specifiedType: const FullType(String),
           ) as String;
           result.note = valueDes;
+          break;
+        case r'patternVersionId':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType(String),
+          ) as String;
+          result.patternVersionId = valueDes;
+          break;
+        case r'pickupOccurrenceId':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType(String),
+          ) as String;
+          result.pickupOccurrenceId = valueDes;
+          break;
+        case r'dropoffOccurrenceId':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType(String),
+          ) as String;
+          result.dropoffOccurrenceId = valueDes;
           break;
         default:
           unhandled.add(key);

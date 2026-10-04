@@ -223,6 +223,8 @@ class _$OpsPurchase extends OpsPurchase {
   @override
   final Money price;
   @override
+  final OpsPurchaseOfferTerms? offerTerms;
+  @override
   final Money appliedCredit;
   @override
   final Money cashDue;
@@ -248,6 +250,7 @@ class _$OpsPurchase extends OpsPurchase {
       required this.state,
       required this.collectionState,
       required this.price,
+      this.offerTerms,
       required this.appliedCredit,
       required this.cashDue,
       this.checkout,
@@ -273,6 +276,7 @@ class _$OpsPurchase extends OpsPurchase {
         state == other.state &&
         collectionState == other.collectionState &&
         price == other.price &&
+        offerTerms == other.offerTerms &&
         appliedCredit == other.appliedCredit &&
         cashDue == other.cashDue &&
         checkout == other.checkout &&
@@ -291,6 +295,7 @@ class _$OpsPurchase extends OpsPurchase {
     _$hash = $jc(_$hash, state.hashCode);
     _$hash = $jc(_$hash, collectionState.hashCode);
     _$hash = $jc(_$hash, price.hashCode);
+    _$hash = $jc(_$hash, offerTerms.hashCode);
     _$hash = $jc(_$hash, appliedCredit.hashCode);
     _$hash = $jc(_$hash, cashDue.hashCode);
     _$hash = $jc(_$hash, checkout.hashCode);
@@ -311,6 +316,7 @@ class _$OpsPurchase extends OpsPurchase {
           ..add('state', state)
           ..add('collectionState', collectionState)
           ..add('price', price)
+          ..add('offerTerms', offerTerms)
           ..add('appliedCredit', appliedCredit)
           ..add('cashDue', cashDue)
           ..add('checkout', checkout)
@@ -347,6 +353,12 @@ class OpsPurchaseBuilder implements Builder<OpsPurchase, OpsPurchaseBuilder> {
   MoneyBuilder? _price;
   MoneyBuilder get price => _$this._price ??= MoneyBuilder();
   set price(MoneyBuilder? price) => _$this._price = price;
+
+  OpsPurchaseOfferTermsBuilder? _offerTerms;
+  OpsPurchaseOfferTermsBuilder get offerTerms =>
+      _$this._offerTerms ??= OpsPurchaseOfferTermsBuilder();
+  set offerTerms(OpsPurchaseOfferTermsBuilder? offerTerms) =>
+      _$this._offerTerms = offerTerms;
 
   MoneyBuilder? _appliedCredit;
   MoneyBuilder get appliedCredit => _$this._appliedCredit ??= MoneyBuilder();
@@ -398,6 +410,7 @@ class OpsPurchaseBuilder implements Builder<OpsPurchase, OpsPurchaseBuilder> {
       _state = $v.state;
       _collectionState = $v.collectionState;
       _price = $v.price.toBuilder();
+      _offerTerms = $v.offerTerms?.toBuilder();
       _appliedCredit = $v.appliedCredit.toBuilder();
       _cashDue = $v.cashDue.toBuilder();
       _checkout = $v.checkout?.toBuilder();
@@ -437,6 +450,7 @@ class OpsPurchaseBuilder implements Builder<OpsPurchase, OpsPurchaseBuilder> {
             collectionState: BuiltValueNullFieldError.checkNotNull(
                 collectionState, r'OpsPurchase', 'collectionState'),
             price: price.build(),
+            offerTerms: _offerTerms?.build(),
             appliedCredit: appliedCredit.build(),
             cashDue: cashDue.build(),
             checkout: _checkout?.build(),
@@ -453,6 +467,8 @@ class OpsPurchaseBuilder implements Builder<OpsPurchase, OpsPurchaseBuilder> {
       try {
         _$failedField = 'price';
         price.build();
+        _$failedField = 'offerTerms';
+        _offerTerms?.build();
         _$failedField = 'appliedCredit';
         appliedCredit.build();
         _$failedField = 'cashDue';

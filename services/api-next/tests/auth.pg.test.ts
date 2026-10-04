@@ -627,21 +627,43 @@ test('KYC-03: verified new rider joins standby, Ops offers, and rider can withdr
     });
   }
   const selection = { plan: 'monthly', routeId: route, legs, useCredit: false };
-  const joined = await standby.join(riderActor, selection);
+  const standbyRequest = { selection, travelDays: [1, 2, 3, 4, 5] };
+  const joined = await standby.join(riderActor, standbyRequest);
   assert.equal(joined.status, 201);
   const appId = (joined.body as any).data.id as string;
-  assert.equal((await standby.join(riderActor, selection)).status, 200);
+  assert.equal((await standby.join(riderActor, standbyRequest)).status, 200);
   const expiresAt = new Date(Date.now() + 86400000).toISOString();
+  for (const leg of legs)
+    await owner.query(
+      `INSERT INTO app.route_fares(route_id,pattern_version_id,pickup_occurrence_id,dropoff_occurrence_id,
+     amount_pesewas,effective_from,created_by,command_id) VALUES ($1,$2,$3,$4,600,'2026-01-01',$5,gen_random_uuid())`,
+      [route, leg.patternVersionId, leg.pickupOccurrenceId, leg.dropoffOccurrenceId, adminId],
+    );
+  const offerInput = {
+    expiresAt,
+    coverageStart: new Date(Date.now() + 2 * 86400000).toISOString().slice(0, 10),
+    coverageEnd: new Date(Date.now() + 16 * 86400000).toISOString().slice(0, 10),
+    price: { amountMinor: 12000, currency: 'GHS' },
+    credits: ['outbound', 'return'].map((direction) => ({
+      direction,
+      creditPerUnusedRide: { amountMinor: 50, currency: 'GHS' },
+    })),
+  };
   const offerKey = randomUUID();
-  const offered = await standby.offer(adminActor, appId, expiresAt, offerKey);
+  const offered = await standby.offer(adminActor, appId, offerInput, offerKey);
   assert.equal((offered.body as any).data.offer.state, 'offered');
-  assert.deepEqual(await standby.offer(adminActor, appId, expiresAt, offerKey), offered);
+  assert.deepEqual(await standby.offer(adminActor, appId, offerInput, offerKey), offered);
   await assert.rejects(
-    standby.offer(adminActor, appId, new Date(Date.now() + 2 * 86400000).toISOString(), offerKey),
+    standby.offer(
+      adminActor,
+      appId,
+      { ...offerInput, expiresAt: new Date(Date.now() + 2 * 86400000).toISOString() },
+      offerKey,
+    ),
     (error: any) => error?.code === 'idempotency_conflict',
   );
   await assert.rejects(
-    standby.offer(adminActor, appId, expiresAt, randomUUID()),
+    standby.offer(adminActor, appId, offerInput, randomUUID()),
     (error: any) => error?.code === 'standby_not_pending',
   );
   const notice = await owner.query(
@@ -723,7 +745,7 @@ test('KYC-03: verified new rider joins standby, Ops offers, and rider can withdr
   assert.equal(reset.data[0].offer.state, 'offered');
   const withdrawn = await standby.withdraw(riderActor, appId);
   assert.equal((withdrawn.body as any).data.state, 'withdrawn');
-  assert.deepEqual(await standby.offer(adminActor, appId, expiresAt, offerKey), offered);
+  assert.deepEqual(await standby.offer(adminActor, appId, offerInput, offerKey), offered);
 });
 
 async function setup(

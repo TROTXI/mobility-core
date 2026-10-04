@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:trotxi_client/trotxi_client.dart' as wire;
 import 'package:trotxi_commuter/Features/Home/widgets/Tabs/commuter_preference.dart';
+import 'package:trotxi_commuter/Features/Home/widgets/Tabs/standby_page.dart';
 import 'package:trotxi_commuter/core/config/theme/app_theme.dart';
 import 'package:trotxi_commuter/core/repositories/commute_repository.dart';
 import 'package:trotxi_commuter/core/api/commuter_api.dart';
@@ -165,8 +166,12 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  Future<void> choose(WidgetTester tester) async {
-    await tester.tap(find.text('Choose route'));
+  Future<void> choose(
+    WidgetTester tester, {
+    String button = 'Choose route',
+  }) async {
+    await tester.ensureVisible(find.text(button));
+    await tester.tap(find.text(button));
     await tester.pumpAndSettle();
     await tester.tap(find.text('New corridor'));
     await tester.pumpAndSettle();
@@ -189,6 +194,77 @@ void main() {
     expect(find.text('Office'), findsNothing); // Only downstream occurrences.
     await tester.tap(find.text('Home'));
     await tester.pumpAndSettle();
+  }
+
+  for (final plan in ['monthly', 'annual']) {
+    testWidgets('waitlist submits the selected $plan plan with travel days', (
+      tester,
+    ) async {
+      final transportReply = f.reply;
+      Map<String, dynamic>? submitted;
+      f.reply = (o) {
+        if (o.path == '/v1/me/verification') {
+          return jsonResponse({
+            'data': {
+              'phone': {
+                'status': 'verified',
+                'maskedNumber': null,
+                'verifiedAt': timestamp,
+              },
+              'standbyEligible': true,
+              'missing': <String>[],
+            },
+          });
+        }
+        if (o.path == '/v1/me/standby') {
+          if (o.method == 'POST') submitted = bodyOf(o);
+          final application = {
+            'id': 'application',
+            'riderId': 'rider',
+            'riderName': 'Ama',
+            'routeName': 'New corridor',
+            'state': 'submitted',
+            'createdAt': timestamp,
+            'selection': submitted?['selection'],
+            'travelDays': submitted?['travelDays'],
+            'offer': null,
+          };
+          return o.method == 'POST'
+              ? jsonResponse({'data': application}, 201)
+              : jsonResponse(page(submitted == null ? [] : [application]));
+        }
+        return transportReply(o);
+      };
+      await tester.binding.setSurfaceSize(const Size(430, 932));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.lightTheme,
+          home: StandbyPage(client: f.api),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('Waitlist'), findsOneWidget);
+      expect(
+        find.textContaining('Joining is free and does not guarantee a seat'),
+        findsOneWidget,
+      );
+      if (plan == 'annual') {
+        await tester.tap(
+          find.byType(DropdownButtonFormField<wire.PurchaseInputPlanEnum>),
+        );
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('Annual').last);
+        await tester.pumpAndSettle();
+      }
+      await choose(tester, button: 'Choose a route');
+      expect(submitted?['selection']['plan'], plan);
+      expect(submitted?['travelDays'], [1, 2, 3, 4, 5]);
+      expect(submitted?['selection']['legs'], hasLength(2));
+      expect(find.text('Requested plan: $plan'), findsOneWidget);
+      await tester.pumpWidget(const SizedBox());
+      f.api.dispose();
+    });
   }
 
   testWidgets(

@@ -196,21 +196,22 @@ export class TransactionalEmail {
   subscriptionActive = async (c: PoolClient, userId: string, purchaseId: string) => {
     const row = (
       await c.query(
-        `SELECT u.email,p.cash_due_pesewas,p.applied_credit_pesewas,p.rides_granted,b.effective_ends_at
+        `SELECT u.email,p.cash_due_pesewas,p.applied_credit_pesewas,p.rides_granted,b.starts_at,b.effective_ends_at
       FROM app.purchases p JOIN app.users u ON u.id=p.user_id AND u.deleted_at IS NULL
       JOIN app.billing_periods b ON b.purchase_id=p.id WHERE p.id=$1 AND p.user_id=$2`,
         [purchaseId, userId],
       )
     ).rows[0];
     if (!row) return;
+    const upcoming = row.starts_at > new Date();
     await this.enqueue(
       c,
       userId,
       'subscription_active',
       purchaseId,
       row.email,
-      `Your subscription is active.\nRides added: ${row.rides_granted}\nPayment: GHS ${(row.cash_due_pesewas / 100).toFixed(2)}\nRide Credit applied: GHS ${(row.applied_credit_pesewas / 100).toFixed(2)}\nCoverage ends: ${row.effective_ends_at.toISOString()}\nRenewal is manual; you will not be automatically charged.`,
-      'Your Trotxi subscription is active',
+      `${upcoming ? 'Your upcoming subscription is paid. Rides become available when coverage starts.' : 'Your subscription is active.'}\nRides included: ${row.rides_granted}\nPayment: GHS ${(row.cash_due_pesewas / 100).toFixed(2)}\nRide Credit applied: GHS ${(row.applied_credit_pesewas / 100).toFixed(2)}\nCoverage starts: ${row.starts_at.toISOString()}\nCoverage ends: ${row.effective_ends_at.toISOString()}\nRenewal is manual; you will not be automatically charged.`,
+      upcoming ? 'Your upcoming Trotxi subscription is paid' : 'Your Trotxi subscription is active',
     );
   };
   // Called before account identifiers are scrubbed. This acknowledges the

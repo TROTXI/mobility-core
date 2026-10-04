@@ -14,6 +14,8 @@ const StandbyApplicationStateEnum _$standbyApplicationStateEnum_withdrawn =
     const StandbyApplicationStateEnum._('withdrawn');
 const StandbyApplicationStateEnum _$standbyApplicationStateEnum_checkoutOpen =
     const StandbyApplicationStateEnum._('checkoutOpen');
+const StandbyApplicationStateEnum _$standbyApplicationStateEnum_completed =
+    const StandbyApplicationStateEnum._('completed');
 
 StandbyApplicationStateEnum _$standbyApplicationStateEnumValueOf(String name) {
   switch (name) {
@@ -25,6 +27,8 @@ StandbyApplicationStateEnum _$standbyApplicationStateEnumValueOf(String name) {
       return _$standbyApplicationStateEnum_withdrawn;
     case 'checkoutOpen':
       return _$standbyApplicationStateEnum_checkoutOpen;
+    case 'completed':
+      return _$standbyApplicationStateEnum_completed;
     default:
       throw ArgumentError(name);
   }
@@ -37,6 +41,7 @@ final BuiltSet<StandbyApplicationStateEnum>
   _$standbyApplicationStateEnum_offered,
   _$standbyApplicationStateEnum_withdrawn,
   _$standbyApplicationStateEnum_checkoutOpen,
+  _$standbyApplicationStateEnum_completed,
 ]);
 
 Serializer<StandbyApplicationStateEnum>
@@ -50,12 +55,14 @@ class _$StandbyApplicationStateEnumSerializer
     'offered': 'offered',
     'withdrawn': 'withdrawn',
     'checkoutOpen': 'checkout_open',
+    'completed': 'completed',
   };
   static const Map<Object, String> _fromWire = const <Object, String>{
     'submitted': 'submitted',
     'offered': 'offered',
     'withdrawn': 'withdrawn',
     'checkout_open': 'checkoutOpen',
+    'completed': 'completed',
   };
 
   @override
@@ -90,6 +97,8 @@ class _$StandbyApplication extends StandbyApplication {
   @override
   final PurchaseInput selection;
   @override
+  final BuiltList<int> travelDays;
+  @override
   final StandbyApplicationOffer? offer;
   @override
   final DateTime createdAt;
@@ -105,6 +114,7 @@ class _$StandbyApplication extends StandbyApplication {
       required this.routeName,
       required this.state,
       required this.selection,
+      required this.travelDays,
       this.offer,
       required this.createdAt})
       : super._();
@@ -127,6 +137,7 @@ class _$StandbyApplication extends StandbyApplication {
         routeName == other.routeName &&
         state == other.state &&
         selection == other.selection &&
+        travelDays == other.travelDays &&
         offer == other.offer &&
         createdAt == other.createdAt;
   }
@@ -140,6 +151,7 @@ class _$StandbyApplication extends StandbyApplication {
     _$hash = $jc(_$hash, routeName.hashCode);
     _$hash = $jc(_$hash, state.hashCode);
     _$hash = $jc(_$hash, selection.hashCode);
+    _$hash = $jc(_$hash, travelDays.hashCode);
     _$hash = $jc(_$hash, offer.hashCode);
     _$hash = $jc(_$hash, createdAt.hashCode);
     _$hash = $jf(_$hash);
@@ -155,6 +167,7 @@ class _$StandbyApplication extends StandbyApplication {
           ..add('routeName', routeName)
           ..add('state', state)
           ..add('selection', selection)
+          ..add('travelDays', travelDays)
           ..add('offer', offer)
           ..add('createdAt', createdAt))
         .toString();
@@ -191,6 +204,11 @@ class StandbyApplicationBuilder
   set selection(PurchaseInputBuilder? selection) =>
       _$this._selection = selection;
 
+  ListBuilder<int>? _travelDays;
+  ListBuilder<int> get travelDays => _$this._travelDays ??= ListBuilder<int>();
+  set travelDays(ListBuilder<int>? travelDays) =>
+      _$this._travelDays = travelDays;
+
   StandbyApplicationOfferBuilder? _offer;
   StandbyApplicationOfferBuilder get offer =>
       _$this._offer ??= StandbyApplicationOfferBuilder();
@@ -213,6 +231,7 @@ class StandbyApplicationBuilder
       _routeName = $v.routeName;
       _state = $v.state;
       _selection = $v.selection.toBuilder();
+      _travelDays = $v.travelDays.toBuilder();
       _offer = $v.offer?.toBuilder();
       _createdAt = $v.createdAt;
       _$v = null;
@@ -249,6 +268,7 @@ class StandbyApplicationBuilder
             state: BuiltValueNullFieldError.checkNotNull(
                 state, r'StandbyApplication', 'state'),
             selection: selection.build(),
+            travelDays: travelDays.build(),
             offer: _offer?.build(),
             createdAt: BuiltValueNullFieldError.checkNotNull(
                 createdAt, r'StandbyApplication', 'createdAt'),
@@ -258,6 +278,8 @@ class StandbyApplicationBuilder
       try {
         _$failedField = 'selection';
         selection.build();
+        _$failedField = 'travelDays';
+        travelDays.build();
         _$failedField = 'offer';
         _offer?.build();
       } catch (e) {

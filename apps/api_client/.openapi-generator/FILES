@@ -77,6 +77,7 @@ doc/ErrorResponseError.md
 doc/ErrorResponseErrorFieldErrorsInner.md
 doc/Fare.md
 doc/FareInput.md
+doc/FareJourney.md
 doc/FarePage.md
 doc/FareResponse.md
 doc/Flag.md
@@ -146,6 +147,7 @@ doc/OpsPurchase.md
 doc/OpsPurchaseAttemptsInner.md
 doc/OpsPurchaseAttemptsInnerReceivedAmount.md
 doc/OpsPurchaseCheckout.md
+doc/OpsPurchaseOfferTerms.md
 doc/OpsPurchasePage.md
 doc/OpsPurchaseResponse.md
 doc/OpsReportSummary.md
@@ -291,7 +293,9 @@ doc/StandbyApplication.md
 doc/StandbyApplicationOffer.md
 doc/StandbyApplicationPage.md
 doc/StandbyApplicationResponse.md
+doc/StandbyJoinInput.md
 doc/StandbyOfferInput.md
+doc/StandbyOfferInputCreditsInner.md
 doc/Stop.md
 doc/StopEdit.md
 doc/StopEta.md
@@ -299,6 +303,7 @@ doc/StopInput.md
 doc/StopOccurrence.md
 doc/StopPage.md
 doc/StopResponse.md
+doc/SubscriptionOfferLeg.md
 doc/Tokens.md
 doc/TokensResponse.md
 doc/TraceHold.md
@@ -423,6 +428,7 @@ lib/src/model/error_response_error.dart
 lib/src/model/error_response_error_field_errors_inner.dart
 lib/src/model/fare.dart
 lib/src/model/fare_input.dart
+lib/src/model/fare_journey.dart
 lib/src/model/fare_page.dart
 lib/src/model/fare_response.dart
 lib/src/model/flag.dart
@@ -489,6 +495,7 @@ lib/src/model/ops_purchase.dart
 lib/src/model/ops_purchase_attempts_inner.dart
 lib/src/model/ops_purchase_attempts_inner_received_amount.dart
 lib/src/model/ops_purchase_checkout.dart
+lib/src/model/ops_purchase_offer_terms.dart
 lib/src/model/ops_purchase_page.dart
 lib/src/model/ops_purchase_response.dart
 lib/src/model/ops_report_summary.dart
@@ -629,7 +636,9 @@ lib/src/model/standby_application.dart
 lib/src/model/standby_application_offer.dart
 lib/src/model/standby_application_page.dart
 lib/src/model/standby_application_response.dart
+lib/src/model/standby_join_input.dart
 lib/src/model/standby_offer_input.dart
+lib/src/model/standby_offer_input_credits_inner.dart
 lib/src/model/stop.dart
 lib/src/model/stop_edit.dart
 lib/src/model/stop_eta.dart
@@ -637,6 +646,7 @@ lib/src/model/stop_input.dart
 lib/src/model/stop_occurrence.dart
 lib/src/model/stop_page.dart
 lib/src/model/stop_response.dart
+lib/src/model/subscription_offer_leg.dart
 lib/src/model/tokens.dart
 lib/src/model/tokens_response.dart
 lib/src/model/trace_hold.dart
