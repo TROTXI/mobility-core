@@ -155,7 +155,7 @@ class _StandbyPageState extends State<StandbyPage> {
               ],
               const SizedBox(height: 12),
               const Text(
-                'Unused rides convert to the stated credit when coverage closes. Outbound and return allowances are separate. Trips still require confirmation and available seats. You will review the final cash due before paying on Paystack.',
+                'Unused rides convert to the stated credit when coverage closes. Outbound and return allowances are separate. Trips still require confirmation and available seats. Upcoming rides cannot be used before their start date. Pauses and commute changes are blocked while a renewal checkout or paid renewal is pending. You will review the final cash due before paying on Paystack.',
               ),
             ],
           ),
@@ -237,7 +237,7 @@ class _StandbyPageState extends State<StandbyPage> {
         padding: const EdgeInsets.all(16),
         children: [
           const Text(
-            'Join the waitlist for your commute or renewal. Joining is free and does not guarantee a seat. Operations will send an offer with your journeys, dates, ride allowance and price. Review it before paying. Renewals are not automatic.',
+            'Join the waitlist for your commute or renewal. Joining is free and does not guarantee a seat. Operations will send an offer with your journeys, dates, ride allowance and price. You can pay for one upcoming renewal before your current coverage ends. Its rides become available on its start date. Current unused rides only become credit after that period closes. Renewals are not automatic.',
           ),
           const SizedBox(height: 16),
           if (_busy) const LinearProgressIndicator(),

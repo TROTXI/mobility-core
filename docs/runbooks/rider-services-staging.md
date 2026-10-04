@@ -31,6 +31,16 @@ remain visible in payment history. Waitlist entry is free and does not promise
 a seat; monthly and annual are requested plans, with final dates and allowances
 set in the Ops offer.
 
+For continuous renewal, set the new start to the current end date and let the
+rider pay before that boundary. The wallet shows paid upcoming coverage
+separately. Only one future period may be prepaid. No job is needed to switch
+current coverage at the start instant; settlement of old unused rides remains
+separate and must finish before those credits can fund another payment.
+Resolve any planned or active pause first. A pending or paid renewal locks
+pause/commute changes on the preceding period. Do not extend coverage manually
+into the new period: overlapping collections require Ops review. Refunds of an
+upcoming purchase must leave current coverage and its ride balance untouched.
+
 ## Deployment and operating decision
 
 PR #338 is deployed to `trotxi-api-staging` at `59041f1`, including migrations

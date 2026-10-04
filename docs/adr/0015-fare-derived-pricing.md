@@ -34,11 +34,20 @@ journey and weekdays. At period close, each direction's unconsumed rides convert
 at its frozen credit value. Existing booking cutoffs, capacity checks and
 no-show charging still apply. An offer does not reserve vehicle capacity.
 
-Renewals require a new request and offer. This implementation retains the
-single-open-billing-period rule: payment is available only after current
-coverage ends. Ops must choose an expiry later than that boundary and a later
-coverage start so a payment window exists. Contiguous prepaid renewal,
-one-way packages, holidays, and mid-period offer replacement are not implemented.
+Renewals require a new request and offer. One upcoming renewal can be paid in
+advance, starting exactly when current coverage ends without a gap. Current and
+upcoming periods remain separate, non-overlapping accounting records. Current
+ride balances and booking access exclude upcoming periods until their start.
+The date boundary selects coverage without depending on the old period's
+settlement job completing. Unused-ride credits are only available after actual
+period closure, never projected into an early renewal payment.
+
+Resolve pauses before buying a renewal. Once a renewal checkout or paid renewal
+exists, pauses and commute changes on its preceding period are blocked so they
+cannot extend coverage into the frozen start. Refunding an upcoming period
+reverses only that period. One-way packages, holidays and mid-period offer
+replacement are not implemented. Calendar-date offers can meet an existing
+midnight boundary exactly; legacy periods ending mid-day need a later date.
 
 Payment recorded after the deadline does not activate expired terms. The
 purchase is failed, reserved credit is released, and collection evidence goes

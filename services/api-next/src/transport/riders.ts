@@ -21,8 +21,8 @@ interface Cursors {
  * rider. ride_entries has no index on period_id and credit_entries none on
  * user_id, so a per-rider sum is a scan per rider: an N+1 hidden inside one
  * statement. One pass over each ledger costs the same however many riders
- * there are. The open period is found through membership_id, which has a
- * unique partial index because a membership holds at most one open period.
+ * there are. The current period is found through the open membership/start
+ * index. Upcoming prepaid coverage is not yet usable and must not duplicate riders.
  *
  * Rides used counts boardings and no-shows only. Conversions and refunds move
  * the balance too, but they are not rides anybody took.
@@ -58,7 +58,8 @@ const RIDER_STATE = `
         EXISTS (SELECT 1 FROM app.membership_pauses mp
                 WHERE mp.period_id = b.id AND mp.ended_at IS NULL) AS paused
       FROM app.billing_periods b
-      WHERE b.membership_id = m.id AND b.state = 'open'
+      WHERE b.membership_id = m.id AND b.state = 'open' AND b.starts_at <= $1
+      ORDER BY b.starts_at DESC LIMIT 1
     ) op ON true
     WHERE u.role = 'commuter' AND u.deleted_at IS NULL
   ),
@@ -138,10 +139,13 @@ export async function readRiders(
     if (!rider) fail(404, 'not_found', 'Rider not found.');
     const membership = await client.query(
       `SELECT m.id,m.lifecycle,b.id AS period_id,b.starts_at,b.effective_ends_at
-        FROM app.memberships m LEFT JOIN app.billing_periods b
-          ON b.membership_id=m.id AND b.state='open'
+        FROM app.memberships m LEFT JOIN LATERAL (
+          SELECT b.* FROM app.billing_periods b
+          WHERE b.membership_id=m.id AND b.state='open' AND b.starts_at<=$2
+          ORDER BY b.starts_at DESC LIMIT 1
+        ) b ON true
         WHERE m.user_id=$1`,
-      [riderId],
+      [riderId, now],
     );
     const restrictions = await client.query(
       `SELECT * FROM app.account_restrictions WHERE user_id=$1

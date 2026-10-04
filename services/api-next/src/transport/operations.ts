@@ -73,7 +73,7 @@ export async function readOperations(
             SELECT 1 FROM app.account_restrictions ar WHERE ar.user_id=u.id AND ar.released_at IS NULL
           ))::int AS restricted
         FROM app.users u LEFT JOIN app.memberships m ON m.user_id=u.id
-        LEFT JOIN app.billing_periods b ON b.membership_id=m.id AND b.state='open'
+        LEFT JOIN app.billing_periods b ON b.membership_id=m.id AND b.state='open' AND b.starts_at<=$3
           AND (b.effective_ends_at>$3 OR EXISTS (
             SELECT 1 FROM app.membership_pauses mp WHERE mp.period_id=b.id AND mp.ended_at IS NULL))
         WHERE u.role='commuter' AND u.deleted_at IS NULL

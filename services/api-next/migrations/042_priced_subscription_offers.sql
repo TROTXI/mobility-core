@@ -7,6 +7,41 @@ ALTER TABLE app.standby_offers ADD COLUMN input_hash text CHECK(input_hash IS NU
 ALTER TABLE app.purchases ADD COLUMN offer_id uuid UNIQUE REFERENCES app.standby_offers(id) ON DELETE RESTRICT;
 ALTER TABLE app.purchases ADD COLUMN offer_terms jsonb;
 ALTER TABLE app.purchases ADD CHECK((offer_id IS NULL)=(offer_terms IS NULL));
+-- Accounting can keep current and upcoming periods open. The range exclusion
+-- still prohibits overlapping coverage, including at transaction commit.
+DROP INDEX app.one_open_period_per_membership;
+CREATE INDEX billing_periods_open_membership_start ON app.billing_periods(membership_id,starts_at) WHERE state='open';
+-- Assignments belong to coverage periods. Paying a future period must not
+-- truncate the current assignment or release its slot before period closure.
+DO $$ DECLARE n text;
+BEGIN
+ SELECT conname INTO STRICT n FROM pg_constraint WHERE conrelid='app.commute_assignments'::regclass AND contype='x';
+ EXECUTE format('ALTER TABLE app.commute_assignments DROP CONSTRAINT %I',n);
+END $$;
+ALTER TABLE app.commute_assignments ADD CONSTRAINT commute_assignments_period_dates_excl
+ EXCLUDE USING gist(period_id WITH =,daterange(effective_from,effective_to,'[)') WITH &&);
+CREATE FUNCTION app.has_pending_renewal(pid uuid) RETURNS boolean LANGUAGE sql STABLE AS $$
+ SELECT EXISTS(SELECT 1 FROM app.billing_periods current_period
+ JOIN app.purchases p ON p.membership_id=current_period.membership_id
+ LEFT JOIN app.billing_periods next_period ON next_period.purchase_id=p.id
+ WHERE current_period.id=pid AND p.offer_id IS NOT NULL
+ AND ((p.offer_terms->>'coverageStart')::date::timestamp AT TIME ZONE 'Africa/Accra')>current_period.starts_at
+ AND (p.state IN ('awaiting_payment','processing') OR (p.state='fulfilled' AND next_period.state='open')))
+$$;
+CREATE FUNCTION app.guard_prepaid_renewal_pause() RETURNS trigger LANGUAGE plpgsql AS $$
+BEGIN
+ PERFORM id FROM app.users WHERE id=NEW.user_id FOR UPDATE;
+ IF app.has_pending_renewal(NEW.period_id) THEN
+   RAISE EXCEPTION 'renewal_dates_locked' USING ERRCODE='23514';
+ END IF;
+ RETURN NEW;
+END $$;
+CREATE TRIGGER prepaid_renewal_pause BEFORE INSERT ON app.personal_pauses FOR EACH ROW EXECUTE FUNCTION app.guard_prepaid_renewal_pause();
+CREATE TRIGGER prepaid_renewal_pause BEFORE INSERT ON app.membership_pauses FOR EACH ROW EXECUTE FUNCTION app.guard_prepaid_renewal_pause();
+CREATE TRIGGER prepaid_renewal_commute BEFORE INSERT ON app.commute_requests FOR EACH ROW EXECUTE FUNCTION app.guard_prepaid_renewal_pause();
+CREATE TRIGGER prepaid_renewal_commute_decision BEFORE UPDATE OF status ON app.commute_requests
+ FOR EACH ROW WHEN (NEW.status IS DISTINCT FROM OLD.status AND NEW.status IN ('approved','applied'))
+ EXECUTE FUNCTION app.guard_prepaid_renewal_pause();
 DO $$ DECLARE n text;
 BEGIN
  SELECT conname INTO STRICT n FROM pg_constraint WHERE conrelid='app.purchases'::regclass

@@ -269,6 +269,26 @@ class _WalletTabState extends State<WalletTab> {
         const SizedBox(height: 16),
       ],
       ..._buildBalanceSection(context, membership, isWide),
+      if (membership.upcomingCoverage case final upcoming?) ...[
+        const SizedBox(height: 16),
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Upcoming coverage paid', style: AppTypography.label),
+                Text(
+                  'Starts ${_formatFullDay(upcoming.startsAt)}${upcoming.endsAt == null ? '' : ' · Ends ${_formatFullDay(upcoming.endsAt!)}'}',
+                ),
+                const Text(
+                  'These rides become available when this coverage starts. Your current ride balance is unchanged.',
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
       const SizedBox(height: 8),
       TextButton(
         onPressed: () async {

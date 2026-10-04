@@ -448,6 +448,7 @@ named(
   obj({
     membership: obj({ id, lifecycle: z.enum(['open', 'ended']) }).nullable(),
     coverage: schemas.Coverage.nullable(),
+    upcomingCoverage: schemas.Coverage.nullable().optional(),
     lastCoverageEndedAt: instant.nullable(),
     access: obj({ canReserve: z.boolean(), blocks: z.array(schemas.AccessBlock) }),
     commute: schemas.CommuteAssignment.nullable(),

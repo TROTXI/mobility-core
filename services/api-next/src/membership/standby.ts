@@ -194,8 +194,7 @@ export class StandbyService {
           body: { data: view((await this.row(c, existing.id, actor.userId))!) },
         };
       }
-      // Paid members can request their next offer. Payment remains blocked until
-      // current coverage ends; no overlapping period or automatic renewal.
+      // Paid members can request a non-overlapping prepaid renewal.
       const legs = selection.legs as Body[];
       if (
         !Array.isArray(legs) ||
@@ -312,19 +311,6 @@ export class StandbyService {
       ).rowCount;
       if (overlap)
         fail(409, 'coverage_active', 'Start this offer after the current coverage ends.');
-      const unavailableWindow = (
-        await c.query(
-          `SELECT 1 FROM app.billing_periods
-        WHERE user_id=$1 AND state='open' AND effective_ends_at >= $2`,
-          [row.user_id, expiry],
-        )
-      ).rowCount;
-      if (unavailableWindow)
-        fail(
-          409,
-          'renewal_payment_window_required',
-          'Current coverage must end before this offer expires. Choose a later coverage start and payment deadline.',
-        );
       const offerId = (
         await c.query(
           `INSERT INTO app.standby_offers(application_id,expires_at,offer_key_hash,terms,input_hash)

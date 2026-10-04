@@ -232,16 +232,21 @@ export class FinancialFoundation {
         ).rows[0];
       const boundary = { userId: actor.userId, membershipId: membership.id, now };
       await this.options.assertCheckoutAllowed(c, boundary);
-      const open = (
+      const periods = (
         await c.query(
-          "SELECT id,effective_ends_at FROM app.billing_periods WHERE membership_id=$1 AND state='open' FOR UPDATE",
+          "SELECT id,starts_at,effective_ends_at FROM app.billing_periods WHERE membership_id=$1 AND state='open' ORDER BY starts_at FOR UPDATE",
           [membership.id],
         )
-      ).rows[0];
-      if (open) {
-        if (open.effective_ends_at > now)
+      ).rows;
+      for (const open of periods) {
+        if (offered && open.starts_at > now)
+          fail(409, 'renewal_already_paid', 'Upcoming coverage has already been paid.');
+        if (offered && open.effective_ends_at > new Date(`${offered.coverageStart}T00:00:00Z`))
+          fail(409, 'coverage_active', 'The offer overlaps existing paid coverage.');
+        if (!offered && open.effective_ends_at > now)
           fail(409, 'coverage_active', 'Current paid coverage has not ended.');
-        await this.closeOne(c, open.id, boundary);
+        // Never convert current unused rides to credit for an early renewal.
+        if (open.effective_ends_at <= now) await this.closeOne(c, open.id, boundary);
       }
       // Validate the immutable transport references before freezing the quote.
       // A paid offer can cover a published service that has not started yet.
@@ -416,7 +421,7 @@ export class FinancialFoundation {
     if (
       a.state === 'successful' &&
       a.provider_transaction_id === s.transactionId &&
-      p.failure_code === 'offer_expired'
+      ['offer_expired', 'offer_coverage_conflict'].includes(p.failure_code ?? '')
     )
       return 'not_pending';
     if (a.state === 'successful')
@@ -438,7 +443,14 @@ export class FinancialFoundation {
       const offer = (
         await c.query('SELECT expires_at FROM app.standby_offers WHERE id=$1', [p.offer_id])
       ).rows[0];
-      if (s.paidAt >= start || s.paidAt >= offer.expires_at) {
+      const overlap = (
+        await c.query(
+          `SELECT 1 FROM app.billing_periods WHERE membership_id=$1 AND state<>'reversed'
+         AND starts_at<$3 AND effective_ends_at>$2`,
+          [p.membership_id, start, end],
+        )
+      ).rowCount;
+      if (s.paidAt >= start || s.paidAt >= offer.expires_at || overlap) {
         // Collection evidence stays in recovery's ledger for Ops refund/review.
         // An expired service promise must not hold credit or the purchase slot.
         await c.query(
@@ -450,8 +462,8 @@ export class FinancialFoundation {
           [a.id, s.transactionId, s.paidAt, s.channel, s.feesPesewas],
         );
         await c.query(
-          "UPDATE app.purchases SET state='failed',failure_code='offer_expired',updated_at=clock_timestamp() WHERE id=$1",
-          [p.id],
+          "UPDATE app.purchases SET state='failed',failure_code=$2,updated_at=clock_timestamp() WHERE id=$1",
+          [p.id, overlap ? 'offer_coverage_conflict' : 'offer_expired'],
         );
         return 'not_pending';
       }

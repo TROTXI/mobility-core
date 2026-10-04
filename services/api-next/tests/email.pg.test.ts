@@ -55,7 +55,7 @@ test('EMAIL-01 fulfilment commits one encrypted activation; replay cannot queue 
   assert.equal((await f.email.drain()).considered, 0);
   assert.equal(f.calls.length, 1);
   assert.match(f.calls[0]!.message.subject, /STAGING TEST/);
-  assert.match(f.calls[0]!.message.text, /Rides added: 44/);
+  assert.match(f.calls[0]!.message.text, /Rides included: 44/);
   assert.match(f.calls[0]!.message.text, /GHS 264.00/);
   assert.match(f.calls[0]!.message.text, /Renewal is manual/);
   const row = (await f.rows())[0];

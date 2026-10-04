@@ -12,6 +12,8 @@ class _$Membership extends Membership {
   @override
   final MembershipCoverage? coverage;
   @override
+  final MembershipCoverage? upcomingCoverage;
+  @override
   final DateTime? lastCoverageEndedAt;
   @override
   final MembershipAccess access;
@@ -26,6 +28,7 @@ class _$Membership extends Membership {
   _$Membership._(
       {this.membership,
       this.coverage,
+      this.upcomingCoverage,
       this.lastCoverageEndedAt,
       required this.access,
       this.commute,
@@ -44,6 +47,7 @@ class _$Membership extends Membership {
     return other is Membership &&
         membership == other.membership &&
         coverage == other.coverage &&
+        upcomingCoverage == other.upcomingCoverage &&
         lastCoverageEndedAt == other.lastCoverageEndedAt &&
         access == other.access &&
         commute == other.commute &&
@@ -55,6 +59,7 @@ class _$Membership extends Membership {
     var _$hash = 0;
     _$hash = $jc(_$hash, membership.hashCode);
     _$hash = $jc(_$hash, coverage.hashCode);
+    _$hash = $jc(_$hash, upcomingCoverage.hashCode);
     _$hash = $jc(_$hash, lastCoverageEndedAt.hashCode);
     _$hash = $jc(_$hash, access.hashCode);
     _$hash = $jc(_$hash, commute.hashCode);
@@ -68,6 +73,7 @@ class _$Membership extends Membership {
     return (newBuiltValueToStringHelper(r'Membership')
           ..add('membership', membership)
           ..add('coverage', coverage)
+          ..add('upcomingCoverage', upcomingCoverage)
           ..add('lastCoverageEndedAt', lastCoverageEndedAt)
           ..add('access', access)
           ..add('commute', commute)
@@ -90,6 +96,12 @@ class MembershipBuilder implements Builder<Membership, MembershipBuilder> {
       _$this._coverage ??= MembershipCoverageBuilder();
   set coverage(MembershipCoverageBuilder? coverage) =>
       _$this._coverage = coverage;
+
+  MembershipCoverageBuilder? _upcomingCoverage;
+  MembershipCoverageBuilder get upcomingCoverage =>
+      _$this._upcomingCoverage ??= MembershipCoverageBuilder();
+  set upcomingCoverage(MembershipCoverageBuilder? upcomingCoverage) =>
+      _$this._upcomingCoverage = upcomingCoverage;
 
   DateTime? _lastCoverageEndedAt;
   DateTime? get lastCoverageEndedAt => _$this._lastCoverageEndedAt;
@@ -121,6 +133,7 @@ class MembershipBuilder implements Builder<Membership, MembershipBuilder> {
     if ($v != null) {
       _membership = $v.membership?.toBuilder();
       _coverage = $v.coverage?.toBuilder();
+      _upcomingCoverage = $v.upcomingCoverage?.toBuilder();
       _lastCoverageEndedAt = $v.lastCoverageEndedAt;
       _access = $v.access.toBuilder();
       _commute = $v.commute?.toBuilder();
@@ -150,6 +163,7 @@ class MembershipBuilder implements Builder<Membership, MembershipBuilder> {
           _$Membership._(
             membership: _membership?.build(),
             coverage: _coverage?.build(),
+            upcomingCoverage: _upcomingCoverage?.build(),
             lastCoverageEndedAt: lastCoverageEndedAt,
             access: access.build(),
             commute: _commute?.build(),
@@ -162,6 +176,8 @@ class MembershipBuilder implements Builder<Membership, MembershipBuilder> {
         _membership?.build();
         _$failedField = 'coverage';
         _coverage?.build();
+        _$failedField = 'upcomingCoverage';
+        _upcomingCoverage?.build();
 
         _$failedField = 'access';
         access.build();

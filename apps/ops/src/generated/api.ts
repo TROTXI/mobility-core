@@ -3150,6 +3150,18 @@ export interface components {
         /** @enum {string} */
         renewalMode: 'manual';
       } | null;
+      upcomingCoverage?: {
+        id: string;
+        /** Format: date-time */
+        startsAt: string;
+        /** Format: date-time */
+        endsAt: string | null;
+        /** @enum {string} */
+        state: 'open' | 'closed' | 'reversed';
+        paused: boolean;
+        /** @enum {string} */
+        renewalMode: 'manual';
+      } | null;
       /** Format: date-time */
       lastCoverageEndedAt: string | null;
       access: {

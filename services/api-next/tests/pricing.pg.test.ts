@@ -288,7 +288,7 @@ test('OFFER-02 frozen coverage and per-journey credits close correctly, and a fr
   );
   const renewal = await f.join();
   assert.notEqual(renewal.id, app.id);
-  const renewalDenied = await f.call('POST', `/v1/ops/standby/${renewal.id}/offers`, {
+  const renewalOffered = await f.call('POST', `/v1/ops/standby/${renewal.id}/offers`, {
     who: 'ops',
     payload: {
       ...f.offerInput,
@@ -296,7 +296,8 @@ test('OFFER-02 frozen coverage and per-journey credits close correctly, and a fr
       coverageEnd: new Date(new Date(f.end).getTime() + 14 * 86400000).toISOString().slice(0, 10),
     },
   });
-  assert.equal(renewalDenied.json().error.code, 'renewal_payment_window_required');
+  expectStatus(renewalOffered, 201);
+  assert.equal((await f.accept(renewal.id)).json().error.code, 'renewal_already_paid');
   await f.financial.closePeriod(period.id, new Date(`${f.end}T00:00:00Z`));
   const closure = (
     await f.owner.query('SELECT * FROM app.period_closures WHERE period_id=$1', [period.id])
@@ -395,6 +396,207 @@ test('OFFER-08 future published services can be requested and paid before covera
   assert.equal(purchase.offerTerms.coverageStart, f.start);
   assert.equal(purchase.price.amountMinor, 7000);
   assert.equal(f.initialized(), 1);
+});
+
+test('RENEW-01 prepaid coverage switches at the boundary without early rides, projected credit or double fulfilment; refund isolates the renewal', async (t) => {
+  const f = await offeredFixture(t);
+  await f.verify();
+  const paidAt = new Date(`${f.start}T00:00:00Z`);
+  paidAt.setUTCMonth(paidAt.getUTCMonth() - 1);
+  const legacy = await f.buy(randomUUID(), paidAt);
+  assert.equal(await f.financial.fulfill(f.settle(legacy, paidAt)), 'fulfilled');
+  const current = await f.period(legacy.id);
+  const commuteRequest = (
+    await f.membership.command(
+      f.actor,
+      'createCommuteRequest',
+      undefined,
+      {
+        routeId: f.input.routeId,
+        legs: f.input.legs.map((leg) => ({ ...leg })),
+        requestedDate: new Date().toISOString().slice(0, 10),
+        pauseIfWaitlisted: false,
+      },
+      randomUUID(),
+    )
+  ).body as any;
+  await f.grant(500);
+  f.request.selection.useCredit = true;
+  const application = await f.join();
+  const start = current.effective_ends_at.toISOString().slice(0, 10);
+  const end = new Date(current.effective_ends_at.getTime() + 14 * 86400000)
+    .toISOString()
+    .slice(0, 10);
+  await f.offer(application.id, randomUUID(), {
+    ...f.offerInput,
+    coverageStart: start,
+    coverageEnd: end,
+  });
+  const key = randomUUID();
+  const purchase = expectStatus(await f.accept(application.id, key), 201);
+  assert.equal(purchase.appliedCredit.amountMinor, 500);
+  assert.equal(purchase.cashDue.amountMinor, 6500);
+  const opsRequests = (await f.membership.read(f.admin, 'listOpsCommuteRequests')).body as any;
+  const requestToken = opsRequests.data.find((r: any) => r.id === commuteRequest.data.id).editToken;
+  await assert.rejects(
+    f.membership.command(
+      f.admin,
+      'decideCommuteRequest',
+      commuteRequest.data.id,
+      { action: 'approve', note: 'Test renewal guard' },
+      randomUUID(),
+      requestToken,
+    ),
+    /upcoming renewal/,
+  );
+  assert.equal(
+    (await f.owner.query('SELECT count(*)::int n FROM app.period_closures')).rows[0].n,
+    0,
+  );
+  await assert.rejects(
+    f.membership.previewPersonalPause(f.actor, {
+      startDate: new Date(Date.now() + 86400000).toISOString().slice(0, 10),
+      resumeDate: start,
+    }),
+    /upcoming renewal/,
+  );
+  const attempt = (
+    await f.owner.query('SELECT * FROM app.payment_attempts WHERE purchase_id=$1', [purchase.id])
+  ).rows[0];
+  const settlement = {
+    reference: attempt.reference,
+    environment: 'test' as const,
+    amountPesewas: 6500,
+    currency: 'GHS',
+    transactionId: '9001',
+    paidAt: new Date(),
+    channel: null,
+    feesPesewas: 0,
+  };
+  assert.equal(await f.financial.fulfill(settlement), 'fulfilled');
+  assert.equal(await f.financial.fulfill(settlement), 'already_fulfilled');
+  const upcoming = await f.period(purchase.id);
+  assert.equal(upcoming.starts_at.getTime(), current.effective_ends_at.getTime());
+  assert.deepEqual(await f.period(legacy.id), current);
+  const before = expectStatus(await f.call('GET', '/v1/me/membership'), 200);
+  assert.equal(before.coverage.id, current.id);
+  assert.equal(before.upcomingCoverage.id, upcoming.id);
+  assert.equal(before.entitlements.remainingRides, 44);
+  assert.equal(before.entitlements.availableCredit.amountMinor, 0);
+  const riders = expectStatus(await f.call('GET', '/v1/ops/riders', { who: 'ops' }), 200);
+  assert.equal(riders.filter((r: any) => r.id === f.actor.userId).length, 1);
+  assert.equal(riders.find((r: any) => r.id === f.actor.userId).ridesLeft, 44);
+  const summary = expectStatus(await f.call('GET', '/v1/ops/riders/summary', { who: 'ops' }), 200);
+  assert.equal(summary.active, 1);
+  const detail = expectStatus(
+    await f.call('GET', `/v1/ops/riders/${f.actor.userId}`, { who: 'ops' }),
+    200,
+  );
+  assert.equal(detail.membership.periodId, current.id);
+  const nextClock = new MembershipService({
+    pool: f.runtime,
+    authorizeSession: f.dependencies.authorizeSession,
+    cursorSecret: randomBytes(32),
+    now: () => upcoming.starts_at,
+  });
+  const after = (await nextClock.read(f.actor, 'getMembership')).body as any;
+  assert.equal(after.data.coverage.id, upcoming.id);
+  assert.equal(after.data.upcomingCoverage, null);
+  assert.equal(after.data.entitlements.remainingRides, 12);
+  assert.equal(after.data.access.canReserve, true);
+  assert.equal(
+    (await f.period(legacy.id)).state,
+    'open',
+    'unsettled previous period does not delay activation',
+  );
+  await assert.rejects(
+    f.owner.query('UPDATE app.billing_periods SET effective_ends_at=$2 WHERE id=$1', [
+      current.id,
+      new Date(upcoming.starts_at.getTime() + 86400000),
+    ]),
+    /exclusion constraint/,
+  );
+  const secret = `sk_test_${randomBytes(16).toString('hex')}`;
+  const recovery = new PaymentRecovery({
+    pool: f.runtime,
+    provider: new PaystackEvidence(secret, randomBytes(32), async () => {
+      throw new Error('No network');
+    }),
+    foundation: f.financial,
+    authorizeSession: f.dependencies.authorizeSession,
+    cursorSecret: randomBytes(32),
+    reversePeriod: f.membership.reversePeriod,
+  });
+  const send = async (event: string, data: unknown) => {
+    const raw = Buffer.from(JSON.stringify({ event, data }));
+    await recovery.acceptWebhook(raw, createHmac('sha512', secret).update(raw).digest('hex'));
+    const result = await recovery.processInbox();
+    assert.equal(result.succeeded, 1, JSON.stringify(result));
+  };
+  await send('charge.success', {
+    id: settlement.transactionId,
+    reference: attempt.reference,
+    domain: 'test',
+    currency: 'GHS',
+    amount: 6500,
+    status: 'success',
+    paid_at: settlement.paidAt.toISOString(),
+  });
+  await send('refund.processed', {
+    transaction_reference: attempt.reference,
+    domain: 'test',
+    currency: 'GHS',
+    amount: 6500,
+    status: 'processed',
+    refund_reference: 'renewal-refund',
+  });
+  assert.equal((await f.period(purchase.id)).state, 'reversed');
+  assert.deepEqual(await f.period(legacy.id), current);
+  const refunded = expectStatus(await f.call('GET', '/v1/me/membership'), 200);
+  assert.equal(refunded.coverage.id, current.id);
+  assert.equal(refunded.upcomingCoverage, null);
+  assert.equal(refunded.entitlements.remainingRides, 44);
+  assert.equal(refunded.entitlements.availableCredit.amountMinor, 500);
+  await f.membership.command(
+    f.actor,
+    'withdrawCommuteRequest',
+    commuteRequest.data.id,
+    {},
+    randomUUID(),
+  );
+  const resumeDate = new Date(Date.now() + 4 * 86400000).toISOString().slice(0, 10);
+  await f.membership.command(
+    f.actor,
+    'createPersonalPause',
+    undefined,
+    {
+      startDate: new Date(Date.now() + 86400000).toISOString().slice(0, 10),
+      resumeDate,
+    },
+    randomUUID(),
+  );
+  // Advance only the disposable database's pause clock and run real settlement.
+  await f.owner.query(`CREATE OR REPLACE FUNCTION app.personal_pause_now() RETURNS timestamptz
+    LANGUAGE sql VOLATILE AS $$ SELECT '${resumeDate}T00:00:00Z'::timestamptz $$`);
+  await f.owner.query('SELECT app.settle_personal_pauses($1)', [f.actor.userId]);
+  assert.equal(
+    (await f.period(legacy.id)).effective_ends_at.getTime(),
+    current.effective_ends_at.getTime() + 3 * 86400000,
+  );
+  const extendedDay = new Date(current.effective_ends_at.getTime() + 86400000)
+    .toISOString()
+    .slice(0, 10);
+  assert.equal(
+    (
+      await f.owner.query(
+        `SELECT id FROM app.commute_assignments WHERE period_id=$1 AND effective_from<=$2
+     AND (effective_to IS NULL OR $2<effective_to)`,
+        [current.id, extendedDay],
+      )
+    ).rowCount,
+    1,
+    'refund leaves the current commute usable on pause-extension days',
+  );
 });
 
 test('OFFER-04 calendar allowances count real dates, not four weeks or 44 rides', () => {
@@ -537,6 +739,12 @@ test('OFFER-05 upgrade reconnects committed legacy checkouts and releases orphan
 
 test('OFFER-06 reservation weekdays and directional allowances survive period extension; used rides reduce only their own credit', async (t) => {
   const f = await offeredFixture(t);
+  const membership = new MembershipService({
+    pool: f.runtime,
+    authorizeSession: f.dependencies.authorizeSession,
+    cursorSecret: Buffer.alloc(32, 11),
+    now: () => new Date(`${f.start}T00:00:00Z`),
+  });
   await f.verify();
   const app = await f.join();
   await f.offer(app.id);
@@ -577,7 +785,7 @@ test('OFFER-06 reservation weekdays and directional allowances survive period ex
       SELECT id,departure_id,pattern_version_id,$2::date,$2::date+local_departure,$3,$4 FROM app.service_schedules WHERE id=$1`,
       [leg.scheduleId, day, driver, vehicle],
     );
-    return f.membership.command(
+    return membership.command(
       f.actor,
       'decideReservation',
       undefined,
@@ -642,7 +850,7 @@ test('OFFER-06 reservation weekdays and directional allowances survive period ex
     c.release();
   }
   for (const day of days.slice(1))
-    await f.membership.command(
+    await membership.command(
       f.actor,
       'decideReservation',
       undefined,
