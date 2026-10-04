@@ -629,6 +629,8 @@ test('ACC-12 a malformed upload is a bad request, and a closed row is born close
     payload: Buffer.concat([twoFields, PNG, Buffer.from(`\r\n--${boundary}--\r\n`)]),
   });
   assert.equal(malformed.statusCode, 400, malformed.body);
+  assert.equal(malformed.json().error.code, 'invalid_request');
+  assert.equal(malformed.json().error.message, 'Supply exactly one image part.');
   assert.equal(f.stored().length, 0);
 
   // A row created already closed keeps nothing either.

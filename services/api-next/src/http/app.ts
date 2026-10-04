@@ -278,7 +278,13 @@ export async function createTransportApp(options: AppOptions) {
     // Busboy aborts a body it cannot parse with a stream error that carries no
     // status. That is the client's envelope, not our failure.
     const stream = (error as { code?: string }).code;
-    if (stream === 'ERR_STREAM_PREMATURE_CLOSE' || stream?.startsWith('FST_REQ_FILE'))
+    // The avatar envelope permits one file and no text fields. Multipart
+    // count limits are malformed input, not an oversized request body.
+    if (
+      stream === 'ERR_STREAM_PREMATURE_CLOSE' ||
+      stream?.startsWith('FST_REQ_FILE') ||
+      ['FST_FIELDS_LIMIT', 'FST_FILES_LIMIT', 'FST_PARTS_LIMIT'].includes(stream ?? '')
+    )
       return reply.code(400).send({
         error: {
           code: 'invalid_request',
