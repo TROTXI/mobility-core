@@ -1,6 +1,7 @@
 import { Button, Tab, TabList } from '@fluentui/react-components';
 import { ArrowClockwiseRegular } from '@fluentui/react-icons';
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import type { components } from '../generated/api';
 import { useAuth } from '../auth/AuthContext';
 import {
@@ -20,10 +21,13 @@ import { ActionDialog } from '../components/ActionDialog';
 type Purchase = components['schemas']['OpsPurchase'];
 type Review = components['schemas']['PaymentReview'];
 type Refund = components['schemas']['RefundInitiation'];
+type Renewal = components['schemas']['OpsAutoRenewal'];
+type RenewalFilter = 'attention' | 'open' | 'all';
 
 export function Payments() {
   const { session } = useAuth();
-  const [tab, setTab] = useState<'purchases' | 'reviews'>('purchases');
+  const [tab, setTab] = useState<'purchases' | 'reviews' | 'renewals'>('purchases');
+  const [renewalFilter, setRenewalFilter] = useState<RenewalFilter>('attention');
   const [purchase, setPurchase] = useState<Purchase | null>(null);
   const [detailPurchase, setDetailPurchase] = useState<Purchase | null>(null);
   const [review, setReview] = useState<Review | null>(null);
@@ -52,7 +56,19 @@ export function Payments() {
     },
     [session],
   );
-  const activeQuery = tab === 'purchases' ? purchasesQuery : reviewsQuery;
+  const renewalsQuery = useQuery<Renewal[]>(
+    async (signal) => {
+      const response = await session.client.GET('/v1/ops/auto-renewals', {
+        params: { query: { limit: 200, filter: renewalFilter }, header: opsHeaders },
+        signal,
+      });
+      if (response.error) throw new Error(response.error.error.message);
+      return response.data.data;
+    },
+    [session, renewalFilter],
+  );
+  const activeQuery =
+    tab === 'purchases' ? purchasesQuery : tab === 'reviews' ? reviewsQuery : renewalsQuery;
   return (
     <Page
       title="Payments & credits"
@@ -63,6 +79,7 @@ export function Payments() {
           onClick={() => {
             purchasesQuery.retry();
             reviewsQuery.retry();
+            renewalsQuery.retry();
           }}
         >
           Refresh
@@ -76,13 +93,39 @@ export function Payments() {
       >
         <Tab value="purchases">Purchases</Tab>
         <Tab value="reviews">Manual reviews</Tab>
+        <Tab value="renewals">Card renewals</Tab>
       </TabList>
       {activeQuery.error ? (
         <ErrorState message={activeQuery.error} retry={activeQuery.retry} />
       ) : (
-        <Panel title={tab === 'purchases' ? 'Purchase ledger' : 'Review queue'}>
+        <Panel
+          title={
+            tab === 'purchases'
+              ? 'Purchase ledger'
+              : tab === 'reviews'
+                ? 'Review queue'
+                : 'Automatic card renewals'
+          }
+          action={
+            tab === 'renewals' ? (
+              <label className="filter-bar">
+                Show
+                <select
+                  value={renewalFilter}
+                  onChange={(event) => setRenewalFilter(event.target.value as RenewalFilter)}
+                >
+                  <option value="attention">Needs attention</option>
+                  <option value="open">Open</option>
+                  <option value="all">All</option>
+                </select>
+              </label>
+            ) : undefined
+          }
+        >
           {activeQuery.loading ? (
             <LoadingRows />
+          ) : tab === 'renewals' ? (
+            <RenewalRows rows={renewalsQuery.data ?? []} filter={renewalFilter} />
           ) : tab === 'purchases' ? (
             <PurchaseRows
               rows={purchasesQuery.data ?? []}
@@ -184,6 +227,68 @@ export function Payments() {
     </Page>
   );
 }
+// What stopped a renewal, in the words an operator acts on.
+const renewalReason: Record<string, string> = {
+  card_declined: 'Card declined. Retrying daily.',
+  charge_unconfirmed: 'Charge not confirmed by Paystack.',
+  fare_changed: 'Fare changed. Send a new offer.',
+  service_changed: 'Service changed. Send a new offer.',
+  renewal_blocked: 'Account needs attention before it can renew.',
+  no_card: 'No saved card.',
+  coverage_conflict: 'Rider already renewed another way.',
+};
+
+function RenewalRows({ rows, filter }: { rows: Renewal[]; filter: RenewalFilter }) {
+  if (!rows.length)
+    return (
+      <Empty>
+        {filter === 'attention'
+          ? 'No card renewals need attention.'
+          : 'No card renewals match this view.'}
+      </Empty>
+    );
+  return (
+    <div style={{ overflowX: 'auto' }}>
+      <table className="data-table">
+        <thead>
+          <tr>
+            <th>Rider</th>
+            <th>Coverage ends</th>
+            <th>Status</th>
+            <th>What happened</th>
+            <th>Card</th>
+            <th>Price</th>
+            <th>Next try</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((row) => (
+            <tr key={row.id}>
+              <td>{row.riderName ?? row.riderId.slice(0, 8)}</td>
+              <td>{when(row.periodEndsAt)}</td>
+              <td>
+                <StatusBadge value={row.state} />
+              </td>
+              <td>
+                {row.failureCode ? (renewalReason[row.failureCode] ?? row.failureCode) : '—'}
+                {row.state === 'needs_offer' && (
+                  <>
+                    {' '}
+                    <Link to="/standby">Open Standby</Link>
+                  </>
+                )}
+              </td>
+              <td>{row.card ? `${row.card.brand} •••• ${row.card.last4}` : 'None'}</td>
+              <td>{money(row.price)}</td>
+              <td>{row.nextAttemptAt ? when(row.nextAttemptAt) : '—'}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 function PurchaseRows({
   rows,
   onDetail,

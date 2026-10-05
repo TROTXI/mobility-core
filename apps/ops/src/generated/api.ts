@@ -2304,6 +2304,23 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/v1/ops/auto-renewals': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** list Ops Auto Renewals */
+    get: operations['listOpsAutoRenewals'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/v1/ops/purchases/{id}': {
     parameters: {
       query?: never;
@@ -3496,6 +3513,41 @@ export interface components {
     };
     OpsAuditEventPage: {
       data: components['schemas']['OpsAuditEvent'][];
+      page: {
+        nextCursor: string | null;
+      };
+    };
+    OpsAutoRenewal: {
+      id: string;
+      riderId: string;
+      riderName: string | null;
+      /** @enum {string} */
+      state:
+        | 'scheduled'
+        | 'reminded'
+        | 'charging'
+        | 'paid'
+        | 'failed'
+        | 'needs_offer'
+        | 'lapsed'
+        | 'cancelled';
+      failureCode: string | null;
+      attempts: number;
+      /** Format: date-time */
+      periodEndsAt: string;
+      /** Format: date-time */
+      nextAttemptAt: string | null;
+      price: components['schemas']['Money'];
+      card: {
+        brand: string;
+        last4: string;
+      } | null;
+      renewalPurchaseId: string | null;
+      /** Format: date-time */
+      updatedAt: string;
+    };
+    OpsAutoRenewalPage: {
+      data: components['schemas']['OpsAutoRenewal'][];
       page: {
         nextCursor: string | null;
       };
@@ -12801,6 +12853,56 @@ export interface operations {
         };
         content: {
           'application/json': components['schemas']['OpsPurchasePage'];
+        };
+      };
+      400: components['responses']['Error400'];
+      401: components['responses']['Error401'];
+      403: components['responses']['Error403'];
+      404: components['responses']['Error404'];
+      426: components['responses']['Error426'];
+      429: components['responses']['Error429'];
+      500: components['responses']['Error500'];
+      503: components['responses']['Error503'];
+    };
+  };
+  listOpsAutoRenewals: {
+    parameters: {
+      query?: {
+        /** @description Opaque cursor bound to caller, sort and filters. */
+        cursor?: string;
+        /** @description Page size. No silent truncation. */
+        limit?: number;
+        /** @description attention: declined, unconfirmed or waiting on a new offer. open: not yet paid or ended. */
+        filter?: 'attention' | 'open' | 'all';
+      };
+      header: {
+        /**
+         * @description Compatibility metadata only, never grants a role.
+         * @example ops
+         */
+        'X-Trotxi-Client': 'commuter' | 'driver' | 'ops' | 'worker';
+        /**
+         * @description Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
+         * @example 1
+         */
+        'X-Trotxi-Build': number;
+        /** @description Required for commuter/driver, absent for ops/worker. */
+        'X-Trotxi-Platform'?: 'ios' | 'android';
+      };
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Success */
+      200: {
+        headers: {
+          /** @description Opaque resource version; required on protected edits. */
+          ETag?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['OpsAutoRenewalPage'];
         };
       };
       400: components['responses']['Error400'];

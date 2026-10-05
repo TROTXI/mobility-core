@@ -180,6 +180,7 @@ const selected = new Set([
   'setAutoRenewal',
   'removeAutoRenewalCard',
   'runAutoRenewals',
+  'listOpsAutoRenewals',
 ]);
 const count = selected.size;
 const paths = {};

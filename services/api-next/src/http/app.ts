@@ -871,7 +871,15 @@ export async function createTransportApp(options: AppOptions) {
               result = await options.standby!.accept(actor, target!, key);
             }
           } else if (autoRenewalEndpoint) {
-            if (Object.keys(request.query as object).length)
+            const query = request.query as Record<string, string | undefined>;
+            const allowed = new Set(
+              operation.parameters.filter((p) => p.in === 'query').map((p) => p.name),
+            );
+            if (
+              Object.entries(query).some(
+                ([k, v]) => !allowed.has(k) || typeof v !== 'string' || v.length > 128,
+              )
+            )
               fail(400, 'invalid_query', 'Unsupported query parameters.');
             if (!input && request.body !== undefined)
               fail(400, 'invalid_request', 'This operation has no request body.');
@@ -879,6 +887,7 @@ export async function createTransportApp(options: AppOptions) {
               actor,
               name as AutoRenewalOperation,
               (request.body ?? {}) as Body,
+              query,
             );
           } else if (membershipEndpoint) {
             const query = request.query as Record<string, string | undefined>;

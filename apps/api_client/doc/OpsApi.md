@@ -46,6 +46,7 @@ Method | HTTP request | Description
 [**listMinimumVersions**](OpsApi.md#listminimumversions) | **GET** /v1/ops/min-versions | list Minimum Versions
 [**listOpsAccountErasures**](OpsApi.md#listopsaccounterasures) | **GET** /v1/ops/account-erasures | list Ops Account Erasures
 [**listOpsAuditEvents**](OpsApi.md#listopsauditevents) | **GET** /v1/ops/audit-events | list Ops Audit Events
+[**listOpsAutoRenewals**](OpsApi.md#listopsautorenewals) | **GET** /v1/ops/auto-renewals | list Ops Auto Renewals
 [**listOpsCommuteRequests**](OpsApi.md#listopscommuterequests) | **GET** /v1/ops/commute-requests | list Ops Commute Requests
 [**listOpsDeliveries**](OpsApi.md#listopsdeliveries) | **GET** /v1/ops/deliveries | list Ops Deliveries
 [**listOpsDriverRequests**](OpsApi.md#listopsdriverrequests) | **GET** /v1/ops/driver-requests | list Ops Driver Requests
@@ -1932,6 +1933,57 @@ Name | Type | Description  | Notes
 ### Return type
 
 [**OpsAuditEventPage**](OpsAuditEventPage.md)
+
+### Authorization
+
+[bearerAuth](../README.md#bearerAuth)
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
+ - **Accept**: application/json
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
+# **listOpsAutoRenewals**
+> OpsAutoRenewalPage listOpsAutoRenewals(xTrotxiClient, xTrotxiBuild, cursor, limit, filter, xTrotxiPlatform)
+
+list Ops Auto Renewals
+
+### Example
+```dart
+import 'package:trotxi_api_client/api.dart';
+
+final api = TrotxiApiClient().getOpsApi();
+final String xTrotxiClient = ops; // String | Compatibility metadata only, never grants a role.
+final int xTrotxiBuild = 1; // int | Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
+final String cursor = cursor_example; // String | Opaque cursor bound to caller, sort and filters.
+final int limit = 56; // int | Page size. No silent truncation.
+final String filter = filter_example; // String | attention: declined, unconfirmed or waiting on a new offer. open: not yet paid or ended.
+final String xTrotxiPlatform = xTrotxiPlatform_example; // String | Required for commuter/driver, absent for ops/worker.
+
+try {
+    final response = api.listOpsAutoRenewals(xTrotxiClient, xTrotxiBuild, cursor, limit, filter, xTrotxiPlatform);
+    print(response);
+} on DioException catch (e) {
+    print('Exception when calling OpsApi->listOpsAutoRenewals: $e\n');
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **xTrotxiClient** | **String**| Compatibility metadata only, never grants a role. |
+ **xTrotxiBuild** | **int**| Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable. | [default to 1]
+ **cursor** | **String**| Opaque cursor bound to caller, sort and filters. | [optional]
+ **limit** | **int**| Page size. No silent truncation. | [optional] [default to 50]
+ **filter** | **String**| attention: declined, unconfirmed or waiting on a new offer. open: not yet paid or ended. | [optional] [default to 'attention']
+ **xTrotxiPlatform** | **String**| Required for commuter/driver, absent for ops/worker. | [optional]
+
+### Return type
+
+[**OpsAutoRenewalPage**](OpsAutoRenewalPage.md)
 
 ### Authorization
 
@@ -3988,4 +4040,3 @@ Name | Type | Description  | Notes
  - **Accept**: application/json
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
-

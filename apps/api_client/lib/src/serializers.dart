@@ -146,6 +146,9 @@ import 'package:trotxi_api_client/src/model/ops_account_erasure.dart';
 import 'package:trotxi_api_client/src/model/ops_account_erasure_page.dart';
 import 'package:trotxi_api_client/src/model/ops_audit_event.dart';
 import 'package:trotxi_api_client/src/model/ops_audit_event_page.dart';
+import 'package:trotxi_api_client/src/model/ops_auto_renewal.dart';
+import 'package:trotxi_api_client/src/model/ops_auto_renewal_card.dart';
+import 'package:trotxi_api_client/src/model/ops_auto_renewal_page.dart';
 import 'package:trotxi_api_client/src/model/ops_commute_request.dart';
 import 'package:trotxi_api_client/src/model/ops_commute_request_page.dart';
 import 'package:trotxi_api_client/src/model/ops_commute_request_response.dart';
@@ -486,6 +489,9 @@ part 'serializers.g.dart';
   OpsAccountErasurePage,
   OpsAuditEvent,
   OpsAuditEventPage,
+  OpsAutoRenewal,
+  OpsAutoRenewalCard,
+  OpsAutoRenewalPage,
   OpsCommuteRequest,
   OpsCommuteRequestPage,
   OpsCommuteRequestResponse,
