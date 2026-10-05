@@ -1,0 +1,61 @@
+# Scheduled staging service maintenance: trip generation, the evening ask and
+# booking defaults, no-shows, pause resumes, route learning and GPS retention.
+#
+# Same model as payments-maintenance.yml: no master key, owner DB credential or
+# Render API access. The run calls the staging API's own maintenance routes as
+# the maintenance operator. Times are UTC, which is Accra time.
+name: Service maintenance
+
+on:
+  schedule:
+    - cron: '30 1 * * *' # nightly: trips for the next 7 days, resumes, learning, retention
+    - cron: '0 18 * * *' # ask: tomorrow's riders, both directions
+    - cron: '0 21 * * *' # defaults: book tomorrow's riders who did not answer
+    - cron: '30 23 * * *' # no-shows: settle today's, after the last departure
+  workflow_dispatch:
+    inputs:
+      group:
+        description: Which group to run now
+        required: true
+        type: choice
+        options: [nightly, ask, defaults, no-shows]
+
+permissions:
+  contents: read
+
+jobs:
+  maintain:
+    if: github.ref == 'refs/heads/main'
+    environment: staging
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    # One run per group at a time; a late run never overlaps the next.
+    concurrency: service-maintenance-${{ inputs.group || github.event.schedule }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Run the group
+        working-directory: services/api-next
+        env:
+          SCHEDULE: ${{ github.event.schedule }}
+          GROUP: ${{ inputs.group }}
+          REPLACEMENT_RUNTIME_DATABASE_URL: ${{ secrets.STAGING_MAINTENANCE_DATABASE_URL }}
+          STAGING_DATABASE_CA_CERT: ${{ secrets.STAGING_DATABASE_CA_CERT }}
+          REPLACEMENT_ACCESS_SECRET: ${{ secrets.STAGING_ACCESS_SECRET }}
+          REPLACEMENT_MAINTENANCE_USER_ID: ${{ vars.STAGING_MAINTENANCE_USER_ID }}
+        run: |
+          case "${GROUP:-$SCHEDULE}" in
+            nightly|'30 1 * * *') group=nightly ;;
+            ask|'0 18 * * *') group=ask ;;
+            defaults|'0 21 * * *') group=defaults ;;
+            no-shows|'30 23 * * *') group=no-shows ;;
+            *) echo "unknown schedule"; exit 1 ;;
+          esac
+          node --import tsx scripts/maintain-staging.ts "$group"

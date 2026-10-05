@@ -37,10 +37,47 @@ export function paymentMaintenanceConfiguration(env: NodeJS.ProcessEnv) {
   return { ...database, key, userId: maintenanceUserId(env) };
 }
 
-export async function maintainStagingPayments(
+/** One maintenance route call: the audit name, the route under /v1/ops/maintenance, its body. */
+export interface StagingJob {
+  name: string;
+  route: string;
+  body: Record<string, unknown>;
+}
+
+export function maintainStagingPayments(
   pool: pg.Pool,
   key: Uint8Array,
   userId: string,
+  request: typeof fetch = fetch,
+  log: (line: string) => void = (line) => process.stdout.write(`${line}\n`),
+): Promise<void> {
+  return runStagingJobs(
+    pool,
+    key,
+    userId,
+    (['payment-inbox', 'payment-reconciliation'] as const).map((job) => ({
+      name: job,
+      route: job,
+      body: { limit: 100 },
+    })),
+    request,
+    log,
+  );
+}
+
+/**
+ * Run maintenance routes on the staging API as the maintenance operator.
+ *
+ * One short-lived session for the whole run, revoked on every exit. Each call
+ * is audited, and the public Actions log gets counts only. A refused or
+ * partial batch does not stop the jobs after it, and the run fails at the end
+ * if any did; a network failure ends the run at once.
+ */
+export async function runStagingJobs(
+  pool: pg.Pool,
+  key: Uint8Array,
+  userId: string,
+  jobs: readonly StagingJob[],
   request: typeof fetch = fetch,
   log: (line: string) => void = (line) => process.stdout.write(`${line}\n`),
 ): Promise<void> {
@@ -69,12 +106,12 @@ export async function maintainStagingPayments(
       .sign(key);
     let failed = false;
     const audit = new MaintenanceAudit(pool);
-    for (const job of ['payment-inbox', 'payment-reconciliation'] as const) {
+    for (const { name: job, route, body } of jobs) {
       const runId = await guarded('database', () => audit.startWorker(userId, job));
       let response: Response;
       try {
         response = await guarded('transport', () =>
-          request(`${API}/v1/ops/maintenance/${job}`, {
+          request(`${API}/v1/ops/maintenance/${route}`, {
             method: 'POST',
             redirect: 'error',
             headers: {
@@ -84,7 +121,7 @@ export async function maintainStagingPayments(
               'idempotency-key': randomUUID(),
               authorization: `Bearer ${token}`,
             },
-            body: JSON.stringify({ limit: 100 }),
+            body: JSON.stringify(body),
           }),
         );
       } catch (error) {
