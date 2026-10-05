@@ -38,7 +38,7 @@ import type { MembershipService, MembershipOperation } from '../membership/servi
 import { standbyOperations, type StandbyService } from '../membership/standby.js';
 import { boardingOperations } from '../boarding/service.js';
 import type { BoardingService } from '../boarding/service.js';
-import { loggerOptions } from '../observability/logging.js';
+import { failureLog, loggerOptions } from '../observability/logging.js';
 import { recordJob } from '../observability/metrics.js';
 import type { MaintenanceAudit } from '../runtime/maintenance-audit.js';
 import { inboxOperations } from '../notifications/inbox.js';
@@ -303,6 +303,9 @@ export async function createTransportApp(options: AppOptions) {
         'The request is invalid.',
       );
     else safe = mapDatabaseError(error);
+    const failure = failureLog(error, safe.status, safe.code);
+    if (safe.status >= 500) request.log.error(failure, 'request failed');
+    else request.log.info(failure, 'request refused');
     reply
       .header('Cache-Control', 'no-store')
       .code(safe.status)
