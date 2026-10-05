@@ -114,19 +114,50 @@ class TrotxiCommuterApp extends StatefulWidget {
   State<TrotxiCommuterApp> createState() => _TrotxiCommuterAppState();
 }
 
-class _TrotxiCommuterAppState extends State<TrotxiCommuterApp> {
+class _TrotxiCommuterAppState extends State<TrotxiCommuterApp>
+    with WidgetsBindingObserver {
+  /// Away for less than this and the access token is very likely still good.
+  static const _revalidateAfter = Duration(minutes: 5);
+
   final _themeController = AppThemeController();
+  DateTime? _pausedAt;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     unawaited(widget.client.load());
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _themeController.dispose();
     super.dispose();
+  }
+
+  /// A phone left idle keeps showing the last signed-in screen, and nothing on
+  /// it asks the server anything. On return, make one authenticated call: if
+  /// the session has expired the client refreshes, and when that fails it signs
+  /// the rider out, which swaps this tree to the sign-in screen.
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.paused) {
+      _pausedAt = DateTime.now();
+    } else if (state == AppLifecycleState.resumed) {
+      final pausedAt = _pausedAt;
+      _pausedAt = null;
+      if (pausedAt != null &&
+          DateTime.now().difference(pausedAt) >= _revalidateAfter &&
+          widget.client.stage.value == CommuterStage.ready) {
+        unawaited(
+          widget.client.account().then<void>((_) {}, onError: (Object _) {
+            // Offline or a transient failure: stay put. An expired session is
+            // handled by the client itself, not here.
+          }),
+        );
+      }
+    }
   }
 
   @override
