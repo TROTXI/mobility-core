@@ -50,12 +50,12 @@ export function scheduledJobs(group: Group, now: Date): StagingJob[] {
           body: { limit: 100 },
         })),
       ];
-    // Ask tomorrow's riders in the evening, then book the ones who did not
-    // answer at the cutoff.
+    // Ask tomorrow's riders at 21:00. The cutoff runs at midnight, when that
+    // service day has become today: book the riders who did not answer.
     case 'ask':
       return bothDirections('ask-dispatch', day(now, 1));
     case 'defaults':
-      return bothDirections('reservation-defaults', day(now, 1));
+      return bothDirections('reservation-defaults', day(now, 0));
     // Late evening, after the last departure: settle today's no-shows.
     case 'no-shows':
       return bothDirections('no-shows', day(now, 0));

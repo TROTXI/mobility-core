@@ -9,8 +9,8 @@ name: Service maintenance
 on:
   schedule:
     - cron: '30 1 * * *' # nightly: trips for the next 7 days, resumes, learning, retention
-    - cron: '0 18 * * *' # ask: tomorrow's riders, both directions
-    - cron: '0 21 * * *' # defaults: book tomorrow's riders who did not answer
+    - cron: '0 21 * * *' # ask: tomorrow's riders, both directions
+    - cron: '0 0 * * *' # defaults: at midnight, book today's riders who did not answer
     - cron: '30 23 * * *' # no-shows: settle today's, after the last departure
   workflow_dispatch:
     inputs:
@@ -53,8 +53,8 @@ jobs:
         run: |
           case "${GROUP:-$SCHEDULE}" in
             nightly|'30 1 * * *') group=nightly ;;
-            ask|'0 18 * * *') group=ask ;;
-            defaults|'0 21 * * *') group=defaults ;;
+            ask|'0 21 * * *') group=ask ;;
+            defaults|'0 0 * * *') group=defaults ;;
             no-shows|'30 23 * * *') group=no-shows ;;
             *) echo "unknown schedule"; exit 1 ;;
           esac

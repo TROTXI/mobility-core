@@ -277,14 +277,15 @@ test('maintenance workflow has no root key fetch or owner credentials and requir
 });
 
 test('service maintenance groups call the right routes for the right Accra days', () => {
-  const now = new Date('2026-10-05T18:00:00Z');
-  const calls = (group: (typeof GROUPS)[number]) =>
-    scheduledJobs(group, now).map((j) => [j.route, j.body]);
+  const now = new Date('2026-10-05T21:00:00Z');
+  const calls = (group: (typeof GROUPS)[number], at = now) =>
+    scheduledJobs(group, at).map((j) => [j.route, j.body]);
   assert.deepEqual(calls('ask'), [
     ['ask-dispatch', { travelDate: '2026-10-06', direction: 'outbound', limit: 100 }],
     ['ask-dispatch', { travelDate: '2026-10-06', direction: 'return', limit: 100 }],
   ]);
-  assert.deepEqual(calls('defaults'), [
+  // The midnight cutoff books the day the 21:00 ask was about.
+  assert.deepEqual(calls('defaults', new Date('2026-10-06T00:00:00Z')), [
     ['reservation-defaults', { travelDate: '2026-10-06', direction: 'outbound', limit: 100 }],
     ['reservation-defaults', { travelDate: '2026-10-06', direction: 'return', limit: 100 }],
   ]);
