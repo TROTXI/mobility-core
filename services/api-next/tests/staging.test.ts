@@ -15,7 +15,9 @@ import { failureLine, MaintenanceFailure } from '../scripts/maintenance-safety.j
 import {
   maintainStagingPayments,
   paymentMaintenanceConfiguration,
+  runStagingJobs,
 } from '../scripts/maintain-staging-payments.js';
+import { GROUPS, scheduledJobs } from '../scripts/maintain-staging.js';
 
 const settings = () => ({
   RENDER_SERVICE_ID: STAGING_SERVICE_ID,
@@ -272,4 +274,96 @@ test('maintenance workflow has no root key fetch or owner credentials and requir
   assert.doesNotMatch(source, /JWT_SECRET|RENDER_API_KEY|secrets\.STAGING_DATABASE_URL|GITHUB_ENV/);
   assert.match(source, /secrets\.STAGING_ACCESS_SECRET/);
   assert.match(source, /secrets\.STAGING_EMAIL_ENCRYPTION_KEY/);
+});
+
+test('service maintenance groups call the right routes for the right Accra days', () => {
+  const now = new Date('2026-10-05T21:00:00Z');
+  const calls = (group: (typeof GROUPS)[number], at = now) =>
+    scheduledJobs(group, at).map((j) => [j.route, j.body]);
+  assert.deepEqual(calls('ask'), [
+    ['ask-dispatch', { travelDate: '2026-10-06', direction: 'outbound', limit: 100 }],
+    ['ask-dispatch', { travelDate: '2026-10-06', direction: 'return', limit: 100 }],
+  ]);
+  // The midnight cutoff books the day the 21:00 ask was about.
+  assert.deepEqual(calls('defaults', new Date('2026-10-06T00:00:00Z')), [
+    ['reservation-defaults', { travelDate: '2026-10-06', direction: 'outbound', limit: 100 }],
+    ['reservation-defaults', { travelDate: '2026-10-06', direction: 'return', limit: 100 }],
+  ]);
+  assert.deepEqual(calls('no-shows'), [
+    ['no-shows', { travelDate: '2026-10-05', direction: 'outbound', limit: 100 }],
+    ['no-shows', { travelDate: '2026-10-05', direction: 'return', limit: 100 }],
+  ]);
+  assert.deepEqual(calls('nightly'), [
+    ...['06', '07', '08', '09', '10', '11', '12'].map((d) => [
+      'trip-generation',
+      { serviceDate: `2026-10-${d}`, limit: 100 },
+    ]),
+    ['personal-pause-resumes', { limit: 100 }],
+    ['route-learning', { limit: 100 }],
+    ['gps-retention', { limit: 100 }],
+  ]);
+});
+
+test('the service maintenance workflow maps every schedule to a group and holds no master key', async () => {
+  const workflow = await readFile(
+    new URL('../../../.github/workflows/service-maintenance.yml', import.meta.url),
+    'utf8',
+  );
+  assert.ok(workflow.includes('node --import tsx scripts/maintain-staging.ts "$group"'));
+  const crons = [...workflow.matchAll(/- cron: '([^']+)'/g)].map((m) => m[1]!);
+  assert.equal(crons.length, GROUPS.length);
+  for (const cron of crons) assert.ok(workflow.includes(`|'${cron}') group=`), cron);
+  for (const group of GROUPS) assert.ok(workflow.includes(`${group}|'`), group);
+  assert.match(workflow, /environment: staging/);
+  assert.match(workflow, /if: github.ref == 'refs\/heads\/main'/);
+  for (const forbidden of [
+    'JWT_SECRET',
+    'OWNER',
+    'RENDER_API',
+    'PAYSTACK_SECRET',
+    'EMAIL_ENCRYPTION',
+  ])
+    assert.doesNotMatch(workflow, new RegExp(forbidden));
+});
+
+test('staging jobs post each body unchanged to its route and refuse an unknown group', async () => {
+  const key = Buffer.alloc(32, 5);
+  const seen: [string, unknown][] = [];
+  const pool = {
+    query: async () => ({ rows: [{ id: 'session', user_id: 'operator' }] }),
+  } as unknown as Pool;
+  const ok = { data: { considered: 0, succeeded: 0, blocked: 0, failed: 0, failures: [] } };
+  await runStagingJobs(
+    pool,
+    key,
+    'operator',
+    scheduledJobs('ask', new Date('2026-10-05T18:00:00Z')),
+    async (input, init) => {
+      seen.push([String(input), JSON.parse(init?.body as string)]);
+      return Response.json(ok);
+    },
+    () => {},
+  );
+  assert.deepEqual(seen, [
+    [
+      'https://trotxi-api-staging.onrender.com/v1/ops/maintenance/ask-dispatch',
+      { travelDate: '2026-10-06', direction: 'outbound', limit: 100 },
+    ],
+    [
+      'https://trotxi-api-staging.onrender.com/v1/ops/maintenance/ask-dispatch',
+      { travelDate: '2026-10-06', direction: 'return', limit: 100 },
+    ],
+  ]);
+  const run = spawnSync(
+    process.execPath,
+    ['--import', 'tsx', 'scripts/maintain-staging.ts', 'everything'],
+    {
+      cwd: fileURLToPath(new URL('../', import.meta.url)),
+      env: { PATH: process.env.PATH },
+      encoding: 'utf8',
+      timeout: 10_000,
+    },
+  );
+  assert.equal(run.status, 1);
+  assert.match(run.stderr, /"category":"configuration"/);
 });
