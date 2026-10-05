@@ -477,6 +477,34 @@ named(
 // Card auto-renewal. The rider's choice, the card that honours it (display
 // details only), and the renewal of their current period if one is pending.
 named('AutoRenewalInput', obj({ enabled: z.boolean() }));
+// One rider's renewal as Ops sees it: whose, when, how it is going, and why
+// it stopped, so a stalled or changed renewal gets a new offer in time.
+named(
+  'OpsAutoRenewal',
+  obj({
+    id,
+    riderId: id,
+    riderName: text().nullable(),
+    state: z.enum([
+      'scheduled',
+      'reminded',
+      'charging',
+      'paid',
+      'failed',
+      'needs_offer',
+      'lapsed',
+      'cancelled',
+    ]),
+    failureCode: text(50).nullable(),
+    attempts: count,
+    periodEndsAt: instant,
+    nextAttemptAt: instant.nullable(),
+    price: money,
+    card: obj({ brand: text(50), last4: z.string().regex(/^[0-9]{4}$/) }).nullable(),
+    renewalPurchaseId: id.nullable(),
+    updatedAt: instant,
+  }),
+);
 named(
   'AutoRenewal',
   obj({
@@ -2085,6 +2113,7 @@ edit(
 );
 list('/v1/ops/payments/reviews', 'listPaymentReviews', 'PaymentReview');
 list('/v1/ops/purchases', 'listOpsPurchases', 'OpsPurchase');
+list('/v1/ops/auto-renewals', 'listOpsAutoRenewals', 'OpsAutoRenewal');
 get('/v1/ops/purchases/{id}', 'getOpsPurchase', 'OpsPurchase');
 post(
   '/v1/ops/payments/reviews/{id}/decisions',

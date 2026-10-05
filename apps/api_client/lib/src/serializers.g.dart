@@ -199,6 +199,10 @@ Serializers _$serializers = (Serializers().toBuilder()
       ..add(OpsAuditEvent.serializer)
       ..add(OpsAuditEventAreaEnum.serializer)
       ..add(OpsAuditEventPage.serializer)
+      ..add(OpsAutoRenewal.serializer)
+      ..add(OpsAutoRenewalCard.serializer)
+      ..add(OpsAutoRenewalPage.serializer)
+      ..add(OpsAutoRenewalStateEnum.serializer)
       ..add(OpsCommuteRequest.serializer)
       ..add(OpsCommuteRequestPage.serializer)
       ..add(OpsCommuteRequestResponse.serializer)
@@ -569,6 +573,9 @@ Serializers _$serializers = (Serializers().toBuilder()
       ..addBuilderFactory(
           const FullType(BuiltList, const [const FullType(OpsAuditEvent)]),
           () => ListBuilder<OpsAuditEvent>())
+      ..addBuilderFactory(
+          const FullType(BuiltList, const [const FullType(OpsAutoRenewal)]),
+          () => ListBuilder<OpsAutoRenewal>())
       ..addBuilderFactory(
           const FullType(BuiltList, const [const FullType(OpsCommuteRequest)]),
           () => ListBuilder<OpsCommuteRequest>())

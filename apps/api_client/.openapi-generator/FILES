@@ -137,6 +137,9 @@ doc/OpsAccountErasurePage.md
 doc/OpsApi.md
 doc/OpsAuditEvent.md
 doc/OpsAuditEventPage.md
+doc/OpsAutoRenewal.md
+doc/OpsAutoRenewalCard.md
+doc/OpsAutoRenewalPage.md
 doc/OpsCommuteRequest.md
 doc/OpsCommuteRequestPage.md
 doc/OpsCommuteRequestResponse.md
@@ -498,6 +501,9 @@ lib/src/model/ops_account_erasure.dart
 lib/src/model/ops_account_erasure_page.dart
 lib/src/model/ops_audit_event.dart
 lib/src/model/ops_audit_event_page.dart
+lib/src/model/ops_auto_renewal.dart
+lib/src/model/ops_auto_renewal_card.dart
+lib/src/model/ops_auto_renewal_page.dart
 lib/src/model/ops_commute_request.dart
 lib/src/model/ops_commute_request_page.dart
 lib/src/model/ops_commute_request_response.dart

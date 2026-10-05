@@ -21,12 +21,14 @@ import type {
 } from './foundation.js';
 import type { Pricing } from './pricing.js';
 import { buildOfferTerms, type OfferTerms } from '../membership/offer-terms.js';
+import { cursorCodec } from '../transport/cursor.js';
 
 export const autoRenewalOperations = [
   'getAutoRenewal',
   'setAutoRenewal',
   'removeAutoRenewalCard',
   'runAutoRenewals',
+  'listOpsAutoRenewals',
 ] as const;
 export type AutoRenewalOperation = (typeof autoRenewalOperations)[number];
 
@@ -86,6 +88,8 @@ export interface AutoRenewalOptions {
   /** Verify the attempt with Paystack and process the evidence. */
   settle: (reference: string) => Promise<void>;
   email?: RenewalEmail;
+  /** Signs Ops list cursors to the caller and filter. */
+  cursorSecret: Buffer;
   now?: () => Date;
 }
 
@@ -133,8 +137,26 @@ export function cardBox(root: Buffer) {
 }
 const dateOf = (d: Date) => d.toISOString().slice(0, 10);
 
+const VIEWS = {
+  attention: ['failed', 'needs_offer', 'charging'],
+  open: ['scheduled', 'reminded', 'charging', 'failed', 'needs_offer'],
+  all: [
+    'scheduled',
+    'reminded',
+    'charging',
+    'paid',
+    'failed',
+    'needs_offer',
+    'lapsed',
+    'cancelled',
+  ],
+} as const;
+
 export class AutoRenewals {
-  constructor(private readonly options: AutoRenewalOptions) {}
+  private readonly cursors;
+  constructor(private readonly options: AutoRenewalOptions) {
+    this.cursors = cursorCodec(options.cursorSecret);
+  }
   private now() {
     return this.options.now?.() ?? new Date();
   }
@@ -315,8 +337,14 @@ export class AutoRenewals {
     };
   }
 
-  async handle(actor: Actor, operation: AutoRenewalOperation, body: Body = {}): Promise<Outcome> {
+  async handle(
+    actor: Actor,
+    operation: AutoRenewalOperation,
+    body: Body = {},
+    query: Record<string, string | undefined> = {},
+  ): Promise<Outcome> {
     if (operation === 'runAutoRenewals') return this.run(actor, body);
+    if (operation === 'listOpsAutoRenewals') return this.list(actor, query);
     return this.tx(async (c) => {
       await this.rider(c, actor);
       if (operation === 'setAutoRenewal') {
@@ -350,6 +378,66 @@ export class AutoRenewals {
         return { status: 204, headers: {}, body: null };
       }
       return { status: 200, headers: {}, body: { data: await this.view(c, actor.userId) } };
+    });
+  }
+
+  /**
+   * Renewals for Ops, soonest-ending first. The default view is the ones a
+   * person has to act on: declined, unconfirmed, or waiting on a new offer.
+   */
+  private async list(actor: Actor, query: Record<string, string | undefined>): Promise<Outcome> {
+    const view = (query.filter ?? 'attention') as keyof typeof VIEWS;
+    if (!Object.hasOwn(VIEWS, view)) fail(400, 'invalid_query', 'Unknown renewal filter.');
+    const limit = query.limit === undefined ? 50 : Number(query.limit);
+    if (!Number.isInteger(limit) || limit < 1 || limit > 200)
+      fail(400, 'invalid_query', 'Limit must be between 1 and 200.');
+    const context = `${actor.userId}:auto-renewals:${view}`;
+    const now = new Date();
+    const cursor = query.cursor ? this.cursors.decode(query.cursor, context, now) : null;
+    return this.tx(async (c) => {
+      await this.operator(c, actor);
+      const rows = (
+        await c.query(
+          `SELECT r.*,u.display_name,b.effective_ends_at,p.price_pesewas,k.brand,k.last4,
+             to_char(b.effective_ends_at AT TIME ZONE 'UTC','YYYY-MM-DD"T"HH24:MI:SS.US"Z"') AS cursor_time
+           FROM app.auto_renewals r
+           JOIN app.users u ON u.id=r.user_id AND u.deleted_at IS NULL
+           JOIN app.billing_periods b ON b.id=r.period_id
+           JOIN app.purchases p ON p.id=b.purchase_id
+           LEFT JOIN app.card_authorizations k ON k.user_id=r.user_id AND k.removed_at IS NULL
+           WHERE r.state = ANY($1::text[])
+             AND ($2::timestamptz IS NULL OR (b.effective_ends_at,r.id)>($2::timestamptz,$3::uuid))
+           ORDER BY b.effective_ends_at,r.id LIMIT $4`,
+          [VIEWS[view], cursor?.time ?? null, cursor?.id ?? null, limit + 1],
+        )
+      ).rows;
+      const last = rows[limit - 1];
+      return {
+        status: 200,
+        headers: {},
+        body: {
+          data: rows.slice(0, limit).map((r) => ({
+            id: r.id,
+            riderId: r.user_id,
+            riderName: r.display_name,
+            state: r.state,
+            failureCode: r.failure_code,
+            attempts: r.attempts,
+            periodEndsAt: r.effective_ends_at.toISOString(),
+            nextAttemptAt: r.next_attempt_at?.toISOString() ?? null,
+            price: { amountMinor: r.price_pesewas, currency: 'GHS' },
+            card: r.last4 ? { brand: r.brand, last4: r.last4 } : null,
+            renewalPurchaseId: r.renewal_purchase_id,
+            updatedAt: r.updated_at.toISOString(),
+          })),
+          page: {
+            nextCursor:
+              rows.length > limit && last
+                ? this.cursors.encode(last.cursor_time, last.id, context, now)
+                : null,
+          },
+        },
+      };
     });
   }
 

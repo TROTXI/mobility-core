@@ -125,6 +125,7 @@ Class | Method | HTTP request | Description
 [*OpsApi*](doc/OpsApi.md) | [**listMinimumVersions**](doc/OpsApi.md#listminimumversions) | **GET** /v1/ops/min-versions | list Minimum Versions
 [*OpsApi*](doc/OpsApi.md) | [**listOpsAccountErasures**](doc/OpsApi.md#listopsaccounterasures) | **GET** /v1/ops/account-erasures | list Ops Account Erasures
 [*OpsApi*](doc/OpsApi.md) | [**listOpsAuditEvents**](doc/OpsApi.md#listopsauditevents) | **GET** /v1/ops/audit-events | list Ops Audit Events
+[*OpsApi*](doc/OpsApi.md) | [**listOpsAutoRenewals**](doc/OpsApi.md#listopsautorenewals) | **GET** /v1/ops/auto-renewals | list Ops Auto Renewals
 [*OpsApi*](doc/OpsApi.md) | [**listOpsCommuteRequests**](doc/OpsApi.md#listopscommuterequests) | **GET** /v1/ops/commute-requests | list Ops Commute Requests
 [*OpsApi*](doc/OpsApi.md) | [**listOpsDeliveries**](doc/OpsApi.md#listopsdeliveries) | **GET** /v1/ops/deliveries | list Ops Deliveries
 [*OpsApi*](doc/OpsApi.md) | [**listOpsDriverRequests**](doc/OpsApi.md#listopsdriverrequests) | **GET** /v1/ops/driver-requests | list Ops Driver Requests
@@ -381,6 +382,9 @@ Class | Method | HTTP request | Description
  - [OpsAccountErasurePage](doc/OpsAccountErasurePage.md)
  - [OpsAuditEvent](doc/OpsAuditEvent.md)
  - [OpsAuditEventPage](doc/OpsAuditEventPage.md)
+ - [OpsAutoRenewal](doc/OpsAutoRenewal.md)
+ - [OpsAutoRenewalCard](doc/OpsAutoRenewalCard.md)
+ - [OpsAutoRenewalPage](doc/OpsAutoRenewalPage.md)
  - [OpsCommuteRequest](doc/OpsCommuteRequest.md)
  - [OpsCommuteRequestPage](doc/OpsCommuteRequestPage.md)
  - [OpsCommuteRequestResponse](doc/OpsCommuteRequestResponse.md)

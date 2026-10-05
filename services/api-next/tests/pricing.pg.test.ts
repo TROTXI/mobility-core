@@ -1597,6 +1597,7 @@ async function renewalFixture(t: TestContext, email?: TransactionalEmail) {
     seal: box.seal,
     open: box.open,
     now: () => clock,
+    cursorSecret: Buffer.alloc(32, 41),
     ...(email ? { email } : {}),
     charge: async (request) => {
       charges.push(request);
@@ -2106,4 +2107,39 @@ test('AR-12 a period paid without card evidence still renews with the saved card
     (await f.owner.query('SELECT count(*)::int n FROM app.card_authorizations')).rows[0].n,
     1,
   );
+});
+
+test('AR-13 Ops sees the renewals that need a person, soonest first, and riders cannot list them', async (t) => {
+  const f = await renewalFixture(t);
+  await f.rider('setAutoRenewal', { enabled: true });
+  const first = await f.subscribe();
+  const end = await f.endOf(first.id);
+  const list = async (query: Record<string, string> = {}) =>
+    (await f.renewals.handle(f.admin, 'listOpsAutoRenewals', {}, query)).body as any;
+  // Scheduled is not yet anyone's problem.
+  assert.deepEqual((await list()).data, []);
+  const open = (await list({ filter: 'open' })).data;
+  assert.equal(open.length, 1);
+  assert.deepEqual(
+    [open[0].state, open[0].card, open[0].price.amountMinor, open[0].riderId],
+    ['scheduled', { brand: 'visa', last4: '4081' }, 7000, f.actor.userId],
+  );
+  // A declined charge is.
+  f.decline('declined');
+  f.at(new Date(end.getTime() - 3 * DAY_MS + 60_000));
+  await f.run();
+  const attention = (await list()).data;
+  assert.deepEqual(
+    attention.map((r: any) => [r.state, r.failureCode, r.attempts]),
+    [['failed', 'card_declined', 1]],
+  );
+  assert.equal(attention[0].periodEndsAt, end.toISOString());
+  await assert.rejects(
+    f.renewals.handle(f.actor, 'listOpsAutoRenewals', {}, {}),
+    /Operations access/,
+  );
+  await assert.rejects(list({ filter: 'everything' }), /Unknown renewal filter/);
+  const paged = await list({ filter: 'all', limit: '1' });
+  assert.equal(paged.data.length, 1);
+  assert.equal(paged.page.nextCursor, null);
 });

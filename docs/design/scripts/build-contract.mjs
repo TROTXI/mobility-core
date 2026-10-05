@@ -188,6 +188,14 @@ for (const o of operations) {
         'Name, phone or email, partial.',
       ),
     );
+  if (o.operationId === 'listOpsAutoRenewals')
+    parameters.push(
+      query(
+        'filter',
+        { type: 'string', enum: ['attention', 'open', 'all'], default: 'attention' },
+        'attention: declined, unconfirmed or waiting on a new offer. open: not yet paid or ended.',
+      ),
+    );
   if (o.operationId === 'listOpsDeliveries')
     parameters.push(
       query('channel', { type: 'string', enum: ['email', 'push'] }, 'Delivery channel.'),
