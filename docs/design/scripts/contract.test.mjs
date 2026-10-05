@@ -248,13 +248,17 @@ test('every current operation maps to an explicitly defined replacement', () => 
     assert.ok(spec.paths[path]?.[method.toLowerCase()], row.current);
   }
 });
-test('all 83 predecessor-free operations have a requirement, scope decision and existing-endpoint assessment', () => {
+test('every predecessor-free operation has a requirement, scope decision and existing-endpoint assessment', () => {
   const predecessors = new Set(inventory.map((r) => r.target));
   const additions = operations.filter(
     (o) => !predecessors.has(`${o.method.toUpperCase()} ${o.path}`),
   );
-  assert.equal(additions.length, 83);
-  assert.equal(operationScope.length, 83);
+  // The scope list and the predecessor-free operations are the same set, so
+  // adding an operation without a scope decision fails here by name.
+  assert.deepEqual(
+    operationScope.map((s) => s.operationId).sort(),
+    additions.map((o) => o.operationId).sort(),
+  );
   for (const o of additions) {
     const api = spec.paths[o.path][o.method];
     // post-cutover is work added after the replacement shipped, and is kept
@@ -264,7 +268,10 @@ test('all 83 predecessor-free operations have a requirement, scope decision and 
     assert.ok(api['x-requirement']);
     assert.ok(api['x-existing-endpoint-assessment']);
   }
-  assert.equal(operationScope.filter((s) => s.delivery === 'deferred').length, 9);
+  for (const s of operationScope) {
+    const o = additions.find((a) => a.operationId === s.operationId);
+    assert.equal(spec.paths[o.path][o.method]['x-delivery-stage'], s.delivery, s.operationId);
+  }
 });
 test('operation IDs, method/path pairs and references are unique/resolved', () => {
   assert.equal(new Set(operations.map((o) => o.operationId)).size, operations.length);
@@ -535,7 +542,12 @@ test('runtime subset implements only selected cutover operations and contains no
       assert.deepEqual(withoutCapturedExamples, spec.paths[path][method]);
       assert.notEqual(operation['x-delivery-stage'], 'deferred');
     }
-  assert.equal(count, 171);
+  // Everything not deferred is served, so the runtime holds exactly that many.
+  assert.equal(
+    count,
+    operations.filter((o) => spec.paths[o.path][o.method]['x-delivery-stage'] !== 'deferred')
+      .length,
+  );
   assert.equal(runtime.paths['/v1/me/reservations/{id}'].get.operationId, 'getReservation');
   assert.equal(runtime.paths['/v1/ops/routes/{id}'].get, undefined);
   assert.equal(runtime.paths['/v1/ops/stops/{id}'].get, undefined);

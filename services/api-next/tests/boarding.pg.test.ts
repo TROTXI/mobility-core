@@ -580,37 +580,11 @@ test('BRD-17: 014 to 015 upgrade preserves funded reservations and recorded migr
   const hashes = (
     await f.owner.query('SELECT name,sha256 FROM public._replacement_migrations ORDER BY name')
   ).rows;
-  assert.deepEqual(await migrate(f.owner, files), [
-    '015_boarding_settlement.sql',
-    '016_pricing_and_purchases.sql',
-    '017_account_privacy.sql',
-    '018_configuration.sql',
-    '019_shared_admission.sql',
-    '020_account_recovery.sql',
-    '021_receipt_payload_retention.sql',
-    '022_transactional_email.sql',
-    '023_rider_delivery.sql',
-    '024_refund_initiation.sql',
-    '025_personal_pauses.sql',
-    '026_driver_assignment_delivery.sql',
-    '027_ops_board_index.sql',
-    '028_admin_two_factor.sql',
-    '029_driver_credential_email.sql',
-    '030_commuter_phone_auth.sql',
-    '031_driver_credential_sms.sql',
-    '032_maintenance_audit.sql',
-    '033_driver_incident_retention.sql',
-    '034_account_erasure_phone_challenges.sql',
-    '035_payment_evidence_retention.sql',
-    '036_rider_notification_inbox.sql',
-    '037_standby_phone_verification.sql',
-    '038_standby_pool.sql',
-    '039_erasure_recovery_control.sql',
-    '040_query_path_indexes.sql',
-    '041_stop_pair_fares.sql',
-    '042_priced_subscription_offers.sql',
-    '043_ops_team.sql',
-  ]);
+  // Installed through 014, so the upgrade applies every later migration.
+  assert.deepEqual(
+    await migrate(f.owner, files),
+    files.map((m) => m.name).filter((name) => name > '015'),
+  );
   await grantRuntime(f.owner, f.role);
   assert.deepEqual((await f.owner.query('SELECT * FROM app.reservations')).rows, before);
   assert.deepEqual(
