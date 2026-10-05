@@ -15,6 +15,8 @@ import { countTravelDays } from '../src/membership/offer-terms.js';
 import { expireUnpaidOffers } from '../src/payments/offer-expiry.js';
 import { PaymentRecovery } from '../src/payments/recovery.js';
 import { PaystackEvidence } from '../src/payments/provider.js';
+import { AutoRenewals, cardBox } from '../src/payments/auto-renewal.js';
+import { TransactionalEmail } from '../src/notifications/email.js';
 
 type Response = { statusCode: number; body: string; json(): any };
 function expectStatus(response: Response, code: number) {
@@ -828,7 +830,7 @@ test('OFFER-05 upgrade reconnects committed legacy checkouts and releases orphan
   assert.equal(orphan.acceptance_key_hash, null);
   assert.deepEqual(
     (await f.owner.query('SELECT * FROM app.purchases WHERE id=$1', [p.id])).rows[0],
-    { ...purchaseBefore, offer_id: null, offer_terms: null },
+    { ...purchaseBefore, offer_id: null, offer_terms: null, renewal_of: null },
   );
   const current = new FinancialFoundation({ ...f.dependencies, requireOffer: true });
   assert.equal((await current.checkout(f.actor, f.input, key, new Date(), ids[0])).id, p.id);
@@ -1528,4 +1530,580 @@ test('PRC-09 deleted rider is absent from Ops profile reads while restricted pur
   assert.equal(JSON.stringify(retained).includes('Ama Private'), false);
   assert.equal(JSON.stringify(retained).includes('ama.private@example.test'), false);
   assert.equal(JSON.stringify(retained).includes('+233241234567'), false);
+});
+
+/** The offered fixture plus card auto-renewal wired to its own clock and Paystack stand-in. */
+async function renewalFixture(t: TestContext, email?: TransactionalEmail) {
+  const f = await offeredFixture(t);
+  await f.verify();
+  let clock = new Date();
+  const charges: {
+    reference: string;
+    amountPesewas: number;
+    email: string;
+    authorizationCode: string;
+  }[] = [];
+  let outcome: 'success' | 'declined' | 'silent' | 'no_card' = 'success';
+  const card = {
+    code: 'AUTH_' + randomBytes(6).toString('hex'),
+    email: 'payer@example.test',
+    signature: 'SIG_' + randomBytes(6).toString('hex'),
+    last4: '4081',
+    brand: 'visa',
+    expMonth: 12,
+    expYear: 2030,
+    bank: 'TEST BANK',
+  };
+  let renewals!: AutoRenewals;
+  const financial = new FinancialFoundation({
+    ...f.dependencies,
+    requireOffer: true,
+    quote: f.pricing.quote,
+    assertCheckoutAllowed: f.membership.assertCheckoutAllowed,
+    assertPeriodCanClose: f.membership.assertPeriodCanClose,
+    materializeAssignment: f.membership.materializeAssignment,
+    purchaseSettled: (c, input) => renewals.purchaseSettled(c, input),
+    ...(email ? { subscriptionActive: email.subscriptionActive } : {}),
+  });
+  const box = cardBox(Buffer.alloc(32, 21));
+  const pay = async (
+    reference: string,
+    paidAt = new Date(),
+    authorization: typeof card | null = card,
+  ) => {
+    const attempt = (
+      await f.owner.query('SELECT amount_pesewas FROM app.payment_attempts WHERE reference=$1', [
+        reference,
+      ])
+    ).rows[0];
+    return financial.fulfill({
+      reference,
+      environment: 'test',
+      amountPesewas: attempt.amount_pesewas,
+      currency: 'GHS',
+      transactionId: String(Date.now()) + String(Math.floor(Math.random() * 1000)),
+      paidAt,
+      channel: 'card',
+      feesPesewas: 0,
+      ...(authorization ? { authorization } : {}),
+    });
+  };
+  renewals = new AutoRenewals({
+    pool: f.runtime,
+    environment: 'test',
+    authorizeSession: f.dependencies.authorizeSession,
+    financial,
+    pricing: f.pricing,
+    seal: box.seal,
+    open: box.open,
+    now: () => clock,
+    ...(email ? { email } : {}),
+    charge: async (request) => {
+      charges.push(request);
+    },
+    // Stands in for verify + recovery: the evidence decides the purchase.
+    settle: async (reference) => {
+      if (outcome === 'success') await pay(reference);
+      else if (outcome === 'no_card') await pay(reference, new Date(), null);
+      else if (outcome === 'declined')
+        await f.owner.query(
+          `WITH a AS (UPDATE app.payment_attempts SET state='failed' WHERE reference=$1 RETURNING purchase_id),
+           h AS (UPDATE app.credit_holds SET state='released',settled_at=clock_timestamp()
+             WHERE purchase_id IN (SELECT purchase_id FROM a) AND state='held')
+           UPDATE app.purchases SET state='failed',failure_code='provider_failed' WHERE id IN (SELECT purchase_id FROM a)`,
+          [reference],
+        );
+    },
+  });
+  const rider = (
+    operation: 'getAutoRenewal' | 'setAutoRenewal' | 'removeAutoRenewalCard',
+    body = {},
+  ) => renewals.handle(f.actor, operation, body);
+  const run = () => renewals.handle(f.admin, 'runAutoRenewals', { limit: 100 });
+  /** Accept an offer and pay its first period by card. */
+  const subscribe = async () => {
+    const application = await f.join();
+    await f.offer(application.id);
+    const purchase = expectStatus(await f.accept(application.id), 201);
+    const attempt = (
+      await f.owner.query('SELECT reference FROM app.payment_attempts WHERE purchase_id=$1', [
+        purchase.id,
+      ])
+    ).rows[0];
+    assert.equal(await pay(attempt.reference), 'fulfilled');
+    return purchase;
+  };
+  const renewal = async () =>
+    (await f.owner.query('SELECT * FROM app.auto_renewals ORDER BY created_at DESC LIMIT 1'))
+      .rows[0];
+  const endOf = async (purchaseId: string) =>
+    (await f.period(purchaseId)).effective_ends_at as Date;
+  return {
+    ...f,
+    card,
+    charges,
+    renewals,
+    financial,
+    rider,
+    run,
+    subscribe,
+    renewal,
+    endOf,
+    pay,
+    at: (when: Date) => {
+      clock = when;
+    },
+    decline: (mode: 'success' | 'declined' | 'silent' | 'no_card') => {
+      outcome = mode;
+    },
+  };
+}
+const DAY_MS = 86_400_000;
+
+test('AR-01 a card is saved only with consent, sealed, and shown by its last four digits', async (t) => {
+  const f = await renewalFixture(t);
+  // Without consent a card payment saves nothing and schedules nothing.
+  await f.subscribe();
+  assert.equal(
+    (await f.owner.query('SELECT count(*)::int n FROM app.card_authorizations')).rows[0].n,
+    0,
+  );
+  assert.equal((await f.owner.query('SELECT count(*)::int n FROM app.auto_renewals')).rows[0].n, 0);
+  const off = (await f.rider('getAutoRenewal')).body as any;
+  assert.deepEqual(off.data, { enabled: false, card: null, upcoming: null });
+});
+
+test('AR-02 opted-in card payment schedules a renewal that reminds, charges the same terms and renews again', async (t) => {
+  const f = await renewalFixture(t);
+  const on = (await f.rider('setAutoRenewal', { enabled: true })).body as any;
+  assert.equal(on.data.enabled, true);
+  assert.equal(on.data.card, null);
+  const first = await f.subscribe();
+  const saved = (await f.owner.query('SELECT * FROM app.card_authorizations')).rows;
+  assert.equal(saved.length, 1);
+  assert.equal(saved[0].last4, '4081');
+  // The code is sealed: it never appears in the stored row.
+  assert.ok(!saved[0].ciphertext.toString('utf8').includes(f.card.code));
+  assert.ok(!saved[0].ciphertext.toString('utf8').includes(f.card.email));
+  const view = ((await f.rider('getAutoRenewal')).body as any).data;
+  assert.deepEqual(view.card, { brand: 'visa', last4: '4081', expMonth: 12, expYear: 2030 });
+  assert.equal(view.upcoming.state, 'scheduled');
+  const membership = expectStatus(await f.call('GET', '/v1/me/membership'), 200);
+  assert.ok(['automatic', undefined].includes(membership.upcomingCoverage?.renewalMode));
+
+  const end = await f.endOf(first.id);
+  // Six days out: nothing to do yet.
+  f.at(new Date(end.getTime() - 6 * DAY_MS));
+  assert.equal(((await f.run()).body as any).data.considered, 0);
+  assert.equal((await f.renewal()).state, 'scheduled');
+  // Five days out: reminded, not charged.
+  f.at(new Date(end.getTime() - 5 * DAY_MS + 60_000));
+  await f.run();
+  assert.equal((await f.renewal()).state, 'reminded');
+  assert.equal(f.charges.length, 0);
+  // Three days out: renewed on the same terms and charged once.
+  f.at(new Date(end.getTime() - 3 * DAY_MS + 60_000));
+  const result = ((await f.run()).body as any).data;
+  assert.equal(result.succeeded, 1, JSON.stringify(result));
+  assert.equal(f.charges.length, 1);
+  assert.equal(f.charges[0]!.authorizationCode, f.card.code);
+  assert.equal(f.charges[0]!.email, f.card.email);
+  const renewed = (
+    await f.owner.query('SELECT * FROM app.purchases WHERE renewal_of=$1', [first.id])
+  ).rows[0];
+  assert.equal(renewed.state, 'fulfilled');
+  assert.equal(renewed.price_pesewas, 7000);
+  assert.equal(f.charges[0]!.amountPesewas, renewed.cash_due_pesewas);
+  assert.equal(renewed.offer_terms.coverageStart, end.toISOString().slice(0, 10));
+  const length = Date.parse(f.end) - Date.parse(f.start);
+  assert.equal(
+    Date.parse(renewed.offer_terms.coverageEnd) - Date.parse(renewed.offer_terms.coverageStart),
+    length,
+  );
+  const sourceTerms = (
+    await f.owner.query('SELECT offer_terms FROM app.purchases WHERE id=$1', [first.id])
+  ).rows[0].offer_terms;
+  assert.deepEqual(
+    renewed.offer_terms.legs.map((l: any) => [
+      l.direction,
+      l.fare,
+      l.travelDays,
+      l.creditPerUnusedRide,
+    ]),
+    sourceTerms.legs.map((l: any) => [l.direction, l.fare, l.travelDays, l.creditPerUnusedRide]),
+  );
+  const states = (await f.owner.query('SELECT state FROM app.auto_renewals ORDER BY created_at'))
+    .rows;
+  assert.deepEqual(
+    states.map((r) => r.state),
+    ['paid', 'scheduled'],
+  );
+  // A second run charges nothing again.
+  await f.run();
+  assert.equal(f.charges.length, 1);
+});
+
+test('AR-03 a declined charge retries daily on a new purchase and lapses when coverage ends', async (t) => {
+  const f = await renewalFixture(t);
+  await f.rider('setAutoRenewal', { enabled: true });
+  const first = await f.subscribe();
+  const end = await f.endOf(first.id);
+  f.decline('declined');
+  f.at(new Date(end.getTime() - 3 * DAY_MS + 60_000));
+  const once = ((await f.run()).body as any).data;
+  assert.equal(once.failed, 1);
+  assert.equal(once.failures[0].reason, 'card_declined');
+  let r = await f.renewal();
+  assert.equal(r.state, 'failed');
+  assert.equal(r.failure_code, 'card_declined');
+  // Not retried before tomorrow.
+  await f.run();
+  assert.equal(f.charges.length, 1);
+  f.at(new Date(end.getTime() - 2 * DAY_MS + 120_000));
+  await f.run();
+  assert.equal(f.charges.length, 2);
+  const tries = (
+    await f.owner.query('SELECT state FROM app.purchases WHERE renewal_of=$1 ORDER BY created_at', [
+      first.id,
+    ])
+  ).rows;
+  assert.deepEqual(
+    tries.map((p) => p.state),
+    ['failed', 'failed'],
+  );
+  // Still declined at the end: no more attempts, coverage simply ends.
+  f.at(new Date(end.getTime() + 60_000));
+  await f.run();
+  r = await f.renewal();
+  assert.equal(r.state, 'lapsed');
+  assert.equal(f.charges.length, 2);
+});
+
+test('AR-04 a changed fare stops the renewal for a new Ops offer without charging', async (t) => {
+  const f = await renewalFixture(t);
+  await f.rider('setAutoRenewal', { enabled: true });
+  const first = await f.subscribe();
+  const end = await f.endOf(first.id);
+  const leg = f.input.legs[0]!;
+  expectStatus(
+    await f.call('POST', `/v1/ops/routes/${f.input.routeId}/fares`, {
+      who: 'ops',
+      payload: {
+        patternVersionId: leg.patternVersionId,
+        pickupOccurrenceId: leg.pickupOccurrenceId,
+        dropoffOccurrenceId: leg.dropoffOccurrenceId,
+        amount: { amountMinor: 650, currency: 'GHS' },
+        effectiveFrom: new Date().toISOString(),
+      },
+    }),
+    201,
+  );
+  f.at(new Date(end.getTime() - 3 * DAY_MS + 60_000));
+  await f.run();
+  const r = await f.renewal();
+  assert.equal(r.state, 'needs_offer');
+  assert.equal(r.failure_code, 'fare_changed');
+  assert.equal(f.charges.length, 0);
+  assert.equal(
+    (await f.owner.query('SELECT count(*)::int n FROM app.purchases WHERE renewal_of IS NOT NULL'))
+      .rows[0].n,
+    0,
+  );
+});
+
+test('AR-05 turning off or removing the card stops renewals, and the code is destroyed', async (t) => {
+  const f = await renewalFixture(t);
+  await f.rider('setAutoRenewal', { enabled: true });
+  const first = await f.subscribe();
+  await f.rider('setAutoRenewal', { enabled: false });
+  assert.equal((await f.renewal()).state, 'cancelled');
+  // Back on: the same period is scheduled again, with the card still on file.
+  await f.rider('setAutoRenewal', { enabled: true });
+  assert.equal((await f.renewal()).state, 'scheduled');
+  const removed = await f.rider('removeAutoRenewalCard');
+  assert.equal(removed.status, 204);
+  const card = (await f.owner.query('SELECT * FROM app.card_authorizations')).rows[0];
+  assert.ok(card.removed_at);
+  assert.equal(card.ciphertext, null);
+  assert.equal((await f.renewal()).state, 'cancelled');
+  const view = ((await f.rider('getAutoRenewal')).body as any).data;
+  assert.equal(view.enabled, false);
+  assert.equal(view.card, null);
+  const end = await f.endOf(first.id);
+  f.at(new Date(end.getTime() - 3 * DAY_MS + 60_000));
+  await f.run();
+  assert.equal(f.charges.length, 0);
+  await assert.rejects(f.rider('removeAutoRenewalCard'), /No saved card|not_found/);
+});
+
+test('AR-06 an unsettled renewal charge expires when its coverage begins and frees the rider', async (t) => {
+  const f = await renewalFixture(t);
+  await f.rider('setAutoRenewal', { enabled: true });
+  const first = await f.subscribe();
+  const end = await f.endOf(first.id);
+  f.decline('silent');
+  f.at(new Date(end.getTime() - 3 * DAY_MS + 60_000));
+  const result = ((await f.run()).body as any).data;
+  assert.equal(result.failures[0].reason, 'charge_unconfirmed');
+  assert.equal((await f.renewal()).state, 'charging');
+  const pending = (
+    await f.owner.query('SELECT * FROM app.purchases WHERE renewal_of=$1', [first.id])
+  ).rows[0];
+  assert.equal(pending.state, 'awaiting_payment');
+  // The pending renewal blocks changing dates, as an offer purchase does.
+  assert.equal(
+    (
+      await f.owner.query(
+        'SELECT app.has_pending_renewal(b.id) AS p FROM app.billing_periods b WHERE b.purchase_id=$1',
+        [first.id],
+      )
+    ).rows[0].p,
+    true,
+  );
+  const c = await f.owner.connect();
+  try {
+    await expireUnpaidOffers(c, f.actor.userId, new Date(end.getTime() + 1000));
+  } finally {
+    c.release();
+  }
+  const expired = (
+    await f.owner.query('SELECT state,failure_code FROM app.purchases WHERE id=$1', [pending.id])
+  ).rows[0];
+  assert.deepEqual(expired, { state: 'failed', failure_code: 'renewal_lapsed' });
+  f.at(new Date(end.getTime() + 60_000));
+  await f.run();
+  assert.equal((await f.renewal()).state, 'lapsed');
+});
+
+test('AR-07 the emails say the card will renew and for how much, and the database refuses a mispriced renewal', async (t) => {
+  const sent: { subject: string; text: string }[] = [];
+  const email = new TransactionalEmail({
+    pool: {} as never,
+    encryptionKey: Buffer.alloc(32, 31),
+    sender: {
+      send: async (message) => {
+        sent.push({ subject: message.subject, text: message.text });
+        return 'provider-id';
+      },
+    },
+    staging: false,
+  });
+  const f = await renewalFixture(t, email);
+  (email as any).options.pool = f.runtime;
+  await f.owner.query("UPDATE app.users SET email='rider@example.test' WHERE id=$1", [
+    f.actor.userId,
+  ]);
+  const read = async (kind: string) => {
+    const row = (
+      await f.owner.query('SELECT id,payload_ciphertext FROM app.email_outbox WHERE kind=$1', [
+        kind,
+      ])
+    ).rows[0];
+    assert.ok(row, `${kind} was not queued`);
+    return (email as any).open(row.payload_ciphertext, row.id).text as string;
+  };
+  await f.rider('setAutoRenewal', { enabled: true });
+  const first = await f.subscribe();
+  const confirmation = await read('subscription_active');
+  assert.match(confirmation, /Auto-renewal is on\. Your visa ending 4081 will be charged/);
+  assert.doesNotMatch(confirmation, /Renewal is manual/);
+  const end = await f.endOf(first.id);
+  f.at(new Date(end.getTime() - 5 * DAY_MS + 60_000));
+  await f.run();
+  // Sent at once, so read what the provider received.
+  const reminder = sent.find((m) => m.subject === 'Your Trotxi subscription renews soon')!.text;
+  assert.match(reminder, /charge your visa ending 4081 GHS 70\.00/);
+  assert.match(reminder, /turn off auto-renewal/);
+  // A renewal priced differently from what it renews is refused by the database.
+  const source = (await f.owner.query('SELECT * FROM app.purchases WHERE id=$1', [first.id]))
+    .rows[0];
+  await assert.rejects(
+    f.owner.query(
+      `INSERT INTO app.purchases(membership_id,user_id,route_id,plan,price_pesewas,applied_credit_pesewas,cash_due_pesewas,
+        currency,rides_granted,fare_pesewas,price_multiplier_bp,conversion_rate_pesewas,checkout_key_hash,input_hash,renewal_of,offer_terms)
+       VALUES ($1,$2,$3,$4,$5,0,$5,'GHS',$6,$7,10000,0,$8,$8,$9,
+         jsonb_set($10::jsonb,'{price,amountMinor}',to_jsonb($5::int)))`,
+      [
+        source.membership_id,
+        source.user_id,
+        source.route_id,
+        source.plan,
+        source.price_pesewas - 100,
+        source.rides_granted,
+        source.fare_pesewas,
+        'b'.repeat(64),
+        source.id,
+        JSON.stringify(source.offer_terms),
+      ],
+    ),
+    /invalid_renewal_purchase/,
+  );
+});
+
+test('AR-08 overlapping runs charge once, and a later period end moves the charge with it', async (t) => {
+  const f = await renewalFixture(t);
+  await f.rider('setAutoRenewal', { enabled: true });
+  const first = await f.subscribe();
+  const end = await f.endOf(first.id);
+  // A pause moves the end out by four days after the renewal was scheduled.
+  await f.owner.query(
+    "UPDATE app.billing_periods SET effective_ends_at=effective_ends_at+interval '4 days' WHERE purchase_id=$1",
+    [first.id],
+  );
+  f.at(new Date(end.getTime() - 3 * DAY_MS + 60_000));
+  await f.run();
+  assert.equal(f.charges.length, 0, 'charged against the old end');
+  const later = await f.endOf(first.id);
+  f.at(new Date(later.getTime() - 3 * DAY_MS + 60_000));
+  const results = await Promise.all([f.run(), f.run(), f.run()]);
+  assert.equal(f.charges.length, 1, JSON.stringify(results.map((r) => (r.body as any).data)));
+  assert.equal(
+    (
+      await f.owner.query('SELECT count(*)::int n FROM app.purchases WHERE renewal_of=$1', [
+        first.id,
+      ])
+    ).rows[0].n,
+    1,
+  );
+  const renewed = (
+    await f.owner.query('SELECT offer_terms FROM app.purchases WHERE renewal_of=$1', [first.id])
+  ).rows[0].offer_terms;
+  assert.equal(renewed.coverageStart, later.toISOString().slice(0, 10));
+});
+
+test('AR-09 a planned pause holds the charge until the period end it moves has settled', async (t) => {
+  const f = await renewalFixture(t);
+  await f.rider('setAutoRenewal', { enabled: true });
+  const first = await f.subscribe();
+  const end = await f.endOf(first.id);
+  const period = await f.period(first.id);
+  // Pause validity is tested with pauses; here only the renewal's reaction
+  // matters, so the planned pause is written directly.
+  const c = await f.owner.connect();
+  try {
+    await c.query("SET session_replication_role='replica'");
+    await c.query(
+      `INSERT INTO app.personal_pauses(period_id,user_id,start_date,original_resume_date,resume_date,ends_before)
+       VALUES ($1,$2,$3::date,$4::date,$4::date,$5)`,
+      [
+        period.id,
+        f.actor.userId,
+        new Date(end.getTime() - 4 * DAY_MS).toISOString().slice(0, 10),
+        new Date(end.getTime() + 2 * DAY_MS).toISOString().slice(0, 10),
+        end,
+      ],
+    );
+  } finally {
+    await c.query("SET session_replication_role='origin'");
+    c.release();
+  }
+  f.at(new Date(end.getTime() - 3 * DAY_MS + 60_000));
+  await f.run();
+  assert.equal(f.charges.length, 0);
+  assert.equal((await f.renewal()).state, 'scheduled');
+  // Once the pause is settled, the renewal goes ahead.
+  const d = await f.owner.connect();
+  try {
+    await d.query("SET session_replication_role='replica'");
+    await d.query('DELETE FROM app.personal_pauses WHERE period_id=$1', [period.id]);
+  } finally {
+    await d.query("SET session_replication_role='origin'");
+    d.release();
+  }
+  await f.run();
+  assert.equal(f.charges.length, 1);
+});
+
+test('AR-10 consent withdrawn while a run is in flight stops the charge and withdraws the purchase', async (t) => {
+  const f = await renewalFixture(t);
+  await f.rider('setAutoRenewal', { enabled: true });
+  const first = await f.subscribe();
+  const end = await f.endOf(first.id);
+  const options = (f.renewals as any).options;
+  const racing = new AutoRenewals({
+    ...options,
+    financial: {
+      checkout: async (...args: Parameters<FinancialFoundation['checkout']>) => {
+        const out = await f.financial.checkout(...args);
+        await f.rider('removeAutoRenewalCard');
+        return out;
+      },
+    } as never,
+    now: () => new Date(end.getTime() - 3 * DAY_MS + 60_000),
+  });
+  await racing.handle(f.admin, 'runAutoRenewals', { limit: 100 });
+  assert.equal(f.charges.length, 0);
+  const renewal = (
+    await f.owner.query('SELECT * FROM app.purchases WHERE renewal_of=$1', [first.id])
+  ).rows[0];
+  assert.deepEqual([renewal.state, renewal.failure_code], ['cancelled', 'renewal_withdrawn']);
+  assert.equal(
+    (await f.owner.query("SELECT count(*)::int n FROM app.credit_holds WHERE state='held'")).rows[0]
+      .n,
+    0,
+  );
+  assert.equal((await f.renewal()).state, 'cancelled');
+});
+
+test('AR-11 a charge unconfirmed for a day is withdrawn, the rider can pay, and it retries', async (t) => {
+  const f = await renewalFixture(t);
+  await f.rider('setAutoRenewal', { enabled: true });
+  const first = await f.subscribe();
+  const end = await f.endOf(first.id);
+  f.decline('silent');
+  f.at(new Date(end.getTime() - 3 * DAY_MS + 60_000));
+  await f.run();
+  const pending = (
+    await f.owner.query('SELECT id FROM app.purchases WHERE renewal_of=$1', [first.id])
+  ).rows[0];
+  // A day later Paystack still has no record of it.
+  const c = await f.owner.connect();
+  try {
+    await c.query("SET session_replication_role='replica'");
+    await c.query(
+      "UPDATE app.payment_attempts SET created_at=created_at-interval '25 hours' WHERE purchase_id=$1",
+      [pending.id],
+    );
+  } finally {
+    await c.query("SET session_replication_role='origin'");
+    c.release();
+  }
+  await f.run();
+  const withdrawn = (
+    await f.owner.query('SELECT state,failure_code FROM app.purchases WHERE id=$1', [pending.id])
+  ).rows[0];
+  assert.deepEqual(withdrawn, { state: 'failed', failure_code: 'renewal_unconfirmed' });
+  const r = await f.renewal();
+  assert.deepEqual([r.state, r.failure_code], ['failed', 'charge_unconfirmed']);
+  f.decline('success');
+  f.at(new Date(end.getTime() - 2 * DAY_MS + 120_000));
+  await f.run();
+  assert.equal(
+    (await f.renewal()).state,
+    'scheduled',
+    'the retry paid and the next period is scheduled',
+  );
+  assert.equal(f.charges.length, 2);
+});
+
+test('AR-12 a period paid without card evidence still renews with the saved card', async (t) => {
+  const f = await renewalFixture(t);
+  await f.rider('setAutoRenewal', { enabled: true });
+  const first = await f.subscribe();
+  const end = await f.endOf(first.id);
+  // The renewal settles with no reusable card in its evidence (as a mobile
+  // money payment would); the card already saved must keep renewing.
+  f.decline('no_card');
+  f.at(new Date(end.getTime() - 3 * DAY_MS + 60_000));
+  await f.run();
+  const states = (await f.owner.query('SELECT state FROM app.auto_renewals ORDER BY created_at'))
+    .rows;
+  assert.deepEqual(
+    states.map((r) => r.state),
+    ['paid', 'scheduled'],
+  );
+  assert.equal(
+    (await f.owner.query('SELECT count(*)::int n FROM app.card_authorizations')).rows[0].n,
+    1,
+  );
 });

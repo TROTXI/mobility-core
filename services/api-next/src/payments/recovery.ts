@@ -346,6 +346,14 @@ export class PaymentRecovery {
     }
     return result;
   }
+  /**
+   * Verify one attempt with Paystack now and process what it says, through
+   * the same persisted, deduplicated evidence path as the worker.
+   */
+  async settleReference(reference: string): Promise<void> {
+    const raw = await this.options.provider.verify(reference);
+    await this.process(await this.enqueue(raw, 'verify'));
+  }
   async reconcile(before: Date, limit = 100): Promise<MaintenanceResult> {
     if (!Number.isFinite(before.getTime())) fail(400, 'invalid_cutoff', 'Invalid cutoff.');
     const result = empty();

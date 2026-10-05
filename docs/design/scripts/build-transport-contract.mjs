@@ -176,6 +176,10 @@ const selected = new Set([
   'listOpsAuditEvents',
   'getOpsReportSummary',
   'getDriverSelf',
+  'getAutoRenewal',
+  'setAutoRenewal',
+  'removeAutoRenewalCard',
+  'runAutoRenewals',
 ]);
 const count = selected.size;
 const paths = {};

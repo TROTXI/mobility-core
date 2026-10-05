@@ -1,6 +1,14 @@
 // Stage-1 review follow-up: predecessor absence is not proof of feature expansion.
 // Deferred operations remain documented proposals, not stage-3 commitments.
 export const operationScope = [
+  ...['getAutoRenewal', 'setAutoRenewal', 'removeAutoRenewalCard', 'runAutoRenewals'].map(
+    (name) => [
+      name,
+      'post-cutover',
+      'Opt-in card auto-renewal on the terms the rider already paid for, with rider control of the saved card',
+      'Offer checkout is customer-present and single-use; it cannot hold a card, charge it later or let the rider withdraw consent.',
+    ],
+  ),
   ...[
     'signInOpsGoogle',
     'listOpsTeam',

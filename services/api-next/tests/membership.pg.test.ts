@@ -366,7 +366,7 @@ test('COM-16: real 012-to-013 upgrade preserves purchase/ledger and materializes
   await grantRuntime(f.owner, f.role);
   assert.deepEqual(
     (await f.owner.query('SELECT * FROM app.purchases')).rows,
-    before.map((row) => ({ ...row, offer_id: null, offer_terms: null })),
+    before.map((row) => ({ ...row, offer_id: null, offer_terms: null, renewal_of: null })),
   );
   // 015 adds nullable reservation attribution; every pre-existing ledger value
   // remains identical and allocations must not acquire a reservation source.

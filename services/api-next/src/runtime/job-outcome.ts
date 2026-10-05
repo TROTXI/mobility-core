@@ -21,6 +21,7 @@ const schemas = {
   'no-shows': envelope(batch),
   'route-learning': envelope(batch),
   'gps-retention': envelope(batch),
+  'auto-renewals': envelope(batch),
   'incident-retention': z
     .object({
       considered: count,

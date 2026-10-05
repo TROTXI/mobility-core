@@ -18,6 +18,7 @@ import { Purchases } from '../payments/purchases.js';
 import { RefundInitiation } from '../payments/refunds.js';
 import { MembershipService } from '../membership/service.js';
 import { StandbyService } from '../membership/standby.js';
+import { AutoRenewals, cardBox } from '../payments/auto-renewal.js';
 import { AccountService } from '../account/service.js';
 import { ConfigService } from '../config/service.js';
 import { R2ObjectStore } from './avatars.js';
@@ -249,6 +250,8 @@ export async function composeBackend(config: RuntimeConfig): Promise<Backend> {
           cursorSecret: config.keys.cursorSecret,
           fareForSelection: pricing.fareForSelection,
         });
+        // Bound below, once payment recovery exists to settle its charges.
+        let autoRenewals: AutoRenewals | undefined;
         const financial = new FinancialFoundation({
           requireOffer: true,
           pool,
@@ -259,6 +262,7 @@ export async function composeBackend(config: RuntimeConfig): Promise<Backend> {
           materializeAssignment: membership.materializeAssignment,
           quote: pricing.quote,
           subscriptionActive: email?.subscriptionActive,
+          purchaseSettled: (c, input) => autoRenewals!.purchaseSettled(c, input),
         });
         const account = new AccountService({
           pool,
@@ -299,6 +303,27 @@ export async function composeBackend(config: RuntimeConfig): Promise<Backend> {
             }),
         });
         identity = { auth, membership, account };
+        const recovery = new PaymentRecovery({
+          pool,
+          provider,
+          foundation: financial,
+          authorizeSession,
+          cursorSecret: config.keys.cursorSecret,
+          reversePeriod: membership.reversePeriod,
+        });
+        const cards = cardBox(config.keys.paystackEvidence);
+        autoRenewals = new AutoRenewals({
+          pool,
+          environment: provider.environment,
+          authorizeSession,
+          financial,
+          pricing,
+          seal: cards.seal,
+          open: cards.open,
+          charge: (request) => provider.chargeAuthorization(request),
+          settle: (reference) => recovery.settleReference(reference),
+          ...(email ? { email } : {}),
+        });
         return {
           inbox,
           pricing,
@@ -318,14 +343,8 @@ export async function composeBackend(config: RuntimeConfig): Promise<Backend> {
             purchases,
             cursorSecret: config.keys.cursorSecret,
           }),
-          payments: new PaymentRecovery({
-            pool,
-            provider,
-            foundation: financial,
-            authorizeSession,
-            cursorSecret: config.keys.cursorSecret,
-            reversePeriod: membership.reversePeriod,
-          }),
+          payments: recovery,
+          autoRenewals,
           config: new ConfigService({
             pool,
             authorizeSession,

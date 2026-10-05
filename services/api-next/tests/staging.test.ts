@@ -301,6 +301,7 @@ test('service maintenance groups call the right routes for the right Accra days'
     ['personal-pause-resumes', { limit: 100 }],
     ['route-learning', { limit: 100 }],
     ['gps-retention', { limit: 100 }],
+    ['auto-renewals', { limit: 100 }],
   ]);
 });
 

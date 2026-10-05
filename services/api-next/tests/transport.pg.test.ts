@@ -343,7 +343,8 @@ test('MIG-01 clean install records hashes, rerun is no-op, historical drift fail
     // 036 adds rider notifications, their event history and preferences.
     // 037–038 add account-bound phone verification and new-rider standby.
     // 043 adds invitation, team audit/receipt and one-time bootstrap tables.
-    assert.equal(tables.rows[0].n, 107);
+    // 044 adds auto-renewal preferences, saved cards and renewals.
+    assert.equal(tables.rows[0].n, 110);
     assert.deepEqual(
       (
         await pool.query(

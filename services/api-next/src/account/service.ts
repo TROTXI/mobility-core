@@ -702,6 +702,21 @@ export class AccountService {
         WHERE user_id=$1 AND revoked_at IS NULL`,
       [user.id],
     );
+    // A closed account is never charged again: the saved card's code goes now.
+    await c.query(
+      `UPDATE app.card_authorizations SET removed_at=clock_timestamp(),ciphertext=NULL
+        WHERE user_id=$1 AND removed_at IS NULL`,
+      [user.id],
+    );
+    await c.query(
+      'UPDATE app.auto_renewal_preferences SET enabled=false,updated_at=clock_timestamp() WHERE user_id=$1',
+      [user.id],
+    );
+    await c.query(
+      `UPDATE app.auto_renewals SET state='cancelled',next_attempt_at=NULL,updated_at=clock_timestamp()
+        WHERE user_id=$1 AND state IN ('scheduled','reminded','failed')`,
+      [user.id],
+    );
     const identities = (
       await c.query(
         'SELECT id,provider,subject,provider_token_ciphertext FROM app.auth_identities WHERE user_id=$1',

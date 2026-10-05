@@ -37,12 +37,17 @@ final BuiltSet<MembershipCoverageStateEnum>
 const MembershipCoverageRenewalModeEnum
     _$membershipCoverageRenewalModeEnum_manual =
     const MembershipCoverageRenewalModeEnum._('manual');
+const MembershipCoverageRenewalModeEnum
+    _$membershipCoverageRenewalModeEnum_automatic =
+    const MembershipCoverageRenewalModeEnum._('automatic');
 
 MembershipCoverageRenewalModeEnum _$membershipCoverageRenewalModeEnumValueOf(
     String name) {
   switch (name) {
     case 'manual':
       return _$membershipCoverageRenewalModeEnum_manual;
+    case 'automatic':
+      return _$membershipCoverageRenewalModeEnum_automatic;
     default:
       throw ArgumentError(name);
   }
@@ -52,6 +57,7 @@ final BuiltSet<MembershipCoverageRenewalModeEnum>
     _$membershipCoverageRenewalModeEnumValues = BuiltSet<
         MembershipCoverageRenewalModeEnum>(const <MembershipCoverageRenewalModeEnum>[
   _$membershipCoverageRenewalModeEnum_manual,
+  _$membershipCoverageRenewalModeEnum_automatic,
 ]);
 
 Serializer<MembershipCoverageStateEnum>
@@ -96,9 +102,11 @@ class _$MembershipCoverageRenewalModeEnumSerializer
     implements PrimitiveSerializer<MembershipCoverageRenewalModeEnum> {
   static const Map<String, Object> _toWire = const <String, Object>{
     'manual': 'manual',
+    'automatic': 'automatic',
   };
   static const Map<Object, String> _fromWire = const <Object, String>{
     'manual': 'manual',
+    'automatic': 'automatic',
   };
 
   @override

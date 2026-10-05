@@ -7,7 +7,7 @@ import {
   createDecipheriv,
 } from 'node:crypto';
 import { z } from 'zod';
-import type { Settlement } from './foundation.js';
+import type { CardAuthorization, Settlement } from './foundation.js';
 
 export const refundRank = {
   pending: 0,
@@ -48,6 +48,42 @@ const common = z.object({
 });
 const record = z.record(z.string(), z.unknown());
 export class InvalidProviderFacts extends Error {}
+
+/**
+ * The reusable card behind a successful payment, or nothing. Only a card
+ * Paystack marks reusable qualifies; anything missing or malformed means no
+ * card is saved, never that the payment itself is in doubt.
+ */
+export function cardAuthorization(data: Record<string, unknown>): CardAuthorization | undefined {
+  const parsed = z
+    .object({
+      channel: z.literal('card'),
+      authorization: z.object({
+        authorization_code: z.string().regex(/^AUTH_[A-Za-z0-9]{1,100}$/),
+        reusable: z.literal(true),
+        signature: z.string().regex(/^SIG_[A-Za-z0-9]{1,100}$/),
+        last4: z.string().regex(/^[0-9]{4}$/),
+        brand: z.string().trim().min(1).max(50),
+        exp_month: z.coerce.number().int().min(1).max(12),
+        exp_year: z.coerce.number().int().min(2000).max(2100),
+        bank: z.string().trim().min(1).max(100).nullable().optional(),
+      }),
+      customer: z.object({ email: z.email().max(320) }),
+    })
+    .safeParse(data);
+  if (!parsed.success) return undefined;
+  const a = parsed.data.authorization;
+  return {
+    code: a.authorization_code,
+    email: parsed.data.customer.email,
+    signature: a.signature,
+    last4: a.last4,
+    brand: a.brand.toLowerCase(),
+    expMonth: a.exp_month,
+    expYear: a.exp_year,
+    bank: a.bank ?? null,
+  };
+}
 export function parseProviderFact(raw: Buffer, source: 'webhook' | 'verify'): ProviderFact | null {
   try {
     const envelope = z
@@ -77,6 +113,7 @@ export function parseProviderFact(raw: Buffer, source: 'webhook' | 'verify'): Pr
           channel: z.string().max(100).nullable().optional().parse(d.channel) ?? null,
           feesPesewas:
             z.number().int().min(0).max(2147483647).nullable().optional().parse(d.fees) ?? null,
+          authorization: cardAuthorization(d),
         };
       }
       if (source !== 'verify') throw new InvalidProviderFacts();
@@ -269,6 +306,48 @@ export class PaystackEvidence {
     }
     if (target.protocol !== 'https:') throw new InvalidProviderFacts('Insecure checkout target');
     return { authorizationUrl: target.toString() };
+  }
+
+  /**
+   * Charge a saved card for an attempt that is already committed.
+   *
+   * Paystack's immediate answer is not settlement evidence: the caller reads
+   * the outcome back through verify, like any other payment, so a charge is
+   * only ever fulfilled by verified, persisted provider facts.
+   */
+  async chargeAuthorization(request: {
+    reference: string;
+    amountPesewas: number;
+    email: string;
+    authorizationCode: string;
+  }): Promise<void> {
+    if (
+      !/^[A-Za-z0-9._=-]{1,100}$/.test(request.reference) ||
+      !Number.isSafeInteger(request.amountPesewas) ||
+      request.amountPesewas < 1 ||
+      request.amountPesewas > 2147483647 ||
+      !/^[^\s@]{1,200}@[^\s@]{1,100}$/.test(request.email) ||
+      !/^AUTH_[A-Za-z0-9]{1,100}$/.test(request.authorizationCode)
+    )
+      throw new InvalidProviderFacts('Invalid card charge request');
+    const response = await this.request(
+      'https://api.paystack.co/transaction/charge_authorization',
+      {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${this.secret}`, 'content-type': 'application/json' },
+        signal: AbortSignal.timeout(20000),
+        redirect: 'error',
+        body: JSON.stringify({
+          email: request.email,
+          amount: request.amountPesewas,
+          authorization_code: request.authorizationCode,
+          reference: request.reference,
+          currency: 'GHS',
+        }),
+      },
+    );
+    // Any HTTP answer may follow a charge Paystack did attempt; verify decides.
+    await response.body?.cancel();
   }
 
   async initiateRefund(

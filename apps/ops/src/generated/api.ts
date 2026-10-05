@@ -758,6 +758,41 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/v1/me/auto-renewal': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** get Auto Renewal */
+    get: operations['getAutoRenewal'];
+    /** set Auto Renewal */
+    put: operations['setAutoRenewal'];
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/v1/me/auto-renewal/card': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post?: never;
+    /** remove Auto Renewal Card */
+    delete: operations['removeAutoRenewalCard'];
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/v1/me/membership/pause': {
     parameters: {
       query?: never;
@@ -2525,6 +2560,23 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/v1/ops/maintenance/auto-renewals': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** run Auto Renewals */
+    post: operations['runAutoRenewals'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/v1/ops/maintenance/trip-generation': {
     parameters: {
       query?: never;
@@ -2597,6 +2649,42 @@ export interface components {
       stopOccurrenceId: string;
       /** @default false */
       correction: boolean;
+    };
+    AutoRenewal: {
+      enabled: boolean;
+      card: {
+        brand: string;
+        last4: string;
+        expMonth: number;
+        expYear: number;
+      } | null;
+      upcoming: {
+        /** @enum {string} */
+        state: 'scheduled' | 'reminded' | 'charging' | 'failed' | 'needs_offer';
+        /** Format: date-time */
+        periodEndsAt: string;
+        /** Format: date-time */
+        chargeFrom: string;
+        /** Format: date-time */
+        nextAttemptAt: string | null;
+        price: components['schemas']['Money'];
+        /** @enum {string|null} */
+        failureCode:
+          | 'card_declined'
+          | 'charge_unconfirmed'
+          | 'fare_changed'
+          | 'service_changed'
+          | 'no_card'
+          | 'coverage_conflict'
+          | 'renewal_blocked'
+          | null;
+      } | null;
+    };
+    AutoRenewalInput: {
+      enabled: boolean;
+    };
+    AutoRenewalResponse: {
+      data: components['schemas']['AutoRenewal'];
     };
     Avatar: {
       /** Format: uri */
@@ -3251,7 +3339,7 @@ export interface components {
         state: 'open' | 'closed' | 'reversed';
         paused: boolean;
         /** @enum {string} */
-        renewalMode: 'manual';
+        renewalMode: 'manual' | 'automatic';
       } | null;
       upcomingCoverage?: {
         id: string;
@@ -3263,7 +3351,7 @@ export interface components {
         state: 'open' | 'closed' | 'reversed';
         paused: boolean;
         /** @enum {string} */
-        renewalMode: 'manual';
+        renewalMode: 'manual' | 'automatic';
       } | null;
       /** Format: date-time */
       lastCoverageEndedAt: string | null;
@@ -7326,6 +7414,144 @@ export interface operations {
       401: components['responses']['Error401'];
       403: components['responses']['Error403'];
       404: components['responses']['Error404'];
+      426: components['responses']['Error426'];
+      429: components['responses']['Error429'];
+      500: components['responses']['Error500'];
+      503: components['responses']['Error503'];
+    };
+  };
+  getAutoRenewal: {
+    parameters: {
+      query?: never;
+      header: {
+        /**
+         * @description Compatibility metadata only, never grants a role.
+         * @example commuter
+         */
+        'X-Trotxi-Client': 'commuter' | 'driver' | 'ops' | 'worker';
+        /**
+         * @description Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
+         * @example 1
+         */
+        'X-Trotxi-Build': number;
+        /**
+         * @description Required for commuter/driver, absent for ops/worker.
+         * @example ios
+         */
+        'X-Trotxi-Platform'?: 'ios' | 'android';
+      };
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Success */
+      200: {
+        headers: {
+          /** @description Opaque resource version; required on protected edits. */
+          ETag?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['AutoRenewalResponse'];
+        };
+      };
+      400: components['responses']['Error400'];
+      401: components['responses']['Error401'];
+      403: components['responses']['Error403'];
+      404: components['responses']['Error404'];
+      426: components['responses']['Error426'];
+      429: components['responses']['Error429'];
+      500: components['responses']['Error500'];
+      503: components['responses']['Error503'];
+    };
+  };
+  setAutoRenewal: {
+    parameters: {
+      query?: never;
+      header: {
+        /**
+         * @description Compatibility metadata only, never grants a role.
+         * @example commuter
+         */
+        'X-Trotxi-Client': 'commuter' | 'driver' | 'ops' | 'worker';
+        /**
+         * @description Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
+         * @example 1
+         */
+        'X-Trotxi-Build': number;
+        /**
+         * @description Required for commuter/driver, absent for ops/worker.
+         * @example ios
+         */
+        'X-Trotxi-Platform'?: 'ios' | 'android';
+      };
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['AutoRenewalInput'];
+      };
+    };
+    responses: {
+      /** @description Success */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['AutoRenewalResponse'];
+        };
+      };
+      400: components['responses']['Error400'];
+      401: components['responses']['Error401'];
+      403: components['responses']['Error403'];
+      404: components['responses']['Error404'];
+      409: components['responses']['Error409'];
+      426: components['responses']['Error426'];
+      429: components['responses']['Error429'];
+      500: components['responses']['Error500'];
+      503: components['responses']['Error503'];
+    };
+  };
+  removeAutoRenewalCard: {
+    parameters: {
+      query?: never;
+      header: {
+        /**
+         * @description Compatibility metadata only, never grants a role.
+         * @example commuter
+         */
+        'X-Trotxi-Client': 'commuter' | 'driver' | 'ops' | 'worker';
+        /**
+         * @description Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
+         * @example 1
+         */
+        'X-Trotxi-Build': number;
+        /**
+         * @description Required for commuter/driver, absent for ops/worker.
+         * @example ios
+         */
+        'X-Trotxi-Platform'?: 'ios' | 'android';
+      };
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Success */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      400: components['responses']['Error400'];
+      401: components['responses']['Error401'];
+      403: components['responses']['Error403'];
+      404: components['responses']['Error404'];
+      409: components['responses']['Error409'];
       426: components['responses']['Error426'];
       429: components['responses']['Error429'];
       500: components['responses']['Error500'];
@@ -13320,6 +13546,52 @@ export interface operations {
     };
   };
   runGpsRetention: {
+    parameters: {
+      query?: never;
+      header: {
+        /**
+         * @description Compatibility metadata only, never grants a role.
+         * @example ops
+         */
+        'X-Trotxi-Client': 'commuter' | 'driver' | 'ops' | 'worker';
+        /**
+         * @description Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
+         * @example 1
+         */
+        'X-Trotxi-Build': number;
+        /** @description Required for commuter/driver, absent for ops/worker. */
+        'X-Trotxi-Platform'?: 'ios' | 'android';
+      };
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['MaintenanceInput'];
+      };
+    };
+    responses: {
+      /** @description Success */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['MaintenanceResultResponse'];
+        };
+      };
+      400: components['responses']['Error400'];
+      401: components['responses']['Error401'];
+      403: components['responses']['Error403'];
+      404: components['responses']['Error404'];
+      409: components['responses']['Error409'];
+      426: components['responses']['Error426'];
+      429: components['responses']['Error429'];
+      500: components['responses']['Error500'];
+      503: components['responses']['Error503'];
+    };
+  };
+  runAutoRenewals: {
     parameters: {
       query?: never;
       header: {

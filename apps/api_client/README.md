@@ -166,6 +166,7 @@ Class | Method | HTTP request | Description
 [*OpsApi*](doc/OpsApi.md) | [**updateStop**](doc/OpsApi.md#updatestop) | **PATCH** /v1/ops/stops/{id} | update Stop
 [*OpsApi*](doc/OpsApi.md) | [**updateVehicle**](doc/OpsApi.md#updatevehicle) | **PATCH** /v1/ops/vehicles/{id} | update Vehicle
 [*OpsOrScopedWorkerApi*](doc/OpsOrScopedWorkerApi.md) | [**runAskDispatch**](doc/OpsOrScopedWorkerApi.md#runaskdispatch) | **POST** /v1/ops/maintenance/ask-dispatch | run Ask Dispatch
+[*OpsOrScopedWorkerApi*](doc/OpsOrScopedWorkerApi.md) | [**runAutoRenewals**](doc/OpsOrScopedWorkerApi.md#runautorenewals) | **POST** /v1/ops/maintenance/auto-renewals | run Auto Renewals
 [*OpsOrScopedWorkerApi*](doc/OpsOrScopedWorkerApi.md) | [**runGpsRetention**](doc/OpsOrScopedWorkerApi.md#rungpsretention) | **POST** /v1/ops/maintenance/gps-retention | run Gps Retention
 [*OpsOrScopedWorkerApi*](doc/OpsOrScopedWorkerApi.md) | [**runNoShows**](doc/OpsOrScopedWorkerApi.md#runnoshows) | **POST** /v1/ops/maintenance/no-shows | run No Shows
 [*OpsOrScopedWorkerApi*](doc/OpsOrScopedWorkerApi.md) | [**runPaymentInbox**](doc/OpsOrScopedWorkerApi.md#runpaymentinbox) | **POST** /v1/ops/maintenance/payment-inbox | run Payment Inbox
@@ -201,6 +202,7 @@ Class | Method | HTTP request | Description
 [*RiderOwnApi*](doc/RiderOwnApi.md) | [**createPersonalPause**](doc/RiderOwnApi.md#createpersonalpause) | **POST** /v1/me/membership/pauses | create Personal Pause
 [*RiderOwnApi*](doc/RiderOwnApi.md) | [**createPurchase**](doc/RiderOwnApi.md#createpurchase) | **POST** /v1/me/purchases | create Purchase
 [*RiderOwnApi*](doc/RiderOwnApi.md) | [**decideReservation**](doc/RiderOwnApi.md#decidereservation) | **POST** /v1/me/reservation-decisions | decide Reservation
+[*RiderOwnApi*](doc/RiderOwnApi.md) | [**getAutoRenewal**](doc/RiderOwnApi.md#getautorenewal) | **GET** /v1/me/auto-renewal | get Auto Renewal
 [*RiderOwnApi*](doc/RiderOwnApi.md) | [**getMembership**](doc/RiderOwnApi.md#getmembership) | **GET** /v1/me/membership | get Membership
 [*RiderOwnApi*](doc/RiderOwnApi.md) | [**getNotificationPreferences**](doc/RiderOwnApi.md#getnotificationpreferences) | **GET** /v1/me/notification-preferences | get Notification Preferences
 [*RiderOwnApi*](doc/RiderOwnApi.md) | [**getPersonalPause**](doc/RiderOwnApi.md#getpersonalpause) | **GET** /v1/me/membership/pause | get Personal Pause
@@ -220,7 +222,9 @@ Class | Method | HTTP request | Description
 [*RiderOwnApi*](doc/RiderOwnApi.md) | [**markNotificationRead**](doc/RiderOwnApi.md#marknotificationread) | **POST** /v1/me/notifications/{id}/read | mark Notification Read
 [*RiderOwnApi*](doc/RiderOwnApi.md) | [**previewPersonalPause**](doc/RiderOwnApi.md#previewpersonalpause) | **POST** /v1/me/membership/pause-preview | preview Personal Pause
 [*RiderOwnApi*](doc/RiderOwnApi.md) | [**previewPurchase**](doc/RiderOwnApi.md#previewpurchase) | **POST** /v1/me/purchase-quotes | preview Purchase
+[*RiderOwnApi*](doc/RiderOwnApi.md) | [**removeAutoRenewalCard**](doc/RiderOwnApi.md#removeautorenewalcard) | **DELETE** /v1/me/auto-renewal/card | remove Auto Renewal Card
 [*RiderOwnApi*](doc/RiderOwnApi.md) | [**resumePersonalPause**](doc/RiderOwnApi.md#resumepersonalpause) | **POST** /v1/me/membership/pauses/{id}/resume | resume Personal Pause
+[*RiderOwnApi*](doc/RiderOwnApi.md) | [**setAutoRenewal**](doc/RiderOwnApi.md#setautorenewal) | **PUT** /v1/me/auto-renewal | set Auto Renewal
 [*RiderOwnApi*](doc/RiderOwnApi.md) | [**startPhoneVerification**](doc/RiderOwnApi.md#startphoneverification) | **POST** /v1/me/phone-verification/start | start Phone Verification
 [*RiderOwnApi*](doc/RiderOwnApi.md) | [**updateNotificationPreferences**](doc/RiderOwnApi.md#updatenotificationpreferences) | **PATCH** /v1/me/notification-preferences | update Notification Preferences
 [*RiderOwnApi*](doc/RiderOwnApi.md) | [**withdrawCommuteRequest**](doc/RiderOwnApi.md#withdrawcommuterequest) | **POST** /v1/me/commute-requests/{id}/withdraw | withdraw Commute Request
@@ -250,6 +254,11 @@ Class | Method | HTTP request | Description
  - [AccountResponse](doc/AccountResponse.md)
  - [AppleSignIn](doc/AppleSignIn.md)
  - [ArrivalInput](doc/ArrivalInput.md)
+ - [AutoRenewal](doc/AutoRenewal.md)
+ - [AutoRenewalCard](doc/AutoRenewalCard.md)
+ - [AutoRenewalInput](doc/AutoRenewalInput.md)
+ - [AutoRenewalResponse](doc/AutoRenewalResponse.md)
+ - [AutoRenewalUpcoming](doc/AutoRenewalUpcoming.md)
  - [Avatar](doc/Avatar.md)
  - [AvatarResponse](doc/AvatarResponse.md)
  - [BoardingInput](doc/BoardingInput.md)
@@ -592,6 +601,3 @@ Authentication schemes defined for the API:
 
 
 ## Author
-
-
-

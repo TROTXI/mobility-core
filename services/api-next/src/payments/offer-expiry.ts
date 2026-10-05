@@ -5,10 +5,14 @@ import type { PoolClient } from 'pg';
  * Call with the rider lock, before application/purchase locks.
  */
 export async function expireUnpaidOffers(c: PoolClient, userId: string, now = new Date()) {
+  // An automatic renewal expires like an offer, once the coverage it was
+  // buying has begun: a charge that never settled must not hold the slot.
   const rows = (
     await c.query(
-      `SELECT p.id FROM app.purchases p JOIN app.standby_offers o ON o.id=p.offer_id
-     WHERE p.user_id=$1 AND p.state IN ('awaiting_payment','processing') AND o.expires_at<=$2
+      `SELECT p.id,p.renewal_of FROM app.purchases p LEFT JOIN app.standby_offers o ON o.id=p.offer_id
+     WHERE p.user_id=$1 AND p.state IN ('awaiting_payment','processing')
+       AND (o.expires_at<=$2 OR (p.renewal_of IS NOT NULL
+         AND ((p.offer_terms->>'coverageStart')::date::timestamp AT TIME ZONE 'Africa/Accra')<=$2))
      ORDER BY p.id FOR UPDATE OF p`,
       [userId, now],
     )
@@ -19,8 +23,8 @@ export async function expireUnpaidOffers(c: PoolClient, userId: string, now = ne
       [row.id],
     );
     await c.query(
-      "UPDATE app.purchases SET state='failed',failure_code='offer_expired',updated_at=clock_timestamp() WHERE id=$1",
-      [row.id],
+      "UPDATE app.purchases SET state='failed',failure_code=$2,updated_at=clock_timestamp() WHERE id=$1",
+      [row.id, row.renewal_of ? 'renewal_lapsed' : 'offer_expired'],
     );
   }
 }

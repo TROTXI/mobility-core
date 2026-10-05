@@ -1460,6 +1460,17 @@ export class MembershipService {
       )
     ).rows[0].ended;
     const money = (n: number) => ({ amountMinor: n, currency: 'GHS' });
+    // A period renews automatically while its card renewal is still pending.
+    const renewing = new Set(
+      (
+        await c.query(
+          `SELECT period_id FROM app.auto_renewals WHERE user_id=$1
+           AND state IN ('scheduled','reminded','charging','failed')`,
+          [userId],
+        )
+      ).rows.map((row) => row.period_id as string),
+    );
+    const mode = (periodId: string) => (renewing.has(periodId) ? 'automatic' : 'manual');
     return {
       membership: m ? { id: m.id, lifecycle: m.lifecycle } : null,
       upcomingCoverage: upcoming
@@ -1469,7 +1480,7 @@ export class MembershipService {
             endsAt: iso(upcoming.effective_ends_at),
             state: upcoming.state,
             paused: false,
-            renewalMode: 'manual',
+            renewalMode: mode(upcoming.id),
           }
         : null,
       coverage: current
@@ -1479,7 +1490,7 @@ export class MembershipService {
             endsAt: paused ? null : iso(b.effective_ends_at),
             state: b.state,
             paused,
-            renewalMode: 'manual',
+            renewalMode: mode(b.id),
           }
         : null,
       lastCoverageEndedAt: ended ? iso(ended) : null,

@@ -42,6 +42,8 @@ import { failureLog, loggerOptions } from '../observability/logging.js';
 import { recordJob } from '../observability/metrics.js';
 import type { MaintenanceAudit } from '../runtime/maintenance-audit.js';
 import { inboxOperations } from '../notifications/inbox.js';
+import { autoRenewalOperations } from '../payments/auto-renewal.js';
+import type { AutoRenewals, AutoRenewalOperation } from '../payments/auto-renewal.js';
 import type { RiderInbox } from '../notifications/inbox.js';
 // The contract admits a `worker` client on exactly these, with no platform:
 // scheduled maintenance is an operations caller without an app build behind it.
@@ -57,6 +59,7 @@ const maintenanceOperations = new Set([
   'runNoShows',
   'runRouteLearning',
   'runGpsRetention',
+  'runAutoRenewals',
 ]);
 const paymentOperations = [
   'receivePaystackWebhook',
@@ -148,6 +151,7 @@ export interface AppOptions extends Dependencies {
   maxAvatarBytes?: number;
   purchases?: Purchases;
   boarding?: BoardingService;
+  autoRenewals?: AutoRenewals;
   authRequestsPerMinute?: number;
 }
 export async function createTransportApp(options: AppOptions) {
@@ -375,6 +379,8 @@ export async function createTransportApp(options: AppOptions) {
       if (standbyEndpoint && !options.standby) continue;
       if (inboxEndpoint && !options.inbox) continue;
       if (paymentEndpoint && !options.payments) continue;
+      const autoRenewalEndpoint = (autoRenewalOperations as readonly string[]).includes(name);
+      if (autoRenewalEndpoint && !options.autoRenewals) continue;
       if (name === 'receivePaystackWebhook') {
         documentedOperations.add(name);
         // Encapsulated parser preserves the exact bytes for HMAC. It must not
@@ -518,6 +524,7 @@ export async function createTransportApp(options: AppOptions) {
                       (ops
                         ? 'ops'
                         : membershipEndpoint ||
+                            autoRenewalEndpoint ||
                             (standbyEndpoint && !ops) ||
                             inboxEndpoint ||
                             purchaseEndpoint ||
@@ -863,6 +870,16 @@ export async function createTransportApp(options: AppOptions) {
                 fail(400, 'idempotency_key_required', 'Supply an Idempotency-Key.');
               result = await options.standby!.accept(actor, target!, key);
             }
+          } else if (autoRenewalEndpoint) {
+            if (Object.keys(request.query as object).length)
+              fail(400, 'invalid_query', 'Unsupported query parameters.');
+            if (!input && request.body !== undefined)
+              fail(400, 'invalid_request', 'This operation has no request body.');
+            result = await options.autoRenewals!.handle(
+              actor,
+              name as AutoRenewalOperation,
+              (request.body ?? {}) as Body,
+            );
           } else if (membershipEndpoint) {
             const query = request.query as Record<string, string | undefined>;
             const allowed = new Set(
