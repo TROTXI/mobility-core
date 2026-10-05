@@ -210,8 +210,8 @@ test('ASM-10 the assembled backend routes every reviewed operation', async (t) =
     }
   // Every group's dependency is required, so none of them may be absent. A
   // route that is skipped for a missing service would fail the loop above.
-  assert.ok(expected.length > 0);
-  assert.equal(new Set(expected).size, expected.length);
+  assert.equal(expected.length, 171);
+  assert.equal(new Set(expected).size, 171);
   for (const operation of [
     'getOpsRiderDetail',
     'listOpsOperators',
@@ -949,12 +949,10 @@ test('ASM-21 a provider this deployment does not have has no route at all', asyn
   assert.equal(gone.statusCode, 404, gone.body);
   assert.equal(gone.json().error.code, 'not_found');
   // Everything else is still there: dropping a provider drops one route.
-  let routed = 0,
-    total = 0;
+  let routed = 0;
   for (const [path, methods] of Object.entries(contract.paths))
     for (const [method, operation] of Object.entries(methods))
       if (
-        ++total &&
         backend.app.hasRoute({
           method: method.toUpperCase() as 'GET',
           url: path.replaceAll(/\{([^}]+)\}/g, ':$1'),
@@ -963,7 +961,7 @@ test('ASM-21 a provider this deployment does not have has no route at all', asyn
         routed += 1;
         assert.notEqual((operation as { operationId: string }).operationId, 'signInApple');
       }
-  assert.equal(routed, total - 1);
+  assert.equal(routed, 170);
   const docs = (await backend.app.inject({ method: 'GET', url: '/docs/json' })).json();
   assert.equal(docs.paths['/v1/auth/apple'], undefined);
   assert.ok(docs.paths['/v1/auth/google']);
