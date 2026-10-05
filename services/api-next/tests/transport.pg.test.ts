@@ -347,37 +347,17 @@ test('MIG-01 clean install records hashes, rerun is no-op, historical drift fail
     );
     const changed = files.map((f) => migration(f.name, f.sql + '\n-- changed'));
     await assert.rejects(migrate(pool, changed), /Applied replacement migration differs/);
-    const tables = await pool.query(
-      "SELECT count(*)::int AS n FROM pg_tables WHERE schemaname='app'",
-    );
-    // Seventeen transport/catalog + five auth + two driver command/audit tables,
-    // plus driver_incidents, driver_requests and fleet_events from 010,
-    // and ten financial foundation tables from 011 (asserted by name below).
-    // 012 adds evidence, collections, refunds, disputes, access blocks,
-    // reversals, reviews and review command receipts.
-    // 013 adds selections/legs, slots/requests/assignments, pauses,
-    // restrictions, reservations and membership receipts/events.
-    // One durable ask-intent table makes notification delivery separately auditable.
-    // 014 adds the trace and its live projection, learned speeds with the
-    // samples and per-trip marker behind them, trace holds and gps receipts.
-    // 015 adds boarding receipts, charges, attendance, QR uses and code budgets.
-    // 016 adds plan pricing, corridor fares, the pricing command and event
-    // receipts, and the provider checkout session behind a purchase.
-    // 017 adds push devices, the erasure record and its outstanding tasks.
-    // 017 adds push devices, the erasure record, its outstanding tasks and the
-    // account command receipt. 018 adds minimum versions, feature flags and
-    // the configuration receipts.
-    // 022 adds the encrypted transactional email outbox.
-    // 023–025 add push deliveries, refund initiation and personal pauses.
-    // 028 adds passkeys, short-lived WebAuthn challenges and their audit events.
-    // 030 adds bounded, encrypted phone OTP challenges.
-    // 031 adds encrypted, once-only driver SMS delivery.
-    // 032 adds append-only maintenance starts and outcomes.
-    // 033 adds append-only driver incident redaction evidence.
-    // 036 adds rider notifications, their event history and preferences.
-    // 037–038 add account-bound phone verification and new-rider standby.
-    // 043 adds invitation, team audit/receipt and one-time bootstrap tables.
-    assert.equal(tables.rows[0].n, 107);
+    // The app schema holds exactly the tables the migrations create, by name:
+    // a stray table or a lost one fails here without a count to maintain.
+    const created = new Set<string>();
+    for (const { sql } of files)
+      for (const [, verb, name] of sql.matchAll(
+        /\b(CREATE|DROP) TABLE (?:IF (?:NOT )?EXISTS )?app\.([a-z_][a-z0-9_]*)/gi,
+      ))
+        if (verb!.toUpperCase() === 'CREATE') created.add(name!);
+        else created.delete(name!);
+    const tables = await pool.query("SELECT tablename FROM pg_tables WHERE schemaname='app'");
+    assert.deepEqual(tables.rows.map((row) => row.tablename as string).sort(), [...created].sort());
     assert.deepEqual(
       (
         await pool.query(
