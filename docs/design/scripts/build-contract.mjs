@@ -3,6 +3,7 @@ import { writeArtifact } from './artifact-io.mjs';
 import { z } from '../../../services/api-next/node_modules/zod/index.js';
 import { registry, operations, schemas, exampleCases } from '../contracts/target-contract.mjs';
 import { operationScope } from '../contracts/operation-scope.mjs';
+import { errorActions, errorCodes } from '../contracts/error-codes.mjs';
 
 const dir = new URL('../contracts/', import.meta.url);
 const baseline = JSON.parse(await readFile(new URL('baseline.operations.json', dir), 'utf8'));
@@ -387,6 +388,18 @@ for (const o of operations) {
     );
   (spec.paths[o.path] ??= {})[o.method] = operation;
 }
+
+// Each shared error response lists the codes it can carry and what a client
+// does next, from contracts/error-codes.mjs.
+for (const [code, [statuses, action, next]] of Object.entries(errorCodes)) {
+  if (!errorActions[action]) throw new Error(`${code}: unknown action ${action}`);
+  for (const status of [statuses].flat()) {
+    const shared = spec.components.responses[`Error${status}`];
+    if (!shared) throw new Error(`${code}: no operation can return ${status}`);
+    (shared['x-error-codes'] ??= {})[code] = { action, next };
+  }
+}
+spec['x-error-actions'] = errorActions;
 
 const overrides = {
   'POST /admin/close-subscription-periods': 'POST /v1/ops/maintenance/period-close',
