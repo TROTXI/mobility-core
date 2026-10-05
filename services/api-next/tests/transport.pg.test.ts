@@ -303,6 +303,40 @@ async function duplicateRun(query: Promise<unknown>) {
   });
 }
 
+test('MIG-02 membership row types name exactly the columns their tables have', () =>
+  withDb(async (pool) => {
+    // src/membership/rows.ts is hand-written; this keeps it honest. Each
+    // interface below must list every column of its table, and nothing else.
+    const tables: Record<string, string> = {
+      BillingPeriodRow: 'billing_periods',
+      CommuteRequestRow: 'commute_requests',
+      CommuteSlotRow: 'commute_slots',
+      CommuteAssignmentRow: 'commute_assignments',
+      MembershipPauseRow: 'membership_pauses',
+      ReservationRow: 'reservations',
+      RestrictionRow: 'account_restrictions',
+      TripRow: 'trips',
+      MembershipRow: 'memberships',
+      MembershipCommandRow: 'membership_commands',
+    };
+    const source = await readFile(new URL('../src/membership/rows.ts', import.meta.url), 'utf8');
+    const fields = (name: string): string[] => {
+      const match = new RegExp(`interface ${name}(?: extends (\\w+))? \\{([^}]*)\\}`).exec(source);
+      assert.ok(match, `${name} is not declared in rows.ts`);
+      const own = [...match[2]!.matchAll(/^\s+(\w+): /gm)].map((m) => m[1]!);
+      return [...(match[1] ? fields(match[1]) : []), ...own];
+    };
+    for (const [name, table] of Object.entries(tables)) {
+      const columns = (
+        await pool.query(
+          "SELECT column_name FROM information_schema.columns WHERE table_schema='app' AND table_name=$1",
+          [table],
+        )
+      ).rows.map((row) => row.column_name as string);
+      assert.deepEqual(fields(name).sort(), columns.sort(), `${name} does not match app.${table}`);
+    }
+  }));
+
 test('MIG-01 clean install records hashes, rerun is no-op, historical drift fails', () =>
   withDb(async (pool) => {
     assert.deepEqual(await migrate(pool, files), []);

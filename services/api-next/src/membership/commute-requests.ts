@@ -4,14 +4,14 @@ import type { Actor, Body } from '../transport/service.js';
 import { canonical } from '../transport/service.js';
 import { fail } from '../transport/errors.js';
 import type { PurchaseLeg } from '../payments/foundation.js';
-import {
-  date,
-  dayString,
-  id,
-  type MembershipCore,
-  type MembershipOperation,
-  type Row,
-} from './core.js';
+import { date, dayString, id, type MembershipCore, type MembershipOperation } from './core.js';
+import type {
+  BillingPeriodRow,
+  CommuteRequestRow,
+  CommuteSlotRow,
+  FundedPeriodRow,
+  MembershipPauseRow,
+} from './rows.js';
 
 export async function mutateCommuteRequest(
   m: MembershipCore,
@@ -67,16 +67,22 @@ export async function mutateCommuteRequest(
     ).rows[0].id;
   }
   if (op === 'retireCommuteSlot') {
-    const r = (await c.query('SELECT * FROM app.commute_slots WHERE id=$1 FOR UPDATE', [target]))
-      .rows[0];
+    const r = (
+      await c.query<CommuteSlotRow>('SELECT * FROM app.commute_slots WHERE id=$1 FOR UPDATE', [
+        target,
+      ])
+    ).rows[0];
     if (!r) fail(404, 'not_found', 'Slot not found.');
     m.match(r, match);
     if (r.state !== 'available') fail(409, 'slot_in_use', 'Only an available slot can be retired.');
     await c.query("UPDATE app.commute_slots SET state='retired' WHERE id=$1", [target]);
     return target;
   }
-  const r = (await c.query('SELECT * FROM app.commute_requests WHERE id=$1 FOR UPDATE', [target]))
-    .rows[0];
+  const r = (
+    await c.query<CommuteRequestRow>('SELECT * FROM app.commute_requests WHERE id=$1 FOR UPDATE', [
+      target,
+    ])
+  ).rows[0];
   if (!r) fail(404, 'not_found', 'Request not found.');
   if (op === 'decideCommuteRequest') m.match(r, match);
   if (!['submitted', 'waitlisted', 'approved'].includes(r.status))
@@ -88,14 +94,14 @@ export async function mutateCommuteRequest(
   )
     fail(409, 'renewal_dates_locked', 'Resolve the upcoming renewal before changing the commute.');
   const b = (
-    await c.query(
+    await c.query<FundedPeriodRow>(
       "SELECT b.*,p.fare_pesewas,to_jsonb(p)->'offer_terms' AS offer_terms FROM app.billing_periods b JOIN app.purchases p ON p.id=b.purchase_id WHERE b.id=$1 FOR UPDATE OF b",
       [r.period_id],
     )
-  ).rows[0];
+  ).rows[0]!; // period_id is a foreign key
   if (b.state !== 'open') fail(409, 'coverage_required', 'This coverage has ended.');
   const pause = (
-    await c.query(
+    await c.query<MembershipPauseRow>(
       'SELECT * FROM app.membership_pauses WHERE request_id=$1 AND ended_at IS NULL FOR UPDATE',
       [r.id],
     )
@@ -131,7 +137,9 @@ export async function mutateCommuteRequest(
   } else if (action === 'approve') {
     if (r.status === 'approved') fail(409, 'already_approved', 'Request already holds a slot.');
     const slot = (
-      await c.query('SELECT * FROM app.commute_slots WHERE id=$1 FOR UPDATE', [id(input.slotId)])
+      await c.query<CommuteSlotRow>('SELECT * FROM app.commute_slots WHERE id=$1 FOR UPDATE', [
+        id(input.slotId),
+      ])
     ).rows[0];
     const effective = String(input.effectiveDate);
     const ends = pause
@@ -159,7 +167,8 @@ export async function mutateCommuteRequest(
       [r.id, slot.id, effective, actor.userId],
     );
   } else if (action === 'apply') {
-    if (r.status !== 'approved' || dayString(r.effective_date) > date(now))
+    // An approved request always has an effective date (CHECK in 013).
+    if (r.status !== 'approved' || dayString(r.effective_date!) > date(now))
       fail(409, 'application_not_due', 'Approved effective date has not arrived.');
     if (b.offer_terms)
       fail(
@@ -201,9 +210,9 @@ export async function mutateCommuteRequest(
 export async function resume(
   m: MembershipCore,
   c: PoolClient,
-  r: Row,
-  b: Row,
-  pause: Row | undefined,
+  r: CommuteRequestRow,
+  b: BillingPeriodRow,
+  pause: MembershipPauseRow | undefined,
   now: Date,
 ) {
   if (!pause) fail(409, 'not_paused', 'Coverage is not paused.');

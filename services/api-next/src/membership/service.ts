@@ -17,6 +17,13 @@ import {
 } from './personal-pauses.js';
 import { membership } from './coverage.js';
 import { listMembership } from './lists.js';
+import type {
+  CommuteRequestRow,
+  CommuteSlotRow,
+  MembershipCommandRow,
+  ReservationRow,
+  RestrictionRow,
+} from './rows.js';
 
 export { membershipOperations, type MembershipOperation, type MembershipOptions } from './core.js';
 
@@ -30,22 +37,32 @@ export class MembershipService extends MembershipCore {
     if (op.includes('CommuteSlot'))
       return this.slotView(
         c,
-        (await c.query('SELECT * FROM app.commute_slots WHERE id=$1', [resource])).rows[0],
+        (await c.query<CommuteSlotRow>('SELECT * FROM app.commute_slots WHERE id=$1', [resource]))
+          .rows[0]!,
       );
     if (op.includes('Restriction'))
       return this.restrictionView(
-        (await c.query('SELECT * FROM app.account_restrictions WHERE id=$1', [resource])).rows[0],
+        (
+          await c.query<RestrictionRow>('SELECT * FROM app.account_restrictions WHERE id=$1', [
+            resource,
+          ])
+        ).rows[0]!,
       );
     if (op === 'decideReservation')
       return {
         reservation: this.reservationView(
-          (await c.query('SELECT * FROM app.reservations WHERE id=$1', [resource])).rows[0],
+          (await c.query<ReservationRow>('SELECT * FROM app.reservations WHERE id=$1', [resource]))
+            .rows[0]!,
         ),
         pass: null,
       };
     return this.requestView(
       c,
-      (await c.query('SELECT * FROM app.commute_requests WHERE id=$1', [resource])).rows[0],
+      (
+        await c.query<CommuteRequestRow>('SELECT * FROM app.commute_requests WHERE id=$1', [
+          resource,
+        ])
+      ).rows[0]!,
       admin,
     );
   }
@@ -122,7 +139,7 @@ export class MembershipService extends MembershipCore {
       ]);
       const hash = digest(canonical(normalized));
       const old = (
-        await c.query(
+        await c.query<MembershipCommandRow>(
           'SELECT * FROM app.membership_commands WHERE actor_user_id=$1 AND operation=$2 AND target=$3 AND key_hash=$4',
           [actor.userId, op, scope, digest(key)],
         )

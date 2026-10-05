@@ -5,6 +5,7 @@ import type { PoolClient } from 'pg';
 import type { Actor, Body, Outcome } from '../transport/service.js';
 import { fail, TransportError } from '../transport/errors.js';
 import { date, id, iso, type MembershipCore } from './core.js';
+import type { ReservationRow, TripRow } from './rows.js';
 
 export async function reserve(
   m: MembershipCore,
@@ -29,7 +30,7 @@ export async function reserve(
           input.tripId ? id(input.tripId) : null,
         );
   const old = (
-    await c.query(
+    await c.query<ReservationRow>(
       "SELECT * FROM app.reservations WHERE user_id=$1 AND service_date=$2 AND direction=$3 AND status<>'operator_cancelled'",
       [actor.userId, day, direction],
     )
@@ -37,8 +38,9 @@ export async function reserve(
   if (old && ['boarded', 'no_show'].includes(old.status))
     fail(409, 'reservation_terminal', 'This service has already settled.');
   if (old?.trip_id) {
-    const trip = (await c.query('SELECT * FROM app.trips WHERE id=$1 FOR UPDATE', [old.trip_id]))
-      .rows[0];
+    const trip = (
+      await c.query<TripRow>('SELECT * FROM app.trips WHERE id=$1 FOR UPDATE', [old.trip_id])
+    ).rows[0]!; // the reservation's trip_id is a foreign key
     if (trip.status !== 'scheduled' || trip.scheduled_at <= now)
       fail(409, 'service_started', 'This departure is no longer changeable.');
   }
@@ -83,13 +85,14 @@ export async function reserve(
   ).rows[0];
   if (!leg) fail(409, 'commute_unavailable', 'No effective commute for this date.');
   const trips = (
-    await c.query(
+    await c.query<TripRow>(
       'SELECT * FROM app.trips WHERE schedule_id=$1 AND service_date=$2 AND ($3::uuid IS NULL OR id=$3) ORDER BY id FOR UPDATE',
       [leg.schedule_id, day, input.tripId ? id(input.tripId) : null],
     )
   ).rows;
   const t = trips[0];
   if (
+    !t ||
     trips.length !== 1 ||
     t.status !== 'scheduled' ||
     t.scheduled_at <= now ||
@@ -208,7 +211,7 @@ export async function runReservationBatch(
         await m.lockUser(c, rider.id);
         await m.authorize(c, actor, op);
         const current = (
-          await c.query(
+          await c.query<ReservationRow>(
             'SELECT * FROM app.reservations WHERE user_id=$1 AND service_date=$2 AND direction=$3 ORDER BY created_at DESC LIMIT 1',
             [rider.id, day, input.direction],
           )

@@ -2,13 +2,16 @@
 import type { PoolClient } from 'pg';
 import { fail } from '../transport/errors.js';
 import { date, dayString, iso, type MembershipCore } from './core.js';
+import type { BillingPeriodRow, CommuteAssignmentRow, MembershipRow } from './rows.js';
 
 export async function membership(m: MembershipCore, c: PoolClient, userId: string) {
   await c.query('SELECT app.settle_personal_pauses($1)', [userId]);
-  const row = (await c.query('SELECT * FROM app.memberships WHERE user_id=$1', [userId])).rows[0];
+  const row = (
+    await c.query<MembershipRow>('SELECT * FROM app.memberships WHERE user_id=$1', [userId])
+  ).rows[0];
   const now = m.now();
   const periods = (
-    await c.query(
+    await c.query<BillingPeriodRow>(
       "SELECT * FROM app.billing_periods WHERE user_id=$1 AND state='open' ORDER BY starts_at",
       [userId],
     )
@@ -20,9 +23,9 @@ export async function membership(m: MembershipCore, c: PoolClient, userId: strin
   const current = b && b.starts_at <= now && (b.effective_ends_at > now || paused) ? b : null;
   const a = current
     ? (
-        await c.query(
+        await c.query<CommuteAssignmentRow>(
           'SELECT * FROM app.commute_assignments WHERE period_id=$1 AND effective_from<=$2 AND (effective_to IS NULL OR $2<effective_to)',
-          [b.id, date(now)],
+          [current.id, date(now)],
         )
       ).rows[0]
     : null;
@@ -60,10 +63,10 @@ export async function membership(m: MembershipCore, c: PoolClient, userId: strin
       : null,
     coverage: current
       ? {
-          id: b.id,
-          startsAt: iso(b.starts_at),
-          endsAt: paused ? null : iso(b.effective_ends_at),
-          state: b.state,
+          id: current.id,
+          startsAt: iso(current.starts_at),
+          endsAt: paused ? null : iso(current.effective_ends_at),
+          state: current.state,
           paused,
           renewalMode: 'manual',
         }

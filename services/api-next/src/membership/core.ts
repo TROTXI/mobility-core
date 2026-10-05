@@ -7,6 +7,13 @@ import type { Actor, ReservationChange } from '../transport/service.js';
 import { fail, mapDatabaseError } from '../transport/errors.js';
 import { cursorCodec } from '../transport/cursor.js';
 import type { FinancialDependencies, PurchaseLeg } from '../payments/foundation.js';
+import type {
+  CommuteRequestRow,
+  CommuteSlotRow,
+  FundedPeriodRow,
+  ReservationRow,
+  RestrictionRow,
+} from './rows.js';
 
 export const membershipOperations = [
   'getPersonalPause',
@@ -51,13 +58,13 @@ export const dayString = (d: Date | string) =>
     ? `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
     : d;
 export const iso = (d: Date) => d.toISOString();
-export const token = (r: Row) => `"membership:${r.id}:${r.version}"`;
+export const token = (r: { id: string; version: number }) => `"membership:${r.id}:${r.version}"`;
 export const id = (value: unknown): string => {
   if (typeof value !== 'string' || !/^[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(value))
     fail(404, 'not_found', 'Resource not found.');
   return value.toLowerCase();
 };
-export const audit = (r: Row) => ({
+export const audit = (r: { created_at: Date; updated_at: Date; version: number }) => ({
   createdAt: iso(r.created_at),
   updatedAt: iso(r.updated_at),
   version: r.version,
@@ -124,7 +131,7 @@ export class MembershipCore {
   async period(c: PoolClient, userId: string) {
     await c.query('SELECT app.settle_personal_pauses($1)', [userId]);
     const b = (
-      await c.query(
+      await c.query<FundedPeriodRow>(
         "SELECT b.*,p.fare_pesewas,to_jsonb(p)->'offer_terms' AS offer_terms FROM app.billing_periods b JOIN app.purchases p ON p.id=b.purchase_id WHERE b.user_id=$1 AND b.state='open' AND b.starts_at<=$2 ORDER BY b.starts_at DESC LIMIT 1 FOR UPDATE OF b",
         [userId, this.now()],
       )
@@ -155,7 +162,7 @@ export class MembershipCore {
     // lock funding first, then reserve() locks/rechecks the departure. Upcoming
     // paid coverage may fund a future trip without becoming current coverage.
     const periods = (
-      await c.query(
+      await c.query<FundedPeriodRow>(
         `SELECT b.*,p.fare_pesewas,to_jsonb(p)->'offer_terms' AS offer_terms
          FROM app.billing_periods b JOIN app.purchases p ON p.id=b.purchase_id
          WHERE b.user_id=$1 AND b.state='open' AND EXISTS (
@@ -385,7 +392,7 @@ export class MembershipCore {
         );
     }
   };
-  async requestView(c: PoolClient, r: Row, admin: boolean) {
+  async requestView(c: PoolClient, r: CommuteRequestRow, admin: boolean) {
     const s = await this.selectionView(c, r.selection_id);
     const paused = !!(
       await c.query(
@@ -412,7 +419,7 @@ export class MembershipCore {
         : {}),
     };
   }
-  async slotView(c: PoolClient, r: Row) {
+  async slotView(c: PoolClient, r: CommuteSlotRow) {
     const s = await this.selectionView(c, r.selection_id);
     return {
       id: r.id,
@@ -424,7 +431,7 @@ export class MembershipCore {
       ...audit(r),
     };
   }
-  reservationView(r: Row) {
+  reservationView(r: ReservationRow) {
     return {
       id: r.id,
       tripId: r.trip_id,
@@ -437,7 +444,7 @@ export class MembershipCore {
       ...audit(r),
     };
   }
-  restrictionView(r: Row) {
+  restrictionView(r: RestrictionRow) {
     return {
       id: r.id,
       userId: r.user_id,
@@ -448,7 +455,7 @@ export class MembershipCore {
       ...audit(r),
     };
   }
-  match(r: Row, supplied?: string) {
+  match(r: { id: string; version: number }, supplied?: string) {
     if (!supplied) fail(428, 'precondition_required', 'Supply the current edit token.');
     if (supplied !== token(r))
       fail(412, 'precondition_failed', 'Reload this resource before editing.');

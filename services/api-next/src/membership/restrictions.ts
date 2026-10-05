@@ -3,6 +3,7 @@ import type { PoolClient } from 'pg';
 import type { Actor, Body } from '../transport/service.js';
 import { fail } from '../transport/errors.js';
 import type { MembershipCore, MembershipOperation } from './core.js';
+import type { RestrictionRow } from './rows.js';
 
 export async function mutateRestriction(
   m: MembershipCore,
@@ -23,7 +24,10 @@ export async function mutateRestriction(
     ).rows[0].id;
   if (op === 'releaseAccountRestriction') {
     const r = (
-      await c.query('SELECT * FROM app.account_restrictions WHERE id=$1 FOR UPDATE', [target])
+      await c.query<RestrictionRow>(
+        'SELECT * FROM app.account_restrictions WHERE id=$1 FOR UPDATE',
+        [target],
+      )
     ).rows[0];
     if (!r) fail(404, 'not_found', 'Restriction not found.');
     m.match(r, match);
