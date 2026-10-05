@@ -11,6 +11,19 @@
       "description": "Disposable staging — Paystack TEST only"
     }
   ],
+  "x-error-actions": {
+    "fix_input": "The request was wrong. Show the message and let the person correct it.",
+    "sign_in": "The session or credential no longer works. Send the person to sign in again.",
+    "upgrade": "This build is too old. Send the person to the app store.",
+    "reload": "What the person saw is out of date. Reload it and let them decide again.",
+    "wait": "Temporary. Wait, honouring Retry-After when present, then try again.",
+    "new_key": "Do not replay this key. Reload, then repeat the action with a new key.",
+    "user_step": "Something else must happen first. Take the person to that step.",
+    "ops": "Only Trotxi operations can resolve this. Say so and show how to reach them.",
+    "final": "Already done or closed. Stop retrying and show the current state.",
+    "unavailable": "Not offered here or right now. Hide the feature or offer the alternative.",
+    "bug": "The client sent something it never should. Log the requestId and report it."
+  },
   "paths": {
     "/": {
       "get": {
@@ -20451,6 +20464,148 @@
               "$ref": "#/components/schemas/ErrorResponse"
             }
           }
+        },
+        "x-error-codes": {
+          "choose_delivery_channel": {
+            "action": "fix_input",
+            "next": "Pick SMS or email, not both."
+          },
+          "client_metadata_required": {
+            "action": "bug",
+            "next": "Send x-trotxi-client, x-trotxi-build and x-trotxi-platform."
+          },
+          "empty_edit": {
+            "action": "fix_input",
+            "next": "Change at least one field before saving."
+          },
+          "idempotency_key_required": {
+            "action": "bug",
+            "next": "Send an Idempotency-Key on every command."
+          },
+          "incident_sensitive_content": {
+            "action": "fix_input",
+            "next": "Ask the driver to remove payment or sign-in details from the report."
+          },
+          "invalid_action": {
+            "action": "bug",
+            "next": "Use an action the operation documents."
+          },
+          "invalid_capture_time": {
+            "action": "bug",
+            "next": "Send the real device capture time."
+          },
+          "invalid_cursor": {
+            "action": "reload",
+            "next": "Drop the cursor and reload from the first page."
+          },
+          "invalid_cutoff": {
+            "action": "fix_input",
+            "next": "Choose a valid cutoff time."
+          },
+          "invalid_date_range": {
+            "action": "fix_input",
+            "next": "Choose an ordered range within the stated limit."
+          },
+          "invalid_driver_code": {
+            "action": "fix_input",
+            "next": "Re-enter the four-character driver code."
+          },
+          "invalid_evidence": {
+            "action": "fix_input",
+            "next": "Attach evidence within the size limit."
+          },
+          "invalid_fare_stop_pair": {
+            "action": "reload",
+            "next": "Reload the route and choose ordered stops on a published version."
+          },
+          "invalid_filter": {
+            "action": "bug",
+            "next": "Filter by the corridor the path names."
+          },
+          "invalid_geometry": {
+            "action": "fix_input",
+            "next": "Draw or import a non-empty valid path."
+          },
+          "invalid_interval": {
+            "action": "fix_input",
+            "next": "Choose an ordered interval and review date."
+          },
+          "invalid_limit": {
+            "action": "bug",
+            "next": "Request a page size within the documented range."
+          },
+          "invalid_name": {
+            "action": "fix_input",
+            "next": "Enter a name."
+          },
+          "invalid_offer_credits": {
+            "action": "fix_input",
+            "next": "Set credit for both directions, within the fare and the package price."
+          },
+          "invalid_offer_dates": {
+            "action": "fix_input",
+            "next": "Start coverage in the future, after the offer expires, for at most 366 days."
+          },
+          "invalid_offer_expiry": {
+            "action": "fix_input",
+            "next": "Set the offer to expire within seven days."
+          },
+          "invalid_offer_price": {
+            "action": "fix_input",
+            "next": "Enter the price in GHS with at most two decimals."
+          },
+          "invalid_phone": {
+            "action": "fix_input",
+            "next": "Enter a Ghana mobile number."
+          },
+          "invalid_plate": {
+            "action": "fix_input",
+            "next": "Enter the registration plate."
+          },
+          "invalid_precondition": {
+            "action": "bug",
+            "next": "Send the editToken exactly as received in If-Match."
+          },
+          "invalid_query": {
+            "action": "bug",
+            "next": "Send only documented query values."
+          },
+          "invalid_request": {
+            "action": "fix_input",
+            "next": "Show the message; it names the missing or invalid field."
+          },
+          "invalid_request_kind": {
+            "action": "fix_input",
+            "next": "Choose a route change or leave."
+          },
+          "invalid_schedule": {
+            "action": "fix_input",
+            "next": "Use each weekday once and ordered dates."
+          },
+          "invalid_selection": {
+            "action": "reload",
+            "next": "Reload routes and schedules, then choose outbound and return legs again."
+          },
+          "invalid_stop_distances": {
+            "action": "fix_input",
+            "next": "Give one ordered distance per stop that fits the path."
+          },
+          "invalid_travel_days": {
+            "action": "fix_input",
+            "next": "Choose each travel day once, Monday to Sunday."
+          },
+          "passkey_verification_failed": {
+            "action": "fix_input",
+            "next": "Ask the operator to try the passkey again."
+          },
+          "reason_required": {
+            "action": "fix_input",
+            "next": "Enter a reason."
+          },
+          "weak_pin": {
+            "action": "fix_input",
+            "next": "Ask for a PIN that is not repeated or sequential digits."
+          }
         }
       },
       "Error429": {
@@ -20470,6 +20625,32 @@
             },
             "description": "Seconds until another attempt."
           }
+        },
+        "x-error-codes": {
+          "boarding_code_rate_limited": {
+            "action": "wait",
+            "next": "Use the photo fallback or wait."
+          },
+          "phone_account_limited": {
+            "action": "unavailable",
+            "next": "Daily SMS limit reached for this account; offer Google sign-in."
+          },
+          "phone_send_limited": {
+            "action": "wait",
+            "next": "Wait before requesting another code."
+          },
+          "phone_source_limited": {
+            "action": "unavailable",
+            "next": "Daily SMS limit reached here; offer Google sign-in."
+          },
+          "rate_limited": {
+            "action": "wait",
+            "next": "Wait for Retry-After, then retry."
+          },
+          "sms_daily_limit": {
+            "action": "unavailable",
+            "next": "SMS sign-in is at its daily limit; offer Google sign-in."
+          }
         }
       },
       "Error500": {
@@ -20479,6 +20660,12 @@
             "schema": {
               "$ref": "#/components/schemas/ErrorResponse"
             }
+          }
+        },
+        "x-error-codes": {
+          "internal_error": {
+            "action": "bug",
+            "next": "Show a generic failure, log the requestId and report it."
           }
         }
       },
@@ -20490,6 +20677,84 @@
               "$ref": "#/components/schemas/ErrorResponse"
             }
           }
+        },
+        "x-error-codes": {
+          "account_erasure_unavailable": {
+            "action": "wait",
+            "next": "Account deletion is temporarily unavailable; try later."
+          },
+          "account_recovery_fenced": {
+            "action": "wait",
+            "next": "Account changes are paused; try later."
+          },
+          "admission_unavailable": {
+            "action": "wait",
+            "next": "Try again later."
+          },
+          "avatar_signer_unavailable": {
+            "action": "wait",
+            "next": "Try again later."
+          },
+          "avatar_store_unavailable": {
+            "action": "unavailable",
+            "next": "Hide avatar upload for now."
+          },
+          "email_unavailable": {
+            "action": "unavailable",
+            "next": "Email is not configured here; use another channel."
+          },
+          "erasure_journal_unavailable": {
+            "action": "wait",
+            "next": "Account deletion is temporarily unavailable; try later."
+          },
+          "erasure_journal_uninitialized": {
+            "action": "ops",
+            "next": "Account deletion is not set up; operations must initialise it."
+          },
+          "financial_dependencies_unavailable": {
+            "action": "unavailable",
+            "next": "Payments are not configured here."
+          },
+          "passkeys_unavailable": {
+            "action": "unavailable",
+            "next": "Passkeys are not configured here."
+          },
+          "phone_signin_unavailable": {
+            "action": "unavailable",
+            "next": "Hide phone sign-in; offer Google sign-in."
+          },
+          "phone_verification_unavailable": {
+            "action": "wait",
+            "next": "Phone verification is temporarily unavailable; try later."
+          },
+          "provider_unavailable": {
+            "action": "unavailable",
+            "next": "This sign-in provider is unavailable; offer another."
+          },
+          "reservation_coordinator_unavailable": {
+            "action": "unavailable",
+            "next": "Booking-aware trip edits are not available yet."
+          },
+          "sms_delivery_rejected": {
+            "action": "unavailable",
+            "next": "The SMS was refused; offer Google sign-in."
+          },
+          "sms_delivery_unconfirmed": {
+            "action": "wait",
+            "next": "Wait a minute, then request a new code."
+          },
+          "sms_unavailable": {
+            "action": "unavailable",
+            "next": "SMS is not configured here; use email or show the details once."
+          },
+          "test_only": {
+            "action": "unavailable",
+            "next": "Only available for TEST payments."
+          },
+          "transport_unavailable": {
+            "action": "wait",
+            "next": "Temporary; retry shortly."
+          }
         }
       },
       "Error409": {
@@ -20499,6 +20764,516 @@
             "schema": {
               "$ref": "#/components/schemas/ErrorResponse"
             }
+          }
+        },
+        "x-error-codes": {
+          "invalid_fare_stop_pair": {
+            "action": "reload",
+            "next": "Reload the route and choose ordered stops on a published version."
+          },
+          "invalid_selection": {
+            "action": "reload",
+            "next": "Reload routes and schedules, then choose outbound and return legs again."
+          },
+          "already_approved": {
+            "action": "final",
+            "next": "The request already holds a slot; show it."
+          },
+          "already_published": {
+            "action": "user_step",
+            "next": "Create a new draft to change a published definition."
+          },
+          "ambiguous_schedule": {
+            "action": "user_step",
+            "next": "Resolve the overlapping departure schedules first."
+          },
+          "application_not_due": {
+            "action": "wait",
+            "next": "Retry on or after the approved effective date."
+          },
+          "archived_route": {
+            "action": "reload",
+            "next": "The corridor is archived; reload and choose another."
+          },
+          "balance_requires_review": {
+            "action": "ops",
+            "next": "Balances need reconciliation by operations."
+          },
+          "boarding_ineligible": {
+            "action": "final",
+            "next": "This reservation cannot board or be charged now; show its state."
+          },
+          "boarding_pass_reused": {
+            "action": "user_step",
+            "next": "Refresh the boarding pass or use another check."
+          },
+          "capture_ahead": {
+            "action": "bug",
+            "next": "Device clock is ahead; send the real capture time."
+          },
+          "capture_before_start": {
+            "action": "final",
+            "next": "Drop this fix; it predates the run."
+          },
+          "capture_too_old": {
+            "action": "final",
+            "next": "Drop this fix; it is outside the upload window."
+          },
+          "collection_session_expired": {
+            "action": "ops",
+            "next": "An operator must close this run."
+          },
+          "commute_unavailable": {
+            "action": "final",
+            "next": "No commute applies on this date."
+          },
+          "coverage_active": {
+            "action": "user_step",
+            "next": "Start after current coverage ends, or wait until it does."
+          },
+          "coverage_required": {
+            "action": "user_step",
+            "next": "Paid coverage is needed: send the rider to Waitlist and offers."
+          },
+          "credential_exists": {
+            "action": "reload",
+            "next": "This driver already has a credential; reset it instead."
+          },
+          "credit_hold_missing": {
+            "action": "ops",
+            "next": "Reserved credit needs reconciliation by operations."
+          },
+          "departure_not_due": {
+            "action": "wait",
+            "next": "Retry once the departure reaches its scheduled time."
+          },
+          "departure_unavailable": {
+            "action": "reload",
+            "next": "Reload departures and choose a single funded one."
+          },
+          "driver_archived": {
+            "action": "final",
+            "next": "The driver is archived."
+          },
+          "driver_code_taken": {
+            "action": "fix_input",
+            "next": "Choose another driver code."
+          },
+          "driver_code_unavailable": {
+            "action": "new_key",
+            "next": "Retry with a new key to allocate another code."
+          },
+          "driver_email_missing": {
+            "action": "user_step",
+            "next": "Add the driver email before sending email instructions."
+          },
+          "driver_has_open_trips": {
+            "action": "user_step",
+            "next": "Reassign or cancel open trips before archiving."
+          },
+          "driver_link_changed": {
+            "action": "reload",
+            "next": "Reload the driver and retry."
+          },
+          "driver_phone_missing": {
+            "action": "user_step",
+            "next": "Add a Ghana mobile number before sending SMS."
+          },
+          "driver_record_required": {
+            "action": "user_step",
+            "next": "Create the driver record before granting the role."
+          },
+          "duplicate_resource": {
+            "action": "reload",
+            "next": "It already exists; reload to see it."
+          },
+          "explicit_correction_required": {
+            "action": "user_step",
+            "next": "Moving backwards needs an explicit correction."
+          },
+          "fare_conflict": {
+            "action": "fix_input",
+            "next": "Choose an effective date after the fare in force."
+          },
+          "fare_review_required": {
+            "action": "ops",
+            "next": "Transfer pricing needs review by operations."
+          },
+          "fix_payload_conflict": {
+            "action": "bug",
+            "next": "A fix id was reused for a different fix; use a new id per fix."
+          },
+          "fresh_offer_required": {
+            "action": "user_step",
+            "next": "Request a new subscription offer from Waitlist and offers."
+          },
+          "funded_departure_outside_coverage": {
+            "action": "fix_input",
+            "next": "Choose a time inside funded coverage."
+          },
+          "hold_already_released": {
+            "action": "final",
+            "next": "The hold is already released."
+          },
+          "idempotency_conflict": {
+            "action": "new_key",
+            "next": "The key was used for different input; reload and use a new key."
+          },
+          "idempotency_expired": {
+            "action": "new_key",
+            "next": "The replay window has passed; reload and use a new key."
+          },
+          "idempotency_key_expired": {
+            "action": "new_key",
+            "next": "The replay window has passed; reload and use a new key."
+          },
+          "idempotency_payload_conflict": {
+            "action": "new_key",
+            "next": "The key was used for different input; reload and use a new key."
+          },
+          "illegal_transition": {
+            "action": "reload",
+            "next": "The trip moved on; reload it."
+          },
+          "incident_already_resolved": {
+            "action": "final",
+            "next": "The report is already resolved."
+          },
+          "insufficient_rides": {
+            "action": "user_step",
+            "next": "No funded rides remain: send the rider to Waitlist and offers."
+          },
+          "invalid_boarding_proof": {
+            "action": "user_step",
+            "next": "Refresh the pass or use another check."
+          },
+          "invalid_commute_selection": {
+            "action": "reload",
+            "next": "Reload and choose ordered stops and legs within coverage."
+          },
+          "invalid_credit_balance": {
+            "action": "ops",
+            "next": "Credit needs reconciliation by operations."
+          },
+          "invalid_departure": {
+            "action": "reload",
+            "next": "Reload the pattern and choose one of its departures."
+          },
+          "invalid_driver_account": {
+            "action": "fix_input",
+            "next": "Link an active driver account, or leave it empty."
+          },
+          "invalid_period_owner": {
+            "action": "reload",
+            "next": "Reload the period."
+          },
+          "invalid_quote": {
+            "action": "reload",
+            "next": "Reload the price and confirm again."
+          },
+          "invalid_reference": {
+            "action": "reload",
+            "next": "The chosen items do not belong together; reload and choose again."
+          },
+          "invalid_ride_balance": {
+            "action": "ops",
+            "next": "Journey balances need reconciliation by operations."
+          },
+          "invalid_stop_occurrence": {
+            "action": "reload",
+            "next": "Reload the trip version and choose one of its stops."
+          },
+          "invitation_exists": {
+            "action": "user_step",
+            "next": "Resend or cancel the existing invitation."
+          },
+          "invitation_not_pending": {
+            "action": "reload",
+            "next": "Reload the invitation; it is no longer pending."
+          },
+          "invitation_required": {
+            "action": "user_step",
+            "next": "Invite the operator from Team and access."
+          },
+          "journey_pricing_unavailable": {
+            "action": "ops",
+            "next": "Operations must publish a fare for these stops."
+          },
+          "journey_rides_exhausted": {
+            "action": "user_step",
+            "next": "No rides remain this direction: send the rider to Waitlist and offers."
+          },
+          "last_superadmin": {
+            "action": "user_step",
+            "next": "Give another operator superadmin access first."
+          },
+          "manifest_too_large": {
+            "action": "ops",
+            "next": "The trip exceeds its supported size."
+          },
+          "membership_blocked": {
+            "action": "user_step",
+            "next": "Resolve the block the message names before continuing."
+          },
+          "membership_ended": {
+            "action": "user_step",
+            "next": "Membership ended: send the rider to Waitlist and offers."
+          },
+          "not_an_operator": {
+            "action": "bug",
+            "next": "Only operations accounts have passkeys to reset."
+          },
+          "not_paused": {
+            "action": "final",
+            "next": "Coverage is not paused."
+          },
+          "offer_conflict": {
+            "action": "reload",
+            "next": "This offer already has a purchase; reload checkout."
+          },
+          "offer_expired": {
+            "action": "user_step",
+            "next": "The offer expired: request a new one from Waitlist and offers."
+          },
+          "offer_required": {
+            "action": "user_step",
+            "next": "Clear any saved checkout and send the rider to Waitlist and offers."
+          },
+          "offer_service_unavailable": {
+            "action": "fix_input",
+            "next": "Choose service that covers every direction for the whole period."
+          },
+          "offer_terms_required": {
+            "action": "user_step",
+            "next": "This older offer must be replaced with a priced one."
+          },
+          "offer_unavailable": {
+            "action": "reload",
+            "next": "Reload offers; this one is no longer available."
+          },
+          "operator_account_conflict": {
+            "action": "fix_input",
+            "next": "Use a separate Google account or address for Operations."
+          },
+          "otp_superseded": {
+            "action": "user_step",
+            "next": "A newer code was sent; use it or request another."
+          },
+          "passkey_challenge_missing": {
+            "action": "user_step",
+            "next": "Start the passkey check again."
+          },
+          "passkey_not_registered": {
+            "action": "user_step",
+            "next": "Register a passkey first."
+          },
+          "pause_not_allowed": {
+            "action": "final",
+            "next": "Pausing needs consent and current waitlisted coverage."
+          },
+          "payment_not_collected": {
+            "action": "final",
+            "next": "A confirmed test collection is required."
+          },
+          "period_paused": {
+            "action": "user_step",
+            "next": "Resume coverage before closing the period."
+          },
+          "period_payment_blocked": {
+            "action": "ops",
+            "next": "A payment dispute blocks this period."
+          },
+          "period_service_unsettled": {
+            "action": "wait",
+            "next": "Funded service must settle before the period closes."
+          },
+          "personal_pause_active": {
+            "action": "reload",
+            "next": "A pause is already active; reload coverage."
+          },
+          "personal_pause_not_allowed": {
+            "action": "final",
+            "next": "This pause is not allowed now."
+          },
+          "personal_pause_pending": {
+            "action": "reload",
+            "next": "A pause is already pending; reload coverage."
+          },
+          "personal_pause_service_started": {
+            "action": "fix_input",
+            "next": "Choose a service day that has not started."
+          },
+          "personal_pause_unsettled": {
+            "action": "wait",
+            "next": "Earlier service must settle first."
+          },
+          "personal_pause_used": {
+            "action": "final",
+            "next": "This paid period already used its personal pause."
+          },
+          "personal_resume_not_allowed": {
+            "action": "fix_input",
+            "next": "Choose an earlier future service day."
+          },
+          "phone_verification_required": {
+            "action": "user_step",
+            "next": "Send the rider to verify their phone."
+          },
+          "pricing_unavailable": {
+            "action": "ops",
+            "next": "No price is published for this; operations must publish one."
+          },
+          "publication_order_conflict": {
+            "action": "fix_input",
+            "next": "Publish after existing revisions without rewriting their start."
+          },
+          "purchase_unresolved": {
+            "action": "user_step",
+            "next": "Resolve the existing purchase in checkout first."
+          },
+          "reassignment_required": {
+            "action": "user_step",
+            "next": "Reassign existing trips before publishing this version."
+          },
+          "refund_already_requested": {
+            "action": "final",
+            "next": "Open the existing refund instead of issuing another."
+          },
+          "refund_exceeds_remaining": {
+            "action": "fix_input",
+            "next": "Refund no more than the remaining collected cash."
+          },
+          "renewal_already_paid": {
+            "action": "final",
+            "next": "Upcoming coverage is already paid."
+          },
+          "renewal_dates_locked": {
+            "action": "user_step",
+            "next": "Resolve the upcoming renewal first."
+          },
+          "request_already_open": {
+            "action": "reload",
+            "next": "Show the open request instead of sending another."
+          },
+          "request_not_pending": {
+            "action": "reload",
+            "next": "The request was already decided; reload it."
+          },
+          "request_terminal": {
+            "action": "final",
+            "next": "The request is closed."
+          },
+          "reservation_terminal": {
+            "action": "final",
+            "next": "This service has already settled."
+          },
+          "reserved_capacity": {
+            "action": "fix_input",
+            "next": "Choose a vehicle that carries the existing reservations."
+          },
+          "restriction_released": {
+            "action": "final",
+            "next": "The restriction is already released."
+          },
+          "resume_required": {
+            "action": "user_step",
+            "next": "Resume coverage first."
+          },
+          "review_decided": {
+            "action": "final",
+            "next": "The review already has a decision."
+          },
+          "rides_unavailable": {
+            "action": "user_step",
+            "next": "No unreserved rides remain: send the rider to Waitlist and offers."
+          },
+          "route_has_open_trips": {
+            "action": "user_step",
+            "next": "Resolve scheduled and active trips before archiving."
+          },
+          "route_not_accepting_requests": {
+            "action": "reload",
+            "next": "This corridor is closed to requests; reload and choose another."
+          },
+          "secret_no_longer_available": {
+            "action": "user_step",
+            "next": "Issue a new reset; the old secret is gone."
+          },
+          "service_day_past": {
+            "action": "final",
+            "next": "Past service days cannot change."
+          },
+          "service_started": {
+            "action": "final",
+            "next": "This departure can no longer change."
+          },
+          "service_unsettled": {
+            "action": "wait",
+            "next": "Current service must settle first."
+          },
+          "slot_in_use": {
+            "action": "reload",
+            "next": "Only an available slot can be retired; reload slots."
+          },
+          "slot_mismatch": {
+            "action": "fix_input",
+            "next": "Choose a slot that matches both legs."
+          },
+          "slot_unavailable": {
+            "action": "reload",
+            "next": "Reload slots and choose an available one."
+          },
+          "standby_already_joined": {
+            "action": "user_step",
+            "next": "Show the existing application; withdraw it to change the request."
+          },
+          "standby_days_required": {
+            "action": "user_step",
+            "next": "Ask the rider to submit a new request with travel days."
+          },
+          "standby_not_pending": {
+            "action": "reload",
+            "next": "Reload the application; it is no longer pending."
+          },
+          "standby_not_withdrawable": {
+            "action": "user_step",
+            "next": "A checkout exists; finish or resolve it in checkout."
+          },
+          "standby_profile_incomplete": {
+            "action": "user_step",
+            "next": "Send the rider to add their name."
+          },
+          "team_access_required": {
+            "action": "user_step",
+            "next": "Manage this operator from Team and access."
+          },
+          "trace_already_expired": {
+            "action": "final",
+            "next": "The trace may already be deleted under retention."
+          },
+          "transport_conflict": {
+            "action": "reload",
+            "next": "The transport state changed; reload and try again."
+          },
+          "travel_day_not_covered": {
+            "action": "fix_input",
+            "next": "Choose a weekday the offer covers."
+          },
+          "trip_not_active": {
+            "action": "final",
+            "next": "Stop sending positions; the run is not active."
+          },
+          "trip_not_boardable": {
+            "action": "final",
+            "next": "This departure is not boarding."
+          },
+          "unavailable_stop": {
+            "action": "fix_input",
+            "next": "Use only available physical stops."
+          },
+          "vehicle_has_open_trips": {
+            "action": "user_step",
+            "next": "Reassign scheduled and active trips before archiving."
           }
         }
       },
@@ -20510,6 +21285,24 @@
               "$ref": "#/components/schemas/ErrorResponse"
             }
           }
+        },
+        "x-error-codes": {
+          "invalid_driver_credentials": {
+            "action": "fix_input",
+            "next": "Say the PIN is wrong and let the driver try again; lockout follows after five."
+          },
+          "invalid_otp": {
+            "action": "fix_input",
+            "next": "Say the code is wrong or expired and offer to send a new one."
+          },
+          "invalid_signature": {
+            "action": "bug",
+            "next": "Provider webhook only: the signature did not verify."
+          },
+          "unauthenticated": {
+            "action": "sign_in",
+            "next": "Clear the session and show sign-in."
+          }
         }
       },
       "Error426": {
@@ -20519,6 +21312,12 @@
             "schema": {
               "$ref": "#/components/schemas/ErrorResponse"
             }
+          }
+        },
+        "x-error-codes": {
+          "client_upgrade_required": {
+            "action": "upgrade",
+            "next": "Send the person to update the app."
           }
         }
       },
@@ -20530,6 +21329,60 @@
               "$ref": "#/components/schemas/ErrorResponse"
             }
           }
+        },
+        "x-error-codes": {
+          "driver_suspended": {
+            "action": "ops",
+            "next": "Show that the account is suspended and how to reach operations."
+          },
+          "forbidden": {
+            "action": "bug",
+            "next": "This role cannot use this operation; do not offer it in the UI."
+          },
+          "invitation_expired": {
+            "action": "ops",
+            "next": "Ask a superadmin for a new invitation."
+          },
+          "invitation_invalid": {
+            "action": "sign_in",
+            "next": "Sign in with the account the invitation was sent to."
+          },
+          "ops_access_required": {
+            "action": "ops",
+            "next": "This account is not invited to Operations; ask a superadmin."
+          },
+          "passkey_required": {
+            "action": "user_step",
+            "next": "Run the passkey check, or passkey setup, then retry."
+          },
+          "pin_change_required": {
+            "action": "user_step",
+            "next": "Open the set-your-PIN screen."
+          },
+          "recent_signin_required": {
+            "action": "sign_in",
+            "next": "Sign in again, then repeat the change."
+          },
+          "self_access_change": {
+            "action": "ops",
+            "next": "Another superadmin must make this change."
+          },
+          "self_reset_forbidden": {
+            "action": "ops",
+            "next": "Another verified administrator must reset these passkeys."
+          },
+          "superadmin_required": {
+            "action": "ops",
+            "next": "Only a superadmin can do this; hide it for other roles."
+          },
+          "temporary_pin_expired": {
+            "action": "ops",
+            "next": "Ask operations for a new temporary PIN."
+          },
+          "wrong_client": {
+            "action": "bug",
+            "next": "Call this from the app it belongs to."
+          }
         }
       },
       "Error404": {
@@ -20539,6 +21392,12 @@
             "schema": {
               "$ref": "#/components/schemas/ErrorResponse"
             }
+          }
+        },
+        "x-error-codes": {
+          "not_found": {
+            "action": "reload",
+            "next": "It no longer exists or is not yours. Reload the list."
           }
         }
       },
@@ -20550,6 +21409,12 @@
               "$ref": "#/components/schemas/ErrorResponse"
             }
           }
+        },
+        "x-error-codes": {
+          "driver_locked": {
+            "action": "wait",
+            "next": "Show the lockout; wait for Retry-After or ask operations to unlock."
+          }
         }
       },
       "Error413": {
@@ -20559,6 +21424,12 @@
             "schema": {
               "$ref": "#/components/schemas/ErrorResponse"
             }
+          }
+        },
+        "x-error-codes": {
+          "payload_too_large": {
+            "action": "fix_input",
+            "next": "Choose a smaller image."
           }
         }
       },
@@ -20570,6 +21441,12 @@
               "$ref": "#/components/schemas/ErrorResponse"
             }
           }
+        },
+        "x-error-codes": {
+          "unsupported_media_type": {
+            "action": "fix_input",
+            "next": "Choose a JPEG, PNG or WebP image."
+          }
         }
       },
       "Error412": {
@@ -20580,6 +21457,12 @@
               "$ref": "#/components/schemas/ErrorResponse"
             }
           }
+        },
+        "x-error-codes": {
+          "precondition_failed": {
+            "action": "reload",
+            "next": "Someone changed it; reload, then edit again."
+          }
         }
       },
       "Error428": {
@@ -20589,6 +21472,12 @@
             "schema": {
               "$ref": "#/components/schemas/ErrorResponse"
             }
+          }
+        },
+        "x-error-codes": {
+          "precondition_required": {
+            "action": "bug",
+            "next": "Send the editToken in If-Match."
           }
         }
       }

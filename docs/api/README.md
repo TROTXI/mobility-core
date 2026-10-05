@@ -82,6 +82,16 @@ Use `error.code` for behavior and preserve `requestId` for support.
 require a fresh edit token; 426 requires an updated app; 429 requires honoring
 Retry-After. Do not automatically replay mutations through session refresh.
 
+Every code the API returns is listed in
+[error-codes.mjs](../design/contracts/error-codes.mjs) with an action
+(`fix_input`, `sign_in`, `upgrade`, `reload`, `wait`, `new_key`, `user_step`,
+`ops`, `final`, `unavailable`, `bug`) and the next step for the client. The
+contract carries the same list as `x-error-codes` on each shared `ErrorNNN`
+response. Handle codes by action rather than one by one, and give `user_step`
+codes a route to the screen that resolves them: a refusal the app shows but
+cannot act on leaves the rider stuck. A new code fails `ERR-01` until it is
+listed.
+
 Payment return URLs, provider acceptance and notification receipt are not
 proof of settled membership. Unavailable live tracking must not expose another
 rider's trip. Current authorization is checked on each scoped read.

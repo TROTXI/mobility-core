@@ -296,6 +296,7 @@ const published = {
     ].join(' '),
   },
   servers: [{ url: liveExamples.baseUrl, description: 'Disposable staging — Paystack TEST only' }],
+  'x-error-actions': source['x-error-actions'],
   paths: Object.fromEntries(
     Object.entries(paths).map(([path, methods]) => [
       path,
