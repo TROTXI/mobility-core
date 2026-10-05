@@ -5,6 +5,7 @@ import Fastify from 'fastify';
 import { Pool } from 'pg';
 import { loggerOptions } from '../src/observability/logging.js';
 import { createTransportApp } from '../src/http/app.js';
+import { fail } from '../src/transport/errors.js';
 import type { ConfigService } from '../src/config/service.js';
 import { readFile } from 'node:fs/promises';
 import { metrics } from '@opentelemetry/api';
@@ -119,6 +120,80 @@ test('OBS-06 liveness probes do not flood logs, while ordinary requests still lo
   assert.equal(written.includes('"path":"/healthz"'), false);
   assert.match(written, /"path":"\/readyz"/, 'readiness remains logged');
   assert.match(written, /"path":"\/"/, 'ordinary requests remain logged');
+});
+
+test('OBS-07 failures log their code and, for a 5xx, where they broke, never what the error said', async () => {
+  let written = '';
+  const sink = new Writable({
+    write(chunk, _encoding, done) {
+      written += chunk.toString();
+      done();
+    },
+  });
+  let failure: () => never = () => {
+    throw new Error('unset');
+  };
+  const pool = new Pool();
+  const app = await createTransportApp({
+    pool,
+    coordinateReservations: async () => {
+      throw new Error('no booking work in this test');
+    },
+    cursorSecret: Buffer.alloc(32, 9),
+    verifyAccess: async () => null,
+    authorizeSession: async () => {
+      throw new Error('no session work in this test');
+    },
+    minimumBuilds: { ops: 1, driver: { ios: 1, android: 1 }, commuter: { ios: 1, android: 1 } },
+    config: {
+      health: () => ({ status: 200, body: { status: 'ok' }, headers: {} }),
+      readiness: async () => ({ status: 200, body: { status: 'ok' }, headers: {} }),
+      root: () => failure(),
+    } as unknown as ConfigService,
+    logRequests: true,
+    requestLogStream: sink,
+  });
+  try {
+    failure = () => fail(409, 'offer_required', 'Request an offer for ama@example.com.');
+    assert.equal((await app.inject('/')).statusCode, 409);
+    failure = () => {
+      throw Object.assign(new Error('duplicate key ama@example.com'), {
+        code: '23505',
+        constraint: 'users_email_key',
+        detail: 'Key (email)=(ama@example.com) already exists.',
+      });
+    };
+    assert.equal((await app.inject('/')).statusCode, 409);
+    failure = () => {
+      throw new TypeError(
+        'fetch https://api.mnotify.com/api/sms/quick?key=live-provider-key failed',
+      );
+    };
+    assert.equal((await app.inject('/')).statusCode, 500);
+  } finally {
+    await app.close();
+    await pool.end();
+  }
+  const lines = written
+    .trim()
+    .split('\n')
+    .map((line) => JSON.parse(line) as Record<string, unknown>)
+    .filter((line) => line.msg === 'request refused' || line.msg === 'request failed');
+  assert.deepEqual(
+    lines.map((line) => [line.msg, line.status, line.code]),
+    [
+      ['request refused', 409, 'offer_required'],
+      ['request refused', 409, 'duplicate_resource'],
+      ['request failed', 500, 'internal_error'],
+    ],
+  );
+  assert.equal(lines[1]!.sqlState, '23505');
+  assert.equal(lines[1]!.constraint, 'users_email_key');
+  assert.equal(lines[1]!.frames, undefined, 'a refusal is not a fault and keeps no stack');
+  assert.equal(lines[2]!.errorType, 'TypeError');
+  assert.ok(Array.isArray(lines[2]!.frames) && (lines[2]!.frames as string[]).length > 0);
+  for (const secret of ['ama@example.com', 'live-provider-key', 'mnotify', 'already exists'])
+    assert.equal(written.includes(secret), false, `${secret} reached the log`);
 });
 
 test('OBS-04 job runs are labelled by operation, and memory is what the plan limit sees', async () => {
