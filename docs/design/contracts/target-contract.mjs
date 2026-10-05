@@ -470,7 +470,41 @@ named(
     endsAt: instant.nullable(),
     state: periodState,
     paused: z.boolean(),
-    renewalMode: z.literal('manual'),
+    // automatic while a saved-card renewal of this period is still pending.
+    renewalMode: z.enum(['manual', 'automatic']),
+  }),
+);
+// Card auto-renewal. The rider's choice, the card that honours it (display
+// details only), and the renewal of their current period if one is pending.
+named('AutoRenewalInput', obj({ enabled: z.boolean() }));
+named(
+  'AutoRenewal',
+  obj({
+    enabled: z.boolean(),
+    card: obj({
+      brand: text(50),
+      last4: z.string().regex(/^[0-9]{4}$/),
+      expMonth: z.int().min(1).max(12),
+      expYear: z.int().min(2000).max(2100),
+    }).nullable(),
+    upcoming: obj({
+      state: z.enum(['scheduled', 'reminded', 'charging', 'failed', 'needs_offer']),
+      periodEndsAt: instant,
+      chargeFrom: instant,
+      nextAttemptAt: instant.nullable(),
+      price: money,
+      failureCode: z
+        .enum([
+          'card_declined',
+          'charge_unconfirmed',
+          'fare_changed',
+          'service_changed',
+          'no_card',
+          'coverage_conflict',
+          'renewal_blocked',
+        ])
+        .nullable(),
+    }).nullable(),
   }),
 );
 named(
@@ -1803,6 +1837,16 @@ edit(
   { access: 'rider_own', retry: 'conditional_state' },
 );
 get('/v1/me/membership', 'getMembership', 'Membership', { access: 'rider_own' });
+get('/v1/me/auto-renewal', 'getAutoRenewal', 'AutoRenewal', { access: 'rider_own' });
+op('put', '/v1/me/auto-renewal', 'setAutoRenewal', 'AutoRenewal', {
+  input: 'AutoRenewalInput',
+  access: 'rider_own',
+  retry: 'idempotent_state',
+});
+del('/v1/me/auto-renewal/card', 'removeAutoRenewalCard', {
+  access: 'rider_own',
+  retry: 'idempotent_state',
+});
 get('/v1/me/membership/pause', 'getPersonalPause', 'OptionalPersonalPause', {
   access: 'rider_own',
 });
@@ -2091,6 +2135,13 @@ for (const task of [
     task === 'payments' ? 'PaymentMaintenanceResult' : 'MaintenanceResult',
     { access: 'ops_or_scoped_worker', retry: 'safe_batch' },
   );
+post(
+  '/v1/ops/maintenance/auto-renewals',
+  'runAutoRenewals',
+  'MaintenanceInput',
+  'MaintenanceResult',
+  { access: 'ops_or_scoped_worker', retry: 'safe_batch' },
+);
 post(
   '/v1/ops/maintenance/trip-generation',
   'runTripGeneration',

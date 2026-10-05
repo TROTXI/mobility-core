@@ -22,6 +22,20 @@ export interface CheckoutInput {
   legs: PurchaseLeg[];
   useCredit: boolean;
 }
+/**
+ * A reusable card Paystack returned with a verified payment. The code and the
+ * email it is bound to are secrets; the rest identifies the card to the rider.
+ */
+export interface CardAuthorization {
+  code: string;
+  email: string;
+  signature: string;
+  last4: string;
+  brand: string;
+  expMonth: number;
+  expYear: number;
+  bank: string | null;
+}
 export interface Settlement {
   reference: string;
   environment: 'test' | 'live';
@@ -31,6 +45,8 @@ export interface Settlement {
   paidAt: Date;
   channel: string | null;
   feesPesewas: number | null;
+  /** Only for a card payment Paystack marks reusable. */
+  authorization?: CardAuthorization;
 }
 interface Boundary {
   userId: string;
@@ -57,6 +73,27 @@ export interface FinancialDependencies {
     input: Boundary & { purchaseId: string; periodId: string },
   ) => Promise<void>;
   quote?: (client: PoolClient, input: CheckoutInput & Boundary) => Promise<PricedTerms>;
+  /**
+   * A purchase was fulfilled, with the reusable card Paystack returned if it
+   * was paid by one. Runs in the fulfilment transaction; auto-renewal decides
+   * whether to keep the card and whether to schedule the next renewal.
+   */
+  purchaseSettled?: (
+    client: PoolClient,
+    input: {
+      userId: string;
+      purchaseId: string;
+      periodId: string;
+      attemptId: string;
+      environment: 'test' | 'live';
+      authorization?: CardAuthorization;
+    },
+  ) => Promise<void>;
+}
+/** An automatic renewal: the next period on frozen terms, owed by the rider. */
+export interface RenewalCheckout {
+  terms: OfferTerms;
+  renews: string;
 }
 type PurchaseRow = {
   id: string;
@@ -74,6 +111,7 @@ type PurchaseRow = {
   created_at: Date;
   offer_id?: string | null;
   offer_terms?: OfferTerms | null;
+  renewal_of?: string | null;
 };
 const digest = (value: string) => createHash('sha256').update(value).digest('hex');
 const normalized = (input: CheckoutInput): CheckoutInput => ({
@@ -138,6 +176,7 @@ export class FinancialFoundation {
     key: string,
     now = new Date(),
     offerId?: string,
+    renewal?: RenewalCheckout,
   ) {
     if (!key || key.length > 128 || !Number.isFinite(now.getTime()))
       fail(400, 'invalid_request', 'Invalid checkout request.');
@@ -151,7 +190,9 @@ export class FinancialFoundation {
       fail(400, 'invalid_request', 'Invalid purchase selection.');
     return this.tx(async (c) => {
       await this.lock(c, actor.userId);
-      await this.options.authorizeSession(c, actor);
+      // A renewal has no rider session: the maintenance operator who runs it
+      // was authorized, and it charges only on terms the rider already paid for.
+      if (!renewal) await this.options.authorizeSession(c, actor);
       if (this.options.requireOffer !== false) await expireUnpaidOffers(c, actor.userId, now);
       const old = (
         await c.query<PurchaseRow>(
@@ -176,11 +217,11 @@ export class FinancialFoundation {
           fail(409, 'idempotency_expired', 'Use a new request key.');
         return this.purchaseResult(c, old);
       }
-      if (this.options.requireOffer !== false && !offerId)
+      if (this.options.requireOffer !== false && !offerId && !renewal)
         fail(409, 'offer_required', 'Request and accept an Ops subscription offer before paying.');
       if (!this.options.assertCheckoutAllowed || !this.options.quote)
         fail(503, 'financial_dependencies_unavailable', 'Checkout is not configured.');
-      let offered: OfferTerms | null = null;
+      let offered: OfferTerms | null = renewal?.terms ?? null;
       if (offerId) {
         const offer = (
           await c.query(
@@ -299,7 +340,7 @@ export class FinancialFoundation {
       const p = (
         await c.query<PurchaseRow>(
           `INSERT INTO app.purchases(membership_id,user_id,route_id,plan,price_pesewas,
-    applied_credit_pesewas,cash_due_pesewas,currency,rides_granted,fare_pesewas,price_multiplier_bp,conversion_rate_pesewas,checkout_key_hash,input_hash${offered ? ',offer_id,offer_terms' : ''})
+    applied_credit_pesewas,cash_due_pesewas,currency,rides_granted,fare_pesewas,price_multiplier_bp,conversion_rate_pesewas,checkout_key_hash,input_hash${offered ? (renewal ? ',renewal_of,offer_terms' : ',offer_id,offer_terms') : ''})
     VALUES ($1,$2,$3,$4,$5,$6,$7,'GHS',$8,$9,$10,$11,$12,$13${offered ? ',$14,$15::jsonb' : ''}) RETURNING *`,
           [
             membership.id,
@@ -315,7 +356,7 @@ export class FinancialFoundation {
             terms.conversionRatePesewas,
             digest(key),
             hash,
-            ...(offered ? [offerId, JSON.stringify(offered)] : []),
+            ...(offered ? [renewal ? renewal.renews : offerId, JSON.stringify(offered)] : []),
           ],
         )
       ).rows[0]!;
@@ -338,7 +379,7 @@ export class FinancialFoundation {
         "INSERT INTO app.payment_attempts(purchase_id,user_id,provider,environment,reference,amount_pesewas,currency) VALUES ($1,$2,'paystack',$3,$4,$5,'GHS')",
         [p.id, actor.userId, this.options.environment, reference, p.cash_due_pesewas],
       );
-      if (offered) {
+      if (offered && offerId) {
         const row = (
           await c.query(
             "UPDATE app.standby_offers SET state='checkout_open',purchase_id=$2 WHERE id=$1 RETURNING application_id",
@@ -439,10 +480,13 @@ export class FinancialFoundation {
     const end = p.offer_terms
       ? new Date(`${p.offer_terms.coverageEnd}T00:00:00Z`)
       : billingEnd(p.plan, s.paidAt);
-    if (p.offer_id) {
-      const offer = (
-        await c.query('SELECT expires_at FROM app.standby_offers WHERE id=$1', [p.offer_id])
-      ).rows[0];
+    if (p.offer_id || p.renewal_of) {
+      // A renewal must be paid before the coverage it buys begins, as an
+      // offer must be paid before it expires.
+      const offer = p.offer_id
+        ? (await c.query('SELECT expires_at FROM app.standby_offers WHERE id=$1', [p.offer_id]))
+            .rows[0]
+        : { expires_at: start };
       const overlap = (
         await c.query(
           `SELECT 1 FROM app.billing_periods WHERE membership_id=$1 AND state<>'reversed'
@@ -507,6 +551,15 @@ export class FinancialFoundation {
       purchaseId: p.id,
       periodId: period.id,
       now: start,
+    });
+    // Before the confirmation email, which says whether this card will renew.
+    await this.options.purchaseSettled?.(c, {
+      userId: p.user_id,
+      purchaseId: p.id,
+      periodId: period.id,
+      attemptId: a.id,
+      environment: s.environment,
+      ...(s.authorization ? { authorization: s.authorization } : {}),
     });
     await this.options.subscriptionActive?.(c, p.user_id, p.id);
     return 'fulfilled';

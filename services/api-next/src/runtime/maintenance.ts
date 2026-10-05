@@ -23,6 +23,7 @@ export const JOBS = [
   'emails',
   'trip-generation',
   'push',
+  'auto-renewals',
 ] as const;
 export type Job = (typeof JOBS)[number];
 export interface JobRequest {
@@ -60,6 +61,7 @@ const BATCH: Record<string, string> = {
   payments: '/v1/ops/maintenance/payments',
   'route-learning': '/v1/ops/maintenance/route-learning',
   'gps-retention': '/v1/ops/maintenance/gps-retention',
+  'auto-renewals': '/v1/ops/maintenance/auto-renewals',
 };
 
 /**

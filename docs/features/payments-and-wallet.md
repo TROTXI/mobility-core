@@ -1,7 +1,8 @@
 # Subscription offers, payments and renewal
 
-Source audit: 2026-10-03. New purchases require an Ops offer. There is no
-public fixed-price checkout, cash top-up wallet or automatic recurring debit.
+Source audit: 2026-10-05. New purchases require an Ops offer. There is no
+public fixed-price checkout or cash top-up wallet. A rider can opt in to
+renew automatically by card; see [Automatic card renewal](#automatic-card-renewal).
 
 ## Request to payment
 
@@ -54,6 +55,37 @@ Unused current rides are not projected into credit. Pending/paid renewals block
 pauses and commute changes that could extend the preceding period into them.
 This applies to Ops too; resolve/refund the upcoming renewal before changing dates.
 
+## Automatic card renewal
+
+A rider turns it on in the app (`PUT /v1/me/auto-renewal`), usually from the
+offer screen before paying. Nothing is saved until a verified card payment
+arrives; mobile money cannot be charged later, so it never enables renewal.
+
+1. Fulfilment of a verified card payment that Paystack marks reusable saves
+   the card (code and bound email sealed under a key derived for cards only;
+   brand, last four and expiry readable) and schedules the renewal of the
+   period it bought.
+2. Five days before the period ends the rider is emailed the card and amount.
+   The generic "renew it yourself" reminder is not sent for that period.
+3. From three days before the end, the nightly worker rebuilds the terms with
+   the offer builder: same journeys, travel days, package price and unused-ride
+   credit, for a period of the same length starting at the old end. Rides are
+   recounted for the new dates. Available Ride Credit is applied as at checkout.
+4. If a fare changed or the service no longer covers the new dates, nothing is
+   charged: the renewal becomes `needs_offer`, the rider is told, and Ops sends
+   a new offer.
+5. Otherwise it creates the renewal purchase and charges the card through
+   Paystack. Only verified, persisted evidence fulfils it, exactly as for any
+   payment. A decline fails that purchase; the worker retries daily with a new
+   one until the period ends, emailing the rider each time.
+6. A charge that never settles expires when the coverage it buys begins, so it
+   cannot hold the rider's purchase slot.
+
+The rider can turn renewal off or remove the card at any time
+(`DELETE /v1/me/auto-renewal/card` destroys the code). Account erasure does
+both. The database refuses a renewal purchase that differs from the purchase
+it renews in rider, route or price, or that does not start where it ends.
+
 ## Settlement and recovery
 
 The API verifies Paystack signatures and persists deduplicated provider events.
@@ -77,8 +109,8 @@ all rider-service or retention jobs. See [deployment](../DEPLOY.md).
 
 ## Limits and verification
 
-Stored mandates, automatic renewal, card-payment rollout, operator payouts,
-corporate invoicing and automatic standby-seat cascades remain separate work.
+Operator payouts, corporate invoicing and automatic standby-seat cascades
+remain separate work. Mobile money cannot renew automatically.
 Staging uses Paystack TEST only.
 
 Sources: `membership/standby.ts`, `membership/offer-terms.ts`,

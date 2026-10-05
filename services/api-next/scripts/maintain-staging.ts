@@ -44,11 +44,9 @@ export function scheduledJobs(group: Group, now: Date): StagingJob[] {
           route: 'trip-generation',
           body: { serviceDate: day(now, i + 1), limit: 100 },
         })),
-        ...['personal-pause-resumes', 'route-learning', 'gps-retention'].map((route) => ({
-          name: route,
-          route,
-          body: { limit: 100 },
-        })),
+        ...['personal-pause-resumes', 'route-learning', 'gps-retention', 'auto-renewals'].map(
+          (route) => ({ name: route, route, body: { limit: 100 } }),
+        ),
       ];
     // Ask tomorrow's riders at 21:00. The cutoff runs at midnight, when that
     // service day has become today: book the riders who did not answer.

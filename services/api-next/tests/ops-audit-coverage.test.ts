@@ -58,6 +58,7 @@ const evidence = {
     'runRouteLearning',
     'runGpsRetention',
     'runTripGeneration',
+    'runAutoRenewals',
   ],
 } as const;
 
@@ -80,6 +81,7 @@ test('every scheduler job is covered by the worker run recorder', () => {
     [
       'admission',
       'ask-dispatch',
+      'auto-renewals',
       'driver-secrets',
       'emails',
       'erasures',

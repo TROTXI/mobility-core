@@ -19,6 +19,11 @@ import 'package:trotxi_api_client/src/model/account.dart';
 import 'package:trotxi_api_client/src/model/account_response.dart';
 import 'package:trotxi_api_client/src/model/apple_sign_in.dart';
 import 'package:trotxi_api_client/src/model/arrival_input.dart';
+import 'package:trotxi_api_client/src/model/auto_renewal.dart';
+import 'package:trotxi_api_client/src/model/auto_renewal_card.dart';
+import 'package:trotxi_api_client/src/model/auto_renewal_input.dart';
+import 'package:trotxi_api_client/src/model/auto_renewal_response.dart';
+import 'package:trotxi_api_client/src/model/auto_renewal_upcoming.dart';
 import 'package:trotxi_api_client/src/model/avatar.dart';
 import 'package:trotxi_api_client/src/model/avatar_response.dart';
 import 'package:trotxi_api_client/src/model/boarding_input.dart';
@@ -354,6 +359,11 @@ part 'serializers.g.dart';
   AccountResponse,
   AppleSignIn,
   ArrivalInput,
+  AutoRenewal,
+  AutoRenewalCard,
+  AutoRenewalInput,
+  AutoRenewalResponse,
+  AutoRenewalUpcoming,
   Avatar,
   AvatarResponse,
   BoardingInput,

@@ -6,6 +6,11 @@ doc/Account.md
 doc/AccountResponse.md
 doc/AppleSignIn.md
 doc/ArrivalInput.md
+doc/AutoRenewal.md
+doc/AutoRenewalCard.md
+doc/AutoRenewalInput.md
+doc/AutoRenewalResponse.md
+doc/AutoRenewalUpcoming.md
 doc/Avatar.md
 doc/AvatarResponse.md
 doc/BoardingInput.md
@@ -365,6 +370,11 @@ lib/src/model/account.dart
 lib/src/model/account_response.dart
 lib/src/model/apple_sign_in.dart
 lib/src/model/arrival_input.dart
+lib/src/model/auto_renewal.dart
+lib/src/model/auto_renewal_card.dart
+lib/src/model/auto_renewal_input.dart
+lib/src/model/auto_renewal_response.dart
+lib/src/model/auto_renewal_upcoming.dart
 lib/src/model/avatar.dart
 lib/src/model/avatar_response.dart
 lib/src/model/boarding_input.dart

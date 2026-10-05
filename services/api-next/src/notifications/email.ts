@@ -3,11 +3,15 @@ import type { Pool, PoolClient } from 'pg';
 import { z } from 'zod';
 import { EmailSendError, type EmailSender, type EmailMessage } from './resend.js';
 import { ghanaTime } from './format.js';
+import type { RenewalNotice } from '../payments/auto-renewal.js';
 
 // A rider who has already paid for the period that follows has renewed. The
 // reminder exists to prompt a renewal, so it must not go to them.
 const RENEWED = `EXISTS(SELECT 1 FROM app.billing_periods n WHERE n.membership_id=b.membership_id
   AND n.id<>b.id AND n.state='open' AND n.starts_at>=b.effective_ends_at)`;
+// A period set to renew by card gets renewal mail instead of "renew it yourself".
+const AUTO_RENEWING = `EXISTS(SELECT 1 FROM app.auto_renewals r WHERE r.period_id=b.id
+  AND r.state IN ('scheduled','reminded','charging','failed'))`;
 
 const payloadSchema = z
   .object({
@@ -28,7 +32,10 @@ type Kind =
   | 'subscription_expiring'
   | 'erasure_requested'
   | 'driver_credentials_issued'
-  | 'driver_pin_reset';
+  | 'driver_pin_reset'
+  | 'renewal_upcoming'
+  | 'renewal_failed'
+  | 'renewal_needs_offer';
 export const credentialKinds = ['driver_credentials_issued', 'driver_pin_reset'] as const;
 export type CredentialKind = (typeof credentialKinds)[number];
 /** What a queued credential message is for, bound to one credential version. */
@@ -235,7 +242,9 @@ export class TransactionalEmail {
   subscriptionActive = async (c: PoolClient, userId: string, purchaseId: string) => {
     const row = (
       await c.query(
-        `SELECT u.email,p.cash_due_pesewas,p.applied_credit_pesewas,p.rides_granted,b.starts_at,b.effective_ends_at
+        `SELECT u.email,p.cash_due_pesewas,p.applied_credit_pesewas,p.rides_granted,b.starts_at,b.effective_ends_at,
+        (SELECT c.brand||' ending '||c.last4 FROM app.auto_renewals r JOIN app.card_authorizations c
+          ON c.user_id=r.user_id AND c.removed_at IS NULL WHERE r.period_id=b.id AND r.state='scheduled') AS renewing_card
       FROM app.purchases p JOIN app.users u ON u.id=p.user_id AND u.deleted_at IS NULL
       JOIN app.billing_periods b ON b.purchase_id=p.id WHERE p.id=$1 AND p.user_id=$2`,
         [purchaseId, userId],
@@ -249,8 +258,55 @@ export class TransactionalEmail {
       'subscription_active',
       purchaseId,
       row.email,
-      `${upcoming ? 'Your upcoming subscription is paid. Rides become available when coverage starts.' : 'Your subscription is active.'}\nRides included: ${row.rides_granted}\nPayment: GHS ${(row.cash_due_pesewas / 100).toFixed(2)}\nRide Credit applied: GHS ${(row.applied_credit_pesewas / 100).toFixed(2)}\nCoverage starts: ${ghanaTime(row.starts_at)}\nCoverage ends: ${ghanaTime(row.effective_ends_at)}\nRenewal is manual; you will not be automatically charged.`,
+      `${upcoming ? 'Your upcoming subscription is paid. Rides become available when coverage starts.' : 'Your subscription is active.'}\nRides included: ${row.rides_granted}\nPayment: GHS ${(row.cash_due_pesewas / 100).toFixed(2)}\nRide Credit applied: GHS ${(row.applied_credit_pesewas / 100).toFixed(2)}\nCoverage starts: ${ghanaTime(row.starts_at)}\nCoverage ends: ${ghanaTime(row.effective_ends_at)}\n${row.renewing_card ? `Auto-renewal is on. Your ${row.renewing_card} will be charged for the next period from 3 days before this one ends. You can turn this off in the app at any time.` : 'Renewal is manual; you will not be automatically charged.'}`,
       upcoming ? 'Your upcoming Trotxi subscription is paid' : 'Your Trotxi subscription is active',
+    );
+  };
+  /**
+   * Auto-renewal mail, deduplicated per period and kind (and per attempt for
+   * a decline). Queued in the renewal worker's transaction.
+   */
+  renewalNotice = async (c: PoolClient, n: RenewalNotice): Promise<string | undefined> => {
+    const user = (
+      await c.query('SELECT email FROM app.users WHERE id=$1 AND deleted_at IS NULL', [n.userId])
+    ).rows[0];
+    if (!user) return undefined;
+    const card = n.card ? `${n.card.brand} ending ${n.card.last4}` : 'saved card';
+    const money = (pesewas: number) => `GHS ${(pesewas / 100).toFixed(2)}`;
+    const ends = ghanaTime(n.periodEnd);
+    const next = n.lastAttempt
+      ? `That was the last attempt. Your coverage ends on ${ends}; to keep riding, open Trotxi and request a new offer.`
+      : `We will try again tomorrow, until your coverage ends on ${ends}. To renew now another way, open Trotxi.`;
+    const [subject, text] =
+      n.kind === 'renewal_upcoming'
+        ? [
+            'Your Trotxi subscription renews soon',
+            `Your coverage ends on ${ends}. Auto-renewal is on, so from 3 days before then we will charge your ${card} ${money(n.price)}, less any Ride Credit you have, for the next period on the same journeys and travel days.\nTo stop this, turn off auto-renewal in the app before then.`,
+          ]
+        : n.kind === 'renewal_failed'
+          ? [
+              'We could not renew your Trotxi subscription',
+              n.reason === 'blocked'
+                ? `We could not start your renewal because something on your account needs attention first, such as a payment still in progress. Nothing was charged.\n${next}`
+                : n.reason === 'unconfirmed'
+                  ? `We could not confirm the charge of ${money(n.charged ?? n.price)} to your ${card}, so we have cancelled that attempt. If your bank shows it as taken, Trotxi operations will review it.\n${next}`
+                  : `We tried to charge your ${card} ${money(n.charged ?? n.price)} to renew your subscription and the payment did not go through.\n${next}`,
+            ]
+          : [
+              'Your Trotxi renewal needs a new offer',
+              `Your coverage ends on ${ends}. We did not renew it automatically because ${n.reason === 'fare_changed' ? 'the fare for your journeys has changed' : 'the service for your journeys has changed'}, and we only renew on the terms you agreed to. No payment has been taken.\nOpen Trotxi to request a new offer.`,
+            ];
+    return this.enqueue(
+      c,
+      n.userId,
+      n.kind,
+      n.periodId,
+      user.email,
+      text,
+      subject,
+      n.kind === 'renewal_failed' ? `:${n.attempt ?? 0}` : '',
+      // Outlives neither the period it describes nor the outbox's 7-day limit.
+      { expiresAt: new Date(Math.min(n.periodEnd.getTime(), Date.now() + 7 * 86400000 - 60000)) },
     );
   };
   // Called before account identifiers are scrubbed. This acknowledges the
@@ -283,6 +339,7 @@ export class TransactionalEmail {
         AND NOT EXISTS(SELECT 1 FROM app.membership_pauses p WHERE p.period_id=b.id AND p.ended_at IS NULL)
         AND NOT EXISTS(SELECT 1 FROM app.payment_access_blocks p WHERE p.period_id=b.id AND p.released_at IS NULL)
         AND NOT ${RENEWED}
+        AND NOT ${AUTO_RENEWING}
         AND NOT EXISTS(SELECT 1 FROM app.email_outbox e WHERE e.kind='subscription_expiring' AND e.source_id=b.id
           AND e.dedupe_key='subscription_expiring:'||b.id::text||':'||extract(epoch FROM b.effective_ends_at)::text)
       ORDER BY b.effective_ends_at,b.id LIMIT $1`,
@@ -305,7 +362,7 @@ export class TransactionalEmail {
           AND NOT EXISTS(SELECT 1 FROM app.personal_pauses p WHERE p.period_id=b.id AND p.state='planned')
           AND NOT EXISTS(SELECT 1 FROM app.membership_pauses p WHERE p.period_id=b.id AND p.ended_at IS NULL)
           AND NOT EXISTS(SELECT 1 FROM app.payment_access_blocks p WHERE p.period_id=b.id AND p.released_at IS NULL)
-          AND NOT ${RENEWED}`,
+          AND NOT ${RENEWED} AND NOT ${AUTO_RENEWING}`,
             [row.id],
           )
         ).rows[0];
@@ -432,8 +489,24 @@ export class TransactionalEmail {
               AND NOT EXISTS(SELECT 1 FROM app.personal_pauses p WHERE p.period_id=b.id AND p.state='planned')
               AND NOT EXISTS(SELECT 1 FROM app.membership_pauses p WHERE p.period_id=b.id AND p.ended_at IS NULL)
               AND NOT EXISTS(SELECT 1 FROM app.payment_access_blocks p WHERE p.period_id=b.id AND p.released_at IS NULL)
-              AND NOT ${RENEWED}`,
+              AND NOT ${RENEWED} AND NOT ${AUTO_RENEWING}`,
                   [row.source_id, payload.periodEnd],
+                )
+              ).rowCount;
+            // Renewal mail is only true while the renewal it describes is.
+            if (row.kind === 'renewal_upcoming')
+              eligible = !!(
+                await c.query(
+                  `SELECT 1 FROM app.auto_renewals WHERE period_id=$1 AND state IN ('scheduled','reminded')`,
+                  [row.source_id],
+                )
+              ).rowCount;
+            if (row.kind === 'renewal_failed' || row.kind === 'renewal_needs_offer')
+              eligible = !!(
+                await c.query(
+                  `SELECT 1 FROM app.billing_periods b WHERE b.id=$1 AND b.state='open'
+                  AND b.effective_ends_at>clock_timestamp() AND NOT ${RENEWED}`,
+                  [row.source_id],
                 )
               ).rowCount;
             let stale: 'stale_reminder' | 'stale_credential' = 'stale_reminder';

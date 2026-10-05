@@ -10,6 +10,7 @@ All URIs are relative to *https://trotxi-api-staging.onrender.com*
 Method | HTTP request | Description
 ------------- | ------------- | -------------
 [**runAskDispatch**](OpsOrScopedWorkerApi.md#runaskdispatch) | **POST** /v1/ops/maintenance/ask-dispatch | run Ask Dispatch
+[**runAutoRenewals**](OpsOrScopedWorkerApi.md#runautorenewals) | **POST** /v1/ops/maintenance/auto-renewals | run Auto Renewals
 [**runGpsRetention**](OpsOrScopedWorkerApi.md#rungpsretention) | **POST** /v1/ops/maintenance/gps-retention | run Gps Retention
 [**runNoShows**](OpsOrScopedWorkerApi.md#runnoshows) | **POST** /v1/ops/maintenance/no-shows | run No Shows
 [**runPaymentInbox**](OpsOrScopedWorkerApi.md#runpaymentinbox) | **POST** /v1/ops/maintenance/payment-inbox | run Payment Inbox
@@ -33,7 +34,7 @@ import 'package:trotxi_api_client/api.dart';
 final api = TrotxiApiClient().getOpsOrScopedWorkerApi();
 final String xTrotxiClient = ops; // String | Compatibility metadata only, never grants a role.
 final int xTrotxiBuild = 1; // int | Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
-final ServiceDayInput serviceDayInput = ; // ServiceDayInput | 
+final ServiceDayInput serviceDayInput = ; // ServiceDayInput |
 final String xTrotxiPlatform = xTrotxiPlatform_example; // String | Required for commuter/driver, absent for ops/worker.
 
 try {
@@ -48,10 +49,57 @@ try {
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **xTrotxiClient** | **String**| Compatibility metadata only, never grants a role. | 
+ **xTrotxiClient** | **String**| Compatibility metadata only, never grants a role. |
  **xTrotxiBuild** | **int**| Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable. | [default to 1]
- **serviceDayInput** | [**ServiceDayInput**](ServiceDayInput.md)|  | 
- **xTrotxiPlatform** | **String**| Required for commuter/driver, absent for ops/worker. | [optional] 
+ **serviceDayInput** | [**ServiceDayInput**](ServiceDayInput.md)|  |
+ **xTrotxiPlatform** | **String**| Required for commuter/driver, absent for ops/worker. | [optional]
+
+### Return type
+
+[**MaintenanceResultResponse**](MaintenanceResultResponse.md)
+
+### Authorization
+
+[workerAuth](../README.md#workerAuth), [bearerAuth](../README.md#bearerAuth)
+
+### HTTP request headers
+
+ - **Content-Type**: application/json
+ - **Accept**: application/json
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
+# **runAutoRenewals**
+> MaintenanceResultResponse runAutoRenewals(xTrotxiClient, xTrotxiBuild, maintenanceInput, xTrotxiPlatform)
+
+run Auto Renewals
+
+### Example
+```dart
+import 'package:trotxi_api_client/api.dart';
+
+final api = TrotxiApiClient().getOpsOrScopedWorkerApi();
+final String xTrotxiClient = ops; // String | Compatibility metadata only, never grants a role.
+final int xTrotxiBuild = 1; // int | Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
+final MaintenanceInput maintenanceInput = ; // MaintenanceInput |
+final String xTrotxiPlatform = xTrotxiPlatform_example; // String | Required for commuter/driver, absent for ops/worker.
+
+try {
+    final response = api.runAutoRenewals(xTrotxiClient, xTrotxiBuild, maintenanceInput, xTrotxiPlatform);
+    print(response);
+} on DioException catch (e) {
+    print('Exception when calling OpsOrScopedWorkerApi->runAutoRenewals: $e\n');
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **xTrotxiClient** | **String**| Compatibility metadata only, never grants a role. |
+ **xTrotxiBuild** | **int**| Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable. | [default to 1]
+ **maintenanceInput** | [**MaintenanceInput**](MaintenanceInput.md)|  |
+ **xTrotxiPlatform** | **String**| Required for commuter/driver, absent for ops/worker. | [optional]
 
 ### Return type
 
@@ -80,7 +128,7 @@ import 'package:trotxi_api_client/api.dart';
 final api = TrotxiApiClient().getOpsOrScopedWorkerApi();
 final String xTrotxiClient = ops; // String | Compatibility metadata only, never grants a role.
 final int xTrotxiBuild = 1; // int | Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
-final MaintenanceInput maintenanceInput = ; // MaintenanceInput | 
+final MaintenanceInput maintenanceInput = ; // MaintenanceInput |
 final String xTrotxiPlatform = xTrotxiPlatform_example; // String | Required for commuter/driver, absent for ops/worker.
 
 try {
@@ -95,10 +143,10 @@ try {
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **xTrotxiClient** | **String**| Compatibility metadata only, never grants a role. | 
+ **xTrotxiClient** | **String**| Compatibility metadata only, never grants a role. |
  **xTrotxiBuild** | **int**| Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable. | [default to 1]
- **maintenanceInput** | [**MaintenanceInput**](MaintenanceInput.md)|  | 
- **xTrotxiPlatform** | **String**| Required for commuter/driver, absent for ops/worker. | [optional] 
+ **maintenanceInput** | [**MaintenanceInput**](MaintenanceInput.md)|  |
+ **xTrotxiPlatform** | **String**| Required for commuter/driver, absent for ops/worker. | [optional]
 
 ### Return type
 
@@ -127,7 +175,7 @@ import 'package:trotxi_api_client/api.dart';
 final api = TrotxiApiClient().getOpsOrScopedWorkerApi();
 final String xTrotxiClient = ops; // String | Compatibility metadata only, never grants a role.
 final int xTrotxiBuild = 1; // int | Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
-final ServiceDayInput serviceDayInput = ; // ServiceDayInput | 
+final ServiceDayInput serviceDayInput = ; // ServiceDayInput |
 final String xTrotxiPlatform = xTrotxiPlatform_example; // String | Required for commuter/driver, absent for ops/worker.
 
 try {
@@ -142,10 +190,10 @@ try {
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **xTrotxiClient** | **String**| Compatibility metadata only, never grants a role. | 
+ **xTrotxiClient** | **String**| Compatibility metadata only, never grants a role. |
  **xTrotxiBuild** | **int**| Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable. | [default to 1]
- **serviceDayInput** | [**ServiceDayInput**](ServiceDayInput.md)|  | 
- **xTrotxiPlatform** | **String**| Required for commuter/driver, absent for ops/worker. | [optional] 
+ **serviceDayInput** | [**ServiceDayInput**](ServiceDayInput.md)|  |
+ **xTrotxiPlatform** | **String**| Required for commuter/driver, absent for ops/worker. | [optional]
 
 ### Return type
 
@@ -174,7 +222,7 @@ import 'package:trotxi_api_client/api.dart';
 final api = TrotxiApiClient().getOpsOrScopedWorkerApi();
 final String xTrotxiClient = ops; // String | Compatibility metadata only, never grants a role.
 final int xTrotxiBuild = 1; // int | Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
-final MaintenanceInput maintenanceInput = ; // MaintenanceInput | 
+final MaintenanceInput maintenanceInput = ; // MaintenanceInput |
 final String xTrotxiPlatform = xTrotxiPlatform_example; // String | Required for commuter/driver, absent for ops/worker.
 
 try {
@@ -189,10 +237,10 @@ try {
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **xTrotxiClient** | **String**| Compatibility metadata only, never grants a role. | 
+ **xTrotxiClient** | **String**| Compatibility metadata only, never grants a role. |
  **xTrotxiBuild** | **int**| Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable. | [default to 1]
- **maintenanceInput** | [**MaintenanceInput**](MaintenanceInput.md)|  | 
- **xTrotxiPlatform** | **String**| Required for commuter/driver, absent for ops/worker. | [optional] 
+ **maintenanceInput** | [**MaintenanceInput**](MaintenanceInput.md)|  |
+ **xTrotxiPlatform** | **String**| Required for commuter/driver, absent for ops/worker. | [optional]
 
 ### Return type
 
@@ -221,7 +269,7 @@ import 'package:trotxi_api_client/api.dart';
 final api = TrotxiApiClient().getOpsOrScopedWorkerApi();
 final String xTrotxiClient = ops; // String | Compatibility metadata only, never grants a role.
 final int xTrotxiBuild = 1; // int | Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
-final MaintenanceInput maintenanceInput = ; // MaintenanceInput | 
+final MaintenanceInput maintenanceInput = ; // MaintenanceInput |
 final String xTrotxiPlatform = xTrotxiPlatform_example; // String | Required for commuter/driver, absent for ops/worker.
 
 try {
@@ -236,10 +284,10 @@ try {
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **xTrotxiClient** | **String**| Compatibility metadata only, never grants a role. | 
+ **xTrotxiClient** | **String**| Compatibility metadata only, never grants a role. |
  **xTrotxiBuild** | **int**| Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable. | [default to 1]
- **maintenanceInput** | [**MaintenanceInput**](MaintenanceInput.md)|  | 
- **xTrotxiPlatform** | **String**| Required for commuter/driver, absent for ops/worker. | [optional] 
+ **maintenanceInput** | [**MaintenanceInput**](MaintenanceInput.md)|  |
+ **xTrotxiPlatform** | **String**| Required for commuter/driver, absent for ops/worker. | [optional]
 
 ### Return type
 
@@ -268,7 +316,7 @@ import 'package:trotxi_api_client/api.dart';
 final api = TrotxiApiClient().getOpsOrScopedWorkerApi();
 final String xTrotxiClient = ops; // String | Compatibility metadata only, never grants a role.
 final int xTrotxiBuild = 1; // int | Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
-final MaintenanceInput maintenanceInput = ; // MaintenanceInput | 
+final MaintenanceInput maintenanceInput = ; // MaintenanceInput |
 final String xTrotxiPlatform = xTrotxiPlatform_example; // String | Required for commuter/driver, absent for ops/worker.
 
 try {
@@ -283,10 +331,10 @@ try {
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **xTrotxiClient** | **String**| Compatibility metadata only, never grants a role. | 
+ **xTrotxiClient** | **String**| Compatibility metadata only, never grants a role. |
  **xTrotxiBuild** | **int**| Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable. | [default to 1]
- **maintenanceInput** | [**MaintenanceInput**](MaintenanceInput.md)|  | 
- **xTrotxiPlatform** | **String**| Required for commuter/driver, absent for ops/worker. | [optional] 
+ **maintenanceInput** | [**MaintenanceInput**](MaintenanceInput.md)|  |
+ **xTrotxiPlatform** | **String**| Required for commuter/driver, absent for ops/worker. | [optional]
 
 ### Return type
 
@@ -315,7 +363,7 @@ import 'package:trotxi_api_client/api.dart';
 final api = TrotxiApiClient().getOpsOrScopedWorkerApi();
 final String xTrotxiClient = ops; // String | Compatibility metadata only, never grants a role.
 final int xTrotxiBuild = 1; // int | Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
-final MaintenanceInput maintenanceInput = ; // MaintenanceInput | 
+final MaintenanceInput maintenanceInput = ; // MaintenanceInput |
 final String xTrotxiPlatform = xTrotxiPlatform_example; // String | Required for commuter/driver, absent for ops/worker.
 
 try {
@@ -330,10 +378,10 @@ try {
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **xTrotxiClient** | **String**| Compatibility metadata only, never grants a role. | 
+ **xTrotxiClient** | **String**| Compatibility metadata only, never grants a role. |
  **xTrotxiBuild** | **int**| Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable. | [default to 1]
- **maintenanceInput** | [**MaintenanceInput**](MaintenanceInput.md)|  | 
- **xTrotxiPlatform** | **String**| Required for commuter/driver, absent for ops/worker. | [optional] 
+ **maintenanceInput** | [**MaintenanceInput**](MaintenanceInput.md)|  |
+ **xTrotxiPlatform** | **String**| Required for commuter/driver, absent for ops/worker. | [optional]
 
 ### Return type
 
@@ -362,7 +410,7 @@ import 'package:trotxi_api_client/api.dart';
 final api = TrotxiApiClient().getOpsOrScopedWorkerApi();
 final String xTrotxiClient = ops; // String | Compatibility metadata only, never grants a role.
 final int xTrotxiBuild = 1; // int | Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
-final ServiceDayInput serviceDayInput = ; // ServiceDayInput | 
+final ServiceDayInput serviceDayInput = ; // ServiceDayInput |
 final String xTrotxiPlatform = xTrotxiPlatform_example; // String | Required for commuter/driver, absent for ops/worker.
 
 try {
@@ -377,10 +425,10 @@ try {
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **xTrotxiClient** | **String**| Compatibility metadata only, never grants a role. | 
+ **xTrotxiClient** | **String**| Compatibility metadata only, never grants a role. |
  **xTrotxiBuild** | **int**| Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable. | [default to 1]
- **serviceDayInput** | [**ServiceDayInput**](ServiceDayInput.md)|  | 
- **xTrotxiPlatform** | **String**| Required for commuter/driver, absent for ops/worker. | [optional] 
+ **serviceDayInput** | [**ServiceDayInput**](ServiceDayInput.md)|  |
+ **xTrotxiPlatform** | **String**| Required for commuter/driver, absent for ops/worker. | [optional]
 
 ### Return type
 
@@ -409,7 +457,7 @@ import 'package:trotxi_api_client/api.dart';
 final api = TrotxiApiClient().getOpsOrScopedWorkerApi();
 final String xTrotxiClient = ops; // String | Compatibility metadata only, never grants a role.
 final int xTrotxiBuild = 1; // int | Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
-final MaintenanceInput maintenanceInput = ; // MaintenanceInput | 
+final MaintenanceInput maintenanceInput = ; // MaintenanceInput |
 final String xTrotxiPlatform = xTrotxiPlatform_example; // String | Required for commuter/driver, absent for ops/worker.
 
 try {
@@ -424,10 +472,10 @@ try {
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **xTrotxiClient** | **String**| Compatibility metadata only, never grants a role. | 
+ **xTrotxiClient** | **String**| Compatibility metadata only, never grants a role. |
  **xTrotxiBuild** | **int**| Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable. | [default to 1]
- **maintenanceInput** | [**MaintenanceInput**](MaintenanceInput.md)|  | 
- **xTrotxiPlatform** | **String**| Required for commuter/driver, absent for ops/worker. | [optional] 
+ **maintenanceInput** | [**MaintenanceInput**](MaintenanceInput.md)|  |
+ **xTrotxiPlatform** | **String**| Required for commuter/driver, absent for ops/worker. | [optional]
 
 ### Return type
 
@@ -456,7 +504,7 @@ import 'package:trotxi_api_client/api.dart';
 final api = TrotxiApiClient().getOpsOrScopedWorkerApi();
 final String xTrotxiClient = ops; // String | Compatibility metadata only, never grants a role.
 final int xTrotxiBuild = 1; // int | Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
-final TripGenerationInput tripGenerationInput = ; // TripGenerationInput | 
+final TripGenerationInput tripGenerationInput = ; // TripGenerationInput |
 final String xTrotxiPlatform = xTrotxiPlatform_example; // String | Required for commuter/driver, absent for ops/worker.
 
 try {
@@ -471,10 +519,10 @@ try {
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **xTrotxiClient** | **String**| Compatibility metadata only, never grants a role. | 
+ **xTrotxiClient** | **String**| Compatibility metadata only, never grants a role. |
  **xTrotxiBuild** | **int**| Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable. | [default to 1]
- **tripGenerationInput** | [**TripGenerationInput**](TripGenerationInput.md)|  | 
- **xTrotxiPlatform** | **String**| Required for commuter/driver, absent for ops/worker. | [optional] 
+ **tripGenerationInput** | [**TripGenerationInput**](TripGenerationInput.md)|  |
+ **xTrotxiPlatform** | **String**| Required for commuter/driver, absent for ops/worker. | [optional]
 
 ### Return type
 
@@ -490,4 +538,3 @@ Name | Type | Description  | Notes
  - **Accept**: application/json
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
-

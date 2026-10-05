@@ -15,6 +15,7 @@ Method | HTTP request | Description
 [**createPersonalPause**](RiderOwnApi.md#createpersonalpause) | **POST** /v1/me/membership/pauses | create Personal Pause
 [**createPurchase**](RiderOwnApi.md#createpurchase) | **POST** /v1/me/purchases | create Purchase
 [**decideReservation**](RiderOwnApi.md#decidereservation) | **POST** /v1/me/reservation-decisions | decide Reservation
+[**getAutoRenewal**](RiderOwnApi.md#getautorenewal) | **GET** /v1/me/auto-renewal | get Auto Renewal
 [**getMembership**](RiderOwnApi.md#getmembership) | **GET** /v1/me/membership | get Membership
 [**getNotificationPreferences**](RiderOwnApi.md#getnotificationpreferences) | **GET** /v1/me/notification-preferences | get Notification Preferences
 [**getPersonalPause**](RiderOwnApi.md#getpersonalpause) | **GET** /v1/me/membership/pause | get Personal Pause
@@ -34,7 +35,9 @@ Method | HTTP request | Description
 [**markNotificationRead**](RiderOwnApi.md#marknotificationread) | **POST** /v1/me/notifications/{id}/read | mark Notification Read
 [**previewPersonalPause**](RiderOwnApi.md#previewpersonalpause) | **POST** /v1/me/membership/pause-preview | preview Personal Pause
 [**previewPurchase**](RiderOwnApi.md#previewpurchase) | **POST** /v1/me/purchase-quotes | preview Purchase
+[**removeAutoRenewalCard**](RiderOwnApi.md#removeautorenewalcard) | **DELETE** /v1/me/auto-renewal/card | remove Auto Renewal Card
 [**resumePersonalPause**](RiderOwnApi.md#resumepersonalpause) | **POST** /v1/me/membership/pauses/{id}/resume | resume Personal Pause
+[**setAutoRenewal**](RiderOwnApi.md#setautorenewal) | **PUT** /v1/me/auto-renewal | set Auto Renewal
 [**startPhoneVerification**](RiderOwnApi.md#startphoneverification) | **POST** /v1/me/phone-verification/start | start Phone Verification
 [**updateNotificationPreferences**](RiderOwnApi.md#updatenotificationpreferences) | **PATCH** /v1/me/notification-preferences | update Notification Preferences
 [**withdrawCommuteRequest**](RiderOwnApi.md#withdrawcommuterequest) | **POST** /v1/me/commute-requests/{id}/withdraw | withdraw Commute Request
@@ -329,6 +332,51 @@ Name | Type | Description  | Notes
 ### HTTP request headers
 
  - **Content-Type**: application/json
+ - **Accept**: application/json
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
+# **getAutoRenewal**
+> AutoRenewalResponse getAutoRenewal(xTrotxiClient, xTrotxiBuild, xTrotxiPlatform)
+
+get Auto Renewal
+
+### Example
+```dart
+import 'package:trotxi_api_client/api.dart';
+
+final api = TrotxiApiClient().getRiderOwnApi();
+final String xTrotxiClient = commuter; // String | Compatibility metadata only, never grants a role.
+final int xTrotxiBuild = 1; // int | Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
+final String xTrotxiPlatform = ios; // String | Required for commuter/driver, absent for ops/worker.
+
+try {
+    final response = api.getAutoRenewal(xTrotxiClient, xTrotxiBuild, xTrotxiPlatform);
+    print(response);
+} on DioException catch (e) {
+    print('Exception when calling RiderOwnApi->getAutoRenewal: $e\n');
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **xTrotxiClient** | **String**| Compatibility metadata only, never grants a role. |
+ **xTrotxiBuild** | **int**| Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable. | [default to 1]
+ **xTrotxiPlatform** | **String**| Required for commuter/driver, absent for ops/worker. | [optional]
+
+### Return type
+
+[**AutoRenewalResponse**](AutoRenewalResponse.md)
+
+### Authorization
+
+[bearerAuth](../README.md#bearerAuth)
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
  - **Accept**: application/json
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
@@ -1254,6 +1302,50 @@ Name | Type | Description  | Notes
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
+# **removeAutoRenewalCard**
+> removeAutoRenewalCard(xTrotxiClient, xTrotxiBuild, xTrotxiPlatform)
+
+remove Auto Renewal Card
+
+### Example
+```dart
+import 'package:trotxi_api_client/api.dart';
+
+final api = TrotxiApiClient().getRiderOwnApi();
+final String xTrotxiClient = commuter; // String | Compatibility metadata only, never grants a role.
+final int xTrotxiBuild = 1; // int | Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
+final String xTrotxiPlatform = ios; // String | Required for commuter/driver, absent for ops/worker.
+
+try {
+    api.removeAutoRenewalCard(xTrotxiClient, xTrotxiBuild, xTrotxiPlatform);
+} on DioException catch (e) {
+    print('Exception when calling RiderOwnApi->removeAutoRenewalCard: $e\n');
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **xTrotxiClient** | **String**| Compatibility metadata only, never grants a role. |
+ **xTrotxiBuild** | **int**| Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable. | [default to 1]
+ **xTrotxiPlatform** | **String**| Required for commuter/driver, absent for ops/worker. | [optional]
+
+### Return type
+
+void (empty response body)
+
+### Authorization
+
+[bearerAuth](../README.md#bearerAuth)
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
+ - **Accept**: application/json
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
 # **resumePersonalPause**
 > PersonalPauseResponse resumePersonalPause(id, idempotencyKey, xTrotxiClient, xTrotxiBuild, personalResumeInput, xTrotxiPlatform)
 
@@ -1293,6 +1385,53 @@ Name | Type | Description  | Notes
 ### Return type
 
 [**PersonalPauseResponse**](PersonalPauseResponse.md)
+
+### Authorization
+
+[bearerAuth](../README.md#bearerAuth)
+
+### HTTP request headers
+
+ - **Content-Type**: application/json
+ - **Accept**: application/json
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
+# **setAutoRenewal**
+> AutoRenewalResponse setAutoRenewal(xTrotxiClient, xTrotxiBuild, autoRenewalInput, xTrotxiPlatform)
+
+set Auto Renewal
+
+### Example
+```dart
+import 'package:trotxi_api_client/api.dart';
+
+final api = TrotxiApiClient().getRiderOwnApi();
+final String xTrotxiClient = commuter; // String | Compatibility metadata only, never grants a role.
+final int xTrotxiBuild = 1; // int | Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
+final AutoRenewalInput autoRenewalInput = ; // AutoRenewalInput |
+final String xTrotxiPlatform = ios; // String | Required for commuter/driver, absent for ops/worker.
+
+try {
+    final response = api.setAutoRenewal(xTrotxiClient, xTrotxiBuild, autoRenewalInput, xTrotxiPlatform);
+    print(response);
+} on DioException catch (e) {
+    print('Exception when calling RiderOwnApi->setAutoRenewal: $e\n');
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **xTrotxiClient** | **String**| Compatibility metadata only, never grants a role. |
+ **xTrotxiBuild** | **int**| Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable. | [default to 1]
+ **autoRenewalInput** | [**AutoRenewalInput**](AutoRenewalInput.md)|  |
+ **xTrotxiPlatform** | **String**| Required for commuter/driver, absent for ops/worker. | [optional]
+
+### Return type
+
+[**AutoRenewalResponse**](AutoRenewalResponse.md)
 
 ### Authorization
 
@@ -1496,4 +1635,3 @@ Name | Type | Description  | Notes
  - **Accept**: application/json
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
-
