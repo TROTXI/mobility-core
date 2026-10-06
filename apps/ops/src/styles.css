@@ -1845,3 +1845,16 @@ select {
     grid-template-columns: 1fr;
   }
 }
+
+.offer-terms {
+  display: grid;
+  gap: 14px;
+  padding: 12px 14px;
+  border: 1px solid var(--ops-border, #cfc8d4);
+  border-radius: 8px;
+}
+.offer-terms-title {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 650;
+}
