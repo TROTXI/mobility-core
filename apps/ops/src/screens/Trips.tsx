@@ -16,6 +16,8 @@ type Trip = components['schemas']['OpsTrip'];
 type Driver = components['schemas']['Driver'];
 type Vehicle = components['schemas']['Vehicle'];
 type Schedule = components['schemas']['Schedule'];
+type Route = components['schemas']['Route'];
+type Pattern = components['schemas']['Pattern'];
 type OverviewData = components['schemas']['OpsOverview'];
 type Manifest = components['schemas']['Manifest'];
 
@@ -67,9 +69,11 @@ export function Trips() {
     drivers: Driver[];
     vehicles: Vehicle[];
     schedules: Schedule[];
+    routes: Route[];
+    patterns: Pattern[];
   }>(
     async (signal) => {
-      const [trips, drivers, vehicles, schedules] = await Promise.all([
+      const [trips, drivers, vehicles, schedules, routes, patterns] = await Promise.all([
         session.client.GET('/v1/ops/trips', {
           params: { query: { fromDate, toDate, limit: 200 }, header: opsHeaders },
           signal,
@@ -86,6 +90,14 @@ export function Trips() {
           params: { query: { limit: 200 }, header: opsHeaders },
           signal,
         }),
+        session.client.GET('/v1/ops/routes', {
+          params: { query: { limit: 200 }, header: opsHeaders },
+          signal,
+        }),
+        session.client.GET('/v1/ops/route-patterns', {
+          params: { query: { limit: 200 }, header: opsHeaders },
+          signal,
+        }),
       ]);
       const failure = trips.error ?? drivers.error ?? vehicles.error ?? schedules.error;
       if (failure) throw new Error(failure.error.message);
@@ -97,6 +109,9 @@ export function Trips() {
         drivers: drivers.data.data,
         vehicles: vehicles.data.data,
         schedules: schedules.data.data,
+        // Route names only label schedules; a failed read leaves them plain.
+        routes: routes.data?.data ?? [],
+        patterns: patterns.data?.data ?? [],
       };
     },
     [session, fromDate, toDate],
@@ -597,8 +612,7 @@ export function Trips() {
                 <option value="">Choose a schedule</option>
                 {(query.data?.schedules ?? []).map((schedule) => (
                   <option key={schedule.id} value={schedule.id}>
-                    {schedule.serviceWindow} · {schedule.localDeparture} ·{' '}
-                    {schedule.patternId.slice(0, 8)}
+                    {scheduleLabel(schedule, query.data?.routes ?? [], query.data?.patterns ?? [])}
                   </option>
                 ))}
               </select>
@@ -702,4 +716,12 @@ function Stat({
       <div className="stat-value">{value}</div>
     </div>
   );
+}
+
+function scheduleLabel(schedule: Schedule, routes: Route[], patterns: Pattern[]) {
+  const pattern = patterns.find((p) => p.id === schedule.patternId);
+  const route = routes.find((r) => r.id === pattern?.routeId);
+  return [route?.name, pattern?.direction, schedule.serviceWindow, schedule.localDeparture]
+    .filter(Boolean)
+    .join(' · ');
 }

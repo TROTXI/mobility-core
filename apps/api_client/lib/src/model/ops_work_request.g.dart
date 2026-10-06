@@ -92,6 +92,8 @@ class _$OpsWorkRequest extends OpsWorkRequest {
   @override
   final String driverId;
   @override
+  final String? driverName;
+  @override
   final String? decidedBy;
   @override
   final String editToken;
@@ -108,6 +110,7 @@ class _$OpsWorkRequest extends OpsWorkRequest {
       required this.updatedAt,
       required this.version,
       required this.driverId,
+      this.driverName,
       this.decidedBy,
       required this.editToken})
       : super._();
@@ -130,6 +133,7 @@ class _$OpsWorkRequest extends OpsWorkRequest {
         updatedAt == other.updatedAt &&
         version == other.version &&
         driverId == other.driverId &&
+        driverName == other.driverName &&
         decidedBy == other.decidedBy &&
         editToken == other.editToken;
   }
@@ -145,6 +149,7 @@ class _$OpsWorkRequest extends OpsWorkRequest {
     _$hash = $jc(_$hash, updatedAt.hashCode);
     _$hash = $jc(_$hash, version.hashCode);
     _$hash = $jc(_$hash, driverId.hashCode);
+    _$hash = $jc(_$hash, driverName.hashCode);
     _$hash = $jc(_$hash, decidedBy.hashCode);
     _$hash = $jc(_$hash, editToken.hashCode);
     _$hash = $jf(_$hash);
@@ -162,6 +167,7 @@ class _$OpsWorkRequest extends OpsWorkRequest {
           ..add('updatedAt', updatedAt)
           ..add('version', version)
           ..add('driverId', driverId)
+          ..add('driverName', driverName)
           ..add('decidedBy', decidedBy)
           ..add('editToken', editToken))
         .toString();
@@ -205,6 +211,10 @@ class OpsWorkRequestBuilder
   String? get driverId => _$this._driverId;
   set driverId(String? driverId) => _$this._driverId = driverId;
 
+  String? _driverName;
+  String? get driverName => _$this._driverName;
+  set driverName(String? driverName) => _$this._driverName = driverName;
+
   String? _decidedBy;
   String? get decidedBy => _$this._decidedBy;
   set decidedBy(String? decidedBy) => _$this._decidedBy = decidedBy;
@@ -228,6 +238,7 @@ class OpsWorkRequestBuilder
       _updatedAt = $v.updatedAt;
       _version = $v.version;
       _driverId = $v.driverId;
+      _driverName = $v.driverName;
       _decidedBy = $v.decidedBy;
       _editToken = $v.editToken;
       _$v = null;
@@ -267,6 +278,7 @@ class OpsWorkRequestBuilder
                 version, r'OpsWorkRequest', 'version'),
             driverId: BuiltValueNullFieldError.checkNotNull(
                 driverId, r'OpsWorkRequest', 'driverId'),
+            driverName: driverName,
             decidedBy: decidedBy,
             editToken: BuiltValueNullFieldError.checkNotNull(
                 editToken, r'OpsWorkRequest', 'editToken'),

@@ -28180,6 +28180,12 @@
             "minLength": 1,
             "maxLength": 128
           },
+          "driverName": {
+            "nullable": true,
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
           "handledBy": {
             "nullable": true,
             "type": "string",
@@ -28215,6 +28221,7 @@
           "redactedAt",
           "createdAt",
           "driverId",
+          "driverName",
           "handledBy",
           "handledAt",
           "version",
@@ -28271,6 +28278,18 @@
             "minLength": 1,
             "maxLength": 128
           },
+          "riderName": {
+            "nullable": true,
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "routeName": {
+            "nullable": true,
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
           "slotId": {
             "nullable": true,
             "type": "string",
@@ -28300,6 +28319,8 @@
           "updatedAt",
           "version",
           "riderId",
+          "riderName",
+          "routeName",
           "slotId",
           "decidedBy",
           "editToken"
@@ -28346,6 +28367,12 @@
             "minLength": 1,
             "maxLength": 128
           },
+          "driverName": {
+            "nullable": true,
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
           "decidedBy": {
             "nullable": true,
             "type": "string",
@@ -28367,6 +28394,7 @@
           "updatedAt",
           "version",
           "driverId",
+          "driverName",
           "decidedBy",
           "editToken"
         ],
@@ -28477,6 +28505,12 @@
             "minLength": 1,
             "maxLength": 128
           },
+          "riderName": {
+            "nullable": true,
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
           "attempts": {
             "type": "array",
             "items": {
@@ -28549,6 +28583,7 @@
           "failureCode",
           "createdAt",
           "riderId",
+          "riderName",
           "attempts"
         ],
         "additionalProperties": false

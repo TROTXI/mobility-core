@@ -24,6 +24,7 @@ part 'ops_incident.g.dart';
 /// * [redactedAt]
 /// * [createdAt]
 /// * [driverId]
+/// * [driverName]
 /// * [handledBy]
 /// * [handledAt]
 /// * [version]
@@ -64,6 +65,9 @@ abstract class OpsIncident implements Built<OpsIncident, OpsIncidentBuilder> {
 
   @BuiltValueField(wireName: r'driverId')
   String? get driverId;
+
+  @BuiltValueField(wireName: r'driverName')
+  String? get driverName;
 
   @BuiltValueField(wireName: r'handledBy')
   String? get handledBy;
@@ -167,6 +171,13 @@ class _$OpsIncidentSerializer implements PrimitiveSerializer<OpsIncident> {
         ? null
         : serializers.serialize(
             object.driverId,
+            specifiedType: const FullType.nullable(String),
+          );
+    yield r'driverName';
+    yield object.driverName == null
+        ? null
+        : serializers.serialize(
+            object.driverName,
             specifiedType: const FullType.nullable(String),
           );
     yield r'handledBy';
@@ -301,6 +312,14 @@ class _$OpsIncidentSerializer implements PrimitiveSerializer<OpsIncident> {
           ) as String?;
           if (valueDes == null) continue;
           result.driverId = valueDes;
+          break;
+        case r'driverName':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType.nullable(String),
+          ) as String?;
+          if (valueDes == null) continue;
+          result.driverName = valueDes;
           break;
         case r'handledBy':
           final valueDes = serializers.deserialize(

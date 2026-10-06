@@ -95,7 +95,7 @@ export function FareJourneyFields({
           <option value="">Choose version</option>
           {versions.data?.map((version) => (
             <option key={version.id} value={version.id}>
-              {version.id.slice(0, 8)} ({version.stops.length} stops)
+              Revision {version.revision}, {version.state} ({version.stops.length} stops)
             </option>
           ))}
         </select>

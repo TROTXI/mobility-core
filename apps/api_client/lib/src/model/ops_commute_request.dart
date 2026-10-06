@@ -24,6 +24,8 @@ part 'ops_commute_request.g.dart';
 /// * [updatedAt]
 /// * [version]
 /// * [riderId]
+/// * [riderName]
+/// * [routeName]
 /// * [slotId]
 /// * [decidedBy]
 /// * [editToken]
@@ -60,6 +62,12 @@ abstract class OpsCommuteRequest
 
   @BuiltValueField(wireName: r'riderId')
   String get riderId;
+
+  @BuiltValueField(wireName: r'riderName')
+  String? get riderName;
+
+  @BuiltValueField(wireName: r'routeName')
+  String? get routeName;
 
   @BuiltValueField(wireName: r'slotId')
   String? get slotId;
@@ -150,6 +158,20 @@ class _$OpsCommuteRequestSerializer
       object.riderId,
       specifiedType: const FullType(String),
     );
+    yield r'riderName';
+    yield object.riderName == null
+        ? null
+        : serializers.serialize(
+            object.riderName,
+            specifiedType: const FullType.nullable(String),
+          );
+    yield r'routeName';
+    yield object.routeName == null
+        ? null
+        : serializers.serialize(
+            object.routeName,
+            specifiedType: const FullType.nullable(String),
+          );
     yield r'slotId';
     yield object.slotId == null
         ? null
@@ -265,6 +287,22 @@ class _$OpsCommuteRequestSerializer
             specifiedType: const FullType(String),
           ) as String;
           result.riderId = valueDes;
+          break;
+        case r'riderName':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType.nullable(String),
+          ) as String?;
+          if (valueDes == null) continue;
+          result.riderName = valueDes;
+          break;
+        case r'routeName':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType.nullable(String),
+          ) as String?;
+          if (valueDes == null) continue;
+          result.routeName = valueDes;
           break;
         case r'slotId':
           final valueDes = serializers.deserialize(

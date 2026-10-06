@@ -278,7 +278,8 @@ export function Support() {
                 <option value="">Select a slot</option>
                 {availableSlots.map((slot) => (
                   <option key={slot.id} value={slot.id}>
-                    {slot.availableFrom} · {slot.legs.length} legs · {slot.id.slice(0, 8)}
+                    From {slot.availableFrom} ·{' '}
+                    {slot.legs.map((leg) => leg.direction).join(' and ')}
                   </option>
                 ))}
               </select>
@@ -382,7 +383,7 @@ function IncidentRows({ rows, onSelect }: { rows: Incident[]; onSelect: (row: In
           <tr key={row.id}>
             <td>{when(row.createdAt)}</td>
             <td>{row.category.replaceAll('_', ' ')}</td>
-            <td className="mono">{row.driverId?.slice(0, 8) ?? 'Redacted'}</td>
+            <td>{row.driverName ?? (row.driverId ? 'Unknown driver' : 'Redacted')}</td>
             <td>
               <StatusBadge value={row.status} />
             </td>
@@ -425,7 +426,7 @@ function RequestRows({
           <tr key={row.id}>
             <td>{when(row.createdAt)}</td>
             <td>{row.request.kind.replaceAll('_', ' ')}</td>
-            <td className="mono">{row.driverId.slice(0, 8)}</td>
+            <td>{row.driverName ?? 'Unknown driver'}</td>
             <td>
               <StatusBadge value={row.status} />
             </td>
@@ -467,8 +468,8 @@ function CommuteRows({
         {rows.map((row) => (
           <tr key={row.id}>
             <td>{when(row.createdAt)}</td>
-            <td className="mono">{row.riderId.slice(0, 8)}</td>
-            <td className="mono">{row.requested.routeId.slice(0, 8)}</td>
+            <td>{row.riderName ?? 'Erased rider'}</td>
+            <td>{row.routeName ?? 'Unknown route'}</td>
             <td>
               <StatusBadge value={row.status} />
             </td>

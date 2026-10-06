@@ -9,6 +9,7 @@ vi.mock('../auth/AuthContext', () => ({ useAuth: () => ({ session }) }));
 it('prices ordered occurrences independently and clears the pair when direction changes', async () => {
   const version = {
     id: 'version',
+    revision: 2,
     state: 'published',
     stops: [
       { id: 'a', name: 'A', stopId: 'same-stop' },
@@ -53,7 +54,7 @@ it('prices ordered occurrences independently and clears the pair when direction 
   }
   render(<Form />);
   fireEvent.change(screen.getByLabelText('Direction'), { target: { value: 'out' } });
-  await screen.findByText('version (3 stops)');
+  await screen.findByText('Revision 2, published (3 stops)');
   fireEvent.change(screen.getByLabelText('Published route version'), {
     target: { value: 'version' },
   });

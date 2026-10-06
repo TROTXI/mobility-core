@@ -412,7 +412,18 @@ export class MembershipService {
       decisionNote: r.decision_note,
       ...audit(r),
       ...(admin
-        ? { riderId: r.user_id, slotId: r.slot_id, decidedBy: r.decided_by, editToken: token(r) }
+        ? {
+            riderId: r.user_id,
+            riderName:
+              (await c.query('SELECT display_name FROM app.users WHERE id=$1', [r.user_id])).rows[0]
+                ?.display_name ?? null,
+            routeName:
+              (await c.query('SELECT name FROM app.routes WHERE id=$1', [s.routeId])).rows[0]
+                ?.name ?? null,
+            slotId: r.slot_id,
+            decidedBy: r.decided_by,
+            editToken: token(r),
+          }
         : {}),
     };
   }

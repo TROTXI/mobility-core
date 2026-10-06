@@ -264,7 +264,7 @@ function RenewalRows({ rows, filter }: { rows: Renewal[]; filter: RenewalFilter 
         <tbody>
           {rows.map((row) => (
             <tr key={row.id}>
-              <td>{row.riderName ?? row.riderId.slice(0, 8)}</td>
+              <td>{row.riderName ?? 'Erased rider'}</td>
               <td>{when(row.periodEndsAt)}</td>
               <td>
                 <StatusBadge value={row.state} />
@@ -317,7 +317,7 @@ function PurchaseRows({
           {rows.map((row) => (
             <tr key={row.id}>
               <td>{when(row.createdAt)}</td>
-              <td className="mono">{row.riderId.slice(0, 8)}</td>
+              <td>{row.riderName ?? 'Erased rider'}</td>
               <td>{row.plan}</td>
               <td>{money(row.cashDue)}</td>
               <td>

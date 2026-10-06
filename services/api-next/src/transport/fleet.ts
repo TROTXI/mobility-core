@@ -374,6 +374,17 @@ export class Fleet {
             )
           ).rows
         : [];
+    // Ops reads a person, not an id: the driver's name rides with each row.
+    const driverIds = [...new Set(rows.map((r) => r.driver_id).filter(Boolean))];
+    const driverNames = new Map<string, string>(
+      kind === 'incident' || kind === 'request'
+        ? (
+            await client.query('SELECT id,name FROM app.drivers WHERE id=ANY($1::uuid[])', [
+              driverIds,
+            ])
+          ).rows.map((d) => [d.id, d.name])
+        : [],
+    );
     return rows.map((r) => {
       const audit = {
         createdAt: r.created_at.toISOString(),
@@ -415,6 +426,7 @@ export class Fleet {
           resolution: r.resolution,
           redactedAt: r.redacted_at?.toISOString() ?? null,
           driverId: r.driver_id,
+          driverName: driverNames.get(r.driver_id) ?? null,
           handledBy: r.handled_by,
           handledAt: r.handled_at?.toISOString() ?? null,
           editToken: editToken(kind, r),
@@ -437,6 +449,7 @@ export class Fleet {
         status: r.status,
         decisionNote: r.decision_note,
         driverId: r.driver_id,
+        driverName: driverNames.get(r.driver_id) ?? null,
         decidedBy: r.decided_by,
         editToken: editToken(kind, r),
         ...audit,

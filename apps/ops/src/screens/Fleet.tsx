@@ -769,7 +769,6 @@ function DriverTable({
             <tr key={row.id} className={selected === row.id ? 'selected-row' : ''}>
               <td>
                 <strong>{row.name}</strong>
-                <div className="mono muted">{row.id.slice(0, 8)}</div>
               </td>
               <td>{row.phone ?? '—'}</td>
               <td>{row.licenseNumber ?? '—'}</td>
