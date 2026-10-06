@@ -1064,6 +1064,7 @@ test('PAIR-01 exact stop-pair fares differ, long journeys are explicit, legacy p
     await p.publish({
       amount: { amountMinor: 999, currency: 'GHS' },
       effectiveFrom: '2026-01-01T00:00:00Z',
+      note: 'Legacy corridor price',
     }),
     201,
   );
