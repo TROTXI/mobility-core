@@ -164,6 +164,8 @@ class _$OpsIncident extends OpsIncident {
   @override
   final String? driverId;
   @override
+  final String? driverName;
+  @override
   final String? handledBy;
   @override
   final DateTime? handledAt;
@@ -187,6 +189,7 @@ class _$OpsIncident extends OpsIncident {
       this.redactedAt,
       required this.createdAt,
       this.driverId,
+      this.driverName,
       this.handledBy,
       this.handledAt,
       required this.version,
@@ -214,6 +217,7 @@ class _$OpsIncident extends OpsIncident {
         redactedAt == other.redactedAt &&
         createdAt == other.createdAt &&
         driverId == other.driverId &&
+        driverName == other.driverName &&
         handledBy == other.handledBy &&
         handledAt == other.handledAt &&
         version == other.version &&
@@ -234,6 +238,7 @@ class _$OpsIncident extends OpsIncident {
     _$hash = $jc(_$hash, redactedAt.hashCode);
     _$hash = $jc(_$hash, createdAt.hashCode);
     _$hash = $jc(_$hash, driverId.hashCode);
+    _$hash = $jc(_$hash, driverName.hashCode);
     _$hash = $jc(_$hash, handledBy.hashCode);
     _$hash = $jc(_$hash, handledAt.hashCode);
     _$hash = $jc(_$hash, version.hashCode);
@@ -256,6 +261,7 @@ class _$OpsIncident extends OpsIncident {
           ..add('redactedAt', redactedAt)
           ..add('createdAt', createdAt)
           ..add('driverId', driverId)
+          ..add('driverName', driverName)
           ..add('handledBy', handledBy)
           ..add('handledAt', handledAt)
           ..add('version', version)
@@ -314,6 +320,10 @@ class OpsIncidentBuilder implements Builder<OpsIncident, OpsIncidentBuilder> {
   String? get driverId => _$this._driverId;
   set driverId(String? driverId) => _$this._driverId = driverId;
 
+  String? _driverName;
+  String? get driverName => _$this._driverName;
+  set driverName(String? driverName) => _$this._driverName = driverName;
+
   String? _handledBy;
   String? get handledBy => _$this._handledBy;
   set handledBy(String? handledBy) => _$this._handledBy = handledBy;
@@ -348,6 +358,7 @@ class OpsIncidentBuilder implements Builder<OpsIncident, OpsIncidentBuilder> {
       _redactedAt = $v.redactedAt;
       _createdAt = $v.createdAt;
       _driverId = $v.driverId;
+      _driverName = $v.driverName;
       _handledBy = $v.handledBy;
       _handledAt = $v.handledAt;
       _version = $v.version;
@@ -389,6 +400,7 @@ class OpsIncidentBuilder implements Builder<OpsIncident, OpsIncidentBuilder> {
             createdAt: BuiltValueNullFieldError.checkNotNull(
                 createdAt, r'OpsIncident', 'createdAt'),
             driverId: driverId,
+            driverName: driverName,
             handledBy: handledBy,
             handledAt: handledAt,
             version: BuiltValueNullFieldError.checkNotNull(

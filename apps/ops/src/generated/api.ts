@@ -3567,6 +3567,8 @@ export interface components {
       updatedAt: string;
       version: number;
       riderId: string;
+      riderName: string | null;
+      routeName: string | null;
       slotId: string | null;
       decidedBy: string | null;
       editToken: string;
@@ -3622,6 +3624,7 @@ export interface components {
       /** Format: date-time */
       createdAt: string;
       driverId: string | null;
+      driverName: string | null;
       handledBy: string | null;
       /** Format: date-time */
       handledAt: string | null;
@@ -3746,6 +3749,7 @@ export interface components {
       /** Format: date-time */
       createdAt: string;
       riderId: string;
+      riderName: string | null;
       attempts: {
         id: string;
         providerReference: string;
@@ -3953,6 +3957,7 @@ export interface components {
       updatedAt: string;
       version: number;
       driverId: string;
+      driverName: string | null;
       decidedBy: string | null;
       editToken: string;
     };

@@ -173,7 +173,6 @@ export function Audit() {
                   <td>{row.action.replaceAll('_', ' ')}</td>
                   <td>
                     <strong>{row.actorName}</strong>
-                    <div className="muted mono">{row.actorId.slice(0, 8)}</div>
                   </td>
                   <td className="mono">
                     {row.targetId.length > 18 ? `${row.targetId.slice(0, 14)}…` : row.targetId}

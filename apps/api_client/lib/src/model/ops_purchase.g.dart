@@ -239,6 +239,8 @@ class _$OpsPurchase extends OpsPurchase {
   @override
   final String riderId;
   @override
+  final String? riderName;
+  @override
   final BuiltList<OpsPurchaseAttemptsInner> attempts;
 
   factory _$OpsPurchase([void Function(OpsPurchaseBuilder)? updates]) =>
@@ -258,6 +260,7 @@ class _$OpsPurchase extends OpsPurchase {
       this.failureCode,
       required this.createdAt,
       required this.riderId,
+      this.riderName,
       required this.attempts})
       : super._();
   @override
@@ -284,6 +287,7 @@ class _$OpsPurchase extends OpsPurchase {
         failureCode == other.failureCode &&
         createdAt == other.createdAt &&
         riderId == other.riderId &&
+        riderName == other.riderName &&
         attempts == other.attempts;
   }
 
@@ -303,6 +307,7 @@ class _$OpsPurchase extends OpsPurchase {
     _$hash = $jc(_$hash, failureCode.hashCode);
     _$hash = $jc(_$hash, createdAt.hashCode);
     _$hash = $jc(_$hash, riderId.hashCode);
+    _$hash = $jc(_$hash, riderName.hashCode);
     _$hash = $jc(_$hash, attempts.hashCode);
     _$hash = $jf(_$hash);
     return _$hash;
@@ -324,6 +329,7 @@ class _$OpsPurchase extends OpsPurchase {
           ..add('failureCode', failureCode)
           ..add('createdAt', createdAt)
           ..add('riderId', riderId)
+          ..add('riderName', riderName)
           ..add('attempts', attempts))
         .toString();
   }
@@ -392,6 +398,10 @@ class OpsPurchaseBuilder implements Builder<OpsPurchase, OpsPurchaseBuilder> {
   String? get riderId => _$this._riderId;
   set riderId(String? riderId) => _$this._riderId = riderId;
 
+  String? _riderName;
+  String? get riderName => _$this._riderName;
+  set riderName(String? riderName) => _$this._riderName = riderName;
+
   ListBuilder<OpsPurchaseAttemptsInner>? _attempts;
   ListBuilder<OpsPurchaseAttemptsInner> get attempts =>
       _$this._attempts ??= ListBuilder<OpsPurchaseAttemptsInner>();
@@ -418,6 +428,7 @@ class OpsPurchaseBuilder implements Builder<OpsPurchase, OpsPurchaseBuilder> {
       _failureCode = $v.failureCode;
       _createdAt = $v.createdAt;
       _riderId = $v.riderId;
+      _riderName = $v.riderName;
       _attempts = $v.attempts.toBuilder();
       _$v = null;
     }
@@ -460,6 +471,7 @@ class OpsPurchaseBuilder implements Builder<OpsPurchase, OpsPurchaseBuilder> {
                 createdAt, r'OpsPurchase', 'createdAt'),
             riderId: BuiltValueNullFieldError.checkNotNull(
                 riderId, r'OpsPurchase', 'riderId'),
+            riderName: riderName,
             attempts: attempts.build(),
           );
     } catch (_) {

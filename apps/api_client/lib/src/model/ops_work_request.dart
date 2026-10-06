@@ -21,6 +21,7 @@ part 'ops_work_request.g.dart';
 /// * [updatedAt]
 /// * [version]
 /// * [driverId]
+/// * [driverName]
 /// * [decidedBy]
 /// * [editToken]
 @BuiltValue()
@@ -50,6 +51,9 @@ abstract class OpsWorkRequest
 
   @BuiltValueField(wireName: r'driverId')
   String get driverId;
+
+  @BuiltValueField(wireName: r'driverName')
+  String? get driverName;
 
   @BuiltValueField(wireName: r'decidedBy')
   String? get decidedBy;
@@ -125,6 +129,13 @@ class _$OpsWorkRequestSerializer
       object.driverId,
       specifiedType: const FullType(String),
     );
+    yield r'driverName';
+    yield object.driverName == null
+        ? null
+        : serializers.serialize(
+            object.driverName,
+            specifiedType: const FullType.nullable(String),
+          );
     yield r'decidedBy';
     yield object.decidedBy == null
         ? null
@@ -218,6 +229,14 @@ class _$OpsWorkRequestSerializer
             specifiedType: const FullType(String),
           ) as String;
           result.driverId = valueDes;
+          break;
+        case r'driverName':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType.nullable(String),
+          ) as String?;
+          if (valueDes == null) continue;
+          result.driverName = valueDes;
           break;
         case r'decidedBy':
           final valueDes = serializers.deserialize(

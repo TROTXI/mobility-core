@@ -1348,6 +1348,7 @@ named(
   'OpsIncident',
   schemas.Incident.extend({
     driverId: id.nullable(),
+    driverName: text().nullable(),
     handledBy: id.nullable(),
     handledAt: instant.nullable(),
     version,
@@ -1358,6 +1359,8 @@ named(
   'OpsCommuteRequest',
   schemas.CommuteRequest.extend({
     riderId: id,
+    riderName: text().nullable(),
+    routeName: text().nullable(),
     slotId: id.nullable(),
     decidedBy: id.nullable(),
     editToken: text(128),
@@ -1368,12 +1371,18 @@ named(
 // ETag cannot supply a per-row precondition value.
 named(
   'OpsWorkRequest',
-  schemas.WorkRequest.extend({ driverId: id, decidedBy: id.nullable(), editToken: text(128) }),
+  schemas.WorkRequest.extend({
+    driverId: id,
+    driverName: text().nullable(),
+    decidedBy: id.nullable(),
+    editToken: text(128),
+  }),
 );
 named(
   'OpsPurchase',
   schemas.Purchase.extend({
     riderId: id,
+    riderName: text().nullable(),
     attempts: z.array(
       obj({
         id,
