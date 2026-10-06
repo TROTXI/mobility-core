@@ -11,14 +11,15 @@ globalThis.ResizeObserver ??= class {
   disconnect() {}
 } as unknown as typeof ResizeObserver;
 
-it('requires explicit price and two credit rates and retries unchanged terms with one key', async () => {
-  const legs = ['outbound', 'return'].map((direction) => ({
-    direction,
-    scheduleId: direction,
-    patternVersionId: direction,
-    pickupOccurrenceId: `${direction}-a`,
-    dropoffOccurrenceId: `${direction}-b`,
-  }));
+const legs = ['outbound', 'return'].map((direction) => ({
+  direction,
+  scheduleId: direction,
+  patternVersionId: direction,
+  pickupOccurrenceId: `${direction}-a`,
+  dropoffOccurrenceId: `${direction}-b`,
+}));
+/** Standby with one request; `priced` says which directions have a published fare. */
+function serve(priced: string[] = ['outbound', 'return']) {
   session.client.GET.mockImplementation(async (path: string) => ({
     data: {
       data:
@@ -38,20 +39,21 @@ it('requires explicit price and two credit rates and retries unchanged terms wit
             ]
           : path === '/v1/ops/service-schedules'
             ? legs.map((l) => ({ id: l.scheduleId, weekdays: [1, 2, 3, 4, 5] }))
-            : legs.map((l, i) => ({
-                ...l,
-                id: `fare-${i}`,
-                amount: { amountMinor: 500 + i * 300, currency: 'GHS' },
-                effectiveFrom: '2020-01-01T00:00:00Z',
-                effectiveTo: null,
-                journey: { pickup: 'B', dropoff: 'C', direction: l.direction },
-              })),
+            : legs
+                .filter((l) => priced.includes(l.direction))
+                .map((l, i) => ({
+                  ...l,
+                  id: `fare-${i}`,
+                  amount: { amountMinor: 500 + i * 300, currency: 'GHS' },
+                  effectiveFrom: '2020-01-01T00:00:00Z',
+                  effectiveTo: null,
+                  journey: { pickup: 'B', dropoff: 'C', direction: l.direction },
+                })),
       page: { nextCursor: null },
     },
   }));
-  session.client.POST.mockResolvedValue({
-    error: { error: { message: 'Response unavailable; retry safely.' } },
-  });
+}
+async function openOffer() {
   render(
     <FluentProvider theme={trotxiLight}>
       <Standby />
@@ -59,6 +61,28 @@ it('requires explicit price and two credit rates and retries unchanged terms wit
   );
   fireEvent.click(await screen.findByRole('button', { name: 'Send offer' }));
   const dialog = within(screen.getByRole('dialog'));
+  // Fares load first; until they do, the offer cannot be sent.
+  await dialog.findByText(/^outbound: \d+ rides/);
+  return dialog;
+}
+function fill(dialog: ReturnType<typeof within>, price = '70') {
+  fireEvent.change(dialog.getByLabelText('Agreed package price (GHS)'), {
+    target: { value: price },
+  });
+  fireEvent.change(dialog.getByLabelText('Credit per unused outbound ride (GHS)'), {
+    target: { value: '1' },
+  });
+  fireEvent.change(dialog.getByLabelText('Credit per unused return ride (GHS)'), {
+    target: { value: '2' },
+  });
+}
+
+it('requires explicit price and two credit rates and retries unchanged terms with one key', async () => {
+  serve();
+  session.client.POST.mockResolvedValue({
+    error: { error: { message: 'Response unavailable; retry safely.' } },
+  });
+  const dialog = await openOffer();
   expect(dialog.getByLabelText('Agreed package price (GHS)')).toHaveValue(null);
   expect(dialog.getByLabelText('Credit per unused outbound ride (GHS)')).toHaveValue(null);
   fireEvent.change(dialog.getByLabelText('Agreed package price (GHS)'), {
@@ -84,4 +108,38 @@ it('requires explicit price and two credit rates and retries unchanged terms wit
     { direction: 'return', creditPerUnusedRide: { amountMinor: 200, currency: 'GHS' } },
   ]);
   expect(first.params.header['Idempotency-Key']).toBeTruthy();
+});
+
+it('unlocks the terms after the API refuses an offer, and sends the corrected one afresh', async () => {
+  session.client.POST.mockReset();
+  serve();
+  session.client.POST.mockResolvedValueOnce({
+    error: { error: { message: 'Ops must publish a fare for these stops.' } },
+    response: { status: 409 },
+  }).mockResolvedValueOnce({ data: {}, response: { status: 201 } });
+  const dialog = await openOffer();
+  fill(dialog);
+  fireEvent.click(dialog.getByRole('button', { name: 'Send offer' }));
+  await dialog.findByText('Ops must publish a fare for these stops.');
+  // A refusal created nothing: the operator can change the terms.
+  const price = dialog.getByLabelText('Agreed package price (GHS)');
+  expect(price).not.toBeDisabled();
+  fireEvent.change(price, { target: { value: '65' } });
+  fireEvent.click(dialog.getByRole('button', { name: 'Send offer' }));
+  await vi.waitFor(() => expect(session.client.POST).toHaveBeenCalledTimes(2));
+  const [first, second] = session.client.POST.mock.calls.map((call) => call[1]);
+  expect(second.body.price).toEqual({ amountMinor: 6500, currency: 'GHS' });
+  expect(second.params.header['Idempotency-Key']).not.toBe(first.params.header['Idempotency-Key']);
+});
+
+it('will not send an offer while a direction has no published fare, and says which', async () => {
+  session.client.POST.mockReset();
+  serve(['outbound']);
+  const dialog = await openOffer();
+  fill(dialog);
+  expect(await dialog.findByRole('status')).toHaveTextContent(
+    'No fare is published for the return stops',
+  );
+  expect(dialog.getByRole('button', { name: 'Send offer' })).toBeDisabled();
+  expect(session.client.POST).not.toHaveBeenCalled();
 });
