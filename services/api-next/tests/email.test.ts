@@ -83,7 +83,7 @@ test('EMAIL-U5 branded mail escapes what people typed and says the same in HTML 
     stagingNote: 'This is a Trotxi staging test.',
   };
   const html = renderHtml(content, theme);
-  assert.doesNotMatch(html, /<script>/);
+  assert.ok(!html.toLowerCase().includes('<script'), 'no tag a person typed reaches the HTML');
   assert.match(html, /Hello &lt;script&gt;alert\(1\)&lt;\/script&gt; &amp; Co,/);
   assert.match(html, /href="https:\/\/ops\.example\.test\/#invite=&quot;x&quot;"/);
   assert.match(html, /src="https:\/\/ops\.example\.test\/email\/trotxi-logo-white\.png"/);
