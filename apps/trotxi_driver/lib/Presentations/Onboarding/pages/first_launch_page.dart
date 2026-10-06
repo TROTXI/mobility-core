@@ -1,3 +1,6 @@
+import 'dart:math' as math;
+import 'dart:ui' show PathMetric;
+
 import 'package:flutter/material.dart';
 import 'package:trotxi_driver/core/config/theme/app_colors.dart';
 import 'package:trotxi_driver/core/config/theme/app_radii.dart';
@@ -169,33 +172,7 @@ class _WelcomeLead extends StatelessWidget {
         style: AppTypography.body.copyWith(color: colors.textSecondary),
       ),
       const SizedBox(height: AppSpacing.space24),
-      Container(
-        width: double.infinity,
-        padding: const EdgeInsets.all(AppSpacing.space20),
-        decoration: BoxDecoration(
-          color: colors.surfaceSelected,
-          borderRadius: AppRadii.circular(AppRadii.xl),
-          border: Border.all(color: colors.border),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Ready for today’s run',
-              style: AppTypography.caption.copyWith(
-                color: colors.textSecondary,
-              ),
-            ),
-            const SizedBox(height: AppSpacing.space4),
-            Text(
-              'Everything the driver needs',
-              style: AppTypography.heading3.copyWith(color: colors.textPrimary),
-            ),
-            const SizedBox(height: AppSpacing.space12),
-            const SizedBox(height: 132, child: _RouteIllustration()),
-          ],
-        ),
-      ),
+      const _RouteHero(),
     ],
   );
 }
@@ -338,26 +315,7 @@ class _RouteIllustration extends StatelessWidget {
       painter: _RoutePainter(colors: colors, showSkyline: showSkyline),
       child: Align(
         alignment: const Alignment(0.12, 0.1),
-        child: Container(
-          width: 88,
-          height: 58,
-          decoration: BoxDecoration(
-            color: colors.action,
-            borderRadius: AppRadii.circular(AppRadii.md),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.12),
-                blurRadius: 10,
-                offset: const Offset(0, 5),
-              ),
-            ],
-          ),
-          child: Icon(
-            Icons.airport_shuttle_rounded,
-            size: 42,
-            color: colors.onAction,
-          ),
-        ),
+        child: Image.asset(_vanAsset, width: 104, excludeFromSemantics: true),
       ),
     );
   }
@@ -425,4 +383,306 @@ class _RoutePainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant _RoutePainter oldDelegate) =>
       oldDelegate.colors != colors || oldDelegate.showSkyline != showSkyline;
+}
+
+/// The branded van from the design file (page 04, "Welcome / Van"), exported
+/// at 4x its 95 by 48 frame.
+const _vanAsset = 'assets/brand/trotxi-van.png';
+
+/// "Ready for today's run": the road from the design file runs behind the
+/// title, ending at a stop beside it, and the van drives up onto it when the
+/// screen opens.
+///
+/// The road is the file's own path (312:58), not a lookalike: the frame is
+/// 350 by 180, and the path and van are scaled with the card so the stop still
+/// lands beside the title on a tablet.
+///
+/// The van drives in once and parks where the file draws it, then the card
+/// idles on a slow loop: the van rises and settles on its suspension, a soft
+/// light runs up the road to the stop, and the stop pulses once. The van does
+/// not drive the whole road on each lap because the top half of the road runs
+/// behind the title. With reduce motion on, nothing moves.
+class _RouteHero extends StatefulWidget {
+  const _RouteHero();
+
+  @override
+  State<_RouteHero> createState() => _RouteHeroState();
+}
+
+class _RouteHeroState extends State<_RouteHero> with TickerProviderStateMixin {
+  late final AnimationController _drive = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 1800),
+  );
+
+  /// One lap of the idle loop, started once the van has parked.
+  late final AnimationController _idle = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 4200),
+  );
+
+  @override
+  void initState() {
+    super.initState();
+    _drive.addStatusListener((status) {
+      if (status == AnimationStatus.completed && !_reduceMotion) {
+        _idle.repeat();
+      }
+    });
+  }
+
+  bool get _reduceMotion => MediaQuery.of(context).disableAnimations;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_reduceMotion) {
+      _idle.stop();
+      _idle.value = 0;
+      _drive.value = 1;
+    } else if (_drive.status == AnimationStatus.dismissed) {
+      _drive.forward();
+    } else if (_drive.isCompleted && !_idle.isAnimating) {
+      _idle.repeat();
+    }
+  }
+
+  @override
+  void dispose() {
+    _drive.dispose();
+    _idle.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.driverColors;
+    return ClipRRect(
+      borderRadius: AppRadii.circular(AppRadii.xl),
+      child: Container(
+        decoration: BoxDecoration(
+          color: colors.surface,
+          borderRadius: AppRadii.circular(AppRadii.xl),
+          border: Border.all(color: colors.border),
+        ),
+        child: AspectRatio(
+          aspectRatio: _RoadGeometry.width / _RoadGeometry.height,
+          child: LayoutBuilder(
+            builder: (context, box) {
+              final road = _RoadGeometry(box.biggest);
+              return Stack(
+                children: [
+                  Positioned.fill(
+                    child: CustomPaint(
+                      painter: _RoadPainter(
+                        road: road,
+                        colors: colors,
+                        lap: _idle,
+                      ),
+                    ),
+                  ),
+                  // The file's own sizes and places (11/600 at 18,18; 19/600 at
+                  // 18,41), scaled with the card so the title still ends
+                  // just short of the stop.
+                  Positioned(
+                    left: 18 * road.scale,
+                    top: 18 * road.scale,
+                    child: Text(
+                      'Ready for today\u2019s run',
+                      style: AppTypography.fieldLabel.copyWith(
+                        fontSize: 11 * road.scale,
+                        height: 16.5 / 11,
+                        color: colors.textSecondary,
+                      ),
+                    ),
+                  ),
+                  Positioned(
+                    left: 18 * road.scale,
+                    top: 41 * road.scale,
+                    child: Text(
+                      'Everything the driver needs',
+                      style: AppTypography.title.copyWith(
+                        fontSize: 19 * road.scale,
+                        height: 28.5 / 19,
+                        color: colors.textPrimary,
+                      ),
+                    ),
+                  ),
+                  AnimatedBuilder(
+                    animation: Listenable.merge([_drive, _idle]),
+                    builder: (context, _) {
+                      final pose = road.vanAt(
+                        Curves.easeOutCubic.transform(_drive.value),
+                      );
+                      // Two slow breaths per lap, under a pixel at phone size.
+                      final rise =
+                          math.sin(_idle.value * 4 * math.pi).abs() *
+                          0.9 *
+                          road.scale;
+                      return Positioned(
+                        left: pose.bottomCentre.dx - pose.size.width / 2,
+                        top: pose.bottomCentre.dy - pose.size.height - rise,
+                        width: pose.size.width,
+                        height: pose.size.height,
+                        child: Transform.rotate(
+                          angle: pose.angle,
+                          alignment: Alignment.bottomCenter,
+                          child: Image.asset(
+                            _vanAsset,
+                            fit: BoxFit.contain,
+                            semanticLabel: 'Trotxi van on its route',
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ],
+              );
+            },
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Where the van stands at a point along its drive.
+class _VanPose {
+  const _VanPose(this.bottomCentre, this.angle, this.size);
+
+  final Offset bottomCentre;
+  final double angle;
+  final Size size;
+}
+
+/// The design's road, scaled from its 350 by 180 card to the card on screen.
+class _RoadGeometry {
+  _RoadGeometry(Size size)
+    : scale = size.width / width,
+      _sy = size.height / height {
+    path = Path()
+      ..moveTo(_x(3), _y(141))
+      ..cubicTo(_x(73), _y(111), _x(127), _y(135), _x(171), _y(103))
+      ..cubicTo(_x(221), _y(67), _x(265), _y(85), _x(309), _y(41))
+      ..cubicTo(_x(333), _y(17), _x(353), _y(5), _x(395), _y(3));
+    stop = Offset(_x(309), _y(41));
+    _metric = path.computeMetrics().first;
+    _parked = _distanceAtX(_parkedX * scale);
+    stopDistance = _distanceAtX(stop.dx);
+  }
+
+  static const double width = 350;
+  static const double height = 180;
+
+  /// The file's van: 95 by 48, its middle at x 67.5 on the card.
+  static const Size _van = Size(95, 48);
+  static const double _parkedX = 67.5;
+
+  final double scale;
+  final double _sy;
+  late final Path path;
+  late final Offset stop;
+  late final PathMetric _metric;
+  late final double _parked;
+
+  /// How far along the road the stop is.
+  late final double stopDistance;
+
+  /// How far along the road the parked van's nose is, where the light starts.
+  double get lightStart => _parked + _van.width * scale / 2;
+
+  /// A stretch of road, for the light that runs along it.
+  Path segment(double from, double to) => _metric.extractPath(from, to);
+
+  // The path was exported with a 3px stroke margin, 23 left of and 15 above
+  // the card's origin.
+  double _x(double svg) => (svg - 23) * scale;
+  double _y(double svg) => (svg + 15) * _sy;
+
+  double _distanceAtX(double x) {
+    var low = 0.0, high = _metric.length;
+    for (var i = 0; i < 30; i++) {
+      final mid = (low + high) / 2;
+      if (_metric.getTangentForOffset(mid)!.position.dx < x) {
+        low = mid;
+      } else {
+        high = mid;
+      }
+    }
+    return low;
+  }
+
+  /// [progress] 0 is just off the card on the left, 1 is parked.
+  _VanPose vanAt(double progress) {
+    final size = _van * scale;
+    final start = -size.width;
+    final distance = progress * _parked;
+    final tangent = _metric.getTangentForOffset(distance)!;
+    // Before the road begins at the card's edge the van rolls in level.
+    final x = progress == 0 ? start : tangent.position.dx;
+    // The file seats the wheels just below the road's centre line.
+    final bottom = Offset(x, tangent.position.dy + 6 * _sy);
+    return _VanPose(bottom, -tangent.angle, size);
+  }
+}
+
+class _RoadPainter extends CustomPainter {
+  _RoadPainter({required this.road, required this.colors, required this.lap})
+    : super(repaint: lap);
+
+  final _RoadGeometry road;
+  final AppColors colors;
+
+  /// The idle loop: 0 to 0.7 the light runs to the stop, then the stop pulses.
+  final Animation<double> lap;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final scale = road.scale;
+    canvas.drawPath(
+      road.path,
+      Paint()
+        ..color = colors.action
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 6 * scale
+        ..strokeCap = StrokeCap.round,
+    );
+
+    final t = lap.value;
+    if (lap is AnimationController &&
+        (lap as AnimationController).isAnimating) {
+      if (t < 0.7) {
+        // A short soft light, fading in at the van and out at the stop.
+        final run = Curves.easeInOut.transform(t / 0.7);
+        final length = 46 * scale;
+        final head =
+            road.lightStart + (road.stopDistance - road.lightStart) * run;
+        final fade = math.sin(run * math.pi);
+        canvas.drawPath(
+          road.segment(math.max(road.lightStart, head - length), head),
+          Paint()
+            ..color = colors.surface.withValues(alpha: 0.55 * fade)
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = 3 * scale
+            ..strokeCap = StrokeCap.round,
+        );
+      } else {
+        final pulse = Curves.easeOut.transform((t - 0.7) / 0.3);
+        canvas.drawCircle(
+          road.stop,
+          (8 + 10 * pulse) * scale,
+          Paint()..color = colors.action.withValues(alpha: 0.28 * (1 - pulse)),
+        );
+      }
+    }
+
+    canvas.drawCircle(road.stop, 8 * scale, Paint()..color = colors.action);
+    canvas.drawCircle(road.stop, 3 * scale, Paint()..color = colors.surface);
+  }
+
+  @override
+  bool shouldRepaint(covariant _RoadPainter oldDelegate) =>
+      oldDelegate.road.scale != road.scale ||
+      oldDelegate.colors != colors ||
+      oldDelegate.lap != lap;
 }
