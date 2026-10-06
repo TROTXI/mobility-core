@@ -15,12 +15,19 @@ Future<void> _pump(WidgetTester tester, {required bool reduceMotion}) =>
     );
 
 void main() {
-  testWidgets('the van drives onto the road once, then parks', (tester) async {
+  testWidgets('the van drives in, then the card idles on a gentle loop', (
+    tester,
+  ) async {
     await _pump(tester, reduceMotion: false);
     expect(find.bySemanticsLabel('Trotxi van on its route'), findsOneWidget);
     await tester.pump(const Duration(milliseconds: 100));
     expect(tester.hasRunningAnimations, isTrue);
+    // Parked, and still looping several laps later.
     await tester.pump(const Duration(seconds: 2));
+    await tester.pump(const Duration(seconds: 10));
+    expect(tester.hasRunningAnimations, isTrue);
+    // Leaving the screen stops the loop with it.
+    await tester.pumpWidget(const SizedBox());
     expect(tester.hasRunningAnimations, isFalse);
   });
 

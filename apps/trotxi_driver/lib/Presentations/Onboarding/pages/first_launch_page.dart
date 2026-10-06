@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import 'dart:ui' show PathMetric;
 
 import 'package:flutter/material.dart';
@@ -394,9 +395,13 @@ const _vanAsset = 'assets/brand/trotxi-van.png';
 ///
 /// The road is the file's own path (312:58), not a lookalike: the frame is
 /// 350 by 180, and the path and van are scaled with the card so the stop still
-/// lands beside the title on a tablet. The van drives in once and parks where
-/// the file draws it. Looping would pull a driver's eye from the text they are
-/// reading, and with reduce motion on it is simply parked.
+/// lands beside the title on a tablet.
+///
+/// The van drives in once and parks where the file draws it, then the card
+/// idles on a slow loop: the van rises and settles on its suspension, a soft
+/// light runs up the road to the stop, and the stop pulses once. The van does
+/// not drive the whole road on each lap because the top half of the road runs
+/// behind the title. With reduce motion on, nothing moves.
 class _RouteHero extends StatefulWidget {
   const _RouteHero();
 
@@ -404,26 +409,48 @@ class _RouteHero extends StatefulWidget {
   State<_RouteHero> createState() => _RouteHeroState();
 }
 
-class _RouteHeroState extends State<_RouteHero>
-    with SingleTickerProviderStateMixin {
+class _RouteHeroState extends State<_RouteHero> with TickerProviderStateMixin {
   late final AnimationController _drive = AnimationController(
     vsync: this,
     duration: const Duration(milliseconds: 1800),
   );
 
+  /// One lap of the idle loop, started once the van has parked.
+  late final AnimationController _idle = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 4200),
+  );
+
+  @override
+  void initState() {
+    super.initState();
+    _drive.addStatusListener((status) {
+      if (status == AnimationStatus.completed && !_reduceMotion) {
+        _idle.repeat();
+      }
+    });
+  }
+
+  bool get _reduceMotion => MediaQuery.of(context).disableAnimations;
+
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    if (MediaQuery.of(context).disableAnimations) {
+    if (_reduceMotion) {
+      _idle.stop();
+      _idle.value = 0;
       _drive.value = 1;
     } else if (_drive.status == AnimationStatus.dismissed) {
       _drive.forward();
+    } else if (_drive.isCompleted && !_idle.isAnimating) {
+      _idle.repeat();
     }
   }
 
   @override
   void dispose() {
     _drive.dispose();
+    _idle.dispose();
     super.dispose();
   }
 
@@ -447,7 +474,11 @@ class _RouteHeroState extends State<_RouteHero>
                 children: [
                   Positioned.fill(
                     child: CustomPaint(
-                      painter: _RoadPainter(road: road, colors: colors),
+                      painter: _RoadPainter(
+                        road: road,
+                        colors: colors,
+                        lap: _idle,
+                      ),
                     ),
                   ),
                   // The file's own sizes and places (11/600 at 18,18; 19/600 at
@@ -478,14 +509,19 @@ class _RouteHeroState extends State<_RouteHero>
                     ),
                   ),
                   AnimatedBuilder(
-                    animation: _drive,
+                    animation: Listenable.merge([_drive, _idle]),
                     builder: (context, _) {
                       final pose = road.vanAt(
                         Curves.easeOutCubic.transform(_drive.value),
                       );
+                      // Two slow breaths per lap, under a pixel at phone size.
+                      final rise =
+                          math.sin(_idle.value * 4 * math.pi).abs() *
+                          0.9 *
+                          road.scale;
                       return Positioned(
                         left: pose.bottomCentre.dx - pose.size.width / 2,
-                        top: pose.bottomCentre.dy - pose.size.height,
+                        top: pose.bottomCentre.dy - pose.size.height - rise,
                         width: pose.size.width,
                         height: pose.size.height,
                         child: Transform.rotate(
@@ -532,6 +568,7 @@ class _RoadGeometry {
     stop = Offset(_x(309), _y(41));
     _metric = path.computeMetrics().first;
     _parked = _distanceAtX(_parkedX * scale);
+    stopDistance = _distanceAtX(stop.dx);
   }
 
   static const double width = 350;
@@ -547,6 +584,15 @@ class _RoadGeometry {
   late final Offset stop;
   late final PathMetric _metric;
   late final double _parked;
+
+  /// How far along the road the stop is.
+  late final double stopDistance;
+
+  /// How far along the road the parked van's nose is, where the light starts.
+  double get lightStart => _parked + _van.width * scale / 2;
+
+  /// A stretch of road, for the light that runs along it.
+  Path segment(double from, double to) => _metric.extractPath(from, to);
 
   // The path was exported with a 3px stroke margin, 23 left of and 15 above
   // the card's origin.
@@ -581,34 +627,62 @@ class _RoadGeometry {
 }
 
 class _RoadPainter extends CustomPainter {
-  const _RoadPainter({required this.road, required this.colors});
+  _RoadPainter({required this.road, required this.colors, required this.lap})
+    : super(repaint: lap);
 
   final _RoadGeometry road;
   final AppColors colors;
 
+  /// The idle loop: 0 to 0.7 the light runs to the stop, then the stop pulses.
+  final Animation<double> lap;
+
   @override
   void paint(Canvas canvas, Size size) {
+    final scale = road.scale;
     canvas.drawPath(
       road.path,
       Paint()
         ..color = colors.action
         ..style = PaintingStyle.stroke
-        ..strokeWidth = 6 * road.scale
+        ..strokeWidth = 6 * scale
         ..strokeCap = StrokeCap.round,
     );
-    canvas.drawCircle(
-      road.stop,
-      8 * road.scale,
-      Paint()..color = colors.action,
-    );
-    canvas.drawCircle(
-      road.stop,
-      3 * road.scale,
-      Paint()..color = colors.surface,
-    );
+
+    final t = lap.value;
+    if (lap is AnimationController &&
+        (lap as AnimationController).isAnimating) {
+      if (t < 0.7) {
+        // A short soft light, fading in at the van and out at the stop.
+        final run = Curves.easeInOut.transform(t / 0.7);
+        final length = 46 * scale;
+        final head =
+            road.lightStart + (road.stopDistance - road.lightStart) * run;
+        final fade = math.sin(run * math.pi);
+        canvas.drawPath(
+          road.segment(math.max(road.lightStart, head - length), head),
+          Paint()
+            ..color = colors.surface.withValues(alpha: 0.55 * fade)
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = 3 * scale
+            ..strokeCap = StrokeCap.round,
+        );
+      } else {
+        final pulse = Curves.easeOut.transform((t - 0.7) / 0.3);
+        canvas.drawCircle(
+          road.stop,
+          (8 + 10 * pulse) * scale,
+          Paint()..color = colors.action.withValues(alpha: 0.28 * (1 - pulse)),
+        );
+      }
+    }
+
+    canvas.drawCircle(road.stop, 8 * scale, Paint()..color = colors.action);
+    canvas.drawCircle(road.stop, 3 * scale, Paint()..color = colors.surface);
   }
 
   @override
   bool shouldRepaint(covariant _RoadPainter oldDelegate) =>
-      oldDelegate.road.scale != road.scale || oldDelegate.colors != colors;
+      oldDelegate.road.scale != road.scale ||
+      oldDelegate.colors != colors ||
+      oldDelegate.lap != lap;
 }
