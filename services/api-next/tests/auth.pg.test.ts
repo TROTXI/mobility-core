@@ -1462,10 +1462,29 @@ test('OPS-TEAM: invitation ownership, passkey activation, superadmin boundaries 
   const outsider = await operator(f, 'team-regular');
   await register(f, outsider.token);
   assert.equal((await ops(f, 'GET', '/v1/ops/team', outsider.token)).statusCode, 403);
+  const unexplained = await ops(
+    f,
+    'POST',
+    `/v1/ops/team/members/${outsider.id}/access`,
+    owner.token,
+    { action: 'make_superadmin', reason: '  ' },
+  );
+  assert.equal(unexplained.statusCode, 400);
+  assert.equal(unexplained.json().error.code, 'reason_required');
   data(
     await ops(f, 'POST', `/v1/ops/team/members/${outsider.id}/access`, owner.token, {
       action: 'make_superadmin',
+      reason: 'Covers dispatch on weekends',
     }),
+  );
+  assert.equal(
+    (
+      await f.owner.query(
+        "SELECT reason FROM app.ops_team_events WHERE target_id=$1 AND action='make_superadmin'",
+        [outsider.id],
+      )
+    ).rows[0].reason,
+    'Covers dispatch on weekends',
   );
   assert.equal(
     (await f.owner.query('SELECT is_superadmin FROM app.users WHERE id=$1', [outsider.id])).rows[0]
@@ -1814,7 +1833,9 @@ function ops(
   return f.app.inject({
     method,
     url: path,
-    ...(body !== undefined ? { payload: body as object } : {}),
+    ...((method === 'POST' ? withReason(path, body) : body) !== undefined
+      ? { payload: (method === 'POST' ? withReason(path, body) : body) as object }
+      : {}),
     headers: {
       authorization: `Bearer ${token}`,
       'x-trotxi-client': 'ops',
@@ -2089,3 +2110,12 @@ test('PASSKEY-06 riders never meet the administrator passkey flow', async (t) =>
   assert.equal(refused.json().error.code, 'forbidden');
   assert.equal((await f.request('GET', '/v1/me', undefined, rider.accessToken)).statusCode, 200);
 });
+
+/** Ops actions that must say why; tests that do not test the reason supply one. */
+function withReason(url: string, payload: unknown): unknown {
+  if (!/^\/v1\/ops\/(team\/|users\/[^/]+\/passkeys\/reset)/.test(url)) return payload;
+  if (payload === undefined) return { reason: 'Test reason' };
+  if (payload && typeof payload === 'object' && !Array.isArray(payload) && !('reason' in payload))
+    return { ...payload, reason: 'Test reason' };
+  return payload;
+}

@@ -1,7 +1,7 @@
 import { createHash, randomBytes } from 'node:crypto';
 import type { Pool, PoolClient } from 'pg';
 import type { Actor } from '../transport/service.js';
-import { fail, mapDatabaseError } from '../transport/errors.js';
+import { fail, mapDatabaseError, requireReason } from '../transport/errors.js';
 import { beginTransaction } from '../db/transaction.js';
 import { cursorCodec } from '../transport/cursor.js';
 import type { VerifiedIdentity } from './types.js';
@@ -218,6 +218,7 @@ export class OpsTeam {
       )
         fail(400, 'invalid_request', 'Invalid account or invitation identifier.');
       target = target?.toLowerCase();
+      const reason = requireReason(body);
       const keyHash = hash(JSON.stringify([actor.userId, name, target, key]));
       const inputHash = hash(JSON.stringify(body ?? {}));
       const prior = (
@@ -347,8 +348,8 @@ export class OpsTeam {
         [actor.userId, keyHash, inputHash, resultId],
       );
       await c.query(
-        'INSERT INTO app.ops_team_events(actor_user_id,target_id,action) VALUES ($1,$2,$3)',
-        [actor.userId, resultId, name === 'updateOperatorAccess' ? body.action : name],
+        'INSERT INTO app.ops_team_events(actor_user_id,target_id,action,reason) VALUES ($1,$2,$3,$4)',
+        [actor.userId, resultId, name === 'updateOperatorAccess' ? body.action : name, reason],
       );
       await c.query('COMMIT');
       if (mailId) await this.options.email!.sendQueued(mailId).catch(() => undefined);

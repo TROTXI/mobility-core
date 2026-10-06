@@ -3197,6 +3197,7 @@ export interface components {
       enabled: boolean;
       rolloutPercentage: number;
       description: string;
+      reason: string;
     };
     FlagPage: {
       data: components['schemas']['Flag'][];
@@ -3415,6 +3416,7 @@ export interface components {
       apiMajor: 1;
       /** Format: uri */
       storeUrl: string;
+      reason: string;
     };
     MinimumVersionPage: {
       data: components['schemas']['MinimumVersion'][];
@@ -3453,6 +3455,7 @@ export interface components {
     OperatorAccessInput: {
       /** @enum {string} */
       action: 'delete' | 'make_superadmin' | 'make_admin';
+      reason: string;
     };
     OperatorCommandResult: {
       id: string;
@@ -3464,6 +3467,7 @@ export interface components {
       /** Format: email */
       email: string;
       name: string;
+      reason: string;
     };
     OpsAccountErasure: {
       userId: string;
@@ -4329,6 +4333,7 @@ export interface components {
       priceMultiplierBp?: number;
       takeRateBp?: number;
       creditPerRide?: components['schemas']['Money'];
+      reason: string;
     };
     ProfileUpdate: {
       displayName: string;
@@ -4786,6 +4791,7 @@ export interface components {
         direction: 'outbound' | 'return';
         creditPerUnusedRide: components['schemas']['Money'];
       }[];
+      reason: string;
     };
     Stop: {
       id: string;
@@ -5489,7 +5495,11 @@ export interface operations {
       };
       cookie?: never;
     };
-    requestBody?: never;
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['ReasonInput'];
+      };
+    };
     responses: {
       /** @description Success */
       200: {
@@ -5535,7 +5545,11 @@ export interface operations {
       };
       cookie?: never;
     };
-    requestBody?: never;
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['ReasonInput'];
+      };
+    };
     responses: {
       /** @description Success */
       200: {
@@ -6188,7 +6202,11 @@ export interface operations {
       };
       cookie?: never;
     };
-    requestBody?: never;
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['ReasonInput'];
+      };
+    };
     responses: {
       /** @description Success */
       204: {

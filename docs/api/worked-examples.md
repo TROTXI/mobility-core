@@ -487,7 +487,8 @@ Content-Type: application/json
         "currency": "GHS"
       }
     }
-  ]
+  ],
+  "reason": "Seat freed on the 06:30 Kasoa run"
 }
 ```
 

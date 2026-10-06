@@ -7,6 +7,7 @@ import { Empty, ErrorState, LoadingRows, Page, Panel, StatusBadge, when } from '
 import { useQuery } from '../hooks/useQuery';
 import { opsHeaders } from '../api/session';
 import { ActionDialog } from '../components/ActionDialog';
+import { ReasonField } from '../components/ReasonField';
 
 type Operator = components['schemas']['OpsOperator'];
 type Delivery = components['schemas']['OpsDelivery'];
@@ -16,6 +17,7 @@ export function People() {
   const [tab, setTab] = useState<'operators' | 'delivery'>('operators');
   const [channel, setChannel] = useState<'' | 'email' | 'push'>('');
   const [reset, setReset] = useState<Operator | null>(null);
+  const [reason, setReason] = useState('');
   const query = useQuery<{ operators: Operator[]; deliveries: Delivery[] }>(
     async (signal) => {
       const [operators, deliveries] = await Promise.all([
@@ -85,7 +87,10 @@ export function People() {
                       <Button
                         appearance="subtle"
                         disabled={!session.account?.isSuperadmin || row.id === session.account?.id}
-                        onClick={() => setReset(row)}
+                        onClick={() => {
+                          setReason('');
+                          setReset(row);
+                        }}
                       >
                         Reset passkeys
                       </Button>
@@ -153,6 +158,7 @@ export function People() {
         description="This revokes every passkey and session for the selected administrator. They must sign in and register a new passkey."
         confirmLabel="Reset access"
         danger
+        confirmDisabled={!reason.trim()}
         onClose={() => setReset(null)}
         onConfirm={async () => {
           if (!reset) return;
@@ -161,6 +167,7 @@ export function People() {
               path: { id: reset.id },
               header: { ...opsHeaders, 'Idempotency-Key': crypto.randomUUID() },
             },
+            body: { reason: reason.trim() },
           });
           if (response.error) throw new Error(response.error.error.message);
           setReset(null);
@@ -170,6 +177,7 @@ export function People() {
         <p className="dialog-note">
           The selected administrator will be signed out on every device.
         </p>
+        <ReasonField value={reason} onChange={setReason} />
       </ActionDialog>
     </Page>
   );

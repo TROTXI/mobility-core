@@ -692,6 +692,16 @@
             "description": "Required for commuter/driver, absent for ops/worker."
           }
         ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReasonInput"
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
             "description": "Success",
@@ -804,6 +814,16 @@
             "description": "Required for commuter/driver, absent for ops/worker."
           }
         ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReasonInput"
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
             "description": "Success",
@@ -2131,6 +2151,16 @@
             "description": "Required for commuter/driver, absent for ops/worker."
           }
         ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReasonInput"
+              }
+            }
+          }
+        },
         "responses": {
           "204": {
             "description": "Success"
@@ -23193,9 +23223,13 @@
           "description": {
             "type": "string",
             "maxLength": 2000
+          },
+          "reason": {
+            "type": "string",
+            "maxLength": 2000
           }
         },
-        "required": ["enabled", "rolloutPercentage", "description"],
+        "required": ["enabled", "rolloutPercentage", "description", "reason"],
         "additionalProperties": false
       },
       "FlagPage": {
@@ -23994,9 +24028,13 @@
           "storeUrl": {
             "type": "string",
             "format": "uri"
+          },
+          "reason": {
+            "type": "string",
+            "maxLength": 2000
           }
         },
-        "required": ["minSupportedBuild", "apiMajor", "storeUrl"],
+        "required": ["minSupportedBuild", "apiMajor", "storeUrl", "reason"],
         "additionalProperties": false
       },
       "MinimumVersionPage": {
@@ -24127,9 +24165,13 @@
           "action": {
             "type": "string",
             "enum": ["delete", "make_superadmin", "make_admin"]
+          },
+          "reason": {
+            "type": "string",
+            "maxLength": 2000
           }
         },
-        "required": ["action"],
+        "required": ["action", "reason"],
         "additionalProperties": false
       },
       "OperatorCommandResult": {
@@ -24167,9 +24209,13 @@
             "type": "string",
             "minLength": 1,
             "maxLength": 100
+          },
+          "reason": {
+            "type": "string",
+            "maxLength": 2000
           }
         },
-        "required": ["email", "name"],
+        "required": ["email", "name", "reason"],
         "additionalProperties": false
       },
       "OpsAccountErasure": {
@@ -27647,8 +27693,13 @@
                 "$ref": "#/components/schemas/Money"
               }
             ]
+          },
+          "reason": {
+            "type": "string",
+            "maxLength": 2000
           }
         },
+        "required": ["reason"],
         "additionalProperties": false
       },
       "ProfileUpdate": {
@@ -29302,9 +29353,13 @@
               "required": ["direction", "creditPerUnusedRide"],
               "additionalProperties": false
             }
+          },
+          "reason": {
+            "type": "string",
+            "maxLength": 2000
           }
         },
-        "required": ["expiresAt", "coverageStart", "coverageEnd", "price", "credits"],
+        "required": ["expiresAt", "coverageStart", "coverageEnd", "price", "credits", "reason"],
         "additionalProperties": false
       },
       "Stop": {

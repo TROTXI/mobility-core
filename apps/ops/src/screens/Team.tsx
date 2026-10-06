@@ -6,6 +6,7 @@ import { opsHeaders } from '../api/session';
 import { useQuery } from '../hooks/useQuery';
 import { Page, Panel, ErrorState, LoadingRows, Empty, when } from '../components/Page';
 import { ActionDialog } from '../components/ActionDialog';
+import { ReasonField } from '../components/ReasonField';
 import type { components } from '../generated/api';
 
 type Entry = components['schemas']['OpsTeamEntry'];
@@ -24,6 +25,8 @@ function TeamDirectory() {
   const { session, account } = useAuth();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
+  const [inviteReason, setInviteReason] = useState('');
+  const [reason, setReason] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
@@ -53,12 +56,13 @@ function TeamDirectory() {
     try {
       const response = await session.client.POST('/v1/ops/team/invitations', {
         params: { header: { ...opsHeaders, 'Idempotency-Key': commandKey(identity) } },
-        body: { name: name.trim(), email: email.trim().toLowerCase() },
+        body: { name: name.trim(), email: email.trim().toLowerCase(), reason: inviteReason.trim() },
       });
       if (response.error) throw new Error(response.error.error.message);
       keys.current.delete(identity);
       setName('');
       setEmail('');
+      setInviteReason('');
       setCursor(undefined);
       query.retry();
       setNotice(
@@ -78,18 +82,20 @@ function TeamDirectory() {
       path: { id: entry.id },
       header: { ...opsHeaders, 'Idempotency-Key': commandKey(identity) },
     };
+    const body = { reason: reason.trim() };
     const response =
       action === 'resend'
-        ? await session.client.POST('/v1/ops/team/invitations/{id}/resend', { params })
+        ? await session.client.POST('/v1/ops/team/invitations/{id}/resend', { params, body })
         : action === 'cancel'
-          ? await session.client.POST('/v1/ops/team/invitations/{id}/cancel', { params })
+          ? await session.client.POST('/v1/ops/team/invitations/{id}/cancel', { params, body })
           : action === 'reset'
             ? await session.client.POST('/v1/ops/users/{id}/passkeys/reset', {
                 params: { path: { id: entry.id }, header: opsHeaders },
+                body,
               })
             : await session.client.POST('/v1/ops/team/members/{id}/access', {
                 params,
-                body: { action },
+                body: { action, ...body },
               });
     if (response.error) throw new Error(response.error.error.message);
     keys.current.delete(identity);
@@ -144,10 +150,11 @@ function TeamDirectory() {
               onChange={(_, data) => setEmail(data.value)}
             />
           </label>
+          <ReasonField value={inviteReason} onChange={setInviteReason} disabled={busy} />
           <Button
             type="submit"
             appearance="primary"
-            disabled={busy || !name.trim() || !email.trim()}
+            disabled={busy || !name.trim() || !email.trim() || !inviteReason.trim()}
           >
             {busy ? 'Sending invitation…' : 'Send invitation'}
           </Button>
@@ -218,7 +225,10 @@ function TeamDirectory() {
                               <Button
                                 key={action}
                                 appearance="subtle"
-                                onClick={() => setSelected({ entry, action })}
+                                onClick={() => {
+                                  setReason('');
+                                  setSelected({ entry, action });
+                                }}
                               >
                                 {labels[action]}
                               </Button>
@@ -230,14 +240,20 @@ function TeamDirectory() {
                           {entry.state !== 'claimed' && (
                             <Button
                               appearance="subtle"
-                              onClick={() => setSelected({ entry, action: 'resend' })}
+                              onClick={() => {
+                                setReason('');
+                                setSelected({ entry, action: 'resend' });
+                              }}
                             >
                               Resend
                             </Button>
                           )}
                           <Button
                             appearance="subtle"
-                            onClick={() => setSelected({ entry, action: 'cancel' })}
+                            onClick={() => {
+                              setReason('');
+                              setSelected({ entry, action: 'cancel' });
+                            }}
                           >
                             Cancel
                           </Button>
@@ -276,10 +292,11 @@ function TeamDirectory() {
           selected?.action === 'cancel' ||
           selected?.action === 'reset'
         }
+        confirmDisabled={!reason.trim()}
         onClose={() => setSelected(null)}
         onConfirm={apply}
       >
-        {null}
+        <ReasonField value={reason} onChange={setReason} />
       </ActionDialog>
     </Page>
   );

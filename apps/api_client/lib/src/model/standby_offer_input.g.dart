@@ -17,6 +17,8 @@ class _$StandbyOfferInput extends StandbyOfferInput {
   final Money price;
   @override
   final BuiltList<StandbyOfferInputCreditsInner> credits;
+  @override
+  final String reason;
 
   factory _$StandbyOfferInput(
           [void Function(StandbyOfferInputBuilder)? updates]) =>
@@ -27,7 +29,8 @@ class _$StandbyOfferInput extends StandbyOfferInput {
       required this.coverageStart,
       required this.coverageEnd,
       required this.price,
-      required this.credits})
+      required this.credits,
+      required this.reason})
       : super._();
   @override
   StandbyOfferInput rebuild(void Function(StandbyOfferInputBuilder) updates) =>
@@ -45,7 +48,8 @@ class _$StandbyOfferInput extends StandbyOfferInput {
         coverageStart == other.coverageStart &&
         coverageEnd == other.coverageEnd &&
         price == other.price &&
-        credits == other.credits;
+        credits == other.credits &&
+        reason == other.reason;
   }
 
   @override
@@ -56,6 +60,7 @@ class _$StandbyOfferInput extends StandbyOfferInput {
     _$hash = $jc(_$hash, coverageEnd.hashCode);
     _$hash = $jc(_$hash, price.hashCode);
     _$hash = $jc(_$hash, credits.hashCode);
+    _$hash = $jc(_$hash, reason.hashCode);
     _$hash = $jf(_$hash);
     return _$hash;
   }
@@ -67,7 +72,8 @@ class _$StandbyOfferInput extends StandbyOfferInput {
           ..add('coverageStart', coverageStart)
           ..add('coverageEnd', coverageEnd)
           ..add('price', price)
-          ..add('credits', credits))
+          ..add('credits', credits)
+          ..add('reason', reason))
         .toString();
   }
 }
@@ -99,6 +105,10 @@ class StandbyOfferInputBuilder
   set credits(ListBuilder<StandbyOfferInputCreditsInner>? credits) =>
       _$this._credits = credits;
 
+  String? _reason;
+  String? get reason => _$this._reason;
+  set reason(String? reason) => _$this._reason = reason;
+
   StandbyOfferInputBuilder() {
     StandbyOfferInput._defaults(this);
   }
@@ -111,6 +121,7 @@ class StandbyOfferInputBuilder
       _coverageEnd = $v.coverageEnd;
       _price = $v.price.toBuilder();
       _credits = $v.credits.toBuilder();
+      _reason = $v.reason;
       _$v = null;
     }
     return this;
@@ -142,6 +153,8 @@ class StandbyOfferInputBuilder
                 coverageEnd, r'StandbyOfferInput', 'coverageEnd'),
             price: price.build(),
             credits: credits.build(),
+            reason: BuiltValueNullFieldError.checkNotNull(
+                reason, r'StandbyOfferInput', 'reason'),
           );
     } catch (_) {
       late String _$failedField;

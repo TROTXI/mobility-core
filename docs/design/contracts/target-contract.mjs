@@ -227,9 +227,12 @@ named(
 );
 named(
   'OperatorInvitationInput',
-  obj({ email: z.email().max(320), name: z.string().trim().min(1).max(100) }),
+  obj({ email: z.email().max(320), name: z.string().trim().min(1).max(100), reason: note }),
 );
-named('OperatorAccessInput', obj({ action: z.enum(['delete', 'make_superadmin', 'make_admin']) }));
+named(
+  'OperatorAccessInput',
+  obj({ action: z.enum(['delete', 'make_superadmin', 'make_admin']), reason: note }),
+);
 named('OperatorCommandResult', obj({ id }));
 named(
   'OpsTeamEntry',
@@ -631,6 +634,7 @@ named(
     coverageEnd: date,
     price: money,
     credits: z.array(obj({ direction, creditPerUnusedRide: money })).length(2),
+    reason: note,
   }),
 );
 named(
@@ -1226,6 +1230,7 @@ named(
     priceMultiplierBp: z.int().positive().optional(),
     takeRateBp: z.int().min(0).max(10000).optional(),
     creditPerRide: money.optional(),
+    reason: note,
   }),
 );
 named(
@@ -1241,7 +1246,12 @@ named(
 );
 named(
   'FlagEdit',
-  obj({ enabled: z.boolean(), rolloutPercentage: z.number().min(0).max(100), description: note }),
+  obj({
+    enabled: z.boolean(),
+    rolloutPercentage: z.number().min(0).max(100),
+    description: note,
+    reason: note,
+  }),
 );
 named(
   'MinimumVersion',
@@ -1257,7 +1267,7 @@ named(
 );
 named(
   'MinimumVersionEdit',
-  obj({ minSupportedBuild: count, apiMajor: z.literal(1), storeUrl: z.url() }),
+  obj({ minSupportedBuild: count, apiMajor: z.literal(1), storeUrl: z.url(), reason: note }),
 );
 named(
   'PaymentReview',
@@ -1695,14 +1705,14 @@ post(
 post(
   '/v1/ops/team/invitations/{id}/resend',
   'resendOperatorInvitation',
-  null,
+  'ReasonInput',
   'OperatorCommandResult',
   { status: 200, sensitive: true },
 );
 post(
   '/v1/ops/team/invitations/{id}/cancel',
   'cancelOperatorInvitation',
-  null,
+  'ReasonInput',
   'OperatorCommandResult',
   { status: 200 },
 );
@@ -1787,7 +1797,7 @@ post(
     sensitive: true,
   },
 );
-post('/v1/ops/users/{id}/passkeys/reset', 'resetOperatorPasskeys', null, null, {
+post('/v1/ops/users/{id}/passkeys/reset', 'resetOperatorPasskeys', 'ReasonInput', null, {
   status: 204,
   retry: 'credential',
   sensitive: true,

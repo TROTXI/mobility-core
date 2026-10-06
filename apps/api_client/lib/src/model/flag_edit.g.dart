@@ -13,6 +13,8 @@ class _$FlagEdit extends FlagEdit {
   final num rolloutPercentage;
   @override
   final String description;
+  @override
+  final String reason;
 
   factory _$FlagEdit([void Function(FlagEditBuilder)? updates]) =>
       (FlagEditBuilder()..update(updates))._build();
@@ -20,7 +22,8 @@ class _$FlagEdit extends FlagEdit {
   _$FlagEdit._(
       {required this.enabled,
       required this.rolloutPercentage,
-      required this.description})
+      required this.description,
+      required this.reason})
       : super._();
   @override
   FlagEdit rebuild(void Function(FlagEditBuilder) updates) =>
@@ -35,7 +38,8 @@ class _$FlagEdit extends FlagEdit {
     return other is FlagEdit &&
         enabled == other.enabled &&
         rolloutPercentage == other.rolloutPercentage &&
-        description == other.description;
+        description == other.description &&
+        reason == other.reason;
   }
 
   @override
@@ -44,6 +48,7 @@ class _$FlagEdit extends FlagEdit {
     _$hash = $jc(_$hash, enabled.hashCode);
     _$hash = $jc(_$hash, rolloutPercentage.hashCode);
     _$hash = $jc(_$hash, description.hashCode);
+    _$hash = $jc(_$hash, reason.hashCode);
     _$hash = $jf(_$hash);
     return _$hash;
   }
@@ -53,7 +58,8 @@ class _$FlagEdit extends FlagEdit {
     return (newBuiltValueToStringHelper(r'FlagEdit')
           ..add('enabled', enabled)
           ..add('rolloutPercentage', rolloutPercentage)
-          ..add('description', description))
+          ..add('description', description)
+          ..add('reason', reason))
         .toString();
   }
 }
@@ -74,6 +80,10 @@ class FlagEditBuilder implements Builder<FlagEdit, FlagEditBuilder> {
   String? get description => _$this._description;
   set description(String? description) => _$this._description = description;
 
+  String? _reason;
+  String? get reason => _$this._reason;
+  set reason(String? reason) => _$this._reason = reason;
+
   FlagEditBuilder() {
     FlagEdit._defaults(this);
   }
@@ -84,6 +94,7 @@ class FlagEditBuilder implements Builder<FlagEdit, FlagEditBuilder> {
       _enabled = $v.enabled;
       _rolloutPercentage = $v.rolloutPercentage;
       _description = $v.description;
+      _reason = $v.reason;
       _$v = null;
     }
     return this;
@@ -111,6 +122,8 @@ class FlagEditBuilder implements Builder<FlagEdit, FlagEditBuilder> {
               rolloutPercentage, r'FlagEdit', 'rolloutPercentage'),
           description: BuiltValueNullFieldError.checkNotNull(
               description, r'FlagEdit', 'description'),
+          reason: BuiltValueNullFieldError.checkNotNull(
+              reason, r'FlagEdit', 'reason'),
         );
     replace(_$result);
     return _$result;

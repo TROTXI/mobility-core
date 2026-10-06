@@ -9,6 +9,7 @@ import { useQuery } from '../hooks/useQuery';
 import { opsHeaders } from '../api/session';
 import { accraLocalToIso } from '../api/accra-time';
 import { ActionDialog } from '../components/ActionDialog';
+import { ReasonField } from '../components/ReasonField';
 
 type Flag = components['schemas']['Flag'];
 type Minimum = components['schemas']['MinimumVersion'];
@@ -33,6 +34,8 @@ export function Platform() {
   const [minimum, setMinimum] = useState<Minimum | null>(null);
   const [minimumBuild, setMinimumBuild] = useState(1);
   const [storeUrl, setStoreUrl] = useState('');
+  const [flagChange, setFlagChange] = useState<{ row: Flag; enabled: boolean } | null>(null);
+  const [reason, setReason] = useState('');
   const query = useQuery<{ flags: Flag[]; versions: Minimum[] }>(
     async (signal) => {
       const [flags, versions] = await Promise.all([
@@ -94,9 +97,10 @@ export function Platform() {
                     <td>
                       <Switch
                         checked={row.enabled}
-                        onChange={(_, data) =>
-                          void setFlag(session, row, data.checked).then(query.retry)
-                        }
+                        onChange={(_, data) => {
+                          setReason('');
+                          setFlagChange({ row, enabled: data.checked });
+                        }}
                       />
                     </td>
                     <td>{row.rolloutPercentage}%</td>
@@ -140,6 +144,7 @@ export function Platform() {
                       <Button
                         appearance="subtle"
                         onClick={() => {
+                          setReason('');
                           setMinimum(row);
                           setMinimumBuild(row.minSupportedBuild);
                           setStoreUrl(row.storeUrl);
@@ -163,6 +168,7 @@ export function Platform() {
         title="Update minimum supported build"
         description="Clients below this build receive an update-required response. Confirm the store URL before raising the floor."
         confirmLabel="Update floor"
+        confirmDisabled={!reason.trim() || !storeUrl.trim() || minimumBuild < 1}
         onClose={() => setMinimum(null)}
         onConfirm={async () => {
           if (!minimum) return;
@@ -175,7 +181,7 @@ export function Platform() {
                 'If-Match': minimum.editToken,
               },
             },
-            body: { minSupportedBuild: minimumBuild, apiMajor: 1, storeUrl },
+            body: { minSupportedBuild: minimumBuild, apiMajor: 1, storeUrl, reason: reason.trim() },
           });
           if (response.error) throw new Error(response.error.error.message);
           query.retry();
@@ -198,6 +204,24 @@ export function Platform() {
             onChange={(event) => setStoreUrl(event.target.value)}
           />
         </label>
+        <ReasonField value={reason} onChange={setReason} />
+      </ActionDialog>
+      <ActionDialog
+        open={Boolean(flagChange)}
+        title={
+          flagChange ? `${flagChange.enabled ? 'Turn on' : 'Turn off'} ${flagChange.row.key}` : ''
+        }
+        description={flagChange?.row.description}
+        confirmLabel={flagChange?.enabled ? 'Turn on' : 'Turn off'}
+        confirmDisabled={!reason.trim()}
+        onClose={() => setFlagChange(null)}
+        onConfirm={async () => {
+          if (!flagChange) return;
+          await setFlag(session, flagChange.row, flagChange.enabled, reason.trim());
+          query.retry();
+        }}
+      >
+        <ReasonField value={reason} onChange={setReason} />
       </ActionDialog>
     </Page>
   );
@@ -272,13 +296,19 @@ async function setFlag(
   session: ReturnType<typeof useAuth>['session'],
   row: Flag,
   enabled: boolean,
+  reason: string,
 ) {
   const response = await session.client.PUT('/v1/ops/flags/{key}', {
     params: {
       path: { key: row.key },
       header: { ...opsHeaders, 'Idempotency-Key': crypto.randomUUID(), 'If-Match': row.editToken },
     },
-    body: { enabled, rolloutPercentage: row.rolloutPercentage, description: row.description },
+    body: {
+      enabled,
+      rolloutPercentage: row.rolloutPercentage,
+      description: row.description,
+      reason,
+    },
   });
   if (response.error) throw new Error(response.error.error.message);
 }

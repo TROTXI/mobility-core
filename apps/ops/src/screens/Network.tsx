@@ -11,6 +11,7 @@ import { ActionDialog } from '../components/ActionDialog';
 import { LiveMap } from '../components/LiveMap';
 import { buildRouteGeometry, type RoutePoint } from './routeGeometry';
 import { FareJourneyFields, type FareJourney } from './FareJourneyFields';
+import { ReasonField } from '../components/ReasonField';
 
 type Route = components['schemas']['Route'];
 type Stop = components['schemas']['Stop'];
@@ -1255,6 +1256,7 @@ export function Network() {
                 onChange={(event) => setCreditPerRideGhs(event.target.value)}
               />
             </label>
+            <ReasonField value={reason} onChange={setReason} />
           </>
         )}
         {dialog === 'slot-create' && (
@@ -1430,6 +1432,7 @@ export function Network() {
       });
       if (response.error) throw new Error(response.error.error.message);
     } else if (dialog === 'pricing-edit' && selectedPricing) {
+      if (!reason.trim()) throw new Error('Give a reason for this change.');
       const response = await session.client.PATCH('/v1/ops/plan-pricing/{plan}', {
         params: {
           path: { plan: selectedPricing.plan },
@@ -1446,6 +1449,7 @@ export function Network() {
             amountMinor: Math.round(Number(creditPerRideGhs) * 100),
             currency: 'GHS',
           },
+          reason: reason.trim(),
         },
       });
       if (response.error) throw new Error(response.error.error.message);
