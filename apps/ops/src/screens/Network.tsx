@@ -1146,6 +1146,10 @@ export function Network() {
         )}
         {dialog === 'fare-create' && (
           <>
+            <p className="dialog-note">
+              All fields are required. The reason is kept with the fare so every price change can be
+              traced.
+            </p>
             <label>
               Route
               <select
@@ -1193,8 +1197,14 @@ export function Network() {
               />
             </label>
             <label>
-              Note
-              <textarea rows={3} value={note} onChange={(event) => setNote(event.target.value)} />
+              Reason
+              <textarea
+                rows={3}
+                required
+                placeholder="Why this fare, for the record"
+                value={note}
+                onChange={(event) => setNote(event.target.value)}
+              />
             </label>
           </>
         )}
@@ -1407,13 +1417,16 @@ export function Network() {
         !fareJourney.dropoffOccurrenceId
       )
         throw new Error('Choose the route version, pickup and drop-off.');
+      if (!(Number(amountGhs) > 0)) throw new Error('Enter the fare in GHS.');
+      if (!effectiveFrom) throw new Error('Choose when the fare takes effect.');
+      if (!note.trim()) throw new Error('Give a reason for this fare.');
       const response = await session.client.POST('/v1/ops/routes/{id}/fares', {
         params: { path: { id: routeId }, header: mutation },
         body: {
           ...fareJourney,
           amount: { amountMinor: Math.round(Number(amountGhs) * 100), currency: 'GHS' },
           effectiveFrom: toIso(effectiveFrom),
-          note,
+          note: note.trim(),
         },
       });
       if (response.error) throw new Error(response.error.error.message);

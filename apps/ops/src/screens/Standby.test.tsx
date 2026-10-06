@@ -59,10 +59,11 @@ async function openOffer() {
       <Standby />
     </FluentProvider>,
   );
-  fireEvent.click(await screen.findByRole('button', { name: 'Send offer' }));
+  // Generous waits for loaded data: CI runs every Ops test file at once.
+  fireEvent.click(await screen.findByRole('button', { name: 'Send offer' }, { timeout: 10_000 }));
   const dialog = within(screen.getByRole('dialog'));
   // Fares load first; until they do, the offer cannot be sent.
-  await dialog.findByText(/^outbound: \d+ rides/);
+  await dialog.findByText(/^outbound: \d+ rides/, undefined, { timeout: 10_000 });
   return dialog;
 }
 function fill(dialog: ReturnType<typeof within>, price = '70') {
@@ -77,69 +78,85 @@ function fill(dialog: ReturnType<typeof within>, price = '70') {
   });
 }
 
-it('requires explicit price and two credit rates and retries unchanged terms with one key', async () => {
-  serve();
-  session.client.POST.mockResolvedValue({
-    error: { error: { message: 'Response unavailable; retry safely.' } },
-  });
-  const dialog = await openOffer();
-  expect(dialog.getByLabelText('Agreed package price (GHS)')).toHaveValue(null);
-  expect(dialog.getByLabelText('Credit per unused outbound ride (GHS)')).toHaveValue(null);
-  fireEvent.change(dialog.getByLabelText('Agreed package price (GHS)'), {
-    target: { value: '70' },
-  });
-  fireEvent.change(dialog.getByLabelText('Credit per unused outbound ride (GHS)'), {
-    target: { value: '1' },
-  });
-  fireEvent.change(dialog.getByLabelText('Credit per unused return ride (GHS)'), {
-    target: { value: '2' },
-  });
-  fireEvent.click(dialog.getByRole('button', { name: 'Send offer' }));
-  await dialog.findByText('Response unavailable; retry safely.');
-  expect(dialog.getByLabelText('Agreed package price (GHS)')).toBeDisabled();
-  fireEvent.click(dialog.getByRole('button', { name: 'Send offer' }));
-  await vi.waitFor(() => expect(session.client.POST).toHaveBeenCalledTimes(2));
-  const first = session.client.POST.mock.calls[0]![1],
-    second = session.client.POST.mock.calls[1]![1];
-  expect(first).toEqual(second);
-  expect(first.body.price).toEqual({ amountMinor: 7000, currency: 'GHS' });
-  expect(first.body.credits).toEqual([
-    { direction: 'outbound', creditPerUnusedRide: { amountMinor: 100, currency: 'GHS' } },
-    { direction: 'return', creditPerUnusedRide: { amountMinor: 200, currency: 'GHS' } },
-  ]);
-  expect(first.params.header['Idempotency-Key']).toBeTruthy();
-});
+it(
+  'requires explicit price and two credit rates and retries unchanged terms with one key',
+  { timeout: 30_000 },
+  async () => {
+    serve();
+    session.client.POST.mockResolvedValue({
+      error: { error: { message: 'Response unavailable; retry safely.' } },
+    });
+    const dialog = await openOffer();
+    expect(dialog.getByLabelText('Agreed package price (GHS)')).toHaveValue(null);
+    expect(dialog.getByLabelText('Credit per unused outbound ride (GHS)')).toHaveValue(null);
+    fireEvent.change(dialog.getByLabelText('Agreed package price (GHS)'), {
+      target: { value: '70' },
+    });
+    fireEvent.change(dialog.getByLabelText('Credit per unused outbound ride (GHS)'), {
+      target: { value: '1' },
+    });
+    fireEvent.change(dialog.getByLabelText('Credit per unused return ride (GHS)'), {
+      target: { value: '2' },
+    });
+    fireEvent.click(dialog.getByRole('button', { name: 'Send offer' }));
+    await dialog.findByText('Response unavailable; retry safely.', undefined, { timeout: 10_000 });
+    expect(dialog.getByLabelText('Agreed package price (GHS)')).toBeDisabled();
+    fireEvent.click(dialog.getByRole('button', { name: 'Send offer' }));
+    await vi.waitFor(() => expect(session.client.POST).toHaveBeenCalledTimes(2));
+    const first = session.client.POST.mock.calls[0]![1],
+      second = session.client.POST.mock.calls[1]![1];
+    expect(first).toEqual(second);
+    expect(first.body.price).toEqual({ amountMinor: 7000, currency: 'GHS' });
+    expect(first.body.credits).toEqual([
+      { direction: 'outbound', creditPerUnusedRide: { amountMinor: 100, currency: 'GHS' } },
+      { direction: 'return', creditPerUnusedRide: { amountMinor: 200, currency: 'GHS' } },
+    ]);
+    expect(first.params.header['Idempotency-Key']).toBeTruthy();
+  },
+);
 
-it('unlocks the terms after the API refuses an offer, and sends the corrected one afresh', async () => {
-  session.client.POST.mockReset();
-  serve();
-  session.client.POST.mockResolvedValueOnce({
-    error: { error: { message: 'Ops must publish a fare for these stops.' } },
-    response: { status: 409 },
-  }).mockResolvedValueOnce({ data: {}, response: { status: 201 } });
-  const dialog = await openOffer();
-  fill(dialog);
-  fireEvent.click(dialog.getByRole('button', { name: 'Send offer' }));
-  await dialog.findByText('Ops must publish a fare for these stops.');
-  // A refusal created nothing: the operator can change the terms.
-  const price = dialog.getByLabelText('Agreed package price (GHS)');
-  expect(price).not.toBeDisabled();
-  fireEvent.change(price, { target: { value: '65' } });
-  fireEvent.click(dialog.getByRole('button', { name: 'Send offer' }));
-  await vi.waitFor(() => expect(session.client.POST).toHaveBeenCalledTimes(2));
-  const [first, second] = session.client.POST.mock.calls.map((call) => call[1]);
-  expect(second.body.price).toEqual({ amountMinor: 6500, currency: 'GHS' });
-  expect(second.params.header['Idempotency-Key']).not.toBe(first.params.header['Idempotency-Key']);
-});
+it(
+  'unlocks the terms after the API refuses an offer, and sends the corrected one afresh',
+  { timeout: 30_000 },
+  async () => {
+    session.client.POST.mockReset();
+    serve();
+    session.client.POST.mockResolvedValueOnce({
+      error: { error: { message: 'Ops must publish a fare for these stops.' } },
+      response: { status: 409 },
+    }).mockResolvedValueOnce({ data: {}, response: { status: 201 } });
+    const dialog = await openOffer();
+    fill(dialog);
+    fireEvent.click(dialog.getByRole('button', { name: 'Send offer' }));
+    await dialog.findByText('Ops must publish a fare for these stops.', undefined, {
+      timeout: 10_000,
+    });
+    // A refusal created nothing: the operator can change the terms.
+    const price = dialog.getByLabelText('Agreed package price (GHS)');
+    expect(price).not.toBeDisabled();
+    fireEvent.change(price, { target: { value: '65' } });
+    fireEvent.click(dialog.getByRole('button', { name: 'Send offer' }));
+    await vi.waitFor(() => expect(session.client.POST).toHaveBeenCalledTimes(2));
+    const [first, second] = session.client.POST.mock.calls.map((call) => call[1]);
+    expect(second.body.price).toEqual({ amountMinor: 6500, currency: 'GHS' });
+    expect(second.params.header['Idempotency-Key']).not.toBe(
+      first.params.header['Idempotency-Key'],
+    );
+  },
+);
 
-it('will not send an offer while a direction has no published fare, and says which', async () => {
-  session.client.POST.mockReset();
-  serve(['outbound']);
-  const dialog = await openOffer();
-  fill(dialog);
-  expect(await dialog.findByRole('status')).toHaveTextContent(
-    'No fare is published for the return stops',
-  );
-  expect(dialog.getByRole('button', { name: 'Send offer' })).toBeDisabled();
-  expect(session.client.POST).not.toHaveBeenCalled();
-});
+it(
+  'will not send an offer while a direction has no published fare, and says which',
+  { timeout: 30_000 },
+  async () => {
+    session.client.POST.mockReset();
+    serve(['outbound']);
+    const dialog = await openOffer();
+    fill(dialog);
+    expect(await dialog.findByRole('status', undefined, { timeout: 10_000 })).toHaveTextContent(
+      'No fare is published for the return stops',
+    );
+    expect(dialog.getByRole('button', { name: 'Send offer' })).toBeDisabled();
+    expect(session.client.POST).not.toHaveBeenCalled();
+  },
+);

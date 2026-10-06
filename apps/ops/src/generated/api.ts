@@ -3171,7 +3171,7 @@ export interface components {
       amount: components['schemas']['Money'];
       /** Format: date-time */
       effectiveFrom: string;
-      note?: string;
+      note: string;
       patternVersionId?: string;
       pickupOccurrenceId?: string;
       dropoffOccurrenceId?: string;

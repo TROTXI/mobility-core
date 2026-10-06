@@ -461,12 +461,15 @@ export class Pricing {
         fail(409, 'fare_conflict', 'A later effective date than the fare in force is required.');
       await c.query('UPDATE app.route_fares SET effective_to=$2 WHERE id=$1', [open.id, from]);
     }
+    // Every fare change carries its reason; blank text is not one.
+    const note = typeof input.note === 'string' ? input.note.trim() : '';
+    if (!note) fail(400, 'reason_required', 'Give a reason for this fare.');
     const row = (
       await c.query(
         `INSERT INTO app.route_fares(route_id,amount_pesewas,effective_from,note,created_by,command_id,
          pattern_version_id,pickup_occurrence_id,dropoff_occurrence_id)
          VALUES ($1,$2,$3,$4,$5,gen_random_uuid(),$6,$7,$8) RETURNING *`,
-        [routeId, amount, from, input.note ?? null, actor.userId, version, pickup, dropoff],
+        [routeId, amount, from, note, actor.userId, version, pickup, dropoff],
       )
     ).rows[0];
     return {

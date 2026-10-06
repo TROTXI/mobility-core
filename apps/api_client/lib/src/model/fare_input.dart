@@ -27,7 +27,7 @@ abstract class FareInput implements Built<FareInput, FareInputBuilder> {
   DateTime get effectiveFrom;
 
   @BuiltValueField(wireName: r'note')
-  String? get note;
+  String get note;
 
   @BuiltValueField(wireName: r'patternVersionId')
   String? get patternVersionId;
@@ -71,13 +71,11 @@ class _$FareInputSerializer implements PrimitiveSerializer<FareInput> {
       object.effectiveFrom,
       specifiedType: const FullType(DateTime),
     );
-    if (object.note != null) {
-      yield r'note';
-      yield serializers.serialize(
-        object.note,
-        specifiedType: const FullType(String),
-      );
-    }
+    yield r'note';
+    yield serializers.serialize(
+      object.note,
+      specifiedType: const FullType(String),
+    );
     if (object.patternVersionId != null) {
       yield r'patternVersionId';
       yield serializers.serialize(

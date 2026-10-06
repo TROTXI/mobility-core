@@ -122,6 +122,7 @@ async function fixture(t: TestContext, target = true, requireOffer = false, serv
       payload: {
         amount: { amountMinor: amount, currency: 'GHS' },
         effectiveFrom: effectiveFrom.toISOString(),
+        note: 'Test fare',
       },
     });
   return {
@@ -161,6 +162,7 @@ async function offeredFixture(t: TestContext, futureService = false) {
           dropoffOccurrenceId: leg.dropoffOccurrenceId,
           amount: { amountMinor: leg.direction === 'outbound' ? 500 : 800, currency: 'GHS' },
           effectiveFrom: '2026-01-01T00:00:00Z',
+          note: 'Test fare',
         },
       }),
       201,
@@ -217,6 +219,7 @@ test('OFFER-01 phone verification and Ops offer are required; checkout freezes e
         dropoffOccurrenceId: firstLeg.dropoffOccurrenceId,
         amount: { amountMinor: 900, currency: 'GHS' },
         effectiveFrom: new Date().toISOString(),
+        note: 'Test fare',
       },
     }),
     201,
@@ -1036,6 +1039,7 @@ async function fareCorridor(f: Awaited<ReturnType<typeof fixture>>) {
     dropoffOccurrenceId: occurrences[b],
     amount: { amountMinor: amount, currency: 'GHS' },
     effectiveFrom: from,
+    note: 'Test fare',
   });
   const publish = (body: unknown, key?: string) =>
     f.call('POST', `/v1/ops/routes/${route}/fares`, { who: 'ops', payload: body, key });
@@ -1439,6 +1443,7 @@ test('PRC-07 a pricing command replays instead of applying twice', async (t) => 
   const payload = {
     amount: { amountMinor: 700, currency: 'GHS' },
     effectiveFrom: new Date(Date.now() - 3600_000).toISOString(),
+    note: 'Test fare',
   };
   const send = () =>
     f.call('POST', `/v1/ops/routes/${f.input.routeId}/fares`, { who: 'ops', payload, key });
@@ -1795,6 +1800,7 @@ test('AR-04 a changed fare stops the renewal for a new Ops offer without chargin
         dropoffOccurrenceId: leg.dropoffOccurrenceId,
         amount: { amountMinor: 650, currency: 'GHS' },
         effectiveFrom: new Date().toISOString(),
+        note: 'Test fare',
       },
     }),
     201,
@@ -2142,4 +2148,20 @@ test('AR-13 Ops sees the renewals that need a person, soonest first, and riders 
   const paged = await list({ filter: 'all', limit: '1' });
   assert.equal(paged.data.length, 1);
   assert.equal(paged.page.nextCursor, null);
+});
+
+test('PAIR-05 every fare needs a reason; blank text is refused and the reason is kept', async (t) => {
+  const f = await fixture(t);
+  const p = await fareCorridor(f);
+  const { note: _omitted, ...withoutReason } = p.payload(1, 2, 500);
+  const missing = await p.publish(withoutReason);
+  assert.equal(missing.statusCode, 400, missing.body);
+  const blank = await p.publish({ ...p.payload(1, 2, 500), note: '   ' });
+  assert.equal(blank.statusCode, 400, blank.body);
+  assert.equal(blank.json().error.code, 'reason_required');
+  const fare = expectStatus(
+    await p.publish({ ...p.payload(1, 2, 500), note: '  Pilot price  ' }),
+    201,
+  );
+  assert.equal(fare.note, 'Pilot price');
 });
