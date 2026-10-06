@@ -3,6 +3,7 @@ import type { Pool, PoolClient } from 'pg';
 import { z } from 'zod';
 import { EmailSendError, type EmailSender, type EmailMessage } from './resend.js';
 import { ghanaTime } from './format.js';
+import { renderHtml, renderText, type EmailContent } from './layout.js';
 import type { RenewalNotice } from '../payments/auto-renewal.js';
 
 // A rider who has already paid for the period that follows has renewed. The
@@ -10,6 +11,9 @@ import type { RenewalNotice } from '../payments/auto-renewal.js';
 const RENEWED = `EXISTS(SELECT 1 FROM app.billing_periods n WHERE n.membership_id=b.membership_id
   AND n.id<>b.id AND n.state='open' AND n.starts_at>=b.effective_ends_at)`;
 // A period set to renew by card gets renewal mail instead of "renew it yourself".
+/** Pesewas as Ghana cedis, e.g. GHS 1,260.00. */
+const ghs = (pesewas: number) =>
+  `GHS ${(pesewas / 100).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 const AUTO_RENEWING = `EXISTS(SELECT 1 FROM app.auto_renewals r WHERE r.period_id=b.id
   AND r.state IN ('scheduled','reminded','charging','failed'))`;
 
@@ -19,6 +23,8 @@ const payloadSchema = z
     to: z.email().max(320),
     subject: z.string().min(1).max(200),
     text: z.string().min(1).max(8000),
+    // Absent on messages queued before HTML mail; those send as text only.
+    html: z.string().min(1).max(100000).optional(),
     periodEnd: z.iso.datetime().optional(),
     // Credential mail only: which credential version the message describes.
     driverId: z.uuid().optional(),
@@ -95,6 +101,8 @@ export class TransactionalEmail {
       encryptionKey: Buffer;
       sender: EmailSender;
       staging: boolean;
+      /** Public web origin serving email images (the Ops site). */
+      assetOrigin?: string;
     },
   ) {
     if (options.encryptionKey.length !== 32) throw new Error('Email requires a 32-byte root key');
@@ -128,7 +136,7 @@ export class TransactionalEmail {
     kind: Kind,
     source: string,
     email: string | null,
-    text: string,
+    content: EmailContent,
     subject: string,
     suffix = '',
     extra: { periodEnd?: string; driverId?: string; pinVersion?: number; expiresAt?: Date } = {},
@@ -138,16 +146,23 @@ export class TransactionalEmail {
     // Staging mail says so, in words that fit what the message is about.
     const stagingNote =
       kind === 'ops_invitation'
-        ? 'This invitation is for Trotxi staging, not production.\n\n'
+        ? 'This invitation is for Trotxi staging, not production.'
         : kind.startsWith('driver_')
-          ? 'This is a Trotxi staging test account. It is not for live operations.\n\n'
-          : 'This is a Trotxi staging test. No real payment was taken.\n\n';
+          ? 'This is a Trotxi staging test account. It is not for live operations.'
+          : 'This is a Trotxi staging test. No real payment was taken.';
+    const theme = {
+      ...(this.options.staging ? { stagingNote } : {}),
+      ...(this.options.assetOrigin
+        ? { logoUrl: new URL('/email/trotxi-logo-white.png', this.options.assetOrigin).href }
+        : {}),
+    };
     const { expiresAt, ...bound } = extra;
     const payload = payloadSchema.parse({
       from: 'Trotxi <hello@notifications.trotxi.com>',
       to: email,
       subject: `${this.options.staging ? '[STAGING TEST] ' : ''}${subject}`,
-      text: `${this.options.staging ? stagingNote : ''}${text}`,
+      text: renderText(content, theme),
+      html: renderHtml(content, theme),
       ...Object.fromEntries(Object.entries(bound).filter(([, value]) => value !== undefined)),
     });
     const inserted = await c.query(
@@ -175,30 +190,37 @@ export class TransactionalEmail {
    */
   queueCredential = async (c: PoolClient, mail: CredentialMail): Promise<string> => {
     const reset = mail.kind === 'driver_pin_reset';
-    const text = [
-      `Hello ${mail.name},`,
-      '',
-      reset
-        ? 'Trotxi operations has reset your driver PIN. Your previous PIN no longer works, and any device that was signed in has been signed out.'
-        : 'Trotxi operations has set up your driver account.',
-      '',
-      'Sign in to the Trotxi Driver app with:',
-      `Driver code: ${mail.code}`,
-      `Temporary PIN: ${mail.pin}`,
-      '',
-      `This temporary PIN works until ${ghanaTime(mail.expiresAt)}. After signing in, the app asks you to choose your own six-digit PIN before you can start work. Operations cannot see the PIN you choose.`,
-      '',
-      'Keep this email private and delete it once you have set your own PIN. Trotxi will never ask you to reply with your PIN.',
-      '',
-      'If the temporary PIN has expired, or you did not expect this email, contact Trotxi operations and ask for a new temporary PIN.',
-    ].join('\n');
+    const content: EmailContent = {
+      preview: reset
+        ? 'Your driver PIN was reset. Sign in with the temporary PIN inside.'
+        : 'Your driver account is ready. Your sign-in details are inside.',
+      heading: reset ? 'Your driver PIN has been reset' : 'Your driver account is ready',
+      greeting: `Hello ${mail.name},`,
+      paragraphs: [
+        reset
+          ? 'Trotxi operations has reset your driver PIN. Your previous PIN no longer works, and any device that was signed in has been signed out.'
+          : 'Trotxi operations has set up your driver account.',
+        'Sign in to the Trotxi Driver app with:',
+      ],
+      highlight: [
+        ['Driver code', mail.code],
+        ['Temporary PIN', mail.pin],
+      ],
+      closing: [
+        `This temporary PIN works until ${ghanaTime(mail.expiresAt)}. After signing in, the app asks you to choose your own six-digit PIN before you can start work. Operations cannot see the PIN you choose.`,
+      ],
+      notes: [
+        'Keep this email private and delete it once you have set your own PIN. Trotxi will never ask you to reply with your PIN.',
+        'If the temporary PIN has expired, or you did not expect this email, contact Trotxi operations and ask for a new temporary PIN.',
+      ],
+    };
     const id = await this.enqueue(
       c,
       mail.userId,
       mail.kind,
       mail.commandId,
       mail.to,
-      text,
+      content,
       reset ? 'Your new temporary Trotxi driver PIN' : 'Your Trotxi driver sign-in details',
       '',
       { driverId: mail.driverId, pinVersion: mail.pinVersion, expiresAt: mail.expiresAt },
@@ -228,7 +250,19 @@ export class TransactionalEmail {
       'ops_invitation',
       mail.id,
       mail.email,
-      `Hello ${mail.name},\n\nYou have been invited to Trotxi Operations. Open ${link.href}\n\nSign in with the Google account for ${mail.email}, then create a passkey to activate your administrator access. No password or PIN is provided.\n\nThis invitation expires on ${ghanaTime(mail.expiresAt)} and works only with the invited account. If you did not expect it, ignore this email or contact your organisation's superadmin.`,
+      {
+        preview: 'You have been invited to Trotxi Operations.',
+        heading: 'You are invited to Trotxi Operations',
+        greeting: `Hello ${mail.name},`,
+        paragraphs: ['You have been invited to Trotxi Operations.'],
+        action: { label: 'Accept invitation', url: link.href },
+        closing: [
+          `Sign in with the Google account for ${mail.email}, then create a passkey to activate your administrator access. No password or PIN is provided.`,
+        ],
+        notes: [
+          `This invitation expires on ${ghanaTime(mail.expiresAt)} and works only with the invited account. If you did not expect it, ignore this email or contact your organisation's superadmin.`,
+        ],
+      },
       'Your invitation to Trotxi Operations',
       `:${mail.version}`,
       { expiresAt: mail.expiresAt },
@@ -258,7 +292,29 @@ export class TransactionalEmail {
       'subscription_active',
       purchaseId,
       row.email,
-      `${upcoming ? 'Your upcoming subscription is paid. Rides become available when coverage starts.' : 'Your subscription is active.'}\nRides included: ${row.rides_granted}\nPayment: GHS ${(row.cash_due_pesewas / 100).toFixed(2)}\nRide Credit applied: GHS ${(row.applied_credit_pesewas / 100).toFixed(2)}\nCoverage starts: ${ghanaTime(row.starts_at)}\nCoverage ends: ${ghanaTime(row.effective_ends_at)}\n${row.renewing_card ? `Auto-renewal is on. Your ${row.renewing_card} will be charged for the next period from 3 days before this one ends. You can turn this off in the app at any time.` : 'Renewal is manual; you will not be automatically charged.'}`,
+      {
+        preview: upcoming
+          ? `Your subscription is paid. Coverage starts ${ghanaTime(row.starts_at)}.`
+          : `Your subscription is active until ${ghanaTime(row.effective_ends_at)}.`,
+        heading: upcoming ? 'Your upcoming subscription is paid' : 'Your subscription is active',
+        paragraphs: [
+          upcoming
+            ? 'Thank you for subscribing to Trotxi. Your rides become available when coverage starts.'
+            : 'Thank you for subscribing to Trotxi. Your rides are ready to use.',
+        ],
+        details: [
+          ['Rides included', String(row.rides_granted)],
+          ['Payment', ghs(row.cash_due_pesewas)],
+          ['Ride Credit applied', ghs(row.applied_credit_pesewas)],
+          ['Coverage starts', ghanaTime(row.starts_at)],
+          ['Coverage ends', ghanaTime(row.effective_ends_at)],
+        ],
+        closing: [
+          row.renewing_card
+            ? `Auto-renewal is on. Your ${row.renewing_card} will be charged for the next period from 3 days before this one ends. You can turn this off in the app at any time.`
+            : 'Renewal is manual; you will not be automatically charged.',
+        ],
+      },
       upcoming ? 'Your upcoming Trotxi subscription is paid' : 'Your Trotxi subscription is active',
     );
   };
@@ -272,7 +328,7 @@ export class TransactionalEmail {
     ).rows[0];
     if (!user) return undefined;
     const card = n.card ? `${n.card.brand} ending ${n.card.last4}` : 'saved card';
-    const money = (pesewas: number) => `GHS ${(pesewas / 100).toFixed(2)}`;
+    const money = ghs;
     const ends = ghanaTime(n.periodEnd);
     const next = n.lastAttempt
       ? `That was the last attempt. Your coverage ends on ${ends}; to keep riding, open Trotxi and request a new offer.`
@@ -296,13 +352,19 @@ export class TransactionalEmail {
               'Your Trotxi renewal needs a new offer',
               `Your coverage ends on ${ends}. We did not renew it automatically because ${n.reason === 'fare_changed' ? 'the fare for your journeys has changed' : 'the service for your journeys has changed'}, and we only renew on the terms you agreed to. No payment has been taken.\nOpen Trotxi to request a new offer.`,
             ];
+    const paragraphs = text.split('\n');
     return this.enqueue(
       c,
       n.userId,
       n.kind,
       n.periodId,
       user.email,
-      text,
+      {
+        preview: paragraphs[0]!,
+        // The logo already says Trotxi; the heading need not repeat it.
+        heading: subject.replace(' Trotxi ', ' '),
+        paragraphs,
+      },
       subject,
       n.kind === 'renewal_failed' ? `:${n.attempt ?? 0}` : '',
       // Outlives neither the period it describes nor the outbox's 7-day limit.
@@ -323,7 +385,14 @@ export class TransactionalEmail {
       'erasure_requested',
       userId,
       email,
-      'Your account-deletion request has been received and sign-in has been disabled. External cleanup may still be processing. Required accounting records are retained; this message is not a claim that every retained record has been deleted.',
+      {
+        preview: 'We received your request to delete your Trotxi account.',
+        heading: 'We received your deletion request',
+        paragraphs: [
+          'Your account-deletion request has been received and sign-in has been disabled.',
+          'External cleanup may still be processing. Required accounting records are retained; this message is not a claim that every retained record has been deleted.',
+        ],
+      },
       'Your Trotxi deletion request',
     );
   };
@@ -373,7 +442,15 @@ export class TransactionalEmail {
             'subscription_expiring',
             row.id,
             user.email,
-            `Your current coverage ends on ${ghanaTime(p.effective_ends_at)}. Open Trotxi to review your membership and renew. Renewal is manual; no automatic charge will be taken.`,
+            {
+              preview: `Your coverage ends on ${ghanaTime(p.effective_ends_at)}.`,
+              heading: 'Your coverage ends soon',
+              paragraphs: [
+                `Your current coverage ends on ${ghanaTime(p.effective_ends_at)}. Open Trotxi to review your membership and renew.`,
+              ],
+              details: [['Coverage ends', ghanaTime(p.effective_ends_at)]],
+              closing: ['Renewal is manual; no automatic charge will be taken.'],
+            },
             'Your Trotxi coverage ends soon',
             `:${p.epoch}`,
             { periodEnd: p.effective_ends_at.toISOString() },

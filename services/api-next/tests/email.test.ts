@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { ResendSender, EmailSendError } from '../src/notifications/resend.js';
 import { jobFailed } from '../src/runtime/job-outcome.js';
 import { ghanaTime } from '../src/notifications/format.js';
+import { renderHtml, renderText } from '../src/notifications/layout.js';
 
 const message = {
   from: 'Trotxi <hello@notifications.trotxi.com>',
@@ -66,4 +67,29 @@ test('EMAIL-U3 worker marks retries and unknown outcomes non-successful instead 
 test('EMAIL-U4 message times read as Ghana local dates, not machine timestamps', () => {
   assert.equal(ghanaTime(new Date('2026-10-31T00:00:00.000Z')), 'Sat 31 Oct 2026, 00:00 GMT');
   assert.equal(ghanaTime(new Date('2026-01-05T17:45:59.999Z')), 'Mon 5 Jan 2026, 17:45 GMT');
+});
+
+test('EMAIL-U5 branded mail escapes what people typed and says the same in HTML and text', () => {
+  const content = {
+    preview: 'Your driver account is ready.',
+    heading: 'Your driver account is ready',
+    greeting: 'Hello <script>alert(1)</script> & Co,',
+    paragraphs: ['Sign in with:'],
+    highlight: [['Temporary PIN', '583019']] as Array<[string, string]>,
+    action: { label: 'Open', url: 'https://ops.example.test/#invite="x"' },
+  };
+  const theme = {
+    logoUrl: 'https://ops.example.test/email/trotxi-logo-white.png',
+    stagingNote: 'This is a Trotxi staging test.',
+  };
+  const html = renderHtml(content, theme);
+  assert.doesNotMatch(html, /<script>/);
+  assert.match(html, /Hello &lt;script&gt;alert\(1\)&lt;\/script&gt; &amp; Co,/);
+  assert.match(html, /href="https:\/\/ops\.example\.test\/#invite=&quot;x&quot;"/);
+  assert.match(html, /src="https:\/\/ops\.example\.test\/email\/trotxi-logo-white\.png"/);
+  const text = renderText(content, theme);
+  assert.match(text, /^This is a Trotxi staging test\./);
+  assert.match(text, /Temporary PIN: 583019/);
+  assert.match(text, /Open: https:\/\/ops\.example\.test\/#invite="x"/);
+  assert.match(html, /583019/);
 });

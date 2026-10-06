@@ -140,6 +140,7 @@ export async function composeBackend(config: RuntimeConfig): Promise<Backend> {
           encryptionKey: config.keys.device,
           sender: new ResendSender(config.email.apiKey),
           staging: config.email.staging,
+          assetOrigin: config.opsOrigin,
         })
       : undefined;
     const smsSender = config.sms
