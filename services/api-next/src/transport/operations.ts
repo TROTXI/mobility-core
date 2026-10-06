@@ -350,9 +350,9 @@ export async function readOperations(
       SELECT id,'trip'::text area,operation action,actor_user_id,trip_id::text target_id,reason,created_at occurred_at FROM app.trip_events
       UNION ALL SELECT id,'schedule',operation,actor_user_id,schedule_id::text,NULL,created_at FROM app.schedule_events
       UNION ALL SELECT id,'catalog',operation,actor_user_id,coalesce(route_id,stop_id,pattern_id,pattern_version_id)::text,reason,created_at FROM app.catalog_events
-      UNION ALL SELECT id,'fleet',operation,actor_user_id,coalesce(vehicle_id,incident_id,request_id)::text,NULL,created_at FROM app.fleet_events
+      UNION ALL SELECT id,'fleet',operation,actor_user_id,coalesce(vehicle_id,incident_id,request_id)::text,reason,created_at FROM app.fleet_events
       UNION ALL SELECT id,'driver',operation,actor_user_id,driver_id::text,reason,created_at FROM app.driver_events
-      UNION ALL SELECT id,'membership',action,actor_user_id,resource_id::text,NULL,occurred_at FROM app.membership_events
+      UNION ALL SELECT id,'membership',action,actor_user_id,resource_id::text,reason,occurred_at FROM app.membership_events
       UNION ALL SELECT id,'standby',action,actor_user_id,application_id::text,reason,occurred_at FROM app.standby_events
       UNION ALL SELECT id,'boarding',method,actor_user_id,reservation_id::text,NULL,occurred_at FROM app.boarding_events
       UNION ALL SELECT id,'pricing',action,actor_user_id,resource_id,reason,occurred_at FROM app.pricing_events
