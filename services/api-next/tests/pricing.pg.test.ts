@@ -114,10 +114,7 @@ async function fixture(t: TestContext, target = true, requireOffer = false, serv
         ...(options.match ? { 'if-match': options.match } : {}),
       },
       ...(() => {
-        const payload =
-          options.who === 'ops' && method !== 'GET'
-            ? withReason(url, options.payload)
-            : options.payload;
+        const payload = method !== 'GET' ? withReason(url, options.payload) : options.payload;
         return payload === undefined ? {} : { payload: payload as never };
       })(),
     }) as Promise<Response>;

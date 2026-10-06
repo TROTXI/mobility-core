@@ -654,6 +654,7 @@ test('KYC-03: verified new rider joins standby, Ops offers, and rider can withdr
       direction,
       creditPerUnusedRide: { amountMinor: 50, currency: 'GHS' },
     })),
+    reason: 'Seat open on the pilot route',
   };
   const offerKey = randomUUID();
   const offered = await standby.offer(adminActor, appId, offerInput, offerKey);

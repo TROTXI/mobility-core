@@ -71,8 +71,7 @@ async function fixture(t: TestContext) {
   ) => {
     const who = options.who ?? 'ops';
     const client = options.client ?? (who === 'ops' ? 'ops' : 'commuter');
-    const payload =
-      method !== 'GET' && who === 'ops' ? withReason(url, options.payload) : options.payload;
+    const payload = method !== 'GET' ? withReason(url, options.payload) : options.payload;
     return app.inject({
       method,
       url,
@@ -357,7 +356,11 @@ test('CFG-05 configuration is ops work, attributable and replayable', async (t) 
     )
   ).rows;
   assert.equal(events.length, 1);
-  assert.partialDeepStrictEqual(events[0], { action: 'setFlag', target: 'x.y', reason: null });
+  assert.partialDeepStrictEqual(events[0], {
+    action: 'setFlag',
+    target: 'x.y',
+    reason: 'Test reason',
+  });
   assert.deepEqual(events[0].before_state, {});
   assert.equal(events[0].after_state.rolloutPercentage, 25);
 });
