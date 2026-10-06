@@ -88,6 +88,8 @@ export function Standby() {
           return { direction: leg.direction, fare, rides };
         })
       : [];
+  // After a send with no answer, the terms stay as sent so a retry repeats them.
+  const locked = offerAttempt !== null;
   // Directions the API would refuse to price: no fare in force for the exact stops.
   const unpriced = estimates.filter((e) => !e.fare).map((e) => e.direction);
   const query = useQuery<PageResult>(
@@ -264,14 +266,17 @@ export function Standby() {
           query.retry();
         }}
       >
-        <fieldset disabled={offerAttempt !== null}>
-          <legend>Agreed terms</legend>
+        {/* Not a <fieldset>: Safari lost focus from inputs inside one in this
+            dialog. Each control is locked on its own instead. */}
+        <div className="offer-terms" role="group" aria-label="Agreed terms">
+          <h3 className="offer-terms-title">Agreed terms</h3>
           <p>
             {selected?.routeName}: {selected?.travelDays.map((d) => weekdays[d - 1]).join(', ')}
           </p>
           <label>
             Coverage start
             <input
+              disabled={locked}
               type="date"
               required
               value={coverageStart}
@@ -281,6 +286,7 @@ export function Standby() {
           <label>
             Coverage end (exclusive)
             <input
+              disabled={locked}
               type="date"
               required
               value={coverageEnd}
@@ -304,6 +310,7 @@ export function Standby() {
           ))}
           {estimates.length === 2 && estimates.every((e) => e.fare && e.rides > 0) && (
             <Button
+              disabled={locked}
               onClick={() =>
                 setPrice(
                   (
@@ -324,6 +331,7 @@ export function Standby() {
           <label>
             Agreed package price (GHS)
             <input
+              disabled={locked}
               type="number"
               step="0.01"
               min="1"
@@ -335,6 +343,7 @@ export function Standby() {
           <label>
             Credit per unused outbound ride (GHS)
             <input
+              disabled={locked}
               type="number"
               step="0.01"
               min="0"
@@ -346,6 +355,7 @@ export function Standby() {
           <label>
             Credit per unused return ride (GHS)
             <input
+              disabled={locked}
               type="number"
               step="0.01"
               min="0"
@@ -356,13 +366,17 @@ export function Standby() {
           </label>
           <label>
             Offer duration
-            <select value={days} onChange={(event) => setDays(Number(event.target.value))}>
+            <select
+              disabled={locked}
+              value={days}
+              onChange={(event) => setDays(Number(event.target.value))}
+            >
               <option value={1}>1 day</option>
               <option value={2}>2 days</option>
               <option value={3}>3 days</option>
             </select>
           </label>
-        </fieldset>
+        </div>
         {offerAttempt && <p>The last attempt is saved. Retry sends exactly the same terms.</p>}
       </ActionDialog>
     </Page>
