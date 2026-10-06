@@ -98,10 +98,10 @@ it(
     fireEvent.change(dialog.getByLabelText('Credit per unused return ride (GHS)'), {
       target: { value: '2' },
     });
-    fireEvent.click(dialog.getByRole('button', { name: 'Send offer' }));
+    fireEvent.click(dialog.getByRole('button', { name: 'Send offer', hidden: true }));
     await dialog.findByText('Response unavailable; retry safely.', undefined, { timeout: 10_000 });
     expect(dialog.getByLabelText('Agreed package price (GHS)')).toBeDisabled();
-    fireEvent.click(dialog.getByRole('button', { name: 'Send offer' }));
+    fireEvent.click(dialog.getByRole('button', { name: 'Send offer', hidden: true }));
     await vi.waitFor(() => expect(session.client.POST).toHaveBeenCalledTimes(2));
     const first = session.client.POST.mock.calls[0]![1],
       second = session.client.POST.mock.calls[1]![1];
@@ -127,7 +127,7 @@ it(
     }).mockResolvedValueOnce({ data: {}, response: { status: 201 } });
     const dialog = await openOffer();
     fill(dialog);
-    fireEvent.click(dialog.getByRole('button', { name: 'Send offer' }));
+    fireEvent.click(dialog.getByRole('button', { name: 'Send offer', hidden: true }));
     await dialog.findByText('Ops must publish a fare for these stops.', undefined, {
       timeout: 10_000,
     });
@@ -135,7 +135,7 @@ it(
     const price = dialog.getByLabelText('Agreed package price (GHS)');
     expect(price).not.toBeDisabled();
     fireEvent.change(price, { target: { value: '65' } });
-    fireEvent.click(dialog.getByRole('button', { name: 'Send offer' }));
+    fireEvent.click(dialog.getByRole('button', { name: 'Send offer', hidden: true }));
     await vi.waitFor(() => expect(session.client.POST).toHaveBeenCalledTimes(2));
     const [first, second] = session.client.POST.mock.calls.map((call) => call[1]);
     expect(second.body.price).toEqual({ amountMinor: 6500, currency: 'GHS' });
@@ -156,7 +156,7 @@ it(
     expect(await dialog.findByRole('status', undefined, { timeout: 10_000 })).toHaveTextContent(
       'No fare is published for the return stops',
     );
-    expect(dialog.getByRole('button', { name: 'Send offer' })).toBeDisabled();
+    expect(dialog.getByRole('button', { name: 'Send offer', hidden: true })).toBeDisabled();
     expect(session.client.POST).not.toHaveBeenCalled();
   },
 );
