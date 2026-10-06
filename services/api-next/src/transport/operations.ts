@@ -353,12 +353,12 @@ export async function readOperations(
       UNION ALL SELECT id,'fleet',operation,actor_user_id,coalesce(vehicle_id,incident_id,request_id)::text,NULL,created_at FROM app.fleet_events
       UNION ALL SELECT id,'driver',operation,actor_user_id,driver_id::text,reason,created_at FROM app.driver_events
       UNION ALL SELECT id,'membership',action,actor_user_id,resource_id::text,NULL,occurred_at FROM app.membership_events
-      UNION ALL SELECT id,'standby',action,actor_user_id,application_id::text,NULL,occurred_at FROM app.standby_events
+      UNION ALL SELECT id,'standby',action,actor_user_id,application_id::text,reason,occurred_at FROM app.standby_events
       UNION ALL SELECT id,'boarding',method,actor_user_id,reservation_id::text,NULL,occurred_at FROM app.boarding_events
-      UNION ALL SELECT id,'pricing',action,actor_user_id,resource_id,NULL,occurred_at FROM app.pricing_events
+      UNION ALL SELECT id,'pricing',action,actor_user_id,resource_id,reason,occurred_at FROM app.pricing_events
       UNION ALL SELECT id,'configuration',action,actor_user_id,target,reason,occurred_at FROM app.config_events
-      UNION ALL SELECT id,'security',action,actor_user_id,user_id::text,NULL,occurred_at FROM app.admin_passkey_events
-      UNION ALL SELECT id,'security',action,actor_user_id,target_id::text,NULL,created_at FROM app.ops_team_events
+      UNION ALL SELECT id,'security',action,actor_user_id,user_id::text,reason,occurred_at FROM app.admin_passkey_events
+      UNION ALL SELECT id,'security',action,actor_user_id,target_id::text,reason,created_at FROM app.ops_team_events
       UNION ALL SELECT id,'payments','resolvePaymentReview:'||decision,actor_user_id,review_id::text,reason,created_at FROM app.payment_review_commands
       UNION ALL SELECT id,'payments','initiateRefund',actor_user_id,purchase_id::text,reason,created_at FROM app.refund_initiations
       UNION ALL SELECT id,'gps',operation,actor_user_id,hold_id::text,NULL,created_at FROM app.gps_events

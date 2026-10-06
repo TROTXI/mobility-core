@@ -76,6 +76,9 @@ function fill(dialog: ReturnType<typeof within>, price = '70') {
   fireEvent.change(dialog.getByLabelText('Credit per unused return ride (GHS)'), {
     target: { value: '2' },
   });
+  fireEvent.change(dialog.getByLabelText('Reason', { selector: 'textarea' }), {
+    target: { value: 'Seat freed' },
+  });
 }
 
 it(
@@ -97,6 +100,9 @@ it(
     });
     fireEvent.change(dialog.getByLabelText('Credit per unused return ride (GHS)'), {
       target: { value: '2' },
+    });
+    fireEvent.change(dialog.getByLabelText('Reason', { selector: 'textarea' }), {
+      target: { value: 'Seat freed' },
     });
     fireEvent.click(dialog.getByRole('button', { name: 'Send offer', hidden: true }));
     await dialog.findByText('Response unavailable; retry safely.', undefined, { timeout: 10_000 });

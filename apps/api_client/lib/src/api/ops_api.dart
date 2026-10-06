@@ -244,6 +244,7 @@ class OpsApi {
   /// * [idempotencyKey] - Caller + operation + target scoped; payload mismatch = 409. Never log secrets.
   /// * [xTrotxiClient] - Compatibility metadata only, never grants a role.
   /// * [xTrotxiBuild] - Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
+  /// * [reasonInput]
   /// * [xTrotxiPlatform] - Required for commuter/driver, absent for ops/worker.
   /// * [cancelToken] - A [CancelToken] that can be used to cancel the operation
   /// * [headers] - Can be used to add additional headers to the request
@@ -259,6 +260,7 @@ class OpsApi {
     required String idempotencyKey,
     required String xTrotxiClient,
     int xTrotxiBuild = 1,
+    required ReasonInput reasonInput,
     String? xTrotxiPlatform,
     CancelToken? cancelToken,
     Map<String, dynamic>? headers,
@@ -290,11 +292,30 @@ class OpsApi {
         ],
         ...?extra,
       },
+      contentType: 'application/json',
       validateStatus: validateStatus,
     );
 
+    dynamic _bodyData;
+
+    try {
+      const _type = FullType(ReasonInput);
+      _bodyData = _serializers.serialize(reasonInput, specifiedType: _type);
+    } catch (error, stackTrace) {
+      throw DioException(
+        requestOptions: _options.compose(
+          _dio.options,
+          _path,
+        ),
+        type: DioExceptionType.unknown,
+        error: error,
+        stackTrace: stackTrace,
+      );
+    }
+
     final _response = await _dio.request<Object>(
       _path,
+      data: _bodyData,
       options: _options,
       cancelToken: cancelToken,
       onSendProgress: onSendProgress,
@@ -7156,6 +7177,7 @@ class OpsApi {
   /// * [idempotencyKey] - Caller + operation + target scoped; payload mismatch = 409. Never log secrets.
   /// * [xTrotxiClient] - Compatibility metadata only, never grants a role.
   /// * [xTrotxiBuild] - Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
+  /// * [reasonInput]
   /// * [xTrotxiPlatform] - Required for commuter/driver, absent for ops/worker.
   /// * [cancelToken] - A [CancelToken] that can be used to cancel the operation
   /// * [headers] - Can be used to add additional headers to the request
@@ -7171,6 +7193,7 @@ class OpsApi {
     required String idempotencyKey,
     required String xTrotxiClient,
     int xTrotxiBuild = 1,
+    required ReasonInput reasonInput,
     String? xTrotxiPlatform,
     CancelToken? cancelToken,
     Map<String, dynamic>? headers,
@@ -7202,11 +7225,30 @@ class OpsApi {
         ],
         ...?extra,
       },
+      contentType: 'application/json',
       validateStatus: validateStatus,
     );
 
+    dynamic _bodyData;
+
+    try {
+      const _type = FullType(ReasonInput);
+      _bodyData = _serializers.serialize(reasonInput, specifiedType: _type);
+    } catch (error, stackTrace) {
+      throw DioException(
+        requestOptions: _options.compose(
+          _dio.options,
+          _path,
+        ),
+        type: DioExceptionType.unknown,
+        error: error,
+        stackTrace: stackTrace,
+      );
+    }
+
     final _response = await _dio.request<Object>(
       _path,
+      data: _bodyData,
       options: _options,
       cancelToken: cancelToken,
       onSendProgress: onSendProgress,
@@ -7370,6 +7412,7 @@ class OpsApi {
   /// * [id]
   /// * [xTrotxiClient] - Compatibility metadata only, never grants a role.
   /// * [xTrotxiBuild] - Unsupported build: 426. Missing metadata: 400. Bootstrap remains reachable.
+  /// * [reasonInput]
   /// * [xTrotxiPlatform] - Required for commuter/driver, absent for ops/worker.
   /// * [cancelToken] - A [CancelToken] that can be used to cancel the operation
   /// * [headers] - Can be used to add additional headers to the request
@@ -7384,6 +7427,7 @@ class OpsApi {
     required String id,
     required String xTrotxiClient,
     int xTrotxiBuild = 1,
+    required ReasonInput reasonInput,
     String? xTrotxiPlatform,
     CancelToken? cancelToken,
     Map<String, dynamic>? headers,
@@ -7414,11 +7458,30 @@ class OpsApi {
         ],
         ...?extra,
       },
+      contentType: 'application/json',
       validateStatus: validateStatus,
     );
 
+    dynamic _bodyData;
+
+    try {
+      const _type = FullType(ReasonInput);
+      _bodyData = _serializers.serialize(reasonInput, specifiedType: _type);
+    } catch (error, stackTrace) {
+      throw DioException(
+        requestOptions: _options.compose(
+          _dio.options,
+          _path,
+        ),
+        type: DioExceptionType.unknown,
+        error: error,
+        stackTrace: stackTrace,
+      );
+    }
+
     final _response = await _dio.request<Object>(
       _path,
+      data: _bodyData,
       options: _options,
       cancelToken: cancelToken,
       onSendProgress: onSendProgress,

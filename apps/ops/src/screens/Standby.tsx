@@ -6,6 +6,7 @@ import { opsHeaders } from '../api/session';
 import { useQuery } from '../hooks/useQuery';
 import { Empty, ErrorState, LoadingRows, Page, Panel, StatusBadge } from '../components/Page';
 import { ActionDialog } from '../components/ActionDialog';
+import { ReasonField } from '../components/ReasonField';
 
 type Application = components['schemas']['StandbyApplication'];
 type PageResult = { data: Application[]; nextCursor: string | null };
@@ -30,6 +31,7 @@ export function Standby() {
   const [price, setPrice] = useState('');
   const [outboundCredit, setOutboundCredit] = useState('');
   const [returnCredit, setReturnCredit] = useState('');
+  const [reason, setReason] = useState('');
   const [loadingMore, setLoadingMore] = useState(false);
   const [moreError, setMoreError] = useState('');
   const [offerAttempt, setOfferAttempt] = useState<{
@@ -154,6 +156,7 @@ export function Standby() {
                             setPrice('');
                             setOutboundCredit('');
                             setReturnCredit('');
+                            setReason('');
                             setSelected(application);
                           }}
                         >
@@ -213,7 +216,7 @@ export function Standby() {
         title="Prepare subscription offer"
         description="Terms cannot be edited after sending. Coverage ends at the start of the end date. Payment does not guarantee a particular trip seat; normal confirmation and capacity rules still apply."
         confirmLabel="Send offer"
-        confirmDisabled={unpriced.length > 0 || pricing.loading}
+        confirmDisabled={unpriced.length > 0 || pricing.loading || !reason.trim()}
         onClose={() => {
           setSelected(null);
           setOfferAttempt(null);
@@ -243,6 +246,7 @@ export function Standby() {
                       },
                       { direction: 'return' as const, creditPerUnusedRide: pesewas(returnCredit) },
                     ],
+                    reason: reason.trim(),
                   },
                 };
           setOfferAttempt(attempt);
@@ -376,6 +380,7 @@ export function Standby() {
               <option value={3}>3 days</option>
             </select>
           </label>
+          <ReasonField value={reason} onChange={setReason} disabled={locked} />
         </div>
         {offerAttempt && <p>The last attempt is saved. Retry sends exactly the same terms.</p>}
       </ActionDialog>

@@ -64,6 +64,8 @@ class _$MinimumVersionEdit extends MinimumVersionEdit {
   final MinimumVersionEditApiMajorEnum apiMajor;
   @override
   final String storeUrl;
+  @override
+  final String reason;
 
   factory _$MinimumVersionEdit(
           [void Function(MinimumVersionEditBuilder)? updates]) =>
@@ -72,7 +74,8 @@ class _$MinimumVersionEdit extends MinimumVersionEdit {
   _$MinimumVersionEdit._(
       {required this.minSupportedBuild,
       required this.apiMajor,
-      required this.storeUrl})
+      required this.storeUrl,
+      required this.reason})
       : super._();
   @override
   MinimumVersionEdit rebuild(
@@ -89,7 +92,8 @@ class _$MinimumVersionEdit extends MinimumVersionEdit {
     return other is MinimumVersionEdit &&
         minSupportedBuild == other.minSupportedBuild &&
         apiMajor == other.apiMajor &&
-        storeUrl == other.storeUrl;
+        storeUrl == other.storeUrl &&
+        reason == other.reason;
   }
 
   @override
@@ -98,6 +102,7 @@ class _$MinimumVersionEdit extends MinimumVersionEdit {
     _$hash = $jc(_$hash, minSupportedBuild.hashCode);
     _$hash = $jc(_$hash, apiMajor.hashCode);
     _$hash = $jc(_$hash, storeUrl.hashCode);
+    _$hash = $jc(_$hash, reason.hashCode);
     _$hash = $jf(_$hash);
     return _$hash;
   }
@@ -107,7 +112,8 @@ class _$MinimumVersionEdit extends MinimumVersionEdit {
     return (newBuiltValueToStringHelper(r'MinimumVersionEdit')
           ..add('minSupportedBuild', minSupportedBuild)
           ..add('apiMajor', apiMajor)
-          ..add('storeUrl', storeUrl))
+          ..add('storeUrl', storeUrl)
+          ..add('reason', reason))
         .toString();
   }
 }
@@ -130,6 +136,10 @@ class MinimumVersionEditBuilder
   String? get storeUrl => _$this._storeUrl;
   set storeUrl(String? storeUrl) => _$this._storeUrl = storeUrl;
 
+  String? _reason;
+  String? get reason => _$this._reason;
+  set reason(String? reason) => _$this._reason = reason;
+
   MinimumVersionEditBuilder() {
     MinimumVersionEdit._defaults(this);
   }
@@ -140,6 +150,7 @@ class MinimumVersionEditBuilder
       _minSupportedBuild = $v.minSupportedBuild;
       _apiMajor = $v.apiMajor;
       _storeUrl = $v.storeUrl;
+      _reason = $v.reason;
       _$v = null;
     }
     return this;
@@ -167,6 +178,8 @@ class MinimumVersionEditBuilder
               apiMajor, r'MinimumVersionEdit', 'apiMajor'),
           storeUrl: BuiltValueNullFieldError.checkNotNull(
               storeUrl, r'MinimumVersionEdit', 'storeUrl'),
+          reason: BuiltValueNullFieldError.checkNotNull(
+              reason, r'MinimumVersionEdit', 'reason'),
         );
     replace(_$result);
     return _$result;

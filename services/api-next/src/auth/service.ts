@@ -2,7 +2,7 @@ import { beginTransaction } from '../db/transaction.js';
 import type { Pool, PoolClient } from 'pg';
 import { errors as joseErrors } from 'jose';
 import { ZodError } from 'zod';
-import { TransportError, fail, mapDatabaseError } from '../transport/errors.js';
+import { TransportError, fail, mapDatabaseError, requireReason } from '../transport/errors.js';
 import type { Actor, AuthorizedActor } from '../transport/service.js';
 import { cursorCodec } from '../transport/cursor.js';
 import { accessTokens, hashToken, newRefresh, providerTokenBox } from './credentials.js';
@@ -580,7 +580,7 @@ export class AuthService {
         await requireRecentPasskey(client, actor);
         if (user.role !== 'admin')
           fail(403, 'forbidden', 'This operation is not available to your account.');
-        return this.resetPasskeys(client, actor, target);
+        return this.resetPasskeys(client, actor, target, requireReason(body));
       }
 
       await this.authorizeSession(client, actor, { allowUnelevated: true });
@@ -775,7 +775,12 @@ export class AuthService {
     );
   }
 
-  private async resetPasskeys(client: PoolClient, actor: Actor, target: string | undefined) {
+  private async resetPasskeys(
+    client: PoolClient,
+    actor: Actor,
+    target: string | undefined,
+    reason: string,
+  ) {
     if (!target || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(target))
       fail(400, 'invalid_request', 'Invalid account identifier.');
     if (target.toLowerCase() === actor.userId.toLowerCase())
@@ -803,7 +808,7 @@ export class AuthService {
       'UPDATE app.auth_sessions SET revoked_at=COALESCE(revoked_at,$2) WHERE user_id=$1',
       [subject.id, now],
     );
-    await this.passkeyEvent(client, subject.id, actor.userId, 'reset');
+    await this.passkeyEvent(client, subject.id, actor.userId, 'reset', reason);
     return result();
   }
 
@@ -819,10 +824,11 @@ export class AuthService {
     userId: string,
     actorId: string,
     action: 'registration_started' | 'registered' | 'verified' | 'reset',
+    reason: string | null = null,
   ) {
     await client.query(
-      'INSERT INTO app.admin_passkey_events(user_id,actor_user_id,action) VALUES ($1,$2,$3)',
-      [userId, actorId, action],
+      'INSERT INTO app.admin_passkey_events(user_id,actor_user_id,action,reason) VALUES ($1,$2,$3,$4)',
+      [userId, actorId, action, reason],
     );
   }
 

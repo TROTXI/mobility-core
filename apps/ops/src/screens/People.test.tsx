@@ -91,6 +91,10 @@ describe('Administrator account management', () => {
     show();
     const theirs = (await screen.findByText('K. Fosu')).closest('tr')!;
     fireEvent.click(within(theirs).getByRole('button', { name: 'Reset passkeys' }));
+    expect(within(dialog()).getByRole('button', { name: 'Reset access' })).toBeDisabled();
+    fireEvent.change(within(dialog()).getByLabelText('Reason'), {
+      target: { value: 'Lost phone' },
+    });
     fireEvent.click(within(dialog()).getByRole('button', { name: 'Reset access' }));
     expect(await within(dialog()).findByText(/Only a superadmin/)).toBeInTheDocument();
     expect(client.PATCH).not.toHaveBeenCalled();

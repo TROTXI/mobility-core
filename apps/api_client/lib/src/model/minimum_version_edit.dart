@@ -15,6 +15,7 @@ part 'minimum_version_edit.g.dart';
 /// * [minSupportedBuild]
 /// * [apiMajor]
 /// * [storeUrl]
+/// * [reason]
 @BuiltValue()
 abstract class MinimumVersionEdit
     implements Built<MinimumVersionEdit, MinimumVersionEditBuilder> {
@@ -27,6 +28,9 @@ abstract class MinimumVersionEdit
 
   @BuiltValueField(wireName: r'storeUrl')
   String get storeUrl;
+
+  @BuiltValueField(wireName: r'reason')
+  String get reason;
 
   MinimumVersionEdit._();
 
@@ -67,6 +71,11 @@ class _$MinimumVersionEditSerializer
     yield r'storeUrl';
     yield serializers.serialize(
       object.storeUrl,
+      specifiedType: const FullType(String),
+    );
+    yield r'reason';
+    yield serializers.serialize(
+      object.reason,
       specifiedType: const FullType(String),
     );
   }
@@ -114,6 +123,13 @@ class _$MinimumVersionEditSerializer
             specifiedType: const FullType(String),
           ) as String;
           result.storeUrl = valueDes;
+          break;
+        case r'reason':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType(String),
+          ) as String;
+          result.reason = valueDes;
           break;
         default:
           unhandled.add(key);

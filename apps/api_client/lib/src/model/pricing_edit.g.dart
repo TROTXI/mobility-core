@@ -15,6 +15,8 @@ class _$PricingEdit extends PricingEdit {
   final int? takeRateBp;
   @override
   final Money? creditPerRide;
+  @override
+  final String reason;
 
   factory _$PricingEdit([void Function(PricingEditBuilder)? updates]) =>
       (PricingEditBuilder()..update(updates))._build();
@@ -23,7 +25,8 @@ class _$PricingEdit extends PricingEdit {
       {this.ridesPerPeriod,
       this.priceMultiplierBp,
       this.takeRateBp,
-      this.creditPerRide})
+      this.creditPerRide,
+      required this.reason})
       : super._();
   @override
   PricingEdit rebuild(void Function(PricingEditBuilder) updates) =>
@@ -39,7 +42,8 @@ class _$PricingEdit extends PricingEdit {
         ridesPerPeriod == other.ridesPerPeriod &&
         priceMultiplierBp == other.priceMultiplierBp &&
         takeRateBp == other.takeRateBp &&
-        creditPerRide == other.creditPerRide;
+        creditPerRide == other.creditPerRide &&
+        reason == other.reason;
   }
 
   @override
@@ -49,6 +53,7 @@ class _$PricingEdit extends PricingEdit {
     _$hash = $jc(_$hash, priceMultiplierBp.hashCode);
     _$hash = $jc(_$hash, takeRateBp.hashCode);
     _$hash = $jc(_$hash, creditPerRide.hashCode);
+    _$hash = $jc(_$hash, reason.hashCode);
     _$hash = $jf(_$hash);
     return _$hash;
   }
@@ -59,7 +64,8 @@ class _$PricingEdit extends PricingEdit {
           ..add('ridesPerPeriod', ridesPerPeriod)
           ..add('priceMultiplierBp', priceMultiplierBp)
           ..add('takeRateBp', takeRateBp)
-          ..add('creditPerRide', creditPerRide))
+          ..add('creditPerRide', creditPerRide)
+          ..add('reason', reason))
         .toString();
   }
 }
@@ -86,6 +92,10 @@ class PricingEditBuilder implements Builder<PricingEdit, PricingEditBuilder> {
   set creditPerRide(MoneyBuilder? creditPerRide) =>
       _$this._creditPerRide = creditPerRide;
 
+  String? _reason;
+  String? get reason => _$this._reason;
+  set reason(String? reason) => _$this._reason = reason;
+
   PricingEditBuilder() {
     PricingEdit._defaults(this);
   }
@@ -97,6 +107,7 @@ class PricingEditBuilder implements Builder<PricingEdit, PricingEditBuilder> {
       _priceMultiplierBp = $v.priceMultiplierBp;
       _takeRateBp = $v.takeRateBp;
       _creditPerRide = $v.creditPerRide?.toBuilder();
+      _reason = $v.reason;
       _$v = null;
     }
     return this;
@@ -124,6 +135,8 @@ class PricingEditBuilder implements Builder<PricingEdit, PricingEditBuilder> {
             priceMultiplierBp: priceMultiplierBp,
             takeRateBp: takeRateBp,
             creditPerRide: _creditPerRide?.build(),
+            reason: BuiltValueNullFieldError.checkNotNull(
+                reason, r'PricingEdit', 'reason'),
           );
     } catch (_) {
       late String _$failedField;

@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 import type { Pool, PoolClient } from 'pg';
-import { fail, TransportError } from '../transport/errors.js';
+import { fail, requireReason, TransportError } from '../transport/errors.js';
 import { canonical, type Actor, type Body, type Outcome } from '../transport/service.js';
 import type { Purchases } from '../payments/purchases.js';
 import { cursorCodec } from '../transport/cursor.js';
@@ -287,6 +287,7 @@ export class StandbyService {
       }
       if (row.state !== 'submitted')
         fail(409, 'standby_not_pending', 'This application is not pending.');
+      const reason = requireReason(input);
       const ms = expiry.getTime() - Date.now();
       if (!Number.isFinite(ms) || ms < 60000 || ms > 7 * 86400000)
         fail(400, 'invalid_offer_expiry', 'Choose an offer expiry within seven days.');
@@ -328,8 +329,8 @@ export class StandbyService {
         [id],
       );
       await c.query(
-        "INSERT INTO app.standby_events(application_id,actor_user_id,action) VALUES ($1,$2,'offer')",
-        [id, actor.userId],
+        "INSERT INTO app.standby_events(application_id,actor_user_id,action,reason) VALUES ($1,$2,'offer',$3)",
+        [id, actor.userId, reason],
       );
       const receipt = view((await this.row(c, id))!);
       await c.query('UPDATE app.standby_offers SET offer_receipt=$2::jsonb WHERE id=$1', [

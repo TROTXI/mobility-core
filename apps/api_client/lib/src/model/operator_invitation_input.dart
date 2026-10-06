@@ -13,6 +13,7 @@ part 'operator_invitation_input.g.dart';
 /// Properties:
 /// * [email]
 /// * [name]
+/// * [reason]
 @BuiltValue()
 abstract class OperatorInvitationInput
     implements Built<OperatorInvitationInput, OperatorInvitationInputBuilder> {
@@ -21,6 +22,9 @@ abstract class OperatorInvitationInput
 
   @BuiltValueField(wireName: r'name')
   String get name;
+
+  @BuiltValueField(wireName: r'reason')
+  String get reason;
 
   OperatorInvitationInput._();
 
@@ -62,6 +66,11 @@ class _$OperatorInvitationInputSerializer
       object.name,
       specifiedType: const FullType(String),
     );
+    yield r'reason';
+    yield serializers.serialize(
+      object.reason,
+      specifiedType: const FullType(String),
+    );
   }
 
   @override
@@ -100,6 +109,13 @@ class _$OperatorInvitationInputSerializer
             specifiedType: const FullType(String),
           ) as String;
           result.name = valueDes;
+          break;
+        case r'reason':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType(String),
+          ) as String;
+          result.reason = valueDes;
           break;
         default:
           unhandled.add(key);

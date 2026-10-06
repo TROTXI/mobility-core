@@ -13,12 +13,16 @@ part 'operator_access_input.g.dart';
 ///
 /// Properties:
 /// * [action]
+/// * [reason]
 @BuiltValue()
 abstract class OperatorAccessInput
     implements Built<OperatorAccessInput, OperatorAccessInputBuilder> {
   @BuiltValueField(wireName: r'action')
   OperatorAccessInputActionEnum get action;
   // enum actionEnum {  delete,  make_superadmin,  make_admin,  };
+
+  @BuiltValueField(wireName: r'reason')
+  String get reason;
 
   OperatorAccessInput._();
 
@@ -54,6 +58,11 @@ class _$OperatorAccessInputSerializer
       object.action,
       specifiedType: const FullType(OperatorAccessInputActionEnum),
     );
+    yield r'reason';
+    yield serializers.serialize(
+      object.reason,
+      specifiedType: const FullType(String),
+    );
   }
 
   @override
@@ -85,6 +94,13 @@ class _$OperatorAccessInputSerializer
             specifiedType: const FullType(OperatorAccessInputActionEnum),
           ) as OperatorAccessInputActionEnum;
           result.action = valueDes;
+          break;
+        case r'reason':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType(String),
+          ) as String;
+          result.reason = valueDes;
           break;
         default:
           unhandled.add(key);

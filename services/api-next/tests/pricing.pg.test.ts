@@ -113,7 +113,10 @@ async function fixture(t: TestContext, target = true, requireOffer = false, serv
         ...(method === 'GET' ? {} : { 'idempotency-key': options.key ?? randomUUID() }),
         ...(options.match ? { 'if-match': options.match } : {}),
       },
-      ...(options.payload === undefined ? {} : { payload: options.payload as never }),
+      ...(() => {
+        const payload = method !== 'GET' ? withReason(url, options.payload) : options.payload;
+        return payload === undefined ? {} : { payload: payload as never };
+      })(),
     }) as Promise<Response>;
   /** Publish a fare, because a corridor with no fare cannot be bought. */
   const publishFare = (amount: number, effectiveFrom = new Date(Date.now() - 86400000)) =>
@@ -322,6 +325,12 @@ test('OFFER-03 invalid credits, dates, changed replays and late payment cannot s
   await f.verify();
   const app = await f.join();
   const url = `/v1/ops/standby/${app.id}/offers`;
+  const unexplained = await f.call('POST', url, {
+    who: 'ops',
+    payload: { ...f.offerInput, reason: '' },
+  });
+  assert.equal(unexplained.statusCode, 400, unexplained.body);
+  assert.equal(unexplained.json().error.code, 'reason_required');
   assert.equal(
     (
       await f.call('POST', url, {
@@ -2166,3 +2175,12 @@ test('PAIR-05 every fare needs a reason; blank text is refused and the reason is
   );
   assert.equal(fare.note, 'Pilot price');
 });
+
+/** Ops actions that must say why; tests that do not test the reason supply one. */
+function withReason(url: string, payload: unknown): unknown {
+  if (!/^\/v1\/ops\/(standby\/[^/]+\/offers|plan-pricing\/)/.test(url)) return payload;
+  if (payload === undefined) return { reason: 'Test reason' };
+  if (payload && typeof payload === 'object' && !Array.isArray(payload) && !('reason' in payload))
+    return { ...payload, reason: 'Test reason' };
+  return payload;
+}

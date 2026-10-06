@@ -16,6 +16,7 @@ part 'pricing_edit.g.dart';
 /// * [priceMultiplierBp]
 /// * [takeRateBp]
 /// * [creditPerRide]
+/// * [reason]
 @BuiltValue()
 abstract class PricingEdit implements Built<PricingEdit, PricingEditBuilder> {
   @BuiltValueField(wireName: r'ridesPerPeriod')
@@ -29,6 +30,9 @@ abstract class PricingEdit implements Built<PricingEdit, PricingEditBuilder> {
 
   @BuiltValueField(wireName: r'creditPerRide')
   Money? get creditPerRide;
+
+  @BuiltValueField(wireName: r'reason')
+  String get reason;
 
   PricingEdit._();
 
@@ -81,6 +85,11 @@ class _$PricingEditSerializer implements PrimitiveSerializer<PricingEdit> {
         specifiedType: const FullType(Money),
       );
     }
+    yield r'reason';
+    yield serializers.serialize(
+      object.reason,
+      specifiedType: const FullType(String),
+    );
   }
 
   @override
@@ -133,6 +142,13 @@ class _$PricingEditSerializer implements PrimitiveSerializer<PricingEdit> {
             specifiedType: const FullType(Money),
           ) as Money;
           result.creditPerRide.replace(valueDes);
+          break;
+        case r'reason':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType(String),
+          ) as String;
+          result.reason = valueDes;
           break;
         default:
           unhandled.add(key);
