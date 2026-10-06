@@ -1189,7 +1189,8 @@ named(
   obj({
     amount: money,
     effectiveFrom: instant,
-    note: note.optional(),
+    // Why this price: every fare change is recorded with its reason.
+    note,
     patternVersionId: id.optional(),
     pickupOccurrenceId: id.optional(),
     dropoffOccurrenceId: id.optional(),
@@ -1198,6 +1199,8 @@ named(
 named(
   'Fare',
   schemas.FareInput.extend({
+    // Fares published before reasons were required have none.
+    note: note.optional(),
     id,
     routeId: id,
     effectiveTo: instant.nullable(),

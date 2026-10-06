@@ -23106,7 +23106,7 @@
             "maxLength": 128
           }
         },
-        "required": ["amount", "effectiveFrom"],
+        "required": ["amount", "effectiveFrom", "note"],
         "additionalProperties": false
       },
       "FarePage": {

@@ -71,6 +71,8 @@ export function Standby() {
           const schedule = pricing.data!.schedules.find((s) => s.id === leg.scheduleId);
           const fare = pricing.data!.fares.find(
             (f) =>
+              // The API prices a leg only from a fare on that direction's pattern.
+              (!f.journey || f.journey.direction === leg.direction) &&
               f.patternVersionId === leg.patternVersionId &&
               f.pickupOccurrenceId === leg.pickupOccurrenceId &&
               f.dropoffOccurrenceId === leg.dropoffOccurrenceId &&
@@ -86,6 +88,8 @@ export function Standby() {
           return { direction: leg.direction, fare, rides };
         })
       : [];
+  // Directions the API would refuse to price: no fare in force for the exact stops.
+  const unpriced = estimates.filter((e) => !e.fare).map((e) => e.direction);
   const query = useQuery<PageResult>(
     async (signal) => {
       const response = await session.client.GET('/v1/ops/standby', {
@@ -207,6 +211,7 @@ export function Standby() {
         title="Prepare subscription offer"
         description="Terms cannot be edited after sending. Coverage ends at the start of the end date. Payment does not guarantee a particular trip seat; normal confirmation and capacity rules still apply."
         confirmLabel="Send offer"
+        confirmDisabled={unpriced.length > 0 || pricing.loading}
         onClose={() => {
           setSelected(null);
           setOfferAttempt(null);
@@ -246,7 +251,14 @@ export function Standby() {
             },
             body: attempt.body,
           });
-          if (response.error) throw new Error(response.error.error.message);
+          if (response.error) {
+            // A 4xx is the API's answer: no offer was created, so the terms can
+            // be changed. Without an answer the outcome is unknown, and the
+            // form stays locked so a retry repeats exactly the same offer.
+            const status = response.response?.status ?? 0;
+            if (status >= 400 && status < 500) setOfferAttempt(null);
+            throw new Error(response.error.error.message);
+          }
           setOfferAttempt(null);
           setSelected(null);
           query.retry();
@@ -276,6 +288,12 @@ export function Standby() {
             />
           </label>
           {pricing.error && <ErrorState message={pricing.error} retry={pricing.retry} />}
+          {unpriced.length > 0 && (
+            <p role="status">
+              No fare is published for the {unpriced.join(' and ')} stops on {coverageStart}.
+              Publish an exact stop-pair fare in Routes &amp; stops, then send the offer.
+            </p>
+          )}
           {estimates.map((estimate) => (
             <p key={estimate.direction}>
               {estimate.direction}: {estimate.rides} rides.{' '}
