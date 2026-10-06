@@ -1,7 +1,7 @@
 import type { PoolClient, QueryResultRow } from 'pg';
 import type { Actor, Body, Outcome } from './service.js';
 import { cursorCodec } from './cursor.js';
-import { fail } from './errors.js';
+import { fail, requireReason } from './errors.js';
 
 export const fleetCommands = [
   'createVehicle',
@@ -180,6 +180,7 @@ export class Fleet {
     const kind = kindOf(operation);
     let id: string;
     let before: Body = {};
+    let reason: string | null = null;
     if (operation === 'createVehicle') {
       id = (
         await client.query(
@@ -222,6 +223,9 @@ export class Fleet {
     } else if (operation === 'reportIncident') {
       id = await this.reportIncident(client, body, driverId!);
     } else if (operation === 'decideIncident') {
+      requireReason({ reason: body.resolution });
+      // Still refuse a pasted secret, as on the driver's own report.
+      reason = incidentText(body.resolution, 'resolution');
       id = fleetId(target);
       before = (await this.load(client, kind, [id]))[0]!;
       if (before.status === 'resolved')
@@ -230,7 +234,7 @@ export class Fleet {
         `UPDATE app.driver_incidents
         SET status=$2,resolution=$3,handled_by=$4,handled_at=clock_timestamp(),${BUMP}
         WHERE id=$1`,
-        [id, body.status, incidentText(body.resolution, 'resolution'), actor.userId],
+        [id, body.status, reason, actor.userId],
       );
     } else if (operation === 'createDriverRequest') {
       id = await this.createRequest(client, body, driverId!);
@@ -247,6 +251,7 @@ export class Fleet {
       before = (await this.load(client, kind, [id]))[0]!;
       if (before.status !== 'pending')
         fail(409, 'request_not_pending', 'This request has already been decided.');
+      reason = requireReason({ reason: body.decisionNote });
       // Recording that ops agreed is the whole effect. Moving a driver onto a
       // route stays a separate, deliberate assignment command, so nothing here
       // touches trips.assigned_driver_id or vehicle_id.
@@ -254,14 +259,14 @@ export class Fleet {
         `UPDATE app.driver_requests
         SET status=$2,decision_note=$3,decided_by=$4,decided_at=clock_timestamp(),${BUMP}
         WHERE id=$1`,
-        [id, body.status, trimmed(body.decisionNote, 'decisionNote', 2000), actor.userId],
+        [id, body.status, reason, actor.userId],
       );
     }
     const data = (await this.load(client, kind, [id]))[0]!;
     await client.query(
-      `INSERT INTO app.fleet_events(actor_user_id,command_id,${subjectColumn[kind]},operation,before_state,after_state)
-      VALUES ($1,$2,$3,$4,$5,$6)`,
-      [actor.userId, commandId, id, operation, before, data],
+      `INSERT INTO app.fleet_events(actor_user_id,command_id,${subjectColumn[kind]},operation,before_state,after_state,reason)
+      VALUES ($1,$2,$3,$4,$5,$6,$7)`,
+      [actor.userId, commandId, id, operation, before, data, reason],
     );
     const created = operation.startsWith('create') || operation === 'reportIncident';
     const headers: Record<string, string> = {

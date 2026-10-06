@@ -6,6 +6,7 @@ import { Empty, ErrorState, LoadingRows, Page, Panel, StatusBadge, when } from '
 import { useQuery } from '../hooks/useQuery';
 import { opsHeaders } from '../api/session';
 import { ActionDialog } from '../components/ActionDialog';
+import { ReasonField } from '../components/ReasonField';
 
 type Selection =
   | { kind: 'incident'; row: Incident }
@@ -203,6 +204,10 @@ export function Support() {
         title="Record a decision"
         description="This decision is attributed to your administrator account and cannot be silently rewritten."
         confirmLabel="Record decision"
+        confirmDisabled={
+          !note.trim() ||
+          (selected?.kind === 'commute' && decision === 'approve' && (!slotId || !effectiveDate))
+        }
         onClose={() => {
           setSelected(null);
           setNote('');
@@ -217,23 +222,23 @@ export function Support() {
           if (selected.kind === 'incident') {
             const response = await session.client.POST('/v1/ops/incidents/{id}/decisions', {
               params: { path: { id: selected.row.id }, header: headers },
-              body: { status: decision as 'acknowledged' | 'resolved', resolution: note },
+              body: { status: decision as 'acknowledged' | 'resolved', resolution: note.trim() },
             });
             if (response.error) throw new Error(response.error.error.message);
           } else if (selected.kind === 'driver') {
             const response = await session.client.POST('/v1/ops/driver-requests/{id}/decisions', {
               params: { path: { id: selected.row.id }, header: headers },
-              body: { status: decision as 'approved' | 'declined', decisionNote: note },
+              body: { status: decision as 'approved' | 'declined', decisionNote: note.trim() },
             });
             if (response.error) throw new Error(response.error.error.message);
           } else {
             const body: components['schemas']['CommuteDecision'] =
               decision === 'approve'
-                ? { action: 'approve', slotId, effectiveDate, note }
+                ? { action: 'approve', slotId, effectiveDate, note: note.trim() }
                 : {
                     action: decision as
                       'waitlist' | 'pause' | 'resume' | 'apply' | 'cancel' | 'reject',
-                    note,
+                    note: note.trim(),
                   };
             const response = await session.client.POST('/v1/ops/commute-requests/{id}/decisions', {
               params: { path: { id: selected.row.id }, header: headers },
@@ -295,15 +300,7 @@ export function Support() {
             </label>
           </>
         )}
-        <label>
-          Reason / note
-          <textarea
-            rows={4}
-            required
-            value={note}
-            onChange={(event) => setNote(event.target.value)}
-          />
-        </label>
+        <ReasonField value={note} onChange={setNote} />
         {selected?.kind === 'commute' && (
           <div>
             <strong>Decision history</strong>

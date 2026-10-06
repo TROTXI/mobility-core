@@ -3,7 +3,7 @@ import { createHash, randomUUID } from 'node:crypto';
 import type { Pool, PoolClient } from 'pg';
 import type { Actor, Body, Outcome, ReservationChange } from '../transport/service.js';
 import { canonical } from '../transport/service.js';
-import { fail, mapDatabaseError, TransportError } from '../transport/errors.js';
+import { fail, mapDatabaseError, requireReason, TransportError } from '../transport/errors.js';
 import { cursorCodec } from '../transport/cursor.js';
 import type { FinancialDependencies, PurchaseLeg } from '../payments/foundation.js';
 
@@ -578,6 +578,9 @@ export class MembershipService {
           fail(409, 'idempotency_expired', 'Use a new request key.');
         return this.commandOutcome(c, op, old.resource_id);
       }
+      // An Ops decision says why; the request row keeps only the latest note,
+      // so the event keeps each one.
+      const reason = op === 'decideCommuteRequest' ? requireReason({ reason: input.note }) : null;
       const resource = await this.mutate(c, actor, op, scope, normalized, match);
       const receipt = randomUUID();
       await c.query(
@@ -585,12 +588,13 @@ export class MembershipService {
         [receipt, actor.userId, op, scope, digest(key), hash, resource],
       );
       await c.query(
-        'INSERT INTO app.membership_events(command_id,actor_user_id,resource_id,action) VALUES ($1,$2,$3,$4)',
+        'INSERT INTO app.membership_events(command_id,actor_user_id,resource_id,action,reason) VALUES ($1,$2,$3,$4,$5)',
         [
           receipt,
           actor.userId,
           resource,
           op === 'decideCommuteRequest' ? String(input.action) : op,
+          reason,
         ],
       );
       return this.commandOutcome(c, op, resource);
@@ -1291,7 +1295,7 @@ export class MembershipService {
             : table === 'reservations'
               ? this.reservationView(r)
               : table === 'membership_events'
-                ? { id: r.id, action: r.action, note: null, occurredAt: iso(r.occurred_at) }
+                ? { id: r.id, action: r.action, note: r.reason, occurredAt: iso(r.occurred_at) }
                 : await this.requestView(c, r, ops(op)),
         );
       const last = rows[limit - 1];
