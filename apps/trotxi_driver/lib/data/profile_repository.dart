@@ -21,8 +21,10 @@ class DriverProfileRepository {
     'webp': 'image/webp',
   };
 
-  Future<wire.Account> account() async =>
-      (await api.get('/v1/me', wire.AccountResponse.serializer)).data;
+  Future<wire.Account> account() async => (await api.get(
+    '/v1/me',
+    wire.AccountResponse.serializer,
+  )).data;
 
   /// Replace the photo and return the new signed URL.
   ///
