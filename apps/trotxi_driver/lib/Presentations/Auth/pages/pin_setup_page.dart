@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:trotxi_driver/Presentations/Auth/widgets/auth_layout.dart';
 import 'package:flutter/services.dart';
 import 'package:trotxi_driver/core/api/driver_api.dart';
 import 'package:trotxi_driver/core/config/theme/app_colors.dart';
-import 'package:trotxi_driver/core/config/theme/app_radii.dart';
 import 'package:trotxi_driver/core/config/theme/app_spacing.dart';
 import 'package:trotxi_driver/core/config/theme/app_typography.dart';
 import 'package:trotxi_driver/core/widgets/driver_note.dart';
@@ -194,115 +194,69 @@ class _PinSetupPageState extends State<PinSetupPage> {
   @override
   Widget build(BuildContext context) {
     final colors = context.driverColors;
-    return Scaffold(
-      body: SafeArea(
-        child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 560),
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(
-                AppSpacing.space20,
-                AppSpacing.space32,
-                AppSpacing.space20,
-                AppSpacing.space32,
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Text(
-                    'Choose your PIN',
-                    textAlign: TextAlign.center,
-                    style: AppTypography.screenTitle.copyWith(
-                      color: colors.textPrimary,
-                    ),
+    final editable = !_working && !_expired && !_locked;
+    return AuthLayout(
+      title: 'Choose your PIN',
+      subtitle:
+          'You signed in with a temporary PIN from operations. Choose your own '
+          'six-digit PIN before you start work. Operations will not be able to '
+          'see it.',
+      footer: [
+        FilledButton(
+          onPressed: _working || _expired ? null : _submit,
+          style: authPrimaryButton(colors),
+          child: _working
+              ? SizedBox(
+                  height: 20,
+                  width: 20,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: colors.onAction,
+                    semanticsLabel: 'Saving your PIN',
                   ),
-                  const SizedBox(height: AppSpacing.space4),
-                  Text(
-                    'You signed in with a temporary PIN from operations. Choose '
-                    'your own six-digit PIN before you start work. Operations '
-                    'will not be able to see it.',
-                    textAlign: TextAlign.center,
-                    style: AppTypography.screenContext.copyWith(
-                      color: colors.textSecondary,
-                    ),
-                  ),
-                  const SizedBox(height: AppSpacing.space32),
-                  if (widget.temporaryPin == null)
-                    _PinField(
-                      label: 'Temporary PIN',
-                      controller: _current,
-                      enabled: !_working && !_expired && !_locked,
-                    ),
-                  _PinField(
-                    label: 'New PIN',
-                    controller: _next,
-                    enabled: !_working && !_expired && !_locked,
-                  ),
-                  _PinField(
-                    label: 'Confirm new PIN',
-                    controller: _confirm,
-                    enabled: !_working && !_expired && !_locked,
-                    onSubmitted: (_) => _submit(),
-                  ),
-                  if (_error != null) ...[
-                    Semantics(
-                      liveRegion: true,
-                      child: Text(
-                        _error!,
-                        style: AppTypography.footnote.copyWith(
-                          color: colors.danger,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: AppSpacing.space16),
-                  ],
-                  FilledButton(
-                    onPressed: _working || _expired ? null : _submit,
-                    style: FilledButton.styleFrom(
-                      minimumSize: const Size.fromHeight(56),
-                      backgroundColor: colors.action,
-                      foregroundColor: colors.onAction,
-                      textStyle: AppTypography.actionLabel,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: AppRadii.circular(AppRadii.pill),
-                      ),
-                    ),
-                    child: _working
-                        ? SizedBox(
-                            height: 20,
-                            width: 20,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: colors.onAction,
-                              semanticsLabel: 'Saving your PIN',
-                            ),
-                          )
-                        : Text(_locked ? 'Retry saving this PIN' : 'Save PIN'),
-                  ),
-                  const SizedBox(height: AppSpacing.space12),
-                  TextButton(
-                    onPressed: _working ? null : widget.onSignOut,
-                    child: Text(
-                      'Sign out',
-                      style: AppTypography.fieldLabel.copyWith(
-                        color: colors.textPrimary,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: AppSpacing.space16),
-                  const DriverNote(
-                    title: 'After you save',
-                    body:
-                        'Every device signed in to your account is signed out, '
-                        'this one too. Sign in again with your driver code and '
-                        'the PIN you just chose.',
-                  ),
-                ],
-              ),
-            ),
+                )
+              : AuthButtonLabel(_locked ? 'Retry saving this PIN' : 'Save PIN'),
+        ),
+        const SizedBox(height: AppSpacing.space8),
+        TextButton(
+          onPressed: _working ? null : widget.onSignOut,
+          child: Text(
+            'Sign out',
+            style: AppTypography.fieldLabel.copyWith(color: colors.textPrimary),
           ),
         ),
-      ),
+        const SizedBox(height: AppSpacing.space8),
+        const DriverNote(
+          title: 'After you save',
+          body:
+              'Every device signed in to your account is signed out, this one '
+              'too. Sign in again with your driver code and the PIN you just '
+              'chose.',
+        ),
+      ],
+      children: [
+        if (widget.temporaryPin == null)
+          _PinField(
+            label: 'Temporary PIN',
+            controller: _current,
+            enabled: editable,
+          ),
+        _PinField(label: 'New PIN', controller: _next, enabled: editable),
+        _PinField(
+          label: 'Confirm new PIN',
+          controller: _confirm,
+          enabled: editable,
+          onSubmitted: (_) => _submit(),
+        ),
+        if (_error != null)
+          Semantics(
+            liveRegion: true,
+            child: Text(
+              _error!,
+              style: AppTypography.authRowDetail.copyWith(color: colors.danger),
+            ),
+          ),
+      ],
     );
   }
 }
@@ -325,23 +279,37 @@ class _PinField extends StatelessWidget {
     final colors = context.driverColors;
     return Padding(
       padding: const EdgeInsets.only(bottom: AppSpacing.space20),
-      child: TextField(
-        controller: controller,
-        enabled: enabled,
-        obscureText: true,
-        keyboardType: TextInputType.number,
-        autocorrect: false,
-        enableSuggestions: false,
-        onSubmitted: onSubmitted,
-        style: AppTypography.fieldText.copyWith(
-          color: colors.textPrimary,
-          letterSpacing: 4,
-        ),
-        inputFormatters: [
-          FilteringTextInputFormatter.digitsOnly,
-          LengthLimitingTextInputFormatter(6),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            label,
+            style: AppTypography.fieldLabel.copyWith(color: colors.textPrimary),
+          ),
+          const SizedBox(height: AppSpacing.space8),
+          TextField(
+            key: ValueKey('pin-field:$label'),
+            controller: controller,
+            enabled: enabled,
+            obscureText: true,
+            keyboardType: TextInputType.number,
+            autocorrect: false,
+            enableSuggestions: false,
+            onSubmitted: onSubmitted,
+            style: AppTypography.fieldText.copyWith(
+              color: colors.textPrimary,
+              letterSpacing: 4,
+            ),
+            inputFormatters: [
+              FilteringTextInputFormatter.digitsOnly,
+              LengthLimitingTextInputFormatter(6),
+            ],
+            decoration: InputDecoration(
+              hintText: '•' * 6,
+              semanticCounterText: label,
+            ),
+          ),
         ],
-        decoration: InputDecoration(labelText: label, hintText: '•' * 6),
       ),
     );
   }

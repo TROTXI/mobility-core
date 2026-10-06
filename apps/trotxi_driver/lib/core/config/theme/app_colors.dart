@@ -34,6 +34,7 @@ abstract final class AppPrimitiveColors {
   /// The stronger off-blue the file uses where a surface has to carry weight:
   /// the next-stop card, and the selected pill in the phone nav.
   static const paperStrong = Color(0xFFDCE6EF);
+
   /// Hairlines. Previously borders were drawn in `paperRaised`, which is the
   /// surface colour — so every border in light mode was invisible against the
   /// thing it was meant to bound.
