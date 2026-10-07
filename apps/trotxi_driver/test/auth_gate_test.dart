@@ -242,7 +242,10 @@ void main() {
         ),
       ),
     );
-    await tester.pumpAndSettle();
+    // The welcome card idles on a loop, so it never settles; pump past the
+    // van's drive-in instead.
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 3));
     expect(find.text('Welcome to Trotxi Driver'), findsOneWidget);
     expect(find.byType(TextField), findsNothing);
 
@@ -252,7 +255,7 @@ void main() {
       scrollable: find.byType(Scrollable).last,
     );
     await tester.ensureVisible(find.text('Continue'));
-    await tester.pumpAndSettle();
+    await tester.pump(const Duration(milliseconds: 500));
     await tester.tap(find.text('Continue'));
     await tester.pumpAndSettle();
 
