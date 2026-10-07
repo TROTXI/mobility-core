@@ -62,10 +62,14 @@ class _FirstLaunch implements FirstLaunchStore {
 }
 
 class _Readiness implements DeviceReadinessService {
+  _Readiness({this.location = PermissionStatus.denied});
+
+  final PermissionStatus location;
+
   @override
-  Future<DeviceReadiness> check() async => const DeviceReadiness(
+  Future<DeviceReadiness> check() async => DeviceReadiness(
     camera: PermissionStatus.denied,
-    location: PermissionStatus.denied,
+    location: location,
     locationServices: true,
   );
 
@@ -87,7 +91,11 @@ class _Config implements ConfigRepository {
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
-Future<void> _pump(WidgetTester tester, _Auth auth) async {
+Future<void> _pump(
+  WidgetTester tester,
+  _Auth auth, {
+  PermissionStatus location = PermissionStatus.denied,
+}) async {
   await tester.pumpWidget(
     MultiProvider(
       providers: [
@@ -101,7 +109,7 @@ Future<void> _pump(WidgetTester tester, _Auth auth) async {
         theme: AppTheme.lightTheme,
         home: AuthGate(
           firstLaunchStore: _FirstLaunch(),
-          readinessService: _Readiness(),
+          readinessService: _Readiness(location: location),
           splashDuration: Duration.zero,
           home: (_) => const Scaffold(body: Text('Today test destination')),
         ),
@@ -112,6 +120,28 @@ Future<void> _pump(WidgetTester tester, _Auth auth) async {
 }
 
 void main() {
+  testWidgets(
+    'a driver whose location is already allowed goes from Account linked straight to Today',
+    (tester) async {
+      final auth = _Auth(false);
+      await _pump(tester, auth, location: PermissionStatus.granted);
+      await tester.enterText(find.byType(TextField).first, 'DR-TEST');
+      await tester.enterText(find.byType(TextField).last, '482913');
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Yes, link account'));
+      await tester.pumpAndSettle();
+      expect(find.text('Account linked'), findsOneWidget);
+      // Nothing to set up, so the screen does not preview a setup step.
+      expect(find.text('NEXT: DEVICE SETUP'), findsNothing);
+      await tester.ensureVisible(find.text('Continue'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Continue'));
+      await tester.pumpAndSettle();
+      expect(find.byType(DeviceReadinessPage), findsNothing);
+      expect(find.text('Today test destination'), findsOneWidget);
+    },
+  );
+
   for (final operatorIssued in [true, false]) {
     testWidgets(
       'sign-in reaches Today, through PIN setup only when operations issued the PIN, operator-issued=$operatorIssued',

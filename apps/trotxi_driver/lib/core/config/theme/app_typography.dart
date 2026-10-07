@@ -120,6 +120,62 @@ abstract final class AppTypography {
     fontFeatures: [FontFeature.tabularFigures()],
   );
 
+  /// One small scale shared by the sign-in, account and device-readiness
+  /// screens (pages 05 and 06). Before these existed each screen borrowed
+  /// whichever trip-screen token was nearest, so the same kind of line was 10px
+  /// on one screen and 24px on the next.
+  ///
+  /// The question above a pair of choices: "Is this your account?". 14/600 in
+  /// the file; one step up so it reads as the prompt it is.
+  static const authQuestion = TextStyle(
+    fontFamily: fontFamily,
+    fontSize: 15,
+    fontWeight: FontWeight.w600,
+    height: 22 / 15,
+  );
+
+  /// The driver's name on an identity card. 18/600.
+  static const authName = TextStyle(
+    fontFamily: fontFamily,
+    fontSize: 18,
+    fontWeight: FontWeight.w600,
+    height: 27 / 18,
+  );
+
+  /// The first line of a card row: "Location", "Driver ID" value side.
+  static const authRowTitle = TextStyle(
+    fontFamily: fontFamily,
+    fontSize: 14,
+    fontWeight: FontWeight.w600,
+    height: 20 / 14,
+  );
+
+  /// The second line of a card row, and a detail label. The file draws these
+  /// at 11; 12 keeps them readable on a phone clamped to a windscreen.
+  static const authRowDetail = TextStyle(
+    fontFamily: fontFamily,
+    fontSize: 12,
+    fontWeight: FontWeight.w400,
+    height: 18 / 12,
+  );
+
+  /// A detail value beside [authRowDetail].
+  static const authRowValue = TextStyle(
+    fontFamily: fontFamily,
+    fontSize: 12,
+    fontWeight: FontWeight.w600,
+    height: 18 / 12,
+  );
+
+  /// The one line of small print under a screen's actions. 10 in the file; 11
+  /// so it can still be read.
+  static const authCaption = TextStyle(
+    fontFamily: fontFamily,
+    fontSize: 11,
+    fontWeight: FontWeight.w400,
+    height: 16 / 11,
+  );
+
   /// The centred title on a full-screen auth or readiness frame. 26/600 in the
   /// file, deliberately smaller than [heading1]: these screens lead with the
   /// wordmark, so the title sits under a logo rather than carrying the page.

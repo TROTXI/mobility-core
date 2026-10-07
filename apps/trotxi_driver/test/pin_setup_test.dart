@@ -71,21 +71,28 @@ Future<void> _setup(
   String? temporaryPin = '481205',
   Future<void> Function()? onChanged,
   Future<void> Function()? onUncertain,
-}) => tester.pumpWidget(
-  MaterialApp(
-    theme: AppTheme.lightTheme,
-    home: PinSetupPage(
-      temporaryPin: temporaryPin,
-      changePin: auth.changePin,
-      onChanged: onChanged ?? () async {},
-      onUncertain: onUncertain ?? () async {},
-      onSignOut: () async {},
+}) {
+  // The phone size the frames are drawn at, so the actions at the foot of the
+  // screen are where a driver sees them.
+  tester.view.physicalSize = const Size(390, 844);
+  tester.view.devicePixelRatio = 1;
+  addTearDown(tester.view.reset);
+  return tester.pumpWidget(
+    MaterialApp(
+      theme: AppTheme.lightTheme,
+      home: PinSetupPage(
+        temporaryPin: temporaryPin,
+        changePin: auth.changePin,
+        onChanged: onChanged ?? () async {},
+        onUncertain: onUncertain ?? () async {},
+        onSignOut: () async {},
+      ),
     ),
-  ),
-);
+  );
+}
 
 Future<void> _type(WidgetTester tester, String label, String value) async {
-  await tester.enterText(find.widgetWithText(TextField, label), value);
+  await tester.enterText(find.byKey(ValueKey('pin-field:$label')), value);
   await tester.pump();
 }
 
@@ -182,7 +189,7 @@ void main() {
       for (final label in ['New PIN', 'Confirm new PIN']) {
         expect(
           tester
-              .widget<TextField>(find.widgetWithText(TextField, label))
+              .widget<TextField>(find.byKey(ValueKey('pin-field:$label')))
               .enabled,
           isFalse,
         );
@@ -222,15 +229,15 @@ void main() {
           for (final label in ['Temporary PIN', 'New PIN', 'Confirm new PIN']) {
             expect(
               tester
-                  .widget<TextField>(find.widgetWithText(TextField, label))
+                  .widget<TextField>(find.byKey(ValueKey('pin-field:$label')))
                   .enabled,
               isFalse,
             );
           }
-        await tester.tap(find.text('Retry saving this PIN'));
-        await tester.pump();
-        await tester.pump();
-        expect(auth.changes, hasLength(2));
+          await tester.tap(find.text('Retry saving this PIN'));
+          await tester.pump();
+          await tester.pump();
+          expect(auth.changes, hasLength(2));
           expect(auth.changes[1], auth.changes[0]);
           expect(changed, 1);
         },
@@ -251,10 +258,10 @@ void main() {
         await _type(tester, 'Confirm new PIN', '483920');
         await tester.tap(find.text('Save PIN'));
         await tester.pumpAndSettle();
-      await tester.tap(find.text('Retry saving this PIN'));
-      await tester.pump();
-      await tester.pump();
-      expect(auth.changes[1], auth.changes[0]);
+        await tester.tap(find.text('Retry saving this PIN'));
+        await tester.pump();
+        await tester.pump();
+        expect(auth.changes[1], auth.changes[0]);
         expect(uncertain, 1);
       },
     );
@@ -317,7 +324,10 @@ void main() {
             const RateLimitException(Duration(seconds: 30)),
           ]);
         await _setup(tester, auth, temporaryPin: null);
-        expect(find.widgetWithText(TextField, 'Temporary PIN'), findsOneWidget);
+        expect(
+          find.byKey(const ValueKey('pin-field:Temporary PIN')),
+          findsOneWidget,
+        );
         await tester.tap(find.text('Save PIN'));
         await tester.pump();
         expect(find.textContaining('six-digit temporary PIN'), findsOneWidget);

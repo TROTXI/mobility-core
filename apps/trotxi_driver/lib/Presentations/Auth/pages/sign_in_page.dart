@@ -6,6 +6,7 @@ import 'package:trotxi_driver/core/api/driver_api.dart';
 import 'package:trotxi_driver/Presentations/Auth/models/sign_in_state.dart';
 import 'package:trotxi_driver/Presentations/Auth/pages/cant_sign_in_page.dart';
 import 'package:trotxi_driver/Presentations/Auth/pages/forgot_pin_page.dart';
+import 'package:trotxi_driver/Presentations/Auth/widgets/auth_layout.dart';
 import 'package:trotxi_driver/core/widgets/driver_note.dart';
 import 'package:trotxi_driver/core/widgets/public_information_links.dart';
 import 'package:trotxi_driver/core/widgets/trotxi_wordmark.dart';
@@ -184,8 +185,8 @@ class _SignInPageState extends State<SignInPage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    const Center(child: TrotxiWordmark()),
-                    const SizedBox(height: AppSpacing.space40),
+                    const Center(child: TrotxiWordmark(height: 46)),
+                    const SizedBox(height: AppSpacing.space32),
 
                     Text(
                       inlineError ? 'Check your PIN' : 'Sign in',
@@ -200,11 +201,13 @@ class _SignInPageState extends State<SignInPage> {
                           ? 'The PIN did not match this driver account.'
                           : 'Use the driver code and PIN provided by your operator.',
                       textAlign: TextAlign.center,
-                      style: AppTypography.screenContext.copyWith(
+                      style: AppTypography.authRowDetail.copyWith(
+                        fontSize: 13,
+                        height: 20 / 13,
                         color: colors.textSecondary,
                       ),
                     ),
-                    const SizedBox(height: AppSpacing.space40),
+                    const SizedBox(height: AppSpacing.space32),
 
                     if (widget.notice != null) ...[
                       DriverNote(title: 'Signed out', body: widget.notice!),
@@ -289,7 +292,7 @@ class _SignInPageState extends State<SignInPage> {
                       Text(
                         'PIN not recognised. Check the $_pinDigits digits, or ask '
                         'operations for a new PIN.',
-                        style: AppTypography.footnote.copyWith(
+                        style: AppTypography.authCaption.copyWith(
                           color: colors.danger,
                         ),
                       ),
@@ -309,15 +312,7 @@ class _SignInPageState extends State<SignInPage> {
 
                     FilledButton(
                       onPressed: _canSubmit ? _submit : null,
-                      style: FilledButton.styleFrom(
-                        minimumSize: const Size.fromHeight(56),
-                        backgroundColor: colors.action,
-                        foregroundColor: colors.onAction,
-                        textStyle: AppTypography.actionLabel,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: AppRadii.circular(AppRadii.pill),
-                        ),
-                      ),
+                      style: authPrimaryButton(colors),
                       child: _state.isSubmitting
                           ? SizedBox(
                               height: 20,
@@ -327,7 +322,9 @@ class _SignInPageState extends State<SignInPage> {
                                 color: colors.onAction,
                               ),
                             )
-                          : Text(inlineError ? 'Try again' : 'Sign in'),
+                          : AuthButtonLabel(
+                              inlineError ? 'Try again' : 'Sign in',
+                            ),
                     ),
                     const SizedBox(height: AppSpacing.space16),
 
@@ -373,16 +370,12 @@ class _SignInPageState extends State<SignInPage> {
                     ),
                     const SizedBox(height: AppSpacing.space20),
 
-                    Text(
+                    const AuthCaption(
                       'Your PIN is stored only as a one-way hash. Operations can '
                       'issue a temporary PIN but can never see the one you choose.',
-                      textAlign: TextAlign.center,
-                      style: AppTypography.footnote.copyWith(
-                        color: colors.textMuted,
-                      ),
                     ),
-                    const SizedBox(height: AppSpacing.space12),
-                    const PublicInformationLinks(),
+                    const SizedBox(height: AppSpacing.space8),
+                    const Center(child: PublicInformationLinks()),
                   ],
                 ),
               ),
@@ -463,7 +456,9 @@ class _FailureNotice extends StatelessWidget {
           const SizedBox(height: AppSpacing.space2),
           Text(
             detail,
-            style: AppTypography.footnote.copyWith(color: colors.textSecondary),
+            style: AppTypography.authRowDetail.copyWith(
+              color: colors.textSecondary,
+            ),
           ),
         ],
       ),
@@ -524,14 +519,15 @@ class _RememberDeviceToggle extends StatelessWidget {
                   children: [
                     Text(
                       'Remember this device',
-                      style: AppTypography.screenContext.copyWith(
+                      style: AppTypography.authRowDetail.copyWith(
+                        fontSize: 13,
                         color: colors.textPrimary,
                       ),
                     ),
                     Text(
                       'Leave this off on a shared vehicle phone. Your session '
                       'then ends with the shift instead of lasting a month.',
-                      style: AppTypography.footnote.copyWith(
+                      style: AppTypography.authCaption.copyWith(
                         color: colors.textMuted,
                       ),
                     ),
