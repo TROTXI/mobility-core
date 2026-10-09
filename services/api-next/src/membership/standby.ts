@@ -124,7 +124,27 @@ export class StandbyService {
     const limit = query.limit === undefined ? 30 : Number(query.limit);
     if (!Number.isInteger(limit) || limit < 1 || limit > 100)
       fail(400, 'invalid_query', 'Limit must be between 1 and 100.');
-    const context = `${actor.userId}:standby:${admin ? 'ops' : 'rider'}`;
+    const filter = {
+      routeId: query.routeId?.toLowerCase() || null,
+      state: query.state || null,
+      plan: query.plan || null,
+      day: query.day ? Number(query.day) : null,
+      q: query.q?.trim() || null,
+    };
+    if (
+      (!admin && Object.values(filter).some((v) => v !== null)) ||
+      (filter.routeId && !uuid.test(filter.routeId)) ||
+      (filter.state &&
+        !['submitted', 'offered', 'checkout_open', 'completed', 'withdrawn'].includes(
+          filter.state,
+        )) ||
+      (filter.plan && !['monthly', 'annual'].includes(filter.plan)) ||
+      (filter.day !== null &&
+        (!Number.isInteger(filter.day) || filter.day < 1 || filter.day > 7)) ||
+      (filter.q && filter.q.length > 100)
+    )
+      fail(400, 'invalid_query', 'Invalid standby filter.');
+    const context = `${actor.userId}:standby:${admin ? 'ops' : 'rider'}:${canonical(filter)}`;
     const cursor = query.cursor ? this.cursors.decode(query.cursor, context, new Date()) : null;
     return this.tx(async (c) => {
       if (!admin) await c.query('SELECT id FROM app.users WHERE id=$1 FOR UPDATE', [actor.userId]);
@@ -141,16 +161,50 @@ export class StandbyService {
          LEFT JOIN app.standby_offers o ON o.application_id=a.id
          WHERE ($1::uuid IS NULL OR a.user_id=$1)
            AND ($2::timestamptz IS NULL OR (a.created_at,a.id)<($2::timestamptz,$3::uuid))
+           AND ($5::uuid IS NULL OR a.route_id=$5)
+           AND ($6::text IS NULL OR a.state=$6)
+           AND ($7::text IS NULL OR a.selection->>'plan'=$7)
+           AND ($8::int IS NULL OR $8=ANY(a.travel_days))
+           AND ($9::text IS NULL OR strpos(lower(u.display_name),lower($9))>0)
          ORDER BY a.created_at DESC,a.id DESC LIMIT $4`,
-          [admin ? null : actor.userId, cursor?.time ?? null, cursor?.id ?? null, limit + 1],
+          [
+            admin ? null : actor.userId,
+            cursor?.time ?? null,
+            cursor?.id ?? null,
+            limit + 1,
+            filter.routeId,
+            filter.state,
+            filter.plan,
+            filter.day,
+            filter.q,
+          ],
         )
       ).rows;
+      // Counts ignore the selected route and page cursor, but respect all other
+      // filters. This lets Ops compare complete route demand, not loaded rows.
+      const routeDemand = admin
+        ? (
+            await c.query(
+              `SELECT a.route_id AS "routeId",r.name AS "routeName",count(*)::int AS requests
+         FROM app.standby_applications a
+         JOIN app.users u ON u.id=a.user_id AND u.deleted_at IS NULL
+         JOIN app.routes r ON r.id=a.route_id
+         WHERE ($1::text IS NULL OR a.state=$1)
+           AND ($2::text IS NULL OR a.selection->>'plan'=$2)
+           AND ($3::int IS NULL OR $3=ANY(a.travel_days))
+           AND ($4::text IS NULL OR strpos(lower(u.display_name),lower($4))>0)
+         GROUP BY a.route_id,r.name ORDER BY requests DESC,r.name,a.route_id`,
+              [filter.state, filter.plan, filter.day, filter.q],
+            )
+          ).rows
+        : undefined;
       const last = rows[limit - 1];
       return {
         status: 200,
         headers: {},
         body: {
           data: rows.slice(0, limit).map(view),
+          ...(routeDemand ? { routeDemand } : {}),
           page: {
             nextCursor:
               rows.length > limit && last

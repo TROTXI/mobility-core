@@ -38,7 +38,12 @@ function serve(priced: string[] = ['outbound', 'return']) {
               },
             ]
           : path === '/v1/ops/service-schedules'
-            ? legs.map((l) => ({ id: l.scheduleId, weekdays: [1, 2, 3, 4, 5] }))
+            ? legs.map((l) => ({
+                id: l.scheduleId,
+                weekdays: [1, 2, 3, 4, 5],
+                effectiveFrom: '2020-01-01',
+                effectiveTo: null,
+              }))
             : legs
                 .filter((l) => priced.includes(l.direction))
                 .map((l, i) => ({
@@ -90,8 +95,8 @@ it(
       error: { error: { message: 'Response unavailable; retry safely.' } },
     });
     const dialog = await openOffer();
-    expect(dialog.getByLabelText('Agreed package price (GHS)')).toHaveValue(null);
-    expect(dialog.getByLabelText('Credit per unused outbound ride (GHS)')).toHaveValue(null);
+    expect(dialog.getByLabelText('Agreed package price (GHS)')).toHaveValue('');
+    expect(dialog.getByLabelText('Credit per unused outbound ride (GHS)')).toHaveValue('');
     fireEvent.change(dialog.getByLabelText('Agreed package price (GHS)'), {
       target: { value: '70' },
     });

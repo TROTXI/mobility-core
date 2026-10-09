@@ -310,6 +310,7 @@ import 'package:trotxi_api_client/src/model/session_page.dart';
 import 'package:trotxi_api_client/src/model/standby_application.dart';
 import 'package:trotxi_api_client/src/model/standby_application_offer.dart';
 import 'package:trotxi_api_client/src/model/standby_application_page.dart';
+import 'package:trotxi_api_client/src/model/standby_application_page_route_demand_inner.dart';
 import 'package:trotxi_api_client/src/model/standby_application_response.dart';
 import 'package:trotxi_api_client/src/model/standby_join_input.dart';
 import 'package:trotxi_api_client/src/model/standby_offer_input.dart';
@@ -653,6 +654,7 @@ part 'serializers.g.dart';
   StandbyApplication,
   StandbyApplicationOffer,
   StandbyApplicationPage,
+  StandbyApplicationPageRouteDemandInner,
   StandbyApplicationResponse,
   StandbyJoinInput,
   StandbyOfferInput,

@@ -317,6 +317,7 @@ export 'package:trotxi_api_client/src/model/session_page.dart';
 export 'package:trotxi_api_client/src/model/standby_application.dart';
 export 'package:trotxi_api_client/src/model/standby_application_offer.dart';
 export 'package:trotxi_api_client/src/model/standby_application_page.dart';
+export 'package:trotxi_api_client/src/model/standby_application_page_route_demand_inner.dart';
 export 'package:trotxi_api_client/src/model/standby_application_response.dart';
 export 'package:trotxi_api_client/src/model/standby_join_input.dart';
 export 'package:trotxi_api_client/src/model/standby_offer_input.dart';

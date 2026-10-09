@@ -4770,6 +4770,11 @@ export interface components {
       page: {
         nextCursor: string | null;
       };
+      routeDemand?: {
+        routeId: string;
+        routeName: string;
+        requests: number;
+      }[];
     };
     StandbyApplicationResponse: {
       data: components['schemas']['StandbyApplication'];
@@ -6817,6 +6822,16 @@ export interface operations {
         cursor?: string;
         /** @description Page size. No silent truncation. */
         limit?: number;
+        /** @description Filter by route identity, not its display name. */
+        routeId?: string;
+        /** @description Application state. Omit for all states. */
+        state?: 'submitted' | 'offered' | 'checkout_open' | 'completed' | 'withdrawn';
+        /** @description Requested plan. */
+        plan?: 'monthly' | 'annual';
+        /** @description Travel weekday: Monday=1, Sunday=7. */
+        day?: number;
+        /** @description Literal partial rider name. Route demand totals respect these filters except routeId and pagination. */
+        q?: string;
       };
       header: {
         /**

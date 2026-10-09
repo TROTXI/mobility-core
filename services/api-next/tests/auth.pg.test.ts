@@ -702,6 +702,78 @@ test('KYC-03: verified new rider joins standby, Ops offers, and rider can withdr
   assert.equal(pageTwo.data.length, 1);
   assert.notEqual(pageTwo.data[0].id, pageOne.data[0].id);
   assert.equal(pageTwo.page.nextCursor, null);
+  assert.deepEqual(pageOne.routeDemand, [
+    { routeId: route, routeName: 'Standby corridor', requests: 2 },
+  ]);
+  assert.deepEqual(pageTwo.routeDemand, pageOne.routeDemand);
+  await owner.query(
+    "UPDATE app.standby_applications SET travel_days=ARRAY[1,3]::smallint[], selection=jsonb_set(selection,'{plan}','\"annual\"') WHERE user_id=$1",
+    [otherRider],
+  );
+  const pending = (
+    await standby.list(adminActor, true, {
+      routeId: route,
+      state: 'submitted',
+      plan: 'annual',
+      day: '3',
+      q: 'other',
+    })
+  ).body as any;
+  assert.equal(pending.data.length, 1);
+  assert.equal(pending.data[0].riderId, otherRider);
+  assert.equal(pending.routeDemand[0].requests, 1);
+  const none = (await standby.list(adminActor, true, { day: '7' })).body as any;
+  assert.deepEqual(none.data, []);
+  assert.deepEqual(none.routeDemand, []);
+  const literal = (await standby.list(adminActor, true, { q: '%' })).body as any;
+  assert.deepEqual(literal.data, []);
+  for (const filter of [
+    { routeId: 'bad' },
+    { state: 'bogus' },
+    { plan: 'weekly' },
+    { day: '8' },
+    { day: '1.5' },
+  ])
+    await assert.rejects(
+      standby.list(adminActor, true, filter),
+      (e: any) => e?.code === 'invalid_query',
+    );
+  for (const filter of [
+    { routeId: route },
+    { state: 'submitted' },
+    { plan: 'annual' },
+    { day: '1' },
+    { q: 'Other' },
+  ])
+    await assert.rejects(
+      standby.list(adminActor, true, { cursor: pageOne.page.nextCursor, ...filter }),
+      (e: any) => e?.code === 'invalid_cursor',
+    );
+  await assert.rejects(
+    standby.list(riderActor, false, { state: 'submitted' }),
+    (e: any) => e?.code === 'invalid_query',
+  );
+  assert.equal(
+    (await standby.list(riderActor)).body &&
+      'routeDemand' in ((await standby.list(riderActor)).body as object),
+    false,
+  );
+  // Two routes may share a name. Demand uses IDs and is not scoped to the
+  // currently selected route, nor to the one-row page above.
+  const anotherRoute = await one("INSERT INTO app.routes(name) VALUES ('Standby corridor')");
+  const anotherRider = await one(
+    "INSERT INTO app.users(role,display_name) VALUES ('commuter','Third rider')",
+  );
+  await owner.query(
+    'INSERT INTO app.standby_applications(user_id,route_id,selection,travel_days) VALUES ($1,$2,$3::jsonb,ARRAY[1]::smallint[])',
+    [anotherRider, anotherRoute, JSON.stringify({ ...selection, routeId: anotherRoute })],
+  );
+  const scoped = (await standby.list(adminActor, true, { routeId: route, limit: '1' })).body as any;
+  assert.equal(scoped.data[0].selection.routeId, route);
+  assert.equal(scoped.routeDemand.length, 2);
+  assert.equal(scoped.routeDemand[0].routeId, route);
+  assert.equal(scoped.routeDemand[0].requests, 2);
+  assert.equal(scoped.routeDemand[1].routeId, anotherRoute);
   await assert.rejects(
     standby.list(riderActor, false, { cursor: pageOne.page.nextCursor }),
     (error: any) => error?.code === 'invalid_cursor',
