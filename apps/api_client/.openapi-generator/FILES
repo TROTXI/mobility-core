@@ -307,6 +307,7 @@ doc/SignedInCatalogApi.md
 doc/StandbyApplication.md
 doc/StandbyApplicationOffer.md
 doc/StandbyApplicationPage.md
+doc/StandbyApplicationPageRouteDemandInner.md
 doc/StandbyApplicationResponse.md
 doc/StandbyJoinInput.md
 doc/StandbyOfferInput.md
@@ -665,6 +666,7 @@ lib/src/model/session_page.dart
 lib/src/model/standby_application.dart
 lib/src/model/standby_application_offer.dart
 lib/src/model/standby_application_page.dart
+lib/src/model/standby_application_page_route_demand_inner.dart
 lib/src/model/standby_application_response.dart
 lib/src/model/standby_join_input.dart
 lib/src/model/standby_offer_input.dart

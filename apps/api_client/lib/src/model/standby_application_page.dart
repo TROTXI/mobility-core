@@ -6,6 +6,7 @@
 import 'package:trotxi_api_client/src/model/commute_request_page_page.dart';
 import 'package:trotxi_api_client/src/model/standby_application.dart';
 import 'package:built_collection/built_collection.dart';
+import 'package:trotxi_api_client/src/model/standby_application_page_route_demand_inner.dart';
 import 'package:built_value/built_value.dart';
 import 'package:built_value/serializer.dart';
 
@@ -16,6 +17,7 @@ part 'standby_application_page.g.dart';
 /// Properties:
 /// * [data]
 /// * [page]
+/// * [routeDemand]
 @BuiltValue()
 abstract class StandbyApplicationPage
     implements Built<StandbyApplicationPage, StandbyApplicationPageBuilder> {
@@ -24,6 +26,9 @@ abstract class StandbyApplicationPage
 
   @BuiltValueField(wireName: r'page')
   CommuteRequestPagePage get page;
+
+  @BuiltValueField(wireName: r'routeDemand')
+  BuiltList<StandbyApplicationPageRouteDemandInner>? get routeDemand;
 
   StandbyApplicationPage._();
 
@@ -65,6 +70,14 @@ class _$StandbyApplicationPageSerializer
       object.page,
       specifiedType: const FullType(CommuteRequestPagePage),
     );
+    if (object.routeDemand != null) {
+      yield r'routeDemand';
+      yield serializers.serialize(
+        object.routeDemand,
+        specifiedType: const FullType(
+            BuiltList, [FullType(StandbyApplicationPageRouteDemandInner)]),
+      );
+    }
   }
 
   @override
@@ -104,6 +117,14 @@ class _$StandbyApplicationPageSerializer
             specifiedType: const FullType(CommuteRequestPagePage),
           ) as CommuteRequestPagePage;
           result.page.replace(valueDes);
+          break;
+        case r'routeDemand':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType(
+                BuiltList, [FullType(StandbyApplicationPageRouteDemandInner)]),
+          ) as BuiltList<StandbyApplicationPageRouteDemandInner>;
+          result.routeDemand.replace(valueDes);
           break;
         default:
           unhandled.add(key);

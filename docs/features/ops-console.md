@@ -1,6 +1,6 @@
 # Ops workflows
 
-Source audit: 2026-10-03. Sign in with an approved Google account, then complete
+Source audit: 2026-10-08. Sign in with an approved Google account, then complete
 the passkey check. Role checks are enforced by the server, not only navigation.
 
 | Navigation                 | Implemented work                                                                                                    |
@@ -11,9 +11,9 @@ the passkey check. Role checks are enforced by the server, not only navigation.
 | Fleet / Drivers            | Fleet records, driver provisioning, credential issue/reset/status and delivery choice                               |
 | Riders                     | Membership, reservations, financial history, restrictions and support context                                       |
 | Support                    | Commute requests, driver requests, incidents and decisions                                                          |
-| More → Standby             | Review commuter requests and send priced subscription offers                                                        |
+| Standby                    | Group route demand, filter requests and send individually priced offers in batches                                  |
 | More → Payments            | Purchases, recovery/review and TEST refund initiation                                                               |
-| More → People & messages   | Operators, access controls, delivery and erasure visibility                                                         |
+| More → Delivery status     | Paginated email and push delivery evidence                                                                          |
 | More → Team & access       | Superadmin-only invitations, administrator account deletion, superadmin capability and passkey recovery             |
 | More → Audit log / Reports | Attributable events and operational summaries                                                                       |
 | More → Platform            | Flags, minimum builds and exposed manual maintenance controls                                                       |
@@ -32,6 +32,43 @@ then pays through Paystack. New direct purchases without an offer are refused.
 
 The UI accepts GHS inputs and sends integer pesewas. Do not type a pesewa amount
 into a GHS field. Sent offers are immutable; a fare edit never reprices them.
+
+### Route demand and bulk offers
+
+Standby opens on **Needs offer**. Route groups show full-queue counts, largest
+first, not just the current page. Status, monthly/annual plan, travel weekday
+and rider-name filters run on the server. Route totals respect those filters
+but ignore the selected route, so groups remain comparable. Select a route to
+narrow its paginated request list. Requests are not reservations; compare
+actual schedules, shared journey segments and fleet capacity before offering.
+
+Select up to 25 submitted requests on one route, including across pages, then
+choose **Prepare bulk offers**. Changing filters clears the current selection.
+The review shows each rider's stops, departure times, travel days and estimated
+ride counts. Set shared coverage dates, payment duration and reason. Each rider
+has their own package price and two unused-ride credit values. **Use fare-based
+total** is optional per rider. All pricing pages are loaded before calculating.
+Review every row and confirm before sending. No price is copied merely because
+riders share a route.
+
+Each offer uses the existing authenticated, idempotent offer command. Sends run
+sequentially; results are shown per rider. Successful offers are not resent.
+An uncertain response stops the batch and retains the exact key and payload
+for retry. Definitive refusals allow that rider's price/credit values to be
+corrected. Shared dates and reason stay locked once sending starts. Closing
+is not rollback. When no outcome is uncertain, **Finish batch** keeps the sent
+offers and releases the remaining requests for a new batch. Authorization and
+rate-limit refusals do not discard saved receipt keys for uncertain sends. Closing
+the dialog keeps the batch available through **Resume bulk offers**; leaving
+or reloading the page loses this in-memory draft. Resolve uncertain outcomes
+before leaving. After a reload, refresh the queue and inspect already-created
+offers before preparing a new batch. Sending is not an atomic all-or-nothing
+operation and does not allocate bus capacity.
+
+`GET /v1/ops/standby?state=submitted&plan=monthly&day=1&limit=30`
+returns matching applications and `routeDemand` counts. Add `routeId` for one
+route or `q` for a literal partial rider name. Page cursors are bound to the
+operator and exact filters; changing filters requires restarting pagination.
 
 ## Boundaries
 
@@ -92,8 +129,10 @@ entire account, not just Ops access. The confirmation warns about any commuter
 profile too. Sessions and passkeys are revoked, personal details are erased,
 and required financial/audit records remain. External cleanup is tracked separately.
 Use **View access history** for attributed events.
-The older People & messages directory links to Team for account changes and no
-longer offers administrator-to-commuter role changes.
+Team & access is the only operator-management page. The duplicate People &
+messages directory was removed; its old `/people` URL redirects to `/delivery`.
+Support retains account-erasure tracking. Delivery status retains delivery
+history, without fetching operators or exposing duplicate passkey-reset controls.
 
 Only a superadmin can promote another active administrator to superadmin.
 **Make administrator** removes only superadmin capability, not the account.

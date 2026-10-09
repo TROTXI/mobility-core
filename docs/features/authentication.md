@@ -28,6 +28,13 @@ a phone; the authenticated `/v1/me/phone-verification/start` and `confirm`
 flow verifies their number before standby enrollment/acceptance.
 
 A basic rider name and an active verified phone record are required for standby.
+
+Phone OTP sign-in initially creates a `New commuter` profile. Profile updates
+currently accept one `displayName` (1 to 100 characters), not separate
+`firstName`, `lastName` or `otherNames` properties. A frontend can collect those
+inputs and submit a combined full name through `PATCH /v1/me`, but the
+backend cannot return the name components separately. Do not infer components
+by splitting existing names. Name entry does not itself verify legal identity.
 A profile phone field, payment phone or social login is not verification.
 Matching numbers never silently merge accounts or transfer subscriptions.
 Collision/review states do not authorize taking another account's number.
