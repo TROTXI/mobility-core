@@ -9,7 +9,6 @@ import 'package:trotxi_commuter/core/config/theme/app_typography.dart';
 import 'package:trotxi_commuter/core/config/theme/app_vectors.dart';
 import 'package:trotxi_commuter/Features/Onboarding/widgets/app_button.dart';
 import 'package:trotxi_commuter/core/widgets/public_information_links.dart';
-import 'email_auth_pages.dart';
 import 'phone_sign_in_page.dart';
 import 'email_sign_in_page.dart';
 
@@ -243,18 +242,6 @@ class _OnBoardPageState extends State<OnBoardPage> {
                   ),
             text: 'Continue with phone',
             icon: Icon(Icons.phone_outlined, color: colors.textPrimary),
-          ),
-          const SizedBox(height: 13),
-          AppSignInButton(
-            onPressed: _isSigningIn
-                ? null
-                : () => Navigator.of(context).push(
-                    MaterialPageRoute<void>(
-                      builder: (_) => EmailSignInPage(client: widget.client),
-                    ),
-                  ),
-            text: 'Continue with email',
-            icon: Icon(Icons.mail_outline, color: colors.textPrimary),
           ),
           const SizedBox(height: AppSpacing.space8),
           AppSignInButton(
