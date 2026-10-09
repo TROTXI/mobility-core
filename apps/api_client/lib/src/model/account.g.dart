@@ -89,6 +89,8 @@ class _$Account extends Account {
   final DateTime createdAt;
   @override
   final bool? isSuperadmin;
+  @override
+  final bool? phoneRegistrationPending;
 
   factory _$Account([void Function(AccountBuilder)? updates]) =>
       (AccountBuilder()..update(updates))._build();
@@ -104,7 +106,8 @@ class _$Account extends Account {
       this.avatarUrl,
       required this.role,
       required this.createdAt,
-      this.isSuperadmin})
+      this.isSuperadmin,
+      this.phoneRegistrationPending})
       : super._();
   @override
   Account rebuild(void Function(AccountBuilder) updates) =>
@@ -127,7 +130,8 @@ class _$Account extends Account {
         avatarUrl == other.avatarUrl &&
         role == other.role &&
         createdAt == other.createdAt &&
-        isSuperadmin == other.isSuperadmin;
+        isSuperadmin == other.isSuperadmin &&
+        phoneRegistrationPending == other.phoneRegistrationPending;
   }
 
   @override
@@ -144,6 +148,7 @@ class _$Account extends Account {
     _$hash = $jc(_$hash, role.hashCode);
     _$hash = $jc(_$hash, createdAt.hashCode);
     _$hash = $jc(_$hash, isSuperadmin.hashCode);
+    _$hash = $jc(_$hash, phoneRegistrationPending.hashCode);
     _$hash = $jf(_$hash);
     return _$hash;
   }
@@ -161,7 +166,8 @@ class _$Account extends Account {
           ..add('avatarUrl', avatarUrl)
           ..add('role', role)
           ..add('createdAt', createdAt)
-          ..add('isSuperadmin', isSuperadmin))
+          ..add('isSuperadmin', isSuperadmin)
+          ..add('phoneRegistrationPending', phoneRegistrationPending))
         .toString();
   }
 }
@@ -213,6 +219,11 @@ class AccountBuilder implements Builder<Account, AccountBuilder> {
   bool? get isSuperadmin => _$this._isSuperadmin;
   set isSuperadmin(bool? isSuperadmin) => _$this._isSuperadmin = isSuperadmin;
 
+  bool? _phoneRegistrationPending;
+  bool? get phoneRegistrationPending => _$this._phoneRegistrationPending;
+  set phoneRegistrationPending(bool? phoneRegistrationPending) =>
+      _$this._phoneRegistrationPending = phoneRegistrationPending;
+
   AccountBuilder() {
     Account._defaults(this);
   }
@@ -231,6 +242,7 @@ class AccountBuilder implements Builder<Account, AccountBuilder> {
       _role = $v.role;
       _createdAt = $v.createdAt;
       _isSuperadmin = $v.isSuperadmin;
+      _phoneRegistrationPending = $v.phoneRegistrationPending;
       _$v = null;
     }
     return this;
@@ -265,6 +277,7 @@ class AccountBuilder implements Builder<Account, AccountBuilder> {
           createdAt: BuiltValueNullFieldError.checkNotNull(
               createdAt, r'Account', 'createdAt'),
           isSuperadmin: isSuperadmin,
+          phoneRegistrationPending: phoneRegistrationPending,
         );
     replace(_$result);
     return _$result;

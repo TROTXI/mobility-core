@@ -7,6 +7,7 @@ import { apiBaseUrl, opsHeaders } from '../api/session';
 // Fragment secrets never reach the web server or enter persistent storage.
 const fragment = typeof window === 'undefined' ? '' : window.location.hash.slice(1);
 const linkToken = new URLSearchParams(fragment).get('token') ?? '';
+const contactOnly = new URLSearchParams(fragment).get('purpose') === 'contact';
 if (typeof window !== 'undefined' && window.location.pathname === '/account-access')
   window.history.replaceState(null, '', '/account-access');
 const api = createClient<paths>({ baseUrl: apiBaseUrl });
@@ -24,14 +25,50 @@ export function CommuterEmailAccess() {
         <img className="logo-light" src="/trotxi-wordmark-light.png" alt="" />
         <img className="logo-dark" src="/trotxi-wordmark-dark.png" alt="" />
       </div>
-      <h1>{done ? 'Password saved' : 'Set your commuter password'}</h1>
+      <h1>
+        {contactOnly
+          ? done
+            ? 'Email verified'
+            : 'Verify your email'
+          : done
+            ? 'Password saved'
+            : 'Set your commuter password'}
+      </h1>
       {done ? (
         <p>
-          Return to the Trotxi app and sign in with your email and new password. Previous sessions
-          have been signed out.
+          {contactOnly
+            ? 'Your contact email is verified. Return to the Trotxi app.'
+            : 'Return to the Trotxi app and sign in with your phone number and new password. Previous sessions have been signed out.'}
         </p>
       ) : !valid ? (
         <p>This link is incomplete. Request a new email from the Trotxi app.</p>
+      ) : contactOnly ? (
+        <form
+          onSubmit={async (e) => {
+            e.preventDefault();
+            if (busy) return;
+            setBusy(true);
+            setError('');
+            try {
+              const result = await api.POST('/v1/auth/email/verify', {
+                params: { header: opsHeaders },
+                body: { token: linkToken },
+              });
+              if (result.error) setError(result.error.error.message);
+              else setDone(true);
+            } catch {
+              setError('Could not connect. Please try again.');
+            } finally {
+              setBusy(false);
+            }
+          }}
+        >
+          <p>Confirm this address for account recovery and important updates.</p>
+          {error && <p role="alert">{error}</p>}
+          <Button appearance="primary" type="submit" disabled={busy}>
+            {busy ? 'Verifying...' : 'Verify email'}
+          </Button>
+        </form>
       ) : (
         <form
           onSubmit={async (e) => {
@@ -63,10 +100,7 @@ export function CommuterEmailAccess() {
             }
           }}
         >
-          <p>
-            Your email is verified when you save your password. Use a long, unique password or a
-            password manager.
-          </p>
+          <p>Use a long, unique password or a password manager.</p>
           <label htmlFor="new-password">New password</label>
           <input
             id="new-password"

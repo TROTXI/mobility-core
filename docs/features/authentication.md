@@ -1,12 +1,15 @@
 # Authentication and sessions
 
-Email and full-name flow updated: 2026-10-08.
+Commuter entry flow updated: 2026-10-09. Migration 048 is not deployed yet.
 
 ## Sign-in methods
 
-- Commuters: `POST /v1/auth/google`, optional configured Apple, or
-  `/v1/auth/phone/request` then `/v1/auth/phone/verify`, or verified
-  email/password through `/v1/auth/email/login`.
+- Commuters: phone number and password through `POST /v1/auth/phone/password`.
+  Account creation verifies phone possession with `/v1/auth/phone/request`
+  and `/v1/auth/phone/verify`, then submits names, contact email and password
+  to `/v1/me/phone-registration`. Legacy social, OTP and email sign-in API
+  operations remain for existing staging clients but are hidden from the new
+  commuter entry screen.
 - Drivers: `POST /v1/auth/driver` with driver code and six-digit PIN.
   Ops creates drivers and issues/resets temporary credentials. Temporary PINs
   expire and require a private PIN change before normal driver work.
@@ -23,23 +26,21 @@ tab-scoped. There is no fake-provider fallback in the deployed composition.
 
 ## Phone verification and account boundaries
 
-mNotify delivers six-digit codes. A successful phone sign-in records verified
-phone possession for that phone account. Google/Apple users can sign in without
-a phone; the authenticated `/v1/me/phone-verification/start` and `confirm`
-flow verifies their number before standby enrollment/acceptance.
+mNotify delivers six-digit codes. Signup OTP records possession of that phone
+number. A pending signup session may only read its account and complete
+registration. Once the full name, email and password are saved, all temporary
+sessions are revoked and the rider signs in with phone and password.
 
 A full rider name and an active verified phone record are required for standby.
 
-Phone OTP sign-in initially creates a `New commuter` profile. The app asks for
-`firstName` and `lastName`, plus optional `otherNames`, before opening Home.
-Google users without these fields complete the same screen. `PATCH /v1/me`
-stores the components and constructs `displayName` as first, other, last,
+Signup collects `firstName` and `lastName`, plus optional `otherNames`, before
+sending the OTP. The API constructs `displayName` as first, other, last,
 separated by spaces. First/last names allow 60 characters each and other names 80,
 with a combined display name limited to 200 characters. Unicode names are supported;
 controls are rejected. The account response
 returns all three components. Existing names are not split by guessing.
 Name entry does not itself verify legal identity.
-A profile phone field, payment phone or social login is not verification.
+A profile phone field or payment phone is not verification.
 Matching numbers never silently merge accounts or transfer subscriptions.
 Collision/review states do not authorize taking another account's number.
 
@@ -61,10 +62,33 @@ Sources: `services/api-next/src/auth/`, `runtime/config.ts`,
 `apps/ops/src/auth/`, `apps/trotxi_driver/lib/core/state/session_controller.dart`.
 Configuration support does not prove Apple or production provider setup.
 
-## Email signup, recovery and linking
+## Contact email, recovery and legacy email access
 
-The commuter app offers **Continue with email**, **Create an account**, and
-**Forgot password**. Any syntactically valid email domain is supported.
+The current commuter app has one public entry method. Signup collects first,
+last and optional other names, Ghana mobile number, contact email and password.
+It requests an mNotify code, exchanges that code for a limited pending session,
+then calls `POST /v1/me/phone-registration`. The API stores the full name and
+Argon2id password hash, queues a contact-email verification link, revokes the
+pending session and asks the rider to sign in with phone and password. A
+restored pending session returns to the completion screen, not Home. No email
+proof is needed to sign in or join standby after phone registration.
+Migration 048 marks older staging phone-only accounts without a password as
+pending so they can verify by SMS and finish signup without losing their rider
+record. Existing phone accounts that already have a password keep it.
+
+The contact email starts unverified. Its link opens the public
+`/account-access#token=...&purpose=contact` page, which calls
+`POST /v1/auth/email/verify`. The rider can resend from Profile. Recovery uses
+`POST /v1/auth/email/reset` only after contact verification. Its response is
+generic for unknown or unverified addresses. Resetting the password revokes
+old sessions and requires a fresh phone/password sign-in. It does not change
+phone verification.
+
+### Legacy staging paths
+
+The API still serves email signup/login and Google/Apple commuter operations
+for older staging clients while the new build rolls out. The current app does
+not show those choices. The legacy email flow is:
 
 1. Signup collects full-name fields and email, then calls
    `POST /v1/auth/email/signup`. No password or usable session exists yet.
@@ -85,7 +109,7 @@ links and sessions, including other devices. It does not automatically log in.
 The user receives a password-change notice. Reset requests alone do not change
 the password or lock the user out.
 
-**Profile > Security & sign-in > Email & password** supports adding an email
+**Profile > Security & sign-in > Security & recovery** supports adding an email
 to an account first created with Google or phone. This requires a sign-in from
 the last 15 minutes when requesting the code, and proof of the new email. The
 code keeps its full 30-minute lifetime in that same live session; completion
@@ -106,7 +130,7 @@ Passwords allow 15 to 128 characters without composition rules, with a small
 local common-password rejection list. They are hashed with Argon2id (19 MiB,
 two passes, one lane) and random salts. At most two hashes run concurrently per
 API process; excess work returns a retryable busy error. Login is bounded by
-shared IP and email/IP budgets. Verification/resets send at most once per
+shared IP, phone/IP, phone-account and email/IP budgets. Verification/resets send at most once per
 minute and five times per account per hour. This is not a compromised-password
 database check or multi-factor authentication.
 
@@ -120,17 +144,18 @@ paid provider or scheduled service is required by this implementation.
 
 ### Release and acceptance
 
-- Apply migration 047 and deploy the API and Ops public recovery page before
-  distributing the new commuter build. `RESEND_API_KEY` and the existing
-  configured Ops origin must be correct. The web origin must match API CORS.
-- Use a non-Google email address to register, verify and sign in. Confirm the
-  full name appears in Profile and the email does not count as phone proof.
-- Phone sign-in: OTP, full name, then standby without a second login OTP.
-  Google/email sign-in: full name and account-bound phone OTP before standby.
+- Apply migration 048 and deploy the API and public recovery page before
+  distributing the new commuter build. mNotify and Resend configuration must
+  be healthy. The web origin must match API CORS.
+- Register with full name, phone, email and password. Verify the SMS, then sign
+  in with phone and password. The first session must not reach Home before
+  registration completes. A reopened pending signup must resume completion.
+- Confirm standby does not ask for a second OTP after signup. Verify the
+  contact-email link separately, then test email-based password recovery.
 - Reset from a second device. The old password and both old sessions must fail;
   the new password must work. Expired and already-used links must be refused.
-- Link email from Google/phone. Verify the rider ID and subscriptions stay the
-  same, and a different signed-in device cannot redeem the linking code.
+- Legacy email linking and social accounts remain during staging transition;
+  they are not offered on the new commuter entry screen.
 - Test browser mail links on Android and iOS. Browser completion and returning
   to app sign-in are supported; native universal-link opening is not required.
 - Real-provider delivery and physical-device acceptance are separate from
@@ -140,15 +165,12 @@ paid provider or scheduled service is required by this implementation.
 
 ```mermaid
 flowchart TD
-  entry["Choose sign-in"] --> method{"Phone or social"}
-  method -->|"Phone"| loginCode["Request and verify OTP"]
-  method -->|"Social"| social["Verify provider identity"]
-  loginCode --> session["Authenticated account"]
-  social --> session
-  session --> eligible{"Name and phone verified"}
-  eligible -->|"Yes"| request["Request subscription"]
-  eligible -->|"No"| profile["Complete name and account-bound OTP"]
-  profile --> request
+  signup["Name, phone, email, password"] --> otp["Verify phone by SMS"]
+  otp --> register["Complete registration and sign out temporary session"]
+  register --> login["Sign in with phone and password"]
+  login --> request["Request subscription"]
+  register --> contact["Verify contact email separately"]
+  contact --> recovery["Email password recovery available"]
 ```
 
 The commuter initiates login and stores tokens through the shared client.
@@ -156,15 +178,15 @@ The API verifies credentials and owns sessions/phone verification. mNotify
 delivers the challenge but cannot itself grant access. Ops has a separate
 Google-plus-passkey flow; driver access uses code/PIN, not commuter OTP.
 
-| Situation                          | Client behavior                                                 | Server boundary                                                          |
-| ---------------------------------- | --------------------------------------------------------------- | ------------------------------------------------------------------------ |
-| Google sign-in, phone unverified   | Allow ordinary account access; verify before requesting service | Standby rejects missing verification                                     |
-| Phone OTP already succeeded        | Do not ask for another OTP just to join                         | Verified record still belongs to that account                            |
-| Expired/wrong/replayed code        | Show failure; request a fresh challenge when eligible           | No session/verification granted                                          |
-| Send refused or unconfirmed        | Show delivery failure and retry guidance                        | Do not treat challenge as verified                                       |
-| 429                                | Honor Retry-After; preserve user input                          | Shared and purpose-specific budgets apply                                |
-| Account number collision           | Show the explicit review/conflict state                         | No silent account/subscription merge                                     |
-| Refresh request loses its response | Use shared-session recovery behavior                            | Refresh tokens are single-use; unsafe parallel reuse can revoke sessions |
+| Situation                          | Client behavior                                       | Server boundary                                                          |
+| ---------------------------------- | ----------------------------------------------------- | ------------------------------------------------------------------------ |
+| Pending phone registration         | Resume registration; do not open Home                 | Only account read and registration completion are allowed                |
+| Phone OTP already succeeded        | Do not ask for another OTP just to join               | Verified record still belongs to that account                            |
+| Expired/wrong/replayed code        | Show failure; request a fresh challenge when eligible | No session/verification granted                                          |
+| Send refused or unconfirmed        | Show delivery failure and retry guidance              | Do not treat challenge as verified                                       |
+| 429                                | Honor Retry-After; preserve user input                | Shared and purpose-specific budgets apply                                |
+| Account number collision           | Show the explicit review/conflict state               | No silent account/subscription merge                                     |
+| Refresh request loses its response | Use shared-session recovery behavior                  | Refresh tokens are single-use; unsafe parallel reuse can revoke sessions |
 
 Temporary driver PINs must complete private-PIN setup before trip work.
 Never implement a generic “retry every 401” wrapper around mutations.

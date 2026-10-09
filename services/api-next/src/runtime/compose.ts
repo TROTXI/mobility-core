@@ -214,6 +214,7 @@ export async function composeBackend(config: RuntimeConfig): Promise<Backend> {
         refreshTtlDays: config.refreshTtlDays,
         shiftTtlHours: config.shiftTtlHours,
         providerEncryptionKey: config.keys.providerEncryption,
+        phoneIdentityKey: config.keys.device,
         passkeys: webAuthnRelyingParty(config.opsOrigin),
         opsOrigin: config.opsOrigin,
         opsEmail: email,

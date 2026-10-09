@@ -51,6 +51,7 @@ class CommuterApi extends CommuterDataClient {
   final stage = ValueNotifier(CommuterStage.loading);
   final identityRevision = ValueNotifier(0);
   wire.Account? currentAccount;
+  String? authNotice;
   wire.TrotxiException? startupError;
   wire.Bootstrap? configuration;
   bool _closed = false;
@@ -122,6 +123,39 @@ class CommuterApi extends CommuterDataClient {
     currentAccount = account;
     identityRevision.value++;
     stage.value = CommuterStage.ready;
+  }
+
+  Future<void> signInPhonePassword(String phone, String password) async {
+    _loadAttempt++;
+    authNotice = null;
+    final account = await auth.signInPhonePassword(phone, password);
+    if (_closed) return;
+    currentAccount = account;
+    identityRevision.value++;
+    stage.value = CommuterStage.ready;
+  }
+
+  Future<void> finishPhoneRegistration({
+    required String firstName,
+    required String lastName,
+    String? otherNames,
+    required String email,
+    required String password,
+  }) async {
+    _loadAttempt++;
+    await completePhoneRegistration(
+      firstName: firstName,
+      lastName: lastName,
+      otherNames: otherNames,
+      email: email,
+      password: password,
+    );
+    if (_closed) return;
+    authNotice =
+        'Account created. Sign in with your phone and password. Check your email to verify your contact address.';
+    currentAccount = null;
+    identityRevision.value++;
+    stage.value = CommuterStage.signedOut;
   }
 
   Future<void> saveFullName(String first, String last, String? other) async {

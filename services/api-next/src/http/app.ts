@@ -500,6 +500,8 @@ export async function createTransportApp(options: AppOptions) {
             [
               'requestPhoneSignIn',
               'verifyPhoneSignIn',
+              'signInPhonePassword',
+              'completePhoneRegistration',
               'startPhoneVerification',
               'confirmPhoneVerification',
               'getVerification',

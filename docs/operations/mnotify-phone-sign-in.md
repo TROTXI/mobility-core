@@ -1,9 +1,11 @@
-# Commuter phone sign-in — Ghana pilot
+# Commuter phone verification - Ghana pilot
 
-Phone OTP is an additional commuter sign-up/sign-in option. Driver code/PIN,
-driver email onboarding and Ops Google + passkey authentication remain available.
-Phone identities never adopt a Google account merely because its editable
-profile contains the same number. Phone-account linking is out of this slice.
+The current commuter app uses phone OTP to prove possession during signup.
+After registration, riders sign in with phone number and password. Legacy OTP
+sign-in remains for accounts without a password during staging transition;
+password-enabled accounts cannot use OTP alone. Driver code/PIN and Ops Google
+plus passkey authentication are unchanged. Phone identities never adopt an
+account merely because its editable profile contains the same number.
 
 ## Enable delivery
 
@@ -29,8 +31,12 @@ are refused with 403. They do not require an existing bearer token.
 2. `POST /v1/auth/phone/verify` with `{challengeId,code}` (six digits).
    Success returns the existing `TokensResponse` envelope. The canonical Dart
    client supplies `PublicApi.requestPhoneSignIn` and `verifyPhoneSignIn`.
-3. The first successful verification creates a commuter. Later verification
-   reopens that same phone account. Existing session rotation/revocation applies.
+3. The first successful verification creates a pending commuter. That session
+   may read its account and complete `POST /v1/me/phone-registration`, but it
+   cannot use the rest of the app. Completion stores the full name, contact
+   email and password, then revokes the pending session. Subsequent sign-in
+   uses `POST /v1/auth/phone/password`. OTP alone cannot reopen a
+   password-enabled account.
 
 ## Security and limits
 

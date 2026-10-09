@@ -301,7 +301,9 @@ export class TransactionalEmail {
         paragraphs: [
           mail.purpose === 'link'
             ? 'Open Trotxi on the device where you started linking your email. Paste the verification code below to set your password.'
-            : 'Use this secure link to choose your Trotxi password. Opening the link alone does not change your account.',
+            : mail.purpose === 'contact'
+              ? 'Use this secure link to verify your contact and recovery email. Your password was already set in the app.'
+              : 'Use this secure link to choose your Trotxi password. Opening the link alone does not change your account.',
         ],
         ...(mail.purpose === 'link'
           ? { highlight: [['Verification code', mail.token] as [string, string]] }
@@ -328,7 +330,7 @@ export class TransactionalEmail {
         preview: 'Your Trotxi password has been set',
         heading: 'Your password has been set',
         paragraphs: [
-          'Your Trotxi password has been set or changed. All previous app sessions have been signed out. Sign in with your email and your new password.',
+          'Your Trotxi password has been set or changed. All previous app sessions have been signed out. Sign in again with your new password.',
         ],
         notes: [
           'If this was not you, use Forgot password in the Trotxi app immediately and contact support.',

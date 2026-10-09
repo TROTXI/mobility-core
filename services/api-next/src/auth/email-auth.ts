@@ -14,10 +14,12 @@ export const publicEmailOperations = [
   'signInEmail',
   'requestPasswordReset',
   'completeEmailAccess',
+  'confirmContactEmail',
 ] as const;
 export const emailOperations = [
   ...publicEmailOperations,
   'getEmailAccess',
+  'resendContactEmail',
   'startEmailLink',
   'finishEmailLink',
   'changePassword',
@@ -166,6 +168,83 @@ export class EmailAuth {
       origin: this.options.origin!,
     });
   }
+
+  /** Caller holds the user lock. A phone password is independent of email proof. */
+  async queueContactProof(c: PoolClient, userId: string): Promise<string | undefined> {
+    const credential = (
+      await c.query(
+        'SELECT email,version,password_hash,verified_at FROM app.email_credentials WHERE user_id=$1 FOR UPDATE',
+        [userId],
+      )
+    ).rows[0];
+    if (!credential?.email || !credential.password_hash)
+      fail(409, 'email_unavailable', 'Add an email and password before verifying an address.');
+    if (credential.verified_at) return;
+    return this.challenge(c, userId, credential.email, credential.version, 'contact', null);
+  }
+
+  private async confirmContact(token: unknown) {
+    const code = typeof token === 'string' && /^[A-Za-z0-9_-]{43}$/.test(token) ? token : invalid();
+    const snapshot = (
+      await this.options.pool.query(
+        `SELECT a.id,a.user_id,e.email FROM app.email_auth_challenges a
+         JOIN app.email_credentials e ON e.user_id=a.user_id
+         WHERE a.token_hash=$1 AND a.purpose='contact' AND a.consumed_at IS NULL
+           AND a.expires_at>clock_timestamp() AND a.credential_version=e.version`,
+        [hashToken(code)],
+      )
+    ).rows[0];
+    if (!snapshot?.email) invalid();
+    await this.tx(async (c) => {
+      await c.query("SELECT pg_advisory_xact_lock(hashtextextended('email-auth:'||$1,0))", [
+        snapshot.email,
+      ]);
+      const user = (
+        await c.query(
+          "SELECT id FROM app.users WHERE id=$1 AND role='commuter' AND deleted_at IS NULL FOR UPDATE",
+          [snapshot.user_id],
+        )
+      ).rows[0];
+      if (!user) invalid();
+      const credential = (
+        await c.query('SELECT * FROM app.email_credentials WHERE user_id=$1 FOR UPDATE', [user.id])
+      ).rows[0];
+      const challenge = (
+        await c.query(
+          `SELECT 1 FROM app.email_auth_challenges WHERE id=$1 AND token_hash=$2
+           AND purpose='contact' AND consumed_at IS NULL AND expires_at>clock_timestamp()
+           AND credential_version=$3 FOR UPDATE`,
+          [snapshot.id, hashToken(code), credential?.version],
+        )
+      ).rows[0];
+      if (
+        !challenge ||
+        !credential?.password_hash ||
+        credential.email !== snapshot.email ||
+        credential.verified_at
+      )
+        invalid();
+      if (
+        (
+          await c.query(
+            `SELECT 1 FROM app.users WHERE id<>$1 AND lower(email)=$2 AND deleted_at IS NULL
+             UNION ALL SELECT 1 FROM app.email_credentials WHERE user_id<>$1 AND email=$2 AND verified_at IS NOT NULL`,
+            [user.id, credential.email],
+          )
+        ).rowCount
+      )
+        fail(409, 'email_unavailable', 'This address belongs to another account.');
+      await c.query(
+        'UPDATE app.email_credentials SET verified_at=clock_timestamp(),version=version+1 WHERE user_id=$1',
+        [user.id],
+      );
+      await c.query('UPDATE app.users SET email=$2 WHERE id=$1', [user.id, credential.email]);
+      await c.query(
+        'UPDATE app.email_auth_challenges SET token_hash=NULL,consumed_at=COALESCE(consumed_at,clock_timestamp()) WHERE user_id=$1 AND token_hash IS NOT NULL',
+        [user.id],
+      );
+    });
+  }
   private async request(body: any, reset: boolean, actor?: Actor) {
     this.mail();
     const email = normalizeEmail(body.email);
@@ -282,6 +361,7 @@ export class EmailAuth {
     ).rows[0];
     if (
       !snapshot ||
+      !['signup', 'link', 'reset'].includes(snapshot.purpose) ||
       (snapshot.purpose === 'link') !== !!actor ||
       (actor && (snapshot.user_id !== actor.userId || snapshot.session_id !== actor.sessionId))
     )
@@ -381,18 +461,32 @@ export class EmailAuth {
       });
     }
     if (name === 'completeEmailAccess') return this.complete(body);
+    if (name === 'confirmContactEmail') return this.confirmContact(body.token);
     if (!actor) fail(401, 'unauthenticated', 'Sign in to continue.');
+    if (name === 'resendContactEmail') {
+      const queued = await this.tx(async (c) => {
+        await this.owner(c, actor);
+        return this.queueContactProof(c, actor.userId);
+      });
+      if (queued) void this.options.mail?.sendQueued?.(queued).catch(() => {});
+      return { message: 'If your email is unverified, a new link will arrive shortly.' };
+    }
     if (name === 'startEmailLink') return this.request(body, false, actor);
     if (name === 'finishEmailLink') return this.complete(body, actor);
     if (name === 'getEmailAccess')
       return this.tx(async (c) => {
         await this.owner(c, actor);
         const cr = (
-          await c.query('SELECT email,verified_at FROM app.email_credentials WHERE user_id=$1', [
-            actor.userId,
-          ])
+          await c.query(
+            'SELECT email,verified_at,password_hash FROM app.email_credentials WHERE user_id=$1',
+            [actor.userId],
+          )
         ).rows[0];
-        return { email: cr?.email ?? null, passwordEnabled: !!cr?.verified_at };
+        return {
+          email: cr?.email ?? null,
+          passwordEnabled: !!cr?.password_hash,
+          emailVerified: !!cr?.verified_at,
+        };
       });
     // Password changes need both a recent session and the current password.
     const cr = await this.tx(async (c) => {
@@ -417,7 +511,8 @@ export class EmailAuth {
         [actor.userId, password],
       );
       await this.revoke(c, actor.userId);
-      await this.options.mail?.queuePasswordChanged(c, actor.userId, cr.email, randomUUID());
+      if (cr.verified_at)
+        await this.options.mail?.queuePasswordChanged(c, actor.userId, cr.email, randomUUID());
     });
   }
 }

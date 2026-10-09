@@ -223,6 +223,43 @@ class CommuterDataClient {
               extra: extra)))
           .data;
 
+  Future<void> completePhoneRegistration({
+    required String firstName,
+    required String lastName,
+    String? otherNames,
+    required String email,
+    required String password,
+  }) async {
+    final generation = sessionGeneration;
+    try {
+      await client.getSelfApi().completePhoneRegistration(
+        xTrotxiClient: metadata.app,
+        xTrotxiBuild: metadata.build,
+        phoneRegistration: PhoneRegistration((b) => b
+          ..firstName = firstName
+          ..lastName = lastName
+          ..otherNames = otherNames
+          ..email = email
+          ..password = password),
+        extra: {_generationKey: generation},
+      );
+      ensureSession(generation);
+      await store.clearTokensIfGenerationMatches(generation);
+    } on DioException catch (error) {
+      ensureSession(generation);
+      throw _failure(error);
+    }
+  }
+
+  Future<String> resendContactEmail() async =>
+      (await _read((extra) => client.getSelfApi().resendContactEmail(
+                xTrotxiClient: metadata.app,
+                xTrotxiBuild: metadata.build,
+                extra: extra,
+              )))
+          .data
+          .message;
+
   Future<String> startEmailLink(String email) async =>
       (await _read((extra) => client.getSelfApi().startEmailLink(
               xTrotxiClient: metadata.app,

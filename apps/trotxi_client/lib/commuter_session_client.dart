@@ -87,6 +87,19 @@ class CommuterSessionClient {
             );
       });
 
+  Future<Account> signInPhonePassword(String phone, String password) =>
+      _signIn((check) async {
+        check();
+        return client.getPublicApi().signInPhonePassword(
+              xTrotxiClient: metadata.app,
+              xTrotxiBuild: metadata.build,
+              xTrotxiPlatform: metadata.platform,
+              phonePasswordSignIn: PhonePasswordSignIn((b) => b
+                ..phone = phone
+                ..password = password),
+            );
+      });
+
   Future<String> requestEmailSignup(
       {required String email,
       required String firstName,

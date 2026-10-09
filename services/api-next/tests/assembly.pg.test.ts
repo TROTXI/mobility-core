@@ -210,8 +210,8 @@ test('ASM-10 the assembled backend routes every reviewed operation', async (t) =
     }
   // Every group's dependency is required, so none of them may be absent. A
   // route that is skipped for a missing service would fail the loop above.
-  assert.equal(expected.length, 184);
-  assert.equal(new Set(expected).size, 184);
+  assert.equal(expected.length, 188);
+  assert.equal(new Set(expected).size, 188);
   for (const operation of [
     'getOpsRiderDetail',
     'listOpsOperators',

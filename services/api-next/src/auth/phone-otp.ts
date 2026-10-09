@@ -4,6 +4,19 @@ import { providerTokenBox } from './credentials.js';
 import { fail } from '../transport/errors.js';
 import { ghanaPhone, SmsSendError, type SmsSender } from '../notifications/mnotify.js';
 
+/** Phone identity lookup must work even when the SMS sender is unavailable. */
+export function phoneIdentity(value: string, encryptionKey: Buffer) {
+  let phone: string;
+  try {
+    phone = ghanaPhone(value);
+  } catch {
+    fail(400, 'invalid_phone', 'Use a valid Ghana phone number.');
+  }
+  const key = Buffer.from(hkdfSync('sha256', encryptionKey, 'trotxi:phone:v1', 'otp-digest', 32));
+  const phoneHash = createHmac('sha256', key).update(`phone:${phone!}`).digest('hex');
+  return { phone: phone!, phoneHash };
+}
+
 /** Physical cleanup after the rolling abuse budget no longer needs its hash. */
 export async function purgeExpiredPhoneOtpChallenges(pool: Pool, limit = 100): Promise<number> {
   const bounded = Math.max(1, Math.min(limit, 1000));
@@ -112,7 +125,7 @@ export class PhoneOtp {
         fail(
           429,
           'phone_source_limited',
-          'This connection has reached its daily SMS limit. Try again later or use Google sign-in.',
+          'This connection has reached its daily SMS limit. Try again later.',
         );
       if (upgrade) {
         const account = (
@@ -135,7 +148,7 @@ export class PhoneOtp {
         fail(
           429,
           'sms_daily_limit',
-          'Phone sign-in messaging has reached its pilot daily limit. Please try Google sign-in.',
+          'Phone verification has reached its daily limit. Please try again later.',
         );
       const recent = (
         await c.query(
@@ -204,11 +217,7 @@ export class PhoneOtp {
         [id],
       );
       if (error instanceof SmsSendError && error.outcome === 'rejected')
-        fail(
-          503,
-          'sms_delivery_rejected',
-          'SMS could not be sent. Try again later or use Google sign-in.',
-        );
+        fail(503, 'sms_delivery_rejected', 'SMS could not be sent. Try again later.');
       fail(
         503,
         'sms_delivery_unconfirmed',
@@ -274,7 +283,7 @@ export class PhoneOtp {
     if (!userId) {
       userId = (
         await c.query(
-          "INSERT INTO app.users(role,display_name,phone) VALUES ('commuter','New commuter',$1) RETURNING id",
+          "INSERT INTO app.users(role,display_name,phone,phone_registration_pending) VALUES ('commuter','New commuter',$1,true) RETURNING id",
           [phone],
         )
       ).rows[0].id;

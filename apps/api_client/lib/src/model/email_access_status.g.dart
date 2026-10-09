@@ -11,12 +11,15 @@ class _$EmailAccessStatus extends EmailAccessStatus {
   final String? email;
   @override
   final bool passwordEnabled;
+  @override
+  final bool emailVerified;
 
   factory _$EmailAccessStatus(
           [void Function(EmailAccessStatusBuilder)? updates]) =>
       (EmailAccessStatusBuilder()..update(updates))._build();
 
-  _$EmailAccessStatus._({this.email, required this.passwordEnabled})
+  _$EmailAccessStatus._(
+      {this.email, required this.passwordEnabled, required this.emailVerified})
       : super._();
   @override
   EmailAccessStatus rebuild(void Function(EmailAccessStatusBuilder) updates) =>
@@ -31,7 +34,8 @@ class _$EmailAccessStatus extends EmailAccessStatus {
     if (identical(other, this)) return true;
     return other is EmailAccessStatus &&
         email == other.email &&
-        passwordEnabled == other.passwordEnabled;
+        passwordEnabled == other.passwordEnabled &&
+        emailVerified == other.emailVerified;
   }
 
   @override
@@ -39,6 +43,7 @@ class _$EmailAccessStatus extends EmailAccessStatus {
     var _$hash = 0;
     _$hash = $jc(_$hash, email.hashCode);
     _$hash = $jc(_$hash, passwordEnabled.hashCode);
+    _$hash = $jc(_$hash, emailVerified.hashCode);
     _$hash = $jf(_$hash);
     return _$hash;
   }
@@ -47,7 +52,8 @@ class _$EmailAccessStatus extends EmailAccessStatus {
   String toString() {
     return (newBuiltValueToStringHelper(r'EmailAccessStatus')
           ..add('email', email)
-          ..add('passwordEnabled', passwordEnabled))
+          ..add('passwordEnabled', passwordEnabled)
+          ..add('emailVerified', emailVerified))
         .toString();
   }
 }
@@ -65,6 +71,11 @@ class EmailAccessStatusBuilder
   set passwordEnabled(bool? passwordEnabled) =>
       _$this._passwordEnabled = passwordEnabled;
 
+  bool? _emailVerified;
+  bool? get emailVerified => _$this._emailVerified;
+  set emailVerified(bool? emailVerified) =>
+      _$this._emailVerified = emailVerified;
+
   EmailAccessStatusBuilder() {
     EmailAccessStatus._defaults(this);
   }
@@ -74,6 +85,7 @@ class EmailAccessStatusBuilder
     if ($v != null) {
       _email = $v.email;
       _passwordEnabled = $v.passwordEnabled;
+      _emailVerified = $v.emailVerified;
       _$v = null;
     }
     return this;
@@ -98,6 +110,8 @@ class EmailAccessStatusBuilder
           email: email,
           passwordEnabled: BuiltValueNullFieldError.checkNotNull(
               passwordEnabled, r'EmailAccessStatus', 'passwordEnabled'),
+          emailVerified: BuiltValueNullFieldError.checkNotNull(
+              emailVerified, r'EmailAccessStatus', 'emailVerified'),
         );
     replace(_$result);
     return _$result;

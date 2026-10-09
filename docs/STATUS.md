@@ -1,31 +1,34 @@
 # Current implementation status
 
-Source audit: 2026-10-08, mobility-core main at `e53c79e`.
+Source audit: 2026-10-09, commuter phone/password branch. This change is not deployed.
 This records code support, not proof of production configuration, device
 acceptance, or a successful live-provider transaction.
 
-Authentication update, 2026-10-08: migration 047 adds commuter email/password
-sign-in, verified email setup, forgotten-password recovery and session-revoking
-password changes. Full name parts produce the app's `displayName`. Email sign-in
-does not verify a phone: standby still requires account-bound phone verification.
+Authentication update: migration 048 adds phone/password commuter registration.
+Signup collects full name, phone, email and password. Phone OTP completes
+registration; the separate contact email proof enables password recovery.
+The commuter entry screen exposes phone/password sign-in only. Legacy provider,
+OTP sign-in and email sign-in API operations remain for older clients during the
+staging transition, but are not offered by the current commuter entry screen.
 Driver PIN and Ops Google/passkey access are unchanged. This update does not
 re-audit the other surfaces below. See [authentication](features/authentication.md)
 for rollout and acceptance checks.
 
 ## Implemented surfaces
 
-| Surface      | Current capability                                                                                                                                                                                                                                                       |
-| ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| API          | Fastify/TypeScript service in `services/api-next`; PostgreSQL/PostGIS migration chain through 046                                                                                                                                                                        |
-| Commuter     | Google/optional Apple and phone sign-in, phone verification, subscription requests/offers, Paystack checkout/recovery, current/upcoming coverage, reservations, passes, live tracking, inbox, preferences, pauses, commute requests, profile and erasure                 |
-| Driver       | Code/PIN sign-in, forced temporary-PIN replacement, assigned trips, readiness checks, boarding, manifests, incidents/work requests, background GPS with bounded durable queue, profile and support                                                                       |
-| Ops          | Invite-only Google plus passkey access; superadmin team management; dispatch/map, routes/stops/patterns/schedules/fares, fleet/drivers, riders, standby offers, support, payments/reviews/refunds and card-renewal review, reports, delivery/audit and platform controls |
-| Integrations | Paystack, mNotify, Resend, FCM, private R2 avatars, public MapLibre/PMTiles basemap, OTel and Firebase instrumentation                                                                                                                                                   |
+| Surface      | Current capability                                                                                                                                                                                                                                                                     |
+| ------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| API          | Fastify/TypeScript service in `services/api-next`; PostgreSQL/PostGIS migration chain through 048                                                                                                                                                                                      |
+| Commuter     | Phone/password sign-in, phone verification at signup, verified contact email and recovery, subscription requests/offers, Paystack checkout/recovery, current/upcoming coverage, reservations, passes, live tracking, inbox, preferences, pauses, commute requests, profile and erasure |
+| Driver       | Code/PIN sign-in, forced temporary-PIN replacement, assigned trips, readiness checks, boarding, manifests, incidents/work requests, background GPS with bounded durable queue, profile and support                                                                                     |
+| Ops          | Invite-only Google plus passkey access; superadmin team management; dispatch/map, routes/stops/patterns/schedules/fares, fleet/drivers, riders, standby offers, support, payments/reviews/refunds and card-renewal review, reports, delivery/audit and platform controls               |
+| Integrations | Paystack, mNotify, Resend, FCM, private R2 avatars, public MapLibre/PMTiles basemap, OTel and Firebase instrumentation                                                                                                                                                                 |
 
 ## Product rules implemented
 
-- Phone OTP proves number possession, not Ghana Card identity. Google sign-in
-  is not blocked by unverified phone; standby enrollment and acceptance are.
+- Phone OTP proves number possession, not Ghana Card identity. A new account
+  cannot leave registration until phone proof succeeds. Contact email proof is
+  separate, but recovery by email requires it.
 - Standby currently means the subscription request/offer queue. It is not an
   automatic released-seat cascade or single-journey ticket market.
 - Ops publishes exact pickup/drop-off fares and sends immutable package terms.

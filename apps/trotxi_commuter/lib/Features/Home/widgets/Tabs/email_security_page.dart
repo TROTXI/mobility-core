@@ -15,7 +15,11 @@ class _EmailSecurityPageState extends State<EmailSecurityPage> {
       _old = TextEditingController(),
       _password = TextEditingController(),
       _confirm = TextEditingController();
-  bool _loading = true, _enabled = false, _sent = false, _busy = false;
+  bool _loading = true,
+      _enabled = false,
+      _verified = false,
+      _sent = false,
+      _busy = false;
   String? _error;
   @override
   void initState() {
@@ -29,6 +33,7 @@ class _EmailSecurityPageState extends State<EmailSecurityPage> {
       if (mounted) {
         setState(() {
           _enabled = status.passwordEnabled;
+          _verified = status.emailVerified;
           _email.text =
               status.email ?? widget.client.currentAccount?.email ?? '';
         });
@@ -36,9 +41,29 @@ class _EmailSecurityPageState extends State<EmailSecurityPage> {
     } on TrotxiException catch (e) {
       if (mounted) setState(() => _error = e.message);
     } catch (_) {
-      if (mounted) setState(() => _error = 'Could not load email sign-in.');
+      if (mounted) setState(() => _error = 'Could not load account security.');
     } finally {
       if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _verifyEmail() async {
+    if (_busy) return;
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+    try {
+      final message = await widget.client.resendContactEmail();
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(message)));
+      }
+    } on TrotxiException catch (e) {
+      if (mounted) setState(() => _error = e.message);
+    } finally {
+      if (mounted) setState(() => _busy = false);
     }
   }
 
@@ -70,7 +95,7 @@ class _EmailSecurityPageState extends State<EmailSecurityPage> {
     } catch (_) {
       if (mounted) {
         setState(
-          () => _error = 'Could not update email sign-in. Please try again.',
+          () => _error = 'Could not update account security. Please try again.',
         );
       }
     } finally {
@@ -80,7 +105,7 @@ class _EmailSecurityPageState extends State<EmailSecurityPage> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: const Text('Email & password')),
+    appBar: AppBar(title: const Text('Security & recovery')),
     body: _loading
         ? const Center(child: CircularProgressIndicator())
         : SafeArea(
@@ -91,12 +116,24 @@ class _EmailSecurityPageState extends State<EmailSecurityPage> {
                 children: [
                   Text(
                     _enabled
-                        ? 'Change your password. You will need to sign in again on all devices.'
+                        ? 'Manage your contact email and password. A password change signs out all devices.'
                         : 'Add an email and password to this account without creating a second account.',
                   ),
+                  if (_enabled && !_verified) ...[
+                    const SizedBox(height: 12),
+                    const Text(
+                      'Your email is not verified yet. Verify it to use password recovery and receive important updates.',
+                    ),
+                    TextButton(
+                      onPressed: _busy ? null : _verifyEmail,
+                      child: const Text('Send email verification link'),
+                    ),
+                  ],
                   const SizedBox(height: 12),
-                  const Text(
-                    'Starting email setup or changing a password requires a sign-in from the last 15 minutes. Once sent, an email code works for 30 minutes in the same signed-in session.',
+                  Text(
+                    _enabled
+                        ? 'Changing your password requires a sign-in from the last 15 minutes.'
+                        : 'Email setup requires a recent sign-in. The verification code works for 30 minutes in this session.',
                   ),
                   const SizedBox(height: 24),
                   TextFormField(

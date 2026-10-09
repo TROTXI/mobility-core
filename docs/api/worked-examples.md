@@ -299,11 +299,12 @@ Use existing active test driver/vehicle IDs and the trip's current edit token. C
 
 ## 2. Establish commuter eligibility
 
-Choose **one** auth path. Steps for social-account phone verification are an
-alternative to public phone sign-in, not a second OTP after successful phone login.
-Use [authentication](../features/authentication.md) for failures and session rules.
+The current commuter app collects first, last and optional other names, phone,
+email and password. It verifies the phone by SMS before completing registration.
+Afterward, sign-in uses the phone and password. Use
+[authentication](../features/authentication.md) for failures and session rules.
 
-### Register and verify email access
+### Legacy email signup for older staging clients
 
 Email/password is an alternative sign-in method. Register full name parts with
 `POST /v1/auth/email/signup`:
@@ -339,7 +340,7 @@ optional `otherNames`, plus the normal bearer, client and idempotency headers.
 the phone; the account-bound phone verification below is still required before
 standby. A successful phone-login OTP already supplies that phone proof.
 
-### Request a phone login OTP
+### Request a signup phone OTP
 
 Operation: `requestPhoneSignIn`.
 
@@ -358,7 +359,7 @@ Content-Type: application/json
 
 This request sends SMS when configured. Replace the illustrative number only with an authorized recipient. Save `data.challengeId`; successful submission is not proof of handset receipt.
 
-### Verify the login OTP
+### Verify the signup OTP
 
 Operation: `verifyPhoneSignIn`.
 
@@ -376,9 +377,55 @@ Content-Type: application/json
 }
 ```
 
-Replace both values with the returned challenge ID and received code. Save the returned tokens through the shared session client. Complete the rider name if prompted; phone login already establishes verification.
+Replace both values with the returned challenge ID and received code. The
+returned session is limited to account read and registration completion. It
+must not open the rider Home or standby screens.
 
-### Verify a social-login account's phone
+### Complete registration and sign in
+
+Operation: `completePhoneRegistration`.
+
+```http
+POST /v1/me/phone-registration
+Host: api.example.invalid
+Authorization: Bearer <TEMPORARY_COMMUTER_ACCESS_TOKEN>
+X-Trotxi-Client: commuter
+X-Trotxi-Build: 1
+X-Trotxi-Platform: android
+Content-Type: application/json
+
+{
+  "firstName": "Ama",
+  "otherNames": "Akua",
+  "lastName": "Mensah",
+  "email": "rider@example.invalid",
+  "password": "example unique long passphrase"
+}
+```
+
+This revokes the temporary session and sends a separate contact-email proof.
+Its link uses `POST /v1/auth/email/verify`, not the password-reset endpoint.
+
+Operation: `signInPhonePassword`.
+
+```http
+POST /v1/auth/phone/password
+Host: api.example.invalid
+X-Trotxi-Client: commuter
+X-Trotxi-Build: 1
+X-Trotxi-Platform: android
+Content-Type: application/json
+
+{
+  "phone": "+233200000000",
+  "password": "example unique long passphrase"
+}
+```
+
+Store the returned tokens through the shared session client. Email proof is
+required for recovery, not for this sign-in or for standby eligibility.
+
+### Legacy social-account phone verification
 
 Operation: `startPhoneVerification`.
 
