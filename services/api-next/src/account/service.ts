@@ -1,4 +1,5 @@
 import { beginTransaction } from '../db/transaction.js';
+import { fullName } from '../auth/full-name.js';
 import {
   createHash,
   createCipheriv,
@@ -237,28 +238,40 @@ export class AccountService {
   }
 
   private async rename(actor: Actor, input: Body, key: string): Promise<Outcome> {
-    const name = typeof input.displayName === 'string' ? input.displayName.trim() : '';
-    if (!name.length || name.length > 100)
+    const parts =
+      input.firstName !== undefined || input.lastName !== undefined ? fullName(input) : null;
+    const name =
+      parts?.displayName ?? (typeof input.displayName === 'string' ? input.displayName.trim() : '');
+    if (!name.length || (!parts && name.length > 100))
       fail(400, 'invalid_request', 'Supply a display name of 1 to 100 characters.');
+    const signature = JSON.stringify(parts ?? { displayName: name });
     return this.tx(async (c) => {
       const user = await this.owner(c, actor);
-      const prior = await this.receipt(c, actor, 'updateAccount', key, name);
+      if (user.role === 'commuter' && !parts)
+        fail(400, 'invalid_name', 'Supply your first name and last name.');
+      const prior = await this.receipt(c, actor, 'updateAccount', key, signature);
       if (prior) {
         if (!prior.outcome) fail(409, 'idempotency_expired', 'Use a new request key.');
         return prior.outcome;
       }
       const row = (
-        await c.query('UPDATE app.users SET display_name=$2 WHERE id=$1 RETURNING *', [
-          user.id,
-          name,
-        ])
+        await c.query(
+          'UPDATE app.users SET display_name=$2,first_name=$3,last_name=$4,other_names=$5 WHERE id=$1 RETURNING *',
+          [
+            user.id,
+            name,
+            parts?.firstName ?? null,
+            parts?.lastName ?? null,
+            parts?.otherNames ?? null,
+          ],
+        )
       ).rows[0];
       const outcome = {
         status: 200,
         body: { data: await this.view(row) },
         headers: {},
       } as Outcome;
-      await this.record(c, actor, 'updateAccount', key, name, null, outcome);
+      await this.record(c, actor, 'updateAccount', key, signature, null, outcome);
       return outcome;
     });
   }
@@ -273,6 +286,9 @@ export class AccountService {
     return {
       id: user.id,
       displayName: user.display_name || 'New user',
+      firstName: user.first_name ?? null,
+      lastName: user.last_name ?? null,
+      otherNames: user.other_names ?? null,
       email: user.email ?? null,
       phone: user.phone ?? null,
       avatarUrl: url ?? null,

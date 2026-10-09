@@ -5,6 +5,7 @@ import { jobFailed } from './job-outcome.js';
 import { purgeExpiredCommandPayloads } from './receipt-retention.js';
 import { redactExpiredIncidents } from './incident-retention.js';
 import { purgeExpiredPhoneOtpChallenges } from '../auth/phone-otp.js';
+import { purgeExpiredEmailAccess } from '../auth/email-auth.js';
 import { redactExpiredPaymentEvidence } from '../payments/evidence-retention.js';
 
 export const JOBS = [
@@ -187,6 +188,7 @@ async function runJobCore(backend: Backend, request: JobRequest): Promise<JobRes
         body: { cleared: await purgeExpiredDriverSecrets(backend.pool, limit) },
       };
     if (request.job === 'erasures') {
+      const emailAccessPurged = await purgeExpiredEmailAccess(backend.pool, limit);
       const receiptPayloadsCleared =
         (await backend.account.purgeExpiredReceipts(limit)) +
         (await purgeExpiredCommandPayloads(backend.pool, limit));
@@ -194,7 +196,11 @@ async function runJobCore(backend: Backend, request: JobRequest): Promise<JobRes
       return {
         job: request.job,
         status: 200,
-        body: { ...(await backend.account.retryErasures(limit)), phoneChallengesPurged },
+        body: {
+          ...(await backend.account.retryErasures(limit)),
+          phoneChallengesPurged,
+          emailAccessPurged,
+        },
         receiptPayloadsCleared,
       };
     }

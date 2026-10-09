@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:trotxi_commuter/Features/Onboarding/pages/full_name_page.dart';
 
 import 'package:trotxi_commuter/core/api/commuter_api.dart';
 import 'package:trotxi_commuter/Features/Home/widgets/Tabs/commuter_preference.dart';
@@ -55,34 +56,13 @@ class _ProfileTabState extends State<ProfileTab> {
 
   Future<void> _editDisplayName() async {
     final generation = widget.client.sessionGeneration;
-    final user = _user;
-    if (user == null) return;
-
-    final newName = await showDialog<String>(
-      context: context,
-      builder: (dialogContext) =>
-          _EditNameDialog(initialValue: user.displayName),
+    await Navigator.of(context).push(
+      MaterialPageRoute<bool>(
+        builder: (_) => FullNamePage(client: widget.client),
+      ),
     );
-
-    final trimmed = newName?.trim();
-    if (!mounted ||
-        generation != widget.client.sessionGeneration ||
-        trimmed == null ||
-        trimmed.isEmpty ||
-        trimmed == user.displayName) {
-      return;
-    }
-
-    try {
-      final account = await widget.client.updateAccount(trimmed);
-      if (!mounted) return;
-      setState(() => _user = account);
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Could not update name. Try again.')),
-      );
-      debugPrint('Profile update error: ${e.runtimeType}');
+    if (mounted && generation == widget.client.sessionGeneration) {
+      await _fetchUser();
     }
   }
 
@@ -481,50 +461,6 @@ class _ProfileHeaderError extends StatelessWidget {
           TextButton(onPressed: onRetry, child: const Text('Retry')),
         ],
       ),
-    );
-  }
-}
-
-/// Simple text-field dialog used to edit the display name.
-class _EditNameDialog extends StatefulWidget {
-  const _EditNameDialog({required this.initialValue});
-  final String initialValue;
-
-  @override
-  State<_EditNameDialog> createState() => _EditNameDialogState();
-}
-
-class _EditNameDialogState extends State<_EditNameDialog> {
-  late final TextEditingController _controller = TextEditingController(
-    text: widget.initialValue,
-  );
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AlertDialog(
-      title: const Text('Edit Name'),
-      content: TextField(
-        controller: _controller,
-        autofocus: true,
-        textCapitalization: TextCapitalization.words,
-        decoration: const InputDecoration(hintText: 'Your name'),
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Cancel'),
-        ),
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(_controller.text),
-          child: const Text('Save'),
-        ),
-      ],
     );
   }
 }

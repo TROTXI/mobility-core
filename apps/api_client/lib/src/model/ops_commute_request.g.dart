@@ -112,6 +112,10 @@ class _$OpsCommuteRequest extends OpsCommuteRequest {
   @override
   final String riderId;
   @override
+  final String? riderName;
+  @override
+  final String? routeName;
+  @override
   final String? slotId;
   @override
   final String? decidedBy;
@@ -133,6 +137,8 @@ class _$OpsCommuteRequest extends OpsCommuteRequest {
       required this.updatedAt,
       required this.version,
       required this.riderId,
+      this.riderName,
+      this.routeName,
       this.slotId,
       this.decidedBy,
       required this.editToken})
@@ -159,6 +165,8 @@ class _$OpsCommuteRequest extends OpsCommuteRequest {
         updatedAt == other.updatedAt &&
         version == other.version &&
         riderId == other.riderId &&
+        riderName == other.riderName &&
+        routeName == other.routeName &&
         slotId == other.slotId &&
         decidedBy == other.decidedBy &&
         editToken == other.editToken;
@@ -177,6 +185,8 @@ class _$OpsCommuteRequest extends OpsCommuteRequest {
     _$hash = $jc(_$hash, updatedAt.hashCode);
     _$hash = $jc(_$hash, version.hashCode);
     _$hash = $jc(_$hash, riderId.hashCode);
+    _$hash = $jc(_$hash, riderName.hashCode);
+    _$hash = $jc(_$hash, routeName.hashCode);
     _$hash = $jc(_$hash, slotId.hashCode);
     _$hash = $jc(_$hash, decidedBy.hashCode);
     _$hash = $jc(_$hash, editToken.hashCode);
@@ -197,6 +207,8 @@ class _$OpsCommuteRequest extends OpsCommuteRequest {
           ..add('updatedAt', updatedAt)
           ..add('version', version)
           ..add('riderId', riderId)
+          ..add('riderName', riderName)
+          ..add('routeName', routeName)
           ..add('slotId', slotId)
           ..add('decidedBy', decidedBy)
           ..add('editToken', editToken))
@@ -251,6 +263,14 @@ class OpsCommuteRequestBuilder
   String? get riderId => _$this._riderId;
   set riderId(String? riderId) => _$this._riderId = riderId;
 
+  String? _riderName;
+  String? get riderName => _$this._riderName;
+  set riderName(String? riderName) => _$this._riderName = riderName;
+
+  String? _routeName;
+  String? get routeName => _$this._routeName;
+  set routeName(String? routeName) => _$this._routeName = routeName;
+
   String? _slotId;
   String? get slotId => _$this._slotId;
   set slotId(String? slotId) => _$this._slotId = slotId;
@@ -280,6 +300,8 @@ class OpsCommuteRequestBuilder
       _updatedAt = $v.updatedAt;
       _version = $v.version;
       _riderId = $v.riderId;
+      _riderName = $v.riderName;
+      _routeName = $v.routeName;
       _slotId = $v.slotId;
       _decidedBy = $v.decidedBy;
       _editToken = $v.editToken;
@@ -323,6 +345,8 @@ class OpsCommuteRequestBuilder
                 version, r'OpsCommuteRequest', 'version'),
             riderId: BuiltValueNullFieldError.checkNotNull(
                 riderId, r'OpsCommuteRequest', 'riderId'),
+            riderName: riderName,
+            routeName: routeName,
             slotId: slotId,
             decidedBy: decidedBy,
             editToken: BuiltValueNullFieldError.checkNotNull(

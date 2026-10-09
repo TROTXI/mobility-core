@@ -303,7 +303,43 @@ Choose **one** auth path. Steps for social-account phone verification are an
 alternative to public phone sign-in, not a second OTP after successful phone login.
 Use [authentication](../features/authentication.md) for failures and session rules.
 
-### Request a login OTP
+### Register and verify email access
+
+Email/password is an alternative sign-in method. Register full name parts with
+`POST /v1/auth/email/signup`:
+
+```http
+POST /v1/auth/email/signup
+Host: api.example.invalid
+X-Trotxi-Client: commuter
+X-Trotxi-Build: 1
+X-Trotxi-Platform: android
+Content-Type: application/json
+
+{
+  "email": "rider@example.invalid",
+  "firstName": "Ama",
+  "otherNames": "Akua",
+  "lastName": "Mensah"
+}
+```
+
+The generic response does not disclose whether that address already exists.
+On an authorized test, the mailbox owner opens the emailed browser link and sets
+their password. The page submits `token` and `password` to
+`POST /v1/auth/email/complete`; the link is single-use and expires in 30 minutes.
+No session is created by opening it. Then the app sends `email` and `password`
+to `POST /v1/auth/email/login`. Forgotten-password recovery starts with
+`POST /v1/auth/email/reset` and an `email` body, and uses the same completion page.
+Never put real passwords or link tokens in examples or logs.
+
+After phone/social login, use `PATCH /v1/me` with `firstName`, `lastName` and
+optional `otherNames`, plus the normal bearer, client and idempotency headers.
+`displayName` is derived from those parts. Email verification does not verify
+the phone; the account-bound phone verification below is still required before
+standby. A successful phone-login OTP already supplies that phone proof.
+
+### Request a phone login OTP
 
 Operation: `requestPhoneSignIn`.
 
@@ -487,7 +523,8 @@ Content-Type: application/json
         "currency": "GHS"
       }
     }
-  ]
+  ],
+  "reason": "Seat freed on the 06:30 Kasoa run"
 }
 ```
 

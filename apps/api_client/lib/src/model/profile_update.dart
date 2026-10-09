@@ -12,11 +12,23 @@ part 'profile_update.g.dart';
 ///
 /// Properties:
 /// * [displayName]
+/// * [firstName]
+/// * [lastName]
+/// * [otherNames]
 @BuiltValue()
 abstract class ProfileUpdate
     implements Built<ProfileUpdate, ProfileUpdateBuilder> {
   @BuiltValueField(wireName: r'displayName')
-  String get displayName;
+  String? get displayName;
+
+  @BuiltValueField(wireName: r'firstName')
+  String? get firstName;
+
+  @BuiltValueField(wireName: r'lastName')
+  String? get lastName;
+
+  @BuiltValueField(wireName: r'otherNames')
+  String? get otherNames;
 
   ProfileUpdate._();
 
@@ -43,11 +55,34 @@ class _$ProfileUpdateSerializer implements PrimitiveSerializer<ProfileUpdate> {
     ProfileUpdate object, {
     FullType specifiedType = FullType.unspecified,
   }) sync* {
-    yield r'displayName';
-    yield serializers.serialize(
-      object.displayName,
-      specifiedType: const FullType(String),
-    );
+    if (object.displayName != null) {
+      yield r'displayName';
+      yield serializers.serialize(
+        object.displayName,
+        specifiedType: const FullType(String),
+      );
+    }
+    if (object.firstName != null) {
+      yield r'firstName';
+      yield serializers.serialize(
+        object.firstName,
+        specifiedType: const FullType(String),
+      );
+    }
+    if (object.lastName != null) {
+      yield r'lastName';
+      yield serializers.serialize(
+        object.lastName,
+        specifiedType: const FullType(String),
+      );
+    }
+    if (object.otherNames != null) {
+      yield r'otherNames';
+      yield serializers.serialize(
+        object.otherNames,
+        specifiedType: const FullType.nullable(String),
+      );
+    }
   }
 
   @override
@@ -79,6 +114,28 @@ class _$ProfileUpdateSerializer implements PrimitiveSerializer<ProfileUpdate> {
             specifiedType: const FullType(String),
           ) as String;
           result.displayName = valueDes;
+          break;
+        case r'firstName':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType(String),
+          ) as String;
+          result.firstName = valueDes;
+          break;
+        case r'lastName':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType(String),
+          ) as String;
+          result.lastName = valueDes;
+          break;
+        case r'otherNames':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType.nullable(String),
+          ) as String?;
+          if (valueDes == null) continue;
+          result.otherNames = valueDes;
           break;
         default:
           unhandled.add(key);

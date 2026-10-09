@@ -10,6 +10,16 @@ export class TransportError extends Error {
 export function fail(status: number, code: string, message: string): never {
   throw new TransportError(status, code, message);
 }
+// Every human Ops action records why it was taken.
+export function requireReason(input: unknown): string {
+  const reason =
+    input && typeof input === 'object' && typeof (input as { reason?: unknown }).reason === 'string'
+      ? (input as { reason: string }).reason.trim()
+      : '';
+  if (!reason) fail(400, 'reason_required', 'Give a reason for this action.');
+  if (reason.length > 2000) fail(400, 'invalid_request', 'Keep the reason under 2000 characters.');
+  return reason;
+}
 export function mapDatabaseError(error: unknown): TransportError {
   if (error instanceof TransportError) return error;
   const e = error as { code?: string; constraint?: string; message?: string };

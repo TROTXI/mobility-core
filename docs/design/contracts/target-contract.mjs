@@ -79,8 +79,10 @@ named(
   obj({
     id,
     displayName: text(),
-    // The address the identity provider gave us. Read-only: it is not ours to
-    // change, and erasure nulls it along with the rest of the profile.
+    firstName: text(60).nullable().optional(),
+    lastName: text(60).nullable().optional(),
+    otherNames: text(80).nullable().optional(),
+    // A contact address is not proof of an email sign-in credential.
     email: z.email().nullable(),
     phone: text().nullable(),
     avatarUrl: z.url().nullable(),
@@ -89,7 +91,15 @@ named(
     isSuperadmin: z.boolean().optional(),
   }),
 );
-named('ProfileUpdate', obj({ displayName: text(100) }));
+named(
+  'ProfileUpdate',
+  obj({
+    displayName: text(100).optional(),
+    firstName: text(60).optional(),
+    lastName: text(60).optional(),
+    otherNames: text(80).nullable().optional(),
+  }),
+);
 named(
   'PasskeyStatus',
   obj({
@@ -227,9 +237,12 @@ named(
 );
 named(
   'OperatorInvitationInput',
-  obj({ email: z.email().max(320), name: z.string().trim().min(1).max(100) }),
+  obj({ email: z.email().max(320), name: z.string().trim().min(1).max(100), reason: note }),
 );
-named('OperatorAccessInput', obj({ action: z.enum(['delete', 'make_superadmin', 'make_admin']) }));
+named(
+  'OperatorAccessInput',
+  obj({ action: z.enum(['delete', 'make_superadmin', 'make_admin']), reason: note }),
+);
 named('OperatorCommandResult', obj({ id }));
 named(
   'OpsTeamEntry',
@@ -245,6 +258,27 @@ named(
   }),
 );
 named('PhoneSignInRequest', obj({ phone: text(32) }));
+named(
+  'EmailSignup',
+  obj({
+    email: z.email().max(320),
+    firstName: text(60),
+    lastName: text(60),
+    otherNames: text(80).nullable().optional(),
+  }),
+);
+named('EmailAddress', obj({ email: z.email().max(320) }));
+named('EmailSignIn', obj({ email: z.email().max(320), password: z.string().min(1).max(128) }));
+named(
+  'EmailAccessComplete',
+  obj({ token: z.string().regex(/^[A-Za-z0-9_-]{43}$/), password: z.string().min(15).max(128) }),
+);
+named(
+  'PasswordChange',
+  obj({ currentPassword: z.string().min(1).max(128), password: z.string().min(15).max(128) }),
+);
+named('EmailAccessMessage', obj({ message: text(500) }));
+named('EmailAccessStatus', obj({ email: z.email().nullable(), passwordEnabled: z.boolean() }));
 named('PhoneSignInVerify', obj({ challengeId: z.uuid(), code: z.string().regex(/^\d{6}$/) }));
 named('PhoneVerificationStart', obj({ phone: text(32) }));
 named(
@@ -631,6 +665,7 @@ named(
     coverageEnd: date,
     price: money,
     credits: z.array(obj({ direction, creditPerUnusedRide: money })).length(2),
+    reason: note,
   }),
 );
 named(
@@ -1189,7 +1224,8 @@ named(
   obj({
     amount: money,
     effectiveFrom: instant,
-    note: note.optional(),
+    // Why this price: every fare change is recorded with its reason.
+    note,
     patternVersionId: id.optional(),
     pickupOccurrenceId: id.optional(),
     dropoffOccurrenceId: id.optional(),
@@ -1198,6 +1234,8 @@ named(
 named(
   'Fare',
   schemas.FareInput.extend({
+    // Fares published before reasons were required have none.
+    note: note.optional(),
     id,
     routeId: id,
     effectiveTo: instant.nullable(),
@@ -1223,6 +1261,7 @@ named(
     priceMultiplierBp: z.int().positive().optional(),
     takeRateBp: z.int().min(0).max(10000).optional(),
     creditPerRide: money.optional(),
+    reason: note,
   }),
 );
 named(
@@ -1238,7 +1277,12 @@ named(
 );
 named(
   'FlagEdit',
-  obj({ enabled: z.boolean(), rolloutPercentage: z.number().min(0).max(100), description: note }),
+  obj({
+    enabled: z.boolean(),
+    rolloutPercentage: z.number().min(0).max(100),
+    description: note,
+    reason: note,
+  }),
 );
 named(
   'MinimumVersion',
@@ -1254,7 +1298,7 @@ named(
 );
 named(
   'MinimumVersionEdit',
-  obj({ minSupportedBuild: count, apiMajor: z.literal(1), storeUrl: z.url() }),
+  obj({ minSupportedBuild: count, apiMajor: z.literal(1), storeUrl: z.url(), reason: note }),
 );
 named(
   'PaymentReview',
@@ -1345,6 +1389,7 @@ named(
   'OpsIncident',
   schemas.Incident.extend({
     driverId: id.nullable(),
+    driverName: text().nullable(),
     handledBy: id.nullable(),
     handledAt: instant.nullable(),
     version,
@@ -1355,6 +1400,8 @@ named(
   'OpsCommuteRequest',
   schemas.CommuteRequest.extend({
     riderId: id,
+    riderName: text().nullable(),
+    routeName: text().nullable(),
     slotId: id.nullable(),
     decidedBy: id.nullable(),
     editToken: text(128),
@@ -1365,12 +1412,18 @@ named(
 // ETag cannot supply a per-row precondition value.
 named(
   'OpsWorkRequest',
-  schemas.WorkRequest.extend({ driverId: id, decidedBy: id.nullable(), editToken: text(128) }),
+  schemas.WorkRequest.extend({
+    driverId: id,
+    driverName: text().nullable(),
+    decidedBy: id.nullable(),
+    editToken: text(128),
+  }),
 );
 named(
   'OpsPurchase',
   schemas.Purchase.extend({
     riderId: id,
+    riderName: text().nullable(),
     attempts: z.array(
       obj({
         id,
@@ -1683,14 +1736,14 @@ post(
 post(
   '/v1/ops/team/invitations/{id}/resend',
   'resendOperatorInvitation',
-  null,
+  'ReasonInput',
   'OperatorCommandResult',
   { status: 200, sensitive: true },
 );
 post(
   '/v1/ops/team/invitations/{id}/cancel',
   'cancelOperatorInvitation',
-  null,
+  'ReasonInput',
   'OperatorCommandResult',
   { status: 200 },
 );
@@ -1709,6 +1762,41 @@ for (const provider of ['google', 'apple', 'driver'])
     provider === 'driver' ? 'DriverTokens' : 'Tokens',
     { retry: 'credential', sensitive: true },
   );
+post('/v1/auth/email/signup', 'requestEmailSignup', 'EmailSignup', 'EmailAccessMessage', {
+  retry: 'credential',
+  sensitive: true,
+});
+post('/v1/auth/email/login', 'signInEmail', 'EmailSignIn', 'Tokens', {
+  retry: 'credential',
+  sensitive: true,
+});
+post('/v1/auth/email/reset', 'requestPasswordReset', 'EmailAddress', 'EmailAccessMessage', {
+  retry: 'credential',
+  sensitive: true,
+});
+post('/v1/auth/email/complete', 'completeEmailAccess', 'EmailAccessComplete', null, {
+  status: 204,
+  retry: 'credential',
+  sensitive: true,
+});
+get('/v1/me/email-access', 'getEmailAccess', 'EmailAccessStatus', { access: 'self' });
+post('/v1/me/email-access/link', 'startEmailLink', 'EmailAddress', 'EmailAccessMessage', {
+  access: 'self',
+  retry: 'credential',
+  sensitive: true,
+});
+post('/v1/me/email-access/complete', 'finishEmailLink', 'EmailAccessComplete', null, {
+  access: 'self',
+  status: 204,
+  retry: 'credential',
+  sensitive: true,
+});
+post('/v1/me/password', 'changePassword', 'PasswordChange', null, {
+  access: 'self',
+  status: 204,
+  retry: 'credential',
+  sensitive: true,
+});
 post('/v1/auth/phone/request', 'requestPhoneSignIn', 'PhoneSignInRequest', 'PhoneChallenge', {
   retry: 'credential',
   sensitive: true,
@@ -1775,7 +1863,7 @@ post(
     sensitive: true,
   },
 );
-post('/v1/ops/users/{id}/passkeys/reset', 'resetOperatorPasskeys', null, null, {
+post('/v1/ops/users/{id}/passkeys/reset', 'resetOperatorPasskeys', 'ReasonInput', null, {
   status: 204,
   retry: 'credential',
   sensitive: true,
@@ -2201,7 +2289,17 @@ for (const operation of operations) {
     named(
       name,
       operation.list
-        ? obj({ data: z.array(model), page: obj({ nextCursor: id.nullable() }) })
+        ? obj({
+            data: z.array(model),
+            page: obj({ nextCursor: id.nullable() }),
+            ...(operation.response === 'StandbyApplication'
+              ? {
+                  routeDemand: z
+                    .array(obj({ routeId: id, routeName: text(200), requests: count }))
+                    .optional(),
+                }
+              : {}),
+          })
         : obj({ data: model }),
     );
   operation.responseSchema = name;

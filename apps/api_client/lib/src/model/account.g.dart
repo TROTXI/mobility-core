@@ -72,6 +72,12 @@ class _$Account extends Account {
   @override
   final String displayName;
   @override
+  final String? firstName;
+  @override
+  final String? lastName;
+  @override
+  final String? otherNames;
+  @override
   final String? email;
   @override
   final String? phone;
@@ -90,6 +96,9 @@ class _$Account extends Account {
   _$Account._(
       {required this.id,
       required this.displayName,
+      this.firstName,
+      this.lastName,
+      this.otherNames,
       this.email,
       this.phone,
       this.avatarUrl,
@@ -110,6 +119,9 @@ class _$Account extends Account {
     return other is Account &&
         id == other.id &&
         displayName == other.displayName &&
+        firstName == other.firstName &&
+        lastName == other.lastName &&
+        otherNames == other.otherNames &&
         email == other.email &&
         phone == other.phone &&
         avatarUrl == other.avatarUrl &&
@@ -123,6 +135,9 @@ class _$Account extends Account {
     var _$hash = 0;
     _$hash = $jc(_$hash, id.hashCode);
     _$hash = $jc(_$hash, displayName.hashCode);
+    _$hash = $jc(_$hash, firstName.hashCode);
+    _$hash = $jc(_$hash, lastName.hashCode);
+    _$hash = $jc(_$hash, otherNames.hashCode);
     _$hash = $jc(_$hash, email.hashCode);
     _$hash = $jc(_$hash, phone.hashCode);
     _$hash = $jc(_$hash, avatarUrl.hashCode);
@@ -138,6 +153,9 @@ class _$Account extends Account {
     return (newBuiltValueToStringHelper(r'Account')
           ..add('id', id)
           ..add('displayName', displayName)
+          ..add('firstName', firstName)
+          ..add('lastName', lastName)
+          ..add('otherNames', otherNames)
           ..add('email', email)
           ..add('phone', phone)
           ..add('avatarUrl', avatarUrl)
@@ -158,6 +176,18 @@ class AccountBuilder implements Builder<Account, AccountBuilder> {
   String? _displayName;
   String? get displayName => _$this._displayName;
   set displayName(String? displayName) => _$this._displayName = displayName;
+
+  String? _firstName;
+  String? get firstName => _$this._firstName;
+  set firstName(String? firstName) => _$this._firstName = firstName;
+
+  String? _lastName;
+  String? get lastName => _$this._lastName;
+  set lastName(String? lastName) => _$this._lastName = lastName;
+
+  String? _otherNames;
+  String? get otherNames => _$this._otherNames;
+  set otherNames(String? otherNames) => _$this._otherNames = otherNames;
 
   String? _email;
   String? get email => _$this._email;
@@ -192,6 +222,9 @@ class AccountBuilder implements Builder<Account, AccountBuilder> {
     if ($v != null) {
       _id = $v.id;
       _displayName = $v.displayName;
+      _firstName = $v.firstName;
+      _lastName = $v.lastName;
+      _otherNames = $v.otherNames;
       _email = $v.email;
       _phone = $v.phone;
       _avatarUrl = $v.avatarUrl;
@@ -222,6 +255,9 @@ class AccountBuilder implements Builder<Account, AccountBuilder> {
           id: BuiltValueNullFieldError.checkNotNull(id, r'Account', 'id'),
           displayName: BuiltValueNullFieldError.checkNotNull(
               displayName, r'Account', 'displayName'),
+          firstName: firstName,
+          lastName: lastName,
+          otherNames: otherNames,
           email: email,
           phone: phone,
           avatarUrl: avatarUrl,

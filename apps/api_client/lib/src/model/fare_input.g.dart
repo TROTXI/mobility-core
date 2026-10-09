@@ -12,7 +12,7 @@ class _$FareInput extends FareInput {
   @override
   final DateTime effectiveFrom;
   @override
-  final String? note;
+  final String note;
   @override
   final String? patternVersionId;
   @override
@@ -26,7 +26,7 @@ class _$FareInput extends FareInput {
   _$FareInput._(
       {required this.amount,
       required this.effectiveFrom,
-      this.note,
+      required this.note,
       this.patternVersionId,
       this.pickupOccurrenceId,
       this.dropoffOccurrenceId})
@@ -146,7 +146,8 @@ class FareInputBuilder implements Builder<FareInput, FareInputBuilder> {
             amount: amount.build(),
             effectiveFrom: BuiltValueNullFieldError.checkNotNull(
                 effectiveFrom, r'FareInput', 'effectiveFrom'),
-            note: note,
+            note: BuiltValueNullFieldError.checkNotNull(
+                note, r'FareInput', 'note'),
             patternVersionId: patternVersionId,
             pickupOccurrenceId: pickupOccurrenceId,
             dropoffOccurrenceId: dropoffOccurrenceId,

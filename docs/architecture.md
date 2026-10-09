@@ -1,6 +1,6 @@
 # Current architecture
 
-Source audit: 2026-10-03. This describes the implemented system, not a future
+Source audit: 2026-10-08. This describes the implemented system, not a future
 scale diagram.
 
 ## Runtime
@@ -24,11 +24,11 @@ source, not a claim that every handler runs Zod parsing directly.
 ## Domain boundaries
 
 - Auth: provider/phone/PIN verification, current database sessions and roles,
-  refresh rotation, administrator passkey elevation.
+  refresh rotation, invite-only Ops accounts, superadmin controls and passkey elevation.
 - Transport: catalog versions, schedules, trips, assignment, GPS/ETA and Ops reads.
 - Membership: commute assignments, reservations, pauses, changes and priced offers.
 - Payments: purchase snapshots, credit holds, verified collections, fulfilment,
-  refunds/disputes, reviews and period close.
+  refunds/disputes, reviews, consent-based card renewals and period close.
 - Boarding: reservation-specific proof and atomic ride settlement.
 - Account: profile/avatar lifecycle, erasure, external cleanup and recovery journal.
 - Notifications: durable inbox/outboxes and provider delivery.
@@ -48,8 +48,10 @@ storage. GPS uses authenticated HTTP uploads and scoped polling; there is no
 active MQTT, Go, TimescaleDB or WebSocket path.
 
 `src/worker.ts` runs explicit maintenance jobs through the same authorization
-and transaction boundaries or bounded physical sweeps. A worker implementation
-is not an enabled schedule. See [deployment](DEPLOY.md).
+and transaction boundaries or bounded physical sweeps. Protected GitHub workflows
+schedule staging payments/email and selected service jobs. Push deliveries use
+bounded concurrency across accounts and remain a separately invoked worker.
+A worker implementation is not an enabled schedule. See [deployment](DEPLOY.md).
 
 ## Safety and recovery
 

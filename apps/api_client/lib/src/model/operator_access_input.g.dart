@@ -75,12 +75,15 @@ class _$OperatorAccessInputActionEnumSerializer
 class _$OperatorAccessInput extends OperatorAccessInput {
   @override
   final OperatorAccessInputActionEnum action;
+  @override
+  final String reason;
 
   factory _$OperatorAccessInput(
           [void Function(OperatorAccessInputBuilder)? updates]) =>
       (OperatorAccessInputBuilder()..update(updates))._build();
 
-  _$OperatorAccessInput._({required this.action}) : super._();
+  _$OperatorAccessInput._({required this.action, required this.reason})
+      : super._();
   @override
   OperatorAccessInput rebuild(
           void Function(OperatorAccessInputBuilder) updates) =>
@@ -93,13 +96,16 @@ class _$OperatorAccessInput extends OperatorAccessInput {
   @override
   bool operator ==(Object other) {
     if (identical(other, this)) return true;
-    return other is OperatorAccessInput && action == other.action;
+    return other is OperatorAccessInput &&
+        action == other.action &&
+        reason == other.reason;
   }
 
   @override
   int get hashCode {
     var _$hash = 0;
     _$hash = $jc(_$hash, action.hashCode);
+    _$hash = $jc(_$hash, reason.hashCode);
     _$hash = $jf(_$hash);
     return _$hash;
   }
@@ -107,7 +113,8 @@ class _$OperatorAccessInput extends OperatorAccessInput {
   @override
   String toString() {
     return (newBuiltValueToStringHelper(r'OperatorAccessInput')
-          ..add('action', action))
+          ..add('action', action)
+          ..add('reason', reason))
         .toString();
   }
 }
@@ -120,6 +127,10 @@ class OperatorAccessInputBuilder
   OperatorAccessInputActionEnum? get action => _$this._action;
   set action(OperatorAccessInputActionEnum? action) => _$this._action = action;
 
+  String? _reason;
+  String? get reason => _$this._reason;
+  set reason(String? reason) => _$this._reason = reason;
+
   OperatorAccessInputBuilder() {
     OperatorAccessInput._defaults(this);
   }
@@ -128,6 +139,7 @@ class OperatorAccessInputBuilder
     final $v = _$v;
     if ($v != null) {
       _action = $v.action;
+      _reason = $v.reason;
       _$v = null;
     }
     return this;
@@ -151,6 +163,8 @@ class OperatorAccessInputBuilder
         _$OperatorAccessInput._(
           action: BuiltValueNullFieldError.checkNotNull(
               action, r'OperatorAccessInput', 'action'),
+          reason: BuiltValueNullFieldError.checkNotNull(
+              reason, r'OperatorAccessInput', 'reason'),
         );
     replace(_$result);
     return _$result;

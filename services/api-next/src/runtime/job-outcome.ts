@@ -35,7 +35,13 @@ const schemas = {
     .object({ redacted: count, batches: count, backlogRemaining: z.boolean() })
     .strict(),
   erasures: z
-    .object({ considered: count, completed: count, failed: count, phoneChallengesPurged: count })
+    .object({
+      considered: count,
+      completed: count,
+      failed: count,
+      phoneChallengesPurged: count,
+      emailAccessPurged: z.object({ expired: count, pending: count }).strict(),
+    })
     .strict(),
   'driver-secrets': z.object({ cleared: count }).strict(),
   admission: z.object({ cleared: count }).strict(),

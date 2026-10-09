@@ -200,6 +200,74 @@ class CommuterDataClient {
               extra: extra)))
       .data;
 
+  Future<Account> updateFullName(
+          String firstName, String lastName, String? otherNames) async =>
+      (await _command(
+              'updateAccount',
+              [firstName, lastName, otherNames],
+              (key, extra) => client.getSelfApi().updateAccount(
+                  idempotencyKey: key,
+                  xTrotxiClient: metadata.app,
+                  xTrotxiBuild: metadata.build,
+                  profileUpdate: ProfileUpdate((b) => b
+                    ..firstName = firstName
+                    ..lastName = lastName
+                    ..otherNames = otherNames),
+                  extra: extra)))
+          .data;
+
+  Future<EmailAccessStatus> emailAccess() async =>
+      (await _read((extra) => client.getSelfApi().getEmailAccess(
+              xTrotxiClient: metadata.app,
+              xTrotxiBuild: metadata.build,
+              extra: extra)))
+          .data;
+
+  Future<String> startEmailLink(String email) async =>
+      (await _read((extra) => client.getSelfApi().startEmailLink(
+              xTrotxiClient: metadata.app,
+              xTrotxiBuild: metadata.build,
+              emailAddress: EmailAddress((b) => b.email = email),
+              extra: extra)))
+          .data
+          .message;
+
+  Future<void> finishEmailLink(String token, String password) async {
+    final generation = sessionGeneration;
+    try {
+      await client.getSelfApi().finishEmailLink(
+          xTrotxiClient: metadata.app,
+          xTrotxiBuild: metadata.build,
+          emailAccessComplete: EmailAccessComplete((b) => b
+            ..token = token
+            ..password = password),
+          extra: {_generationKey: generation});
+      ensureSession(generation);
+      await store.clearTokensIfGenerationMatches(generation);
+    } on DioException catch (e) {
+      ensureSession(generation);
+      throw _failure(e);
+    }
+  }
+
+  Future<void> changePassword(String currentPassword, String password) async {
+    final generation = sessionGeneration;
+    try {
+      await client.getSelfApi().changePassword(
+          xTrotxiClient: metadata.app,
+          xTrotxiBuild: metadata.build,
+          passwordChange: PasswordChange((b) => b
+            ..currentPassword = currentPassword
+            ..password = password),
+          extra: {_generationKey: generation});
+      ensureSession(generation);
+      await store.clearTokensIfGenerationMatches(generation);
+    } on DioException catch (e) {
+      ensureSession(generation);
+      throw _failure(e);
+    }
+  }
+
   /// The rider's own photo, as a signed URL that expires.
   ///
   /// The server hands back a short-lived link rather than the object itself, so

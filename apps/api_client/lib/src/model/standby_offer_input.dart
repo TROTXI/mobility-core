@@ -20,6 +20,7 @@ part 'standby_offer_input.g.dart';
 /// * [coverageEnd]
 /// * [price]
 /// * [credits]
+/// * [reason]
 @BuiltValue()
 abstract class StandbyOfferInput
     implements Built<StandbyOfferInput, StandbyOfferInputBuilder> {
@@ -37,6 +38,9 @@ abstract class StandbyOfferInput
 
   @BuiltValueField(wireName: r'credits')
   BuiltList<StandbyOfferInputCreditsInner> get credits;
+
+  @BuiltValueField(wireName: r'reason')
+  String get reason;
 
   StandbyOfferInput._();
 
@@ -89,6 +93,11 @@ class _$StandbyOfferInputSerializer
       object.credits,
       specifiedType:
           const FullType(BuiltList, [FullType(StandbyOfferInputCreditsInner)]),
+    );
+    yield r'reason';
+    yield serializers.serialize(
+      object.reason,
+      specifiedType: const FullType(String),
     );
   }
 
@@ -150,6 +159,13 @@ class _$StandbyOfferInputSerializer
                 BuiltList, [FullType(StandbyOfferInputCreditsInner)]),
           ) as BuiltList<StandbyOfferInputCreditsInner>;
           result.credits.replace(valueDes);
+          break;
+        case r'reason':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType(String),
+          ) as String;
+          result.reason = valueDes;
           break;
         default:
           unhandled.add(key);

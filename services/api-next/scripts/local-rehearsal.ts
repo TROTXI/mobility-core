@@ -240,6 +240,7 @@ try {
     await command(`/v1/ops/routes/${route.id}/fares`, {
       amount: { amountMinor: 600, currency: 'GHS' },
       effectiveFrom: yesterday,
+      note: 'Local rehearsal fare',
     });
     await writeFile(
       `${directory}/fixture.json`,

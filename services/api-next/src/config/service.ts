@@ -2,7 +2,7 @@ import { beginTransaction } from '../db/transaction.js';
 import { requireSuperadmin, teamLock } from '../auth/ops-team.js';
 import { createHash } from 'node:crypto';
 import type { Pool, PoolClient } from 'pg';
-import { fail } from '../transport/errors.js';
+import { fail, requireReason } from '../transport/errors.js';
 import { canonical } from '../transport/service.js';
 import type { Actor, Body, Outcome } from '../transport/service.js';
 import { cursorCodec } from '../transport/cursor.js';
@@ -524,7 +524,7 @@ export class ConfigService {
       )
     ).rows[0];
     return {
-      reason: null,
+      reason: requireReason(input),
       before: existing ? this.flagView(existing) : {},
       after: this.flagView(row),
     };
@@ -571,7 +571,7 @@ export class ConfigService {
       )
     ).rows[0];
     return {
-      reason: null,
+      reason: requireReason(input),
       before: existing ? this.versionView(existing) : {},
       after: this.versionView(row),
     };

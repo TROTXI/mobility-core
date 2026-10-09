@@ -1,7 +1,7 @@
 import { beginTransaction } from '../db/transaction.js';
 import { createHash } from 'node:crypto';
 import type { Pool, PoolClient } from 'pg';
-import { fail } from '../transport/errors.js';
+import { fail, requireReason } from '../transport/errors.js';
 import { canonical } from '../transport/service.js';
 import type { Actor, Body, Outcome } from '../transport/service.js';
 import { cursorCodec } from '../transport/cursor.js';
@@ -357,11 +357,13 @@ export class Pricing {
           fail(409, 'idempotency_expired', 'This replay window has expired.');
         return this.render(c, operation, prior.resource_id, true);
       }
+      // A fare's note is its reason; plan edits carry their own.
+      const reason = requireReason(operation === 'createFare' ? { reason: input.note } : input);
       const change =
         operation === 'createFare'
           ? await this.createFare(c, actor, scope, input)
           : await this.updatePlan(c, actor, scope, input, ifMatch);
-      await this.record(c, actor, operation, scope, keyHash, inputHash, change);
+      await this.record(c, actor, operation, scope, keyHash, inputHash, change, reason);
       return this.render(c, operation, change.resource, false);
     });
   }
@@ -393,6 +395,7 @@ export class Pricing {
     keyHash: string,
     inputHash: string,
     change: { resource: string; before: Body; after: Body },
+    reason: string,
   ) {
     const receipt = (
       await c.query(
@@ -401,8 +404,8 @@ export class Pricing {
       )
     ).rows[0].id;
     await c.query(
-      'INSERT INTO app.pricing_events(command_id,actor_user_id,resource_id,action,before_state,after_state) VALUES ($1,$2,$3,$4,$5,$6)',
-      [receipt, actor.userId, change.resource, operation, change.before, change.after],
+      'INSERT INTO app.pricing_events(command_id,actor_user_id,resource_id,action,before_state,after_state,reason) VALUES ($1,$2,$3,$4,$5,$6,$7)',
+      [receipt, actor.userId, change.resource, operation, change.before, change.after, reason],
     );
   }
 
@@ -461,12 +464,15 @@ export class Pricing {
         fail(409, 'fare_conflict', 'A later effective date than the fare in force is required.');
       await c.query('UPDATE app.route_fares SET effective_to=$2 WHERE id=$1', [open.id, from]);
     }
+    // Every fare change carries its reason; blank text is not one.
+    const note = typeof input.note === 'string' ? input.note.trim() : '';
+    if (!note) fail(400, 'reason_required', 'Give a reason for this fare.');
     const row = (
       await c.query(
         `INSERT INTO app.route_fares(route_id,amount_pesewas,effective_from,note,created_by,command_id,
          pattern_version_id,pickup_occurrence_id,dropoff_occurrence_id)
          VALUES ($1,$2,$3,$4,$5,gen_random_uuid(),$6,$7,$8) RETURNING *`,
-        [routeId, amount, from, input.note ?? null, actor.userId, version, pickup, dropoff],
+        [routeId, amount, from, note, actor.userId, version, pickup, dropoff],
       )
     ).rows[0];
     return {

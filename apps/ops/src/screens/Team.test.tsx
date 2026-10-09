@@ -39,6 +39,8 @@ it('reuses an invitation key after an uncertain response and shows queued rather
   fireEvent.change(screen.getByLabelText('Google account email'), {
     target: { value: 'adom@example.invalid' },
   });
+  expect(screen.getByRole('button', { name: 'Send invitation' })).toBeDisabled();
+  fireEvent.change(screen.getByLabelText('Reason'), { target: { value: 'Joins dispatch' } });
   fireEvent.click(screen.getByRole('button', { name: 'Send invitation' }));
   await screen.findByText('Connection lost');
   fireEvent.click(screen.getByRole('button', { name: 'Send invitation' }));
@@ -50,7 +52,11 @@ it('reuses an invitation key after an uncertain response and shows queued rather
   expect(first[1].params.header['Idempotency-Key']).toBe(
     second[1].params.header['Idempotency-Key'],
   );
-  expect(first[1].body).toEqual({ name: 'Adom', email: 'adom@example.invalid' });
+  expect(first[1].body).toEqual({
+    name: 'Adom',
+    email: 'adom@example.invalid',
+    reason: 'Joins dispatch',
+  });
 });
 it('confirms whole-account deletion, and never offers self-deletion', async () => {
   client.GET.mockResolvedValue({
@@ -87,6 +93,13 @@ it('confirms whole-account deletion, and never offers self-deletion', async () =
   fireEvent.click(remove[0]!);
   expect(client.POST).not.toHaveBeenCalled();
   expect(screen.getByText(/permanently closes their entire account/)).toBeInTheDocument();
+  const confirm = within(screen.getByRole('dialog')).getByRole('button', {
+    name: 'Delete account',
+  });
+  expect(confirm).toBeDisabled();
+  fireEvent.change(within(screen.getByRole('dialog')).getByLabelText('Reason'), {
+    target: { value: 'Left the company' },
+  });
   fireEvent.click(
     within(screen.getByRole('dialog')).getByRole('button', { name: 'Delete account' }),
   );
@@ -94,7 +107,7 @@ it('confirms whole-account deletion, and never offers self-deletion', async () =
     expect(client.POST).toHaveBeenCalledWith(
       '/v1/ops/team/members/{id}/access',
       expect.objectContaining({
-        body: { action: 'delete' },
+        body: { action: 'delete', reason: 'Left the company' },
         params: expect.objectContaining({ path: { id: 'other' } }),
       }),
     ),

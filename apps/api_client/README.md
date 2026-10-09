@@ -178,6 +178,7 @@ Class | Method | HTTP request | Description
 [*OpsOrScopedWorkerApi*](doc/OpsOrScopedWorkerApi.md) | [**runRouteLearning**](doc/OpsOrScopedWorkerApi.md#runroutelearning) | **POST** /v1/ops/maintenance/route-learning | run Route Learning
 [*OpsOrScopedWorkerApi*](doc/OpsOrScopedWorkerApi.md) | [**runTripGeneration**](doc/OpsOrScopedWorkerApi.md#runtripgeneration) | **POST** /v1/ops/maintenance/trip-generation | run Trip Generation
 [*ProviderSignatureApi*](doc/ProviderSignatureApi.md) | [**receivePaystackWebhook**](doc/ProviderSignatureApi.md#receivepaystackwebhook) | **POST** /webhooks/paystack | receive Paystack Webhook
+[*PublicApi*](doc/PublicApi.md) | [**completeEmailAccess**](doc/PublicApi.md#completeemailaccess) | **POST** /v1/auth/email/complete | complete Email Access
 [*PublicApi*](doc/PublicApi.md) | [**getBootstrap**](doc/PublicApi.md#getbootstrap) | **GET** /flags | get Bootstrap
 [*PublicApi*](doc/PublicApi.md) | [**getBuild**](doc/PublicApi.md#getbuild) | **GET** /version | get Build
 [*PublicApi*](doc/PublicApi.md) | [**getGeometry**](doc/PublicApi.md#getgeometry) | **GET** /v1/route-geometries/{id} | get Geometry
@@ -191,9 +192,12 @@ Class | Method | HTTP request | Description
 [*PublicApi*](doc/PublicApi.md) | [**listRoutes**](doc/PublicApi.md#listroutes) | **GET** /v1/routes | list Routes
 [*PublicApi*](doc/PublicApi.md) | [**logoutSession**](doc/PublicApi.md#logoutsession) | **POST** /v1/auth/logout | logout Session
 [*PublicApi*](doc/PublicApi.md) | [**refreshSession**](doc/PublicApi.md#refreshsession) | **POST** /v1/auth/refresh | refresh Session
+[*PublicApi*](doc/PublicApi.md) | [**requestEmailSignup**](doc/PublicApi.md#requestemailsignup) | **POST** /v1/auth/email/signup | request Email Signup
+[*PublicApi*](doc/PublicApi.md) | [**requestPasswordReset**](doc/PublicApi.md#requestpasswordreset) | **POST** /v1/auth/email/reset | request Password Reset
 [*PublicApi*](doc/PublicApi.md) | [**requestPhoneSignIn**](doc/PublicApi.md#requestphonesignin) | **POST** /v1/auth/phone/request | request Phone Sign In
 [*PublicApi*](doc/PublicApi.md) | [**signInApple**](doc/PublicApi.md#signinapple) | **POST** /v1/auth/apple | sign In Apple
 [*PublicApi*](doc/PublicApi.md) | [**signInDriver**](doc/PublicApi.md#signindriver) | **POST** /v1/auth/driver | sign In Driver
+[*PublicApi*](doc/PublicApi.md) | [**signInEmail**](doc/PublicApi.md#signinemail) | **POST** /v1/auth/email/login | sign In Email
 [*PublicApi*](doc/PublicApi.md) | [**signInGoogle**](doc/PublicApi.md#signingoogle) | **POST** /v1/auth/google | sign In Google
 [*PublicApi*](doc/PublicApi.md) | [**signInOpsGoogle**](doc/PublicApi.md#signinopsgoogle) | **POST** /v1/auth/ops/google | sign In Ops Google
 [*PublicApi*](doc/PublicApi.md) | [**verifyPhoneSignIn**](doc/PublicApi.md#verifyphonesignin) | **POST** /v1/auth/phone/verify | verify Phone Sign In
@@ -230,16 +234,20 @@ Class | Method | HTTP request | Description
 [*RiderOwnApi*](doc/RiderOwnApi.md) | [**updateNotificationPreferences**](doc/RiderOwnApi.md#updatenotificationpreferences) | **PATCH** /v1/me/notification-preferences | update Notification Preferences
 [*RiderOwnApi*](doc/RiderOwnApi.md) | [**withdrawCommuteRequest**](doc/RiderOwnApi.md#withdrawcommuterequest) | **POST** /v1/me/commute-requests/{id}/withdraw | withdraw Commute Request
 [*RiderOwnApi*](doc/RiderOwnApi.md) | [**withdrawStandby**](doc/RiderOwnApi.md#withdrawstandby) | **POST** /v1/me/standby/{id}/withdraw | withdraw Standby
+[*SelfApi*](doc/SelfApi.md) | [**changePassword**](doc/SelfApi.md#changepassword) | **POST** /v1/me/password | change Password
 [*SelfApi*](doc/SelfApi.md) | [**deleteAvatar**](doc/SelfApi.md#deleteavatar) | **DELETE** /v1/me/avatar | delete Avatar
 [*SelfApi*](doc/SelfApi.md) | [**eraseAccount**](doc/SelfApi.md#eraseaccount) | **DELETE** /v1/me | erase Account
+[*SelfApi*](doc/SelfApi.md) | [**finishEmailLink**](doc/SelfApi.md#finishemaillink) | **POST** /v1/me/email-access/complete | finish Email Link
 [*SelfApi*](doc/SelfApi.md) | [**finishPasskeyAuthentication**](doc/SelfApi.md#finishpasskeyauthentication) | **POST** /v1/auth/passkeys/authentication/verification | finish Passkey Authentication
 [*SelfApi*](doc/SelfApi.md) | [**finishPasskeyRegistration**](doc/SelfApi.md#finishpasskeyregistration) | **POST** /v1/auth/passkeys/registration/verification | finish Passkey Registration
 [*SelfApi*](doc/SelfApi.md) | [**getAccount**](doc/SelfApi.md#getaccount) | **GET** /v1/me | get Account
 [*SelfApi*](doc/SelfApi.md) | [**getAvatar**](doc/SelfApi.md#getavatar) | **GET** /v1/me/avatar | get Avatar
+[*SelfApi*](doc/SelfApi.md) | [**getEmailAccess**](doc/SelfApi.md#getemailaccess) | **GET** /v1/me/email-access | get Email Access
 [*SelfApi*](doc/SelfApi.md) | [**getPasskeyStatus**](doc/SelfApi.md#getpasskeystatus) | **GET** /v1/auth/passkeys | get Passkey Status
 [*SelfApi*](doc/SelfApi.md) | [**listSessions**](doc/SelfApi.md#listsessions) | **GET** /v1/me/sessions | list Sessions
 [*SelfApi*](doc/SelfApi.md) | [**registerDevice**](doc/SelfApi.md#registerdevice) | **POST** /v1/me/devices | register Device
 [*SelfApi*](doc/SelfApi.md) | [**revokeSession**](doc/SelfApi.md#revokesession) | **DELETE** /v1/me/sessions/{id} | revoke Session
+[*SelfApi*](doc/SelfApi.md) | [**startEmailLink**](doc/SelfApi.md#startemaillink) | **POST** /v1/me/email-access/link | start Email Link
 [*SelfApi*](doc/SelfApi.md) | [**startPasskeyAuthentication**](doc/SelfApi.md#startpasskeyauthentication) | **POST** /v1/auth/passkeys/authentication/options | start Passkey Authentication
 [*SelfApi*](doc/SelfApi.md) | [**startPasskeyRegistration**](doc/SelfApi.md#startpasskeyregistration) | **POST** /v1/auth/passkeys/registration/options | start Passkey Registration
 [*SelfApi*](doc/SelfApi.md) | [**updateAccount**](doc/SelfApi.md#updateaccount) | **PATCH** /v1/me | update Account
@@ -324,6 +332,14 @@ Class | Method | HTTP request | Description
  - [DriverTrip](doc/DriverTrip.md)
  - [DriverTripPage](doc/DriverTripPage.md)
  - [DriverTripResponse](doc/DriverTripResponse.md)
+ - [EmailAccessComplete](doc/EmailAccessComplete.md)
+ - [EmailAccessMessage](doc/EmailAccessMessage.md)
+ - [EmailAccessMessageResponse](doc/EmailAccessMessageResponse.md)
+ - [EmailAccessStatus](doc/EmailAccessStatus.md)
+ - [EmailAccessStatusResponse](doc/EmailAccessStatusResponse.md)
+ - [EmailAddress](doc/EmailAddress.md)
+ - [EmailSignIn](doc/EmailSignIn.md)
+ - [EmailSignup](doc/EmailSignup.md)
  - [ErrorResponse](doc/ErrorResponse.md)
  - [ErrorResponseError](doc/ErrorResponseError.md)
  - [ErrorResponseErrorFieldErrorsInner](doc/ErrorResponseErrorFieldErrorsInner.md)
@@ -449,6 +465,7 @@ Class | Method | HTTP request | Description
  - [PasskeyRegistrationResponseResponse](doc/PasskeyRegistrationResponseResponse.md)
  - [PasskeyStatus](doc/PasskeyStatus.md)
  - [PasskeyStatusResponse](doc/PasskeyStatusResponse.md)
+ - [PasswordChange](doc/PasswordChange.md)
  - [Pattern](doc/Pattern.md)
  - [PatternInput](doc/PatternInput.md)
  - [PatternPage](doc/PatternPage.md)
@@ -546,6 +563,7 @@ Class | Method | HTTP request | Description
  - [StandbyApplication](doc/StandbyApplication.md)
  - [StandbyApplicationOffer](doc/StandbyApplicationOffer.md)
  - [StandbyApplicationPage](doc/StandbyApplicationPage.md)
+ - [StandbyApplicationPageRouteDemandInner](doc/StandbyApplicationPageRouteDemandInner.md)
  - [StandbyApplicationResponse](doc/StandbyApplicationResponse.md)
  - [StandbyJoinInput](doc/StandbyJoinInput.md)
  - [StandbyOfferInput](doc/StandbyOfferInput.md)

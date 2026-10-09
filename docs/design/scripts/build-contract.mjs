@@ -188,6 +188,33 @@ for (const o of operations) {
         'Name, phone or email, partial.',
       ),
     );
+  if (o.operationId === 'listOpsStandby')
+    parameters.push(
+      query(
+        'routeId',
+        { type: 'string', format: 'uuid' },
+        'Filter by route identity, not its display name.',
+      ),
+      query(
+        'state',
+        {
+          type: 'string',
+          enum: ['submitted', 'offered', 'checkout_open', 'completed', 'withdrawn'],
+        },
+        'Application state. Omit for all states.',
+      ),
+      query('plan', { type: 'string', enum: ['monthly', 'annual'] }, 'Requested plan.'),
+      query(
+        'day',
+        { type: 'integer', minimum: 1, maximum: 7 },
+        'Travel weekday: Monday=1, Sunday=7.',
+      ),
+      query(
+        'q',
+        { type: 'string', minLength: 1, maxLength: 100 },
+        'Literal partial rider name. Route demand totals respect these filters except routeId and pagination.',
+      ),
+    );
   if (o.operationId === 'listOpsAutoRenewals')
     parameters.push(
       query(

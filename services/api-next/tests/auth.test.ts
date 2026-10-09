@@ -16,6 +16,42 @@ import {
 import { AuthService } from '../src/auth/service.js';
 import type { AuthOptions } from '../src/auth/service.js';
 import { credentialReplay } from '../src/auth/secret-replay.js';
+import { fullName } from '../src/auth/full-name.js';
+import { hashPassword, checkPassword } from '../src/auth/password.js';
+
+test('EMAIL-U01 full names retain their parts, normalize whitespace and reject incomplete or control text', () => {
+  assert.deepEqual(
+    fullName({ firstName: '  Ama ', lastName: ' Mensah ', otherNames: ' Akua   Serwaa ' }),
+    {
+      firstName: 'Ama',
+      lastName: 'Mensah',
+      otherNames: 'Akua Serwaa',
+      displayName: 'Ama Akua Serwaa Mensah',
+    },
+  );
+  assert.equal(
+    fullName({ firstName: 'Kwabena', lastName: 'O’Brien' }).displayName,
+    'Kwabena O’Brien',
+  );
+  for (const input of [
+    { firstName: 'Ama' },
+    { firstName: '', lastName: 'Mensah' },
+    { firstName: 'Ama\u0000', lastName: 'Mensah' },
+    { firstName: 'x'.repeat(61), lastName: 'Mensah' },
+  ])
+    assert.throws(() => fullName(input));
+});
+test('EMAIL-U02 password hashing is salted, bounded and verifies without storing plaintext', async () => {
+  const password = 'a long unique test passphrase';
+  const a = await hashPassword(password),
+    b = await hashPassword(password);
+  assert.notEqual(a, b);
+  assert.ok(await checkPassword(password, a));
+  assert.equal(await checkPassword('wrong password', a), false);
+  assert.equal(await checkPassword(password, null), false);
+  await assert.rejects(hashPassword('short'));
+  await assert.rejects(hashPassword('x'.repeat(129)));
+});
 
 const pair = await generateKeyPair('RS256'),
   jwk = await exportJWK(pair.publicKey);

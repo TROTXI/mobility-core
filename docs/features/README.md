@@ -1,6 +1,7 @@
 # Feature documentation
 
-Source audit: 2026-10-03. These documents describe the implementation on main.
+Index updated: 2026-10-08. Each guide records its own source-audit date.
+These documents describe the implementation on main.
 They replace the retired ADR collection. Product intent is maintained separately
 in [strategy](https://github.com/TROTXI/strategy).
 

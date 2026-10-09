@@ -77,6 +77,14 @@ doc/DriverTokensResponse.md
 doc/DriverTrip.md
 doc/DriverTripPage.md
 doc/DriverTripResponse.md
+doc/EmailAccessComplete.md
+doc/EmailAccessMessage.md
+doc/EmailAccessMessageResponse.md
+doc/EmailAccessStatus.md
+doc/EmailAccessStatusResponse.md
+doc/EmailAddress.md
+doc/EmailSignIn.md
+doc/EmailSignup.md
 doc/ErrorResponse.md
 doc/ErrorResponseError.md
 doc/ErrorResponseErrorFieldErrorsInner.md
@@ -205,6 +213,7 @@ doc/PasskeyRegistrationResponse.md
 doc/PasskeyRegistrationResponseResponse.md
 doc/PasskeyStatus.md
 doc/PasskeyStatusResponse.md
+doc/PasswordChange.md
 doc/Pattern.md
 doc/PatternInput.md
 doc/PatternPage.md
@@ -307,6 +316,7 @@ doc/SignedInCatalogApi.md
 doc/StandbyApplication.md
 doc/StandbyApplicationOffer.md
 doc/StandbyApplicationPage.md
+doc/StandbyApplicationPageRouteDemandInner.md
 doc/StandbyApplicationResponse.md
 doc/StandbyJoinInput.md
 doc/StandbyOfferInput.md
@@ -443,6 +453,14 @@ lib/src/model/driver_tokens_response.dart
 lib/src/model/driver_trip.dart
 lib/src/model/driver_trip_page.dart
 lib/src/model/driver_trip_response.dart
+lib/src/model/email_access_complete.dart
+lib/src/model/email_access_message.dart
+lib/src/model/email_access_message_response.dart
+lib/src/model/email_access_status.dart
+lib/src/model/email_access_status_response.dart
+lib/src/model/email_address.dart
+lib/src/model/email_sign_in.dart
+lib/src/model/email_signup.dart
 lib/src/model/error_response.dart
 lib/src/model/error_response_error.dart
 lib/src/model/error_response_error_field_errors_inner.dart
@@ -568,6 +586,7 @@ lib/src/model/passkey_registration_response.dart
 lib/src/model/passkey_registration_response_response.dart
 lib/src/model/passkey_status.dart
 lib/src/model/passkey_status_response.dart
+lib/src/model/password_change.dart
 lib/src/model/pattern.dart
 lib/src/model/pattern_input.dart
 lib/src/model/pattern_page.dart
@@ -665,6 +684,7 @@ lib/src/model/session_page.dart
 lib/src/model/standby_application.dart
 lib/src/model/standby_application_offer.dart
 lib/src/model/standby_application_page.dart
+lib/src/model/standby_application_page_route_demand_inner.dart
 lib/src/model/standby_application_response.dart
 lib/src/model/standby_join_input.dart
 lib/src/model/standby_offer_input.dart

@@ -11,6 +11,13 @@ Source audit: 2026-10-03.
 - `DELETE /v1/me/avatar`: detach photo and queue physical cleanup.
 - `DELETE /v1/me`: account closure and personal-data erasure workflow.
 
+Commuter names have required `firstName` and `lastName`, with optional
+`otherNames`. Submit those parts together to `PATCH /v1/me`; the server derives
+`displayName` in first, other, last order. Phone and social sign-in ask for these
+parts before entering the app when they are missing. A commuter cannot bypass
+this rule by writing only `displayName`. Driver profile behavior is unchanged.
+Email/password setup and recovery are described in [authentication](authentication.md).
+
 Upload checks MIME and file bytes with a default 2 MiB bound. The current
 backend does not promise the retired sharp-based 256px re-encoding pipeline.
 Do not document server EXIF stripping without implementing it. Missing object
@@ -25,6 +32,8 @@ physical deletion.
 Account closure revokes sessions, invalidates phone challenges/verification,
 scrubs linked personal data and stops eligible future work. Financial/audit
 records retain restricted attribution instead of being cascaded away.
+Migration 047 also scrubs all name parts, email credentials and outstanding
+email signup, linking and reset tokens in the same account-closure transaction.
 External avatar removal and Apple grant revocation have retryable cleanup tasks.
 
 Ops can inspect erasure progress; it cannot certify deletion from external

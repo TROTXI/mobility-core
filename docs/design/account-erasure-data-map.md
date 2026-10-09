@@ -25,6 +25,21 @@ been removed. This document does not set a new statutory retention period.
 | Firebase Cloud Messaging, Crashlytics and Performance                                                                                      | Device/installation IDs, push receipt IDs, crash/performance telemetry                                                                              | Token is removed locally and no further Trotxi push is eligible. There is no server-side deletion of installation/diagnostic data. The apps do not set a Trotxi user ID in Crashlytics in the inspected code, but installation data still exists.                                                                                                          | `notifications/push.ts`, app `main.dart`; [Firebase data management guidance](https://firebase.google.com/support/privacy/manage-iids). A provider deletion path would require installation identifiers and app-side coordination.           |
 | Resend and mNotify                                                                                                                         | Sent recipient and message/provider logs                                                                                                            | Trotxi clears queued message contents locally at terminal state or account closure. A sent email/SMS cannot be recalled. No provider-specific deletion endpoint is wired and its remote retention is not verified by local tests.                                                                                                                          | `notifications/resend.ts`, `mnotify.ts`; Resend [data-processing terms](https://resend.com/legal/dpa). Treat an operator/provider response as separate evidence, not an automatic result of `204`.                                           |
 
+### Commuter email credentials and name parts
+
+Migration 047 adds `users.first_name`, `last_name`, `other_names`,
+`email_credentials` and `email_auth_challenges`. Account closure clears the name
+parts, credential email, Argon2id password hash, verification timestamp and all
+outstanding challenge hashes transactionally. Restricted account/challenge IDs
+and timestamps remain; no recoverable password is stored.
+
+The existing `erasures` worker clears expired email tokens in bounded batches.
+After one day it also removes abandoned unverified email claims. A never-activated
+signup profile is scrubbed only if it has never had a session or provider identity.
+An existing phone/Google account with an abandoned email-link request is not deleted.
+Encrypted email contents follow the existing outbox cancellation/expiry policy.
+No claim is made that a delivered email can be recalled or removed from its provider.
+
 ### Opt-in independent deletion register
 
 The recovery implementation adds a separate private R2 object containing

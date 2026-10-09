@@ -5,6 +5,14 @@ const source = JSON.parse(
   await readFile(new URL('../contracts/target.openapi.json', import.meta.url), 'utf8'),
 );
 const selected = new Set([
+  'requestEmailSignup',
+  'signInEmail',
+  'requestPasswordReset',
+  'completeEmailAccess',
+  'getEmailAccess',
+  'startEmailLink',
+  'finishEmailLink',
+  'changePassword',
   'signInOpsGoogle',
   'listOpsTeam',
   'inviteOperator',

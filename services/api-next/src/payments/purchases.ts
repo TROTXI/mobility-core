@@ -129,6 +129,15 @@ export class Purchases {
           ])
         ).rows
       : [];
+    const riders = new Map<string, string | null>(
+      admin
+        ? (
+            await c.query('SELECT id,display_name FROM app.users WHERE id=ANY($1::uuid[])', [
+              [...new Set(rows.map((p) => p.user_id))],
+            ])
+          ).rows.map((u) => [u.id, u.display_name])
+        : [],
+    );
     return rows.map((p) => {
       const mine = attempts.filter((a) => a.purchase_id === p.id);
       const latest = mine[0];
@@ -141,6 +150,7 @@ export class Purchases {
       return {
         ...base,
         riderId: p.user_id,
+        riderName: riders.get(p.user_id) ?? null,
         attempts: mine.map((a) => ({
           id: a.id,
           providerReference: a.reference,

@@ -1,11 +1,12 @@
 # Authentication and sessions
 
-Source audit: 2026-10-03.
+Email and full-name flow updated: 2026-10-08.
 
 ## Sign-in methods
 
 - Commuters: `POST /v1/auth/google`, optional configured Apple, or
-  `/v1/auth/phone/request` then `/v1/auth/phone/verify`.
+  `/v1/auth/phone/request` then `/v1/auth/phone/verify`, or verified
+  email/password through `/v1/auth/email/login`.
 - Drivers: `POST /v1/auth/driver` with driver code and six-digit PIN.
   Ops creates drivers and issues/resets temporary credentials. Temporary PINs
   expire and require a private PIN change before normal driver work.
@@ -27,7 +28,17 @@ phone possession for that phone account. Google/Apple users can sign in without
 a phone; the authenticated `/v1/me/phone-verification/start` and `confirm`
 flow verifies their number before standby enrollment/acceptance.
 
-A basic rider name and an active verified phone record are required for standby.
+A full rider name and an active verified phone record are required for standby.
+
+Phone OTP sign-in initially creates a `New commuter` profile. The app asks for
+`firstName` and `lastName`, plus optional `otherNames`, before opening Home.
+Google users without these fields complete the same screen. `PATCH /v1/me`
+stores the components and constructs `displayName` as first, other, last,
+separated by spaces. First/last names allow 60 characters each and other names 80,
+with a combined display name limited to 200 characters. Unicode names are supported;
+controls are rejected. The account response
+returns all three components. Existing names are not split by guessing.
+Name entry does not itself verify legal identity.
 A profile phone field, payment phone or social login is not verification.
 Matching numbers never silently merge accounts or transfer subscriptions.
 Collision/review states do not authorize taking another account's number.
@@ -49,6 +60,81 @@ from interactive operators.
 Sources: `services/api-next/src/auth/`, `runtime/config.ts`,
 `apps/ops/src/auth/`, `apps/trotxi_driver/lib/core/state/session_controller.dart`.
 Configuration support does not prove Apple or production provider setup.
+
+## Email signup, recovery and linking
+
+The commuter app offers **Continue with email**, **Create an account**, and
+**Forgot password**. Any syntactically valid email domain is supported.
+
+1. Signup collects full-name fields and email, then calls
+   `POST /v1/auth/email/signup`. No password or usable session exists yet.
+2. A verification email opens `/account-access#token=...` on the configured
+   Ops web origin. This is a public commuter page, outside the Ops sign-in gate.
+   It clears the fragment from browser history and keeps the secret only in
+   memory. Opening the email does not consume the link.
+3. The user chooses and confirms a password, then the page calls
+   `POST /v1/auth/email/complete`. The 30-minute, single-use link proves email
+   ownership and enables email login. Return to the app to sign in.
+4. Login returns ordinary commuter access/refresh tokens. It does not verify
+   phone possession or make the commuter eligible for standby without OTP.
+
+Forgot password calls `POST /v1/auth/email/reset`. Responses are generic for
+unknown addresses and addresses without email credentials. Provider send time
+is not awaited in that response. Completing reset invalidates all older email
+links and sessions, including other devices. It does not automatically log in.
+The user receives a password-change notice. Reset requests alone do not change
+the password or lock the user out.
+
+**Profile > Security & sign-in > Email & password** supports adding an email
+to an account first created with Google or phone. This requires a sign-in from
+the last 15 minutes when requesting the code, and proof of the new email. The
+code keeps its full 30-minute lifetime in that same live session; completion
+does not repeat the session-age check. The emailed code is entered in
+the initiating app session with a new password. Another account or session
+cannot redeem it, and the public signup completion cannot redeem a linking
+code. Linking retains the same rider ID, subscriptions and existing sign-in
+method. Matching a contact address never merges two accounts. An address
+already used by another account is refused. Adding Google to an email-created
+account is not implemented; use email sign-in for that account.
+
+The same security screen changes an enabled password using the current
+password and recent sign-in. It signs out all sessions. Google-only users
+manage their Google password with Google until they explicitly add email
+sign-in here. Driver PIN recovery and Ops invitations/passkeys are unchanged.
+
+Passwords allow 15 to 128 characters without composition rules, with a small
+local common-password rejection list. They are hashed with Argon2id (19 MiB,
+two passes, one lane) and random salts. At most two hashes run concurrently per
+API process; excess work returns a retryable busy error. Login is bounded by
+shared IP and email/IP budgets. Verification/resets send at most once per
+minute and five times per account per hour. This is not a compromised-password
+database check or multi-factor authentication.
+
+Only token hashes are stored in challenges. Email links are encrypted in the
+existing outbox, checked again before delivery, and retried by the existing
+email worker. Account erasure scrubs credentials, names and outstanding links.
+The existing `erasures` job also clears expired token hashes and releases
+unverified email claims after one day; never-activated signup profiles with no
+sessions or other identities are scrubbed. Run that job regularly. No new
+paid provider or scheduled service is required by this implementation.
+
+### Release and acceptance
+
+- Apply migration 047 and deploy the API and Ops public recovery page before
+  distributing the new commuter build. `RESEND_API_KEY` and the existing
+  configured Ops origin must be correct. The web origin must match API CORS.
+- Use a non-Google email address to register, verify and sign in. Confirm the
+  full name appears in Profile and the email does not count as phone proof.
+- Phone sign-in: OTP, full name, then standby without a second login OTP.
+  Google/email sign-in: full name and account-bound phone OTP before standby.
+- Reset from a second device. The old password and both old sessions must fail;
+  the new password must work. Expired and already-used links must be refused.
+- Link email from Google/phone. Verify the rider ID and subscriptions stay the
+  same, and a different signed-in device cannot redeem the linking code.
+- Test browser mail links on Android and iOS. Browser completion and returning
+  to app sign-in are supported; native universal-link opening is not required.
+- Real-provider delivery and physical-device acceptance are separate from
+  local automated tests. Never paste passwords or link tokens into tickets.
 
 ## Flow and ownership
 

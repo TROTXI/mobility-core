@@ -786,6 +786,14 @@ test('FLT-11 approving a request records agreement and never reassigns a trip or
       await c.request('GET', '/v1/ops/driver-requests?status=pending'),
       200,
     );
+    const unexplained = await c.request(
+      'POST',
+      `/v1/ops/driver-requests/${asked.id}/decisions`,
+      { status: 'approved', decisionNote: '  ' },
+      { token: queue[0].editToken },
+    );
+    assert.equal(unexplained.statusCode, 400);
+    assert.equal(unexplained.json().error.code, 'reason_required');
     const approved = expectStatus(
       await c.request(
         'POST',
@@ -800,6 +808,15 @@ test('FLT-11 approving a request records agreement and never reassigns a trip or
       decisionNote: 'Starts next roster',
       decidedBy: c.users.admin,
     });
+    assert.equal(
+      (
+        await c.owner.query(
+          "SELECT reason FROM app.fleet_events WHERE request_id=$1 AND operation='decideDriverRequest'",
+          [asked.id],
+        )
+      ).rows[0].reason,
+      'Starts next roster',
+    );
     // The whole point of a separate request record: agreeing to it writes
     // nothing to the assignment path.
     assert.deepEqual(
