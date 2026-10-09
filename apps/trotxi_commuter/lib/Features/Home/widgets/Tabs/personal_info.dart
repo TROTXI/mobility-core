@@ -13,7 +13,7 @@ enum _PhotoAction { camera, gallery, remove }
 /// Full-page "Personal information" editor, pushed from ProfileTab's
 /// "Personal information" row.
 ///
-/// `displayName` and the rider's photo are the two things this page changes.
+/// Full name parts and the rider's photo are the two things this page changes.
 /// The photo matters beyond the profile screen: a driver checks it against the
 /// person in front of them at boarding, so a missing one weakens that check.
 class PersonalInfoPage extends StatefulWidget {
@@ -31,11 +31,18 @@ class PersonalInfoPage extends StatefulWidget {
 }
 
 class _PersonalInfoPageState extends State<PersonalInfoPage> {
-  late final TextEditingController _nameController = TextEditingController(
-    text: widget.initialUser.displayName,
+  late final TextEditingController _firstController = TextEditingController(
+    text: widget.initialUser.firstName,
+  );
+  late final TextEditingController _otherController = TextEditingController(
+    text: widget.initialUser.otherNames,
+  );
+  late final TextEditingController _lastController = TextEditingController(
+    text: widget.initialUser.lastName,
   );
   bool _saving = false;
   bool _uploading = false;
+
   /// Set once an upload returns, so the new picture shows without a round trip.
   /// Signed and short-lived: never persisted, never reused after this screen.
   String? _avatarUrl;
@@ -43,7 +50,9 @@ class _PersonalInfoPageState extends State<PersonalInfoPage> {
 
   @override
   void dispose() {
-    _nameController.dispose();
+    _firstController.dispose();
+    _otherController.dispose();
+    _lastController.dispose();
     super.dispose();
   }
 
@@ -63,7 +72,12 @@ class _PersonalInfoPageState extends State<PersonalInfoPage> {
 
   /// The types the server accepts. It reads the file's own header rather than
   /// trusting the extension, so anything else is refused however it is named.
-  static const _accepted = {'jpg': 'image/jpeg', 'jpeg': 'image/jpeg', 'png': 'image/png', 'webp': 'image/webp'};
+  static const _accepted = {
+    'jpg': 'image/jpeg',
+    'jpeg': 'image/jpeg',
+    'png': 'image/png',
+    'webp': 'image/webp',
+  };
 
   Future<void> _onChangePhoto() async {
     final action = await showModalBottomSheet<_PhotoAction>(
@@ -173,27 +187,39 @@ class _PersonalInfoPageState extends State<PersonalInfoPage> {
     }
   }
 
-  void _say(String message) =>
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+  void _say(String message) => ScaffoldMessenger.of(
+    context,
+  ).showSnackBar(SnackBar(content: Text(message)));
 
   Future<void> _onSave() async {
-    final trimmed = _nameController.text.trim();
-    if (trimmed.isEmpty) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Name cannot be empty.')));
+    if (_saving) return;
+    final first = _firstController.text.trim();
+    final last = _lastController.text.trim();
+    final other = _otherController.text.trim();
+    if (first.isEmpty || last.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Enter your first and last names.')),
+      );
       return;
     }
-    if (trimmed == widget.initialUser.displayName) {
+    if (first == widget.initialUser.firstName &&
+        last == widget.initialUser.lastName &&
+        other == (widget.initialUser.otherNames ?? '')) {
       Navigator.of(context).pop();
       return;
     }
 
     setState(() => _saving = true);
     try {
-      await widget.client.updateAccount(trimmed);
+      await widget.client.saveFullName(
+        first,
+        last,
+        other.isEmpty ? null : other,
+      );
       if (!mounted) return;
       Navigator.of(context).pop();
+    } on TrotxiException catch (e) {
+      if (mounted) _say(e.message);
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -240,18 +266,45 @@ class _PersonalInfoPageState extends State<PersonalInfoPage> {
                   const SizedBox(height: 24),
                   _buildAvatarSection(context),
                   const SizedBox(height: 28),
-                  _FieldShell(
-                    label: 'Full name',
-                    child: TextField(
-                      controller: _nameController,
-                      textCapitalization: TextCapitalization.words,
-                      style: AppTypography.bodySmall.copyWith(
-                        color: colors.textPrimary,
-                      ),
-                      decoration: const InputDecoration.collapsed(hintText: ''),
+                  for (final field in [
+                    (
+                      'First name',
+                      _firstController,
+                      60,
+                      AutofillHints.givenName,
                     ),
-                  ),
-                  const SizedBox(height: 28),
+                    (
+                      'Other names (optional)',
+                      _otherController,
+                      80,
+                      AutofillHints.middleName,
+                    ),
+                    (
+                      'Last name',
+                      _lastController,
+                      60,
+                      AutofillHints.familyName,
+                    ),
+                  ]) ...[
+                    _FieldShell(
+                      label: field.$1,
+                      child: TextField(
+                        key: ValueKey(field.$1),
+                        controller: field.$2,
+                        enabled: !_saving,
+                        maxLength: field.$3,
+                        autofillHints: [field.$4],
+                        textCapitalization: TextCapitalization.words,
+                        style: AppTypography.bodySmall.copyWith(
+                          color: colors.textPrimary,
+                        ),
+                        decoration: InputDecoration.collapsed(
+                          hintText: field.$1,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                  ],
                   SizedBox(
                     width: double.infinity,
                     child: Material(
@@ -313,9 +366,11 @@ class _PersonalInfoPageState extends State<PersonalInfoPage> {
           ),
         ),
         const SizedBox(width: 12),
-        Text(
-          'Personal information',
-          style: AppTypography.title.copyWith(color: colors.textPrimary),
+        Expanded(
+          child: Text(
+            'Personal information',
+            style: AppTypography.title.copyWith(color: colors.textPrimary),
+          ),
         ),
       ],
     );
@@ -323,7 +378,9 @@ class _PersonalInfoPageState extends State<PersonalInfoPage> {
 
   Widget _buildAvatarSection(BuildContext context) {
     final colors = context.appColors;
-    final avatarUrl = _avatarRemoved ? null : _avatarUrl ?? widget.initialUser.avatarUrl;
+    final avatarUrl = _avatarRemoved
+        ? null
+        : _avatarUrl ?? widget.initialUser.avatarUrl;
     final hasAvatar = avatarUrl != null && avatarUrl.isNotEmpty;
 
     return Column(
@@ -371,7 +428,9 @@ class _PersonalInfoPageState extends State<PersonalInfoPage> {
               const SizedBox(width: 8),
               Text(
                 'Uploading',
-                style: AppTypography.label.copyWith(color: colors.textSecondary),
+                style: AppTypography.label.copyWith(
+                  color: colors.textSecondary,
+                ),
               ),
             ],
           )
@@ -397,8 +456,7 @@ class _PersonalInfoPageState extends State<PersonalInfoPage> {
   }
 }
 
-/// A labeled, rounded/bordered field container — an editable [TextField]
-/// for "Full name", or a plain [Text] for the read-only/placeholder rows.
+/// A labeled, rounded/bordered container for each name field.
 class _FieldShell extends StatelessWidget {
   const _FieldShell({required this.label, required this.child});
 

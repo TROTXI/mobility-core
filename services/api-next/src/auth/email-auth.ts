@@ -149,6 +149,13 @@ export class EmailAuth {
         [id, userId, purpose, hashToken(token), version, sessionId],
       )
     ).rows[0];
+    // A newly issued challenge gets its full lifetime, even when the pending
+    // registration/link was first requested more than a day ago. This runs
+    // only after resend admission and rolls back if enqueueing fails.
+    await c.query(
+      'UPDATE app.email_credentials SET created_at=clock_timestamp() WHERE user_id=$1 AND version=$2 AND password_hash IS NULL',
+      [userId, version],
+    );
     return this.mail().queueEmailAccess(c, {
       userId,
       challengeId: id,
@@ -228,10 +235,11 @@ export class EmailAuth {
       let version = old?.version ?? 1;
       if (actor && old && old.email !== email) {
         version++;
-        await c.query(
-          'UPDATE app.email_credentials SET email=$2,version=$3,created_at=clock_timestamp() WHERE user_id=$1',
-          [userId, email, version],
-        );
+        await c.query('UPDATE app.email_credentials SET email=$2,version=$3 WHERE user_id=$1', [
+          userId,
+          email,
+          version,
+        ]);
         await c.query(
           'UPDATE app.email_auth_challenges SET token_hash=NULL,consumed_at=COALESCE(consumed_at,clock_timestamp()) WHERE user_id=$1 AND token_hash IS NOT NULL',
           [userId],
@@ -290,7 +298,9 @@ export class EmailAuth {
         ])
       ).rows[0];
       if (user?.role !== 'commuter') invalid();
-      if (actor) await this.owner(c, actor, true);
+      // Recent sign-in was required at issuance. Completion remains bound to
+      // that same live session and the challenge's advertised 30-minute expiry.
+      if (actor) await this.owner(c, actor);
       const cr = (
         await c.query('SELECT * FROM app.email_credentials WHERE user_id=$1 FOR UPDATE', [user.id])
       ).rows[0];

@@ -2524,6 +2524,100 @@ test('EMAIL-07 verified Google enrollment can proceed despite an unverified emai
   );
 });
 
+test('EMAIL-09 reissued signup and same-address linking codes survive pending retention', async (t) => {
+  const f = await setup(t),
+    rider = await f.sign('resend-retention');
+  const signup = () => f.request('POST', '/v1/auth/email/signup', emailRegistration);
+  const link = () =>
+    f.request(
+      'POST',
+      '/v1/me/email-access/link',
+      { email: 'renewed-link@example.com' },
+      rider.accessToken,
+    );
+  data(await signup());
+  data(await link());
+  await f.emailDelivered();
+  await f.owner.query(
+    "UPDATE app.email_credentials SET created_at=clock_timestamp()-interval '2 days'",
+  );
+  await f.owner.query(
+    "UPDATE app.email_auth_challenges SET created_at=clock_timestamp()-interval '2 days',expires_at=clock_timestamp()-interval '1 day'",
+  );
+  data(await signup());
+  const signupToken = await emailToken(f);
+  data(await link());
+  const linkToken = await emailToken(f);
+  const ages = async () =>
+    (await f.owner.query('SELECT user_id,created_at FROM app.email_credentials ORDER BY user_id'))
+      .rows;
+  const issued = await ages();
+  data(await signup());
+  data(await link());
+  assert.deepEqual(await ages(), issued, 'suppressed resends must not prolong retention');
+  assert.deepEqual(await purgeExpiredEmailAccess(f.runtime), { expired: 2, pending: 0 });
+  data(
+    await f.request('POST', '/v1/auth/email/complete', {
+      token: signupToken,
+      password: emailPassword,
+    }),
+    204,
+  );
+  data(
+    await f.request(
+      'POST',
+      '/v1/me/email-access/complete',
+      { token: linkToken, password: emailPassword },
+      rider.accessToken,
+    ),
+    204,
+  );
+});
+
+test('EMAIL-10 recent sign-in is checked at linking start, not shortened during the code lifetime', async (t) => {
+  const f = await setup(t),
+    rider = await f.sign('link-lifetime');
+  const age = (minutes: number) =>
+    f.owner.query(
+      "UPDATE app.auth_sessions SET created_at=clock_timestamp()-($2::text||' minutes')::interval WHERE user_id=$1",
+      [rider.account.id, minutes],
+    );
+  const request = () =>
+    f.request(
+      'POST',
+      '/v1/me/email-access/link',
+      { email: 'lifetime@example.com' },
+      rider.accessToken,
+    );
+  await age(16);
+  assert.equal((await request()).json().error.code, 'recent_signin_required');
+  await age(14);
+  data(await request());
+  const token = await emailToken(f);
+  const second = await f.sign('link-lifetime');
+  assert.equal(
+    (
+      await f.request(
+        'POST',
+        '/v1/me/email-access/complete',
+        { token, password: emailPassword },
+        second.accessToken,
+      )
+    ).statusCode,
+    400,
+  );
+  await age(16);
+  data(
+    await f.request(
+      'POST',
+      '/v1/me/email-access/complete',
+      { token, password: emailPassword },
+      rider.accessToken,
+    ),
+    204,
+  );
+});
+
 test('EMAIL-08 retention removes abandoned signup PII without deleting a linked-method owner', async (t) => {
   const f = await setup(t),
     rider = await f.sign('pending-cleanup');

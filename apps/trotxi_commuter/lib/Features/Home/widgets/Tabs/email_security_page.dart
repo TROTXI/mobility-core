@@ -96,7 +96,7 @@ class _EmailSecurityPageState extends State<EmailSecurityPage> {
                   ),
                   const SizedBox(height: 12),
                   const Text(
-                    'For your security, sign in again if your current session is more than 15 minutes old.',
+                    'Starting email setup or changing a password requires a sign-in from the last 15 minutes. Once sent, an email code works for 30 minutes in the same signed-in session.',
                   ),
                   const SizedBox(height: 24),
                   TextFormField(

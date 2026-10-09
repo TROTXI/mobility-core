@@ -87,7 +87,9 @@ the password or lock the user out.
 
 **Profile > Security & sign-in > Email & password** supports adding an email
 to an account first created with Google or phone. This requires a sign-in from
-the last 15 minutes and proof of the new email. The emailed code is entered in
+the last 15 minutes when requesting the code, and proof of the new email. The
+code keeps its full 30-minute lifetime in that same live session; completion
+does not repeat the session-age check. The emailed code is entered in
 the initiating app session with a new password. Another account or session
 cannot redeem it, and the public signup completion cannot redeem a linking
 code. Linking retains the same rider ID, subscriptions and existing sign-in
