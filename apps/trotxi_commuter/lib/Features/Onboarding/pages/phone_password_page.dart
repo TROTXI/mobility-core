@@ -107,19 +107,7 @@ class _PhonePasswordPageState extends State<PhonePasswordPage> {
         if (mounted) setState(() {});
       });
     } on TrotxiException catch (error) {
-      if (mounted) {
-        setState(() {
-          if (error is ApiException && error.code == 'password_required') {
-            _step = _Step.signIn;
-            _password.clear();
-            _confirm.clear();
-            _error =
-                'This number already has an account. Sign in with your password.';
-          } else {
-            _error = error.message;
-          }
-        });
-      }
+      if (mounted) setState(() => _error = error.message);
     } catch (_) {
       if (mounted) setState(() => _error = 'Could not send a code. Try again.');
     } finally {
@@ -161,12 +149,7 @@ class _PhonePasswordPageState extends State<PhonePasswordPage> {
           );
           if (account.phoneRegistrationPending != true) {
             await widget.client.auth.signOut();
-            if (mounted) {
-              setState(
-                () => _error =
-                    'This number already has an account. Sign in instead.',
-              );
-            }
+            if (mounted) _showExistingAccount();
             return;
           }
           await _finishRegistration();
@@ -182,7 +165,15 @@ class _PhonePasswordPageState extends State<PhonePasswordPage> {
           break;
       }
     } on TrotxiException catch (error) {
-      if (mounted) setState(() => _error = error.message);
+      if (mounted) {
+        if (_step == _Step.code &&
+            error is ApiException &&
+            error.code == 'password_required') {
+          _showExistingAccount();
+        } else {
+          setState(() => _error = error.message);
+        }
+      }
     } catch (_) {
       if (mounted) {
         setState(() => _error = 'Could not connect. Please try again.');
@@ -190,6 +181,18 @@ class _PhonePasswordPageState extends State<PhonePasswordPage> {
     } finally {
       if (mounted) setState(() => _busy = false);
     }
+  }
+
+  void _showExistingAccount() {
+    setState(() {
+      _step = _Step.signIn;
+      _challengeId = null;
+      _code.clear();
+      _password.clear();
+      _confirm.clear();
+      _error =
+          'This number already has an account. Sign in with your password.';
+    });
   }
 
   Future<void> _finishRegistration() async {
