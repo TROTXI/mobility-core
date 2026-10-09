@@ -1,7 +1,7 @@
 # Trotxi API
 
 This is the current backend used by the apps and Ops, not an undeployed
-replacement experiment. Source audit: 2026-10-03.
+replacement experiment. Source audit: 2026-10-08.
 
 ## Entry points and boundaries
 
@@ -22,7 +22,9 @@ Catalog versions/schedules and fleet; social/phone/driver auth and Ops passkeys;
 driver credentials via email/SMS; profile/avatars/erasure; trip lifecycle/GPS;
 reservation-based boarding; subscription requests and priced offers; Paystack
 collections, refunds/disputes/recovery; period-owned rides and credit; prepaid
-renewals; pauses/commute changes; notifications; Ops read models/audit/config.
+renewals and consent-based card auto-renewal; pauses/commute changes;
+notifications; invite-only Ops team management; Ops read models/audit/config.
+Card-renewal controls are not yet exposed in the commuter app.
 
 Start at the [feature index](../../docs/features/README.md) and
 [architecture](../../docs/architecture.md). Use the [developer guide](../../docs/development.md) for code locations and
@@ -75,9 +77,13 @@ add the date and outbound/return direction. The authoritative job list is
 `src/runtime/maintenance.ts`: payments, personal-pause-resumes, ask-dispatch,
 reservation-defaults, no-shows, route-learning, gps-retention,
 incident-retention, payment-evidence-retention, erasures, driver-secrets,
-admission, emails, trip-generation and push.
+admission, emails, trip-generation, push and auto-renewals.
 
 Workers use a configured non-human maintenance identity and restricted login.
 Receipts/audit and bounded failure results matter even when no human pressed
 a button. The GitHub 15-minute workflow covers payment recovery and email
-retry only; other workers require explicit invocation or approved scheduling.
+retry. A separate service workflow schedules trip generation, pauses, learning,
+GPS retention, card auto-renewals, asks, defaults and no-shows. Push and other
+unlisted jobs still require explicit invocation or approved scheduling.
+See the [schedule](../../docs/DEPLOY.md#scheduling); source configuration is not
+proof of successful execution or handset delivery.
