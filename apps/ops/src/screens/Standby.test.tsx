@@ -38,7 +38,12 @@ function serve(priced: string[] = ['outbound', 'return']) {
               },
             ]
           : path === '/v1/ops/service-schedules'
-            ? legs.map((l) => ({ id: l.scheduleId, weekdays: [1, 2, 3, 4, 5] }))
+            ? legs.map((l) => ({
+                id: l.scheduleId,
+                weekdays: [1, 2, 3, 4, 5],
+                effectiveFrom: '2020-01-01',
+                effectiveTo: null,
+              }))
             : legs
                 .filter((l) => priced.includes(l.direction))
                 .map((l, i) => ({

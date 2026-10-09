@@ -373,6 +373,7 @@ export function Standby() {
           pricing.loading ||
           !!pricing.error ||
           estimates.length !== 2 ||
+          (!locked && estimates.some((e) => !e.scheduleCoversPeriod || e.rides === 0)) ||
           !reason.trim()
         }
         onClose={() => {
@@ -457,6 +458,12 @@ export function Standby() {
             />
           </label>
           {pricing.error && <ErrorState message={pricing.error} retry={pricing.retry} />}
+          {estimates.some((e) => !e.scheduleCoversPeriod) && (
+            <p role="status">
+              The selected schedules must cover the complete offer period. Adjust the coverage dates
+              or publish schedules covering the whole period before sending.
+            </p>
+          )}
           {unpriced.length > 0 && (
             <p role="status">
               No fare is published for the {unpriced.join(' and ')} stops on {coverageStart}.

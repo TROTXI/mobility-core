@@ -5,6 +5,7 @@ import { trotxiLight } from '../theme';
 import { BulkStandbyOffers } from './BulkStandbyOffers';
 import { Standby } from './Standby';
 import type { StandbyApplication } from './standby-offers';
+import { futureDate } from './standby-offers';
 
 const { session } = vi.hoisted(() => ({
   session: { account: { id: 'admin' }, client: { GET: vi.fn(), POST: vi.fn() } },
@@ -41,6 +42,8 @@ const pricing = (path: string) => ({
             id: l.scheduleId,
             weekdays: [1, 2, 3, 4, 5],
             localDeparture: '06:30',
+            effectiveFrom: '2020-01-01',
+            effectiveTo: null,
           }))
         : legs.map((l) => ({
             ...l,
@@ -72,7 +75,7 @@ async function showBulk() {
       />
     </FluentProvider>,
   );
-  await screen.findByRole('button', { name: 'Use fare-based total for Ama' });
+  await screen.findAllByText(/^outbound: Circle/);
   for (const [index, name] of ['Ama', 'Kojo'].entries()) {
     const row = within(screen.getByRole('region', { name: `Offer for ${name}` }));
     fireEvent.change(row.getByLabelText('Package price (GHS)'), {
@@ -141,6 +144,53 @@ it('validates every row before making any offer request', async () => {
   fireEvent.click(screen.getByRole('button', { name: 'Send reviewed offers' }));
   await screen.findByText('Enter amounts in GHS, with at most two decimal places.');
   expect(session.client.POST).not.toHaveBeenCalled();
+});
+
+it.each([
+  ['starts after coverage', 4, null, false],
+  ['ends before the last covered day', 3, 31, false],
+  ['covers the exact inclusive boundaries', 3, 32, true],
+  ['has no end date', 3, null, true],
+] as const)('checks schedule dates before bulk sends: %s', async (_, from, to, available) => {
+  session.client.GET.mockImplementation(async (path) => {
+    const response = pricing(path);
+    if (path === '/v1/ops/service-schedules') {
+      return {
+        data: {
+          ...response.data,
+          data: response.data.data.map((schedule) => ({
+            ...schedule,
+            effectiveFrom: futureDate(from),
+            effectiveTo: to === null ? null : futureDate(to),
+          })),
+        },
+      };
+    }
+    return response;
+  });
+  await showBulk();
+  const send = screen.getByRole('button', { name: 'Send reviewed offers' });
+  if (available) {
+    expect(send).toBeEnabled();
+    expect(screen.getByRole('button', { name: 'Use fare-based total for Ama' })).toBeEnabled();
+  } else {
+    expect(send).toBeDisabled();
+    expect(screen.getAllByRole('status')[0]).toHaveTextContent(
+      'The selected schedules must cover the complete offer period.',
+    );
+    expect(screen.queryByRole('button', { name: 'Use fare-based total for Ama' })).toBeNull();
+    fireEvent.click(send);
+    expect(session.client.POST).not.toHaveBeenCalled();
+    // Correcting coverage recalculates eligibility, rather than leaving a stale error.
+    fireEvent.change(screen.getByLabelText('Coverage start'), {
+      target: { value: futureDate(5) },
+    });
+    fireEvent.change(screen.getByLabelText('Coverage end (exclusive)'), {
+      target: { value: futureDate(30) },
+    });
+    fireEvent.click(screen.getByRole('checkbox'));
+    expect(send).toBeEnabled();
+  }
 });
 
 it('preserves decimal typing and clearing in all amount fields and sends whole pesewas', async () => {

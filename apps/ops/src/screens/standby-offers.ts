@@ -45,6 +45,16 @@ export function estimateOffers(
     const start = new Date(`${coverageStart}T00:00:00Z`).getTime();
     const end = new Date(`${coverageEnd}T00:00:00Z`).getTime();
     const schedule = pricing.schedules.find((s) => s.id === leg.scheduleId);
+    // Schedule dates are inclusive; offer coverageEnd is exclusive. Match
+    // buildOfferTerms: partial service coverage cannot be offered at all.
+    const scheduleCoversPeriod =
+      !!schedule &&
+      Number.isFinite(start) &&
+      end > start &&
+      end - start <= 366 * 86400000 &&
+      new Date(`${schedule.effectiveFrom}T00:00:00Z`).getTime() <= start &&
+      (schedule.effectiveTo === null ||
+        new Date(`${schedule.effectiveTo}T00:00:00Z`).getTime() >= end - 86400000);
     const fare = pricing.fares.find(
       (f) =>
         (!f.journey || f.journey.direction === leg.direction) &&
@@ -55,11 +65,11 @@ export function estimateOffers(
         (!f.effectiveTo || new Date(f.effectiveTo).getTime() > start),
     );
     let rides = 0;
-    if (Number.isFinite(start) && end > start && end - start <= 366 * 86400000)
+    if (scheduleCoversPeriod)
       for (let ms = start; ms < end; ms += 86400000) {
         const day = new Date(ms).getUTCDay() || 7;
         if (application.travelDays.includes(day) && schedule?.weekdays.includes(day)) rides++;
       }
-    return { direction: leg.direction, fare, rides, schedule };
+    return { direction: leg.direction, fare, rides, schedule, scheduleCoversPeriod };
   });
 }

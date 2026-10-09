@@ -276,6 +276,12 @@ export function BulkStandbyOffers({
                 {e.schedule?.localDeparture ?? 'schedule unavailable'} · {e.rides} rides
               </p>
             ))}
+            {es.some((e) => !e.scheduleCoversPeriod) && (
+              <p role="status">
+                The selected schedules must cover the complete offer period. Adjust the coverage
+                dates or publish schedules covering the whole period before sending.
+              </p>
+            )}
             {!es.length || es.some((e) => !e.fare || !e.rides) ? (
               <p>Publish valid fares and schedules for these journeys before sending.</p>
             ) : (
