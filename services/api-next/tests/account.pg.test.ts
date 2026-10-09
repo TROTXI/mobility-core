@@ -202,7 +202,7 @@ async function fixture(t: TestContext, options: { store?: boolean; reach?: boole
 test('ACC-01 a rider renames only their own account', async (t) => {
   const f = await fixture(t);
   const renamed = expectStatus(
-    await f.call('PATCH', '/v1/me', { payload: { displayName: '  Ama Serwaa  ' } }),
+    await f.call('PATCH', '/v1/me', { payload: { firstName: '  Ama ', lastName: ' Serwaa  ' } }),
     200,
   );
   assert.equal(renamed.displayName, 'Ama Serwaa', 'surrounding space is not part of a name');

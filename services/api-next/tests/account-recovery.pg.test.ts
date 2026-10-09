@@ -137,6 +137,7 @@ test('ACR-08 forward upgrade scrubs settled task identities and refuses to disca
     '044_card_auto_renewal.sql',
     '045_ops_action_reasons.sql',
     '046_decision_reasons.sql',
+    '047_commuter_email_auth.sql',
   ]);
   assert.deepEqual(
     (
@@ -187,25 +188,31 @@ test('ACR-01 stale profile and device retries replay without overwriting later c
   const first = await service.handle(
     f.actor,
     'updateAccount',
-    { displayName: 'First' },
+    { firstName: 'First', lastName: 'Rider' },
     undefined,
     key,
   );
   await service.handle(
     f.actor,
     'updateAccount',
-    { displayName: 'Corrected' },
+    { firstName: 'Corrected', lastName: 'Rider' },
     undefined,
     randomUUID(),
   );
   assert.deepEqual(
-    await service.handle(f.actor, 'updateAccount', { displayName: 'First' }, undefined, key),
+    await service.handle(
+      f.actor,
+      'updateAccount',
+      { firstName: 'First', lastName: 'Rider' },
+      undefined,
+      key,
+    ),
     first,
   );
   assert.equal(
     (await f.owner.query('SELECT display_name FROM app.users WHERE id=$1', [f.actor.userId]))
       .rows[0].display_name,
-    'Corrected',
+    'Corrected Rider',
   );
   const token = randomUUID(),
     deviceKey = randomUUID();
@@ -480,9 +487,21 @@ test('ACR-07 concurrent same-key uploads write one object and key expiry never r
     now: () => new Date(Date.now() + 8 * 86400000),
   });
   const renameKey = randomUUID();
-  await service.handle(f.actor, 'updateAccount', { displayName: 'Stored' }, undefined, renameKey);
+  await service.handle(
+    f.actor,
+    'updateAccount',
+    { firstName: 'Stored', lastName: 'Rider' },
+    undefined,
+    renameKey,
+  );
   await assert.rejects(
-    future.handle(f.actor, 'updateAccount', { displayName: 'Stored' }, undefined, renameKey),
+    future.handle(
+      f.actor,
+      'updateAccount',
+      { firstName: 'Stored', lastName: 'Rider' },
+      undefined,
+      renameKey,
+    ),
     (e: any) => e.code === 'idempotency_expired',
   );
   await assert.rejects(

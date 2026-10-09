@@ -100,6 +100,58 @@ void main() {
   });
   tearDown(() => data.dispose());
 
+  test('incorrect current password keeps the session and never refreshes',
+      () async {
+    reply = (_) => json(401, {
+          'error': {
+            'code': 'invalid_credentials',
+            'message': 'Current password is incorrect.'
+          }
+        });
+    await expectLater(
+        data.changePassword('wrong password', 'a different testing password'),
+        throwsA(isA<InvalidCredentialsException>()));
+    expect(requests, hasLength(1));
+    expect(await store.getAccessToken(), 'rider-a');
+  });
+
+  test('full name keeps all parts and derives displayName on the server',
+      () async {
+    reply = (_) => json(200, {
+          'data': {
+            ...account(),
+            'firstName': 'Ama',
+            'lastName': 'Mensah',
+            'otherNames': 'Akua',
+            'displayName': 'Ama Akua Mensah'
+          }
+        });
+    final result = await data.updateFullName('Ama', 'Mensah', 'Akua');
+    expect(result.displayName, 'Ama Akua Mensah');
+    expect(bodyOf(requests.single),
+        {'firstName': 'Ama', 'lastName': 'Mensah', 'otherNames': 'Akua'});
+    expect(requests.single.headers['x-trotxi-platform'], 'android');
+  });
+
+  test(
+      'saving email or password clears the revoked local session without storing secrets',
+      () async {
+    reply = (_) => ResponseBody.fromString('', 204);
+    await data.finishEmailLink('a' * 43, 'a private testing password');
+    expect(requests.single.path, '/v1/me/email-access/complete');
+    expect(await store.getAccessToken(), isNull);
+    await store.saveTokens(
+        accessToken: 'next-access', refreshToken: 'next-refresh');
+    await data.changePassword(
+        'a private testing password', 'a different testing password');
+    expect(requests.last.path, '/v1/me/password');
+    expect(bodyOf(requests.last), {
+      'currentPassword': 'a private testing password',
+      'password': 'a different testing password'
+    });
+    expect(await store.getAccessToken(), isNull);
+  });
+
   test('profile retry retains its intent key after an uncertain response',
       () async {
     reply = (o) => throw DioException(

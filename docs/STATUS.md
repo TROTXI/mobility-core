@@ -4,6 +4,14 @@ Source audit: 2026-10-08, mobility-core main at `e53c79e`.
 This records code support, not proof of production configuration, device
 acceptance, or a successful live-provider transaction.
 
+Authentication update, 2026-10-08: migration 047 adds commuter email/password
+sign-in, verified email setup, forgotten-password recovery and session-revoking
+password changes. Full name parts produce the app's `displayName`. Email sign-in
+does not verify a phone: standby still requires account-bound phone verification.
+Driver PIN and Ops Google/passkey access are unchanged. This update does not
+re-audit the other surfaces below. See [authentication](features/authentication.md)
+for rollout and acceptance checks.
+
 ## Implemented surfaces
 
 | Surface      | Current capability                                                                                                                                                                                                                                                       |

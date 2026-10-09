@@ -33,6 +33,8 @@ const payloadSchema = z
   .strict();
 type Payload = z.infer<typeof payloadSchema>;
 type Kind =
+  | 'commuter_email_access'
+  | 'commuter_password_changed'
   | 'ops_invitation'
   | 'subscription_active'
   | 'subscription_expiring'
@@ -144,8 +146,9 @@ export class TransactionalEmail {
     if (!email || !z.email().safeParse(email).success) return undefined;
     const id = randomUUID();
     // Staging mail says so, in words that fit what the message is about.
-    const stagingNote =
-      kind === 'ops_invitation'
+    const stagingNote = kind.startsWith('commuter_')
+      ? 'This email is for a Trotxi staging test account, not production.'
+      : kind === 'ops_invitation'
         ? 'This invitation is for Trotxi staging, not production.'
         : kind.startsWith('driver_')
           ? 'This is a Trotxi staging test account. It is not for live operations.'
@@ -269,6 +272,70 @@ export class TransactionalEmail {
     );
     if (!id) throw new Error('Invitation email was not queued');
     return id;
+  };
+
+  queueEmailAccess = async (
+    c: PoolClient,
+    mail: {
+      userId: string;
+      challengeId: string;
+      email: string;
+      token: string;
+      purpose: string;
+      expiresAt: Date;
+      origin: string;
+    },
+  ) => {
+    const url = new URL('/account-access', mail.origin);
+    url.hash = new URLSearchParams({ token: mail.token, purpose: mail.purpose }).toString();
+    const heading = mail.purpose === 'reset' ? 'Reset your password' : 'Verify your email';
+    const id = await this.enqueue(
+      c,
+      mail.userId,
+      'commuter_email_access',
+      mail.challengeId,
+      mail.email,
+      {
+        preview: heading,
+        heading,
+        paragraphs: [
+          mail.purpose === 'link'
+            ? 'Open Trotxi on the device where you started linking your email. Paste the verification code below to set your password.'
+            : 'Use this secure link to choose your Trotxi password. Opening the link alone does not change your account.',
+        ],
+        ...(mail.purpose === 'link'
+          ? { highlight: [['Verification code', mail.token] as [string, string]] }
+          : { action: { label: heading, url: url.toString() } }),
+        notes: [
+          'This link or code expires in 30 minutes and works once. If you did not request it, ignore this email. Never share it.',
+        ],
+      },
+      heading,
+      '',
+      { expiresAt: mail.expiresAt },
+    );
+    if (!id) throw new Error('Email access message was not queued');
+    return id;
+  };
+  queuePasswordChanged = async (c: PoolClient, userId: string, email: string, source: string) => {
+    await this.enqueue(
+      c,
+      userId,
+      'commuter_password_changed',
+      source,
+      email,
+      {
+        preview: 'Your Trotxi password has been set',
+        heading: 'Your password has been set',
+        paragraphs: [
+          'Your Trotxi password has been set or changed. All previous app sessions have been signed out. Sign in with your email and your new password.',
+        ],
+        notes: [
+          'If this was not you, use Forgot password in the Trotxi app immediately and contact support.',
+        ],
+      },
+      'Your Trotxi password has been set',
+    );
   };
 
   // Invoked inside fulfilment's existing transaction, after allocation. A
@@ -551,6 +618,18 @@ export class TransactionalEmail {
           }
           if (payload) {
             let eligible = true;
+            if (row.kind === 'commuter_email_access')
+              eligible = !!(
+                await c.query(
+                  `SELECT 1 FROM app.email_auth_challenges a
+                JOIN app.email_credentials e ON e.user_id=a.user_id
+                WHERE a.id=$1 AND a.user_id=$2 AND e.email=$3 AND a.token_hash IS NOT NULL
+                  AND a.consumed_at IS NULL AND a.expires_at>clock_timestamp() AND a.credential_version=e.version
+                  AND (a.session_id IS NULL OR EXISTS (SELECT 1 FROM app.auth_sessions s
+                    WHERE s.id=a.session_id AND s.revoked_at IS NULL AND s.expires_at>clock_timestamp()))`,
+                  [row.source_id, row.user_id, payload.to],
+                )
+              ).rowCount;
             if (row.kind === 'ops_invitation')
               eligible = !!(
                 await c.query(

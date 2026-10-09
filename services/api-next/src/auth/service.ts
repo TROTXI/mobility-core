@@ -14,6 +14,13 @@ import type { AuthenticationResponseJSON, RegistrationResponseJSON } from '@simp
 import type { PasskeyRelyingParty, StoredPasskey } from './passkeys.js';
 import { phoneVerificationStatus, type PhoneOtp } from './phone-otp.js';
 import {
+  EmailAuth,
+  emailOperations,
+  publicEmailOperations,
+  type CommuterEmail,
+  type EmailOperation,
+} from './email-auth.js';
+import {
   OpsTeam,
   teamOperations,
   teamLock,
@@ -26,6 +33,7 @@ import {
 } from './ops-team.js';
 
 export const authOperations = [
+  ...emailOperations,
   ...teamOperations,
   'signInOpsGoogle',
   'requestPhoneSignIn',
@@ -66,6 +74,7 @@ type PasskeyOperation = (typeof passkeyOperations)[number];
 export const ADMIN_ELEVATION_HOURS = 8;
 const PASSKEY_CHALLENGE_SECONDS = 300;
 export const publicAuthOperations = [
+  ...publicEmailOperations,
   'signInOpsGoogle',
   'requestPhoneSignIn',
   'verifyPhoneSignIn',
@@ -92,6 +101,7 @@ export class DriverLockedError extends LockedError {
   }
 }
 export interface AuthOptions {
+  commuterEmail?: CommuterEmail;
   opsEmail?: OpsInvitationEmail;
   opsOrigin?: string;
   eraseOperator?: (c: PoolClient, actor: Actor, target: string) => Promise<void>;
@@ -112,6 +122,9 @@ export interface AuthOptions {
   avatarUrl?: (objectKey: string) => string;
 }
 type User = {
+  first_name?: string | null;
+  last_name?: string | null;
+  other_names?: string | null;
   id: string;
   role: string;
   display_name: string | null;
@@ -178,6 +191,9 @@ export class AuthService {
       id: user.id,
       role: user.role,
       displayName: user.display_name || 'New user',
+      firstName: user.first_name ?? null,
+      lastName: user.last_name ?? null,
+      otherNames: user.other_names ?? null,
       email: user.email,
       phone: user.phone,
       avatarUrl: user.avatar_object_key ? this.options.avatarUrl!(user.avatar_object_key) : null,
@@ -360,6 +376,10 @@ export class AuthService {
     }
     return this.transaction(async (client) => {
       // Prevent concurrent first sign-ins from leaving an unlinked user behind.
+      if (identity.email)
+        await client.query("SELECT pg_advisory_xact_lock(hashtextextended('email-auth:'||$1,0))", [
+          identity.email.trim().toLowerCase(),
+        ]);
       await client.query('SELECT pg_advisory_xact_lock(hashtextextended($1,0))', [
         JSON.stringify(['auth-identity', provider, identity.providerId]),
       ]);
@@ -401,6 +421,21 @@ export class AuthService {
             403,
             'ops_access_required',
             'This account has not been invited to Trotxi Operations.',
+          );
+        if (
+          identity.email &&
+          (
+            await client.query(
+              `SELECT 1 FROM app.email_credentials e
+          JOIN app.users u ON u.id=e.user_id WHERE e.email=$1 AND e.verified_at IS NOT NULL AND u.deleted_at IS NULL`,
+              [identity.email.trim().toLowerCase()],
+            )
+          ).rowCount
+        )
+          fail(
+            409,
+            'signin_method_conflict',
+            'Use email sign-in for this account. Matching emails do not link accounts automatically.',
           );
         const displayName =
           (identity.displayName || (provider === 'apple' ? input.displayName : '') || 'New user')
@@ -841,6 +876,18 @@ export class AuthService {
     key: string | undefined,
     sourceIp?: string,
   ) {
+    if ((emailOperations as readonly string[]).includes(name)) {
+      const data = await new EmailAuth({
+        pool: this.options.pool,
+        secret: this.options.cursorSecret,
+        mail: this.options.commuterEmail,
+        origin: this.options.opsOrigin,
+        authorize: this.authorizeSession,
+        issue: async (c, id) =>
+          this.newSession(c, await this.user(c, id), this.options.refreshTtlDays * 86400000),
+      }).handle(name as EmailOperation, actor, body, sourceIp ?? '');
+      return result(data);
+    }
     if (name === 'signInOpsGoogle') return result(await this.social('google', body, true));
     if ((teamOperations as readonly string[]).includes(name)) {
       if (!actor) throw denied();
@@ -926,9 +973,7 @@ export class AuthService {
         if (user.role !== 'commuter')
           fail(403, 'forbidden', 'Rider verification is for commuters only.');
         const state = await phoneVerificationStatus(client, actor.userId);
-        const profileComplete = Boolean(
-          user.display_name?.trim() && user.display_name !== 'New commuter',
-        );
+        const profileComplete = Boolean(user.first_name?.trim() && user.last_name?.trim());
         const verified = state.phone.status === 'verified';
         return result({
           ...state,
