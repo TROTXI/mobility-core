@@ -495,9 +495,8 @@ export function Standby() {
             Agreed package price (GHS)
             <input
               disabled={locked}
-              type="number"
-              step="0.01"
-              min="1"
+              type="text"
+              inputMode="decimal"
               required
               value={price}
               onChange={(e) => setPrice(e.target.value)}
@@ -507,9 +506,8 @@ export function Standby() {
             Credit per unused outbound ride (GHS)
             <input
               disabled={locked}
-              type="number"
-              step="0.01"
-              min="0"
+              type="text"
+              inputMode="decimal"
               required
               value={outboundCredit}
               onChange={(e) => setOutboundCredit(e.target.value)}
@@ -519,9 +517,8 @@ export function Standby() {
             Credit per unused return ride (GHS)
             <input
               disabled={locked}
-              type="number"
-              step="0.01"
-              min="0"
+              type="text"
+              inputMode="decimal"
               required
               value={returnCredit}
               onChange={(e) => setReturnCredit(e.target.value)}

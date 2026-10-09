@@ -90,8 +90,8 @@ it(
       error: { error: { message: 'Response unavailable; retry safely.' } },
     });
     const dialog = await openOffer();
-    expect(dialog.getByLabelText('Agreed package price (GHS)')).toHaveValue(null);
-    expect(dialog.getByLabelText('Credit per unused outbound ride (GHS)')).toHaveValue(null);
+    expect(dialog.getByLabelText('Agreed package price (GHS)')).toHaveValue('');
+    expect(dialog.getByLabelText('Credit per unused outbound ride (GHS)')).toHaveValue('');
     fireEvent.change(dialog.getByLabelText('Agreed package price (GHS)'), {
       target: { value: '70' },
     });

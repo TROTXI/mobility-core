@@ -143,6 +143,36 @@ it('validates every row before making any offer request', async () => {
   expect(session.client.POST).not.toHaveBeenCalled();
 });
 
+it('preserves decimal typing and clearing in all amount fields and sends whole pesewas', async () => {
+  session.client.POST.mockResolvedValue({ data: {} });
+  const { onCompleted } = await showBulk();
+  const row = within(screen.getByRole('region', { name: 'Offer for Ama' }));
+  for (const [label, value] of [
+    ['Package price (GHS)', '70.50'],
+    ['Unused outbound credit (GHS)', '1.25'],
+    ['Unused return credit (GHS)', '2.50'],
+  ]) {
+    const input = row.getByRole('textbox', { name: label });
+    expect(input).toHaveAttribute('inputmode', 'decimal');
+    fireEvent.change(input, { target: { value: '' } });
+    expect(input).toHaveValue('');
+    for (let length = 1; length <= value!.length; length++) {
+      fireEvent.change(input, { target: { value: value!.slice(0, length) } });
+      expect(input).toHaveValue(value!.slice(0, length));
+    }
+  }
+  fireEvent.click(screen.getByRole('checkbox'));
+  fireEvent.click(screen.getByRole('button', { name: 'Send reviewed offers' }));
+  await vi.waitFor(() => expect(onCompleted).toHaveBeenCalledOnce());
+  expect(session.client.POST.mock.calls[0]![1].body).toMatchObject({
+    price: { amountMinor: 7050, currency: 'GHS' },
+    credits: [
+      { direction: 'outbound', creditPerUnusedRide: { amountMinor: 125, currency: 'GHS' } },
+      { direction: 'return', creditPerUnusedRide: { amountMinor: 250, currency: 'GHS' } },
+    ],
+  });
+});
+
 it('retains an uncertain receipt through rate limiting and supports finishing a resolved partial batch', async () => {
   session.client.POST.mockRejectedValueOnce(new Error('Lost response'))
     .mockResolvedValueOnce({

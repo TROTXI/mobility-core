@@ -299,9 +299,8 @@ export function BulkStandbyOffers({
                 <label key={field}>
                   {field === 'price' ? 'Package price (GHS)' : `Unused ${field} credit (GHS)`}
                   <input
-                    type="number"
-                    min="0"
-                    step="0.01"
+                    type="text"
+                    inputMode="decimal"
                     required
                     disabled={locked}
                     value={terms[a.id]![field]}
