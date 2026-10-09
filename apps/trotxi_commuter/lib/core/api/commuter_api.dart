@@ -126,6 +126,27 @@ class CommuterApi extends CommuterDataClient {
     return auth.signInPhone(challengeId, code);
   }
 
+  Future<void> signInEmail(String email, String password) async {
+    _loadAttempt++; // An older restore must not replace this sign-in's result.
+    completeSignIn(await auth.signInEmail(email, password));
+  }
+
+  Future<String> requestEmailSignup({
+    required String email,
+    required String firstName,
+    required String lastName,
+  }) => auth.requestEmailSignup(
+    email: email,
+    firstName: firstName,
+    lastName: lastName,
+  );
+
+  Future<String> requestPasswordReset(String email) =>
+      auth.requestPasswordReset(email);
+
+  Future<void> completeEmailAccess(String token, String password) =>
+      auth.completeEmailAccess(token, password);
+
   void completeSignIn(wire.Account account) {
     if (_closed) return;
     currentAccount = account;
