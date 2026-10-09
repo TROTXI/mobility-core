@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:trotxi_commuter/Features/Onboarding/pages/onboard_page.dart';
+import 'package:trotxi_commuter/core/api/commuter_api.dart';
 import 'package:trotxi_commuter/core/config/theme/app_theme.dart';
 
 import 'replacement_fixture.dart';
@@ -36,4 +37,36 @@ void main() {
     expect(find.text('Send verification code'), findsOneWidget);
     expect(fixture.requests, isEmpty);
   });
+
+  test(
+    'finishing signup removes the revoked OTP session from this device',
+    () async {
+      final fixture = Fixture();
+      addTearDown(fixture.api.dispose);
+      await fixture.signedIn();
+      fixture.reply = (request) {
+        if (request.path == '/v1/me/phone-registration') {
+          return jsonResponse({'data': null}, 204);
+        }
+        return jsonResponse({
+          'error': {'code': 'not_found', 'message': 'Unexpected route'},
+        }, 404);
+      };
+
+      await fixture.api.finishPhoneRegistration(
+        firstName: 'Ama',
+        lastName: 'Mensah',
+        email: 'ama@example.com',
+        password: 'correct horse trotxi battery',
+      );
+
+      expect(await fixture.store.getAccessToken(), isNull);
+      expect(fixture.api.stage.value, CommuterStage.signedOut);
+      expect(fixture.api.authNotice, contains('Sign in with your phone'));
+      expect(
+        fixture.requests.map((request) => request.path),
+        contains('/v1/me/phone-registration'),
+      );
+    },
+  );
 }
