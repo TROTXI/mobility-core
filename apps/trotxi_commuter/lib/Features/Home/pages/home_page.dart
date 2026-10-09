@@ -3,11 +3,12 @@ import 'package:flutter/material.dart';
 import 'package:trotxi_commuter/core/api/commuter_api.dart';
 import 'package:trotxi_commuter/Features/Home/models/home_ride_lifecycle_state.dart';
 import 'package:trotxi_commuter/Features/Home/widgets/BottomNavigation/commuter_navigation.dart';
+import 'package:trotxi_commuter/Features/Search/commuter_search.dart';
 import 'package:trotxi_commuter/Features/Home/widgets/Navbar/navbar.dart';
 import 'package:trotxi_commuter/Features/Home/widgets/Tabs/home_tab.dart';
 import 'package:trotxi_commuter/Features/Home/widgets/Tabs/pass_tab.dart';
 import 'package:trotxi_commuter/Features/Home/widgets/Tabs/profile_tab.dart';
-import 'package:trotxi_commuter/Features/Home/widgets/Tabs/routes_tab.dart';
+import 'package:trotxi_commuter/Features/Home/widgets/Tabs/reservation_trips_tab.dart';
 import 'package:trotxi_commuter/Features/Home/widgets/Tabs/wallet_tab.dart';
 import 'package:trotxi_commuter/core/config/theme/app_colors.dart';
 
@@ -297,7 +298,7 @@ class _HomePageState extends State<HomePage> {
         userData: userData,
         onShowBoardingPass: _showBoardingPass,
       ),
-      RoutesTab(client: widget.client),
+      ReservationTripsTab(client: widget.client),
       WalletTab(client: widget.client),
       ProfileTab(client: widget.client),
     ];
@@ -329,7 +330,11 @@ class _HomePageState extends State<HomePage> {
               child: CommuterPhoneDock(
                 selected: _selected,
                 onDestinationSelected: _goToDestination,
-                onSearch: null,
+                onSearch: () => showCommuterSearch(
+                  context,
+                  client: widget.client,
+                  onDestination: _goToDestination,
+                ),
               ),
             ),
           ),

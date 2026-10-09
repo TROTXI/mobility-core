@@ -7,8 +7,11 @@ import 'reservation_trips_tab.dart';
 import 'standby_page.dart';
 
 class RoutesTab extends StatefulWidget {
-  const RoutesTab({super.key, required this.client});
+  const RoutesTab({super.key, required this.client, this.routeId});
   final CommuterApi client;
+
+  /// Limits departures to one route; null lists every route.
+  final String? routeId;
 
   @override
   State<RoutesTab> createState() => _RoutesTabState();
@@ -44,7 +47,11 @@ class _RoutesTabState extends State<RoutesTab> {
       _trips = [];
     });
     try {
-      final trips = await widget.client.trips(from: date, to: date);
+      final trips = await widget.client.trips(
+        from: date,
+        to: date,
+        routeId: widget.routeId,
+      );
       Map<String, String> names = {};
       try {
         names = {for (final r in await widget.client.routes()) r.id: r.name};

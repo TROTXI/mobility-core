@@ -94,18 +94,6 @@ class _OnBoardPageState extends State<OnBoardPage> {
     );
   }
 
-  // void _continueWithPhone() {
-  //   debugPrint('Pending Implementation: Phone sign-in is not yet implemented.');
-  // }
-
-  // void _continueWithEmail() {
-  //   debugPrint('Pending Implementation: Email sign-in is not yet implemented.');
-  // }
-
-  // void _goToCreateAccount() {
-  //   debugPrint('Pending Implementation: Create account is not yet implemented.');
-  // }
-
   void _showError(String message) {
     if (!mounted) return;
     ScaffoldMessenger.of(
@@ -235,7 +223,13 @@ class _OnBoardPageState extends State<OnBoardPage> {
           AppSignInButton(
             onPressed: _signInWithApple,
             text: 'Continue with Apple',
-            icon: Image.asset(Appvectors.appleIconImage),
+            icon: Image.asset(
+              Appvectors.appleIconImage,
+              // The asset is a black glyph; tint it white on dark surfaces.
+              color: Theme.of(context).brightness == Brightness.dark
+                  ? Colors.white
+                  : null,
+            ),
           ),
           const SizedBox(height: 13),
           AppSignInButton(

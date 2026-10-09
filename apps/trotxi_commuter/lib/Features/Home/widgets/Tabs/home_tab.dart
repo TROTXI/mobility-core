@@ -130,28 +130,6 @@ class _HomeTabState extends ConsumerState<HomeTab> {
               child: ListView(
                 padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
                 children: [
-                  DropdownButton<CommuteDirection>(
-                    value: ref.watch(selectedDirectionProvider),
-                    items: const [
-                      DropdownMenuItem(
-                        value: CommuteDirection.outbound,
-                        child: Text('Today · Outbound'),
-                      ),
-                      DropdownMenuItem(
-                        value: CommuteDirection.returning,
-                        child: Text('Today · Return'),
-                      ),
-                    ],
-                    onChanged: _deciding
-                        ? null
-                        : (value) {
-                            if (value != null) {
-                              ref
-                                  .read(selectedDirectionProvider.notifier)
-                                  .select(value);
-                            }
-                          },
-                  ),
                   _buildGreetingHeader(lifecycleAsync.asData?.value),
                   const SizedBox(height: 24),
                   ...lifecycleAsync.when(

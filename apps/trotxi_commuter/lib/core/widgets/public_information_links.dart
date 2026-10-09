@@ -34,17 +34,30 @@ class PublicInformationLinks extends StatelessWidget {
   }
 
   @override
-  Widget build(BuildContext context) => Wrap(
-    spacing: 8,
-    children: [
-      TextButton(
-        onPressed: () => _show(context, TrotxiPublicInformation.privacy),
-        child: const Text('Privacy notice'),
+  Widget build(BuildContext context) {
+    // Both links stay on one row; the text shrinks (never wraps) on narrow
+    // screens or with large system font scales.
+    final style = TextButton.styleFrom(
+      padding: const EdgeInsets.symmetric(horizontal: 8),
+      textStyle: const TextStyle(fontSize: 13),
+    );
+    Widget link(String text, Uri uri) => Flexible(
+      child: TextButton(
+        style: style,
+        onPressed: () => _show(context, uri),
+        child: FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Text(text, maxLines: 1),
+        ),
       ),
-      TextButton(
-        onPressed: () => _show(context, TrotxiPublicInformation.deletion),
-        child: const Text('Request account deletion'),
-      ),
-    ],
-  );
+    );
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        link('Privacy notice', TrotxiPublicInformation.privacy),
+        const SizedBox(width: 8),
+        link('Request account deletion', TrotxiPublicInformation.deletion),
+      ],
+    );
+  }
 }
